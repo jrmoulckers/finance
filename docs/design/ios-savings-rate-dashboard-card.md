@@ -1,355 +1,306 @@
-# Promote Savings-Rate Card to the iOS Dashboard
+# iOS Savings-Rate Dashboard Card — Finance
 
-> The dashboard already _computes_ savings rate but never shows it. This design
-> promotes it to a first-class, low-noise card — a headline percentage, a
-> non-color trend badge versus last month, compact copy, and a single tap target
-> into the deeper view — without adding clutter to the existing Dashboard.
+> **Status:** PROPOSED — design decisions resolved in-session 2026-06-20; pending human review & merge
+> **Epic:** #2162 · **Closes:** #2589 · **Refs:** #1239 (Apple Developer enrollment, blocking native impl)
+> **WCAG Target:** 2.2 Level AA (1.4.1 Use of Color; 1.1.1 Non-text Content; 1.4.10 Reflow)
+> **Priority:** P1 (`priority:high`, `effort:s`) · **Milestone:** v1.0
+> **Last Updated:** 2026-06-20
+> **Platforms:** iOS (SwiftUI) — design-only
 
-**Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
-**Issue:** [#2589](https://github.com/jrmoulckers/finance/issues/2589) — Part of [#2162](https://github.com/jrmoulckers/finance/issues/2162)
-**Platform:** iOS / iPadOS (SwiftUI, iOS 17+)
-**Owner:** @ios-engineer
-**Related:** [ios-net-worth-trend-chart.md](./ios-net-worth-trend-chart.md) · [ios-noncolor-financial-state-cues.md](./ios-noncolor-financial-state-cues.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [data-visualization.md](./data-visualization.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [information-architecture.md](./information-architecture.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
+---
+
+## Status & boundary note
+
+Native Swift/SwiftUI implementation is **blocked by Apple Developer enrollment #1239**.
+This document is a **design/breakdown deliverable only** — it specifies the savings-rate card
+contract, its placement on the Dashboard, the spoken summary, and per-state behavior so that,
+once unblocked, a native implementation can proceed without re-deriving the contract. No Swift
+code ships with this doc.
+
+The persona this serves is the **FIRE saver** (#2162): _"I need savings rate front and center on
+the iOS dashboard."_ The savings rate is the single number that tells them whether they are on
+track, so it is promoted to a first-class card rather than buried in Insights.
+
+**Native/KMP boundary (applies to every surface below):**
+
+- **Platform-neutral business rules** — the savings-rate math (income − expense ÷ income),
+  the divide-by-zero guard, trend classification (improving / declining / flat) vs. the prior
+  period, target comparison, and masking-aware string assembly — live in `packages/core` /
+  `packages/models` so all platforms share one source of truth. The savings-rate **math already
+  exists and is shared** (`FinancialAggregator.savingsRate`, §3); only the composite **card
+  descriptor** (rate + trend + target + spoken summary) is new and is specified — not written —
+  here (§4).
+- **Apple-framework integration** — the SwiftUI card layout, VoiceOver semantics, Dynamic Type
+  reflow, and SF Symbol trend glyph — live in `apps/ios` (planned; the card itself is currently
+  absent — the data it needs is already on the view model, §5).
 
 ---
 
 ## Table of Contents
 
-1. [Goal & Scope](#1-goal--scope)
-2. [Current State](#2-current-state)
-3. [Placement & Card Hierarchy](#3-placement--card-hierarchy)
-4. [Trend Badge (vs Last Month)](#4-trend-badge-vs-last-month)
-5. [Compact Copy](#5-compact-copy)
-6. [Tap Target & Navigation](#6-tap-target--navigation)
-7. [Accessibility](#7-accessibility)
-8. [Privacy & Balance Hiding](#8-privacy--balance-hiding)
-9. [States: Empty, Loading, Stale, Error & Edge Cases](#9-states-empty-loading-stale-error--edge-cases)
-10. [Native ↔ KMP Boundary](#10-native--kmp-boundary)
-11. [Affected Surfaces & Shared Dependencies](#11-affected-surfaces--shared-dependencies)
-12. [Test Plan (Smallest Tests First)](#12-test-plan-smallest-tests-first)
-13. [Implementation Readiness](#13-implementation-readiness)
-14. [Open Questions](#14-open-questions)
+1. [Why this card](#1-why-this-card)
+2. [The cross-platform contract we are mirroring](#2-the-cross-platform-contract-we-are-mirroring)
+3. [The savings-rate calculation (shared engine)](#3-the-savings-rate-calculation-shared-engine)
+4. [Shared card descriptor (packages/core)](#4-shared-card-descriptor-packagescore)
+5. [Surface application map](#5-surface-application-map)
+6. [State coverage](#6-state-coverage-dynamic-type-privacy-stale-error-empty)
+7. [Test plan](#7-test-plan)
+8. [Cross-references & resolved decisions](#8-cross-references--resolved-decisions)
 
 ---
 
-## 1. Goal & Scope
+## 1. Why this card
 
-Savings rate — the share of income you keep — is the single most motivating
-number for the budgeting personas, yet the
-[`DashboardView`](../../apps/ios/Finance/Screens/DashboardView.swift) renders net
-worth, a monthly income/expense summary, budget rings, quick access, and recent
-transactions, but **not** savings rate, even though
-[`DashboardViewModel`](../../apps/ios/Finance/ViewModels/DashboardViewModel.swift)
-already calculates it. This design closes that gap.
+Savings rate — _what fraction of income you keep_ — is the headline metric for a FIRE saver, and
+the one number that compresses a whole month of income and spending into "on track / off track."
+The iOS Dashboard already computes and caches it
+(`DashboardViewModel.savingsRate`, `apps/ios/Finance/ViewModels/DashboardViewModel.swift:64–66,
+93–97`) but **never renders it** — the visible cards are net worth and a three-column
+Income / Expenses / Net summary (`DashboardView.swift:38–39, 66–106`). #2589 promotes the rate to
+its own card.
 
-**In scope:**
+A rate card carries three accessibility obligations that this doc resolves once:
 
-- A `SavingsRateCard` SwiftUI surface placed in the existing Dashboard scroll
-  stack with a clear visual hierarchy.
-- A **trend badge** comparing this month to last month, using a non-color cue
-  (arrow + sign) per the iOS state-cue guidance.
-- **Compact copy**, a **44 pt tap target** into the existing detail surface, and
-  full accessibility / privacy / state coverage.
+- **It encodes a trend (improving / declining / flat).** Direction must never be conveyed by
+  color (green/red) alone — WCAG 2.2 **1.4.1 Use of Color**. The trend needs a shape + text cue,
+  defined in `docs/design/ios-noncolor-state-cues.md` (§4 trend vocabulary), not re-derived here.
+- **It must survive privacy masking.** A percentage discloses no absolute balance, so the rate
+  and trend stay visible even when amounts are hidden (§6) — this is the established #2834
+  decision, not a new call.
+- **It must reflow under Dynamic Type.** The card lives on the same Dashboard whose summary row
+  is already graded for AX reflow in `docs/design/ios-dynamic-type-reflow.md` (§5).
 
-**Out of scope:**
+This document is the **single reusable iOS contract** for the savings-rate card required by
+#2589, applied to the Dashboard surface and grounded in the existing shared engine.
 
-- A full savings-rate _history chart_ — the card deep-links into the existing
-  analytics/insights surface; the trend over time is a follow-on under #2162.
-- Changing the **calculation** — savings-rate math stays in KMP `packages/core`
-  via the bridge ([§10](#10-native--kmp-boundary)).
-- New tabs or navigation destinations — the goal is "first-class **without**
-  adding noise," so the card slots into the existing Dashboard, no new IA
-  (see [information-architecture.md](./information-architecture.md)).
+## 2. The cross-platform contract we are mirroring
 
-> **Why a card, not a screen:** consistent with
-> [ios-net-worth-trend-chart.md](./ios-net-worth-trend-chart.md), the headline
-> figure belongs inline on the Dashboard next to the income/expense summary that
-> explains it; detail-on-demand lives one tap away.
+The web app already ships a savings-rate dashboard summary and an insights analysis; iOS mirrors
+their **shape** so all platforms speak the same numbers and the same trend language.
 
----
+- `apps/web/src/lib/dashboard/savings-rate-summary.ts` →
+  `buildSavingsRateDashboardSummary(rows, currentMonth)` returns `{ current, prior,
+trailingThreeMonth }` where each period summary is
+  `{ month, incomeCents, expenseCents, savingsCents, savingsRatePercent }`.
+  - Period unit is the **calendar month** (the `month` key; `current` = `currentMonth`,
+    `prior` = the immediately preceding month, `trailingThreeMonth` = last 3 months).
+  - Divide-by-zero guard: `incomeCents === 0 ? 0 : …` (`savings-rate-summary.ts:33`).
+- `apps/web/src/lib/insights/savingsRate.ts` → `analyzeSavingsRate(transactions, period, now)`
+  returns `{ currentRate, previousRate, rateChangePoints, change, … , history }`.
+  - `change` is the trend classification, produced by `compareValues(current, previous)`
+    (`apps/web/src/lib/insights/helpers.ts:51–60`): `up` / `down` / `flat`.
+  - `rateChangePoints` is the **percentage-point delta** vs. the prior period (`savingsRate.ts:58`).
+- The rate itself comes from `calculateRate(income, spending)`
+  (`apps/web/src/lib/insights/helpers.ts:127–133`), whose guard is `if (income <= 0) return 0;`
+  then `((income − spending) / income) * 100` rounded to one decimal.
 
-## 2. Current State
+iOS must produce the **same rate, same trend, and the same percentage-point delta** from the
+**same shared math**, then express them through Apple accessibility APIs instead of the DOM.
 
-- [`DashboardViewModel`](../../apps/ios/Finance/ViewModels/DashboardViewModel.swift)
-  exposes `savingsRate: Double` (a 0–100 percentage) plus `monthlyIncome` and
-  `monthlyExpenses`, all recomputed in `recomputeAggregations()` via the bridge
-  `aggregator.savingsRate(...)`. **The value exists but is never rendered.**
-- The view model computes for the **current month** window only; a
-  **previous-month** value is needed for the trend badge ([§4](#4-trend-badge-vs-last-month)).
-- The Dashboard's cards use a consistent style: `.regularMaterial` background,
-  `RoundedRectangle(cornerRadius: 16)`, `CurrencyLabel`, and
-  `.accessibilityElement(children: .combine)` — the new card matches this.
-- `savingsRate` is a percentage, so it is computed and formatted **without**
-  the privacy `CurrencyLabel` path — relevant to [§8](#8-privacy--balance-hiding).
+## 3. The savings-rate calculation (shared engine)
 
----
+**The math already exists in shared code and is already bridged to iOS.** Do not re-implement it
+on the platform.
 
-## 3. Placement & Card Hierarchy
+`packages/core/.../aggregation/FinancialAggregator.kt`:
 
-Insert `SavingsRateCard` **directly under** the existing `spendingSummaryCard`
-(which shows Income / Expenses / Net), because savings rate is the natural
-synthesis of those two numbers:
-
-```text
-ScrollView
-  ├─ OfflineBanner (conditional)
-  ├─ netWorthCard
-  ├─ spendingSummaryCard        ← Income / Expenses / Net
-  ├─ SavingsRateCard            ← NEW (this design)
-  ├─ budgetHealthSection
-  ├─ quickAccessSection
-  └─ recentTransactionsSection
+```kotlin
+// FinancialAggregator.kt:166–171
+fun savingsRate(transactions: List<Transaction>, from: LocalDate, to: LocalDate): Double {
+    val income = totalIncome(transactions, from, to)
+    if (income.isZero()) return 0.0                          // ← divide-by-zero guard
+    val expenses = totalSpending(transactions, from, to)
+    return ((income.amount - expenses.amount).toDouble() / income.amount) * 100.0
+}
 ```
 
-Visual hierarchy inside the card (top → bottom, leading-aligned):
+- **Cents arithmetic.** `totalIncome` (`:83–92`) and `totalSpending` (`:69–78`) each return
+  `Cents` (Long-backed minor units) summed via `it.amount.abs().amount`. The ratio is the only
+  floating-point step, and only for the displayed percentage — no money is ever stored as a
+  `Double`.
+- **Divide-by-zero guard.** `if (income.isZero()) return 0.0` (`:168`). Zero income → rate `0.0`,
+  never `NaN`/`Infinity`. This is the **zero-income / first-month** state in §6.
+- **Denominator = recorded income.** Income is the sum of `TransactionType.INCOME` transactions
+  in range that are not deleted and not `VOID` (`:85–90`). The app has no gross/net-of-tax
+  distinction at the transaction layer, so the denominator is **income as the user recorded it**
+  (see resolved decision 2, §8).
+- **Period = calendar month.** The iOS view model already calls `savingsRate` with
+  `from = startOfMonth … to = endOfMonth`
+  (`DashboardViewModel.swift:77–79, 93–97`), matching the web summary's calendar-month unit and
+  the KMP `SavingsEngine` income-allocation rule
+  (`packages/core/.../savings/SavingsEngine.kt:184–205`, same
+  `((income − expenses) / income) * 100` shape with an `income <= 0` guard). The card uses the
+  **same calendar month**; trend compares against the **prior calendar month** (resolved
+  decision 1, §8).
 
-1. **Eyebrow label:** "Savings Rate" — `.subheadline`, `.secondary`,
-   `.isHeader` trait.
-2. **Headline:** the percentage — large, rounded, `.monospacedDigit()`
-   (e.g. `.system(.largeTitle, design: .rounded, weight: .bold)`), with the
-   **trend badge** trailing on the same baseline.
-3. **Caption:** one compact, plain-language line ([§5](#5-compact-copy)).
+**What is missing (and is the only new shared work):** `savingsRate` returns a single `Double`
+for one window. The card additionally needs the **prior-period rate**, the **trend
+classification**, the **percentage-point delta**, an optional **target**, and a **masking-aware
+spoken summary**. Those are assembled by the proposed descriptor in §4 — they are **not** new math,
+just composition over the existing `savingsRate`/`totalIncome`/`totalSpending` calls.
 
-The card is a `NavigationLink` (single tap target) styled to match the other
-material cards; it adds exactly one row to the stack — no nested controls, no
-chart — honoring "without adding noise."
+## 4. Shared card descriptor (packages/core)
 
----
+Add a platform-neutral descriptor so the on-screen figure, the trend cue, and the VoiceOver
+summary are all derived once and shared with web parity. **Proposed — owned by @kmp-engineer; not
+implemented in this doc.** Home: the same cross-cutting `packages/core/.../accessibility`
+namespace introduced by the chart-accessibility pattern (`docs/design/ios-chart-accessibility.md`
+§4), so the trend cue type is shared rather than re-declared per surface.
 
-## 4. Trend Badge (vs Last Month)
+**Proposed shared type (Kotlin, illustrative):**
 
-The badge answers "is this getting better?" at a glance.
+```kotlin
+// packages/core/.../savings/SavingsRateCardDescriptor.kt (proposed, @kmp-engineer)
+data class SavingsRateCardDescriptor(
+    val periodLabel: String,        // "This month" / "June 2026"
+    val currentRatePercent: Double, // FinancialAggregator.savingsRate(current month)
+    val priorRatePercent: Double?,  // savingsRate(prior month); null if no prior data
+    val changePoints: Double?,      // currentRate − priorRate, percentage points (web: rateChangePoints)
+    val trend: TrendDirection?,     // Improving / Declining / Flat — null when no prior period
+    val targetPercent: Double? = null, // optional user/FIRE target (e.g. 20%, the SavingsEngine threshold)
+    val hasIncome: Boolean,         // false → zero-income/first-month empty state (§6)
+    val spokenSummary: String,      // masking-aware VoiceOver sentence (below)
+)
 
-- **Delta in percentage points:** `current − previous` savings rate, rendered as
-  `+4 pts` / `−3 pts` / `even`. Points (not "%") avoids the percent-of-a-percent
-  ambiguity.
-- **Non-color cue first:** an SF Symbol (`arrow.up.right` / `arrow.down.right` /
-  `arrow.right`) **plus** an explicit sign — color is secondary, per
-  [ios-noncolor-financial-state-cues.md](./ios-noncolor-financial-state-cues.md)
-  and [data-visualization §2.4](./data-visualization.md#24-never-color-alone).
-- **Semantics:** higher savings rate is positive (use `statusPositive`); lower is
-  cautionary (`statusWarning`/`statusNegative`). Crucially, the **direction is
-  carried by the arrow and sign**, not by hue alone.
-- **Requires a previous-month value:** add `previousSavingsRate` to the view
-  model, computed via the same bridge call over the **prior** month window. This
-  is presentation wiring; the arithmetic stays in KMP core ([§10](#10-native--kmp-boundary)).
-
-The badge reflows below the headline under large Dynamic Type rather than
-truncating (see [§7](#7-accessibility)).
-
----
-
-## 5. Compact Copy
-
-All `String(localized:)` with translator comments, plain and non-judgmental per
-the [content language guidelines](./content-language-guidelines.md):
-
-| Element            | Copy (en)                                    | Notes                                      |
-| ------------------ | -------------------------------------------- | ------------------------------------------ |
-| Eyebrow            | "Savings Rate"                               | Card title                                 |
-| Headline           | "{n}%"                                       | Integer percent; `NumberFormatter` percent |
-| Badge (up)         | "+{d} pts vs last month"                     | `d` = absolute point delta                 |
-| Badge (down)       | "−{d} pts vs last month"                     | Minus sign, not hyphen                     |
-| Badge (flat)       | "Even with last month"                       |                                            |
-| Caption (positive) | "You're keeping {n}% of income."             | Reinforces meaning, no praise/shame        |
-| Caption (zero/neg) | "Spending matched or passed income."         | Neutral framing for ≤ 0 savings rate       |
-| Empty              | "Add transactions to see your savings rate." |                                            |
-
-Copy stays to one caption line; numbers are locale-formatted.
-
----
-
-## 6. Tap Target & Navigation
-
-- The entire card is **one** `NavigationLink` (≥ 44 pt height by construction —
-  the material card padding already exceeds it), routing to the existing
-  detail surface — **[`InsightsView`](../../apps/ios/Finance/Screens/InsightsView.swift)**
-  (or `AnalyticsView`) — reusing the pattern from the Dashboard's existing
-  `quickAccessSection` `NavigationLink`s. No new screen is introduced.
-- `.accessibilityHint` describes the destination ("Opens savings insights"); the
-  link has a clear `.accessibilityLabel` + `.accessibilityValue` ([§7](#7-accessibility)).
-- Pull-to-refresh and `.task { loadDashboard() }` already drive the value; the
-  card needs no independent loading path.
-
----
-
-## 7. Accessibility
-
-Per the [accessibility patterns library](./accessibility-patterns.md):
-
-- **VoiceOver:** the card is one combined element.
-  - `.accessibilityLabel`: "Savings rate"
-  - `.accessibilityValue`: "{n} percent, up {d} points versus last month"
-    (direction spoken as words, never relying on the arrow glyph or color).
-  - `.accessibilityHint`: "Opens savings insights".
-  - Decorative arrow symbol is `.accessibilityHidden(true)` since its meaning is
-    already in the spoken value.
-- **Dynamic Type:** no hardcoded sizes — semantic fonts only; the headline uses
-  `.minimumScaleFactor` only as a last resort, and the trend badge **wraps to a
-  second line** at large accessibility sizes instead of clipping (validate
-  against [ios-dynamic-type-reflow-audit.md](./ios-dynamic-type-reflow-audit.md)).
-- **Reduce Motion:** if a count-up or badge animation is ever added, gate it on
-  `accessibilityReduceMotion` and fall back to an instant value
-  ([accessibility-patterns §6.1](./accessibility-patterns.md#61-reduced-motion-support)).
-- **Never color alone:** trend direction is conveyed by arrow + sign + words, so
-  the card is fully legible to color-blind users and in grayscale
-  ([data-visualization §2.4](./data-visualization.md#24-never-color-alone)).
-- **Contrast:** reuse the CVD-safe status palette from the widget/app tokens,
-  meeting WCAG AA in light/dark ([data-visualization §2.1](./data-visualization.md#21-cvd-safe-palette)).
-
----
-
-## 8. Privacy & Balance Hiding
-
-Savings rate is a **percentage**, not a balance, so it is inherently
-privacy-friendlier than dollar figures — but the design still respects the app's
-balance-hiding posture:
-
-- The **percentage and the trend badge remain visible** even when amount-hiding
-  is active: a percent reveals no absolute balance, mirroring how the widget
-  `.percent` masking mode ([`WidgetMoneyFormatter`](../../apps/ios/Shared/WidgetPrivacy.swift))
-  is the privacy-safe representation.
-- Any **absolute amounts** that might appear in the caption (none in the default
-  copy) must route through the existing privacy-aware formatting; the default
-  copy deliberately avoids dollar amounts so the card needs no unmasking.
-- When the deeper [`InsightsView`](../../apps/ios/Finance/Screens/InsightsView.swift)
-  shows underlying income/expense figures, those follow the app's existing
-  masking — out of scope here, but the tap target must not leak amounts in its
-  accessibility value (it speaks the percent only).
-
-> Rule of thumb: **percentages pass; dollars get masked.** The savings-rate card
-> is percent-first by design, so it stays informative under balance hiding.
-
----
-
-## 9. States: Empty, Loading, Stale, Error & Edge Cases
-
-| State           | Trigger                                                 | Rendering                                                                                                                  |
-| --------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Loading**     | `isLoading && accounts.isEmpty`                         | Inherits the Dashboard's existing `ProgressView`; the card simply isn't built yet                                          |
-| **Empty**       | No transactions in the current month                    | "Add transactions to see your savings rate." with a neutral icon; no badge                                                 |
-| **Zero income** | `monthlyIncome == 0` (rate undefined; bridge returns 0) | Show "—" headline + empty-style caption, not a misleading "0%"                                                             |
-| **Negative**    | Expenses ≥ income (rate ≤ 0)                            | Render the actual value (e.g. "0%") with the neutral "Spending matched or passed income." caption; trend badge still valid |
-| **Stale**       | Data older than the app's refresh (offline)             | Render last-known value; the Dashboard's `OfflineBanner` already signals connectivity                                      |
-| **Error**       | `loadDashboard()` sets `errorMessage`                   | The Dashboard's existing error `alert` handles it; the card shows last-known or hides until retry                          |
-
-The card must **distinguish "0% saved" from "no data"** — the zero-income case
-renders "—", never a falsely precise "0%".
-
----
-
-## 10. Native ↔ KMP Boundary
-
-```mermaid
-flowchart LR
-    subgraph KMP["packages/core + packages/models (KMP — DO NOT implement here)"]
-        K1["savingsRate(transactions, from, to)"]
-        K2[Income / spending aggregation]
-    end
-    subgraph Bridge["Swift Export bridge (apps/ios/Finance/KMP)"]
-        B1[SwiftExportAggregatorModule]
-    end
-    subgraph iOS["apps/ios (native — this design)"]
-        V1[DashboardViewModel<br/>savingsRate + previousSavingsRate]
-        V2[SavingsRateCard<br/>format + trend badge + a11y]
-    end
-    K1 --> B1
-    K2 --> B1
-    B1 --> V1 --> V2
+enum class TrendDirection { IMPROVING, DECLINING, FLAT } // maps to trendUp/trendDown/trendFlat cues
 ```
 
-- The **savings-rate formula** (and the income/spending it derives from) lives in
-  KMP `packages/core`, already surfaced through
-  [`SwiftExportAggregatorModule.savingsRate`](../../apps/ios/Finance/KMP/SwiftExportBridge.swift).
-  The card and view model **call** it for the current and prior month windows;
-  they do not reimplement the math.
-- The only new view-model value, `previousSavingsRate`, is computed by invoking
-  the **same** bridge method over the previous-month date range — wiring, not new
-  arithmetic.
-- iOS owns layout, the trend-badge presentation, formatting, accessibility, and
-  privacy rendering only.
+- `currentRatePercent` / `priorRatePercent` are produced **only** by
+  `FinancialAggregator.savingsRate` for the current and prior calendar month — no parallel
+  formula.
+- `trend` is derived exactly like the web `compareValues` (`helpers.ts:51–60`): strictly greater →
+  `IMPROVING`, strictly less → `DECLINING`, equal → `FLAT`. It maps to the **canonical
+  `trendUp` / `trendDown` / `trendFlat` cue tokens** defined in
+  `docs/design/ios-noncolor-state-cues.md` (§4 _Investment / trend states_; §5.2 proposed token
+  table). A higher savings rate is good, so `IMPROVING → trendUp` even though many "up" cues are
+  warnings elsewhere — the **tone** differs, the **shape/label** are reused.
+- `targetPercent` defaults to the **20% threshold** the shared `SavingsEngine` already uses to
+  flag an income-allocation opportunity (`SavingsEngine.kt:207`), giving the card a sensible
+  default goal line without inventing a new constant.
+- `spokenSummary` is masking-aware: it always speaks the **percentage and trend** (a rate is
+  relative; §6), and only suppresses absolute currency figures when balances are masked. Template:
 
----
+  > _"Savings rate this month: 32%. Improving, up 4 points from last month. Target 20%, on track."_
+  > Zero-income: _"Savings rate this month: not available yet — no income recorded this month."_
 
-## 11. Affected Surfaces & Shared Dependencies
+Extending the descriptor over the existing aggregator calls is the smallest shared change; iOS
+consumes it via the KMP bridge (the same bridge already serving `DashboardViewModel.savingsRate`)
+and renders the card.
 
-**New (this design):**
+## 5. Surface application map
 
-- `apps/ios/Finance/Components/SavingsRateCard.swift` (or an inline `private var`
-  in `DashboardView`, matching the existing card style).
+The card has exactly one home in v1.0: the iOS **Dashboard**, directly under the existing monthly
+summary so the FIRE saver sees the rate "front and center" (#2162).
 
-**Touched:**
+| Surface                            | File / anchor                                                                        | Card placement                                                                                         | Data source (already present)                                                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard — net worth**          | `DashboardView.swift:66–84` (`net_worth_card`)                                       | unchanged (sits above)                                                                                 | `viewModel.netWorth`                                                                                                            |
+| **Dashboard — savings rate (NEW)** | `DashboardView.swift` `VStack` at `:34–43`, inserted **after** `spendingSummaryCard` | New `savingsRateCard`, `accessibilityIdentifier("savings_rate_card")`, between summary & budget health | `viewModel.savingsRate`, `monthlyIncome`, `monthlyExpenses` (`DashboardViewModel.swift:59–97`) + proposed prior-month rate (§4) |
+| **Dashboard — monthly summary**    | `DashboardView.swift:88–106` (`spending_summary_card`)                               | unchanged (sits above the new card; supplies the absolute Income/Expenses/Net)                         | `viewModel.monthlyIncome`, `viewModel.monthlyExpenses`                                                                          |
 
-- [`DashboardView`](../../apps/ios/Finance/Screens/DashboardView.swift) — add the
-  card to the scroll stack between `spendingSummaryCard` and `budgetHealthSection`.
-- [`DashboardViewModel`](../../apps/ios/Finance/ViewModels/DashboardViewModel.swift)
-  — add `previousSavingsRate` (and a `savingsRateTrend` convenience) computed via
-  the bridge over the prior month.
+**Card anatomy (one VoiceOver element):**
 
-**Reused unchanged:**
+- **Headline:** the current-period rate, e.g. "32%", as the large figure (mirrors the
+  net-worth card's `largeTitle.bold()` treatment, `DashboardView.swift:71–76`).
+- **Trend row:** SF Symbol trend glyph + signed point delta + word — e.g. `arrow.up.right`
+  "+4 pts · Improving" — glyph + text + tone (never color alone), tokens per
+  `ios-noncolor-state-cues.md` §4.
+- **Target row (optional):** "Target 20% · On track" when a target is set.
+- **Accessibility:** `.accessibilityElement(children: .combine)` exposing the §4
+  `spokenSummary` as the value (consistent with how `net_worth_card` and `spending_summary_card`
+  already combine children, `DashboardView.swift:81–83, 103–105`). The card must NOT expose the
+  glyph and each label as separate unlabeled elements.
 
-- The bridge `SwiftExportAggregatorModule`, the existing
-  [`InsightsView`](../../apps/ios/Finance/Screens/InsightsView.swift) navigation
-  target, the status color tokens, and the Dashboard's error/refresh plumbing.
+The card reads its absolute Income/Expenses context from the adjacent monthly summary; it does
+**not** duplicate those figures, keeping the rate the single focus.
 
-**Shared dependency:** KMP `packages/core` savings-rate aggregation
-([§10](#10-native--kmp-boundary)).
+## 6. State coverage (Dynamic Type, privacy, stale, error, empty)
 
----
+| State                                 | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Dynamic Type**                      | Headline, trend row, and target row use scalable text styles. The trend glyph + delta + word reflow to a vertical stack at `dynamicTypeSize.isAccessibilitySize` (AX1–AX5) — the card is a sibling of the Dashboard monthly-summary row already graded **FAIL → must reflow to a stack** in `docs/design/ios-dynamic-type-reflow.md` (§5, R3 + R6); the new card adopts the same rule and must NOT ship with a fixed-height container or a one-line trend row. No truncation of the percentage.                                                        |
+| **Privacy (masked)**                  | The **rate percentage and the trend cue stay visible** when balances are masked — a percentage and a direction disclose no absolute amount. This is the established decision in `ios-chart-accessibility.md` §6 / resolved decision #2, and `ios-noncolor-state-cues.md` §7 (_"the direction/trend cue and tone still show … the masked figure replaces the number"_). Only absolute currency (the adjacent Income/Expenses figures) is masked; `spokenSummary` speaks "Savings rate 32%, improving" but never an absolute dollar amount while masked. |
+| **Stale**                             | If the underlying data is stale (failed/late sync), prepend "Data may be out of date as of <timestamp>." to `spokenSummary` and show the non-color staleness indicator (icon + text) defined in `ios-noncolor-state-cues.md` (§4/§5, `stale` token). The rate still renders from last-known data; it is not blanked.                                                                                                                                                                                                                                   |
+| **Error**                             | On load failure the Dashboard already surfaces a retry alert (`DashboardView.swift:52–60`). The card itself, when it cannot compute, exposes "Savings rate unavailable." as a labeled element rather than a silent blank or a misleading "0%".                                                                                                                                                                                                                                                                                                         |
+| **Empty — zero income / first month** | When no income is recorded in the period, `FinancialAggregator.savingsRate` returns `0.0` by guard (`:168`). The card MUST distinguish this from a genuine 0% rate using `hasIncome` (§4): render "Not available yet" / "Add income to see your savings rate," **not** "0%". This is the first-month / new-user state for the FIRE persona. No trend row is shown (no prior basis).                                                                                                                                                                    |
+| **Negative savings rate**             | When expenses exceed income, the rate is negative (e.g. −15%). The card renders the signed value, the `trendDown`/declining cue when it worsened vs. prior, and a plain-language note ("Spending exceeded income this month"). Negative is a legitimate value — never clamp to 0 — but it is visually and in VoiceOver distinct from the zero-income empty state above.                                                                                                                                                                                |
 
-## 12. Test Plan (Smallest Tests First)
+## 7. Test plan
 
-1. **Trend computation (Swift unit):** given `savingsRate` and
-   `previousSavingsRate`, assert the badge delta + direction (`up` / `down` /
-   `even`), including the equal case → "Even with last month".
-2. **Zero-income guard (Swift unit):** `monthlyIncome == 0` ⇒ headline "—" and the
-   empty-style caption, **not** "0%".
-3. **Negative savings (Swift unit):** expenses ≥ income ⇒ value renders with the
-   neutral caption; trend still computed.
-4. **VoiceOver value (XCUITest, smallest):** assert the card's combined
-   `accessibilityValue` speaks the percent and direction in words and exposes no
-   dollar amount.
-5. **Dynamic Type reflow (snapshot):** render at default and `.accessibility5`;
-   assert the trend badge wraps and nothing clips.
-6. **Privacy (Swift unit/snapshot):** with amount-hiding on, assert the percent
-   and badge remain visible and no masked dollar value leaks into the card.
-7. **Empty state (snapshot):** no current-month transactions ⇒ empty copy, no badge.
-8. **Shared (KMP, owned by @kmp-engineer):** savings-rate correctness (including
-   rounding and the income = 0 boundary) is tested in `packages/core`, not iOS.
+Smallest set of tests required before a native implementation of this card is accepted.
 
----
+**Shared (KMP `commonTest`, runnable today — not blocked by #1239):**
 
-## 13. Implementation Readiness
+- Savings-rate math (already shared — extend existing coverage):
+  - **zero-income guard**: income = 0 → rate `0.0`, never `NaN`/`Infinity`
+    (`FinancialAggregator.savingsRate:168`). Pair with the descriptor's `hasIncome = false` so the
+    UI can tell "no income" apart from a real 0%.
+  - known-fixture rate: income 5000.00, expenses 3400.00 → 32.0% (Cents in, percentage out).
+  - **negative rate**: expenses > income → strictly negative percentage, not clamped.
+  - exclusion rules honored: deleted (`deletedAt != null`) and `VOID` transactions are excluded
+    from both income and expense sums (`:73–75, 87–89`).
+  - Place beside existing `packages/core/src/commonTest/.../aggregation/FinancialAggregatorTest.kt`
+    and `…/FinancialAggregatorEdgeCaseTest.kt`.
+- `SavingsRateCardDescriptor` assembly (proposed type, §4):
+  - trend classification at the boundary: current > prior → `IMPROVING`, `<` → `DECLINING`,
+    `==` → `FLAT` (parity with web `compareValues`, `helpers.ts:51–60`).
+  - `changePoints` equals `currentRate − priorRate` (parity with web `rateChangePoints`,
+    `savingsRate.ts:58`).
+  - **masking-aware summary**: masked mode emits the percentage + trend but no absolute currency
+    (parity with the web masking contract and `ios-chart-accessibility.md` §6).
+  - target comparison: `targetPercent` default = 20% (`SavingsEngine.kt:207`); "on track" vs.
+    "below target" phrasing flips at the threshold.
 
-See [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md).
+**Native (iOS, deferred until #1239 unblocks):**
 
-**Buildable now (no paid enrollment) — free Personal Team signing:**
+- Snapshot/UI test: the Dashboard exposes exactly one `savings_rate_card` a11y element with the
+  expected combined `accessibilityLabel` + `accessibilityValue` (the §4 `spokenSummary`).
+- Zero-income state renders "not available yet," not "0%".
+- Negative-rate state renders the signed value + declining cue, distinct from the empty state.
+- Dynamic Type AX5: trend row reflows to a stack; percentage is not clipped (per
+  `ios-dynamic-type-reflow.md` §5 R3/R6).
+- Masked-balances mode: the percentage and trend remain in the accessibility tree; no absolute
+  amount appears.
+- Non-color check: trend is distinguishable in grayscale (glyph + word present, not color alone).
 
-- This is **pure SwiftUI** on an existing screen with an existing bridge value —
-  no entitlements, App Groups, push, or Associated Domains. It builds and runs on
-  a device under a **free Apple ID** (Personal Team) and in the simulator with no
-  Apple Developer Program membership.
-- All tests in [§12](#12-test-plan-smallest-tests-first) run locally without
-  enrollment.
+## 8. Cross-references & resolved decisions
 
-**Distribution tail — gated by [#1239](https://github.com/jrmoulckers/finance/issues/1239):**
+**Related docs (do not duplicate their scope):**
 
-- Only App Store / TestFlight distribution of the build is gated; the feature
-  itself has **no** distribution-dependent capability. Add a `## Needs Human
-Action` note on the PR pointing at
-  [§3.2 of the prerequisites runbook](../ops/human-gated-prerequisites.md#32-ios-distribution--apple-developer-1239)
-  for the distribution criterion only.
+- `docs/design/ios-noncolor-state-cues.md` (#2121) — **canonical** trend (`trendUp` / `trendDown`
+  / `trendFlat`) and `stale` cue vocabulary. This card consumes those tokens for its trend and
+  stale rows; it does not redefine them.
+- `docs/design/ios-dynamic-type-reflow.md` (#2119) — Dashboard reflow audit; the new card adopts
+  the monthly-summary row's R3/R6 reflow verdict (§5).
+- `docs/design/ios-chart-accessibility.md` (#2113) — text-alternative + masking decision; cited
+  if a sparkline/mini-trend is later added to the card (a sparkline would need the §1–§2
+  text-alternative + audio-graph contract). This card ships **without** a chart in v1.0, so that
+  contract is referenced, not applied yet.
+- Web reference contract: `apps/web/src/lib/dashboard/savings-rate-summary.ts`,
+  `apps/web/src/lib/insights/savingsRate.ts`, `apps/web/src/lib/insights/helpers.ts`
+  (`calculateRate`, `compareValues`).
+- Shared engine: `packages/core/.../aggregation/FinancialAggregator.kt` (`savingsRate`,
+  `totalIncome`, `totalSpending`); `packages/core/.../savings/SavingsEngine.kt` (20% threshold).
+- iOS host: `apps/ios/Finance/Screens/DashboardView.swift`,
+  `apps/ios/Finance/ViewModels/DashboardViewModel.swift`.
 
----
+**Resolved design decisions (grounded in existing shared behavior, 2026-06-20):**
 
-## 14. Open Questions
-
-1. **Deep-link target:** `InsightsView` vs `AnalyticsView` vs `HealthScoreView` —
-   confirm which best hosts "savings over time" so the tap is satisfying.
-2. **Point vs percent delta:** confirm "pts" is clearer than "%" for the trend
-   badge with the target personas (copy review with @content/design).
-3. **Window definition:** does "last month" mean calendar month or trailing 30
-   days? Must match the KMP-core window used by `savingsRate` to keep the badge
-   honest.
-4. **Threshold framing:** should the caption flag a target savings rate (e.g.
-   20%) once goals exist (#2162), or stay descriptive for now? Default: descriptive.
+1. **Period = calendar month; trend vs. the prior calendar month.** Not a free choice — every
+   existing implementation already uses the calendar month: the web dashboard summary
+   (`savings-rate-summary.ts`, `current`/`prior`), the iOS view model
+   (`DashboardViewModel.swift:77–79`), and the KMP `SavingsEngine` income rule
+   (`SavingsEngine.kt:184–205`). The card matches them. A **trailing-3-month** smoothing view is
+   available as a secondary comparison (web `trailingThreeMonth`) but is out of scope for the v1.0
+   card. _(Flagged to the orchestrator for confirmation; default = calendar month.)_
+2. **Denominator = income as recorded (gross of any tax modeling).** The transaction layer has no
+   gross/net-of-tax split; `totalIncome` sums `TransactionType.INCOME` transactions
+   (`FinancialAggregator.kt:83–92`). The rate therefore uses income exactly as the user logged it,
+   consistent across web and KMP. _(Flagged to the orchestrator for confirmation; default = recorded
+   income.)_
+3. **Masked rate is still shown.** A savings rate is a percentage (relative), so it and its trend
+   remain visible when absolute balances are masked; only absolute currency is suppressed. This is
+   parity with `ios-chart-accessibility.md` §6 decision #2, not a new call (§6).
+4. **Zero income ≠ 0% rate.** The shared guard returns `0.0` for zero income; the descriptor's
+   `hasIncome` flag lets the UI render a distinct "not available yet" empty state instead of a
+   misleading 0% (§6).
