@@ -47,7 +47,9 @@
  *   `Service-Worker-Allowed: /` on that response so the dev SW can also
  *   claim the root scope.
  */
-const SERVICE_WORKER_URL: string = import.meta.env.DEV ? '/src/sw/service-worker.ts' : '/sw.js';
+const SERVICE_WORKER_URL: string = import.meta.env.DEV
+  ? '/src/sw/service-worker.ts'
+  : `${import.meta.env.BASE_URL}sw.js`;
 
 /**
  * Track the registration so subscribers can wait for it without
@@ -80,7 +82,7 @@ export function registerAppServiceWorker(): Promise<ServiceWorkerRegistration | 
   }
 
   registrationPromise = navigator.serviceWorker
-    .register(SERVICE_WORKER_URL, { scope: '/', type: 'module' })
+    .register(SERVICE_WORKER_URL, { scope: import.meta.env.BASE_URL, type: 'module' })
     .then((registration) => registration)
     .catch((error: unknown) => {
       // SW registration is non-fatal — the app still works without it,
