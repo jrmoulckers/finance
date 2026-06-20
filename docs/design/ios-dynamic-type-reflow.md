@@ -88,15 +88,15 @@ model and the table fallback already exist; iOS owns the layout expression.
 Every audited surface is graded against these seven rules across AX1–AX5. They are the normative
 acceptance criteria for #2119.
 
-| #   | Rule                        | Requirement at AX1–AX5                                                                                                                                                                                                                                                  |
-| --- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1  | **No currency truncation**  | Monetary amounts never ellipsize or clip. Prefer wrapping or reflow over `.minimumScaleFactor` shrink; if shrink is unavoidable it must floor at a legible size (≥ ~14pt) and never use `.lineLimit(1)` + tight width on an amount that can grow (e.g. large balances). |
-| R2  | **Labels wrap, not clip**   | Payee, category, account, goal, and budget names wrap to multiple lines rather than ellipsize. Replace `.lineLimit(1)` on content labels with multi-line + `.fixedSize(horizontal: false, vertical: true)` (or no limit).                                               |
-| R3  | **Rows reflow to stacks**   | Horizontal `label … value` rows (transaction rows, summary columns, key/value detail rows) collapse to a vertical stack at `dynamicTypeSize.isAccessibilitySize`. Use `AdaptiveFinanceStack` or `ViewThatFits`.                                                         |
-| R4  | **Charts degrade to table** | At ≥ AX3 a chart auto-presents the #2113 data-table alternative as primary content; the "View as table" toggle remains available at all sizes. Chart frames must use `minHeight`, never fixed `height`.                                                                 |
-| R5  | **44pt tap targets**        | Interactive controls keep a ≥ 44×44pt hit area at every size; targets that hold scaling text/glyphs scale with `@ScaledMetric` rather than a hardcoded 44 that the label can outgrow.                                                                                   |
-| R6  | **No clipping containers**  | No fixed-`height` container wraps scalable text. Cards, rows, buttons, and dividers that bound text must size to content (`minHeight` or intrinsic) so AX text is never cut off.                                                                                        |
-| R7  | **SF Symbols scale**        | Icons paired with text use a relative/text-style font or `@ScaledMetric` so they grow with the label; purely decorative avatar/chip glyphs may stay fixed but must not crowd out wrapping text.                                                                         |
+| #   | Rule                        | Requirement at AX1–AX5                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R1  | **No currency truncation**  | Monetary amounts never ellipsize or clip. Prefer wrapping or reflow over `.minimumScaleFactor` shrink; if shrink is unavoidable it must floor at a legible size (≥ ~14pt) and never use `.lineLimit(1)` + tight width on an amount that can grow (e.g. large balances).                                                                                                                                                                    |
+| R2  | **Labels wrap, not clip**   | Payee, category, account, goal, and budget names wrap to multiple lines rather than ellipsize. Replace `.lineLimit(1)` on content labels with multi-line + `.fixedSize(horizontal: false, vertical: true)` (or no limit).                                                                                                                                                                                                                  |
+| R3  | **Rows reflow to stacks**   | Horizontal `label … value` rows (transaction rows, summary columns, key/value detail rows) collapse to a vertical stack at `dynamicTypeSize.isAccessibilitySize`. Use `AdaptiveFinanceStack` or `ViewThatFits`.                                                                                                                                                                                                                            |
+| R4  | **Charts degrade to table** | When `dynamicTypeSize.isAccessibilitySize` is true (AX1–AX5) the chart auto-presents the #2113 data-table alternative as the **primary** content (axis labels + plotting area are no longer legible by then); standard sizes through xxxLarge keep the visual chart. The "View as table" toggle — and the VoiceOver/audio-graph alternatives — remain available at **all** sizes. Chart frames must use `minHeight`, never fixed `height`. |
+| R5  | **44pt tap targets**        | Interactive controls keep a ≥ 44×44pt hit area at every size; targets that hold scaling text/glyphs scale with `@ScaledMetric` rather than a hardcoded 44 that the label can outgrow.                                                                                                                                                                                                                                                      |
+| R6  | **No clipping containers**  | No fixed-`height` container wraps scalable text. Cards, rows, buttons, and dividers that bound text must size to content (`minHeight` or intrinsic) so AX text is never cut off.                                                                                                                                                                                                                                                           |
+| R7  | **SF Symbols scale**        | Icons paired with text use a relative/text-style font or `@ScaledMetric` so they grow with the label; purely decorative avatar/chip glyphs may stay fixed but must not crowd out wrapping text.                                                                                                                                                                                                                                            |
 
 ## 4. Existing iOS Dynamic Type infrastructure
 
@@ -145,19 +145,19 @@ Verdict legend: **PASS** = adapts today · **PARTIAL** = adapts but has a specif
 
 ### Analytics, investment & report surfaces (chart-bearing)
 
-| Surface                                                            | Longest / riskiest content                                                                   | AX5 risk                                                                                                                      | Reflow rule (fix)                                                                     | Status   |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------- |
-| **Spending chart** (`Charts/SpendingChart.swift`)                  | Bar chart, currency axis labels `.caption2` / `.caption` (lines 57, 67)                      | `.frame(minHeight: 220)` (line 69) grows OK, but the plotting area + axis labels become unreadable; **no iOS table path yet** | R4: at ≥ AX3 present the #2113 data-table alternative; add the "View as table" toggle | **FAIL** |
-| **Trend chart** (`Charts/TrendChart.swift`)                        | Time-series line, axis labels                                                                | Same as spending chart — plot does not reflow; labels collide at AX sizes                                                     | R4: degrade to table at ≥ AX3                                                         | **FAIL** |
-| **Prediction chart** (`Charts/PredictionChart.swift`)              | Line + confidence band, axis labels                                                          | Same; band/legend text overlaps at AX sizes                                                                                   | R4: degrade to table at ≥ AX3 (table includes Low/High columns per #2113 §5)          | **FAIL** |
-| **Category breakdown** (`Charts/CategoryBreakdownChart.swift`)     | Pie/donut + legend rows with 10×10 swatch (line 105)                                         | Legend label truncation; swatch fixed (decorative OK); donut center label can clip                                            | R2 + R4: wrap legend labels, degrade to table at ≥ AX3                                | **FAIL** |
-| **Budget progress chart** (`Charts/BudgetProgressChart.swift`)     | Per-budget bars + currency labels                                                            | Same chart-reflow gap; bar labels collide                                                                                     | R4: degrade to table at ≥ AX3                                                         | **FAIL** |
-| **Analytics screen** (`Screens/AnalyticsView.swift`)               | Hosts charts + summary stat rows, 32×32 glyph (line 289)                                     | Inherits chart gaps; stat rows risk horizontal squeeze                                                                        | R3 + R4: reflow stat rows, charts degrade                                             | **FAIL** |
-| **Insights screen** (`Screens/InsightsView.swift`)                 | Insight cards + inline charts `.frame(height: 200)` / `.frame(height: 180)` (lines 178, 264) | **Fixed `height:`** on chart containers (not `minHeight`) clips scaled content; legend swatch 10×10 (line 187)                | R4 + R6: change fixed chart heights to `minHeight`; degrade to table at ≥ AX3         | **FAIL** |
-| **Health score** (`Screens/HealthScoreView.swift`)                 | Score gauge `.frame(height: 180)` (line 174) + factor rows                                   | Fixed-height gauge container clips scaled center text; factor key/value rows squeeze                                          | R3 + R6: gauge container to `minHeight`/intrinsic; reflow factor rows                 | **FAIL** |
-| **Investment detail** (`Screens/InvestmentDetailView.swift`)       | Holding name + OHLC/price chart + key stats                                                  | Chart-reflow gap; price stat rows (open/high/low/close) truncate horizontally                                                 | R3 + R4: reflow stat rows, chart degrades to OHLC table (#2113 §5)                    | **FAIL** |
-| **Investment portfolio** (`Screens/InvestmentPortfolioView.swift`) | Holdings list (name + value + return%) + performance chart                                   | Three-value horizontal rows squeeze; chart gap                                                                                | R3 + R4                                                                               | **FAIL** |
-| **Report result** (`Screens/ReportResultView.swift`)               | Generated report charts + tabular figures, 10×10 swatch (lines 117, 282)                     | Chart gap; report value rows truncate                                                                                         | R3 + R4: reflow value rows, charts degrade to table                                   | **FAIL** |
+| Surface                                                            | Longest / riskiest content                                                                   | AX5 risk                                                                                                                      | Reflow rule (fix)                                                                                          | Status   |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------- |
+| **Spending chart** (`Charts/SpendingChart.swift`)                  | Bar chart, currency axis labels `.caption2` / `.caption` (lines 57, 67)                      | `.frame(minHeight: 220)` (line 69) grows OK, but the plotting area + axis labels become unreadable; **no iOS table path yet** | R4: at accessibility sizes (AX1+) present the #2113 data-table alternative; add the "View as table" toggle | **FAIL** |
+| **Trend chart** (`Charts/TrendChart.swift`)                        | Time-series line, axis labels                                                                | Same as spending chart — plot does not reflow; labels collide at AX sizes                                                     | R4: degrade to table at accessibility sizes (AX1+)                                                         | **FAIL** |
+| **Prediction chart** (`Charts/PredictionChart.swift`)              | Line + confidence band, axis labels                                                          | Same; band/legend text overlaps at AX sizes                                                                                   | R4: degrade to table at accessibility sizes (AX1+) (table includes Low/High columns per #2113 §5)          | **FAIL** |
+| **Category breakdown** (`Charts/CategoryBreakdownChart.swift`)     | Pie/donut + legend rows with 10×10 swatch (line 105)                                         | Legend label truncation; swatch fixed (decorative OK); donut center label can clip                                            | R2 + R4: wrap legend labels, degrade to table at accessibility sizes (AX1+)                                | **FAIL** |
+| **Budget progress chart** (`Charts/BudgetProgressChart.swift`)     | Per-budget bars + currency labels                                                            | Same chart-reflow gap; bar labels collide                                                                                     | R4: degrade to table at accessibility sizes (AX1+)                                                         | **FAIL** |
+| **Analytics screen** (`Screens/AnalyticsView.swift`)               | Hosts charts + summary stat rows, 32×32 glyph (line 289)                                     | Inherits chart gaps; stat rows risk horizontal squeeze                                                                        | R3 + R4: reflow stat rows, charts degrade                                                                  | **FAIL** |
+| **Insights screen** (`Screens/InsightsView.swift`)                 | Insight cards + inline charts `.frame(height: 200)` / `.frame(height: 180)` (lines 178, 264) | **Fixed `height:`** on chart containers (not `minHeight`) clips scaled content; legend swatch 10×10 (line 187)                | R4 + R6: change fixed chart heights to `minHeight`; degrade to table at accessibility sizes (AX1+)         | **FAIL** |
+| **Health score** (`Screens/HealthScoreView.swift`)                 | Score gauge `.frame(height: 180)` (line 174) + factor rows                                   | Fixed-height gauge container clips scaled center text; factor key/value rows squeeze                                          | R3 + R6: gauge container to `minHeight`/intrinsic; reflow factor rows                                      | **FAIL** |
+| **Investment detail** (`Screens/InvestmentDetailView.swift`)       | Holding name + OHLC/price chart + key stats                                                  | Chart-reflow gap; price stat rows (open/high/low/close) truncate horizontally                                                 | R3 + R4: reflow stat rows, chart degrades to OHLC table (#2113 §5)                                         | **FAIL** |
+| **Investment portfolio** (`Screens/InvestmentPortfolioView.swift`) | Holdings list (name + value + return%) + performance chart                                   | Three-value horizontal rows squeeze; chart gap                                                                                | R3 + R4                                                                                                    | **FAIL** |
+| **Report result** (`Screens/ReportResultView.swift`)               | Generated report charts + tabular figures, 10×10 swatch (lines 117, 282)                     | Chart gap; report value rows truncate                                                                                         | R3 + R4: reflow value rows, charts degrade to table                                                        | **FAIL** |
 
 ### Surfaces that already adapt (spot-checked, no change required)
 
@@ -176,7 +176,7 @@ This is the runnable acceptance list once #1239 unblocks native snapshot testing
 - [ ] **R1** No currency amount is ellipsized, clipped, or shrunk below ~14pt.
 - [ ] **R2** Every content label (payee, category, account, goal/budget name, legend) wraps; none ends in "…".
 - [ ] **R3** Multi-column `label … value` rows have collapsed to a vertical stack.
-- [ ] **R4** Charts present the data-table alternative at ≥ AX3; the "View as table" toggle is reachable at all sizes; chart frames use `minHeight`.
+- [ ] **R4** Charts present the data-table alternative at accessibility sizes (AX1+); the "View as table" toggle is reachable at all sizes; chart frames use `minHeight`.
 - [ ] **R5** Every interactive control still has a ≥ 44×44pt hit area.
 - [ ] **R6** No text is cut off by a fixed-`height` container (cards, rows, buttons, dividers).
 - [ ] **R7** Text-paired SF Symbols have grown with their label.
@@ -221,8 +221,9 @@ once #1239 unblocks the simulator.
 4. **Tap-target probe:** measure each interactive frame ≥ 44×44pt at every size (R5).
 5. **Container probe:** grep the surface for `.frame(height:` on any container that wraps text;
    any hit that is not purely decorative is an R6 finding (already enumerated in §5).
-6. **Chart degradation probe:** confirm the surface swaps to the #2113 data-table at ≥ AX3 and that
-   the toggle is reachable below AX3.
+6. **Chart degradation probe:** confirm the surface swaps to the #2113 data-table when
+   `isAccessibilitySize` is true (AX1+), that the "View as table" toggle is reachable at every size
+   below AX1, and that the VoiceOver/audio-graph alternatives remain available at all sizes.
 
 Because native execution is blocked by #1239, today's verdicts are derived by **static audit of the
 code cited in §5**; the snapshot/probe steps above are the deferred native confirmation.
@@ -239,17 +240,18 @@ Smallest set of tests required before the reflow fixes are accepted.
 - Masking-aware formatting parity (mirrors #2113): masked mode emits a fixed-width placeholder so
   reflow is deterministic regardless of the underlying balance.
 - Chart data-table model (shared with #2113): assert the table rows/columns the iOS degraded view
-  renders at ≥ AX3 are generated from the shared descriptor, so the table path is validated without
+  renders at accessibility sizes (AX1+) are generated from the shared descriptor, so the table path is validated without
   a simulator.
 
 **Native (iOS, deferred until #1239 unblocks):**
 
 - Snapshot test each surface in §5 across `DynamicTypeSize` cases `[.large, .xxxLarge,
 .accessibility1, .accessibility3, .accessibility5]`; assert no clipped/ellipsized amount or label.
-- Reflow assertion: at `.accessibility3`+ the transaction row, dashboard monthly summary, and
-  detail/stat rows render as vertical stacks (R3).
-- Chart degradation: at `.accessibility3`+ each chart surface renders the data-table alternative;
-  the "View as table" toggle is present at `.large` (R4).
+- Reflow assertion: at `.accessibility1`+ (`isAccessibilitySize`) the transaction row, dashboard
+  monthly summary, and detail/stat rows render as vertical stacks (R3).
+- Chart degradation: at `.accessibility1`+ (`isAccessibilitySize`) each chart surface renders the
+  data-table alternative as primary content; the "View as table" toggle and the VoiceOver/audio-graph
+  alternatives remain present at `.large` too (R4).
 - Tap-target assertion: every interactive element reports a ≥ 44×44pt frame at `.accessibility5` (R5).
 - Container assertion: no text-bearing container clips at `.accessibility5` (R6) — specifically the
   insights/health-score fixed-height chart frames once converted to `minHeight`.
@@ -258,9 +260,13 @@ Smallest set of tests required before the reflow fixes are accepted.
 
 **Related epics / docs (do not duplicate their scope):**
 
-- #2113 (`docs/design/ios-chart-accessibility.md`) — the chart **data-table alternative** that R4
-  degrades to. This audit consumes that table layer; it does not redefine the table contract or the
-  spoken summary.
+- #2113 (`docs/design/ios-chart-accessibility.md`, merged-ready as PR #2834) — the chart
+  **data-table alternative** that R4 degrades to. This audit consumes that table layer; it does not
+  redefine the table contract or the spoken summary. **Consistency note:** #2834 specifies that the
+  chart data tables "switch to stacked List rows **at accessibility sizes**" — i.e. the AX1
+  (`isAccessibilitySize`) boundary. R4's chart auto-swap threshold (§3, §10 decision 1) is
+  deliberately keyed on the **same** boundary so the two docs agree; an earlier AX3 draft would have
+  contradicted #2834.
 - #2121 (#2552, #2554) — semantic non-color state cues (staleness icon). Referenced in §7 (Stale).
 - `docs/design/accessibility-patterns.md` — Dynamic Type entry (`FinanceTextStyle` /
   `.financeFont()`, line 1256) and the 44pt iOS touch-target rule (line 1300).
@@ -272,11 +278,16 @@ Smallest set of tests required before the reflow fixes are accepted.
 
 **Resolved design decisions (in-session, 2026-06-20):**
 
-1. **Chart → table auto-swap threshold** — charts keep the visual plot through AX2 and
-   **auto-present the #2113 data-table alternative as primary content at ≥ AX3**
-   (`.accessibility3`), because the Swift Charts plotting area and axis labels become unreadable at
-   that scale. The **"View as table" toggle remains available at all sizes** so users below AX3 can
-   opt in. (Recommended default flagged to the orchestrator; §3 R4, §5.)
+1. **Chart → table auto-swap threshold** — charts keep the visual plot through the standard sizes
+   (up to xxxLarge) and **auto-present the #2113 data-table alternative as the primary content when
+   `dynamicTypeSize.isAccessibilitySize` is true (≥ AX1)**, because the Swift Charts plotting area
+   and axis labels are no longer legible by the accessibility sizes. The **"View as table" toggle —
+   and the VoiceOver/audio-graph alternatives — remain available at all sizes** so users below AX1
+   can opt in. **Maintainer decision (2026-06-20):** key the rule on SwiftUI's canonical
+   `isAccessibilitySize` breakpoint (AX1), not a numeric AX3 cutoff — this is Apple's documented
+   signal for switching to an accessibility-optimized layout, and it keeps this doc **consistent
+   with the #2834 pilot**, whose table rule fires "at accessibility sizes" (the same AX1 boundary).
+   (§3 R4, §5.)
 2. **Currency at AX sizes — wrap over shrink** — amounts that can grow (balances, totals) must
    **wrap or reflow**, not be locked to `.lineLimit(1)` + `.minimumScaleFactor`. The existing
    `SizeConstrainedCurrencyText` (single-line clamp) is reserved for genuinely fixed-width slots
