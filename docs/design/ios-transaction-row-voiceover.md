@@ -135,24 +135,34 @@ The announcement is composed strictly from fields that exist on the shared trans
 | Recurring         | `isRecurring: Boolean` (`:34`), `recurringRuleId` (`:35`)                 | `isRecurring: Bool` (`:85`)                                                | "Recurring" qualifier (§5)       |
 | Tags              | `tags: List<String>` (`:36`)                                              | `tags: [Tag]` (`:87`)                                                      | trailing, optional               |
 
-**Status vocabulary is the real enum, not the colloquial set.** The model's status domain is
-exactly `PENDING`, `CLEARED`, `RECONCILED`, `VOID` (`Transaction.kt:16`). The epic's informal
-list ("pending / cleared / failed / scheduled / transfer") maps onto real concepts as follows —
-this mapping is a **resolved decision** (§9), made to avoid inventing fields:
+**Status vocabulary is exactly the real enum — nothing more.** The model's status domain is
+precisely `PENDING`, `CLEARED`, `RECONCILED`, `VOID` (`Transaction.kt:16`, mirrored by iOS
+`TransactionStatusUI` pending/cleared/reconciled/voided, `TransactionItem.swift:53-64`). The row
+announces **only** these four states; it does not invent or remap anything outside the schema.
+This is a **resolved decision** (§9):
 
-- **pending → `PENDING`**, **cleared → `CLEARED`**, plus **`RECONCILED`** (a distinct, real
-  state the informal list omitted but VoiceOver must still announce).
-- **failed → `VOID`** — there is no `FAILED` status; `VOID` is the nearest real analogue and is
-  what the row must voice for a cancelled/voided transaction.
-- **transfer → _not a status_** — it is `type == TRANSFER` (`Transaction.kt:13`,`:25`), announced
-  as a direction/relationship qualifier (§5).
-- **scheduled → _not a status_** — it is the recurring flag `isRecurring` / `recurringRuleId`
-  (`Transaction.kt:34-35`), announced as a "Recurring" qualifier (§5).
+- **The announced status set is `PENDING`, `CLEARED`, `RECONCILED`, `VOID`** — spoken as
+  "pending", "cleared", "reconciled", "void". `RECONCILED` is a distinct, real state that the
+  epic's informal list omitted but that VoiceOver must still announce.
+- **There is no "failed" / "declined" state today.** The epic's informal list mentioned
+  "failed", but no such value exists in `TransactionStatus`, and `VOID` is **not** a synonym for
+  it (a voided transaction was intentionally cancelled; a declined/failed payment is a different
+  concept). Because conflating the two would mis-announce intent, **"failed" is deliberately
+  omitted** — it is noted here only so a future reader knows it was considered. If a
+  failed/declined concept is ever added to the shared schema, its announcement is out of scope
+  for this doc and would be specified then.
+- **transfer and recurring are NOT statuses** — they are orthogonal, derived qualifiers (§5).
+  A single transaction can simultaneously be a status _and_ a transfer _and_ recurring (e.g.
+  "Cleared" + "Transfer" + "Recurring"); the announcement appends each independently rather than
+  picking one. **Transfer** derives from `type == TRANSFER` (`Transaction.kt:13`,`:25`) and links
+  via `transferTransactionId` (`:33`); **Recurring** derives from `isRecurring` / `recurringRuleId`
+  (`:34-35`).
 
 **Split transactions are not modeled today.** The shared schema has no split/parent linkage
-field (only `transferTransactionId` for transfer pairs and `recurringRuleId` for recurrence).
-§5 specifies the intended split announcement, but it is **gated on a future schema addition** and
-must not be implemented by inventing a field. This is called out as an open dependency in §9.
+field (only `transferTransactionId` for transfer pairs and `recurringRuleId` for recurrence —
+`Transaction.kt:33-35`). §5 documents the **intended** split announcement, but it is **pending a
+future `packages/models` schema addition** and must not be implemented by inventing a field. This
+is called out as an open dependency in §9.
 
 ## 4. The iOS pattern: one coherent element
 
@@ -225,20 +235,30 @@ is suppressed (§7, consistent with #2834's masking decision).
 ## 5. Status, transfer, recurring & split — conveyed non-visually
 
 Each visual-only signal in the row gets an explicit spoken equivalent. **None may rely on color
-or glyph alone** (WCAG 1.4.1).
+or glyph alone** (WCAG 1.4.1). Status (one of four real values) and the derived qualifiers
+(transfer, recurring) are **orthogonal** — a row can carry a status _and_ a transfer qualifier
+_and_ a recurring qualifier at once (e.g. "Cleared" + "Transfer from Savings" + "Recurring"), and
+each is appended independently rather than collapsed into a single token.
 
-| Signal             | Visual today                                                                       | Spoken equivalent (in `accessibilityLabel`, §4.2 step 4)                                  |
-| ------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Pending**        | Orange "Pending" capsule (`TransactionRowView.swift:23`)                           | "pending" (and `.accessibilityAddTraits` are not used to convey it — the word carries it) |
-| **Cleared**        | _no visual badge_                                                                  | "cleared" — spoken even though silent visually, so status is never ambiguous              |
-| **Reconciled**     | _no visual badge_                                                                  | "reconciled"                                                                              |
-| **Void**           | _strikethrough / dimmed_                                                           | "void" (the resolved mapping for the epic's informal "failed", §3)                        |
-| **Transfer**       | Blue transfer glyph + tint (`TransactionItem.swift:29`,`:45`)                      | "Transfer to &lt;account&gt;" / "Transfer from &lt;account&gt;" using the linked account  |
-| **Recurring**      | Recurring glyph, `accessibilityLabel("Recurring")` (`TransactionRowView.swift:22`) | "Recurring" qualifier folded into the single row element (not a separate focus stop)      |
-| **Split** (future) | _not modeled_                                                                      | "Split transaction, &lt;n&gt; parts" — **gated on a schema field**, see §3 & §9           |
+| Signal             | Visual today                                                                       | Spoken equivalent (in `accessibilityLabel`, §4.2 step 4)                                     |
+| ------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Pending**        | Orange "Pending" capsule (`TransactionRowView.swift:23`)                           | "pending" (and `.accessibilityAddTraits` are not used to convey it — the word carries it)    |
+| **Cleared**        | _no visual badge_                                                                  | "cleared" — spoken even though silent visually, so status is never ambiguous                 |
+| **Reconciled**     | _no visual badge_                                                                  | "reconciled"                                                                                 |
+| **Void**           | _strikethrough / dimmed_                                                           | "void" — the real `VOID` status (an intentionally cancelled transaction)                     |
+| **Transfer**       | Blue transfer glyph + tint (`TransactionItem.swift:29`,`:45`)                      | "Transfer to &lt;account&gt;" / "Transfer from &lt;account&gt;" — a qualifier, not a status  |
+| **Recurring**      | Recurring glyph, `accessibilityLabel("Recurring")` (`TransactionRowView.swift:22`) | "Recurring" qualifier folded into the single row element (not a separate focus stop)         |
+| **Split** (future) | _not modeled_                                                                      | "Split transaction, &lt;n&gt; parts" — **pending a `packages/models` schema field**, §3 & §9 |
+
+There is intentionally **no row** for "failed"/"declined": no such status exists in the schema,
+and `VOID` is not a stand-in for it (§3). If that concept is added later, its announcement is
+specified then.
 
 Notes:
 
+- **Status and qualifiers compose, they do not override.** The label voices exactly one status
+  value (Pending/Cleared/Reconciled/Void) plus zero or more qualifiers (Transfer, Recurring, and
+  — once modeled — Split). None of the qualifiers replaces or suppresses the status.
 - **Transfer phrasing** uses direction. A transfer's sign and the `transferAccountId`
   (`Transaction.kt:32`) determine "to" vs "from"; the counterpart account name is spoken so the
   user knows both ends. When `payee` is null on a transfer, the description falls back to
@@ -249,7 +269,7 @@ Notes:
   into the one row announcement so VoiceOver makes a single stop per row.
 - **Split, when added,** announces the parent summary line ("Split transaction, 3 parts") with
   the individual splits exposed on the detail screen, not inline in the row — kept out of scope
-  here beyond the spoken shape, pending the schema decision in §9.
+  here beyond the spoken shape, pending the `packages/models` schema addition noted in §9.
 
 ## 6. Surface application map
 
@@ -302,8 +322,9 @@ Place beside existing model/formatting tests
 - **Relative + absolute date phrasing** — "Today", "Yesterday", and an older date each render
   relative-then-absolute; verify against fixed clock fixtures and locale.
 - **Status vocabulary** — each of `PENDING/CLEARED/RECONCILED/VOID` (`Transaction.kt:16`) maps to
-  the exact spoken token (including "void" for the epic's "failed", §3); transfer and recurring
-  emit qualifiers, not statuses.
+  its exact spoken token and **only** those four; assert no "failed"/"declined" token is ever
+  produced, and that transfer and recurring emit qualifiers (composing alongside status), not
+  status values.
 - **Masking-aware value** — for `Visible/Bucketed/Percent/Dots` the composed value matches the
   formatter output (`WidgetPrivacy.swift` / web `masking.ts:143-186`); in `Dots` the announcement
   contains **no** raw digits (parity with web `masking.test.ts`).
@@ -343,10 +364,13 @@ Place beside existing model/formatting tests
 2. **Label/value split** — `accessibilityLabel` carries identity + relative/absolute date +
    category + account + status/qualifiers (in that order); `accessibilityValue` carries the
    masking-aware amount phrase (§4.2), mirroring the chart pattern.
-3. **Status vocabulary is the real enum** — announce `Pending/Cleared/Reconciled/Void`
-   (`Transaction.kt:16`); map the epic's informal "failed" → `Void`; treat **transfer** (type)
-   and **scheduled/recurring** (`isRecurring`/`recurringRuleId`) as **qualifiers**, not statuses
-   (§3, §5).
+3. **Status vocabulary is exactly the real enum** — announce only `Pending/Cleared/Reconciled/Void`
+   (`Transaction.kt:16`). **"failed"/"declined" is deliberately omitted** — no such status exists,
+   and `VOID` is not a synonym for it; the concept is merely noted as considered. **Transfer**
+   (`type == TRANSFER`) and **recurring** (`isRecurring`/`recurringRuleId`) are **orthogonal
+   derived qualifiers**, not statuses, and compose alongside the status rather than replacing it
+   (§3, §5). _(Maintainer decision, 2026-06-20: ground strictly in the schema; do not map
+   failed→Void.)_
 4. **Masking-aware value via the existing formatter** — the amount routes through
    `WidgetMoneyFormatter` semantics, never `CurrencyLabel`'s masking-unaware description; masked
    rows never speak the absolute figure, but identity/date/status remain (§7, inherited from
@@ -359,6 +383,7 @@ Place beside existing model/formatting tests
 
 - **Split-transaction announcement** depends on a shared-schema field that does not yet exist
   (only `transferTransactionId` and `recurringRuleId` are modeled — `Transaction.kt:32-35`). §5
-  specifies the intended spoken shape ("Split transaction, &lt;n&gt; parts"); the field itself
-  must be added by `@backend-engineer` + `@kmp-engineer` as a coordinated schema change before
-  this part is implemented. Until then, split rows fall back to the standard §4 announcement.
+  documents the intended spoken shape ("Split transaction, &lt;n&gt; parts"); implementing it is
+  **pending a future `packages/models` schema addition** (a split/parent linkage field). No field
+  is invented here, and no separate issue needs to be filed — this is simply a noted future schema
+  dependency. Until it lands, split rows fall back to the standard §4 announcement.
