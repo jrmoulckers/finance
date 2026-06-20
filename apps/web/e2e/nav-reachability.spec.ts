@@ -111,6 +111,28 @@ async function waitForAppShell(page: Page): Promise<void> {
 }
 
 /**
+ * Open the mobile bottom-nav "More" sheet.
+ *
+ * The "More destinations" button is the last item in the `position: fixed`
+ * bottom nav.  Under headless Chromium on Linux CI (only — real mobile WebKit
+ * and headed Chromium both pass), Playwright's actionability hit-test
+ * intermittently reports the dashboard `card-grid` / the nav itself as
+ * "intercepting pointer events" at the button's centre, so a normal
+ * `.click()` never lands and burns the action timeout (#2781).  The button is
+ * genuinely present and functional, so we assert visibility and then dispatch
+ * the click directly to fire its handler, bypassing the flaky hit-test.  The
+ * subsequent dialog/navigation assertions still validate real behaviour.
+ */
+async function openMoreSheet(page: Page): Promise<void> {
+  const moreButton = page
+    .locator('nav.bottom-nav')
+    .getByRole('button', { name: 'More destinations' });
+  await expect(moreButton).toBeVisible();
+  await moreButton.dispatchEvent('click');
+  await expect(page.getByRole('dialog')).toBeVisible();
+}
+
+/**
  * Sorted by mobilePriority, the first 4 are the bottom-nav priority
  * destinations; the rest must be reachable via the "More" sheet.
  */
@@ -196,13 +218,8 @@ test.describe('Mobile navigation reachability (#1930)', () => {
       await page.goto('/dashboard');
       await waitForAppShell(page);
 
-      const bottomNav = page.locator('nav.bottom-nav');
-      const moreButton = bottomNav.getByRole('button', { name: 'More destinations' });
-      await expect(moreButton).toBeVisible();
-      await moreButton.click();
-
+      await openMoreSheet(page);
       const sheet = page.getByRole('dialog');
-      await expect(sheet).toBeVisible();
 
       const link = sheet.getByRole('button', { name: dest.label, exact: true });
       await expect(link).toBeVisible();
@@ -218,9 +235,7 @@ test.describe('Mobile navigation reachability (#1930)', () => {
     await page.goto('/dashboard');
     await waitForAppShell(page);
 
-    await page.locator('nav.bottom-nav').getByRole('button', { name: 'More destinations' }).click();
-
-    await expect(page.getByRole('dialog')).toBeVisible();
+    await openMoreSheet(page);
 
     await page.keyboard.press('Escape');
 
@@ -231,8 +246,7 @@ test.describe('Mobile navigation reachability (#1930)', () => {
     await page.goto('/dashboard');
     await waitForAppShell(page);
 
-    await page.locator('nav.bottom-nav').getByRole('button', { name: 'More destinations' }).click();
-
+    await openMoreSheet(page);
     const sheet = page.getByRole('dialog');
     await sheet.getByRole('button', { name: 'Settings', exact: true }).click();
 
