@@ -49,6 +49,7 @@ vi.mock('../hooks', () => ({
 
 vi.mock('../components/ai/QueryEngine', () => ({
   QueryEngine: () => <div data-testid="ai-query-engine">AI query engine</div>,
+  default: () => <div data-testid="ai-query-engine">AI query engine</div>,
 }));
 
 vi.mock('../components/coaching', () => ({
@@ -611,16 +612,17 @@ describe('DashboardPage', () => {
     }));
   });
 
-  it('renders without crashing', () => {
+  it('renders without crashing', async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(await screen.findByTestId('ai-query-engine')).toBeInTheDocument();
   });
 
-  it('displays financial summary cards', () => {
+  it('displays financial summary cards', async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
@@ -629,7 +631,7 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
     expect(screen.getByText('Budget Health')).toBeInTheDocument();
-    expect(screen.getByText('What needs attention now')).toBeInTheDocument();
+    expect(await screen.findByText('What needs attention now')).toBeInTheDocument();
   });
 
   it('renders a safe-to-spend card with a plain-language explanation and breakdown', () => {
@@ -730,14 +732,16 @@ describe('DashboardPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('has accessible landmarks', () => {
+  it('has accessible landmarks', async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
     expect(screen.getByRole('region', { name: /financial summary/i })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: /mood and spending journal/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('region', { name: /mood and spending journal/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /recent transactions/i })).toBeInTheDocument();
   });
 
@@ -793,25 +797,25 @@ describe('DashboardPage', () => {
     expect(document.body).toHaveTextContent('-$67.42');
   });
 
-  it('renders the mood journal section', () => {
+  it('renders the mood journal section', async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Emotional Spending Journal')).toBeInTheDocument();
-    expect(screen.getByText('Quick mood check-in')).toBeInTheDocument();
+    expect(await screen.findByText('Emotional Spending Journal')).toBeInTheDocument();
+    expect(await screen.findByText('Quick mood check-in')).toBeInTheDocument();
     expect(screen.getByText('Journal feed')).toBeInTheDocument();
   });
 
-  it('includes the AI query engine entry point', () => {
+  it('includes the AI query engine entry point', async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId('ai-query-engine')).toBeInTheDocument();
+    expect(await screen.findByTestId('ai-query-engine')).toBeInTheDocument();
   });
 });

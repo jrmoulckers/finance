@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { QueryEngine } from '../components/ai/QueryEngine';
 import type { TimePeriod, ViewType } from '../components/charts';
-import { CoachCard, CoachPanel } from '../components/coaching';
 import { AccountPurposeFilterControl } from '../components/accounts';
 import {
   CurrencyDisplay,
@@ -13,23 +11,13 @@ import {
   LoadingSpinner,
   SyncIndicator,
 } from '../components/common';
-import { CustomizePanel } from '../components/dashboard/CustomizePanel';
 import { SafeToSpendCard } from '../components/dashboard/SafeToSpendCard';
-import {
-  EmotionalPatterns,
-  MoodCalendar,
-  MoodEntry,
-  MoodJournal,
-  SpendingMoodChart,
-} from '../components/mood';
-import { WarrantyDashboard } from '../components/warranty';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
   useAccounts,
   useBills,
   useBudgets,
   useCategories,
-  useCoachAlerts,
   useDashboardData,
   useGoals,
   usePredictiveBalance,
@@ -38,7 +26,6 @@ import {
   useSpendingPace,
   useTransactions,
 } from '../hooks';
-import { useTaxReserve } from '../hooks/useTaxReserve';
 import { useWidgetLayout } from '../hooks/useWidgetLayout';
 import type { BudgetWithSpending } from '../db/repositories/budgets';
 import type { Bill, Goal, Transaction } from '../kmp/bridge';
@@ -50,21 +37,8 @@ import {
 } from '../lib/accountPurpose';
 import { isLiabilityType } from '../lib/analytics/net-worth';
 import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
-import {
-  MOOD_JOURNAL_CHANGED_EVENT,
-  createMoodJournalEntry,
-  deleteMoodJournalEntry,
-  detectEmotionalSpendingPatterns,
-  listMoodJournalEntries,
-  summarizeSpendingForDate,
-  updateMoodJournalEntry,
-  type MoodJournalEntryInput,
-  type MoodSpendingRecord,
-} from '../lib/mood';
-import { detectScamAlerts } from '../lib/notifications';
 import type { SpendingPace } from '../lib/notifications';
 import type { PredictionSummary } from '../lib/predictiveBalance';
-import { getNextQuarterlyTaxDueDate } from '../lib/tax-reserve';
 import { rollUpProtectedTransactions } from '../lib/ui/privacy';
 import '../components/dashboard/dashboard.css';
 
@@ -83,8 +57,36 @@ const SpendingTrendChart = React.lazy(() =>
     default: module.SpendingTrendChart,
   })),
 );
+const CustomizePanel = React.lazy(() =>
+  import('../components/dashboard/CustomizePanel').then((module) => ({
+    default: module.CustomizePanel,
+  })),
+);
+const DashboardCoachSection = React.lazy(
+  () => import('../components/dashboard/DashboardCoachSection'),
+);
+const DashboardMoodJournalSection = React.lazy(
+  () => import('../components/dashboard/DashboardMoodJournalSection'),
+);
+const DashboardTaxReserveSection = React.lazy(
+  () => import('../components/dashboard/DashboardTaxReserveSection'),
+);
+const DashboardThingsToCheckSection = React.lazy(
+  () => import('../components/dashboard/DashboardThingsToCheckSection'),
+);
+const QueryEngine = React.lazy(() => import('../components/ai/QueryEngine'));
+const WarrantyDashboard = React.lazy(() =>
+  import('../components/warranty/WarrantyDashboard').then((module) => ({
+    default: module.WarrantyDashboard,
+  })),
+);
 
 const ChartFallback = () => <LoadingSpinner size={24} label="Loading chart" />;
+const SectionFallback = ({ label }: { readonly label: string }) => (
+  <div className="card" role="status" aria-label={label}>
+    <LoadingSpinner size={24} label={label} />
+  </div>
+);
 
 const PERIOD_DAYS: Record<Exclude<TimePeriod, 'custom'>, number> = {
   '7d': 7,
@@ -129,18 +131,6 @@ function getTransactionDisplayAmount(transaction: Transaction): number {
   }
 
   return transaction.amount.amount;
-}
-
-function formatDueDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function formatDueCountdown(days: number): string {
-  if (days === 0) {
-    return 'today';
-  }
-
-  return `in ${days} day${days === 1 ? '' : 's'}`;
 }
 
 function buildTrendData(transactions: Transaction[], days: number) {
@@ -188,20 +178,6 @@ function buildCategoryData(transactions: Transaction[], categoryNames: Map<strin
   return Array.from(totalsByCategory, ([name, value]) => ({ name, value })).sort(
     (left, right) => right.value - left.value,
   );
-}
-
-function buildMoodSpendingRecords(
-  transactions: readonly Transaction[],
-  categoryNames: ReadonlyMap<string, string>,
-): MoodSpendingRecord[] {
-  return transactions.map((transaction) => ({
-    date: transaction.date,
-    amountCents: Math.abs(transaction.amount.amount),
-    category:
-      transaction.categoryId !== null
-        ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
-        : 'Uncategorized',
-  }));
 }
 
 /**
@@ -368,17 +344,8 @@ export const DashboardPage: React.FC = () => {
 
   // Spending trend chart state
   const [selectedPurposeFilter, setSelectedPurposeFilter] = useState<AccountPurposeFilter>('all');
-  const {
-    analysis: coachAnalysis,
-    topAlerts,
-    loading: coachLoading,
-    dismissAlert,
-  } = useCoachAlerts();
-
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
   const [viewType, setViewType] = useState<ViewType>('line');
-  const [moodJournalVersion, setMoodJournalVersion] = useState(0);
-  const [editingMoodEntryId, setEditingMoodEntryId] = useState<string | null>(null);
 
   const activeDays = PERIOD_DAYS[selectedPeriod === 'custom' ? '30d' : selectedPeriod];
 
@@ -418,26 +385,6 @@ export const DashboardPage: React.FC = () => {
     [prevDateRange],
   );
   const { transactions: prevTransactions } = useTransactions(prevFilters);
-  const {
-    transactions: moodTransactions,
-    loading: moodTransactionsLoading,
-    error: moodTransactionsError,
-    refresh: refreshMoodTransactions,
-  } = useTransactions({ type: 'EXPENSE' });
-
-  useEffect(() => {
-    const handleMoodJournalChange = () => {
-      setMoodJournalVersion((current) => current + 1);
-    };
-
-    window.addEventListener('storage', handleMoodJournalChange);
-    window.addEventListener(MOOD_JOURNAL_CHANGED_EVENT, handleMoodJournalChange);
-
-    return () => {
-      window.removeEventListener('storage', handleMoodJournalChange);
-      window.removeEventListener(MOOD_JOURNAL_CHANGED_EVENT, handleMoodJournalChange);
-    };
-  }, []);
 
   const currentMonthRange = useMemo(() => getCurrentMonthBounds(), []);
   const activeMonthlyBudgets = useMemo(
@@ -461,38 +408,7 @@ export const DashboardPage: React.FC = () => {
     error: currentMonthTransactionsError,
     refresh: refreshCurrentMonthTransactions,
   } = useTransactions(currentMonthFilters);
-
-  const taxReserveAsOf = useMemo(() => new Date(), []);
-  const nextTaxDueDate = useMemo(
-    () => getNextQuarterlyTaxDueDate(taxReserveAsOf),
-    [taxReserveAsOf],
-  );
-  const taxQuarterFilters = useMemo(
-    () => ({
-      startDate: nextTaxDueDate.periodStart,
-      endDate: nextTaxDueDate.periodEnd,
-    }),
-    [nextTaxDueDate],
-  );
-  const {
-    transactions: taxQuarterTransactions,
-    loading: taxQuarterTransactionsLoading,
-    error: taxQuarterTransactionsError,
-    refresh: refreshTaxQuarterTransactions,
-  } = useTransactions(taxQuarterFilters);
-
-  const scamAlertFilters = useMemo(
-    () => ({
-      type: 'EXPENSE' as const,
-    }),
-    [],
-  );
-  const {
-    transactions: scamAlertTransactions,
-    loading: scamAlertTransactionsLoading,
-    error: scamAlertTransactionsError,
-    refresh: refreshScamAlertTransactions,
-  } = useTransactions(scamAlertFilters);
+  const dashboardAsOf = useMemo(() => new Date(), []);
 
   const categoryNames = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
@@ -510,15 +426,6 @@ export const DashboardPage: React.FC = () => {
     () =>
       filterTransactionsByAccountPurpose(currentMonthTransactions, accounts, selectedPurposeFilter),
     [currentMonthTransactions, accounts, selectedPurposeFilter],
-  );
-  const filteredScamAlertTransactions = useMemo(
-    () =>
-      filterTransactionsByAccountPurpose(scamAlertTransactions, accounts, selectedPurposeFilter),
-    [scamAlertTransactions, accounts, selectedPurposeFilter],
-  );
-  const scamAlerts = useMemo(
-    () => detectScamAlerts(filteredScamAlertTransactions),
-    [filteredScamAlertTransactions],
   );
   const filteredRecentTransactions = useMemo(
     () =>
@@ -580,7 +487,7 @@ export const DashboardPage: React.FC = () => {
         currentMonthRange.startDate,
         currentMonthRange.endDate,
       ),
-      plannedSavingsCents: getPlannedGoalContributionsCents(filteredGoals, taxReserveAsOf),
+      plannedSavingsCents: getPlannedGoalContributionsCents(filteredGoals, dashboardAsOf),
       discretionarySpentCents: getDiscretionarySpentCents(
         activeMonthlyBudgets,
         spendingPace.paces,
@@ -599,31 +506,8 @@ export const DashboardPage: React.FC = () => {
     filteredGoals,
     prediction,
     spendingPace.paces,
-    taxReserveAsOf,
+    dashboardAsOf,
   ]);
-  const taxReserveCurrency =
-    taxQuarterTransactions[0]?.currency.code ??
-    currentMonthTransactions[0]?.currency.code ??
-    chartCurrency;
-  const taxReserve = useTaxReserve({
-    currentMonthTransactions,
-    quarterTransactions: taxQuarterTransactions,
-    accounts,
-    asOf: taxReserveAsOf,
-  });
-  const taxReserveRatePercent = Math.round(taxReserve.summary.rate * 100);
-  const taxReserveProgress =
-    taxReserve.summary.quarterRecommendedCents > 0
-      ? Math.min(
-          100,
-          Math.round(
-            (taxReserve.summary.bucketBalanceCents / taxReserve.summary.quarterRecommendedCents) *
-              100,
-          ),
-        )
-      : taxReserve.summary.bucketBalanceCents > 0
-        ? 100
-        : 0;
 
   const chartPrivacyRollup = useMemo(
     () => rollUpProtectedTransactions(filteredChartTransactions, categories),
@@ -680,33 +564,6 @@ export const DashboardPage: React.FC = () => {
     };
   }, [prevPrivacyRollup, totalSpending]);
 
-  const moodSpendingRecords = useMemo(
-    () => buildMoodSpendingRecords(moodTransactions, categoryNames),
-    [moodTransactions, categoryNames],
-  );
-  const moodEntries = useMemo(
-    () => listMoodJournalEntries(moodSpendingRecords),
-    [moodJournalVersion, moodSpendingRecords],
-  );
-  const moodPatterns = useMemo(() => detectEmotionalSpendingPatterns(moodEntries), [moodEntries]);
-  const todayDate = useMemo(() => formatLocalDate(new Date()), []);
-  const todayEntry = useMemo(
-    () => moodEntries.find((entry) => entry.date === todayDate) ?? null,
-    [moodEntries, todayDate],
-  );
-  const editingMoodEntry = useMemo(
-    () =>
-      editingMoodEntryId !== null
-        ? (moodEntries.find((entry) => entry.id === editingMoodEntryId) ?? null)
-        : null,
-    [editingMoodEntryId, moodEntries],
-  );
-  const activeMoodEntry = editingMoodEntry ?? (editingMoodEntryId === null ? todayEntry : null);
-  const todaySpending = useMemo(
-    () => summarizeSpendingForDate(moodSpendingRecords, todayDate),
-    [moodSpendingRecords, todayDate],
-  );
-
   const handlePeriodChange = useCallback((period: TimePeriod) => {
     setSelectedPeriod(period);
   }, []);
@@ -714,33 +571,6 @@ export const DashboardPage: React.FC = () => {
   const handleViewTypeChange = useCallback((type: ViewType) => {
     setViewType(type);
   }, []);
-
-  const handleMoodEntrySave = useCallback(
-    (input: MoodJournalEntryInput) => {
-      const targetEntryId = editingMoodEntryId ?? todayEntry?.id ?? null;
-      if (targetEntryId !== null) {
-        updateMoodJournalEntry(targetEntryId, input, moodSpendingRecords);
-      } else {
-        createMoodJournalEntry(input, moodSpendingRecords);
-      }
-      setEditingMoodEntryId(null);
-    },
-    [editingMoodEntryId, moodSpendingRecords, todayEntry],
-  );
-
-  const handleMoodEntryDelete = useCallback(
-    (entryId: string) => {
-      if (!window.confirm('Delete this mood journal entry?')) {
-        return;
-      }
-
-      deleteMoodJournalEntry(entryId);
-      if (editingMoodEntryId === entryId) {
-        setEditingMoodEntryId(null);
-      }
-    },
-    [editingMoodEntryId],
-  );
 
   const netWorth = useMemo(
     () => filteredAccounts.reduce((sum, account) => sum + account.currentBalance.amount, 0),
@@ -795,9 +625,7 @@ export const DashboardPage: React.FC = () => {
     goalsLoading ||
     predictionLoading ||
     chartTransactionsLoading ||
-    currentMonthTransactionsLoading ||
-    scamAlertTransactionsLoading ||
-    taxQuarterTransactionsLoading;
+    currentMonthTransactionsLoading;
   const resolvedError =
     error ??
     accountsError ??
@@ -807,9 +635,7 @@ export const DashboardPage: React.FC = () => {
     goalsError ??
     predictionError ??
     chartTransactionsError ??
-    currentMonthTransactionsError ??
-    scamAlertTransactionsError ??
-    taxQuarterTransactionsError;
+    currentMonthTransactionsError;
   const budgetPercentage =
     data !== null && data.monthlyBudget > 0
       ? Math.round((data.budgetSpent / data.monthlyBudget) * 100)
@@ -833,9 +659,6 @@ export const DashboardPage: React.FC = () => {
     refreshPrediction();
     refreshChartTransactions();
     refreshCurrentMonthTransactions();
-    refreshScamAlertTransactions();
-    refreshTaxQuarterTransactions();
-    refreshMoodTransactions();
   };
 
   return (
@@ -1001,124 +824,19 @@ export const DashboardPage: React.FC = () => {
                   </article>
                 </div>
               </section>
-              <section className="page-section" aria-label="Things to check">
-                <h3 className="page-section__title">Things to check</h3>
-                <article className="card">
-                  {scamAlerts.length === 0 ? (
-                    <p className="list-item__secondary">Everything looks normal.</p>
-                  ) : (
-                    <ul
-                      className="list-group"
-                      role="list"
-                      aria-label="Scam-focused unusual spending alerts"
-                    >
-                      {scamAlerts.slice(0, 5).map((alert) => (
-                        <li key={alert.id} className="list-item" role="listitem">
-                          <div className="list-item__content">
-                            <p className="list-item__primary">{alert.title}</p>
-                            <p className="list-item__secondary">{alert.message}</p>
-                            <p className="list-item__secondary">
-                              <strong>NEXT STEP:</strong> {alert.nextStep}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </article>
-              </section>
-              <section className="page-section" aria-label="Tax reserve guidance">
-                <article className="card">
-                  <div className="card__header">
-                    <h3 className="card__title">Tax Reserve</h3>
-                    <Link
-                      to="/goals"
-                      className="auth-footer__link"
-                      aria-label="Manage tax reserve bucket"
-                    >
-                      Manage bucket
-                    </Link>
-                  </div>
-                  <div className="card-grid card-grid--3">
-                    <div>
-                      <p className="list-item__secondary">Bucket balance</p>
-                      <p className="card__value">
-                        <CurrencyDisplay
-                          amount={taxReserve.summary.bucketBalanceCents}
-                          currency={taxReserveCurrency}
-                          context="tax reserve bucket balance"
-                        />
-                      </p>
-                    </div>
-                    <div>
-                      <p className="list-item__secondary">Recommended for this quarter</p>
-                      <p className="card__value">
-                        <CurrencyDisplay
-                          amount={taxReserve.summary.quarterRecommendedCents}
-                          currency={taxReserveCurrency}
-                          context="recommended quarterly tax reserve"
-                        />
-                      </p>
-                    </div>
-                    <div>
-                      <p className="list-item__secondary">Recommended payment</p>
-                      <p className="card__value">
-                        <CurrencyDisplay
-                          amount={taxReserve.summary.recommendedPaymentCents}
-                          currency={taxReserveCurrency}
-                          context="recommended estimated tax payment"
-                        />
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="progress-bar"
-                    role="progressbar"
-                    aria-valuenow={taxReserveProgress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`Tax reserve bucket is ${taxReserveProgress} percent funded`}
-                    style={{ marginTop: 'var(--spacing-4)' }}
-                  >
-                    <div
-                      className={`progress-bar__fill progress-bar__fill--${
-                        taxReserveProgress >= 100
-                          ? 'positive'
-                          : taxReserveProgress >= 50
-                            ? 'warning'
-                            : 'negative'
-                      }`}
-                      style={{ width: `${taxReserveProgress}%` }}
-                    />
-                  </div>
-                  <p style={{ marginTop: 'var(--spacing-3)' }}>
-                    You earned{' '}
-                    <CurrencyDisplay
-                      amount={taxReserve.summary.currentMonthNetIncomeCents}
-                      currency={taxReserveCurrency}
-                      context="current month taxable income"
-                    />{' '}
-                    this month — set aside{' '}
-                    <CurrencyDisplay
-                      amount={taxReserve.summary.currentMonthRecommendedCents}
-                      currency={taxReserveCurrency}
-                      context="current month recommended tax reserve"
-                    />{' '}
-                    ({taxReserveRatePercent}%).
-                  </p>
-                  <p className="list-item__secondary">
-                    Quarterly estimate due {formatDueCountdown(taxReserve.summary.daysUntilDue)} on{' '}
-                    {formatDueDate(taxReserve.summary.nextDueDate.dueDate)}. Based on income so far,
-                    set aside ~
-                    <CurrencyDisplay
-                      amount={taxReserve.summary.quarterRecommendedCents}
-                      currency={taxReserveCurrency}
-                      context="quarterly tax reserve"
-                    />
-                    .
-                  </p>
-                </article>
-              </section>
+              <Suspense fallback={<SectionFallback label="Loading things to check" />}>
+                <DashboardThingsToCheckSection
+                  accounts={accounts}
+                  selectedPurposeFilter={selectedPurposeFilter}
+                />
+              </Suspense>
+              <Suspense fallback={<SectionFallback label="Loading tax reserve guidance" />}>
+                <DashboardTaxReserveSection
+                  accounts={accounts}
+                  currentMonthTransactions={currentMonthTransactions}
+                  fallbackCurrency={chartCurrency}
+                />
+              </Suspense>
               {hasChartData &&
               (visibleWidgetIds.has('spending-trend') ||
                 visibleWidgetIds.has('spending-by-category') ||
@@ -1167,64 +885,19 @@ export const DashboardPage: React.FC = () => {
                   ) : null}
                 </section>
               ) : null}
-              <section className="page-section" aria-label="Financial coach">
-                <CoachCard alerts={topAlerts} loading={coachLoading} onDismiss={dismissAlert} />
-              </section>
-              <section className="page-section" aria-label="Coach insights">
-                <CoachPanel analysis={coachAnalysis} loading={coachLoading} />
-              </section>
+              <Suspense fallback={<SectionFallback label="Loading financial coach" />}>
+                <DashboardCoachSection />
+              </Suspense>
             </>
           )}
 
-          <WarrantyDashboard />
+          <Suspense fallback={<SectionFallback label="Loading warranty dashboard" />}>
+            <WarrantyDashboard />
+          </Suspense>
 
-          <section className="page-section mood-section" aria-label="Mood and spending journal">
-            <div className="page-section__header">
-              <div>
-                <h3 className="page-section__title">Emotional Spending Journal</h3>
-                <p className="mood-section__intro">
-                  Local-first mood check-ins that connect your emotional state to same-day spending.
-                </p>
-              </div>
-            </div>
-            {moodTransactionsLoading ? (
-              <LoadingSpinner label="Loading mood journal" />
-            ) : moodTransactionsError ? (
-              <ErrorBanner message={moodTransactionsError} onRetry={refreshMoodTransactions} />
-            ) : (
-              <div className="mood-section__grid">
-                <div className="card">
-                  <MoodEntry
-                    initialEntry={activeMoodEntry}
-                    todaySpendingCents={todaySpending.totalCents}
-                    onSave={handleMoodEntrySave}
-                    onCancel={
-                      editingMoodEntryId !== null ? () => setEditingMoodEntryId(null) : undefined
-                    }
-                    isEditing={editingMoodEntryId !== null}
-                  />
-                </div>
-                <div className="card">
-                  <MoodCalendar entries={moodEntries} />
-                </div>
-                <div className="card mood-section__wide">
-                  <SpendingMoodChart entries={moodEntries} currency={chartCurrency} />
-                </div>
-                <div className="card">
-                  <EmotionalPatterns patterns={moodPatterns} />
-                </div>
-                <div className="card">
-                  <MoodJournal
-                    entries={moodEntries}
-                    activeEntryId={editingMoodEntryId}
-                    onEdit={setEditingMoodEntryId}
-                    onDelete={handleMoodEntryDelete}
-                  />
-                </div>
-              </div>
-            )}
-          </section>
-
+          <Suspense fallback={<SectionFallback label="Loading mood journal" />}>
+            <DashboardMoodJournalSection categories={categories} currency={chartCurrency} />
+          </Suspense>
           {!isDashboardEmpty && visibleWidgetIds.has('recent-transactions') ? (
             <section className="page-section" aria-label="Recent transactions">
               <h3 className="page-section__title">Recent Transactions</h3>
@@ -1293,15 +966,19 @@ export const DashboardPage: React.FC = () => {
           ) : null}
         </>
       )}
-      <CustomizePanel
-        isOpen={widgetLayout.isCustomizing}
-        widgets={widgetLayout.widgets}
-        onToggle={widgetLayout.toggleWidget}
-        onMove={widgetLayout.moveWidget}
-        onReset={widgetLayout.resetLayout}
-        onClose={widgetLayout.stopCustomizing}
-      />
-      <QueryEngine />
+      <Suspense fallback={null}>
+        <CustomizePanel
+          isOpen={widgetLayout.isCustomizing}
+          widgets={widgetLayout.widgets}
+          onToggle={widgetLayout.toggleWidget}
+          onMove={widgetLayout.moveWidget}
+          onReset={widgetLayout.resetLayout}
+          onClose={widgetLayout.stopCustomizing}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <QueryEngine />
+      </Suspense>
     </>
   );
 };
