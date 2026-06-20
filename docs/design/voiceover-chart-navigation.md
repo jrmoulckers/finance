@@ -246,13 +246,22 @@ The adapter (§4) and rotor (§3b) consume a **navigable extension** of the shar
 `packages/core/.../accessibility` namespace — #2834 resolved decision #1). #2113's descriptor is
 summary/table-shaped (`spokenSummary`, `tableColumns`, `tableRows`, `extrema`, `total`, `trend`); it
 does not carry the ordered, numeric per-point data an `AXChartDescriptor` needs. This epic adds that
-data **to the same type** as an optional field, so all three layers derive from one source of truth.
+data **to the same type** as an **optional** field, so all three layers derive from one source of
+truth. The field is a **#2115-driven addition to a #2113-owned type**: #2113 continues to own
+`ChartAccessibilityDescriptor`, and this epic only contributes (and consumes) the new optional
+`series` field — captured here so the cross-epic ownership is explicit.
 
-> **Resolved 2026-06-20 (this session):** extend the shared `ChartAccessibilityDescriptor` with an
-> optional `series` field rather than introducing a sibling type. Rationale: keeps a single
-> source of truth feeding Layers 1–3 ("derived once"), and is consistent with #2834 decision #1
-> (one accessibility namespace). #2113 continues to own the type; #2115 only populates/consumes the
-> new field. Surfaced to the orchestrator with this as the recommended default.
+> **Resolved 2026-06-20 — confirmed by the maintainer:** extend the shared
+> `ChartAccessibilityDescriptor` with an **optional** `series: List<NavigableSeries>` field rather
+> than introducing a sibling type. Each point carries a numeric `x`, numeric `y`, and a
+> preformatted, masking-aware `spokenLabel`. Guardrails baked in: (1) the field is **optional**
+> (defaults empty) so summary-only / non-time-series charts that need no point-by-point traversal
+> do not carry it; (2) every per-point `spokenLabel` is built by the **same masking-aware
+> formatter** as Layer 1 (#2834 decision #2 — relative/percentage phrasing spoken while masked,
+> absolute amounts suppressed); (3) the addition is explicitly a **#2115-driven extension of the
+> #2113-owned type** — #2113 keeps ownership, #2115 only populates/consumes the new field. Rationale:
+> keeps a single source of truth feeding Layers 1–3 ("derived once"), consistent with #2834
+> decision #1 (one accessibility namespace).
 
 **Proposed additive shared shape (Kotlin, illustrative):**
 
@@ -282,8 +291,12 @@ data class NavigablePoint(
 )
 ```
 
-- `spokenLabel` is produced by the **same shared logic** that builds `buildChartDescription`,
-  including the empty path and masking-aware currency — the device never re-formats currency.
+- `series` is **optional** (defaults to `emptyList()`): summary-only or non-time-series charts that
+  expose no point-by-point traversal simply omit it and still render Layers 1–2. A chart with an
+  empty `series` attaches **no** audio graph and **no** rotor (§8, Empty).
+- `spokenLabel` is produced by the **same shared masking-aware logic** that builds
+  `buildChartDescription`, including the empty path and masking-aware currency — the device never
+  re-formats currency, and masked points emit no absolute amount (#2834 decision #2).
 - `keyPoints` for the "Key points" rotor (§3b) are simply `series.flatMap { it.points }.filter { it.kind != DATA }`, so extrema stay in sync with `descriptor.extrema`.
 - Each engine in #2113 §4 (analytics, insights, prediction, forecast, investment, report) maps its
   series into `NavigableSeries` once; iOS reads it via the KMP bridge
@@ -386,11 +399,13 @@ Smallest set of tests required before a native implementation of this navigation
 
 **Resolved design decisions (in-session, 2026-06-20):**
 
-1. **Navigable data home** — the ordered per-point series (`series: List<NavigableSeries>`) is added
-   to the **existing** `ChartAccessibilityDescriptor` as an optional field, not a sibling type, so
-   all three layers derive from one source of truth and #2834 decision #1 (single accessibility
-   namespace) is preserved (§6). #2113 keeps ownership of the type; #2115 populates/consumes the
-   new field.
+1. **Navigable data home** — the ordered per-point series is added to the **existing**
+   `ChartAccessibilityDescriptor` as an **optional** `series: List<NavigableSeries>` field
+   (confirmed by the maintainer 2026-06-20), not a sibling type, so all three layers derive from
+   one source of truth and #2834 decision #1 (single accessibility namespace) is preserved (§6).
+   The field is optional so summary-only charts don't carry it; per-point labels go through the
+   same masking-aware formatter (#2834 decision #2). This is a **#2115-driven addition to the
+   #2113-owned type** — #2113 keeps ownership, #2115 only populates/consumes the new field.
 2. **Two affordances, not one** — both an `AXChartDescriptor` audio graph (#2542) **and** custom
    `accessibilityRotor`s ("Chart data points" + "Key points") (#2540) are required; the audio graph
    gives traversal + shape, the rotors give targeted jumps to extrema (§3).
