@@ -1123,6 +1123,58 @@ function execSavepointControl(
   }
 }
 
+type TransactionControlEffect = 'enter' | 'leave' | 'end' | 'rollbackTo' | null;
+
+function getTransactionControlEffect(sql: string): TransactionControlEffect {
+  const normalized = sql.trimStart();
+
+  if (/^BEGIN\b/i.test(normalized) || /^SAVEPOINT\b/i.test(normalized)) {
+    return 'enter';
+  }
+  if (/^RELEASE(?:\s+SAVEPOINT)?\b/i.test(normalized)) {
+    return 'leave';
+  }
+  if (/^ROLLBACK\s+TO(?:\s+SAVEPOINT)?\b/i.test(normalized)) {
+    return 'rollbackTo';
+  }
+  if (/^(?:COMMIT|END)\b/i.test(normalized) || /^ROLLBACK\b/i.test(normalized)) {
+    return 'end';
+  }
+
+  return null;
+}
+
+function createIndexedDbPersistenceGate(): (sql: string) => boolean {
+  let transactionDepth = 0;
+
+  return (sql: string): boolean => {
+    const controlEffect = getTransactionControlEffect(sql);
+
+    switch (controlEffect) {
+      case 'enter':
+        transactionDepth += 1;
+        return false;
+      case 'leave':
+        transactionDepth = Math.max(0, transactionDepth - 1);
+        return transactionDepth === 0;
+      case 'end':
+        transactionDepth = 0;
+        return true;
+      case 'rollbackTo':
+        return false;
+      default:
+        return transactionDepth === 0;
+    }
+  };
+}
+
+export function _shouldPersistIndexedDbAfterExecForTesting(
+  sqlStatements: readonly string[],
+): boolean[] {
+  const shouldPersist = createIndexedDbPersistenceGate();
+  return sqlStatements.map((sql) => shouldPersist(sql));
+}
+
 function releaseSavepointRaw(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   driver: any,
@@ -1316,6 +1368,16 @@ export async function _runMigrationsForTesting(
   await runMigrations(driver, db, backend);
 }
 
+export function _createDbWrapperForTesting(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  driver: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  backend: StorageBackend = 'indexeddb',
+): SqliteDb {
+  return createDbWrapper(driver, db, backend);
+}
+
 // ---------------------------------------------------------------------------
 // IndexedDB persistence helpers (fallback only)
 // ---------------------------------------------------------------------------
@@ -1449,12 +1511,14 @@ function createDbWrapper(
   db: any,
   backend: StorageBackend,
 ): SqliteDb {
+  const shouldPersistAfterExec = backend === 'indexeddb' ? createIndexedDbPersistenceGate() : null;
+
   return {
     backend,
 
     exec(sql: string, params?: unknown[]): void {
       execRaw(driver, db, sql, backend, params);
-      if (backend === 'indexeddb') {
+      if (backend === 'indexeddb' && shouldPersistAfterExec?.(sql) === true) {
         void persistToIndexedDB(DB_NAME, exportDatabase(driver, db, backend));
       }
     },
