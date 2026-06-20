@@ -268,7 +268,9 @@
 
 .more-sheet__body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--spacing-2) var(--spacing-3) var(--spacing-4);
   -webkit-overflow-scrolling: touch;
 }
