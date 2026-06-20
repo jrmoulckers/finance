@@ -1,6 +1,6 @@
 # iOS One-Thumb Quick-Add Expense Capture — Finance
 
-> **Status:** PROPOSED — design decisions resolved in-session 2026-06-20; pending human review & merge
+> **Status:** PROPOSED — design decisions resolved & maintainer-confirmed 2026-06-20 (payee-optional confirmed); pending human review & merge
 > **Epic:** #2167 · **Closes:** #2599 · **Refs:** #2113 (sibling pilot), #1239 (native blocker)
 > **WCAG Target:** 2.2 Level AA (AAA where practical)
 > **Priority:** P1 (`priority:high`)
@@ -169,14 +169,25 @@ custom keypad is **not** a VoiceOver dead-end (§3.4).
 | **Status**   | Defaulted to **pending** for fast capture (clears later on reconcile).                             | `selectedStatus = .pending` `TransactionCreateViewModel.swift:51`                                                     |
 | **Note**     | **Optional**, not shown in quick-add; available via "More details".                                | `note` `Transaction.kt:30`; `TransactionCreateView.swift:258-262`                                                     |
 
-**Payee is optional in quick-add** (resolved decision, §8): the shared `TransactionValidator` does
-**not** require it (`TransactionValidator.kt` only length-checks payee, `:64-68`), the model field is
-nullable (`Transaction.kt:29`), and `LogTransactionIntent.makeTransaction` already establishes the
-blank-payee → category-name fallback (`LogTransactionIntent.swift:117-120`). Requiring a text field
-would force the system keyboard up and break the thumb-zone numeric flow, defeating "one-thumb." A
-"More details" affordance promotes the entry into the full three-step
-`TransactionCreateView`/`TransactionCreateViewModel` (payee, category picker, status, tags, mood,
-note, date) without re-keying the amount.
+**Payee is optional in quick-add** (maintainer-confirmed decision, 2026-06-20; §8): the shared
+`TransactionValidator` does **not** require it (`TransactionValidator.kt` only length-checks payee,
+`:64-68`), the model field is nullable (`Transaction.kt:29`), and
+`LogTransactionIntent.makeTransaction` already establishes the blank-payee → category-name fallback
+(`LogTransactionIntent.swift:117-120`). Requiring a text field would force the system keyboard up and
+break the thumb-zone numeric flow, defeating "one-thumb." A "More details" affordance promotes the
+entry into the full three-step `TransactionCreateView`/`TransactionCreateViewModel` (payee, category
+picker, status, tags, mood, note, date) without re-keying the amount.
+
+> **Deliberate divergence — by design, not an oversight.** Quick-add is the **only** create surface
+> where payee is optional. **Both** other create surfaces currently **require** a payee/description:
+> the web **Quick Add** panel blocks save on an empty description (`QuickEntry.tsx:246-249`) and the
+> full iOS `TransactionCreateView` requires a non-empty payee
+> (`TransactionCreateViewModel.swift:81` `canAdvance`, `:288-292` `validate`). The one-thumb flow
+> **intentionally** drops that requirement — its design constraint (no forced keyboard in the thumb
+> zone) did not exist when those surfaces were built, and the shared schema/validator side with
+> optional. A future reader should treat this inconsistency as the deliberate quick-add affordance it
+> is, not a bug to "fix" by re-adding a required payee. (If the web Quick Add and the full iOS form
+> are ever relaxed to match, that is a separate alignment task, not a change to this flow.)
 
 ### 3.4 The non-pointer path (VoiceOver / Switch Control) — never regress assistive tech
 
@@ -212,14 +223,15 @@ is read; it only produces a row that conforms to that contract.
 
 Quick-add composes **only** fields that exist on the shared model
 (`packages/models/.../Transaction.kt:19-53`) and routes its save through the shared validator
-(`packages/core/.../validation/TransactionValidator.kt`). The two pieces of logic that should live in
-`packages/core` (so all platforms behave identically and are unit-testable today) are:
+(`packages/core/.../validation/TransactionValidator.kt`). This design doc **edits no shared code**;
+the two pieces of logic below are **proposed additions for `packages/core`, owned by
+@kmp-engineer** (so all platforms behave identically and the rules are unit-testable today):
 
 1. **Default-selection** — `lastUsedAccountId ?? firstAccount`, `lastUsedType ?? EXPENSE`,
    `date = today`, `status = PENDING`, `categoryId = suggest(payee) ?? null`. Web implements these
    ad hoc in the component (`QuickEntry.tsx:106-178`); iOS has them split across the view model and
-   `LogTransactionIntent`. Promoting a single `QuickAddDefaults` resolver into `packages/core` is the
-   smallest shared change and removes three divergent copies.
+   `LogTransactionIntent`. A single `QuickAddDefaults` resolver in `packages/core` (proposed for
+   @kmp-engineer) is the smallest shared change and removes three divergent copies.
 2. **Minimum-field / save rule** — amount non-zero **is the only blocking rule**; payee falls back to
    `categoryName → "Expense"/"Income"` (`LogTransactionIntent.swift:117-120`); category may be null.
    This mirrors `TransactionValidator.validate` (`TransactionValidator.kt:21-77`), which already
@@ -349,14 +361,17 @@ null` (parity with `QuickEntry.tsx:106-178`).
 
 **Resolved design decisions (in-session, 2026-06-20):**
 
-1. **Payee is optional in one-thumb quick-add** — only the amount blocks a save. A blank payee falls
-   back to the suggested category name, then "Expense"/"Income"
-   (`LogTransactionIntent.swift:117-120`; nullable `payee` `Transaction.kt:29`; not required by
-   `TransactionValidator.kt`). Requiring a text field would force the system keyboard and break the
-   thumb-zone numeric flow. _(iOS deliberately diverges from web Quick Add, which requires a
-   description — `QuickEntry.tsx:246-249` — because that web choice predates the one-thumb
-   constraint; the shared validator sides with optional. Recommended default flagged to the
-   orchestrator 2026-06-20; this section is updated if the maintainer decides otherwise.)_
+1. **Payee is optional in one-thumb quick-add** — **maintainer-confirmed 2026-06-20.** Only the
+   amount blocks a save. A blank payee falls back to the suggested category name, then
+   "Expense"/"Income" (`LogTransactionIntent.swift:117-120`; nullable `payee` `Transaction.kt:29`;
+   not required by `TransactionValidator.kt`). Requiring a text field would force the system keyboard
+   and break the thumb-zone numeric flow. **Deliberate, by-design divergence:** this is the only
+   create surface where payee is optional — **both** the web Quick Add (`QuickEntry.tsx:246-249`)
+   **and** the full iOS `TransactionCreateView` (`TransactionCreateViewModel.swift:81`,`:288-292`)
+   currently **require** a payee. The one-thumb flow intentionally drops that requirement because its
+   no-forced-keyboard constraint postdates those surfaces and the shared schema/validator side with
+   optional; the inconsistency is documented here so a future reader does not "fix" it by re-adding a
+   required payee (§3.3). Aligning web/full-form to match would be a separate task, out of scope here.
 2. **Custom cents-first keypad, not the system decimal keypad** — resolved by precedent: the app
    already ships the #1486 Venmo-style keypad (`TransactionCreateView.swift:142-164`) and the web
    uses the same incremental cents-first model (`QuickEntry.tsx:156-162`). A custom keypad keeps the
@@ -373,12 +388,11 @@ null` (parity with `QuickEntry.tsx:106-178`).
    (`Transaction.kt:49-51`; `TransactionValidator.kt:44-54`), beyond the minimum field set; quick-add
    is expense/income only and defers transfers to the full form (§5).
 
-**Open dependency (flagged, not decided here):**
+**Proposed shared-code follow-up (for @kmp-engineer — not done here):**
 
-- The **payee-optional** decision (#1) is the one genuine product call; it was raised to the
-  orchestrator with the recommended default baked in above. If the maintainer rules that quick-add
-  must require a payee, only §3.3, §6 (validation), §7 (the blank-payee test), and decision #1 change
-  — the rest of the flow is unaffected.
-- Promoting the shared `QuickAddDefaults` / `resolveQuickAddPayee` helpers into `packages/core` (§4)
-  is a small shared-code change that removes three divergent copies (web component, iOS view model,
-  `LogTransactionIntent`); it is implementation work to be scheduled, not a design question.
+- The **payee-optional** product call is **resolved** (decision #1, maintainer-confirmed); it is no
+  longer open.
+- The shared `QuickAddDefaults` / `resolveQuickAddPayee` helpers (§4) are **proposed additions for
+  `packages/core`, owned by @kmp-engineer** — a small shared-code change that removes three divergent
+  copies (web component, iOS view model, `LogTransactionIntent`). This design-only doc does not edit
+  `packages/*`; the work should be scheduled as a separate KMP task, not treated as a design question.
