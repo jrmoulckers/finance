@@ -153,15 +153,7 @@ jobs:
             ACTOR="$ACTOR_NAME (tag push)"
             CREATE_RELEASE='false'
             AUTO_ROLLBACK='false'
-          elif [ "$EVENT_NAME" = 'workflow_call' ]; then
-            VERSION="$CALL_VERSION"
-            COMPONENT="${CALL_COMPONENT:-all}"
-            ROLLBACK="$(normalize_bool "${CALL_ROLLBACK:-false}")"
-            REASON="$CALL_REASON"
-            ACTOR="$ACTOR_NAME (automated promotion)"
-            CREATE_RELEASE="$(normalize_bool "${CALL_CREATE_RELEASE:-false}")"
-            AUTO_ROLLBACK="$(normalize_bool "${CALL_AUTO_ROLLBACK:-false}")"
-          else
+          elif [ "$EVENT_NAME" = 'workflow_dispatch' ]; then
             VERSION="$INPUT_VERSION"
             COMPONENT="$INPUT_COMPONENT"
             ROLLBACK="$(normalize_bool "${INPUT_ROLLBACK:-false}")"
@@ -169,6 +161,21 @@ jobs:
             ACTOR="$ACTOR_NAME"
             CREATE_RELEASE='false'
             AUTO_ROLLBACK='false'
+          else
+            # Automated promotion via reusable workflow_call. A reusable workflow
+            # inherits the *caller's* github context, so github.event_name is the
+            # event that triggered the caller (promote-production.yml runs on
+            # 'workflow_run'), never 'workflow_call'. Any event that is not a tag
+            # push or manual dispatch is therefore the promotion path — read the
+            # workflow_call inputs rather than github.event.inputs (which is empty
+            # for workflow_run and would yield an empty version, #2827).
+            VERSION="$CALL_VERSION"
+            COMPONENT="${CALL_COMPONENT:-all}"
+            ROLLBACK="$(normalize_bool "${CALL_ROLLBACK:-false}")"
+            REASON="$CALL_REASON"
+            ACTOR="$ACTOR_NAME (automated promotion)"
+            CREATE_RELEASE="$(normalize_bool "${CALL_CREATE_RELEASE:-false}")"
+            AUTO_ROLLBACK="$(normalize_bool "${CALL_AUTO_ROLLBACK:-false}")"
           fi
 
           {
@@ -310,17 +317,29 @@ jobs:
           echo '### ✅ Pre-deploy Smoke Tests Passed' >> "$GITHUB_STEP_SUMMARY"
           echo "Build and type-check succeeded at \`${{ needs.prepare.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
 
+  # ---------------------------------------------------------------------------
+  # Web (Azure VM): rebuild apps/web/dist on the production VM and let Caddy
+  # serve it. finance.jrmoulckers.com is served by Caddy from a bind mount of
+  # apps/web/dist (deploy/docker-compose.yml → /srv/web), so the public site
+  # only updates when that path is rebuilt to the deployed SHA. This mirrors
+  # the staging deploy-web-vm job. Vercel is reserved for ephemeral PR previews
+  # (deploy-preview.yml). See #2827.
+  # ---------------------------------------------------------------------------
   deploy-web:
     name: Deploy Web (Production)
-    needs: [prepare, verify-ci-green, smoke-tests]
+    # Serialized after deploy-backend to avoid a race on the VM's shared
+    # `~/finance/.git` directory — both jobs fetch from origin and hard-reset
+    # the same working tree on the production VM.
+    needs: [prepare, verify-ci-green, smoke-tests, deploy-backend]
     if: |
       always() &&
       needs.prepare.result == 'success' &&
       needs.prepare.outputs.deploy_web == 'true' &&
       (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
-      (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
+      (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped') &&
+      (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
@@ -330,61 +349,88 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        env:
-          NODE_ENV: production
-          VITE_APP_VERSION: ${{ needs.prepare.outputs.version }}
-          VITE_ENVIRONMENT: production
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
-        run: |
-          npm run build -w packages/design-tokens
-          npm run build -w apps/web
-
-      - name: Verify web build env
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: node tools/verify-build-env.mjs --check-env apps/web/dist
-
-      - name: Deploy to Vercel (production)
+      - name: Rebuild apps/web/dist on production VM
         id: deploy
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://finance.jrmoulckers.com' }}
+          TARGET_SHA: ${{ needs.prepare.outputs.sha }}
+          SHA_SHORT: ${{ needs.prepare.outputs.sha_short }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
-          npm i -g vercel@latest
+          set -euo pipefail
 
-          set -o pipefail
-          DEPLOY_LOG="$GITHUB_WORKSPACE/vercel-deploy.log"
-          rm -f "$DEPLOY_LOG"
-          if ! vercel deploy \
-            --token="$VERCEL_TOKEN" \
-            --scope="$VERCEL_ORG_ID" \
-            --prod \
-            --yes \
-            --archive=tgz \
-            apps/web/dist >"$DEPLOY_LOG" 2>&1; then
-            echo '::error::Vercel production deploy failed:'
-            cat "$DEPLOY_LOG"
+          # The canonical public endpoint is the deployment environment URL,
+          # recorded up front so it is reported even on the skip path below.
+          echo "url=${PRODUCTION_URL%/}" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::warning::DEPLOY_HOST not configured — skipping web VM rebuild"
+            echo "### ⚠️ Web Production Skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "Configure DEPLOY_HOST, DEPLOY_SSH_KEY, and DEPLOY_USER secrets." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL and SUPABASE_ANON_KEY secrets are required for production web builds"
             exit 1
           fi
-          DEPLOY_URL=$(tail -1 "$DEPLOY_LOG")
 
-          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
-          echo '### 🌐 Web Production Deployed' >> "$GITHUB_STEP_SUMMARY"
-          echo "**URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          SUPABASE_URL_B64=$(printf '%s' "$SUPABASE_URL" | base64 -w 0)
+          SUPABASE_ANON_KEY_B64=$(printf '%s' "$SUPABASE_ANON_KEY" | base64 -w 0)
+          POWERSYNC_URL_B64=$(printf '%s' "$POWERSYNC_URL" | base64 -w 0)
+          SENTRY_DSN_B64=$(printf '%s' "$SENTRY_DSN" | base64 -w 0)
+
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' SENTRY_DSN_B64='$SENTRY_DSN_B64' TARGET_SHA='$TARGET_SHA' SHA_SHORT='$SHA_SHORT' bash -s" <<'DEPLOY'
+            set -euo pipefail
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#~}" ;; esac
+            export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
+            export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
+            export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
+            export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
+            export VITE_ENVIRONMENT=production
+            export VITE_APP_VERSION="$SHA_SHORT"
+            export NODE_ENV=production
+            cd "$DEPLOY_PATH"
+            echo "→ git fetch --force --prune origin main"
+            git fetch --force --prune origin main
+            echo "→ git reset --hard $TARGET_SHA"
+            git reset --hard "$TARGET_SHA"
+            echo "→ npm ci (this can take a few minutes on first run)"
+            npm ci --no-audit --no-fund --silent
+            echo "→ build design tokens"
+            npm run build -w packages/design-tokens --silent
+            echo "→ build apps/web"
+            npm run build -w apps/web --silent
+            echo "→ verify Supabase env in build output"
+            node tools/verify-build-env.mjs --check-env apps/web/dist
+            echo "→ verify dist"
+            test -f apps/web/dist/index.html
+            ls -la apps/web/dist | head -10
+          DEPLOY
+
+          echo "### 🌐 Web Production Deployed (Azure VM)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Host:** \`$DEPLOY_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Path:** \`$DEPLOY_PATH/apps/web/dist\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`$SHA_SHORT\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Served at:** ${PRODUCTION_URL%/}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
 
   deploy-backend:
     name: Deploy Backend (Production)
@@ -585,69 +631,7 @@ jobs:
           echo "- Rolling back to \`$PREVIOUS_TAG\` (\`${ROLLBACK_SHA:0:7}\`)" >> "$GITHUB_STEP_SUMMARY"
           echo '- Flow mirrors the documented deploy-rollback.yml web/backend recovery path.' >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Checkout rollback target tree
-        run: git checkout '${{ steps.rollback.outputs.sha }}'
-
-      - name: Set up Node.js
-        if: needs.prepare.outputs.deploy_web == 'true'
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        if: needs.prepare.outputs.deploy_web == 'true'
-        run: npm ci
-
-      - name: Build rollback web bundle
-        if: needs.prepare.outputs.deploy_web == 'true'
-        env:
-          NODE_ENV: production
-          VITE_APP_VERSION: ${{ steps.rollback.outputs.tag }}
-          VITE_ENVIRONMENT: production
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
-        run: |
-          npm run build -w packages/design-tokens
-          npm run build -w apps/web
-
-      - name: Verify rollback web build env
-        if: needs.prepare.outputs.deploy_web == 'true'
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: node tools/verify-build-env.mjs --check-env apps/web/dist
-
-      - name: Roll back web deployment
-        if: needs.prepare.outputs.deploy_web == 'true'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          npm i -g vercel@latest
-
-          set -o pipefail
-          DEPLOY_LOG="$GITHUB_WORKSPACE/vercel-rollback.log"
-          rm -f "$DEPLOY_LOG"
-          if ! vercel deploy \
-            --token="$VERCEL_TOKEN" \
-            --scope="$VERCEL_ORG_ID" \
-            --prod \
-            --yes \
-            --archive=tgz \
-            apps/web/dist >"$DEPLOY_LOG" 2>&1; then
-            echo '::error::Vercel rollback deploy failed:'
-            cat "$DEPLOY_LOG"
-            exit 1
-          fi
-          DEPLOY_URL=$(tail -1 "$DEPLOY_LOG")
-          echo '### 🌐 Web Rollback Complete' >> "$GITHUB_STEP_SUMMARY"
-          echo "**URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Roll back backend deployment
-        if: needs.prepare.outputs.deploy_backend == 'true'
+      - name: Roll back deployment on production VM
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -655,10 +639,24 @@ jobs:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
           ROLLBACK_SHA: ${{ steps.rollback.outputs.sha }}
           ROLLBACK_TAG: ${{ steps.rollback.outputs.tag }}
+          DEPLOY_WEB: ${{ needs.prepare.outputs.deploy_web }}
+          DEPLOY_BACKEND: ${{ needs.prepare.outputs.deploy_backend }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
+          set -euo pipefail
+
           if [ -z "$DEPLOY_HOST" ]; then
-            echo '::warning::DEPLOY_HOST not configured — skipping backend rollback'
+            echo '::warning::DEPLOY_HOST not configured — skipping VM rollback'
+            echo '### ⚠️ Production Rollback Skipped' >> "$GITHUB_STEP_SUMMARY"
             exit 0
+          fi
+
+          if [ "$DEPLOY_WEB" = 'true' ] && { [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; }; then
+            echo '::error::SUPABASE_URL and SUPABASE_ANON_KEY secrets are required to rebuild the web bundle during rollback'
+            exit 1
           fi
 
           mkdir -p ~/.ssh
@@ -666,32 +664,66 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << DEPLOY
-            cd $DEPLOY_PATH
-            git fetch origin --tags
-            git checkout $ROLLBACK_SHA
-            docker compose -f deploy/docker-compose.yml pull
-            docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+          SUPABASE_URL_B64=$(printf '%s' "$SUPABASE_URL" | base64 -w 0)
+          SUPABASE_ANON_KEY_B64=$(printf '%s' "$SUPABASE_ANON_KEY" | base64 -w 0)
+          POWERSYNC_URL_B64=$(printf '%s' "$POWERSYNC_URL" | base64 -w 0)
+          SENTRY_DSN_B64=$(printf '%s' "$SENTRY_DSN" | base64 -w 0)
 
-            caddy_started=false
-            for attempt in 1 2 3; do
-              if docker compose -f deploy/docker-compose.yml up -d --no-deps caddy \
-                || docker compose -f deploy/docker-compose.yml start caddy; then
-                caddy_started=true
-                break
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' ROLLBACK_SHA='$ROLLBACK_SHA' ROLLBACK_TAG='$ROLLBACK_TAG' DEPLOY_WEB='$DEPLOY_WEB' DEPLOY_BACKEND='$DEPLOY_BACKEND' SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' SENTRY_DSN_B64='$SENTRY_DSN_B64' bash -s" <<'DEPLOY'
+            set -euo pipefail
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#~}" ;; esac
+            cd "$DEPLOY_PATH"
+            echo "→ git fetch --force --prune --tags origin main"
+            git fetch --force --prune --tags origin main
+            echo "→ git reset --hard $ROLLBACK_SHA"
+            git reset --hard "$ROLLBACK_SHA"
+
+            if [ "$DEPLOY_BACKEND" = 'true' ]; then
+              echo "→ docker compose pull + up"
+              docker compose -f deploy/docker-compose.yml pull
+              docker compose -f deploy/docker-compose.yml up -d --remove-orphans \
+                || echo "::warning::compose up reported non-zero (deps may be transiently unhealthy)"
+
+              caddy_started=false
+              for attempt in 1 2 3; do
+                if docker compose -f deploy/docker-compose.yml up -d --no-deps caddy \
+                  || docker compose -f deploy/docker-compose.yml start caddy; then
+                  caddy_started=true
+                  break
+                fi
+                echo "::warning::caddy start attempt ${attempt} failed; retrying"
+                sleep 5
+              done
+              if [ "$caddy_started" != true ]; then
+                echo "::warning::caddy was not confirmed started after retries"
               fi
-              echo "::warning::caddy start attempt ${attempt} failed; retrying"
-              sleep 5
-            done
-            if [ "$caddy_started" != true ]; then
-              echo '::warning::caddy was not confirmed started after retries'
+            fi
+
+            if [ "$DEPLOY_WEB" = 'true' ]; then
+              export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
+              export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
+              export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
+              export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
+              export VITE_ENVIRONMENT=production
+              export VITE_APP_VERSION="$ROLLBACK_TAG"
+              export NODE_ENV=production
+              echo "→ npm ci"
+              npm ci --no-audit --no-fund --silent
+              echo "→ build design tokens"
+              npm run build -w packages/design-tokens --silent
+              echo "→ build apps/web"
+              npm run build -w apps/web --silent
+              echo "→ verify Supabase env in build output"
+              node tools/verify-build-env.mjs --check-env apps/web/dist
+              test -f apps/web/dist/index.html
             fi
 
             docker compose -f deploy/docker-compose.yml ps
-            echo "Rolled back version: $ROLLBACK_TAG ($ROLLBACK_SHA)"
+            echo "Rolled back to: $ROLLBACK_TAG ($ROLLBACK_SHA)"
           DEPLOY
 
-          echo '### 🐳 Backend Rollback Complete' >> "$GITHUB_STEP_SUMMARY"
+          echo '### 🔙 Production Rollback Applied (Azure VM)' >> "$GITHUB_STEP_SUMMARY"
           echo "**Host:** \`$DEPLOY_HOST\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**Version:** \`${ROLLBACK_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
 

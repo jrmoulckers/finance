@@ -50,7 +50,7 @@ Workflow: `.github/workflows/deploy-production.yml` (`Deploy — Production`)
 2. Non-rollback deploys wait for the same required CI checks on the resolved SHA.
 3. Non-rollback deploys run pre-deploy smoke tests against the exact target revision.
 4. Protected jobs use the GitHub `production` environment, so release managers must approve before execution continues.
-5. Web deploys build `packages/design-tokens` + `apps/web` and publish the built bundle to Vercel.
+5. Web deploys SSH to the production VM, hard-reset to the resolved SHA, run `npm ci`, rebuild `packages/design-tokens` + `apps/web`, verify the built env, and let Caddy serve the refreshed `apps/web/dist` bind mount (serialized after the backend job to avoid `.git` lock races).
 6. Backend deploys SSH to the production host, `git fetch origin`, `git checkout <resolved sha>`, then run `docker compose ... pull` and `up -d --remove-orphans`.
 7. Post-deploy smoke tests verify the production homepage and `/health`; automated promotions roll back to the previous stable tag if those checks fail.
 8. Automated promotions create a GitHub Release and changelog after production smoke tests pass.
@@ -94,7 +94,9 @@ Use these buckets for day-to-day deployment work:
   - Required for `deploy-staging.yml`: `DEPLOY_HOST`, `DEPLOY_SSH_KEY`, `DEPLOY_USER`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `POWERSYNC_URL`
   - Recommended/optional: `DEPLOY_PATH` (defaults to `~/finance` if absent), `BETA_ALLOWED_EMAILS`, `SENTRY_DSN`
 - **Production**
-  - Required for `deploy-production.yml`: `DEPLOY_HOST`, `DEPLOY_SSH_KEY`, `DEPLOY_USER`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `POWERSYNC_URL`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+  - Required for `deploy-production.yml`: `DEPLOY_HOST`, `DEPLOY_SSH_KEY`, `DEPLOY_USER`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `POWERSYNC_URL`
+  - Optional: `SENTRY_DSN` (baked into the web build when present)
+  - Production web is rebuilt on the VM (same SSH host as the backend); Vercel secrets are **not** required for production — they only apply to PR preview deploys.
   - Common companion values: `DEPLOY_PATH`, release-signing/store secrets for mobile, and any runtime secrets from `deploy/.env.example`
 - **Repo scoped/shared**
   - Built-in: `GITHUB_TOKEN`
