@@ -95,6 +95,19 @@ async function waitForAppShell(page: Page): Promise<void> {
     .catch(() => {
       // Loading indicator may have already disappeared — fine.
     });
+
+  // Wait for lazily-imported route/dashboard sections (code-split in #2782)
+  // to finish loading.  Otherwise their chunks resolve and mount *after* the
+  // shell is ready, reflowing the page while a test is mid-click.  On slower
+  // CI runners that ongoing reflow makes the bottom-nav "More" button's hit
+  // target unstable (content momentarily intercepts the pointer), so the click
+  // never lands and the mobile-chrome job overran its budget (#2781).  Waiting
+  // for network idle ensures all dynamic imports have loaded and the layout has
+  // settled before we interact.
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {
+    // Background activity may keep the network busy — fall through; the
+    // per-action stability checks still apply.
+  });
 }
 
 /**
