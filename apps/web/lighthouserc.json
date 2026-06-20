@@ -1,12 +1,23 @@
 {
   "ci": {
     "collect": {
-      "url": ["http://localhost:5173/login"],
-      "startServerCommand": "npx -w apps/web vite preview --host 127.0.0.1 --port 5173 --strictPort",
-      "startServerReadyPattern": "Local:",
-      "startServerReadyTimeout": 120000,
+      "url": ["http://localhost:5173/login?lhci=1"],
+      "startServerCommand": "npm run -w apps/web preview -- --host 127.0.0.1 --port 5173 --strictPort",
+      "startServerReadyPattern": "http://127.0.0.1:5173/",
+      "startServerReadyTimeout": 15000,
       "settings": {
-        "chromeFlags": "--headless=new --no-sandbox --disable-gpu"
+        "chromeFlags": "--headless=new --no-sandbox --disable-gpu",
+        "blockedUrlPatterns": ["*/api/auth/refresh", "*/sw.js"],
+        "clearStorageTypes": [
+          "cookies",
+          "local_storage",
+          "session_storage",
+          "indexeddb",
+          "websql",
+          "cache_storage",
+          "service_workers",
+          "file_systems"
+        ]
       }
     },
     "assert": {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { useEffect } from 'react';
 import type { ComponentType, CSSProperties } from 'react';
 import {
   ArrowDownToLine,
@@ -477,6 +478,21 @@ const FLUENT_ICONS = {
   WifiOff24Regular,
 } satisfies Record<string, FluentIconComponent>;
 
+const MATERIAL_SYMBOLS_STYLESHEET_ID = 'finance-material-symbols-font';
+const MATERIAL_SYMBOLS_STYLESHEET_HREF =
+  'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap';
+
+function ensureMaterialSymbolsStylesheet(): void {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(MATERIAL_SYMBOLS_STYLESHEET_ID)) return;
+
+  const link = document.createElement('link');
+  link.id = MATERIAL_SYMBOLS_STYLESHEET_ID;
+  link.rel = 'stylesheet';
+  link.href = MATERIAL_SYMBOLS_STYLESHEET_HREF;
+  document.head.append(link);
+}
+
 function getMaterialFamily(packId: WebIconPackId): string {
   switch (packId) {
     case MATERIAL_SYMBOLS_ROUNDED:
@@ -542,7 +558,15 @@ export function Icon({ name, size = 24, className, ariaLabel, packId }: IconProp
   const mapping = getPackMapping(resolvedPackId);
   const iconName = mapping[name];
 
-  if (resolvedPackId.startsWith('material_symbols_')) {
+  const isMaterialPack = resolvedPackId.startsWith('material_symbols_');
+
+  useEffect(() => {
+    if (isMaterialPack) {
+      ensureMaterialSymbolsStylesheet();
+    }
+  }, [isMaterialPack]);
+
+  if (isMaterialPack) {
     const materialClassName = [getMaterialFamily(resolvedPackId), className]
       .filter(Boolean)
       .join(' ');
