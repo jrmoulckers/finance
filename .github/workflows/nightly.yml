@@ -249,6 +249,20 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: nightly-web-build
+      - name: Verify production build artifact
+        # Guards against a corrupt/incomplete artifact (digest mismatch) or a
+        # non-production index.html.  Lighthouse audits apps/web/dist directly
+        # via staticDistDir, so a bad dist would otherwise be measured silently
+        # (e.g. a dev-mode page yielding hundreds of unbundled module scripts).
+        run: |
+          test -f apps/web/dist/index.html || { echo "ERROR: apps/web/dist/index.html missing — artifact not restored"; exit 1; }
+          if grep -q "/src/main.tsx" apps/web/dist/index.html; then
+            echo "ERROR: dist/index.html references dev source (/src/main.tsx) — not a production build"; exit 1
+          fi
+          if ! grep -qE "/assets/[^\"']*\.js" apps/web/dist/index.html; then
+            echo "ERROR: dist/index.html does not reference built /assets/*.js — not a production build"; exit 1
+          fi
+          echo "Production build verified: dist/index.html references hashed /assets bundles."
       - name: Lighthouse Audit
         # apps/web/lighthouserc.json starts Vite preview and audits /login so
         # LHCI does not scan static index.html and fail on the SPA redirect.
