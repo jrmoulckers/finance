@@ -181,7 +181,7 @@ createRoot(rootElement).render(
         <AuthProvider config={authConfig}>
           <MoneyDisplayProvider>
             <AccessibilityProvider>
-              <BrowserRouter>
+              <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
                 <NavigationGuard>
                   <ScrollToTop />
                   <UpdateBanner />

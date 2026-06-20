@@ -129,6 +129,10 @@ const authProxyTarget =
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Base public path. Defaults to '/' (root, e.g. the Azure VM / custom domain).
+  // GitHub Pages project sites serve under '/<repo>/', so the Pages deploy sets
+  // PUBLIC_BASE_PATH=/finance/. import.meta.env.BASE_URL reflects this at runtime.
+  base: process.env.PUBLIC_BASE_PATH ?? '/',
   plugins: [
     react(),
     copySqlJsWasm(),

@@ -353,7 +353,16 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
       try {
         const result = await initDatabaseWithDiagnostics();
 
-        await seedDatabase(result.db);
+        try {
+          await seedDatabase(result.db);
+        } catch (seedError) {
+          // Demo/sample seeding is best-effort. A seeding failure must never
+          // prevent the app from booting — the user simply starts with an
+          // empty workspace. Real schema problems still surface through normal
+          // CRUD operations (and are covered by migrations/tests).
+          // eslint-disable-next-line no-console
+          console.warn('[db] Seed step failed; continuing with an empty database.', seedError);
+        }
 
         if (isDisposed) {
           // Provider truly unmounted (not just StrictMode replay) — leave

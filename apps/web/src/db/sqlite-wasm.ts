@@ -639,6 +639,34 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_transaction_retirement_contribution_year ON "transaction" (retirement_contribution_year);`,
     ],
   },
+  {
+    version: 13,
+    label: 'add-sort-order-to-category',
+    up: [
+      // The `category` table was created without a sort_order column, but the
+      // categories repository (and seeding) order by / insert sort_order — so a
+      // real (non-stub) database failed on first use with
+      // "table category has no column named sort_order". Add it here, matching
+      // the budget/goal sort_order migrations.
+      `ALTER TABLE category ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;`,
+      `WITH ordered_category AS (
+        SELECT id,
+               ROW_NUMBER() OVER (
+                 ORDER BY (parent_id IS NOT NULL) ASC, parent_id ASC, name ASC, id ASC
+               ) - 1 AS sort_order
+          FROM category
+         WHERE deleted_at IS NULL
+      )
+      UPDATE category
+         SET sort_order = (
+           SELECT ordered_category.sort_order
+             FROM ordered_category
+            WHERE ordered_category.id = category.id
+         )
+       WHERE id IN (SELECT id FROM ordered_category);`,
+      `CREATE INDEX IF NOT EXISTS idx_category_sort ON category (sort_order);`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection
@@ -991,7 +1019,7 @@ async function initIndexedDbBackend(): Promise<{
   try {
     const initSqlJs = (await import(/* webpackChunkName: "sql-js" */ 'sql.js')).default;
     SQL = await initSqlJs({
-      locateFile: (file: string) => `/assets/sql-wasm/${file}`,
+      locateFile: (file: string) => `${import.meta.env.BASE_URL}assets/sql-wasm/${file}`,
     });
   } catch (err) {
     throw new StorageError('WASM_LOAD_FAILED', getUserFriendlyStorageMessage('WASM_LOAD_FAILED'), {
