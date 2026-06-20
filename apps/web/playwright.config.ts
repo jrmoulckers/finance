@@ -36,6 +36,13 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     headless: true,
 
+    // Bound individual actions so a single stuck interaction fails fast instead
+    // of consuming the 60s test timeout (the E2E stub DB makes real actions
+    // fast, so 20s is ample headroom).  Together with the reduced-motion
+    // emulation applied in the authenticatedPage fixture, this prevents one bad
+    // interaction from cascading into a cancelled, report-less job (#2781).
+    actionTimeout: 20_000,
+
     // Block service workers so they don't intercept network requests.
     // Playwright's page.route() does NOT intercept requests handled by
     // a service worker, which causes E2E auth mocks to be bypassed once

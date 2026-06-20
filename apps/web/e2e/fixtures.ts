@@ -218,6 +218,17 @@ async function waitForAuthenticatedApp(page: Page): Promise<void> {
  */
 export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ page }, use) => {
+    // Emulate `prefers-reduced-motion: reduce` so the app's CSS disables
+    // entrance/transition animations (bottom nav, More sheet, dialogs, etc.).
+    // Under slower CI runners an unsettled animation can keep an element
+    // perpetually "unstable", so Playwright's actionability wait on .click()
+    // never resolves and burns the full test timeout — which, multiplied by
+    // retries across every reachability case, overran the 25-min mobile-chrome
+    // job budget (#2781).  Reduced motion makes elements immediately stable.
+    // (Set via emulateMedia because @playwright/test's `use` options type does
+    // not surface `reducedMotion` in this version.)
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+
     // 0. Mark the page as an E2E test environment so DatabaseProvider
     //    skips real SQLite-WASM init (WASM binaries aren't in the static
     //    build output and would cause initDatabase() to hang).
