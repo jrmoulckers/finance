@@ -93,6 +93,7 @@ vi.mock('../components/charts', () => ({
 
 vi.mock('../components/ai/QueryEngine', () => ({
   QueryEngine: () => null,
+  default: () => null,
 }));
 
 /** Mock Recharts for chart component tests (canvas/SVG not available in jsdom). */
@@ -517,7 +518,7 @@ describe('DashboardPage rendering with data (#1334)', () => {
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 
-  it('displays financial summary cards', () => {
+  it('displays financial summary cards', async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
@@ -527,7 +528,7 @@ describe('DashboardPage rendering with data (#1334)', () => {
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
     expect(screen.getByText('Budget Health')).toBeInTheDocument();
-    expect(screen.getByText('What needs attention now')).toBeInTheDocument();
+    expect(await screen.findByText('What needs attention now')).toBeInTheDocument();
   });
 
   it('displays budget health percentage', () => {
