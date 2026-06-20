@@ -1,579 +1,310 @@
-# iOS Net-Worth Trend Chart — Surface Design
+# iOS Net-Worth Trend Chart & Projection Surface — Finance
 
-> Minimal native SwiftUI surface for visualizing net-worth trends over time on
-> iPhone and iPad, with range controls (3M / 6M / 1Y / All), a sparse Swift
-> Charts presentation, and a full chart text alternative for VoiceOver.
+> **Status:** PROPOSED — design decisions resolved in-session 2026-06-20; pending human review & merge
+> **Epic:** #2116 · **Closes:** #2562, #2564 · **Refs:** #1239
+> **WCAG Target:** 2.2 Level AA (AAA where practical)
+> **Priority:** P1 (`priority:high`)
+> **Last Updated:** 2026-06-20
+> **Platforms:** iOS (SwiftUI / Swift Charts) — design-only
 
-**Status:** PROPOSED — design only (implementation gated where noted)
-**Issue:** [#2562](https://github.com/jrmoulckers/finance/issues/2562) — Part of [#2116](https://github.com/jrmoulckers/finance/issues/2116)
-**Platform:** iOS / iPadOS (SwiftUI, iOS 17+)
-**Owner:** @ios-engineer
-**Related:** [data-visualization.md](./data-visualization.md) · [chart-component-specs.md](./chart-component-specs.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
+---
+
+## Status & boundary note
+
+Native Swift/SwiftUI implementation is **blocked by Apple Developer enrollment #1239**.
+This document is a **design/breakdown deliverable only** — it specifies the minimal net-worth
+trend surface (#2562) and the projection overlay + point-inspection UX (#2564) so that, once
+unblocked, a native implementation can proceed without re-deriving the contract. No Swift code
+ships with this doc.
+
+This is a **chart surface**, so it does **not** re-derive accessibility behaviour. It consumes the
+four wave-1 chart-accessibility pattern docs as-is and only specifies the net-worth-specific
+application:
+
+- `docs/design/ios-chart-accessibility.md` (epic #2113 / PR #2834) — the three-layer pattern
+  (spoken summary, data-table alternative, audio-graph descriptor) and the shared
+  `ChartAccessibilityDescriptor`. **NetWorthSnapshot is already listed there as a descriptor feeder**
+  (§4, "Net-worth trend (epic #2116)").
+- `docs/design/voiceover-chart-navigation.md` (epic #2115 / PR #2835) — `AXChartDescriptor`
+  adapter, the custom rotor, the per-point announcement format, and the rule that a confidence band
+  is **not** a separately navigable series.
+- `docs/design/ios-dynamic-type-reflow.md` (epic #2119 / PR #2836) — the chart→table auto-swap at
+  `dynamicTypeSize.isAccessibilitySize` (≥ AX1).
+- `docs/design/ios-noncolor-state-cues.md` (epic #2121 / PR #2838) — the proposed `trendUp` /
+  `trendDown` / `trendFlat` / `stale` tokens and the non-color "rule of two".
+
+**Native/KMP boundary (applies to every surface below):**
+
+- **Platform-neutral business rules** — the net-worth series, the asset/liability split, the
+  forward projection and its confidence, summary-string assembly, and privacy masking — live in
+  `packages/core` / `packages/models` so all platforms share one source of truth. These engines
+  **already exist** (§5); this surface composes them, it does not add new financial math beyond the
+  one proposed projection adapter (§4, §9 decision 1).
+- **Apple-framework integration** — Swift Charts layout, the range-selector control, VoiceOver
+  semantics, the audio-graph descriptor, scrub/tap inspection, and Dynamic Type layout — live in
+  `apps/ios` (`TrendChart.swift` exists; the net-worth detail screen is planned, §6).
 
 ---
 
 ## Table of Contents
 
-1. [Goal & Scope](#1-goal--scope)
-2. [Placement: Dashboard & Accounts](#2-placement-dashboard--accounts)
-3. [Range Controls (3M / 6M / 1Y / All)](#3-range-controls-3m--6m--1y--all)
-4. [Sparse Swift Charts Presentation](#4-sparse-swift-charts-presentation)
-5. [Chart Text Alternatives & Accessibility](#5-chart-text-alternatives--accessibility)
-6. [Dynamic Type](#6-dynamic-type)
-7. [Privacy: Balance Hiding](#7-privacy-balance-hiding)
-8. [States: Empty, Loading, Stale & Error](#8-states-empty-loading-stale--error)
-9. [Affected Surfaces & Shared Dependencies](#9-affected-surfaces--shared-dependencies)
-10. [Native ↔ Shared Boundary](#10-native--shared-boundary)
-11. [Test Plan](#11-test-plan)
-12. [Implementation Readiness](#12-implementation-readiness)
-13. [Open Questions](#13-open-questions)
+1. [Why this surface](#1-why-this-surface)
+2. [The cross-platform contract we are mirroring](#2-the-cross-platform-contract-we-are-mirroring)
+3. [The minimal net-worth trend surface (#2562)](#3-the-minimal-net-worth-trend-surface-2562)
+4. [The projection overlay & point-inspection UX (#2564)](#4-the-projection-overlay--point-inspection-ux-2564)
+5. [Grounding in the shared engines (packages/core)](#5-grounding-in-the-shared-engines-packagescore)
+6. [Surface application map](#6-surface-application-map)
+7. [State coverage](#7-state-coverage-dynamic-type-privacy-stale-error-emptyseed)
+8. [Test plan](#8-test-plan)
+9. [Cross-references & resolved decisions](#9-cross-references--resolved-decisions)
 
 ---
 
-## 1. Goal & Scope
-
-Give users an at-a-glance answer to **"How has my net worth changed over time?"**
-on the surfaces where they already look at totals — the **Dashboard** net-worth
-card and the **Accounts** tab header — without adding a new tab or navigation
-destination.
-
-**In scope (this design):**
-
-- A reusable `NetWorthTrendCard` SwiftUI surface embedding a single-series line
-  chart of month-end net-worth snapshots.
-- A segmented **range control** offering 3M / 6M / 1Y / All.
-- A **sparse** Swift Charts presentation (per [§4](#4-sparse-swift-charts-presentation))
-  tuned for a small card, not a full-screen report.
-- A complete **chart text alternative** for VoiceOver (audio-graph-style summary
-  plus per-point navigation), mirroring the existing
-  [`TrendChart`](../../apps/ios/Finance/Charts/TrendChart.swift) and
-  [`PredictionChart`](../../apps/ios/Finance/Charts/PredictionChart.swift)
-  accessibility conventions.
-- Empty / loading / **stale** / error states and a privacy (balance-hiding) mode.
-
-**Out of scope (deliberately deferred):**
-
-- The full custom **Report Builder** net-worth report already exists in
-  [`ReportResultView`](../../apps/ios/Finance/Screens/ReportResultView.swift); this
-  design does **not** replace it. The new card is the lightweight, always-visible
-  entry point; "See full report" deep-links into the existing report surface.
-- Per-account historical balances (the shared series uses a cash-flow back-cast
-  approximation — see [§10](#10-native--shared-boundary)).
-- watchOS, widgets, and macОS Catalyst variants (follow-on issues under #2116).
-- Multi-series overlays (assets vs. liabilities). Net worth is a single series;
-  assets/liabilities remain available in the full report.
-
-> **Why a card, not a screen:** per the
-> [data-visualization](./data-visualization.md) principle _"Clarity Over
-> Completeness — show the most important information first, details on demand,"_
-> the trend belongs inline next to the number it explains. Detail-on-demand lives
-> in the existing report.
-
----
-
-## 2. Placement: Dashboard & Accounts
-
-### 2.1 Dashboard
-
-The [`DashboardView`](../../apps/ios/Finance/Screens/DashboardView.swift) currently
-renders a static `netWorthCard` (a label + `CurrencyLabel`). This design **expands
-that card in place** into a `NetWorthTrendCard` that keeps the headline figure and
-adds the sparse trend below it.
-
-```
-┌──────────────────────────────────────────────┐
-│  Net Worth                                     │  ← existing subheadline
-│  $48,250                          ↑ 4.1% / 6M  │  ← headline + delta chip
-│                                                │
-│        ╭───╮       ╭──────╮                    │
-│   ╭────╯   ╰───────╯      ╰────────╮           │  ← sparse line + soft area
-│  ─╯                                ╰────       │
-│  Jan        Mar        May        Jul          │
-│                                                │
-│  [ 3M ] [ 6M ] [ 1Y ] [ All ]   View report ›  │  ← range control + deep link
-└──────────────────────────────────────────────┘
-```
-
-- The card stays at the top of the dashboard `ScrollView`, above
-  `spendingSummaryCard`.
-- The headline net-worth value continues to come from
-  `DashboardViewModel.netWorth` (Swift Export aggregator) — unchanged. The trend
-  series is an **additive** load (see [§9](#9-affected-surfaces--shared-dependencies)).
-- A **delta chip** ("↑ 4.1% over 6M") summarizes the selected range. It uses the
-  financial semantic colors from [data-visualization §2.3](./data-visualization.md)
-  — **always paired with an arrow glyph and text**, never color alone, and uses
-  amber (not red) for declines per the non-judgmental rule.
-- "View report ›" is a `NavigationLink` into the existing net-worth report in the
-  Report Builder, preserving the selected range as the report's initial window.
-
-### 2.2 Accounts
-
-[`AccountsView`](../../apps/ios/Finance/Screens/AccountsView.swift) lists accounts
-grouped by type under a large `Accounts` navigation title. We add the same
-`NetWorthTrendCard` as a **collapsible header row** above the grouped list, so the
-trend of the _aggregate_ of those accounts is visible where users manage balances.
-
-- On Accounts the card defaults to **collapsed to the headline + delta chip**;
-  tapping the chevron expands the chart. This keeps the list-first information
-  architecture intact and avoids pushing the first account group below the fold on
-  small devices.
-- The collapsed/expanded preference persists via `@AppStorage`
-  (`netWorthTrendExpanded.accounts`) — a non-secret UI preference, so
-  `UserDefaults` is appropriate (no financial data is stored).
-
-### 2.3 Shared component
-
-Both placements embed **one** view, `NetWorthTrendCard`, parameterized by a
-`NetWorthTrendViewModel`. Differences (default expansion state, whether the
-headline is owned by the card or by the host) are passed as init options, not
-forked code. This matches the existing pattern of reusing
-[`TrendChart`](../../apps/ios/Finance/Charts/TrendChart.swift) across screens.
-
----
-
-## 3. Range Controls (3M / 6M / 1Y / All)
-
-A single `Picker` with `.pickerStyle(.segmented)` drives the visible window.
-
-| Token   | Window         | `months` passed to shared series | Notes                                              |
-| ------- | -------------- | -------------------------------- | -------------------------------------------------- |
-| **3M**  | Last 3 months  | `3`                              | Minimum useful trend; below 3 points → empty state |
-| **6M**  | Last 6 months  | `6`                              | **Default selection**                              |
-| **1Y**  | Last 12 months | `12`                             | —                                                  |
-| **All** | Full history   | `max(availableMonths, 3)`        | Capped by the oldest transaction/account month     |
-
-**Behavioral rules**
-
-- **Default:** `6M`, persisted per-surface in `@AppStorage`
-  (`netWorthTrendRange.dashboard` / `.accounts`).
-- **Localized, accessible labels.** Segment titles use
-  `String(localized:)` ("3M", "6M", "1Y", "All") with an explicit
-  `.accessibilityLabel` spelling them out ("Three months", "Six months",
-  "One year", "All time") because the abbreviations are not self-describing to
-  VoiceOver. The `Picker` carries `.accessibilityValue` reflecting the active
-  range.
-- **No data churn across the bridge.** Changing range is a **windowing**
-  operation on an already-fetched series, not a refetch: the view model requests
-  the largest needed window once (`All`) and slices locally for 3M/6M/1Y. This
-  keeps range switching instant and bridge-call-free (consistent with the cached
-  aggregation pattern in
-  [`DashboardViewModel`](../../apps/ios/Finance/ViewModels/DashboardViewModel.swift)).
-- **Reduce Motion.** Range change crossfades the data over 250 ms; when
-  `accessibilityReduceMotion` is on, the swap is instant (per
-  [data-visualization §8](./data-visualization.md) and
-  [chart-component-specs](./chart-component-specs.md) "Reduced motion: instant").
-- **Touch targets.** Each segment meets the 44×44 pt minimum (iOS HIG); the
-  segmented control spans the card width.
-
----
-
-## 4. Sparse Swift Charts Presentation
-
-The card chart is intentionally **sparser** than the full-screen report chart in
-`ReportResultView`. "Sparse" means: one series, minimal chrome, decimated points,
-and de-emphasized axes so the _shape_ reads instantly at card size.
-
-### 4.1 Marks
-
-```swift
-Chart(points) { point in
-    AreaMark(
-        x: .value("Date", point.date),
-        y: .value("Net Worth", point.value)
-    )
-    .foregroundStyle(.linearGradient(
-        colors: [ChartColorPalette.blue.opacity(0.18), .clear],
-        startPoint: .top, endPoint: .bottom
-    ))
-    .accessibilityHidden(true) // area is decorative; line carries the data
-
-    LineMark(
-        x: .value("Date", point.date),
-        y: .value("Net Worth", point.value)
-    )
-    .foregroundStyle(ChartColorPalette.blue) // IBM CVD-safe series 1
-    .interpolationMethod(.monotone)           // monotone avoids overshoot artifacts
-    .lineStyle(StrokeStyle(lineWidth: 2))
-}
-```
-
-- **Color:** single series → `ChartColorPalette.blue` (IBM CVD-safe series 1),
-  matching the existing net-worth chart in `ReportResultView`. A single series
-  needs no pattern differentiation, but the delta chip still carries an arrow +
-  text so meaning never rests on color (see
-  [data-visualization §2.4 "Never Color Alone"](./data-visualization.md)).
-- **Interpolation:** `.monotone` (not `.catmullRom`) for a single financial
-  series — it never overshoots between month-end points, so the line cannot imply
-  a higher/lower value than any real snapshot.
-
-### 4.2 Sparseness rules
-
-| Aspect             | Card (sparse)                                                       | Full report (`ReportResultView`)        |
-| ------------------ | ------------------------------------------------------------------- | --------------------------------------- |
-| Y-axis             | `.chartYAxis(.hidden)`; min/max annotated as small leading captions | Visible leading `AxisMarks` with labels |
-| X-axis             | 3–4 sparse ticks via `.chartXAxis { AxisMarks(values: .stride …) }` | Monthly ticks                           |
-| Grid lines         | None (or one faint zero baseline if any value < 0)                  | Grid lines on                           |
-| Point symbols      | None by default; single symbol only on the active/selected point    | Optional dots                           |
-| Data point density | **Decimated** to ≤ ~16 visible points (see below)                   | All snapshots                           |
-| Height             | `minHeight: 120` (card); collapses with the card                    | `minHeight: 250`                        |
-| Legend             | None (single series, titled card)                                   | N/A                                     |
-
-- **Decimation:** "All" can return many month-end snapshots. To keep the sparse
-  card legible and 60 fps, the **presentation layer** (iOS) decimates to a target
-  bucket count (~12–16) using min/max-preserving downsampling (e.g., a
-  Largest-Triangle-Three-Buckets pass) so peaks/troughs survive. Decimation is a
-  _display_ concern and stays in `apps/ios`; the **underlying series and the text
-  alternative use the full, undecimated data** so no real month-end value is lost
-  to assistive tech (see [§5](#5-chart-text-alternatives--accessibility)).
-- **Baseline:** if net worth dips below zero within the window, draw a single
-  faint `RuleMark` at `y = 0` (labeled "Zero" for VoiceOver) so the sign is
-  unambiguous; otherwise omit it.
-- **Performance:** rasterize with `.drawingGroup()` for smooth scrolling, as the
-  existing `TrendChart`/`PredictionChart` do.
-
-### 4.3 Selection (scrubbing)
-
-Optional tap/drag scrubbing reuses the `chartOverlay` + `RuleMark` pattern from
-`TrendChart`: dragging shows a rule + a single `PointMark` and a small callout
-with the month-end date and value. Scrubbing is **pointer-only sugar** — all the
-same values are reachable via the VoiceOver per-point navigation in [§5](#5-chart-text-alternatives--accessibility),
-so nothing is gated behind a gesture.
-
----
-
-## 5. Chart Text Alternatives & Accessibility
-
-Charts must be fully usable without sight. We provide **two** complementary text
-alternatives, consistent with the app's existing Audio Graph support and the
-[accessibility-patterns](./accessibility-patterns.md) and
-[chart-component-specs §Accessibility Contract](./chart-component-specs.md) docs.
-
-### 5.1 Audio-graph-style summary (container description)
-
-The chart container is one accessibility element with a generated description —
-the audio-graph-style alternative — built from the **full** (undecimated) series:
-
-> _"Net worth trend, last 6 months. Line chart. Started at $44,100 in January,
-> ended at $48,250 in June. Up $4,150, or 4.1 percent. Lowest $43,200 in
-> February, highest $48,250 in June."_
-
-Implementation notes:
-
-- Built by a pure `NetWorthTrendDescription` helper (testable without a view) that
-  takes `[NetWorthTrendPoint]` + range + currency and returns a localized string.
-- Numbers are formatted via the Swift Export **currency formatter** module (the
-  same module `DashboardViewModel` uses), so locale/currency are correct and no
-  symbols are hardcoded.
-- Applied as `.accessibilityLabel(description)` on an
-  `.accessibilityElement(children: .contain)` container, matching
-  `TrendChart`'s `accessibilityLabel(String(localized: "Financial trend line chart"))`
-  but data-bearing.
-
-### 5.2 Per-point navigation (`accessibilityChartDescriptor`)
-
-Adopt Swift Charts' **`AXChartDescriptor`** via
-`.accessibilityChartDescriptor(self)` so VoiceOver users can swipe through every
-month-end point and hear "March, forty-six thousand eight hundred dollars," and
-so the **Audio Graph** rotor action ("Describe Chart" → "Play Audio Graph")
-sonifies the trend. This is the same capability advertised in the App Store
-description ("VoiceOver users can navigate data points with Audio Graphs") and is
-the native equivalent of the web "View as table" requirement.
-
-- `AXDataSeriesDescriptor` = the full month-end series (undecimated).
-- X axis = dates (`AXCategoricalDataAxisDescriptor` of localized month labels or
-  `AXNumericDataAxisDescriptor` over time); Y axis = currency with a localized
-  number formatter on `value(_:)`.
-
-### 5.3 Data-table alternative
-
-A **"View as table"** disclosure under the card reveals a plain
-`Grid`/`List` of `Date → Net Worth` rows (mirroring `netWorthDataTable` in
-`ReportResultView`). This satisfies the cross-platform
-[chart-component-specs](./chart-component-specs.md) "Data table alternative —
-'View as table' toggle on every chart" contract and gives Switch Control / Full
-Keyboard Access users a non-gestural path to every value.
-
-### 5.4 Other a11y requirements
-
-- **Range control:** segmented `Picker` with spelled-out
-  `.accessibilityLabel`s and an `.accessibilityValue` for the active window
-  ([§3](#3-range-controls-3m--6m--1y--all)).
-- **Delta chip:** `.accessibilityElement(children: .combine)` →
-  "Up 4.1 percent over six months"; never color-only.
-- **Decorative marks:** `AreaMark`, gradient, and the scrubbing rule are
-  `.accessibilityHidden(true)`; only the line/points carry data.
-- **Reduce Motion:** entrance line-draw and range crossfade disabled when
-  `accessibilityReduceMotion` is set.
-- **Switch Control / Full Keyboard Access:** every interactive element (segments,
-  "View report", "View as table", expand chevron) is a real focusable control with
-  a label and, where useful, a hint.
-- **Contrast:** series blue meets ≥ 3:1 as a UI fill; all text labels (captions,
-  delta chip, axis annotations) meet ≥ 4.5:1 in light, dark, and high-contrast
-  themes ([data-visualization §2.5](./data-visualization.md)).
-
----
-
-## 6. Dynamic Type
-
-- **No hardcoded font sizes.** Card title uses `.headline`, the headline figure
-  reuses `CurrencyLabel` (already Dynamic-Type aware), axis annotations use
-  `.caption2`, the delta chip uses `.caption`. All scale with the user's
-  preferred content size, including the accessibility (AX1–AX5) sizes.
-- **Layout reflow at large sizes.** At `accessibility1`+ the range segments may be
-  too wide for a single row; the control falls back to a wrapping `Menu`-style
-  picker or a horizontally scrollable segment row rather than truncating labels.
-  Use `@Environment(\.dynamicTypeSize)` to switch presentation.
-- **Chart height** is fixed by design (sparse card), but **all surrounding text**
-  must remain fully legible at AX5 without clipping; the card grows vertically as
-  text scales. Verified with the Dynamic Type test in [§11](#11-test-plan).
-- **Min/max captions** (the y-axis substitute) wrap rather than truncate.
-
----
-
-## 7. Privacy: Balance Hiding
-
-The app already ships a privacy posture (web `PrivacyModeContext`, iOS
-`PrivacySettingsView`). This card must honor a **balance-hiding / privacy mode**:
-
-- When privacy mode is active, the **headline figure, delta percentage/amount,
-  min/max captions, table values, and the audio-graph text** are all masked
-  (e.g., "•••••"). The **shape** of the line may remain (it reveals no absolute
-  amount) **or** be blurred — default: keep the shape, mask all numbers. This is a
-  per-surface design choice; default to masking numbers while preserving the
-  trend silhouette, with a settings toggle to also blur the line for shoulder-surf
-  protection.
-- **Accessibility parity:** when masked, the VoiceOver description and
-  `AXChartDescriptor` values must **also** be masked ("Net worth hidden") — never
-  read out a balance that is visually hidden. The "View as table" rows show
-  the same mask.
-- **Privacy-screen on backgrounding:** the card participates in the existing
-  app-wide privacy screen / app-switcher snapshot redaction; no special handling
-  beyond not exempting the chart from it.
-- **Logging:** never log series values. Per the os.Logger rules, balances are
-  `.private`; log only non-sensitive events ("net-worth trend loaded, range=6M,
-  points=6") at `.public`, counts and ranges only — never an amount.
-
----
-
-## 8. States: Empty, Loading, Stale & Error
-
-| State       | Trigger                                                               | Presentation                                                                                                                                                                                                                                                                                                                              |
-| ----------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Loading** | First load before the series resolves                                 | Headline shown if available; chart area shows a shimmer skeleton (respects Reduce Motion → static placeholder). `.accessibilityLabel("Loading net worth trend")`.                                                                                                                                                                         |
-| **Empty**   | Fewer than 3 month-end points (new user, sparse history)              | Replace chart with an `EmptyStateView`: icon `chart.line.uptrend.xyaxis`, "Not enough history yet", "Your net-worth trend appears after a few months of activity." Range control hidden.                                                                                                                                                  |
-| **Stale**   | Series rendered from a cache/snapshot while a sync is pending/offline | Render the chart **plus** a subtle caption "As of {relative time}" and, when offline, reuse the existing `OfflineBanner`. The data is still shown (local-first) — staleness is informational, not blocking. VoiceOver appends "as of {time}" to the description.                                                                          |
-| **Error**   | Series computation/load fails                                         | Inline, non-modal: a compact card-level message "Couldn't load trend" + a "Retry" button (does not block the rest of the dashboard). Mirrors `DashboardView`'s retry affordance but **scoped to the card**, not an app-wide alert, so one failing trend doesn't break the dashboard. Logs `error.localizedDescription` at `.public` only. |
-
-Design rationale:
-
-- **Stale is a first-class state, not an error.** The app is local-first and
-  syncs in the background; showing slightly old data with an "as of" stamp is
-  correct and non-alarming. Only a genuine compute/load failure is an error.
-- **Errors are card-scoped.** The dashboard already surfaces fatal load failures
-  via its alert; the trend card degrades **independently** so its failure never
-  hides accounts, budgets, or transactions.
-- **Empty uses a factual, non-judgmental message** per
-  [ux-principles](./ux-principles.md) / data-visualization empty-state guidance.
-
----
-
-## 9. Affected Surfaces & Shared Dependencies
-
-### 9.1 iOS surfaces (all in `apps/ios/`, owned by @ios-engineer)
-
-| Surface                                                        | Change                                                                                                               |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `Finance/Charts/NetWorthTrendCard.swift` **(new)**             | The reusable card: sparse chart + range control + delta chip + states + a11y.                                        |
-| `Finance/Charts/NetWorthTrendChart.swift` **(new)**            | The pure sparse `Chart` view (marks, axes, decimation, selection) — analogous to `TrendChart.swift`.                 |
-| `Finance/ViewModels/NetWorthTrendViewModel.swift` **(new)**    | `@Observable` VM: loads the full series once, windows by range, exposes delta + description + states.                |
-| `Finance/Charts/NetWorthTrendDescription.swift` **(new)**      | Pure helper that builds the localized audio-graph-style text + `AXChartDescriptor`.                                  |
-| `Finance/Screens/DashboardView.swift` **(modify)**             | Replace static `netWorthCard` with `NetWorthTrendCard` (headline preserved).                                         |
-| `Finance/ViewModels/DashboardViewModel.swift` **(modify)**     | Add an **additive** trend-series load (does not change existing aggregations).                                       |
-| `Finance/Screens/AccountsView.swift` **(modify)**              | Add collapsible `NetWorthTrendCard` header above the grouped list.                                                   |
-| `Finance/KMP/SwiftExportBridge.swift` + protocols **(modify)** | Expose a `netWorthOverTime(...)` bridge call returning Swift-native points (see [§10](#10-native--shared-boundary)). |
-| `Finance/KMP/StubSwiftExportBridge.swift` **(modify)**         | Stub implementation for previews/tests.                                                                              |
-| `Finance/Resources/*.lproj/Localizable.strings` **(modify)**   | New localized strings (titles, range labels, states, masks).                                                         |
-
-### 9.2 Shared dependencies (KMP — **not edited by this design**)
-
-- **`packages/core` — `ReportGenerator.netWorthOverTime(accounts, transactions, months, referenceDate)`** already
-  exists and returns `List<NetWorthSnapshot>` (oldest-first), and a liability-aware
-  overload also exists. This is the platform-neutral computation the card needs.
-- **`packages/core` — `NetWorthSnapshot`** (`date`, `totalAssets`,
-  `totalLiabilities`, `netWorth` as `Cents`) is the series element.
-- **`packages/sync`** re-exports these via the FinanceSync XCFramework / Swift
-  Export bridge.
-
-> Because the shared series computation **already exists**, this feature should
-> require **no Kotlin changes**. If the Swift Export surface does not yet
-> re-export `netWorthOverTime`, that is a `packages/sync` bridge addition to be
-> proposed to **@kmp-engineer via ADR** (per ownership rules) — not implemented
-> here. iOS must not edit `packages/` directly.
-
----
-
-## 10. Native ↔ Shared Boundary
-
-The boundary follows the issue's "Native/KMP boundary" note and the existing
-`DashboardViewModel` pattern (ViewModels talk to Swift-native bridge protocols,
-never to KMP types directly).
-
-```mermaid
-flowchart LR
-    subgraph shared["packages/ (KMP — platform-neutral, NOT in this PR)"]
-        A["ReportGenerator.netWorthOverTime()"] --> B["List&lt;NetWorthSnapshot&gt;<br/>(Cents, LocalDate)"]
-    end
-    subgraph bridge["packages/sync (Swift Export — ADR if missing)"]
-        B --> C["SwiftExportReportModule.netWorthOverTime(...)<br/>→ [NetWorthTrendPoint] (Int64 minor units, Date)"]
-    end
-    subgraph ios["apps/ios (this PR — @ios-engineer)"]
-        C --> D["NetWorthTrendViewModel<br/>window by range, compute delta, build description"]
-        D --> E["NetWorthTrendChart (sparse Swift Charts + decimation)"]
-        D --> F["AXChartDescriptor + audio-graph text + 'View as table'"]
-    end
-```
-
-**Responsibilities**
-
-| Concern                                                            | Layer                                                                  |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| Net-worth math, asset/liability split, cash-flow back-cast         | `packages/core` (shared)                                               |
-| Month-end snapshot series + currency/locale formatting module      | `packages/core` / `sync`                                               |
-| Type mapping (`Cents`→`Int64`, `LocalDate`→`Date`, `List`→`Array`) | Swift Export bridge                                                    |
-| Range **windowing** (slice 3M/6M/1Y from the full series)          | iOS (`NetWorthTrendViewModel`)                                         |
-| **Decimation / sparseness** for display                            | iOS (presentation only)                                                |
-| Delta %/amount for the chip                                        | iOS (from endpoints; trivial — or reuse a shared helper if one exists) |
-| Audio-graph text + `AXChartDescriptor` + table                     | iOS (a11y semantics)                                                   |
-| Swift Charts layout, colors, Reduce Motion, Dynamic Type           | iOS                                                                    |
-
-**Approximation caveat (carried from shared):** `netWorthOverTime` back-casts
-earlier months from current balances by subtracting later months' net cash flow,
-and estimates the asset/liability split by scaling the current ratio (no
-per-account history). The card therefore plots an **approximate** historical
-trend; the most recent point is exact (live balances). This caveat is **shared
-behavior**, surfaced verbatim — iOS must not "correct" it locally. If precise
-historical balances become a requirement, that is a shared-package change via ADR.
-
----
-
-## 11. Test Plan
-
-The smallest set of tests that must pass before implementation is accepted. Names
-are illustrative targets in existing test locations.
-
-### 11.1 Shared (KMP) — likely already covered; verify, don't re-implement
-
-- `ReportGeneratorTest` (in
-  `packages/core/.../analytics/ReportGeneratorTest.kt`) already exercises
-  `netWorthOverTime`. **Verify** it covers: ordering (oldest-first), the
-  `months > 0` precondition, the current-month-exact / earlier-month-approximate
-  split, and zero/negative net worth. Add cases **only** if a gap is found —
-  via @kmp-engineer, not here.
-
-### 11.2 Bridge
-
-- `SwiftExportBridgeTests` / `SwiftExportWireUpTests`: a `netWorthOverTime` bridge
-  call maps `Cents → Int64` minor units and `LocalDate → Date` correctly, returns
-  oldest-first, and round-trips an empty list.
-
-### 11.3 iOS unit (XCTest, `apps/ios/Tests/`)
-
-1. **`NetWorthTrendViewModelTests`**
-   - Windowing: given a 12-point series, `3M`/`6M`/`1Y` return the correct
-     trailing counts; `All` returns everything; switching range performs **no**
-     additional bridge call (assert call count on a spy bridge).
-   - States: `< 3` points → `.empty`; load throw → `.error`; cache+pending sync →
-     `.stale` with an "as of" timestamp.
-   - Delta: sign, percentage, and amount computed from first/last visible points;
-     zero-start handled without divide-by-zero.
-2. **`NetWorthTrendDescriptionTests`** (pure, no UI)
-   - Description includes start, end, delta, min, max, range, currency-formatted
-     and localized; declines phrased non-judgmentally; **privacy mode → masked**
-     description with no amounts.
-   - `AXChartDescriptor` exposes **all** undecimated points with localized axis
-     values.
-3. **`NetWorthDecimationTests`**
-   - Min/max-preserving downsampling keeps global peak and trough; output length
-     ≤ target; idempotent when input ≤ target; **decimation never touches the
-     series handed to the descriptor**.
-
-### 11.4 iOS UI / a11y (`apps/ios/Tests/UITests/`)
-
-4. **`NetWorthTrendUITests`**
-   - Dashboard shows `net_worth_trend_card`; tapping each range segment updates
-     the delta chip; "View report" deep-links to the net-worth report.
-   - **VoiceOver:** the chart container exposes a non-empty data-bearing label;
-     "View as table" reveals one row per snapshot.
-   - **Dynamic Type:** at AX5 no label is truncated and the range control remains
-     operable (reflowed).
-   - **Privacy mode:** enabling balance-hiding masks headline, delta, captions,
-     and table values.
-   - **Reduce Motion:** with the setting on, range change does not animate
-     (snapshot/identity assertion).
-
-### 11.5 Gate
-
-`node tools/agent-scripts/pre-push-check.js --fix` (lint + strict-concurrency)
-plus the suites above. Strict concurrency (`SWIFT_STRICT_CONCURRENCY = complete`)
-must pass: all new types crossing async boundaries are `Sendable`, UI state is
-`@MainActor`.
-
----
-
-## 12. Implementation Readiness
-
-Per the [Human-Gated Prerequisites runbook](../ops/human-gated-prerequisites.md)
-(§2, _Implementation vs. Distribution decoupling_), the Apple Developer enrollment
-blocker [#1239](https://github.com/jrmoulckers/finance/issues/1239) gates
-**distribution only** — not implementation. This design and its implementation are
-**buildable and testable now**.
-
-### Buildable now (no enrollment, no secrets)
-
-- ✅ **This design doc** — fully unblocked, no Apple account required.
-- ✅ All SwiftUI views, the `@Observable` view model, Swift Charts presentation,
-  decimation, `AXChartDescriptor`, audio-graph text, and "View as table".
-- ✅ All unit + UI/a11y tests in [§11](#11-test-plan), run in the iOS Simulator.
-- ✅ On-device verification via **free Personal Team signing** (a free Apple ID in
-  Xcode): 7-day app expiry, max 3 apps/device, no TestFlight/push — all acceptable
-  for verifying this feature.
-- ✅ The shared `netWorthOverTime` computation already exists in `packages/core`;
-  no paid platform access is needed to consume it.
-
-### Distribution tail — gated by #1239 (human, not this PR)
-
-- 🔒 App Store / TestFlight builds, release signing, and CI release
-  (`release-ios.yml`) require Apple Developer Program enrollment ($99/yr),
-  signing certificates/profiles, an App Store Connect API key, and GitHub secrets.
-  These are **human-gated** (see runbook §3.2) and **out of scope** here.
-
-### Needs Human Action
-
-- None for design **or** implementation up to the distribution boundary. The only
-  human-gated step is shipping to TestFlight/App Store, tracked by
-  [#1239](https://github.com/jrmoulckers/finance/issues/1239); see the
-  [runbook §3.2](../ops/human-gated-prerequisites.md#32-ios-distribution--apple-developer-1239).
-
-### Dependency note (process gate, not human-gated)
-
-If the Swift Export bridge in `packages/sync` does **not** already re-export
-`netWorthOverTime`, adding it is a `packages/` change owned by @kmp-engineer and
-must be proposed via **ADR** — iOS implementation should not edit shared packages
-directly. The card design degrades gracefully: until the bridge call exists, the
-view model can derive the series from already-bridged accounts/transactions behind
-the same protocol, so the iOS surface is independently developable.
-
----
-
-## 13. Open Questions
-
-1. **Bridge surface:** does `packages/sync` already re-export
-   `netWorthOverTime`, or is an ADR + @kmp-engineer change needed? (Affects whether
-   iOS consumes the shared call or temporarily derives the series locally.)
-2. **Privacy default:** mask numbers but keep the line silhouette (proposed
-   default), or also blur the line? Confirm with design/privacy owners.
-3. **Delta basis:** first-vs-last visible point (proposed) vs. a shared
-   "period change" helper if one is added to `packages/core`.
-4. **"All" lower bound:** when total history `< 3` months, hide the range control
-   entirely (proposed) vs. disable individual segments.
-5. **Accounts card default:** collapsed (proposed, list-first) vs. expanded.
+## 1. Why this surface
+
+Net worth = **assets − liabilities**. Today iOS shows it as a single static number: the dashboard
+net-worth card renders `viewModel.netWorth` through one `CurrencyLabel`
+(`apps/ios/Finance/Screens/DashboardView.swift:66–84`, `showSign: false`, `.largeTitle.bold()`) —
+no trend, no history, no projection. The web app already goes further with a net-worth sparkline
+(`apps/web/src/components/insights/NetWorthChart.tsx`) and a dedicated `NetWorthPage`. A user
+opening the app to answer "is my net worth growing, and where is it headed?" gets a point-in-time
+figure and nothing else.
+
+Epic #2116 closes that gap with a **clean, minimal** net-worth growth chart (#2562) plus a
+**projection overlay and point-inspection UX** (#2564). Because it is a continuous time-series
+chart, it must be reachable by VoiceOver, legible at accessibility text sizes, masking-aware, and
+distinguishable without color — all of which the wave-1 docs already specify. This document's job
+is to wire the **existing shared net-worth and projection engines** (§5) into that pattern, name
+the surfaces (§6), and cover the states (§7) — not to re-author accessibility behaviour.
+
+## 2. The cross-platform contract we are mirroring
+
+The web app already defines the shared shapes this surface reuses:
+
+- **Spoken summary** — `apps/web/src/components/charts/chart-palette.ts` → `buildChartDescription(...)`
+  (lines 63–75): empty → `"<chartType> with no data."`; otherwise a totalled, per-point sentence,
+  with every amount routed through `formatChartCurrency(...)` (`apps/web/src/lib/currency.ts:192`)
+  so masked balances are never spoken. iOS produces the **same sentence** from the **same shared
+  model** (the `ChartAccessibilityDescriptor` of #2834), then expresses it through Apple APIs.
+- **Asset/liability split** — `apps/web/src/lib/insights/netWorthTracker.ts`:
+  `getCurrentNetWorthTotals` (lines 13–31) treats `CREDIT_CARD` / `LOAN` as liabilities
+  (`isLiabilityType`, lines 7–11) and everything else as assets; `getNetWorthAtDate` (lines 33–47)
+  derives an earlier net worth by reversing later cash flow. The KMP engines (§5) are the canonical
+  implementation of exactly this rule.
+- **Masking primitives** — `MaskingMode` (`apps/web/src/lib/ui/privacy/masking.ts:11`,
+  `Visible` / `Masked`), `formatRange(...)` for band bounds, and the masked placeholder
+  `"$•••.••"` / SR label `"Amount hidden for privacy"` (`apps/web/src/lib/enhancements/privacy-mode.ts:10,13`).
+
+**One contract gap iOS must NOT copy.** The web `NetWorthChart` is a bare sparkline:
+`role="img"` + `aria-label="Net worth trend sparkline"` with the period labels
+`aria-hidden="true"` (`NetWorthChart.tsx:36–45`) — it has **no `.sr-only` text description and no
+"View as table" path**. That is below the #2834 bar. The iOS net-worth chart must adopt the full
+three-layer pattern (summary + table + audio graph), not the sparkline's reduced contract.
+
+## 3. The minimal net-worth trend surface (#2562)
+
+The historical chart is a single-series time-series line. It adopts, without redefinition:
+
+- the **three layers** of #2834 (spoken summary, "View as table", audio-graph descriptor);
+- the **audio graph + rotor** of #2835 for point-by-point reading;
+- the **chart→table swap at AX1** of #2836;
+- the **non-color cues** of #2838 (line-style and direction, never hue alone).
+
+What is **net-worth-specific** and specified here:
+
+### 3a. One restrained series
+
+Per `docs/design/data-visualization.md` and `docs/design/chart-component-specs.md`, the minimal
+surface draws **one** "Net Worth" line over month-end points — no stacked asset/liability bands on
+the primary view (those live in the data table and the per-point inspection, §4). This maps onto the
+existing `TrendChart` data model (`apps/ios/Finance/Charts/TrendChart.swift:16–23`,
+`TrendDataPoint(date, value, series: "Net Worth")`), whose header already names it
+"Line chart for net-worth or spending trends" (line 6). The chart frame uses `minHeight`, never a
+fixed `height` (`TrendChart.swift:135`), per #2836 rule R4.
+
+### 3b. Time-range selection
+
+A labeled segmented control selects the window — **3M / 6M / 1Y / All** — which drives the `months`
+argument of `ReportGenerator.netWorthOverTime(...)` (`packages/core/.../analytics/ReportGenerator.kt:102`).
+Requirements:
+
+- The control is a single accessibility element with a clear label ("Net-worth time range") and the
+  selected value spoken; it is **not** drag-only.
+- On range change the chart crossfades (250ms, per `chart-component-specs.md:371`) **and** the
+  Layer-1 spoken summary + the data table + the audio-graph descriptor all regenerate from the new
+  series, so non-visual users perceive the change too.
+- "All" maps to the count of available month-end snapshots; ranges longer than the available history
+  clamp to what exists (no fabricated points).
+
+### 3c. The three layers, instantiated for net worth
+
+| Layer                          | Net-worth instantiation                                                                                                                                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1 — Spoken summary**         | `"Net worth, <range>. <trend> <delta>. Now <netWorth> on <date>. Peak <value> on <date>."` — masking-aware; trend phrasing/percentage still spoken when masked (#2834 decision 2).           |
+| **2 — Data-table alt**         | Columns **Month · Net worth · Assets · Liabilities**, one row per `NetWorthSnapshot` (`NetWorthSnapshot.kt:13–18`). This is the iOS analogue of the web "View as table" the sparkline lacks. |
+| **3 — Audio-graph descriptor** | Numeric X (month/epoch) + numeric Y (net worth) from the same series; populated per #2835 §4. Net worth can be negative, so the Y axis is **not** clamped to ≥ 0.                            |
+
+## 4. The projection overlay & point-inspection UX (#2564)
+
+### 4a. Projection overlay (visually & non-visually distinct)
+
+The forecast is drawn as a **dashed line plus a confidence band**, mirroring the existing
+`PredictionChart` (`apps/ios/Finance/Charts/PredictionChart.swift`): a dashed `LineMark`
+(`StrokeStyle(lineWidth: 2, dash: [6, 4])`, lines 60–74) for the projected net worth and an
+`AreaMark` from lower to upper bound for the band (lines 43–57). Distinction from the historical
+line is carried by **line style + a labeled "today" boundary**, not color alone (per #2838's
+shape/rule-of-two channel); the projected series announces the series name **"Projected net worth"**
+so VoiceOver and the rotor separate it from "Net worth" without relying on the dashed style.
+
+**Projection derivation (proposed — see §9 decision 1).** Net-worth projection is a **forward
+net-cash-flow extrapolation**: project net worth forward by the expected net cash flow over the
+horizon, reusing `BalancePredictionEngine.computeDailyAverage` (income − expense daily averages,
+`BalancePredictionEngine.kt:227–242`) and its `PredictionConfidence` ladder
+(`BalancePredictionEngine.kt:102–106`). This is the exact mirror of how
+`ReportGenerator.netWorthOverTime` already derives _historical_ net worth **backward** — by
+subtracting each following month's `netCashFlow` (`ReportGenerator.kt:149–152`). The shared output
+shape is the existing `DailyBalanceForecast(date, projectedBalance)` /
+`BalancePrediction(predictedBalance, confidence, projectedChange)` (`BalancePredictionEngine.kt:288–318`),
+re-expressed as a net-worth series. The confidence band bounds reuse the web `formatRange(...)`
+formatter so masking applies uniformly. The proposed thin adapter
+(`packages/core/.../prediction/NetWorthProjection`) is **owned by @kmp-engineer / @finance-domain**
+and is **not** added in this design PR (file-ownership rule); this section is the spec it implements.
+
+### 4b. Confidence band is not a separate navigable series
+
+Inherited from #2835 §4c: the band is **not** a second series the user steps through. Each projected
+point's announcement carries the band inline —
+`"<month>, projected <value>, range <low> to <high>, <confidence>"` (e.g. "Sep 2026, projected
+$48,200, range $44,000 to $52,400, medium confidence") — sourced from the projection's
+`predictedBalance` + bounds + `PredictionConfidence`. The band **edges** remain reachable as
+discrete entries in the **"Key points"** rotor for users who want them. The visual band `AreaMark`
+is marked `.accessibilityHidden(true)` exactly as `PredictionChart.swift:56` already does.
+
+### 4c. Point inspection (tap / scrub)
+
+Tapping or scrubbing a point shows a callout with **date + net worth** (and, for projected points,
+the band range + confidence; for historical points, the **delta vs the previous point**). Today both
+`TrendChart` and `PredictionChart` gate this behind a `DragGesture(minimumDistance: 0)`
+(`TrendChart.swift:115–134`, `PredictionChart.swift:102–121`) — which #2835 §2 flags as failing WCAG
+**2.5.7 Dragging Movements** and being wholly unreachable under VoiceOver. The inspection UX
+therefore provides **two parallel paths**:
+
+1. **Pointer path (sighted)** — the existing drag/scrub overlay and `RuleMark` + `PointMark`
+   highlight (`TrendChart.swift:77–95`) **stay**, but the overlay rectangle is marked
+   `.accessibilityHidden(true)` per #2835 §3c so VoiceOver routes through the descriptor instead of
+   an empty drag target.
+2. **Non-drag path (VoiceOver / keyboard)** — the audio graph + the "Chart data points" / "Key
+   points" rotors of #2835 deliver the same per-point value with no gesture required.
+
+The callout string is the **same masking-aware shared string** as the rotor announcement — assembled
+once in shared code, never re-derived on device.
+
+## 5. Grounding in the shared engines (packages/core)
+
+Every value on this surface already has a shared, tested source. No surface-specific financial math
+is introduced beyond the §4a projection adapter.
+
+| Surface concern               | Shared source (verified)                                                                                                                           | Notes                                                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Current net worth             | `FinancialAggregator.netWorth(accounts)` / `netWorth(accounts, liabilities)` (`aggregation/FinancialAggregator.kt:20,34`)                          | `CREDIT_CARD` / `LOAN` count negative; archived/deleted excluded.                                                                    |
+| Historical series             | `ReportGenerator.netWorthOverTime(...)` (`analytics/ReportGenerator.kt:102,177`) → `List<NetWorthSnapshot>`, chronological                         | Month-end snapshots; earlier months derived by reversing `netCashFlow`; asset/liability split estimated when no per-account history. |
+| Snapshot shape                | `NetWorthSnapshot(date, totalAssets, totalLiabilities, netWorth)` (`analytics/NetWorthSnapshot.kt:13`)                                             | Invariant `netWorth = totalAssets − totalLiabilities`; assets/liabilities are non-negative.                                          |
+| Projection + confidence       | `BalancePredictionEngine` (`prediction/BalancePredictionEngine.kt`): `predictAtDate`, `dailyForecast`, `BalancePrediction`, `PredictionConfidence` | Forecasts account balance today; §4a wraps it into a net-worth forward extrapolation.                                                |
+| Exact arithmetic              | `Cents` (`models/types/Cents.kt:15`)                                                                                                               | Long-backed, overflow-checked `plus`/`minus`/`times`; `ZERO`, `abs()`, `isNegative()`.                                               |
+| Spoken summary / table / axes | `ChartAccessibilityDescriptor` (#2834 §4) — `NetWorthSnapshot` is a listed feeder                                                                  | Net-worth series maps **into** this shared type; the descriptor, not the chart, owns the text.                                       |
+
+**Privacy note on the value objects.** `NetWorthSnapshot` is a derived analytics value object with no
+`ownerId` — it is computed on-device from `Account` / `Transaction`, which **do** carry `ownerId`.
+The surface never persists a snapshot; masking is applied at format time (§7), not at storage time.
+
+## 6. Surface application map
+
+| Surface                      | File (verified / planned)                                                                                                             | Chart kind                        | Spoken summary template                                                                                    | Range control           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------- |
+| **Dashboard net-worth card** | `apps/ios/Finance/Screens/DashboardView.swift:66–84` (exists)                                                                         | compact trend preview (sparkline) | `"Net worth <value>. <trend> <delta> over <range>."` (preview, no projection)                              | none (fixed default 6M) |
+| **Net-worth detail**         | planned iOS surface — analogue of `apps/web/src/pages/NetWorthPage.tsx` (not present today; `TrendChart.swift` exists but is unwired) | line + projection overlay         | `"Net worth, <range>. <trend> <delta>. Now <value> on <date>. Projected <value> by <date>, <confidence>."` | 3M / 6M / 1Y / All      |
+
+Notes:
+
+- The **dashboard card stays minimal** (§9 decision 2): it gains a small, tappable trend preview but
+  **no** projection overlay and **no** range control — tapping it opens the detail surface. This keeps
+  the primary dashboard clean per `docs/design/information-architecture.md`.
+- The **net-worth detail surface does not exist on iOS yet.** `TrendChart.swift` is the reusable
+  chart; it is currently only exercised by previews (`TrendChart.swift:187–221`) and is not wired to a
+  net-worth screen. Building that screen is the implementation work this doc unblocks (gated on #1239).
+- Both surfaces render absolute amounts through the masking-aware formatter (§7), never raw `Cents`.
+
+## 7. State coverage (Dynamic Type, privacy, stale, error, empty/seed)
+
+| State            | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Dynamic Type** | Per #2836 R4, at `dynamicTypeSize.isAccessibilitySize` (≥ AX1) the chart auto-presents the Layer-2 **Month · Net worth · Assets · Liabilities** table as the primary content; standard sizes keep the visual line. The "View as table" toggle, audio graph, and rotor stay reachable at all sizes. Chart frame uses `minHeight` (`TrendChart.swift:135`).                                                                                                                                                                                                                                                                |
+| **Privacy**      | When balances are masked, the **trend shape stays drawn** and the spoken summary still speaks trend/percentage/delta (#2834 decision 2), but every absolute figure — line values, table cells, the callout, the projection value, and the band bounds (`formatRange`) — renders the masked placeholder (`"$•••.••"` / "Amount hidden for privacy"). VoiceOver never reads an amount the screen hides.                                                                                                                                                                                                                    |
+| **Stale**        | If the underlying balances are stale (failed/late sync), prepend `"Data may be out of date as of <timestamp>."` to the summary and show the non-color **`stale`** cue (`clock.badge.exclamationmark` + text, #2838 §4). The projection is suppressed while stale (a forecast off stale inputs is misleading) and replaced with a "projection unavailable — data out of date" note.                                                                                                                                                                                                                                       |
+| **Error**        | On load failure the chart element exposes `"Unable to load net worth."` with a labeled, focusable **Retry** control (the dashboard already wires a Retry alert, `DashboardView.swift:52–57`); no silent empty chart.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Empty / seed** | New user with **fewer than two** month-end snapshots → seed state: a friendly empty message ("Your net-worth trend will appear as history builds"), the current figure shown as a single point, **no line and no projection**. The projection also stays hidden until confidence clears `LOW` — `BalancePrediction.confidence` is `LOW` when `historicalTxnCount < 10` (`BalancePredictionEngine.kt:102–106`), so a too-thin history shows the historical line without a forecast rather than a wide meaningless band. The "View as table" toggle is hidden at zero rows (mirrors `buildChartDescription`'s empty path). |
+
+## 8. Test plan
+
+Smallest set required before a native implementation of this surface is accepted.
+
+**Shared (KMP `commonTest`, runnable today — not blocked by #1239):**
+
+- `ReportGenerator.netWorthOverTime` series correctness against a known fixture: chronological order,
+  month-end dates, `netWorth = totalAssets − totalLiabilities` per snapshot, correct clamp for a
+  history shorter than the requested range. Place beside the existing `analytics` suites.
+- Net-worth **projection** adapter (§4a): forward extrapolation equals current net worth plus
+  expected net cash flow over the horizon; `PredictionConfidence` ladder (`LOW` < 10 txns,
+  `MEDIUM`, `HIGH`) matches `BalancePredictionEngine`; band bounds ordered `low ≤ predicted ≤ high`.
+- `ChartAccessibilityDescriptor` net-worth summary: empty series → exact "no data" sentence; trend
+  (Up/Down/Flat) classification; **masking-aware** formatting emits no raw amount in masked mode
+  (parity with `apps/web/src/components/charts/chart-palette.test.ts`); per-projected-point string
+  includes range + confidence.
+- `Cents` edge cases already covered by `CentsArithmeticEdgeCaseTest` — assert net-worth aggregation
+  does not overflow on large/negative balances.
+
+**Native (iOS, deferred until #1239 unblocks):**
+
+- Each surface in §6 exposes exactly **one** chart a11y element with the expected
+  `accessibilityLabel` + `accessibilityValue` (the shared summary).
+- "View as table" reveals a table whose row count == snapshot count; columns == Month / Net worth /
+  Assets / Liabilities.
+- The audio-graph `AXChartDescriptor` is present for the net-worth line and the projection (Layer 3).
+- Range control: changing 3M→1Y regenerates summary, table, and descriptor (not just the visual line).
+- Projected vs historical points are distinguishable **non-visually** (series name "Projected net
+  worth"; the band is `accessibilityHidden`).
+- Masked-balances mode: no raw amount appears anywhere in the accessibility tree; trend/delta still spoken.
+- Dynamic Type AX1+: chart auto-swaps to the data table with no clipped values.
+
+## 9. Cross-references & resolved decisions
+
+**Related epics (do not duplicate their scope):**
+
+- #2113 (PR #2834) `docs/design/ios-chart-accessibility.md` — the three-layer pattern, the shared
+  descriptor, and the masking decision. This surface **consumes** it and provides the net-worth feeder.
+- #2115 (PR #2835) `docs/design/voiceover-chart-navigation.md` — owns the rotor, per-point
+  announcements, and the "band is not a separate series" rule applied in §4b.
+- #2119 (PR #2836) `docs/design/ios-dynamic-type-reflow.md` — owns the chart→table threshold used in §7.
+- #2121 (PR #2838) `docs/design/ios-noncolor-state-cues.md` — owns the `trendUp/trendDown/trendFlat`
+  and `stale` cues used in §4a and §7.
+- Web reference: `apps/web/src/lib/insights/netWorthTracker.ts`,
+  `apps/web/src/components/insights/NetWorthChart.tsx`, `apps/web/src/pages/NetWorthPage.tsx`,
+  `apps/web/src/components/charts/chart-palette.ts`, `docs/design/chart-component-specs.md`.
+
+**Resolved design decisions (in-session, 2026-06-20):**
+
+1. **Net-worth projection derivation** — a **forward net-cash-flow extrapolation** of net worth,
+   reusing `BalancePredictionEngine`'s daily-average mechanism and confidence ladder (the mirror of
+   `netWorthOverTime`'s backward derivation), rather than summing per-account `predictAtDate` (which
+   double-counts transfers and has no net-worth-level confidence). The thin shared adapter is owned
+   by @kmp-engineer / @finance-domain and is **not** added in this design PR. _Recommended default —
+   flagged to the orchestrator for confirmation; §4a/§9 will be updated if the per-account approach
+   is preferred._
+2. **Dashboard stays minimal** — the dashboard net-worth card gains only a compact, tappable trend
+   preview (no projection overlay, no range control); the full chart + projection + inspection live
+   on the dedicated net-worth detail surface (§6).
+3. **Accessibility behaviour is inherited, not redefined** — masking rule, chart→table threshold,
+   rotor/audio-graph navigation, and non-color cues are taken as-is from the wave-1 docs; this doc
+   only specifies the net-worth-specific summary templates, table columns, and surface map.
+4. **Confidence band is not a separately navigable series** — inherited from #2835 §4c; each
+   projected point carries its band inline, with band edges in the "Key points" rotor (§4b).
