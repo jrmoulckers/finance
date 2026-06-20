@@ -44,21 +44,17 @@ function requiredProductionEnv(name: string): never {
   throw new Error(`${name} is required for production builds`);
 }
 
-const supabaseUrl = isLighthouseAudit()
-  ? 'https://placeholder.supabase.co'
-  : import.meta.env.VITE_SUPABASE_URL?.trim()
-    ? import.meta.env.VITE_SUPABASE_URL.trim()
-    : import.meta.env.PROD
-      ? requiredProductionEnv('VITE_SUPABASE_URL')
-      : 'https://placeholder.supabase.co';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
+  ? import.meta.env.VITE_SUPABASE_URL.trim()
+  : import.meta.env.PROD
+    ? requiredProductionEnv('VITE_SUPABASE_URL')
+    : 'https://placeholder.supabase.co';
 
-const supabaseAnonKey = isLighthouseAudit()
-  ? 'placeholder-anon-key'
-  : import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
-    ? import.meta.env.VITE_SUPABASE_ANON_KEY.trim()
-    : import.meta.env.PROD
-      ? requiredProductionEnv('VITE_SUPABASE_ANON_KEY')
-      : 'placeholder-anon-key';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
+  ? import.meta.env.VITE_SUPABASE_ANON_KEY.trim()
+  : import.meta.env.PROD
+    ? requiredProductionEnv('VITE_SUPABASE_ANON_KEY')
+    : 'placeholder-anon-key';
 
 const PRE_AUTH_ROUTES = new Set([
   '/login',
