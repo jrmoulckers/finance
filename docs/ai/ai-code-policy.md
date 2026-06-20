@@ -6,13 +6,13 @@ This policy clarifies ownership, copyright, and contributor responsibilities for
 
 ## Policy Statement
 
-This project uses AI tools — primarily GitHub Copilot — as development assistants. All AI-generated code is reviewed, modified, and approved by human contributors before being committed. AI tools accelerate development; they do not replace human judgment or responsibility.
+This project uses AI tools — primarily GitHub Copilot — as development assistants. All AI-generated code is produced under the direction of, and remains the responsibility of, human contributors, and must pass the project's automated quality gates (CI checks, linting, type-checking, tests) before it lands. AI tools accelerate development; they do not replace human judgment, ownership, or responsibility.
 
 ## Copyright Ownership
 
 All contributions, whether AI-assisted or not, are submitted under the project's Business Source License 1.1 (BUSL-1.1). Human contributors retain responsibility for all code they commit, including AI-assisted portions.
 
-> **Note:** U.S. Copyright Office guidance indicates that purely AI-generated works — with no meaningful human creative input — may not be copyrightable. This project mitigates that risk by requiring human review, modification, and approval of all AI-generated suggestions before they are committed.
+> **Note:** U.S. Copyright Office guidance indicates that purely AI-generated works — with no meaningful human creative input — may not be copyrightable. This project mitigates that risk because human contributors direct, configure, curate, and accept all AI-assisted contributions — retaining meaningful human creative input and responsibility for the result — even when an agent authors and merges the pull request.
 
 ## Contributor Responsibilities
 
@@ -23,7 +23,7 @@ All contributions, whether AI-assisted or not, are submitted under the project's
    Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
    ```
    This trailer is for transparency and traceability, not to assign authorship or copyright to the AI tool.
-4. **Do not bypass review.** AI-generated code follows the same review process as human-written code — pull requests, CI checks, and human approval.
+4. **Do not bypass the quality gate.** AI-generated code follows the same process as human-written code — pull requests, CI checks, and the automated quality gate (lint, type-check, tests, conflict-free). AI agents may merge the PRs they author once that gate passes; humans retain oversight and revert authority.
 
 ## Transparency
 
@@ -33,7 +33,7 @@ This project documents AI tool usage openly:
 - The `Co-authored-by: Copilot` trailer in git history identifies AI-assisted commits.
 - The [`ai-generated`](../architecture/labels.md) issue label marks work primarily implemented by AI agents.
 
-AI-generated code is not treated differently from human-written code once it has been reviewed and committed. The same quality, security, and accessibility standards apply.
+AI-generated code is not treated differently from human-written code once it has landed. The same quality, security, and accessibility standards apply.
 
 ## License Compatibility
 
@@ -45,10 +45,10 @@ All AI-assisted contributions are licensed under the [Business Source License 1.
 
 ## Summary
 
-| Aspect             | Policy                                   |
-| ------------------ | ---------------------------------------- |
-| AI tool role       | Assistant, not author                    |
-| Code ownership     | Human contributor who commits            |
-| License            | BUSL-1.1 — same as all project code      |
-| Review requirement | Mandatory before commit                  |
-| Transparency       | `Co-authored-by` trailer + documentation |
+| Aspect         | Policy                                               |
+| -------------- | ---------------------------------------------------- |
+| AI tool role   | Assistant, not author                                |
+| Code ownership | Human contributor who commits                        |
+| License        | BUSL-1.1 — same as all project code                  |
+| Quality gate   | Mandatory before merge (CI, lint, type-check, tests) |
+| Transparency   | `Co-authored-by` trailer + documentation             |

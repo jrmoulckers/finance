@@ -223,7 +223,7 @@ Two issues are duplicates if:
 ### Linking Duplicates
 
 - Add comment: "Duplicate of #N" on the duplicate
-- Do NOT close issues — only humans merge PRs which auto-close
+- Do NOT close issues — they auto-close when their PR merges
 - Cross-reference with "Related: #N" for related-but-not-duplicate issues
 
 ### Cross-Platform Relationships

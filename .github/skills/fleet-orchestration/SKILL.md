@@ -275,7 +275,7 @@ All PRs open → all CI green → no conflicts → final `npm run ci:check` from
 
 ### Phase 5: Handoff
 
-All PRs merge-ready → add "## Needs Human Action" where needed → humans merge → clean up worktrees
+All PRs green & `MERGEABLE` → orchestrator merges each (`gh pr merge <n> --squash`) in the recommended order → add "## Needs Human Action" only where a real blocker (e.g. token/branch-protection limit, `## Needs Decision`) prevents self-merge → clean up worktrees
 
 ## Sprint Dashboard Query
 

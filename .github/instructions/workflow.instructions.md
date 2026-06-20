@@ -29,26 +29,28 @@ AI agents MUST follow this workflow for every code change:
     - CI failures: read logs, re-run the Pre-Push Checklist (steps 5a-5e), push, restart cycle
     - Merge conflicts: trigger the **Merge Conflict Protocol** (see section below) — treated with the same P0 urgency as a red CI check
     - **Work is NOT complete until checks are green AND the PR is conflict-free**
-11. Mark work complete once steps 9 and 10 both pass
-12. After human merges the PR: remove the worktree automatically
+11. **Merge your own PR** once the quality gate passes: `gh pr merge <number> --squash` (auto-approved — full autonomy on agent-authored PRs; use `--admin` to clear a branch-protection `BLOCKED` state only after local type-check + lint + affected tests are green, and document the override in the PR)
+12. Mark work complete once the PR is merged (steps 9, 10, and 11 all pass)
+13. After the PR is merged: remove the worktree automatically
 ```
 
-> ⚠️ **MANDATORY**: Steps 7, 8, and 9 (push + create PR + verify PR exists) are auto-approved and required. Stopping at step 6 (local commit only) is a **workflow violation**. A task is incomplete if it ends without a pushed branch, an open PR, AND a `gh pr view` confirmation. Step 9's verification is what catches the silent-failure mode where an agent thinks it created a PR but `gh pr create` actually errored.
+> ⚠️ **MANDATORY**: Steps 7, 8, and 9 (push + create PR + verify PR exists) are auto-approved and required. Stopping at step 6 (local commit only) is a **workflow violation**. A task is incomplete if it ends without a pushed branch, an open PR, AND a `gh pr view` confirmation. Step 9's verification is what catches the silent-failure mode where an agent thinks it created a PR but `gh pr create` actually errored. Step 11 (self-merge) is also auto-approved once the quality gate (CI green AND `MERGEABLE`) passes — agents have full lifecycle autonomy on the PRs they author.
 
 ## Definition of Done (DoD)
 
 A task is **DONE** only when ALL of the following are true. Agents MUST verify each before terminating their work loop:
 
-| Gate | Verification command                                    | Pass criteria                                  |
-| ---- | ------------------------------------------------------- | ---------------------------------------------- |
-| 1    | `git status`                                            | Clean working tree                             |
-| 2    | `git log origin/<branch>..HEAD`                         | Empty (all commits pushed)                     |
-| 3    | `gh pr view <branch> --json number`                     | Returns a PR number (proves PR exists)         |
-| 4    | `gh pr checks <number>`                                 | All checks `pass` or `skipping`; none `fail`   |
-| 5    | `gh pr view <number> --json mergeable,mergeStateStatus` | `mergeable=MERGEABLE` and not `DIRTY`/`BEHIND` |
-| 6    | PR body contains `Closes #N` for each resolved issue    | Visual / `gh pr view --json body`              |
+| Gate | Verification command                                    | Pass criteria                                                                                                                                |
+| ---- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `git status`                                            | Clean working tree                                                                                                                           |
+| 2    | `git log origin/<branch>..HEAD`                         | Empty (all commits pushed)                                                                                                                   |
+| 3    | `gh pr view <branch> --json number`                     | Returns a PR number (proves PR exists)                                                                                                       |
+| 4    | `gh pr checks <number>`                                 | All checks `pass` or `skipping`; none `fail`                                                                                                 |
+| 5    | `gh pr view <number> --json mergeable,mergeStateStatus` | `mergeable=MERGEABLE` and not `DIRTY`/`BEHIND`                                                                                               |
+| 6    | PR body contains `Closes #N` for each resolved issue    | Visual / `gh pr view --json body`                                                                                                            |
+| 7    | `gh pr view <number> --json state`                      | `MERGED` (self-merged once gates 4 & 5 pass) — or a `## Needs Human Action: merge` note if a token/branch-protection limit blocks self-merge |
 
-**Gates 4 AND 5 carry equal weight.** A green-CI PR sitting in a `CONFLICTING` state is not done. A conflict-free PR with a red CI check is not done. Both must clear before the agent exits.
+**Gates 4 AND 5 carry equal weight.** A green-CI PR sitting in a `CONFLICTING` state is not done. A conflict-free PR with a red CI check is not done. Both must clear before the agent merges. Agents have **full autonomy to merge their own PRs** (`gh pr merge <number> --squash`) once gates 4 and 5 pass — no human approval required.
 
 ## Worktree Setup (Required for Agents)
 
@@ -131,10 +133,10 @@ Created (Open) → PR opened with "Closes #N" → PR merged → Issue auto-close
 8. **Fetch and rebase** onto `origin/main` before pushing: `git fetch origin main && git rebase origin/main` — both are auto-approved.
 9. **Push the feature branch** to origin: `$env:HUSKY = "0" ; git push --no-verify origin <branch-name>` — **MANDATORY, auto-approved, do NOT ask for permission**.
 10. **Create a PR automatically** with `gh pr create` including a detailed description and `Closes #N` for each resolved issue — **MANDATORY, auto-approved, do NOT ask for permission**.
-11. **Monitor the PR with `gh pr checks`** — poll until ALL checks are green. Fix CI failures or merge conflicts, re-run the pre-push checklist, push, restart cycle. **Work is NOT complete until all remote checks are green.**
-12. **Never merge PRs** — PRs are merged by humans after review.
+11. **Monitor the PR with `gh pr checks`** — poll until ALL checks are green. Fix CI failures or merge conflicts, re-run the pre-push checklist, push, restart cycle. **Work is NOT complete until all remote checks are green AND the PR is `MERGEABLE`.**
+12. **Merge your own PR** once the quality gate passes — `gh pr merge <N> --squash`. Agents have full autonomy to merge the PRs they author (use `--admin` to clear a branch-protection `BLOCKED` state only after local type-check + lint + affected tests are green, and document the override). Do NOT merge a PR you did not author without explicit human direction.
 13. **Never run `gh issue close`** — issues close automatically when their PR merges.
-14. **Clean up your worktree** after the PR is confirmed merged: `git worktree remove <path>`.
+14. **Clean up your worktree** after the PR is merged: `git worktree remove <path>`.
 
 ### ⚠️ MANDATORY: Pre-Push Lint & Format Checklist (NEVER skip)
 
@@ -291,7 +293,7 @@ Refs #P (for related but not fully resolved issues)
 - Keeps the project board accurate and up-to-date
 - Ensures no work is lost or duplicated — worktrees are resumable by any agent
 - Makes it easy to understand what changed and why
-- PRs provide a review checkpoint before code reaches `main`
+- PRs provide a CI quality gate and an auditable checkpoint before code reaches `main`
 
 ## Fleet Sprint Execution
 
@@ -367,7 +369,7 @@ Closes #1292
 
 ### 4b. Emit a Recommended Merge Order
 
-After the sprint plan is built, the orchestrator MUST publish a recommended merge order so the human merging PRs avoids creating conflicts they then have to ask agents to resolve.
+After the sprint plan is built, the orchestrator MUST publish a recommended merge order so that whoever merges the PRs (the orchestrator itself, by default, or a human) avoids creating conflicts that then have to be resolved.
 
 **Merge-order heuristics (top of list = merge first):**
 
@@ -394,10 +396,10 @@ task(agent_type="web-engineer", mode="background", ...)
 ### 6. Monitor & Resolve
 
 - Track completions via agent notifications
-- For every agent that signals "done", run the **Definition of Done** gate-check (above). If any of gates 1-6 fails, re-dispatch the agent into its worktree to finish.
+- For every agent that signals "done", run the **Definition of Done** gate-check (above). If any of gates 1-7 fails, re-dispatch the agent into its worktree to finish.
 - Push any unpushed work from agents that held off
 - Resolve merge conflicts between parallel PRs using the **Merge Conflict Protocol** — conflicts carry the same P0 weight as red CI checks
-- Verify all CI checks pass AND every PR is in `MERGEABLE` state before declaring the sprint shippable
+- **Merge each PR** (in the recommended merge order) once it clears the quality gate (CI green AND `MERGEABLE`) — the orchestrator has full autonomy to land agent-authored PRs with `gh pr merge <N> --squash`. The sprint is shippable only when every PR is merged (or left green and `MERGEABLE` with a documented `## Needs Human Action` blocker).
 
 ## Business Sprint Integration
 

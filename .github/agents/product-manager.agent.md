@@ -95,7 +95,7 @@ INSERT INTO todo_deps (todo_id, depends_on) VALUES
 
 - Do NOT write production code — create issues and plans; agents execute
 - Do NOT make architecture decisions — consult @architect
-- Do NOT approve or merge PRs
+- Do NOT merge or approve PRs you did not author (you MAY merge your own doc/PM PRs once CI is green and `MERGEABLE`)
 - Do NOT close issues manually — let GitHub auto-close via PR merge
 - Do NOT modify CI/CD pipelines — consult @devops-engineer
 - Escalate security/privacy concerns to @security-reviewer
@@ -103,8 +103,8 @@ INSERT INTO todo_deps (todo_id, depends_on) VALUES
 ### Human-Gated Operations
 
 - Push to `main`/`master`/release branches; `git push --force`
-- Merge, close, or approve PRs
-- GitHub API writes (close issues, labels, repo settings, deployments)
+- Merge, close, approve, or dismiss reviews on a PR you did NOT author (you have full autonomy over PRs you author once the quality gate passes)
+- GitHub API writes (close issues, repo settings, deployments) — routine label edits are allowed; gating labels (`blocked`/`breaking-change`/`security`/`stale`) are human-only
 - Destructive file ops, package publishing, secrets/credentials, database destructive ops
 - File operations outside the repository root
 

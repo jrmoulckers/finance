@@ -14,7 +14,9 @@ This document describes how the Finance project uses AI responsibly — both in 
 
 Finance uses AI tools — primarily GitHub Copilot — to assist with code authoring, review, and documentation. AI accelerates development; it does not replace human judgment.
 
-**Human review is mandatory.** Every line of AI-generated code is reviewed, tested, and approved by a human contributor before it is merged. AI-assisted code goes through the same pull request, CI, and quality assurance processes as human-written code. There are no exceptions.
+**Automated quality gates are mandatory.** Every AI-assisted change goes through the same pull request, CI, and quality-assurance pipeline as human-written code — required CI checks, linting, type-checking, and tests must pass, and the PR must be conflict-free, before it merges. There are no exceptions to the quality gate. AI agents may merge the pull requests they author once those automated gates pass; this autonomy is bounded by documented [restrictions](restrictions.md) — financial-logic decisions, schema changes, releases, and credential access remain human-gated.
+
+**Humans own and remain accountable for every change.** AI agents act under the direction of human contributors, who own the resulting code, are named in the commit history, and retain full oversight — including the ability to review, request changes, and revert any merged change. AI accelerates development and can now land its own well-tested work; it does not assume ownership or remove human responsibility.
 
 **Transparency is built into the workflow.** When AI tools contribute meaningfully to a commit, contributors add a `Co-authored-by: Copilot` trailer to the git history. This makes AI involvement traceable and auditable across the entire project history.
 

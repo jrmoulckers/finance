@@ -68,13 +68,27 @@ Manual re-deploy: **Actions → Deploy — Staging → Run workflow**
 
 ## Required GitHub Secrets
 
-### Vercel (Web Deployment)
+### Web (VM Rebuild)
 
-| Secret              | Description                 |
-| ------------------- | --------------------------- |
-| `VERCEL_TOKEN`      | Vercel API token            |
-| `VERCEL_ORG_ID`     | Vercel organization/team ID |
-| `VERCEL_PROJECT_ID` | Vercel project ID           |
+Staging and production web are **not** deployed to Vercel. The SPA is rebuilt on
+the self-hosted VM and served by Caddy from a bind mount of `apps/web/dist`
+(same origin as the backend, so `/rest/v1`, `/auth/v1`, `/sync`, and `/api/*`
+proxy through Caddy). The web job therefore reuses the **Backend** SSH secrets
+below plus the build-time Supabase/PowerSync values:
+
+| Secret              | Description                                       |
+| ------------------- | ------------------------------------------------- |
+| `DEPLOY_HOST`       | VM hostname (shared with backend)                 |
+| `DEPLOY_SSH_KEY`    | SSH private key (shared with backend)             |
+| `DEPLOY_USER`       | SSH username (shared with backend)                |
+| `SUPABASE_URL`      | Baked into the build via `VITE_SUPABASE_URL`      |
+| `SUPABASE_ANON_KEY` | Baked into the build via `VITE_SUPABASE_ANON_KEY` |
+| `POWERSYNC_URL`     | Baked into the build via `VITE_POWERSYNC_URL`     |
+| `SENTRY_DSN`        | Optional — baked into the build if present        |
+
+> Vercel (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) is now used
+> **only** for PR preview deploys (`deploy-preview.yml`), not for staging or
+> production.
 
 ### Staging Server (Backend)
 
