@@ -3,9 +3,12 @@
 import { createRequire } from 'node:module';
 import initSqlJs from 'sql.js';
 import { describe, expect, it, vi } from 'vitest';
+import { seedDatabase } from '../seed';
 import {
   MIGRATIONS,
+  _createDbWrapperForTesting,
   _runMigrationsForTesting,
+  _shouldPersistIndexedDbAfterExecForTesting,
   releaseSavepoint,
   rollbackToSavepoint,
   type SqliteDb,
@@ -45,6 +48,51 @@ describe('sqlite-wasm savepoint migrations', () => {
         'account',
         'transaction',
       ]);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('defers IndexedDB persistence while savepoints are active', () => {
+    expect(
+      _shouldPersistIndexedDbAfterExecForTesting([
+        'SAVEPOINT seed_init',
+        'INSERT INTO account (id) VALUES (?)',
+        'UPDATE account SET name = ? WHERE id = ?',
+        'ROLLBACK TO SAVEPOINT seed_init',
+        'RELEASE SAVEPOINT seed_init',
+        'INSERT INTO account (id) VALUES (?)',
+      ]),
+    ).toEqual([false, false, false, false, true, true]);
+  });
+
+  it('waits for the outer transaction before persisting nested savepoints', () => {
+    expect(
+      _shouldPersistIndexedDbAfterExecForTesting([
+        'BEGIN TRANSACTION',
+        'INSERT INTO account (id) VALUES (?)',
+        'SAVEPOINT inner_write',
+        'INSERT INTO category (id) VALUES (?)',
+        'RELEASE SAVEPOINT inner_write',
+        'COMMIT',
+      ]),
+    ).toEqual([false, false, false, false, false, true]);
+  });
+
+  it('seeds demo data through the IndexedDB wrapper without losing seed savepoint', async () => {
+    const db = new SQL.Database();
+
+    try {
+      await _runMigrationsForTesting(SQL, db, 'indexeddb');
+      const wrapper = _createDbWrapperForTesting(SQL, db, 'indexeddb');
+
+      await expect(seedDatabase(wrapper)).resolves.toBeUndefined();
+
+      const accountCount = wrapper.selectOne('SELECT COUNT(*) AS count FROM account;');
+      const transactionCount = wrapper.selectOne('SELECT COUNT(*) AS count FROM "transaction";');
+
+      expect(Number(accountCount?.count ?? 0)).toBeGreaterThan(0);
+      expect(Number(transactionCount?.count ?? 0)).toBeGreaterThan(0);
     } finally {
       db.close();
     }
