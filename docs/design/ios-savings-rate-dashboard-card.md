@@ -123,7 +123,9 @@ fun savingsRate(transactions: List<Transaction>, from: LocalDate, to: LocalDate)
 - **Denominator = recorded income.** Income is the sum of `TransactionType.INCOME` transactions
   in range that are not deleted and not `VOID` (`:85–90`). The app has no gross/net-of-tax
   distinction at the transaction layer, so the denominator is **income as the user recorded it**
-  (see resolved decision 2, §8).
+  — this is **code-forced**, not a preference. A net-of-tax (post-tax) denominator would require a
+  **future schema field** to tag/derive tax withholding on income transactions; that field does
+  not exist today and is explicitly **not invented** by this card (see resolved decision 2, §8).
 - **Period = calendar month.** The iOS view model already calls `savingsRate` with
   `from = startOfMonth … to = endOfMonth`
   (`DashboardViewModel.swift:77–79, 93–97`), matching the web summary's calendar-month unit and
@@ -267,9 +269,9 @@ Smallest set of tests required before a native implementation of this card is ac
 
 **Related docs (do not duplicate their scope):**
 
-- `docs/design/ios-noncolor-state-cues.md` (#2121) — **canonical** trend (`trendUp` / `trendDown`
-  / `trendFlat`) and `stale` cue vocabulary. This card consumes those tokens for its trend and
-  stale rows; it does not redefine them.
+- `docs/design/ios-noncolor-state-cues.md` (#2121, PR #2838) — **canonical** trend (`trendUp` /
+  `trendDown` / `trendFlat`) and `stale` cue vocabulary. This card consumes those **proposed**
+  trend tokens (in-flight in PR #2838) for its trend and stale rows; it does not redefine them.
 - `docs/design/ios-dynamic-type-reflow.md` (#2119) — Dashboard reflow audit; the new card adopts
   the monthly-summary row's R3/R6 reflow verdict (§5).
 - `docs/design/ios-chart-accessibility.md` (#2113) — text-alternative + masking decision; cited
@@ -286,18 +288,21 @@ Smallest set of tests required before a native implementation of this card is ac
 
 **Resolved design decisions (grounded in existing shared behavior, 2026-06-20):**
 
-1. **Period = calendar month; trend vs. the prior calendar month.** Not a free choice — every
-   existing implementation already uses the calendar month: the web dashboard summary
-   (`savings-rate-summary.ts`, `current`/`prior`), the iOS view model
-   (`DashboardViewModel.swift:77–79`), and the KMP `SavingsEngine` income rule
-   (`SavingsEngine.kt:184–205`). The card matches them. A **trailing-3-month** smoothing view is
-   available as a secondary comparison (web `trailingThreeMonth`) but is out of scope for the v1.0
-   card. _(Flagged to the orchestrator for confirmation; default = calendar month.)_
-2. **Denominator = income as recorded (gross of any tax modeling).** The transaction layer has no
-   gross/net-of-tax split; `totalIncome` sums `TransactionType.INCOME` transactions
-   (`FinancialAggregator.kt:83–92`). The rate therefore uses income exactly as the user logged it,
-   consistent across web and KMP. _(Flagged to the orchestrator for confirmation; default = recorded
-   income.)_
+1. **Period = calendar month; trend vs. the prior calendar month.** **Maintainer-confirmed
+   2026-06-20.** Not a free choice — every existing implementation already uses the calendar
+   month: the web dashboard summary (`savings-rate-summary.ts`, `current`/`prior`), the iOS view
+   model (`DashboardViewModel.swift:77–79`), and the KMP `SavingsEngine` income rule
+   (`SavingsEngine.kt:184–205`). The card matches them. A **trailing-3-month** smoothing view is a
+   **documented future secondary view** (web `trailingThreeMonth`,
+   `savings-rate-summary.ts:51–54`), out of scope for the v1.0 card. A **trailing-30-day** window
+   was considered and **rejected** (it would diverge from web + KMP + the existing iOS view model).
+2. **Denominator = income as recorded (gross of any tax modeling).** **Maintainer-confirmed
+   2026-06-20 as code-forced.** The transaction layer has no gross/net-of-tax split; `totalIncome`
+   sums `TransactionType.INCOME` transactions (`FinancialAggregator.kt:83–92`). The rate therefore
+   uses income exactly as the user logged it, consistent across web and KMP. A net-of-tax
+   denominator would require a **future schema field** to tag/derive tax on income; that field is
+   **not invented here** — if post-tax savings rate is wanted later, it is a separate schema +
+   engine change (proposed, @kmp-engineer), not a card-layer decision.
 3. **Masked rate is still shown.** A savings rate is a percentage (relative), so it and its trend
    remain visible when absolute balances are masked; only absolute currency is suppressed. This is
    parity with `ios-chart-accessibility.md` §6 decision #2, not a new call (§6).
