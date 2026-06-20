@@ -36,19 +36,11 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     headless: true,
 
-    // Emulate `prefers-reduced-motion: reduce` so the app's CSS disables
-    // entrance/transition animations (bottom nav, More sheet, dialogs, etc.).
-    // Under slower CI runners an unsettled animation can keep an element
-    // perpetually "unstable", so Playwright's actionability wait on .click()
-    // never resolves and burns the full test timeout — which, multiplied by
-    // retries across every reachability case, overran the 25-min job budget on
-    // mobile-chrome (#2781).  Reduced motion makes elements immediately stable.
-    reducedMotion: 'reduce',
-
     // Bound individual actions so a single stuck interaction fails fast instead
     // of consuming the 60s test timeout (the E2E stub DB makes real actions
-    // fast, so 20s is ample headroom).  Prevents one bad interaction from
-    // cascading into a cancelled, report-less job.
+    // fast, so 20s is ample headroom).  Together with the reduced-motion
+    // emulation applied in the authenticatedPage fixture, this prevents one bad
+    // interaction from cascading into a cancelled, report-less job (#2781).
     actionTimeout: 20_000,
 
     // Block service workers so they don't intercept network requests.
