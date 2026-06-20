@@ -156,21 +156,44 @@ line is carried by **line style + a labeled "today" boundary**, not color alone 
 shape/rule-of-two channel); the projected series announces the series name **"Projected net worth"**
 so VoiceOver and the rotor separate it from "Net worth" without relying on the dashed style.
 
-**Projection derivation (proposed — see §9 decision 1).** Net-worth projection is a **forward
-net-cash-flow extrapolation**: project net worth forward by the expected net cash flow over the
-horizon, reusing `BalancePredictionEngine.computeDailyAverage` (income − expense daily averages,
-`BalancePredictionEngine.kt:227–242`) and its `PredictionConfidence` ladder
+**Projection derivation (confirmed by maintainer 2026-06-20 — see §9 decision 1).** Net-worth
+projection is a **forward net-cash-flow extrapolation**: project net worth forward by the expected
+net cash flow over the horizon, reusing `BalancePredictionEngine.computeDailyAverage` (income −
+expense daily averages, `BalancePredictionEngine.kt:227–242`) and its `PredictionConfidence` ladder
 (`BalancePredictionEngine.kt:102–106`). This is the exact mirror of how
 `ReportGenerator.netWorthOverTime` already derives _historical_ net worth **backward** — by
-subtracting each following month's `netCashFlow` (`ReportGenerator.kt:149–152`). The shared output
-shape is the existing `DailyBalanceForecast(date, projectedBalance)` /
+subtracting each following month's `netCashFlow` (`ReportGenerator.kt:149–152`). The result is **one
+series with one net-worth-level confidence model**. The shared output shape is the existing
+`DailyBalanceForecast(date, projectedBalance)` /
 `BalancePrediction(predictedBalance, confidence, projectedChange)` (`BalancePredictionEngine.kt:288–318`),
-re-expressed as a net-worth series. The confidence band bounds reuse the web `formatRange(...)`
-formatter so masking applies uniformly. The proposed thin adapter
-(`packages/core/.../prediction/NetWorthProjection`) is **owned by @kmp-engineer / @finance-domain**
-and is **not** added in this design PR (file-ownership rule); this section is the spec it implements.
+re-expressed as a net-worth series.
 
-### 4b. Confidence band is not a separate navigable series
+**Alternative considered and rejected.** Summing per-account `BalancePredictionEngine.predictAtDate`
+(`BalancePredictionEngine.kt:124`) across every asset/liability account was rejected: it
+**double-counts transfers** (a transfer leaves one account and enters another, so the two
+per-account forecasts cancel incorrectly), it produces **no net-worth-level confidence** (only a
+bag of per-account confidences with no defined aggregation), and it is heavier to compute. The
+forward net-cash-flow extrapolation above avoids all three because `netCashFlow` already nets
+transfers out (transfers are excluded from income/expense averages, `BalancePredictionEngine.kt:63–66`)
+and yields a single confidence value. A future reader weighing per-account accuracy against these
+costs should start here.
+
+**New shared function — proposed for @kmp-engineer (NOT added in this PR).** `BalancePredictionEngine`
+today forecasts a **single account** balance, so delivering this needs a new platform-neutral
+"project net worth forward" function (proposed `packages/core/.../prediction/NetWorthProjection`,
+returning a net-worth-series + per-point `PredictionConfidence` and band bounds). It is **owned by
+@kmp-engineer / @finance-domain** and is intentionally **not** written in this design PR
+(file-ownership rule — this PR is the one new doc only); this section is the spec it implements. The
+confidence band bounds reuse the web `formatRange(...)` formatter so masking applies uniformly.
+
+### 4b. Confidence band — carried visually AND in the text/VoiceOver alternative
+
+The `PredictionConfidence` band is a **required dual-channel signal**: it must be rendered visually
+(the `AreaMark` band) **and** carried in every non-visual alternative, because for a forecast the
+confidence _is_ part of the meaning. Confidence therefore appears in **both** layers of the consumed
+pattern: the Layer-1 spoken summary (#2834) ends with the horizon confidence
+("…Projected <value> by <date>, <confidence>.", §6), and each projected point's per-point
+announcement (#2835) carries the band + confidence inline.
 
 Inherited from #2835 §4c: the band is **not** a second series the user steps through. Each projected
 point's announcement carries the band inline —
@@ -178,7 +201,8 @@ point's announcement carries the band inline —
 $48,200, range $44,000 to $52,400, medium confidence") — sourced from the projection's
 `predictedBalance` + bounds + `PredictionConfidence`. The band **edges** remain reachable as
 discrete entries in the **"Key points"** rotor for users who want them. The visual band `AreaMark`
-is marked `.accessibilityHidden(true)` exactly as `PredictionChart.swift:56` already does.
+is marked `.accessibilityHidden(true)` exactly as `PredictionChart.swift:56` already does (its
+information is fully conveyed by the per-point text above, so hiding the shape removes nothing).
 
 ### 4c. Point inspection (tap / scrub)
 
@@ -296,10 +320,10 @@ Smallest set required before a native implementation of this surface is accepted
 1. **Net-worth projection derivation** — a **forward net-cash-flow extrapolation** of net worth,
    reusing `BalancePredictionEngine`'s daily-average mechanism and confidence ladder (the mirror of
    `netWorthOverTime`'s backward derivation), rather than summing per-account `predictAtDate` (which
-   double-counts transfers and has no net-worth-level confidence). The thin shared adapter is owned
-   by @kmp-engineer / @finance-domain and is **not** added in this design PR. _Recommended default —
-   flagged to the orchestrator for confirmation; §4a/§9 will be updated if the per-account approach
-   is preferred._
+   double-counts transfers and has no net-worth-level confidence). The new "project net worth
+   forward" function is proposed for and owned by @kmp-engineer / @finance-domain and is **not**
+   added in this design PR. **Confirmed by maintainer 2026-06-20** (recommended default accepted;
+   per-account summation explicitly rejected — see §4a for the tradeoff).
 2. **Dashboard stays minimal** — the dashboard net-worth card gains only a compact, tappable trend
    preview (no projection overlay, no range control); the full chart + projection + inspection live
    on the dedicated net-worth detail surface (§6).
