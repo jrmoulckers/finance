@@ -67,9 +67,10 @@ You may use one short-lived integration branch **only** when a set of PRs is gen
 - Before declaring a fleet complete, the orchestrator **MUST** merge `origin/main` into the work and resolve all conflicts, then validate green (type-check + lint + the conflict-affected test areas).
 - The longer a branch lives off `main`, the worse the conflicts. Reconcile **early and often**; do a final reconcile immediately before merge.
 
-### Rule D — "Done" means it's on `main` (or has a green, mergeable PR to `main`)
+### Rule D — "Done" means it's on `main` (merged by the agent once the quality gate passes)
 
-- A fleet task is **not complete** while its work exists only on a branch. The Definition of Done is: **merged to `main`, OR an open PR to `main` that is `MERGEABLE` and green**, with a clear note if a human must click merge.
+- A fleet task is **not complete** while its work exists only on a branch. The Definition of Done is: **merged to `main`** by the authoring agent or orchestrator (`gh pr merge <n> --squash`) once CI is green AND the PR is `MERGEABLE`. Agents have full autonomy to merge the PRs they author — no human click required.
+- The only acceptable not-yet-merged end state is a PR to `main` that is `MERGEABLE` and green but blocked by a token/branch-protection limit the agent's permissions can't clear — in which case leave a clear `## Needs Human Action: merge` note.
 - If you closed issues against a non-default base (so auto-close didn't fire), you **MUST** close them explicitly **and** state that in the summary.
 
 ### Rule E — Landing on `main` is the deploy action
@@ -107,7 +108,7 @@ Fleet dispatch follows a five-step lifecycle:
 └──────┬───────┘
        │
 ┌──────▼───────┐
-│  5. Complete │  All PRs reach merge-ready state; human reviews and merges
+│  5. Complete │  All PRs clear the quality gate; the orchestrator merges them to `main`
 └──────────────┘
 ```
 
@@ -149,8 +150,8 @@ Work is complete when:
 
 - All PRs have passing CI — verify with `gh pr checks <number>` (see [CI Monitoring](ci-monitoring.md))
 - No merge conflicts exist — verify with `gh pr view <number> --json mergeable`
-- All PRs are marked as ready for review
-- The human reviewer has been notified
+- Each PR has been **merged to `main`** by the authoring agent or the orchestrator once it clears the quality gate (`gh pr merge <number> --squash`) — agents have full autonomy to merge the PRs they author
+- If a token/branch-protection limit blocks self-merge, the PR is left green and `MERGEABLE` with a `## Needs Human Action: merge` note and the human is notified
 
 ---
 
@@ -231,7 +232,7 @@ Database schema changes must be serialized — never split across independent ag
 
 ## CI Monitoring and Self-Healing
 
-Each agent owns its PR lifecycle from push through merge-readiness.
+Each agent owns its PR lifecycle from push through merge.
 
 ### Monitoring loop
 
@@ -250,7 +251,7 @@ After pushing a branch and opening a PR, the agent enters a monitoring loop:
          │                              │
     ┌────▼────────────┐                 │
     │  All green?     │                 │
-    │  Yes → DONE     │                 │
+    │  Yes → MERGE    │                 │
     │  No  → continue │                 │
     └────┬────────────┘                 │
          │                              │
@@ -293,6 +294,16 @@ When CI fails:
 
 > **⚠️ Never re-push without running `npm run format` → `npx eslint . --fix` → `npm run format:check && npx eslint . --max-warnings 0` first.** This is the most common cause of repeated CI failures.
 > Remote CI is the source of truth — see [CI Monitoring](ci-monitoring.md).
+
+### Merging after green (full autonomy)
+
+Once the quality gate passes — CI green **AND** `gh pr view <number> --json mergeable,mergeStateStatus` shows `MERGEABLE` (not `DIRTY`/`BEHIND`/`CONFLICTING`) — the agent **merges its own PR**:
+
+```powershell
+gh pr merge <number> --squash
+```
+
+This is auto-approved; agents have full lifecycle autonomy on the PRs they author and do not wait for a human to click merge. If branch protection reports `MERGEABLE (BLOCKED)` and the block is protection-state (not a real CI failure), use `--admin` only after verifying type-check + lint + affected tests are green locally, and document the override in the merge summary. If `--admin` is unavailable to the agent's token, leave the PR green and `MERGEABLE` with a `## Needs Human Action: merge` note. Do **not** merge a PR you did not author without explicit human direction.
 
 ### When self-healing fails
 
@@ -501,11 +512,12 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 1. Monitor CI using `gh pr checks <number>` — poll until all checks are green (see [CI Monitoring](ci-monitoring.md))
 2. Self-heal failures (see [CI Monitoring and Self-Healing](#ci-monitoring-and-self-healing))
 3. Resolve merge conflicts if they arise
-4. Mark work as complete only when **all remote CI checks are green**
+4. **Merge the PR** with `gh pr merge <number> --squash` once the quality gate passes (CI green AND `MERGEABLE`) — full autonomy on agent-authored PRs
+5. Mark work as complete only when the PR is **merged** (or left green and `MERGEABLE` with a documented `## Needs Human Action: merge` blocker)
 
 ### Handoff
 
-When all work is done and CI is green, the agent's job is finished. The PR is the handoff point. Humans review and merge.
+When all work is done, the agent merges its own PR (`gh pr merge <number> --squash`) once the quality gate passes — no human handoff is required to land agent-authored work. The only handoffs that remain human-gated are the operations in [Human Handoff Points](#human-handoff-points) below (and the full [restriction policies](restrictions.md)): e.g. a token/branch-protection limit that blocks self-merge, a `## Needs Decision` on financial logic, or a publish/deploy step. In those cases, leave the PR green and `MERGEABLE` with a clear note.
 
 ---
 
@@ -513,14 +525,16 @@ When all work is done and CI is green, the agent's job is finished. The PR is th
 
 Fleet operations have specific points where human involvement is required. Per the project's [restriction policies](restrictions.md), agents must stop and wait at these gates:
 
-| Operation                     | Why it's gated                                 | Agent action                                          |
-| ----------------------------- | ---------------------------------------------- | ----------------------------------------------------- |
-| **Merge PRs**                 | Humans review all code before it enters `main` | Leave PR in merge-ready state; do not merge           |
-| **Close issues**              | Issue lifecycle is human-managed               | Add `Closes #N` in PR body; the merge handles it      |
-| **Force-push**                | May overwrite collaborator work                | Document the need in PR; ask human to approve         |
-| **Financial logic decisions** | Must be reviewed by a human or domain expert   | Add `## Needs Decision` in PR; stop and wait          |
-| **Shared config conflicts**   | Multiple agents need the same file             | Document needed changes; let human coordinate         |
-| **Publish/deploy**            | Releases require human sign-off                | Prepare release; document steps; ask human to publish |
+| Operation                         | Why it's gated                                                 | Agent action                                                                                                                                   |
+| --------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Merge a PR you did NOT author** | Acting on a human's or another team's PR needs their direction | Leave it alone unless explicitly asked                                                                                                         |
+| **Close issues**                  | Issue lifecycle is human-managed                               | Add `Closes #N` in PR body; the merge handles it                                                                                               |
+| **Force-push**                    | May overwrite collaborator work                                | Document the need in PR; ask human to approve (except `--force-with-lease` on your own branch for conflict resolution, which is auto-approved) |
+| **Financial logic decisions**     | Must be reviewed by a human or domain expert                   | Add `## Needs Decision` in PR; stop and wait                                                                                                   |
+| **Shared config conflicts**       | Multiple agents need the same file                             | Document needed changes; let human coordinate                                                                                                  |
+| **Publish/deploy**                | Releases require human sign-off                                | Prepare release; document steps; ask human to publish                                                                                          |
+
+> **Merging your own PR is NOT a handoff point** — agents have full autonomy to merge the PRs they author once the quality gate passes (CI green AND `MERGEABLE`). See [restrictions.md § 2](restrictions.md) and the [Branch & Merge Policy](#branch--merge-policy-mandatory).
 
 For the complete list of restricted operations, see [restrictions.md](restrictions.md).
 
@@ -569,7 +583,7 @@ The orchestrator escalates to a human when:
 
 ## Post-Merge Cleanup
 
-After a human merges a fleet PR, the owning agent cleans up:
+After a fleet PR is merged (by the owning agent, the orchestrator, or a human), the owning agent cleans up:
 
 ```bash
 # Remove the worktree
@@ -684,9 +698,9 @@ If `git worktree list` shows a worktree from a previous run:
 **Serialized dispatch** (not parallel — schema must be sequential):
 
 1. `@backend-engineer` creates Supabase migration adding `tags` column → PR #801
-2. **Human merges PR #801**
+2. **Merge PR #801** (authoring agent or orchestrator) once CI is green and `MERGEABLE`
 3. `@kmp-engineer` adds SQLDelight schema for tags → PR #802
-4. **Human merges PR #802**
+4. **Merge PR #802** (authoring agent or orchestrator) once CI is green and `MERGEABLE`
 5. Platform agents consume the KMP models → PRs #803–#806 (these can run in parallel)
 
 ---

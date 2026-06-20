@@ -9,7 +9,7 @@ Finance is a financial tracking application handling sensitive personal and mone
 - **Data integrity** — Unreviewed changes to financial logic could produce incorrect results
 - **Security** — Autonomous remote operations could expose credentials or data
 - **Compliance** — GDPR, CCPA, and financial regulations require human oversight of data-affecting operations
-- **Reversibility** — Many remote operations (publishing, pushing, merging) are difficult or impossible to undo
+- **Reversibility** — Many remote operations (publishing, deploying, force-pushing) are difficult or impossible to undo
 
 ## Restriction Categories
 
@@ -33,7 +33,9 @@ Finance is a financial tracking application handling sensitive personal and mone
 - `git merge` from remote branches into main or release branches
 - `git rebase` onto any branch other than `origin/main` or the agent's own feature branch
 
-### 2. Pull Request & Review Operations ⚠️
+### 2. Pull Request & Review Operations ✅
+
+> **Full autonomy on agent-authored PRs.** Agents own the complete lifecycle of the PRs they open — create, drive CI green, review, approve, merge, and close — without human approval. The only hard requirement is the **quality gate**: CI green AND `MERGEABLE` before merge.
 
 **Safe operations (auto-approved):**
 
@@ -41,13 +43,16 @@ Finance is a financial tracking application handling sensitive personal and mone
 - `gh pr list`, `view`, `diff`, `checks`
 - `gh pr edit` — Update PR title, body, labels
 - Reading PR comments and review content
+- `gh pr merge <N> --squash` — Merge a PR the agent authored, once the quality gate (CI green AND `MERGEABLE`) passes. `--admin` is allowed to clear a branch-protection `BLOCKED` state only after local type-check + lint + affected tests are green, documented in the PR.
+- `gh pr review --approve`, `--request-changes`, dismiss reviews — on agent-authored PRs
+- Requesting reviewers, `gh pr close` / reopen — on agent-authored PRs
 
-**Operations requiring human approval:**
+**Operations requiring human approval (still gated):**
 
-- `gh pr merge`, `gh pr close` — Merging or closing pull requests
-- `gh pr review --approve` — Approving or dismissing PR reviews
-- Requesting or dismissing reviewers
-- Any GitHub API call that merges or closes a PR
+- Merging, approving, dismissing reviews on, or closing a PR the agent **did not author** — acting on a human's or another team's PR without explicit direction
+- Merging any PR while the quality gate is red (failing CI or a `CONFLICTING`/`DIRTY` state) — resolve via the Merge Conflict Protocol first
+
+**Why:** Agents already produce the change and verify it against CI; gating the final merge behind a human added latency without adding safety, because branch protection + required CI checks + the quality gate already enforce correctness. Restricting autonomy to agent-authored PRs (and keeping the green-and-`MERGEABLE` gate) preserves the safety guarantees while letting agents land their own work end-to-end. If branch protection requires a human reviewer and `--admin` is unavailable to the agent's token, the agent leaves the PR green and `MERGEABLE` with a `## Needs Human Action: merge` note — a token/permission limitation, not a policy gate.
 
 ### 3. Remote Platform Operations ⛔
 
@@ -189,7 +194,7 @@ These restrictions are enforced at multiple levels:
 
 **Hard enforcement (cannot be bypassed):**
 
-- GitHub branch protection rules prevent direct pushes to `main` — changes must go through reviewed PRs
+- GitHub branch protection rules prevent direct pushes to `main` — changes must go through PRs that pass the required CI checks before merging
 - The `pre-push` Git hook detects non-interactive sessions (AI agents) and blocks the push automatically
 
 **Soft enforcement (advisory — relies on AI model compliance):**
