@@ -27,14 +27,7 @@
 /// <reference lib="webworker" />
 declare const self: ServiceWorkerGlobalScope;
 
-import { replayMutations } from '../db/sync/replayMutations';
-import { SYNC_TAG, type ClientToSwMessage, type SwToClientMessage } from '../db/sync/types';
-import {
-  RECEIPT_CACHE_MAX_ENTRIES,
-  hasSensitiveReceiptToken,
-  isReceiptImagePath,
-  sanitizeReceiptCacheUrl,
-} from '../lib/receiptImagePolicy';
+import type { ClientToSwMessage, QueuedMutation, SwToClientMessage } from '../db/sync/types';
 
 // ---------------------------------------------------------------------------
 // Cache configuration
@@ -58,6 +51,31 @@ const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;
 const SYNC_CACHE = `finance-sync-${CACHE_VERSION}`;
 const RECEIPT_CACHE = `finance-receipts-${CACHE_VERSION}`;
 const LEGACY_API_CACHE_PREFIX = 'finance-api-';
+const SYNC_TAG = 'finance-offline-mutations';
+const MUTATION_QUEUE_DB_NAME = 'finance-mutation-queue';
+const MUTATION_QUEUE_STORE_NAME = 'mutations';
+const MUTATION_QUEUE_DB_VERSION = 1;
+const MAX_RETRY_COUNT = 5;
+const REPLAY_BATCH_SIZE = 50;
+const CONFLICT_DB_NAME = 'finance-sync-conflicts';
+const CONFLICT_STORE_NAME = 'conflicts';
+const CONFLICT_DB_VERSION = 1;
+const RECEIPT_CACHE_MAX_ENTRIES = 120;
+const RECEIPT_PATH_PATTERN = /\/(receipts?|attachments?)\//i;
+const RECEIPT_IMAGE_EXTENSION_PATTERN = /\.(avif|gif|jpe?g|png|webp)$/i;
+const SENSITIVE_RECEIPT_QUERY_PARAMS = new Set([
+  'access_token',
+  'authorization',
+  'expires',
+  'key',
+  'policy',
+  'signature',
+  'sig',
+  'token',
+  'x-amz-credential',
+  'x-amz-security-token',
+  'x-amz-signature',
+]);
 
 /**
  * Build-time precache manifest.
@@ -70,11 +88,302 @@ declare const __PRECACHE_MANIFEST__: string[];
 const PRECACHE_MANIFEST: string[] =
   typeof __PRECACHE_MANIFEST__ !== 'undefined' ? __PRECACHE_MANIFEST__ : [];
 
+const BASE_PATH = normalizeServiceWorkerBasePath(import.meta.env.BASE_URL);
+const APP_INDEX_URL = withServiceWorkerBasePath(BASE_PATH, 'index.html');
+const APP_SHELL_PRECACHE_URLS = getAppShellPrecacheUrls(BASE_PATH);
+
+export function normalizeServiceWorkerBasePath(basePath: string | undefined): string {
+  const trimmed = basePath?.trim();
+  if (!trimmed || trimmed === '/' || trimmed === '.' || trimmed === './') {
+    return '/';
+  }
+
+  let pathname = trimmed;
+  if (/^[a-z][a-z\d+.-]*:/i.test(trimmed)) {
+    pathname = new URL(trimmed).pathname;
+  }
+
+  const withLeadingSlash = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
+export function withServiceWorkerBasePath(basePath: string, path: string): string {
+  return `${normalizeServiceWorkerBasePath(basePath)}${path.replace(/^\/+/, '')}`;
+}
+
+export function getAppShellPrecacheUrls(basePath: string = BASE_PATH): string[] {
+  return [
+    withServiceWorkerBasePath(basePath, ''),
+    withServiceWorkerBasePath(basePath, 'index.html'),
+    withServiceWorkerBasePath(basePath, 'manifest.json'),
+  ];
+}
+
 /**
  * File-extension patterns that qualify for cache-first treatment.
  * Matched against the URL pathname.
  */
 const STATIC_EXTENSIONS = /\.(js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|webp|avif|wasm)$/i;
+
+function isReceiptImagePath(pathname: string): boolean {
+  return RECEIPT_PATH_PATTERN.test(pathname) && RECEIPT_IMAGE_EXTENSION_PATTERN.test(pathname);
+}
+
+function sanitizeReceiptCacheUrl(input: URL): string {
+  const url = new URL(input.toString());
+  for (const key of Array.from(url.searchParams.keys())) {
+    if (SENSITIVE_RECEIPT_QUERY_PARAMS.has(key.toLowerCase())) {
+      url.searchParams.delete(key);
+    }
+  }
+  url.hash = '';
+  return url.toString();
+}
+
+function hasSensitiveReceiptToken(input: URL): boolean {
+  for (const key of input.searchParams.keys()) {
+    if (SENSITIVE_RECEIPT_QUERY_PARAMS.has(key.toLowerCase())) {
+      return true;
+    }
+  }
+  return false;
+}
+
+interface SyncConflict {
+  readonly mutationId: string;
+  readonly tableName: string;
+  readonly recordId: string;
+  readonly clientData: Record<string, unknown>;
+  readonly serverData: Record<string, unknown>;
+  resolvedAt: number | null;
+  resolution: 'client' | 'server' | null;
+}
+
+interface PushResult {
+  acknowledged: string[];
+  conflicts: SyncConflict[];
+  authError: boolean;
+}
+
+async function replayPendingMutations(
+  broadcastResult?: (message: SwToClientMessage) => void,
+): Promise<void> {
+  const pending = await getMutationBatch(REPLAY_BATCH_SIZE);
+  if (pending.length === 0) {
+    return;
+  }
+
+  broadcastResult?.({ type: 'SYNC_STARTED' });
+  const result = await pushMutationsToServer(pending);
+
+  if (result.authError) {
+    broadcastResult?.({
+      type: 'SYNC_FAILED',
+      error: 'Authentication required. Please sign in again.',
+      authError: true,
+    });
+    return;
+  }
+
+  if (result.conflicts.length > 0) {
+    await storeConflicts(result.conflicts);
+  }
+
+  const acknowledged = new Set(result.acknowledged);
+  const conflictIds = new Set(result.conflicts.map((conflict) => conflict.mutationId));
+  if (acknowledged.size > 0) {
+    await deleteMutations([...acknowledged]);
+  }
+  if (conflictIds.size > 0) {
+    await deleteMutations([...conflictIds]);
+  }
+
+  const failed = pending.filter(
+    (mutation) => !acknowledged.has(mutation.id) && !conflictIds.has(mutation.id),
+  );
+  await Promise.all(failed.map((mutation) => retryMutation(mutation)));
+
+  broadcastResult?.({
+    type: 'SYNC_COMPLETED',
+    syncedCount: acknowledged.size,
+    failedCount: failed.length,
+    conflictCount: result.conflicts.length,
+  });
+}
+
+async function pushMutationsToServer(mutations: QueuedMutation[]): Promise<PushResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
+  try {
+    const response = await fetch(`${self.location.origin}/api/sync/push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mutations }),
+      credentials: 'include',
+      signal: controller.signal,
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      return { acknowledged: [], conflicts: [], authError: true };
+    }
+
+    if (response.status === 409) {
+      const body = (await response.json()) as {
+        acknowledged?: string[];
+        conflicts?: SyncConflict[];
+      };
+      return {
+        acknowledged: body.acknowledged ?? [],
+        conflicts: body.conflicts ?? [],
+        authError: false,
+      };
+    }
+
+    if (!response.ok) {
+      return { acknowledged: [], conflicts: [], authError: false };
+    }
+
+    const body = (await response.json()) as {
+      acknowledged?: string[];
+      conflicts?: SyncConflict[];
+    };
+    return {
+      acknowledged: body.acknowledged ?? mutations.map((mutation) => mutation.id),
+      conflicts: body.conflicts ?? [],
+      authError: false,
+    };
+  } catch {
+    return { acknowledged: [], conflicts: [], authError: false };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function openMutationDb(): Promise<IDBDatabase> {
+  return new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(MUTATION_QUEUE_DB_NAME, MUTATION_QUEUE_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(MUTATION_QUEUE_STORE_NAME)) {
+        const store = db.createObjectStore(MUTATION_QUEUE_STORE_NAME, { keyPath: 'id' });
+        store.createIndex('by_timestamp', 'timestamp', { unique: false });
+        store.createIndex('by_table', 'tableName', { unique: false });
+        store.createIndex('by_household', 'householdId', { unique: false });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getMutationBatch(count: number): Promise<QueuedMutation[]> {
+  const db = await openMutationDb();
+  try {
+    return await new Promise<QueuedMutation[]>((resolve, reject) => {
+      const tx = db.transaction(MUTATION_QUEUE_STORE_NAME, 'readonly');
+      const store = tx.objectStore(MUTATION_QUEUE_STORE_NAME);
+      const index = store.index('by_timestamp');
+      const mutations: QueuedMutation[] = [];
+      const request = index.openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor && mutations.length < count) {
+          mutations.push(cursor.value as QueuedMutation);
+          cursor.continue();
+          return;
+        }
+        resolve(mutations);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function countPendingMutations(): Promise<number> {
+  const db = await openMutationDb();
+  try {
+    return await new Promise<number>((resolve, reject) => {
+      const tx = db.transaction(MUTATION_QUEUE_STORE_NAME, 'readonly');
+      const request = tx.objectStore(MUTATION_QUEUE_STORE_NAME).count();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function deleteMutations(ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  const db = await openMutationDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(MUTATION_QUEUE_STORE_NAME, 'readwrite');
+      const store = tx.objectStore(MUTATION_QUEUE_STORE_NAME);
+      ids.forEach((id) => store.delete(id));
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Transaction aborted'));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function retryMutation(mutation: QueuedMutation): Promise<void> {
+  const nextRetryCount = mutation.retryCount + 1;
+  if (nextRetryCount > MAX_RETRY_COUNT) {
+    await deleteMutations([mutation.id]);
+    return;
+  }
+
+  const db = await openMutationDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(MUTATION_QUEUE_STORE_NAME, 'readwrite');
+      tx.objectStore(MUTATION_QUEUE_STORE_NAME).put({ ...mutation, retryCount: nextRetryCount });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Transaction aborted'));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function storeConflicts(conflicts: SyncConflict[]): Promise<void> {
+  if (conflicts.length === 0) return;
+
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(CONFLICT_DB_NAME, CONFLICT_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(CONFLICT_STORE_NAME)) {
+        const store = db.createObjectStore(CONFLICT_STORE_NAME, { keyPath: 'mutationId' });
+        store.createIndex('by_table', 'tableName', { unique: false });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(CONFLICT_STORE_NAME, 'readwrite');
+      const store = tx.objectStore(CONFLICT_STORE_NAME);
+      conflicts.forEach((conflict) => store.put(conflict));
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Transaction aborted'));
+    });
+  } finally {
+    db.close();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Install -- pre-cache app shell
@@ -83,8 +392,8 @@ const STATIC_EXTENSIONS = /\.(js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|we
 self.addEventListener('install', (event: ExtendableEvent) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then(async (cache) => {
-      // Always precache core app shell
-      await cache.addAll(['/', '/index.html', '/manifest.json']);
+      // Always precache the core app shell at the Vite public base path.
+      await cache.addAll(APP_SHELL_PRECACHE_URLS);
       // Precache build chunks individually — a single failure should not
       // block installation (e.g. dev mode without manifest).
       await Promise.allSettled(
@@ -152,7 +461,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 
 self.addEventListener('sync', (event: SyncEvent) => {
   if (event.tag === SYNC_TAG) {
-    event.waitUntil(replayMutations((message) => broadcastToClients(message)));
+    event.waitUntil(replayPendingMutations((message) => broadcastToClients(message)));
   }
 });
 
@@ -192,15 +501,13 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
       break;
 
     case 'SYNC_NOW':
-      event.waitUntil(replayMutations((message) => broadcastToClients(message)));
+      event.waitUntil(replayPendingMutations((message) => broadcastToClients(message)));
       break;
 
     case 'GET_PENDING_COUNT': {
       event.waitUntil(
         (async () => {
-          const { WebMutationQueue } = await import('../db/sync/MutationQueue');
-          const queue = new WebMutationQueue();
-          const count = await queue.getPendingCount();
+          const count = await countPendingMutations();
           broadcastToClients({ type: 'PENDING_COUNT', count });
         })(),
       );
@@ -228,7 +535,7 @@ async function navigationHandler(request: Request): Promise<Response> {
   } catch {
     // Offline — serve the cached app shell so the SPA router can handle the path
     const cache = await caches.open(STATIC_CACHE);
-    const cached = await cache.match('/index.html');
+    const cached = await cache.match(APP_INDEX_URL);
     if (cached) {
       return cached;
     }

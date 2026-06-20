@@ -14,7 +14,12 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getFetchStrategyForPathname } from '../sw/service-worker';
+import {
+  getAppShellPrecacheUrls,
+  getFetchStrategyForPathname,
+  normalizeServiceWorkerBasePath,
+  withServiceWorkerBasePath,
+} from '../sw/service-worker';
 
 // ---------------------------------------------------------------------------
 // Service worker caching strategy constants (mirrored from source)
@@ -24,7 +29,7 @@ const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;
 const SYNC_CACHE = `finance-sync-${CACHE_VERSION}`;
 const LEGACY_API_CACHE_PREFIX = 'finance-api-';
-const APP_SHELL: string[] = ['/', '/index.html', '/manifest.json'];
+const APP_SHELL = getAppShellPrecacheUrls('/');
 const STATIC_EXTENSIONS = /\.(js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|webp|avif|wasm)$/i;
 
 // ---------------------------------------------------------------------------
@@ -65,6 +70,27 @@ describe('App shell pre-cache list (#1330)', () => {
 
   it('includes manifest.json', () => {
     expect(APP_SHELL).toContain('/manifest.json');
+  });
+
+  it('normalizes Vite base paths with leading and trailing slashes', () => {
+    expect(normalizeServiceWorkerBasePath('/finance')).toBe('/finance/');
+    expect(normalizeServiceWorkerBasePath('finance/')).toBe('/finance/');
+    expect(normalizeServiceWorkerBasePath('/')).toBe('/');
+  });
+
+  it('builds subpath app shell URLs for GitHub Pages project sites', () => {
+    expect(getAppShellPrecacheUrls('/finance/')).toEqual([
+      '/finance/',
+      '/finance/index.html',
+      '/finance/manifest.json',
+    ]);
+  });
+
+  it('prefixes precached asset URLs with the service worker base path', () => {
+    expect(withServiceWorkerBasePath('/finance/', 'assets/main.js')).toBe(
+      '/finance/assets/main.js',
+    );
+    expect(withServiceWorkerBasePath('/', 'assets/main.js')).toBe('/assets/main.js');
   });
 });
 
