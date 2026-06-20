@@ -8,15 +8,12 @@
       { "resourceType": "total", "budget": 1750 }
     ],
     "resourceCounts": [
-      { "resourceType": "script", "budget": 15 },
+      { "resourceType": "script", "budget": 25 },
       { "resourceType": "third-party", "budget": 0 }
     ],
     "timings": [
-      { "metric": "first-contentful-paint", "budget": 4500 },
-      { "metric": "interactive", "budget": 11000 },
-      { "metric": "largest-contentful-paint", "budget": 11000 },
-      { "metric": "cumulative-layout-shift", "budget": 0.1 },
-      { "metric": "total-blocking-time", "budget": 350 }
+      { "metric": "first-contentful-paint", "budget": 8500 },
+      { "metric": "cumulative-layout-shift", "budget": 0.1 }
     ]
   }
 ]

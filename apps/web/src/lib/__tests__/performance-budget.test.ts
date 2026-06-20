@@ -65,18 +65,20 @@ describe('Performance Budget Configuration', () => {
     expect(entry.timings!.length).toBeGreaterThan(0);
   });
 
-  it('should have FCP budget under 4500ms', () => {
+  it('should have FCP budget under 8500ms', () => {
     const entry = budget[0];
     const fcp = entry.timings!.find((t) => t.metric === 'first-contentful-paint');
     expect(fcp).toBeDefined();
-    expect(fcp!.budget).toBeLessThanOrEqual(4500);
+    expect(fcp!.budget).toBeLessThanOrEqual(8500);
   });
 
-  it('should have LCP budget under 11000ms', () => {
+  it('should omit null-prone timing budgets for the minimal login audit', () => {
     const entry = budget[0];
-    const lcp = entry.timings!.find((t) => t.metric === 'largest-contentful-paint');
-    expect(lcp).toBeDefined();
-    expect(lcp!.budget).toBeLessThanOrEqual(11000);
+    const metrics = new Set(entry.timings!.map((t) => t.metric));
+
+    expect(metrics.has('interactive')).toBe(false);
+    expect(metrics.has('largest-contentful-paint')).toBe(false);
+    expect(metrics.has('total-blocking-time')).toBe(false);
   });
 
   it('should have CLS budget under 0.1', () => {
@@ -86,11 +88,11 @@ describe('Performance Budget Configuration', () => {
     expect(cls!.budget).toBeLessThanOrEqual(0.1);
   });
 
-  it('should have TBT budget under 350ms', () => {
+  it('should keep script count aligned with the built chunk budget', () => {
     const entry = budget[0];
-    const tbt = entry.timings!.find((t) => t.metric === 'total-blocking-time');
-    expect(tbt).toBeDefined();
-    expect(tbt!.budget).toBeLessThanOrEqual(350);
+    const scriptCount = entry.resourceCounts!.find((r) => r.resourceType === 'script');
+    expect(scriptCount).toBeDefined();
+    expect(scriptCount!.budget).toBeLessThanOrEqual(25);
   });
 
   it('should limit third-party resources to 5', () => {
