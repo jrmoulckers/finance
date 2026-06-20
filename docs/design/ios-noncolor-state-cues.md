@@ -142,14 +142,22 @@ shared `IconToken` enum (§5) — they do not exist today.
 
 ### Amount & transaction-type states
 
-| State             | Color today        | Icon / shape (cue)                              | Text cue                          | Token      |
-| ----------------- | ------------------ | ----------------------------------------------- | --------------------------------- | ---------- |
-| Positive / credit | green (color-only) | `arrow.down.circle` (inflow) + explicit **`+`** | "+$1,250.00" · a11y "Income of …" | `income`   |
-| Negative / debit  | red                | `arrow.up.circle` (outflow) + existing `−`      | "−$42.99" · a11y "Expense of …"   | `expense`  |
-| Income (type)     | green              | `arrow.down.circle` (down-into-account)         | "Income"                          | `income`   |
-| Expense (type)    | red                | `arrow.up.circle` (up-out-of-account)           | "Expense"                         | `expense`  |
-| Transfer (type)   | blue               | `arrow.left.arrow.right` (bidirectional)        | "Transfer"                        | `transfer` |
-| Zero / no change  | primary            | `minus` / em-dash                               | "$0.00"                           | —          |
+| State             | Color today        | Icon / shape (cue)                                                                  | Text cue                          | Token      |
+| ----------------- | ------------------ | ----------------------------------------------------------------------------------- | --------------------------------- | ---------- |
+| Positive / credit | green (color-only) | _list:_ leading `arrow.down.circle` type icon · _standalone:_ explicit **`+`** sign | "+$1,250.00" · a11y "Income of …" | `income`   |
+| Negative / debit  | red                | _list:_ leading `arrow.up.circle` type icon · _standalone:_ existing `−` sign       | "−$42.99" · a11y "Expense of …"   | `expense`  |
+| Income (type)     | green              | `arrow.down.circle` (down-into-account)                                             | "Income"                          | `income`   |
+| Expense (type)    | red                | `arrow.up.circle` (up-out-of-account)                                               | "Expense"                         | `expense`  |
+| Transfer (type)   | blue               | `arrow.left.arrow.right` (bidirectional)                                            | "Transfer"                        | `transfer` |
+| Zero / no change  | primary            | `minus` / em-dash                                                                   | "$0.00"                           | —          |
+
+> **List vs. standalone amount (confirmed by maintainer 2026-06-20).** In a transaction **row /
+> list**, the shape-distinct **leading type icon** (`arrow.down.circle` income vs.
+> `arrow.up.circle` expense, via `SFSymbolsMapping.swift`) is the **sole** non-color cue for
+> income vs. expense — do **not** add a second directional arrow on the amount (no redundant
+> double-arrows). For a **standalone amount** with no accompanying type icon (dashboard net
+> cashflow, investment gain/loss, summary cards), `CurrencyLabel` must render an explicit sign for
+> **positives too**; today it signs only negatives (the 1.4.1 gap — see §6 and §9 decision 1).
 
 ### Transaction-status states (`TransactionStatus` — `packages/models/.../Transaction.kt:16`)
 
@@ -210,10 +218,16 @@ so iOS/Android/Windows/Web stay consistent and the thresholds are tested once.
 
 ### 5.1 Extend the shared `IconToken` vocabulary
 
+> **Ownership boundary.** `packages/core` is owned by **@kmp-engineer**. This doc only
+> **specifies** the additions; the enum/mapping edits are a **separate tracked task for
+> @kmp-engineer** and are intentionally **not made in this design PR** (cross-file edits here would
+> create fleet conflicts). The table below is the canonical spec that task implements.
+
 `packages/core/src/commonMain/kotlin/com/finance/core/icons/IconToken.kt` (enum at line 5) and its
 iOS mirror `apps/ios/Finance/Components/IconToken.swift` already define `income` (29), `expense`
 (30), `sync` (48), `success`, `warning` (59), `error`, `pending` (62), `online`, `offline` (66) —
-but they have **no trend or staleness tokens**. Add:
+but they have **no trend or staleness tokens**. **Proposed additions (to be implemented by
+@kmp-engineer):**
 
 | New token   | SF Symbol (iOS mapping to add) | Lucide (standard pack) | Used for                     |
 | ----------- | ------------------------------ | ---------------------- | ---------------------------- |
@@ -222,9 +236,12 @@ but they have **no trend or staleness tokens**. Add:
 | `trendFlat` | `arrow.right`                  | `move-right` / `minus` | break-even, flat trend       |
 | `stale`     | `clock.badge.exclamationmark`  | `clock-alert`          | out-of-date / late-sync data |
 
-Follow the existing add-an-icon procedure in `docs/design/icon-system-ios.md` (steps 1–6): add to
-the KMP enum + mappings first, then mirror in the Swift `IconToken`, then add the SF Symbol to
-`SFSymbolsMapping.swift` and the Lucide name to `LucideMapping.swift`, and update `IconViewTests`.
+These are the canonical trend + staleness tokens that the chart-accessibility doc for **#2113**
+(`docs/design/ios-chart-accessibility.md`, PR #2834) defers to. When implemented, follow the
+existing add-an-icon procedure in `docs/design/icon-system-ios.md` (steps 1–6): add to the KMP enum
+
+- mappings first, then mirror in the Swift `IconToken`, then add the SF Symbol to
+  `SFSymbolsMapping.swift` and the Lucide name to `LucideMapping.swift`, and update `IconViewTests`.
 
 ### 5.2 Shared `StateCueResolver` (illustrative)
 
@@ -280,13 +297,13 @@ color-only or missing-cue condition; "Required cue" is the §4 row(s) to apply.
 
 ## 7. State coverage (Dynamic Type, VoiceOver, masking, empty)
 
-| Concern                       | Requirement                                                                                                                                                                                                                                                                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Dynamic Type**              | Icon + label cues use scalable SF Symbol sizing (`.imageScale` / symbol font) and Dynamic Type text styles; at accessibility sizes the icon must not be dropped to save space — labels may wrap (`fixedSize(horizontal:false, vertical:true)` as in `OfflineBanner:42`) but the cue stays. Cross-reference **#2119** (Dynamic Type).                         |
-| **VoiceOver**                 | The text channel _is_ the VoiceOver channel. Every cue's `label` must be in the element's accessibility label, and the **amount, type, and status must be announced** — today `TransactionRowView` (38–44) drops them. Exact spoken phrasing/rotor is owned by **#2117**; this doc only requires the cue text be present and not color-dependent.            |
-| **High-contrast / grayscale** | Because the signal is icon + shape + text, the surface remains fully legible with `differentiateWithoutColor` enabled and under a grayscale filter; color is removed without information loss. Honor `accessibilityDifferentiateWithoutColor` to optionally strengthen shape cues.                                                                           |
-| **Privacy / masking**         | When balances are masked, the **direction/trend cue and tone still show** (an arrow or "Over budget" discloses no absolute amount), but the masked figure replaces the number — consistent with the chart doc's masking decision (`ios-chart-accessibility.md` §6). Sign cues attach to the masked placeholder only when a direction is independently known. |
-| **Empty / unknown**           | When a state is indeterminate (no data, zero, break-even), use the neutral cue (`minus` / "—" / "No change") — never an absent cue that could read as a default positive/negative.                                                                                                                                                                           |
+| Concern                       | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dynamic Type**              | Icon + label cues use scalable SF Symbol sizing (`.imageScale` / symbol font) and Dynamic Type text styles; at accessibility sizes the icon must not be dropped to save space — labels may wrap (`fixedSize(horizontal:false, vertical:true)` as in `OfflineBanner:42`) but the cue stays. Branch on the accessibility-size threshold with the environment value `\.dynamicTypeSize` and `dynamicTypeSize.isAccessibilitySize` (or `\.sizeCategory.isAccessibilityCategory`) — e.g. stack an icon+label vertically once `isAccessibilitySize` is true rather than truncating. Cross-reference **#2119** (Dynamic Type). |
+| **VoiceOver**                 | The text channel _is_ the VoiceOver channel. Every cue's `label` must be in the element's accessibility label, and the **amount, type, and status must be announced** — today `TransactionRowView` (38–44) drops them. Exact spoken phrasing/rotor is owned by **#2117**; this doc only requires the cue text be present and not color-dependent.                                                                                                                                                                                                                                                                       |
+| **High-contrast / grayscale** | Because the signal is icon + shape + text, the surface remains fully legible with `differentiateWithoutColor` enabled and under a grayscale filter; color is removed without information loss. Honor `accessibilityDifferentiateWithoutColor` to optionally strengthen shape cues.                                                                                                                                                                                                                                                                                                                                      |
+| **Privacy / masking**         | When balances are masked, the **direction/trend cue and tone still show** (an arrow or "Over budget" discloses no absolute amount), but the masked figure replaces the number — consistent with the chart doc's masking decision (`ios-chart-accessibility.md` §6). Sign cues attach to the masked placeholder only when a direction is independently known.                                                                                                                                                                                                                                                            |
+| **Empty / unknown**           | When a state is indeterminate (no data, zero, break-even), use the neutral cue (`minus` / "—" / "No change") — never an absent cue that could read as a default positive/negative.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ## 8. Test plan
 
@@ -347,15 +364,27 @@ build/toolchain.
 
 **Resolved design decisions (in-session, 2026-06-20):**
 
-1. **Amount sign cue (headline 1.4.1 fix)** — income vs. expense is conveyed in lists by the
-   already-shape-distinct **leading type icon** (`arrow.down.circle` vs `arrow.up.circle`), **and**
-   `CurrencyLabel` gains an **explicit `+` sign for positive amounts** so a standalone amount
-   (dashboard net cashflow, investment gain) is never green-only. Chosen over always-prefixing a
-   redundant arrow on every row amount (avoids double-arrows) and over a sign-only approach
-   (keeps the at-a-glance icon). _Open: confirming with orchestrator; default applied._
-2. **New shared tokens** — `trendUp`, `trendDown`, `trendFlat`, and `stale` are added to the
-   shared `IconToken` enum (and iOS/Lucide mappings), because neither `IconToken.kt` nor
-   `IconToken.swift` defines them today and #2113 references them as #2121-owned (§5.1).
+1. **Amount sign cue (headline 1.4.1 fix) — CONFIRMED by maintainer 2026-06-20, option (c).**
+   Two distinct contexts:
+   - **In lists/rows:** income vs. expense is conveyed by the already-shape-distinct **leading
+     type icon** (`arrow.down.circle` income vs. `arrow.up.circle` expense, via
+     `SFSymbolsMapping.swift`). Do **not** also add a directional arrow on the row amount — that
+     would be a redundant double-arrow.
+   - **For standalone amounts** (dashboard net cashflow, investment gain/loss, summary cards) where
+     no type icon is present: `CurrencyLabel` must render an **explicit sign for positives too**.
+     **The 1.4.1 violation today:** `CurrencyLabel.amountColor` (`CurrencyLabel.swift:71–76`)
+     returns green for positive / red for negative, and the `.currency` `NumberFormatter`
+     (`:64–68`) signs **only negatives** — so a positive value's positivity is carried by color
+     alone. The design fix: positives gain a leading **`+`** (e.g. "+$1,250.00"). _Design-only —
+     no Swift change ships in this PR (#1239 blocks the build); the intended behavior is
+     documented for the implementer._
+   - Color remains an **enhancement** layered on the icon/sign/text, never the sole signal.
+2. **New shared tokens — proposed, owned by @kmp-engineer.** `trendUp`, `trendDown`, `trendFlat`,
+   and `stale` should be added to the shared `IconToken` enum (and iOS `SFSymbolsMapping` /
+   `LucideMapping`), because neither `IconToken.kt` nor `IconToken.swift` defines them today and
+   #2113 references them as #2121-owned. **This design PR does not edit `IconToken.kt`** —
+   `packages/core` is @kmp-engineer-owned, so the enum/mapping change is a **separate tracked
+   task** for @kmp-engineer (spec in §5.1).
 3. **"Failed" is a sync state, not a transaction state** — the model's `TransactionStatus` is
    `PENDING/CLEARED/RECONCILED/VOID` (`Transaction.kt:16`); the epic's "failed" cue is mapped to
    the **sync-failed** state, not a non-existent transaction status (§4).
