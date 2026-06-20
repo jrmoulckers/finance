@@ -178,6 +178,18 @@ describe('BottomNavigation', () => {
     expect(moreButton).toHaveFocus();
   });
 
+  it('closes the More sheet on document Escape when focus is outside the sheet', () => {
+    render(<BottomNavigation {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'More destinations' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('every destination not on the bottom-nav is reachable from the More sheet', () => {
     render(<BottomNavigation {...defaultProps} />);
 

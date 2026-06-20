@@ -108,6 +108,19 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      onClose();
+    };
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+    };
+  }, [open, onClose]);
+
   const handleNavigate = useCallback(
     (path: string) => {
       onClose();
