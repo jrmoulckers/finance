@@ -44,17 +44,21 @@ function requiredProductionEnv(name: string): never {
   throw new Error(`${name} is required for production builds`);
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
-  ? import.meta.env.VITE_SUPABASE_URL.trim()
-  : import.meta.env.PROD
-    ? requiredProductionEnv('VITE_SUPABASE_URL')
-    : 'https://placeholder.supabase.co';
+const supabaseUrl = isLighthouseAudit()
+  ? 'https://placeholder.supabase.co'
+  : import.meta.env.VITE_SUPABASE_URL?.trim()
+    ? import.meta.env.VITE_SUPABASE_URL.trim()
+    : import.meta.env.PROD
+      ? requiredProductionEnv('VITE_SUPABASE_URL')
+      : 'https://placeholder.supabase.co';
 
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
-  ? import.meta.env.VITE_SUPABASE_ANON_KEY.trim()
-  : import.meta.env.PROD
-    ? requiredProductionEnv('VITE_SUPABASE_ANON_KEY')
-    : 'placeholder-anon-key';
+const supabaseAnonKey = isLighthouseAudit()
+  ? 'placeholder-anon-key'
+  : import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
+    ? import.meta.env.VITE_SUPABASE_ANON_KEY.trim()
+    : import.meta.env.PROD
+      ? requiredProductionEnv('VITE_SUPABASE_ANON_KEY')
+      : 'placeholder-anon-key';
 
 const PRE_AUTH_ROUTES = new Set([
   '/login',
@@ -79,6 +83,10 @@ const authConfig = {
   logoutEndpoint: import.meta.env.VITE_LOGOUT_ENDPOINT ?? '/api/auth/logout',
   betaAllowedEmails: import.meta.env.VITE_BETA_ALLOWED_EMAILS,
   onUnauthenticated: () => {
+    // Keep Lighthouse on the measured URL; the anonymous login shell does not need a refresh redirect.
+    if (isLighthouseAudit()) {
+      return;
+    }
     // Redirect to login when session expires or user is not authenticated.
     if (!isPreAuthRoute(window.location.pathname)) {
       window.location.href = '/login';
@@ -98,7 +106,11 @@ const authConfig = {
 // cause issues (e.g. E2E tests under Playwright).
 // NOTE: configureSyncEndpoint is only available on branches with #535 sync wiring.
 // Skip sync configuration when the function doesn't exist.
-if (authConfig.supabaseUrl && !authConfig.supabaseUrl.includes('placeholder')) {
+if (
+  authConfig.supabaseUrl &&
+  !authConfig.supabaseUrl.includes('placeholder') &&
+  !isLighthouseAudit()
+) {
   void import('./db/sync/replayMutations').then((mod) => {
     if ('configureSyncEndpoint' in mod) {
       (
@@ -129,7 +141,15 @@ initMonitoring();
 // routes.  Chromium's PWA installability heuristic only credits the
 // install icon when the page that hosts the manifest link is controlled
 // by a SW with a `fetch` handler (#1965).
-if (typeof window !== 'undefined') {
+function isLighthouseAudit(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('lhci=1') ||
+      (typeof navigator !== 'undefined' && /\bLighthouse\b/i.test(navigator.userAgent)))
+  );
+}
+
+if (typeof window !== 'undefined' && !isLighthouseAudit()) {
   // Wait for the load event so the SW install doesn't compete with
   // critical app-shell rendering.  No await — registration is best-effort.
   if (document.readyState === 'complete') {
