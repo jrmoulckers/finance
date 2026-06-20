@@ -178,7 +178,7 @@ describe('Service Worker Caching', () => {
 
   it('should pre-cache app shell on install', () => {
     expect(swCode).toContain('PRECACHE_MANIFEST');
-    expect(swCode).toContain("cache.addAll(['/', '/index.html', '/manifest.json'])");
+    expect(swCode).toContain('cache.addAll(APP_SHELL_PRECACHE_URLS)');
   });
 
   it('should purge stale caches on activate', () => {
@@ -187,7 +187,7 @@ describe('Service Worker Caching', () => {
 
   it('should handle Background Sync', () => {
     expect(swCode).toContain('SYNC_TAG');
-    expect(swCode).toContain('replayMutations');
+    expect(swCode).toContain('replayPendingMutations');
   });
 });
 

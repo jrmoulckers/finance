@@ -4,7 +4,7 @@ import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Connect, type Plugin } from 'vite';
+import { defineConfig, type Connect, type Plugin, type ResolvedConfig } from 'vite';
 
 import { getRouteChunkName } from './src/lib/perf/route-chunks';
 
@@ -52,22 +52,46 @@ function copySqlJsWasm(): Plugin {
  * as a global constant in the service worker entry, enabling offline-first
  * precaching of all route chunks during SW installation.
  */
+function normalizeServiceWorkerBasePath(basePath: string): string {
+  const trimmed = basePath.trim();
+  if (!trimmed || trimmed === '/' || trimmed === '.' || trimmed === './') {
+    return '/';
+  }
+
+  let pathname = trimmed;
+  if (/^[a-z][a-z\d+.-]*:/i.test(trimmed)) {
+    pathname = new URL(trimmed).pathname;
+  }
+
+  const withLeadingSlash = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
+function withServiceWorkerBasePath(basePath: string, fileName: string): string {
+  return `${basePath}${fileName.replace(/^\/+/, '')}`;
+}
+
 function swPrecacheManifest(): Plugin {
+  let resolvedBasePath = '/';
+
   return {
     name: 'sw-precache-manifest',
     apply: 'build',
+    configResolved(config: ResolvedConfig) {
+      resolvedBasePath = normalizeServiceWorkerBasePath(config.base);
+    },
     generateBundle(_options, bundle) {
       // Collect all JS and CSS asset paths from the build output
       const assetPaths: string[] = [];
       for (const [fileName, chunk] of Object.entries(bundle)) {
         if (fileName === 'sw.js') continue; // Don't precache the SW itself
         if (fileName.endsWith('.js') || fileName.endsWith('.css')) {
-          assetPaths.push(`/${fileName}`);
+          assetPaths.push(withServiceWorkerBasePath(resolvedBasePath, fileName));
         }
         // Also include CSS assets referenced by chunks
         if (chunk.type === 'chunk' && chunk.viteMetadata?.importedCss) {
           for (const css of chunk.viteMetadata.importedCss) {
-            const cssPath = `/${css}`;
+            const cssPath = withServiceWorkerBasePath(resolvedBasePath, css);
             if (!assetPaths.includes(cssPath)) {
               assetPaths.push(cssPath);
             }
