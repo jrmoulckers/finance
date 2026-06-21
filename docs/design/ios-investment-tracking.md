@@ -5,6 +5,7 @@
 > **Closes:** #2568 (KMP-backed iOS investment data, replacing mocks) · #2570 (Contribution-aware portfolio metrics and projections)
 > **Owner:** @ios-engineer · **Shared work proposed for:** @kmp-engineer
 > **Blocked by:** #1239 (Apple Developer Program enrollment) — **no Swift implementation lands until this clears.** This document is a design-only deliverable; it ships **one** new doc and touches no Swift or `packages/*` code.
+> **Design decisions:** D1 (return method) and D2 (projection growth rate) **maintainer-confirmed 2026-06-20** — see §11.
 > **Consumes (does not duplicate):** [`ios-chart-accessibility.md`](./ios-chart-accessibility.md), [`voiceover-chart-navigation.md`](./voiceover-chart-navigation.md), [`ios-noncolor-state-cues.md`](./ios-noncolor-state-cues.md), [`ios-dynamic-type-reflow.md`](./ios-dynamic-type-reflow.md), [`ios-net-worth-trend-chart.md`](./ios-net-worth-trend-chart.md).
 
 This spec follows the wave-1 pilot structure established by [`ios-chart-accessibility.md`](./ios-chart-accessibility.md): a status blockquote, an anchored table of contents, numbered sections, a per-surface application map, a state-coverage table, and a commonTest-vs-native-deferred test plan. Accessibility behaviour (chart text alternatives, VoiceOver point navigation, non-color gain/loss cues, Dynamic Type reflow) is **referenced by path**, not re-derived.
@@ -151,9 +152,11 @@ Two complementary, Cents-exact metrics, layered from simplest to most rigorous:
 
    All numerator/denominator terms are `Cents`; only the final division yields a `Double`. Annualize with `(1 + R)^(365 / periodDays) − 1`.
 
-**Why not full XIRR for v1?** True money-weighted IRR (XIRR) requires Newton/bisection iteration. Modified Dietz is the industry-standard closed-form approximation, captures cash-flow _timing_ (which simple net-contribution does not), and is far easier to pin down with exact test vectors. XIRR is proposed as an optional fast-follow in §9. **Time-weighted return (TWR)** is deliberately excluded from v1: it removes the investor's contribution-timing on purpose (it is for benchmark comparison), which is the opposite of what #2570 needs.
+**Why not full XIRR for v1? (deferred-XIRR tradeoff.)** True money-weighted IRR (XIRR) requires Newton/bisection iteration to solve for the rate that zeroes the net present value of the cash-flow series. Modified Dietz is the industry-standard closed-form approximation: it captures cash-flow _timing_ (which simple net-contribution does not), needs no iteration, is fully deterministic, and is far easier to pin down with exact `commonTest` vectors. The tradeoff we accept: Modified Dietz can diverge from true XIRR when cash flows are large _and_ returns are volatile within the period. For v1 this is acceptable — most users have modest, regularly-spaced contributions where the two converge. XIRR is therefore deferred to a documented fast-follow (§9, §11), not dropped.
 
-> **Open design decision flagged to orchestrator (§11):** confirm v1 = _net-contribution-adjusted gain + Modified Dietz_, deferring XIRR. Recommended default baked into this doc.
+**Why exclude TWR? (considered and rejected.)** Time-weighted return (TWR) deliberately _removes_ the effect of contribution timing by chaining sub-period returns across each cash flow — it answers "how did the _manager/fund_ perform," independent of when the investor added money. That is the **opposite** of what #2570 asks for: #2570 exists precisely so the user sees how _their_ deposits and timing affected _their_ outcome. TWR is the right tool for benchmark comparison and may return in a later "compare to index" feature, but it is explicitly rejected as the v1 headline because it would re-introduce the very confusion (deposits vs. growth) this epic removes.
+
+> **Decision D1 — maintainer-confirmed 2026-06-20 (§11):** v1 = _net-contribution-adjusted gain (lifetime headline) + Modified Dietz (annualized)_; XIRR deferred to a fast-follow; TWR considered and rejected for the reason above.
 
 ### 4.3 Where each metric surfaces
 
@@ -184,7 +187,9 @@ value_{m+1} = value_m × (1 + annualRate/12) + monthlyContribution     // all Ce
 - **`annualRate` (expected scenario)** default = the portfolio's own **Modified Dietz annualized return** (§4.2) when ≥ 12 months of history exist; otherwise a conservative **6% nominal** fallback.
 - Rounding: contributions and compounding are computed in Cents each step; the growth term rounds half-to-even to the nearest cent before accumulation (no floating-point drift across the horizon).
 
-> **Open design decision flagged to orchestrator (§11):** confirm the default `annualRate` policy (derive-from-history-else-6%) and the contribution default. Conservative defaults are baked in; trivially changed if the orchestrator picks a different rate (e.g., asset-allocation-weighted blend).
+**Considered and rejected: asset-allocation-weighted blended rate.** An alternative was to blend a per-asset-class expected rate (e.g., stocks 7% / bonds 3% / cash 1%) weighted by `assetAllocation` (`InvestmentEngine.kt:40`). It was rejected for v1 because it bakes in hardcoded capital-market assumptions the app would have to own and defend, it is harder to explain to the user ("where did 5.4% come from?"), and it is less honest than using the portfolio's _own_ realised behaviour. Deriving from the user's actual Modified Dietz return — falling back to a single conservative 6% only when history is too thin — is more transparent and self-grounding. The blended approach is noted as a possible future enhancement once a maintained capital-market-assumptions source exists.
+
+> **Decision D2 — maintainer-confirmed 2026-06-20 (§11):** derive-from-history-else-6% fallback; trailing-12-month contribution default; asset-allocation-weighted blend considered and rejected for the reason above.
 
 ### 5.3 Confidence treatment
 
@@ -196,7 +201,15 @@ Match the net-worth doc's three-scenario band rather than inventing a new visual
 | Expected     | expected       | dashed center line         | "expected"              |
 | Optimistic   | expected + 2pp | upper bound of shaded band | announced as a range    |
 
-The projection is **explicitly labelled an estimate, not a guarantee** (compliance + trust requirement for a financial app). The chart text alternative and per-point navigation follow [`voiceover-chart-navigation.md`](./voiceover-chart-navigation.md) (projection chart text-alt + point navigation + confidence band); the band is announced as a spread ("between $X and $Y"), never as a single false-precision number.
+The projection is **explicitly labelled an estimate, not a guarantee** (compliance + trust requirement for a financial app). The chart text alternative and per-point navigation follow [`voiceover-chart-navigation.md`](./voiceover-chart-navigation.md) (projection chart text-alt + point navigation + confidence band).
+
+**Dual-channel requirement (from net-worth doc #2842).** The confidence band must be carried in **both** the visual channel (the shaded region) **and** the spoken/text-alternative channel — never in the visual/color channel alone. Concretely:
+
+- The text alternative and VoiceOver value announce the band **as a spread** ("between $X and $Y at <year>"), never as a single point or a false-precision number.
+- A user relying solely on VoiceOver (no view of the shading) receives the same uncertainty information a sighted user gets from the band width.
+- Scenario separation in the visual uses opacity/pattern (not hue alone) so the band survives grayscale and CVD, consistent with §8 and the CVD-safe palette.
+
+This dual-channel rule is the accessibility-critical part of D4 and is non-negotiable: a confidence band shown only visually would mislead non-visual users into reading the projection as certain.
 
 ### 5.4 New iOS surface
 
@@ -263,7 +276,7 @@ All pure `commonMain`, Cents-exact, deterministic. Framed as proposals; this doc
    - `annualizedReturn(periodReturn, periodDays): Double`
      Returning `Cents` for money and `Double` only for ratios, matching the engine's existing return-type conventions (`InvestmentEngine.kt:18-38`).
 3. **Projection adapter** `InvestmentProjectionEngine` mirroring `BalancePredictionEngine`'s shape (`BalancePredictionEngine.kt:20,:37`): inputs `(currentValue: Cents, monthlyContribution: Cents, annualRate: Double, months: Int)`, output a `Cents` series + a `ProjectionConfidence`/scenario triple analogous to `PredictionConfidence` (`BalancePredictionEngine.kt:56`).
-4. **Optional fast-follow:** `xirr(flows): Double` (bisection, bounded iterations) if money-weighted IRR is preferred over Modified Dietz after the §11 decision.
+4. **Deferred fast-follow (tracked, per confirmed D1):** `xirr(flows): Double` (bisection, bounded iterations). v1 ships Modified Dietz; XIRR is a documented future enhancement for users whose large, irregular flows make the closed-form approximation diverge from true money-weighted IRR (§4.2, §11). Not in scope for the first implementation.
 
 These functions are the prime **runnable-today** `commonTest` targets (§10) and unblock all four platforms at once, keeping iOS/Android/Web/Windows numerically identical.
 
@@ -321,14 +334,16 @@ XCUITest / SwiftUI snapshot coverage that requires the Apple toolchain and a pro
 - `apps/web/src/types/investment.ts`, `apps/web/src/components/charts/chart-palette.ts`
 - `apps/ios/Finance/{Models,Screens,ViewModels,Repositories}/Investment*.swift`
 
-### Resolved decisions (defaults baked in; confirmation requested from orchestrator)
+### Resolved decisions
 
-| #   | Decision                            | Recommended default in this doc                                                                                     | Status                                        |
-| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| D1  | Contribution-adjusted return method | Net-contribution-adjusted gain (lifetime) **+** Modified Dietz money-weighted (annualized); defer XIRR; exclude TWR | **Flagged to orchestrator** (§4.2)            |
-| D2  | Default projection growth rate      | Portfolio's own Modified Dietz annualized return when ≥ 12 months of history, else 6% nominal fallback              | **Flagged to orchestrator** (§5.2)            |
-| D3  | Default contribution assumption     | Trailing-12-month average monthly net contribution, user-overridable                                                | Recommended (§5.2)                            |
-| D4  | Confidence treatment                | Three-scenario band (expected ± 2pp), labelled an estimate, band announced as a spread                              | Resolved — follows net-worth precedent (§5.3) |
-| D5  | Mock retention                      | Keep `MockInvestmentRepository` as `#if DEBUG` preview/test double only; remove from release `RepositoryProvider`   | Resolved (§3.3)                               |
+All decisions below are resolved. **D1 and D2 were maintainer-confirmed on 2026-06-20** (both confirmed as the recommended defaults this doc baked in); D3–D5 follow established precedent.
 
-D1 and D2 are genuine design decisions; the orchestrator has been messaged with these recommendations. The defaults above are baked in so implementation (post-#1239) is unblocked, and will be updated in place if the orchestrator selects different options.
+| #   | Decision                            | Resolution                                                                                                                                                                                                                                                   | Status                                        |
+| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| D1  | Contribution-adjusted return method | Net-contribution-adjusted gain (lifetime headline) **+** Modified Dietz money-weighted (annualized). XIRR deferred to a documented fast-follow (§9). TWR **considered and rejected** — it strips contribution timing, the opposite of #2570's intent (§4.2). | **Maintainer-confirmed 2026-06-20** (§4.2)    |
+| D2  | Default projection growth rate      | Portfolio's own Modified Dietz annualized return when ≥ 12 months of history, else conservative 6% nominal fallback. Asset-allocation-weighted blended rate **considered and rejected** (§5.2).                                                              | **Maintainer-confirmed 2026-06-20** (§5.2)    |
+| D3  | Default contribution assumption     | Trailing-12-month average monthly net contribution, user-overridable                                                                                                                                                                                         | Confirmed with D2, 2026-06-20 (§5.2)          |
+| D4  | Confidence treatment                | Three-scenario band (expected ± 2pp), labelled an estimate; **dual-channel** — band carried in both visual and spoken/text alt, announced as a spread (per #2842)                                                                                            | Resolved — follows net-worth precedent (§5.3) |
+| D5  | Mock retention                      | Keep `MockInvestmentRepository` as `#if DEBUG` preview/test double only; remove from release `RepositoryProvider`                                                                                                                                            | Resolved (§3.3)                               |
+
+All defaults are baked in so implementation (post-#1239) is unblocked. The deferred XIRR work (D1) is tracked as a fast-follow in §9.
