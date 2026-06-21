@@ -1,6 +1,6 @@
 # iPhone SE Compact-Width Dashboard, Bills & Transaction-Entry Layouts — Finance
 
-> **Status:** PROPOSED — design decisions resolved in-session 2026-06-20 (breakpoint + stepper defaults flagged to orchestrator); pending human review & merge
+> **Status:** PROPOSED — design decisions **maintainer-confirmed 2026-06-20** (compact-width breakpoint + stepper model both confirmed); pending human review & merge
 > **Epic:** #2190 · **Closes:** #2607, #2608 · **Refs:** #1239 (Apple Developer enrollment, blocking native impl)
 > **WCAG Target:** 2.2 Level AA (1.4.10 Reflow, 1.4.4 Resize Text, 2.5.5 Target Size)
 > **Priority:** P1 (`priority:high`) · **Milestone:** v1.0
@@ -108,7 +108,7 @@ or a **content-driven** fallback. This doc prefers content-driven reflow and res
 numeric breakpoint only for decisions that content-fitting cannot make on its own (e.g. how many
 columns a grid should have).
 
-### 3.2 The breakpoints (resolved default — §9 decision 1)
+### 3.2 The breakpoints (maintainer-confirmed — §9 decision 1)
 
 | Token (proposed)       | Value      | Meaning                                                                                     |
 | ---------------------- | ---------- | ------------------------------------------------------------------------------------------- |
@@ -262,7 +262,7 @@ The transaction-create surface is **already a three-step stepper** — `type →
 `TransactionCreateView.swift:28–37`). #2608 is therefore **not** "build a stepper" but "make the
 existing stepper fit 375 pt and make it consistent with the #2167 one-thumb quick-add defaults."
 
-### 6.1 Keep the multi-step model at SE width (resolved default — §9 decision 2)
+### 6.1 Keep the multi-step model at SE width (maintainer-confirmed — §9 decision 2)
 
 **Do not collapse the stepper into a single long scroll at 375 pt.** The `details` step alone is a
 multi-section `Form` (amount + keypad, payee, account, category, status, BNPL, tags, mood, date,
@@ -409,19 +409,23 @@ audit** of the cited code; the snapshot/probe steps above are the deferred nativ
 `TransactionCreateView.swift`, `DashboardViewModel.swift`, `TransactionCreateViewModel.swift`,
 `apps/ios/Finance/Accessibility/DynamicTypeSupport.swift`.
 
-**Resolved design decisions (in-session, 2026-06-20 — flagged to the orchestrator):**
+**Resolved design decisions (maintainer-confirmed 2026-06-20):**
 
-1. **Compact-width breakpoint** — prefer **content-driven `ViewThatFits`** for the multi-column
-   summary rows (no magic number; 375 pt "just works") and reserve **one** named numeric breakpoint,
-   `CompactWidth.max = 390 pt`, only for decisions content-fitting cannot make (grid column count).
-   `horizontalSizeClass` alone is insufficient because every iPhone portrait is `.compact`. 390 pt is
-   the natural divider between the SE/mini (375) and standard (390) device widths and nests inside the
-   web Mobile tier (< 640 px). (§3.2, §4.3.)
-2. **Stepper stays multi-step at SE width** — keep the existing 3-step `type → details → review`
-   model at 375 pt; do **not** collapse to a single scroll (it would bury the keypad below the fold at
-   375 pt + AX). Compact adaptations: dots-only step indicator at ≤ 390 pt **or** `isAccessibilitySize`,
-   and a keypad + primary action **pinned to the safe-area bottom** (consistent with #2167 §3.1).
-   (§6.1.)
+1. **Compact-width breakpoint (CONFIRMED hybrid)** — prefer **content-driven `ViewThatFits`** for the
+   multi-column summary rows (auto-stack when they don't fit; no magic number; 375 pt "just works")
+   **plus** **one** named numeric breakpoint, `CompactWidth.max = 390 pt`, only for the grid-column-count
+   cases `ViewThatFits` cannot decide. `horizontalSizeClass` alone is insufficient because every iPhone
+   portrait is `.compact` and cannot tell a 375 pt SE from a 430 pt Pro Max. **375 (SE 2nd/3rd gen, 13
+   mini) and 390 (standard 12–15) are the real device widths**, which is what justifies 390 pt as the
+   divider: ≤ 390 pt = SE/mini/standard tier → tighter column counts. This nests inside the web Mobile
+   tier (< 640 px single-column, `responsive-breakpoints.md`). (§3.2, §4.3.)
+2. **Stepper stays multi-step at SE width (CONFIRMED)** — keep the existing 3-step
+   `type → details → review` model (`TransactionCreateView.swift:28–37`) at 375 pt; do **not** collapse
+   to a single scroll (it would bury the keypad below the fold at 375 pt + AX). Confirmed compact
+   adaptations: (a) the step indicator drops its `.caption2` text labels to **dots-only** at ≤ 390 pt
+   **or** `isAccessibilitySize` (avoids connector collision, `stepIndicator:58–86`); (b) the keypad +
+   primary action are **pinned to the safe-area bottom** instead of scrolling inside the `Form` (keeps
+   the keypad in the thumb zone, consistent with #2167 §3.1). (§6.1.)
 3. **Budget-ring carousel is the one allowed horizontal scroll** — the Dashboard budget-health
    `ScrollView(.horizontal)` is a deliberate gallery (WCAG 1.4.10 exception), kept at 375 pt rather
    than reflowed to a wrapping grid that would bury later budgets. (§4.3.)
