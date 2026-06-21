@@ -1,6 +1,6 @@
 # iOS Grocery Safe-to-Spend — "Can I afford this?" Card — Finance
 
-> **Status:** PROPOSED — design decisions resolved in-session 2026-06-20; pending human review & merge
+> **Status:** PROPOSED — design decisions D1/D2/D6 maintainer-confirmed (2026-06-20); pending human review & merge
 > **Epic:** #2199 · **Closes:** #2610 · **Refs:** #2199, #1239
 > **WCAG Target:** 2.2 Level AA (1.4.1 Use of Color; 1.4.4 Resize Text; 1.4.10 Reflow)
 > **Priority:** P1 (`priority:high`)
@@ -108,8 +108,7 @@ pinnedCategoryReserveCents, dailyAllowanceUntilPaydayCents, staleData, warnings 
 `warnings: ['overspent','stale-data']` signals (lines 78–79) the card reuses.
 
 > **Decision D1 — "safe to spend" here means the bills/payday-aware period figure, not just
-> today's allowance.** _Recommended default, baked into this spec; pending maintainer
-> confirmation (§11)._ A grocery basket is frequently a weekly shop — larger than one day's
+> today's allowance.** **Maintainer-confirmed (2026-06-20).** A grocery basket is frequently a weekly shop — larger than one day's
 > allowance — so the affordability answer is grounded in `safeToSpendCents`
 > (`calculateSharedSafeToSpend`), **not** the simpler single-day Fun Money. Today's
 > `funMoneyCents` / `canSpendToday` (`today-spend.ts:28,34`) and
@@ -369,8 +368,8 @@ balanced against the card's reason to exist (a fast, glanceable answer).
 ### 8.2 The design
 
 > **Decision D2 — verdict always visible; absolute amounts visible by default with a one-tap
-> mask, masked-by-default when the proposed global hide-balances flag is ON.** _Recommended
-> default, baked into this spec; pending maintainer confirmation (§11)._
+> mask, masked-by-default when the global hide-balances flag is ON.** **Maintainer-confirmed
+> (2026-06-20).**
 
 - **The affordability verdict and its non-color cue are _always_ shown** — "Yes — left" / "Over
   by" with the ✓ / ⚠ glyph and the ring. The verdict is the card's whole purpose and discloses no
@@ -382,19 +381,34 @@ balanced against the card's reason to exist (a fast, glanceable answer).
   every absolute for a redacted placeholder while keeping the verdict and ring — for the moment
   you hand the cashier your phone or sense someone behind you. The toggle is a labeled control
   ("Hide amounts" / "Show amounts").
-- **Honor a global "Hide balances" flag.** The widget spec proposes a global
-  `finance:widget-hide-balances` app-group flag, default OFF
-  (`ios-today-spend-funmoney-widget.md` §9.3). When that flag is ON, this card **starts masked**
+- **Honor the global "Hide balances" flag — the _same single_ flag the widget spec proposes, not
+  a new one.** The widget spec proposes a global app-group flag, default OFF, stored in the
+  `group.com.finance.app` container alongside `WidgetPrivacySettings`
+  (`apps/ios/Shared/WidgetPrivacy.swift`; suggested key `finance:widget-hide-balances`,
+  `ios-today-spend-funmoney-widget.md` §9.3). When that flag is ON, this card **starts masked**
   (absolutes hidden, verdict + ring shown) without a per-use tap. This generalizes the widget's
   D1 / the chart pilot's decision #2 (_relative/verdict visible, absolutes masked_) to an in-app
   surface.
+
+> **Decision D6 — one global "Hide balances" setting, read by BOTH the widget extension and
+> in-app sensitive cards (do not invent a parallel in-app flag).** **Maintainer-confirmed
+> (2026-06-20).** #2199 **broadens** the semantics of the #2159 flag from _widget-only_ to
+> _app-wide_: the same app-group key (`finance:widget-hide-balances` in the
+> `group.com.finance.app` suite, `apps/ios/Shared/WidgetPrivacy.swift`) should be **generalized
+> to a single "Hide balances" preference** consumed by the widget extension **and** by in-app
+> sensitive surfaces such as this card. The owners (**@kmp-engineer**, who own the shared masking
+> work in §8.3) must **reconcile #2199 and #2159 onto this one setting** — not two divergent
+> flags. (A future rename of the key to drop the `widget-` prefix is optional cleanup and out of
+> scope here; the contract is "one flag, two readers.") Cross-reference:
+> `ios-today-spend-funmoney-widget.md` §9.3.
 
 ### 8.3 Proposed shared masking (for @kmp-engineer)
 
 Because no in-app masking exists, the build phase needs a masking-aware formatter for in-app
 amounts. Frame it as a **shared `MaskingMode` + formatter in `packages/core`** (mirroring the web
 `MaskingMode` the chart spec already references, and conceptually the widget's
-`WidgetMaskingMode`), consumed by both the widget and in-app `CurrencyLabel`. **Proposed for
+`WidgetMaskingMode`), consumed by both the widget and in-app `CurrencyLabel`, and **driven by the
+single global "Hide balances" flag of D6 (§8.2)** — not a second widget-only flag. **Proposed for
 @kmp-engineer; not built or edited in this PR.** Specifying it here keeps one masking rule across
 surfaces rather than a second widget-only copy.
 
@@ -493,17 +507,18 @@ Captured now as a checklist so the build phase is mechanical:
 
 ## 11. Open questions
 
-| ID  | Question                                                                                             | Recommended default (baked into this spec)                                                                                                    | Status                                               |
-| --- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Q-A | Does "safe to spend" here mean **today's allowance** or the **full-period discretionary remaining**? | **Full-period `safeToSpendCents`** (`calculateSharedSafeToSpend`), with today's Fun Money / daily allowance as a secondary line (D1, §2).     | Recommended default baked in; flagged to maintainer. |
-| Q-B | **Default masking** for a screen visible in a public checkout line?                                  | **Absolutes visible by default + one-tap mask; masked-by-default when the global hide-balances flag is ON; verdict always visible** (D2, §8). | Recommended default baked in; flagged to maintainer. |
-| Q-C | Is the typed basket amount **ephemeral** or remembered between visits?                               | **Ephemeral** — never persisted or synced (data minimization, §7.1).                                                                          | Recommendation; revisit post-beta.                   |
-| Q-D | Should the card also offer a **lock-screen quick glance** (widget/complication) entry?               | Out of scope here; the glanceable widget surfaces are owned by #2159. Noted as a follow-up entry point (§4), not specified.                   | Deferred to #2159 follow-up.                         |
+| ID  | Question                                                                                             | Recommended default (baked into this spec)                                                                                                    | Status                                 |
+| --- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Q-A | Does "safe to spend" here mean **today's allowance** or the **full-period discretionary remaining**? | **Full-period `safeToSpendCents`** (`calculateSharedSafeToSpend`), with today's Fun Money / daily allowance as a secondary line (D1, §2).     | **Maintainer-confirmed (2026-06-20).** |
+| Q-B | **Default masking** for a screen visible in a public checkout line?                                  | **Absolutes visible by default + one-tap mask; masked-by-default when the global hide-balances flag is ON; verdict always visible** (D2, §8). | **Maintainer-confirmed (2026-06-20).** |
+| Q-C | Is the typed basket amount **ephemeral** or remembered between visits?                               | **Ephemeral** — never persisted or synced (data minimization, §7.1).                                                                          | Recommendation; revisit post-beta.     |
+| Q-D | Should the card also offer a **lock-screen quick glance** (widget/complication) entry?               | Out of scope here; the glanceable widget surfaces are owned by #2159. Noted as a follow-up entry point (§4), not specified.                   | Deferred to #2159 follow-up.           |
 
-Q-A and Q-B are genuine design decisions; the maintainer/orchestrator was messaged with these
-plus the recommended defaults above, and work continued with the defaults baked in so the doc is
-internally consistent. If either default is overridden, the affected sections (§2 for Q-A; §8/§9
-for Q-B) are the single points to update.
+Q-A and Q-B were genuine design decisions; the maintainer/orchestrator was messaged with these
+plus the recommended defaults above, and **both were confirmed (2026-06-20)** with the defaults as
+written (D1, D2, and the single-flag generalization D6). Work continued with the defaults baked in
+so the doc is internally consistent. The affected sections (§2 for Q-A; §8/§9 for Q-B) remain the
+single points to update should anything change.
 
 ---
 
@@ -513,11 +528,11 @@ for Q-B) are the single points to update.
 
 - **D1 — Grocery "safe to spend" = the bills/payday-aware `safeToSpendCents`** (§2), grounded in
   `apps/web/src/lib/dashboard/safe-to-spend-shared.ts:69`, with today's Fun Money
-  (`today-spend.ts:28,34`) as a secondary line. Resolves Q-A. _Pending maintainer confirmation._
+  (`today-spend.ts:28,34`) as a secondary line. Resolves Q-A. **Maintainer-confirmed (2026-06-20).**
 - **D2 — Verdict always visible; absolutes visible by default with a one-tap mask; masked-by-default
-  under the proposed global hide-balances flag** (§8). Generalizes the chart pilot's decision #2
+  under the global hide-balances flag** (§8). Generalizes the chart pilot's decision #2
   and the widget's D1 (_relative/verdict visible, absolutes masked_) to an in-app surface.
-  Resolves Q-B. _Pending maintainer confirmation._
+  Resolves Q-B. **Maintainer-confirmed (2026-06-20).**
 - **D3 — Inclusive affordability boundary:** `canAfford = basket ≤ safeToSpend` (§2, §7) — a
   basket costing exactly safe-to-spend is a **yes** with `$0` left, deliberately distinct from the
   widget's strict `canSpendToday > 0` (`today-spend.ts:34`). The exact-zero boundary is the prime
@@ -528,6 +543,14 @@ for Q-B) are the single points to update.
 - **D5 — Basket input is ephemeral and never leaves the device** (§7.1, §8.4); money stays in
   `Cents` minor units end-to-end (`Cents.kt:15`), converted only for input/display
   (`Cents.kt:60`).
+- **D6 — One global "Hide balances" setting, two readers** (§8.2). This card reuses the **same
+  single app-group flag** the #2159 widget proposes (suggested key `finance:widget-hide-balances`
+  in the `group.com.finance.app` suite, `apps/ios/Shared/WidgetPrivacy.swift`) rather than
+  inventing a parallel in-app flag — but **broadens its semantics from widget-only to app-wide**.
+  The owners (**@kmp-engineer**) must reconcile #2199 and #2159 onto a single "Hide balances"
+  preference read by **both** the widget extension and in-app sensitive cards. Resolves the
+  cross-doc-consistency requirement. Cross-reference:
+  `ios-today-spend-funmoney-widget.md` §9.3. **Maintainer-confirmed (2026-06-20).**
 
 **Cross-references (consumed — not duplicated):**
 
