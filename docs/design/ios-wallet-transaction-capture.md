@@ -12,11 +12,17 @@ This document specifies a **Wallet-adjacent**, assisted transaction-capture flow
 design-only deliverable: no Swift or PassKit code is written here. iOS file paths are cited so a
 future implementer knows exactly which surfaces are affected, but **no Swift files are edited**.
 
-The capture experience is deliberately **assisted, not automatic**: every captured item enters a
+The capture experience is **assisted and review-by-default**: almost every captured item enters a
 **review inbox** as a _pending candidate_ and becomes a real
 [`Transaction`](../../packages/models/src/commonMain/kotlin/com/finance/models/Transaction.kt) only
-after the user confirms it. This preserves the project's manual-first trust philosophy
-(see [Trust & Manual-First Entry Guide](../guides/trust-and-manual-entry.md)).
+after the user confirms it. The one deliberate exception is a **narrow, conservative auto-confirm
+path** for _near-certain_ matches (exact amount + merchant similarity ≥ 0.95), which the maintainer
+chose to reduce friction on highly predictable charges. Auto-confirm is a **divergence** from the
+strict "no automated imports" stance of the
+[Trust & Manual-First Entry Guide](../guides/trust-and-manual-entry.md) — it is bounded by two hard
+"no surprise" requirements (every auto-added item is clearly surfaced/notified and is one-tap
+reversible). See the [divergence blockquote in §5](#5-the-review-inbox-2603) and decision **D1** in
+§11.
 
 ---
 
@@ -193,29 +199,58 @@ progress + batch-confirm shape; the lifecycle differs (confirm _creates_ a trans
 All entry points produce a `CapturedTransaction` candidate (§5.1) and route it into the review
 inbox. None creates a `Transaction` directly — that only happens on user confirm.
 
-| #   | Entry point                      | iOS surface (cited, not edited)                                                                     | Pre-fill source         | Notes                                                                                                                                                                                             |
-| --- | -------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| E1  | **Share-sheet target**           | _New_ Share Extension target (e.g. `apps/ios/Finance/ShareExtension/`) — to be created under #1239  | parsed shared text/URL  | The flagship Wallet-adjacent path: user shares a receipt email / order page into Finance.                                                                                                         |
-| E2  | **Receipt scan**                 | _New_ capture sheet using on-device `Vision` OCR → `ExtractedReceiptText`                           | `ReceiptTextParser`     | OCR on device only; reuses `ExtractedReceiptText.isUsable` gate (`ReceiptTextParser.kt:29`).                                                                                                      |
-| E3  | **Quick-add string**             | builds on one-thumb quick-add ([#2167](#11-cross-references--resolved-decisions))                   | NL parse → amount/payee | A capture is "confirmed quick" when match confidence is high (§5.4).                                                                                                                              |
-| E4  | **App Intent — Log Transaction** | [`LogTransactionIntent.swift`](../../apps/ios/Finance/Intents/LogTransactionIntent.swift)`:31-98`   | intent parameters       | Today it creates a transaction directly (`LogTransactionIntent.swift:90`). Design: route _ambiguous_ intent captures (no account, or a likely duplicate) into the inbox instead of silent create. |
-| E5  | **App Intent — Add Expense**     | [`AddExpenseIntent.swift`](../../apps/ios/Finance/Intents/AddExpenseIntent.swift)                   | intent parameters       | Same routing rule as E4.                                                                                                                                                                          |
-| E6  | **Manual "+" (no pre-fill)**     | [`TransactionCreateView.swift`](../../apps/ios/Finance/Screens/TransactionCreateView.swift)`:12-46` | none                    | Unchanged manual path. Capture is additive, never a replacement.                                                                                                                                  |
+| #   | Entry point                      | iOS surface (cited, not edited)                                                                     | Pre-fill source         | Notes                                                                                                                                                                                            |
+| --- | -------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| E1  | **Share-sheet target**           | _New_ Share Extension target (e.g. `apps/ios/Finance/ShareExtension/`) — to be created under #1239  | parsed shared text/URL  | The flagship Wallet-adjacent path: user shares a receipt email / order page into Finance.                                                                                                        |
+| E2  | **Receipt scan**                 | _New_ capture sheet using on-device `Vision` OCR → `ExtractedReceiptText`                           | `ReceiptTextParser`     | OCR on device only; reuses `ExtractedReceiptText.isUsable` gate (`ReceiptTextParser.kt:29`).                                                                                                     |
+| E3  | **Quick-add string**             | builds on one-thumb quick-add ([#2167](#11-cross-references--resolved-decisions))                   | NL parse → amount/payee | Auto-confirmed only when it clears the near-certain bar (§6.4); otherwise routed to the review inbox.                                                                                            |
+| E4  | **App Intent — Log Transaction** | [`LogTransactionIntent.swift`](../../apps/ios/Finance/Intents/LogTransactionIntent.swift)`:31-98`   | intent parameters       | Today it creates a transaction directly (`LogTransactionIntent.swift:90`). Design: route through the engine — auto-confirm only at the near-certain bar (§6.4), otherwise into the review inbox. |
+| E5  | **App Intent — Add Expense**     | [`AddExpenseIntent.swift`](../../apps/ios/Finance/Intents/AddExpenseIntent.swift)                   | intent parameters       | Same routing rule as E4.                                                                                                                                                                         |
+| E6  | **Manual "+" (no pre-fill)**     | [`TransactionCreateView.swift`](../../apps/ios/Finance/Screens/TransactionCreateView.swift)`:12-46` | none                    | Unchanged manual path. Capture is additive, never a replacement.                                                                                                                                 |
 
-**Routing rule (entry → inbox vs. direct create):** App-Intent captures (E4/E5) that are fully
-specified _and_ score no duplicate/recurring match (§6) MAY create directly to preserve today's
-one-tap Shortcuts behavior. Everything else — share-sheet, receipt scan, and any capture that the
-engine flags as a likely duplicate or recurring match — **always** lands in the review inbox. (This
-"always-review except fully-specified no-conflict intents" boundary is decision **D1** in §11.)
+**Routing rule (auto-confirm vs. review).** The entry point does **not** decide whether an item is
+auto-posted; the **match certainty** does. The engine (§6) classifies every candidate, and only
+those that clear the conservative **auto-confirm bar** — exact `Cents` amount **AND** merchant
+similarity **≥ 0.95** against a matched existing/recurring transaction — are auto-posted without
+review. **Everything else** — every share-sheet, receipt-scan, quick-add, and App-Intent capture
+below that bar, plus every sparse or ambiguous capture — lands in the **review inbox** as `PENDING`.
+Auto-confirm is the bounded exception (with surfacing + undo, §5.3); review is the default path.
+This hybrid is decision **D1** in §11; the 0.95 auto-confirm vs. 0.85 suggest-in-review distinction
+is in §6.4.
 
 `LogTransactionIntent` already mints a candidate-shaped value today: `makeTransaction(...)` builds a
 `TransactionItem` with `status: .pending` without persisting
 ([`LogTransactionIntent.swift:108-133`](../../apps/ios/Finance/Intents/LogTransactionIntent.swift)),
-which is exactly the seam where the review-inbox route plugs in.
+which is exactly the seam where the engine classification + routing plugs in (today's
+unconditional direct create at `LogTransactionIntent.swift:90` is replaced by the certainty-based
+route).
 
 ---
 
 ## 5. The review inbox (#2603)
+
+The review inbox is the **default destination** for captured items: they sit there as `PENDING`
+candidates until the user confirms, edits, or discards them. A narrow auto-confirm path (§5.3, §6.4)
+is the only way a capture becomes a `Transaction` without passing through this inbox.
+
+> **⚠️ By design, not an oversight — deliberate divergence from the Trust & Manual-First Entry
+> Guide.** [`docs/guides/trust-and-manual-entry.md`](../guides/trust-and-manual-entry.md) states that
+> "no automated imports means no surprise transactions, no miscategorised charges, and no data you
+> didn't put there." The maintainer has **deliberately chosen** to allow a _limited_ auto-confirm
+> for **near-certain matches** (exact amount + merchant similarity ≥ 0.95 against an
+> existing/recurring transaction) to cut friction on highly predictable charges (e.g. a recurring
+> subscription posting again). This is handled exactly like the [#2167](#11-cross-references--resolved-decisions)
+> payee-optional divergence: an intentional, documented exception — not an accident. To honor the
+> guide's **"no surprise"** spirit, the auto-confirm path carries two **hard requirements**:
+>
+> 1. **Always surfaced.** Every auto-confirmed item is clearly marked **"auto-added"** in the
+>    activity / review feed **and** raises a user-visible notification. Nothing is posted silently.
+> 2. **Always reversible.** Every auto-confirmed item is **one-tap reversible / undoable** straight
+>    from the notification or the feed.
+>
+> Auto-confirm is the **exception**; the review inbox is the **default**. Anything that does not
+> clear the near-certain bar (§6.4) — including every share-sheet, receipt-scan, and quick-add
+> capture, and every duplicate or ambiguous match — goes to review.
 
 ### 5.1 The candidate model — `CapturedTransaction` (proposed `packages/core`)
 
@@ -230,12 +265,19 @@ package com.finance.core.capture
 enum class CaptureSource { SHARE_SHEET, RECEIPT_SCAN, QUICK_ADD, APP_INTENT, MANUAL }
 
 @Serializable
-enum class CaptureReviewState { PENDING, CONFIRMED, DISCARDED }
+enum class CaptureReviewState {
+    PENDING,         // default: awaiting user review in the inbox
+    CONFIRMED,       // user explicitly confirmed → Transaction created
+    AUTO_CONFIRMED,  // near-certain match auto-posted (must be surfaced + reversible, §5.3)
+    DISCARDED,       // user discarded → no Transaction
+    AUTO_SUPPRESSED, // near-certain duplicate auto-skipped to avoid double-count (surfaced + reversible)
+}
 
 /**
  * A transaction the user captured (shared/scanned/typed) but has NOT yet confirmed.
- * Becomes a real [com.finance.models.Transaction] only on confirm. Mirrors the
- * "parsed but not yet domain" shape of [ParsedTransaction] (ImportModels.kt:28-40).
+ * Becomes a real [com.finance.models.Transaction] only on confirm OR via the narrow
+ * near-certain auto-confirm path (§6.4). Mirrors the "parsed but not yet domain" shape
+ * of [ParsedTransaction] (ImportModels.kt:28-40).
  */
 @Serializable
 data class CapturedTransaction(
@@ -252,6 +294,9 @@ data class CapturedTransaction(
     val note: String? = null,
     val reviewState: CaptureReviewState = CaptureReviewState.PENDING,
     val verdict: CaptureMatchVerdict? = null, // populated by the engine, §6
+    // Set when reviewState is AUTO_CONFIRMED / AUTO_SUPPRESSED: the window during which a
+    // single tap fully reverses the auto action (satisfies the "always reversible" requirement).
+    val autoActionReversibleUntil: Instant? = null,
 )
 ```
 
@@ -277,14 +322,15 @@ flipping a review flag.
 ```mermaid
 flowchart TD
     A[Capture signal<br/>E1–E6] --> B[Build CapturedTransaction<br/>reviewState = PENDING]
-    B --> C[Engine resolves verdict §6]
-    C --> D{Verdict}
+    B --> C[Engine classifies §6]
+    C --> Z{Near-certain?<br/>exact amount AND<br/>merchant ≥ 0.95}
+    Z -->|Yes, recurring/existing occurrence| Y[AUTO_CONFIRMED<br/>auto-post Transaction + link<br/>mark auto-added · notify · 1-tap undo]
+    Z -->|Yes, duplicate of a specific entry| X[AUTO_SUPPRESSED<br/>skip to avoid double-count<br/>surface as skipped · 1-tap undo]
+    Z -->|No → REVIEW INBOX| D{Verdict}
     D -->|DUPLICATE| E[Banner: likely duplicate of #existing<br/>Default action: Discard]
-    D -->|RECURRING_MATCH| F[Banner: matches recurring series<br/>Default action: Confirm + link recurringRuleId]
-    D -->|EXISTING_MATCH| G[Banner: matches an existing entry<br/>Default action: Merge / enrich]
+    D -->|RECURRING_MATCH / EXISTING_MATCH<br/>composite ≥ 0.85| G[Banner: suggested match PRE-SELECTED<br/>still requires explicit Confirm]
     D -->|NO_MATCH| H[Banner: new transaction<br/>Default action: Confirm as new]
     E --> I[User reviews]
-    F --> I
     G --> I
     H --> I
     I -->|Confirm| J[Create Transaction<br/>amount/payee/date/category/account<br/>status = CLEARED]
@@ -292,6 +338,13 @@ flowchart TD
     I -->|Discard| L[reviewState = DISCARDED<br/>no Transaction created]
 ```
 
+- **Auto-confirm (the bounded exception).** When the engine is _near-certain_ (exact `Cents` amount
+  **AND** merchant similarity **≥ 0.95**, §6.4) that the capture is a legitimate occurrence of an
+  existing/recurring transaction, it is posted **without review** as `AUTO_CONFIRMED` (linking
+  `recurringRuleId` when the match is a recurring series). Per the §5 divergence requirements, the
+  item is **marked "auto-added," raises a notification, and is one-tap reversible**
+  (`autoActionReversibleUntil`). A near-certain match to a _specific already-entered_ transaction is
+  instead `AUTO_SUPPRESSED` (skipped to avoid double-counting) — equally surfaced and reversible.
 - **Confirm** maps the candidate to a `Transaction` (§3.1 fields). Account is required (a candidate
   often lacks it); if absent, confirm routes through the edit step to pick one.
 - **Edit** opens the existing multi-step create sheet pre-filled at the _details_ step
@@ -299,14 +352,26 @@ flowchart TD
   switches `type → details → review`).
 - **Discard** sets `reviewState = DISCARDED`; nothing is created. Discarded candidates are retained
   briefly (audit/undo) then purged.
-- **No blind auto-post.** A candidate never becomes a `Transaction` without an explicit user
-  gesture, except the narrow E4/E5 fully-specified-no-conflict intent fast-path (decision D1).
+- **No _silent_ auto-post.** Auto-confirm is the only path that bypasses review, and it never runs
+  silently: it is constrained to the near-certain bar and always surfaced + reversible (§5). Every
+  capture below that bar requires an explicit user gesture in the inbox.
 
-### 5.4 Confidence-driven defaults
+### 5.4 Confidence-driven defaults — the three-tier ladder
 
-The verdict (§6) sets the **default** action and the prominence of the confirm button, but never
-removes the user's ability to choose. High-confidence `NO_MATCH` → confirm is the primary button.
-`DUPLICATE` → discard is primary, confirm is secondary and warns "this may double-count."
+The verdict (§6) sets the routing and the default action, but never removes the user's ability to
+choose. There are exactly three tiers:
+
+1. **Auto-confirm (bypass review) — near-certain only.** Exact amount **AND** merchant similarity
+   **≥ 0.95**. Auto-posts (or auto-suppresses a true duplicate), marked auto-added, notified,
+   one-tap reversible. This is the **only** tier that skips the inbox.
+2. **Suggest-in-review — composite ≥ 0.85 (but below the auto-confirm bar).** Lands in the review
+   inbox with the suggested existing/recurring match **pre-selected**, but **still requires an
+   explicit user confirm**. It does **not** auto-post. The 0.85 threshold _pre-selects_; it never
+   _commits_.
+3. **Review (new / duplicate-flagged) — below 0.85.** Lands in the inbox. `NO_MATCH` → "new
+   transaction," confirm is primary. A `DUPLICATE` flag (exact amount + ±3 days + merchant ≥ 0.82,
+   §6.5) shows a warning banner with Discard as primary and confirm secondary, warning of
+   double-count.
 
 ---
 
@@ -370,17 +435,38 @@ per candidate-existing pair:
 data class MatchCandidate(val transactionId: SyncId, val score: Double, val isRecurring: Boolean)
 
 object TransactionMatcher {
-    const val AUTO_LINK_THRESHOLD = 0.85   // ≥ → suggest existing/recurring match  (decision D3)
-    const val DUPLICATE_MERCHANT_MIN = 0.82 // merchant sim floor for a duplicate     (decision D3)
+    // Tier 1 — AUTO-CONFIRM (bypasses review). Near-certain only: requires EXACT amount
+    // (checked separately as Cents equality) AND merchant similarity ≥ this bar. (decision D1/D3)
+    const val AUTO_CONFIRM_MERCHANT_MIN = 0.95
+
+    // Tier 2 — SUGGEST-IN-REVIEW. Pre-selects the suggested match inside the review inbox but
+    // STILL requires an explicit user confirm. Never auto-posts. (decision D3)
+    const val SUGGEST_IN_REVIEW_THRESHOLD = 0.85
+
+    // Duplicate-flag merchant floor (orthogonal to the tiers above). (decision D3)
+    const val DUPLICATE_MERCHANT_MIN = 0.82
 
     fun bestMatch(captured: CapturedTransaction, existing: List<Transaction>): MatchCandidate?
+
+    /** True only when [captured] clears the conservative near-certain auto-confirm bar against
+     *  [match]: exact Cents amount equality AND merchant similarity ≥ AUTO_CONFIRM_MERCHANT_MIN. */
+    fun qualifiesForAutoConfirm(captured: CapturedTransaction, match: Transaction): Boolean
 }
 ```
 
+**Two distinct thresholds — keep them crisp:**
+
+- **0.95 = auto-confirm.** Exact amount **and** merchant ≥ 0.95 → the capture is auto-posted
+  (`AUTO_CONFIRMED`) without review (surfaced + reversible, §5.3). This is the **only** auto-post
+  path.
+- **0.85 = suggest-in-review.** Composite ≥ 0.85 (but not clearing the 0.95 bar) → the capture lands
+  in the review inbox with the suggested match **pre-selected**; it **still requires an explicit
+  user confirm** and never auto-posts.
+
 **Recurring linkage:** when the best match's transaction has `isRecurring = true`
-(`Transaction.kt:34`), the verdict is `RECURRING_MATCH` and confirming the capture sets the new
-transaction's `recurringRuleId` (`Transaction.kt:35`) to the matched series' rule, so the capture
-joins the series instead of starting a parallel one.
+(`Transaction.kt:34`), the verdict is `RECURRING_MATCH` and confirming (or auto-confirming) the
+capture sets the new transaction's `recurringRuleId` (`Transaction.kt:35`) to the matched series'
+rule, so the capture joins the series instead of starting a parallel one.
 
 ### 6.5 Duplicate detection — `CaptureDeduplicator` (proposed)
 
@@ -390,10 +476,10 @@ real-world purchase_ the user already recorded:
 > **Duplicate rule (default — decision D3):** exact `Cents` amount equality **AND** date within
 > **±3 days** **AND** `MerchantNormalizer.similarity ≥ 0.82`.
 
-This is intentionally stricter than the generic `AUTO_LINK_THRESHOLD` match: a duplicate suppresses
-the new transaction by default (to avoid double-counting), so it must clear a higher bar on amount
-(exact) and merchant. Transfers are excluded: a candidate that resolves to a `TRANSFER`
-(`Transaction.kt:25`, `transferTransactionId` `:33`) is never deduped as an expense.
+This is intentionally stricter on amount than the `SUGGEST_IN_REVIEW_THRESHOLD` composite match: a
+duplicate suppresses the new transaction by default (to avoid double-counting), so it must clear an
+exact-amount bar plus a 0.82 merchant floor. Transfers are excluded: a candidate that resolves to a
+`TRANSFER` (`Transaction.kt:25`, `transferTransactionId` `:33`) is never deduped as an expense.
 
 ```kotlin
 // packages/core/.../capture/CaptureDeduplicator.kt  (PROPOSED)
@@ -446,15 +532,17 @@ keeps the comparison list small on device and is a pure-data parameter (no entit
 
 ## 8. State coverage
 
-| State                  | Trigger                                                          | Inbox UI                                                                                                        | Engine verdict (§6)                           | Default action                                    |
-| ---------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------- |
-| **Empty inbox**        | No pending captures                                              | Friendly empty state; explains capture entry points; no badge                                                   | n/a                                           | n/a                                               |
-| **Match found**        | Capture scores ≥ `AUTO_LINK_THRESHOLD` (0.85) vs. an existing tx | Row banner "Matches an existing entry"; offer merge/enrich                                                      | `EXISTING_MATCH` / `RECURRING_MATCH`          | Confirm + link (recurring sets `recurringRuleId`) |
-| **Duplicate detected** | Exact amount + ±3 days + merchant sim ≥ 0.82                     | Warning banner "Likely duplicate of <merchant, date>"; primary = Discard                                        | `DUPLICATE`                                   | Discard (confirm warns of double-count)           |
-| **No match**           | Best score < thresholds                                          | Neutral banner "New transaction"; primary = Confirm as new                                                      | `NO_MATCH`                                    | Confirm as new                                    |
-| **Offline**            | Capture made with no connectivity                                | Capture + match/dedup run fully **on device** (engine is pure core, no network); confirmed tx enqueues for sync | computed locally                              | Confirm works offline; sync deferred              |
-| **Sparse capture**     | Signal lacked amount or merchant (e.g. share text unparsable)    | Row flagged "Needs detail"; confirm forced through edit step                                                    | engine returns `NO_MATCH` (insufficient data) | Edit then confirm                                 |
-| **Ambiguous match**    | Two existing tx tie within a small score delta                   | Banner lists top matches; user picks                                                                            | top-N `MatchCandidate`s                       | User selects target                               |
+| State                        | Trigger                                                                   | Inbox UI                                                                                                      | Engine verdict (§6)                           | Default action                                             |
+| ---------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| **Empty inbox**              | No pending captures                                                       | Friendly empty state; explains capture entry points; no badge                                                 | n/a                                           | n/a                                                        |
+| **Auto-confirmed**           | Near-certain: exact amount **AND** merchant ≥ 0.95 vs. existing/recurring | **Bypasses the inbox.** Posted item marked **"auto-added"** in the activity feed + notification; one-tap undo | `EXISTING_MATCH` / `RECURRING_MATCH` (≥ 0.95) | Auto-posted (`AUTO_CONFIRMED`); reversible (§5.3)          |
+| **Auto-suppressed**          | Near-certain duplicate of a specific already-entered tx                   | **Bypasses the inbox.** Surfaced as "skipped duplicate" in the feed; one-tap undo restores it                 | `DUPLICATE` (≥ 0.95)                          | Auto-skipped (`AUTO_SUPPRESSED`); reversible               |
+| **Suggested match (review)** | Composite ≥ 0.85 but below the 0.95 auto-confirm bar                      | Lands in inbox; suggested existing/recurring match **pre-selected**; **still requires explicit confirm**      | `EXISTING_MATCH` / `RECURRING_MATCH`          | Confirm (pre-selected) + link; never auto-posts            |
+| **Duplicate detected**       | Exact amount + ±3 days + merchant sim ≥ 0.82 (below 0.95)                 | Warning banner "Likely duplicate of <merchant, date>"; primary = Discard                                      | `DUPLICATE`                                   | Discard (confirm warns of double-count)                    |
+| **No match**                 | Best score < 0.85                                                         | Neutral banner "New transaction"; primary = Confirm as new                                                    | `NO_MATCH`                                    | Confirm as new                                             |
+| **Offline**                  | Capture made with no connectivity                                         | Capture + match/dedup + auto-confirm decision run fully **on device** (engine is pure core, no network)       | computed locally                              | Confirm/auto-confirm work offline; sync of result deferred |
+| **Sparse capture**           | Signal lacked amount or merchant (e.g. share text unparsable)             | Row flagged "Needs detail"; confirm forced through edit step                                                  | engine returns `NO_MATCH` (insufficient data) | Edit then confirm (never auto-confirmed)                   |
+| **Ambiguous match**          | Two existing tx tie within a small score delta                            | Banner lists top matches; user picks                                                                          | top-N `MatchCandidate`s                       | User selects target (never auto-confirmed)                 |
 
 **Offline note:** because the matching/dedup engine is pure `commonMain` with no I/O, the entire
 capture-and-review loop functions offline; only the eventual sync of the _confirmed_ transaction is
@@ -503,11 +591,25 @@ Mirrors the style of
 
 - Exact amount + same merchant + same date → score `1.0`, `bestMatch` returns it.
 - Amount within 10% (reuses `AMOUNT_TOLERANCE_PERCENT`) but merchant differs → below
-  `AUTO_LINK_THRESHOLD`.
+  `SUGGEST_IN_REVIEW_THRESHOLD`.
 - Date decay: same amount+merchant at +1, +3, +4 days → ±3 inside window, +4 outside.
 - Recurring: matched tx with `isRecurring = true` surfaces as recurring candidate carrying its
   `recurringRuleId`.
 - Empty existing list → `null`.
+
+**`AutoConfirmDecisionTest` (the divergence guardrail — prime runnable-today coverage)**
+
+- `qualifiesForAutoConfirm` true ONLY at exact `Cents` amount **AND** merchant ≥ 0.95.
+- Boundary: exact amount + merchant 0.95 → auto-confirm; merchant 0.94 → **not** auto-confirm (falls
+  to review).
+- Amount off by 1 cent + merchant 1.0 → **not** auto-confirm (exact-amount requirement).
+- Suggest-in-review band: composite ≥ 0.85 but merchant < 0.95 (or amount inexact) → routed to
+  review as `PENDING` with the match pre-selected; **never** `AUTO_CONFIRMED`. Asserts the 0.85 tier
+  does **not** auto-post.
+- Sparse / ambiguous candidates never qualify for auto-confirm.
+- A near-certain match to a recurring series → `AUTO_CONFIRMED` and `recurringRuleId` set; a
+  near-certain match to a specific recent entry → `AUTO_SUPPRESSED` (not double-posted). Both set
+  `autoActionReversibleUntil` (the reversibility invariant).
 
 **`CaptureDeduplicatorTest`**
 
@@ -523,9 +625,11 @@ Mirrors the style of
 **`CapturedTransactionTest`**
 
 - Candidate with `amount == null` or `rawMerchant == null` resolves to "needs detail" (engine
-  `NO_MATCH`, forced-edit on confirm).
+  `NO_MATCH`, forced-edit on confirm; never auto-confirmed).
 - Confirm mapping produces a valid `Transaction` (non-zero amount invariant `Transaction.kt:45`;
   `CLEARED` status; recurring link set when verdict is `RECURRING_MATCH`).
+- `AUTO_CONFIRMED` / `AUTO_SUPPRESSED` candidates always carry a non-null `autoActionReversibleUntil`
+  (asserts the "always reversible" requirement at the model level).
 
 ### 10.2 Native-deferred (blocked on #1239)
 
@@ -544,26 +648,26 @@ These are listed so the implementer wires them once #1239 unblocks; none gate th
 
 ### Companion design docs (cite, don't duplicate)
 
-| Doc                                                                                                    | Issue | Relationship                                                                                                                                                                                          |
-| ------------------------------------------------------------------------------------------------------ | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`docs/design/ios-transaction-row-voiceover.md`](./ios-transaction-row-voiceover.md)                   | #2117 | Source of the real Transaction schema mapping + status/derived qualifiers reused by inbox rows (§9). _Wave-1 companion; may not be merged at this doc's authoring time — link is the canonical path._ |
-| [`docs/design/ios-one-thumb-quick-add.md`](./ios-one-thumb-quick-add.md)                               | #2167 | The capture/entry + defaults precedent (E3) that the review inbox confirms into. _Wave-2 companion; canonical path._                                                                                  |
-| [`docs/guides/trust-and-manual-entry.md`](../guides/trust-and-manual-entry.md)                         | #1687 | The manual-first trust posture that mandates assisted-not-automatic capture (§2, §5.3).                                                                                                               |
-| [`apps/web/src/lib/transactions/review-queue.ts`](../../apps/web/src/lib/transactions/review-queue.ts) | #1571 | Web review-queue model the inbox mirrors (§3.7).                                                                                                                                                      |
+| Doc                                                                                                    | Issue | Relationship                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`docs/design/ios-transaction-row-voiceover.md`](./ios-transaction-row-voiceover.md)                   | #2117 | Source of the real Transaction schema mapping + status/derived qualifiers reused by inbox rows (§9). _Wave-1 companion; may not be merged at this doc's authoring time — link is the canonical path._                                             |
+| [`docs/design/ios-one-thumb-quick-add.md`](./ios-one-thumb-quick-add.md)                               | #2167 | The capture/entry + defaults precedent (E3) that the review inbox confirms into. _Wave-2 companion; canonical path._                                                                                                                              |
+| [`docs/guides/trust-and-manual-entry.md`](../guides/trust-and-manual-entry.md)                         | #1687 | The manual-first "no surprise transactions" trust posture. This doc **deliberately diverges** from it for near-certain matches (see §5 divergence blockquote + D1); the divergence is bounded by the surfacing + one-tap-reversible requirements. |
+| [`apps/web/src/lib/transactions/review-queue.ts`](../../apps/web/src/lib/transactions/review-queue.ts) | #1571 | Web review-queue model the inbox mirrors (§3.7).                                                                                                                                                                                                  |
 
 ### Resolved decisions
 
-> Defaults below are the author's **recommended** values, flagged to the orchestrator for
-> confirmation at authoring time. They are baked into this spec so implementation is unblocked; if
-> the orchestrator overrides, this section is the single place to amend.
+> D1 and D3 below reflect **maintainer-confirmed** decisions (the hybrid auto-confirm policy and the
+> conservative 0.95 auto-confirm bar). The remaining defaults are baked into this spec so
+> implementation is unblocked; this section is the single place to amend if anything is overridden.
 
-| ID  | Decision                                                 | Resolution (recommended default)                                                                                                                                                                                                                                                                                                 |
-| --- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Do captured items auto-confirm or always require review? | **Always review.** Captures land as `PENDING` candidates; only fully-specified App-Intent captures (E4/E5) with no duplicate/recurring conflict may create directly. No background auto-import. Grounded in the trust guide.                                                                                                     |
-| D2  | Does a candidate reuse `TransactionStatus.PENDING`?      | **No.** A candidate uses its own `CaptureReviewState.PENDING`; it is not a `Transaction` until confirmed (§5.1).                                                                                                                                                                                                                 |
-| D3  | Dedup window + thresholds                                | Duplicate = exact `Cents` amount **AND** date within **±3 days** (`INTERVAL_TOLERANCE_DAYS`) **AND** merchant Sørensen–Dice **≥ 0.82**. Match auto-link suggested at composite **≥ 0.85** (weights 0.50/0.30/0.20), amount tolerance **±10%** (`AMOUNT_TOLERANCE_PERCENT`) for recurring drift only. Search window **±14 days**. |
-| D4  | Where does the matching/dedup engine live?               | **`packages/core` `commonMain`** (proposed for `@kmp-engineer`), reusing `DuplicateDetector` (exact path) + `SubscriptionDetector` tolerances. Shared by all four platforms.                                                                                                                                                     |
-| D5  | Implementation status                                    | **Design only.** Native Swift / PassKit / Share-Extension work is blocked on [#1239](https://github.com/jrmoulckers/finance/issues/1239); the engine's `commonTest` is runnable today and not blocked.                                                                                                                           |
+| ID  | Decision                                                 | Resolution                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Do captured items auto-confirm or always require review? | **Hybrid (maintainer-confirmed).** Review is the **default**; auto-confirm is a narrow **exception** for near-certain matches only (D3). Deliberate divergence from `trust-and-manual-entry.md` (§5 blockquote), bounded by two hard requirements: every auto-confirmed/-suppressed item is **surfaced as "auto-added"/"skipped duplicate" + notified**, and the action is **one-tap reversible** (`autoActionReversibleUntil`, §5.1/§5.3).                                      |
+| D2  | Does a candidate reuse `TransactionStatus.PENDING`?      | **No.** A candidate uses its own `CaptureReviewState` (`PENDING`/`CONFIRMED`/`AUTO_CONFIRMED`/`DISCARDED`/`AUTO_SUPPRESSED`); it is not a `Transaction` until confirmed/auto-posted (§5.1).                                                                                                                                                                                                                                                                                      |
+| D3  | Auto-confirm bar, suggest band, dedup window             | **Auto-confirm (≥ 0.95):** exact `Cents` amount **AND** merchant ≥ **0.95** → auto-post, no review. **Suggest-in-review (≥ 0.85):** composite ≥ 0.85 (weights 0.50/0.30/0.20) pre-selects the match in the inbox but **requires explicit confirm — never auto-posts**. **Duplicate:** exact amount **AND** ±3 days (`INTERVAL_TOLERANCE_DAYS`) **AND** merchant ≥ **0.82**. ±10% amount tolerance (`AMOUNT_TOLERANCE_PERCENT`) for recurring drift only. Search window ±14 days. |
+| D4  | Where does the matching/dedup engine live?               | **`packages/core` `commonMain`** (proposed for `@kmp-engineer`), reusing `DuplicateDetector` (exact path) + `SubscriptionDetector` tolerances. Shared by all four platforms.                                                                                                                                                                                                                                                                                                     |
+| D5  | Implementation status                                    | **Design only.** Native Swift / PassKit / Share-Extension work is blocked on [#1239](https://github.com/jrmoulckers/finance/issues/1239); the engine's `commonTest` is runnable today and not blocked.                                                                                                                                                                                                                                                                           |
 
 ### Open questions (for implementation phase)
 
