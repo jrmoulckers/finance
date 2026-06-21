@@ -1,6 +1,6 @@
 # iOS Alert Center & Actionable Finance Alert Rules — Finance
 
-> **Status:** PROPOSED — design decisions resolved in-session 2026-06-20; pending human review & merge
+> **Status:** PROPOSED — both design decisions maintainer-confirmed 2026-06-20; pending merge
 > **Epic:** #2163 · **Closes:** #2595, #2597 · **Refs:** #1239 (native blocker)
 > **WCAG Target:** 2.2 Level AA (AAA where practical)
 > **Priority:** P1 (`priority:high`)
@@ -375,12 +375,16 @@ block.
 - `docs/architecture/alerting-rules.md` — **operational** alerting (P0–P3 infra); explicitly _not_
   this system (see boundary note).
 
-**Resolved design decisions (in-session, 2026-06-20):**
+**Resolved design decisions (maintainer-confirmed, 2026-06-20):**
 
 1. **Center entry point** — a toolbar bell button (unread badge) in the Dashboard nav bar pushing a
    full-screen `AlertCenterView`, mirroring the web header bell, rather than consuming a sixth tab
    slot (iOS has a fixed 5-tab bar, `MainTabView.swift:26–27`). Full-screen (not popover) so it
-   reflows under Dynamic Type (§6a, §7).
+   reflows under Dynamic Type (§6a, §7). _Considered and rejected:_ adding a sixth "Alerts" tab to
+   `MainTabView` — rejected because the 5-tab bar is already at the iOS comfortable limit, a sixth tab
+   crowds smaller devices and demotes a primary surface, and the web reference uses a header bell
+   (`NotificationCenter.tsx`) so the bell keeps cross-platform parity. The toolbar bell is therefore
+   preferred over the tab.
 2. **Goal behind-pace definition** — no goal-pace engine exists in `packages/core` or iOS today
    (`GoalItem.swift` only computes `progress`, line 61). The new shared rule defines "behind pace"
    as: the elapsed-time fraction of `(targetDate − createdAt)` exceeds the progress fraction by more
