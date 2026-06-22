@@ -10,7 +10,9 @@ import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { NotificationCenter } from '../notifications';
 import { useKeyboardShortcuts } from '../../hooks';
 import { useAccessibility } from '../../hooks/useAccessibility';
+import { useHiddenModules } from '../../hooks/useModuleVisibility';
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
+import { HiddenModulesContext } from '../../contexts/HiddenModulesContext';
 import { useEscapeBack } from '../../hooks/useEscapeBack';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import {
@@ -91,6 +93,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [simpleModeEnabled, setSimpleModeEnabled] = useState(getStoredSimplifiedModePreference);
   const { isSimplified } = useAccessibility();
+  // Minimalist mode (#2122): resolve the user's hidden modules once at the
+  // layout level and share them via context so eager, performance-budgeted
+  // route chunks (e.g. the dashboard) can read them without bundling the
+  // module-visibility catalogue/hook.
+  const hiddenModuleIds = useHiddenModules();
   const shortcutItems = useMemo(() => getVisibleNavItems(isSimplified), [isSimplified]);
   const { showHelp, setShowHelp, singleKeyShortcutsEnabled } = useKeyboardShortcuts({
     onNavigate,
@@ -349,7 +356,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               </p>
             </section>
           )}
-          {children}
+          <HiddenModulesContext.Provider value={hiddenModuleIds}>
+            {children}
+          </HiddenModulesContext.Provider>
         </main>
         <footer className="app-footer">
           <LegalLinks />
