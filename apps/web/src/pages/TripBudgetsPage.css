@@ -1,0 +1,424 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the Trip & Country Budgets page (TripBudgetsPage.tsx).
+ *
+ * All visual values come from design-token CSS custom properties. Status is
+ * always paired with a text label and icon in the markup, so colour here is
+ * reinforcement only — never the sole signal (WCAG 2.2 AA).
+ *
+ * References: issue #2205
+ */
+
+.trip-page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.trip-page__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-5);
+}
+
+.trip-page__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-interactive-default);
+}
+
+.trip-page__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.trip-page__subtitle {
+  margin: var(--spacing-1) 0 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  max-width: 70ch;
+}
+
+/* --------------------------------------------------------------------------
+ * Roll-up summary (aria-live)
+ * ------------------------------------------------------------------------ */
+
+.trip-summary {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  padding: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.trip-summary__text {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+/* --------------------------------------------------------------------------
+ * Layout
+ * ------------------------------------------------------------------------ */
+
+.trip-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-6);
+}
+
+@media (min-width: 960px) {
+  .trip-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    align-items: start;
+  }
+}
+
+.trip-section {
+  margin-bottom: var(--spacing-6);
+}
+
+.trip-section__heading {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-3) 0;
+}
+
+.trip-empty {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+ * Trip cards
+ * ------------------------------------------------------------------------ */
+
+.trip-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
+}
+
+@media (min-width: 640px) {
+  .trip-cards {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+.trip-card {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.trip-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.trip-card__name {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.trip-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: var(--spacing-1) 0 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.trip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  flex: 0 0 auto;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--semantic-border-default);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-secondary);
+}
+
+.trip-badge--active {
+  color: var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
+}
+
+.trip-badge--upcoming {
+  color: var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
+}
+
+.trip-badge--ended {
+  color: var(--semantic-text-secondary);
+}
+
+.trip-badge--archived {
+  color: var(--semantic-text-secondary);
+  border-style: dashed;
+}
+
+.trip-card__progress {
+  height: 0.5rem;
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-secondary);
+  overflow: hidden;
+}
+
+.trip-card__progress-fill {
+  height: 100%;
+  background: var(--semantic-status-positive);
+  transition: width 0.2s ease;
+}
+
+.trip-card__progress-fill--over {
+  background: var(--semantic-status-negative);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-card__progress-fill {
+    transition: none;
+  }
+}
+
+.trip-card__figures {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-2);
+  margin: 0;
+}
+
+.trip-card__figure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.trip-card__figure dt {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin: 0;
+}
+
+.trip-card__figure dd {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  text-align: right;
+}
+
+.trip-card__muted {
+  color: var(--semantic-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.trip-card__over {
+  color: var(--semantic-status-negative);
+}
+
+.trip-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  border-top: 1px solid var(--semantic-border-default);
+  padding-top: var(--spacing-3);
+}
+
+.trip-card__count {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* --------------------------------------------------------------------------
+ * Forms
+ * ------------------------------------------------------------------------ */
+
+.trip-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.trip-form {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.trip-form__heading {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.trip-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-3);
+}
+
+.trip-form__error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: 0;
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.trip-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.trip-field__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.trip-field__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.trip-field__input:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+.trip-field__hint {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* --------------------------------------------------------------------------
+ * Buttons
+ * ------------------------------------------------------------------------ */
+
+.trip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.trip-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.trip-button--primary {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+}
+
+.trip-button--primary:hover {
+  background: var(--semantic-interactive-hover);
+}
+
+.trip-button--primary:disabled {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-disabled);
+  cursor: not-allowed;
+}
+
+.trip-button--ghost {
+  background: transparent;
+  color: var(--semantic-interactive-default);
+  border-color: var(--semantic-border-default);
+}
+
+.trip-button--ghost:hover {
+  background: var(--semantic-background-secondary);
+}
+
+/* --------------------------------------------------------------------------
+ * Ledger table
+ * ------------------------------------------------------------------------ */
+
+.trip-ledger__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+}
+
+.trip-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-scale-body-font-size);
+}
+
+.trip-table__caption {
+  text-align: left;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin-bottom: var(--spacing-2);
+}
+
+.trip-table th,
+.trip-table td {
+  text-align: left;
+  padding: var(--spacing-2);
+  border-bottom: 1px solid var(--semantic-border-default);
+}
+
+.trip-table th {
+  color: var(--semantic-text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.trip-table__amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
