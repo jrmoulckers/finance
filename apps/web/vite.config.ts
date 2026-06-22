@@ -131,10 +131,18 @@ function baseAwareWebManifest(): Plugin {
         return;
       }
       const manifestPath = resolve(__dirname, outDir, 'manifest.json');
-      if (!existsSync(manifestPath)) {
-        return;
+      // Read directly instead of `existsSync` + read to avoid a time-of-check
+      // to time-of-use (TOCTOU) file-system race; tolerate a missing manifest.
+      let raw: string;
+      try {
+        raw = readFileSync(manifestPath, 'utf8');
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return;
+        }
+        throw error;
       }
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as WebManifest;
+      const manifest = JSON.parse(raw) as WebManifest;
       const rewritten = applyBaseToWebManifest(manifest, basePath);
       writeFileSync(manifestPath, `${JSON.stringify(rewritten, null, 2)}\n`);
     },
