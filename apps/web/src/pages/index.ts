@@ -36,3 +36,4 @@ export { InvoicesPage } from './InvoicesPage';
 export { NetWorthPage } from './NetWorthPage';
 export { SubscriptionsPage } from './SubscriptionsPage';
 export { BankConnectionsPage } from './BankConnectionsPage';
+export { ExpectedIncomePage } from './ExpectedIncomePage';

@@ -135,6 +135,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     description: 'Track money sent abroad: fees, FX rate and what recipients receive.',
   },
   {
+    id: 'expected-income',
+    label: 'Expected Income',
+    href: '/expected-income',
+    icon: <Icon name={IconToken.INCOME} />,
+    group: 'money',
+    mobilePriority: 15,
+    description: 'Track expected vs. cleared income so late money is not counted as spendable.',
+  },
+  {
     id: 'investments',
     label: 'Investments',
     href: '/investments',

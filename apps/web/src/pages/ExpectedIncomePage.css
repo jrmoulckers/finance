@@ -1,0 +1,310 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.expected-income {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.expected-income__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.expected-income__eyebrow {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.expected-income__title {
+  font-size: var(--type-scale-display-font-size);
+  font-weight: var(--type-scale-display-font-weight);
+  margin: 0;
+}
+
+.expected-income__description {
+  color: var(--semantic-text-secondary);
+  margin: 0;
+  max-width: 72ch;
+}
+
+.expected-income__live {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin: 0;
+  min-height: 1.25em;
+}
+
+.expected-income__section-title {
+  align-items: center;
+  display: flex;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  gap: var(--spacing-2);
+  margin: 0 0 var(--spacing-3);
+}
+
+/* ── Form ──────────────────────────────────────────────────────────────── */
+
+.expected-income__form-section,
+.expected-income__summary,
+.expected-income__list-section {
+  background: var(--semantic-background-elevated, var(--semantic-background-primary));
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-lg, var(--border-radius-lg, var(--border-radius-md)));
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-4);
+}
+
+.expected-income__form {
+  display: grid;
+  gap: var(--spacing-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.expected-income__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.expected-income__field--checkbox {
+  align-items: center;
+  flex-direction: row;
+  gap: var(--spacing-2);
+}
+
+.expected-income__label,
+.expected-income__checkbox-label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+}
+
+.expected-income__input {
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md, var(--border-radius-md));
+  color: var(--semantic-text-primary);
+  font: inherit;
+  padding: var(--spacing-2) var(--spacing-3);
+}
+
+.expected-income__input:focus-visible,
+.expected-income__checkbox:focus-visible,
+.expected-income__button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.expected-income__checkbox {
+  block-size: 1.15rem;
+  inline-size: 1.15rem;
+}
+
+.expected-income__hint {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.expected-income__error {
+  border: 1px solid var(--semantic-status-negative);
+  border-radius: var(--radius-md, var(--border-radius-md));
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-caption-font-size);
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--spacing-2) var(--spacing-3);
+}
+
+.expected-income__form-actions {
+  align-items: center;
+  display: flex;
+  grid-column: 1 / -1;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+
+.expected-income__button {
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md, var(--border-radius-md));
+  color: var(--semantic-text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: var(--spacing-2) var(--spacing-3);
+  transition: background-color 150ms ease;
+}
+
+.expected-income__button:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.expected-income__button--primary {
+  background: var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
+  color: var(--semantic-text-inverse);
+}
+
+.expected-income__button--danger {
+  border-color: var(--semantic-status-negative);
+  color: var(--semantic-status-negative);
+}
+
+/* ── Summary cards ─────────────────────────────────────────────────────── */
+
+.expected-income__summary-grid {
+  display: grid;
+  gap: var(--spacing-3);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.expected-income__card {
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md, var(--border-radius-md));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+}
+
+.expected-income__card-title {
+  align-items: center;
+  color: var(--semantic-text-secondary);
+  display: flex;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  gap: var(--spacing-1);
+  margin: 0;
+}
+
+.expected-income__card-value {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: 700;
+  margin: 0;
+}
+
+.expected-income__card-note {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin: 0;
+}
+
+.expected-income__card--realized {
+  border-inline-start: 4px solid var(--semantic-status-positive);
+}
+
+.expected-income__card--expected {
+  border-inline-start: 4px solid var(--semantic-status-info);
+}
+
+.expected-income__card--planned {
+  border-inline-start: 4px solid var(--semantic-border-default);
+}
+
+.expected-income__card--overdue {
+  border-inline-start: 4px solid var(--semantic-status-warning);
+}
+
+.expected-income__card-icon {
+  color: var(--semantic-status-warning);
+}
+
+/* ── Item list ─────────────────────────────────────────────────────────── */
+
+.expected-income__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.expected-income__item {
+  align-items: center;
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md, var(--border-radius-md));
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  justify-content: space-between;
+  padding: var(--spacing-3);
+}
+
+.expected-income__item.is-overdue {
+  border-inline-start: 4px solid var(--semantic-status-warning);
+}
+
+.expected-income__item.is-cleared {
+  border-inline-start: 4px solid var(--semantic-status-positive);
+}
+
+.expected-income__item.is-pending {
+  border-inline-start: 4px solid var(--semantic-status-info);
+}
+
+.expected-income__item-main {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-inline-size: 0;
+}
+
+.expected-income__item-title {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: 600;
+  margin: 0;
+}
+
+.expected-income__item-meta {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin: 0;
+}
+
+.expected-income__item-amount {
+  color: var(--semantic-text-primary);
+  font-weight: 600;
+}
+
+.expected-income__status {
+  align-items: center;
+  display: inline-flex;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  gap: var(--spacing-1);
+}
+
+.expected-income__status.is-cleared {
+  color: var(--semantic-status-positive);
+}
+
+.expected-income__status.is-overdue {
+  color: var(--semantic-status-warning);
+}
+
+.expected-income__status.is-pending {
+  color: var(--semantic-status-info);
+}
+
+.expected-income__item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expected-income__button {
+    transition: none;
+  }
+}
