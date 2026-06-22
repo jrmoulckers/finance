@@ -389,3 +389,249 @@
     border-width: 2px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Grocery mode card (#2199)
+ * ------------------------------------------------------------------------- */
+
+.grocery-mode-section {
+  margin-top: var(--spacing-4);
+}
+
+.grocery-mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  border-color: color-mix(
+    in srgb,
+    var(--semantic-interactive-default) 28%,
+    var(--semantic-border-default)
+  );
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--semantic-interactive-default) 9%, var(--semantic-background-primary)),
+    var(--semantic-background-primary)
+  );
+}
+
+.grocery-mode-card--tight {
+  border-color: color-mix(
+    in srgb,
+    var(--semantic-status-warning) 38%,
+    var(--semantic-border-default)
+  );
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--semantic-status-warning) 12%, var(--semantic-background-primary)),
+    var(--semantic-background-primary)
+  );
+}
+
+.grocery-mode-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.grocery-mode-card__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.grocery-mode-card__title {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-title-font-size);
+  line-height: var(--type-scale-title-line-height);
+}
+
+.grocery-mode-card__amount {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin: 0;
+  color: var(--semantic-interactive-default);
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.grocery-mode-card--tight .grocery-mode-card__amount {
+  color: var(--semantic-status-warning);
+}
+
+.grocery-mode-card__amount-icon {
+  width: 0.7em;
+  height: 0.7em;
+  flex-shrink: 0;
+}
+
+.grocery-mode-card__answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.grocery-mode-card__answer-text {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  line-height: var(--type-scale-body-line-height);
+}
+
+.grocery-mode-card__answer-meta,
+.grocery-mode-card__answer-pinned {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  line-height: var(--type-scale-body-line-height);
+}
+
+.grocery-mode-card__bills {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: color-mix(in srgb, var(--semantic-background-secondary) 72%, transparent);
+}
+
+.grocery-mode-card__bills-title {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.grocery-mode-card__bills-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grocery-mode-card__bill {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--spacing-2);
+  align-items: baseline;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.grocery-mode-card__bill-due {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.grocery-mode-card__bill-amount {
+  font-weight: var(--font-weight-semibold);
+}
+
+.grocery-mode-card__bills-empty {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.grocery-mode-card__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--spacing-3);
+}
+
+.grocery-mode-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.grocery-mode-card__label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.grocery-mode-card__select,
+.grocery-mode-card__input {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font: inherit;
+}
+
+.grocery-mode-card__afford-input {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding-left: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+}
+
+.grocery-mode-card__afford-prefix {
+  color: var(--semantic-text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.grocery-mode-card__afford-input .grocery-mode-card__input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding-left: 0;
+}
+
+.grocery-mode-card__select:focus-visible,
+.grocery-mode-card__input:focus-visible,
+.grocery-mode-card__afford-input:focus-within {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.grocery-mode-card__afford-result {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  margin: 0;
+  min-height: 1.25rem;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  line-height: var(--type-scale-body-line-height);
+}
+
+.grocery-mode-card__afford-result--yes {
+  color: var(--semantic-status-success, var(--semantic-text-primary));
+}
+
+.grocery-mode-card__afford-result--no {
+  color: var(--semantic-text-primary);
+}
+
+.grocery-mode-card__afford-icon {
+  flex-shrink: 0;
+  margin-top: 0.1em;
+}
+
+@media (prefers-contrast: more) {
+  .grocery-mode-card,
+  .grocery-mode-card__bills,
+  .grocery-mode-card__select,
+  .grocery-mode-card__input,
+  .grocery-mode-card__afford-input {
+    border-width: 2px;
+  }
+}

@@ -11,7 +11,6 @@ import {
   LoadingSpinner,
   SyncIndicator,
 } from '../components/common';
-import { SafeToSpendCard } from '../components/dashboard/SafeToSpendCard';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
   useAccounts,
@@ -80,6 +79,15 @@ const WarrantyDashboard = React.lazy(() =>
     default: module.WarrantyDashboard,
   })),
 );
+// Lazily code-split so these spending-answer cards do not weigh down the
+// (already large) dashboard route chunk — each loads as its own small async
+// chunk on demand.
+const SafeToSpendCard = React.lazy(() =>
+  import('../components/dashboard/SafeToSpendCard').then((module) => ({
+    default: module.SafeToSpendCard,
+  })),
+);
+const GroceryModeSection = React.lazy(() => import('../components/dashboard/GroceryModeSection'));
 
 const ChartFallback = () => <LoadingSpinner size={24} label="Loading chart" />;
 const SectionFallback = ({ label }: { readonly label: string }) => (
@@ -509,6 +517,17 @@ export const DashboardPage: React.FC = () => {
     dashboardAsOf,
   ]);
 
+  // Grocery mode — fast "can I afford this?" / safe-to-spend-before-payday card.
+  // The account/bill/category/income mapping lives in the lazily-loaded
+  // GroceryModeSection so it stays out of the dashboard route chunk; only the
+  // reserved-funds and "today" scalars (which reuse local helpers) are computed
+  // here from data already in scope.
+  const groceryReservedCents = useMemo(
+    () => getPlannedGoalContributionsCents(filteredGoals, dashboardAsOf),
+    [filteredGoals, dashboardAsOf],
+  );
+  const groceryToday = useMemo(() => formatLocalDate(dashboardAsOf), [dashboardAsOf]);
+
   const chartPrivacyRollup = useMemo(
     () => rollUpProtectedTransactions(filteredChartTransactions, categories),
     [filteredChartTransactions, categories],
@@ -750,8 +769,26 @@ export const DashboardPage: React.FC = () => {
                 className="page-section safe-to-spend-section"
                 aria-label="Monthly spending answer"
               >
-                <SafeToSpendCard breakdown={safeToSpendBreakdown} currency={safeToSpendCurrency} />
+                <Suspense fallback={<SectionFallback label="Loading monthly spending answer" />}>
+                  <SafeToSpendCard
+                    breakdown={safeToSpendBreakdown}
+                    currency={safeToSpendCurrency}
+                  />
+                </Suspense>
               </section>
+              <Suspense fallback={<SectionFallback label="Loading grocery mode" />}>
+                <GroceryModeSection
+                  accounts={filteredAccounts}
+                  reservedCents={groceryReservedCents}
+                  bills={filteredBills}
+                  budgets={activeMonthlyBudgets}
+                  categoryNames={categoryNames}
+                  transactions={filteredCurrentMonthTransactions}
+                  today={groceryToday}
+                  fallbackPayday={currentMonthRange.endDate}
+                  currency={safeToSpendCurrency}
+                />
+              </Suspense>
               <section className="page-section" aria-label="Financial summary">
                 <div className="card-grid card-grid--4">
                   {visibleWidgetIds.has('net-worth') ? (
