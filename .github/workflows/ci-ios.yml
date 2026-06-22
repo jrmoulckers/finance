@@ -52,6 +52,7 @@ jobs:
               - 'gradle/**'
               - '*.gradle.kts'
               - 'gradle.properties'
+              - '.github/workflows/ci-ios.yml'
 
   build:
     name: Build & Test
