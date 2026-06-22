@@ -634,14 +634,14 @@ describe('DashboardPage', () => {
     expect(await screen.findByText('What needs attention now')).toBeInTheDocument();
   });
 
-  it('renders a safe-to-spend card with a plain-language explanation and breakdown', () => {
+  it('renders a safe-to-spend card with a plain-language explanation and breakdown', async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
 
-    const card = screen.getByLabelText('Safe to spend this month');
+    const card = await screen.findByLabelText('Safe to spend this month');
     expect(within(card).getByText('Safe to Spend This Month')).toBeInTheDocument();
     expect(
       within(card).getByText(
@@ -739,13 +739,17 @@ describe('DashboardPage', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('region', { name: /financial summary/i })).toBeInTheDocument();
+    // The mood journal is a lazily-loaded landmark; `findByRole` re-scans the
+    // dashboard accessibility tree on every poll. Allow extra time so the
+    // dynamic import can resolve and the role query settle, even when the full
+    // test suite runs in parallel and CPU is contended.
     expect(
-      await screen.findByRole('region', { name: /mood and spending journal/i }),
+      await screen.findByRole('region', { name: /mood and spending journal/i }, { timeout: 3000 }),
     ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /recent transactions/i })).toBeInTheDocument();
   });
 
-  it('covers dashboard financial values when privacy screen is active and reveals them when inactive', () => {
+  it('covers dashboard financial values when privacy screen is active and reveals them when inactive', async () => {
     const renderDashboard = (initialValue: boolean) =>
       render(
         <PrivacyModeProvider initialValue={initialValue}>
@@ -756,6 +760,9 @@ describe('DashboardPage', () => {
       );
 
     const active = renderDashboard(true);
+    // The safe-to-spend card is lazily code-split; wait for it before reading
+    // the rendered text so the privacy-masking assertion is meaningful.
+    await screen.findByLabelText('Safe to spend this month');
     const activeText = document.body.textContent ?? '';
     const screenCoverage = evaluatePrivacyScreenCoverage([
       {
@@ -791,6 +798,7 @@ describe('DashboardPage', () => {
     window.localStorage.clear();
 
     renderDashboard(false);
+    await screen.findByLabelText('Safe to spend this month');
     expect(document.body).toHaveTextContent('$37,250.00');
     expect(document.body).toHaveTextContent('$67.42');
     expect(document.body).toHaveTextContent('$3,200');
