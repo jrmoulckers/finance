@@ -38,17 +38,17 @@ The canonical spec lives at [`services/api/openapi.yaml`](../openapi.yaml).
 
 ### Endpoints
 
-| Tag             | Method   | Path                    | Auth           | Description                        |
-| --------------- | -------- | ----------------------- | -------------- | ---------------------------------- |
-| System          | `GET`    | `/health-check`         | None           | Uptime / service health            |
-| Auth            | `POST`   | `/auth-webhook`         | Webhook secret | Internal user-creation webhook     |
-| Auth            | `POST`   | `/passkey-register`     | Bearer JWT     | WebAuthn registration ceremony     |
-| Auth            | `POST`   | `/passkey-authenticate` | None           | WebAuthn authentication ceremony   |
-| Households      | `POST`   | `/household-invite`     | Bearer JWT     | Create a household invitation      |
-| Households      | `GET`    | `/household-invite`     | Bearer JWT     | Validate an invite code            |
-| Households      | `PUT`    | `/household-invite`     | Bearer JWT     | Accept an invitation               |
-| Data Management | `DELETE` | `/account-deletion`     | Bearer JWT     | GDPR Article 17 — account erasure  |
-| Data Management | `GET`    | `/data-export`          | Bearer JWT     | GDPR Article 20 — data portability |
+| Tag             | Method   | Path                    | Auth           | Description                                                  |
+| --------------- | -------- | ----------------------- | -------------- | ------------------------------------------------------------ |
+| System          | `GET`    | `/health-check`         | None           | Uptime / service health                                      |
+| Auth            | `POST`   | `/auth-webhook`         | Webhook secret | Internal user-creation webhook                               |
+| Auth            | `POST`   | `/passkey-register`     | Bearer JWT     | WebAuthn registration ceremony                               |
+| Auth            | `POST`   | `/passkey-authenticate` | None           | WebAuthn authentication ceremony                             |
+| Households      | `POST`   | `/household-invite`     | Bearer JWT     | Create a household invitation                                |
+| Households      | `GET`    | `/household-invite`     | Bearer JWT     | Validate an invite code                                      |
+| Households      | `PUT`    | `/household-invite`     | Bearer JWT     | Accept an invitation                                         |
+| Data Management | `DELETE` | `/account-delete`       | Bearer JWT     | GDPR Article 17 — account erasure (web route `/api/account`) |
+| Data Management | `GET`    | `/data-export`          | Bearer JWT     | GDPR Article 20 — data portability                           |
 
 ### Security Schemes
 
