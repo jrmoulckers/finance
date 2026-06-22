@@ -22,6 +22,12 @@ vi.mock('../components/charts/chart-palette', () => ({
   CHART_COLORS: ['#648FFF', '#FE6100', '#785EF0', '#FFB000', '#DC267F', '#009E73'],
 }));
 
+// Mock the gig-earnings section (covered by its own tests) so this page test
+// does not need the database-backed useGigPlatformEarnings hook.
+vi.mock('../components/gig/GigPlatformEarningsSection', () => ({
+  GigPlatformEarningsSection: () => null,
+}));
+
 import { useCashFlow } from '../hooks/useCashFlow';
 
 const mockUseCashFlow = vi.mocked(useCashFlow);
