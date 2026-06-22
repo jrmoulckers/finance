@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { AppIcon, type IconName } from '../components/icons';
 
 import { ConfirmDialog, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
@@ -8,12 +8,11 @@ import { CategoryForm } from '../components/forms';
 import type { CreateCategoryInput } from '../db/repositories/categories';
 import { useCategories, useTransactions } from '../hooks';
 import type { Category } from '../kmp/bridge';
-import {
-  applyFamilyKidsCategories,
-  buildFamilyKidsCategoryPlan,
-} from '../lib/categories/family-kids-categories';
-import { selectSupportiveFamilyCopy } from '../lib/coaching/supportive-family-copy';
 import '../styles/pages.css';
+
+const FamilyKidsCategoryCard = lazy(
+  () => import('../components/categories/FamilyKidsCategoryCard'),
+);
 
 function isCustomCategoryIcon(iconName: string | null | undefined): iconName is string {
   return Boolean(iconName && iconName.length <= 4);
@@ -78,7 +77,6 @@ export const CategoriesPage: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [isFamilyKidsConfirmOpen, setIsFamilyKidsConfirmOpen] = useState(false);
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -104,13 +102,6 @@ export const CategoriesPage: React.FC = () => {
     }
     return counts;
   }, [categories]);
-
-  const familyKidsPlan = useMemo(() => buildFamilyKidsCategoryPlan(categories), [categories]);
-  const familyKidsHouseholdId = categories[0]?.householdId ?? null;
-  const familyKidsCopy = useMemo(
-    () => selectSupportiveFamilyCopy({ presetComplete: familyKidsPlan.isComplete }),
-    [familyKidsPlan.isComplete],
-  );
 
   const isLoading = loading || transactionsLoading;
   const resolvedError = error ?? transactionsError;
@@ -172,45 +163,6 @@ export const CategoriesPage: React.FC = () => {
     setDeleteError(null);
   }, [ensureFoodMealCategories]);
 
-  const handleRequestFamilyKids = useCallback(() => {
-    setDeleteError(null);
-    setIsFamilyKidsConfirmOpen(true);
-  }, []);
-
-  const handleCancelFamilyKids = useCallback(() => {
-    setIsFamilyKidsConfirmOpen(false);
-  }, []);
-
-  const handleConfirmFamilyKids = useCallback(() => {
-    setIsFamilyKidsConfirmOpen(false);
-
-    if (!familyKidsHouseholdId) {
-      setDeleteError('Add a category first so we know which household to set up.');
-      return;
-    }
-
-    const result = applyFamilyKidsCategories<Category>({
-      categories,
-      householdId: familyKidsHouseholdId,
-      createCategory: (input) =>
-        createCategory({
-          householdId: input.householdId,
-          name: input.name,
-          icon: input.icon,
-          color: input.color,
-          sortOrder: input.sortOrder,
-        }),
-    });
-
-    if (result.createdCount === 0 && !familyKidsPlan.isComplete) {
-      setDeleteError('Failed to add family & kids categories.');
-      return;
-    }
-
-    setDeleteError(null);
-    refresh();
-  }, [categories, createCategory, familyKidsHouseholdId, familyKidsPlan.isComplete, refresh]);
-
   const handleCancelDelete = useCallback(() => {
     setDeletingCategory(null);
   }, []);
@@ -263,15 +215,6 @@ export const CategoriesPage: React.FC = () => {
         .join(' ')
     : '';
 
-  const familyKidsConfirmMessage =
-    familyKidsPlan.missing.length > 0
-      ? `Add ${familyKidsPlan.missing.length} family & kids categor${
-          familyKidsPlan.missing.length === 1 ? 'y' : 'ies'
-        } to your list: ${familyKidsPlan.missing
-          .map((definition) => definition.name)
-          .join(', ')}. You can rename, set budgets for, or remove any of them later.`
-      : 'All family & kids categories are already in your list. Nothing new will be added.';
-
   return (
     <>
       {pageHeader}
@@ -290,16 +233,6 @@ export const CategoriesPage: React.FC = () => {
         confirmLabel="Delete Category"
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
-      />
-      <ConfirmDialog
-        isOpen={isFamilyKidsConfirmOpen}
-        title="Add family & kids categories"
-        message={familyKidsConfirmMessage}
-        confirmLabel="Add categories"
-        cancelLabel="Not now"
-        variant="info"
-        onConfirm={handleConfirmFamilyKids}
-        onCancel={handleCancelFamilyKids}
       />
 
       {isLoading ? (
@@ -371,120 +304,15 @@ export const CategoriesPage: React.FC = () => {
               </ul>
             </div>
           </section>
-          <section
-            aria-labelledby="family-kids-setup-heading"
-            style={{ marginBottom: 'var(--spacing-6)' }}
-          >
-            <div className="card">
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: 'var(--spacing-4)',
-                  flexWrap: 'wrap',
-                  marginBottom: 'var(--spacing-3)',
-                }}
-              >
-                <div style={{ maxWidth: '40rem' }}>
-                  <h3 id="family-kids-setup-heading" className="card__title">
-                    Family &amp; kids categories
-                  </h3>
-                  <p style={{ color: 'var(--semantic-text-secondary)' }}>
-                    Seed kid-specific categories for school fees, childcare, activities &amp;
-                    sports, birthdays &amp; gifts, field trips &amp; supplies, kids&rsquo; clothing,
-                    and medical co-pays &mdash; the real costs of raising a family.
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 'var(--type-scale-caption-font-size)',
-                      color: 'var(--semantic-text-secondary)',
-                      marginTop: 'var(--spacing-2)',
-                    }}
-                  >
-                    {familyKidsPlan.isComplete
-                      ? `All ${familyKidsPlan.definitions.length} family & kids categories are ready.`
-                      : `${familyKidsPlan.present.length} of ${familyKidsPlan.definitions.length} ready · ${familyKidsPlan.missing.length} will be added.`}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="form-button form-button--secondary"
-                  onClick={handleRequestFamilyKids}
-                >
-                  {familyKidsPlan.isComplete
-                    ? 'Family & kids ready'
-                    : 'Add family & kids categories'}
-                </button>
-              </div>
-              <p
-                role="note"
-                style={{
-                  color: 'var(--semantic-text-secondary)',
-                  marginBottom: 'var(--spacing-3)',
-                }}
-              >
-                <strong style={{ color: 'var(--semantic-text-primary)' }}>
-                  {familyKidsCopy.headline}.
-                </strong>{' '}
-                {familyKidsCopy.body} {familyKidsCopy.smallWin}
-              </p>
-              <ul
-                aria-label="Family and kids categories preview"
-                style={{
-                  display: 'grid',
-                  gap: 'var(--spacing-2)',
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: 0,
-                }}
-              >
-                {familyKidsPlan.definitions.map((definition) => {
-                  const isPresent = familyKidsPlan.present.some(
-                    (entry) => entry.name === definition.name,
-                  );
-                  return (
-                    <li
-                      key={definition.name}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        gap: 'var(--spacing-2)',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span aria-hidden="true">{definition.icon}</span>
-                      <span style={{ color: 'var(--semantic-text-primary)' }}>
-                        {definition.name}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 'var(--type-scale-caption-font-size)',
-                          fontWeight: 600,
-                          color: isPresent
-                            ? 'var(--semantic-text-secondary)'
-                            : 'var(--semantic-text-primary)',
-                          border: '1px solid var(--semantic-border-default)',
-                          borderRadius: 'var(--radius-sm, 0.25rem)',
-                          padding: '0 var(--spacing-2)',
-                        }}
-                      >
-                        {isPresent ? 'Added' : 'Will be added'}
-                      </span>
-                      <span
-                        style={{
-                          color: 'var(--semantic-text-secondary)',
-                          fontSize: 'var(--type-scale-caption-font-size)',
-                        }}
-                      >
-                        {definition.description}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </section>
+          <Suspense fallback={null}>
+            <FamilyKidsCategoryCard
+              categories={categories}
+              householdId={categories[0]?.householdId ?? null}
+              createCategory={createCategory}
+              onApplied={refresh}
+              onError={setDeleteError}
+            />
+          </Suspense>
           <p className="page-summary" aria-live="polite">
             {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} available for
             transaction organization.

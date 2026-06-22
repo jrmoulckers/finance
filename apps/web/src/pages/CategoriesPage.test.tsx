@@ -252,10 +252,12 @@ describe('CategoriesPage', () => {
     expect(ensureFoodMealCategoriesMock).toHaveBeenCalled();
   });
 
-  it('shows the family & kids categories helper with a preview', () => {
+  it('shows the family & kids categories helper with a preview', async () => {
     render(<CategoriesPage />);
 
-    expect(screen.getByRole('heading', { name: /family & kids categories/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: /family & kids categories/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText('School Fees')).toBeInTheDocument();
     expect(screen.getByText('Childcare & Daycare')).toBeInTheDocument();
     expect(screen.getByText('Medical & Co-pays')).toBeInTheDocument();
@@ -266,12 +268,14 @@ describe('CategoriesPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('previews and applies the family & kids preset after confirmation', () => {
+  it('previews and applies the family & kids preset after confirmation', async () => {
     render(<CategoriesPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /add family & kids categories/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /add family & kids categories/i }));
 
-    const dialog = screen.getByRole('alertdialog', { name: /add family & kids categories/i });
+    const dialog = await screen.findByRole('alertdialog', {
+      name: /add family & kids categories/i,
+    });
     expect(dialog).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add categories' }));
@@ -285,11 +289,11 @@ describe('CategoriesPage', () => {
     expect(createCategoryMock).toHaveBeenCalledTimes(7);
   });
 
-  it('does not apply the family & kids preset when cancelled', () => {
+  it('does not apply the family & kids preset when cancelled', async () => {
     render(<CategoriesPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /add family & kids categories/i }));
-    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+    fireEvent.click(await screen.findByRole('button', { name: /add family & kids categories/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
 
     expect(createCategoryMock).not.toHaveBeenCalled();
   });
