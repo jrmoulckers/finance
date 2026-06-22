@@ -1,0 +1,61 @@
+# =============================================================================
+# Reusable change detector — single source of truth for the skip-with-success
+# path-filter boilerplate shared by the platform CI workflows.
+#
+# Callers pass their own `filters` spec (a dorny/paths-filter YAML document that
+# defines a `relevant:` key) and read back the `relevant` output to gate their
+# real jobs:
+#
+#   jobs:
+#     changes:
+#       uses: ./.github/workflows/reusable-detect-changes.yml
+#       with:
+#         filters: |
+#           relevant:
+#             - 'apps/web/**'
+#     build:
+#       needs: changes
+#       if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.relevant == 'true' }}
+#
+# On a pull_request the filter runs and reports whether a relevant path changed;
+# on push/dispatch the `relevant` output is empty and callers fall through their
+# `github.event_name != 'pull_request'` short-circuit so real jobs always run.
+#
+# GUARDRAIL: this detector exists so required checks never depend on trigger-level
+# `on.pull_request.paths` filters (which leave PRs stuck in a BLOCKED state).
+# Never add `paths:` to a required-check workflow's `on:` — gate via this detector
+# instead. See docs/ops/ci-workflow.md and
+# .github/instructions/workflows.instructions.md.
+# =============================================================================
+name: Reusable - Detect Relevant Changes
+
+on:
+  workflow_call:
+    inputs:
+      filters:
+        description: >-
+          dorny/paths-filter filter spec (YAML). Must define a `relevant:` key
+          listing the paths that should trigger the caller's real jobs.
+        required: true
+        type: string
+    outputs:
+      relevant:
+        description: "'true' when a relevant path changed on a pull_request; empty otherwise."
+        value: ${{ jobs.detect.outputs.relevant }}
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: ${{ inputs.filters }}
