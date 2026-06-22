@@ -80,6 +80,9 @@ gh pr create --title "feat(core): implement budget rollover (#134)" \
 
 # 9. Monitor CI until green (remote CI is source of truth)
 gh pr checks <number>
+
+# 10. Once CI is green AND the PR is MERGEABLE, self-merge your own PR (auto-approved)
+gh pr merge <number> --squash
 ```
 
 ---
@@ -117,6 +120,9 @@ gh pr create --title "fix(web): handle expired auth token gracefully (#200)" \
 
 # 8. Monitor CI (remote CI is source of truth)
 gh pr checks <number>
+
+# 9. Once CI is green AND the PR is MERGEABLE, self-merge your own PR (auto-approved)
+gh pr merge <number> --squash
 ```
 
 ---
@@ -147,6 +153,10 @@ $env:HUSKY = "0" ; git push --no-verify origin docs/api-reference-86
 # 6. Create PR
 gh pr create --title "docs: update API reference for sync endpoints (#86)" \
   --body "## Summary\nUpdate API docs.\n\nCloses #86"
+
+# 7. Monitor CI (use the docs-only quick check locally), then self-merge once green AND MERGEABLE
+gh pr checks <number>
+gh pr merge <number> --squash
 ```
 
 ---

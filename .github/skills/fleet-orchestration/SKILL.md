@@ -8,7 +8,27 @@ description: >
 
 # Fleet Orchestration Skill
 
-Proven across **3 waves, 140+ PRs, 17 sprints per agent type**. This skill covers the full lifecycle: issue triage → sprint planning → agent dispatch → CI monitoring → merge-ready handoff.
+## Purpose
+
+This skill covers **agent dispatch, worktree coordination, CI self-healing, PR quality gates, merge ordering, and self-merge operations** for parallel fleet execution. It assumes issues have already been shaped and sprint scope has already been selected.
+
+## Out of Scope
+
+- Issue creation quality, label taxonomy, platform duplicates, and pre-filing validation → use `issue-management`.
+- Roadmap, milestones, backlog grooming, and release lifecycle → use `project-management`.
+- Sprint selection, capacity planning, and dependency sequencing before dispatch → use `sprint-planning`.
+- Domain implementation details inside apps, packages, or services → use the relevant engineering skill.
+
+## Related Skills
+
+| Skill                | Use For                                                 |
+| -------------------- | ------------------------------------------------------- |
+| `sprint-planning`    | Selecting and sequencing sprint work before dispatch    |
+| `project-management` | Lifecycle/release tracking and cross-team coordination  |
+| `issue-management`   | Issue quality, platform scoping, labels, and duplicates |
+| `dev-onboarding`     | Environment setup and local tool/script orientation     |
+
+Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI healing, and merge operations.
 
 ## Agent Registry
 
@@ -135,12 +155,12 @@ Run: `node tools/agent-scripts/setup-worktree.js web feat dashboard 443`
 [specific implementation instructions]
 
 ## Completion
-Run: `node tools/agent-scripts/pre-push-check.js --fix`
-Then: `node tools/agent-scripts/create-pr.js --title "feat(web): dashboard (#443)" --closes 443`
+Follow the canonical workflow in `docs/ai/workflow.md` ("Mandatory Pre-Push"), then create a PR with `Closes #443`.
 
 ## CI Monitoring
-Poll `gh pr checks [pr-number]` until green.
-If failure: read logs, fix, re-run pre-push-check.js, push again.
+Poll PR checks and mergeability until the quality gate passes: CI green and `MERGEABLE`.
+If failure: read logs, fix, repeat the canonical Mandatory Pre-Push flow, and push again.
+Self-merge the agent-authored PR with squash after the quality gate passes.
 """
 )
 ```
@@ -178,9 +198,7 @@ worktrees/wt-[agent-type]-[type/description-issue#]
 
 ### Pre-Push (Mandatory)
 
-```bash
-node tools/agent-scripts/pre-push-check.js --fix
-```
+Do not restate the command sequence here. Follow the canonical `docs/ai/workflow.md` **Mandatory Pre-Push** section: format/lint, verify, amend, fetch/rebase, push the agent's own feature branch with the approved Husky bypass, create/verify the PR, monitor CI + mergeability, then self-merge after the quality gate.
 
 ### PR Creation
 
@@ -197,10 +215,10 @@ git worktree remove worktrees/wt-[agent]-[branch]
 ## CI Self-Healing Loop
 
 ```
-Push → gh pr checks [N] → Failure? →
+Push → gh pr checks [N] + mergeability check → Failure or dirty? →
   gh run view [run-id] --log-failed →
-  Fix locally → node tools/agent-scripts/pre-push-check.js --fix →
-  git push → Repeat until green
+  fix locally → follow docs/ai/workflow.md Mandatory Pre-Push →
+  push → repeat until CI is green and the PR is MERGEABLE → self-merge
 ```
 
 | Failure Type    | Fix                                                     |
@@ -213,16 +231,7 @@ Push → gh pr checks [N] → Failure? →
 
 ## Rebase-All Pattern (Fleet Maintenance)
 
-When main advances and multiple fleet PRs need rebasing:
-
-```bash
-# For each fleet worktree:
-cd worktrees/wt-[agent]-[branch]
-git fetch origin main
-git rebase origin/main
-node tools/agent-scripts/pre-push-check.js --fix
- = "0"; git push origin [branch] --force-with-lease
-```
+When main advances and multiple fleet PRs need rebasing, process each agent-owned worktree one at a time: sync with `origin/main`, rebase the feature branch, resolve conflicts, then follow `docs/ai/workflow.md` **Mandatory Pre-Push** before pushing. Use the canonical Windows Husky-bypass form from that workflow, and use `--force-with-lease` only after a successful rebase on the agent's own branch.
 
 ## Parallel Coordination Rules
 
@@ -295,15 +304,15 @@ END;
 
 ## Hard-Won Lessons (3 Waves, 140+ PRs)
 
-| Lesson                             | Detail                                                         |
-| ---------------------------------- | -------------------------------------------------------------- |
-| **Pre-push is non-negotiable**     | Skipping ci:check = #1 cause of avoidable CI failures          |
-| **`--max-warnings 0` for lint**    | Warnings accumulate; CI rejects them                           |
-| **` = "0"`**                       | Cleanly bypasses Husky on Windows without `--no-verify`        |
-| **Doc agents can't push**          | `docs-writer` needs human push step; note in sprint tracker    |
-| **Never share worktrees**          | Branch interference is #1 pain point; every agent gets its own |
-| **Always include Co-authored-by**  | Omitting triggers PR title check failure                       |
-| **Rebase immediately before push** | Stale branches compound merge conflicts across a fleet         |
+| Lesson                             | Detail                                                                                             |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Pre-push is non-negotiable**     | Follow `docs/ai/workflow.md` Mandatory Pre-Push; stale local shortcuts cause avoidable CI failures |
+| **`--max-warnings 0` for lint**    | Warnings accumulate; CI rejects them                                                               |
+| **Husky bypass syntax**            | Use the canonical Windows syntax in `docs/ai/workflow.md`; do not copy stale snippets              |
+| **Docs agents self-merge too**     | Agent-authored docs PRs follow the same push, PR, quality-gate, and self-merge policy              |
+| **Never share worktrees**          | Branch interference is #1 pain point; every agent gets its own                                     |
+| **Always include Co-authored-by**  | Omitting triggers PR title check failure                                                           |
+| **Rebase immediately before push** | Stale branches compound merge conflicts across a fleet                                             |
 
 ## Business Sprint Integration
 

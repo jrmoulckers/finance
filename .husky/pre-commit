@@ -1,1 +1,48 @@
-npx lint-staged
+# Finance monorepo — pre-commit hook
+#
+# 1. lint-staged: format/lint only the staged files (fast, incremental).
+# 2. secret scan (#2877): block commits that introduce credentials.
+#
+# Bypass (documented agent flow): set HUSKY=0 to skip ALL husky hooks, or pass
+# `git commit --no-verify`. Server-side CI (gitleaks + TruffleHog in
+# ci-security.yml) is the authoritative gate, so a local bypass cannot land a
+# secret on `main`.
+
+# --- 1. Format / lint staged files -------------------------------------------
+npx lint-staged || exit 1
+
+# --- 2. Fast secret scan on staged changes (#2877) ---------------------------
+# Prefer gitleaks (uses the repo .gitleaks.toml). Fall back to a lightweight
+# regex scan of staged additions when gitleaks isn't installed locally. Both
+# paths are non-interactive and fast.
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "🔍 gitleaks: scanning staged changes for secrets…"
+  if ! gitleaks protect --staged --redact --no-banner --config .gitleaks.toml; then
+    echo ""
+    echo "❌ gitleaks detected a potential secret in your staged changes."
+    echo "   • Remove the credential and use an env var / secret store instead."
+    echo "   • False positive? Add an allowlist entry to .gitleaks.toml or append"
+    echo "     a 'gitleaks:allow' comment on the offending line."
+    echo "   • Emergency bypass (NOT for secrets): git commit --no-verify"
+    exit 1
+  fi
+else
+  echo "🔍 secret-scan (regex fallback): gitleaks not installed; running lightweight checks…"
+  # Only inspect ADDED lines in staged, text-based changes.
+  ADDED=$(git diff --cached --no-color -U0 --diff-filter=ACM 2>/dev/null \
+    | grep '^+' | grep -v '^+++')
+  # High-signal credential shapes. Intentionally conservative to avoid blocking
+  # legitimate commits — the server-side gitleaks/TruffleHog jobs are exhaustive.
+  PATTERN='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|-----BEGIN[ A-Z]*PRIVATE KEY-----|ghp_[0-9A-Za-z]{36}|gho_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{20,}|xox[baprs]-[0-9A-Za-z-]{10,}|sk_live_[0-9A-Za-z]{16,}|AIza[0-9A-Za-z_\-]{35}'
+  if printf '%s\n' "$ADDED" | grep -Eqi "$PATTERN"; then
+    echo ""
+    echo "❌ Potential secret detected in staged changes (regex fallback)."
+    echo "   Matched one of: AWS keys, private keys, GitHub/Slack tokens, Stripe"
+    echo "   live keys, or Google API keys."
+    echo "   • Remove the credential and use an env var / secret store instead."
+    echo "   • Install gitleaks for accurate scanning + allowlist support:"
+    echo "       https://github.com/gitleaks/gitleaks#installing"
+    echo "   • Emergency bypass (NOT for secrets): git commit --no-verify"
+    exit 1
+  fi
+fi

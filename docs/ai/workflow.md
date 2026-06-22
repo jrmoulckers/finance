@@ -81,7 +81,7 @@ gh pr checks <number>   # poll until all checks are green
 4. (Option B) Assign the issue to @copilot for autonomous development
 5. Push, open PR automatically, monitor CI with `gh pr checks` until merge-ready
 6. Request review from @security-reviewer and @accessibility-reviewer
-7. Merge (human only) — agent removes worktree after merge confirmed
+7. Self-merge your own PR once the quality gate passes (CI green AND `MERGEABLE`) with `gh pr merge <N> --squash` — auto-approved; remove the worktree after merge is confirmed
 ```
 
 ### 2. Code Review with AI
@@ -145,7 +145,8 @@ When working in autonomous mode without a human present:
 - Complete all local work (code, tests, commits) fully
 - Push the feature branch and open the PR automatically
 - Monitor CI and resolve failures/conflicts autonomously
-- For gated operations (merging PRs, closing issues): stop cleanly — the PR itself is the handoff point
+- For gated operations (closing issues, merging a PR you did **not** author, publish/deploy): stop cleanly — the PR itself is the handoff point
+- Merging your **own** PR is **not** gated: once the quality gate passes (CI green AND `MERGEABLE`), self-merge with `gh pr merge <N> --squash`
 - For financial logic decisions: do NOT guess — stop and document as `## Needs Decision: <question>` in the PR
 - After completing autonomous work, run the [Pre-Push Workflow](#️-mandatory-pre-push-workflow-never-skip) to validate the branch
 
@@ -160,7 +161,7 @@ When agents operate as part of a fleet (parallel execution), the autonomous work
 3. Specialized agents dispatched in parallel, each with own worktree
 4. Agents work independently — push branches, create PRs, monitor CI
 5. A monitoring agent can periodically check fleet PR health
-6. Human reviews and merges all PRs once merge-ready
+6. Each agent self-merges its own PR once the quality gate passes (CI green AND `MERGEABLE`); in fleet mode the orchestrator merges sub-agent PRs in the recommended merge order
 
 **CI self-healing:**
 

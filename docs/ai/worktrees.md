@@ -148,10 +148,12 @@ After opening a PR, the agent **must monitor** it until it is merge-ready. **Wor
    - Resolve conflicts
    - Run the pre-push workflow, then push
    - Restart the check cycle
-4. Once **all checks are green and no conflicts exist** — the agent marks its work complete
+4. Once **all checks are green and no conflicts exist** (`MERGEABLE`) — the agent **self-merges its own PR** with `gh pr merge <number> --squash` (auto-approved, no human needed), then marks its work complete
 
-> **Work is NOT complete until `gh pr checks` shows all green.** Opening a PR and pushing
-> is not the finish line — a clean CI run is.
+> **Work is NOT complete until the PR is merged to `main`** (or, if a documented
+> blocker prevents merge, left green and `MERGEABLE` with a `## Needs Human Action`
+> note). Opening a PR and pushing is not the finish line. Remote CI is the source of
+> truth — see [CI Monitoring](ci-monitoring.md).
 
 ### Post-Merge Cleanup
 

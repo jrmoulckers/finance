@@ -9,6 +9,26 @@ description: >
 
 # KMP Development Skill
 
+## Purpose
+
+This skill covers **Kotlin Multiplatform implementation patterns** — KMP package structure, source sets, expect/actual usage, SQLDelight authoring, Gradle configuration, and shared Kotlin APIs. For backend migrations/RLS, client sync behavior, or financial formula design, use the related skills below.
+
+## Out of Scope
+
+- Supabase migrations, PostgreSQL RLS policies, Edge Functions, and PowerSync backend rules → use `supabase-powersync`.
+- Client/offline replay behavior, mutation queues, and conflict UX → use `edge-sync`.
+- Financial modeling, cents parsing, reporting formulas, and export semantics → use `financial-modeling`.
+- Platform-specific UI implementation in SwiftUI, Compose, React, or Compose Desktop → use the platform engineering skills.
+
+## Related Skills
+
+| Skill                | Use For                                                       |
+| -------------------- | ------------------------------------------------------------- |
+| `supabase-powersync` | Backend schema, RLS, Edge Functions, and PowerSync rules      |
+| `edge-sync`          | Offline-first client sync, mutation queues, and conflict UX   |
+| `financial-modeling` | Cents arithmetic, decimal-string parsing, budgets, and export |
+| `i18n-localization`  | String keys, locale packs, and number/currency formatting     |
+
 ## Current KMP State
 
 The Finance monorepo ships **3 KMP packages** with these capabilities:
@@ -274,12 +294,15 @@ fun observeAll(): Flow<List<Transaction>> =
 value class Money(val cents: Long) {
     operator fun plus(other: Money) = Money(cents + other.cents)
     operator fun minus(other: Money) = Money(cents - other.cents)
+
     companion object {
-        fun fromDollars(d: Double) = Money((d * 100).roundToLong())
+        fun fromCents(cents: Long) = Money(cents)
         val ZERO = Money(0L)
     }
 }
 ```
+
+Use `financial-modeling` for decimal-string parsing and banker's rounding; shared KMP APIs should accept integer cents, not floating-point dollars.
 
 ### Timestamps
 
@@ -291,17 +314,51 @@ value class Money(val cents: Long) {
 
 ```kotlin
 // commonTest — runs on ALL targets
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+data class TestAccount(val balanceCents: Long)
+
 class AccountTest {
-    @Test fun alance stored in cents() {
+    @Test
+    fun balanceStoredInCents() {
+        val account = TestAccount(balanceCents = 150_00L)
         assertEquals(150_00L, account.balanceCents)
     }
 }
+```
 
+```kotlin
 // Turbine for Flow testing
-repo.observeAll().test {
-    assertEquals(emptyList(), awaitItem())
-    repo.insert(sample)
-    assertEquals(1, awaitItem().size)
+import app.cash.turbine.test
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+data class TestTransaction(val id: String)
+
+class TestRepository {
+    private val items = MutableStateFlow<List<TestTransaction>>(emptyList())
+
+    fun observeAll() = items
+    fun insert(sample: TestTransaction) {
+        items.value = items.value + sample
+    }
+}
+
+class RepositoryFlowTest {
+    @Test
+    fun observeAllEmitsInsertedItems() = runTest {
+        val repo = TestRepository()
+        val sample = TestTransaction(id = "tx-1")
+
+        repo.observeAll().test {
+            assertEquals(emptyList(), awaitItem())
+            repo.insert(sample)
+            assertEquals(1, awaitItem().size)
+        }
+    }
 }
 ```
 

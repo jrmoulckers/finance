@@ -146,6 +146,11 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # BLOCKING / REQUIRED (#2876): the "Check for sensitive data logging" step
+    # below fails the build (exit 1) when financial/PII data is logged. This job
+    # is intentionally NOT continue-on-error. Note: this workflow is path-filtered,
+    # so the gatekeeper job in ci-security.yml runs an always-on backstop of the
+    # same check for PRs that don't touch the filtered paths.
 
     steps:
       - name: Checkout

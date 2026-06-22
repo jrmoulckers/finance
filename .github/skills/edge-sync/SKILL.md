@@ -8,6 +8,26 @@ description: >
 
 # Edge Sync Skill
 
+## Purpose
+
+This skill covers **client-side offline-first sync behavior** — local SQLite reads/writes, mutation queues, delta sync, conflict strategies, sync-state UI, and edge-resilience patterns. Backend schema/RLS/migrations and KMP source-set mechanics are owned by related skills.
+
+## Out of Scope
+
+- Supabase migrations, PostgreSQL RLS, Edge Functions, and PowerSync backend rules → use `supabase-powersync`.
+- Kotlin source-set layout, SQLDelight schema syntax, Gradle targets, and shared models → use `kmp-development`.
+- Financial formulas, cents parsing, budgets, reports, and export semantics → use `financial-modeling`.
+- Fleet dispatch, CI monitoring, and PR merge operations → use `fleet-orchestration`.
+
+## Related Skills
+
+| Skill                         | Use For                                                        |
+| ----------------------------- | -------------------------------------------------------------- |
+| `supabase-powersync`          | Backend source of truth, sync-rule authoring, RLS, migrations  |
+| `kmp-development`             | SQLDelight/KMP implementation details consumed by sync clients |
+| `financial-modeling`          | Money-safe domain calculations that sync records may carry     |
+| `security-review-methodology` | Threat review of encrypted sync, auth, and conflict paths      |
+
 ## Architecture: Offline-First Data Flow
 
 ```
@@ -54,7 +74,7 @@ description: >
 - **`QueueProcessor.kt`** — Drains mutations with exponential backoff, dead-letters after retry ceiling
 - **`DeltaSyncManager.kt`** — Per-table sequence tracking, gap detection, `__checksum` validation
 
-## PowerSync Sync Rules
+## PowerSync Sync Rules (Backend Context)
 
 ```yaml
 # services/api/powersync/sync-rules.yaml
@@ -76,6 +96,8 @@ bucket_definitions:
       - SELECT * FROM users WHERE id = bucket.user_id AND deleted_at IS NULL
       - SELECT * FROM household_members WHERE user_id = bucket.user_id AND deleted_at IS NULL
 ```
+
+These rules are backend-owned by `supabase-powersync`; this section is context for client sync behavior.
 
 **Sync rules patterns**:
 
@@ -161,14 +183,15 @@ val resolved = resolver.resolve(localRecord, remoteRecord)
 
 ## Common Patterns
 
-### Adding a new synced table
+### Adding a new synced table (client-side checklist)
 
-1. Add Supabase migration (`services/api/supabase/migrations/`)
-2. Add to `sync-rules.yaml` data queries
-3. Add SQLDelight `.sq` file in `packages/core/`
-4. Add KMP model in `packages/models/`
-5. Add conflict strategy mapping in `ConflictStrategy.kt`
-6. Update platform data layers
+Coordinate with `supabase-powersync` for backend migrations/RLS/sync rules and with `kmp-development` for SQLDelight/model changes. In this skill, verify the client sync impact:
+
+1. Confirm the backend table is included in the correct PowerSync bucket and filters soft deletes.
+2. Confirm SQLDelight queries expose only non-deleted rows to repositories.
+3. Add conflict strategy mapping in `ConflictStrategy.kt`.
+4. Add mutation queue handling and retry/dead-letter behavior for writes.
+5. Update platform data layers and sync-state UI so offline writes remain visible immediately.
 
 ### Handling sync errors in UI
 

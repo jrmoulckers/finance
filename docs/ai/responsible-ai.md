@@ -5,6 +5,7 @@ This document describes how the Finance project uses AI responsibly — both in 
 ## Table of Contents
 
 - [AI in the Development Process](#ai-in-the-development-process)
+  - [The Control Environment](#the-control-environment)
 - [AI in the Product](#ai-in-the-product)
 - [Ethical AI Principles](#ethical-ai-principles)
 - [Commitments](#commitments)
@@ -23,6 +24,23 @@ Finance uses AI tools — primarily GitHub Copilot — to assist with code autho
 **AI agents operate under strict guardrails.** All agents follow documented [restrictions](restrictions.md) that prevent unsupervised remote operations, destructive actions, and credential access.
 
 For the full policy on code ownership, copyright, and contributor responsibilities for AI-assisted code, see the [AI-Generated Code Policy](ai-code-policy.md).
+
+### The Control Environment
+
+Because AI agents can merge their own pull requests, the integrity of every change rests on a layered set of controls rather than on a mandatory pre-merge human review of each agent-authored PR. The controls that are actually in place today are:
+
+| Control                         | What it enforces                                                                                                                                                                         |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Issue-first traceability**    | Every change references a GitHub issue, and commits carry `type(scope): description (#N)`. Work without an issue is out of policy.                                                       |
+| **Branch protection on `main`** | No agent or human pushes directly to `main`. All changes land through pull requests. (Requires the human setup in [restrictions.md](restrictions.md#required-human-setup).)              |
+| **Required CI status checks**   | A PR cannot merge until the required status checks configured on `main` pass. See [branch-protection.md](../architecture/branch-protection.md) for the current required set.             |
+| **The quality gate**            | A PR may merge only when CI is **green AND** the PR is `MERGEABLE` (no conflicts). Merging with a red or conflicting state is forbidden.                                                 |
+| **Scoped self-merge**           | Agents self-merge **only the PRs they authored**. Merging, approving, or closing a PR an agent did **not** author — and merging any human-authored PR — stays human-gated.               |
+| **Documented restrictions**     | High-risk operations (secrets, schema/RLS changes, releases, deployments, destructive file/DB ops, financial-logic decisions) remain human-gated per [restrictions.md](restrictions.md). |
+| **Audit trail**                 | The `Co-authored-by: Copilot` trailer plus the PR/issue history make every AI-assisted change attributable and reviewable after the fact.                                                |
+| **Human revert authority**      | Maintainers retain the ability to review, request changes on, and revert any merged change at any time.                                                                                  |
+
+> **Honest limitation.** These controls _replace_ — they do not add to — a mandatory human approval of agent-authored code before merge. Their strength therefore depends on the required CI check set being complete. Not every CI scan is a blocking required check today; promoting the remaining security scans (CodeQL JVM, dependency review, secret detection, npm audit) to required status is a tracked hardening item. See [AI Governance](governance.md) and the [AI-Practice Audit (2026-06)](audits/ai-practice-audit-2026-06.md).
 
 ## AI in the Product
 
@@ -73,8 +91,8 @@ Human maintainers are accountable for all code in this repository, regardless of
 ## Commitments
 
 1. **Financial data is never sent to external AI services.** User transaction data, account balances, and personal financial information must not leave user-controlled infrastructure for AI processing.
-2. **AI-generated code is always reviewed by humans.** No AI-authored code is merged without human approval through the standard pull request process.
-3. **The project follows emerging AI regulations.** As frameworks like the EU AI Act and U.S. state-level AI laws mature, this project will adapt its practices to remain compliant.
+2. **AI-assisted code passes the same automated quality gate as all other code.** Every change — human or AI — must pass the required CI checks and be conflict-free (`MERGEABLE`) before it can merge. AI agents self-merge the PRs **they author** once that gate is green; PRs authored by humans, and any cross-author merge or close, remain human-gated. Branch protection, required status checks, issue-first traceability, and the `Co-authored-by` audit trail provide the accountability layer in place of a mandatory pre-merge human sign-off on agent work. See [The Control Environment](#the-control-environment) for the full picture, including its honest limitations.
+3. **The project follows emerging AI regulations.** As frameworks like the EU AI Act and U.S. state-level AI laws mature, this project will adapt its practices to remain compliant. The current control mapping lives in [AI Governance](governance.md).
 4. **Users are informed when AI features are active.** Any AI-powered functionality in the product is clearly labeled and explained.
 5. **AI features can always be disabled.** Users retain full control and can opt out of any AI-driven behavior without losing access to core functionality.
 
@@ -83,10 +101,10 @@ Human maintainers are accountable for all code in this repository, regardless of
 This project is transparent about its use of AI in development:
 
 - **Commit-level traceability.** The `Co-authored-by: Copilot` trailer in git history identifies AI-assisted commits. This is documented in the [AI-Generated Code Policy](ai-code-policy.md).
-- **Uniform quality standards.** All code — whether human-written, AI-assisted, or AI-generated — passes the same linters, tests, CI checks, and human review. There is no separate quality bar.
+- **Uniform quality standards.** All code — whether human-written, AI-assisted, or AI-generated — passes the same linters, tests, and CI checks. There is no separate, lower quality bar for AI work. (Note: agents self-merge their own PRs once that automated gate is green; the gate, not a mandatory human pre-merge review, is what enforces the standard — see [The Control Environment](#the-control-environment).)
 - **License coverage.** All contributions are submitted under the project's [Business Source License 1.1 (BUSL-1.1)](../../LICENSE). The license applies equally to all code regardless of authorship method.
-- **Full documentation.** AI agent roles, capabilities, restrictions, and workflows are documented in [`docs/ai/`](.).
+- **Full documentation.** AI agent roles, capabilities, restrictions, and workflows are documented in [`docs/ai/`](.). The governance control mapping is in [AI Governance](governance.md), and the AI-practice evolution is tracked in the [AI Practice CHANGELOG](CHANGELOG.md).
 
 ---
 
-_This document is reviewed and updated as the project's AI practices evolve. Last updated: 2025._
+_This document is reviewed and updated as the project's AI practices evolve. Last reviewed: 2026-06 (control-environment accuracy pass — see the [AI-Practice Audit](audits/ai-practice-audit-2026-06.md))._

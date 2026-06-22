@@ -33,3 +33,48 @@
 /gradle.properties      @jrmoulckers
 /turbo.json             @jrmoulckers
 /package.json           @jrmoulckers
+
+# =============================================================================
+# Separation of duties — sensitive paths (#2880)
+# =============================================================================
+# These paths handle authentication, money movement, database schema, and
+# row-level-security (RLS) policies. They MUST require review beyond the single
+# default owner. Each rule lists the existing owner PLUS a second-reviewer team
+# so that, combined with branch protection ("Require review from Code Owners"
+# and "Required approvals: 2"), no single person can self-approve a change to
+# auth, SQL, or RLS. See .github/branch-protection.md → "Needs Human Action".
+#
+# NOTE: CODEOWNERS makes a path owned by *any one* listed owner; true two-person
+# review is enforced by requiring 2 approvals at the branch-protection level in
+# addition to code-owner review. Both halves are required for real separation of
+# duties — see branch-protection.md.
+#
+# TODO(human): replace @jrmoulckers-org/security-reviewers with a real
+# second-reviewer GitHub team (org repos) or a second individual reviewer handle
+# (personal repos cannot use @org/team handles). Do NOT leave the placeholder.
+
+# Backend API service (override of the single-owner rule above)
+/services/api/                                @jrmoulckers @jrmoulckers-org/security-reviewers
+
+# Database schema & migrations
+/services/api/supabase/migrations/            @jrmoulckers @jrmoulckers-org/security-reviewers
+**/*.sql                                      @jrmoulckers @jrmoulckers-org/security-reviewers
+
+# Row-Level-Security (RLS) policy files
+**/*rls*.sql                                  @jrmoulckers @jrmoulckers-org/security-reviewers
+**/*_rls_policies.sql                         @jrmoulckers @jrmoulckers-org/security-reviewers
+**/*polic*.sql                                @jrmoulckers @jrmoulckers-org/security-reviewers
+
+# Authentication, passkeys & device attestation (Edge Functions)
+/services/api/supabase/functions/auth-*/      @jrmoulckers @jrmoulckers-org/security-reviewers
+/services/api/supabase/functions/passkey-*/   @jrmoulckers @jrmoulckers-org/security-reviewers
+/services/api/supabase/functions/verify-device-attestation/ @jrmoulckers @jrmoulckers-org/security-reviewers
+/services/api/supabase/functions/consent-management/        @jrmoulckers @jrmoulckers-org/security-reviewers
+/services/api/supabase/functions/account-delete/            @jrmoulckers @jrmoulckers-org/security-reviewers
+
+# Generic auth/passkey paths anywhere in the tree (defense in depth)
+**/auth/**                                    @jrmoulckers @jrmoulckers-org/security-reviewers
+**/passkey/**                                 @jrmoulckers @jrmoulckers-org/security-reviewers
+
+# Security policy & response docs
+/services/api/security/                       @jrmoulckers @jrmoulckers-org/security-reviewers

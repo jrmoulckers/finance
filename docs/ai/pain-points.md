@@ -4,6 +4,8 @@ This document tracks friction points, inefficiencies, and recurring failures in 
 
 > **Who maintains this:** `@docs-writer` updates this document. Any agent or human contributor can add entries by following the [template](#pain-point-template) below.
 
+> **Freshness (as of 2026-06).** This is a living register that has accumulated entries across multiple sprints. Some older entries may describe friction that current tooling or policy has since resolved — always cross-check against the current [Workflow](workflow.md), [Fleet Operations](fleet-operations.md), and [Restrictions](restrictions.md) before acting on an entry. Resolved items belong under [Resolved Pain Points](#resolved-pain-points).
+
 ---
 
 ## Table of Contents

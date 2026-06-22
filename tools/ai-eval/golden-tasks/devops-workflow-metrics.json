@@ -1,0 +1,61 @@
+{
+  "id": "devops-workflow-metrics-collector",
+  "title": "Add workflow metrics collector + scheduled workflow",
+  "agentType": "devops",
+  "issue": {
+    "number": 2866,
+    "description": "Create a Node script that collects AI agent workflow health metrics (CI failure rate per PR, time-to-merge-ready, fleet runs, per-agent acceptance/change-request/revert rates) from the GitHub API and outputs JSON + Markdown. Add a scheduled GitHub Actions workflow that runs it weekly. No new npm dependencies; degrade gracefully when gh is unauthenticated."
+  },
+  "expectedFilesTouched": ["tools/workflow-metrics.js", ".github/workflows/ai-metrics.yml"],
+  "forbiddenFilesTouched": [
+    "package.json",
+    "packages/**",
+    "services/api/**",
+    "apps/**",
+    ".github/workflows/ci-security.yml",
+    ".github/workflows/ci-lint.yml"
+  ],
+  "passThreshold": 0.8,
+  "sampleCandidate": {
+    "filesTouched": [
+      "tools/workflow-metrics.js",
+      ".github/workflows/ai-metrics.yml",
+      "tools/README.md"
+    ],
+    "notes": "Known-good reference candidate for regression testing the scorecard."
+  },
+  "rubric": [
+    {
+      "id": "expected-files-exist",
+      "type": "files-exist",
+      "weight": 2,
+      "description": "The collector script and its scheduled workflow both exist on disk."
+    },
+    {
+      "id": "touched-expected-files",
+      "type": "files-touched",
+      "weight": 2,
+      "description": "Candidate touched both the collector script and the workflow."
+    },
+    {
+      "id": "no-forbidden-edits",
+      "type": "no-forbidden-edits",
+      "weight": 3,
+      "description": "Candidate did not edit shared/owned files (package.json, packages, services, apps, owned workflows)."
+    },
+    {
+      "id": "graceful-degradation",
+      "type": "manual",
+      "weight": 1,
+      "description": "Script prints a clear message and exits 0 when gh is missing or unauthenticated.",
+      "guidance": "Reviewer/model confirms the no-auth path exits 0 with an actionable message."
+    },
+    {
+      "id": "best-effort-nulls",
+      "type": "manual",
+      "weight": 1,
+      "description": "Metrics that cannot be derived are emitted as null with an explanatory note.",
+      "guidance": "Reviewer/model confirms null + notes for non-derivable metrics."
+    }
+  ]
+}

@@ -22,13 +22,14 @@ Finance is a financial tracking application handling sensitive personal and mone
 - `git branch` (listing), `git stash list`
 - `git fetch origin main` — read-only; required for pre-push rebase
 - `git rebase origin/main` on **own feature branch only** — standard pre-push hygiene; never on shared branches
+- `git push --force-with-lease origin <own-feature-branch>` — auto-approved **only** to re-push the agent's **own** feature branch after a rebase or conflict resolution. `--force-with-lease` refuses to overwrite commits it hasn't already seen, so it cannot silently clobber a collaborator's work; never use it on a shared/integration branch or a branch the agent does not own.
 - `git push origin <feature-branch>` — pushing your own feature branch to origin is allowed; the `pre-push` hook and GitHub branch protection block the dangerous cases automatically
 
 **Require human approval:**
 
 - `git push origin main`, `git push origin master`, or any push to a release/protected branch — hard blocked by branch protection
-- `git push --force` (without `--force-with-lease`) — forbidden entirely
-- `git push --force-with-lease` on a feature branch — only with explicit human approval (may overwrite a collaborator's work)
+- `git push --force` (the unguarded variant, without `--force-with-lease`) — forbidden entirely
+- `git push --force-with-lease` on a **shared branch, an integration branch, or a branch the agent does not own** — may overwrite a collaborator's work
 - `git remote add`, `remove`, `set-url` — remote configuration changes
 - `git merge` from remote branches into main or release branches
 - `git rebase` onto any branch other than `origin/main` or the agent's own feature branch

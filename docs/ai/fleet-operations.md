@@ -193,19 +193,25 @@ For full worktree lifecycle details, see [worktrees.md](worktrees.md).
 
 In fleet mode, **no two agents edit the same file in parallel.** Ownership is assigned by directory:
 
-| Agent                     | Primary ownership                              |
-| ------------------------- | ---------------------------------------------- |
-| `@kmp-engineer`           | `packages/`                                    |
-| `@backend-engineer`       | `services/api/`                                |
-| `@web-engineer`           | `apps/web/`                                    |
-| `@android-engineer`       | `apps/android/`                                |
-| `@ios-engineer`           | `apps/ios/`                                    |
-| `@windows-engineer`       | `apps/windows/`                                |
-| `@design-engineer`        | `config/tokens/`, generated token files        |
-| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/` |
-| `@docs-writer`            | `docs/`, root `*.md` files                     |
-| `@security-reviewer`      | Read-only — never edits production code        |
-| `@accessibility-reviewer` | Read-only — never edits production code        |
+| Agent                     | Primary ownership                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@kmp-engineer`           | `packages/`                                                                                                                                    |
+| `@backend-engineer`       | `services/api/`                                                                                                                                |
+| `@web-engineer`           | `apps/web/`                                                                                                                                    |
+| `@android-engineer`       | `apps/android/`                                                                                                                                |
+| `@ios-engineer`           | `apps/ios/`                                                                                                                                    |
+| `@windows-engineer`       | `apps/windows/`                                                                                                                                |
+| `@design-engineer`        | `config/tokens/`, generated token files                                                                                                        |
+| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/`                                                                                                 |
+| `@docs-writer`            | `docs/`, root `*.md` files                                                                                                                     |
+| `@security-reviewer`      | Emergency fixer — implements CRITICAL/HIGH security fixes in any directory (with owning-agent coordination); review-only for non-security code |
+| `@accessibility-reviewer` | Review-only — never edits production code; routes fixes to the owning platform agent                                                           |
+| `@qa-tester`              | Read-only on code; orchestrates testing sessions, files issues                                                                                 |
+| `@ai-ops-engineer`        | `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts/evals, AI manifest                                                      |
+| `@release-manager`        | `.changeset/`, version/release-notes, store-submission prep                                                                                    |
+| `@performance-engineer`   | `performance.budget.json`, profiling/benchmark configs                                                                                         |
+| `@data-engineer`          | Metrics pipelines, event schemas, analytics configs                                                                                            |
+| `@localization-engineer`  | i18n resources, localization tooling, financial terminology                                                                                    |
 
 ### Shared configuration files
 
@@ -344,7 +350,7 @@ If conflicts appear:
 - **Merge order matters** — if PR A and PR B touch adjacent areas, merge A first, then have B rebase
 - **Communicate via PR comments** — if an agent detects a potential conflict with another fleet PR, it should comment on both PRs
 
-> ⚠️ `git push --force-with-lease` on a feature branch requires **human approval** per [restrictions.md](restrictions.md). The agent should document the need and wait for approval, or use a regular push after rebasing cleanly.
+> ✅ `git push --force-with-lease` on the agent's **own** feature branch is **auto-approved** when used to re-push after a clean rebase/conflict resolution (see [restrictions.md § 1](restrictions.md)). It refuses to overwrite commits it hasn't seen, so it is safe for this narrow use. Plain `git push --force` remains forbidden, and `--force-with-lease` on a shared/integration branch (or a branch the agent does not own) still requires human approval.
 
 ---
 

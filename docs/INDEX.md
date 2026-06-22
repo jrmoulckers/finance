@@ -50,13 +50,13 @@ Central table of contents for the Finance monorepo documentation. Use this page 
 
 These are the first documents every new contributor should read.
 
-| Document                                              | Description                                                        |
-| ----------------------------------------------------- | ------------------------------------------------------------------ |
-| [Getting Started](guides/getting-started.md)          | End-user guide — what Finance is, where it runs, and how to use it |
-| [Workflow Cheat Sheet](guides/workflow-cheatsheet.md) | Quick-reference commands and common patterns for daily development |
-| [Roadmap](architecture/roadmap.md)                    | System architecture roadmap — all phases and current status        |
-| [SDLC](architecture/sdlc.md)                          | Software Development Lifecycle — Agentic Kanban methodology        |
-| [AI Agent Usage Guide](guides/ai-agents.md)           | How to invoke and chain the 13 custom Copilot agents               |
+| Document                                              | Description                                                                                           |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| [Getting Started](guides/getting-started.md)          | End-user guide — what Finance is, where it runs, and how to use it                                    |
+| [Workflow Cheat Sheet](guides/workflow-cheatsheet.md) | Quick-reference commands and common patterns for daily development                                    |
+| [Roadmap](architecture/roadmap.md)                    | System architecture roadmap — all phases and current status                                           |
+| [SDLC](architecture/sdlc.md)                          | Software Development Lifecycle — Agentic Kanban methodology                                           |
+| [AI Agent Usage Guide](guides/ai-agents.md)           | How to invoke and chain the custom Copilot agents (roster in [`.github/agents/`](../.github/agents/)) |
 
 ---
 
@@ -189,7 +189,7 @@ ADRs document significant architectural decisions with context, alternatives, an
 | [Privacy & Security Guide](guides/privacy-security.md) | User-facing guide to data protection, biometrics, and privacy rights         |
 | [Onboarding Strategy](guides/onboarding-strategy.md)   | Per-platform onboarding design — shared logic, native patterns, skip/resume  |
 | [In-App Help Plan](guides/in-app-help-plan.md)         | Contextual help, tooltips, FAQ integration plan                              |
-| [AI Agent Usage Guide](guides/ai-agents.md)            | How to use the 13 custom Copilot agents and chain them for complex tasks     |
+| [AI Agent Usage Guide](guides/ai-agents.md)            | How to use the custom Copilot agents and chain them for complex tasks        |
 
 ---
 
@@ -243,25 +243,31 @@ Legal documents — terms of service, privacy policy, and app store data declara
 
 AI-first development workflow documentation. See the [AI README](ai/README.md) for an overview of the AI development philosophy.
 
-| Document                                       | Description                                                                  |
-| ---------------------------------------------- | ---------------------------------------------------------------------------- |
-| [AI README](ai/README.md)                      | Overview — why AI-first development, documentation index                     |
-| [Workflow](ai/workflow.md)                     | Day-to-day AI development workflow — Copilot, Chat, Agent Mode               |
-| [Agent Cookbook](ai/agent-cookbook.md)         | Step-by-step recipes for common agent tasks                                  |
-| [Agent Instructions](ai/agent-instructions.md) | Canonical reference for AI agent roles, skills, and workflow rules           |
-| [Troubleshooting](ai/troubleshooting.md)       | Common issues and solutions for agent workflows                              |
-| [Agents](ai/agents.md)                         | Custom Copilot agent definitions — roles, tools, and boundaries              |
-| [Skills](ai/skills.md)                         | Reusable domain knowledge bundles for AI agents                              |
-| [Instructions](ai/instructions.md)             | Copilot instruction files — coding standards and architectural constraints   |
-| [MCP Configuration](ai/mcp.md)                 | Model Context Protocol (MCP) server setup — external tool integration        |
-| [Fleet Operations](ai/fleet-operations.md)     | Fleet dispatch, CI self-healing, and parallel agent coordination             |
-| [Fleet CI Analysis](ai/fleet-ci-analysis.md)   | Fleet CI failure analysis — root causes and prevention strategies            |
-| [Worktrees](ai/worktrees.md)                   | Git worktree setup, naming conventions, and lifecycle management             |
-| [Pain Points](ai/pain-points.md)               | Tracked workflow friction, inefficiencies, and known issues                  |
-| [Workflow Metrics](ai/workflow-metrics.md)     | Metrics for measuring agent workflow efficiency and quality                  |
-| [Responsible AI](ai/responsible-ai.md)         | Responsible AI framework — ethics, transparency, and commitments             |
-| [Restrictions](ai/restrictions.md)             | Human-gated operations — what AI agents must not do without approval         |
-| [AI Code Policy](ai/ai-code-policy.md)         | Ownership, copyright, and contributor responsibilities for AI-generated code |
+| Document                                                              | Description                                                                  |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [AI README](ai/README.md)                                             | Overview — why AI-first development, documentation index                     |
+| [Start Here](ai/start-here.md)                                        | Canonical entry point for new agents and humans                              |
+| [Workflow](ai/workflow.md)                                            | Day-to-day AI development workflow — Copilot, Chat, Agent Mode               |
+| [Agent Cookbook](ai/agent-cookbook.md)                                | Step-by-step recipes for common agent tasks                                  |
+| [Agent Instructions](ai/agent-instructions.md)                        | Reference for AI agent roles, skills, and workflow rules                     |
+| [CI Monitoring](ai/ci-monitoring.md)                                  | Correct CI monitoring pattern using `gh pr checks`                           |
+| [Slash Commands](ai/slash-commands.md)                                | Prototype Copilot CLI slash commands (`/feature`, `/issue`, `/sprint`)       |
+| [Troubleshooting](ai/troubleshooting.md)                              | Common issues and solutions for agent workflows                              |
+| [Agents](ai/agents.md)                                                | Custom Copilot agent definitions — roles, tools, and boundaries              |
+| [Skills](ai/skills.md)                                                | Reusable domain knowledge bundles for AI agents                              |
+| [Instructions](ai/instructions.md)                                    | Copilot instruction files — coding standards and architectural constraints   |
+| [MCP Configuration](ai/mcp.md)                                        | Model Context Protocol (MCP) server setup — external tool integration        |
+| [Fleet Operations](ai/fleet-operations.md)                            | Fleet dispatch, CI self-healing, and parallel agent coordination             |
+| [Fleet CI Analysis](ai/fleet-ci-analysis.md)                          | Historical — fleet CI failure analysis (2026-04 snapshot)                    |
+| [Worktrees](ai/worktrees.md)                                          | Git worktree setup, naming conventions, and lifecycle management             |
+| [Pain Points](ai/pain-points.md)                                      | Tracked workflow friction, inefficiencies, and known issues                  |
+| [Workflow Metrics](ai/workflow-metrics.md)                            | Metrics for measuring agent workflow efficiency and quality                  |
+| [Responsible AI](ai/responsible-ai.md)                                | Responsible AI framework — ethics, transparency, and commitments             |
+| [AI Governance](ai/governance.md)                                     | NIST AI RMF crosswalk + EU AI Act note mapped to this repo's controls        |
+| [Restrictions](ai/restrictions.md)                                    | Human-gated operations — what AI agents must not do without approval         |
+| [AI Code Policy](ai/ai-code-policy.md)                                | Ownership, copyright, and contributor responsibilities for AI-generated code |
+| [AI Practice CHANGELOG](ai/CHANGELOG.md)                              | Decision log for how the AI practice has evolved over time                   |
+| [AI-Practice Audit (2026-06)](ai/audits/ai-practice-audit-2026-06.md) | Consultant-fleet audit of the AI-first practice                              |
 
 ---
 
@@ -290,11 +296,11 @@ AI-first development workflow documentation. See the [AI README](ai/README.md) f
 | Compliance   |       8 |
 | Design       |       6 |
 | Legal        |       5 |
-| AI           |      17 |
+| AI           |      23 |
 | Testing      |       1 |
 | Audits       |       1 |
-| **Total**    | **116** |
+| **Total**    | **122** |
 
 ---
 
-_This index is maintained manually. When adding a new document, add an entry here in the appropriate section._
+_This index is maintained manually (counts as of 2026-06). When adding a new document, add an entry here in the appropriate section. For the AI section, the `.github/agents/`, `.github/skills/`, and `.github/instructions/` directories are the source of truth for agent/skill/instruction counts — prefer linking to them over restating numbers._

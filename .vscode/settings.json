@@ -1,4 +1,5 @@
-﻿{
+// VS Code workspace settings (JSONC — comments allowed).
+{
   "editor.formatOnSave": true,
   "editor.defaultFormatter": null,
   "files.trimTrailingWhitespace": true,
@@ -31,23 +32,41 @@
     "^npm (test|run|install)( .*)?",
     "^\\$env:HUSKY"
   ],
+  // Denylist wins over the allowlist (deny-by-pattern always blocks auto-approval).
   "github.copilot.chat.tools.terminal.denylist": [
     "git push.*(main|master|--force(?!-with-lease))",
     "git (pull|remote|clone)",
     "git merge",
     "git branch -[dD]",
-    "gh pr (merge|review|close|approve)",
+    // NOTE: the previous "gh pr (merge|review|close|approve)" entry was removed — self-merge of one's OWN
+    //   PRs is now allowed policy. Merging, reviewing, approving, or closing OTHERS' PRs remains HUMAN-GATED
+    //   (enforced by policy in AGENTS.md / Boundaries, not by this denylist).
     "gh issue (close|delete|transfer)",
     "gh repo",
-    "rm -rf|del /[sS]|Remove-Item.*-Recurse.*-Force",
+    // Destructive file deletion (case/flag-order tolerant): rm -rf, rm -fr, Remove-Item -Force -Recurse (any order), del *.x
+    "rm -rf",
+    "rm\\s+-(?=[a-zA-Z]*r)(?=[a-zA-Z]*f)[a-zA-Z]+",
+    "del /[sS]",
+    "del\\s+\\*",
+    "[Rr]emove-[Ii]tem.*(-[Rr]ecurse.*-[Ff]orce|-[Ff]orce.*-[Rr]ecurse)",
     "sudo|runas|Start-Process.*-Verb RunAs",
+    // Publish / deploy / release — never auto-approve outbound supply-chain or infra changes.
     "npm publish|yarn publish|pnpm publish",
+    "docker push|cdk deploy|terraform (apply|destroy)|gh release create",
     "curl|wget|Invoke-WebRequest|Invoke-RestMethod",
-    "DROP|TRUNCATE|DELETE FROM|ALTER TABLE",
+    // Destructive SQL (CASE-INSENSITIVE): catches lowercase drop table, truncate, delete from (without WHERE), alter table.
+    "[Dd][Rr][Oo][Pp]\\s+([Tt][Aa][Bb][Ll][Ee]|[Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee])",
+    "[Tt][Rr][Uu][Nn][Cc][Aa][Tt][Ee]\\b",
+    "[Dd][Ee][Ll][Ee][Tt][Ee]\\s+[Ff][Rr][Oo][Mm]\\b(?![\\s\\S]*\\b[Ww][Hh][Ee][Rr][Ee]\\b)",
+    "[Aa][Ll][Tt][Ee][Rr]\\s+[Tt][Aa][Bb][Ll][Ee]",
     "format |diskpart|fdisk",
     "ssh |scp |rsync",
     "docker (push|rm|rmi|system prune)",
     "chmod|chown|icacls|takeown",
-    "Set-ExecutionPolicy|reg add|regedit"
+    "Set-ExecutionPolicy|reg add|regedit",
+    // Secret/credential exfiltration guards: block reading .env / secrets/ / credentials/ and dumping env vars.
+    "(cat|type|less|more|head|tail|nano|vim|vi|code|bat|Get-Content|gc|Select-String|sls)\\s+[^|]*\\.env(?!\\.(example|sample|template))",
+    "(cat|type|less|more|head|tail|Get-Content|gc|ls|dir|Get-ChildItem)\\s+[^|]*(secrets|credentials)[\\\\/]",
+    "printenv|(Get-ChildItem|gci|ls|dir)\\s+[Ee]nv:"
   ]
 }

@@ -1,0 +1,43 @@
+{
+  "id": "backend-migration-reversibility",
+  "title": "Every Supabase migration ships with a reverse migration",
+  "agentType": "backend",
+  "issue": {
+    "number": 2881,
+    "description": "Some forward migrations under services/api/supabase/migrations/*.sql are missing a matching down migration in services/api/supabase/migrations/down/. Add the missing reverse migrations so every up migration can be cleanly rolled back."
+  },
+  "expectedFilesTouched": [
+    "services/api/supabase/migrations/20260331000003_recompute_account_balance_trigger.sql",
+    "services/api/supabase/migrations/down/20260331000003_recompute_account_balance_trigger.down.sql"
+  ],
+  "forbiddenFilesTouched": ["apps/**", "packages/**", "tools/**", ".github/**"],
+  "passThreshold": 0.8,
+  "rubric": [
+    {
+      "id": "up-and-down-exist",
+      "type": "files-exist",
+      "weight": 3,
+      "description": "Both the forward migration and its matching down migration exist on disk."
+    },
+    {
+      "id": "no-out-of-scope-edits",
+      "type": "no-forbidden-edits",
+      "weight": 2,
+      "description": "Migration work stayed within services/api; no app/package/tooling/workflow edits."
+    },
+    {
+      "id": "down-actually-reverses",
+      "type": "manual",
+      "weight": 3,
+      "description": "Each down migration precisely undoes its up migration (drops tables/columns/policies it created).",
+      "guidance": "Reviewer/model diffs the up and down SQL to confirm a true inverse."
+    },
+    {
+      "id": "idempotent-guards",
+      "type": "manual",
+      "weight": 1,
+      "description": "Down migrations use IF EXISTS / IF NOT EXISTS guards where appropriate.",
+      "guidance": "Reviewer/model confirms safe re-runnable DDL."
+    }
+  ]
+}

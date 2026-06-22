@@ -44,7 +44,7 @@ jobs:
     name: CodeQL Analysis (java-kotlin)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
+    # BLOCKING (#2860): security SAST must fail the build, not be advisory.
     if: >-
       github.event_name == 'push' ||
       github.event_name == 'schedule' ||
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.event_name == 'pull_request'
-    continue-on-error: true
+    # BLOCKING (#2860): supply-chain review must block on high-severity findings.
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
@@ -115,13 +115,45 @@ jobs:
     name: Secret Detection
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # BLOCKING (#2877): this job must fail the build when secrets are found.
+    # It is intentionally NOT continue-on-error.
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
-      - uses: trufflesecurity/trufflehog@d411fff7b8879a62509f3fa98c07f247ac089a51 # v3.95.4
+      - name: TruffleHog (verified + unverified secrets)
+        uses: trufflesecurity/trufflehog@d411fff7b8879a62509f3fa98c07f247ac089a51 # v3.95.4
         with:
-          extra_args: --only-verified
+          # #2877: do NOT use --only-verified. We want unverified/unknown
+          # results to block too, since an unverified credential is still a
+          # leaked credential. The trufflehog action already appends `--fail`
+          # internally, so any result (verified or unknown) fails this job.
+          extra_args: --results=verified,unknown
+
+  gitleaks:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # BLOCKING (#2877): primary secret-scanning gate. Uses the repo .gitleaks.toml.
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          # Full history is required so gitleaks can scan the PR commit range.
+          fetch-depth: 0
+      - name: Run gitleaks
+        # verify SHA: gitleaks/gitleaks-action v2.3.9 — confirm the pinned commit
+        # SHA against https://github.com/gitleaks/gitleaks-action/releases before merge.
+        uses: gitleaks/gitleaks-action@44c470ffc35caa8b1eb3e8012ca53c2f9bea4eb5 # v2.3.9 # verify SHA
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Path to the committed config (extends gitleaks defaults).
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # GITLEAKS_LICENSE is only required for GitHub Organizations. For a
+          # personal repo it can be omitted; left here so an org admin can wire
+          # it via Actions secrets without editing this workflow.
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'true'
+          GITLEAKS_ENABLE_SUMMARY: 'true'
 
   npm-audit:
     name: npm Audit
@@ -264,7 +296,7 @@ jobs:
     name: Gradle Dependency Check
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
+    # BLOCKING (#2860): vulnerable Gradle deps and dynamic versions must fail CI.
 
     steps:
       - name: Checkout
@@ -336,6 +368,19 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      - name: Fail on vulnerable Gradle dependencies
+        # BLOCKING (#2860): if known-vulnerable artifacts are on the classpath the
+        # job must fail instead of silently reporting via continue-on-error.
+        run: |
+          ISSUES="${{ steps.gradle-scan.outputs.issues }}"
+          echo "### 🐘 Gradle Dependency Check" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${ISSUES:-0}" -ne 0 ]; then
+            echo "::error::Found ${ISSUES} known-vulnerable Gradle dependency pattern(s) on the runtime classpath"
+            echo "❌ Found **${ISSUES}** known-vulnerable Gradle dependency pattern(s)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "✅ No known-vulnerable Gradle dependency patterns detected." >> "$GITHUB_STEP_SUMMARY"
+
   license-check:
     name: License Compliance
     runs-on: ubuntu-latest
@@ -391,6 +436,7 @@ jobs:
         codeql-javascript,
         dependency-review,
         secret-scanning,
+        gitleaks,
         npm-audit,
         gradle-dependency-check,
         license-check,
@@ -409,7 +455,8 @@ jobs:
           echo "| CodeQL (JVM) | ${{ needs.codeql-java-kotlin.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| CodeQL (JS/TS) | ${{ needs.codeql-javascript.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Dependency review | ${{ needs.dependency-review.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Secret detection | ${{ needs.secret-scanning.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Secret detection (TruffleHog) | ${{ needs.secret-scanning.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Secret scan (gitleaks) | ${{ needs.gitleaks.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| npm audit | ${{ needs.npm-audit.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Gradle dependency check | ${{ needs.gradle-dependency-check.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| License compliance | ${{ needs.license-check.result }} |" >> "$GITHUB_STEP_SUMMARY"
@@ -425,3 +472,123 @@ jobs:
             echo "::error::Security workflow failed because the license check failed"
             exit 1
           fi
+
+  # ===========================================================================
+  # Gatekeeper — the single, ALWAYS-ON required status check (#2860 / #2876)
+  # ===========================================================================
+  # This workflow has no `paths:` filter, so this job runs on EVERY push and PR
+  # to `main`. Branch protection can require this one check; it aggregates the
+  # blocking security jobs above AND independently runs lint + format + a secret
+  # scan so the required check is never "missing" on path-filtered PRs (which is
+  # what previously let changes merge without ever running these gates).
+  gatekeeper:
+    name: Required Checks Gatekeeper
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: always()
+    needs:
+      - codeql-java-kotlin
+      - codeql-javascript
+      - dependency-review
+      - secret-scanning
+      - gitleaks
+      - npm-audit
+      - gradle-dependency-check
+      - license-check
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Always-on lint + format gate (ci-lint.yml is path-filtered and may be
+      # skipped, so we re-run the essentials here to guarantee coverage).
+      - name: Format check (prettier)
+        run: npx prettier --check .
+
+      - name: ESLint
+        run: npx eslint . --max-warnings 0
+
+      # Always-on lightweight secret scan as a backstop to the dedicated jobs.
+      - name: Secret backstop (tracked files)
+        run: |
+          PATTERN='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|-----BEGIN[ A-Z]*PRIVATE KEY-----|ghp_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{20,}|xox[baprs]-[0-9A-Za-z-]{10,}|sk_live_[0-9A-Za-z]{16,}'
+          if git grep -nIE "$PATTERN" -- ':!*__tests__*' ':!*.test.*' ':!*.spec.*' ':!docs/*' ':!.gitleaks.toml' 2>/dev/null; then
+            echo "::error::Potential hard-coded secret detected by gatekeeper backstop scan"
+            exit 1
+          fi
+          echo "✅ Gatekeeper secret backstop found no matches."
+
+      # Always-on sensitive-data-logging backstop (#2876). The full check lives in
+      # ci-lint.yml's "Observability Guardrails" job, but that workflow is
+      # path-filtered; this compact mirror guarantees the gate runs on every PR.
+      - name: Sensitive-data-logging backstop
+        run: |
+          PATTERNS='password|access_token|refresh_token|api_key|apiKey|secret|creditCard|credit_card|ssn|social_security'
+          HITS=$(grep -rnE "console\.|log\.|logger\.|Log\." \
+            --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+            --include='*.kt' --include='*.swift' \
+            apps/ packages/ services/ 2>/dev/null \
+            | grep -Ei "$PATTERNS" \
+            | grep -v '\.test\.' \
+            | grep -v '\.spec\.' \
+            | grep -v 'node_modules' \
+            | grep -v '// SAFE:' \
+            | grep -v '# nosec' \
+            || echo "")
+          if [ -n "$HITS" ]; then
+            COUNT=$(printf '%s\n' "$HITS" | wc -l)
+            echo "::error::Potential sensitive-data logging detected ($COUNT occurrence(s))"
+            printf '%s\n' "$HITS" | head -20
+            exit 1
+          fi
+          echo "✅ Gatekeeper sensitive-data-logging backstop found no matches."
+
+      - name: Aggregate required security checks
+        if: always()
+        env:
+          CODEQL_JVM: ${{ needs.codeql-java-kotlin.result }}
+          CODEQL_JS: ${{ needs.codeql-javascript.result }}
+          DEP_REVIEW: ${{ needs.dependency-review.result }}
+          SECRET_TRUFFLEHOG: ${{ needs.secret-scanning.result }}
+          SECRET_GITLEAKS: ${{ needs.gitleaks.result }}
+          NPM_AUDIT: ${{ needs.npm-audit.result }}
+          GRADLE_DEP: ${{ needs.gradle-dependency-check.result }}
+          LICENSE: ${{ needs.license-check.result }}
+        run: |
+          echo "### 🛡️ Gatekeeper — required checks" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Required check | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          fail=0
+          # 'skipped' is acceptable: e.g. dependency-review only runs on PRs and
+          # CodeQL/JVM steps may no-op when no Kotlin changed. 'failure' /
+          # 'cancelled' must block.
+          check() {
+            name="$1"; result="$2"
+            echo "| $name | $result |" >> "$GITHUB_STEP_SUMMARY"
+            case "$result" in
+              success|skipped) ;;
+              *) echo "::error::Required check '$name' did not pass (result: $result)"; fail=1 ;;
+            esac
+          }
+          check "CodeQL (java-kotlin)" "$CODEQL_JVM"
+          check "CodeQL (javascript-typescript)" "$CODEQL_JS"
+          check "Dependency Review" "$DEP_REVIEW"
+          check "Secret Detection (TruffleHog)" "$SECRET_TRUFFLEHOG"
+          check "Secret Scan (gitleaks)" "$SECRET_GITLEAKS"
+          check "npm Audit" "$NPM_AUDIT"
+          check "Gradle Dependency Check" "$GRADLE_DEP"
+          check "License Compliance" "$LICENSE"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$fail" -ne 0 ]; then
+            echo "❌ Gatekeeper failing — one or more required security checks did not pass." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "✅ All required security checks passed." >> "$GITHUB_STEP_SUMMARY"

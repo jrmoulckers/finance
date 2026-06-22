@@ -1,0 +1,98 @@
+# =============================================================================
+# gitleaks configuration — Finance monorepo
+# =============================================================================
+# Issue: #2877 — blocking secret scanning
+#
+# This config is consumed by:
+#   - The BLOCKING `gitleaks` job in .github/workflows/ci-security.yml
+#   - The local `gitleaks protect --staged` step in .husky/pre-commit
+#
+# We extend gitleaks' built-in rule set (`useDefault = true`) and layer on a few
+# finance/Supabase-specific rules plus a tightly-scoped allowlist so that test
+# fixtures and documented placeholders don't generate false positives.
+#
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+# =============================================================================
+
+title = "Finance Monorepo gitleaks config"
+
+[extend]
+# Start from gitleaks' maintained default rules (AWS keys, GitHub tokens,
+# private keys, Stripe keys, Slack tokens, JWTs, etc.) then add our own below.
+useDefault = true
+
+# -----------------------------------------------------------------------------
+# Custom rules — project-specific secret shapes
+# -----------------------------------------------------------------------------
+
+[[rules]]
+id = "supabase-service-role-jwt"
+description = "Supabase service_role / anon JWT (do not commit real keys)"
+# Supabase keys are JWTs: three base64url segments separated by dots.
+regex = '''eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}'''
+keywords = ["eyj", "service_role", "supabase"]
+[rules.allowlist]
+# Example/placeholder JWTs frequently used in docs.
+regexes = [
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJ.{0,40}(EXAMPLE|REPLACE|YOUR).{0,40}''',
+]
+
+[[rules]]
+id = "supabase-url-with-embedded-key"
+description = "Supabase project URL paired with an inline API key"
+regex = '''https://[a-z0-9]{20}\.supabase\.co.{0,40}(apikey|service_role|anon)["'\s:=]+eyJ[A-Za-z0-9_-]{10,}'''
+keywords = ["supabase.co"]
+
+[[rules]]
+id = "generic-bearer-token-assignment"
+description = "Hard-coded bearer/access token assignment"
+regex = '''(?i)(authorization|bearer|access[_-]?token)["'\s:=]{1,4}[A-Za-z0-9._\-]{32,}'''
+keywords = ["authorization", "bearer", "access_token", "accesstoken"]
+[rules.allowlist]
+regexes = [
+  '''(?i)(authorization|bearer|access[_-]?token)["'\s:=]{1,4}(ya29\.PLACEHOLDER|<[^>]+>|\$\{[^}]+\}|process\.env|Deno\.env|REPLACE_ME|EXAMPLE)''',
+]
+
+[[rules]]
+id = "plaid-secret"
+description = "Plaid client secret"
+regex = '''(?i)plaid.{0,20}(secret|client[_-]?secret)["'\s:=]{1,4}[a-f0-9]{30,}'''
+keywords = ["plaid"]
+
+# -----------------------------------------------------------------------------
+# Global allowlist — keep false positives out of the blocking gate
+# -----------------------------------------------------------------------------
+
+[allowlist]
+description = "Global allowlist for tests, fixtures, examples, and placeholders"
+
+# Paths that legitimately contain fake/sample secrets or are scanner config.
+paths = [
+  '''(^|/)(__tests__|__mocks__|__fixtures__|fixtures|mocks|testdata|test-data)(/|$)''',
+  '''.*\.(test|spec)\.(ts|tsx|js|jsx|kt|kts|swift)$''',
+  '''.*\.(example|sample|template|dist)$''',
+  '''.*\.env\.example$''',
+  '''(^|/)docs/.*\.(md|mdx)$''',
+  '''(^|/)\.github/secret_scanning\.yml$''',
+  '''(^|/)\.gitleaks\.toml$''',
+  '''(^|/)services/api/supabase/tests/''',
+  '''(^|/)services/api/supabase/functions/_test_helpers/''',
+]
+
+# Documented placeholder tokens that must never be treated as real secrets.
+regexes = [
+  '''(?i)(EXAMPLE|SAMPLE|PLACEHOLDER|REPLACE[_-]?ME|YOUR[_-][A-Z_]+[_-](KEY|TOKEN|SECRET)|CHANGE[_-]?ME|DUMMY|FAKE|TEST[_-]?(KEY|TOKEN|SECRET))''',
+  '''\$\{\{?\s*(secrets|env)\.[A-Za-z0-9_]+\s*\}?\}''',
+  '''(process\.env|Deno\.env\.get)\b''',
+  '''0{16,}''',
+  '''x{16,}''',
+]
+
+# Allow a developer to explicitly mark a line as a non-secret with a trailing
+# `gitleaks:allow` comment (this is gitleaks' built-in inline allow mechanism).
+# Documented here so reviewers know it exists.
+stopwords = [
+  "example",
+  "placeholder",
+  "redacted",
+]

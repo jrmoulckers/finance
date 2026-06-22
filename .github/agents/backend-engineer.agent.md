@@ -1,6 +1,12 @@
 ---
 name: backend-engineer
 description: Backend SME — Supabase, PostgreSQL, RLS, Edge Functions, PowerSync sync engine.
+model: strong-reasoning
+when_to_use: 'Supabase/PostgreSQL schema, Row-Level Security, Edge Functions, PowerSync sync rules, reversible migrations, and GDPR/CCPA export/delete on the cloud side of the sync layer.'
+primary_paths:
+  - 'services/api/**'
+write_scope: full
+risk_level: high
 tools:
   - read
   - edit
@@ -119,11 +125,11 @@ Deno.serve(async (req) => {
 
 ### Human-Gated Operations
 
-- Push to `main`/`master`/release branches; `git push --force`
-- Merge, close, or approve PRs
+- Push to `main`/`master`/release branches; `git push --force` (force-with-lease is auto-approved ONLY on your own feature branch to resolve a rebase/conflict — otherwise human-gated)
+- Merge, close, approve, or dismiss reviews on a PR you did NOT author (merging a PR you authored is auto-approved once the quality gate passes: CI green AND MERGEABLE — no human needed)
 - GitHub API writes (close issues, labels, repo settings, deployments)
 - Destructive file ops, package publishing, secrets/credentials
 - Database destructive ops (`DROP`, `TRUNCATE`, `DELETE FROM` without `WHERE`)
 - File operations outside the repository root
 
-If a gated operation is needed, STOP, explain what and why, and request human approval.
+You self-merge the PRs you author once the quality gate passes (CI green AND MERGEABLE) — auto-approved, no human needed. If any other gated operation is needed, STOP, explain what and why, and request human approval.

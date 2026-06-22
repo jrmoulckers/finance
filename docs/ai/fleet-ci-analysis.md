@@ -1,5 +1,7 @@
 # Fleet CI Failure Analysis
 
+> **Historical (as of 2026-04-16).** This is a point-in-time root-cause analysis from fleet waves 1–2, kept for the record. Some of its recommendations are now superseded: the canonical pre-push check is `npm run format:check && npx eslint . --max-warnings 0` (not `npm run ci:check` / `ready-for-pr`), and **remote CI is the source of truth** — see [CI Monitoring](ci-monitoring.md), [Workflow](workflow.md), and [Fleet Operations](fleet-operations.md) for current guidance. Read this for the historical diagnosis, not for current procedure.
+
 > Analysis date: 2026-04-16
 > Context: 15 agents deployed in parallel, ~38 PRs created, 17 failing CI (45%)
 

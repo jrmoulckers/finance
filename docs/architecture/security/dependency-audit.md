@@ -236,5 +236,34 @@ No copyleft (GPL, AGPL) dependencies detected in production code.
 
 ---
 
+## 8. MCP Server Packages (Local Dev Tooling)
+
+MCP (Model Context Protocol) servers are launched by VS Code Copilot Agent Mode and are configured in `.vscode/mcp.json`. Although they are developer-machine tooling (not shipped to users), they execute arbitrary code locally via `npx`, can touch source/secrets, and in two cases previously referenced **non-existent npm packages** — a supply-chain / dependency-confusion hazard. This section tracks them.
+
+**Audit fixes applied:** replaced fabricated packages (`@anthropic/mcp-server-playwright` → `@playwright/mcp` [#2856]; `@nicepkg/supabase-mcp@latest` → `@supabase/mcp-server-supabase` [#2857]); removed `service_role` usage in favor of a read-only Management API token via env (#2858/#2879); pinned every server to an exact version with no secrets on argv (#2878); narrowed the filesystem root (#2879).
+
+| Package / Endpoint                                 | Pinned Version | Publisher                        | License     | Source      | Risk     | Notes                                                                                                                        |
+| -------------------------------------------------- | -------------- | -------------------------------- | ----------- | ----------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| GitHub MCP (`api.githubcopilot.com/mcp/`)          | n/a (hosted)   | GitHub                           | Proprietary | HTTP (SaaS) | LOW/HIGH | Read-only fine-grained PAT via `${input:...}`. HIGH if a write-scoped PAT is used.                                           |
+| `@modelcontextprotocol/server-sequential-thinking` | `2025.7.1`     | Anthropic (modelcontextprotocol) | MIT         | npm         | LOW      | Local reasoning only; no network or secret access.                                                                           |
+| `@modelcontextprotocol/server-memory`              | `2025.7.1`     | Anthropic (modelcontextprotocol) | MIT         | npm         | MEDIUM   | Persists to a plaintext local store. NEVER store PII/financial data/secrets.                                                 |
+| `@modelcontextprotocol/server-filesystem`          | `2025.7.1`     | Anthropic (modelcontextprotocol) | MIT         | npm         | HIGH     | No deny-globs; can read gitignored secrets under its root. Scope to a dedicated dir; disable in CI.                          |
+| `@upstash/context7-mcp`                            | `1.0.14`       | Upstash                          | MIT         | npm         | MEDIUM   | Makes EXTERNAL network calls to Upstash (data-flow/privacy). No repo/financial data in queries.                              |
+| `@supabase/mcp-server-supabase`                    | `0.4.5`        | Supabase                         | Apache-2.0  | npm         | HIGH     | DB/Management API access. Use `--read-only` + `--project-ref`; READ-ONLY token via env; never `service_role`; disable in CI. |
+| `@playwright/mcp`                                  | `0.0.41`       | Microsoft                        | Apache-2.0  | npm         | MEDIUM   | Browser automation; can navigate arbitrary URLs (prompt-injection surface). Replaced fabricated pkg.                         |
+
+### Supply-Chain Notes
+
+- **Dependency confusion / unclaimed scope (#2856, #2857):** the prior config referenced packages that do not exist on npm (`@anthropic/mcp-server-playwright` — the `@anthropic` scope is unclaimed; `@nicepkg/supabase-mcp`). Referencing a non-existent name is a typosquat/dependency-confusion risk: an attacker could publish that name and have it auto-installed. Both are now pinned to the **official** publishers.
+- **No floating versions:** all `npx` servers are pinned to exact versions (no `@latest`, no bare names) so `npx` cannot silently pull a newer/compromised release.
+- **No secrets on argv:** secrets are passed via `${input:...}` into env vars/headers, never as `--flag=value` (which would leak into process listings, shell history, and logs). The Supabase token uses the `SUPABASE_ACCESS_TOKEN` env var.
+- **Least-privilege:** `filesystem` is rooted at an explicit secret-free directory (not the workspace); `supabase` runs `--read-only` with a project-scoped, read-only Management API token (never `service_role`, which bypasses RLS). Both are **disabled for unattended/CI agents** per `docs/ai/mcp.md`.
+
+> ⚠️ **TODO(human): the pinned npm versions above are plausible placeholders captured during the audit and MUST be verified** against each package's npm page / upstream repo before use (e.g. `@playwright/mcp` ↔ <https://github.com/microsoft/playwright-mcp>), then bumped deliberately. Keep this table in sync with `.vscode/mcp.json` and `docs/ai/mcp.md`.
+
+> ⚠️ **TODO(human): provision a READ-ONLY Supabase Management API token** (never the `service_role` key) and supply it via the `supabase_access_token` input prompt.
+
+---
+
 **Next Review:** Sprint 4 — RLS Policy Review
 **Document Version:** 1.0

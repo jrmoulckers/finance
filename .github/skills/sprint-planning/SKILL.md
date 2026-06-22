@@ -8,17 +8,37 @@ description: >
 
 # Sprint Planning Skill
 
+## Purpose
+
+This skill covers **sprint selection, sizing, capacity planning, dependency sequencing, and SQL todo planning** for multi-agent work. It determines what should run and in what order; it does not own issue filing quality or the mechanics of dispatching, CI healing, and merging.
+
+## Out of Scope
+
+- Issue body quality, label correctness, platform duplicate decisions, and pre-filing validation → use `issue-management`.
+- Roadmap, milestone, release lifecycle, and backlog grooming policy → use `project-management`.
+- Agent dispatch, worktree setup, CI monitoring, rebases, and self-merge operations → use `fleet-orchestration`.
+- Backend/KMP/platform implementation details → use the relevant domain skill.
+
+## Related Skills
+
+| Skill                         | Use For                                                   |
+| ----------------------------- | --------------------------------------------------------- |
+| `project-management`          | Lifecycle, milestones, releases, and backlog grooming     |
+| `issue-management`            | Filing quality, platform scope, labels, and duplicates    |
+| `fleet-orchestration`         | Executing planned work with agents, CI, and PR self-merge |
+| `security-review-methodology` | Scheduling risk-based security review slots               |
+
 ## Proven Velocity Data (3 Waves, 140+ PRs)
 
-| Metric                      | Value                         |
-| --------------------------- | ----------------------------- |
-| Issues per sprint per agent | **4–6** (sweet spot)          |
-| Sprints per agent per wave  | **~5**                        |
-| Time per wave               | **~30 minutes**               |
-| Agents per wave             | **8–15**                      |
-| CI overhead budget          | **~20%** (failures + rebases) |
-| Doc agents                  | Require human push step       |
-| Schema changes              | Must be strictly serialized   |
+| Metric                      | Value                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| Issues per sprint per agent | **4–6** (sweet spot)                                                            |
+| Sprints per agent per wave  | **~5**                                                                          |
+| Time per wave               | **~30 minutes**                                                                 |
+| Agents per wave             | **8–15**                                                                        |
+| CI overhead budget          | **~20%** (failures + rebases)                                                   |
+| Doc agents                  | Follow the same agent-authored push/PR/self-merge policy after the quality gate |
+| Schema changes              | Must be strictly serialized                                                     |
 
 ## Issue-to-Agent Mapping Algorithm
 
@@ -207,10 +227,7 @@ INSERT INTO todos (id, title, description, status) VALUES
 ## Sprint Lifecycle Checklist
 
 1. **Plan**: Query issues → categorize → detect deps → SQL todos
-2. **Dispatch**: Fleet parallel dispatch (see fleet-orchestration skill)
-   ```bash
-   node tools/agent-scripts/setup-worktree.js <agent> <type> <desc> <issue#>
-   ```
+2. **Dispatch**: Hand ready work to `fleet-orchestration` for worktree setup, agent dispatch, CI monitoring, and self-merge after the quality gate.
 3. **Monitor**: `node tools/agent-scripts/sprint-status.js` + `gh pr checks`
 4. **Review**: Security/accessibility reviewer audits merged PRs
 5. **Retro**: Query todos for completion rate, carry-over

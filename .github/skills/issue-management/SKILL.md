@@ -10,7 +10,23 @@ description: >
 
 ## Purpose
 
-This skill covers **issue creation quality and cross-platform scoping** — specifically how to write high-quality issues and decide their platform scope. For issue lifecycle, backlog grooming, milestones, and sprint planning, see the `project-management` skill.
+This skill covers **issue creation quality and cross-platform scoping** — specifically how to write high-quality issues, decide platform scope, and manage duplicates. For issue lifecycle, release tracking, backlog grooming, milestones, and sprint planning, use the related skills below.
+
+## Out of Scope
+
+- Issue lifecycle, milestones, release management, or backlog grooming → use `project-management`.
+- Sprint selection, capacity planning, and dependency sequencing → use `sprint-planning`.
+- Agent dispatch, CI monitoring, branch hygiene, and merge operations → use `fleet-orchestration`.
+- Live QA session design and bug-discovery checklists → use `ux-testing`.
+
+## Related Skills
+
+| Skill                 | Use For                                                     |
+| --------------------- | ----------------------------------------------------------- |
+| `ux-testing`          | Manual QA sessions, bug discovery, and testing scenarios    |
+| `project-management`  | Issue lifecycle, milestones, releases, and backlog grooming |
+| `sprint-planning`     | Selecting sprint scope, sizing work, and dependency order   |
+| `fleet-orchestration` | Dispatching agents, monitoring CI, and self-merging PRs     |
 
 ## Label Taxonomy (Canonical)
 
@@ -77,7 +93,7 @@ When you discover a bug, ask these questions IN ORDER:
 
 ### When NOT to Create Platform Duplicates
 
-- Platform has no real UI yet (Android is scaffold-only currently)
+- A specific platform truly has no implemented surface for the feature after checking current code
 - The fix is entirely in shared code that all platforms consume
 - The "platform-specific" version would be identical text with a different label
 - The platform uses a native control that already handles the behavior correctly
@@ -170,7 +186,7 @@ The audit step that follows is a SAFETY NET for honest mistakes, not a planned s
 [Assessment of impact on other platforms]
 
 - iOS: [applies/doesn't apply/needs separate issue because...]
-- Android: [N/A — scaffold only]
+- Android: [applies/doesn't apply/needs separate issue because... verify `apps/android` before marking N/A]
 - Windows: [applies/doesn't apply/needs separate issue because...]
 ```
 
@@ -246,28 +262,34 @@ PowerShell interprets backtick sequences (`` `u ``, `` `n ``, `` `t ``) as escap
 ### Canonical Pattern: File-Based Creation via Node.js
 
 ```javascript
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
-const bodyFile = path.join(os.tmpdir(), 'gh-issue-body.md');
+const scratchDir = path.join(process.cwd(), '.copilot-scratch', 'issues');
+fs.mkdirSync(scratchDir, { recursive: true });
+const bodyFile = path.join(scratchDir, 'gh-issue-body.md');
 
 function fileIssue(title, labels, body) {
   fs.writeFileSync(bodyFile, body, 'utf8');
   try {
-    const out = execSync(
-      `gh issue create --title "${title}" --body-file "${bodyFile}" --label "${labels}"`,
-      { encoding: 'utf8', cwd: process.cwd() },
+    const out = execFileSync(
+      'gh',
+      ['issue', 'create', '--title', title, '--body-file', bodyFile, '--label', labels],
+      { encoding: 'utf8', cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] },
     );
     console.log(out.trim());
   } catch (e) {
     console.error('FAILED:', title, e.stderr || e.message);
+  } finally {
+    if (fs.existsSync(bodyFile)) fs.unlinkSync(bodyFile);
   }
 }
 
 // Use: fileIssue("bug(web): title here", "bug,platform:web", markdownBody);
 ```
+
+Use a repo-local scratch path such as `.copilot-scratch/issues/` or an approved session-local scratch directory. Do **not** use OS temp directories for issue bodies.
 
 ### Rules for Batch Filing
 
