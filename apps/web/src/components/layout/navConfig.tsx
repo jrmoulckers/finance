@@ -21,6 +21,7 @@ import type React from 'react';
 import { ensureStableNavOrder } from '../../lib/navigation/guardrails';
 import { Icon } from '../common/Icon';
 import { IconToken } from '../../icons/tokens';
+import { AppIcon } from '../icons';
 import { DebtIcon, InvoicesIcon, PrivacyIcon, ReportsIcon } from './navIcons';
 
 /** Named navigation groups, displayed in this order in the sidebar. */
@@ -188,6 +189,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     group: 'plan',
     mobilePriority: 14,
     description: 'Long-range projections and what-ifs.',
+  },
+  {
+    id: 'fire',
+    label: 'FIRE Planner',
+    href: '/fire',
+    icon: <AppIcon name="flame" size={24} />,
+    group: 'plan',
+    mobilePriority: 18,
+    description: 'Financial independence: FI number, years-to-FI and Coast FI.',
   },
   {
     id: 'learning',

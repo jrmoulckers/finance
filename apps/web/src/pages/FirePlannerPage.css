@@ -1,0 +1,256 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the FIRE Planner page (FirePlannerPage.tsx).
+ *
+ * All visual values come from design-token CSS custom properties. Layout is
+ * mobile-first; the inputs/results split becomes side-by-side on wide screens.
+ *
+ * References: issue #2114
+ */
+
+.fire-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.fire-page__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-6);
+}
+
+.fire-page__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-status-warning);
+}
+
+.fire-page__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.fire-page__subtitle {
+  margin: var(--spacing-1) 0 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  max-width: 60ch;
+}
+
+/* ---------------------------------------------------------------------------
+ * Layout
+ * ------------------------------------------------------------------------- */
+
+.fire-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-6);
+}
+
+@media (min-width: 960px) {
+  .fire-layout {
+    grid-template-columns: minmax(300px, 360px) 1fr;
+    align-items: start;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Inputs
+ * ------------------------------------------------------------------------- */
+
+.fire-form {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  padding: var(--spacing-4);
+}
+
+.fire-form__legend {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-4) 0;
+}
+
+.fire-form__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-4);
+}
+
+@media (min-width: 600px) and (max-width: 959px) {
+  .fire-form__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.fire-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.fire-field__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.fire-field__control {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-primary);
+  overflow: hidden;
+}
+
+.fire-field__control:focus-within {
+  border-color: var(--semantic-interactive-default);
+  box-shadow: 0 0 0 2px var(--semantic-interactive-default);
+}
+
+.fire-field__affix {
+  padding: 0 var(--spacing-2);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  user-select: none;
+}
+
+.fire-field__affix--suffix {
+  order: 2;
+}
+
+.fire-field__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  padding: var(--spacing-2);
+}
+
+.fire-field__input:focus {
+  outline: none;
+}
+
+.fire-field__hint {
+  margin: 0;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Results
+ * ------------------------------------------------------------------------- */
+
+.fire-results {
+  min-width: 0;
+}
+
+.fire-results__summary {
+  margin: 0 0 var(--spacing-4) 0;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.fire-results__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.fire-result-card {
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+}
+
+.fire-result-card__label {
+  margin: 0 0 var(--spacing-1) 0;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.fire-result-card__value {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+
+.fire-result-card__detail {
+  margin-top: var(--spacing-2);
+}
+
+.fire-result-card__formula {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.fire-result-card__split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* Status row — icon + text (never colour alone). */
+.fire-status {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  line-height: 1.4;
+}
+
+.fire-status__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-top: 0.1em;
+}
+
+.fire-status--positive {
+  color: var(--semantic-status-positive);
+}
+
+.fire-status--warning {
+  color: var(--semantic-status-warning);
+}
+
+.fire-status--neutral {
+  color: var(--semantic-text-secondary);
+}
+
+.fire-results__chart {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  padding: var(--spacing-4);
+}
+
+@media (prefers-contrast: more) {
+  .fire-form,
+  .fire-result-card,
+  .fire-field__control,
+  .fire-results__chart {
+    border-width: 2px;
+  }
+}
