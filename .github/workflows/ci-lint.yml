@@ -83,6 +83,7 @@ jobs:
               - 'apps/**'
               - 'packages/**'
               - 'services/**'
+              - '.github/workflows/ci-lint.yml'
 
   eslint-prettier:
     name: ESLint & Prettier

@@ -41,6 +41,7 @@ jobs:
             relevant:
               - 'apps/web/**'
               - 'packages/design-tokens/**'
+              - '.github/workflows/ci-web.yml'
 
   build:
     name: Build

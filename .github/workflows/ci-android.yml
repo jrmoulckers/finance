@@ -72,6 +72,7 @@ jobs:
               - 'config/detekt/**'
               - '**/*.kt'
               - '**/*.kts'
+              - '.github/workflows/ci-android.yml'
 
   detekt:
     name: detekt Analysis
