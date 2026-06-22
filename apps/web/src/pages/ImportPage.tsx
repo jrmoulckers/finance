@@ -130,6 +130,11 @@ export const ImportPage: React.FC = () => {
         Have a receipt? <Link to="/import/receipt-ocr">Scan it on this device</Link> to pre-fill
         quick entry and itemized splits.
       </p>
+      <p className="import-section-description">
+        Paying friends on Venmo or Cash App?{' '}
+        <Link to="/import/p2p">Import a Venmo / Cash App CSV</Link> to automatically separate
+        reimbursements from real spending.
+      </p>
 
       <StepIndicator currentStep={importState.step} />
 

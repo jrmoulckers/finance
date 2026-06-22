@@ -1,0 +1,226 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Venmo / Cash App (P2P) import surface styles.
+ *
+ * Token-only: colours, spacing, typography, radius and borders come from the
+ * design-tokens custom properties (same pattern as import.css). Classification
+ * is communicated with text + icon, never colour alone, so it remains legible
+ * for users with colour-vision differences and in high-contrast mode.
+ */
+
+.p2p-import {
+  max-width: var(--layout-content-max-width, 1040px);
+  margin: 0 auto;
+  padding: var(--spacing-4);
+  color: var(--semantic-text-primary);
+}
+
+.p2p-import__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  margin: 0 0 var(--spacing-2);
+}
+
+.p2p-import__intro {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0 0 var(--spacing-5);
+  max-width: 70ch;
+}
+
+.p2p-import__controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
+}
+
+.p2p-import__account {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.p2p-import__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+}
+
+.p2p-import__error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-status-negative);
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-status-negative);
+  background: var(--semantic-background-secondary);
+  margin: 0 0 var(--spacing-4);
+}
+
+/* ---------------------------------------------------------------------------
+ * Summary
+ * ------------------------------------------------------------------------- */
+
+.p2p-import__summary {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  padding: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
+}
+
+.p2p-import__summary-title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  margin: 0 0 var(--spacing-3);
+  text-transform: capitalize;
+}
+
+.p2p-import__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--spacing-3);
+  margin: 0 0 var(--spacing-3);
+}
+
+.p2p-import__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.p2p-import__stat dt {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.p2p-import__stat dd {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.p2p-import__summary-note {
+  margin: 0;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Preview table
+ * ------------------------------------------------------------------------- */
+
+.p2p-import__table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  margin-bottom: var(--spacing-5);
+}
+
+.p2p-import__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-scale-body-font-size);
+}
+
+.p2p-import__caption {
+  caption-side: top;
+  text-align: left;
+  padding: var(--spacing-3);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.p2p-import__table th,
+.p2p-import__table td {
+  text-align: left;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--semantic-border-default);
+  vertical-align: top;
+}
+
+.p2p-import__table thead th {
+  background: var(--semantic-background-secondary);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  position: sticky;
+  top: 0;
+}
+
+.p2p-import__amount-col {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.p2p-import__class {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-weight: var(--font-weight-medium);
+}
+
+.p2p-import__class-tag {
+  color: var(--semantic-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.p2p-import__reason {
+  display: block;
+  margin-top: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  max-width: 32ch;
+}
+
+.p2p-import__override {
+  min-width: 12rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Errors + actions
+ * ------------------------------------------------------------------------- */
+
+.p2p-import__errors {
+  margin-bottom: var(--spacing-5);
+}
+
+.p2p-import__errors-title {
+  font-size: var(--type-scale-title-font-size);
+  color: var(--semantic-status-warning);
+  margin: 0 0 var(--spacing-2);
+}
+
+.p2p-import__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.p2p-import__status {
+  margin-top: var(--spacing-3);
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-status-positive);
+}
+
+@media (min-width: 720px) {
+  .p2p-import__controls {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .p2p-import__account {
+    min-width: 16rem;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .p2p-import__summary,
+  .p2p-import__table-wrapper {
+    border-width: 2px;
+  }
+}
