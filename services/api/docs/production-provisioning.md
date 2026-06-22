@@ -181,7 +181,7 @@ supabase functions deploy passkey-register
 supabase functions deploy passkey-authenticate
 supabase functions deploy household-invite
 supabase functions deploy data-export
-supabase functions deploy account-deletion
+supabase functions deploy account-delete
 supabase functions deploy sync-health-report
 supabase functions deploy process-recurring --no-verify-jwt
 supabase functions deploy manage-webhooks

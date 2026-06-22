@@ -40,7 +40,7 @@ services/api/
     │   ├── passkey-register/                # POST — WebAuthn registration ceremony
     │   ├── passkey-authenticate/            # POST — WebAuthn authentication ceremony
     │   ├── household-invite/                # POST/GET/PUT — Invitation lifecycle
-    │   ├── account-deletion/                # DELETE — GDPR account erasure
+    │   ├── account-delete/                  # DELETE — GDPR account erasure (web route /api/account)
     │   └── data-export/                     # GET  — GDPR data portability
     └── migrations/
         ├── 20260306000001_initial_schema.sql # Tables, indexes, triggers
