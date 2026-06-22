@@ -252,6 +252,48 @@ describe('CategoriesPage', () => {
     expect(ensureFoodMealCategoriesMock).toHaveBeenCalled();
   });
 
+  it('shows the family & kids categories helper with a preview', () => {
+    render(<CategoriesPage />);
+
+    expect(screen.getByRole('heading', { name: /family & kids categories/i })).toBeInTheDocument();
+    expect(screen.getByText('School Fees')).toBeInTheDocument();
+    expect(screen.getByText('Childcare & Daycare')).toBeInTheDocument();
+    expect(screen.getByText('Medical & Co-pays')).toBeInTheDocument();
+    // Status is conveyed with text, not color alone.
+    expect(screen.getAllByText('Will be added').length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('button', { name: /add family & kids categories/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('previews and applies the family & kids preset after confirmation', () => {
+    render(<CategoriesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /add family & kids categories/i }));
+
+    const dialog = screen.getByRole('alertdialog', { name: /add family & kids categories/i });
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add categories' }));
+
+    expect(createCategoryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ householdId: 'household-1', name: 'School Fees' }),
+    );
+    expect(createCategoryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Medical & Co-pays' }),
+    );
+    expect(createCategoryMock).toHaveBeenCalledTimes(7);
+  });
+
+  it('does not apply the family & kids preset when cancelled', () => {
+    render(<CategoriesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /add family & kids categories/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+
+    expect(createCategoryMock).not.toHaveBeenCalled();
+  });
+
   it('adds a category', async () => {
     render(<CategoriesPage />);
 
