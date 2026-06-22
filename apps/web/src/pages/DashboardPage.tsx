@@ -36,12 +36,6 @@ import {
 } from '../lib/accountPurpose';
 import { isLiabilityType } from '../lib/analytics/net-worth';
 import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
-import {
-  buildSavingsRateCardModel,
-  buildSavingsRateDashboardSummary,
-  type MonthlyCashFlow,
-  type SavingsRateCardModel,
-} from '../lib/dashboard/savings-rate-summary';
 import type { SpendingPace } from '../lib/notifications';
 import type { PredictionSummary } from '../lib/predictiveBalance';
 import { rollUpProtectedTransactions } from '../lib/ui/privacy';
@@ -91,6 +85,11 @@ const WarrantyDashboard = React.lazy(() =>
 const SafeToSpendCard = React.lazy(() =>
   import('../components/dashboard/SafeToSpendCard').then((module) => ({
     default: module.SafeToSpendCard,
+  })),
+);
+const SavingsRateCard = React.lazy(() =>
+  import('../components/dashboard/SavingsRateCard').then((module) => ({
+    default: module.SavingsRateCard,
   })),
 );
 const GroceryModeSection = React.lazy(() => import('../components/dashboard/GroceryModeSection'));
@@ -150,49 +149,6 @@ function getPreviousMonthBounds(): { startDate: string; endDate: string } {
     endDate: formatLocalDate(endDate),
   };
 }
-
-/** Sum income and expense (integer cents) for the savings-rate calculation. */
-function toMonthlyCashFlow(month: string, transactions: readonly Transaction[]): MonthlyCashFlow {
-  let incomeCents = 0;
-  let expenseCents = 0;
-  for (const transaction of transactions) {
-    if (transaction.type === 'INCOME') {
-      incomeCents += Math.max(0, transaction.amount.amount);
-    } else if (transaction.type === 'EXPENSE') {
-      expenseCents += Math.abs(transaction.amount.amount);
-    }
-  }
-
-  return { month, incomeCents, expenseCents };
-}
-
-/** Format a savings-rate percentage compactly (e.g. `50%`, `37.5%`, `-20%`). */
-function formatSavingsRatePercent(value: number): string {
-  const rounded = Math.round(value * 10) / 10;
-  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}%`;
-}
-
-/** Plain-language period-over-period trend description (text, not colour alone). */
-function describeSavingsRateTrend(
-  trend: SavingsRateCardModel['trend'],
-  deltaPercentagePoints: number | null,
-): string {
-  if (deltaPercentagePoints === null) {
-    return 'No prior month to compare yet';
-  }
-  if (trend === 'flat') {
-    return 'Flat vs last month';
-  }
-  const magnitude = Math.round(Math.abs(deltaPercentagePoints) * 10) / 10;
-  const points = Number.isInteger(magnitude) ? magnitude.toFixed(0) : magnitude.toFixed(1);
-  return `${trend === 'up' ? 'Up' : 'Down'} ${points} pts vs last month`;
-}
-
-const SAVINGS_RATE_TREND_ICON: Record<SavingsRateCardModel['trend'], string> = {
-  up: '▲',
-  down: '▼',
-  flat: '→',
-};
 
 function getTransactionDisplayAmount(transaction: Transaction): number {
   if (transaction.type === 'EXPENSE') {
@@ -688,24 +644,6 @@ export const DashboardPage: React.FC = () => {
       ),
     [filteredCurrentMonthTransactions],
   );
-  // Savings rate = (income − expenses) / income for the current month, compared
-  // with the prior calendar month. Reuses the integer-cents savings-rate math
-  // from lib/dashboard/savings-rate-summary (safe against divide-by-zero).
-  const savingsRateCard = useMemo(() => {
-    const currentMonthKey = currentMonthRange.startDate.slice(0, 7);
-    const previousMonthKey = previousMonthRange.startDate.slice(0, 7);
-    const cashFlows: MonthlyCashFlow[] = [
-      toMonthlyCashFlow(previousMonthKey, filteredPreviousMonthTransactions),
-      toMonthlyCashFlow(currentMonthKey, filteredCurrentMonthTransactions),
-    ];
-
-    return buildSavingsRateCardModel(buildSavingsRateDashboardSummary(cashFlows, currentMonthKey));
-  }, [
-    currentMonthRange.startDate,
-    previousMonthRange.startDate,
-    filteredCurrentMonthTransactions,
-    filteredPreviousMonthTransactions,
-  ]);
   const debtSummary = useMemo(
     () =>
       filteredAccounts.reduce(
@@ -896,55 +834,21 @@ export const DashboardPage: React.FC = () => {
               </Suspense>
               <section className="page-section" aria-label="Financial summary">
                 <div className="card-grid card-grid--4">
-                  <article
-                    className={`card savings-rate-card savings-rate-card--${savingsRateCard.tone}`}
-                    aria-label="Savings rate this month"
+                  <Suspense
+                    fallback={
+                      <article className="card" role="status" aria-label="Loading savings rate">
+                        <LoadingSpinner size={24} label="Loading savings rate" />
+                      </article>
+                    }
                   >
-                    <div className="card__header">
-                      <h3 className="card__title">Savings Rate</h3>
-                    </div>
-                    <div className="card__value" aria-live="polite">
-                      {savingsRateCard.hasIncome ? (
-                        <span
-                          aria-label={`${formatSavingsRatePercent(savingsRateCard.savingsRatePercent)} savings rate this month`}
-                        >
-                          {formatSavingsRatePercent(savingsRateCard.savingsRatePercent)}
-                        </span>
-                      ) : (
-                        <span aria-label="Savings rate not available — no income recorded this month">
-                          N/A
-                        </span>
-                      )}
-                    </div>
-                    <p className="list-item__secondary">
-                      {savingsRateCard.hasIncome ? (
-                        <>
-                          <CurrencyDisplay
-                            amount={savingsRateCard.savingsCents}
-                            currency={safeToSpendCurrency}
-                            colorize
-                            showSign
-                            context="saved this month"
-                          />{' '}
-                          saved this month
-                        </>
-                      ) : (
-                        'Add income this month to calculate your savings rate.'
-                      )}
-                    </p>
-                    {savingsRateCard.hasIncome ? (
-                      <p className="savings-rate-card__trend">
-                        <span className="savings-rate-card__trend-icon" aria-hidden="true">
-                          {SAVINGS_RATE_TREND_ICON[savingsRateCard.trend]}
-                        </span>
-                        {describeSavingsRateTrend(
-                          savingsRateCard.trend,
-                          savingsRateCard.deltaPercentagePoints,
-                        )}
-                      </p>
-                    ) : null}
-                    <p className="savings-rate-card__status">{savingsRateCard.statusLabel}</p>
-                  </article>
+                    <SavingsRateCard
+                      currentMonthKey={currentMonthRange.startDate.slice(0, 7)}
+                      previousMonthKey={previousMonthRange.startDate.slice(0, 7)}
+                      currentMonthTransactions={filteredCurrentMonthTransactions}
+                      previousMonthTransactions={filteredPreviousMonthTransactions}
+                      currency={safeToSpendCurrency}
+                    />
+                  </Suspense>
                   {visibleWidgetIds.has('net-worth') ? (
                     <article className="card" aria-label="Net worth">
                       <div className="card__header">
