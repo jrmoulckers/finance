@@ -1,0 +1,104 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* ---------------------------------------------------------------------------
+ * Share celebration UI (Refs #2210)
+ *
+ * Lightweight, token-driven styles for the privacy-safe share affordance and
+ * its preview dialog. No hardcoded values — all sizing/colour uses design
+ * tokens so themes, contrast, and dark mode are respected automatically.
+ * ------------------------------------------------------------------------- */
+
+.share-celebration__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.share-celebration__preview {
+  background: var(--semantic-background-secondary, var(--semantic-background-primary));
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg, var(--border-radius-md));
+  padding: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.share-celebration__preview-title {
+  font-size: var(--type-scale-headline-font-size, var(--type-scale-title-font-size));
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.share-celebration__preview-message {
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.share-celebration__amount {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.share-celebration__hashtags {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin: 0;
+}
+
+.share-celebration__track {
+  position: relative;
+  height: var(--spacing-2);
+  border-radius: var(--border-radius-full, var(--border-radius-md));
+  background: var(--semantic-background-tertiary, var(--semantic-border-default));
+  overflow: hidden;
+}
+
+.share-celebration__fill {
+  height: 100%;
+  background: var(--semantic-accent-default, var(--semantic-text-primary));
+  border-radius: inherit;
+  transition: width var(--duration-normal, 200ms) var(--easing-out, ease-out);
+}
+
+.share-celebration__option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.share-celebration__option input {
+  margin-top: var(--spacing-1);
+}
+
+.share-celebration__status {
+  margin: 0 0 var(--spacing-3);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.share-celebration__status--success {
+  color: var(--semantic-positive-default, var(--semantic-text-primary));
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.share-celebration__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-celebration__fill {
+    transition: none;
+  }
+}

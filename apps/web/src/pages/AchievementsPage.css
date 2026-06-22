@@ -340,3 +340,15 @@
     justify-content: center;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Share affordances (Refs #2210)
+ * ------------------------------------------------------------------------- */
+
+.achievement-badge__share,
+.streak-card__share,
+.milestone-card__share {
+  margin-top: var(--spacing-3);
+  display: flex;
+  justify-content: flex-end;
+}

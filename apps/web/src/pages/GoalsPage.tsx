@@ -21,6 +21,8 @@ import {
   SuggestedGoals,
 } from '../components/savings';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { ShareCelebrationButton } from '../components/social/ShareCelebrationButton';
+import { goalCelebrationEvent } from '../lib/social/share-celebration';
 import type { CreateGoalInput, GoalContributionInput } from '../db/repositories/goals';
 import { useAccounts, useCategories, useGoals, useTransactions } from '../hooks';
 import { useTaxReserve } from '../hooks/useTaxReserve';
@@ -799,6 +801,12 @@ export const GoalsPage: React.FC = () => {
                     targetDate === null
                       ? null
                       : Math.max(0, Math.ceil((targetDate.getTime() - Date.now()) / 86400000));
+                  const shareEvent = goalCelebrationEvent({
+                    goalName: goal.name,
+                    percentComplete,
+                    amountCents: goal.currentAmount.amount,
+                    currency: goal.currency.code,
+                  });
 
                   return (
                     <article
@@ -954,9 +962,16 @@ export const GoalsPage: React.FC = () => {
                         style={{
                           display: 'flex',
                           justifyContent: 'flex-end',
+                          gap: 'var(--spacing-2)',
                           marginTop: 'var(--spacing-4)',
                         }}
                       >
+                        {shareEvent && (
+                          <ShareCelebrationButton
+                            event={shareEvent}
+                            label={`Share ${goal.name} progress`}
+                          />
+                        )}
                         <button
                           type="button"
                           className="form-button form-button--secondary"

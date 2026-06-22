@@ -23,6 +23,8 @@ import type {
 import { getAchievementsByCategory } from '../components/gamification/achievements-engine';
 import './AchievementsPage.css';
 import { AppIcon } from '../components/icons';
+import { ShareCelebrationButton } from '../components/social/ShareCelebrationButton';
+import { goalCelebrationEvent } from '../lib/social/share-celebration';
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -65,6 +67,18 @@ const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement }) => {
             />
           </div>
         )}
+        {isUnlocked && (
+          <div className="achievement-badge__share">
+            <ShareCelebrationButton
+              event={{
+                kind: 'badge-unlock',
+                badgeName: achievement.name,
+                badgeDescription: achievement.description,
+              }}
+              label={`Share the ${achievement.name} badge`}
+            />
+          </div>
+        )}
       </div>
       {isUnlocked && (
         <span className="achievement-badge__check" aria-hidden="true">
@@ -93,6 +107,18 @@ const StreakCard: React.FC<StreakCardProps> = ({ streak }) => (
       <p className="streak-card__best">
         Best: {streak.longest} {streak.longest === 1 ? 'day' : 'days'}
       </p>
+      {streak.current > 0 && (
+        <div className="streak-card__share">
+          <ShareCelebrationButton
+            event={{
+              kind: 'streak-milestone',
+              streakLabel: streak.label,
+              days: streak.current,
+            }}
+            label={`Share your ${streak.current}-day ${streak.label} streak`}
+          />
+        </div>
+      )}
     </div>
   </article>
 );
@@ -101,38 +127,53 @@ interface MilestoneCardProps {
   milestone: GoalMilestone;
 }
 
-const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone }) => (
-  <article className="milestone-card" aria-label={`${milestone.goalName} progress`}>
-    <div className="milestone-card__header">
-      <h4 className="milestone-card__name">{milestone.goalName}</h4>
-      <span className="milestone-card__percent">{milestone.progress}%</span>
-    </div>
-    <div
-      className="milestone-card__track"
-      role="progressbar"
-      aria-valuenow={milestone.progress}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label={`${milestone.goalName}: ${milestone.progress}%`}
-    >
-      <div className="milestone-card__fill" style={{ width: `${milestone.progress}%` }} />
-      {/* Milestone markers */}
-      {[25, 50, 75, 100].map((m) => (
-        <div
-          key={m}
-          className={`milestone-card__marker ${milestone.milestonesReached.includes(m) ? 'milestone-card__marker--reached' : ''}`}
-          style={{ left: `${m}%` }}
-          aria-hidden="true"
-        />
-      ))}
-    </div>
-    {milestone.nextMilestone !== null ? (
-      <p className="milestone-card__next">Next milestone: {milestone.nextMilestone}%</p>
-    ) : (
-      <p className="milestone-card__next milestone-card__next--completed">Goal complete!</p>
-    )}
-  </article>
-);
+const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone }) => {
+  const shareEvent = goalCelebrationEvent({
+    goalName: milestone.goalName,
+    percentComplete: milestone.progress,
+  });
+
+  return (
+    <article className="milestone-card" aria-label={`${milestone.goalName} progress`}>
+      <div className="milestone-card__header">
+        <h4 className="milestone-card__name">{milestone.goalName}</h4>
+        <span className="milestone-card__percent">{milestone.progress}%</span>
+      </div>
+      <div
+        className="milestone-card__track"
+        role="progressbar"
+        aria-valuenow={milestone.progress}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${milestone.goalName}: ${milestone.progress}%`}
+      >
+        <div className="milestone-card__fill" style={{ width: `${milestone.progress}%` }} />
+        {/* Milestone markers */}
+        {[25, 50, 75, 100].map((m) => (
+          <div
+            key={m}
+            className={`milestone-card__marker ${milestone.milestonesReached.includes(m) ? 'milestone-card__marker--reached' : ''}`}
+            style={{ left: `${m}%` }}
+            aria-hidden="true"
+          />
+        ))}
+      </div>
+      {milestone.nextMilestone !== null ? (
+        <p className="milestone-card__next">Next milestone: {milestone.nextMilestone}%</p>
+      ) : (
+        <p className="milestone-card__next milestone-card__next--completed">Goal complete!</p>
+      )}
+      {shareEvent && (
+        <div className="milestone-card__share">
+          <ShareCelebrationButton
+            event={shareEvent}
+            label={`Share ${milestone.goalName} progress (${milestone.progress}%)`}
+          />
+        </div>
+      )}
+    </article>
+  );
+};
 
 const CATEGORY_LABELS: Record<AchievementCategory, string> = {
   tracking: 'Tracking',

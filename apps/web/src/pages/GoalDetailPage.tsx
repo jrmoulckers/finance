@@ -16,6 +16,8 @@ import type { CreateGoalInput } from '../db/repositories/goals';
 import { useGoals } from '../hooks';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
+import { ShareCelebrationButton } from '../components/social/ShareCelebrationButton';
+import { goalCelebrationEvent } from '../lib/social/share-celebration';
 import '../styles/pages.css';
 
 function getGoalIcon(iconName: string | null | undefined): IconName {
@@ -115,6 +117,13 @@ export const GoalDetailPage: React.FC = () => {
 
   const goalStatus = getGoalStatusIndicator(percentComplete);
 
+  const shareEvent = goalCelebrationEvent({
+    goalName: goal.name,
+    percentComplete,
+    amountCents: goal.currentAmount.amount,
+    currency: goal.currency.code,
+  });
+
   const statusTone =
     percentComplete >= 100
       ? 'positive'
@@ -165,6 +174,9 @@ export const GoalDetailPage: React.FC = () => {
           <AppIcon name={getGoalIcon(goal.icon)} /> {goal.name}
         </h2>
         <div className="page-actions">
+          {shareEvent && (
+            <ShareCelebrationButton event={shareEvent} label={`Share ${goal.name} progress`} />
+          )}
           <button
             type="button"
             className="form-button form-button--secondary"
