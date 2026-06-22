@@ -187,30 +187,39 @@ describe('TransactionForm', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
     });
 
-    expect(onSubmit).toHaveBeenCalledWith({
-      householdId: 'household-1',
-      accountId: 'account-1',
-      type: 'EXPENSE',
-      status: 'PENDING',
-      amount: { amount: -1234 },
-      currency: { code: 'USD', decimalPlaces: 2 },
-      payee: 'Coffee Shop',
-      date: '2025-06-10',
-      categoryId: null,
-      note: null,
-      tags: [],
-      retirementContributionYear: null,
-      retirementContributionDesignation: null,
-      merchantCity: null,
-      merchantState: null,
-      merchantZip: null,
-      merchantCountry: null,
-      statementDescription: null,
-      externalReferenceId: null,
-      customFields: null,
-      extraNotes: null,
-      counterpartyName: null,
-    });
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: 'household-1',
+        accountId: 'account-1',
+        type: 'EXPENSE',
+        status: 'PENDING',
+        amount: { amount: -1234 },
+        currency: { code: 'USD', decimalPlaces: 2 },
+        payee: 'Coffee Shop',
+        date: '2025-06-10',
+        categoryId: null,
+        note: null,
+        tags: [],
+        retirementContributionYear: null,
+        retirementContributionDesignation: null,
+        merchantCity: null,
+        merchantState: null,
+        merchantZip: null,
+        merchantCountry: null,
+        statementDescription: null,
+        externalReferenceId: null,
+        extraNotes: null,
+        counterpartyName: null,
+        // The local purchase time + zone is captured by default (issue #2206).
+        // Values depend on the runner's zone, so assert shape rather than exact
+        // offset to stay environment-portable.
+        customFields: expect.objectContaining({
+          occurredLocalTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
+          occurredTimeZone: expect.any(String),
+          occurredOffsetMinutes: expect.stringMatching(/^-?\d+$/),
+        }),
+      }),
+    );
   });
 
   it('submits retirement contribution tagging fields', async () => {

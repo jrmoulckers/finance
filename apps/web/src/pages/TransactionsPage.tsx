@@ -72,6 +72,7 @@ import {
   type AccountPurposeFilter,
 } from '../lib/accountPurpose';
 import { chooseLargeTextReflow } from '../lib/a11y/large-text-reflow';
+import { getTransactionLocalDay } from '../lib/transactions/local-timestamp';
 
 // ---------------------------------------------------------------------------
 // URL param helpers for filter/sort persistence
@@ -595,16 +596,19 @@ export const TransactionsPage: React.FC = () => {
     window.localStorage.setItem(tipStorageKey, 'true');
   }, [toast, transactions.length]);
 
-  // Group by date for display
+  // Group by date for display. Uses the captured LOCAL purchase day where
+  // available (issue #2206) so daily-spend grouping stays correct across time
+  // zones; falls back to the legacy calendar date otherwise.
   const groupedTransactions = useMemo(() => {
     const groups = new Map<string, Transaction[]>();
 
     for (const transaction of transactions) {
-      const existingTransactions = groups.get(transaction.date);
+      const groupDay = getTransactionLocalDay(transaction);
+      const existingTransactions = groups.get(groupDay);
       if (existingTransactions) {
         existingTransactions.push(transaction);
       } else {
-        groups.set(transaction.date, [transaction]);
+        groups.set(groupDay, [transaction]);
       }
     }
 

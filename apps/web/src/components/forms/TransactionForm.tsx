@@ -48,6 +48,15 @@ import type {
 } from '../../kmp/bridge';
 import { BNPL_CUSTOM_FIELD_KEYS } from '../../lib/bnpl-liability';
 import {
+  applyLocalTimestampToCustomFields,
+  captureNow,
+  createLocalTimestamp,
+  getBrowserTimeZone,
+  getSupportedTimeZones,
+  isLocalTimestampFieldKey,
+  localTimestampFromCustomFields,
+} from '../../lib/transactions/local-timestamp';
+import {
   CONTRIBUTION_DESIGNATION_OPTIONS,
   getRetirementAccountTypeLabel,
   supportsEmployerRetirementContributions,
@@ -186,6 +195,8 @@ function normalizeTransactionAmount(amountCents: number, type: TransactionType):
 }
 
 function buildTransactionSnapshot(initialData?: Transaction) {
+  const existingLocalTimestamp = localTimestampFromCustomFields(initialData?.customFields ?? null);
+  const browserTimeZone = getBrowserTimeZone();
   return {
     transactionType: initialData?.type ?? 'EXPENSE',
     amountCents: initialData?.amount.amount ?? 0,
@@ -223,8 +234,14 @@ function buildTransactionSnapshot(initialData?: Transaction) {
     externalReferenceId: initialData?.externalReferenceId ?? '',
     extraNotes: initialData?.extraNotes ?? '',
     customFieldEntries: initialData?.customFields
-      ? Object.entries(initialData.customFields).map(([key, value]) => ({ key, value }))
+      ? Object.entries(initialData.customFields)
+          .filter(([key]) => !isLocalTimestampFieldKey(key))
+          .map(([key, value]) => ({ key, value }))
       : [],
+    localTime:
+      existingLocalTimestamp?.localDateTime ??
+      (initialData ? '' : captureNow(browserTimeZone).localDateTime),
+    localTimeZone: existingLocalTimestamp?.timeZone ?? browserTimeZone,
   };
 }
 
@@ -353,6 +370,9 @@ export function TransactionForm({
     [],
   );
   const [extraNotes, setExtraNotes] = useState('');
+  const [localTime, setLocalTime] = useState('');
+  const [localTimeZone, setLocalTimeZone] = useState(() => getBrowserTimeZone());
+  const supportedTimeZones = useMemo(() => getSupportedTimeZones(), []);
   const initialSnapshot = useMemo(() => buildTransactionSnapshot(initialData), [initialData]);
   const currentSnapshot = useMemo(
     () => ({
@@ -381,6 +401,8 @@ export function TransactionForm({
       externalReferenceId,
       extraNotes,
       customFieldEntries,
+      localTime,
+      localTimeZone,
     }),
     [
       accountId,
@@ -395,6 +417,8 @@ export function TransactionForm({
       extraNotes,
       isBnplLiability,
       isRetirementContribution,
+      localTime,
+      localTimeZone,
       merchantCity,
       merchantCountry,
       merchantState,
@@ -499,6 +523,8 @@ export function TransactionForm({
     setStatementDescription(initialSnapshot.statementDescription);
     setExternalReferenceId(initialSnapshot.externalReferenceId);
     setExtraNotes(initialSnapshot.extraNotes);
+    setLocalTime(initialSnapshot.localTime);
+    setLocalTimeZone(initialSnapshot.localTimeZone);
     setCustomFieldEntries(initialSnapshot.customFieldEntries);
     setAdditionalOpen(false);
   }, [amountInput.reset, amountInput.setCents, initialData, initialSnapshot, isOpen]);
@@ -683,6 +709,17 @@ export function TransactionForm({
         delete customFields[BNPL_CUSTOM_FIELD_KEYS.installmentCount];
       }
 
+      // Preserve the captured local time + zone alongside the transaction in the
+      // web store's flexible customFields bag (no schema change). Absent when the
+      // user clears the field, which degrades to legacy date-only behavior.
+      const localTimestamp = localTime.trim()
+        ? createLocalTimestamp(localTime, localTimeZone.trim() || null)
+        : null;
+      const customFieldsWithTimestamp = applyLocalTimestampToCustomFields(
+        customFields,
+        localTimestamp,
+      );
+
       const input: CreateTransactionInput = {
         householdId: selectedAccount.householdId,
         accountId,
@@ -710,7 +747,8 @@ export function TransactionForm({
         merchantCountry: merchantCountry.trim() || null,
         statementDescription: statementDescription.trim() || null,
         externalReferenceId: externalReferenceId.trim() || null,
-        customFields: Object.keys(customFields).length > 0 ? customFields : null,
+        customFields:
+          Object.keys(customFieldsWithTimestamp).length > 0 ? customFieldsWithTimestamp : null,
         extraNotes: extraNotes.trim() || null,
         counterpartyName: counterpartyName.trim() || null,
       };
@@ -765,6 +803,8 @@ export function TransactionForm({
         setExternalReferenceId('');
         setCustomFieldEntries([]);
         setExtraNotes('');
+        setLocalTime(captureNow(getBrowserTimeZone()).localDateTime);
+        setLocalTimeZone(getBrowserTimeZone());
         setAdditionalOpen(false);
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : submitFailureMessage);
@@ -800,6 +840,8 @@ export function TransactionForm({
       externalReferenceId,
       customFieldEntries,
       extraNotes,
+      localTime,
+      localTimeZone,
       counterpartyName,
       merchantMatch,
       isBnplLiability,
@@ -1516,6 +1558,87 @@ export function TransactionForm({
                       autoComplete="off"
                     />
                   </div>
+
+                  {/* Purchase local time + timezone (preserved per issue #2206) */}
+                  <fieldset className="form-group form-fieldset">
+                    <legend className="form-group__label">Purchase local time &amp; zone</legend>
+                    <p id="txn-local-time-hint" className="form-hint">
+                      Preserve the local time and time zone where the purchase happened so
+                      daily-spend and trip reports stay correct after you move. Defaults to now in
+                      your current zone. Leave blank to keep the calendar date only.
+                    </p>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: 'var(--spacing-3)',
+                      }}
+                    >
+                      <div className="form-group">
+                        <label htmlFor="txn-local-time" className="form-group__label">
+                          Local time
+                        </label>
+                        <input
+                          id="txn-local-time"
+                          className="form-input"
+                          type="datetime-local"
+                          value={localTime}
+                          onChange={(e) => setLocalTime(e.target.value)}
+                          aria-describedby="txn-local-time-hint"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="txn-local-timezone" className="form-group__label">
+                          Time zone
+                        </label>
+                        <input
+                          id="txn-local-timezone"
+                          className="form-input"
+                          type="text"
+                          list="txn-timezone-options"
+                          value={localTimeZone}
+                          onChange={(e) => setLocalTimeZone(e.target.value)}
+                          placeholder="Asia/Bangkok"
+                          autoComplete="off"
+                          aria-describedby="txn-local-time-hint"
+                        />
+                        <datalist id="txn-timezone-options">
+                          {supportedTimeZones.map((zone) => (
+                            <option key={zone} value={zone} />
+                          ))}
+                        </datalist>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+                      <button
+                        type="button"
+                        className="form-button form-button--secondary"
+                        style={{
+                          fontSize: 'var(--type-scale-caption-font-size)',
+                          padding: 'var(--spacing-1) var(--spacing-2)',
+                        }}
+                        onClick={() => {
+                          const now = captureNow(getBrowserTimeZone());
+                          setLocalTime(now.localDateTime);
+                          setLocalTimeZone(now.timeZone ?? getBrowserTimeZone());
+                        }}
+                      >
+                        Use current time &amp; zone
+                      </button>
+                      <button
+                        type="button"
+                        className="form-button form-button--secondary"
+                        style={{
+                          fontSize: 'var(--type-scale-caption-font-size)',
+                          padding: 'var(--spacing-1) var(--spacing-2)',
+                        }}
+                        onClick={() => setLocalTime('')}
+                        disabled={!localTime}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </fieldset>
 
                   {/* Custom fields ╬ô├ç├╢ key/value pairs */}
                   <div className="form-group">
