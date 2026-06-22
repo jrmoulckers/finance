@@ -362,9 +362,9 @@ jobs:
 
       - name: Check if this is a release commit
         id: check
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-
           if echo "$COMMIT_MSG" | grep -qP 'chore\(release\):\s*v[\d.]+'; then
             VERSION=$(echo "$COMMIT_MSG" | grep -oP 'v[\d]+\.[\d]+\.[\d]+[^\s]*' | head -1)
             echo "is_release=true" >> "$GITHUB_OUTPUT"

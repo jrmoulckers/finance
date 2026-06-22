@@ -103,6 +103,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           PR_NUM="${{ github.event.pull_request.number || github.event.inputs.pr_number }}"
 
@@ -128,7 +129,7 @@ jobs:
             --archive=tgz \
             --meta pr="${PR_NUM}" \
             --meta commit="${{ github.sha }}" \
-            --meta branch="${{ github.head_ref }}" \
+            --meta branch="$HEAD_REF" \
             apps/web/dist >"$DEPLOY_LOG" 2>&1; then
             echo "::error::Vercel preview deploy failed:"
             cat "$DEPLOY_LOG"
@@ -190,6 +191,8 @@ jobs:
 
       - name: Create or update PR comment
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         with:
           script: |
             const prNumber = ${{ github.event.pull_request.number || github.event.inputs.pr_number }};
@@ -204,7 +207,7 @@ jobs:
               `|---|---|`,
               `| **URL** | [${url}](${url}) |`,
               `| **Commit** | \`${sha}\` |`,
-              `| **Branch** | \`${{ github.head_ref }}\` |`,
+              `| **Branch** | \`${process.env.HEAD_REF}\` |`,
               `| **Status** | ✅ Deployed |`,
               '',
               '---',
