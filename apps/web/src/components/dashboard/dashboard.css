@@ -635,3 +635,60 @@
     border-width: 2px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Savings rate summary card (first-class dashboard metric, #2162)
+ * ------------------------------------------------------------------------- */
+
+.savings-rate-card {
+  gap: var(--spacing-2);
+  border-color: color-mix(
+    in srgb,
+    var(--semantic-interactive-default) 24%,
+    var(--semantic-border-default)
+  );
+}
+
+.savings-rate-card--positive {
+  border-color: color-mix(
+    in srgb,
+    var(--semantic-status-success, var(--semantic-interactive-default)) 30%,
+    var(--semantic-border-default)
+  );
+}
+
+.savings-rate-card--caution {
+  border-color: color-mix(
+    in srgb,
+    var(--semantic-status-warning) 36%,
+    var(--semantic-border-default)
+  );
+}
+
+.savings-rate-card__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.savings-rate-card__trend-icon {
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.savings-rate-card__status {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  line-height: var(--type-scale-body-line-height);
+}
+
+@media (prefers-contrast: more) {
+  .savings-rate-card {
+    border-width: 2px;
+  }
+}
