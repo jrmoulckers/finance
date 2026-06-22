@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import { getAllAccounts } from '../db/repositories/accounts';
+import { getAllTransactions } from '../db/repositories/transactions';
 import {
   computeCurrentNetWorth,
   computeAssetClassBreakdown,
@@ -27,6 +28,8 @@ import type {
   AssetClassBreakdown,
   NetWorthMilestone,
 } from '../lib/analytics/net-worth';
+import { buildNetWorthHistorySeries } from '../lib/visualization/net-worth-history';
+import type { NetWorthSeriesPoint } from '../lib/visualization/net-worth-projection';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,6 +43,8 @@ export interface UseNetWorthResult {
   assetClasses: AssetClassBreakdown[];
   /** Detected milestones with reached status. */
   milestones: NetWorthMilestone[];
+  /** Trailing monthly net-worth history, oldest first (for trend + projection). */
+  history: NetWorthSeriesPoint[];
   /** True while data is being computed. */
   loading: boolean;
   /** Human-readable error message or null. */
@@ -59,6 +64,7 @@ export function useNetWorth(): UseNetWorthResult {
   const [currentNetWorth, setCurrentNetWorth] = useState<NetWorthDataPoint | null>(null);
   const [assetClasses, setAssetClasses] = useState<AssetClassBreakdown[]>([]);
   const [milestones, setMilestones] = useState<NetWorthMilestone[]>([]);
+  const [history, setHistory] = useState<NetWorthSeriesPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -74,14 +80,17 @@ export function useNetWorth(): UseNetWorthResult {
 
     try {
       const accounts = getAllAccounts(db);
+      const transactions = getAllTransactions(db);
 
       const nw = computeCurrentNetWorth(accounts);
       const classes = computeAssetClassBreakdown(accounts);
       const ms = detectMilestones(nw.netWorth, nw.liabilities);
+      const series = buildNetWorthHistorySeries(accounts, transactions);
 
       setCurrentNetWorth(nw);
       setAssetClasses(classes);
       setMilestones(ms);
+      setHistory(series);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to compute net worth.');
     } finally {
@@ -89,5 +98,5 @@ export function useNetWorth(): UseNetWorthResult {
     }
   }, [db, refreshToken]);
 
-  return { currentNetWorth, assetClasses, milestones, loading, error, refresh };
+  return { currentNetWorth, assetClasses, milestones, history, loading, error, refresh };
 }

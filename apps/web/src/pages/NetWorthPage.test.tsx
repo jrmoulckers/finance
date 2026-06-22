@@ -22,6 +22,12 @@ vi.mock('../components/charts/chart-palette', () => ({
   CHART_COLORS: ['#648FFF', '#FE6100', '#785EF0', '#FFB000', '#DC267F', '#009E73'],
 }));
 
+// Stub the projection chart — recharts SVG APIs are unavailable in jsdom and the
+// chart is covered by its own test. Mock hooks/heavy components, not repositories.
+vi.mock('../components/charts/NetWorthProjectionChart', () => ({
+  NetWorthProjectionChart: () => <div data-testid="net-worth-projection-chart" />,
+}));
+
 import { useNetWorth } from '../hooks/useNetWorth';
 
 const mockUseNetWorth = vi.mocked(useNetWorth);
@@ -36,6 +42,7 @@ describe('NetWorthPage', () => {
       currentNetWorth: null,
       assetClasses: [],
       milestones: [],
+      history: [],
       loading: true,
       error: null,
       refresh: vi.fn(),
@@ -50,6 +57,7 @@ describe('NetWorthPage', () => {
       currentNetWorth: null,
       assetClasses: [],
       milestones: [],
+      history: [],
       loading: false,
       error: 'Failed to load',
       refresh: vi.fn(),
@@ -64,6 +72,7 @@ describe('NetWorthPage', () => {
       currentNetWorth: null,
       assetClasses: [],
       milestones: [],
+      history: [],
       loading: false,
       error: null,
       refresh: vi.fn(),
@@ -111,6 +120,7 @@ describe('NetWorthPage', () => {
           reached: false,
         },
       ],
+      history: [],
       loading: false,
       error: null,
       refresh: vi.fn(),
@@ -123,5 +133,32 @@ describe('NetWorthPage', () => {
     expect(screen.getByText('Milestones')).toBeInTheDocument();
     expect(screen.getByText('First $1K')).toBeInTheDocument();
     expect(screen.getByText('First $50K')).toBeInTheDocument();
+  });
+
+  it('renders the net worth projection section when history is available', () => {
+    mockUseNetWorth.mockReturnValue({
+      currentNetWorth: {
+        label: '2024-03-15',
+        assets: 2000000,
+        liabilities: 500000,
+        netWorth: 1500000,
+      },
+      assetClasses: [],
+      milestones: [],
+      history: [
+        { label: 'Jan', netWorthCents: 1000000, dateIso: '2024-01-31' },
+        { label: 'Feb', netWorthCents: 1250000, dateIso: '2024-02-29' },
+        { label: 'Mar', netWorthCents: 1500000, dateIso: '2024-03-15' },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    render(<NetWorthPage />);
+    expect(
+      screen.getByRole('region', { name: 'Net worth growth and projection' }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('net-worth-projection-chart')).toBeInTheDocument();
   });
 });

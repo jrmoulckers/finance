@@ -1,0 +1,107 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * NetWorthProjectionChart — net worth growth line with a forward
+ * projection overlay. Styles consume design tokens only.
+ * References: issue #2116
+ * ------------------------------------------------------------------- */
+
+.nw-projection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 0.75rem);
+}
+
+.nw-projection__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2, 0.5rem);
+}
+
+/* Range selector ---------------------------------------------------- */
+
+.nw-projection__range {
+  display: inline-flex;
+  gap: var(--spacing-1, 0.25rem);
+}
+
+.nw-projection__range-btn {
+  min-width: 2.75rem;
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: 0.375rem;
+  background: var(--semantic-background-elevated, #ffffff);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.nw-projection__range-btn:hover {
+  background: var(--semantic-background-secondary, #f3f4f6);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.nw-projection__range-btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.nw-projection__range-btn--active {
+  background: var(--semantic-background-secondary, #eef2ff);
+  border-color: var(--semantic-border-strong, #c7d2fe);
+  color: var(--semantic-text-primary, #1d4ed8);
+}
+
+/* Legend ------------------------------------------------------------ */
+
+.nw-projection__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4, 1rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nw-projection__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.nw-projection__legend-swatch {
+  flex: 0 0 auto;
+}
+
+/* Assumptions ------------------------------------------------------- */
+
+.nw-projection__assumptions {
+  margin: 0;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.nw-projection__empty {
+  margin: 0;
+  padding: var(--spacing-4, 1rem);
+  border: 1px dashed var(--semantic-border-default, #e5e7eb);
+  border-radius: 0.5rem;
+  color: var(--semantic-text-secondary, #6b7280);
+  text-align: center;
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .nw-projection__range-btn {
+    transition: none;
+  }
+}

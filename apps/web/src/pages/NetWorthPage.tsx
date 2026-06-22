@@ -22,6 +22,7 @@ import {
   LoadingSpinner,
 } from '../components/common';
 import { AppIcon } from '../components/icons';
+import { NetWorthProjectionChart } from '../components/charts/NetWorthProjectionChart';
 import { useNetWorth } from '../hooks/useNetWorth';
 import type { AssetClassBreakdown, NetWorthMilestone } from '../lib/analytics/net-worth';
 import { CHART_COLORS } from '../components/charts/chart-palette';
@@ -98,7 +99,8 @@ const MilestoneList: React.FC<MilestoneListProps> = ({ milestones }) => (
 // ---------------------------------------------------------------------------
 
 export const NetWorthPage: React.FC = () => {
-  const { currentNetWorth, assetClasses, milestones, loading, error, refresh } = useNetWorth();
+  const { currentNetWorth, assetClasses, milestones, history, loading, error, refresh } =
+    useNetWorth();
 
   if (loading) {
     return (
@@ -205,6 +207,13 @@ export const NetWorthPage: React.FC = () => {
           </article>
         </div>
       </section>
+
+      {/* Net worth growth + forward projection */}
+      {history.length > 0 && (
+        <section className="analytics-section" aria-label="Net worth growth and projection">
+          <NetWorthProjectionChart history={history} />
+        </section>
+      )}
 
       {/* Asset class breakdown */}
       {assetClasses.length > 0 && (
