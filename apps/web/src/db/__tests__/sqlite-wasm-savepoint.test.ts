@@ -98,6 +98,49 @@ describe('sqlite-wasm savepoint migrations', () => {
     }
   });
 
+  it('completes seeding when the backend already released the seed savepoint (#2797)', async () => {
+    // Reproduces the production failure: on the real wa-sqlite/OPFS backend
+    // the `seed_init` savepoint can be implicitly released BEFORE the explicit
+    // `RELEASE SAVEPOINT seed_init` — after the demo rows are written — so the
+    // final RELEASE raises `no such savepoint: seed_init`. Seeding must still
+    // resolve and the demo rows must remain, rather than the benign cleanup
+    // error masking an otherwise-successful seed.
+    const db = new SQL.Database();
+
+    try {
+      await _runMigrationsForTesting(SQL, db, 'indexeddb');
+      const wrapper = _createDbWrapperForTesting(SQL, db, 'indexeddb');
+
+      const realExec = wrapper.exec.bind(wrapper);
+      let raisedNoSuchSavepoint = false;
+      wrapper.exec = (sql: string, params?: unknown[]) => {
+        if (/^RELEASE\s+SAVEPOINT\s+seed_init/i.test(sql.trim())) {
+          // Settle the data the way the real backend would have, then surface
+          // the same error wa-sqlite raises for the now-missing savepoint.
+          realExec(sql, params);
+          raisedNoSuchSavepoint = true;
+          throw new Error('no such savepoint: seed_init');
+        }
+        realExec(sql, params);
+      };
+
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      try {
+        await expect(seedDatabase(wrapper)).resolves.toBeUndefined();
+      } finally {
+        warn.mockRestore();
+      }
+
+      expect(raisedNoSuchSavepoint).toBe(true);
+      const accounts = wrapper.selectOne('SELECT COUNT(*) AS count FROM account;');
+      const transactions = wrapper.selectOne('SELECT COUNT(*) AS count FROM "transaction";');
+      expect(Number(accounts?.count ?? 0)).toBeGreaterThan(0);
+      expect(Number(transactions?.count ?? 0)).toBeGreaterThan(0);
+    } finally {
+      db.close();
+    }
+  });
+
   it.each([
     ['release', releaseSavepoint],
     ['rollback', rollbackToSavepoint],
@@ -106,6 +149,33 @@ describe('sqlite-wasm savepoint migrations', () => {
       backend: 'opfs',
       exec: vi.fn(() => {
         throw new Error('cannot commit - no transaction is active');
+      }),
+      selectAll: vi.fn(),
+      selectOne: vi.fn(),
+      close: vi.fn(),
+    };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      expect(() => helper(db, 'seed_init')).not.toThrow();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('seed_init'), {
+        backend: 'opfs',
+        savepointName: 'seed_init',
+        error: expect.any(Error),
+      });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it.each([
+    ['release', releaseSavepoint],
+    ['rollback', rollbackToSavepoint],
+  ] as const)('logs and suppresses no-such-savepoint %s failures (#2797)', (_, helper) => {
+    const db: SqliteDb = {
+      backend: 'opfs',
+      exec: vi.fn(() => {
+        throw new Error('no such savepoint: seed_init');
       }),
       selectAll: vi.fn(),
       selectOne: vi.fn(),

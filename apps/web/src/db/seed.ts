@@ -64,6 +64,13 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
   const householdMemberId = crypto.randomUUID();
   const monthStart = firstDayOfCurrentMonth();
 
+  // Wrap the demo rows in a savepoint so a mid-seed failure rolls back cleanly
+  // without touching any outer transaction. `releaseSavepoint` /
+  // `rollbackToSavepoint` are idempotent (#2797): on the real wa-sqlite/OPFS
+  // backend SQLite can implicitly release `seed_init` before the explicit
+  // RELEASE below — after the rows are already written — so the helpers treat
+  // an already-released savepoint as a no-op instead of throwing
+  // `no such savepoint: seed_init` and aborting an otherwise-successful seed.
   const seedSavepoint = 'seed_init';
   execute(db, `SAVEPOINT ${seedSavepoint}`);
 

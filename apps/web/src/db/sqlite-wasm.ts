@@ -1010,10 +1010,35 @@ type SavepointOperation = 'release' | 'rollback';
 type SavepointLogBackend = StorageBackend | 'unknown';
 
 const NO_ACTIVE_TRANSACTION_ERROR = 'no transaction is active';
+const NO_SUCH_SAVEPOINT_ERROR = 'no such savepoint';
 
-function isNoActiveTransactionError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.toLowerCase().includes(NO_ACTIVE_TRANSACTION_ERROR);
+/**
+ * Detect the benign "the savepoint/transaction is already gone" conditions.
+ *
+ * `RELEASE SAVEPOINT` / `ROLLBACK TO SAVEPOINT` are cleanup operations. They
+ * are only ever issued to settle a savepoint we previously opened, so if
+ * SQLite reports that the savepoint (or the enclosing transaction) no longer
+ * exists, the work the savepoint guarded is already settled and the cleanup
+ * is a no-op rather than a fatal error. Two distinct SQLite messages map to
+ * this state:
+ *
+ *   - `cannot commit/rollback - no transaction is active` — the enclosing
+ *     transaction already ended (e.g. a cold-start race finalised it first).
+ *   - `no such savepoint: <name>` — the named savepoint was already released.
+ *     This is the failure that surfaced demo-seeding's `no such savepoint:
+ *     seed_init` on the real wa-sqlite/OPFS backend (#2797): that backend can
+ *     implicitly release the seed savepoint before `seedDatabase()` reaches
+ *     its explicit `RELEASE`, after the demo rows have already been written.
+ *     The sql.js backend used by unit tests never reproduces this, which is
+ *     why the bug slipped past CI.
+ *
+ * Suppressing both keeps savepoint cleanup idempotent so a benign
+ * already-released savepoint never masks the real outcome (or aborts an
+ * otherwise-successful seed).
+ */
+function isBenignSavepointCleanupError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return message.includes(NO_ACTIVE_TRANSACTION_ERROR) || message.includes(NO_SUCH_SAVEPOINT_ERROR);
 }
 
 function getSavepointIdentifier(savepointName: string): string {
@@ -1023,7 +1048,7 @@ function getSavepointIdentifier(savepointName: string): string {
   return savepointName;
 }
 
-function logSuppressedNoActiveTransaction(
+function logSuppressedSavepointCleanup(
   operation: SavepointOperation,
   backend: SavepointLogBackend,
   savepointName: string,
@@ -1031,7 +1056,7 @@ function logSuppressedNoActiveTransaction(
 ): void {
   // eslint-disable-next-line no-console
   console.warn(
-    `[sqlite-wasm] Suppressed ${operation} failure for savepoint "${savepointName}" on ${backend} backend: ${NO_ACTIVE_TRANSACTION_ERROR}.`,
+    `[sqlite-wasm] Suppressed ${operation} for already-released savepoint "${savepointName}" on ${backend} backend.`,
     { backend, savepointName, error },
   );
 }
@@ -1045,8 +1070,8 @@ function execSavepointControl(
   try {
     executor();
   } catch (error) {
-    if (isNoActiveTransactionError(error)) {
-      logSuppressedNoActiveTransaction(operation, backend, savepointName, error);
+    if (isBenignSavepointCleanupError(error)) {
+      logSuppressedSavepointCleanup(operation, backend, savepointName, error);
       return;
     }
     throw error;
