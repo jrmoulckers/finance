@@ -55,6 +55,7 @@ const Watchlists = lazy(() => import('./pages/WatchlistsPage'));
 const Household = lazy(() => import('./pages/HouseholdPage'));
 const ReportBuilder = lazy(() => import('./pages/ReportBuilderPage'));
 const ClientProfitability = lazy(() => import('./pages/ClientProfitabilityPage'));
+const BusinessPnl = lazy(() => import('./pages/BusinessPnlPage'));
 const GigDriver = lazy(() => import('./pages/GigDriverPage'));
 const Investments = lazy(() => import('./pages/InvestmentsPage'));
 const InvestmentDetail = lazy(() => import('./pages/InvestmentDetailPage'));
@@ -435,6 +436,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Client Profitability">
             <ClientProfitability />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/business-pnl"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Profit & Loss">
+            <BusinessPnl />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
