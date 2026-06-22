@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-15  
 **Regulations:** GDPR (EU), CCPA/CPRA (California)  
-**Status:** Initial audit — not launch ready
+**Status:** Initial audit — **superseded by [`privacy-audit-v2.md`](./privacy-audit-v2.md)** (2026-06-21). Retained for historical baseline.
 
 ## Executive Summary
 
