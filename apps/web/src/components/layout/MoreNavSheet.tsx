@@ -18,10 +18,10 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 
 import { useAccessibility } from '../../hooks/useAccessibility';
+import { useHiddenModules } from '../../hooks/useModuleVisibility';
 import { Icon } from '../common/Icon';
 import { IconToken } from '../../icons/tokens';
 import {
-  MORE_SHEET_ITEMS,
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
   getMoreSheetItems,
@@ -76,6 +76,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
   onSignOut,
 }) => {
   const { isSimplified } = useAccessibility();
+  const hiddenModules = useHiddenModules();
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
@@ -178,7 +179,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
 
   if (!open) return null;
 
-  const buckets = bucketByGroup(isSimplified ? getMoreSheetItems(true) : MORE_SHEET_ITEMS);
+  const buckets = bucketByGroup(getMoreSheetItems(isSimplified, hiddenModules));
 
   return (
     <div className="more-sheet">

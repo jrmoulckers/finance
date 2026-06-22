@@ -26,6 +26,7 @@ import {
   useTransactions,
 } from '../hooks';
 import { useWidgetLayout } from '../hooks/useWidgetLayout';
+import { useHiddenModules } from '../hooks/useModuleVisibility';
 import type { BudgetWithSpending } from '../db/repositories/budgets';
 import type { Bill, Goal, Transaction } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
@@ -39,6 +40,7 @@ import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
 import type { SpendingPace } from '../lib/notifications';
 import type { PredictionSummary } from '../lib/predictiveBalance';
 import { rollUpProtectedTransactions } from '../lib/ui/privacy';
+import { isModuleVisible } from '../lib/ux/module-visibility';
 import '../components/dashboard/dashboard.css';
 
 const CategoryPieChart = React.lazy(() =>
@@ -665,6 +667,9 @@ export const DashboardPage: React.FC = () => {
     () => new Set(widgetLayout.visibleWidgets.map((widget) => widget.id)),
     [widgetLayout.visibleWidgets],
   );
+  // Minimalist mode (#2122): hide a quick-access card when the user has hidden
+  // the corresponding module. Essentials are never affected.
+  const hiddenModules = useHiddenModules();
 
   const isDashboardEmpty =
     data === null ||
@@ -849,7 +854,8 @@ export const DashboardPage: React.FC = () => {
                       currency={safeToSpendCurrency}
                     />
                   </Suspense>
-                  {visibleWidgetIds.has('net-worth') ? (
+                  {visibleWidgetIds.has('net-worth') &&
+                  isModuleVisible('net-worth', hiddenModules) ? (
                     <article className="card" aria-label="Net worth">
                       <div className="card__header">
                         <h3 className="card__title">Net Worth</h3>
@@ -869,7 +875,8 @@ export const DashboardPage: React.FC = () => {
                       </div>
                     </article>
                   ) : null}
-                  {visibleWidgetIds.has('budget-health') ? (
+                  {visibleWidgetIds.has('budget-health') &&
+                  isModuleVisible('budgets', hiddenModules) ? (
                     <article className="card" aria-label="Budget health">
                       <div className="card__header">
                         <h3 className="card__title">Budget Health</h3>
@@ -894,29 +901,35 @@ export const DashboardPage: React.FC = () => {
                       </div>
                     </article>
                   ) : null}
-                  <article className="card" aria-label="Debt status">
-                    <div className="card__header">
-                      <h3 className="card__title">Debt Payoff</h3>
-                    </div>
-                    <div className="card__value" aria-live="polite">
-                      {debtSummary.balance > 0 ? (
-                        <CurrencyDisplay
-                          amount={debtSummary.balance}
-                          context="tracked debt balance"
-                        />
-                      ) : (
-                        'Plan payoff'
-                      )}
-                    </div>
-                    <p className="list-item__secondary">
-                      {debtSummary.count > 0
-                        ? `${debtSummary.count} debt account${debtSummary.count === 1 ? '' : 's'} tracked.`
-                        : 'Compare avalanche and snowball strategies.'}
-                    </p>
-                    <Link to="/debt" className="auth-footer__link" aria-label="Open Debt workspace">
-                      Open Debt workspace
-                    </Link>
-                  </article>
+                  {isModuleVisible('debt', hiddenModules) ? (
+                    <article className="card" aria-label="Debt status">
+                      <div className="card__header">
+                        <h3 className="card__title">Debt Payoff</h3>
+                      </div>
+                      <div className="card__value" aria-live="polite">
+                        {debtSummary.balance > 0 ? (
+                          <CurrencyDisplay
+                            amount={debtSummary.balance}
+                            context="tracked debt balance"
+                          />
+                        ) : (
+                          'Plan payoff'
+                        )}
+                      </div>
+                      <p className="list-item__secondary">
+                        {debtSummary.count > 0
+                          ? `${debtSummary.count} debt account${debtSummary.count === 1 ? '' : 's'} tracked.`
+                          : 'Compare avalanche and snowball strategies.'}
+                      </p>
+                      <Link
+                        to="/debt"
+                        className="auth-footer__link"
+                        aria-label="Open Debt workspace"
+                      >
+                        Open Debt workspace
+                      </Link>
+                    </article>
+                  ) : null}
                 </div>
               </section>
               <Suspense fallback={<SectionFallback label="Loading things to check" />}>

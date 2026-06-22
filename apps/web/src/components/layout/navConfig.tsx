@@ -19,6 +19,7 @@
 import type React from 'react';
 
 import { ensureStableNavOrder } from '../../lib/navigation/guardrails';
+import { filterByModuleVisibility } from '../../lib/ux/module-visibility';
 import { Icon } from '../common/Icon';
 import { IconToken } from '../../icons/tokens';
 import { AppIcon } from '../icons';
@@ -399,14 +400,30 @@ export const SIMPLIFIED_NAV_ITEM_IDS = [
 
 const SIMPLIFIED_NAV_ITEM_ID_SET = new Set<string>(SIMPLIFIED_NAV_ITEM_IDS);
 
-export function getVisibleNavItems(simplified: boolean): readonly NavConfigItem[] {
-  return simplified
+const NO_HIDDEN_MODULES: ReadonlySet<string> = new Set<string>();
+
+/**
+ * Primary destinations visible for the current chrome state.
+ *
+ * @param simplified       - When true, restrict to the simplified a11y subset.
+ * @param hiddenModuleIds  - Modules the user has hidden via minimalist mode
+ *   (#2122). Essential destinations are never removed.
+ */
+export function getVisibleNavItems(
+  simplified: boolean,
+  hiddenModuleIds: ReadonlySet<string> = NO_HIDDEN_MODULES,
+): readonly NavConfigItem[] {
+  const base = simplified
     ? NAV_CONFIG.filter((item) => SIMPLIFIED_NAV_ITEM_ID_SET.has(item.id))
     : NAV_CONFIG;
+  return hiddenModuleIds.size === 0 ? base : filterByModuleVisibility(base, hiddenModuleIds);
 }
 
-export function getBottomNavPriorityItems(simplified = false): readonly NavConfigItem[] {
-  return [...getVisibleNavItems(simplified)]
+export function getBottomNavPriorityItems(
+  simplified = false,
+  hiddenModuleIds: ReadonlySet<string> = NO_HIDDEN_MODULES,
+): readonly NavConfigItem[] {
+  return [...getVisibleNavItems(simplified, hiddenModuleIds)]
     .sort((a, b) => a.mobilePriority - b.mobilePriority)
     .slice(0, BOTTOM_NAV_PRIORITY_COUNT);
 }
@@ -417,21 +434,31 @@ export function getBottomNavPriorityItems(simplified = false): readonly NavConfi
  */
 export const BOTTOM_NAV_PRIORITY_ITEMS: readonly NavConfigItem[] = getBottomNavPriorityItems();
 
-export function getPinnedNavItems(simplified = false): readonly NavConfigItem[] {
-  return getVisibleNavItems(simplified).filter((item) => item.group === undefined);
+export function getPinnedNavItems(
+  simplified = false,
+  hiddenModuleIds: ReadonlySet<string> = NO_HIDDEN_MODULES,
+): readonly NavConfigItem[] {
+  return getVisibleNavItems(simplified, hiddenModuleIds).filter((item) => item.group === undefined);
 }
 
 /** Destinations pinned above the grouped sections in the sidebar. */
 export const PINNED_NAV_ITEMS: readonly NavConfigItem[] = getPinnedNavItems();
 
 /** Destinations bucketed by group, preserving config order within each. */
-export function getItemsByGroup(group: NavGroup, simplified = false): readonly NavConfigItem[] {
-  return getVisibleNavItems(simplified).filter((item) => item.group === group);
+export function getItemsByGroup(
+  group: NavGroup,
+  simplified = false,
+  hiddenModuleIds: ReadonlySet<string> = NO_HIDDEN_MODULES,
+): readonly NavConfigItem[] {
+  return getVisibleNavItems(simplified, hiddenModuleIds).filter((item) => item.group === group);
 }
 
-export function getMoreSheetItems(simplified = false): readonly NavConfigItem[] {
-  const priorityItems = getBottomNavPriorityItems(simplified);
-  return getVisibleNavItems(simplified).filter(
+export function getMoreSheetItems(
+  simplified = false,
+  hiddenModuleIds: ReadonlySet<string> = NO_HIDDEN_MODULES,
+): readonly NavConfigItem[] {
+  const priorityItems = getBottomNavPriorityItems(simplified, hiddenModuleIds);
+  return getVisibleNavItems(simplified, hiddenModuleIds).filter(
     (item) => !priorityItems.some((priorityItem) => priorityItem.id === item.id),
   );
 }
