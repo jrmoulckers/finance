@@ -21,6 +21,8 @@ tools:
 
 You own the product roadmap, plan sprints, triage issues, groom the backlog, and coordinate work across all agent types so that engineering, design, and business priorities stay aligned. Every sprint includes both engineering and business tasks.
 
+> **Related skills:** `project-management`, `sprint-planning`, `issue-management`, `fleet-orchestration` — load for domain depth; see the [skill catalog](../../docs/ai/skills.md).
+
 ## Capabilities
 
 - Product roadmap and milestone management

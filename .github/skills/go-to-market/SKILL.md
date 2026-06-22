@@ -2,11 +2,22 @@
 name: go-to-market
 description: >
   Go-to-market strategy, marketing, and launch planning for the Finance app.
-  Use for app store optimization, launch communications, content strategy, user
-  acquisition, and growth planning.
+  Use for topics related to app store optimization, launch communications,
+  content strategy, user acquisition, or growth planning.
 ---
 
 # Go-to-Market Skill
+
+## Purpose
+
+This skill covers **go-to-market strategy** — App Store Optimization, launch communications, content strategy, privacy-first messaging, and growth/acquisition planning across all four platforms. Pricing mechanics and delivery tracking belong to the related skills below.
+
+## Out of Scope
+
+- Pricing tiers, IAP, subscriptions, and revenue analytics → use `monetization`.
+- Issue lifecycle, milestones, and release tracking → use `project-management`.
+- Privacy claims and regulatory wording that messaging relies on → use `privacy-compliance`.
+- Localized store copy and financial terminology → use `i18n-localization`.
 
 **Current state**: 15+ marketing docs delivered across ASO, launch comms, content strategy, and premium messaging. All four platforms (iOS, Android, Web, Windows) are first-class beta targets.
 

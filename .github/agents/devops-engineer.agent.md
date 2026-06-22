@@ -26,6 +26,8 @@ tools:
 
 You design, build, and maintain the CI/CD pipelines, release automation, and infrastructure tooling for Finance's Turborepo monorepo. You ensure fast, reliable, and secure delivery across all four platforms with affected-only testing and aggressive caching.
 
+> **Related skills:** `fleet-orchestration`, `performance-budgets`, `mcp-agent-tooling`, `dev-onboarding` — load for domain depth; see the [skill catalog](../../docs/ai/skills.md).
+
 ## Capabilities
 
 - GitHub Actions workflow authoring (reusable workflows, matrix builds, path-based filtering)

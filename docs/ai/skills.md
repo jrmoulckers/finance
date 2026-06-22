@@ -12,7 +12,44 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 ## Available Skills
 
-> **Source of truth:** the directories under [`.github/skills/`](../../.github/skills/). As of 2026-06 there are **20** skills. This page describes the established skills in detail; skills added in 2026-06 — `accessibility-testing`, `security-review-methodology`, `design-tokens`, `performance-budgets`, `i18n-localization`, `mcp-agent-tooling`, and `prompt-engineering` — are listed in [Agent Instructions](agent-instructions.md#agent-skills). A generated `ai-manifest` is planned to keep these counts in sync — see the [CHANGELOG](CHANGELOG.md).
+> **Source of truth:** the directories under [`.github/skills/`](../../.github/skills/). As of 2026-06 there are **20** skills, each detailed below in alphabetical order. The generated `ai-manifest` check keeps these counts in sync (`npm run ai:manifest:check`) — see the [CHANGELOG](CHANGELOG.md).
+
+### `accessibility-testing` — Accessibility Testing (WCAG 2.2 AA)
+
+**File:** `.github/skills/accessibility-testing/SKILL.md`
+
+**Trigger keywords:** WCAG 2.2 AA, a11y testing, screen readers, keyboard navigation, focus management, contrast, reduced motion, TalkBack, VoiceOver, Narrator, inclusive QA
+
+**Knowledge areas:**
+
+- Repo-specific accessibility surfaces across the four platforms
+- Test methodology (keyboard, screen reader, contrast, reduced motion)
+- Per-platform a11y checklist (TalkBack, VoiceOver, Narrator)
+- Acceptance criteria for accessibility issues
+
+**Supporting files:** `.github/skills/accessibility-testing/CHECKLIST.md` — per-platform sign-off checklist
+
+**When activated:** Whenever an agent validates accessibility, screen-reader support, keyboard navigation, or WCAG compliance.
+
+---
+
+### `design-tokens` — Design Token System
+
+**File:** `.github/skills/design-tokens/SKILL.md`
+
+**Trigger keywords:** DTCG tokens, Style Dictionary, color tokens, semantic tokens, component tokens, chart palettes, typography, spacing, motion, contrast, theming, generated token outputs
+
+**Knowledge areas:**
+
+- DTCG token model (core, semantic, and component layers)
+- Style Dictionary configuration and generated outputs
+- Repo-specific token paths
+- Token authoring rules
+- Finance-specific checks (chart palettes, contrast)
+
+**When activated:** Whenever an agent works on design tokens, theming, color systems, or Style Dictionary outputs.
+
+---
 
 ### `dev-onboarding` — Developer Environment Setup
 
@@ -87,7 +124,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 **Knowledge areas:**
 
-- Agent type registry (15 agents: engineering, review, business)
+- Agent type registry (23 agents: engineering, review, ops/meta, business)
 - Label-to-agent mapping for issue routing
 - Sprint planning algorithm (query → categorize → deps → group → track)
 - Fleet dispatch protocol with background task parallelism
@@ -122,6 +159,45 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 ---
 
+### `i18n-localization` — Internationalization & Localization
+
+**File:** `.github/skills/i18n-localization/SKILL.md`
+
+**Trigger keywords:** i18n, localization, translations, locale packs, string keys, currency/date/number formatting, pluralization, text expansion, right-to-left readiness, financial terminology
+
+**Knowledge areas:**
+
+- Repo-specific i18n paths and locale catalogs
+- String key naming rules
+- Financial formatting rules (currency, date, number, pluralization)
+- Localization review checklist
+
+**Supporting files:** `.github/skills/i18n-localization/CHECKLIST.md` — localization review checklist
+
+**When activated:** Whenever an agent works on translations, locale formatting, string keys, or RTL readiness.
+
+---
+
+### `issue-management` — Issue Quality & Cross-Platform Scoping
+
+**File:** `.github/skills/issue-management/SKILL.md`
+
+**Trigger keywords:** issue filing, bug reports, platform scoping, cross-platform duplicates, label taxonomy, issue quality
+
+**Knowledge areas:**
+
+- Canonical label taxonomy and platform labels
+- Cross-platform scoping decision tree (when to create platform duplicates)
+- Mandatory pre-filing validation gate
+- Issue body quality standards (bug and enhancement templates)
+- Duplicate identification and linking
+- PowerShell-safe / Node-based batch issue creation
+- Mandatory post-session audit
+
+**When activated:** Whenever an agent files issues, scopes work across platforms, or manages duplicates.
+
+---
+
 ### `kmp-development` — Kotlin Multiplatform Development
 
 **File:** `.github/skills/kmp-development/SKILL.md`
@@ -150,6 +226,23 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 ---
 
+### `mcp-agent-tooling` — MCP & Agent Tooling
+
+**File:** `.github/skills/mcp-agent-tooling/SKILL.md`
+
+**Trigger keywords:** Model Context Protocol, MCP servers, .vscode/mcp.json, Copilot tools, agent scripts, tool permissions, token scopes, workspace filesystem access, safe agent automation
+
+**Knowledge areas:**
+
+- Current MCP servers and their configuration (`.vscode/mcp.json`)
+- Repo-specific tooling paths
+- Safe tooling rules (tool permissions, token scopes, filesystem boundary)
+- Review checklist for MCP changes
+
+**When activated:** Whenever an agent works on MCP servers, agent tool configuration, or tool permissions.
+
+---
+
 ### `monetization` — Pricing & Subscription Management
 
 **File:** `.github/skills/monetization/SKILL.md`
@@ -168,6 +261,26 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 - Offline grace period for subscriptions
 
 **When activated:** Whenever an agent works on monetization, pricing strategy, or subscription management.
+
+---
+
+### `performance-budgets` — Performance Budgets
+
+**File:** `.github/skills/performance-budgets/SKILL.md`
+
+**Trigger keywords:** Lighthouse, Core Web Vitals, LCP, INP, CLS, TBT, bundle budgets, lazy chunks, route budgets, startup performance, service workers, performance regression triage
+
+**Knowledge areas:**
+
+- Web PWA route and bundle budgets (`performance.budget.json`, Lighthouse CI)
+- Current Web budget targets (LCP, INP, CLS, TBT, JS gzip ceilings)
+- Repo-specific budget tools and checkers
+- Regression triage workflow
+- Acceptance criteria for performance issues
+
+**Supporting files:** `.github/skills/performance-budgets/WEB_CHECKLIST.md` — web performance-budget sign-off checklist
+
+**When activated:** Whenever an agent works on performance budgets, Core Web Vitals, bundle size, or regression triage.
 
 ---
 
@@ -214,6 +327,42 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 ---
 
+### `prompt-engineering` — Prompt Engineering
+
+**File:** `.github/skills/prompt-engineering/SKILL.md`
+
+**Trigger keywords:** prompt design, reusable prompts, Copilot instructions, agent handoffs, context packaging, task decomposition prompts, review prompts, reducing ambiguity
+
+**Knowledge areas:**
+
+- Repo-specific prompt assets (`.github/prompts/`)
+- Prompt shape for Finance work (goal, context, owned files, tasks, validation, completion)
+- Prompt quality rules
+- Anti-patterns to avoid
+
+**When activated:** Whenever an agent designs prompts, authors Copilot instructions, or packages context for agent handoffs.
+
+---
+
+### `security-review-methodology` — Security & Privacy Review
+
+**File:** `.github/skills/security-review-methodology/SKILL.md`
+
+**Trigger keywords:** threat modeling, OWASP MASVS, security review, vulnerability assessment, auth, crypto, RLS, Edge Functions, financial data exposure, secure logging, abuse prevention
+
+**Knowledge areas:**
+
+- Repo-specific security review surfaces (web, shared, sync crypto, backend functions, CI)
+- Review workflow (asset definition, trust boundaries, authZ, data minimization, crypto, abuse controls)
+- Finding template and severity/confidence classification
+- Red flags (service-role misuse, RLS gaps, sensitive logging, offline replay)
+
+**Supporting files:** `.github/skills/security-review-methodology/CHECKLIST.md` — security review sign-off checklist
+
+**When activated:** Whenever an agent performs a security or privacy review, threat models a change, or assesses financial-data risk.
+
+---
+
 ### `sprint-planning` — Sprint Planning & Backlog Management
 
 **File:** `.github/skills/sprint-planning/SKILL.md`
@@ -222,7 +371,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 **Knowledge areas:**
 
-- Issue categorization by agent type (15 agent types)
+- Issue categorization by agent type (23 agent types)
 - Sprint sizing (4–6 implementation + 1–2 business + 1 review)
 - Dependency detection and schema change serialization
 - Priority framework (P0–P3) with assignment rules
@@ -260,20 +409,75 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 ---
 
+### `ux-testing` — UX & QA Testing
+
+**File:** `.github/skills/ux-testing/SKILL.md`
+
+**Trigger keywords:** alpha testing, beta testing, QA, bug discovery, testing scenarios, manual testing, user experience validation
+
+**Knowledge areas:**
+
+- Testing session structure (setup, platform maturity, session flow)
+- Mandatory pre-filing gate (scope, code refs, duplicates, labels)
+- Bug investigation methodology and parallel dispatch
+- Ordered testing scenarios (auth, navigation, transactions, import, budgets/goals, charts, settings)
+- Severity classification and bug report template
+- PowerShell-safe batch issue filing and post-session audit
+
+**When activated:** Whenever an agent runs a live testing session, discovers bugs, or validates user experience.
+
+---
+
+## Skill ↔ Agent Mapping
+
+Each agent loads a focused set of skills for domain depth. The table below mirrors the **Related skills** line in every [`.github/agents/*.agent.md`](../../.github/agents/) file (the source of truth). Skills not listed for an agent still activate automatically when their trigger keywords match — this mapping captures the _primary_ skills each role should reach for.
+
+| Agent                      | Related skills                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| `accessibility-reviewer`   | `accessibility-testing`, `ux-testing`, `design-tokens`                                 |
+| `ai-ops-engineer`          | `prompt-engineering`, `mcp-agent-tooling`, `issue-management`                          |
+| `android-engineer`         | `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens`      |
+| `architect`                | `kmp-development`, `edge-sync`, `supabase-powersync`, `security-review-methodology`    |
+| `backend-engineer`         | `supabase-powersync`, `edge-sync`, `security-review-methodology`, `privacy-compliance` |
+| `business-analyst`         | `monetization`, `go-to-market`, `project-management`                                   |
+| `data-engineer`            | `privacy-compliance`, `financial-modeling`, `supabase-powersync`                       |
+| `design-engineer`          | `design-tokens`, `accessibility-testing`, `i18n-localization`                          |
+| `devops-engineer`          | `fleet-orchestration`, `performance-budgets`, `mcp-agent-tooling`, `dev-onboarding`    |
+| `docs-writer`              | `dev-onboarding`, `project-management`, `prompt-engineering`                           |
+| `experimentation-engineer` | `edge-sync`, `privacy-compliance`, `financial-modeling`                                |
+| `finance-domain`           | `financial-modeling`, `edge-sync`, `privacy-compliance`                                |
+| `ios-engineer`             | `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens`      |
+| `kmp-engineer`             | `kmp-development`, `edge-sync`, `financial-modeling`, `supabase-powersync`             |
+| `localization-engineer`    | `i18n-localization`, `financial-modeling`, `design-tokens`                             |
+| `marketing-strategist`     | `go-to-market`, `monetization`, `i18n-localization`                                    |
+| `performance-engineer`     | `performance-budgets`, `kmp-development`, `edge-sync`                                  |
+| `product-manager`          | `project-management`, `sprint-planning`, `issue-management`, `fleet-orchestration`     |
+| `qa-tester`                | `ux-testing`, `issue-management`, `accessibility-testing`                              |
+| `release-manager`          | `project-management`, `sprint-planning`, `dev-onboarding`                              |
+| `security-reviewer`        | `security-review-methodology`, `privacy-compliance`, `supabase-powersync`, `edge-sync` |
+| `web-engineer`             | `performance-budgets`, `accessibility-testing`, `financial-modeling`, `edge-sync`      |
+| `windows-engineer`         | `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens`      |
+
+> This table mirrors the roster in [`agents.md`](agents.md) (**23 agents**). When you add or retire an agent, update both its `*.agent.md` **Related skills** line and this table so the two never drift.
+
+---
+
 ## Adding a New Skill
 
 1. Create a directory: `.github/skills/<skill-name>/`
-2. Create `SKILL.md` with YAML frontmatter:
+2. Create `SKILL.md` with YAML frontmatter (the `name` must match the directory):
    ```yaml
    ---
    name: skill-name
    description: >
-     Clear description with trigger keywords for when the skill should activate.
+     One-line summary, then "Use for topics related to <comma-separated
+     trigger keywords>." so the skill activates on the right work.
    ---
    ```
-3. Write comprehensive Markdown body with domain knowledge, patterns, examples, and guidelines
-4. Optionally add supporting files (scripts, templates, reference docs) in the skill directory
-5. Update this document (`docs/ai/skills.md`) with the new skill's details
+3. Start the body with `# <Skill Name> Skill`, then `## Purpose` and `## Out of Scope` (route adjacent concerns to related skills) before detailed guidance — see `.github/instructions/skills.instructions.md`
+4. Add domain knowledge, decision trees, checklists, and examples; prefer crisp tables over broad prose
+5. Optionally add supporting files (checklists, scripts, templates) in the skill directory and surface them in the entry above
+6. Update this document (`docs/ai/skills.md`) with the new skill's details, in alphabetical order
 
 ## Skill Naming Convention
 

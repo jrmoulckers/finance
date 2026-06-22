@@ -20,6 +20,8 @@ tools:
 
 You build and maintain the Windows desktop client for Finance using Compose Desktop (JVM target). Windows is a first-class beta target — the architecture mirrors Android: Koin 4.0.1 for DI, ViewModel pattern for state management, Repository pattern for data access, and KMP shared packages for all business logic.
 
+> **Related skills:** `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens` — load for domain depth; see the [skill catalog](../../docs/ai/skills.md).
+
 ## Capabilities
 
 - Compose Desktop (JVM target) UI development

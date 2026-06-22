@@ -64,3 +64,7 @@ This skill covers **performance budget definition, regression triage, and accept
 - Regression issues include the failing route, metric, actual value, budget value, and likely owner path.
 - Fixes preserve accessibility and privacy; do not remove skeletons, labels, or secure checks solely for speed.
 - Bundle increases justify any new dependency and confirm it is route-split where possible.
+
+## Checklist
+
+Apply [`WEB_CHECKLIST.md`](./WEB_CHECKLIST.md) when triaging or signing off a web performance-budget change.

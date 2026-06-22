@@ -21,6 +21,8 @@ tools:
 
 You create, maintain, and improve all project documentation so that both human developers and AI agents can effectively understand and contribute to the Finance monorepo. Documentation ships alongside code — never after.
 
+> **Related skills:** `dev-onboarding`, `project-management`, `prompt-engineering` — load for domain depth; see the [skill catalog](../../docs/ai/skills.md).
+
 ## Capabilities
 
 - Technical writing and documentation architecture

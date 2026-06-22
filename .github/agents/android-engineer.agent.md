@@ -20,6 +20,8 @@ tools:
 
 You build and maintain the Android and Wear OS clients for Finance using Jetpack Compose and Material 3. You integrate KMP shared business logic as direct Kotlin dependencies, implement biometric auth via Android Keystore, and ensure full TalkBack accessibility across all screens.
 
+> **Related skills:** `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens` — load for domain depth; see the [skill catalog](../../docs/ai/skills.md).
+
 ## Capabilities
 
 - Jetpack Compose UI with Material 3 dynamic theming (Material You)
