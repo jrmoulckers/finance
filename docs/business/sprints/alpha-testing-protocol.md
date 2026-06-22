@@ -126,13 +126,13 @@ beta.
 
 - [ ] Gate 2 passed
 - [ ] Performance baselines documented (see
-      [performance-baselines.md](../architecture/performance-baselines.md))
+      [performance-baselines.md](../../architecture/performance-baselines.md))
 - [ ] Rate limiting and abuse prevention active on API
 - [ ] Automated data-quality loop running in production (see
       [Section 4](#4-data-quality-loop))
 - [ ] Rollback plan tested (see [Section 8](#8-rollback-plan))
 - [ ] Monitoring and alerting configured (see
-      [monitoring.md](../architecture/monitoring.md))
+      [monitoring.md](../../architecture/monitoring.md))
 
 **Exit Criteria (Beta Decision):**
 
@@ -146,7 +146,7 @@ beta.
 - [ ] Feature adoption: ≥ 60% of users have used budgets or goals
 - [ ] All platform-specific P1 issues resolved
 - [ ] Security review completed (see
-      [security-posture-report.md](../architecture/security/security-posture-report.md))
+      [security-posture-report.md](../../architecture/security/security-posture-report.md))
 - [ ] Go/no-go review meeting held with documented decision
 
 ---
@@ -581,9 +581,9 @@ The following can be **triaged forward** (documented but not blocking):
 ## References
 
 - [Alpha Household Constraints](alpha-household-constraints.md)
-- [Rollout Strategy](../architecture/rollout-strategy.md)
-- [Performance Baselines](../architecture/performance-baselines.md)
-- [Monitoring Infrastructure](../architecture/monitoring-infrastructure.md)
-- [Security Posture Report](../architecture/security/security-posture-report.md)
+- [Rollout Strategy](../../architecture/rollout-strategy.md)
+- [Performance Baselines](../../architecture/performance-baselines.md)
+- [Monitoring Infrastructure](../../architecture/monitoring-infrastructure.md)
+- [Security Posture Report](../../architecture/security/security-posture-report.md)
 - [Smart Features Beta Program](sprint-9-beta-program.md)
-- [Go-Live Assessment](go-live-assessment.md)
+- [Go-Live Assessment](../roadmap/go-live-assessment.md)

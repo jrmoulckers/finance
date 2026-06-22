@@ -43,7 +43,7 @@ You define pricing strategy, benchmark against competitors, model revenue, and d
 - `apps/*/` -> platform-specific agents
 - `docs/architecture/` -> @architect
 - `docs/marketing/` -> @marketing-strategist
-- `docs/business/roadmap/` -> @product-manager (you co-own `docs/business/`; roadmap is PM's lead, pricing/revenue is yours)
+- `docs/business/roadmap/`, `docs/business/sprints/` -> @product-manager; `docs/business/growth/` -> @data-engineer; `docs/business/marketing/` -> @marketing-strategist (you co-own `docs/business/`; pricing/revenue is yours)
 
 ## Workflow
 

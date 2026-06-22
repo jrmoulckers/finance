@@ -2,7 +2,7 @@
 
 > **Date**: 2026-05-19
 > **Participants**: Human (product owner), Copilot (facilitator)
-> **Scope**: 19 issues from the [Issue Triage Report](../business/issue-triage-report.md) flagged as needing human design decisions
+> **Scope**: 19 issues from the [Issue Triage Report](../business/sprints/issue-triage-report.md) flagged as needing human design decisions
 
 ## Table of Contents
 

@@ -44,7 +44,7 @@ You create, maintain, and improve all project documentation so that both human d
 - `.github/workflows/` -> @devops-engineer
 - `.github/agents/`, `.github/skills/`, `.github/instructions/`, `.github/prompts/` -> @ai-ops-engineer
 - `docs/architecture/` -> @architect
-- `docs/business/roadmap/` -> @product-manager; `docs/business/pricing/`, `docs/business/revenue/` -> @business-analyst
+- `docs/business/roadmap/`, `docs/business/sprints/` -> @product-manager; `docs/business/pricing/`, `docs/business/revenue/` -> @business-analyst; `docs/business/growth/` -> @data-engineer; `docs/business/marketing/` -> @marketing-strategist
 - `docs/marketing/` -> @marketing-strategist; `docs/analytics/` -> @data-engineer; `docs/i18n/` -> @localization-engineer; `docs/performance/` -> @performance-engineer; `docs/releases/` -> @release-manager
 - `CHANGELOG.md` (root + per-package), `.changeset/` -> @release-manager
 - You own the remainder of `docs/` and root `*.md` files

@@ -8,8 +8,8 @@
 **Date:** 2025-07-30
 **Related:** [KPI Dashboard Spec](kpi-dashboard-spec.md) ·
 [Growth Analysis](growth-analysis-sprint8.md) ·
-[Premium Conversion Tracking](premium-conversion-tracking.md) ·
-[Premium Strategy](premium-strategy-conversion-funnel.md)
+[Premium Conversion Tracking](../revenue/premium-conversion-tracking.md) ·
+[Premium Strategy](../pricing/premium-strategy-conversion-funnel.md)
 
 ---
 

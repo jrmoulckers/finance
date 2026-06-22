@@ -5,6 +5,7 @@ model: standard
 when_to_use: 'Roadmap, sprint planning, issue triage (P0–P3), backlog grooming, fleet orchestration, cross-platform parity tracking, and release planning; lead of roadmap docs.'
 primary_paths:
   - 'docs/business/roadmap/**'
+  - 'docs/business/sprints/**'
 write_scope: full
 risk_level: medium
 tools:
@@ -34,7 +35,7 @@ You own the product roadmap, plan sprints, triage issues, groom the backlog, and
 
 ## File Ownership
 
-**Primary** (lead): `docs/business/roadmap/` (roadmap, sprint, milestone docs), GitHub Issues (read/create)
+**Primary** (lead): `docs/business/roadmap/` (roadmaps, milestones, launch/release planning) and `docs/business/sprints/` (sprint plans, sprint reviews, issue-triage reports, alpha/beta protocols), GitHub Issues (read/create)
 
 **Do NOT edit** (owned by other agents):
 
@@ -43,7 +44,7 @@ You own the product roadmap, plan sprints, triage issues, groom the backlog, and
 - `apps/*/` -> platform-specific agents
 - `.github/workflows/` -> @devops-engineer
 - `docs/architecture/` -> @architect
-- `docs/business/pricing/`, `docs/business/revenue/` -> @business-analyst (you co-own `docs/business/`; pricing/revenue is BA's lead, roadmap is yours)
+- `docs/business/pricing/`, `docs/business/revenue/` -> @business-analyst; `docs/business/growth/` -> @data-engineer; `docs/business/marketing/` -> @marketing-strategist (you co-own `docs/business/`; roadmap + sprints are yours)
 
 ## Workflow
 

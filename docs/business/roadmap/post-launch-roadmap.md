@@ -9,7 +9,7 @@
 **Source Issues:** #265, #267, #378, #379, #382
 **Related:** [v1.2 Release Plan](v12-release-plan-v20-roadmap.md) ·
 [V2 Feature Specifications](v2-feature-specifications.md) ·
-[International Expansion Analysis](international-expansion-analysis.md)
+[International Expansion Analysis](../revenue/international-expansion-analysis.md)
 
 ---
 

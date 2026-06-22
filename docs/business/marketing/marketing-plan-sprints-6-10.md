@@ -5,7 +5,7 @@
 > **Owner:** Marketing Strategist
 > **Purpose:** Define marketing, growth, and content tasks for the 5 sprints following v1.0 launch — shifting from launch execution to sustainable growth and retention
 > **Predecessor:** [Marketing Plan Sprints 1–5](marketing-plan-sprints-1-5.md) (pre-launch)
-> **Related:** [Product Identity](../design/product-identity.md) · [Growth Strategy](growth-strategy-post-launch.md) · [Review Strategy](review-strategy.md) · [Launch Retrospective](launch-retrospective-week-1.md) · [Privacy Messaging](privacy-marketing-messaging.md)
+> **Related:** [Product Identity](../../design/product-identity.md) · [Growth Strategy](growth-strategy-post-launch.md) · [Review Strategy](review-strategy.md) · [Launch Retrospective](launch-retrospective-week-1.md) · [Privacy Messaging](privacy-marketing-messaging.md)
 
 ---
 
@@ -827,12 +827,12 @@ All metrics come from platform-provided dashboards or aggregate opt-in analytics
 ## References
 
 - [Marketing Plan Sprints 1–5](marketing-plan-sprints-1-5.md) — Pre-launch marketing strategy
-- [Product Identity](../design/product-identity.md) — Core promise, differentiators, freemium model
-- [User Personas](../design/personas.md) — Alex, Jordan, Casey, Sam profiles
+- [Product Identity](../../design/product-identity.md) — Core promise, differentiators, freemium model
+- [User Personas](../../design/personas.md) — Alex, Jordan, Casey, Sam profiles
 - [Growth Strategy](growth-strategy-post-launch.md) — 90-day post-launch growth plan (Sprint 5)
 - [Review Strategy](review-strategy.md) — Ethical review and rating approach (Sprint 5)
 - [Privacy Messaging](privacy-marketing-messaging.md) — Privacy marketing framework (Sprint 2)
-- [Privacy Audit v1](../architecture/privacy-audit-v1.md) — Data inventory and compliance status
-- [ADR-0004: Auth & Security](../architecture/0004-auth-security-architecture.md) — Authentication and encryption architecture
-- [ADR-0009: Legal & Monetization](../architecture/0009-legal-monetization-analysis.md) — BSL 1.1, pricing strategy
+- [Privacy Audit v1](../../architecture/privacy-audit-v1.md) — Data inventory and compliance status
+- [ADR-0004: Auth & Security](../../architecture/0004-auth-security-architecture.md) — Authentication and encryption architecture
+- [ADR-0009: Legal & Monetization](../../architecture/0009-legal-monetization-analysis.md) — BSL 1.1, pricing strategy
 - [Brand Voice Guide](brand-voice-guide.md) — Tone, vocabulary, do/don't examples (Sprint 1)
