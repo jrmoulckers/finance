@@ -9,7 +9,6 @@ on:
     paths: ['apps/web/**', 'packages/design-tokens/**']
   pull_request:
     branches: [main]
-    paths: ['apps/web/**', 'packages/design-tokens/**']
 
 concurrency:
   group: web-ci-${{ github.event.pull_request.number || github.ref }}
@@ -17,14 +16,36 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
 jobs:
+  # Always runs so the required "Build" context is reported on every PR.
+  # Detects whether web/design-token paths changed; the build job (and its
+  # dependents) are skipped — a passing state for required checks — otherwise.
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            relevant:
+              - 'apps/web/**'
+              - 'packages/design-tokens/**'
+
   build:
     name: Build
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -164,8 +185,8 @@ jobs:
 
   e2e-pr-report:
     name: Merge PR E2E Report
-    if: ${{ always() && github.event_name == 'pull_request' && !cancelled() }}
-    needs: e2e-pr-smoke
+    if: ${{ always() && github.event_name == 'pull_request' && needs.changes.outputs.relevant == 'true' && !cancelled() }}
+    needs: [changes, e2e-pr-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

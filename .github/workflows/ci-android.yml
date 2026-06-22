@@ -22,17 +22,6 @@ on:
       - '**/*.kts'
   pull_request:
     branches: [main]
-    paths:
-      - 'apps/android/**'
-      - 'packages/**'
-      - 'build-logic/**'
-      - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradle.properties'
-      - 'settings.gradle*'
-      - 'config/detekt/**'
-      - '**/*.kt'
-      - '**/*.kts'
 
 concurrency:
   group: ci-android-${{ github.ref }}
@@ -57,8 +46,37 @@ env:
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
 jobs:
+  # Always runs so the required "Build & Test" context is reported on every PR.
+  # Detects whether Android/shared-Kotlin paths changed; downstream jobs are
+  # skipped (a passing state for required checks) when they did not.
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            relevant:
+              - 'apps/android/**'
+              - 'packages/**'
+              - 'build-logic/**'
+              - 'gradle/**'
+              - '*.gradle.kts'
+              - 'gradle.properties'
+              - 'settings.gradle*'
+              - 'config/detekt/**'
+              - '**/*.kt'
+              - '**/*.kts'
+
   detekt:
     name: detekt Analysis
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -151,6 +169,8 @@ jobs:
 
   build-and-test:
     name: Build & Test
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
