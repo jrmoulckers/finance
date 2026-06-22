@@ -217,8 +217,11 @@ export { useNetWorth } from './useNetWorth';
 export type { UseNetWorthResult } from './useNetWorth';
 export { useSubscriptions } from './useSubscriptions';
 export type { UseSubscriptionsResult } from './useSubscriptions';
-export { useRemittances } from './useRemittances';
-export type { UseRemittancesResult } from './useRemittances';
+// Note: useRemittances is intentionally imported directly from
+// './useRemittances' by the lazy-loaded RemittancesPage rather than re-exported
+// here. Re-exporting it through this widely-imported barrel pulled the hook (and
+// its remittance-summary dependency) into eagerly-loaded route chunks, pushing
+// the dashboard bundle over its performance budget. Keep it out of the barrel.
 export { useRecommendations } from './useRecommendations';
 export type { UseRecommendationsResult } from './useRecommendations';
 export { useBankConnections } from './useBankConnections';
