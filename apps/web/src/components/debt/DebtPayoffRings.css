@@ -1,0 +1,267 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/*
+ * Styles for the DebtPayoffRings "fitness rings" payoff surface (#2175).
+ * Uses design tokens (with safe fallbacks) and respects prefers-reduced-motion.
+ */
+
+.debt-payoff-rings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6, 1.5rem);
+}
+
+.debt-payoff-rings__header h2 {
+  margin: 0 0 var(--spacing-1, 0.25rem);
+  font-size: var(--font-size-xl, 1.25rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.debt-payoff-rings__subtitle {
+  margin: 0;
+  color: var(--semantic-text-secondary, #4b5563);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.debt-payoff-rings__selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 0.25rem);
+  max-width: 24rem;
+}
+
+.debt-payoff-rings__selector label,
+.debt-payoff-rings__whatif-input label {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.debt-payoff-rings__selector select,
+.debt-payoff-rings__whatif-input input {
+  padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #d1d5db);
+  border-radius: var(--radius-md, 0.375rem);
+  background: var(--semantic-background-primary, #ffffff);
+  color: var(--semantic-text-primary, #111827);
+  font-size: var(--font-size-base, 1rem);
+}
+
+.debt-payoff-rings__selector select:focus-visible,
+.debt-payoff-rings__whatif-input input:focus-visible {
+  outline: 2px solid var(--semantic-primary, #2563eb);
+  outline-offset: 2px;
+}
+
+/* --- Ring card --------------------------------------------------------- */
+
+.debt-payoff-rings__card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-6, 1.5rem);
+  padding: var(--spacing-6, 1.5rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.5rem);
+  background: var(--semantic-background-primary, #ffffff);
+}
+
+.debt-payoff-ring {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  flex: 0 0 auto;
+}
+
+.debt-payoff-ring__svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.debt-payoff-ring__track,
+.debt-payoff-ring__value {
+  fill: none;
+  stroke-width: 12;
+}
+
+.debt-payoff-ring__track {
+  stroke: var(--semantic-border, #e5e7eb);
+}
+
+.debt-payoff-ring__value {
+  stroke: var(--semantic-primary, #2563eb);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.debt-payoff-ring__percent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xl, 1.5rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.debt-payoff-rings__summary {
+  flex: 1 1 16rem;
+  min-width: 14rem;
+}
+
+.debt-payoff-rings__progress-text {
+  margin: 0 0 var(--spacing-3, 0.75rem);
+  font-size: var(--font-size-lg, 1.125rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.debt-payoff-rings__stats,
+.debt-payoff-rings__savings-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--spacing-3, 0.75rem);
+  margin: 0;
+}
+
+.debt-payoff-rings__stat dt {
+  font-size: var(--font-size-xs, 0.75rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.debt-payoff-rings__stat dd {
+  margin: 0;
+  font-size: var(--font-size-base, 1rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary, #111827);
+}
+
+/* --- Milestones -------------------------------------------------------- */
+
+.debt-payoff-rings__milestones h3,
+.debt-payoff-rings__whatif h3 {
+  margin: 0 0 var(--spacing-3, 0.75rem);
+  font-size: var(--font-size-lg, 1.125rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.debt-milestone-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 0.5rem);
+}
+
+.debt-milestone {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 0.75rem);
+  padding: var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.375rem);
+  background: var(--semantic-background-secondary, #f9fafb);
+}
+
+.debt-milestone__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-full, 9999px);
+  font-weight: var(--font-weight-bold, 700);
+  border: 2px solid var(--semantic-border, #d1d5db);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.debt-milestone__label {
+  flex: 1 1 auto;
+  color: var(--semantic-text-primary, #111827);
+}
+
+.debt-milestone__status {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-medium, 500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.debt-milestone[data-reached='true'] {
+  border-color: var(--semantic-positive, #16a34a);
+  background: var(--semantic-positive-bg, #f0fdf4);
+}
+
+.debt-milestone[data-reached='true'] .debt-milestone__icon {
+  border-color: var(--semantic-positive, #16a34a);
+  background: var(--semantic-positive, #16a34a);
+  color: var(--semantic-background-primary, #ffffff);
+}
+
+.debt-milestone[data-reached='true'] .debt-milestone__status {
+  color: var(--semantic-positive, #16a34a);
+}
+
+/* --- What-if comparison ------------------------------------------------ */
+
+.debt-payoff-rings__whatif {
+  padding: var(--spacing-6, 1.5rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.5rem);
+  background: var(--semantic-background-primary, #ffffff);
+}
+
+.debt-payoff-rings__whatif-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 0.25rem);
+  max-width: 20rem;
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.debt-payoff-rings__savings {
+  margin: 0 0 var(--spacing-3, 0.75rem);
+  color: var(--semantic-text-primary, #111827);
+}
+
+/* --- Reduced motion ---------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .debt-payoff-ring__value {
+    transition: none;
+  }
+}
+
+/* --- Dark theme -------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  .debt-payoff-rings__card,
+  .debt-payoff-rings__whatif {
+    background: var(--semantic-background-primary, #1f2937);
+    border-color: var(--semantic-border, #374151);
+  }
+
+  .debt-milestone {
+    background: var(--semantic-background-secondary, #111827);
+    border-color: var(--semantic-border, #374151);
+  }
+}
+
+[data-theme='dark'] .debt-payoff-rings__card,
+[data-theme='dark'] .debt-payoff-rings__whatif {
+  background: var(--semantic-background-primary, #1f2937);
+  border-color: var(--semantic-border, #374151);
+}
+
+[data-theme='dark'] .debt-milestone {
+  background: var(--semantic-background-secondary, #111827);
+  border-color: var(--semantic-border, #374151);
+}
