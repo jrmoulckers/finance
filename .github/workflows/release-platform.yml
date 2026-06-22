@@ -108,6 +108,7 @@ jobs:
       dry_run: ${{ steps.meta.outputs.dry_run }}
       publish_release: ${{ steps.meta.outputs.publish_release }}
       store_metadata: ${{ steps.meta.outputs.store_metadata }}
+      matrix: ${{ steps.meta.outputs.matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -162,22 +163,27 @@ jobs:
           echo "publish_release=$PUBLISH_RELEASE" >> "$GITHUB_OUTPUT"
           echo "store_metadata=$STORE_METADATA" >> "$GITHUB_OUTPUT"
 
+          # Build a dynamic job matrix filtered by the requested platform. The
+          # build-platform job cannot reference the matrix context in its if:,
+          # so the selection happens here instead.
+          MATRIX_INCLUDE=""
+          add_platform() {
+            if [ "$PLATFORM_FILTER" = "all" ] || [ "$PLATFORM_FILTER" = "$1" ]; then
+              MATRIX_INCLUDE="${MATRIX_INCLUDE:+$MATRIX_INCLUDE,}{\"platform\":\"$1\",\"runner\":\"$2\"}"
+            fi
+          }
+          add_platform android ubuntu-latest
+          add_platform ios macos-15
+          add_platform web ubuntu-latest
+          add_platform windows windows-latest
+          echo "matrix={\"include\":[$MATRIX_INCLUDE]}" >> "$GITHUB_OUTPUT"
+
   build-platform:
     name: Release ${{ matrix.platform }}
     needs: prepare
-    if: needs.prepare.outputs.platform_filter == 'all' || needs.prepare.outputs.platform_filter == matrix.platform
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: android
-            runner: ubuntu-latest
-          - platform: ios
-            runner: macos-15
-          - platform: web
-            runner: ubuntu-latest
-          - platform: windows
-            runner: windows-latest
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 50
     permissions:

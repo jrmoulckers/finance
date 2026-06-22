@@ -249,7 +249,7 @@ jobs:
             '',
             "- **Stable download URL:** $stableUrl",
             '- **Versioned asset:** `${{ steps.msi.outputs.name }}`',
-            '- **Signed:** ${{ env.HAS_SIGNING_SECRETS == ''true'' }}',
+            '- **Signed:** ${{ env.HAS_SIGNING_SECRETS == 'true' }}',
             '- **Rolling release page:** ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ env.ROLLING_TAG }}'
           ) -join "`n"
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $body
