@@ -131,9 +131,10 @@ describe('DebtPage', () => {
     expect(screen.getByText('Debt Management')).toBeDefined();
   });
 
-  it('renders all four tabs', () => {
+  it('renders all five tabs', () => {
     render(<DebtPage />);
     expect(screen.getByText('Payoff Planner')).toBeDefined();
+    expect(screen.getByText('Payoff Rings')).toBeDefined();
     expect(screen.getByText('BNPL Dashboard')).toBeDefined();
     expect(screen.getByText('Student Loans')).toBeDefined();
     expect(screen.getByText('Credit Cards')).toBeDefined();
@@ -334,10 +335,29 @@ describe('DebtPage', () => {
     expect(tablist).toBeDefined();
 
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(4);
+    expect(tabs).toHaveLength(5);
 
     const tabpanel = screen.getByRole('tabpanel');
     expect(tabpanel).toBeDefined();
+  });
+
+  it('shows the payoff rings surface with payoff date and milestones', () => {
+    mockUseAccountsState.accounts = [
+      buildAccount({
+        id: 'auto-1',
+        name: 'Auto Loan',
+        type: 'LOAN',
+        currentBalance: { amount: -620_000 },
+      }),
+    ];
+    render(<DebtPage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Payoff Rings' }));
+
+    expect(screen.getByText('Payoff Rings', { selector: 'h2' })).toBeDefined();
+    expect(screen.getByRole('img').getAttribute('aria-label')).toContain('Auto Loan');
+    expect(screen.getByText('Estimated payoff date')).toBeDefined();
+    expect(screen.getByText('Milestones')).toBeDefined();
+    expect(screen.getByLabelText('Extra monthly payment ($)')).toBeDefined();
   });
 
   it('tab panel is labeled by its tab', () => {

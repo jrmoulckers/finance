@@ -82,15 +82,19 @@ import {
   type RefinanceBaselineId,
 } from '../lib/debt/refinance-baseline-options';
 import type { Account } from '../kmp/bridge';
+// Imported directly (not via a shared barrel) so it stays code-split into the
+// lazy Debt page chunk and does not inflate other route bundles (#2175).
+import { DebtPayoffRings } from '../components/debt/DebtPayoffRings';
 
 // ---------------------------------------------------------------------------
 // Tab types
 // ---------------------------------------------------------------------------
 
-type DebtTab = 'payoff' | 'bnpl' | 'student-loans' | 'credit-cards';
+type DebtTab = 'payoff' | 'payoff-rings' | 'bnpl' | 'student-loans' | 'credit-cards';
 
 const TAB_LABELS: Record<DebtTab, string> = {
   payoff: 'Payoff Planner',
+  'payoff-rings': 'Payoff Rings',
   bnpl: 'BNPL Dashboard',
   'student-loans': 'Student Loans',
   'credit-cards': 'Credit Cards',
@@ -461,12 +465,35 @@ export function DebtPage(): React.ReactElement {
         className="debt-page__panel"
       >
         {activeTab === 'payoff' && <PayoffPlannerPanel />}
+        {activeTab === 'payoff-rings' && <PayoffRingsPanel />}
         {activeTab === 'bnpl' && <BnplDashboardPanel />}
         {activeTab === 'student-loans' && <StudentLoanPanel />}
         {activeTab === 'credit-cards' && <CreditCardPanel />}
       </div>
     </section>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Payoff Rings panel (#2175)
+// ---------------------------------------------------------------------------
+
+/**
+ * Dedicated "fitness rings" payoff surface. Visualises payoff progress,
+ * estimated payoff date, milestones, and an extra-payment what-if comparison
+ * for each loan/debt account derived from local account data.
+ */
+function PayoffRingsPanel(): React.ReactElement {
+  const { accounts } = useAccounts();
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const debts = useMemo(
+    () =>
+      accounts
+        .map(accountToDebt)
+        .filter((debt): debt is Debt => debt !== null && debt.balanceCents > 0),
+    [accounts],
+  );
+  return <DebtPayoffRings debts={debts} todayIso={todayIso} />;
 }
 
 // ---------------------------------------------------------------------------
