@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Connect, type Plugin, type ResolvedConfig } from 'vite';
 
 import { getRouteChunkName } from './src/lib/perf/route-chunks';
+import { applyBaseToWebManifest, type WebManifest } from './src/lib/pwa/manifest-base';
 
 /**
  * Vite plugin that copies sql.js WASM binaries to the public assets directory.
@@ -109,6 +110,37 @@ function swPrecacheManifest(): Plugin {
   };
 }
 
+function baseAwareWebManifest(): Plugin {
+  let basePath = '/';
+  let outDir = 'dist';
+
+  return {
+    name: 'base-aware-web-manifest',
+    apply: 'build',
+    configResolved(config: ResolvedConfig) {
+      basePath = normalizeServiceWorkerBasePath(config.base);
+      outDir = config.build.outDir;
+    },
+    // Run after the static `public/` copy so we rewrite the emitted manifest.
+    // GitHub Pages project sites serve under a subpath (`/finance/`); the
+    // checked-in manifest is root-pinned, so without this its `scope` /
+    // `start_url` / icons disagree with the SW scope and break installability
+    // (#2797). Root deploys are left untouched.
+    closeBundle() {
+      if (basePath === '/') {
+        return;
+      }
+      const manifestPath = resolve(__dirname, outDir, 'manifest.json');
+      if (!existsSync(manifestPath)) {
+        return;
+      }
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as WebManifest;
+      const rewritten = applyBaseToWebManifest(manifest, basePath);
+      writeFileSync(manifestPath, `${JSON.stringify(rewritten, null, 2)}\n`);
+    },
+  };
+}
+
 function allowServiceWorkerRootScope(): Plugin {
   return {
     name: 'allow-service-worker-root-scope',
@@ -161,6 +193,7 @@ export default defineConfig({
     react(),
     copySqlJsWasm(),
     swPrecacheManifest(),
+    baseAwareWebManifest(),
     allowServiceWorkerRootScope(),
     stubAuthRefreshForCi(),
   ],
