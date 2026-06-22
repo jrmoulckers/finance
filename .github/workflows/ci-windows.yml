@@ -35,6 +35,12 @@ jobs:
   # Always runs so the required "Build & Test" context is reported on every PR.
   # Detects whether Windows/shared paths changed; the build job is skipped (a
   # passing state for required checks) when they did not.
+  #
+  # GUARDRAIL: do NOT add `paths:`/`paths-ignore:` to this workflow's `on:`
+  # triggers. A required check whose workflow is filtered out never reports its
+  # status, leaving PRs stuck in a BLOCKED state. Gate inside the workflow via
+  # this `changes` detector (skip-with-success) instead. See docs/ops/ci-workflow.md
+  # and .github/instructions/workflows.instructions.md.
   changes:
     name: Detect relevant changes
     runs-on: ubuntu-latest
