@@ -657,6 +657,21 @@ describe('DashboardPage', () => {
     expect(within(card).getByText('Already spent')).toBeInTheDocument();
   });
 
+  it('renders a prominent savings rate card with percentage, trend, and status', async () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    const card = await screen.findByLabelText('Savings rate this month');
+    // Income $4,500 vs $67.42 spend → ~98.5% savings rate this month.
+    expect(within(card).getByText('98.5%')).toBeInTheDocument();
+    // Prior month mirrors current month in the mock → flat trend.
+    expect(within(card).getByText('Flat vs last month')).toBeInTheDocument();
+    expect(within(card).getByText('Strong — at or above the 20% target')).toBeInTheDocument();
+  });
+
   it('displays recent transactions section', () => {
     render(
       <MemoryRouter>

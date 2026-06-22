@@ -87,6 +87,11 @@ const SafeToSpendCard = React.lazy(() =>
     default: module.SafeToSpendCard,
   })),
 );
+const SavingsRateCard = React.lazy(() =>
+  import('../components/dashboard/SavingsRateCard').then((module) => ({
+    default: module.SavingsRateCard,
+  })),
+);
 const GroceryModeSection = React.lazy(() => import('../components/dashboard/GroceryModeSection'));
 
 const ChartFallback = () => <LoadingSpinner size={24} label="Loading chart" />;
@@ -126,6 +131,18 @@ function getCurrentMonthBounds(): { startDate: string; endDate: string } {
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
   const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+  return {
+    startDate: formatLocalDate(startDate),
+    endDate: formatLocalDate(endDate),
+  };
+}
+
+function getPreviousMonthBounds(): { startDate: string; endDate: string } {
+  const now = new Date();
+  const startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  // Day 0 of the current month is the last day of the previous month.
+  const endDate = new Date(now.getFullYear(), now.getMonth(), 0);
 
   return {
     startDate: formatLocalDate(startDate),
@@ -416,6 +433,20 @@ export const DashboardPage: React.FC = () => {
     error: currentMonthTransactionsError,
     refresh: refreshCurrentMonthTransactions,
   } = useTransactions(currentMonthFilters);
+  const previousMonthRange = useMemo(() => getPreviousMonthBounds(), []);
+  const previousMonthFilters = useMemo(
+    () => ({
+      startDate: previousMonthRange.startDate,
+      endDate: previousMonthRange.endDate,
+    }),
+    [previousMonthRange],
+  );
+  const {
+    transactions: previousMonthTransactions,
+    loading: previousMonthTransactionsLoading,
+    error: previousMonthTransactionsError,
+    refresh: refreshPreviousMonthTransactions,
+  } = useTransactions(previousMonthFilters);
   const dashboardAsOf = useMemo(() => new Date(), []);
 
   const categoryNames = useMemo(
@@ -434,6 +465,15 @@ export const DashboardPage: React.FC = () => {
     () =>
       filterTransactionsByAccountPurpose(currentMonthTransactions, accounts, selectedPurposeFilter),
     [currentMonthTransactions, accounts, selectedPurposeFilter],
+  );
+  const filteredPreviousMonthTransactions = useMemo(
+    () =>
+      filterTransactionsByAccountPurpose(
+        previousMonthTransactions,
+        accounts,
+        selectedPurposeFilter,
+      ),
+    [previousMonthTransactions, accounts, selectedPurposeFilter],
   );
   const filteredRecentTransactions = useMemo(
     () =>
@@ -644,7 +684,8 @@ export const DashboardPage: React.FC = () => {
     goalsLoading ||
     predictionLoading ||
     chartTransactionsLoading ||
-    currentMonthTransactionsLoading;
+    currentMonthTransactionsLoading ||
+    previousMonthTransactionsLoading;
   const resolvedError =
     error ??
     accountsError ??
@@ -654,7 +695,8 @@ export const DashboardPage: React.FC = () => {
     goalsError ??
     predictionError ??
     chartTransactionsError ??
-    currentMonthTransactionsError;
+    currentMonthTransactionsError ??
+    previousMonthTransactionsError;
   const budgetPercentage =
     data !== null && data.monthlyBudget > 0
       ? Math.round((data.budgetSpent / data.monthlyBudget) * 100)
@@ -678,6 +720,7 @@ export const DashboardPage: React.FC = () => {
     refreshPrediction();
     refreshChartTransactions();
     refreshCurrentMonthTransactions();
+    refreshPreviousMonthTransactions();
   };
 
   return (
@@ -791,6 +834,21 @@ export const DashboardPage: React.FC = () => {
               </Suspense>
               <section className="page-section" aria-label="Financial summary">
                 <div className="card-grid card-grid--4">
+                  <Suspense
+                    fallback={
+                      <article className="card" role="status" aria-label="Loading savings rate">
+                        <LoadingSpinner size={24} label="Loading savings rate" />
+                      </article>
+                    }
+                  >
+                    <SavingsRateCard
+                      currentMonthKey={currentMonthRange.startDate.slice(0, 7)}
+                      previousMonthKey={previousMonthRange.startDate.slice(0, 7)}
+                      currentMonthTransactions={filteredCurrentMonthTransactions}
+                      previousMonthTransactions={filteredPreviousMonthTransactions}
+                      currency={safeToSpendCurrency}
+                    />
+                  </Suspense>
                   {visibleWidgetIds.has('net-worth') ? (
                     <article className="card" aria-label="Net worth">
                       <div className="card__header">
