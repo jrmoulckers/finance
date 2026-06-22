@@ -32,6 +32,7 @@ export { GigDriverPage } from './GigDriverPage';
 export { PlanningPage } from './PlanningPage';
 export { HouseholdPage } from './HouseholdPage';
 export { CashFlowPage } from './CashFlowPage';
+export { CashRunwayPage } from './CashRunwayPage';
 export { InvoicesPage } from './InvoicesPage';
 export { NetWorthPage } from './NetWorthPage';
 export { SubscriptionsPage } from './SubscriptionsPage';
