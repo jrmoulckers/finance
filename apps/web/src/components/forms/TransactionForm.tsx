@@ -52,7 +52,6 @@ import {
   captureNow,
   createLocalTimestamp,
   getBrowserTimeZone,
-  getSupportedTimeZones,
   isLocalTimestampFieldKey,
   localTimestampFromCustomFields,
 } from '../../lib/transactions/local-timestamp';
@@ -372,7 +371,6 @@ export function TransactionForm({
   const [extraNotes, setExtraNotes] = useState('');
   const [localTime, setLocalTime] = useState('');
   const [localTimeZone, setLocalTimeZone] = useState(() => getBrowserTimeZone());
-  const supportedTimeZones = useMemo(() => getSupportedTimeZones(), []);
   const initialSnapshot = useMemo(() => buildTransactionSnapshot(initialData), [initialData]);
   const currentSnapshot = useMemo(
     () => ({
@@ -1563,9 +1561,9 @@ export function TransactionForm({
                   <fieldset className="form-group form-fieldset">
                     <legend className="form-group__label">Purchase local time &amp; zone</legend>
                     <p id="txn-local-time-hint" className="form-hint">
-                      Preserve the local time and time zone where the purchase happened so
-                      daily-spend and trip reports stay correct after you move. Defaults to now in
-                      your current zone. Leave blank to keep the calendar date only.
+                      Local time and zone where the purchase happened, so daily-spend and trip
+                      reports stay correct after you move. Defaults to now in your zone; clear to
+                      keep the calendar date only.
                     </p>
                     <div
                       style={{
@@ -1595,48 +1593,13 @@ export function TransactionForm({
                           id="txn-local-timezone"
                           className="form-input"
                           type="text"
-                          list="txn-timezone-options"
                           value={localTimeZone}
                           onChange={(e) => setLocalTimeZone(e.target.value)}
                           placeholder="Asia/Bangkok"
                           autoComplete="off"
                           aria-describedby="txn-local-time-hint"
                         />
-                        <datalist id="txn-timezone-options">
-                          {supportedTimeZones.map((zone) => (
-                            <option key={zone} value={zone} />
-                          ))}
-                        </datalist>
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
-                      <button
-                        type="button"
-                        className="form-button form-button--secondary"
-                        style={{
-                          fontSize: 'var(--type-scale-caption-font-size)',
-                          padding: 'var(--spacing-1) var(--spacing-2)',
-                        }}
-                        onClick={() => {
-                          const now = captureNow(getBrowserTimeZone());
-                          setLocalTime(now.localDateTime);
-                          setLocalTimeZone(now.timeZone ?? getBrowserTimeZone());
-                        }}
-                      >
-                        Use current time &amp; zone
-                      </button>
-                      <button
-                        type="button"
-                        className="form-button form-button--secondary"
-                        style={{
-                          fontSize: 'var(--type-scale-caption-font-size)',
-                          padding: 'var(--spacing-1) var(--spacing-2)',
-                        }}
-                        onClick={() => setLocalTime('')}
-                        disabled={!localTime}
-                      >
-                        Clear
-                      </button>
                     </div>
                   </fieldset>
 

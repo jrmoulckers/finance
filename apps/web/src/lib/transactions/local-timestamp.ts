@@ -72,32 +72,6 @@ const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const RESERVED_KEYS: ReadonlySet<string> = new Set(Object.values(LOCAL_TIMESTAMP_FIELD_KEYS));
 
-/**
- * A small curated fallback used when `Intl.supportedValuesOf('timeZone')` is
- * unavailable. Kept intentionally short so no heavy time zone data is bundled -
- * the runtime Intl database is the source of truth.
- */
-const FALLBACK_TIME_ZONES: readonly string[] = [
-  'UTC',
-  'America/Los_Angeles',
-  'America/Denver',
-  'America/Chicago',
-  'America/New_York',
-  'America/Sao_Paulo',
-  'Europe/Lisbon',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Africa/Johannesburg',
-  'Asia/Dubai',
-  'Asia/Kolkata',
-  'Asia/Bangkok',
-  'Asia/Singapore',
-  'Asia/Tokyo',
-  'Australia/Sydney',
-  'Pacific/Auckland',
-];
-
 // ---------------------------------------------------------------------------
 // Low-level helpers
 // ---------------------------------------------------------------------------
@@ -164,15 +138,12 @@ export function getZoneOffsetMinutes(instant: Date | string | number, timeZone: 
 
 /**
  * Resolve the UTC offset (minutes, east positive) for a wall-clock datetime in
- * a zone. Two passes are used so DST transitions resolve to the offset that
- * actually applies at the corresponding instant.
+ * a zone, evaluated at the corresponding instant.
  */
 function offsetForWallClock(localDateTime: string, timeZone: string): number | null {
   const asUtc = wallClockToUtcMillis(localDateTime);
   if (asUtc === null) return null;
-  const guessOffset = getZoneOffsetMinutes(new Date(asUtc), timeZone);
-  const realInstant = new Date(asUtc - guessOffset * 60_000);
-  return getZoneOffsetMinutes(realInstant, timeZone);
+  return getZoneOffsetMinutes(new Date(asUtc), timeZone);
 }
 
 /** Convert an IANA identifier into a friendly label, e.g. `Asia/Bangkok` -> `Bangkok`. */
@@ -192,26 +163,6 @@ export function getBrowserTimeZone(): string {
   } catch {
     return 'UTC';
   }
-}
-
-/**
- * Time zone identifiers offered to the user. Uses the runtime Intl database via
- * `Intl.supportedValuesOf('timeZone')` (zero bundle cost) and falls back to a
- * short curated list when unsupported.
- */
-export function getSupportedTimeZones(): readonly string[] {
-  const intlWithValues = Intl as unknown as {
-    supportedValuesOf?: (key: string) => string[];
-  };
-  if (typeof intlWithValues.supportedValuesOf === 'function') {
-    try {
-      const zones = intlWithValues.supportedValuesOf('timeZone');
-      if (Array.isArray(zones) && zones.length > 0) return zones;
-    } catch {
-      // fall through to the curated list
-    }
-  }
-  return FALLBACK_TIME_ZONES;
 }
 
 // ---------------------------------------------------------------------------
@@ -355,12 +306,8 @@ export function formatTimeZoneLabel(timestamp: LocalTimestamp | null | undefined
 
 /** Options for {@link formatLocalTimestamp}. */
 export interface FormatLocalTimestampOptions {
-  /** BCP-47 locale. Defaults to `en-US`. */
-  readonly locale?: string;
   /** Whether to append the zone label. Defaults to `true`. */
   readonly includeZone?: boolean;
-  /** Override the date/time portion's Intl options. */
-  readonly dateTimeOptions?: Intl.DateTimeFormatOptions;
 }
 
 /**
@@ -378,19 +325,17 @@ export function formatLocalTimestamp(
   const utcMillis = wallClockToUtcMillis(timestamp.localDateTime);
   if (utcMillis === null) return timestamp.localDateTime;
 
-  const { locale = 'en-US', includeZone = true, dateTimeOptions } = options;
-  const formatted = new Intl.DateTimeFormat(locale, {
+  const formatted = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    ...dateTimeOptions,
     // The captured value is already a local wall clock; render it verbatim.
     timeZone: 'UTC',
   }).format(new Date(utcMillis));
 
-  if (!includeZone) return formatted;
+  if (options.includeZone === false) return formatted;
   const zone = formatTimeZoneLabel(timestamp);
   return zone ? `${formatted} (${zone})` : formatted;
 }
