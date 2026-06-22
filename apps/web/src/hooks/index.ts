@@ -217,6 +217,8 @@ export { useNetWorth } from './useNetWorth';
 export type { UseNetWorthResult } from './useNetWorth';
 export { useSubscriptions } from './useSubscriptions';
 export type { UseSubscriptionsResult } from './useSubscriptions';
+export { useRemittances } from './useRemittances';
+export type { UseRemittancesResult } from './useRemittances';
 export { useRecommendations } from './useRecommendations';
 export type { UseRecommendationsResult } from './useRecommendations';
 export { useBankConnections } from './useBankConnections';

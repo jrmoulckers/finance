@@ -126,6 +126,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     description: 'Freelance invoice pipeline and expected income.',
   },
   {
+    id: 'remittances',
+    label: 'Remittances',
+    href: '/remittances',
+    icon: <Icon name={IconToken.TRANSFER} />,
+    group: 'money',
+    mobilePriority: 14,
+    description: 'Track money sent abroad: fees, FX rate and what recipients receive.',
+  },
+  {
     id: 'investments',
     label: 'Investments',
     href: '/investments',

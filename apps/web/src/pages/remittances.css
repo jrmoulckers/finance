@@ -1,0 +1,390 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the Remittances page (issue #2170).
+ *
+ * All visual values use design-token custom properties (see theme/tokens.css).
+ * Logical properties (margin-inline, padding-inline) keep the layout correct
+ * under RTL locales. Motion and contrast respect user preferences.
+ */
+
+.remittance-page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.remittance-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-8) 0;
+}
+
+.remittance-page__header {
+  margin-bottom: var(--spacing-6);
+}
+
+.remittance-page__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-2);
+}
+
+.remittance-page__subtitle {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* ---------------------------------------------------------------------------
+ * Sections
+ * ------------------------------------------------------------------------- */
+
+.remittance-section {
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.remittance-section__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-4);
+}
+
+/* ---------------------------------------------------------------------------
+ * Form
+ * ------------------------------------------------------------------------- */
+
+.remittance-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.remittance-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-4);
+}
+
+.remittance-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.remittance-field__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+
+.remittance-field__input {
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  inline-size: 100%;
+}
+
+.remittance-field__input:focus-visible {
+  outline: 2px solid var(--semantic-interactive-default);
+  outline-offset: 2px;
+}
+
+.remittance-field__input[aria-invalid='true'] {
+  border-color: var(--semantic-status-negative);
+}
+
+.remittance-field__help {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0;
+}
+
+.remittance-field__error {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-status-negative);
+  margin: 0;
+}
+
+.remittance-fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-3);
+  margin: 0;
+}
+
+.remittance-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+}
+
+.remittance-form__banner-error {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-status-negative);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-status-negative);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-3);
+  margin: 0;
+}
+
+.remittance-form__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.remittance-form__submit {
+  padding: var(--spacing-2) var(--spacing-6);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-inverse);
+  background: var(--semantic-interactive-default);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+}
+
+.remittance-form__submit:hover {
+  background: var(--semantic-interactive-hover);
+}
+
+.remittance-form__submit:focus-visible {
+  outline: 2px solid var(--semantic-interactive-default);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Estimate (live preview)
+ * ------------------------------------------------------------------------- */
+
+.remittance-estimate {
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-4);
+}
+
+.remittance-estimate__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-3);
+  margin: 0;
+}
+
+.remittance-estimate__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.remittance-estimate__item dt {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.remittance-estimate__item dd {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.remittance-estimate__item--hero dd {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-status-positive);
+}
+
+.remittance-estimate__item--cost dd {
+  color: var(--semantic-status-negative);
+}
+
+.remittance-estimate__hint dd {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------------------------------------------------------------------------
+ * Summary
+ * ------------------------------------------------------------------------- */
+
+.remittance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.remittance-metric {
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-3);
+}
+
+.remittance-metric__label {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0 0 var(--spacing-1);
+}
+
+.remittance-metric__value {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.remittance-metric__value--positive {
+  color: var(--semantic-status-positive);
+}
+
+.remittance-metric__value--negative {
+  color: var(--semantic-status-negative);
+}
+
+/* ---------------------------------------------------------------------------
+ * History
+ * ------------------------------------------------------------------------- */
+
+.remittance-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.remittance-card {
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-4);
+}
+
+.remittance-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+}
+
+.remittance-card__name {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.remittance-card__meta {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: var(--spacing-1) 0 0;
+}
+
+.remittance-card__delete {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-status-negative);
+  background: transparent;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-1) var(--spacing-3);
+  cursor: pointer;
+}
+
+.remittance-card__delete:focus-visible {
+  outline: 2px solid var(--semantic-interactive-default);
+  outline-offset: 2px;
+}
+
+.remittance-card__figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-3);
+  margin: 0;
+}
+
+.remittance-card__figures dt {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.remittance-card__figures dd {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+  margin: var(--spacing-1) 0 0;
+}
+
+.remittance-card__received {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-status-positive);
+}
+
+/* ---------------------------------------------------------------------------
+ * Empty state
+ * ------------------------------------------------------------------------- */
+
+.remittance-empty {
+  text-align: center;
+}
+
+.remittance-empty__title {
+  font-size: var(--type-scale-title-font-size);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-2);
+}
+
+.remittance-empty__body {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Utilities & responsive
+ * ------------------------------------------------------------------------- */
+
+.remittance-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 480px) {
+  .remittance-field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .remittance-form__submit {
+    inline-size: 100%;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .remittance-section,
+  .remittance-card,
+  .remittance-field__input {
+    border-width: 2px;
+  }
+}
