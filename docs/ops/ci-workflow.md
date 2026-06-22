@@ -38,7 +38,7 @@ This document describes the continuous integration (CI) workflow for the Finance
 
 ## Path Filtering & Required Checks
 
-The monorepo scopes expensive platform builds to the code they affect, but **path scoping must never hide a required status check**. A check is _required_ when its context name appears in `main`'s branch protection (e.g. `ESLint & Prettier`, `Build` for web, `Build & Test` for the mobile/desktop platforms, the CodeQL analyses, `Secret Detection`, `submit-gradle`).
+The monorepo scopes expensive platform builds to the code they affect, but **path scoping must never hide a required status check**. A check is _required_ when its context name appears in `main`'s branch protection (e.g. `ESLint & Prettier`, `Build` for web, `Build & Test` for the mobile/desktop platforms, the CodeQL analyses, `Secret Detection`, and the always-run `Required Checks Gatekeeper`).
 
 ### Do not use trigger-level path filters on required checks
 
@@ -88,6 +88,16 @@ Behavior:
 - **Push to `main`** → the `github.event_name != 'pull_request'` short-circuit makes the real job always run.
 
 Each workflow includes **its own file** in the `relevant` filter so that editing the CI definition re-runs that platform's real build on the PR (self-validation). The `changes` job in each platform workflow carries an inline `GUARDRAIL` comment restating this rule. See `.github/instructions/workflows.instructions.md` and ADR `docs/architecture/0006-cicd-strategy.md`.
+
+### Externally-produced checks can't skip-with-success — don't require them
+
+The skip-with-success pattern only works for checks **we emit from our own workflows**. Some statuses are produced by GitHub-managed or third-party apps we don't control — notably `submit-gradle`, posted by the dynamic **Automatic Dependency Submission (Gradle)** workflow, which only runs when `ci-shared.yml` generates the dependency graph (and `ci-shared.yml` is Gradle-path-filtered). On a PR that touches no Gradle paths, that status **never reports**, leaving the PR `BLOCKED` with no `--admin`-free way out.
+
+Such checks must **not** be branch-protection required contexts. `submit-gradle` was removed from the required set on 2026-06-21; the underlying Gradle security gate (`gradle-dependency-check`) still runs inside the gatekeeper, and dependency submission still runs on Gradle PRs to feed the dependency graph — it just no longer blocks merges.
+
+### The Required Checks Gatekeeper anchor
+
+`ci-security.yml` runs on **every** PR (no path filter) and ends in a `Required Checks Gatekeeper` job (`if: always()`) that asserts the security suite and re-runs ESLint/Prettier as always-on backstops. It is a branch-protection required context, giving one always-green anchor that cannot go missing even if a path filter regresses.
 
 ---
 
