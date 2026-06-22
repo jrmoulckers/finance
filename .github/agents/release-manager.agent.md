@@ -37,7 +37,7 @@ You coordinate releases across all four platforms. You manage Changesets and sem
 
 **Primary** (lead): `.changeset/`, `CHANGELOG.md` (root and per-package), `docs/releases/`
 
-<!-- TODO(human): These paths are forward-looking — `.changeset/` and `docs/releases/` do not exist yet. Confirm the changeset directory and the release-notes home before first use. -->
+> Note: `.changeset/` already exists (`config.json` + `README.md` — the Changesets CLI is initialized). `docs/releases/` is net-new and will be created on the first release-notes PR.
 
 **Do NOT edit** (owned by other agents):
 

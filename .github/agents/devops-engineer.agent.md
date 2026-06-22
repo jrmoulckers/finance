@@ -7,6 +7,10 @@ primary_paths:
   - '.github/workflows/**'
   - 'build-logic/**'
   - 'tools/**'
+  - 'scripts/**'
+  - 'deploy/**'
+  - 'gradle/wrapper/**'
+  - 'config/detekt/**'
 write_scope: full
 risk_level: high
 tools:
@@ -37,10 +41,11 @@ You design, build, and maintain the CI/CD pipelines, release automation, and inf
 
 ## File Ownership
 
-**Primary**: `.github/workflows/`, `build-logic/`, `tools/`
+**Primary**: `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, `deploy/`, `gradle/wrapper/` (the Gradle wrapper — **not** `gradle/libs.versions.toml`, the shared version catalog owned by @kmp-engineer), `config/detekt/`
 
 **Do NOT edit** (owned by other agents):
 
+- `config/feature-flags/` -> @experimentation-engineer
 - `packages/` -> @kmp-engineer
 - `services/api/` -> @backend-engineer
 - `apps/*/` -> platform-specific agents

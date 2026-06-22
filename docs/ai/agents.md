@@ -5,13 +5,13 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 ## How Agents Work
 
 1. Agent definitions live in `.github/agents/<name>.agent.md`
-2. Each file contains YAML frontmatter (name, description, tools) and a Markdown body with detailed instructions
+2. Each file contains YAML frontmatter (`name`, `description`, `model`, `when_to_use`, `primary_paths`, `write_scope`, `risk_level`, `tools`) and a Markdown body with the standard sections (Role, Capabilities, File Ownership, Workflow, Planning & Verification, Technical Context, Boundaries, Human-Gated Operations) — see [`agents.instructions.md`](../../.github/instructions/agents.instructions.md)
 3. Copilot loads the relevant agent when invoked by name in chat (e.g., `@architect`)
 4. The GitHub Copilot Coding Agent can also use these definitions when working on issues autonomously
 
 ## Available Agents
 
-> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **22** agents. This page describes the established roster in detail; the full current list (including agents added in 2026-06 — `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, and `qa-tester`) is summarized in [Agent Instructions](agent-instructions.md#agent-types). A generated `ai-manifest` is planned to keep these in sync — see the [CHANGELOG](CHANGELOG.md).
+> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **23** agents — every one is detailed on this page. Agents added in 2026-06: `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, `qa-tester`, and `experimentation-engineer` (feature flags & A/B testing). Run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to surface any drift between the counts on this page and the filesystem — see the [CHANGELOG](CHANGELOG.md).
 >
 > **Reviewer roles are asymmetric:** `accessibility-reviewer` is **review-only** (routes fixes to the owning platform agent); `security-reviewer` is the **emergency fixer** (may implement CRITICAL/HIGH security fixes in any directory, with owning-agent coordination).
 
@@ -47,7 +47,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 - Updating AI workflow documentation
 - Writing onboarding guides
 
-**Tools:** read, edit, search
+**Tools:** read, edit, search, shell
 
 ---
 
@@ -111,7 +111,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 - Multi-currency support
 - Shared/family finance features
 
-**Tools:** read, edit, search
+**Tools:** read, edit, search, shell
 
 **Critical rule:** Never use floating point for money. Use integer cents or fixed-precision decimals.
 
@@ -294,7 +294,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 - Defining user acquisition strategy and channels
 - Drafting privacy-focused messaging
 
-**Tools:** read, edit, search
+**Tools:** read, edit, search, shell
 
 ---
 
@@ -312,7 +312,119 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 - Designing freemium boundaries that drive conversion
 - Evaluating subscription platform options
 
-**Tools:** read, edit, search
+**Tools:** read, edit, search, shell
+
+---
+
+### `@ai-ops-engineer` — AI Ops Engineer
+
+**File:** `.github/agents/ai-ops-engineer.agent.md`
+
+**Purpose:** Owns the AI configuration surface — agent definitions, skills, path instructions, prompts, evals, and the generated AI manifest. Keeps the roster coherent and self-consistent.
+
+**When to use:**
+
+- Adding, editing, or auditing `.github/agents/`, `.github/skills/`, `.github/instructions/`, `.github/prompts/`
+- Designing prompt templates, agent hand-offs, and evals
+- Regenerating the AI manifest after roster/skill changes
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@release-manager` — Release Manager
+
+**File:** `.github/agents/release-manager.agent.md`
+
+**Purpose:** Runs Changesets/semver versioning, authors release notes and changelogs, and prepares store submissions (submission stays human-gated).
+
+**When to use:**
+
+- Adding Changeset entries and updating changelogs
+- Drafting user-facing and technical release notes
+- Sequencing a multi-platform release and go/no-go readiness
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@performance-engineer` — Performance Engineer
+
+**File:** `.github/agents/performance-engineer.agent.md`
+
+**Purpose:** Owns performance budgets, cross-platform profiling, benchmarking, and regression triage (Core Web Vitals, startup, bundle size).
+
+**When to use:**
+
+- Defining or tuning `performance.budget.json`
+- Investigating LCP/INP/CLS, startup, or bundle-size regressions
+- Setting up profiling/benchmark configs
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@data-engineer` — Data Engineer
+
+**File:** `.github/agents/data-engineer.agent.md`
+
+**Purpose:** Designs privacy-preserving **product analytics** — event schemas, taxonomy, and the metrics catalog. Owns the schema/catalog (in `docs/analytics/` + `config/analytics/`, net-new) and co-owns the telemetry files in `packages/core/.../analytics/`. Not to be confused with financial reporting/insights, which belong to `@finance-domain`/platform agents.
+
+**When to use:**
+
+- Defining or versioning analytics event schemas and taxonomy
+- Designing consent-gated, PII-free metrics and the metrics catalog
+- Co-designing client emission (with `@kmp-engineer`) and storage (with `@backend-engineer`)
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@experimentation-engineer` — Experimentation Engineer
+
+**File:** `.github/agents/experimentation-engineer.agent.md`
+
+**Purpose:** Owns feature flags, A/B tests, staged rollouts, and experiment readouts. Leads `config/feature-flags/`; pairs with `@data-engineer` on success metrics and `@devops-engineer` on validation CI.
+
+**When to use:**
+
+- Adding or ramping a feature flag (`flags.json`) with rollout % and expiry
+- Designing an A/B test or holdout (hypothesis, variants, guardrails)
+- Reading out an experiment and deciding ship/hold/rollback
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@localization-engineer` — Localization Engineer
+
+**File:** `.github/agents/localization-engineer.agent.md`
+
+**Purpose:** Owns i18n/l10n — locale catalogs, string-key conventions, the financial-terminology glossary, and formatting (currency/date/number, pluralization, RTL readiness). Leads `config/i18n/` + `docs/i18n/` (net-new); platform string code stays with platform/KMP agents.
+
+**When to use:**
+
+- Defining locale packs, string keys, and the financial-terminology glossary
+- Reviewing currency/date/number formatting and pluralization
+- Assessing text expansion and right-to-left readiness
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@qa-tester` — QA Tester
+
+**File:** `.github/agents/qa-tester.agent.md`
+
+**Purpose:** Orchestrates live testing sessions, discovers and investigates bugs, and files well-scoped GitHub issues. **Read-only on code** — never modifies production code; hands off to `@product-manager` for prioritization.
+
+**When to use:**
+
+- Running an interactive testing session across web/iOS/Android/Windows
+- Triaging console errors and scoping bugs (platform duplicates) before filing
+- Dispatching parallel investigation agents for reported bugs
+
+**Tools:** read, search, shell
 
 ---
 
@@ -322,24 +434,33 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 Each agent has primary ownership over a set of directories. When multiple agents run in parallel (fleet mode), only the owning agent edits files in its area:
 
-| Agent                     | Primary ownership                                                  |
-| ------------------------- | ------------------------------------------------------------------ |
-| `@kmp-engineer`           | `packages/`                                                        |
-| `@backend-engineer`       | `services/api/`                                                    |
-| `@web-engineer`           | `apps/web/`                                                        |
-| `@android-engineer`       | `apps/android/`                                                    |
-| `@ios-engineer`           | `apps/ios/`                                                        |
-| `@windows-engineer`       | `apps/windows/`                                                    |
-| `@design-engineer`        | `config/tokens/`, generated token files                            |
-| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/`                     |
-| `@docs-writer`            | `docs/`, root `*.md` files                                         |
-| `@security-reviewer`      | Security fixes in any directory; review-only for non-security code |
-| `@accessibility-reviewer` | Read-only review — never edits production code                     |
-| `@architect`              | `docs/architecture/`, ADRs; read-only for code                     |
-| `@finance-domain`         | `packages/core/` business logic (shared with `@kmp-engineer`)      |
-| `@product-manager`        | `docs/business/`, GitHub Issues (read/create)                      |
-| `@marketing-strategist`   | `docs/marketing/`, app store copy drafts                           |
-| `@business-analyst`       | `docs/business/`, pricing/revenue docs                             |
+| Agent                       | Primary ownership                                                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@kmp-engineer`             | `packages/`                                                                                                                  |
+| `@backend-engineer`         | `services/api/`                                                                                                              |
+| `@web-engineer`             | `apps/web/`                                                                                                                  |
+| `@android-engineer`         | `apps/android/`                                                                                                              |
+| `@ios-engineer`             | `apps/ios/`                                                                                                                  |
+| `@windows-engineer`         | `apps/windows/`                                                                                                              |
+| `@design-engineer`          | `packages/design-tokens/` (token sources, Style Dictionary config + outputs)                                                 |
+| `@devops-engineer`          | `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, `deploy/`, `gradle/wrapper/`, `config/detekt/`                   |
+| `@docs-writer`              | `docs/`, root `*.md` files                                                                                                   |
+| `@security-reviewer`        | Security fixes in any directory; review-only for non-security code                                                           |
+| `@accessibility-reviewer`   | Read-only review — never edits production code                                                                               |
+| `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                               |
+| `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                |
+| `@product-manager`          | `docs/business/roadmap/`†, GitHub Issues (read/create)                                                                       |
+| `@marketing-strategist`     | `docs/marketing/`, app store copy drafts                                                                                     |
+| `@business-analyst`         | `docs/business/pricing/`†, `docs/business/revenue/`†                                                                         |
+| `@ai-ops-engineer`          | `.github/agents/`, `.github/skills/`, `.github/instructions/`, `.github/prompts/`                                            |
+| `@data-engineer`            | `docs/analytics/`†, `config/analytics/`† + telemetry files in `packages/core/.../analytics/` (co-owned with `@kmp-engineer`) |
+| `@experimentation-engineer` | `config/feature-flags/`                                                                                                      |
+| `@performance-engineer`     | `performance.budget.json`, `docs/performance/`†                                                                              |
+| `@localization-engineer`    | `config/i18n/`†, `docs/i18n/`†                                                                                               |
+| `@release-manager`          | `.changeset/`, `CHANGELOG.md` (root + per-package), `docs/releases/`†                                                        |
+| `@qa-tester`                | Read-only across `apps/*`, `packages/`, `services/api/`; files GitHub Issues                                                 |
+
+> † Net-new / planned home — created on first use (see the owning agent's File Ownership section). Cross-cutting code (analytics, i18n, performance) lives in platform-owned dirs; these agents own the schema/catalog/config + docs.
 
 **Shared config** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) — one agent per run. Assign to `@kmp-engineer` (Gradle) or `@devops-engineer` (Node/CI).
 
@@ -351,21 +472,27 @@ Each agent has primary ownership over a set of directories. When multiple agents
 
 ### Adding a New Agent
 
-1. Create `.github/agents/<name>.agent.md` with YAML frontmatter:
+1. Create `.github/agents/<name>.agent.md` with the full eight-key YAML frontmatter:
    ```yaml
    ---
    name: <agent-name>
-   description: >
-     Clear description of the agent's purpose and when to use it.
+   description: One-line summary shown in the agent picker.
+   model: standard # or strong-reasoning
+   when_to_use: 'A sentence telling the orchestrator when to route here.'
+   primary_paths:
+     - 'path/the/agent/owns/**'
+   write_scope: full # or scoped-write | read-only
+   risk_level: low # or medium | high
    tools:
      - read
      - edit
      - search
    ---
    ```
-2. Write the Markdown body with: Mission, Expertise Areas, Key Responsibilities, and Boundaries
-3. Update this document (`docs/ai/agents.md`) with the new agent's details
-4. Test the agent by invoking it in Copilot Chat
+2. Write the Markdown body with the **eight standard sections**: Role, Capabilities, File Ownership, Workflow, Planning & Verification, Technical Context, Boundaries, and Human-Gated Operations (see [`agents.instructions.md`](../../.github/instructions/agents.instructions.md))
+3. Update this document (`docs/ai/agents.md`) and [`agent-instructions.md`](agent-instructions.md) with the new agent, and add its ownership row above
+4. Run `npm run ai:manifest:check` to confirm the roster/skill counts in the docs still match the filesystem
+5. Test the agent by invoking it in Copilot Chat
 
 ## Best Practices
 
@@ -416,4 +543,4 @@ For docs-only PRs, use: `npm run ci:check:quick`
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.)
-- **16 agents** are defined in `.github/agents/`
+- **23 agents** are defined in `.github/agents/` (source of truth; drift surfaced by `npm run ai:manifest:check`)

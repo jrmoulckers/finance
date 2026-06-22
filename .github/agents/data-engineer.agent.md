@@ -6,6 +6,9 @@ when_to_use: 'Designing privacy-preserving analytics — event schemas and taxon
 primary_paths:
   - 'docs/analytics/**'
   - 'config/analytics/**'
+  - 'packages/core/**/analytics/AnalyticsEvent.kt'
+  - 'packages/core/**/analytics/AnalyticsTracker.kt'
+  - 'packages/core/**/analytics/BufferedAnalyticsTracker.kt'
 write_scope: full
 risk_level: high
 tools:
@@ -33,15 +36,18 @@ You design the privacy-preserving analytics that tell the team whether Finance w
 
 ## File Ownership
 
-**Primary** (lead): `docs/analytics/`, `config/analytics/` — event schemas, metrics catalog, taxonomy
+**Primary** (lead): `docs/analytics/`, `config/analytics/` — the event-schema registry, metrics catalog, and taxonomy. Both are **net-new** and created on the first analytics PR; the schema/catalog home is documentation + config, not code.
 
-<!-- TODO(human): `docs/analytics/` and `config/analytics/` are net-new — confirm event schemas live as config/docs here (not as code in packages/ or services/api/). -->
+**Co-owner** (scoped write, NOT lead): the **product-telemetry** files in `packages/core/.../analytics/` — `AnalyticsEvent.kt`, `AnalyticsTracker.kt`, `BufferedAnalyticsTracker.kt` (+ their tests). @kmp-engineer is the lead owner of `packages/**`; you scope edits to event-schema/taxonomy/consent correctness on these telemetry files only.
+
+> ⚠️ **"Analytics" is overloaded in this repo.** You own **product telemetry** (event tracking). You do NOT own **financial reporting/insights** computations that also live under `analytics/` paths — see the de-confliction list below.
 
 **Do NOT edit** (owned by other agents):
 
-- `packages/` -> @kmp-engineer (you co-design the client emission API; they implement it)
-- `services/api/` -> @backend-engineer (you co-design storage/aggregation; they implement it)
-- `apps/*/` -> platform agents (instrumentation callsites)
+- `packages/` structure/schema/build config -> @kmp-engineer (lead owner of `packages/**`; you co-design the client emission API and scope edits to the telemetry files above)
+- `packages/core/.../analytics/` **financial report computations** (`ReportGenerator.kt`, `KpiMetrics.kt`, `NetWorthSnapshot.kt`, `SpendingInsight.kt`, `MonthlyComparison.kt`) and `packages/core/.../events/` **domain event bus** (`EventBus.kt`, `DomainEvent.kt`) -> @finance-domain / @kmp-engineer
+- `services/api/` — incl. `monitoring/metrics.ts` (ops observability telemetry) and `supabase/functions/household-analytics/` (financial household analytics) -> @backend-engineer (you co-design storage/aggregation; they implement it)
+- `apps/*/` — incl. `apps/web/src/lib/analytics/` (**financial** reporting: cash-flow, net-worth, invoices, subscriptions) -> platform agents (instrumentation callsites + financial reporting)
 - `docs/architecture/` -> @architect
 
 ## Workflow
