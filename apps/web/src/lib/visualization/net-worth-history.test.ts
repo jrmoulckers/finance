@@ -33,7 +33,11 @@ function makeAccount(
 }
 
 function makeTransaction(
-  overrides: Partial<Transaction> & { type: Transaction['type']; amount: number; date: string },
+  overrides: Omit<Partial<Transaction>, 'amount'> & {
+    type: Transaction['type'];
+    amount: number;
+    date: string;
+  },
 ): Transaction {
   return {
     id: overrides.id ?? `txn-${overrides.date}-${overrides.amount}`,
@@ -61,6 +65,13 @@ function makeTransaction(
     statementDescription: null,
     customFields: null,
     extraNotes: null,
+    counterpartyName: null,
+    counterpartyAccountId: null,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: true,
   } as Transaction;
 }
 

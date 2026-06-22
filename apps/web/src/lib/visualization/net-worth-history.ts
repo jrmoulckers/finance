@@ -40,7 +40,7 @@ export function buildNetWorthHistorySeries(
   const monthCount = Math.max(0, Math.floor(months));
   if (monthCount === 0) return [];
 
-  const currentNetWorthCents = computeCurrentNetWorth(accounts).netWorth;
+  const currentNetWorthCents = computeCurrentNetWorth([...accounts]).netWorth;
   const windows = buildPeriodWindows('monthly', now, monthCount);
 
   return windows.map((window) => {
