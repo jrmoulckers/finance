@@ -19,6 +19,10 @@ import {
 import { useBills } from '../hooks';
 import type { Bill, BillFrequency, BillStatus } from '../kmp/bridge';
 import { AppIcon, type IconName } from '../components/icons';
+import { BillCalendarView } from '../components/bills/BillCalendarView';
+
+/** Which Bills view is active. */
+type BillsView = 'list' | 'payday';
 
 /** Human-readable labels for bill frequency. */
 const FREQUENCY_LABELS: Record<BillFrequency, string> = {
@@ -110,6 +114,7 @@ export const BillsPage: React.FC = () => {
   const [deletingBill, setDeletingBill] = useState<Bill | null>(null);
   const [isDeletingBill, setIsDeletingBill] = useState(false);
   const [statusFilter, setStatusFilter] = useState<BillStatus | 'ALL'>('ALL');
+  const [view, setView] = useState<BillsView>('list');
 
   const filteredBills =
     statusFilter === 'ALL' ? bills : bills.filter((b) => b.status === statusFilter);
@@ -263,161 +268,213 @@ export const BillsPage: React.FC = () => {
             </div>
           </section>
 
-          {/* Filter */}
+          {/* View toggle: list vs. payday-aligned calendar */}
           <div
+            role="group"
+            aria-label="Choose bills view"
             style={{
+              display: 'inline-flex',
+              gap: 'var(--spacing-1)',
               marginBottom: 'var(--spacing-4)',
-              display: 'flex',
-              gap: 'var(--spacing-2)',
-              flexWrap: 'wrap',
+              padding: 'var(--spacing-1)',
+              borderRadius: 'var(--radius-md, 8px)',
+              backgroundColor: 'var(--semantic-surface-secondary, #f3f4f6)',
             }}
           >
-            <label htmlFor="bill-status-filter" className="sr-only">
-              Filter by status
-            </label>
-            <select
-              id="bill-status-filter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as BillStatus | 'ALL')}
-              aria-label="Filter bills by status"
+            <button
+              type="button"
+              className="form-button"
+              aria-pressed={view === 'list'}
+              onClick={() => setView('list')}
               style={{
-                padding: 'var(--spacing-2) var(--spacing-3)',
-                borderRadius: 'var(--radius-sm, 4px)',
-                border: '1px solid var(--semantic-border, #d1d5db)',
-                backgroundColor: 'var(--semantic-background-primary)',
+                fontSize: 'var(--type-scale-caption-font-size)',
+                backgroundColor:
+                  view === 'list' ? 'var(--semantic-background-primary)' : 'transparent',
                 color: 'var(--semantic-text-primary)',
-                fontSize: 'var(--type-scale-body-font-size)',
               }}
             >
-              <option value="ALL">All Bills</option>
-              <option value="UPCOMING">Upcoming</option>
-              <option value="OVERDUE">Overdue</option>
-              <option value="PAID">Paid</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
+              <AppIcon name="clipboard" /> List
+            </button>
+            <button
+              type="button"
+              className="form-button"
+              aria-pressed={view === 'payday'}
+              onClick={() => setView('payday')}
+              style={{
+                fontSize: 'var(--type-scale-caption-font-size)',
+                backgroundColor:
+                  view === 'payday' ? 'var(--semantic-background-primary)' : 'transparent',
+                color: 'var(--semantic-text-primary)',
+              }}
+            >
+              <AppIcon name="wallet" /> By payday
+            </button>
           </div>
 
-          {/* Bills List */}
-          <section aria-label="Bill list">
-            <div className="card-grid">
-              {filteredBills.map((bill) => (
-                <article
-                  key={bill.id}
-                  className="card"
-                  aria-label={`${bill.name}: ${STATUS_LABELS[bill.status]}`}
+          {view === 'payday' ? (
+            <BillCalendarView bills={bills} />
+          ) : (
+            <>
+              {/* Filter */}
+              <div
+                style={{
+                  marginBottom: 'var(--spacing-4)',
+                  display: 'flex',
+                  gap: 'var(--spacing-2)',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <label htmlFor="bill-status-filter" className="sr-only">
+                  Filter by status
+                </label>
+                <select
+                  id="bill-status-filter"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as BillStatus | 'ALL')}
+                  aria-label="Filter bills by status"
+                  style={{
+                    padding: 'var(--spacing-2) var(--spacing-3)',
+                    borderRadius: 'var(--radius-sm, 4px)',
+                    border: '1px solid var(--semantic-border, #d1d5db)',
+                    backgroundColor: 'var(--semantic-background-primary)',
+                    color: 'var(--semantic-text-primary)',
+                    fontSize: 'var(--type-scale-body-font-size)',
+                  }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 'var(--spacing-3)',
-                      marginBottom: 'var(--spacing-3)',
-                    }}
-                  >
-                    <h3 style={{ fontWeight: 'var(--font-weight-semibold)', margin: 0 }}>
-                      <Link
-                        to={`/bills/${bill.id}`}
-                        style={{ textDecoration: 'none', color: 'inherit' }}
-                        aria-label={`View details for ${bill.name}`}
+                  <option value="ALL">All Bills</option>
+                  <option value="UPCOMING">Upcoming</option>
+                  <option value="OVERDUE">Overdue</option>
+                  <option value="PAID">Paid</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+
+              {/* Bills List */}
+              <section aria-label="Bill list">
+                <div className="card-grid">
+                  {filteredBills.map((bill) => (
+                    <article
+                      key={bill.id}
+                      className="card"
+                      aria-label={`${bill.name}: ${STATUS_LABELS[bill.status]}`}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          gap: 'var(--spacing-3)',
+                          marginBottom: 'var(--spacing-3)',
+                        }}
                       >
-                        <AppIcon name={getStatusIcon(bill.status)} /> {bill.name}
-                      </Link>
-                    </h3>
-                    <span
-                      style={{
-                        ...getStatusStyle(bill.status),
-                        padding: 'var(--spacing-1) var(--spacing-2)',
-                        borderRadius: 'var(--radius-sm, 4px)',
-                        fontSize: 'var(--type-scale-caption-font-size)',
-                        fontWeight: 'var(--font-weight-semibold)',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {STATUS_LABELS[bill.status]}
-                    </span>
-                  </div>
+                        <h3 style={{ fontWeight: 'var(--font-weight-semibold)', margin: 0 }}>
+                          <Link
+                            to={`/bills/${bill.id}`}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
+                            aria-label={`View details for ${bill.name}`}
+                          >
+                            <AppIcon name={getStatusIcon(bill.status)} /> {bill.name}
+                          </Link>
+                        </h3>
+                        <span
+                          style={{
+                            ...getStatusStyle(bill.status),
+                            padding: 'var(--spacing-1) var(--spacing-2)',
+                            borderRadius: 'var(--radius-sm, 4px)',
+                            fontSize: 'var(--type-scale-caption-font-size)',
+                            fontWeight: 'var(--font-weight-semibold)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {STATUS_LABELS[bill.status]}
+                        </span>
+                      </div>
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'baseline',
-                      marginBottom: 'var(--spacing-2)',
-                    }}
-                  >
-                    <p className="card__value" style={{ margin: 0 }}>
-                      <CurrencyDisplay amount={bill.amount.amount} currency={bill.currency.code} />
-                    </p>
-                    <span
-                      style={{
-                        fontSize: 'var(--type-scale-caption-font-size)',
-                        color: 'var(--semantic-text-secondary)',
-                      }}
-                    >
-                      {FREQUENCY_LABELS[bill.frequency]}
-                    </span>
-                  </div>
-
-                  <p
-                    style={{
-                      fontSize: 'var(--type-scale-caption-font-size)',
-                      color: 'var(--semantic-text-secondary)',
-                      marginBottom: 'var(--spacing-2)',
-                    }}
-                  >
-                    {bill.payee} · {formatDueDate(bill.dueDate)}
-                  </p>
-
-                  {bill.isAutoPay && (
-                    <p
-                      style={{
-                        fontSize: 'var(--type-scale-caption-font-size)',
-                        color: 'var(--semantic-positive, #059669)',
-                        marginBottom: 'var(--spacing-2)',
-                      }}
-                    >
-                      <AppIcon name="lightning" /> Auto-pay enabled
-                    </p>
-                  )}
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 'var(--spacing-2)',
-                      marginTop: 'var(--spacing-3)',
-                    }}
-                  >
-                    {bill.status === 'UPCOMING' || bill.status === 'OVERDUE' ? (
-                      <button
-                        type="button"
-                        className="form-button form-button--primary"
-                        onClick={() => handleMarkPaid(bill.id)}
-                        aria-label={`Mark ${bill.name} as paid`}
-                        style={{ fontSize: 'var(--type-scale-caption-font-size)' }}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'baseline',
+                          marginBottom: 'var(--spacing-2)',
+                        }}
                       >
-                        Mark Paid
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="icon-button"
-                      onClick={() => handleRequestDelete(bill)}
-                      aria-label={`Delete ${bill.name}`}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M3 6h18" />
-                        <path d="M8 6V4h8v2" />
-                        <path d="M19 6l-1 14H6L5 6" />
-                        <path d="M10 11v6" />
-                        <path d="M14 11v6" />
-                      </svg>
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+                        <p className="card__value" style={{ margin: 0 }}>
+                          <CurrencyDisplay
+                            amount={bill.amount.amount}
+                            currency={bill.currency.code}
+                          />
+                        </p>
+                        <span
+                          style={{
+                            fontSize: 'var(--type-scale-caption-font-size)',
+                            color: 'var(--semantic-text-secondary)',
+                          }}
+                        >
+                          {FREQUENCY_LABELS[bill.frequency]}
+                        </span>
+                      </div>
+
+                      <p
+                        style={{
+                          fontSize: 'var(--type-scale-caption-font-size)',
+                          color: 'var(--semantic-text-secondary)',
+                          marginBottom: 'var(--spacing-2)',
+                        }}
+                      >
+                        {bill.payee} · {formatDueDate(bill.dueDate)}
+                      </p>
+
+                      {bill.isAutoPay && (
+                        <p
+                          style={{
+                            fontSize: 'var(--type-scale-caption-font-size)',
+                            color: 'var(--semantic-positive, #059669)',
+                            marginBottom: 'var(--spacing-2)',
+                          }}
+                        >
+                          <AppIcon name="lightning" /> Auto-pay enabled
+                        </p>
+                      )}
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 'var(--spacing-2)',
+                          marginTop: 'var(--spacing-3)',
+                        }}
+                      >
+                        {bill.status === 'UPCOMING' || bill.status === 'OVERDUE' ? (
+                          <button
+                            type="button"
+                            className="form-button form-button--primary"
+                            onClick={() => handleMarkPaid(bill.id)}
+                            aria-label={`Mark ${bill.name} as paid`}
+                            style={{ fontSize: 'var(--type-scale-caption-font-size)' }}
+                          >
+                            Mark Paid
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="icon-button"
+                          onClick={() => handleRequestDelete(bill)}
+                          aria-label={`Delete ${bill.name}`}
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4h8v2" />
+                            <path d="M19 6l-1 14H6L5 6" />
+                            <path d="M10 11v6" />
+                            <path d="M14 11v6" />
+                          </svg>
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
         </>
       )}
 
