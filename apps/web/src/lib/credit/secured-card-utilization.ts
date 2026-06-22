@@ -247,9 +247,7 @@ export function computeSecuredCardUtilization(
   const isOverLimit = creditLimitCents > 0 && balanceCents > creditLimitCents;
 
   const targetBalanceCents =
-    creditLimitCents > 0
-      ? Math.floor((creditLimitCents * targetUtilizationPercent) / 100)
-      : null;
+    creditLimitCents > 0 ? Math.floor((creditLimitCents * targetUtilizationPercent) / 100) : null;
   const payDownToTargetCents =
     targetBalanceCents === null ? 0 : Math.max(0, balanceCents - targetBalanceCents);
   const remainingHeadroomCents =

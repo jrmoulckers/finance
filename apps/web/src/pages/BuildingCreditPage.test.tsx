@@ -46,9 +46,7 @@ describe('BuildingCreditPage', () => {
 
     // 150 / 500 = 30% -> caution
     expect(screen.getByText('Getting high')).toBeInTheDocument();
-    expect(
-      screen.getByText('Your utilization is creeping up at 30%'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Your utilization is creeping up at 30%')).toBeInTheDocument();
     expect(screen.getByRole('meter', { name: 'Credit utilization' })).toHaveAttribute(
       'aria-valuenow',
       '30',

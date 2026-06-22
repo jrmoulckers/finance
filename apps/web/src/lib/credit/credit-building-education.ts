@@ -47,14 +47,16 @@ export const CREDIT_BUILDING_LESSONS: readonly CreditLesson[] = [
     title: 'What a credit score is',
     summary: 'A number lenders use to gauge how reliably you repay.',
     body: 'A credit score is a three-digit number, usually between 300 and 850, that sums up your track record of borrowing and repaying. Lenders look at it to decide whether to approve a loan or card and what interest rate to offer. You are not born with one; it builds over time as you use credit responsibly.',
-    takeaway: 'A higher score can mean easier approvals and lower interest, so it is worth building early.',
+    takeaway:
+      'A higher score can mean easier approvals and lower interest, so it is worth building early.',
   },
   {
     id: 'why-utilization-matters',
     title: 'Why utilization matters',
     summary: 'Using a small share of your limit signals you are in control.',
     body: 'Utilization is how much of your available credit you are using. If your limit is $500 and your balance is $150, your utilization is 30%. Lenders generally like to see this under 30%, and lower is better. High utilization can make you look stretched, even if you pay the balance off later.',
-    takeaway: 'Keep your balance well below your limit, and pay it down before the statement closes.',
+    takeaway:
+      'Keep your balance well below your limit, and pay it down before the statement closes.',
   },
   {
     id: 'on-time-payments',
@@ -68,7 +70,8 @@ export const CREDIT_BUILDING_LESSONS: readonly CreditLesson[] = [
     title: 'How secured cards build credit',
     summary: 'A refundable deposit unlocks a starter card that reports to bureaus.',
     body: 'A secured card asks for a refundable deposit, often equal to your credit limit, which lowers the risk for the lender so people with no history can get approved. You use it like a normal card, and the issuer reports your activity to the credit bureaus. Use a little each month, pay it off, and your history grows. Many issuers later refund the deposit and graduate you to a regular card.',
-    takeaway: 'Treat a secured card like a debit card: spend small, pay in full, and let the history build.',
+    takeaway:
+      'Treat a secured card like a debit card: spend small, pay in full, and let the history build.',
   },
   {
     id: 'credit-history-takes-time',
