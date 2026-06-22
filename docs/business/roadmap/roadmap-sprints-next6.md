@@ -5,7 +5,7 @@
 **Milestone Focus:** v1.2 Finalization (Sprint 11), v2.0-alpha (Sprints 12–14), v2.0-beta (Sprints 15–16)
 **Sprint Cadence:** 2-week sprints
 **Status:** Planned
-**Predecessor:** [Sprint Plan 6–10](sprint-plan-6-10.md) · [Sprint Plan 11–12](sprint-plan-11-12.md) · [v1.2 Release & v2.0 Roadmap](v12-release-plan-v20-roadmap.md)
+**Predecessor:** [Sprint Plan 6–10](../sprints/sprint-plan-6-10.md) · [Sprint Plan 11–12](../sprints/sprint-plan-11-12.md) · [v1.2 Release & v2.0 Roadmap](v12-release-plan-v20-roadmap.md)
 
 ---
 

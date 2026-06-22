@@ -66,7 +66,7 @@ scope decisions to all teams.
 ### Deliverables
 
 1. **v10-scope-review.md** — Complete issue-by-issue classification with
-   rationale (see docs/business/v10-scope-review.md)
+   rationale (see docs/business/roadmap/v10-scope-review.md)
 2. **Updated GitHub milestones** — Descoped issues moved to post-launch or v1.1
 3. **Updated Sprint 2–5 plans** — Adjusted for reduced scope
 4. **Communication** — Scope decisions distributed to all agents/teams
@@ -112,7 +112,7 @@ operations. Produce a stakeholder sign-off and launch day execution plan.
 ### Deliverables
 
 1. **v10-go-no-go-review.md** — Complete launch readiness checklist with
-   traffic-light status (see docs/business/v10-go-no-go-review.md)
+   traffic-light status (see docs/business/roadmap/v10-go-no-go-review.md)
 2. **Launch day execution plan** — Minute-by-minute coordination for T-48h
    through T+48h
 3. **Rollback plan** — Documented and tested recovery procedures

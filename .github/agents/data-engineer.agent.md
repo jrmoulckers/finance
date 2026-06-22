@@ -6,6 +6,7 @@ when_to_use: 'Designing privacy-preserving analytics — event schemas and taxon
 primary_paths:
   - 'docs/analytics/**'
   - 'config/analytics/**'
+  - 'docs/business/growth/**'
   - 'packages/core/**/analytics/AnalyticsEvent.kt'
   - 'packages/core/**/analytics/AnalyticsTracker.kt'
   - 'packages/core/**/analytics/BufferedAnalyticsTracker.kt'
@@ -36,7 +37,7 @@ You design the privacy-preserving analytics that tell the team whether Finance w
 
 ## File Ownership
 
-**Primary** (lead): `docs/analytics/`, `config/analytics/` — the event-schema registry, metrics catalog, and taxonomy. Both are **net-new** and created on the first analytics PR; the schema/catalog home is documentation + config, not code.
+**Primary** (lead): `docs/analytics/`, `config/analytics/` — the event-schema registry, metrics catalog, and taxonomy. Both are **net-new** and created on the first analytics PR; the schema/catalog home is documentation + config, not code. Also lead of `docs/business/growth/` — the growth & product-analytics reports (cohort, churn, feature usage, KPI dashboard spec, growth-metrics framework, predictive-model validation).
 
 **Co-owner** (scoped write, NOT lead): the **product-telemetry** files in `packages/core/.../analytics/` — `AnalyticsEvent.kt`, `AnalyticsTracker.kt`, `BufferedAnalyticsTracker.kt` (+ their tests). @kmp-engineer is the lead owner of `packages/**`; you scope edits to event-schema/taxonomy/consent correctness on these telemetry files only.
 

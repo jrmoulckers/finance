@@ -5,7 +5,7 @@
 > **Sprint:** v2.0 Launch Campaign
 > **Last Updated:** 2025-07-31
 > **Author:** Marketing Strategist (AI agent)
-> **Related:** [Brand Voice Guide](brand-voice-guide.md) · [Competitive Positioning](competitive-positioning.md) · [Privacy Messaging](privacy-marketing-messaging.md) · [V2 Feature Specs](../business/v2-feature-specifications.md)
+> **Related:** [Brand Voice Guide](brand-voice-guide.md) · [Competitive Positioning](competitive-positioning.md) · [Privacy Messaging](privacy-marketing-messaging.md) · [V2 Feature Specs](../business/roadmap/v2-feature-specifications.md)
 
 ---
 

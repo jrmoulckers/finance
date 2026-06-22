@@ -5,7 +5,7 @@
 > **Sprint:** v2.0 Launch Campaign
 > **Last Updated:** 2025-07-31
 > **Author:** Marketing Strategist (AI agent)
-> **Related:** [Onboarding Messaging Audit](onboarding-messaging-audit.md) · [Brand Voice Guide](brand-voice-guide.md) · [V2 Feature Specs](../business/v2-feature-specifications.md) · [UX Principles](../design/ux-principles.md)
+> **Related:** [Onboarding Messaging Audit](onboarding-messaging-audit.md) · [Brand Voice Guide](brand-voice-guide.md) · [V2 Feature Specs](../business/roadmap/v2-feature-specifications.md) · [UX Principles](../design/ux-principles.md)
 
 ---
 

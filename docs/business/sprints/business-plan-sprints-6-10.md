@@ -6,7 +6,7 @@
 > **Purpose:** Define business analysis, monetization, and revenue optimization tasks for the 5 post-launch sprints
 > **Sprint Cadence:** 2-week sprints
 > **Prerequisite:** v1.0 launched (Sprint 5 complete), app live on all stores, real users generating data
-> **Related:** [Sprint Plan 1–5](sprint-plan-1-5.md) · [Marketing Plan 1–5](marketing-plan-sprints-1-5.md)
+> **Related:** [Sprint Plan 1–5](sprint-plan-1-5.md) · [Marketing Plan 1–5](../marketing/marketing-plan-sprints-1-5.md)
 
 ---
 
@@ -80,7 +80,7 @@ Build the business intelligence foundation: launch a metrics dashboard with real
 
 **Deliverables:**
 
-- `docs/business/kpi-dashboard-spec.md` — Dashboard specification with metric definitions, data sources, update cadence, and visualization requirements
+- `docs/business/growth/kpi-dashboard-spec.md` — Dashboard specification with metric definitions, data sources, update cadence, and visualization requirements
 - KPI baseline report (Week 1 and Week 2 snapshots) covering:
   - DAU, WAU, MAU across all 4 platforms
   - Session frequency and duration by platform
@@ -117,7 +117,7 @@ Build the business intelligence foundation: launch a metrics dashboard with real
 
 **Deliverables:**
 
-- `docs/business/cohort-analysis-sprint6.md` — First cohort analysis report containing:
+- `docs/business/growth/cohort-analysis-sprint6.md` — First cohort analysis report containing:
   - **Cohort definitions:** Segment users by acquisition date (daily/weekly cohorts), platform, and behavior pattern
   - **Activation analysis:** What % of users complete key activation events within their first session?
     - Create first account
@@ -158,7 +158,7 @@ Build the business intelligence foundation: launch a metrics dashboard with real
 
 **Deliverables:**
 
-- `docs/business/churn-analysis-sprint6.md` — Early churn report containing:
+- `docs/business/growth/churn-analysis-sprint6.md` — Early churn report containing:
   - **Drop-off funnel:** Where in the user journey do users abandon? (Install → Open → Register → First Action → Day 2 → Day 7 → Day 30)
   - **Churn timing:** When do most users churn? (Day 1? Day 3? Day 7?)
   - **Churn signals:** What behavioral patterns precede churn? (e.g., users who never create a budget churn 3× faster)
@@ -245,7 +245,7 @@ Define Premium conversion tracking framework, analyze first pricing A/B test res
 
 **Deliverables:**
 
-- `docs/business/premium-conversion-tracking.md` — Conversion tracking specification:
+- `docs/business/revenue/premium-conversion-tracking.md` — Conversion tracking specification:
   - **Full conversion funnel definition:**
     1. Free user → Sees Premium feature (impression)
     2. Taps "Learn More" or paywall trigger (consideration)
@@ -299,7 +299,7 @@ Define Premium conversion tracking framework, analyze first pricing A/B test res
 
 **Deliverables:**
 
-- `docs/business/pricing-validation-sprint7.md` — Pricing analysis report:
+- `docs/business/pricing/pricing-validation-sprint7.md` — Pricing analysis report:
   - **Competitive pricing update:** Refresh competitor pricing (YNAB, Monarch, Copilot, Goodbudget) — have any changed since pre-launch?
   - **A/B test design** (if engineering capacity allows):
     - Variant A: $4.99/mo, $39.99/yr (current plan, ~33% annual savings)
@@ -344,7 +344,7 @@ Define Premium conversion tracking framework, analyze first pricing A/B test res
 
 **Deliverables:**
 
-- `docs/business/revenue-model-validation-sprint7.md` — Revenue model update:
+- `docs/business/revenue/revenue-model-validation-sprint7.md` — Revenue model update:
   - **Projection vs. Actuals:**
     - Pre-launch assumptions: Conversion rate, ARPU, churn rate, growth rate
     - Actual results (first 2–4 weeks of Premium)
@@ -433,7 +433,7 @@ Analyze international market opportunity to inform i18n prioritization, build co
 
 **Deliverables:**
 
-- `docs/business/international-expansion-analysis.md` — Market expansion report:
+- `docs/business/revenue/international-expansion-analysis.md` — Market expansion report:
   - **Market sizing (top 10 target markets):**
     - Market size (smartphone penetration × finance app adoption rate × addressable population)
     - Competitive landscape per market (which competitors are strong where?)
@@ -487,7 +487,7 @@ Analyze international market opportunity to inform i18n prioritization, build co
 
 **Deliverables:**
 
-- `docs/business/feature-usage-report-sprint8.md` — Feature analytics report:
+- `docs/business/growth/feature-usage-report-sprint8.md` — Feature analytics report:
   - **Feature adoption rates** (% of MAU who used each feature in the past 30 days):
     - Core: Accounts, Transactions, Budgets, Goals, Categories
     - Reporting: Insights, Charts, Export
@@ -539,7 +539,7 @@ Analyze international market opportunity to inform i18n prioritization, build co
 
 **Deliverables:**
 
-- `docs/business/growth-analysis-sprint8.md` — Growth report:
+- `docs/business/growth/growth-analysis-sprint8.md` — Growth report:
   - **Acquisition channel breakdown:**
     - Organic (App Store / Play Store search) — Volume, CAC ($0), quality (retention by channel)
     - ASO (keyword-driven) — Which keywords drive installs? Quality of users?
@@ -634,7 +634,7 @@ Quantify the business impact of AI-powered features, validate predictive model a
 
 **Deliverables:**
 
-- `docs/business/ai-feature-roi-sprint9.md` — AI feature impact report:
+- `docs/business/revenue/ai-feature-roi-sprint9.md` — AI feature impact report:
   - **Feature-by-feature impact analysis:**
 
     | AI Feature                   | Adoption Rate | Engagement Δ | Retention Δ | Premium Conversion Δ | User Satisfaction |
@@ -689,7 +689,7 @@ Quantify the business impact of AI-powered features, validate predictive model a
 
 **Deliverables:**
 
-- `docs/business/predictive-model-validation-sprint9.md` — Model validation report:
+- `docs/business/growth/predictive-model-validation-sprint9.md` — Model validation report:
   - **Prediction accuracy metrics:**
     - Spending predictions: Mean Absolute Error (MAE), Mean Absolute Percentage Error (MAPE)
     - Budget recommendations: % of users who accepted recommendation, % who found it useful
@@ -739,7 +739,7 @@ Quantify the business impact of AI-powered features, validate predictive model a
 
 **Deliverables:**
 
-- `docs/business/freemium-optimization-sprint9.md` — Freemium boundary analysis:
+- `docs/business/pricing/freemium-optimization-sprint9.md` — Freemium boundary analysis:
   - **Current boundary assessment:**
 
     | Feature            | Current Tier | Adoption (Free) | Demand Signal (Gate Hits) | Premium Conversion Lift | Recommendation |

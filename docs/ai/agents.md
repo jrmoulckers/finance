@@ -434,31 +434,31 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 Each agent has primary ownership over a set of directories. When multiple agents run in parallel (fleet mode), only the owning agent edits files in its area:
 
-| Agent                       | Primary ownership                                                                                                            |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `@kmp-engineer`             | `packages/`                                                                                                                  |
-| `@backend-engineer`         | `services/api/`                                                                                                              |
-| `@web-engineer`             | `apps/web/`                                                                                                                  |
-| `@android-engineer`         | `apps/android/`                                                                                                              |
-| `@ios-engineer`             | `apps/ios/`                                                                                                                  |
-| `@windows-engineer`         | `apps/windows/`                                                                                                              |
-| `@design-engineer`          | `packages/design-tokens/` (token sources, Style Dictionary config + outputs)                                                 |
-| `@devops-engineer`          | `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, `deploy/`, `gradle/wrapper/`, `config/detekt/`                   |
-| `@docs-writer`              | `docs/`, root `*.md` files                                                                                                   |
-| `@security-reviewer`        | Security fixes in any directory; review-only for non-security code                                                           |
-| `@accessibility-reviewer`   | Read-only review — never edits production code                                                                               |
-| `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                               |
-| `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                |
-| `@product-manager`          | `docs/business/roadmap/`†, GitHub Issues (read/create)                                                                       |
-| `@marketing-strategist`     | `docs/marketing/`, app store copy drafts                                                                                     |
-| `@business-analyst`         | `docs/business/pricing/`†, `docs/business/revenue/`†                                                                         |
-| `@ai-ops-engineer`          | `.github/agents/`, `.github/skills/`, `.github/instructions/`, `.github/prompts/`                                            |
-| `@data-engineer`            | `docs/analytics/`†, `config/analytics/`† + telemetry files in `packages/core/.../analytics/` (co-owned with `@kmp-engineer`) |
-| `@experimentation-engineer` | `config/feature-flags/`                                                                                                      |
-| `@performance-engineer`     | `performance.budget.json`, `docs/performance/`†                                                                              |
-| `@localization-engineer`    | `config/i18n/`†, `docs/i18n/`†                                                                                               |
-| `@release-manager`          | `.changeset/`, `CHANGELOG.md` (root + per-package), `docs/releases/`†                                                        |
-| `@qa-tester`                | Read-only across `apps/*`, `packages/`, `services/api/`; files GitHub Issues                                                 |
+| Agent                       | Primary ownership                                                                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@kmp-engineer`             | `packages/`                                                                                                                                           |
+| `@backend-engineer`         | `services/api/`                                                                                                                                       |
+| `@web-engineer`             | `apps/web/`                                                                                                                                           |
+| `@android-engineer`         | `apps/android/`                                                                                                                                       |
+| `@ios-engineer`             | `apps/ios/`                                                                                                                                           |
+| `@windows-engineer`         | `apps/windows/`                                                                                                                                       |
+| `@design-engineer`          | `packages/design-tokens/` (token sources, Style Dictionary config + outputs)                                                                          |
+| `@devops-engineer`          | `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, `deploy/`, `gradle/wrapper/`, `config/detekt/`                                            |
+| `@docs-writer`              | `docs/`, root `*.md` files                                                                                                                            |
+| `@security-reviewer`        | Security fixes in any directory; review-only for non-security code                                                                                    |
+| `@accessibility-reviewer`   | Read-only review — never edits production code                                                                                                        |
+| `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                                                        |
+| `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                         |
+| `@product-manager`          | `docs/business/roadmap/`, `docs/business/sprints/`, GitHub Issues (read/create)                                                                       |
+| `@marketing-strategist`     | `docs/marketing/`, `docs/business/marketing/`, app store copy drafts                                                                                  |
+| `@business-analyst`         | `docs/business/pricing/`, `docs/business/revenue/`                                                                                                    |
+| `@ai-ops-engineer`          | `.github/agents/`, `.github/skills/`, `.github/instructions/`, `.github/prompts/`                                                                     |
+| `@data-engineer`            | `docs/analytics/`†, `config/analytics/`†, `docs/business/growth/` + telemetry files in `packages/core/.../analytics/` (co-owned with `@kmp-engineer`) |
+| `@experimentation-engineer` | `config/feature-flags/`                                                                                                                               |
+| `@performance-engineer`     | `performance.budget.json`, `docs/performance/`†                                                                                                       |
+| `@localization-engineer`    | `config/i18n/`†, `docs/i18n/`†                                                                                                                        |
+| `@release-manager`          | `.changeset/`, `CHANGELOG.md` (root + per-package), `docs/releases/`†                                                                                 |
+| `@qa-tester`                | Read-only across `apps/*`, `packages/`, `services/api/`; files GitHub Issues                                                                          |
 
 > † Net-new / planned home — created on first use (see the owning agent's File Ownership section). Cross-cutting code (analytics, i18n, performance) lives in platform-owned dirs; these agents own the schema/catalog/config + docs.
 

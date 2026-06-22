@@ -1,7 +1,7 @@
 ﻿# Feature Roadmap
 
 > **Generated**: 2025-07-17
-> **Based on**: [Issue Triage Report](./issue-triage-report.md) — 247 open issues triaged
+> **Based on**: [Issue Triage Report](../sprints/issue-triage-report.md) — 247 open issues triaged
 
 ## Milestone Timeline
 

@@ -7,10 +7,10 @@
 **Document Owner:** Product Management
 **Date:** 2025-07-30
 **Related Issues:** #337, #338, #339, #344
-**Related:** [Monetization Roadmap](monetization-roadmap.md) ·
-[Premium Conversion Tracking](premium-conversion-tracking.md) ·
+**Related:** [Monetization Roadmap](../revenue/monetization-roadmap.md) ·
+[Premium Conversion Tracking](../revenue/premium-conversion-tracking.md) ·
 [Freemium Optimization](freemium-optimization-sprint9.md) ·
-[Stage 12 Feature Specs](stage-12-feature-specifications.md)
+[Stage 12 Feature Specs](../roadmap/stage-12-feature-specifications.md)
 
 ---
 

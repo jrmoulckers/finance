@@ -7,9 +7,9 @@
 **Document Owner:** Product Management
 **Date:** 2025-07-30
 **Source Issues:** #337, #338, #339, #340, #341, #342, #343, #344
-**Related:** [Monetization Roadmap](monetization-roadmap.md) ·
-[Premium Conversion Tracking](premium-conversion-tracking.md) ·
-[Freemium Optimization](freemium-optimization-sprint9.md)
+**Related:** [Monetization Roadmap](../revenue/monetization-roadmap.md) ·
+[Premium Conversion Tracking](../revenue/premium-conversion-tracking.md) ·
+[Freemium Optimization](../pricing/freemium-optimization-sprint9.md)
 
 ---
 

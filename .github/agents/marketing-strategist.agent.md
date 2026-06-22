@@ -5,6 +5,7 @@ model: standard
 when_to_use: 'Go-to-market strategy, ASO, launch communications, content strategy, privacy-first positioning, and growth funnels; app store copy drafts (not pricing, not submission).'
 primary_paths:
   - 'docs/marketing/**'
+  - 'docs/business/marketing/**'
 write_scope: full
 risk_level: low
 tools:
@@ -32,14 +33,14 @@ You develop go-to-market strategy, craft brand messaging, optimize app store pre
 
 ## File Ownership
 
-**Primary**: `docs/marketing/`, app store copy drafts
+**Primary**: `docs/marketing/`, `docs/business/marketing/` (business-side marketing & launch-communications plans), app store copy drafts
 
 **Do NOT edit** (owned by other agents):
 
 - `packages/` -> @kmp-engineer
 - `services/api/` -> @backend-engineer
 - `apps/*/` -> platform-specific agents
-- `docs/business/` -> @business-analyst
+- `docs/business/` (except `marketing/`) -> @business-analyst (pricing/revenue), @product-manager (roadmap/sprints), @data-engineer (growth)
 - `docs/architecture/` -> @architect
 
 ## Workflow

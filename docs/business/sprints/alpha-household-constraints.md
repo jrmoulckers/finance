@@ -12,8 +12,8 @@
 
 The Finance app's data model is built around the **household** as the primary
 tenant and data-isolation boundary (see
-[ADR-0013](../architecture/0013-multi-tenancy-architecture.md) and the
-[RLS review](../architecture/security/rls-review.md)). For the single-user
+[ADR-0013](../../architecture/0013-multi-tenancy-architecture.md) and the
+[RLS review](../../architecture/security/rls-review.md)). For the single-user
 alpha, multi-user household features are **not yet validated** and must be
 constrained so testers interact only with a predictable, single-owner
 experience. This document defines what "single-user alpha" means, which
@@ -318,8 +318,8 @@ All test suites must verify single-user assumptions hold:
 
 ## References
 
-- [ADR-0013: Multi-Tenancy Architecture](../architecture/0013-multi-tenancy-architecture.md)
-- [RLS Policy Review](../architecture/security/rls-review.md)
-- [ADR-0004: Auth & Security Architecture](../architecture/0004-auth-security-architecture.md)
-- [Rollout Strategy](../architecture/rollout-strategy.md)
-- [Feature Flags Implementation](../architecture/implementation/885-feature-flags.md)
+- [ADR-0013: Multi-Tenancy Architecture](../../architecture/0013-multi-tenancy-architecture.md)
+- [RLS Policy Review](../../architecture/security/rls-review.md)
+- [ADR-0004: Auth & Security Architecture](../../architecture/0004-auth-security-architecture.md)
+- [Rollout Strategy](../../architecture/rollout-strategy.md)
+- [Feature Flags Implementation](../../architecture/implementation/885-feature-flags.md)
