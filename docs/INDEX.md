@@ -264,6 +264,7 @@ AI-first development workflow documentation. See the [AI README](ai/README.md) f
 | [Workflow Metrics](ai/workflow-metrics.md)                            | Metrics for measuring agent workflow efficiency and quality                  |
 | [Responsible AI](ai/responsible-ai.md)                                | Responsible AI framework — ethics, transparency, and commitments             |
 | [AI Governance](ai/governance.md)                                     | NIST AI RMF crosswalk + EU AI Act note mapped to this repo's controls        |
+| [Incident Response](ai/incident-response.md)                          | Runbook for agent misbehavior — injection, secret exposure, runaway merges   |
 | [Restrictions](ai/restrictions.md)                                    | Human-gated operations — what AI agents must not do without approval         |
 | [AI Code Policy](ai/ai-code-policy.md)                                | Ownership, copyright, and contributor responsibilities for AI-generated code |
 | [AI Practice CHANGELOG](ai/CHANGELOG.md)                              | Decision log for how the AI practice has evolved over time                   |
@@ -296,10 +297,10 @@ AI-first development workflow documentation. See the [AI README](ai/README.md) f
 | Compliance   |       8 |
 | Design       |       6 |
 | Legal        |       5 |
-| AI           |      23 |
+| AI           |      24 |
 | Testing      |       1 |
 | Audits       |       1 |
-| **Total**    | **122** |
+| **Total**    | **123** |
 
 ---
 

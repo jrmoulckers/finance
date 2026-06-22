@@ -4,8 +4,8 @@
   //   * Every npx server is pinned to an EXACT version — no @latest, no floating tags.
   //   * No secret is ever passed as a --flag=value on argv; secrets flow via ${input:...} (env/header).
   //   * Fabricated/non-existent packages were replaced with the official upstream packages.
-  // TODO(human): Verify EVERY pinned version below against the upstream npm registry / repo before first
-  //   use, then bump deliberately. Pins below are plausible placeholders current as of 2026-06.
+  // Pins below were VERIFIED against the upstream npm registry on 2026-06-21 (latest published
+  //   versions at that time). Bump deliberately and re-verify the version + publisher on any change.
   "servers": {
     "github": {
       "type": "http",
@@ -19,16 +19,16 @@
       "type": "stdio",
       "command": "npx",
       // @modelcontextprotocol/server-sequential-thinking — publisher: Anthropic (modelcontextprotocol), MIT. Local only, no network/secrets.
-      // TODO(human): verify pin at https://www.npmjs.com/package/@modelcontextprotocol/server-sequential-thinking
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@2025.7.1"]
+      // Verified 2026-06-21: https://www.npmjs.com/package/@modelcontextprotocol/server-sequential-thinking
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@2025.12.18"]
     },
     "memory": {
       "type": "stdio",
       "command": "npx",
       // @modelcontextprotocol/server-memory — publisher: Anthropic (modelcontextprotocol), MIT.
       // PRIVACY: NEVER persist PII, financial data, or secrets to the memory store (see docs/ai/mcp.md).
-      // TODO(human): verify pin at https://www.npmjs.com/package/@modelcontextprotocol/server-memory
-      "args": ["-y", "@modelcontextprotocol/server-memory@2025.7.1"]
+      // Verified 2026-06-21: https://www.npmjs.com/package/@modelcontextprotocol/server-memory
+      "args": ["-y", "@modelcontextprotocol/server-memory@2026.1.26"]
     },
     "filesystem": {
       "type": "stdio",
@@ -37,16 +37,20 @@
       // LEAST-PRIVILEGE (#2879): rooted at an explicit dedicated dir via ${input:filesystem_root}, NOT the whole workspace.
       // WARNING: this server has NO deny-glob support and CAN read gitignored secrets under its root.
       //   Do NOT place .env*, *.key, or secrets/** under the served root. Prefer a dedicated, secret-free workdir.
-      // TODO(human): verify pin at https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem
-      "args": ["-y", "@modelcontextprotocol/server-filesystem@2025.7.1", "${input:filesystem_root}"]
+      // Verified 2026-06-21: https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem@2026.1.14",
+        "${input:filesystem_root}"
+      ]
     },
     "context7": {
       "type": "stdio",
       "command": "npx",
       // @upstash/context7-mcp — publisher: Upstash, MIT.
       // PRIVACY/DATA-FLOW: makes EXTERNAL network calls (sends library/query strings to Upstash). Do not send repo/financial data.
-      // TODO(human): verify pin at https://www.npmjs.com/package/@upstash/context7-mcp
-      "args": ["-y", "@upstash/context7-mcp@1.0.14"]
+      // Verified 2026-06-21: https://www.npmjs.com/package/@upstash/context7-mcp
+      "args": ["-y", "@upstash/context7-mcp@3.2.1"]
     },
     "supabase": {
       "type": "stdio",
@@ -54,10 +58,10 @@
       // @supabase/mcp-server-supabase — publisher: Supabase, Apache-2.0. (Replaces fabricated @nicepkg/supabase-mcp.)
       // Use a READ-ONLY scoped token, never service_role (bypasses RLS).
       // The Management API token flows via the SUPABASE_ACCESS_TOKEN env var, NEVER on argv.
-      // TODO(human): verify pin at https://www.npmjs.com/package/@supabase/mcp-server-supabase
+      // Verified 2026-06-21: https://www.npmjs.com/package/@supabase/mcp-server-supabase
       "args": [
         "-y",
-        "@supabase/mcp-server-supabase@0.4.5",
+        "@supabase/mcp-server-supabase@0.8.2",
         "--read-only",
         "--project-ref=${input:supabase_project_ref}"
       ],
@@ -69,8 +73,8 @@
       "type": "stdio",
       "command": "npx",
       // @playwright/mcp — publisher: Microsoft, Apache-2.0. (Replaces fabricated @anthropic/mcp-server-playwright; the @anthropic npm scope is unclaimed.)
-      // TODO(human): verify pin against https://github.com/microsoft/playwright-mcp (npm: @playwright/mcp)
-      "args": ["-y", "@playwright/mcp@0.0.41"]
+      // Verified 2026-06-21 against https://github.com/microsoft/playwright-mcp (npm: @playwright/mcp)
+      "args": ["-y", "@playwright/mcp@0.0.76"]
     }
   },
   "inputs": [

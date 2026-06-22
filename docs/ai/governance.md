@@ -74,15 +74,15 @@ _Analyze, assess, benchmark, and monitor AI risk._
 
 _Allocate resources to treat risks; respond, recover, communicate._
 
-| Control                                             | Status      | Where                                                                                                      |
-| --------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
-| Branch protection prevents direct writes to `main`  | ✅ In place | [`branch-protection.md`](../architecture/branch-protection.md) (requires human setup)                      |
-| Scoped self-merge (own PRs only) + quality gate     | ✅ In place | [`restrictions.md` § 2](restrictions.md), [Control Environment](responsible-ai.md#the-control-environment) |
-| CI self-healing loop with escalation                | ✅ In place | [`fleet-operations.md`](fleet-operations.md#ci-monitoring-and-self-healing)                                |
-| Human revert authority over any merged change       | ✅ In place | Standard git + maintainer access                                                                           |
-| Gated high-risk ops (secrets, schema, releases, $)  | ✅ In place | [`restrictions.md`](restrictions.md) categories 3–8                                                        |
-| Incident-response runbook for **agent misbehavior** | 🔴 Gap      | No runbook for prompt-injection / runaway-agent / bad-merge scenarios                                      |
-| Production deploys require human approval           | ✅ In place | [`deployment-pipeline.md`](../deployment-pipeline.md) `production` environment                             |
+| Control                                             | Status      | Where                                                                                                                          |
+| --------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Branch protection prevents direct writes to `main`  | ✅ In place | [`branch-protection.md`](../architecture/branch-protection.md) (requires human setup)                                          |
+| Scoped self-merge (own PRs only) + quality gate     | ✅ In place | [`restrictions.md` § 2](restrictions.md), [Control Environment](responsible-ai.md#the-control-environment)                     |
+| CI self-healing loop with escalation                | ✅ In place | [`fleet-operations.md`](fleet-operations.md#ci-monitoring-and-self-healing)                                                    |
+| Human revert authority over any merged change       | ✅ In place | Standard git + maintainer access                                                                                               |
+| Gated high-risk ops (secrets, schema, releases, $)  | ✅ In place | [`restrictions.md`](restrictions.md) categories 3–8                                                                            |
+| Incident-response runbook for **agent misbehavior** | ✅ In place | [`incident-response.md`](incident-response.md) — prompt-injection / secret-exposure / runaway-merge / destructive-op playbooks |
+| Production deploys require human approval           | ✅ In place | [`deployment-pipeline.md`](../deployment-pipeline.md) `production` environment                                                 |
 
 ## EU AI Act Note
 
@@ -119,10 +119,10 @@ The following require a human (and, where noted, legal counsel) — agents must 
 
 1. **Legal AI classification.** Obtain counsel's determination of EU AI Act risk tier (and applicable U.S. state AI laws) for both the development practice and any planned product AI feature. _Owner: human + legal._
 2. **Separation of duties.** Expand `CODEOWNERS` beyond a single maintainer and add path-based required reviewers for `services/api/`, database migrations, and RLS policies. _Owner: repo admin._
-3. **Harden the quality gate.** Promote the remaining security scans (CodeQL JVM, dependency review, secret detection, npm audit) and an always-on gatekeeper job to **required/blocking** status so "CI green" cannot be true while a security scan failed or was skipped. _Owner: devops/ai-ops._
-4. **Stand up measurement.** Implement the workflow-metrics collector and an agent-output eval harness so prompt/skill changes have a quality signal. _Owner: ai-ops/data-engineer._
-5. **Author an agent-misbehavior incident-response runbook** (prompt injection, credential exposure, runaway merges). _Owner: security + ai-ops._
-6. **Resolve MCP supply-chain risks** (replace non-existent packages with pinned official ones; remove `service_role` from any agent MCP context). Tracked in [`mcp.md`](mcp.md). _Owner: ai-ops/security._
+3. **Harden the quality gate (enable in GitHub).** The always-on **Required Checks Gatekeeper** job and blocking security scans now exist in CI (#2860/#2877); a repo admin must mark the gatekeeper **required** in branch protection and enable "Include administrators" so "CI green" cannot be bypassed. _Owner: repo admin._ See [`branch-protection.md`](../../.github/branch-protection.md).
+4. **Finish measurement.** The workflow-metrics collector and the golden-task eval harness are scaffolded (#2865/#2862/#2866); wire the eval `resolveCandidate()` runner and stand up the metrics dashboard. _Owner: ai-ops/data-engineer._
+5. **Operationalize the incident-response runbook** — the runbook is authored at [`incident-response.md`](incident-response.md); run a quarterly tabletop drill and keep the incident log current. _Owner: security + ai-ops._
+6. **MCP supply-chain risks — resolved (verify).** Fabricated packages were replaced with pinned official ones and `service_role` was removed (#2856/#2857/#2858, shipped). Re-verify pins on each bump. Tracked in [`mcp.md`](mcp.md). _Owner: ai-ops/security._
 
 ---
 

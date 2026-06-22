@@ -8,6 +8,20 @@ Entries are newest-first. Use ISO dates (`YYYY-MM`). Each entry should answer: _
 
 ---
 
+## 2026-06 — Audit human-action follow-up
+
+Follow-up to the audit remediation below, closing the actionable items that were
+left as `Needs Human Action` where an agent could in fact complete them.
+
+- **Verified & corrected MCP pins.** All 7 MCP servers in [`.vscode/mcp.json`](../../.vscode/mcp.json) were verified against the npm registry (2026-06-21) and bumped to the actual latest published versions (the prior pins were placeholders); the `TODO(human): verify pin` notes are resolved.
+- **Fixed a wrong pinned action SHA.** The `gitleaks-action` pin was `44c470ff…` (an _untagged_ commit); corrected to `ff98106e…`, the commit tagged **v2.3.9**. `actions/checkout` / `setup-node` / `upload-artifact` pins were confirmed to match their tags and the "verify" comments removed.
+- **Made `CODEOWNERS` valid.** Removed the invalid `@jrmoulckers-org/security-reviewers` placeholder team (an unknown handle that broke CODEOWNERS validation). Adding a real second reviewer remains a human step.
+- **Authored the incident-response runbook.** New [`incident-response.md`](incident-response.md) with playbooks for prompt injection, secret exposure, runaway merges, and destructive ops — closing the governance "🔴 Gap".
+- **Added a branch-protection apply script.** [`tools/setup-branch-protection.sh`](../../tools/setup-branch-protection.sh) lets a maintainer apply the documented `main` protection with one command (human-run only).
+- Updated [`governance.md`](governance.md) and [`branch-protection.md`](../../.github/branch-protection.md) to mark the now-completed items and re-scope the remaining human-only steps (enable GHAS, mark the gatekeeper required, add a real second reviewer, provision a read-only Supabase token, legal AI classification).
+
+---
+
 ## 2026-06 — AI-practice audit remediation
 
 Source: the consultant-fleet [AI-Practice Audit (2026-06)](audits/ai-practice-audit-2026-06.md). This wave reconciled governance documentation with the actual control environment and expanded the agent/skill roster.

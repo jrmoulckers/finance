@@ -139,6 +139,13 @@ file-level changes effective.
 
 ### 1. Branch protection on `main` (Settings → Branches → `main`)
 
+> **One-command option:** a maintainer with admin rights can apply all of the
+> settings in this section by running
+> [`tools/setup-branch-protection.sh`](../tools/setup-branch-protection.sh)
+> (`gh` must be authenticated with admin scope). It is idempotent and prompts for
+> confirmation. AI agents must **not** run it — repo-settings changes are
+> human-gated. The manual checklist below mirrors what the script applies.
+
 - [ ] **Add required status check:** `Required Checks Gatekeeper` (the single
       always-on gate). Optionally also add `ESLint & Prettier` and
       `Semantic PR Title`.
@@ -165,12 +172,16 @@ file-level changes effective.
 
 ### 3. CODEOWNERS second reviewer (#2880)
 
-- [ ] In `.github/CODEOWNERS`, replace every `@jrmoulckers-org/security-reviewers`
-      placeholder (marked `TODO(human)`) with a **real** GitHub team
-      (org repos) or a **second individual reviewer** handle (personal repos
-      cannot reference `@org/team` handles).
-- [ ] Ensure that second reviewer/team has write access and is added as a
-      reviewer so Code Owner review can be satisfied.
+- [x] The invalid `@jrmoulckers-org/security-reviewers` placeholder has been
+      removed from `.github/CODEOWNERS` (it was an unknown team handle that made
+      the whole file fail validation). The sensitive-path rules remain as an
+      explicit inventory.
+- [ ] **Add a real second reviewer** to those paths: create a GitHub team (org
+      repos) or add a second collaborator handle (personal repos cannot reference
+      `@org/team`), grant it write access, and list it alongside `@jrmoulckers`
+      on each sensitive-path rule.
+- [ ] Combined with **Require approvals: 2** + **Require review from Code
+      Owners**, this gives true separation of duties.
 
 ### 4. GitHub Advanced Security (GHAS) features
 
@@ -183,9 +194,11 @@ file-level changes effective.
       a GitHub **Organization** (required by `gitleaks-action` for orgs; not
       needed for personal repos).
 
-### 5. Verify the pinned `gitleaks-action` SHA
+### 5. Pinned `gitleaks-action` SHA — VERIFIED ✅
 
-- [ ] The `gitleaks` job pins `gitleaks/gitleaks-action@44c470ffc35caa8b1eb3e8012ca53c2f9bea4eb5`
-      with a `# verify SHA` comment. Confirm this commit SHA matches the intended
-      `v2.3.9` release at
-      <https://github.com/gitleaks/gitleaks-action/releases> before relying on it.
+- [x] Verified 2026-06-21. The `gitleaks` job now pins
+      `gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7`, the
+      commit tagged **v2.3.9**. The previous pin (`44c470ff…`) was an _untagged_
+      merge commit and has been corrected. The `actions/checkout` (v6.0.3),
+      `actions/setup-node` (v6.4.0), and `actions/upload-artifact` (v7.0.1) pins
+      in the AI workflows were also confirmed to match their tags.

@@ -201,6 +201,20 @@ Verifies every `services/api/supabase/migrations/*.sql` has a matching `services
 
 Runs on PRs touching migrations via [`.github/workflows/migration-reversal-check.yml`](../.github/workflows/migration-reversal-check.yml).
 
+### `setup-branch-protection.sh` - Apply `main` branch protection (human-run only)
+
+⚠️ **HUMAN-RUN ONLY — AI agents must not execute this.** Applies the `main`
+branch-protection config documented in
+[`.github/branch-protection.md`](../.github/branch-protection.md) in one idempotent
+`gh api` call: requires the always-on gatekeeper + lint + PR-title checks, 2 reviews
+
+- Code Owner review, enforce-for-admins, linear history, conversation resolution, and
+  no force-push/deletions. Requires `gh` authenticated with repo admin scope. Prompts
+  for confirmation before writing. Supports the human items in #2860 / #2880.
+
+      ./tools/setup-branch-protection.sh                     # current repo, main
+      ./tools/setup-branch-protection.sh owner/repo main     # explicit target
+
 ## Suggested `package.json` scripts
 
 `package.json` is shared and is not edited by the DevOps agent. When a maintainer
