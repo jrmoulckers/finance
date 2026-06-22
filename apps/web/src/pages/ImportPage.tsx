@@ -135,6 +135,11 @@ export const ImportPage: React.FC = () => {
         <Link to="/import/p2p">Import a Venmo / Cash App CSV</Link> to automatically separate
         reimbursements from real spending.
       </p>
+      <p className="import-section-description">
+        Trade across multiple brokers?{' '}
+        <Link to="/import/brokerage">Import brokerage trade CSVs</Link> to reconcile buys, sells and
+        dividends into a unified holdings view.
+      </p>
 
       <StepIndicator currentStep={importState.step} />
 
