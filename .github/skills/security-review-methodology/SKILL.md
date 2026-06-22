@@ -81,3 +81,7 @@ This skill covers **how to perform high-signal security and privacy reviews** fo
 - Logs include request bodies, transaction details, balances, tokens, or export payloads.
 - Client stores tokens or financial secrets outside platform secure storage / approved encrypted layers.
 - Offline mutation replay can duplicate transfers, bypass validation, or resurrect soft-deleted records.
+
+## Checklist
+
+Apply [`CHECKLIST.md`](./CHECKLIST.md) as the sign-off gate for every security review.

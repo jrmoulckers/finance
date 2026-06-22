@@ -1,9 +1,10 @@
 ---
 name: fleet-orchestration
 description: >
-  Fleet orchestration for parallel multi-agent sprint execution. Use when
-  deploying multiple agents across worktrees, planning sprints, or
-  coordinating parallel PR workflows.
+  Fleet orchestration for parallel multi-agent sprint execution. Use for
+  topics related to deploying multiple agents across worktrees, sprint
+  dispatch, worktree coordination, parallel PR workflows, CI self-healing,
+  or merge ordering.
 ---
 
 # Fleet Orchestration Skill
@@ -34,25 +35,38 @@ Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI 
 
 ### Engineering Agents
 
-| Agent              | File Ownership                     | Definition                                 |
-| ------------------ | ---------------------------------- | ------------------------------------------ |
-| `android-engineer` | `apps/android/**`                  | `.github/agents/android-engineer.agent.md` |
-| `ios-engineer`     | `apps/ios/**`                      | `.github/agents/ios-engineer.agent.md`     |
-| `web-engineer`     | `apps/web/**`                      | `.github/agents/web-engineer.agent.md`     |
-| `windows-engineer` | `apps/windows/**`                  | `.github/agents/windows-engineer.agent.md` |
-| `kmp-engineer`     | `packages/**`                      | `.github/agents/kmp-engineer.agent.md`     |
-| `backend-engineer` | `services/**`                      | `.github/agents/backend-engineer.agent.md` |
-| `devops-engineer`  | `.github/workflows/**`, `tools/**` | `.github/agents/devops-engineer.agent.md`  |
-| `design-engineer`  | `config/tokens/**`                 | `.github/agents/design-engineer.agent.md`  |
-| `docs-writer`      | `docs/**`, root `*.md`             | `.github/agents/docs-writer.agent.md`      |
-| `architect`        | Cross-cutting, ADRs                | `.github/agents/architect.agent.md`        |
+| Agent                      | File Ownership                                                        | Definition                                         |
+| -------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- |
+| `android-engineer`         | `apps/android/**`                                                     | `.github/agents/android-engineer.agent.md`         |
+| `ios-engineer`             | `apps/ios/**`                                                         | `.github/agents/ios-engineer.agent.md`             |
+| `web-engineer`             | `apps/web/**`                                                         | `.github/agents/web-engineer.agent.md`             |
+| `windows-engineer`         | `apps/windows/**`                                                     | `.github/agents/windows-engineer.agent.md`         |
+| `kmp-engineer`             | `packages/**`                                                         | `.github/agents/kmp-engineer.agent.md`             |
+| `backend-engineer`         | `services/**`                                                         | `.github/agents/backend-engineer.agent.md`         |
+| `devops-engineer`          | `.github/workflows/**`, `tools/**`                                    | `.github/agents/devops-engineer.agent.md`          |
+| `design-engineer`          | `config/tokens/**`                                                    | `.github/agents/design-engineer.agent.md`          |
+| `docs-writer`              | `docs/**`, root `*.md`                                                | `.github/agents/docs-writer.agent.md`              |
+| `architect`                | Cross-cutting, ADRs                                                   | `.github/agents/architect.agent.md`                |
+| `finance-domain`           | `packages/core/**` (business logic, shared with `kmp-engineer`)       | `.github/agents/finance-domain.agent.md`           |
+| `performance-engineer`     | `performance.budget.json`, `docs/performance/**`                      | `.github/agents/performance-engineer.agent.md`     |
+| `data-engineer`            | `docs/analytics/**`, `config/analytics/**`, `docs/business/growth/**` | `.github/agents/data-engineer.agent.md`            |
+| `localization-engineer`    | `config/i18n/**`, `docs/i18n/**`                                      | `.github/agents/localization-engineer.agent.md`    |
+| `experimentation-engineer` | `config/feature-flags/**`                                             | `.github/agents/experimentation-engineer.agent.md` |
 
 ### Review Agents (read-only — never own implementation)
 
-| Agent                    | Purpose                     |
-| ------------------------ | --------------------------- |
-| `security-reviewer`      | Security and privacy audits |
-| `accessibility-reviewer` | WCAG 2.2 AA compliance      |
+| Agent                    | Purpose                                               |
+| ------------------------ | ----------------------------------------------------- |
+| `security-reviewer`      | Security and privacy audits (may fix CRITICAL/HIGH)   |
+| `accessibility-reviewer` | WCAG 2.2 AA compliance                                |
+| `qa-tester`              | Live QA + bug discovery; files issues (no code edits) |
+
+### Ops & Meta Agents
+
+| Agent             | Purpose                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `release-manager` | Changesets, versioning, release notes, store-submission prep                           |
+| `ai-ops-engineer` | Owns `.github/agents/`, `.github/skills/`, `.github/instructions/`, `.github/prompts/` |
 
 ### Business Agents
 
@@ -64,21 +78,29 @@ Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI 
 
 ### Label-to-Agent Mapping
 
-| Label                    | Agent                    |
-| ------------------------ | ------------------------ |
-| `platform:android`       | `android-engineer`       |
-| `platform:ios`           | `ios-engineer`           |
-| `platform:web`           | `web-engineer`           |
-| `platform:windows`       | `windows-engineer`       |
-| `platform:shared`, `kmp` | `kmp-engineer`           |
-| `backend`, `supabase`    | `backend-engineer`       |
-| `ci`, `devops`           | `devops-engineer`        |
-| `docs`, `documentation`  | `docs-writer`            |
-| `security`, `privacy`    | `security-reviewer`      |
-| `a11y`, `accessibility`  | `accessibility-reviewer` |
-| `product`, `roadmap`     | `product-manager`        |
-| `marketing`, `launch`    | `marketing-strategist`   |
-| `business`, `pricing`    | `business-analyst`       |
+| Label                        | Agent                      |
+| ---------------------------- | -------------------------- |
+| `platform:android`           | `android-engineer`         |
+| `platform:ios`               | `ios-engineer`             |
+| `platform:web`               | `web-engineer`             |
+| `platform:windows`           | `windows-engineer`         |
+| `platform:shared`, `kmp`     | `kmp-engineer`             |
+| `backend`, `supabase`        | `backend-engineer`         |
+| `ci`, `devops`               | `devops-engineer`          |
+| `docs`, `documentation`      | `docs-writer`              |
+| `security`, `privacy`        | `security-reviewer`        |
+| `a11y`, `accessibility`      | `accessibility-reviewer`   |
+| `qa`, `testing`              | `qa-tester`                |
+| `product`, `roadmap`         | `product-manager`          |
+| `marketing`, `launch`        | `marketing-strategist`     |
+| `business`, `pricing`        | `business-analyst`         |
+| `performance`                | `performance-engineer`     |
+| `i18n`, `localization`       | `localization-engineer`    |
+| `analytics`, `metrics`       | `data-engineer`            |
+| `experiment`, `feature-flag` | `experimentation-engineer` |
+| `release`                    | `release-manager`          |
+| `agent`, `skill`, `prompt`   | `ai-ops-engineer`          |
+| `finance`, `domain`          | `finance-domain`           |
 
 ## Wave Sizing (Proven Metrics)
 

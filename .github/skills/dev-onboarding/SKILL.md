@@ -8,6 +8,17 @@ description: >
 
 # Developer Onboarding Skill
 
+## Purpose
+
+This skill covers **developer environment setup and onboarding** — prerequisites, first-time setup, local scripts, Husky/lint-staged guardrails, and troubleshooting day-one tooling. Deeper platform build config and multi-agent operations belong to the related skills below.
+
+## Out of Scope
+
+- KMP source-set layout, Gradle targets, and SQLDelight config → use `kmp-development`.
+- Supabase local stack, RLS, and Edge Functions → use `supabase-powersync`.
+- MCP server wiring and agent tool permissions → use `mcp-agent-tooling`.
+- Sprint planning, agent dispatch, CI healing, and merges → use `sprint-planning` and `fleet-orchestration`.
+
 ## Prerequisites
 
 | Tool           | Version | Purpose                 |

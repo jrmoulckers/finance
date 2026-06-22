@@ -1,9 +1,9 @@
 ---
 name: sprint-planning
 description: >
-  Sprint planning and backlog management for multi-agent development. Use when
-  planning sprints, prioritizing issues, decomposing work, or balancing
-  workloads across agent types.
+  Sprint planning and backlog management for multi-agent development. Use for
+  topics related to sprint planning, prioritizing issues, decomposing work, or
+  balancing workloads across agent types.
 ---
 
 # Sprint Planning Skill
@@ -67,6 +67,14 @@ gh issue list --state open --json number,title,labels,milestone --limit 100
 | `monetization`, `pricing`                   | `business-analyst`                        |
 | `marketing`, `launch`, `growth`             | `marketing-strategist`                    |
 | `roadmap`, `planning`, `triage`             | `product-manager`                         |
+| `performance`                               | `performance-engineer`                    |
+| `i18n`, `localization`                      | `localization-engineer`                   |
+| `analytics`, `metrics`                      | `data-engineer`                           |
+| `experiment`, `feature-flag`                | `experimentation-engineer`                |
+| `release`                                   | `release-manager`                         |
+| `qa`, `testing`                             | `qa-tester`                               |
+| `agent`, `skill`, `prompt`                  | `ai-ops-engineer`                         |
+| `finance`, `domain`                         | `finance-domain`                          |
 
 ### Step 3: Handle ambiguity
 

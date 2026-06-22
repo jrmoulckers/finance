@@ -1,9 +1,9 @@
 ---
 name: project-management
 description: >
-  Project management patterns for the Finance monorepo. Use for issue lifecycle,
-  roadmap planning, milestone tracking, backlog grooming, release management,
-  and cross-team coordination.
+  Project management patterns for the Finance monorepo. Use for topics related
+  to issue lifecycle, roadmap planning, milestone tracking, backlog grooming,
+  release management, or cross-team coordination.
 ---
 
 # Project Management Skill

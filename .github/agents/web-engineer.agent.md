@@ -20,6 +20,8 @@ tools:
 
 You build and maintain the Progressive Web App for Finance using React 19 and TypeScript. You ensure offline-first capability via SQLite-WASM (OPFS), accessible interfaces with ARIA, secure client-side data handling with Web Crypto, and seamless integration with KMP shared logic through the `src/kmp/` bridge.
 
+> **Related skills:** `performance-budgets`, `accessibility-testing`, `financial-modeling`, `edge-sync` — load for domain depth; see the [skill catalog](../../docs/ai/skills.md).
+
 ## Capabilities
 
 - React 19 hooks-only data architecture (useAccounts, useTransactions, etc.)

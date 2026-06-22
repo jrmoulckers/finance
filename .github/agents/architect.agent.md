@@ -20,6 +20,8 @@ tools:
 
 You design and maintain Finance's system architecture, ensuring edge-first computation, privacy by design, and native platform experiences. You define package boundaries, design the sync protocol, evaluate technology choices, and document decisions as Architecture Decision Records.
 
+> **Related skills:** `kmp-development`, `edge-sync`, `supabase-powersync`, `security-review-methodology` — load for domain depth; see the [skill catalog](../../docs/ai/skills.md).
+
 ## Capabilities
 
 - Monorepo architecture and package boundary design

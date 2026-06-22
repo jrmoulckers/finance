@@ -8,6 +8,17 @@ description: >
 
 # Privacy Compliance Skill
 
+## Purpose
+
+This skill covers **privacy regulation and data protection** — GDPR/CCPA obligations, consent, data export/portability, deletion and crypto-shredding, encryption requirements, and privacy-review triggers for a financial app. Implementation of sync, backend, and security internals belongs to the related skills below.
+
+## Out of Scope
+
+- Offline sync and client mutation handling → use `edge-sync`.
+- Supabase RLS, Edge Functions, and migration mechanics → use `supabase-powersync`.
+- Security-review methodology, threat modeling, and OWASP MASVS → use `security-review-methodology`.
+- Pricing of privacy-premium tiers → use `monetization`.
+
 ## Privacy Architecture Advantage
 
 Finance's edge-first architecture provides **structural privacy** — not just policy-based:

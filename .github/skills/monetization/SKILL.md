@@ -1,10 +1,21 @@
 ---
 name: monetization
 description: >
-  Monetization strategy, pricing, and subscription management for the Finance app. Use for freemium tier design, IAP implementation, pricing analysis, revenue optimization, and subscription lifecycle.
+  Monetization strategy, pricing, and subscription management for the Finance app. Use for topics related to freemium tier design, IAP implementation, pricing analysis, revenue optimization, or subscription lifecycle.
 ---
 
 # Monetization Skill
+
+## Purpose
+
+This skill covers **monetization and subscription management** — freemium tier boundaries, platform IAP integration, cross-platform entitlement sync, pricing analysis, and revenue metrics. Marketing reach and on-device financial math belong to the related skills below.
+
+## Out of Scope
+
+- ASO, launch comms, and content/growth strategy → use `go-to-market`.
+- Budgets, cents math, reports, and export → use `financial-modeling`.
+- Entitlement sync transport, RLS, and Edge Functions → use `supabase-powersync`.
+- Privacy-as-premium claims and regulatory basis → use `privacy-compliance`.
 
 ## Validated Pricing
 

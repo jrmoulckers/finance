@@ -9,6 +9,17 @@ description: >
 
 # Financial Modeling Skill
 
+## Purpose
+
+This skill covers **financial calculation and domain modeling** — money representation in cents, currency handling, budgeting models, transaction and recurring processing, goal tracking, net-worth/reporting, and data-export semantics. Sync transport, backend schema, and pricing live in the related skills below.
+
+## Out of Scope
+
+- Offline sync, mutation queues, and conflict resolution → use `edge-sync`.
+- PostgreSQL schema, RLS, migrations, and Edge Functions → use `supabase-powersync`.
+- Kotlin source-set layout, SQLDelight syntax, and Gradle targets → use `kmp-development`.
+- Pricing tiers, IAP, and subscription entitlements → use `monetization`.
+
 ## Money Representation — The Golden Rule
 
 **Never use floating-point for money.** All monetary values are `Long` cents.
