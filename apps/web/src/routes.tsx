@@ -52,6 +52,7 @@ const Watchlists = lazy(() => import('./pages/WatchlistsPage'));
 const Household = lazy(() => import('./pages/HouseholdPage'));
 const ReportBuilder = lazy(() => import('./pages/ReportBuilderPage'));
 const ClientProfitability = lazy(() => import('./pages/ClientProfitabilityPage'));
+const GigDriver = lazy(() => import('./pages/GigDriverPage'));
 const Investments = lazy(() => import('./pages/InvestmentsPage'));
 const InvestmentDetail = lazy(() => import('./pages/InvestmentDetailPage'));
 const TaxCenter = lazy(() => import('./pages/TaxCenterPage'));
@@ -417,6 +418,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Client Profitability">
             <ClientProfitability />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/gig-driver"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Gig Driver Economics">
+            <GigDriver />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

@@ -226,3 +226,32 @@
     display: none;
   }
 }
+
+/* Maintenance reminder status badge.
+   Status is always conveyed by text; color and weight are supplementary
+   so meaning is never carried by color alone (WCAG 2.2 AA, 1.4.1). */
+.mileage-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--semantic-border-default);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.mileage-status--ok {
+  color: var(--semantic-status-positive, var(--semantic-text-primary));
+  border-color: color-mix(in srgb, var(--semantic-status-positive) 40%, transparent);
+}
+
+.mileage-status--due_soon {
+  color: var(--semantic-status-warning, var(--semantic-text-primary));
+  border-color: color-mix(in srgb, var(--semantic-status-warning) 40%, transparent);
+}
+
+.mileage-status--overdue {
+  color: var(--semantic-status-negative, var(--semantic-text-primary));
+  border-color: color-mix(in srgb, var(--semantic-status-negative) 45%, transparent);
+}

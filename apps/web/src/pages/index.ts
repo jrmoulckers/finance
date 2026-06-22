@@ -28,6 +28,7 @@ export { BillDetailPage } from './BillDetailPage';
 export { CreateBillPage } from './CreateBillPage';
 export { ReportBuilderPage } from './ReportBuilderPage';
 export { ClientProfitabilityPage } from './ClientProfitabilityPage';
+export { GigDriverPage } from './GigDriverPage';
 export { PlanningPage } from './PlanningPage';
 export { HouseholdPage } from './HouseholdPage';
 export { CashFlowPage } from './CashFlowPage';
