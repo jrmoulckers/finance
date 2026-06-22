@@ -141,9 +141,9 @@ jobs:
           # Full history is required so gitleaks can scan the PR commit range.
           fetch-depth: 0
       - name: Run gitleaks
-        # verify SHA: gitleaks/gitleaks-action v2.3.9 — confirm the pinned commit
-        # SHA against https://github.com/gitleaks/gitleaks-action/releases before merge.
-        uses: gitleaks/gitleaks-action@44c470ffc35caa8b1eb3e8012ca53c2f9bea4eb5 # v2.3.9 # verify SHA
+        # Pin verified 2026-06-21: ff98106e is the commit tagged v2.3.9 on
+        # gitleaks/gitleaks-action (prior pin 44c470ff was an untagged commit).
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Path to the committed config (extends gitleaks defaults).

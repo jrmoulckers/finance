@@ -49,32 +49,38 @@
 # addition to code-owner review. Both halves are required for real separation of
 # duties — see branch-protection.md.
 #
-# TODO(human): replace @jrmoulckers-org/security-reviewers with a real
-# second-reviewer GitHub team (org repos) or a second individual reviewer handle
-# (personal repos cannot use @org/team handles). Do NOT leave the placeholder.
+# The invalid placeholder team (@jrmoulckers-org/security-reviewers) has been
+# removed so this file validates cleanly. The sensitive-path rules below are kept
+# as an explicit inventory of what must get a dedicated reviewer.
+# TODO(human): add a real second reviewer to these paths — create a GitHub team
+# (org repos) or add a second collaborator handle (personal repos cannot use
+# @org/team handles), give them write access, then list them alongside
+# @jrmoulckers on each rule below. Pair this with "Require approvals: 2" +
+# "Require review from Code Owners" in branch protection for true separation of
+# duties (#2880).
 
 # Backend API service (override of the single-owner rule above)
-/services/api/                                @jrmoulckers @jrmoulckers-org/security-reviewers
+/services/api/                                @jrmoulckers
 
 # Database schema & migrations
-/services/api/supabase/migrations/            @jrmoulckers @jrmoulckers-org/security-reviewers
-**/*.sql                                      @jrmoulckers @jrmoulckers-org/security-reviewers
+/services/api/supabase/migrations/            @jrmoulckers
+**/*.sql                                      @jrmoulckers
 
 # Row-Level-Security (RLS) policy files
-**/*rls*.sql                                  @jrmoulckers @jrmoulckers-org/security-reviewers
-**/*_rls_policies.sql                         @jrmoulckers @jrmoulckers-org/security-reviewers
-**/*polic*.sql                                @jrmoulckers @jrmoulckers-org/security-reviewers
+**/*rls*.sql                                  @jrmoulckers
+**/*_rls_policies.sql                         @jrmoulckers
+**/*polic*.sql                                @jrmoulckers
 
 # Authentication, passkeys & device attestation (Edge Functions)
-/services/api/supabase/functions/auth-*/      @jrmoulckers @jrmoulckers-org/security-reviewers
-/services/api/supabase/functions/passkey-*/   @jrmoulckers @jrmoulckers-org/security-reviewers
-/services/api/supabase/functions/verify-device-attestation/ @jrmoulckers @jrmoulckers-org/security-reviewers
-/services/api/supabase/functions/consent-management/        @jrmoulckers @jrmoulckers-org/security-reviewers
-/services/api/supabase/functions/account-delete/            @jrmoulckers @jrmoulckers-org/security-reviewers
+/services/api/supabase/functions/auth-*/      @jrmoulckers
+/services/api/supabase/functions/passkey-*/   @jrmoulckers
+/services/api/supabase/functions/verify-device-attestation/ @jrmoulckers
+/services/api/supabase/functions/consent-management/        @jrmoulckers
+/services/api/supabase/functions/account-delete/            @jrmoulckers
 
 # Generic auth/passkey paths anywhere in the tree (defense in depth)
-**/auth/**                                    @jrmoulckers @jrmoulckers-org/security-reviewers
-**/passkey/**                                 @jrmoulckers @jrmoulckers-org/security-reviewers
+**/auth/**                                    @jrmoulckers
+**/passkey/**                                 @jrmoulckers
 
 # Security policy & response docs
-/services/api/security/                       @jrmoulckers @jrmoulckers-org/security-reviewers
+/services/api/security/                       @jrmoulckers

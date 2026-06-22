@@ -49,6 +49,7 @@ Finance is developed with AI agents as first-class contributors. This means:
 | [Responsible AI](responsible-ai.md)                                | Ethical AI principles, commitments, and product AI guidelines                         |
 | [AI Code Policy](ai-code-policy.md)                                | Code ownership, copyright, and contributor responsibilities                           |
 | [AI Governance](governance.md)                                     | NIST AI RMF crosswalk + EU AI Act note mapped to repo controls                        |
+| [Incident Response](incident-response.md)                          | Runbook for agent misbehavior — injection, secret exposure, runaway merges            |
 | [AI Practice CHANGELOG](CHANGELOG.md)                              | Decision log for how the AI practice has evolved over time                            |
 | [AI-Practice Audit (2026-06)](audits/ai-practice-audit-2026-06.md) | Consultant-fleet audit of the AI-first practice — risks, gaps, and maturity scorecard |
 

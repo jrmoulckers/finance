@@ -10,7 +10,7 @@ MCP (Model Context Protocol) is a standard that allows AI agents to interact wit
 
 There are **7 MCP servers** configured in `.vscode/mcp.json`. All `npx` (stdio) servers are pinned to **exact versions** — no `@latest`, no floating tags — and no secret is ever passed as a `--flag=value` on the command line (secrets flow through `${input:...}` prompts into env vars or headers).
 
-> ⚠️ **Version verification required.** The pinned versions below are plausible placeholders captured during the security audit. `TODO(human)`: verify each pin against the upstream registry/repo before first use and bump deliberately.
+> ✅ **Versions verified 2026-06-21** against each package's upstream npm registry (latest published at that time). Bump deliberately and re-verify the version + publisher on any change.
 
 ### Servers
 
@@ -25,7 +25,7 @@ There are **7 MCP servers** configured in `.vscode/mcp.json`. All `npx` (stdio) 
 #### 2. Sequential Thinking (`sequential-thinking`)
 
 - **Type:** stdio (runs locally via npx)
-- **Package:** `@modelcontextprotocol/server-sequential-thinking@2025.7.1` (Anthropic, MIT)
+- **Package:** `@modelcontextprotocol/server-sequential-thinking@2025.12.18` (Anthropic, MIT)
 - **Purpose:** Step-by-step chain-of-thought reasoning for complex tasks
 - **Why:** Improves accuracy for debugging, architecture analysis, and multi-step problem solving
 - **No auth required.** Local only; no network or secret access.
@@ -33,7 +33,7 @@ There are **7 MCP servers** configured in `.vscode/mcp.json`. All `npx` (stdio) 
 #### 3. Memory (`memory`)
 
 - **Type:** stdio (runs locally via npx)
-- **Package:** `@modelcontextprotocol/server-memory@2025.7.1` (Anthropic, MIT)
+- **Package:** `@modelcontextprotocol/server-memory@2026.1.26` (Anthropic, MIT)
 - **Purpose:** Persistent memory across Copilot Chat sessions
 - **Why:** Maintains context about ongoing work, decisions, and patterns even after session resets
 - **No auth required.**
@@ -42,7 +42,7 @@ There are **7 MCP servers** configured in `.vscode/mcp.json`. All `npx` (stdio) 
 #### 4. Filesystem (`filesystem`)
 
 - **Type:** stdio (runs locally via npx)
-- **Package:** `@modelcontextprotocol/server-filesystem@2025.7.1` (Anthropic, MIT)
+- **Package:** `@modelcontextprotocol/server-filesystem@2026.1.14` (Anthropic, MIT)
 - **Purpose:** Sandboxed file system access scoped to an explicit served root (`${input:filesystem_root}`)
 - **Why:** Enables Copilot to read, write, and search files directly during agent mode
 - **No auth required.**
@@ -51,7 +51,7 @@ There are **7 MCP servers** configured in `.vscode/mcp.json`. All `npx` (stdio) 
 #### 5. Context7 (`context7`)
 
 - **Type:** stdio (runs locally via npx)
-- **Package:** `@upstash/context7-mcp@1.0.14` (Upstash, MIT)
+- **Package:** `@upstash/context7-mcp@3.2.1` (Upstash, MIT)
 - **Purpose:** Injects up-to-date library/framework documentation into prompts
 - **Why:** Ensures Copilot uses current API signatures instead of outdated training data
 - **No auth required.**
@@ -60,7 +60,7 @@ There are **7 MCP servers** configured in `.vscode/mcp.json`. All `npx` (stdio) 
 #### 6. Supabase (`supabase`)
 
 - **Type:** stdio (runs locally via npx)
-- **Package:** `@supabase/mcp-server-supabase@0.4.5` (Supabase, Apache-2.0)
+- **Package:** `@supabase/mcp-server-supabase@0.8.2` (Supabase, Apache-2.0)
 - **Purpose:** Inspect Supabase project schema/data via the Management API
 - **Config:** `--read-only --project-ref=${input:supabase_project_ref}`; token passed via the `SUPABASE_ACCESS_TOKEN` **env var** (never on argv)
 - **Auth:** `${input:supabase_access_token}` — a Management API personal access token
@@ -70,10 +70,10 @@ There are **7 MCP servers** configured in `.vscode/mcp.json`. All `npx` (stdio) 
 #### 7. Playwright (`playwright`)
 
 - **Type:** stdio (runs locally via npx)
-- **Package:** `@playwright/mcp@0.0.41` (Microsoft, Apache-2.0)
+- **Package:** `@playwright/mcp@0.0.76` (Microsoft, Apache-2.0)
 - **Purpose:** Browser automation & E2E test authoring/debugging
 - **Why:** Lets the agent drive a real browser for UI flows and E2E coverage
-- **No auth required.** Replaces the fabricated `@anthropic/mcp-server-playwright` (the `@anthropic` npm scope is unclaimed). `TODO(human)`: verify the pin against <https://github.com/microsoft/playwright-mcp>.
+- **No auth required.** Replaces the fabricated `@anthropic/mcp-server-playwright` (the `@anthropic` npm scope is unclaimed). Pin verified 2026-06-21 against <https://github.com/microsoft/playwright-mcp>.
 - ⚠️ Can navigate to arbitrary URLs — be wary of prompt-injection content on visited pages (see below).
 
 ## Tool-Permission Matrix (autonomous / CI contexts)
@@ -159,17 +159,17 @@ For local tools and scripts — always pin an exact version and pass secrets via
 
 All configured MCP servers (7 total):
 
-| Server              | Package / Endpoint                                          | Purpose                          | Status        |
-| ------------------- | ----------------------------------------------------------- | -------------------------------- | ------------- |
-| GitHub              | `api.githubcopilot.com/mcp/` (hosted)                       | GitHub API access                | ✅ Configured |
-| Sequential Thinking | `@modelcontextprotocol/server-sequential-thinking@2025.7.1` | Step-by-step reasoning           | ✅ Configured |
-| Memory              | `@modelcontextprotocol/server-memory@2025.7.1`              | Persistent context               | ✅ Configured |
-| Filesystem          | `@modelcontextprotocol/server-filesystem@2025.7.1`          | Sandboxed file access            | ✅ Configured |
-| Context7            | `@upstash/context7-mcp@1.0.14`                              | Live docs injection              | ✅ Configured |
-| Supabase            | `@supabase/mcp-server-supabase@0.4.5`                       | Read-only Supabase inspection    | ✅ Configured |
-| Playwright          | `@playwright/mcp@0.0.41`                                    | Browser automation & E2E testing | ✅ Configured |
+| Server              | Package / Endpoint                                            | Purpose                          | Status        |
+| ------------------- | ------------------------------------------------------------- | -------------------------------- | ------------- |
+| GitHub              | `api.githubcopilot.com/mcp/` (hosted)                         | GitHub API access                | ✅ Configured |
+| Sequential Thinking | `@modelcontextprotocol/server-sequential-thinking@2025.12.18` | Step-by-step reasoning           | ✅ Configured |
+| Memory              | `@modelcontextprotocol/server-memory@2026.1.26`               | Persistent context               | ✅ Configured |
+| Filesystem          | `@modelcontextprotocol/server-filesystem@2026.1.14`           | Sandboxed file access            | ✅ Configured |
+| Context7            | `@upstash/context7-mcp@3.2.1`                                 | Live docs injection              | ✅ Configured |
+| Supabase            | `@supabase/mcp-server-supabase@0.8.2`                         | Read-only Supabase inspection    | ✅ Configured |
+| Playwright          | `@playwright/mcp@0.0.76`                                      | Browser automation & E2E testing | ✅ Configured |
 
-> Pinned versions mirror `.vscode/mcp.json`. `TODO(human)`: verify each pin against its upstream registry/repo and keep this table in sync. See `docs/architecture/security/dependency-audit.md` → "MCP Server Packages".
+> Pinned versions mirror `.vscode/mcp.json` and were verified 2026-06-21. Keep this table in sync on any bump. See `docs/architecture/security/dependency-audit.md` → "MCP Server Packages".
 
 ## Security Notes
 

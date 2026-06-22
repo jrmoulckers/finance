@@ -69,6 +69,7 @@ These are the rules that cause the most rework when skipped:
 
 - [Responsible AI](responsible-ai.md) — principles, commitments, and the real control environment.
 - [AI Governance](governance.md) — NIST AI RMF crosswalk and EU AI Act note, mapped to this repo's concrete controls.
+- [Incident Response](incident-response.md) — what to do when an agent misbehaves (prompt injection, secret exposure, runaway merges, destructive ops).
 - [AI Code Policy](ai-code-policy.md) — ownership, copyright, and contributor responsibilities.
 - [AI Practice CHANGELOG](CHANGELOG.md) — how this practice has evolved.
 - [AI-Practice Audit (2026-06)](audits/ai-practice-audit-2026-06.md) — the most recent point-in-time review of the AI practice.
