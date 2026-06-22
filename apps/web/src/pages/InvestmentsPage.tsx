@@ -22,6 +22,7 @@ import {
   InvestingBetaFeaturesPanel,
   useInvestingBetaFeatures,
 } from '../components/investments/InvestingBetaFeatures';
+import { InvestmentProjections } from '../components/investments/InvestmentProjections';
 import { useInvestments } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
@@ -356,6 +357,12 @@ export const InvestmentsPage: React.FC = () => {
               </div>
             </section>
           )}
+
+          {/* Compound-growth projection (#2118) */}
+          <InvestmentProjections
+            currentValueCents={summary.totalValue}
+            investedToDateCents={summary.totalCostBasis}
+          />
 
           {/* Holdings Table */}
           <InvestingBetaFeaturesPanel investments={investments} features={betaFeatures} />

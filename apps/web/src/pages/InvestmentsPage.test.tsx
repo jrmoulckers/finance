@@ -14,6 +14,10 @@ vi.mock('../components/DataExport', () => ({
   DataExport: () => <div data-testid="data-export" />,
 }));
 
+vi.mock('../components/investments/InvestmentProjections', () => ({
+  InvestmentProjections: () => <div data-testid="investment-projections" />,
+}));
+
 // Recharts uses DOM measurements that aren't available in jsdom.
 // Stub it out to avoid rendering errors.
 vi.mock('recharts', () => ({
@@ -135,6 +139,16 @@ describe('InvestmentsPage', () => {
     );
 
     expect(screen.getByText('Asset Allocation')).toBeInTheDocument();
+  });
+
+  it('renders the compound-growth projection section', () => {
+    render(
+      <MemoryRouter>
+        <InvestmentsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('investment-projections')).toBeInTheDocument();
   });
 
   it('renders investing beta sections with accessible table fallbacks', () => {
