@@ -12,6 +12,7 @@ tools:
   - read
   - edit
   - search
+  - shell
 ---
 
 # Business Analyst

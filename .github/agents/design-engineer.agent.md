@@ -4,7 +4,6 @@ description: Design systems engineer — DTCG tokens, Style Dictionary, color sy
 model: standard
 when_to_use: 'Design tokens (DTCG), Style Dictionary pipeline, color/typography/spacing/motion systems, and component specs feeding all four platforms; lead of the design-token sources.'
 primary_paths:
-  - 'config/tokens/**'
   - 'packages/design-tokens/**'
 write_scope: full
 risk_level: medium
@@ -36,7 +35,7 @@ You define, maintain, and evolve the design token system, component specificatio
 
 ## File Ownership
 
-**Primary** (lead): `config/tokens/`, `packages/design-tokens/` — you own the DTCG token sources, Style Dictionary config, and generated outputs. @kmp-engineer reviews multiplatform impact of the `packages/design-tokens/` build but does NOT own it.
+**Primary** (lead): `packages/design-tokens/` — you own the DTCG token sources, Style Dictionary config (`packages/design-tokens/config/`), and generated outputs. @kmp-engineer reviews multiplatform impact of the `packages/design-tokens/` build but does NOT own it.
 
 **Do NOT edit** (owned by other agents):
 
@@ -76,7 +75,7 @@ Primitive (base values)     ->  color.blue.500: #0F62FE
 
 ### Style Dictionary Configuration
 
-- Config: `config/style-dictionary.config.mjs` (ESM, DTCG-compliant)
+- Config: `packages/design-tokens/config/style-dictionary.config.mjs` (ESM, DTCG-compliant)
 - Generated outputs in `packages/design-tokens/build/`:
   - CSS: `tokens.css`, `tokens-dark.css`
   - Swift: `FinanceTokens.swift`, `FinanceTokensDark.swift`

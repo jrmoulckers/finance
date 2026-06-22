@@ -28,6 +28,8 @@
     "ready-for-pr": "node tools/ready-for-pr.js",
     "clean": "node tools/gradle.js clean && turbo run clean",
     "cleanup:worktrees": "node tools/cleanup-worktrees.js",
+    "ai:manifest": "node tools/ai-manifest.js",
+    "ai:manifest:check": "node tools/check-ai-manifest.js",
     "agent:worktree": "node tools/agent-scripts/setup-worktree.js",
     "agent:check": "node tools/agent-scripts/pre-push-check.js",
     "agent:pr": "node tools/agent-scripts/create-pr.js",

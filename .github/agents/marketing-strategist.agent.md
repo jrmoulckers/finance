@@ -11,6 +11,7 @@ tools:
   - read
   - edit
   - search
+  - shell
 ---
 
 # Marketing Strategist

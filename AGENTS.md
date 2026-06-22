@@ -113,7 +113,7 @@ AI agents that skip issue creation, commit directly to `main`, or fail to create
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.) — `npm run format` only touches JS/TS/JSON/MD/YAML
-- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster (a generated `ai-manifest` is planned to keep counts in sync; see [`docs/ai/CHANGELOG.md`](docs/ai/CHANGELOG.md)). As of 2026-06 there are **22** agents (see list below).
+- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow (`npm run ai:manifest:check`, backed by `tools/ai-manifest.js`) flags any drift between these counts and the filesystem; see [`docs/ai/CHANGELOG.md`](docs/ai/CHANGELOG.md). As of 2026-06 there are **23** agents (see list below).
 
 ## AI Agent Configuration
 
@@ -139,8 +139,9 @@ Custom agents are defined in `.github/agents/`. Each agent has a specific role:
 - `ai-ops-engineer` — Owns `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts, evals, and the AI manifest
 - `release-manager` — Changesets/versioning, release notes, store submission preparation
 - `performance-engineer` — Performance budgets, profiling, regression analysis
-- `data-engineer` — Metrics pipelines, event schemas, analytics
+- `data-engineer` — Privacy-preserving product analytics: event schemas, taxonomy, metrics catalog (distinct from financial reporting)
 - `localization-engineer` — i18n, localization, financial terminology
+- `experimentation-engineer` — Feature flags, A/B testing, staged rollouts, experiment readouts
 
 > **Reviewer roles are not symmetric.** `accessibility-reviewer` is **review-only** — it never edits production code and routes every fix to the owning platform agent. `security-reviewer` is the designated **emergency fixer** — it may implement CRITICAL/HIGH security fixes in any directory, coordinating with the owning agent, and is review-only for non-security code.
 
@@ -357,30 +358,31 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 
 **File ownership by agent:**
 
-| Agent                     | Primary ownership                                                                                                                                     |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@kmp-engineer`           | `packages/`                                                                                                                                           |
-| `@backend-engineer`       | `services/api/`                                                                                                                                       |
-| `@web-engineer`           | `apps/web/`                                                                                                                                           |
-| `@android-engineer`       | `apps/android/`                                                                                                                                       |
-| `@ios-engineer`           | `apps/ios/`                                                                                                                                           |
-| `@windows-engineer`       | `apps/windows/`                                                                                                                                       |
-| `@design-engineer`        | `config/tokens/`, generated token files                                                                                                               |
-| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/`                                                                                                        |
-| `@docs-writer`            | `docs/`, `*.md` files in root                                                                                                                         |
-| `@security-reviewer`      | Emergency fixer — may implement CRITICAL/HIGH security fixes in any directory (coordinating with the owning agent); review-only for non-security code |
-| `@accessibility-reviewer` | Review-only — never edits production code; routes every fix to the owning platform agent                                                              |
-| `@architect`              | `docs/architecture/`, ADRs; read-only for code                                                                                                        |
-| `@finance-domain`         | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                         |
-| `@product-manager`        | `docs/business/`, GitHub Issues (read/create)                                                                                                         |
-| `@marketing-strategist`   | `docs/marketing/`, app store copy drafts                                                                                                              |
-| `@business-analyst`       | `docs/business/`, pricing/revenue docs                                                                                                                |
-| `@qa-tester`              | Read-only on code; orchestrates testing sessions and files GitHub Issues                                                                              |
-| `@ai-ops-engineer`        | `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts/evals, AI manifest                                                             |
-| `@release-manager`        | `.changeset/`, version/release-notes files, store-submission prep docs                                                                                |
-| `@performance-engineer`   | `performance.budget.json`, profiling/benchmark configs, perf docs                                                                                     |
-| `@data-engineer`          | Metrics pipelines, event schemas, analytics configs                                                                                                   |
-| `@localization-engineer`  | i18n resource files, localization tooling, financial terminology                                                                                      |
+| Agent                       | Primary ownership                                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@kmp-engineer`             | `packages/`                                                                                                                                                                    |
+| `@backend-engineer`         | `services/api/`                                                                                                                                                                |
+| `@web-engineer`             | `apps/web/`                                                                                                                                                                    |
+| `@android-engineer`         | `apps/android/`                                                                                                                                                                |
+| `@ios-engineer`             | `apps/ios/`                                                                                                                                                                    |
+| `@windows-engineer`         | `apps/windows/`                                                                                                                                                                |
+| `@design-engineer`          | `packages/design-tokens/` (token sources, Style Dictionary config + generated outputs)                                                                                         |
+| `@devops-engineer`          | `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, `deploy/`, `gradle/wrapper/`, `config/detekt/`                                                                     |
+| `@docs-writer`              | `docs/`, `*.md` files in root                                                                                                                                                  |
+| `@security-reviewer`        | Emergency fixer — may implement CRITICAL/HIGH security fixes in any directory (coordinating with the owning agent); review-only for non-security code                          |
+| `@accessibility-reviewer`   | Review-only — never edits production code; routes every fix to the owning platform agent                                                                                       |
+| `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                                                                                 |
+| `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                                                  |
+| `@product-manager`          | `docs/business/roadmap/`, GitHub Issues (read/create)                                                                                                                          |
+| `@marketing-strategist`     | `docs/marketing/`, app store copy drafts                                                                                                                                       |
+| `@business-analyst`         | `docs/business/pricing/`, `docs/business/revenue/`                                                                                                                             |
+| `@qa-tester`                | Read-only on code; orchestrates testing sessions and files GitHub Issues                                                                                                       |
+| `@ai-ops-engineer`          | `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts/evals, AI manifest                                                                                      |
+| `@release-manager`          | `.changeset/`, version/release-notes files, store-submission prep docs                                                                                                         |
+| `@performance-engineer`     | `performance.budget.json`, profiling/benchmark configs, perf docs                                                                                                              |
+| `@data-engineer`            | `docs/analytics/`, `config/analytics/` (net-new) + telemetry files in `packages/core/.../analytics/` (co-owned w/ `@kmp-engineer`); product analytics, NOT financial reporting |
+| `@localization-engineer`    | `config/i18n/`, `docs/i18n/` (net-new); locale catalogs, financial terminology                                                                                                 |
+| `@experimentation-engineer` | `config/feature-flags/`; A/B tests + staged rollouts (success metrics co-designed w/ `@data-engineer`, validation CI w/ `@devops-engineer`)                                    |
 
 **Coordination protocol:**
 

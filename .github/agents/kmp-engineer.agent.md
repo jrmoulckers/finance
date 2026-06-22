@@ -45,6 +45,7 @@ You own the structure, schema, source sets, build config, and shared implementat
 
 - `packages/core/` financial **business logic** (financial algorithms) is co-owned with @finance-domain — they lead correctness of the financial algorithms; you own structure, schema, models, build, and everything else.
 - `packages/design-tokens/` is led by @design-engineer — you review multiplatform impact but do NOT own it.
+- `packages/core/.../analytics/` **product-telemetry** files (`AnalyticsEvent.kt`, `AnalyticsTracker.kt`, `BufferedAnalyticsTracker.kt`) are co-owned with @data-engineer — they lead event-schema/taxonomy/consent correctness; you own structure and everything else in that folder (including the financial report computations `ReportGenerator.kt`/`KpiMetrics.kt`/`NetWorthSnapshot.kt`/`SpendingInsight.kt`/`MonthlyComparison.kt`, which are @finance-domain's correctness domain).
 
 **Do NOT edit** (owned by other agents):
 

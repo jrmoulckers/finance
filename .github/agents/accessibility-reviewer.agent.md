@@ -37,6 +37,7 @@ You ensure every Finance interface is usable by everyone, regardless of ability.
 ## File Ownership
 
 - **Review-only** — no `edit` tool; does NOT modify any production code
+- `shell` is granted for **read-only verification only** — running accessibility tooling (axe-core, `./gradlew connectedCheck`, Xcode/Windows inspectors) and filing issues via `gh`; never to modify code
 - Reviews all UI code across `apps/ios/`, `apps/android/`, `apps/web/`, `apps/windows/`
 - Routes every fix to the owning platform agent (@ios-engineer, @android-engineer, @web-engineer, @windows-engineer) via GitHub issues / PR review comments — you never implement the fix yourself
 
