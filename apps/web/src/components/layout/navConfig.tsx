@@ -173,6 +173,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     description: 'Track spending against monthly limits.',
   },
   {
+    id: 'trip-budgets',
+    label: 'Trip Budgets',
+    href: '/trip-budgets',
+    icon: <AppIcon name="globe" size={24} />,
+    group: 'plan',
+    mobilePriority: 19,
+    description: 'Country/trip envelopes with local-currency spend and home-currency roll-up.',
+  },
+  {
     id: 'debt',
     label: 'Debt',
     href: '/debt',
