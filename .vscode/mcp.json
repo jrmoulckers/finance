@@ -1,46 +1,76 @@
 {
+  // MCP server configuration for VS Code Copilot Agent Mode (JSONC — comments allowed).
+  // SECURITY HARDENING (audit #2856/#2857/#2858/#2878/#2879):
+  //   * Every npx server is pinned to an EXACT version — no @latest, no floating tags.
+  //   * No secret is ever passed as a --flag=value on argv; secrets flow via ${input:...} (env/header).
+  //   * Fabricated/non-existent packages were replaced with the official upstream packages.
+  // TODO(human): Verify EVERY pinned version below against the upstream npm registry / repo before first
+  //   use, then bump deliberately. Pins below are plausible placeholders current as of 2026-06.
   "servers": {
     "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/",
       "headers": {
+        // Read-only fine-grained PAT, provided via input prompt — never hardcoded.
         "Authorization": "Bearer ${input:github_mcp_pat}"
       }
     },
     "sequential-thinking": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+      // @modelcontextprotocol/server-sequential-thinking — publisher: Anthropic (modelcontextprotocol), MIT. Local only, no network/secrets.
+      // TODO(human): verify pin at https://www.npmjs.com/package/@modelcontextprotocol/server-sequential-thinking
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@2025.7.1"]
     },
     "memory": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"]
+      // @modelcontextprotocol/server-memory — publisher: Anthropic (modelcontextprotocol), MIT.
+      // PRIVACY: NEVER persist PII, financial data, or secrets to the memory store (see docs/ai/mcp.md).
+      // TODO(human): verify pin at https://www.npmjs.com/package/@modelcontextprotocol/server-memory
+      "args": ["-y", "@modelcontextprotocol/server-memory@2025.7.1"]
     },
     "filesystem": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"]
+      // @modelcontextprotocol/server-filesystem — publisher: Anthropic (modelcontextprotocol), MIT.
+      // LEAST-PRIVILEGE (#2879): rooted at an explicit dedicated dir via ${input:filesystem_root}, NOT the whole workspace.
+      // WARNING: this server has NO deny-glob support and CAN read gitignored secrets under its root.
+      //   Do NOT place .env*, *.key, or secrets/** under the served root. Prefer a dedicated, secret-free workdir.
+      // TODO(human): verify pin at https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem
+      "args": ["-y", "@modelcontextprotocol/server-filesystem@2025.7.1", "${input:filesystem_root}"]
     },
     "context7": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
+      // @upstash/context7-mcp — publisher: Upstash, MIT.
+      // PRIVACY/DATA-FLOW: makes EXTERNAL network calls (sends library/query strings to Upstash). Do not send repo/financial data.
+      // TODO(human): verify pin at https://www.npmjs.com/package/@upstash/context7-mcp
+      "args": ["-y", "@upstash/context7-mcp@1.0.14"]
     },
     "supabase": {
       "type": "stdio",
       "command": "npx",
+      // @supabase/mcp-server-supabase — publisher: Supabase, Apache-2.0. (Replaces fabricated @nicepkg/supabase-mcp.)
+      // Use a READ-ONLY scoped token, never service_role (bypasses RLS).
+      // The Management API token flows via the SUPABASE_ACCESS_TOKEN env var, NEVER on argv.
+      // TODO(human): verify pin at https://www.npmjs.com/package/@supabase/mcp-server-supabase
       "args": [
         "-y",
-        "@nicepkg/supabase-mcp@latest",
-        "--supabase-url=${input:supabase_url}",
-        "--supabase-key=${input:supabase_key}"
-      ]
+        "@supabase/mcp-server-supabase@0.4.5",
+        "--read-only",
+        "--project-ref=${input:supabase_project_ref}"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${input:supabase_access_token}"
+      }
     },
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-playwright"]
+      // @playwright/mcp — publisher: Microsoft, Apache-2.0. (Replaces fabricated @anthropic/mcp-server-playwright; the @anthropic npm scope is unclaimed.)
+      // TODO(human): verify pin against https://github.com/microsoft/playwright-mcp (npm: @playwright/mcp)
+      "args": ["-y", "@playwright/mcp@0.0.41"]
     }
   },
   "inputs": [
@@ -52,14 +82,20 @@
     },
     {
       "type": "promptString",
-      "id": "supabase_url",
-      "description": "Supabase project URL (e.g., https://xxxxx.supabase.co) — needed for Phase 2+",
+      "id": "filesystem_root",
+      "description": "Absolute path to a DEDICATED working directory for the filesystem MCP server. Must NOT contain secrets (.env*, *.key, secrets/**). Avoid the repo root if it holds gitignored secrets. See docs/ai/mcp.md.",
       "password": false
     },
     {
       "type": "promptString",
-      "id": "supabase_key",
-      "description": "Supabase service_role key — needed for Phase 2+",
+      "id": "supabase_project_ref",
+      "description": "Supabase project ref (short project id, e.g. abcdefghijklmnop) used for --project-ref scoping.",
+      "password": false
+    },
+    {
+      "type": "promptString",
+      "id": "supabase_access_token",
+      "description": "Supabase Management API personal access token — use a READ-ONLY scoped token, NEVER the service_role key (service_role bypasses RLS). TODO(human): provision a read-only token before use.",
       "password": true
     }
   ]

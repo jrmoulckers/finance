@@ -15,6 +15,8 @@ description: >
 
 ```kotlin
 // KMP value class (packages/models)
+import kotlin.math.abs
+
 @JvmInline
 value class Cents(val amount: Long) {
     operator fun plus(other: Cents) = Cents(amount + other.amount)
@@ -23,16 +25,53 @@ value class Cents(val amount: Long) {
         val sign = if (amount < 0) "-" else ""
         return "$sign\$${abs(amount) / 100}.${(abs(amount) % 100).toString().padStart(2, '0')}"
     }
+
     companion object {
-        fun fromDollars(d: Double) = Cents((d * 100).roundToLong())
+        fun fromDecimalString(input: String): Cents {
+            val trimmed = input.trim()
+            require(trimmed.isNotEmpty()) { "Amount is required" }
+            val negative = trimmed.startsWith("-")
+            val unsigned = trimmed.removePrefix("+").removePrefix("-")
+            val parts = unsigned.split('.', limit = 2)
+            val wholeDigits = parts[0].ifEmpty { "0" }
+            val fractionDigits = parts.getOrNull(1).orEmpty()
+            require(wholeDigits.all(Char::isDigit) && fractionDigits.all(Char::isDigit)) {
+                "Amount must be a decimal string"
+            }
+
+            val cents = wholeDigits.toLong() * 100 + fractionDigits.take(2).padEnd(2, '0').toLong()
+            val thirdDigit = fractionDigits.getOrNull(2)?.digitToIntOrNull() ?: 0
+            val hasNonZeroRemainder = fractionDigits.drop(3).any { it != '0' }
+            val shouldRoundUp =
+                thirdDigit > 5 || (thirdDigit == 5 && (hasNonZeroRemainder || cents % 2L == 1L))
+            val rounded = cents + if (shouldRoundUp) 1L else 0L
+            return Cents(if (negative) -rounded else rounded)
+        }
+
         val ZERO = Cents(0L)
     }
 }
 ```
 
 ```typescript
-// Web helper (apps/web)
-const cents = (dollars: number): number => Math.round(parseFloat(String(dollars)) * 100);
+// Web helper (apps/web): parse decimal strings with integer math and banker's rounding.
+export function centsFromDecimalString(input: string): number {
+  const match = input.trim().match(/^([+-])?(\d*)(?:\.(\d*))?$/);
+  if (!match || (!match[2] && !match[3])) throw new Error('Amount must be a decimal string');
+
+  const [, sign = '', wholeRaw = '0', fractionRaw = ''] = match;
+  const wholeCents = Number.parseInt(wholeRaw || '0', 10) * 100;
+  const centsDigits = (fractionRaw.slice(0, 2) || '0').padEnd(2, '0');
+  const baseCents = wholeCents + Number.parseInt(centsDigits, 10);
+  const thirdDigit = Number.parseInt(fractionRaw[2] ?? '0', 10);
+  const hasNonZeroRemainder = [...fractionRaw.slice(3)].some((digit) => digit !== '0');
+  const shouldRoundUp =
+    thirdDigit > 5 || (thirdDigit === 5 && (hasNonZeroRemainder || baseCents % 2 === 1));
+  const rounded = baseCents + (shouldRoundUp ? 1 : 0);
+
+  if (!Number.isSafeInteger(rounded)) throw new Error('Amount exceeds safe integer cents range');
+  return sign === '-' ? -rounded : rounded;
+}
 ```
 
 **Rules**:
@@ -161,7 +200,7 @@ Located at `packages/core/src/commonMain/kotlin/com/finance/core/export/`:
 
 ## Testing Checklist
 
-- [ ] Rounding boundaries (e.g., `Cents(1)` + `Cents(1)` = `Cents(2)`, not 0.02 float)
+- [ ] Rounding boundaries, including banker's rounding ties (e.g., `1.225` → `122` cents, `1.235` → `124` cents)
 - [ ] Negative amounts, zero values, high-value totals (`Long.MAX_VALUE` proximity)
 - [ ] Serializer output: deterministic ordering, stable schemas
 - [ ] Checksum generation with known fixtures

@@ -12,6 +12,8 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 ## Available Skills
 
+> **Source of truth:** the directories under [`.github/skills/`](../../.github/skills/). As of 2026-06 there are **20** skills. This page describes the established skills in detail; skills added in 2026-06 — `accessibility-testing`, `security-review-methodology`, `design-tokens`, `performance-budgets`, `i18n-localization`, `mcp-agent-tooling`, and `prompt-engineering` — are listed in [Agent Instructions](agent-instructions.md#agent-skills). A generated `ai-manifest` is planned to keep these counts in sync — see the [CHANGELOG](CHANGELOG.md).
+
 ### `dev-onboarding` — Developer Environment Setup
 
 **File:** `.github/skills/dev-onboarding/SKILL.md`

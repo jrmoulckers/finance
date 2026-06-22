@@ -8,6 +8,8 @@ You are working in `apps/web/`, the Progressive Web App (PWA) for Finance.
 This app uses React 19, TypeScript, Vite, and SQLite-WASM to deliver an
 offline-first financial tracking experience in the browser.
 
+These instructions supplement and override `apps.instructions.md` for `apps/web/**`.
+
 ## Architecture Rules
 
 ### Offline-First — Data Lives in the Browser

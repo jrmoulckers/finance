@@ -6,6 +6,8 @@ applyTo: 'packages/core/**/export/**'
 
 You are working in the data export module, which handles GDPR data portability.
 
+These instructions supplement and take precedence over `packages.instructions.md` for `packages/core/**/export/**`.
+
 ## Key Types
 
 - `DataExportService` — orchestrator object singleton

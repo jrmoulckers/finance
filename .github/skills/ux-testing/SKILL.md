@@ -7,6 +7,26 @@ description: >
 
 # UX Testing Skill
 
+## Purpose
+
+This skill covers **manual UX testing, QA session orchestration, bug discovery, and test scenario design** for the Finance app across Web, iOS, Android, and Windows. It hands issue quality, labels, duplicate decisions, and filing mechanics to `issue-management`.
+
+## Out of Scope
+
+- Issue body quality, platform-scoping decisions, duplicate management, and label taxonomy → use `issue-management`.
+- Accessibility conformance audits and assistive-technology test passes → use `accessibility-testing`.
+- Security/privacy vulnerability review → use `security-review-methodology` or `privacy-compliance`.
+- Sprint selection, agent dispatch, CI, and merge operations → use `sprint-planning` and `fleet-orchestration`.
+
+## Related Skills
+
+| Skill                         | Use For                                                        |
+| ----------------------------- | -------------------------------------------------------------- |
+| `issue-management`            | Filing validated issues with correct scope, labels, and dupes  |
+| `accessibility-testing`       | WCAG 2.2 AA, screen-reader, keyboard, and contrast validation  |
+| `performance-budgets`         | Lighthouse, route budgets, bundle limits, and perf regressions |
+| `security-review-methodology` | Threat-model-driven security and privacy review methodology    |
+
 ## Testing Session Structure
 
 ### Pre-Session Setup
@@ -19,12 +39,12 @@ description: >
 
 ### Platform Maturity (Source of Truth)
 
-| Platform | Status                             | UI Screens                                       | Testing Priority |
-| -------- | ---------------------------------- | ------------------------------------------------ | ---------------- |
-| Web      | Full implementation                | All pages                                        | Primary          |
-| iOS      | Full SwiftUI implementation        | Transactions, Budgets, Goals, Accounts, Settings | High             |
-| Windows  | Full Compose Desktop               | Transactions, Budgets, Goals, Navigation         | High             |
-| Android  | Scaffold only (manifest + widgets) | None                                             | Skip for now     |
+| Platform | Status                                  | UI Screens                                       | Testing Priority |
+| -------- | --------------------------------------- | ------------------------------------------------ | ---------------- |
+| Web      | Full implementation                     | All pages                                        | Primary          |
+| iOS      | Full SwiftUI implementation             | Transactions, Budgets, Goals, Accounts, Settings | High             |
+| Android  | First-class beta target; active Compose | Transactions, Budgets, Goals, Accounts, Settings | High             |
+| Windows  | Full Compose Desktop                    | Transactions, Budgets, Goals, Navigation         | High             |
 
 Update this table as platforms evolve.
 
@@ -65,7 +85,7 @@ Run the decision tree from `issue-management` skill:
 - Is the fix the same across platforms? → Single `platform:shared` issue
 - Does each platform need a different fix? → **File duplicates in the same batch**
 
-**The agent must check the actual implementation** on each platform — NOT guess. Dispatch an explore agent to check if iOS/Windows have the same pattern if unsure.
+**The agent must check the actual implementation** on each platform — NOT guess. Dispatch an explore agent to check if iOS, Android, or Windows have the same pattern if unsure.
 
 ### 2. Code Reference Verification
 
@@ -208,7 +228,7 @@ Every filed issue MUST include:
 ## Cross-Platform
 
 - **iOS**: How this applies (or doesn't) on iOS
-- **Android**: How this applies (or doesn't) on Android
+- **Android**: How this applies (or doesn't) on Android (first-class beta target — verify `apps/android`)
 - **Windows**: How this applies (or doesn't) on Windows
 - Does this need platform-specific issues? (see issue-management skill)
 ```
@@ -303,14 +323,33 @@ Use this to guide structured testing sessions:
 Complex issue bodies with backticks, code fences, and special characters WILL break in PowerShell heredocs. Always use the file-based approach:
 
 ```javascript
-// Write body to temp file, then use --body-file
+// Write body to a repo-local scratch file, then use --body-file
 const fs = require('fs');
-const { execSync } = require('child_process');
-const bodyFile = path.join(os.tmpdir(), 'gh-issue-body.md');
+const path = require('path');
+const { execFileSync } = require('child_process');
 
-fs.writeFileSync(bodyFile, issueBody, 'utf8');
-execSync(`gh issue create --title "${title}" --body-file "${bodyFile}" --label "${labels}"`);
+const scratchDir = path.join(process.cwd(), '.copilot-scratch', 'issues');
+fs.mkdirSync(scratchDir, { recursive: true });
+const bodyFile = path.join(scratchDir, 'gh-issue-body.md');
+
+try {
+  fs.writeFileSync(bodyFile, issueBody, 'utf8');
+  execFileSync('gh', [
+    'issue',
+    'create',
+    '--title',
+    title,
+    '--body-file',
+    bodyFile,
+    '--label',
+    labels,
+  ]);
+} finally {
+  if (fs.existsSync(bodyFile)) fs.unlinkSync(bodyFile);
+}
 ```
+
+Do **not** use OS temp directories for issue bodies; use repo-local `.copilot-scratch/issues/` or an approved session-local scratch path and clean up named files afterward.
 
 ### Batch Filing Pattern
 
@@ -362,6 +401,7 @@ For each issue with file:line citations:
 For every issue NOT labeled `platform:web`-only or `platform:backend`:
 
 - Check: does iOS have real UI for this feature? → If yes, does the same bug exist there?
+- Check: does Android have real UI for this feature? → If yes, does the same bug exist there?
 - Check: does Windows have real UI for this feature? → If yes, does the same bug exist there?
 - If duplicates are needed, file them in the same batch — adapted for each platform's design language
 

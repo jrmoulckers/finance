@@ -1,0 +1,70 @@
+# =============================================================================
+# AI Workflow Metrics — scheduled collection of agent workflow health
+# =============================================================================
+#
+# Runs tools/workflow-metrics.js on a weekly schedule (and on demand) to collect
+# CI failure rate per PR, time-to-merge-ready, fleet runs, and per-agent-type
+# acceptance / change-request / revert rates from the GitHub API via the gh CLI.
+# The collector degrades gracefully (exit 0) when data cannot be derived, so this
+# workflow never fails the schedule. Output is uploaded as a JSON + Markdown
+# artifact and appended to the job summary.
+#
+# Addresses audit issues #2866 and #2865.
+# =============================================================================
+name: AI Metrics
+
+on:
+  schedule:
+    # Weekly, Mondays at 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Look-back window in days'
+        required: false
+        type: string
+        default: '30'
+      limit:
+        description: 'Max PRs / workflow runs to scan'
+        required: false
+        type: string
+        default: '200'
+
+concurrency:
+  group: ai-metrics-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+jobs:
+  collect:
+    name: Collect Workflow Metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3 — verify pinned SHA matches tag
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0 — verify pinned SHA matches tag
+        with:
+          node-version: 22
+
+      - name: Collect metrics
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node tools/workflow-metrics.js \
+            --days "${{ github.event.inputs.days || '30' }}" \
+            --limit "${{ github.event.inputs.limit || '200' }}" \
+            --out-dir metrics-out
+
+      - name: Upload metrics artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 — verify pinned SHA matches tag
+        with:
+          name: workflow-metrics
+          path: metrics-out/
+          retention-days: 90
+          if-no-files-found: warn

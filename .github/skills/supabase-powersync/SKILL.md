@@ -8,10 +8,32 @@ description: >
 
 # Supabase & PowerSync Skill
 
+## Purpose
+
+This skill covers **backend sync infrastructure** — Supabase PostgreSQL schema, RLS policies, Edge Functions, migrations, and PowerSync sync-rule configuration. For client-side offline behavior, conflict-resolution UX, SQLDelight source sets, or financial domain math, use the related skills below.
+
+## Out of Scope
+
+- Client/offline queue behavior, local replay UX, and sync-state UI → use `edge-sync`.
+- Kotlin source sets, SQLDelight schema authoring, and KMP models → use `kmp-development`.
+- Financial calculations, cents arithmetic, and reporting formulas → use `financial-modeling`.
+- Security review methodology and threat modeling → use `security-review-methodology`.
+
+## Related Skills
+
+| Skill                         | Use For                                                         |
+| ----------------------------- | --------------------------------------------------------------- |
+| `edge-sync`                   | Client-local SQLite, mutation queues, conflict UX, delta replay |
+| `kmp-development`             | SQLDelight `.sq`, KMP models, source sets, and Gradle patterns  |
+| `security-review-methodology` | Reviewing RLS/auth/function risks and financial-data exposure   |
+| `privacy-compliance`          | GDPR/CCPA erasure, export, retention, and consent requirements  |
+
 ## Current Backend State
 
-- **23 up-migrations** with matching `down/` reversals
-- **16 Edge Functions**: data-export, health-check, account-deletion, admin-dashboard, auth-webhook, household-invite, launch-readiness, manage-webhooks, passkey-authenticate, passkey-register, process-recurring, send-notification, sync-health-report, verify-device-attestation
+- **Inventory source of truth**: migration and Edge Function inventories change frequently; use the generated backend manifest when available, or inspect `services/api/supabase/migrations/` and `services/api/supabase/functions/` directly. Current audit date: 2026-06-21.
+- **Migrations**: versioned up-migrations live in `services/api/supabase/migrations/`; verify exact inventory from the current tree instead of relying on this skill for counts.
+- **Down migrations**: write reversals for new migrations when safe, but verify historical down coverage in `services/api/supabase/migrations/down/` rather than assuming every existing migration has one.
+- **Edge Functions**: function directories live in `services/api/supabase/functions/`; examples include data-export, health-check, account-deletion, passkey flows, recurring processing, notifications, and sync health reporting.
 - **Rate limiting**: `rate_limits` table with configurable per-user/per-endpoint limits
 - **Anomaly detection**: Spending pattern analysis via Edge Functions
 - **Spending forecast**: Balance prediction via `BalancePredictionEngine` (KMP, on-device)
@@ -28,7 +50,7 @@ services/api/
 |   +-- sync-rules.yaml
 +-- supabase/
     +-- config.toml
-    +-- migrations/           # 23 up-migrations + down/ reversals
+    +-- migrations/           # versioned up-migrations; see generated manifest/current tree
     +-- functions/
         +-- _shared/          # auth.ts, cors.ts, logger.ts, response.ts
         +-- _test_helpers/
@@ -63,7 +85,7 @@ Examples from current migrations:
 
 ### Migration Rules
 
-- **Reversible**: Every up-migration has a matching `down/` reversal
+- **Reversible when safe**: New up-migrations should include matching `down/` reversals when the change is reversible; verify existing coverage rather than assuming historical parity
 - **Zero-downtime**: Use expand-contract pattern (add column → dual-write → backfill → switch → drop old)
 - **Idempotent**: Use `IF NOT EXISTS` / `IF EXISTS` guards
 - **Add-only**: New columns must be nullable or have defaults
@@ -165,7 +187,7 @@ bucket_definitions:
 
 ### Adding a New Synced Table
 
-1. Create Supabase migration (up + down)
+1. Create Supabase up-migration and, when reversible, a matching down migration
 2. Add RLS policies (household isolation pattern)
 3. Add to sync-rules.yaml data queries
 4. Add SQLDelight `.sq` in `packages/core/`

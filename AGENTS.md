@@ -113,7 +113,7 @@ AI agents that skip issue creation, commit directly to `main`, or fail to create
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.) — `npm run format` only touches JS/TS/JSON/MD/YAML
-- **16 AI agents** are defined in `.github/agents/` (see list below)
+- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster (a generated `ai-manifest` is planned to keep counts in sync; see [`docs/ai/CHANGELOG.md`](docs/ai/CHANGELOG.md)). As of 2026-06 there are **22** agents (see list below).
 
 ## AI Agent Configuration
 
@@ -135,14 +135,28 @@ Custom agents are defined in `.github/agents/`. Each agent has a specific role:
 - `product-manager` — Product strategy, sprint planning, issue triage, roadmap management
 - `marketing-strategist` — Go-to-market, ASO, launch comms, content strategy, growth
 - `business-analyst` — Monetization, pricing, competitive analysis, revenue modeling
+- `qa-tester` — Live testing-session orchestration, bug discovery, investigation dispatch, issue filing (read-only on code)
+- `ai-ops-engineer` — Owns `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts, evals, and the AI manifest
+- `release-manager` — Changesets/versioning, release notes, store submission preparation
+- `performance-engineer` — Performance budgets, profiling, regression analysis
+- `data-engineer` — Metrics pipelines, event schemas, analytics
+- `localization-engineer` — i18n, localization, financial terminology
 
-Agent skills are in `.github/skills/` and provide reusable domain knowledge:
+> **Reviewer roles are not symmetric.** `accessibility-reviewer` is **review-only** — it never edits production code and routes every fix to the owning platform agent. `security-reviewer` is the designated **emergency fixer** — it may implement CRITICAL/HIGH security fixes in any directory, coordinating with the owning agent, and is review-only for non-security code.
+
+Agent skills are in `.github/skills/` (the source of truth) and provide reusable domain knowledge. As of 2026-06 there are **20** skills. The established set includes:
 
 - `fleet-orchestration` — Multi-agent sprint dispatch and coordination
 - `sprint-planning` — Backlog decomposition and sprint sizing
-- `project-management` — Issue lifecycle, roadmap, release management
-- `go-to-market` — Marketing strategy, ASO, launch communications
-- `monetization` — Pricing, subscriptions, freemium tier design
+- `project-management` / `issue-management` — Issue lifecycle, roadmap, release management
+- `dev-onboarding` — Environment setup and onboarding
+- `edge-sync` / `supabase-powersync` / `kmp-development` — Sync, backend, and shared-Kotlin domain knowledge
+- `financial-modeling` — Money representation, budgeting, rounding
+- `privacy-compliance` — GDPR/CCPA, data minimization, encryption
+- `go-to-market` / `monetization` — Marketing and pricing
+- `ux-testing` — UX/QA testing guidance
+
+Added in 2026-06: `accessibility-testing`, `security-review-methodology`, `design-tokens`, `performance-budgets`, `i18n-localization`, `mcp-agent-tooling`, `prompt-engineering`. See [`docs/ai/skills.md`](docs/ai/skills.md) for full descriptions.
 
 Path-specific instructions are in `.github/instructions/`.
 
@@ -164,18 +178,19 @@ AI agents **MUST** (auto-approved, mandatory):
 - **Push to own feature branches**: `git push origin <feature-branch>` — this is **REQUIRED**, not optional. Never stop and ask for permission.
 - `git fetch origin main` — read-only sync, required for pre-push rebase
 - `git rebase origin/main` on **own feature branch only** — required pre-push hygiene
+- `git push --force-with-lease origin <own-feature-branch>` — auto-approved **only** to re-push the agent's **own** feature branch after a rebase or conflict resolution. `--force-with-lease` refuses to overwrite work it hasn't seen, so it is safe for this narrow use.
 - `git status`, `git log`, `git diff`, `git show`, `git branch`
 
 AI agents MUST NOT:
 
 - Push to `main`, `master`, or release branches (hard blocked by GitHub branch protection)
-- Use `git push --force` (forbidden entirely)
-- Use `git push --force-with-lease` without per-task human approval (may overwrite collaborator commits; in fleet mode the human grants approval at dispatch time)
+- Use `git push --force` (the unguarded variant) — **forbidden entirely**
+- Use `git push --force-with-lease` on a **shared branch, an integration branch, or any branch the agent does not own**, or for anything other than re-pushing the agent's own branch after a clean rebase/conflict resolution
 - `git remote add`, `git remote remove`, `git remote set-url`
 - `git merge` from remote branches
 - `git rebase` onto any branch other than `origin/main` on the agent's own feature branch
 
-**Why:** Feature-branch pushes are safe because `main` is protected by branch protection requiring required CI checks to pass. `git fetch` and pre-push rebase are standard hygiene — not gated. Force-push is dangerous because it can overwrite others' work.
+**Why:** Feature-branch pushes are safe because `main` is protected by branch protection requiring required CI checks to pass. `git fetch` and pre-push rebase are standard hygiene — not gated. `--force-with-lease` on the agent's **own** branch is auto-approved because it refuses to clobber commits the agent hasn't already seen, making it safe for re-pushing after a rebase/conflict resolution. Plain `git push --force` is forbidden entirely because it overwrites unconditionally.
 
 ### Category 2: Pull Request & Review Operations
 
@@ -342,24 +357,30 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 
 **File ownership by agent:**
 
-| Agent                     | Primary ownership                                                  |
-| ------------------------- | ------------------------------------------------------------------ |
-| `@kmp-engineer`           | `packages/`                                                        |
-| `@backend-engineer`       | `services/api/`                                                    |
-| `@web-engineer`           | `apps/web/`                                                        |
-| `@android-engineer`       | `apps/android/`                                                    |
-| `@ios-engineer`           | `apps/ios/`                                                        |
-| `@windows-engineer`       | `apps/windows/`                                                    |
-| `@design-engineer`        | `config/tokens/`, generated token files                            |
-| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/`                     |
-| `@docs-writer`            | `docs/`, `*.md` files in root                                      |
-| `@security-reviewer`      | Security fixes in any directory; review-only for non-security code |
-| `@accessibility-reviewer` | Read-only review — never edits production code                     |
-| `@architect`              | `docs/architecture/`, ADRs; read-only for code                     |
-| `@finance-domain`         | `packages/core/` business logic (shared with `@kmp-engineer`)      |
-| `@product-manager`        | `docs/business/`, GitHub Issues (read/create)                      |
-| `@marketing-strategist`   | `docs/marketing/`, app store copy drafts                           |
-| `@business-analyst`       | `docs/business/`, pricing/revenue docs                             |
+| Agent                     | Primary ownership                                                                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@kmp-engineer`           | `packages/`                                                                                                                                           |
+| `@backend-engineer`       | `services/api/`                                                                                                                                       |
+| `@web-engineer`           | `apps/web/`                                                                                                                                           |
+| `@android-engineer`       | `apps/android/`                                                                                                                                       |
+| `@ios-engineer`           | `apps/ios/`                                                                                                                                           |
+| `@windows-engineer`       | `apps/windows/`                                                                                                                                       |
+| `@design-engineer`        | `config/tokens/`, generated token files                                                                                                               |
+| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/`                                                                                                        |
+| `@docs-writer`            | `docs/`, `*.md` files in root                                                                                                                         |
+| `@security-reviewer`      | Emergency fixer — may implement CRITICAL/HIGH security fixes in any directory (coordinating with the owning agent); review-only for non-security code |
+| `@accessibility-reviewer` | Review-only — never edits production code; routes every fix to the owning platform agent                                                              |
+| `@architect`              | `docs/architecture/`, ADRs; read-only for code                                                                                                        |
+| `@finance-domain`         | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                         |
+| `@product-manager`        | `docs/business/`, GitHub Issues (read/create)                                                                                                         |
+| `@marketing-strategist`   | `docs/marketing/`, app store copy drafts                                                                                                              |
+| `@business-analyst`       | `docs/business/`, pricing/revenue docs                                                                                                                |
+| `@qa-tester`              | Read-only on code; orchestrates testing sessions and files GitHub Issues                                                                              |
+| `@ai-ops-engineer`        | `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts/evals, AI manifest                                                             |
+| `@release-manager`        | `.changeset/`, version/release-notes files, store-submission prep docs                                                                                |
+| `@performance-engineer`   | `performance.budget.json`, profiling/benchmark configs, perf docs                                                                                     |
+| `@data-engineer`          | Metrics pipelines, event schemas, analytics configs                                                                                                   |
+| `@localization-engineer`  | i18n resource files, localization tooling, financial terminology                                                                                      |
 
 **Coordination protocol:**
 

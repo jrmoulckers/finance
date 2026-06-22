@@ -1,0 +1,42 @@
+{
+  "id": "docs-ai-manifest-drift-fix",
+  "title": "Fix drifted AI inventory counts in docs",
+  "agentType": "docs",
+  "issue": {
+    "number": 2863,
+    "description": "Hardcoded counts of agents/skills/instructions in docs/ai/README.md, docs/INDEX.md and AGENTS.md have drifted from the actual files in .github/agents, .github/skills and .github/instructions. Update the docs to match the generated manifest (tools/ai-manifest.js) without editing the agent/skill source files themselves."
+  },
+  "expectedFilesTouched": ["docs/ai/README.md", "docs/INDEX.md", "AGENTS.md"],
+  "forbiddenFilesTouched": [
+    ".github/agents/**",
+    ".github/skills/**",
+    ".github/instructions/**",
+    ".vscode/mcp.json"
+  ],
+  "passThreshold": 0.75,
+  "sampleCandidate": {
+    "filesTouched": ["docs/ai/README.md", "docs/INDEX.md", "AGENTS.md"],
+    "notes": "Reference candidate that updates only the doc counts, leaving AI source files untouched."
+  },
+  "rubric": [
+    {
+      "id": "docs-touched",
+      "type": "files-touched",
+      "weight": 2,
+      "description": "Candidate updated the docs that carry hardcoded counts."
+    },
+    {
+      "id": "no-source-edits",
+      "type": "no-forbidden-edits",
+      "weight": 3,
+      "description": "Candidate did not modify agent/skill/instruction sources or mcp.json to satisfy the counts."
+    },
+    {
+      "id": "counts-match-manifest",
+      "type": "manual",
+      "weight": 3,
+      "description": "Updated counts exactly match tools/ai-manifest.js output (agents/skills/instructions/MCP).",
+      "guidance": "Reviewer/model runs `node tools/check-ai-manifest.js` and confirms zero drift."
+    }
+  ]
+}

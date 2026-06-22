@@ -20,21 +20,33 @@ This document describes the roles, skills, and workflow rules for all AI agents 
 
 The Finance monorepo uses specialized AI agents, each with a focused domain. Agents are defined in `.github/agents/` as `<role>.agent.md` files. Each agent has a clear mission, expertise areas, boundaries, and a list of allowed tools.
 
-**Current agent types:**
+**Current agent types:** The authoritative roster is the set of `*.agent.md` files in `.github/agents/` (a generated `ai-manifest` is planned to keep this in sync — see [`CHANGELOG.md`](CHANGELOG.md)). As of 2026-06 there are **22** agents:
 
-- **accessibility-reviewer** — Reviews UI for WCAG 2.2 AA, platform accessibility, and inclusive design.
+- **accessibility-reviewer** — Reviews UI for WCAG 2.2 AA, platform accessibility, and inclusive design. **Review-only** — routes fixes to the owning platform agent.
 - **android-engineer** — Android (Jetpack Compose, KMP, PowerSync, Keystore, Wear OS).
 - **architect** — System architecture, ADRs, cross-platform design, sync protocols.
 - **backend-engineer** — Supabase/PostgreSQL, PowerSync, RLS, Edge Functions, migrations.
+- **business-analyst** — Monetization, pricing, competitive analysis, revenue modeling.
 - **design-engineer** — Design tokens (DTCG), Style Dictionary, color/typography, component specs.
 - **devops-engineer** — CI/CD (GitHub Actions, Turborepo, Fastlane, Changesets, security scanning).
 - **docs-writer** — Technical documentation, onboarding, API docs, ADRs, AI workflow docs.
 - **finance-domain** — Budgeting, financial modeling, domain logic, calculations, terminology.
 - **ios-engineer** — iOS/SwiftUI, KMP integration, Keychain, VoiceOver, watchOS.
 - **kmp-engineer** — Shared Kotlin Multiplatform (KMP) logic, SQLDelight, Ktor, Gradle config.
-- **security-reviewer** — Security/privacy audits, compliance, authentication, encryption.
+- **marketing-strategist** — Go-to-market, ASO, launch comms, content strategy, growth.
+- **product-manager** — Product strategy, sprint planning, issue triage, roadmap management.
+- **qa-tester** — Live testing-session orchestration, bug discovery, investigation dispatch, issue filing (read-only on code).
+- **security-reviewer** — Security/privacy audits, compliance, authentication, encryption. **Emergency fixer** — may implement CRITICAL/HIGH fixes in any directory with owning-agent coordination.
 - **web-engineer** — PWA, React/TypeScript, KMP/JS, IndexedDB/SQLite-WASM, ARIA, Web Crypto.
 - **windows-engineer** — Compose Desktop (JVM), Windows Hello, DPAPI, Narrator, MSIX.
+
+**Added in 2026-06:**
+
+- **ai-ops-engineer** — Owns `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts, evals, and the AI manifest.
+- **release-manager** — Changesets/versioning, release notes, store-submission preparation.
+- **performance-engineer** — Performance budgets, profiling, regression analysis.
+- **data-engineer** — Metrics pipelines, event schemas, analytics.
+- **localization-engineer** — i18n, localization, financial terminology.
 
 Each agent file documents:
 
@@ -49,7 +61,7 @@ Each agent file documents:
 
 Agent skills are reusable knowledge bundles in `.github/skills/`, each with a `SKILL.md` file. Skills are activated automatically by agents when relevant keywords or domains are detected.
 
-**Current skills:**
+**Current skills:** The authoritative list is the set of directories under `.github/skills/`. As of 2026-06 there are **20** skills:
 
 - **dev-onboarding** — Developer environment setup, onboarding, troubleshooting.
 - **edge-sync** — Offline-first sync, CRDTs, delta sync, conflict resolution.
@@ -57,6 +69,13 @@ Agent skills are reusable knowledge bundles in `.github/skills/`, each with a `S
 - **kmp-development** — KMP project structure, expect/actual, SQLDelight, Gradle, multiplatform pitfalls.
 - **privacy-compliance** — GDPR, CCPA, data minimization, consent, encryption, privacy by design.
 - **supabase-powersync** — Supabase config, PostgreSQL schema, RLS, Edge Functions, PowerSync sync rules.
+- **fleet-orchestration** — Multi-agent sprint dispatch and coordination.
+- **sprint-planning** — Backlog decomposition and sprint sizing.
+- **project-management** / **issue-management** — Issue lifecycle, roadmap, release management.
+- **go-to-market** / **monetization** — Marketing strategy, ASO, pricing, freemium design.
+- **ux-testing** — UX/QA testing guidance.
+
+**Added in 2026-06:** `accessibility-testing`, `security-review-methodology`, `design-tokens`, `performance-budgets`, `i18n-localization`, `mcp-agent-tooling`, `prompt-engineering`.
 
 **How skills work:**
 
@@ -77,7 +96,7 @@ AI agents follow strict workflow rules to ensure quality, security, and complian
   1. Create a GitHub issue for the feature.
   2. Work locally with Copilot Chat (Agent Mode) or assign to `@copilot` for autonomous work.
   3. Request review from `@security-reviewer` and `@accessibility-reviewer` for relevant changes.
-  4. Merge only after all checks pass.
+  4. Self-merge your own PR once the quality gate passes (CI green AND `MERGEABLE`). Merging a PR you did **not** author stays human-gated.
 
 - **Code review:**
   - Use specialized agents for review: `@security-reviewer`, `@accessibility-reviewer`, `@finance-domain`.
@@ -117,7 +136,7 @@ See [`docs/ai/instructions.md`](instructions.md) for details and how to add/upda
 
 - Use `/fleet` in Copilot CLI to break large tasks into subtasks for parallel agent execution.
 - Best for tasks with separable concerns (e.g., code + tests + docs).
-- Monitor progress and review all PRs before merging.
+- Each agent self-merges its own PR once the quality gate passes; the orchestrator reconciles with `origin/main` and merges in the recommended order.
 
 ---
 
@@ -125,16 +144,18 @@ See [`docs/ai/instructions.md`](instructions.md) for details and how to add/upda
 
 **All agents must NOT perform the following without explicit human approval:**
 
-- PR/review operations (merge, close, approve PRs — creating PRs with linked issues IS allowed)
-- Remote platform mutations (GitHub API writes, deployments, releases)
+- **PR/review operations on a PR the agent did NOT author** — merging, approving, closing, or dismissing reviews on a human's or another agent's PR. (Acting on the agent's **own** PR — create, approve, merge, close — is auto-approved once the quality gate passes; see below.)
+- Remote platform mutations (GitHub API writes, deployments, releases, issue close/reopen/delete, gating-label changes)
 - File operations outside the repository root
-- `git push --force` or `git push --force-with-lease` (regular push to own feature branch IS allowed)
+- Plain `git push --force` (forbidden entirely), and `git push --force-with-lease` on a shared/integration branch or a branch the agent does not own
 
 **Auto-approved operations (no human needed):**
 
 - `git push origin <feature-branch>` — pushing own feature branch
 - `git fetch origin main` and `git rebase origin/main` on own branch — standard pre-push hygiene
+- `git push --force-with-lease origin <own-feature-branch>` — re-pushing own branch after a rebase/conflict resolution
 - `gh pr create` — creating PRs with linked issues
+- **Self-merge of the agent's own PR** — `gh pr merge <N> --squash` once CI is green AND the PR is `MERGEABLE`; approving/closing the agent's own PR
 
 **Instead:**
 
@@ -165,4 +186,4 @@ If a task requires a gated operation, agents must STOP, explain, and request hum
 
 ---
 
-_Last updated: [auto-generated]_
+_Last reviewed: 2026-06. The authoritative roster/skill lists are the `.github/agents/` and `.github/skills/` directories; this summary is kept in sync manually until the generated `ai-manifest` lands (see [CHANGELOG.md](CHANGELOG.md))._

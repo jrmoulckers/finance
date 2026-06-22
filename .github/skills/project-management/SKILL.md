@@ -8,6 +8,26 @@ description: >
 
 # Project Management Skill
 
+## Purpose
+
+This skill covers **issue lifecycle, backlog grooming, milestones, release management, roadmap tracking, and cross-team coordination**. It does not own issue filing quality, sprint selection, or agent execution mechanics.
+
+## Out of Scope
+
+- Issue body quality, cross-platform issue scoping, duplicates, and label correctness at filing time → use `issue-management`.
+- Sprint selection, sizing, capacity, and dependency sequencing → use `sprint-planning`.
+- Agent dispatch, worktree coordination, CI self-healing, and PR merge operations → use `fleet-orchestration`.
+- Platform implementation details → use the relevant engineering skill.
+
+## Related Skills
+
+| Skill                 | Use For                                                  |
+| --------------------- | -------------------------------------------------------- |
+| `issue-management`    | High-quality issue creation, platform scoping, and dupes |
+| `sprint-planning`     | Choosing sprint scope, balancing capacity, ordering deps |
+| `fleet-orchestration` | Dispatching agents, monitoring CI, and self-merging PRs  |
+| `ux-testing`          | Manual QA sessions that generate candidate issues        |
+
 ## Issue Lifecycle
 
 ```
@@ -108,11 +128,11 @@ gh run view [run-id] --log-failed
 
 ### 4. Self-Heal
 
-Fix failures → `node tools/agent-scripts/pre-push-check.js --fix` → push → repeat until green.
+Fix failures → follow `docs/ai/workflow.md` "Mandatory Pre-Push" → push → repeat until green.
 
 ### 5. Handoff
 
-All PRs merge-ready → humans review + merge → clean up worktrees.
+All PRs quality-gate green (CI green + `MERGEABLE`) → owning agents self-merge their PRs → clean up worktrees. Add `## Needs Human Action` only for genuine blockers such as token/branch-protection limits.
 
 ## CI Monitoring Patterns
 
@@ -247,7 +267,7 @@ Every sprint includes at least 1 business task:
 - No two agents edit same file in parallel
 - Shared config files: single owner per fleet run
 - Schema changes strictly serialized: backend → KMP → platform
-- Last agent runs `npm run ci:check` before pushing
+- Last agent follows the canonical Mandatory Pre-Push validation before pushing
 
 ## Key Documents
 
@@ -271,12 +291,3 @@ Every sprint includes at least 1 business task:
 5. Cross-reference related issues with `Refs #N`
 6. Cross-platform issues need proper scoping (see `issue-management` skill)
 7. Platform-specific duplicates required when fix implementation differs by platform
-
-## Related Skills
-
-| Skill                 | Scope                                                         |
-| --------------------- | ------------------------------------------------------------- |
-| `issue-management`    | Issue creation quality, platform scoping, duplicate decisions |
-| `ux-testing`          | Testing methodology, bug investigation, session orchestration |
-| `sprint-planning`     | Sprint sizing, workload balancing, agent dispatch             |
-| `fleet-orchestration` | Parallel agent execution, worktree coordination               |

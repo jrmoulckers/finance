@@ -1,3 +1,7 @@
+---
+applyTo: '**'
+---
+
 # Issue-First Development Workflow
 
 Every code change in this repository MUST be linked to a GitHub issue and delivered through a feature branch + PR.

@@ -153,6 +153,73 @@ Detects stale worktrees (merged branches, closed PRs, inactive branches) with PR
     node tools/worktree-cleanup.js --force                 # Remove stale worktrees
     node tools/worktree-cleanup.js --stale-days 14         # Custom staleness threshold
 
+### `workflow-metrics.js` - AI agent workflow metrics collector
+
+Collects AI-agent workflow health from the GitHub API via the `gh` CLI: CI failure rate per PR, time-to-merge-ready, fleet runs, and per-agent-type acceptance / change-request / revert rates. Outputs a Markdown summary + JSON. Best-effort: non-derivable metrics are emitted as `null` with an explanatory note. Degrades gracefully (exit 0) when `gh` is missing or unauthenticated. Implements the automation described in [`docs/ai/workflow-metrics.md`](../docs/ai/workflow-metrics.md). Addresses issues #2866 and #2865.
+
+    node tools/workflow-metrics.js                         # Markdown + JSON to stdout
+    node tools/workflow-metrics.js --days 30 --limit 200   # Window + scan limit
+    node tools/workflow-metrics.js --json                  # JSON only
+    node tools/workflow-metrics.js --out-dir metrics-out   # Also write JSON + MD files
+
+Runs weekly via [`.github/workflows/ai-metrics.yml`](../.github/workflows/ai-metrics.yml).
+
+### `ai-manifest.js` - AI configuration manifest generator
+
+Scans `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md`, `.github/instructions/*.instructions.md`, and `.vscode/mcp.json` (JSONC-aware) and emits a JSON + Markdown manifest (counts + names) of the AI configuration surface. Addresses issue #2863.
+
+    node tools/ai-manifest.js                              # Markdown + JSON to stdout
+    node tools/ai-manifest.js --json                       # JSON only
+    node tools/ai-manifest.js --out-dir out                # Write ai-manifest.{json,md}
+
+### `check-ai-manifest.js` - AI manifest drift check
+
+Compares hardcoded counts in `docs/ai/README.md`, `docs/INDEX.md`, and `AGENTS.md` against the real filesystem counts (via `ai-manifest.js`). **Informational by default** (warns, exit 0) to avoid racing concurrent doc edits; set `STRICT=1` to make drift blocking (exit 1). Addresses issue #2863.
+
+    node tools/check-ai-manifest.js                        # Warn-only (exit 0)
+    STRICT=1 node tools/check-ai-manifest.js               # Blocking (exit 1 on drift)
+
+Runs on PRs touching the AI config surface via [`.github/workflows/ai-manifest-check.yml`](../.github/workflows/ai-manifest-check.yml).
+
+### `ai-eval/run-evals.js` - Agent-output eval harness (scaffold)
+
+Loads golden-task fixtures from `tools/ai-eval/golden-tasks/`, evaluates a candidate agent output against each task's rubric, and prints a scorecard (text / `--json` / job summary). A scaffold — the model-invocation step is a `// TODO(human)`; until wired it scores automatable rubric checks against the repo or a fixture sample candidate. See [`tools/ai-eval/README.md`](ai-eval/README.md). Addresses issue #2862.
+
+    node tools/ai-eval/run-evals.js                        # Run all golden tasks
+    node tools/ai-eval/run-evals.js --json                 # JSON scorecard
+    node tools/ai-eval/run-evals.js --task <id>            # Run a single task
+    STRICT=1 node tools/ai-eval/run-evals.js               # Exit 1 if below threshold
+
+Runs (non-blocking) on agent/skill changes via [`.github/workflows/ai-eval.yml`](../.github/workflows/ai-eval.yml).
+
+### `check-migration-reversals.js` - Reverse-migration coverage check
+
+Verifies every `services/api/supabase/migrations/*.sql` has a matching `services/api/supabase/migrations/down/<name>.down.sql`. Exits 1 if any reverse migration is missing. Supports issue #2881.
+
+    node tools/check-migration-reversals.js                # Exit 1 on missing down files
+    node tools/check-migration-reversals.js --json         # JSON report
+
+Runs on PRs touching migrations via [`.github/workflows/migration-reversal-check.yml`](../.github/workflows/migration-reversal-check.yml).
+
+## Suggested `package.json` scripts
+
+`package.json` is shared and is not edited by the DevOps agent. When a maintainer
+next touches `package.json`, adding the following `scripts` entries makes the
+tools above first-class npm commands (each script also documents its suggested
+name in its header comment):
+
+```jsonc
+{
+  "scripts": {
+    "metrics:workflow": "node tools/workflow-metrics.js",
+    "ai:manifest": "node tools/ai-manifest.js",
+    "ai:manifest:check": "node tools/check-ai-manifest.js",
+    "ai:eval": "node tools/ai-eval/run-evals.js",
+    "db:check:reversals": "node tools/check-migration-reversals.js",
+  },
+}
+```
+
 ## Adding New Tools
 
 - Write scripts in Node.js for cross-platform compatibility

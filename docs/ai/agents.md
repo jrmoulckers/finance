@@ -11,6 +11,10 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 ## Available Agents
 
+> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **22** agents. This page describes the established roster in detail; the full current list (including agents added in 2026-06 — `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, and `qa-tester`) is summarized in [Agent Instructions](agent-instructions.md#agent-types). A generated `ai-manifest` is planned to keep these in sync — see the [CHANGELOG](CHANGELOG.md).
+>
+> **Reviewer roles are asymmetric:** `accessibility-reviewer` is **review-only** (routes fixes to the owning platform agent); `security-reviewer` is the **emergency fixer** (may implement CRITICAL/HIGH security fixes in any directory, with owning-agent coordination).
+
 ### `@architect` — System Architect
 
 **File:** `.github/agents/architect.agent.md`

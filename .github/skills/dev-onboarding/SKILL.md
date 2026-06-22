@@ -57,25 +57,12 @@ node tools/agent-scripts/setup-worktree.js <agent-type> <type> <description> <is
 
 ## Pre-Push Workflow (Mandatory)
 
-```bash
-# Automated: fixes + validates + commits + pushes + creates PR
-node tools/agent-scripts/pre-push-check.js --fix
-node tools/agent-scripts/create-pr.js --title "type(scope): description (#N)" --closes N
-```
-
-Manual equivalent:
-
-1. `npm run format && npx eslint . --fix`
-2. `npm run ci:check` — must pass clean
-3. `git add -A && git commit --amend --no-edit`
-4. `git fetch origin main && git rebase origin/main`
-5. `$env:HUSKY = "0"; git push origin <branch>`
-6. `gh pr create --title "..." --body "Closes #N"`
+Do not duplicate the command sequence in this onboarding skill. Follow `docs/ai/workflow.md` **Mandatory Pre-Push** as the canonical source: format/lint, verify, amend, fetch/rebase, push the agent-owned feature branch with the approved Husky bypass, create and verify the PR, monitor CI + mergeability, then self-merge agent-authored PRs after the quality gate passes.
 
 ## Local Quality Gates
 
 - **Pre-commit** (`.husky/pre-commit`): `lint-staged` auto-fixes staged TS/JS, formats MD/JSON/YAML/CSS
-- **Pre-push** (`.husky/pre-push`): Blocks non-interactive sessions; agents bypass with `$env:HUSKY = "0"`
+- **Pre-push** (`.husky/pre-push`): Blocks non-interactive sessions; agents use the approved Husky bypass documented in `docs/ai/workflow.md`
 - **Detekt** (Kotlin lint): Config in `config/detekt/`, run with `./gradlew detekt`
 
 ## Tools Directory
