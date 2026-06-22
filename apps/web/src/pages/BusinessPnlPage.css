@@ -1,0 +1,281 @@
+.business-pnl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.business-pnl__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.business-pnl__eyebrow {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.business-pnl__title {
+  font-size: var(--type-scale-display-font-size);
+  font-weight: var(--type-scale-display-font-weight);
+  margin: 0;
+}
+
+.business-pnl__description {
+  color: var(--semantic-text-secondary);
+  margin: 0;
+  max-width: 72ch;
+}
+
+.business-pnl__description code {
+  background: var(--semantic-background-secondary);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.9em;
+  padding: 0 var(--spacing-1);
+}
+
+.business-pnl__card {
+  background: var(--semantic-surface-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-4);
+}
+
+.business-pnl__card-title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  margin: 0 0 var(--spacing-3);
+}
+
+/* Controls -------------------------------------------------------------- */
+
+.business-pnl__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
+  align-items: flex-end;
+}
+
+.business-pnl__toggle {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+
+.business-pnl__toggle-legend {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  margin-bottom: var(--spacing-1);
+  padding: 0;
+}
+
+.business-pnl__toggle-options {
+  display: inline-flex;
+  gap: var(--spacing-1);
+  background: var(--semantic-background-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-1);
+}
+
+.business-pnl__toggle-option {
+  border-radius: var(--radius-sm, 4px);
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  padding: var(--spacing-2) var(--spacing-3);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.business-pnl__toggle-option--active {
+  background: var(--semantic-surface-primary);
+  box-shadow: var(--shadow-sm);
+  color: var(--semantic-text-primary);
+}
+
+/* Visually hide the native radio but keep it focusable for keyboard/AT. */
+.business-pnl__toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.business-pnl__toggle-option:focus-within {
+  outline: 2px solid var(--semantic-focus-ring, #2563eb);
+  outline-offset: 2px;
+}
+
+.business-pnl__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.business-pnl__filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.business-pnl__label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+}
+
+.business-pnl__input {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md);
+  font: inherit;
+  padding: var(--spacing-2) var(--spacing-3);
+}
+
+/* Summary --------------------------------------------------------------- */
+
+.business-pnl__summary-grid {
+  display: grid;
+  gap: var(--spacing-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.business-pnl__metric {
+  border: 1px solid var(--semantic-border-muted, var(--semantic-border-default));
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+}
+
+.business-pnl__metric-label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.business-pnl__metric-value {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: 700;
+}
+
+.business-pnl__metric-sub {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.business-pnl__amount--positive {
+  color: var(--semantic-success-text, #047857);
+}
+
+.business-pnl__amount--negative {
+  color: var(--semantic-danger-text, #b91c1c);
+}
+
+.business-pnl__status {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+}
+
+.business-pnl__status--profit {
+  color: var(--semantic-success-text, #047857);
+}
+
+.business-pnl__status--loss {
+  color: var(--semantic-danger-text, #b91c1c);
+}
+
+.business-pnl__status--breakeven {
+  color: var(--semantic-text-secondary);
+}
+
+/* Tables ---------------------------------------------------------------- */
+
+.business-pnl__table-wrapper {
+  overflow-x: auto;
+}
+
+.business-pnl__table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.business-pnl__table:not(.business-pnl__table--statement) {
+  min-width: 760px;
+}
+
+.business-pnl__caption {
+  caption-side: top;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin-bottom: var(--spacing-2);
+  text-align: left;
+}
+
+.business-pnl__table th,
+.business-pnl__table td {
+  border-bottom: 1px solid var(--semantic-border-default);
+  padding: var(--spacing-2) var(--spacing-3);
+  text-align: right;
+}
+
+.business-pnl__table th:first-child,
+.business-pnl__table td:first-child {
+  text-align: left;
+}
+
+.business-pnl__row-margin {
+  color: var(--semantic-text-secondary);
+  display: block;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 400;
+}
+
+.business-pnl__row--emphasis th,
+.business-pnl__row--emphasis td {
+  font-weight: 700;
+}
+
+.business-pnl__empty {
+  color: var(--semantic-text-secondary);
+  margin: 0;
+}
+
+.business-pnl__empty code {
+  background: var(--semantic-background-secondary);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0 var(--spacing-1);
+}
+
+.business-pnl__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .business-pnl__toggle-option {
+    transition: none;
+  }
+}

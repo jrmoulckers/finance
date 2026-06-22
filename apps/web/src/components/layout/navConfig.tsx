@@ -310,6 +310,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     description: 'Revenue, cost and margin by client/project tag.',
   },
   {
+    id: 'business-pnl',
+    label: 'Profit & Loss',
+    href: '/business-pnl',
+    icon: <ReportsIcon />,
+    group: 'insights',
+    mobilePriority: 27,
+    description: 'Weekly/monthly P&L with COGS, labor and margins.',
+  },
+  {
     id: 'achievements',
     label: 'Achievements',
     href: '/achievements',
