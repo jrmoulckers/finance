@@ -23,6 +23,7 @@ import {
   useInvestingBetaFeatures,
 } from '../components/investments/InvestingBetaFeatures';
 import { InvestmentProjections } from '../components/investments/InvestmentProjections';
+import { DeFiPositionsCard } from '../components/investments/DeFiPositionsCard';
 import { useInvestments } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
@@ -363,6 +364,9 @@ export const InvestmentsPage: React.FC = () => {
             currentValueCents={summary.totalValue}
             investedToDateCents={summary.totalCostBasis}
           />
+
+          {/* DeFi / locked positions tracked separately from spot holdings (#2172) */}
+          <DeFiPositionsCard spotLiquidValueCents={summary.totalValue} />
 
           {/* Holdings Table */}
           <InvestingBetaFeaturesPanel investments={investments} features={betaFeatures} />
