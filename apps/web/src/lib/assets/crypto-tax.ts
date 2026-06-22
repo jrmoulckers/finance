@@ -143,6 +143,7 @@ export function matchLots(
       isLongTerm,
       holdingDays,
       gainLossCents: gainLoss,
+      chain: lot.chain,
     });
 
     remaining -= quantityUsed;

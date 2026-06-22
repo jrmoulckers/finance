@@ -24,6 +24,16 @@ export type LocalDate = string;
 /** Source of a crypto holding. */
 export type CryptoSource = 'EXCHANGE' | 'WALLET' | 'DEFI' | 'STAKING';
 
+/**
+ * Blockchain network identifier used for chain-aware cost-basis tracking.
+ *
+ * A free-form lowercase slug such as `"ethereum"`, `"arbitrum"`, `"optimism"`,
+ * `"polygon"`, `"solana"`, or `"bitcoin"`. Per-chain identity matters because,
+ * under IRS Rev. Proc. 2024-28, cost basis must be tracked per wallet/account
+ * rather than universally pooled across all holdings (effective 2025).
+ */
+export type ChainId = string;
+
 /** A single crypto holding on an exchange or wallet. */
 export interface CryptoHolding {
   readonly id: string;
@@ -66,6 +76,8 @@ export interface CryptoTaxLot {
   readonly acquisitionDate: LocalDate;
   readonly costBasisCents: number;
   readonly source: CryptoSource;
+  /** Chain the lot lives on (optional; untagged lots are a global pool). */
+  readonly chain?: ChainId;
 }
 
 /** Result of matching lots against a disposal. */
@@ -88,6 +100,8 @@ export interface MatchedLot {
   readonly isLongTerm: boolean;
   readonly holdingDays: number;
   readonly gainLossCents: number;
+  /** Chain the consumed lot lived on (when chain-aware tracking is used). */
+  readonly chain?: ChainId;
 }
 
 /** Term classification. */
@@ -132,6 +146,117 @@ export interface CryptoTaxSummary {
   readonly ordinaryIncomeCents: number;
   readonly totalDisposals: number;
   readonly washSaleAlerts: readonly CryptoWashSaleAlert[];
+}
+
+// ---------------------------------------------------------------------------
+// Chain-aware DeFi taxable events (#2168)
+// ---------------------------------------------------------------------------
+
+/** Discriminator for chain-aware crypto taxable events. */
+export type CryptoEventType = 'SWAP' | 'BRIDGE' | 'AIRDROP';
+
+/**
+ * A crypto-to-crypto swap (e.g. ETH → USDC on a DEX).
+ *
+ * Treated as a taxable disposal of the asset given up at its fair market
+ * value, plus the acquisition of the asset received which takes a fresh cost
+ * basis equal to that same fair market value.
+ */
+export interface CryptoSwapEvent {
+  readonly id: string;
+  readonly type: 'SWAP';
+  readonly date: LocalDate;
+  /** Chain the swap executes on; disposed lots are drawn from this chain. */
+  readonly chain: ChainId;
+  readonly fromSymbol: string;
+  readonly fromQuantity: number;
+  readonly toSymbol: string;
+  readonly toQuantity: number;
+  /** Fair market value (cents) of the trade — proceeds of the disposed leg. */
+  readonly fairMarketValueCents: number;
+  /** Destination chain for the acquired asset (defaults to {@link chain}). */
+  readonly toChain?: ChainId;
+  /** Optional network fee (cents) capitalized into the acquired asset basis. */
+  readonly feeCents?: number;
+}
+
+/**
+ * A same-asset cross-chain bridge (e.g. USDC moved from Ethereum to Arbitrum).
+ *
+ * Generally NON-taxable: no disposal occurs because the taxpayer retains the
+ * same beneficial asset. Cost basis and the original acquisition date are
+ * preserved (the holding period "tacks") and re-tagged to the destination
+ * chain.
+ */
+export interface CryptoBridgeEvent {
+  readonly id: string;
+  readonly type: 'BRIDGE';
+  readonly date: LocalDate;
+  readonly symbol: string;
+  readonly quantity: number;
+  readonly fromChain: ChainId;
+  readonly toChain: ChainId;
+}
+
+/**
+ * An airdrop received into a wallet.
+ *
+ * Treated as ordinary income at the fair market value on the date of receipt
+ * (when the taxpayer gains dominion and control). That same FMV establishes
+ * the cost basis of the newly created lot.
+ */
+export interface CryptoAirdropEvent {
+  readonly id: string;
+  readonly type: 'AIRDROP';
+  readonly date: LocalDate;
+  readonly chain: ChainId;
+  readonly symbol: string;
+  readonly quantity: number;
+  readonly fairMarketValueCents: number;
+}
+
+/** Any chain-aware crypto taxable event. */
+export type CryptoTaxableEvent = CryptoSwapEvent | CryptoBridgeEvent | CryptoAirdropEvent;
+
+/** Result of processing a single chain-aware crypto taxable event. */
+export interface CryptoEventResult {
+  readonly eventId: string;
+  readonly eventType: CryptoEventType;
+  readonly date: LocalDate;
+  /** Primary chain associated with the event (destination for a bridge). */
+  readonly chain: ChainId;
+  /** Whether the event produced a taxable outcome (disposal or income). */
+  readonly taxable: boolean;
+  /** Capital-gain disposal detail (present for swaps), else null. */
+  readonly disposal: CryptoDisposalResult | null;
+  /** New tax lots created by the event (acquired/airdropped/bridged lots). */
+  readonly acquiredLots: readonly CryptoTaxLot[];
+  /** Ids of lots fully consumed (removed from the lot book) by the event. */
+  readonly consumedLotIds: readonly string[];
+  /** Ordinary income recognized (airdrops), in cents. */
+  readonly ordinaryIncomeCents: number;
+  /** Realized capital gain/loss (swaps), in cents. Equals short + long term. */
+  readonly realizedGainLossCents: number;
+  readonly shortTermGainLossCents: number;
+  readonly longTermGainLossCents: number;
+  /** Human-readable explanation of the tax treatment applied. */
+  readonly note: string;
+}
+
+/** Aggregate result of processing a chronological batch of events. */
+export interface CryptoEventBatchResult {
+  readonly events: readonly CryptoEventResult[];
+  /** The lot book after all events are applied. */
+  readonly finalLots: readonly CryptoTaxLot[];
+  /** Taxable disposals (from swaps), for feeding the annual tax summary. */
+  readonly disposals: readonly CryptoDisposalResult[];
+  /** Airdrop income records, for feeding the annual tax summary. */
+  readonly incomeRecords: readonly StakingIncome[];
+  readonly totalRealizedGainLossCents: number;
+  readonly totalShortTermGainLossCents: number;
+  readonly totalLongTermGainLossCents: number;
+  readonly totalOrdinaryIncomeCents: number;
+  readonly taxableEventCount: number;
 }
 
 // ---------------------------------------------------------------------------
