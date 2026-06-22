@@ -18,13 +18,6 @@ on:
       - 'gradle.properties'
   pull_request:
     branches: [main]
-    paths:
-      - 'apps/ios/**'
-      - 'packages/**'
-      - 'build-logic/**'
-      - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradle.properties'
   workflow_dispatch:
 
 concurrency:
@@ -37,8 +30,33 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Always runs so the required "Build & Test" context is reported on every PR.
+  # Detects whether iOS-relevant paths changed; the build job is skipped (a
+  # passing state for required checks) when they did not.
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            relevant:
+              - 'apps/ios/**'
+              - 'packages/**'
+              - 'build-logic/**'
+              - 'gradle/**'
+              - '*.gradle.kts'
+              - 'gradle.properties'
+
   build:
     name: Build & Test
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.relevant == 'true' }}
     runs-on: macos-15
     timeout-minutes: 30
 
