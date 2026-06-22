@@ -2,7 +2,7 @@
 
 **Status:** Active
 **Date:** 2026-06-15
-**Related:** [Monitoring Architecture](../architecture/monitoring.md) · [Alerting Rules](../architecture/alerting-rules.md) · [Incident Response Runbook](../architecture/incident-response-runbook.md) · [Performance Baselines](../architecture/performance-baselines.md) · [CI/CD Strategy](../architecture/0006-cicd-strategy.md) · [Hosting Strategy](../architecture/0007-hosting-strategy.md)
+**Related:** [Human-Gated Prerequisites](./human-gated-prerequisites.md) · [Monitoring Architecture](../architecture/monitoring.md) · [Alerting Rules](../architecture/alerting-rules.md) · [Incident Response Runbook](../architecture/incident-response-runbook.md) · [Performance Baselines](../architecture/performance-baselines.md) · [CI/CD Strategy](../architecture/0006-cicd-strategy.md) · [Hosting Strategy](../architecture/0007-hosting-strategy.md)
 **Ticket:** #88
 
 ---
