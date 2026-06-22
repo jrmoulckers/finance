@@ -67,6 +67,29 @@ export function isSqliteAtRestEncryptionEnabled(): boolean {
   return import.meta.env[ENCRYPTION_ENV_FLAG] === 'true';
 }
 
+/**
+ * Intentionally enable or disable the opt-in at-rest encryption flag.
+ *
+ * Passing `null` clears the local override so the build-time env flag applies.
+ * This only flips the persistence path for *future* writes — existing encrypted
+ * snapshots remain readable so users are never locked out (see the load path in
+ * `sqlite-wasm.ts`).
+ */
+export function setSqliteAtRestEncryptionEnabled(enabled: boolean | null): void {
+  try {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    if (enabled === null) {
+      localStorage.removeItem(ENCRYPTION_FLAG_OVERRIDE_KEY);
+      return;
+    }
+    localStorage.setItem(ENCRYPTION_FLAG_OVERRIDE_KEY, enabled ? 'true' : 'false');
+  } catch {
+    // localStorage may be unavailable (private mode / disabled). Ignore.
+  }
+}
+
 export function isSqliteAtRestEncryptionSupported(): boolean {
   return typeof indexedDB !== 'undefined' && isWebCryptoEncryptionSupported();
 }
@@ -131,6 +154,84 @@ export async function clearSqliteAtRestEncryptionStores(): Promise<void> {
     deleteDatabaseBestEffort(ENCRYPTED_DB_NAME),
     deleteDatabaseBestEffort(KEY_DB_NAME),
   ]);
+}
+
+/**
+ * Read the raw bytes of the SQLite data key by unwrapping the device slot.
+ *
+ * Returns `null` when no data key has been provisioned yet (no device wrapping
+ * key or no wrapped record). Callers must zero the returned bytes once the data
+ * key has been re-wrapped — the raw key is sensitive material.
+ */
+export async function readDeviceWrappedDataKeyBytes(): Promise<Uint8Array | null> {
+  const keyStore = await openKeyStore();
+  try {
+    const wrappingKey = await readValue<CryptoKey>(keyStore, DEVICE_WRAPPING_KEY_ID);
+    const wrapped = await readValue<WrappedDataKeyRecord>(keyStore, WRAPPED_DATA_KEY_ID);
+    if (!wrappingKey || !wrapped) {
+      return null;
+    }
+    validateWrappedDataKeyRecord(wrapped);
+    return await decryptLocalBytes(wrapped.envelope, wrappingKey, {
+      additionalData: dataKeyAdditionalData(wrapped.keyId, wrapped.wrappingKeyId),
+    });
+  } finally {
+    keyStore.close();
+  }
+}
+
+/**
+ * Ensure the device-local data key exists and return its raw bytes.
+ *
+ * This provisions the device wrapping key + wrapped data-key record (the same
+ * path used by the snapshot encryption) if they are not present yet, so users
+ * can add a passphrase / passkey before the first encrypted snapshot is
+ * written. Callers must zero the returned bytes after re-wrapping.
+ */
+export async function ensureSqliteDataKeyBytes(): Promise<Uint8Array> {
+  // Provisions the device wrapping key + wrapped data-key record if needed.
+  await getOrCreateSqliteDataKey();
+  const bytes = await readDeviceWrappedDataKeyBytes();
+  if (!bytes) {
+    throw new Error('Failed to materialise the SQLite data key.');
+  }
+  return bytes;
+}
+
+/** Read an auxiliary record from the encryption key store (used by the vault). */
+export async function readEncryptionKeyStoreRecord<T>(id: string): Promise<T | null> {
+  const keyStore = await openKeyStore();
+  try {
+    return (await readValue<T>(keyStore, id)) ?? null;
+  } finally {
+    keyStore.close();
+  }
+}
+
+/** Write an auxiliary record to the encryption key store (used by the vault). */
+export async function writeEncryptionKeyStoreRecord(id: string, value: unknown): Promise<void> {
+  const keyStore = await openKeyStore();
+  try {
+    await writeValue(keyStore, id, value);
+  } finally {
+    keyStore.close();
+  }
+}
+
+/** Delete an auxiliary record from the encryption key store (used by the vault). */
+export async function deleteEncryptionKeyStoreRecord(id: string): Promise<void> {
+  const keyStore = await openKeyStore();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = keyStore.transaction(KEY_STORE_NAME, 'readwrite');
+      tx.objectStore(KEY_STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally {
+    keyStore.close();
+  }
 }
 
 export const __sqliteAtRestEncryptionForTesting = {

@@ -1,0 +1,373 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* Encryption unlock settings (#2806) — tokens only, no hard-coded values. */
+
+.encryption-unlock {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.encryption-unlock__title {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-title-font-size, 1.125rem);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.encryption-unlock__intro,
+.encryption-row__hint {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  line-height: 1.5;
+}
+
+/* Visually hidden, but still announced to screen readers. */
+.encryption-unlock__sr-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.encryption-unlock__error {
+  margin: 0;
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-error, var(--semantic-status-negative));
+  border-radius: var(--card-border-radius, 0.5rem);
+  color: var(--semantic-status-negative, #b91c1c);
+  background: color-mix(in srgb, var(--semantic-status-negative, #b91c1c) 8%, transparent);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+}
+
+.encryption-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--spacing-4) 0;
+  border-top: 1px solid var(--semantic-border-default, var(--card-border));
+}
+
+.encryption-row__text {
+  display: grid;
+  gap: var(--spacing-2);
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.encryption-row__label {
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium, 600);
+}
+
+.encryption-row__control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.encryption-row__control--stack {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+}
+
+.encryption-factors {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.encryption-factors:disabled {
+  opacity: 0.6;
+}
+
+.encryption-factors__legend {
+  padding: 0;
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+/* Status chip — text label + dot (never colour-only). */
+.encryption-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2);
+  border-radius: var(--radius-full, 999px);
+  border: 1px solid var(--semantic-border-default, var(--card-border));
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  font-weight: var(--font-weight-medium, 600);
+  white-space: nowrap;
+}
+
+.encryption-chip__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full, 999px);
+  background: var(--semantic-text-secondary);
+}
+
+.encryption-chip--on {
+  color: var(--semantic-status-positive, #15803d);
+  border-color: var(--semantic-status-positive, #15803d);
+}
+
+.encryption-chip--on .encryption-chip__dot {
+  background: var(--semantic-status-positive, #15803d);
+}
+
+.encryption-chip--off {
+  color: var(--semantic-text-secondary);
+}
+
+/* Switch */
+.encryption-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default, var(--card-border));
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--theme-surface, var(--card-background));
+  color: var(--semantic-text-primary);
+  cursor: pointer;
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+}
+
+.encryption-switch[aria-checked='true'] {
+  border-color: var(--semantic-interactive-default, #2563eb);
+}
+
+.encryption-switch__track {
+  position: relative;
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-full, 999px);
+  background: var(--semantic-interactive-disabled, #9ca3af);
+  transition: background-color 150ms ease;
+}
+
+.encryption-switch[aria-checked='true'] .encryption-switch__track {
+  background: var(--semantic-interactive-default, #2563eb);
+}
+
+.encryption-switch__thumb {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--radius-full, 999px);
+  background: var(--semantic-text-inverse, #ffffff);
+  transition: transform 150ms ease;
+}
+
+.encryption-switch[aria-checked='true'] .encryption-switch__thumb {
+  transform: translateX(1rem);
+}
+
+/* Buttons */
+.encryption-button-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  justify-content: flex-end;
+}
+
+.encryption-button {
+  min-height: 2.25rem;
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md, 0.5rem);
+  border: 1px solid transparent;
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  font-weight: var(--font-weight-medium, 600);
+  cursor: pointer;
+}
+
+.encryption-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.encryption-button--primary {
+  background: var(--semantic-interactive-default, #2563eb);
+  color: var(--semantic-text-inverse, #ffffff);
+}
+
+.encryption-button--primary:hover:not(:disabled) {
+  background: var(--semantic-interactive-hover, #1d4ed8);
+}
+
+.encryption-button--secondary {
+  background: transparent;
+  border-color: var(--semantic-border-default, var(--card-border));
+  color: var(--semantic-text-primary);
+}
+
+.encryption-button--secondary:hover:not(:disabled) {
+  background: var(--theme-surface-elevated, var(--card-background));
+}
+
+.encryption-button--danger {
+  background: transparent;
+  border-color: var(--semantic-status-negative, #b91c1c);
+  color: var(--semantic-status-negative, #b91c1c);
+}
+
+.encryption-button--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--semantic-status-negative, #b91c1c) 10%, transparent);
+}
+
+.encryption-button:focus-visible,
+.encryption-switch:focus-visible,
+.encryption-field__input:focus-visible,
+.encryption-recovery-code:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+/* Informational note */
+.encryption-unlock__note {
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-status-warning, #d97706);
+  border-radius: var(--card-border-radius, 0.5rem);
+  background: color-mix(in srgb, var(--semantic-status-warning, #d97706) 8%, transparent);
+}
+
+.encryption-unlock__note-title {
+  margin: 0 0 var(--spacing-2);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-label-font-size, 0.9375rem);
+}
+
+.encryption-unlock__note p {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  line-height: 1.5;
+}
+
+/* Dialog */
+.encryption-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--spacing-4);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.encryption-dialog {
+  width: min(100%, 32rem);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--spacing-6, 1.5rem);
+  border-radius: var(--card-border-radius, 0.75rem);
+  background: var(--theme-surface, var(--card-background, #ffffff));
+  color: var(--semantic-text-primary);
+  box-shadow: var(--shadow-xl, 0 24px 64px rgba(0, 0, 0, 0.28));
+}
+
+.encryption-dialog__form {
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.encryption-dialog__title {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size, 1.125rem);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.encryption-dialog__description {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  line-height: 1.5;
+}
+
+.encryption-field {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.encryption-field__label {
+  font-weight: var(--font-weight-medium, 600);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+}
+
+.encryption-field__input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default, var(--card-border));
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--theme-surface, var(--card-background));
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size, 1rem);
+}
+
+.encryption-field__hint {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  line-height: 1.5;
+}
+
+.encryption-field__reveal {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  color: var(--semantic-text-secondary);
+}
+
+.encryption-dialog__error {
+  margin: 0;
+  color: var(--semantic-status-negative, #b91c1c);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  font-weight: var(--font-weight-medium, 600);
+}
+
+.encryption-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.encryption-dialog__actions--start {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
+.encryption-recovery-code {
+  margin: 0;
+  padding: var(--spacing-4);
+  border: 1px dashed var(--semantic-border-default, var(--card-border));
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--theme-surface-elevated, var(--card-background));
+  color: var(--semantic-text-primary);
+  font-family: var(--font-family-mono, ui-monospace, monospace);
+  font-size: var(--type-scale-title-font-size, 1.125rem);
+  letter-spacing: 0.08em;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .encryption-switch__track,
+  .encryption-switch__thumb {
+    transition: none;
+  }
+}
