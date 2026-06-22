@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { AppIcon, type IconName } from '../components/icons';
 
 import { ConfirmDialog, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
@@ -9,6 +9,10 @@ import type { CreateCategoryInput } from '../db/repositories/categories';
 import { useCategories, useTransactions } from '../hooks';
 import type { Category } from '../kmp/bridge';
 import '../styles/pages.css';
+
+const FamilyKidsCategoryCard = lazy(
+  () => import('../components/categories/FamilyKidsCategoryCard'),
+);
 
 function isCustomCategoryIcon(iconName: string | null | undefined): iconName is string {
   return Boolean(iconName && iconName.length <= 4);
@@ -300,6 +304,15 @@ export const CategoriesPage: React.FC = () => {
               </ul>
             </div>
           </section>
+          <Suspense fallback={null}>
+            <FamilyKidsCategoryCard
+              categories={categories}
+              householdId={categories[0]?.householdId ?? null}
+              createCategory={createCategory}
+              onApplied={refresh}
+              onError={setDeleteError}
+            />
+          </Suspense>
           <p className="page-summary" aria-live="polite">
             {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} available for
             transaction organization.
