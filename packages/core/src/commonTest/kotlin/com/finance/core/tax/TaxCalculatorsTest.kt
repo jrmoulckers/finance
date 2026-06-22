@@ -2,7 +2,13 @@
 
 package com.finance.core.tax
 
+import com.finance.core.mileage.MileageAuditMetadata
+import com.finance.core.mileage.MileageAuditSource
+import com.finance.core.mileage.MileageCalculator
+import com.finance.core.mileage.MileagePurpose
+import com.finance.core.mileage.MileageTripEntry
 import com.finance.models.types.Cents
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -108,25 +114,26 @@ class TaxCalculatorsTest {
     fun mileageDeduction_matchesWebTripFixtures() {
         val trips = webMileageTrips()
 
-        assertEquals(Cents(3_350), MileageDeductionCalculator.calculateTripDeduction(trips[0]).deduction)
-        assertEquals(Cents(8_040), MileageDeductionCalculator.calculateTripDeduction(trips[1]).deduction)
-        assertEquals(Cents(630), MileageDeductionCalculator.calculateTripDeduction(trips[2]).deduction)
-        assertEquals(Cents(210), MileageDeductionCalculator.calculateTripDeduction(trips[3]).deduction)
-        assertEquals(Cents(838), MileageDeductionCalculator.calculateTripDeduction(trips[5]).deduction)
+        assertEquals(3_350L, MileageCalculator.calculateTripDeduction(trips[0]).deductionCents)
+        assertEquals(8_040L, MileageCalculator.calculateTripDeduction(trips[1]).deductionCents)
+        assertEquals(630L, MileageCalculator.calculateTripDeduction(trips[2]).deductionCents)
+        assertEquals(210L, MileageCalculator.calculateTripDeduction(trips[3]).deductionCents)
+        assertEquals(838L, MileageCalculator.calculateTripDeduction(trips[5]).deductionCents)
     }
 
     @Test
     fun mileageSummary_matchesWebAnnualFixture() {
-        val summary = MileageDeductionCalculator.generateAnnualMileageSummary(webMileageTrips().take(5), 2024)
+        val summary = MileageCalculator.generateAnnualMileageSummary(webMileageTrips().take(5), 2024)
 
         assertEquals(2024, summary.year)
-        assertEquals(215.0, summary.totalMiles)
-        assertEquals(4, summary.totalTrips)
-        assertEquals(Cents(12_230), summary.totalDeduction)
+        assertEquals(215.0, summary.totalLoggedMiles)
+        assertEquals(215.0, summary.totalDeductibleMiles)
+        assertEquals(4, summary.totalTripCount)
+        assertEquals(12_230L, summary.totalDeductionCents)
         val business = summary.byPurpose.first { it.purpose == MileagePurpose.BUSINESS }
         assertEquals(170.0, business.totalMiles)
-        assertEquals(67L, business.rate)
-        assertEquals(Cents(11_390), business.totalDeduction)
+        assertEquals(67L, business.rateCentsPerMile)
+        assertEquals(11_390L, business.deductionCents)
         assertEquals(2, business.tripCount)
     }
 
@@ -134,12 +141,31 @@ class TaxCalculatorsTest {
     fun mileageDeduction_keepsPersonalTripsWithoutDeductionAndRejectsUnsupportedYears() {
         val businessTrip = webMileageTrips().first()
 
+        // A logged business trip with 0% business use deducts nothing but stays in the log.
         assertEquals(
-            Cents.ZERO,
-            MileageDeductionCalculator.calculateTripDeduction(businessTrip.copy(isBusinessUse = false)).deduction,
+            0L,
+            MileageCalculator.calculateMileageDeduction(
+                miles = businessTrip.miles,
+                purpose = MileagePurpose.BUSINESS,
+                taxYear = businessTrip.date.year,
+                businessUsePercent = 0,
+            ).deductionCents,
+        )
+        // Personal-purpose trips never produce a deduction.
+        assertEquals(
+            0L,
+            MileageCalculator.calculateMileageDeduction(
+                miles = businessTrip.miles,
+                purpose = MileagePurpose.PERSONAL,
+                taxYear = businessTrip.date.year,
+            ).deductionCents,
         )
         assertFailsWith<IllegalArgumentException> {
-            MileageDeductionCalculator.calculateTripDeduction(businessTrip, 2026)
+            MileageCalculator.calculateMileageDeduction(
+                miles = businessTrip.miles,
+                purpose = MileagePurpose.BUSINESS,
+                taxYear = 2026,
+            )
         }
     }
 
@@ -272,7 +298,7 @@ class TaxCalculatorsTest {
 
     @Test
     fun gigTakeHome_appliesMileageDeductionsToTaxableIncomeButNotCashTakeHome() {
-        val tripDeduction = MileageDeductionCalculator.calculateTripDeduction(webMileageTrips().first())
+        val tripDeduction = MileageCalculator.calculateTripDeduction(webMileageTrips().first())
         val result = GigTakeHomeCalculator.calculate(
             GigTakeHomeInput(
                 grossIncomeCents = Cents(500_000),
@@ -295,7 +321,7 @@ class TaxCalculatorsTest {
             GigTakeHomeInput(
                 grossIncomeCents = Cents(8_000_000),
                 businessExpenseCents = Cents(100_000),
-                mileageDeductions = listOf(MileageDeductionCalculator.calculateTripDeduction(webMileageTrips().first())),
+                mileageDeductions = listOf(MileageCalculator.calculateTripDeduction(webMileageTrips().first())),
                 reserveRate = 0.30,
             ),
         )
@@ -327,53 +353,31 @@ class TaxCalculatorsTest {
     )
 
     private fun webMileageTrips() = listOf(
-        TripEntry(
-            tripId = "trip-1",
-            date = LocalDate(2024, 3, 15),
-            miles = 50.0,
-            purpose = MileagePurpose.BUSINESS,
-            startLocation = "Home Office",
-            endLocation = "Client Site",
-        ),
-        TripEntry(
-            tripId = "trip-2",
-            date = LocalDate(2024, 4, 20),
-            miles = 120.0,
-            purpose = MileagePurpose.BUSINESS,
-            startLocation = "Office",
-            endLocation = "Conference Center",
-        ),
-        TripEntry(
-            tripId = "trip-3",
-            date = LocalDate(2024, 5, 10),
-            miles = 30.0,
-            purpose = MileagePurpose.MEDICAL,
-            startLocation = "Home",
-            endLocation = "Hospital",
-        ),
-        TripEntry(
-            tripId = "trip-4",
-            date = LocalDate(2024, 6, 1),
-            miles = 15.0,
-            purpose = MileagePurpose.CHARITY,
-            startLocation = "Home",
-            endLocation = "Food Bank",
-        ),
-        TripEntry(
-            tripId = "trip-5",
-            date = LocalDate(2023, 12, 15),
-            miles = 80.0,
-            purpose = MileagePurpose.BUSINESS,
-            startLocation = "Office",
-            endLocation = "Client",
-        ),
-        TripEntry(
-            tripId = "frac-1",
-            date = LocalDate(2024, 1, 15),
-            miles = 12.5,
-            purpose = MileagePurpose.BUSINESS,
-            startLocation = "A",
-            endLocation = "B",
+        mileageTrip("trip-1", LocalDate(2024, 3, 15), 50.0, MileagePurpose.BUSINESS, "Home Office", "Client Site"),
+        mileageTrip("trip-2", LocalDate(2024, 4, 20), 120.0, MileagePurpose.BUSINESS, "Office", "Conference Center"),
+        mileageTrip("trip-3", LocalDate(2024, 5, 10), 30.0, MileagePurpose.MEDICAL, "Home", "Hospital"),
+        mileageTrip("trip-4", LocalDate(2024, 6, 1), 15.0, MileagePurpose.CHARITY, "Home", "Food Bank"),
+        mileageTrip("trip-5", LocalDate(2023, 12, 15), 80.0, MileagePurpose.BUSINESS, "Office", "Client"),
+        mileageTrip("frac-1", LocalDate(2024, 1, 15), 12.5, MileagePurpose.BUSINESS, "A", "B"),
+    )
+
+    private fun mileageTrip(
+        id: String,
+        date: LocalDate,
+        miles: Double,
+        purpose: MileagePurpose,
+        startLocation: String,
+        endLocation: String,
+    ) = MileageTripEntry(
+        id = id,
+        date = date,
+        startLocation = startLocation,
+        endLocation = endLocation,
+        miles = miles,
+        purpose = purpose,
+        audit = MileageAuditMetadata(
+            source = MileageAuditSource.MANUAL,
+            createdAt = Instant.parse("2024-01-01T00:00:00Z"),
         ),
     )
 }

@@ -2,6 +2,7 @@
 
 package com.finance.core.tax
 
+import com.finance.core.mileage.MileageCalculation
 import com.finance.models.types.Cents
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -94,143 +95,6 @@ object SelfEmploymentTaxCalculator {
             medicareContribution = baseResult.medicareContribution,
             additionalMedicareTax = additionalMedicareTax,
         )
-    }
-}
-
-@Serializable
-enum class MileagePurpose { BUSINESS, MEDICAL, CHARITY }
-
-@Serializable
-data class MileageRate(
-    val purpose: MileagePurpose,
-    val centsPerMile: Long,
-    val taxYear: Int,
-)
-
-@Serializable
-data class TripEntry(
-    val tripId: String,
-    val date: LocalDate,
-    val miles: Double,
-    val purpose: MileagePurpose,
-    val startLocation: String,
-    val endLocation: String,
-    val vehicle: String? = null,
-    val isBusinessUse: Boolean? = null,
-    val supportReference: String? = null,
-    val notes: String? = null,
-)
-
-@Serializable
-data class TripDeduction(
-    val trip: TripEntry,
-    val rate: Long,
-    val deduction: Cents,
-)
-
-@Serializable
-data class MileagePurposeSummary(
-    val purpose: MileagePurpose,
-    val totalMiles: Double,
-    val rate: Long,
-    val totalDeduction: Cents,
-    val tripCount: Int,
-)
-
-@Serializable
-data class AnnualMileageSummary(
-    val year: Int,
-    val byPurpose: List<MileagePurposeSummary>,
-    val totalMiles: Double,
-    val totalDeduction: Cents,
-    val totalTrips: Int,
-)
-
-object MileageDeductionCalculator {
-    val MILEAGE_RATES_2024: List<MileageRate> = listOf(
-        MileageRate(MileagePurpose.BUSINESS, 67L, 2024),
-        MileageRate(MileagePurpose.MEDICAL, 21L, 2024),
-        MileageRate(MileagePurpose.CHARITY, 14L, 2024),
-    )
-    val MILEAGE_RATES_2025: List<MileageRate> = listOf(
-        MileageRate(MileagePurpose.BUSINESS, 70L, 2025),
-        MileageRate(MileagePurpose.MEDICAL, 21L, 2025),
-        MileageRate(MileagePurpose.CHARITY, 14L, 2025),
-    )
-    val STANDARD_MILEAGE_RATES_BY_YEAR: Map<Int, List<MileageRate>> = mapOf(
-        2024 to MILEAGE_RATES_2024,
-        2025 to MILEAGE_RATES_2025,
-    )
-
-    fun getMileageRate(purpose: MileagePurpose, taxYear: Int = 2024): Long? =
-        STANDARD_MILEAGE_RATES_BY_YEAR[taxYear]
-            ?.firstOrNull { it.purpose == purpose }
-            ?.centsPerMile
-
-    fun calculateTripDeduction(trip: TripEntry, taxYear: Int = 2024): TripDeduction {
-        val rate = getMileageRate(trip.purpose, taxYear)
-            ?: throw IllegalArgumentException("No mileage rate found for ${trip.purpose} in $taxYear.")
-        val deduction = if (trip.isBusinessUse == false) {
-            Cents.ZERO
-        } else {
-            roundCents(trip.miles * rate)
-        }
-
-        return TripDeduction(trip = trip, rate = rate, deduction = deduction)
-    }
-
-    fun calculateTripDeductions(trips: List<TripEntry>, taxYear: Int = 2024): List<TripDeduction> =
-        trips.map { calculateTripDeduction(it, taxYear) }
-
-    fun filterTripsByYear(trips: List<TripEntry>, year: Int): List<TripEntry> =
-        trips.filter { it.date.year == year }
-
-    fun filterTripsByPurpose(trips: List<TripEntry>, purpose: MileagePurpose): List<TripEntry> =
-        trips.filter { it.purpose == purpose }
-
-    fun summarizeByPurpose(
-        trips: List<TripEntry>,
-        purpose: MileagePurpose,
-        taxYear: Int = 2024,
-    ): MileagePurposeSummary {
-        val purposeTrips = filterTripsByPurpose(trips, purpose)
-        val rate = getMileageRate(purpose, taxYear) ?: 0L
-        val totalMiles = purposeTrips.sumOf { it.miles }
-        val totalDeduction = roundCents(totalMiles * rate)
-
-        return MileagePurposeSummary(
-            purpose = purpose,
-            totalMiles = totalMiles,
-            rate = rate,
-            totalDeduction = totalDeduction,
-            tripCount = purposeTrips.size,
-        )
-    }
-
-    fun generateAnnualMileageSummary(trips: List<TripEntry>, year: Int): AnnualMileageSummary {
-        val yearTrips = filterTripsByYear(trips, year)
-        val byPurpose = listOf(MileagePurpose.BUSINESS, MileagePurpose.MEDICAL, MileagePurpose.CHARITY)
-            .map { summarizeByPurpose(yearTrips, it, year) }
-        val totalMiles = byPurpose.sumOf { it.totalMiles }
-        val totalDeduction = Cents(byPurpose.sumOf { it.totalDeduction.amount })
-        val totalTrips = byPurpose.sumOf { it.tripCount }
-
-        return AnnualMileageSummary(
-            year = year,
-            byPurpose = byPurpose,
-            totalMiles = totalMiles,
-            totalDeduction = totalDeduction,
-            totalTrips = totalTrips,
-        )
-    }
-
-    fun validateTripEntry(trip: TripEntry): List<String> {
-        val errors = mutableListOf<String>()
-        if (trip.miles <= 0.0) errors += "Miles must be greater than zero."
-        if (trip.miles > 10_000.0) errors += "Miles exceeds 10,000 for a single trip — please verify."
-        if (trip.startLocation.isBlank()) errors += "Start location is required."
-        if (trip.endLocation.isBlank()) errors += "End location is required."
-        return errors
     }
 }
 
@@ -556,7 +420,13 @@ object TaxReserveCalculator {
 data class GigTakeHomeInput(
     val grossIncomeCents: Cents,
     val businessExpenseCents: Cents = Cents.ZERO,
-    val mileageDeductions: List<TripDeduction> = emptyList(),
+    /**
+     * Mileage deductions for the period, produced by the canonical mileage package
+     * (`com.finance.core.mileage.MileageCalculator`). The take-home math consumes only the
+     * per-trip [MileageCalculation.deductionCents]; the IRS standard-rate table and deduction
+     * math now live solely in `com.finance.core.mileage`.
+     */
+    val mileageDeductions: List<MileageCalculation> = emptyList(),
     val reserveRate: Double = TaxReserveCalculator.DEFAULT_TAX_RESERVE_RATE,
     val wagesCents: Cents = Cents.ZERO,
     val isMarriedFilingSeparately: Boolean = false,
@@ -575,7 +445,7 @@ data class GigTakeHomeResult(
 
 object GigTakeHomeCalculator {
     fun calculate(input: GigTakeHomeInput): GigTakeHomeResult {
-        val mileageDeductionCents = Cents(input.mileageDeductions.sumOf { it.deduction.amount })
+        val mileageDeductionCents = Cents(input.mileageDeductions.sumOf { it.deductionCents })
         val deductibleExpenses = input.businessExpenseCents.amount.coerceAtLeast(0L) +
             mileageDeductionCents.amount.coerceAtLeast(0L)
         val netSelfEmploymentIncomeCents = Cents(
