@@ -200,6 +200,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     description: 'Payoff planner, BNPL, student loans and credit cards.',
   },
   {
+    id: 'building-credit',
+    label: 'Building Credit',
+    href: '/building-credit',
+    icon: <Icon name={IconToken.SECURE} />,
+    group: 'plan',
+    mobilePriority: 20,
+    description: 'Beginner credit lessons and a secured-card utilization tracker.',
+  },
+  {
     id: 'goals',
     label: 'Goals',
     href: '/goals',

@@ -1,0 +1,349 @@
+.building-credit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.building-credit__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.building-credit__eyebrow {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.building-credit__title {
+  font-size: var(--type-scale-display-font-size);
+  font-weight: var(--type-scale-display-font-weight);
+  margin: 0;
+}
+
+.building-credit__description {
+  color: var(--semantic-text-secondary);
+  margin: 0;
+  max-width: 72ch;
+}
+
+.building-credit__card {
+  background: var(--semantic-surface-primary, var(--card-background));
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-4);
+}
+
+.building-credit__card-title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  margin: 0 0 var(--spacing-2);
+}
+
+.building-credit__card-intro {
+  color: var(--semantic-text-secondary);
+  margin: 0 0 var(--spacing-4);
+  max-width: 72ch;
+}
+
+/* -- Tracker inputs ---------------------------------------------------- */
+
+.building-credit__fields {
+  display: grid;
+  gap: var(--spacing-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.building-credit__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.building-credit__label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+}
+
+.building-credit__money-input {
+  align-items: center;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: var(--spacing-1);
+  padding: 0 var(--spacing-3);
+}
+
+.building-credit__money-prefix {
+  color: var(--semantic-text-secondary);
+}
+
+.building-credit__money-input .building-credit__input {
+  border: none;
+  flex: 1;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.building-credit__input {
+  background: transparent;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md);
+  color: var(--semantic-text-primary);
+  font: inherit;
+  padding: var(--spacing-2) var(--spacing-3);
+  width: 100%;
+}
+
+.building-credit__input:focus-visible {
+  outline: 2px solid var(--semantic-status-info);
+  outline-offset: 1px;
+}
+
+/* -- Tracker result ---------------------------------------------------- */
+
+.building-credit__result {
+  border: 1px solid var(--semantic-border-default);
+  border-left-width: 4px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-4);
+}
+
+.building-credit__result--good {
+  border-left-color: var(--semantic-status-positive);
+}
+
+.building-credit__result--caution {
+  border-left-color: var(--semantic-status-warning);
+}
+
+.building-credit__result--high {
+  border-left-color: var(--semantic-status-negative);
+}
+
+.building-credit__result--unknown {
+  border-left-color: var(--semantic-status-info);
+}
+
+.building-credit__result-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.building-credit__result-icon {
+  flex-shrink: 0;
+}
+
+.building-credit__result--good .building-credit__result-icon {
+  color: var(--semantic-status-positive);
+}
+
+.building-credit__result--caution .building-credit__result-icon {
+  color: var(--semantic-status-warning);
+}
+
+.building-credit__result--high .building-credit__result-icon {
+  color: var(--semantic-status-negative);
+}
+
+.building-credit__result--unknown .building-credit__result-icon {
+  color: var(--semantic-status-info);
+}
+
+.building-credit__result-headline {
+  font-weight: 600;
+  margin: 0;
+}
+
+.building-credit__badge {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-sm, 6px);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  margin-left: auto;
+  padding: 2px var(--spacing-2);
+}
+
+.building-credit__utilization-figure {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin: 0;
+}
+
+.building-credit__utilization-percent {
+  font-size: var(--type-scale-display-font-size);
+  font-weight: var(--type-scale-display-font-weight);
+}
+
+.building-credit__utilization-detail {
+  color: var(--semantic-text-secondary);
+}
+
+.building-credit__meter {
+  background: var(--semantic-surface-secondary, var(--semantic-border-default));
+  border-radius: var(--radius-pill, 999px);
+  height: 10px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.building-credit__meter-fill {
+  border-radius: inherit;
+  height: 100%;
+  transition: width 320ms ease;
+}
+
+.building-credit__meter--static .building-credit__meter-fill {
+  transition: none;
+}
+
+.building-credit__meter-fill--good {
+  background: var(--semantic-status-positive);
+}
+
+.building-credit__meter-fill--caution {
+  background: var(--semantic-status-warning);
+}
+
+.building-credit__meter-fill--high {
+  background: var(--semantic-status-negative);
+}
+
+.building-credit__meter-fill--unknown {
+  background: var(--semantic-status-info);
+}
+
+.building-credit__guidance {
+  margin: 0;
+}
+
+.building-credit__pay-down {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin: 0;
+}
+
+.building-credit__pay-down-row {
+  align-items: baseline;
+  display: flex;
+  gap: var(--spacing-2);
+  justify-content: space-between;
+}
+
+.building-credit__pay-down-label {
+  color: var(--semantic-text-secondary);
+  margin: 0;
+}
+
+.building-credit__pay-down-value {
+  font-weight: 600;
+  margin: 0;
+}
+
+/* -- Lessons ----------------------------------------------------------- */
+
+.building-credit__lessons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.building-credit__lesson {
+  border-top: 1px solid var(--semantic-border-default);
+  padding-top: var(--spacing-4);
+}
+
+.building-credit__lesson:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.building-credit__lesson-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.building-credit__lesson-title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  margin: 0;
+}
+
+.building-credit__lesson-summary {
+  color: var(--semantic-text-secondary);
+  font-weight: 600;
+  margin: 0;
+}
+
+.building-credit__lesson-text {
+  margin: 0;
+  max-width: 72ch;
+}
+
+.building-credit__lesson-takeaway {
+  align-items: flex-start;
+  background: var(--semantic-surface-secondary, transparent);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: var(--spacing-2) var(--spacing-3);
+}
+
+.building-credit__lesson-takeaway-icon {
+  color: var(--semantic-status-positive);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.building-credit__lesson-takeaway-label {
+  font-weight: 600;
+}
+
+/* -- Quick tips -------------------------------------------------------- */
+
+.building-credit__tips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.building-credit__tip {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.building-credit__tip-icon {
+  color: var(--semantic-status-positive);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .building-credit__meter-fill {
+    transition: none;
+  }
+}
