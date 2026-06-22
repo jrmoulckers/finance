@@ -23,6 +23,9 @@ import { useCashFlow } from '../hooks/useCashFlow';
 import type { MonthlyAggregate, IncomeSource } from '../lib/analytics/cash-flow';
 import { forecastMonthEndBalance } from '../lib/budgeting-beta';
 import { CHART_COLORS } from '../components/charts/chart-palette';
+// Imported directly (not via a shared barrel) so this gig-earnings UI stays in
+// the code-split Cash Flow chunk and does not inflate other route bundles.
+import { GigPlatformEarningsSection } from '../components/gig/GigPlatformEarningsSection';
 import './analytics.css';
 
 // ---------------------------------------------------------------------------
@@ -379,6 +382,9 @@ export const CashFlowPage: React.FC = () => {
           <IncomeSourceList sources={incomeSources} />
         </section>
       )}
+
+      {/* Gig-platform payouts: an income-sources view grouped by gig platform */}
+      <GigPlatformEarningsSection />
     </div>
   );
 };
