@@ -36,6 +36,7 @@ const SettingsSync = lazy(() => import('./pages/settings/SettingsSyncPage'));
 const SettingsAdvanced = lazy(() => import('./pages/settings/SettingsAdvancedPage'));
 const SettingsAbout = lazy(() => import('./pages/settings/SettingsAboutPage'));
 const DataImportWizard = lazy(() => import('./pages/DataImportWizardPage'));
+const P2PImport = lazy(() => import('./pages/P2PImportPage'));
 const ReceiptOcr = lazy(() => import('./pages/ReceiptOcrPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
@@ -690,6 +691,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Data Import Wizard">
             <DataImportWizard />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/import/p2p"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="P2P Import">
+            <P2PImport />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
