@@ -37,6 +37,7 @@ const SettingsAdvanced = lazy(() => import('./pages/settings/SettingsAdvancedPag
 const SettingsAbout = lazy(() => import('./pages/settings/SettingsAboutPage'));
 const DataImportWizard = lazy(() => import('./pages/DataImportWizardPage'));
 const P2PImport = lazy(() => import('./pages/P2PImportPage'));
+const BrokerageImport = lazy(() => import('./pages/BrokerageImportPage'));
 const ReceiptOcr = lazy(() => import('./pages/ReceiptOcrPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
@@ -712,6 +713,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="P2P Import">
             <P2PImport />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/import/brokerage"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Brokerage Import">
+            <BrokerageImport />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
