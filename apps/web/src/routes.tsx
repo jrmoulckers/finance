@@ -69,6 +69,7 @@ const NetWorth = lazy(() => import('./pages/NetWorthPage'));
 const Subscriptions = lazy(() => import('./pages/SubscriptionsPage'));
 const BankConnections = lazy(() => import('./pages/BankConnectionsPage'));
 const Debt = lazy(() => import('./pages/DebtPage'));
+const FirePlanner = lazy(() => import('./pages/FirePlannerPage'));
 
 /**
  * Loading fallback shown while a lazy route chunk is being fetched.
@@ -575,6 +576,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Planning">
             <Planning />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/fire"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="FIRE Planner">
+            <FirePlanner />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
