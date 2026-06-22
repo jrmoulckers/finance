@@ -26,7 +26,6 @@ import {
   useTransactions,
 } from '../hooks';
 import { useWidgetLayout } from '../hooks/useWidgetLayout';
-import { useHiddenModules } from '../hooks/useModuleVisibility';
 import type { BudgetWithSpending } from '../db/repositories/budgets';
 import type { Bill, Goal, Transaction } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
@@ -40,7 +39,6 @@ import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
 import type { SpendingPace } from '../lib/notifications';
 import type { PredictionSummary } from '../lib/predictiveBalance';
 import { rollUpProtectedTransactions } from '../lib/ui/privacy';
-import { isModuleVisible } from '../lib/ux/module-visibility';
 import '../components/dashboard/dashboard.css';
 
 const CategoryPieChart = React.lazy(() =>
@@ -116,6 +114,26 @@ function formatLocalDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+/**
+ * Minimalist mode (#2122): read the user's hidden module ids straight from
+ * localStorage.
+ *
+ * This deliberately inlines a tiny reader instead of importing the
+ * `lib/ux/module-visibility` hook/selectors so the rich, lazily-rendered module
+ * catalogue (labels + descriptions) stays in the Settings chunk and the eager
+ * dashboard route chunk remains within its performance budget. The storage key
+ * is kept in sync with `MODULE_VISIBILITY_STORAGE_KEY` in
+ * `lib/ux/module-visibility.ts` (asserted by a unit test there).
+ */
+function readHiddenModuleIds(): readonly string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem('finance-hidden-modules') ?? '[]');
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 function getLastNDaysBounds(days: number): { startDate: string; endDate: string } {
@@ -668,8 +686,9 @@ export const DashboardPage: React.FC = () => {
     [widgetLayout.visibleWidgets],
   );
   // Minimalist mode (#2122): hide a quick-access card when the user has hidden
-  // the corresponding module. Essentials are never affected.
-  const hiddenModules = useHiddenModules();
+  // the corresponding module. Read once on mount; the Dashboard route remounts
+  // after the user changes the setting on the (separate) Settings route.
+  const hiddenModules = useMemo(() => readHiddenModuleIds(), []);
 
   const isDashboardEmpty =
     data === null ||
@@ -854,8 +873,7 @@ export const DashboardPage: React.FC = () => {
                       currency={safeToSpendCurrency}
                     />
                   </Suspense>
-                  {visibleWidgetIds.has('net-worth') &&
-                  isModuleVisible('net-worth', hiddenModules) ? (
+                  {visibleWidgetIds.has('net-worth') && !hiddenModules.includes('net-worth') ? (
                     <article className="card" aria-label="Net worth">
                       <div className="card__header">
                         <h3 className="card__title">Net Worth</h3>
@@ -875,8 +893,7 @@ export const DashboardPage: React.FC = () => {
                       </div>
                     </article>
                   ) : null}
-                  {visibleWidgetIds.has('budget-health') &&
-                  isModuleVisible('budgets', hiddenModules) ? (
+                  {visibleWidgetIds.has('budget-health') && !hiddenModules.includes('budgets') ? (
                     <article className="card" aria-label="Budget health">
                       <div className="card__header">
                         <h3 className="card__title">Budget Health</h3>
@@ -901,7 +918,7 @@ export const DashboardPage: React.FC = () => {
                       </div>
                     </article>
                   ) : null}
-                  {isModuleVisible('debt', hiddenModules) ? (
+                  {!hiddenModules.includes('debt') ? (
                     <article className="card" aria-label="Debt status">
                       <div className="card__header">
                         <h3 className="card__title">Debt Payoff</h3>

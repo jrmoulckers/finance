@@ -6,6 +6,7 @@ import {
   ESSENTIAL_MODULE_IDS,
   HIDEABLE_MODULES,
   HIDEABLE_MODULE_CATEGORY_ORDER,
+  HIDEABLE_MODULE_IDS,
   MODULE_VISIBILITY_STORAGE_KEY,
   countHiddenModules,
   filterByModuleVisibility,
@@ -40,6 +41,10 @@ describe('catalogue', () => {
   it('uses unique module ids', () => {
     const ids = HIDEABLE_MODULES.map((module) => module.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('keeps the lightweight id list in sync with the rich catalogue', () => {
+    expect(HIDEABLE_MODULES.map((module) => module.id)).toEqual([...HIDEABLE_MODULE_IDS]);
   });
 
   it('assigns every module to a known category', () => {

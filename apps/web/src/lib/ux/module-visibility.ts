@@ -84,11 +84,64 @@ export const ESSENTIAL_MODULE_IDS: readonly string[] = Object.freeze([
 const ESSENTIAL_MODULE_ID_SET: ReadonlySet<string> = new Set(ESSENTIAL_MODULE_IDS);
 
 /**
+ * Canonical list of hideable module ids — the lightweight source of truth for
+ * membership checks ({@link isHideableModule}). Kept as a plain string array,
+ * separate from the richer {@link HIDEABLE_MODULES} catalogue, so the hot
+ * predicate/selector path (nav chrome, dashboard cards) tree-shakes free of the
+ * catalogue's labels and descriptions and stays out of the eager bundle.
+ *
+ * Order mirrors {@link HIDEABLE_MODULES}; a unit test enforces they stay in sync.
+ */
+export const HIDEABLE_MODULE_IDS: readonly string[] = Object.freeze([
+  // Money
+  'bills',
+  'subscriptions',
+  'invoices',
+  'remittances',
+  'expected-income',
+  'investments',
+  'tax-center',
+  'safety',
+  // Plan
+  'budgets',
+  'trip-budgets',
+  'debt',
+  'goals',
+  'planning',
+  'fire',
+  'learning',
+  'estate',
+  'categories',
+  // Insights
+  'insights',
+  'cash-flow',
+  'cash-runway',
+  'net-worth',
+  'reports',
+  'client-profitability',
+  'business-pnl',
+  'achievements',
+  'watchlists',
+  // Connect
+  'household',
+  'bank-connections',
+  'import',
+  'privacy',
+]);
+
+const HIDEABLE_MODULE_ID_SET: ReadonlySet<string> = new Set(HIDEABLE_MODULE_IDS);
+
+/**
  * The catalogue of modules a minimalist user may hide. Ids match nav item ids
  * so the same filter applies to the nav chrome and to dashboard quick-access
  * cards. Order within a category controls render order in the settings UI.
+ *
+ * Only the settings UI consumes the labels/descriptions, so this catalogue is
+ * deliberately kept out of {@link isHideableModule}'s dependency graph, and is
+ * a plain (un-frozen) array literal so bundlers can tree-shake it away from the
+ * nav/dashboard chunks that never read it.
  */
-export const HIDEABLE_MODULES: readonly HideableModule[] = Object.freeze([
+export const HIDEABLE_MODULES: readonly HideableModule[] = [
   // ── Money ────────────────────────────────────────────────────────────
   {
     id: 'bills',
@@ -273,9 +326,7 @@ export const HIDEABLE_MODULES: readonly HideableModule[] = Object.freeze([
     description: 'Consent, data export and deletion.',
     category: 'connect',
   },
-]);
-
-const HIDEABLE_MODULE_ID_SET: ReadonlySet<string> = new Set(HIDEABLE_MODULES.map((m) => m.id));
+];
 
 // ---------------------------------------------------------------------------
 // Pure predicates & selectors
