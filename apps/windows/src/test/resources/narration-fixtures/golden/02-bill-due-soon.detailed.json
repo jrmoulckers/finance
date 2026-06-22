@@ -1,0 +1,79 @@
+{
+  "mode": "detailed",
+  "schemaVersion": 1,
+  "locale": "en-US",
+  "headline": {
+    "id": "summary",
+    "kind": "summary",
+    "text": "Your Electric bill of $88.00 is due June 25, and you have $1,240.50 on hand.",
+    "confidence": { "level": "high", "score": 0.95, "basis": "rule" },
+    "a11y": {
+      "screenReaderText": "Your Electric bill of eighty-eight dollars is due June twenty-fifth, and you have one thousand two hundred forty dollars and fifty cents on hand.",
+      "ariaLive": "polite",
+      "role": "status",
+      "headingLevel": 2
+    },
+    "sourceRefs": ["bill.electric", "cashOnHand"]
+  },
+  "segments": [
+    {
+      "id": "budget.dining",
+      "kind": "budget",
+      "text": "Your Dining plan is fully used — $315.00 of the $300.00 you planned. Want to adjust the plan or move funds?",
+      "confidence": { "level": "high", "score": 0.95, "basis": "rule" },
+      "a11y": {
+        "screenReaderText": "Your Dining plan is fully used. Three hundred fifteen dollars of the three hundred dollars you planned. Want to adjust the plan or move funds?",
+        "ariaLive": "polite",
+        "role": "note",
+        "headingLevel": null
+      },
+      "sourceRefs": ["budget.dining"]
+    },
+    {
+      "id": "trend",
+      "kind": "trend",
+      "text": "Early signal: your net worth looks slightly higher over the last 21 days. This may change as more history builds.",
+      "confidence": { "level": "low", "score": 0.42, "basis": "sample_size" },
+      "a11y": {
+        "screenReaderText": "Early signal. Your net worth looks slightly higher over the last twenty-one days. This may change as more history builds.",
+        "ariaLive": "polite",
+        "role": "note",
+        "headingLevel": null
+      },
+      "sourceRefs": ["netWorthTrend"]
+    },
+    {
+      "id": "goal.emergency.fund",
+      "kind": "goal",
+      "text": "You've saved $4,600 toward your Emergency Fund — 46% there, on track for about 14 months at your recent pace.",
+      "confidence": { "level": "medium", "score": 0.7, "basis": "blended" },
+      "a11y": {
+        "screenReaderText": "You've saved four thousand six hundred dollars toward your Emergency Fund. 46 percent there, on track for about fourteen months at your recent pace.",
+        "ariaLive": "polite",
+        "role": "note",
+        "headingLevel": null
+      },
+      "sourceRefs": ["goal.emergency.fund"]
+    },
+    {
+      "id": "uncertainty",
+      "kind": "uncertainty",
+      "text": "One note on confidence: the net-worth trend is based on a short, 21-day window, so treat it as a rough early signal rather than a firm direction.",
+      "confidence": { "level": "low", "score": 0.42, "basis": "sample_size" },
+      "a11y": {
+        "screenReaderText": "One note on confidence. The net-worth trend is based on a short, twenty-one day window, so treat it as a rough early signal rather than a firm direction.",
+        "ariaLive": "polite",
+        "role": "note",
+        "headingLevel": null
+      },
+      "sourceRefs": ["netWorthTrend"]
+    }
+  ],
+  "provenance": {
+    "generator": "template",
+    "deterministic": true,
+    "modelId": null,
+    "modelVersion": null,
+    "runtime": null
+  }
+}

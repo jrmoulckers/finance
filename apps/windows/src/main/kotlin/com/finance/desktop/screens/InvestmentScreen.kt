@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,7 +55,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.components.NarratedChart
 import com.finance.desktop.di.koinGet
+import com.finance.desktop.narration.ChartCategorySlice
+import com.finance.desktop.narration.ChartNarrator
+import com.finance.desktop.narration.ChartValuePoint
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.AllocationSlice
 import com.finance.desktop.viewmodel.HoldingUi
@@ -306,14 +311,24 @@ private fun PerformanceChartCard(
             val lineColor = if (isPositive) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
             val fillColor = lineColor.copy(alpha = 0.1f)
 
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .semantics {
-                        contentDescription = "Performance chart showing portfolio value over time"
-                    },
+            val narration = remember(data, selectedRange) {
+                ChartNarrator.narratePerformance(
+                    rangeText = selectedRange.narrationLabel(),
+                    rangeSpoken = selectedRange.narrationSpokenLabel(),
+                    points = data.map { ChartValuePoint(it.label, it.value.toDouble()) },
+                )
+            }
+
+            NarratedChart(
+                narration = narration,
+                panelTestTag = "cockpit.panel.performance",
+                table = { PerformanceDataTable(data) },
             ) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                ) {
                 if (data.isEmpty()) return@Canvas
 
                 val minVal = data.minOf { it.value }
@@ -360,6 +375,7 @@ private fun PerformanceChartCard(
                     (1f - (data.last().value - minVal) / range)
                 drawCircle(lineColor, radius = 4f, center = Offset(lastX, lastY))
             }
+            }
         }
     }
 }
@@ -387,16 +403,20 @@ private fun AllocationChartCard(
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
 
             // Donut chart
-            Canvas(
-                modifier = Modifier
-                    .size(180.dp)
-                    .semantics {
-                        contentDescription = buildString {
-                            append("Asset allocation: ")
-                            data.forEach { append("${it.label} ${(it.percent * 100).toInt()}%, ") }
-                        }
-                    },
+            val narration = remember(data) {
+                ChartNarrator.narrateAllocation(
+                    data.map { ChartCategorySlice(it.label, it.percent.toDouble()) },
+                )
+            }
+
+            NarratedChart(
+                narration = narration,
+                panelTestTag = "cockpit.panel.allocation",
+                table = { AllocationDataTable(data) },
             ) {
+                Canvas(
+                    modifier = Modifier.size(180.dp),
+                ) {
                 val strokeWidth = 36f
                 val radius = (size.minDimension - strokeWidth) / 2
                 val center = Offset(size.width / 2, size.height / 2)
@@ -417,6 +437,7 @@ private fun AllocationChartCard(
                     )
                     startAngle += sweep
                 }
+            }
             }
 
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
@@ -576,4 +597,73 @@ private fun HoldingRow(holding: HoldingUi) {
             }
         }
     }
+}
+
+// ─── Chart narration data tables (text alternatives) ─────────────────────────
+
+@Composable
+private fun PerformanceDataTable(data: List<PerformancePoint>) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        data.forEach { point ->
+            val valueText = formatChartDollars(point.value)
+            Text(
+                text = "${point.label}: $valueText",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
+                    .semantics {
+                        contentDescription = "${point.label}, $valueText"
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AllocationDataTable(data: List<AllocationSlice>) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        data.forEach { slice ->
+            val pct = (slice.percent * 100).toInt()
+            Text(
+                text = "${slice.label}: $pct%",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
+                    .semantics {
+                        contentDescription = "${slice.label}, $pct percent"
+                    },
+            )
+        }
+    }
+}
+
+private fun formatChartDollars(value: Float): String {
+    val digits = value.toLong().coerceAtLeast(0L).toString()
+    val grouped = StringBuilder()
+    val remainder = digits.length % 3
+    digits.forEachIndexed { index, char ->
+        if (index != 0 && (index - remainder) % 3 == 0) grouped.append(',')
+        grouped.append(char)
+    }
+    return "$" + grouped.toString()
+}
+
+private fun PerformanceRange.narrationLabel(): String = when (this) {
+    PerformanceRange.ONE_WEEK -> "1 week"
+    PerformanceRange.ONE_MONTH -> "1 month"
+    PerformanceRange.THREE_MONTHS -> "3 months"
+    PerformanceRange.SIX_MONTHS -> "6 months"
+    PerformanceRange.ONE_YEAR -> "1 year"
+    PerformanceRange.ALL_TIME -> "all time"
+}
+
+private fun PerformanceRange.narrationSpokenLabel(): String = when (this) {
+    PerformanceRange.ONE_WEEK -> "one week"
+    PerformanceRange.ONE_MONTH -> "one month"
+    PerformanceRange.THREE_MONTHS -> "three months"
+    PerformanceRange.SIX_MONTHS -> "six months"
+    PerformanceRange.ONE_YEAR -> "one year"
+    PerformanceRange.ALL_TIME -> "all time"
 }

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-06-22T00:00:00Z",
+  "locale": "en-US",
+  "currency": "USD",
+  "netWorth": { "cents": 4185000, "currency": "USD" },
+  "cashOnHand": { "cents": 124050, "currency": "USD" },
+  "safeToSpend": { "cents": 38000, "currency": "USD" },
+  "netWorthTrend": {
+    "direction": "up",
+    "changeCents": 52000,
+    "changePct": 0.0126,
+    "periodDays": 21,
+    "confidence": { "level": "low", "score": 0.42, "basis": "sample_size" }
+  },
+  "budgets": [
+    {
+      "categoryName": "Dining",
+      "plannedCents": 30000,
+      "spentCents": 31500,
+      "period": "monthly",
+      "isRollover": false,
+      "percentUsed": 1.05,
+      "confidence": { "level": "high", "score": 0.95, "basis": "rule" }
+    }
+  ],
+  "upcomingBills": [
+    { "name": "Electric", "amountCents": 8800, "dueDateIso": "2026-06-25", "status": "due" }
+  ],
+  "goals": [
+    {
+      "name": "Emergency Fund",
+      "targetCents": 1000000,
+      "currentCents": 460000,
+      "percentComplete": 0.46,
+      "monthsToTarget": 14,
+      "confidence": { "level": "medium", "score": 0.7, "basis": "blended" }
+    }
+  ],
+  "insights": [],
+  "signals": []
+}
