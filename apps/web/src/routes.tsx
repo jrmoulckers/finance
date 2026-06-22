@@ -68,6 +68,7 @@ const EstateInventory = lazy(() => import('./pages/EstateInventoryPage'));
 const PrivacyDashboard = lazy(() => import('./pages/PrivacyDashboardPage'));
 const Onboarding = lazy(() => import('./pages/OnboardingPage'));
 const CashFlow = lazy(() => import('./pages/CashFlowPage'));
+const CashRunway = lazy(() => import('./pages/CashRunwayPage'));
 const Invoices = lazy(() => import('./pages/InvoicesPage'));
 const NetWorth = lazy(() => import('./pages/NetWorthPage'));
 const Subscriptions = lazy(() => import('./pages/SubscriptionsPage'));
@@ -642,6 +643,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Cash Flow">
             <CashFlow />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/cash-runway"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Cash Runway">
+            <CashRunway />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

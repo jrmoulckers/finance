@@ -274,6 +274,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     description: 'Money in vs. money out over time.',
   },
   {
+    id: 'cash-runway',
+    label: 'Cash Runway',
+    href: '/cash-runway',
+    icon: <Icon name={IconToken.CHART_LINE} />,
+    group: 'insights',
+    mobilePriority: 27,
+    description: 'Forecast whether cash covers payroll, taxes and bills before revenue lands.',
+  },
+  {
     id: 'net-worth',
     label: 'Net Worth',
     href: '/net-worth',
