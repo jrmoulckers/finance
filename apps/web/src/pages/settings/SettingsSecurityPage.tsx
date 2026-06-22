@@ -3,6 +3,7 @@
 import React from 'react';
 
 import { EncryptionDetails } from '../../components/settings/EncryptionDetails';
+import { EncryptionUnlockSettings } from '../../components/settings/EncryptionUnlockSettings';
 
 /**
  * Security & Encryption sub-page — transparent details about local storage,
@@ -13,6 +14,7 @@ export const SettingsSecurityPage: React.FC = () => {
   return (
     <>
       <h2 className="settings-subpage__title">Security &amp; Encryption</h2>
+      <EncryptionUnlockSettings />
       <EncryptionDetails />
     </>
   );

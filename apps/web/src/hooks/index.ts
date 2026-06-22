@@ -238,3 +238,5 @@ export type {
 } from './useConnectorPermissions';
 export { useMilestoneCheck } from './useMilestoneCheck';
 export type { UseMilestoneCheckResult } from './useMilestoneCheck';
+export { useSqliteEncryption } from './useSqliteEncryption';
+export type { UseSqliteEncryptionResult } from './useSqliteEncryption';

@@ -6,5 +6,6 @@ export { HapticSettings } from './HapticSettings';
 export { SettingInfoWidget } from './SettingInfoWidget';
 export type { SettingInfoWidgetProps } from './SettingInfoWidget';
 export { EncryptionDetails } from './EncryptionDetails';
+export { EncryptionUnlockSettings } from './EncryptionUnlockSettings';
 export { SETTING_DESCRIPTIONS } from './setting-descriptions';
 export type { SettingDescription } from './setting-descriptions';
