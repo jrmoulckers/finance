@@ -12,6 +12,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
+    @State private var showingAskFinance = false
     @Environment(NetworkMonitor.self) private var networkMonitor: NetworkMonitor?
 
     init(viewModel: DashboardViewModel = DashboardViewModel(
@@ -47,6 +48,19 @@ struct DashboardView: View {
                 }
             }
             .navigationTitle(String(localized: "Dashboard"))
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showingAskFinance = true } label: {
+                        Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                    }
+                    .accessibilityIdentifier("ask_finance_button")
+                    .accessibilityLabel(String(localized: "Ask Finance"))
+                    .accessibilityHint(String(localized: "Ask a natural-language question about your money"))
+                }
+            }
+            .sheet(isPresented: $showingAskFinance) {
+                FinanceQueryView()
+            }
             .refreshable { await viewModel.loadDashboard() }
             .task { await viewModel.loadDashboard() }
             .alert(String(localized: "Error"), isPresented: Binding(
