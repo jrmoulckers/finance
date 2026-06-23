@@ -9,6 +9,7 @@ public enum WidgetDataKeys {
     static let balance = "widget.balance"
     static let transactions = "widget.transactions"
     static let budgets = "widget.budgets"
+    static let todaySpend = "widget.todaySpend"
 }
 
 struct WidgetBalance: Codable, Sendable, Hashable {
@@ -123,6 +124,19 @@ enum WidgetDataProvider {
         )
     }
 
+    /// Reads the cached today-spend summary from the app-group cache only.
+    /// Timeline providers must never fetch from the network; a missing cache
+    /// renders the empty placeholder summary (`.distantPast` marks it stale).
+    static func readTodaySpend() -> TodaySpendSummary {
+        guard let defaults,
+              let data = defaults.data(forKey: WidgetDataKeys.todaySpend),
+              let summary = try? decoder.decode(TodaySpendSummary.self, from: data)
+        else {
+            return .empty()
+        }
+        return summary
+    }
+
     static func maskingMode(for widgetId: String) -> WidgetMaskingMode {
         let mode = WidgetPrivacySettings.maskingMode(for: widgetId, defaults: defaults)
         if mode == .bucketed {
@@ -194,6 +208,16 @@ extension WidgetBudget {
             currencyCode: "USD"
         ),
     ]
+}
+
+extension TodaySpendSummary {
+    static let placeholder = TodaySpendSummary(
+        todaySpentMinorUnits: 4_250,
+        periodDiscretionarySpentMinorUnits: 16_000,
+        discretionaryBudgetMinorUnits: 25_000,
+        currencyCode: "USD",
+        updatedAt: .now
+    )
 }
 
 enum WidgetCurrencyFormatter {
