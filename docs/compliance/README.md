@@ -4,6 +4,8 @@ This directory contains audits, gap analyses, inventories, and implementation
 guides related to regulatory compliance — primarily the EU General Data
 Protection Regulation (GDPR) and similar privacy frameworks.
 
+> **Owner:** the [`compliance-specialist`](../../.github/agents/compliance-specialist.agent.md) agent stewards this directory and is broadening it beyond privacy to financial-services, governmental/tax, and regional regulatory obligations. The technical controls these documents call for are implemented by the owning engineering agents (security, backend, finance-domain, platform); [`@security-reviewer`](../../.github/agents/security-reviewer.agent.md) co-authors the privacy and technical audits and [`@accessibility-reviewer`](../../.github/agents/accessibility-reviewer.agent.md) maintains the VPAT.
+
 ## Contents
 
 | Document                                                        | Description                                                                     |
@@ -15,10 +17,13 @@ Protection Regulation (GDPR) and similar privacy frameworks.
 | [GDPR Data Minimization Audit](data-minimization-audit.md)      | Field-level schema review, retention guidance, and minimization recommendations |
 | [Data Retention Schedule](data-retention-schedule.md)           | Authoritative retention periods for all data categories with purge job specs    |
 | [CCPA Rights Verification](ccpa-verification.md)                | CCPA/CPRA consumer rights verification against implementation                   |
+| [Privacy Compliance Review](privacy-compliance-review.md)       | Full-stack GDPR & CCPA/CPRA privacy compliance assessment                       |
 | [Web Storage Audit](web-storage-audit.md)                       | Inventory of all browser storage mechanisms and privacy impact                  |
 | [Security Transparency Report](security-transparency-report.md) | Recurring transparency report with audit status and incident disclosures        |
 | [Encryption Explainer](encryption-explainer.md)                 | Human-readable encryption documentation with data flow diagrams                 |
 | [VPN & Tor Compatibility Policy](vpn-tor-policy.md)             | Privacy-preserving network compatibility policy and QA guidance                 |
+| [App Store Privacy Labels](app-store-privacy-labels.md)         | App Store / Play Store privacy-label parity mapping                             |
+| [VPAT 2.5 (WCAG 2.2)](vpat-2.5.md)                              | Voluntary Product Accessibility Template — accessibility conformance            |
 
 ## Related Resources
 

@@ -124,7 +124,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 **Knowledge areas:**
 
-- Agent type registry (23 agents: engineering, review, ops/meta, business)
+- Agent type registry (24 agents: engineering, review, ops/meta, business)
 - Label-to-agent mapping for issue routing
 - Sprint planning algorithm (query → categorize → deps → group → track)
 - Fleet dispatch protocol with background task parallelism
@@ -371,7 +371,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 **Knowledge areas:**
 
-- Issue categorization by agent type (23 agent types)
+- Issue categorization by agent type (24 agent types)
 - Sprint sizing (4–6 implementation + 1–2 business + 1 review)
 - Dependency detection and schema change serialization
 - Priority framework (P0–P3) with assignment rules
@@ -440,6 +440,7 @@ Each agent loads a focused set of skills for domain depth. The table below mirro
 | `architect`                | `kmp-development`, `edge-sync`, `supabase-powersync`, `security-review-methodology`    |
 | `backend-engineer`         | `supabase-powersync`, `edge-sync`, `security-review-methodology`, `privacy-compliance` |
 | `business-analyst`         | `monetization`, `go-to-market`, `project-management`                                   |
+| `compliance-specialist`    | `privacy-compliance`, `security-review-methodology`, `financial-modeling`              |
 | `data-engineer`            | `privacy-compliance`, `financial-modeling`, `supabase-powersync`                       |
 | `design-engineer`          | `design-tokens`, `accessibility-testing`, `i18n-localization`                          |
 | `devops-engineer`          | `fleet-orchestration`, `performance-budgets`, `mcp-agent-tooling`, `dev-onboarding`    |
@@ -458,7 +459,7 @@ Each agent loads a focused set of skills for domain depth. The table below mirro
 | `web-engineer`             | `performance-budgets`, `accessibility-testing`, `financial-modeling`, `edge-sync`      |
 | `windows-engineer`         | `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens`      |
 
-> This table mirrors the roster in [`agents.md`](agents.md) (**23 agents**). When you add or retire an agent, update both its `*.agent.md` **Related skills** line and this table so the two never drift.
+> This table mirrors the roster in [`agents.md`](agents.md) (**24 agents**). When you add or retire an agent, update both its `*.agent.md` **Related skills** line and this table so the two never drift.
 
 ---
 

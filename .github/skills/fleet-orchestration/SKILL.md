@@ -47,6 +47,7 @@ Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI 
 | `design-engineer`          | `config/tokens/**`                                                    | `.github/agents/design-engineer.agent.md`          |
 | `docs-writer`              | `docs/**`, root `*.md`                                                | `.github/agents/docs-writer.agent.md`              |
 | `architect`                | Cross-cutting, ADRs                                                   | `.github/agents/architect.agent.md`                |
+| `compliance-specialist`    | `docs/compliance/**`                                                  | `.github/agents/compliance-specialist.agent.md`    |
 | `finance-domain`           | `packages/core/**` (business logic, shared with `kmp-engineer`)       | `.github/agents/finance-domain.agent.md`           |
 | `performance-engineer`     | `performance.budget.json`, `docs/performance/**`                      | `.github/agents/performance-engineer.agent.md`     |
 | `data-engineer`            | `docs/analytics/**`, `config/analytics/**`, `docs/business/growth/**` | `.github/agents/data-engineer.agent.md`            |
@@ -89,6 +90,7 @@ Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI 
 | `ci`, `devops`               | `devops-engineer`          |
 | `docs`, `documentation`      | `docs-writer`              |
 | `security`, `privacy`        | `security-reviewer`        |
+| `compliance`, `regulatory`   | `compliance-specialist`    |
 | `a11y`, `accessibility`      | `accessibility-reviewer`   |
 | `qa`, `testing`              | `qa-tester`                |
 | `product`, `roadmap`         | `product-manager`          |

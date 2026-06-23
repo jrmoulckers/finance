@@ -113,7 +113,7 @@ AI agents that skip issue creation, commit directly to `main`, or fail to create
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.) — `npm run format` only touches JS/TS/JSON/MD/YAML
-- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow (`npm run ai:manifest:check`, backed by `tools/ai-manifest.js`) flags any drift between these counts and the filesystem; see [`docs/ai/CHANGELOG.md`](docs/ai/CHANGELOG.md). As of 2026-06 there are **23** agents (see list below).
+- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow (`npm run ai:manifest:check`, backed by `tools/ai-manifest.js`) flags any drift between these counts and the filesystem; see [`docs/ai/CHANGELOG.md`](docs/ai/CHANGELOG.md). As of 2026-06 there are **24** agents (see list below).
 
 ## AI Agent Configuration
 
@@ -123,6 +123,7 @@ Custom agents are defined in `.github/agents/`. Each agent has a specific role:
 - `android-engineer` — Android platform (Jetpack Compose, KMP integration, Material 3)
 - `architect` — System design and architecture decisions
 - `backend-engineer` — Supabase backend (PostgreSQL, Auth, Edge Functions, RLS, PowerSync)
+- `compliance-specialist` — Financial, governmental & regional regulatory compliance; obligation matrix, data residency, retention (advisory, stewards `docs/compliance/`)
 - `design-engineer` — Design tokens, Style Dictionary, color systems, typography
 - `devops-engineer` — CI/CD (GitHub Actions, Turborepo, Fastlane, Changesets)
 - `docs-writer` — Documentation authoring and maintenance
@@ -372,6 +373,7 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 | `@security-reviewer`        | Emergency fixer — may implement CRITICAL/HIGH security fixes in any directory (coordinating with the owning agent); review-only for non-security code                                                          |
 | `@accessibility-reviewer`   | Review-only — never edits production code; routes every fix to the owning platform agent                                                                                                                       |
 | `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                                                                                                                 |
+| `@compliance-specialist`    | `docs/compliance/` — regulatory obligation matrix, jurisdictional data-residency, retention; advisory, review-only on code (routes fixes to owners)                                                            |
 | `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                                                                                  |
 | `@product-manager`          | `docs/business/roadmap/`, `docs/business/sprints/`, GitHub Issues (read/create)                                                                                                                                |
 | `@marketing-strategist`     | `docs/marketing/`, `docs/business/marketing/`, app store copy drafts                                                                                                                                           |
