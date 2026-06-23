@@ -42,7 +42,7 @@ Run 5 sprints using the sprint prompt
 1. Fetches latest main and queries open issues
 2. Categorizes issues by agent type
 3. Dispatches agents in parallel waves (1 issue per agent type per wave)
-4. Each agent: creates worktree → implements → lint/format → rebase → push → create PR → monitor CI
+4. Each agent: creates worktree → implements → lint/format → rebase → push → create PR → monitor CI → self-merge
 5. Reports results after all waves complete
 
 ---
@@ -227,6 +227,6 @@ parameters:
 ## Design Principles
 
 - **Deterministic**: Each prompt produces consistent results given the same inputs.
-- **Self-contained**: Prompts include all context needed — agents don't need to look elsewhere.
+- **Self-contained, but DRY on canonical registries**: Prompts include the concrete steps an agent needs to execute. For project facts that evolve over time — the **label → agent map** (the `sprint-planning` skill) and the **pre-push / push / merge workflow** (`.github/instructions/workflow.instructions.md`) — prompts reference the canonical source instead of duplicating it, so they can't drift out of date.
 - **Safe by default**: Prompts respect human-gated operations. Destructive actions are flagged, not executed.
 - **Observable**: Every prompt ends with a structured report so the human can verify results.
