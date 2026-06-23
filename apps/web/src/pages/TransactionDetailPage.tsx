@@ -19,6 +19,11 @@ import {
   isBnplLiabilityTransaction,
 } from '../lib/bnpl-liability';
 import { isTransactionLockedByReconciliation } from '../lib/reconciliation';
+import {
+  formatLocalTimestamp,
+  isLocalTimestampFieldKey,
+  localTimestampFromCustomFields,
+} from '../lib/transactions/local-timestamp';
 import { getContributionDesignationLabel } from '../lib/tax/retirement-contribution-metadata';
 import type { Transaction } from '../kmp/bridge';
 import '../components/navigation/breadcrumb.css';
@@ -107,7 +112,8 @@ export const TransactionDetailPage: React.FC = () => {
       transaction.merchantCountry ||
       transaction.externalReferenceId ||
       transaction.statementDescription ||
-      (transaction.customFields && Object.keys(transaction.customFields).length > 0) ||
+      (transaction.customFields &&
+        Object.keys(transaction.customFields).some((key) => !isLocalTimestampFieldKey(key))) ||
       transaction.extraNotes
     );
   }, [transaction]);
@@ -228,6 +234,15 @@ export const TransactionDetailPage: React.FC = () => {
     day: 'numeric',
   });
 
+  const localTimestamp = localTimestampFromCustomFields(transaction.customFields);
+  const formattedLocalTimestamp = formatLocalTimestamp(localTimestamp);
+
+  // Reserved local-timestamp keys are surfaced as a dedicated row above, so
+  // exclude them from the raw Custom Fields table to avoid duplication.
+  const visibleCustomFields = Object.entries(transaction.customFields ?? {}).filter(
+    ([key]) => !isLocalTimestampFieldKey(key),
+  );
+
   return (
     <>
       <Breadcrumb segments={[{ label: 'Transactions', href: '/transactions' }, { label }]} />
@@ -303,6 +318,12 @@ export const TransactionDetailPage: React.FC = () => {
             <dt className="card__title">Date</dt>
             <dd>{formattedDate}</dd>
           </div>
+          {formattedLocalTimestamp && (
+            <div>
+              <dt className="card__title">Purchase local time</dt>
+              <dd>{formattedLocalTimestamp}</dd>
+            </div>
+          )}
           <div>
             <dt className="card__title">Status</dt>
             <dd>
@@ -522,7 +543,7 @@ export const TransactionDetailPage: React.FC = () => {
                 </div>
               )}
 
-              {transaction.customFields && Object.keys(transaction.customFields).length > 0 && (
+              {visibleCustomFields.length > 0 && (
                 <div style={{ gridColumn: '1 / -1' }}>
                   <dt className="card__title">Custom Fields</dt>
                   <dd>
@@ -561,7 +582,7 @@ export const TransactionDetailPage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {Object.entries(transaction.customFields).map(([key, value]) => (
+                        {visibleCustomFields.map(([key, value]) => (
                           <tr key={key}>
                             <td
                               style={{
