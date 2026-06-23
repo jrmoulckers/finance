@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.finance.android.ui.data.SampleData
+import com.finance.android.ui.quickactions.QuickActionsSection
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.tips.TipsSection
 import com.finance.android.ui.viewmodel.BudgetStatusUi
@@ -84,6 +85,7 @@ fun DashboardScreen(
     onViewInsights: () -> Unit = {},
     onViewAccounts: () -> Unit = {},
     onAffordabilityCheck: () -> Unit = {},
+    onQuickActionNavigate: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DashboardViewModel = koinViewModel(),
 ) {
@@ -95,7 +97,7 @@ fun DashboardScreen(
         }
         return
     }
-    DashboardContent(state, viewModel::refresh, onAddTransaction, onViewAllTransactions, onViewInsights, onViewAccounts, onAffordabilityCheck, modifier)
+    DashboardContent(state, viewModel::refresh, onAddTransaction, onViewAllTransactions, onViewInsights, onViewAccounts, onAffordabilityCheck, onQuickActionNavigate, modifier)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,6 +107,7 @@ internal fun DashboardContent(
     onAddTransaction: () -> Unit, onViewAllTransactions: () -> Unit,
     onViewInsights: () -> Unit, onViewAccounts: () -> Unit,
     onAffordabilityCheck: () -> Unit = {},
+    onQuickActionNavigate: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh,
@@ -112,6 +115,7 @@ internal fun DashboardContent(
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item(key = "net-worth") { NetWorthCard(state.netWorthFormatted, onClick = onViewAccounts) }
+            item(key = "quick-actions") { QuickActionsSection(onNavigate = onQuickActionNavigate) }
             item(key = "spending") { SpendingSummaryRow(state.todaySpendingFormatted, state.monthlySpendingFormatted) }
             item(key = "affordability") { AffordabilityCheckCard(onAffordabilityCheck) }
             item(key = "insights") { InsightsCard(onViewInsights) }

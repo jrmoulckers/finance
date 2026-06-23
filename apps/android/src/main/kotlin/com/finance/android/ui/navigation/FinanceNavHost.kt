@@ -268,6 +268,11 @@ fun FinanceNavHost(
                         launchSingleTop = true
                     }
                 },
+                onQuickActionNavigate = { route ->
+                    navController.navigate(route) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
