@@ -153,11 +153,15 @@ describe('Route Code Splitting', () => {
 // ---------------------------------------------------------------------------
 
 describe('Vite Build Configuration', () => {
-  it('should define manual chunks for vendor splitting', async () => {
+  it('should define advanced chunks for vendor splitting', async () => {
     const configPath = resolve(__dirname, '../../../vite.config.ts');
     const configContent = readFileSync(configPath, 'utf-8');
 
-    expect(configContent).toContain('manualChunks');
+    // We use rolldown's `advancedChunks` (not rollup's `manualChunks`) because
+    // manualChunks is ignored for modules reached only through dynamic route
+    // chunks, which let recharts/shared infra inflate route-ledger and
+    // route-dashboard past the budget (#2983).
+    expect(configContent).toContain('advancedChunks');
     expect(configContent).toContain('vendor-react');
     expect(configContent).toContain('vendor-charts');
     expect(configContent).toContain('vendor-sqlite');
