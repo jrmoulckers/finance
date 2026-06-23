@@ -176,6 +176,13 @@
   max-width: 32ch;
 }
 
+.p2p-import__fee {
+  display: inline-block;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  white-space: nowrap;
+}
+
 .p2p-import__override {
   min-width: 12rem;
 }

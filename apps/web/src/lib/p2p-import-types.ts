@@ -128,10 +128,20 @@ export interface P2PImportSummary {
   readonly grossSpendingCents: number;
   /** Sum of reimbursement inflows. */
   readonly reimbursementCents: number;
-  /** Budget-affecting spend after netting reimbursements. */
+  /**
+   * Budget-affecting spend after netting reimbursements. Includes provider
+   * fees charged on spending rows (e.g. instant-transfer / cash-out fees) so
+   * the true cost of a P2P spend is reflected in the budget.
+   */
   readonly netSpendingCents: number;
   /** Sum of |amount| reclassified as reimbursement (kept out of budget). */
   readonly excludedFromBudgetCents: number;
+  /**
+   * Total provider fees (in cents) charged on budget-affecting spending rows.
+   * Surfaced so the user can see what P2P convenience fees cost them. Always
+   * `>= 0` and already folded into {@link netSpendingCents}.
+   */
+  readonly feesCents: number;
 }
 
 /** The full, recomputable import plan. */
@@ -153,10 +163,15 @@ export interface P2PImportableTransaction {
   readonly payee: string;
   /** Note for the saved transaction. */
   readonly note: string;
-  /** Signed amount in cents (negative = expense). */
+  /** Signed amount in cents (negative = expense). Includes any provider fee. */
   readonly amountCents: number;
   /** Amount netted out of this transaction (>= 0). */
   readonly reimbursedCents: number;
+  /**
+   * Provider fee (in cents, >= 0) folded into {@link amountCents}. A fee makes
+   * the true cost of the spend higher than the principal alone.
+   */
+  readonly feeCents: number;
   /** True when reimbursements were netted into the amount. */
   readonly isNetted: boolean;
 }
