@@ -11,7 +11,7 @@
 -- Drop functions
 -- =============================================================================
 DROP FUNCTION IF EXISTS public.handle_new_user_signup(uuid, text, text);
-DROP FUNCTION IF EXISTS auth.custom_access_token_hook(jsonb);
+DROP FUNCTION IF EXISTS public.custom_access_token_hook(jsonb);
 
 -- =============================================================================
 -- Drop audit_log

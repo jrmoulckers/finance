@@ -238,7 +238,7 @@ CREATE INDEX IF NOT EXISTS idx_categories_household
 -- User's households lookup:
 --   SELECT household_id FROM household_members
 --   WHERE user_id = $1 AND deleted_at IS NULL
--- Called by auth.household_ids() and every RLS policy check.
+-- Called by public.household_ids() and every RLS policy check.
 -- CRITICAL for RLS performance — invoked on every authenticated query.
 -- Estimated improvement: sub-millisecond lookup for the most frequent RLS check.
 CREATE INDEX IF NOT EXISTS idx_household_members_user

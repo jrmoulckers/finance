@@ -12,12 +12,12 @@
 --   - household_members: members can see co-members, only household owner can manage
 
 -- =============================================================================
--- Helper function: auth.household_ids()
+-- Helper function: public.household_ids()
 -- =============================================================================
 -- Returns an array of household IDs the current JWT user belongs to.
 -- Used in RLS policies for efficient household membership checks.
 
-CREATE OR REPLACE FUNCTION auth.household_ids()
+CREATE OR REPLACE FUNCTION public.household_ids()
 RETURNS UUID[] AS $$
     SELECT COALESCE(
         array_agg(household_id),
@@ -69,7 +69,7 @@ CREATE POLICY users_delete ON users
 
 CREATE POLICY households_select ON households
     FOR SELECT
-    USING (id = ANY(auth.household_ids()));
+    USING (id = ANY(public.household_ids()));
 
 CREATE POLICY households_insert ON households
     FOR INSERT
@@ -90,7 +90,7 @@ CREATE POLICY households_delete ON households
 
 CREATE POLICY household_members_select ON household_members
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY household_members_insert ON household_members
     FOR INSERT
@@ -139,20 +139,20 @@ CREATE POLICY household_members_delete ON household_members
 
 CREATE POLICY accounts_select ON accounts
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY accounts_insert ON accounts
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY accounts_update ON accounts
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY accounts_delete ON accounts
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- =============================================================================
 -- categories — household members only
@@ -160,20 +160,20 @@ CREATE POLICY accounts_delete ON accounts
 
 CREATE POLICY categories_select ON categories
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY categories_insert ON categories
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY categories_update ON categories
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY categories_delete ON categories
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- =============================================================================
 -- transactions — household members only
@@ -181,20 +181,20 @@ CREATE POLICY categories_delete ON categories
 
 CREATE POLICY transactions_select ON transactions
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY transactions_insert ON transactions
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY transactions_update ON transactions
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY transactions_delete ON transactions
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- =============================================================================
 -- budgets — household members only
@@ -202,20 +202,20 @@ CREATE POLICY transactions_delete ON transactions
 
 CREATE POLICY budgets_select ON budgets
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY budgets_insert ON budgets
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY budgets_update ON budgets
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY budgets_delete ON budgets
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- =============================================================================
 -- goals — household members only
@@ -223,17 +223,17 @@ CREATE POLICY budgets_delete ON budgets
 
 CREATE POLICY goals_select ON goals
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY goals_insert ON goals
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY goals_update ON goals
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY goals_delete ON goals
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));

@@ -18,7 +18,7 @@
 --   Auth → Providers → Google:      Enable Google Sign-In
 --                                    - Client ID + Client Secret from Google Cloud Console
 --   Auth → Hooks → Custom Access Token:
---                                    Point to auth.custom_access_token_hook
+--                                    Point to public.custom_access_token_hook
 --   Auth → URL Configuration:
 --                                    - Site URL: https://app.finance.example.com
 --                                    - Redirect URLs: com.finance.app://auth/callback,
@@ -110,7 +110,7 @@ ALTER TABLE household_invitations ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY household_invitations_select ON household_invitations
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- Only household owner (created_by) can create invitations
 CREATE POLICY household_invitations_insert ON household_invitations
@@ -126,8 +126,8 @@ CREATE POLICY household_invitations_insert ON household_invitations
 
 CREATE POLICY household_invitations_update ON household_invitations
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY household_invitations_delete ON household_invitations
     FOR DELETE
@@ -205,7 +205,7 @@ ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY audit_log_select ON audit_log
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()) OR user_id = auth.uid());
+    USING (household_id = ANY(public.household_ids()) OR user_id = auth.uid());
 
 -- Insert is service-role only (triggers insert via SECURITY DEFINER functions)
 -- No user-facing insert/update/delete policies — the audit log is append-only
@@ -219,9 +219,9 @@ CREATE POLICY audit_log_select ON audit_log
 -- can read them from the JWT without a table lookup on every query.
 --
 -- Configuration: Supabase Dashboard → Auth → Hooks → Custom Access Token
---                → Select: auth.custom_access_token_hook
+--                → Select: public.custom_access_token_hook
 
-CREATE OR REPLACE FUNCTION auth.custom_access_token_hook(event jsonb)
+CREATE OR REPLACE FUNCTION public.custom_access_token_hook(event jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
@@ -262,12 +262,12 @@ END;
 $$;
 
 -- Grant execute to the supabase_auth_admin role so the Auth service can call it
-GRANT EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) TO supabase_auth_admin;
+GRANT EXECUTE ON FUNCTION public.custom_access_token_hook(jsonb) TO supabase_auth_admin;
 
 -- Revoke from public for security
-REVOKE EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) FROM anon;
-REVOKE EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION public.custom_access_token_hook(jsonb) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.custom_access_token_hook(jsonb) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.custom_access_token_hook(jsonb) FROM authenticated;
 
 -- =============================================================================
 -- Helper: Create user with default household (used by auth-webhook Edge Function)

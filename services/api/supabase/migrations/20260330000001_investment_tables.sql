@@ -1,4 +1,4 @@
-﻿-- SPDX-License-Identifier: BUSL-1.1
+-- SPDX-License-Identifier: BUSL-1.1
 
 -- Migration: 20260330000001_investment_tables
 -- Description: Create investment_portfolios, investment_holdings, price_history,
@@ -150,25 +150,25 @@ ALTER TABLE price_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bill_reminders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE report_templates ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY investment_portfolios_select ON investment_portfolios FOR SELECT USING (household_id = ANY(auth.household_ids()));
-CREATE POLICY investment_portfolios_insert ON investment_portfolios FOR INSERT WITH CHECK (owner_id = auth.uid() AND household_id = ANY(auth.household_ids()));
-CREATE POLICY investment_portfolios_update ON investment_portfolios FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
-CREATE POLICY investment_portfolios_delete ON investment_portfolios FOR DELETE USING (household_id = ANY(auth.household_ids()));
+CREATE POLICY investment_portfolios_select ON investment_portfolios FOR SELECT USING (household_id = ANY(public.household_ids()));
+CREATE POLICY investment_portfolios_insert ON investment_portfolios FOR INSERT WITH CHECK (owner_id = auth.uid() AND household_id = ANY(public.household_ids()));
+CREATE POLICY investment_portfolios_update ON investment_portfolios FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
+CREATE POLICY investment_portfolios_delete ON investment_portfolios FOR DELETE USING (household_id = ANY(public.household_ids()));
 
-CREATE POLICY investment_holdings_select ON investment_holdings FOR SELECT USING (household_id = ANY(auth.household_ids()));
-CREATE POLICY investment_holdings_insert ON investment_holdings FOR INSERT WITH CHECK (owner_id = auth.uid() AND household_id = ANY(auth.household_ids()));
-CREATE POLICY investment_holdings_update ON investment_holdings FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
-CREATE POLICY investment_holdings_delete ON investment_holdings FOR DELETE USING (household_id = ANY(auth.household_ids()));
+CREATE POLICY investment_holdings_select ON investment_holdings FOR SELECT USING (household_id = ANY(public.household_ids()));
+CREATE POLICY investment_holdings_insert ON investment_holdings FOR INSERT WITH CHECK (owner_id = auth.uid() AND household_id = ANY(public.household_ids()));
+CREATE POLICY investment_holdings_update ON investment_holdings FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
+CREATE POLICY investment_holdings_delete ON investment_holdings FOR DELETE USING (household_id = ANY(public.household_ids()));
 
-CREATE POLICY bill_reminders_select ON bill_reminders FOR SELECT USING (household_id = ANY(auth.household_ids()));
-CREATE POLICY bill_reminders_insert ON bill_reminders FOR INSERT WITH CHECK (owner_id = auth.uid() AND household_id = ANY(auth.household_ids()));
-CREATE POLICY bill_reminders_update ON bill_reminders FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
-CREATE POLICY bill_reminders_delete ON bill_reminders FOR DELETE USING (household_id = ANY(auth.household_ids()));
+CREATE POLICY bill_reminders_select ON bill_reminders FOR SELECT USING (household_id = ANY(public.household_ids()));
+CREATE POLICY bill_reminders_insert ON bill_reminders FOR INSERT WITH CHECK (owner_id = auth.uid() AND household_id = ANY(public.household_ids()));
+CREATE POLICY bill_reminders_update ON bill_reminders FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
+CREATE POLICY bill_reminders_delete ON bill_reminders FOR DELETE USING (household_id = ANY(public.household_ids()));
 
-CREATE POLICY report_templates_select ON report_templates FOR SELECT USING (household_id = ANY(auth.household_ids()));
-CREATE POLICY report_templates_insert ON report_templates FOR INSERT WITH CHECK (owner_id = auth.uid() AND household_id = ANY(auth.household_ids()));
-CREATE POLICY report_templates_update ON report_templates FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
-CREATE POLICY report_templates_delete ON report_templates FOR DELETE USING (household_id = ANY(auth.household_ids()));
+CREATE POLICY report_templates_select ON report_templates FOR SELECT USING (household_id = ANY(public.household_ids()));
+CREATE POLICY report_templates_insert ON report_templates FOR INSERT WITH CHECK (owner_id = auth.uid() AND household_id = ANY(public.household_ids()));
+CREATE POLICY report_templates_update ON report_templates FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
+CREATE POLICY report_templates_delete ON report_templates FOR DELETE USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY price_history_select ON price_history FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY price_history_insert ON price_history FOR INSERT WITH CHECK (false);

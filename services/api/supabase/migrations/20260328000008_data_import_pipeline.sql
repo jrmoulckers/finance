@@ -92,14 +92,14 @@ ALTER TABLE import_jobs ENABLE ROW LEVEL SECURITY;
 -- Users can see import jobs in their households
 CREATE POLICY import_jobs_select ON import_jobs
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- Users can create import jobs in their households (must be the owner)
 CREATE POLICY import_jobs_insert ON import_jobs
     FOR INSERT
     WITH CHECK (
         owner_id = auth.uid()
-        AND household_id = ANY(auth.household_ids())
+        AND household_id = ANY(public.household_ids())
     );
 
 -- Only the import creator can update their jobs

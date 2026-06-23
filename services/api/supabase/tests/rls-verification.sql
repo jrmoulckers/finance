@@ -118,24 +118,24 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE '--- Security Function Verification ---';
 
-    -- auth.household_ids()
+    -- public.household_ids()
     SELECT count(*) INTO fn_count
     FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname = 'auth' AND p.proname = 'household_ids';
+    WHERE n.nspname = 'public' AND p.proname = 'household_ids';
     IF fn_count > 0 THEN
-        RAISE NOTICE '  ✅ auth.household_ids() exists';
+        RAISE NOTICE '  ✅ public.household_ids() exists';
     ELSE
-        RAISE WARNING '  ❌ auth.household_ids() MISSING';
+        RAISE WARNING '  ❌ public.household_ids() MISSING';
     END IF;
 
-    -- auth.custom_access_token_hook()
+    -- public.custom_access_token_hook()
     SELECT count(*) INTO fn_count
     FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname = 'auth' AND p.proname = 'custom_access_token_hook';
+    WHERE n.nspname = 'public' AND p.proname = 'custom_access_token_hook';
     IF fn_count > 0 THEN
-        RAISE NOTICE '  ✅ auth.custom_access_token_hook() exists';
+        RAISE NOTICE '  ✅ public.custom_access_token_hook() exists';
     ELSE
-        RAISE WARNING '  ❌ auth.custom_access_token_hook() MISSING';
+        RAISE WARNING '  ❌ public.custom_access_token_hook() MISSING';
     END IF;
 
     -- public.check_rate_limit()
