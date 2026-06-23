@@ -31,12 +31,12 @@ This skill covers **design-token authoring and consumption patterns** for Financ
 
 ## Repo-Specific Paths
 
-| Path                                          | Purpose                                                          |
-| --------------------------------------------- | ---------------------------------------------------------------- |
-| `.github/instructions/tokens.instructions.md` | Canonical token authoring rules for `config/tokens/**`           |
-| `config/tokens/**`                            | Token source/config location when token source files are present |
-| `apps/web/src/theme/tokens.css`               | Current web CSS token consumer/output                            |
-| `apps/web/src/icons/tokens.ts`                | Icon sizing/stroke token consumer                                |
+| Path                                          | Purpose                                                                                      |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `.github/instructions/tokens.instructions.md` | Canonical token authoring rules for `packages/design-tokens/**`                              |
+| `packages/design-tokens/**`                   | Token sources (`tokens/`), Style Dictionary config (`config/`), generated outputs (`build/`) |
+| `apps/web/src/theme/tokens.css`               | Current web CSS token consumer/output                                                        |
+| `apps/web/src/icons/tokens.ts`                | Icon sizing/stroke token consumer                                                            |
 
 ## Token Model
 

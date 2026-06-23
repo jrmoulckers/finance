@@ -379,7 +379,7 @@ After the sprint plan is built, the orchestrator MUST publish a recommended merg
 
 1. **Schema + migrations** (Supabase migration + matching SQLDelight) — blocks every downstream PR.
 2. **Shared package APIs** (`packages/core`, `packages/models`, `packages/sync`) — platforms depend on these.
-3. **Design tokens** (`config/tokens/` regenerations) — platform UI imports these.
+3. **Design tokens** (`packages/design-tokens/` regenerations) — platform UI imports these.
 4. **Build / CI config** (`gradle/libs.versions.toml`, `package.json`, workflow files) — affects everything; merge before app PRs to avoid lockfile churn.
 5. **Backend services** (`services/api/`) — clients call these.
 6. **Platform app PRs** (`apps/web`, `apps/android`, `apps/ios`, `apps/windows`) — leaf nodes, no downstream dependents; safe to merge in any order amongst themselves.

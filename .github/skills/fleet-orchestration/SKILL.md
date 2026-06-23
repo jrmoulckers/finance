@@ -44,7 +44,7 @@ Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI 
 | `kmp-engineer`             | `packages/**`                                                         | `.github/agents/kmp-engineer.agent.md`             |
 | `backend-engineer`         | `services/**`                                                         | `.github/agents/backend-engineer.agent.md`         |
 | `devops-engineer`          | `.github/workflows/**`, `tools/**`                                    | `.github/agents/devops-engineer.agent.md`          |
-| `design-engineer`          | `config/tokens/**`                                                    | `.github/agents/design-engineer.agent.md`          |
+| `design-engineer`          | `packages/design-tokens/**`                                           | `.github/agents/design-engineer.agent.md`          |
 | `docs-writer`              | `docs/**`, root `*.md`                                                | `.github/agents/docs-writer.agent.md`              |
 | `architect`                | Cross-cutting, ADRs                                                   | `.github/agents/architect.agent.md`                |
 | `compliance-specialist`    | `docs/compliance/**`                                                  | `.github/agents/compliance-specialist.agent.md`    |

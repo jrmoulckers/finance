@@ -62,10 +62,11 @@ Finance is developed with AI agents as first-class contributors. This means:
 ├── CONTRIBUTING.md                   # Contribution guidelines
 ├── ISSUE_TEMPLATE/                   # Issue templates
 ├── copilot-instructions.md          # Global Copilot instructions
-├── instructions/                     # Path-specific instructions (13 files as of 2026-06; .github/instructions/ is the source of truth)
+├── instructions/                     # Path-specific instructions (14 files as of 2026-06; .github/instructions/ is the source of truth)
 │   ├── agents.instructions.md
 │   ├── apps.instructions.md
 │   ├── build-logic.instructions.md
+│   ├── config.instructions.md
 │   ├── docs.instructions.md
 │   ├── export.instructions.md
 │   ├── packages.instructions.md

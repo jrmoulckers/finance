@@ -201,7 +201,7 @@ In fleet mode, **no two agents edit the same file in parallel.** Ownership is as
 | `@android-engineer`       | `apps/android/`                                                                                                                                |
 | `@ios-engineer`           | `apps/ios/`                                                                                                                                    |
 | `@windows-engineer`       | `apps/windows/`                                                                                                                                |
-| `@design-engineer`        | `config/tokens/`, generated token files                                                                                                        |
+| `@design-engineer`        | `packages/design-tokens/`, generated token files                                                                                               |
 | `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/`                                                                                                 |
 | `@docs-writer`            | `docs/`, root `*.md` files                                                                                                                     |
 | `@security-reviewer`      | Emergency fixer — implements CRITICAL/HIGH security fixes in any directory (with owning-agent coordination); review-only for non-security code |
