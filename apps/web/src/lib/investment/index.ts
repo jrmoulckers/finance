@@ -296,6 +296,56 @@ export type {
   DefiValuationStatus,
 } from './defi-position-presentation';
 
+// #2637, #2638, #2124 — Live cross-broker market data, intraday P&L, and price sources
+export {
+  DEFAULT_FRESHNESS_POLICY,
+  evaluateQuoteFreshness,
+  ManualMarketDataProvider,
+} from './market-data';
+export type {
+  AssetKind,
+  EvaluatedQuote,
+  FreshnessPolicy,
+  MarketDataProvider,
+  MarketSessionStatus,
+  QuoteFreshness,
+  QuoteRequest,
+  QuoteSnapshot,
+} from './market-data';
+
+export { computeIntradayPnl } from './intraday-pnl';
+export type {
+  CashMovement,
+  IntradayPnlInput,
+  IntradayPnlReport,
+  IntradayPosition,
+  PnlAssetClass,
+  PnlBreakdown,
+  RealizedPnlEvent,
+} from './intraday-pnl';
+
+export { ManualPriceSource, PollingPriceSource, SimulatedMarketDataProvider } from './price-source';
+export type {
+  PollingPriceSourceOptions,
+  PriceListener,
+  PriceSource,
+  PriceUpdate,
+  SimulatedProviderOptions,
+  SimulatedSeed,
+  TimerApi,
+} from './price-source';
+
+export { buildLivePnlView, formatRelativeAge, pnlIndicator } from './live-pnl';
+export type {
+  BaseAccountBalance,
+  LivePnlView,
+  LivePnlViewInput,
+  PnlDirection,
+  PnlIndicator,
+  StalenessSummary,
+  StalenessTone,
+} from './live-pnl';
+
 // Types
 export type {
   PortfolioHolding,

@@ -1,0 +1,336 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Live cross-broker P&L dashboard styles.
+ *
+ * All visual values use design-token CSS custom properties. Direction is never
+ * conveyed by colour alone — glyphs and text labels carry the meaning and the
+ * colour classes only reinforce it.
+ *
+ * References: issue #2124
+ */
+
+.live-pnl {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.live-pnl__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.live-pnl__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.live-pnl__subtitle {
+  margin: var(--spacing-1) 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* ---------------------------------------------------------------------------
+ * Status bar (freshness + last updated + controls)
+ * ------------------------------------------------------------------------- */
+
+.live-pnl__statusbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  margin-bottom: var(--spacing-5);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.live-pnl__status-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.live-pnl__status-group--end {
+  margin-left: auto;
+}
+
+.live-pnl__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: 999px;
+  border: 1px solid var(--semantic-border-default);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+}
+
+.live-pnl__badge-glyph {
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.live-pnl__badge--live {
+  color: var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
+}
+
+.live-pnl__badge--delayed {
+  color: var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
+}
+
+.live-pnl__badge--stale,
+.live-pnl__badge--critical {
+  color: var(--semantic-status-negative);
+  border-color: var(--semantic-status-negative);
+}
+
+.live-pnl__badge--empty {
+  color: var(--semantic-text-secondary);
+}
+
+.live-pnl__updated {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.live-pnl__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--semantic-status-positive);
+  animation: live-pnl-pulse 2s ease-in-out infinite;
+}
+
+.live-pnl__pulse--paused {
+  background: var(--semantic-text-secondary);
+  animation: none;
+}
+
+@keyframes live-pnl-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.live-pnl__refresh {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.live-pnl__refresh:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.live-pnl__refresh:focus-visible {
+  outline: 2px solid var(--semantic-interactive-default);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Error banner
+ * ------------------------------------------------------------------------- */
+
+.live-pnl__error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--semantic-status-warning);
+  color: var(--semantic-status-warning);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* ---------------------------------------------------------------------------
+ * Metric cards
+ * ------------------------------------------------------------------------- */
+
+.live-pnl__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.live-pnl__metric {
+  padding: var(--spacing-4);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.live-pnl__metric-label {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0 0 var(--spacing-1);
+}
+
+.live-pnl__metric-value {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.live-pnl__metric-sub {
+  margin: var(--spacing-1) 0 0;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * P&L figure (glyph + sign + value + label — never colour alone)
+ * ------------------------------------------------------------------------- */
+
+.live-pnl__figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--spacing-1);
+}
+
+.live-pnl__figure-glyph {
+  font-size: 0.8em;
+  line-height: 1;
+}
+
+.live-pnl__figure-tag {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.live-pnl__figure--gain {
+  color: var(--semantic-status-positive);
+}
+
+.live-pnl__figure--loss {
+  color: var(--semantic-status-negative);
+}
+
+.live-pnl__figure--flat {
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Breakdown tables
+ * ------------------------------------------------------------------------- */
+
+.live-pnl__section {
+  margin-bottom: var(--spacing-6);
+}
+
+.live-pnl__section-title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-3);
+}
+
+.live-pnl__table-wrap {
+  overflow-x: auto;
+}
+
+.live-pnl__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-scale-body-font-size);
+}
+
+.live-pnl__table caption {
+  text-align: left;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin-bottom: var(--spacing-2);
+}
+
+.live-pnl__table th,
+.live-pnl__table td {
+  padding: var(--spacing-2) var(--spacing-3);
+  text-align: right;
+  border-bottom: 1px solid var(--semantic-border-default);
+  white-space: nowrap;
+}
+
+.live-pnl__table th[scope='col'] {
+  color: var(--semantic-text-secondary);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.live-pnl__table th[scope='row'],
+.live-pnl__table td:first-child {
+  text-align: left;
+}
+
+.live-pnl__table tbody tr:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.live-pnl__stale-flag {
+  margin-left: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-status-warning);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .live-pnl__pulse {
+    animation: none;
+  }
+  .live-pnl__refresh {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .live-pnl__metric,
+  .live-pnl__statusbar,
+  .live-pnl__badge {
+    border-width: 2px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Mobile
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .live-pnl__metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .live-pnl__status-group--end {
+    margin-left: 0;
+  }
+}
