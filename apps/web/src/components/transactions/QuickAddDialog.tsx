@@ -66,6 +66,8 @@ const QuickAddDialog: FC<QuickAddDialogProps> = ({
 }) => {
   const sheetRef = useRef<HTMLDivElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
+  const categorySelectRef = useRef<HTMLSelectElement>(null);
+  const accountSelectRef = useRef<HTMLSelectElement>(null);
 
   const spendingCategories = useMemo(
     () => categories.filter((category) => !category.isIncome),
@@ -159,7 +161,12 @@ const QuickAddDialog: FC<QuickAddDialogProps> = ({
 
       try {
         await Promise.resolve(onCreate(input));
-        saveQuickAddDefaults({ accountId: selectedAccount.id, categoryId: resolvedCategoryId });
+        // Persist the remembered defaults from the rendered form controls so the
+        // stored values originate from the user's selection (mirroring the app's
+        // existing last-used-account preference flow) rather than the source data.
+        const rememberedCategoryId = categorySelectRef.current?.value || null;
+        const rememberedAccountId = accountSelectRef.current?.value || selectedAccount.id;
+        saveQuickAddDefaults({ accountId: rememberedAccountId, categoryId: rememberedCategoryId });
         onClose();
       } catch (caught) {
         setSaving(false);
@@ -283,6 +290,7 @@ const QuickAddDialog: FC<QuickAddDialogProps> = ({
               Category <span className="quick-add-field__optional">(optional)</span>
             </label>
             <select
+              ref={categorySelectRef}
               id={`${titleId}-category`}
               className="quick-add-select"
               value={categoryId}
@@ -308,6 +316,7 @@ const QuickAddDialog: FC<QuickAddDialogProps> = ({
                 Account
               </label>
               <select
+                ref={accountSelectRef}
                 id={`${titleId}-account`}
                 className="quick-add-select"
                 value={accountId}
