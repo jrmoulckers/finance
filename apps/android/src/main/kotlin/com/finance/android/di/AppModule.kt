@@ -27,6 +27,7 @@ import com.finance.android.receipt.ReceiptImageRetentionStore
 import com.finance.android.receipt.ReceiptTextRecognizer
 import com.finance.android.receipt.UnavailableReceiptImageCapture
 import com.finance.android.ui.receipt.ReceiptScanViewModel
+import com.finance.android.ui.quickcash.QuickCashEntryViewModel
 import com.finance.android.notifications.NotificationContentBuilder
 import com.finance.android.notifications.NotificationDispatcher
 import com.finance.android.notifications.NotificationPreferences
@@ -225,6 +226,18 @@ val appModule = module {
 
     /** On-device receipt scanning to transaction draft (#2388). */
     viewModelOf(::ReceiptScanViewModel)
+
+    /** True quick cash entry — 1–2 tap cash expense capture (#2180). */
+    // Explicit definition so the default system Clock is used (not resolved from DI).
+    viewModel {
+        QuickCashEntryViewModel(
+            householdIdProvider = get(),
+            transactionRepository = get(),
+            accountRepository = get(),
+            categoryRepository = get(),
+            prefs = get(),
+        )
+    }
 
     // ── Tips ─────────────────────────────────────────────────────────
     viewModelOf(::TipsViewModel)
