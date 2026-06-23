@@ -33,6 +33,32 @@ test.describe('Live full-stack (edge) auth', () => {
     // Unique per run so repeated runs never collide on "email already registered".
     const email = `e2e+${Date.now()}@local.test`;
 
+    // Seed past the first-run GDPR consent overlay — a fixed z-index:9999 dialog
+    // that intercepts every click until consent is recorded, which otherwise
+    // makes the signup form unreachable. We deliberately do NOT set
+    // __PLAYWRIGHT_E2E__ here (unlike e2e/first-run-state.ts): that flag switches
+    // the app to its stub DB / demo auth and would defeat this test's real-edge
+    // purpose. We only pre-seed the consent + onboarding keys.
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'finance-gdpr-consent',
+        JSON.stringify({
+          categories: {
+            essential: true,
+            analytics: false,
+            error_reporting: false,
+            sync: false,
+            marketing: false,
+          },
+          timestamp: new Date().toISOString(),
+          policyVersion: '1.0.0',
+          method: 'first_run',
+          hasCompletedFirstRun: true,
+        }),
+      );
+      localStorage.setItem('finance-onboarding-complete', 'true');
+    });
+
     await page.goto('/signup');
 
     // Proof the app is wired to a real backend, not demo mode. The signup page

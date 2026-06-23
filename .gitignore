@@ -103,6 +103,7 @@ coverage/
 # === Playwright ===
 test-results/
 playwright-report/
+playwright-report-live/
 
 # === Copilot / AI (session state is local) ===
 .copilot/session-state/

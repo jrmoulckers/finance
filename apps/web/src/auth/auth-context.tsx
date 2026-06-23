@@ -502,15 +502,17 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
         const data = (await response.json()) as {
           access_token: string;
-          user: { id: string; email: string; has_passkey?: boolean };
         };
 
         setAccessToken(data.access_token);
-        const allowed = await rememberAllowedUser({
-          id: data.user.id,
-          email: data.user.email,
-          hasPasskey: data.user.has_passkey ?? false,
-        });
+        // The edge auth functions return only { access_token, expires_in }; the
+        // authenticated user is derived from the JWT claims, matching the
+        // refresh/restore paths (userFromToken).
+        const loggedInUser = userFromToken(data.access_token);
+        if (!loggedInUser) {
+          throw new Error('Login succeeded but returned an invalid session token.');
+        }
+        const allowed = await rememberAllowedUser(loggedInUser);
         if (!allowed) {
           throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
         }
@@ -751,7 +753,6 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           confirmation_required?: boolean;
           error?: string;
           access_token?: string;
-          user?: { id: string; email: string; has_passkey?: boolean };
         };
 
         if (response.status === 202) {
@@ -765,13 +766,13 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           throw new Error(body.error ?? 'Signup failed');
         }
 
-        if (response.status === 201 && body.access_token && body.user) {
+        if (response.status === 201 && body.access_token) {
           setAccessToken(body.access_token);
-          const allowed = await rememberAllowedUser({
-            id: body.user.id,
-            email: body.user.email,
-            hasPasskey: body.user.has_passkey ?? false,
-          });
+          const signedUpUser = userFromToken(body.access_token);
+          if (!signedUpUser) {
+            throw new Error('Signup succeeded but returned an invalid session token.');
+          }
+          const allowed = await rememberAllowedUser(signedUpUser);
           if (!allowed) {
             throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
           }
@@ -792,14 +793,13 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         if (loginResponse.ok) {
           const data = (await loginResponse.json()) as {
             access_token: string;
-            user: { id: string; email: string; has_passkey?: boolean };
           };
           setAccessToken(data.access_token);
-          const allowed = await rememberAllowedUser({
-            id: data.user.id,
-            email: data.user.email,
-            hasPasskey: data.user.has_passkey ?? false,
-          });
+          const loggedInUser = userFromToken(data.access_token);
+          if (!loggedInUser) {
+            throw new Error('Signup succeeded but returned an invalid session token.');
+          }
+          const allowed = await rememberAllowedUser(loggedInUser);
           if (!allowed) {
             throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
           }
