@@ -18,8 +18,11 @@
 --   - Functions use SET search_path = public to prevent search_path injection
 --
 -- Note: cleanup_expired_rate_limits replaces the version from 20260323000003
--- with an hours-based interface (was seconds-based). The signature (INTEGER)
--- is identical, so CREATE OR REPLACE succeeds.
+-- with an hours-based interface (was seconds-based). Although the argument
+-- type is unchanged (INTEGER), the parameter is renamed
+-- (p_retention_seconds -> retention_hours), which CREATE OR REPLACE cannot do
+-- (ERROR 42P13: cannot change name of input parameter). The old function is
+-- therefore dropped first, then recreated.
 
 -- =============================================================================
 -- 1. cleanup_expired_rate_limits(retention_hours INTEGER DEFAULT 2)
@@ -33,7 +36,12 @@
 -- used by data-export / account-deletion / sync-health-report).
 --
 -- Replaces: cleanup_expired_rate_limits(p_retention_seconds) from migration
--- 20260323000003_rate_limits.sql — same signature (INTEGER), new semantics.
+-- 20260323000003_rate_limits.sql — same argument type (INTEGER), renamed
+-- parameter and new semantics.
+
+-- Drop the old (p_retention_seconds) version first: CREATE OR REPLACE cannot
+-- rename an existing function's parameters.
+DROP FUNCTION IF EXISTS public.cleanup_expired_rate_limits(integer);
 
 CREATE OR REPLACE FUNCTION public.cleanup_expired_rate_limits(
     retention_hours INTEGER DEFAULT 2
@@ -288,7 +296,7 @@ REVOKE EXECUTE ON FUNCTION public.run_all_maintenance() FROM anon;
 -- To verify scheduled jobs after migration:
 --   SELECT * FROM cron.job ORDER BY jobid;
 
-DO $$
+DO $maint$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
         -- Hourly: clean up expired rate limit windows (fast, <10ms typical)
@@ -316,7 +324,7 @@ BEGIN
     ELSE
         RAISE NOTICE 'pg_cron not available — skipping cron schedule. Use Edge Functions or external scheduler.';
     END IF;
-END $$;
+END $maint$;
 
 
 -- =============================================================================

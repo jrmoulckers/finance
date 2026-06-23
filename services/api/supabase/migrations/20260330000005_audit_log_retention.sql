@@ -118,7 +118,7 @@ REVOKE EXECUTE ON FUNCTION public.run_all_maintenance() FROM anon;
 -- run_all_maintenance() at 3 AM also calls it, but the dedicated weekly
 -- job ensures catch-up if daily runs miss rows due to the 10k batch limit.
 
-DO $$
+DO $maint$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
         PERFORM cron.schedule(
@@ -131,7 +131,7 @@ BEGIN
     ELSE
         RAISE NOTICE 'pg_cron not available — skipping audit log cron schedule.';
     END IF;
-END $$;
+END $maint$;
 
 
 -- =============================================================================

@@ -28,6 +28,9 @@ DROP FUNCTION IF EXISTS public.cleanup_expired_webauthn_challenges(INTEGER);
 -- =============================================================================
 -- Restore original cleanup_expired_rate_limits with seconds-based interface
 -- =============================================================================
+-- Drop the hours-based version first: CREATE OR REPLACE cannot rename an
+-- existing function's parameters (retention_hours -> p_retention_seconds).
+DROP FUNCTION IF EXISTS public.cleanup_expired_rate_limits(integer);
 CREATE OR REPLACE FUNCTION public.cleanup_expired_rate_limits(
     p_retention_seconds INTEGER DEFAULT 7200
 )
