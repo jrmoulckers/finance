@@ -346,7 +346,7 @@ struct DashboardView: View {
         }
         .padding(.vertical, 6)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(transaction.payee), \(transaction.category)")
+        .accessibilityLabel(transaction.accessibilityRowLabel(includeAccount: false))
     }
 }
 

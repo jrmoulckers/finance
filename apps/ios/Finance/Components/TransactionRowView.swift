@@ -31,16 +31,7 @@ struct TransactionRowView: View, Equatable {
             Spacer()
             CurrencyLabel(amountInMinorUnits: transaction.amountMinorUnits, currencyCode: transaction.currencyCode, font: .callout.bold()).contentTransition(.numericText())
         }.padding(.vertical, 2).accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabelText)
+        .accessibilityLabel(transaction.accessibilityRowLabel())
         .accessibilityHint(String(localized: "Tap to view details. Swipe for more actions."))
-    }
-
-    private var accessibilityLabelText: String {
-        var label = [transaction.payee, transaction.category, transaction.accountName].joined(separator: ", ")
-        if !transaction.tags.isEmpty {
-            let tagNames = transaction.tags.map(\.displayName).joined(separator: ", ")
-            label += ", " + String(localized: "Tags: \(tagNames)")
-        }
-        return label
     }
 }
