@@ -42,7 +42,10 @@ a **View as table** toggle.
 
 1. With Narrator on, press **`H`** / **`Shift` + `H`** to move between headings.
 
-- [ ] Each chart panel's summary is reachable as a **heading (level 2)**.
+- [ ] Each chart panel's summary is reachable as a **heading (level 2)**. The
+      heading is now projected from the narration's `A11yMetadata.headingLevel`
+      via `Narration.toSemanticsDescriptor()` → `Modifier.narrationSemantics`, so
+      a panel is a heading **only** when its narration says so.
 - [ ] Heading order is logical top-to-bottom (Performance before Allocation,
       matching the visual order).
 
@@ -101,6 +104,25 @@ a **View as table** toggle.
       clipped at high contrast.
 - [ ] At larger scale factors the panels reflow without overlapping or losing the
       narration/toggle affordances.
+
+## Needs Human Action
+
+The narration → semantics mapping (labels, descriptions, **headings**, and
+**live regions**) is now pinned by automated JVM tests
+(`NarrationSemanticsTest`), but those tests cannot drive a real screen reader.
+A human with a **Windows build** must still perform the device pass below and
+tick the boxes in sections 1–7. This is the `// TODO(human)` referenced in
+`apps/windows/.../accessibility/NarrationSemantics.kt`.
+
+- [ ] Run sections **1–7** on a Windows build with Narrator + Accessibility
+      Insights and confirm every box.
+- [ ] Confirm the heading projected from `headingLevel = 2` is announced as a
+      level-2 heading by Narrator (`H` / `Shift` + `H`).
+- [ ] Confirm `Alt` + `R` re-announces the polite live region without moving
+      focus and without double-speaking on a data change.
+- [ ] Record the result (date, build, Windows/Narrator version) below.
+
+> Device validation result: _pending_.
 
 ## Out of scope (tracked elsewhere)
 

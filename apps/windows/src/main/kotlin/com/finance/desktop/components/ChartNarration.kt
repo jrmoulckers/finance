@@ -28,10 +28,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.accessibility.NarrationLiveRegion
 import com.finance.desktop.accessibility.narrationLiveRegion
 import com.finance.desktop.accessibility.narrationReplayShortcut
-import com.finance.desktop.accessibility.narratorMerged
+import com.finance.desktop.accessibility.narrationSemantics
 import com.finance.desktop.accessibility.rememberNarrationAnnouncer
+import com.finance.desktop.accessibility.toSemanticsDescriptor
 import com.finance.desktop.narration.Narration
 import com.finance.desktop.narration.screenReaderText
 import com.finance.desktop.theme.FinanceDesktopTheme
@@ -84,7 +86,15 @@ fun NarratedChart(
         if (showTable) {
             table()
         } else {
-            Box(modifier = Modifier.narratorMerged(summary)) {
+            // Merged chart-summary node: spoken label + heading (level 2) from
+            // the narration's a11y metadata. Live-region politeness is delegated
+            // to the dedicated announcer node below so a data change announces
+            // exactly once (never twice).
+            Box(
+                modifier = Modifier.narrationSemantics(
+                    narration.toSemanticsDescriptor().copy(liveRegion = NarrationLiveRegion.OFF),
+                ),
+            ) {
                 chart()
             }
         }
