@@ -408,3 +408,27 @@ planned for when the Swift Export bridge connects to the app's `KeychainManager`
 - **VoiceOver** — Every interactive element has an accessibility label
 - **Localized** — All user-facing strings go through `String(localized:)`
 - **Edge-first** — All reads/writes go to local SQLite (KMP) first; full offline support
+
+## Needs Human Action
+
+The on-device natural-language finance queries feature (#2386) is fully
+implemented and unit-tested in Swift, but the following native-toolchain steps
+require Xcode and cannot be performed from the agent environment. Each
+corresponding code site is marked with `// TODO(human)`.
+
+- **Siri & App Intents capability** — Enable the _Siri_ / App Intents capability
+  for the `FinanceApp` target and register `FinanceQueryIntent` in
+  `FinanceShortcuts` so the query can be invoked by voice.
+  (See `Finance/Intents/FinanceQueryIntent.swift`.)
+- **Speech (dictation) capability** — To enable spoken question input, add the
+  _Speech Recognition_ capability, the microphone entitlement, and the
+  `NSSpeechRecognitionUsageDescription` / `NSMicrophoneUsageDescription` keys to
+  `Info.plist`, then provide a live `FinanceQuerySpeechRecognizer` backed by
+  `SFSpeechRecognizer` + `AVAudioEngine` with on-device recognition.
+  (See `Finance/Services/FinanceQuerySpeech.swift` and the mic button in
+  `Finance/Screens/FinanceQueryView.swift`.)
+
+Until these steps are completed, the feature works via typed input, the spoken
+answer uses `AVSpeechSynthesizer` (no entitlement required), and the microphone
+affordance is disabled gracefully. Speech synthesis of sensitive balances
+remains gated behind explicit user confirmation.
