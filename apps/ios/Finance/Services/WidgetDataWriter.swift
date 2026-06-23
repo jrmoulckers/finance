@@ -49,6 +49,25 @@ actor WidgetDataWriter {
         write(budgets, key: "widget.budgets", timelineKind: "BudgetProgressWidget")
     }
 
+    /// Computes and caches a glanceable today-spend summary, then nudges the
+    /// today-spend timeline to reload so the surface stays fresh after a
+    /// transaction save or sync.
+    ///
+    /// TODO(human): Call `writeTodaySpend(_:)` from the transaction save and
+    /// sync-completion paths (KMP `SyncManager` callback + transaction create/edit
+    /// view models) so the cache refreshes automatically. The widget cache
+    /// currently has no app-side call sites (see #2159); wiring requires the live
+    /// transaction + budget data flow which is outside this widget-only change.
+    func writeTodaySpend(_ input: TodaySpendInput) {
+        let summary = TodaySpendCalculator.summarize(input)
+        write(summary, key: "widget.todaySpend", timelineKind: "TodaySpendWidget")
+    }
+
+    /// Caches an already-computed today-spend summary (e.g. from shared logic).
+    func writeTodaySpend(summary: TodaySpendSummary) {
+        write(summary, key: "widget.todaySpend", timelineKind: "TodaySpendWidget")
+    }
+
     private func write<T: Encodable>(_ value: T, key: String, timelineKind: String) {
         guard let data = try? encoder.encode(value) else {
             logger.error("Failed to encode widget cache for \(key, privacy: .public)")

@@ -13,5 +13,6 @@ struct FinanceWidgetBundle: WidgetBundle {
         BudgetProgressWidget()
         RecentTransactionsWidget()
         QuickEntryWidget()
+        TodaySpendWidget()
     }
 }

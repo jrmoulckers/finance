@@ -33,4 +33,35 @@ final class WidgetRenderingTests: XCTestCase {
         _ = QuickEntryWidgetView(entry: entry).environment(\.widgetFamily, .accessoryCircular)
         _ = QuickEntryWidgetView(entry: entry).environment(\.widgetFamily, .accessoryRectangular)
     }
+
+    func testTodaySpendViewsInstantiateForHomeScreenSizes() {
+        let entry = TodaySpendEntry(
+            date: .now,
+            summary: .placeholder,
+            maskingMode: .bucketed,
+            isStale: false
+        )
+
+        _ = TodaySpendWidgetView(entry: entry).environment(\.widgetFamily, .systemSmall)
+        _ = TodaySpendWidgetView(entry: entry).environment(\.widgetFamily, .systemMedium)
+    }
+
+    func testTodaySpendViewHandlesStaleAndOverBudgetState() {
+        let summary = TodaySpendSummary(
+            todaySpentMinorUnits: 9_900,
+            periodDiscretionarySpentMinorUnits: 30_000,
+            discretionaryBudgetMinorUnits: 25_000,
+            currencyCode: "USD",
+            updatedAt: .distantPast
+        )
+        let entry = TodaySpendEntry(
+            date: .now,
+            summary: summary,
+            maskingMode: .visible,
+            isStale: true
+        )
+
+        _ = TodaySpendWidgetView(entry: entry).environment(\.widgetFamily, .systemSmall)
+        _ = TodaySpendWidgetView(entry: entry).environment(\.widgetFamily, .systemMedium)
+    }
 }
