@@ -2,20 +2,33 @@
 
 You are working in the Finance monorepo — a multi-platform, native-first financial tracking application.
 
-## Human Approval Required (CRITICAL)
+## Operation Approval Policy
 
-The following operations require EXPLICIT human approval. NEVER perform these autonomously:
+Agent operations fall into two buckets. The **mandatory, auto-approved** workflow steps must run without asking; the **human-gated** operations must stop and wait for explicit approval. (`AGENTS.md` §"Human-Gated Operations" Categories 1–8 is the canonical, full-detail version of these rules.)
 
-- **Git remote operations** — **MUST push own feature branches** (`git push origin <feature-branch>`) — this is mandatory and auto-approved, never ask for permission; **MUST** `git fetch origin main` and `git rebase origin/main` on own feature branch as pre-push hygiene; no pushing to `main`/`master`/release branches; no plain `git push --force` (forbidden entirely); `git push --force-with-lease` is auto-approved **only** to re-push the agent's **own** feature branch after a rebase/conflict resolution (never on shared/integration branches or a branch the agent does not own); no `pull`/`remote`/`merge` from remote
-- **PR/review operations** — **Full autonomy on agent-authored PRs.** **MUST create PRs** with linked issues and detailed descriptions, and agents MAY **merge, close, approve/dismiss reviews, and request reviewers** on PRs they authored — all auto-approved, never ask for permission. The only hard gate is the **quality gate**: merge only after CI is green AND the PR is `MERGEABLE` (see `AGENTS.md` §"Category 2"). Acting on PRs an agent did **not** author (approving/merging another author's PR) still requires human direction.
-- **Remote platform mutations** — No issue close/reopen/delete; no repo settings/releases/deployments. Label edits ARE allowed for routine triage, EXCEPT gating/lifecycle labels (`blocked`, `breaking-change`, `security`, `stale`, and any `wontfix`/`duplicate`/`invalid`/`do-not-merge` style label) which remain human-only. See `AGENTS.md` §"Category 3" for the full rule.
-- **Outside project boundary** — No file access outside the repository root; no system config changes; no global package installs
+### Auto-approved (mandatory — never ask for permission)
+
+These are required steps of the normal workflow. **Stopping to ask permission for any of them is a workflow violation:**
+
+- **Push your own feature branch** — `git push origin <feature-branch>`, plus the pre-push hygiene `git fetch origin main` and `git rebase origin/main`. `git push --force-with-lease` is auto-approved **only** to re-push your **own** branch after a rebase/conflict resolution.
+- **Create PRs** — `gh pr create --base main` with a linked issue (`Closes #N`) and a detailed description, immediately after the first push.
+- **Drive and merge your own PR** — monitor `gh pr checks`, fix failures, and **merge your own PR** with `gh pr merge <N> --squash` once the quality gate passes (CI green AND `MERGEABLE`). You MAY also approve/request-changes, request reviewers, dismiss reviews, and close/reopen PRs you authored. See `AGENTS.md` §"Category 2".
+- **Routine issue/PR labels** — add/remove triage labels (priority, platform, component, effort, phase, sprint, feature-area).
+
+### Human approval required (gated)
+
+**STOP, explain what you need and why, and wait for explicit human approval** before any of these:
+
+- **Risky git remote ops** — pushing to `main`/`master`/release branches; plain `git push --force` (forbidden entirely); `--force-with-lease` on a shared/integration branch or one you don't own; `pull`/`remote`/`merge` from remote
+- **Acting on a PR you did NOT author** — merging, approving, closing, or dismissing reviews on another author's PR
+- **Remote platform mutations** — issue close/reopen/delete; repo settings/releases/deployments; gating/lifecycle labels (`blocked`, `breaking-change`, `security`, `stale`, and any `wontfix`/`duplicate`/`invalid`/`do-not-merge` style label). See `AGENTS.md` §"Category 3"
+- **Outside project boundary** — file access outside the repository root; system config changes; global package installs
 - **Destructive file operations** — See detailed rules below
 - **Package publishing** — See detailed rules below
 - **Secret/credential access** — See detailed rules below
 - **Database destructive ops** — See detailed rules below
 
-If you need to perform any of these, STOP, explain what you need and why, and wait for human approval.
+If you need to perform any gated operation, STOP, explain what you need and why, and wait for human approval.
 
 ### Destructive File Operations — Detailed Rules
 
