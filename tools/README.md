@@ -13,33 +13,44 @@ This directory contains cross-platform scripts and Git hooks that support the de
 The seamless developer entry point. Brings up the local Supabase **edge** stack
 (auth + Postgres/RLS via Docker), wires the web app to it (writes
 `apps/web/.env.local` from `supabase status`), and launches the web app — all in
-one command. Runs `doctor.mjs` first, retries `supabase start` on Docker Hub
+one command. On a **fresh clone it installs dependencies first** (so the path is
+truly clone → run), runs `doctor.mjs`, retries `supabase start` on Docker Hub
 rate-limit stalls, and skips startup if the stack is already running. No global
 Supabase CLI required (uses `npx --yes supabase`).
+
+Dependency install is automatic and idempotent: it runs `npm install` only when
+`node_modules` is missing or when `package-lock.json` has changed since the last
+install (tracked by a content hash in `node_modules/.dev-full-install`, so a
+plain `git checkout` does not trigger a redundant reinstall).
 
 **Usage:**
 
 ```bash
-npm run dev:full                 # preflight → stack → wire web → launch web → open browser
+npm run dev:full                 # install deps if needed → preflight → stack → wire web → launch + open browser
 npm run dev:full -- --reset      # also reset the DB (migrations + seed) first
 npm run dev:full -- --e2e        # bring up stack, run the live Playwright e2e suite
 npm run dev:full -- --no-open    # don't auto-open the browser
+npm run dev:full -- --skip-install   # skip the automatic dependency install
+npm run dev:full -- --install        # force a dependency (re)install
 npm run dev:full -- --skip-doctor
 node tools/dev-full.mjs --help
 ```
 
 In VS Code, the **"Dev: Full Stack (web on edge)"** task and the **F5** launch
 config (`.vscode/tasks.json` / `launch.json`) wrap this for a true one-click
-start. See [`docs/guides/full-stack-local.md`](../docs/guides/full-stack-local.md).
+start — on a fresh clone, **F5 installs dependencies, brings up the stack, and
+launches the app** with no manual `npm install`. See
+[`docs/guides/full-stack-local.md`](../docs/guides/full-stack-local.md).
 
 ### `doctor.mjs` — Local dev preflight / health check
 
 Verifies the host is ready for the full local stack **before** you start it,
 catching the failures that otherwise stall a cold `supabase start`: Docker
 daemon reachable (not just installed), enough free disk to extract the Supabase
-images, required ports free (54321 Supabase, 5173 Vite), and a resolvable
-Supabase CLI. Exits non-zero on a hard failure so `dev-full.mjs` and CI can gate
-on it.
+images, required ports free (54321 Supabase, 5173 Vite), a resolvable Supabase
+CLI, and whether dependencies are installed (warns on a fresh/stale clone —
+non-fatal, since `dev:full`/F5 install automatically). Exits non-zero on a hard
+failure so `dev-full.mjs` and CI can gate on it.
 
 **Usage:**
 
