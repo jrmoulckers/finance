@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Category } from '../../kmp/bridge';
 import {
   EMPTY_QUICK_ADD_DEFAULTS,
-  QUICK_ADD_DEFAULTS_KEY,
+  QUICK_ADD_LAST_ACCOUNT_KEY,
+  QUICK_ADD_LAST_CATEGORY_KEY,
   QUICK_ADD_PRESETS,
   centsToDollars,
   dollarsToCents,
@@ -49,8 +50,9 @@ describe('quick-add remembered defaults', () => {
     localStorage.clear();
   });
 
-  it('builds the storage key from the finance namespace', () => {
-    expect(QUICK_ADD_DEFAULTS_KEY).toBe('finance:quick-add-defaults');
+  it('builds the storage keys from the finance namespace', () => {
+    expect(QUICK_ADD_LAST_ACCOUNT_KEY).toBe('finance:quick-add-last-account');
+    expect(QUICK_ADD_LAST_CATEGORY_KEY).toBe('finance:quick-add-last-category');
   });
 
   it('returns empty defaults when nothing is stored', () => {
@@ -67,9 +69,11 @@ describe('quick-add remembered defaults', () => {
     expect(loadQuickAddDefaults()).toEqual({ accountId: 'acc-9', categoryId: null });
   });
 
-  it('degrades to empty defaults on corrupt JSON', () => {
-    localStorage.setItem(QUICK_ADD_DEFAULTS_KEY, '{not-json');
-    expect(loadQuickAddDefaults()).toEqual(EMPTY_QUICK_ADD_DEFAULTS);
+  it('clears a remembered identifier when it becomes null', () => {
+    saveQuickAddDefaults({ accountId: 'acc-9', categoryId: 'cat-3' });
+    saveQuickAddDefaults({ accountId: 'acc-9', categoryId: null });
+    expect(localStorage.getItem(QUICK_ADD_LAST_CATEGORY_KEY)).toBeNull();
+    expect(loadQuickAddDefaults()).toEqual({ accountId: 'acc-9', categoryId: null });
   });
 });
 

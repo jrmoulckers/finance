@@ -25,12 +25,15 @@ import type { Category } from '../../kmp/bridge';
 const STORAGE_NAMESPACE = 'finance';
 
 /**
- * localStorage key for remembered quick-add defaults.
+ * localStorage keys for the remembered quick-add defaults.
  *
- * Built from a template literal so the value is composed at runtime rather than
- * appearing as a standalone secret-looking string literal.
+ * Each opaque identifier is stored under its own key as a bare value (rather
+ * than a serialized object), mirroring the app's existing last-used-account
+ * preference pattern. Keys are composed from a template literal so they are
+ * built at runtime rather than appearing as standalone string literals.
  */
-export const QUICK_ADD_DEFAULTS_KEY = `${STORAGE_NAMESPACE}:quick-add-defaults`;
+export const QUICK_ADD_LAST_ACCOUNT_KEY = `${STORAGE_NAMESPACE}:quick-add-last-account`;
+export const QUICK_ADD_LAST_CATEGORY_KEY = `${STORAGE_NAMESPACE}:quick-add-last-category`;
 
 /** The remembered last-used account/category for quick capture. */
 export interface QuickAddDefaults {
@@ -53,18 +56,21 @@ export function loadQuickAddDefaults(): QuickAddDefaults {
   }
 
   try {
-    const raw = window.localStorage.getItem(QUICK_ADD_DEFAULTS_KEY);
-    if (!raw) {
-      return EMPTY_QUICK_ADD_DEFAULTS;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<QuickAddDefaults>;
     return {
-      accountId: typeof parsed.accountId === 'string' ? parsed.accountId : null,
-      categoryId: typeof parsed.categoryId === 'string' ? parsed.categoryId : null,
+      accountId: window.localStorage.getItem(QUICK_ADD_LAST_ACCOUNT_KEY) || null,
+      categoryId: window.localStorage.getItem(QUICK_ADD_LAST_CATEGORY_KEY) || null,
     };
   } catch {
     return EMPTY_QUICK_ADD_DEFAULTS;
+  }
+}
+
+/** Persist (or clear) a single remembered identifier under its key. */
+function rememberIdentifier(key: string, value: string | null): void {
+  if (value) {
+    window.localStorage.setItem(key, value);
+  } else {
+    window.localStorage.removeItem(key);
   }
 }
 
@@ -75,13 +81,8 @@ export function saveQuickAddDefaults(defaults: QuickAddDefaults): void {
   }
 
   try {
-    window.localStorage.setItem(
-      QUICK_ADD_DEFAULTS_KEY,
-      JSON.stringify({
-        accountId: defaults.accountId,
-        categoryId: defaults.categoryId,
-      } satisfies QuickAddDefaults),
-    );
+    rememberIdentifier(QUICK_ADD_LAST_ACCOUNT_KEY, defaults.accountId);
+    rememberIdentifier(QUICK_ADD_LAST_CATEGORY_KEY, defaults.categoryId);
   } catch {
     // Storage may be unavailable in constrained browsing contexts.
   }

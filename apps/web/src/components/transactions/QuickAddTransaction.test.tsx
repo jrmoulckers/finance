@@ -142,11 +142,9 @@ describe('QuickAddTransaction', () => {
       categoryId: 'cat-transport',
     });
 
-    // Remembered defaults persisted for next time.
-    expect(JSON.parse(localStorage.getItem('finance:quick-add-defaults') ?? '{}')).toEqual({
-      accountId: 'acc-1',
-      categoryId: 'cat-transport',
-    });
+    // Remembered defaults persisted (as bare values under their own keys) for next time.
+    expect(localStorage.getItem('finance:quick-add-last-account')).toBe('acc-1');
+    expect(localStorage.getItem('finance:quick-add-last-category')).toBe('cat-transport');
   });
 
   it('allows skipping the payee for on-the-go capture', async () => {
