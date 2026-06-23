@@ -12,8 +12,10 @@
 //                                                force with --install
 //   1. Preflight (tools/doctor.mjs)            — skip with --skip-doctor
 //   2. supabase start (services/api)           — skipped if already running;
-//                                                retries with backoff on the
-//                                                Docker Hub "Rate exceeded" stall
+//                                                retries with backoff on a true
+//                                                registry rate-limit, but fails
+//                                                fast (with the right fix) on a
+//                                                corrupt image or migration error
 //   3. supabase db reset (optional)            — only with --reset
 //   4. Write apps/web/.env.local               — from `supabase status -o env`,
 //                                                so the web app leaves demo mode
@@ -41,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { dependencyState, recordInstall } from './lib/dev-env.mjs';
+import { dependencyState, recordInstall, classifySupabaseStartFailure } from './lib/dev-env.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -156,6 +158,61 @@ function runCapture(cmd, cmdArgs, options = {}) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Run a command, streaming its output live (like runInherit) **and** capturing a
+ * copy so the caller can inspect it — a "tee". Used for `supabase start`, whose
+ * failure cause (rate-limit vs. corrupt image vs. migration error) can only be
+ * told apart by reading the output.
+ * @param {string} cmd
+ * @param {string[]} cmdArgs
+ * @param {{cwd?:string}} [options]
+ * @returns {Promise<{code:number, output:string}>}
+ */
+function runTee(cmd, cmdArgs, options = {}) {
+  const r = resolve(cmd, cmdArgs);
+  return new Promise((done) => {
+    const child = spawn(r.command, r.args, {
+      cwd: options.cwd || REPO_ROOT,
+      shell: r.viaShell,
+      windowsHide: true,
+    });
+    let output = '';
+    const tee = (stream, sink) => {
+      if (!stream) return;
+      stream.on('data', (chunk) => {
+        sink.write(chunk);
+        output += chunk.toString();
+      });
+    };
+    tee(child.stdout, process.stdout);
+    tee(child.stderr, process.stderr);
+    child.on('error', (err) => done({ code: 1, output: `${output}\n${err.message}` }));
+    child.on('close', (code) => done({ code: code ?? 1, output }));
+  });
+}
+
+/**
+ * Remediation text for corrupt local Supabase image layers — the failure mode
+ * that masquerades as a rate-limit. Retrying never fixes it; the images have to
+ * be re-pulled fresh.
+ * @param {string} signal
+ * @returns {string}
+ */
+function dockerCorruptionRemedy(signal) {
+  return [
+    `Corrupt local Docker image layers ("${signal}") — retrying will not help; they must be re-pulled.`,
+    '  1. Stop the stack:        npm --prefix services/api run supabase:stop',
+    '  2. Remove the corrupt Supabase images with `docker rmi` (keep your data volumes —',
+    '     never pass --volumes). Tip: protect known-good images with a placeholder',
+    '     container first so a prune cannot evict them.',
+    '  3. Force a real image GC:  docker desktop restart',
+    '     (on the containerd image store, `docker image prune` alone reclaims 0 B).',
+    '  4. Re-pull fresh:          npm run dev:full',
+    '  See the "Docker image corruption (exit 255 / exec format error)" section in',
+    '  docs/guides/full-stack-local.md.',
+  ].join('\n');
+}
+
 // --- 0. Dependencies (auto-install on a fresh / stale clone) ------------------
 function ensureDependencies() {
   if (opts.skipInstall) {
@@ -214,23 +271,44 @@ async function startSupabase() {
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     info(`supabase start (attempt ${attempt}/${maxAttempts})…`);
-    const code = runInherit('npx', ['--yes', 'supabase', 'start'], { cwd: API_DIR });
+    const { code, output } = await runTee('npx', ['--yes', 'supabase', 'start'], { cwd: API_DIR });
     if (code === 0 || isSupabaseRunning()) {
       info('Supabase is up.');
       return;
     }
+
+    // Work out *why* it failed instead of assuming a rate-limit. Terminal causes
+    // (corrupt images, migration errors) are not worth retrying — fail fast with
+    // the right fix so the developer doesn't wait out three pointless retries.
+    const { kind, signal } = classifySupabaseStartFailure(output);
+
+    if (kind === 'image') {
+      fail(
+        'supabase start failed: corrupt local Docker image layers.',
+        dockerCorruptionRemedy(signal),
+      );
+    }
+    if (kind === 'migration') {
+      fail(
+        'supabase start failed while applying migrations — a database/SQL error, not a transient issue.',
+        'Find the "ERROR: … (SQLSTATE …)" line in the output above and fix that migration; retrying will not help. See docs/guides/full-stack-local.md.',
+      );
+    }
+
     if (attempt < maxAttempts) {
       const backoff = attempt * 15;
-      info(
-        `supabase start failed (often a Docker Hub "Rate exceeded" pull limit). Retrying in ${backoff}s…`,
-      );
-      info('If this keeps failing, run `docker login` to raise the pull limit.');
+      if (kind === 'rate-limit') {
+        info(`Docker registry pull limit ("${signal}"). Retrying in ${backoff}s…`);
+        info('Tip: `docker login` raises Docker Hub pull limits.');
+      } else {
+        info(`supabase start failed (cause unclear from output). Retrying in ${backoff}s…`);
+      }
       await sleep(backoff * 1000);
     }
   }
   fail(
     'Could not start Supabase after multiple attempts.',
-    'Check Docker is running and has disk/quota. Try `docker login` for Docker Hub rate limits, then re-run. See docs/guides/full-stack-local.md.',
+    'Read the output above for the real cause. Common ones: Docker not running; a Docker Hub pull limit (`docker login`); or corrupt image layers (see the "exit 255 / exec format error" section in docs/guides/full-stack-local.md).',
   );
 }
 

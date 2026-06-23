@@ -326,6 +326,11 @@ async function main() {
     '\n  Tip: if `supabase start` stalls on "Rate exceeded", run `docker login`\n' +
       '       (anonymous Docker Hub pulls are rate-limited).',
   );
+  console.log(
+    '  Tip: if it fails with "exit 255" / "exec format error", the local image\n' +
+      '       layers are corrupt — re-pull them (see the troubleshooting section in\n' +
+      '       docs/guides/full-stack-local.md); retrying alone will not fix it.',
+  );
 
   if (ok) {
     console.log('\n  Ready. Start the full stack with:  npm run dev:full\n');
