@@ -87,6 +87,24 @@
  * Column mapping
  * ------------------------------------------------------------------------- */
 
+.brokerage-import__detected {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-status-positive, var(--semantic-border-default));
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-text-primary);
+  background: var(--semantic-background-secondary);
+  margin: 0 0 var(--spacing-3);
+}
+
+.brokerage-import__detected svg {
+  flex: none;
+  color: var(--semantic-status-positive, var(--semantic-text-primary));
+  margin-top: 0.1em;
+}
+
 .brokerage-import__mapping {
   border: 1px solid var(--semantic-border-default);
   border-radius: var(--border-radius-md);

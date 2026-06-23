@@ -11,6 +11,11 @@ const FIDELITY_CSV = [
   '02/14/2024,YOU BOUGHT,AAPL,5,160.00,4.95,-804.95',
 ].join('\n');
 
+/** A generic export with no distinctive broker signature columns. */
+const GENERIC_CSV = ['Date,Action,Symbol,Quantity,Price', '2024-01-03,Buy,AAPL,10,150.00'].join(
+  '\n',
+);
+
 /** Drive the paste → confirm-mapping flow for a single broker export. */
 function addExport(broker: string, csv: string): void {
   fireEvent.change(screen.getByLabelText(/broker name/i), { target: { value: broker } });
@@ -32,13 +37,35 @@ describe('BrokerageImportPanel', () => {
     ).toBeInTheDocument();
   });
 
-  it('requires a broker name before loading a paste', () => {
+  it('requires a broker name before loading an unrecognized export', () => {
     render(<BrokerageImportPanel />);
+    fireEvent.change(screen.getByLabelText(/paste csv text/i), {
+      target: { value: GENERIC_CSV },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /add pasted csv/i }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/broker name/i);
+  });
+
+  it('auto-detects a recognized broker export without a manually typed name', () => {
+    render(<BrokerageImportPanel />);
+    // No broker name typed — detection should recognize the Fidelity layout.
     fireEvent.change(screen.getByLabelText(/paste csv text/i), {
       target: { value: FIDELITY_CSV },
     });
     fireEvent.click(screen.getByRole('button', { name: /add pasted csv/i }));
-    expect(screen.getByRole('alert')).toHaveTextContent(/broker name/i);
+
+    // A status banner names the detected broker, and the mapping is pre-filled.
+    const banner = screen.getByText(/recognized a/i);
+    expect(banner).toHaveTextContent(/fidelity/i);
+    expect(screen.getByRole('combobox', { name: /trade date/i })).toHaveValue('Run Date');
+    expect(screen.getByRole('combobox', { name: /fees \/ commission/i })).toHaveValue(
+      'Commission ($)',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm .* add export/i }));
+    expect(screen.getByRole('group', { name: /reconciliation summary/i })).toHaveTextContent(
+      /Fidelity/,
+    );
   });
 
   it('shows a column-mapping confirmation with auto-detected fields', () => {

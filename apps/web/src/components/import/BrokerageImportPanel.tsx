@@ -37,19 +37,17 @@ import {
   type BrokerageColumnMapping,
   type BrokerageParseResult,
 } from '../../lib/investments/brokerage-import';
+import {
+  detectBrokerFormat,
+  KNOWN_BROKER_LABELS,
+  type DetectedBrokerFormat,
+} from '../../lib/investments/broker-formats';
 import { AppIcon, type IconName } from '../icons';
 import { FileDropZone } from './FileDropZone';
 
 import './brokerage-import-panel.css';
 
-const KNOWN_BROKERS = [
-  'Fidelity',
-  'Schwab',
-  'Robinhood',
-  'E*TRADE',
-  'Vanguard',
-  'Merrill',
-] as const;
+const KNOWN_BROKERS = KNOWN_BROKER_LABELS;
 
 const MAX_PREVIEW_ROWS = 3;
 const MAX_TRADE_ROWS = 100;
@@ -81,6 +79,8 @@ interface PendingSource {
   readonly headers: readonly string[];
   readonly previewRows: readonly string[][];
   readonly mapping: BrokerageColumnMapping;
+  /** Auto-detected broker format, when the export was recognized. */
+  readonly detected: DetectedBrokerFormat | null;
 }
 
 function formatQuantity(quantity: number): string {
@@ -104,22 +104,30 @@ export const BrokerageImportPanel: React.FC = () => {
   const loadContent = useCallback(
     (content: string) => {
       setParseError(null);
-      const broker = brokerName.trim();
-      if (!broker) {
-        setParseError('Enter the broker name before adding an export.');
-        return;
-      }
       const { headers, rows } = parseCsv(content, { hasHeader: true });
       if (headers.length === 0 || rows.length === 0) {
         setParseError('No rows found. Make sure the file is a CSV with a header row.');
         return;
       }
+      const detected = detectBrokerFormat(headers);
+      const broker = brokerName.trim() || detected?.broker || '';
+      if (!broker) {
+        setParseError(
+          'Enter the broker name before adding an export, or use a recognized broker export.',
+        );
+        return;
+      }
+      const baseMapping = suggestColumnMapping(headers);
+      const mapping: BrokerageColumnMapping = detected
+        ? { ...baseMapping, ...detected.mapping }
+        : baseMapping;
       setPending({
         broker,
         content,
         headers,
         previewRows: rows.slice(0, MAX_PREVIEW_ROWS),
-        mapping: suggestColumnMapping(headers),
+        mapping,
+        detected,
       });
     },
     [brokerName],
@@ -159,6 +167,7 @@ export const BrokerageImportPanel: React.FC = () => {
     const result = parseBrokerageCsv(pending.content, {
       broker: pending.broker,
       mapping: pending.mapping,
+      dateFormat: pending.detected?.dateFormat,
     });
     setSources((prev) => [...prev, result]);
     setPending(null);
@@ -199,10 +208,13 @@ export const BrokerageImportPanel: React.FC = () => {
         Brokerage Trade Import &amp; Reconciliation
       </h2>
       <p className="brokerage-import__intro">
-        Export a trade-confirmation CSV from each broker (Fidelity, Schwab, Robinhood and others),
-        add them one at a time, and we reconcile buys, sells and dividends into a single holdings
-        view with average cost basis. Connecting a live brokerage account is not available here —
-        all parsing happens on this device and nothing is saved automatically.
+        Export a trade-confirmation or activity CSV from each broker and add them one at a time. We
+        recognize common layouts automatically — Fidelity, Charles Schwab, Robinhood, Interactive
+        Brokers, E*TRADE and Vanguard, plus the crypto venues Coinbase and Kraken — and fill in the
+        broker name and column mapping for you, so you don&apos;t have to remap every file by hand.
+        Buys, sells and dividends are reconciled into a single holdings view with average cost
+        basis. Connecting a live brokerage account is not available here — all parsing happens on
+        this device and nothing is saved automatically.
       </p>
 
       {/* ----------------------------------------------------------------- */}
@@ -234,7 +246,7 @@ export const BrokerageImportPanel: React.FC = () => {
           accept=".csv"
           onFile={handleFile}
           inputLabel="Choose a broker trade-confirmation CSV file to import"
-          hint=".csv files up to 10 MB — set the broker name first"
+          hint=".csv files up to 10 MB — recognized broker exports fill in the name automatically"
         />
 
         <div className="brokerage-import__field">
@@ -275,6 +287,16 @@ export const BrokerageImportPanel: React.FC = () => {
             <legend className="brokerage-import__legend">
               Confirm columns for {pending.broker}
             </legend>
+            {pending.detected !== null && (
+              <p className="brokerage-import__detected" role="status">
+                <AppIcon name="check-circle" />
+                <span>
+                  Recognized a <strong>{pending.detected.broker}</strong>{' '}
+                  {pending.detected.assetClass === 'crypto' ? 'crypto' : 'brokerage'} export —
+                  broker name and columns were filled in for you. Review and adjust below if needed.
+                </span>
+              </p>
+            )}
             <p className="brokerage-import__hint">
               We matched these columns automatically. Adjust any that look wrong, then confirm.
             </p>
