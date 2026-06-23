@@ -58,6 +58,9 @@ class GoalProgressWidget : GlanceAppWidget() {
         Timber.d("Providing glance content for GoalProgressWidget (id=%s)", id)
 
         // TODO(#1296): Read real data from repository once wired.
+        // TODO(human): wire GoalPlanPresenter output (perWeek + buy-by date) for
+        //  the top goal here once widget data access (#1242/#1296) lands so the
+        //  widget shows the same real projection as the in-app planner.
         val widgetData = WidgetGoalData(
             goalName = "No goals yet",
             currentFormatted = WidgetPrivacyFormatter.formatAmount(0),
@@ -66,6 +69,8 @@ class GoalProgressWidget : GlanceAppWidget() {
             progressPercent = 0,
             totalGoals = 0,
             lastUpdated = "Just now",
+            weeklyTargetLabel = null,
+            buyByLabel = null,
         )
 
         provideContent {
@@ -86,6 +91,8 @@ class GoalProgressWidget : GlanceAppWidget() {
  * @property progressPercent Progress percentage (0–100).
  * @property totalGoals Total number of active goals.
  * @property lastUpdated Human-readable last-update timestamp.
+ * @property weeklyTargetLabel Teen-friendly "save $X/week" label, or null.
+ * @property buyByLabel Projected buy-by month/year (e.g. "Aug 2027"), or null.
  */
 data class WidgetGoalData(
     val goalName: String,
@@ -95,6 +102,8 @@ data class WidgetGoalData(
     val progressPercent: Int,
     val totalGoals: Int,
     val lastUpdated: String,
+    val weeklyTargetLabel: String? = null,
+    val buyByLabel: String? = null,
 )
 
 /**
@@ -129,6 +138,8 @@ private fun GoalProgressContent(data: WidgetGoalData) {
                     "${data.goalName}: ${data.progressPercent}% complete. " +
                     "${data.currentFormatted} of ${data.targetFormatted}. " +
                     "${data.remainingFormatted} remaining. " +
+                    (data.weeklyTargetLabel?.let { "$it. " } ?: "") +
+                    (data.buyByLabel?.let { "On track for $it. " } ?: "") +
                     "${data.totalGoals} active goals. Tap to open Finance."
             },
     ) {
@@ -207,6 +218,25 @@ private fun GoalProgressContent(data: WidgetGoalData) {
                     fontSize = 12.sp,
                 ),
             )
+
+            // Teen-friendly projection: "Save $X/week · Car by Aug 2027"
+            if (data.weeklyTargetLabel != null) {
+                Spacer(modifier = GlanceModifier.height(4.dp))
+                val projection = buildString {
+                    append(data.weeklyTargetLabel)
+                    if (data.buyByLabel != null) {
+                        append(" · ${data.goalName} by ${data.buyByLabel}")
+                    }
+                }
+                Text(
+                    text = projection,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.primary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                )
+            }
 
             Spacer(modifier = GlanceModifier.defaultWeight())
 

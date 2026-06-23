@@ -59,6 +59,7 @@ import com.finance.android.ui.viewmodel.BudgetsViewModel
 import com.finance.android.ui.viewmodel.DashboardViewModel
 import com.finance.android.ui.viewmodel.GoalCreateViewModel
 import com.finance.android.ui.viewmodel.GoalEditViewModel
+import com.finance.android.ui.viewmodel.GoalPlannerViewModel
 import com.finance.android.ui.viewmodel.TransactionCreateViewModel
 import com.finance.android.ui.viewmodel.TransactionDetailViewModel
 import com.finance.android.ui.viewmodel.GoalsViewModel
@@ -66,6 +67,7 @@ import com.finance.android.ui.viewmodel.TransactionsViewModel
 import com.finance.core.monitoring.CrashReporter
 import com.finance.core.monitoring.MetricsCollector
 import org.koin.android.ext.koin.androidContext
+import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
@@ -178,6 +180,8 @@ val appModule = module {
     viewModelOf(::GoalsViewModel)
     viewModelOf(::GoalCreateViewModel)
     viewModelOf(::GoalEditViewModel)
+    // Explicit definition so the default system Clock is used (not resolved from DI).
+    viewModel { GoalPlannerViewModel(get(), get()) }
     viewModelOf(::SettingsViewModel)
     viewModelOf(::StreakViewModel)
     viewModelOf(::NotificationSettingsViewModel)
