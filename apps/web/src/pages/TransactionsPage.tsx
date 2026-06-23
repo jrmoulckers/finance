@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppIcon } from '../components/icons';
 
@@ -73,6 +73,10 @@ import {
 } from '../lib/accountPurpose';
 import { chooseLargeTextReflow } from '../lib/a11y/large-text-reflow';
 import { getTransactionLocalDay } from '../lib/transactions/local-timestamp';
+
+// Lazy-loaded so the quick-add affordance (dialog, presets, persistence helper)
+// lands in its own async chunk and stays out of the saturated ledger route chunk.
+const QuickAddTransaction = lazy(() => import('../components/transactions/QuickAddTransaction'));
 
 // ---------------------------------------------------------------------------
 // URL param helpers for filter/sort persistence
@@ -810,6 +814,22 @@ export const TransactionsPage: React.FC = () => {
   const handleEditPanelClose = useCallback(() => {
     setEditPanelTransaction(null);
   }, []);
+
+  const handleQuickAddCreate = useCallback(
+    async (data: CreateTransactionInput): Promise<void> => {
+      const result = createTransaction({
+        ...data,
+        categoryId: autoCategorizeInput(data),
+      });
+      if (result === null) {
+        throw new Error('Failed to create transaction. Please try again.');
+      }
+
+      recordPwaMeaningfulAction();
+      refreshTransactions();
+    },
+    [autoCategorizeInput, createTransaction, refreshTransactions],
+  );
 
   const handleDeleteConfirm = useCallback(() => {
     if (deletingTransaction === null) {
@@ -1892,6 +1912,16 @@ export const TransactionsPage: React.FC = () => {
           onSave={handleEditPanelSave}
           onClose={handleEditPanelClose}
         />
+
+        {!isSimplified && (
+          <Suspense fallback={null}>
+            <QuickAddTransaction
+              accounts={accounts}
+              categories={categories}
+              onCreate={handleQuickAddCreate}
+            />
+          </Suspense>
+        )}
 
         <ConfirmDialog
           isOpen={deletingTransaction !== null}
