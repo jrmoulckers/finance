@@ -75,6 +75,7 @@ const NetWorth = lazy(() => import('./pages/NetWorthPage'));
 const Subscriptions = lazy(() => import('./pages/SubscriptionsPage'));
 const BankConnections = lazy(() => import('./pages/BankConnectionsPage'));
 const Debt = lazy(() => import('./pages/DebtPage'));
+const BuildingCredit = lazy(() => import('./pages/BuildingCreditPage'));
 const FirePlanner = lazy(() => import('./pages/FirePlannerPage'));
 const Remittances = lazy(() => import('./pages/RemittancesPage'));
 const ExpectedIncome = lazy(() => import('./pages/ExpectedIncomePage'));
@@ -386,6 +387,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Debt">
             <Debt />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/building-credit"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Building Credit">
+            <BuildingCredit />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
