@@ -58,6 +58,7 @@ const ClientProfitability = lazy(() => import('./pages/ClientProfitabilityPage')
 const BusinessPnl = lazy(() => import('./pages/BusinessPnlPage'));
 const GigDriver = lazy(() => import('./pages/GigDriverPage'));
 const Investments = lazy(() => import('./pages/InvestmentsPage'));
+const LivePnl = lazy(() => import('./pages/LivePnlPage'));
 const InvestmentDetail = lazy(() => import('./pages/InvestmentDetailPage'));
 const TaxCenter = lazy(() => import('./pages/TaxCenterPage'));
 const Bills = lazy(() => import('./pages/BillsPage'));
@@ -565,6 +566,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Investments">
             <Investments />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/live-pnl"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Live P&L">
+            <LivePnl />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

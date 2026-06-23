@@ -21,6 +21,7 @@ export { SignupPage } from './SignupPage';
 export { WatchlistsPage } from './WatchlistsPage';
 export { DataImportWizardPage } from './DataImportWizardPage';
 export { InvestmentsPage } from './InvestmentsPage';
+export { LivePnlPage } from './LivePnlPage';
 export { InvestmentDetailPage } from './InvestmentDetailPage';
 export { TaxCenterPage } from './TaxCenterPage';
 export { BillsPage } from './BillsPage';

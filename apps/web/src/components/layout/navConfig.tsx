@@ -154,6 +154,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     description: 'Holdings, performance and watchlists.',
   },
   {
+    id: 'live-pnl',
+    label: 'Live P&L',
+    href: '/live-pnl',
+    icon: <Icon name={IconToken.INVESTMENT} />,
+    group: 'money',
+    mobilePriority: 16,
+    description: 'Real-time cross-broker P&L and net worth for active trading.',
+  },
+  {
     id: 'tax-center',
     label: 'Tax Center',
     href: '/investments/tax',

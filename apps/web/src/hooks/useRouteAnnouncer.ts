@@ -29,6 +29,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/insights': 'Insights',
   '/household': 'Household',
   '/investments': 'Investments',
+  '/live-pnl': 'Live P&L',
   '/bills': 'Bills',
   '/report-builder': 'Report Builder',
   '/achievements': 'Achievements',
