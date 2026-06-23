@@ -7,6 +7,14 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.CAMERA" />
 
+    <!--
+      Receipt scanning (#2388) uses the camera but degrades to manual entry,
+      so the camera is optional and the app installs on camera-less devices.
+    -->
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
+
     <application
         android:name=".FinanceApplication"
         android:allowBackup="false"
