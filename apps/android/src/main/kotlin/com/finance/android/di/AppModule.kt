@@ -51,6 +51,12 @@ import com.finance.android.ui.theme.ThemeManager
 import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.android.ui.tips.TipsViewModel
 import com.finance.android.ui.insights.InsightsViewModel
+import com.finance.android.ui.quickactions.DeterministicQuickActionRanker
+import com.finance.android.ui.quickactions.QuickActionPreferences
+import com.finance.android.ui.quickactions.QuickActionRanker
+import com.finance.android.ui.quickactions.QuickActionTelemetry
+import com.finance.android.ui.quickactions.QuickActionsViewModel
+import com.finance.android.ui.quickactions.TimberQuickActionTelemetry
 import com.finance.android.ui.viewmodel.ConflictResolutionViewModel
 import com.finance.android.ui.viewmodel.DataExportManager
 import com.finance.android.ui.viewmodel.DataImportViewModel
@@ -219,6 +225,20 @@ val appModule = module {
 
     // ── Insights ─────────────────────────────────────────────────────
     viewModelOf(::InsightsViewModel)
+
+    // ── Predictive Quick-Actions (#2396) ────────────────────────────
+
+    /** Deterministic on-device ranking model for quick-actions. */
+    single<QuickActionRanker> { DeterministicQuickActionRanker() }
+
+    /** On-device pin / disable / usage persistence (encrypted prefs). */
+    single { QuickActionPreferences(get()) }
+
+    /** Aggregate, non-PII usefulness telemetry. */
+    single<QuickActionTelemetry> { TimberQuickActionTelemetry() }
+
+    /** Predictive quick-actions ViewModel. */
+    viewModelOf(::QuickActionsViewModel)
 
     // ── Wave 5 ViewModels (Sprints 18-23) ───────────────────────────
 
