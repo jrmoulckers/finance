@@ -1,0 +1,217 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * Shared goal contributions (issue #2147)
+ *
+ * Per-partner contribution breakdown, milestone checklist, and the
+ * detailed/summarized privacy toggle. Token-driven; no hard-coded
+ * colours or spacing so it respects every theme and contrast mode.
+ * ------------------------------------------------------------------- */
+
+.shared-goal {
+  margin-bottom: var(--spacing-6);
+}
+
+.shared-goal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+}
+
+.shared-goal__title {
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+.shared-goal__subtitle {
+  margin: var(--spacing-1) 0 0;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* Privacy visibility radio group */
+.shared-goal__visibility {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md, 8px);
+  padding: var(--spacing-2) var(--spacing-3);
+  margin: 0;
+}
+
+.shared-goal__visibility-legend {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  padding: 0 var(--spacing-1);
+}
+
+.shared-goal__visibility-options {
+  display: flex;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.shared-goal__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  cursor: pointer;
+}
+
+.shared-goal__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.shared-goal__contributor {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.shared-goal__contributor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.shared-goal__name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.shared-goal__effort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-full);
+  padding: 0 var(--spacing-2);
+  color: var(--semantic-text-secondary);
+}
+
+.shared-goal__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* Milestone checklist */
+.shared-goal__milestones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.shared-goal__milestone {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.shared-goal__milestone-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.shared-goal__milestone-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.shared-goal__milestone-label {
+  font-weight: var(--font-weight-semibold);
+}
+
+.shared-goal__milestone-amount {
+  margin-left: auto;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* Inline editors */
+.shared-goal__editor {
+  border: 1px dashed var(--semantic-border-default);
+  border-radius: var(--border-radius-md, 8px);
+  padding: var(--spacing-3);
+  margin-top: var(--spacing-3);
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.shared-goal__field {
+  display: grid;
+  gap: var(--spacing-1);
+}
+
+.shared-goal__field-label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+}
+
+.shared-goal__editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.shared-goal__editor-row .shared-goal__field {
+  flex: 1 1 8rem;
+  min-width: 7rem;
+}
+
+.shared-goal__row-actions {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.shared-goal__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.shared-goal__empty {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin: 0;
+}
+
+/* Compact indicator used on the Goals list page */
+.shared-goal-badge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1) var(--spacing-2);
+  align-items: center;
+  margin-top: var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.shared-goal-badge__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-full);
+  padding: 0 var(--spacing-2);
+}

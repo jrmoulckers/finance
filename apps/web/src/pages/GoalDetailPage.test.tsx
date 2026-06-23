@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -198,7 +198,8 @@ describe('GoalDetailPage', () => {
   it('has accessible progress bar', () => {
     renderWithRoute();
 
-    const progressBar = screen.getByRole('progressbar');
+    const progressRegion = screen.getByRole('region', { name: /goal progress/i });
+    const progressBar = within(progressRegion).getByRole('progressbar');
     expect(progressBar).toBeInTheDocument();
     // 1500000 / 2000000 = 75%
     expect(progressBar).toHaveAttribute('aria-valuenow', '75');
@@ -206,10 +207,32 @@ describe('GoalDetailPage', () => {
     expect(progressBar).toHaveAttribute('aria-valuemax', '100');
   });
 
+  // ---------------------------------------------------------------------------
+  // Shared contributions (issue #2147)
+  // ---------------------------------------------------------------------------
+
+  it('renders the shared contributions section with a visibility toggle', () => {
+    renderWithRoute();
+
+    expect(screen.getByRole('region', { name: /shared contributions/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /detailed/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /summarized/i })).toBeInTheDocument();
+  });
+
+  it('lists partner contributions and a household total progress bar', () => {
+    renderWithRoute();
+
+    const partnerList = screen.getByRole('list', { name: /partner contributions/i });
+    expect(partnerList).toBeInTheDocument();
+    // Household total + at least one partner progress bar exist.
+    expect(screen.getAllByRole('progressbar').length).toBeGreaterThan(1);
+  });
+
   it('shows remaining amount and percentage', () => {
     renderWithRoute();
 
-    expect(screen.getByText(/75%/)).toBeInTheDocument();
+    const progressRegion = screen.getByRole('region', { name: /goal progress/i });
+    expect(within(progressRegion).getByText(/75%/)).toBeInTheDocument();
   });
 
   it('shows time remaining when target date is set', () => {

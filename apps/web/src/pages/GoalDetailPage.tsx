@@ -17,6 +17,7 @@ import { useGoals } from '../hooks';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
 import { ShareCelebrationButton } from '../components/social/ShareCelebrationButton';
+import { SharedGoalContributions } from '../components/goals/SharedGoalContributions';
 import { goalCelebrationEvent } from '../lib/social/share-celebration';
 import '../styles/pages.css';
 
@@ -330,6 +331,8 @@ export const GoalDetailPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <SharedGoalContributions goal={goal} />
 
       <GoalForm
         isOpen={isFormOpen}
