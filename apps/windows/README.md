@@ -298,6 +298,72 @@ shipped. The validation point is marked in code with `// TODO(human)` in
 
 ---
 
+## AI-powered finance widgets (#2384)
+
+The AI "Today & Forecast" surface gives a glanceable view of **today's spend**
+and a **short-horizon predicted balance**, computed entirely on-device.
+
+### Architecture (mirrors Android)
+
+```
+AiSpendWidgetCard (Compose Desktop)            ── widgets/ui/
+  └─ AiInsightWidgetViewModel (StateFlow)      ── viewmodel/
+       ├─ AiFinanceWidgetProvider              ── widgets/
+       │    ├─ AccountRepository / TransactionRepository (on-device SQLCipher)
+       │    └─ BalancePredictor (interface)    ── ai/
+       │         ├─ HeuristicBalancePredictor  (deterministic, ships today)
+       │         └─ OnnxBalancePredictor       (Windows ML / ONNX, stubbed)
+       ├─ AiSpendWidgetFormatter (pure)        ── widgets/  (privacy + freshness)
+       └─ AutoLockManager.isLocked             ── security/ (privacy masking)
+```
+
+- **On-device only.** Every prediction input is derived from the local
+  database; nothing is sent off the machine. Inference is local too.
+- **Deterministic & testable.** `HeuristicBalancePredictor` and
+  `AiSpendWidgetFormatter` are pure functions with unit tests
+  (`HeuristicBalancePredictorTest`, `AiSpendWidgetFormatterTest`,
+  `OnnxBalancePredictorTest`).
+- **Freshness states.** The formatter derives `FRESH` / `STALE` / `OFFLINE`
+  from snapshot age + connectivity and emits matching fallback messaging plus
+  a "last updated N minutes ago" caption.
+- **Deep links.** Each card action maps to a `finance://` route handled by
+  `DeepLinkHandler` (today's spend → `finance://transactions`, predicted
+  balance → `finance://accounts`, at-risk CTA → `finance://budgets`).
+- **Privacy.** When `AutoLockManager.isLocked` is true (auto-lock / lock-screen
+  privacy), all sensitive amounts are masked (`••••`) while the structure and
+  deep links remain navigable.
+
+### Native packaging constraints (Windows App SDK / Widgets / Windows ML)
+
+The Compose-Desktop card is the in-app prototype surface. Promoting it to a
+**native Windows 11 Widget Board** tile and replacing the heuristic with a
+learned **ONNX / Windows ML** model both require native toolchain work that
+cannot run in the pure-JVM CI lane and is therefore **blocked on a human with
+the toolchain**:
+
+| Capability                   | Requirement                                                                                                                                                                                                                  | Status                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Windows 11 Widget Board tile | MSIX packaging + `com.microsoft.windows.widgets` extension in `AppxManifest.xml`; widget provider COM server. Needs **MSIX packaging project** (current jpackage flow emits MSI/EXE, which cannot declare widget providers). | Blocked — toolchain                                            |
+| ONNX / Windows ML inference  | `onnxruntime` (or Windows ML runtime) native libs packaged with the app; an `.onnx` model exported and bundled at `models/balance-forecast.onnx`; Visual Studio + Windows SDK to build/package native deps.                  | Blocked — toolchain (see `OnnxBalancePredictor` `TODO(human)`) |
+| Code-signed MSIX for Store   | Signing cert + MSIX (not MSI).                                                                                                                                                                                               | Blocked — toolchain/secrets                                    |
+
+Code that needs that toolchain is marked in-source with `// TODO(human): …`
+in `ai/OnnxBalancePredictor.kt`. Until those land, the app ships the
+deterministic heuristic predictor and renders the card inside the existing
+Compose-Desktop window — no functionality is left half-wired.
+
+### Toolchain follow-ups (Needs Human Action)
+
+1. Add an MSIX packaging project (or `compose.desktop` MSIX target once
+   supported) declaring the widget provider extension.
+2. Export/train the short-horizon balance model to ONNX, bundle it, and wire
+   the native inference session in `OnnxBalancePredictor` (resolve the
+   `TODO(human)` markers), then switch the Koin binding in `PlatformModule`
+   from `HeuristicBalancePredictor` to `OnnxBalancePredictor`.
+3. Sign and submit the MSIX to the Microsoft Store channel.
+
+---
+
 ## Related issues
 
 - [#1899](../../../../issues/1899) — this PR: Windows build & release automation
@@ -305,3 +371,5 @@ shipped. The validation point is marked in code with `// TODO(human)` in
 - [#1890](../../../../issues/1890), [#1893](../../../../issues/1893),
   [#1894](../../../../issues/1894) — the original alpha-blocker bugs that
   motivated this tooling
+- [#2384](../../../../issues/2384) — AI-powered finance widgets (today's spend
+  and predicted balance)

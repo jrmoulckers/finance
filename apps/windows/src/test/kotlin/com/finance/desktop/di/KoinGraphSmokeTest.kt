@@ -13,6 +13,8 @@ import com.finance.desktop.notifications.EnhancedNotificationManager
 import com.finance.desktop.navigation.DeepLinkHandler
 import com.finance.desktop.security.*
 import com.finance.desktop.sync.DesktopSyncCoordinator
+import com.finance.desktop.ai.BalancePredictor
+import com.finance.desktop.widgets.AiFinanceWidgetProvider
 import com.finance.desktop.tray.FinanceSystemTray
 import com.finance.desktop.tray.QuickAddTransactionManager
 import com.finance.desktop.viewmodel.*
@@ -91,6 +93,8 @@ class KoinGraphSmokeTest {
             "WidgetDataProvider" to { get<WidgetDataProvider>() },
             "WidgetContentRenderer" to { get<WidgetContentRenderer>() },
             "WidgetRegistrationManager" to { get<WidgetRegistrationManager>() },
+            "BalancePredictor" to { get<BalancePredictor>() },
+            "AiFinanceWidgetProvider" to { get<AiFinanceWidgetProvider>() },
             "VoiceCommandManager" to { get<VoiceCommandManager>() },
             "VoiceCommandParser" to { get<VoiceCommandParser>() },
             "FinanceSystemTray" to { get<FinanceSystemTray>() },
@@ -108,6 +112,7 @@ class KoinGraphSmokeTest {
             "LoginViewModel" to { get<LoginViewModel>() },
             "GdprConsentViewModel" to { get<GdprConsentViewModel>() },
             "WidgetViewModel" to { get<WidgetViewModel>() },
+            "AiInsightWidgetViewModel" to { get<AiInsightWidgetViewModel>() },
             "VoiceTransactionViewModel" to { get<VoiceTransactionViewModel>() },
             "DiagnosticsViewModel" to { get<DiagnosticsViewModel>() },
             "WidgetBoardViewModel" to { get<WidgetBoardViewModel>() },
