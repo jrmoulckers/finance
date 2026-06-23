@@ -58,7 +58,8 @@ gh issue list --state open --json number,title,labels,milestone --limit 100
 | `platform:windows`                          | `windows-engineer`                        |
 | `platform:shared`, `comp:sync`, `comp:core` | `kmp-engineer`                            |
 | `ci`, `infrastructure`                      | `devops-engineer`                         |
-| `security`, `compliance`                    | `security-reviewer`                       |
+| `security`                                  | `security-reviewer`                       |
+| `compliance`, `regulatory`                  | `compliance-specialist`                   |
 | `accessibility`                             | `accessibility-reviewer`                  |
 | `documentation`                             | `docs-writer`                             |
 | `design-system`                             | `design-engineer`                         |

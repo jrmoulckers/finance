@@ -8,6 +8,16 @@ Entries are newest-first. Use ISO dates (`YYYY-MM`). Each entry should answer: _
 
 ---
 
+## 2026-06 — Compliance specialist agent + architect enrichment
+
+Source: the AI-capabilities audit (Area 1 addendum). Added a 24th agent and broadened the architect's remit.
+
+- **New `compliance-specialist` agent (roster 23 → 24).** A doc-owning **advisory** role for financial, governmental, and regional regulatory compliance. It stewards the existing [`docs/compliance/`](../compliance/) corpus (GDPR/CCPA audits, retention schedule, VPAT, app-store privacy labels) and extends it with an obligation matrix, a jurisdictional data-residency map, and DPIA/RoPA records. Its niche is regulatory **obligations & the jurisdictional matrix**, distinct from `security-reviewer`'s **technical controls**; the two share the `privacy-compliance` skill. `security-reviewer` keeps the `security`/`privacy` labels while `compliance`/`regulatory` now route to the new agent. See [`compliance-specialist.agent.md`](../../.github/agents/compliance-specialist.agent.md).
+- **Enriched the `architect` agent.** Its description, `when_to_use`, and Capabilities now foreground **holistic system design, cross-platform feature definition, and technical investigation & root-cause resolution** alongside the existing edge-first/ADR remit. See [`architect.agent.md`](../../.github/agents/architect.agent.md).
+- **Roster count synced to 24** across [`AGENTS.md`](../../AGENTS.md), [`README.md`](README.md), [`agents.md`](agents.md), [`agent-instructions.md`](agent-instructions.md), the skill↔agent mapping in [`skills.md`](skills.md), and the `fleet-orchestration` / `sprint-planning` registries; `npm run ai:manifest:check` reports no drift.
+
+---
+
 ## 2026-06 — Audit human-action follow-up
 
 Follow-up to the audit remediation below, closing the actionable items that were

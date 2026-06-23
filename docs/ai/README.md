@@ -76,13 +76,14 @@ Finance is developed with AI agents as first-class contributors. This means:
 │   ├── web.instructions.md
 │   ├── workflow.instructions.md
 │   └── workflows.instructions.md
-├── agents/                           # Custom agent definitions (23 agents as of 2026-06; .github/agents/ is the source of truth)
+├── agents/                           # Custom agent definitions (24 agents as of 2026-06; .github/agents/ is the source of truth)
 │   ├── accessibility-reviewer.agent.md
 │   ├── ai-ops-engineer.agent.md
 │   ├── android-engineer.agent.md
 │   ├── architect.agent.md
 │   ├── backend-engineer.agent.md
 │   ├── business-analyst.agent.md
+│   ├── compliance-specialist.agent.md
 │   ├── data-engineer.agent.md
 │   ├── design-engineer.agent.md
 │   ├── devops-engineer.agent.md

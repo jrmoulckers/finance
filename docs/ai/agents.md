@@ -11,7 +11,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 ## Available Agents
 
-> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **23** agents — every one is detailed on this page. Agents added in 2026-06: `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, `qa-tester`, and `experimentation-engineer` (feature flags & A/B testing). Run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to surface any drift between the counts on this page and the filesystem — see the [CHANGELOG](CHANGELOG.md).
+> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **24** agents — every one is detailed on this page. Agents added in 2026-06: `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, `qa-tester`, `experimentation-engineer` (feature flags & A/B testing), and `compliance-specialist` (regulatory compliance). Run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to surface any drift between the counts on this page and the filesystem — see the [CHANGELOG](CHANGELOG.md).
 >
 > **Reviewer roles are asymmetric:** `accessibility-reviewer` is **review-only** (routes fixes to the owning platform agent); `security-reviewer` is the **emergency fixer** (may implement CRITICAL/HIGH security fixes in any directory, with owning-agent coordination).
 
@@ -93,6 +93,26 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Tools:** read, search
 
 **Key standards:** WCAG 2.2 AA, Apple HIG Accessibility, Material Design Accessibility, WAI-ARIA
+
+---
+
+### `@compliance-specialist` — Compliance Specialist
+
+**File:** `.github/agents/compliance-specialist.agent.md`
+
+**Purpose:** Owns Finance's regulatory and legal compliance posture for user financial data — financial-services regulation, governmental/tax reporting, and regional data-protection regimes (GDPR, UK-GDPR, CCPA/CPRA, PIPEDA, LGPD). Advisory: defines the obligation matrix and routes implementation to the owning agent. Stewards the existing `docs/compliance/` corpus.
+
+**When to use:**
+
+- Mapping a feature to its regulatory obligations across jurisdictions
+- Data-residency and cross-border transfer questions
+- Data-retention and record-keeping schedules
+- DPIA / RoPA authoring and audit-readiness
+- Consent-language and regulatory-disclosure review
+
+**Tools:** read, edit, search, shell
+
+**Boundary:** Owns regulatory _obligations_ and the jurisdictional matrix; `@security-reviewer` owns the _technical controls_ that satisfy them and `@accessibility-reviewer` maintains the VPAT. Not legal counsel — flags items needing formal legal sign-off.
 
 ---
 
@@ -448,6 +468,7 @@ Each agent has primary ownership over a set of directories. When multiple agents
 | `@security-reviewer`        | Security fixes in any directory; review-only for non-security code                                                                                    |
 | `@accessibility-reviewer`   | Read-only review — never edits production code                                                                                                        |
 | `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                                                        |
+| `@compliance-specialist`    | `docs/compliance/` — regulatory obligation matrix, jurisdictional data-residency, retention; advisory, review-only on code                            |
 | `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                         |
 | `@product-manager`          | `docs/business/roadmap/`, `docs/business/sprints/`, GitHub Issues (read/create)                                                                       |
 | `@marketing-strategist`     | `docs/marketing/`, `docs/business/marketing/`, app store copy drafts                                                                                  |
@@ -543,4 +564,4 @@ For docs-only PRs, use: `npm run ci:check:quick`
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.)
-- **23 agents** are defined in `.github/agents/` (source of truth; drift surfaced by `npm run ai:manifest:check`)
+- **24 agents** are defined in `.github/agents/` (source of truth; drift surfaced by `npm run ai:manifest:check`)
