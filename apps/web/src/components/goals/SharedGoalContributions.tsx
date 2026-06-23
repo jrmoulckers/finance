@@ -118,12 +118,20 @@ function saveConfig(storageKey: string, config: SharedGoalConfig): void {
 // Small helpers
 // ---------------------------------------------------------------------------
 
+let fallbackIdCounter = 0;
+
 function generateId(prefix: string): string {
-  const uuid =
-    typeof globalThis.crypto?.randomUUID === 'function'
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  return `${prefix}-${uuid}`;
+  const cryptoObj = globalThis.crypto;
+  if (typeof cryptoObj?.randomUUID === 'function') {
+    return `${prefix}-${cryptoObj.randomUUID()}`;
+  }
+  if (typeof cryptoObj?.getRandomValues === 'function') {
+    const buffer = new Uint32Array(2);
+    cryptoObj.getRandomValues(buffer);
+    return `${prefix}-${buffer[0].toString(36)}${buffer[1].toString(36)}`;
+  }
+  fallbackIdCounter += 1;
+  return `${prefix}-${Date.now().toString(36)}-${fallbackIdCounter}`;
 }
 
 /** Parse a dollars string into integer cents (never floating-point money). */
