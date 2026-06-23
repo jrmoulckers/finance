@@ -104,17 +104,17 @@ ALTER TABLE detected_bills ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY detected_bills_select ON detected_bills
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY detected_bills_insert ON detected_bills
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY detected_bills_update ON detected_bills
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY detected_bills_delete ON detected_bills
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));

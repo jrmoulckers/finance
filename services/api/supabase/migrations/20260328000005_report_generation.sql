@@ -114,20 +114,20 @@ ALTER TABLE scheduled_reports ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY report_configs_select ON report_configs
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY report_configs_insert ON report_configs
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY report_configs_update ON report_configs
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY report_configs_delete ON report_configs
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- =============================================================================
 -- RLS Policies: scheduled_reports
@@ -135,17 +135,17 @@ CREATE POLICY report_configs_delete ON report_configs
 
 CREATE POLICY scheduled_reports_select ON scheduled_reports
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY scheduled_reports_insert ON scheduled_reports
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY scheduled_reports_update ON scheduled_reports
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY scheduled_reports_delete ON scheduled_reports
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));

@@ -134,7 +134,7 @@ END $$;
 -- =============================================================================
 -- Test 3: Verify household_ids() function exists and returns correct results
 -- =============================================================================
--- The auth.household_ids() function is the backbone of household-based RLS.
+-- The public.household_ids() function is the backbone of household-based RLS.
 -- We test it by directly querying household_members for a known seed user.
 
 DO $$
@@ -145,15 +145,15 @@ BEGIN
         SELECT 1
         FROM pg_proc p
         JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'auth'
+        WHERE n.nspname = 'public'
           AND p.proname = 'household_ids'
     ) INTO fn_exists;
 
     IF NOT fn_exists THEN
-        RAISE EXCEPTION 'FAIL Test 3: auth.household_ids() function does not exist';
+        RAISE EXCEPTION 'FAIL Test 3: public.household_ids() function does not exist';
     END IF;
 
-    RAISE NOTICE 'PASS Test 3: auth.household_ids() function exists';
+    RAISE NOTICE 'PASS Test 3: public.household_ids() function exists';
 END $$;
 
 -- =============================================================================
@@ -171,21 +171,21 @@ BEGIN
         SELECT 1
         FROM pg_proc p
         JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'auth'
+        WHERE n.nspname = 'public'
           AND p.proname = 'custom_access_token_hook'
           AND pg_get_function_arguments(p.oid) = 'event jsonb'
           AND pg_get_function_result(p.oid) = 'jsonb'
     ) INTO hook_exists;
 
     IF NOT hook_exists THEN
-        RAISE EXCEPTION 'FAIL Test 4: auth.custom_access_token_hook(jsonb) does not exist';
+        RAISE EXCEPTION 'FAIL Test 4: public.custom_access_token_hook(jsonb) does not exist';
     END IF;
 
     -- Verify SECURITY DEFINER
     SELECT p.prosecdef INTO is_definer
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'auth'
+    WHERE n.nspname = 'public'
       AND p.proname = 'custom_access_token_hook';
 
     IF NOT is_definer THEN

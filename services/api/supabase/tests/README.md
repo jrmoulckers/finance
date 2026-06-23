@@ -49,7 +49,7 @@ npm run test:sync-contract
 | ------- | ----------------------------------------------------------------- |
 | Test 1  | All sync-rules tables exist with expected columns                 |
 | Test 2  | RLS is enabled on all user-data tables                            |
-| Test 3  | `auth.household_ids()` function exists                            |
+| Test 3  | `public.household_ids()` function exists                          |
 | Test 4  | `custom_access_token_hook` exists with correct signature          |
 | Test 5  | `sync_version` and `is_synced` columns on synced tables           |
 | Test 6  | Soft-deleted rows are filtered out                                |

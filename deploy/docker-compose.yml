@@ -172,9 +172,10 @@ services:
       GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_SECRET:-}
 
       # Custom access token hook (injects household_ids into JWT)
-      # Disabled until the auth.custom_access_token_hook function is created via migrations
+      # The public.custom_access_token_hook function is created via migrations.
+      # Disabled by default; set ENABLED to 'true' and uncomment the URI to activate.
       GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED: 'false'
-      # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI: pg-functions://postgres/${POSTGRES_DB:-postgres}/auth.custom_access_token_hook
+      # GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI: pg-functions://postgres/${POSTGRES_DB:-postgres}/public.custom_access_token_hook
 
       # Rate limiting
       GOTRUE_RATE_LIMIT_HEADER: X-Forwarded-For

@@ -74,4 +74,4 @@ ALTER TABLE users              DISABLE ROW LEVEL SECURITY;
 -- =============================================================================
 -- Drop helper function
 -- =============================================================================
-DROP FUNCTION IF EXISTS auth.household_ids();
+DROP FUNCTION IF EXISTS public.household_ids();

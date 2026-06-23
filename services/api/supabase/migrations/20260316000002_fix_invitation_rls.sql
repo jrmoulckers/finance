@@ -72,5 +72,5 @@ CREATE POLICY household_invitations_accept ON household_invitations
 --
 -- CREATE POLICY household_invitations_update ON household_invitations
 --     FOR UPDATE
---     USING (household_id = ANY(auth.household_ids()))
---     WITH CHECK (household_id = ANY(auth.household_ids()));
+--     USING (household_id = ANY(public.household_ids()))
+--     WITH CHECK (household_id = ANY(public.household_ids()));

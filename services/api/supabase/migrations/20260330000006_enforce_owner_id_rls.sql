@@ -40,16 +40,16 @@ DROP POLICY IF EXISTS accounts_insert ON accounts;
 CREATE POLICY accounts_insert ON accounts
     FOR INSERT
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
 DROP POLICY IF EXISTS accounts_update ON accounts;
 CREATE POLICY accounts_update ON accounts
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
+    USING (household_id = ANY(public.household_ids()))
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
@@ -61,16 +61,16 @@ DROP POLICY IF EXISTS categories_insert ON categories;
 CREATE POLICY categories_insert ON categories
     FOR INSERT
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
 DROP POLICY IF EXISTS categories_update ON categories;
 CREATE POLICY categories_update ON categories
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
+    USING (household_id = ANY(public.household_ids()))
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
@@ -82,16 +82,16 @@ DROP POLICY IF EXISTS transactions_insert ON transactions;
 CREATE POLICY transactions_insert ON transactions
     FOR INSERT
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
 DROP POLICY IF EXISTS transactions_update ON transactions;
 CREATE POLICY transactions_update ON transactions
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
+    USING (household_id = ANY(public.household_ids()))
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
@@ -103,16 +103,16 @@ DROP POLICY IF EXISTS budgets_insert ON budgets;
 CREATE POLICY budgets_insert ON budgets
     FOR INSERT
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
 DROP POLICY IF EXISTS budgets_update ON budgets;
 CREATE POLICY budgets_update ON budgets
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
+    USING (household_id = ANY(public.household_ids()))
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
@@ -124,16 +124,16 @@ DROP POLICY IF EXISTS goals_insert ON goals;
 CREATE POLICY goals_insert ON goals
     FOR INSERT
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
 DROP POLICY IF EXISTS goals_update ON goals;
 CREATE POLICY goals_update ON goals
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
+    USING (household_id = ANY(public.household_ids()))
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
@@ -145,16 +145,16 @@ DROP POLICY IF EXISTS recurring_templates_insert ON recurring_transaction_templa
 CREATE POLICY recurring_templates_insert ON recurring_transaction_templates
     FOR INSERT
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
 DROP POLICY IF EXISTS recurring_templates_update ON recurring_transaction_templates;
 CREATE POLICY recurring_templates_update ON recurring_transaction_templates
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
+    USING (household_id = ANY(public.household_ids()))
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
@@ -166,16 +166,16 @@ DROP POLICY IF EXISTS report_configs_insert ON report_configs;
 CREATE POLICY report_configs_insert ON report_configs
     FOR INSERT
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
 DROP POLICY IF EXISTS report_configs_update ON report_configs;
 CREATE POLICY report_configs_update ON report_configs
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
+    USING (household_id = ANY(public.household_ids()))
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
@@ -187,16 +187,16 @@ DROP POLICY IF EXISTS scheduled_reports_insert ON scheduled_reports;
 CREATE POLICY scheduled_reports_insert ON scheduled_reports
     FOR INSERT
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
 DROP POLICY IF EXISTS scheduled_reports_update ON scheduled_reports;
 CREATE POLICY scheduled_reports_update ON scheduled_reports
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
+    USING (household_id = ANY(public.household_ids()))
     WITH CHECK (
-        household_id = ANY(auth.household_ids())
+        household_id = ANY(public.household_ids())
         AND (owner_id IS NULL OR owner_id = auth.uid())
     );
 
@@ -207,48 +207,48 @@ CREATE POLICY scheduled_reports_update ON scheduled_reports
 --
 -- -- accounts
 -- DROP POLICY IF EXISTS accounts_insert ON accounts;
--- CREATE POLICY accounts_insert ON accounts FOR INSERT WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY accounts_insert ON accounts FOR INSERT WITH CHECK (household_id = ANY(public.household_ids()));
 -- DROP POLICY IF EXISTS accounts_update ON accounts;
--- CREATE POLICY accounts_update ON accounts FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY accounts_update ON accounts FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
 --
 -- -- categories
 -- DROP POLICY IF EXISTS categories_insert ON categories;
--- CREATE POLICY categories_insert ON categories FOR INSERT WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY categories_insert ON categories FOR INSERT WITH CHECK (household_id = ANY(public.household_ids()));
 -- DROP POLICY IF EXISTS categories_update ON categories;
--- CREATE POLICY categories_update ON categories FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY categories_update ON categories FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
 --
 -- -- transactions
 -- DROP POLICY IF EXISTS transactions_insert ON transactions;
--- CREATE POLICY transactions_insert ON transactions FOR INSERT WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY transactions_insert ON transactions FOR INSERT WITH CHECK (household_id = ANY(public.household_ids()));
 -- DROP POLICY IF EXISTS transactions_update ON transactions;
--- CREATE POLICY transactions_update ON transactions FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY transactions_update ON transactions FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
 --
 -- -- budgets
 -- DROP POLICY IF EXISTS budgets_insert ON budgets;
--- CREATE POLICY budgets_insert ON budgets FOR INSERT WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY budgets_insert ON budgets FOR INSERT WITH CHECK (household_id = ANY(public.household_ids()));
 -- DROP POLICY IF EXISTS budgets_update ON budgets;
--- CREATE POLICY budgets_update ON budgets FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY budgets_update ON budgets FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
 --
 -- -- goals
 -- DROP POLICY IF EXISTS goals_insert ON goals;
--- CREATE POLICY goals_insert ON goals FOR INSERT WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY goals_insert ON goals FOR INSERT WITH CHECK (household_id = ANY(public.household_ids()));
 -- DROP POLICY IF EXISTS goals_update ON goals;
--- CREATE POLICY goals_update ON goals FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY goals_update ON goals FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
 --
 -- -- recurring_transaction_templates
 -- DROP POLICY IF EXISTS recurring_templates_insert ON recurring_transaction_templates;
--- CREATE POLICY recurring_templates_insert ON recurring_transaction_templates FOR INSERT WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY recurring_templates_insert ON recurring_transaction_templates FOR INSERT WITH CHECK (household_id = ANY(public.household_ids()));
 -- DROP POLICY IF EXISTS recurring_templates_update ON recurring_transaction_templates;
--- CREATE POLICY recurring_templates_update ON recurring_transaction_templates FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY recurring_templates_update ON recurring_transaction_templates FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
 --
 -- -- report_configs
 -- DROP POLICY IF EXISTS report_configs_insert ON report_configs;
--- CREATE POLICY report_configs_insert ON report_configs FOR INSERT WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY report_configs_insert ON report_configs FOR INSERT WITH CHECK (household_id = ANY(public.household_ids()));
 -- DROP POLICY IF EXISTS report_configs_update ON report_configs;
--- CREATE POLICY report_configs_update ON report_configs FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY report_configs_update ON report_configs FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));
 --
 -- -- scheduled_reports
 -- DROP POLICY IF EXISTS scheduled_reports_insert ON scheduled_reports;
--- CREATE POLICY scheduled_reports_insert ON scheduled_reports FOR INSERT WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY scheduled_reports_insert ON scheduled_reports FOR INSERT WITH CHECK (household_id = ANY(public.household_ids()));
 -- DROP POLICY IF EXISTS scheduled_reports_update ON scheduled_reports;
--- CREATE POLICY scheduled_reports_update ON scheduled_reports FOR UPDATE USING (household_id = ANY(auth.household_ids())) WITH CHECK (household_id = ANY(auth.household_ids()));
+-- CREATE POLICY scheduled_reports_update ON scheduled_reports FOR UPDATE USING (household_id = ANY(public.household_ids())) WITH CHECK (household_id = ANY(public.household_ids()));

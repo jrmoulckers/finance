@@ -8,7 +8,7 @@
 -- PL/pgSQL function that generates transaction instances from due templates.
 --
 -- Security:
---   - RLS enabled with household-scoped policies using auth.household_ids()
+--   - RLS enabled with household-scoped policies using public.household_ids()
 --   - Generation function is SECURITY DEFINER (bypasses RLS for cross-household batch)
 --   - GRANT EXECUTE only to service_role; REVOKE from PUBLIC
 --   - FOR UPDATE SKIP LOCKED prevents deadlocks during concurrent cron runs
@@ -66,20 +66,20 @@ ALTER TABLE recurring_transaction_templates ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY recurring_templates_select ON recurring_transaction_templates
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 CREATE POLICY recurring_templates_insert ON recurring_transaction_templates
     FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY recurring_templates_update ON recurring_transaction_templates
     FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()))
+    WITH CHECK (household_id = ANY(public.household_ids()));
 
 CREATE POLICY recurring_templates_delete ON recurring_transaction_templates
     FOR DELETE
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- =============================================================================
 -- updated_at trigger

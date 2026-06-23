@@ -98,14 +98,14 @@ ALTER TABLE family_plan_subscriptions ENABLE ROW LEVEL SECURITY;
 -- Household members can read their household's subscription
 CREATE POLICY family_plan_select ON family_plan_subscriptions
     FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
+    USING (household_id = ANY(public.household_ids()));
 
 -- Only billing owner can create a subscription for their household
 CREATE POLICY family_plan_insert ON family_plan_subscriptions
     FOR INSERT
     WITH CHECK (
         billing_owner_id = auth.uid()
-        AND household_id = ANY(auth.household_ids())
+        AND household_id = ANY(public.household_ids())
     );
 
 -- Only billing owner can update the subscription

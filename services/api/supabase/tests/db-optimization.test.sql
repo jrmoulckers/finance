@@ -149,7 +149,7 @@ END $$;
 -- Test 4: Category and household member indexes exist
 -- =============================================================================
 -- Category indexes support the parent/child tree structure.
--- Household member indexes are critical for RLS performance (auth.household_ids).
+-- Household member indexes are critical for RLS performance (public.household_ids).
 
 DO $$
 DECLARE
