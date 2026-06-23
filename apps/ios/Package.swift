@@ -31,7 +31,10 @@ let package = Package(
         .target(
             name: "FinanceShared",
             dependencies: [],
-            path: "Shared"
+            path: "Shared",
+            exclude: [
+                "Categorization/README.md",
+            ]
         ),
 
         // MARK: - Main app
