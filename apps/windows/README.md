@@ -215,6 +215,89 @@ trip it too until our publisher reputation builds up over time.
 
 ---
 
+## AI accessibility narration of finances (#2394)
+
+Screen-reader users get a calm, on-device spoken summary of the dashboard:
+its **states** (net worth, the most time-relevant bill, budgets, goals),
+**trends** (the net-worth trend), and **anomalies** (spending topics observed
+outside their usual range). Everything is generated locally — no model, no
+network, no I/O on the narration path — so source financial data and the
+generated summaries never leave the machine.
+
+### Where the code lives
+
+| Concern                                              | File                                      |
+| ---------------------------------------------------- | ----------------------------------------- |
+| Narration output contract (shared data model)        | `narration/NarrationContract.kt`          |
+| Deterministic money/percent/date text helpers        | `narration/NarrationText.kt`              |
+| Steady-state narrator (states, trend, goals)         | `narration/TemplateNarrationGenerator.kt` |
+| **Anomaly narrator (signals / notable deltas)**      | `narration/AnomalyNarrator.kt`            |
+| **Dashboard composer (states + trends + anomalies)** | `narration/DashboardNarrator.kt`          |
+
+`DashboardNarrator.generate(snapshot, mode)` returns a single `Narration`. Each
+`NarrationSegment` carries both visible prose (`text`) and a Narrator-friendly
+projection (`a11y.screenReaderText`, `a11y.role`, `a11y.ariaLive`,
+`a11y.headingLevel`). The UI Automation projection (#2707) maps those fields to
+native accessibility properties — this layer only generates the words, it does
+not touch the UIA surface.
+
+### Narration modes
+
+- **Concise** — the headline plus the few most material facts and the single
+  most material anomaly. No standalone uncertainty notes (hedging stays inline).
+- **Detailed** — every material fact and anomaly, with explicit
+  `uncertainty` segments appended last for any low-confidence claim.
+
+Material content is always read before confidence/uncertainty notes, so Narrator
+speaks "what's true → what's worth a look → how sure we are" in that order.
+
+### Tone & confidence rules (enforced by unit tests)
+
+- **Never alarmist.** Budgets are "fully used", not "overspent"; an anomaly is
+  "a little above its usual range", never a "spike", "alert", or "warning".
+  `NarrationText.BANNED_TERMS` is asserted absent from every generated string in
+  CI (`AnomalyNarratorTest`, `TemplateNarrationGeneratorTest`).
+- **Always hedged when unsure.** Low-confidence signals are framed as an "Early
+  signal …" with a gentle heads-up; medium confidence is "Based on recent
+  activity …"; high confidence states the fact plainly.
+
+### Accessibility test notes — Narrator
+
+Run these on a Windows machine with Narrator (`Win + Ctrl + Enter`):
+
+1. Open the dashboard. Confirm the headline is announced first as a level-2
+   heading with a `status` role, then each segment is read in document order.
+2. Toggle **concise ↔ detailed** narration mode. Confirm concise reads only the
+   headline plus a few segments, and detailed adds the goal and the trailing
+   uncertainty note(s).
+3. Confirm low-confidence content is spoken as "Early signal …" and is never
+   stated as a hard fact.
+4. Confirm no segment is announced assertively / interrupts — routine state is
+   `polite` only. Listen for any alarmist wording; there should be none.
+5. Cross-check with **Accessibility Insights for Windows** that each segment's
+   UI Automation `Name` matches its `a11y.screenReaderText`.
+
+### Accessibility test notes — keyboard-only
+
+1. Unplug / ignore the mouse. `Tab` / `Shift+Tab` through the dashboard; focus
+   order must follow reading order (headline → segments).
+2. Each narration segment must be reachable and focus-visible.
+3. The concise/detailed toggle must be operable with `Space` / `Enter` and must
+   announce its new state on change.
+4. No keyboard trap: you can always `Tab` back out of the narration region.
+
+### Needs Human Action
+
+The generator and its accessibility metadata are fully unit-tested, but the
+**live Narrator / UI Automation announcement can only be validated on Windows
+hardware** with the screen reader running — that cannot run in headless CI. A
+reviewer with a Windows device should walk the Narrator and keyboard-only
+checklists above and confirm real spoken output before this is considered
+shipped. The validation point is marked in code with `// TODO(human)` in
+`narration/DashboardNarrator.kt`.
+
+---
+
 ## Related issues
 
 - [#1899](../../../../issues/1899) — this PR: Windows build & release automation
