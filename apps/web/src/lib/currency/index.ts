@@ -22,3 +22,27 @@ export {
 } from './rate-cache';
 
 export { ExchangeRateService } from './exchange-rate-service';
+
+export type { FxEntryMetadata } from './minor-units';
+export type { FxCurrencyOption } from './entry-currencies';
+export type { ConvertToBaseInput } from './fx-convert';
+
+export {
+  ENTRY_CURRENCY_CODES,
+  getEntryCurrencyOptions,
+  getCurrencyLabel,
+  getCurrencySymbol,
+} from './entry-currencies';
+
+export {
+  FX_FIELD_KEYS,
+  normalizeCurrencyCode,
+  getCurrencyDecimals,
+  minorUnitFactor,
+  parseAmountToMinorUnits,
+  minorUnitsToMajorNumber,
+  readFxMetadata,
+  isFxFieldKey,
+} from './minor-units';
+
+export { roundToInteger, convertToBaseMinorUnits, buildFxCustomFields } from './fx-convert';
