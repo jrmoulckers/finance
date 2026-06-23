@@ -22,23 +22,24 @@ This file is loaded for ALL Copilot interactions in the repository. It contains:
 
 **Directory:** `.github/instructions/`
 
-These files use YAML frontmatter with `applyTo` globs to scope instructions to specific directories or file types. They are loaded only when Copilot is working on matching files. As of 2026-06 there are **13** instruction files (the `.github/instructions/` directory is the source of truth):
+These files use YAML frontmatter with `applyTo` globs to scope instructions to specific directories or file types. They are loaded only when Copilot is working on matching files. As of 2026-06 there are **14** instruction files (the `.github/instructions/` directory is the source of truth):
 
-| File                          | Applies To              | Purpose                                          |
-| ----------------------------- | ----------------------- | ------------------------------------------------ |
-| `apps.instructions.md`        | `apps/**`               | Platform-specific app development rules          |
-| `packages.instructions.md`    | `packages/**`           | Shared library development rules                 |
-| `services.instructions.md`    | `services/**`           | Backend service development rules                |
-| `web.instructions.md`         | `apps/web/**`           | Web PWA-specific rules                           |
-| `docs.instructions.md`        | `docs/**`               | Documentation standards                          |
-| `tools.instructions.md`       | `tools/**`              | Development tools and scripts                    |
-| `build-logic.instructions.md` | `build-logic/**`        | Gradle convention plugins and build logic        |
-| `tokens.instructions.md`      | `config/tokens/**`      | Design-token authoring rules                     |
-| `export.instructions.md`      | export-control surfaces | Export-control and licensing guardrails          |
-| `agents.instructions.md`      | `.github/agents/**`     | How to author/maintain agent definitions         |
-| `skills.instructions.md`      | `.github/skills/**`     | How to author/maintain skill bundles             |
-| `workflow.instructions.md`    | workflow surfaces       | Pre-push, merge-conflict, and PR-lifecycle rules |
-| `workflows.instructions.md`   | `.github/workflows/**`  | CI/CD workflow authoring rules                   |
+| File                          | Applies To                   | Purpose                                            |
+| ----------------------------- | ---------------------------- | -------------------------------------------------- |
+| `apps.instructions.md`        | `apps/**`                    | Platform-specific app development rules            |
+| `packages.instructions.md`    | `packages/**`                | Shared library development rules                   |
+| `services.instructions.md`    | `services/**`                | Backend service development rules                  |
+| `web.instructions.md`         | `apps/web/**`                | Web PWA-specific rules                             |
+| `docs.instructions.md`        | `docs/**`                    | Documentation standards                            |
+| `tools.instructions.md`       | `tools/**`                   | Development tools and scripts                      |
+| `build-logic.instructions.md` | `build-logic/**`             | Gradle convention plugins and build logic          |
+| `config.instructions.md`      | `config/**`                  | Cross-cutting config (feature flags, detekt, etc.) |
+| `tokens.instructions.md`      | `packages/design-tokens/**`  | Design-token authoring rules                       |
+| `export.instructions.md`      | `packages/core/**/export/**` | GDPR data-export module guardrails                 |
+| `agents.instructions.md`      | `.github/agents/**`          | How to author/maintain agent definitions           |
+| `skills.instructions.md`      | `.github/skills/**`          | How to author/maintain skill bundles               |
+| `workflow.instructions.md`    | `**` (all files)             | Pre-push, merge-conflict, and PR-lifecycle rules   |
+| `workflows.instructions.md`   | `.github/workflows/**`       | CI/CD workflow authoring rules                     |
 
 ## How Instructions Are Loaded
 

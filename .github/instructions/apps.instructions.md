@@ -22,13 +22,15 @@ You are working in the `apps/` directory, which contains platform-specific appli
 - Use platform-native navigation patterns
 - Support offline operation — the app must function without network connectivity
 - Handle sync conflicts gracefully with clear user-facing resolution options
-- Local data is stored in SQLite + SQLCipher (encrypted at rest) on all platforms
+- Local data is stored in SQLite and encrypted at rest — SQLCipher on iOS, Android, and Windows; the web PWA uses SQLite-WASM (OPFS) and relies on browser origin-storage isolation
 - Design tokens (DTCG JSON) drive visual consistency — consume generated platform-native constants (Swift, XML resources, CSS variables, XAML resources)
 
 ## Platform Dependency Injection & Logging
 
 - **Android** — Uses **Koin 4.0.1** for dependency injection. Define Koin modules in the app's DI layer; use `koin-compose-viewmodel` for ViewModel injection in Jetpack Compose screens. Use **Timber** (5.0.1) for logging — plant a `DebugTree` in debug builds only.
 - **iOS** — Uses native **`os.Logger`** for structured logging (preferred over `NSLog` or `print`). DI is handled via Swift-native patterns (e.g., environment objects, manual injection via protocols).
+- **Windows** — Mirrors Android's architecture: **Koin** for dependency injection with the ViewModel + Repository pattern on Compose Desktop (JVM). Use a JVM-appropriate logging abstraction; never log sensitive financial data.
+- **Web** — No DI framework; dependencies flow through React context providers (e.g., `DatabaseProvider`) and custom hooks. See `web.instructions.md` for the data-access hook pattern.
 
 ## Environment Configurations
 

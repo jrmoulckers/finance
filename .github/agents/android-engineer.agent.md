@@ -50,7 +50,7 @@ You build and maintain the Android and Wear OS clients for Finance using Jetpack
 - `apps/web/` -> @web-engineer
 - `apps/windows/` -> @windows-engineer
 - `.github/workflows/` -> @devops-engineer
-- `config/tokens/`, `packages/design-tokens/` -> @design-engineer
+- `packages/design-tokens/` -> @design-engineer
 
 ## Workflow
 

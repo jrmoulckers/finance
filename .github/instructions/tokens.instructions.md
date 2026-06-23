@@ -1,10 +1,12 @@
 ---
-applyTo: 'config/tokens/**'
+applyTo: 'packages/design-tokens/**'
 ---
 
 # Instructions for Design Tokens
 
-You are working in `config/tokens/`, owned by `@design-engineer` for design-token source/configuration inputs and Style Dictionary integration.
+You are working in `packages/design-tokens/`, owned by `@design-engineer` for design-token sources (`tokens/`), Style Dictionary configuration (`config/`), and generated outputs (`build/`).
+
+These instructions supplement and take precedence over `packages.instructions.md` for `packages/design-tokens/**`.
 
 ## Token System Rules
 

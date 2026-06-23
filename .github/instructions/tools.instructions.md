@@ -24,6 +24,8 @@ You are working in the `tools/` directory, which contains development tooling, s
 - **`npm run format`** — Runs Prettier across the monorepo (respects `.prettierignore`).
 - **`npm run ci:check`** — Full CI validation: format:check + lint + type-check.
 - **`npm run ci:check:quick`** — Lightweight CI check for docs-only or non-code changes (skips type-check).
+- **`npm run ai:manifest`** (`tools/ai-manifest.js`) — Inventories the AI config surface (agents, skills, instructions, MCP servers) and emits a JSON/Markdown manifest from the filesystem.
+- **`npm run ai:manifest:check`** (`tools/check-ai-manifest.js`) — Drift check comparing hardcoded counts in `docs/ai/README.md`, `docs/INDEX.md`, and `AGENTS.md` against filesystem reality. Warn-only by default; `STRICT=1` makes it blocking.
 
 ## CI & Release Workflows
 
