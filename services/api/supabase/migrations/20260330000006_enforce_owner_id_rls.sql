@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
--- Migration: 20260330000005_enforce_owner_id_rls
+-- Migration: 20260330000006_enforce_owner_id_rls
 -- Description: Enforce owner_id attribution on INSERT and UPDATE policies
 -- Issues: #1316
 --
