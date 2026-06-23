@@ -20,6 +20,13 @@ import com.finance.android.data.repository.impl.InMemoryCategoryRepository
 import com.finance.android.data.repository.impl.InMemoryGoalRepository
 import com.finance.android.data.repository.impl.InMemoryTransactionRepository
 import com.finance.android.logging.TimberCrashReporter
+import com.finance.android.receipt.AndroidReceiptTextRecognizer
+import com.finance.android.receipt.NoOpReceiptImageRetentionStore
+import com.finance.android.receipt.ReceiptImageCapture
+import com.finance.android.receipt.ReceiptImageRetentionStore
+import com.finance.android.receipt.ReceiptTextRecognizer
+import com.finance.android.receipt.UnavailableReceiptImageCapture
+import com.finance.android.ui.receipt.ReceiptScanViewModel
 import com.finance.android.notifications.NotificationContentBuilder
 import com.finance.android.notifications.NotificationDispatcher
 import com.finance.android.notifications.NotificationPreferences
@@ -162,6 +169,20 @@ val appModule = module {
     /** Notification scheduler — syncs WorkManager jobs with user preferences. */
     single { NotificationScheduler(androidContext(), get()) }
 
+    // ── Receipt scanning (#2388) ────────────────────────────────────
+    // On-device only: ML Kit OCR + a deterministic parser. CameraX capture is
+    // pending device wiring, so the default capture reports unavailable and the
+    // UI degrades to manual entry. Image retention is opt-in (no-op by default).
+
+    /** Camera capture — TODO(human): swap to a CameraX-backed implementation. */
+    single<ReceiptImageCapture> { UnavailableReceiptImageCapture() }
+
+    /** On-device OCR via ML Kit Text Recognition v2 — no image upload. */
+    single<ReceiptTextRecognizer> { AndroidReceiptTextRecognizer() }
+
+    /** Opt-in-only image retention — discards by default for privacy. */
+    single<ReceiptImageRetentionStore> { NoOpReceiptImageRetentionStore() }
+
     // ── ViewModels ──────────────────────────────────────────────────
 
     viewModelOf(::DashboardViewModel)
@@ -185,6 +206,9 @@ val appModule = module {
     viewModelOf(::ExpertiseTierViewModel)
     viewModelOf(::LearningPathViewModel)
     viewModelOf(::NlpTransactionViewModel)
+
+    /** On-device receipt scanning to transaction draft (#2388). */
+    viewModelOf(::ReceiptScanViewModel)
 
     // ── Tips ─────────────────────────────────────────────────────────
     viewModelOf(::TipsViewModel)

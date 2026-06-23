@@ -45,6 +45,7 @@ import com.finance.android.ui.education.FinancialGlossaryScreen
 import com.finance.android.ui.expertise.ExpertiseTierScreen
 import com.finance.android.ui.learning.LearningPathsScreen
 import com.finance.android.ui.nlp.NlpTransactionScreen
+import com.finance.android.ui.receipt.ReceiptScanScreen
 import com.finance.android.ui.insights.InsightsScreen
 import com.finance.android.ui.screens.bills.BillRemindersScreen
 import com.finance.android.ui.screens.household.HouseholdScreen
@@ -149,6 +150,9 @@ sealed class Route(val route: String) {
     /** Learning paths — structured financial education modules (#382). */
     data object LearningPaths : Route("learning-paths")
     data object NlpTransaction : Route("nlp-transaction")
+
+    /** On-device receipt scanning screen (#2388). */
+    data object ReceiptScan : Route("receipt-scan")
 
     /** Family/Household Plan screen (#1114). */
     data object Household : Route("household")
@@ -363,6 +367,23 @@ fun FinanceNavHost(
                 onBack = { navController.popBackStack() },
                 onTransactionConfirmed = {
                     // Navigate to create screen with parsed data
+                    navController.navigate(Route.TransactionCreate.createRoute()) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+
+        composable(Route.ReceiptScan.route) {
+            ReceiptScanScreen(
+                onBack = { navController.popBackStack() },
+                onDraftConfirmed = {
+                    // Seed transaction creation from the reviewed receipt draft (#2388).
+                    navController.navigate(Route.TransactionCreate.createRoute()) {
+                        launchSingleTop = true
+                    }
+                },
+                onManualEntry = {
                     navController.navigate(Route.TransactionCreate.createRoute()) {
                         launchSingleTop = true
                     }
