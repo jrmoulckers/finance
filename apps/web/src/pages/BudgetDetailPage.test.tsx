@@ -28,7 +28,7 @@ vi.mock('../components/forms', () => ({
   BudgetForm: () => null,
 }));
 
-vi.mock('../components/charts', () => ({
+vi.mock('../components/charts/BudgetDonutChart', () => ({
   BudgetDonutChart: ({ title }: { title: string }) => <div>{title}</div>,
 }));
 
@@ -301,12 +301,14 @@ describe('BudgetDetailPage', () => {
     expect(progressBar).toHaveAttribute('aria-valuemax', '100');
   });
 
-  it('shows the weekly meal budget target and food breakdown for food budgets', () => {
+  it('shows the weekly meal budget target and food breakdown for food budgets', async () => {
     renderWithRoute();
 
     expect(screen.getByText('Weekly Meal Budget')).toBeInTheDocument();
     expect(screen.getByText('$138.57')).toBeInTheDocument();
-    expect(screen.getByText('Subcategory spending')).toBeInTheDocument();
+    // The donut chart is lazy-loaded (recharts is code-split); wait for the
+    // Suspense boundary to resolve before asserting on its title (#2983).
+    expect(await screen.findByText('Subcategory spending')).toBeInTheDocument();
     expect(screen.getByText(/Groceries/i)).toBeInTheDocument();
     expect(screen.getByText(/Dining Out/i)).toBeInTheDocument();
   });
