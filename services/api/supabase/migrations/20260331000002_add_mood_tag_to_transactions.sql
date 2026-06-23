@@ -5,7 +5,7 @@
 -- Issues: #1874
 
 ALTER TABLE transactions
-    ADD COLUMN mood_tag TEXT NULL;
+    ADD COLUMN IF NOT EXISTS mood_tag TEXT NULL;
 
 COMMENT ON COLUMN transactions.mood_tag IS
     'Optional single emoji mood tag for user-owned transaction entry; excluded from household and visibility sharing surfaces.';
