@@ -9,6 +9,41 @@ For backend-only Supabase work (functions, migrations, Studio), see
 [`local-supabase.md`](./local-supabase.md). This guide is the web-to-edge
 end-to-end path on top of it.
 
+## Quick start (one command)
+
+On a machine with **Docker Desktop running** and dependencies installed
+(`npm install`), a single command does everything — preflight checks, start the
+Supabase edge stack, wire the web app to it, and launch the web app:
+
+```bash
+npm run dev:full
+```
+
+That runs [`tools/dev-full.mjs`](../../tools/dev-full.mjs), which:
+
+1. runs the **preflight** ([`npm run doctor`](../../tools/doctor.mjs)) — Docker
+   daemon, free disk, ports `54321`/`5173`, Supabase CLI;
+2. starts Supabase (`supabase start`, retrying on Docker Hub rate-limit stalls;
+   skipped if already running);
+3. writes `apps/web/.env.local` from `supabase status` (takes the app out of
+   demo mode);
+4. launches the web app at <http://localhost:5173> and opens your browser.
+
+Useful flags: `--reset` (reset DB first), `--e2e` (run the live e2e suite
+instead of the dev server), `--no-open`, `--skip-doctor`. Run
+`node tools/dev-full.mjs --help` for the full list.
+
+> **VS Code one-click / F5** — Open the repo in VS Code and either run the
+> **"Dev: Full Stack (web on edge)"** task (Ctrl+Shift+P → _Tasks: Run Task_) or
+> press **F5** ("Web on edge (Microsoft Edge)"). Both wrap `npm run dev:full`
+> and, for F5, attach the debugger to Edge at `:5173`.
+
+> **Not sure the machine is ready?** Run `npm run doctor` first — it reports
+> exactly what's missing (and how to fix it) without starting anything.
+
+The rest of this guide explains what `dev:full` does step by step, for when you
+want to run the pieces manually or troubleshoot.
+
 ## What "full-stack local (edge)" means here
 
 The genuinely server-wired path in the web app today is **authentication**:
@@ -40,7 +75,15 @@ A global `supabase` CLI is optional — the setup script and the `supabase:*` np
 scripts fall back to `npx --yes supabase`, which downloads and caches the CLI on
 first use.
 
-## 1. Install dependencies
+> Run `npm run doctor` to confirm Docker, disk, and ports are ready before you
+> start — it pinpoints anything missing without bringing the stack up.
+
+## Manual setup (step by step)
+
+The steps below are exactly what `npm run dev:full` automates. Run them by hand
+when you want finer control or are troubleshooting.
+
+### 1. Install dependencies
 
 From the repo root:
 
@@ -48,7 +91,10 @@ From the repo root:
 npm install
 ```
 
-## 2. Bring up the stack and wire the web app
+### 2. Bring up the stack and wire the web app
+
+> `npm run dev:full` does this step (and the next two) for you. The manual
+> equivalent below is useful for backend-only work or troubleshooting.
 
 This single command starts Supabase, applies all migrations + seed data, and
 writes `apps/web/.env.local` pointing the web app at the local stack:
@@ -76,7 +122,7 @@ Setting `VITE_SUPABASE_URL` to the local stack is what takes the app **out of
 demo mode** — Vite auto-loads `.env.local`, so `npm run dev` and the live e2e
 "just work" against the real edge backend.
 
-## 3. Run the web app
+### 3. Run the web app
 
 ```bash
 npm run dev -w apps/web
@@ -90,7 +136,7 @@ authenticated app.
 Inspect the round-trip in Studio (<http://localhost:54323>) or check the mailbox
 at Inbucket (<http://localhost:54324>).
 
-## 4. Run the live e2e (edge)
+### 4. Run the live e2e (edge)
 
 A real-backend Playwright smoke test drives signup through edge auth and asserts
 the app leaves the auth wall:
@@ -137,14 +183,15 @@ npm --prefix services/api run supabase:status
 
 ## Troubleshooting
 
-| Symptom                                   | Fix                                                                                                     |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| "Demo Mode" banner on `/signup`           | `apps/web/.env.local` is missing or `VITE_SUPABASE_URL` is unset/placeholder — rerun the setup command. |
-| Live e2e fails: "App is in demo mode"     | Same cause — ensure the stack is up and `.env.local` exists, then rerun.                                |
-| `npm run test:e2e:live` can't launch Edge | Use `npm run test:e2e:live:chromium -w apps/web`, or install Microsoft Edge.                            |
-| Port 5173 or 5174 already in use          | Stop the other process, or set `LIVE_E2E_PORT` for the live suite.                                      |
-| `supabase start` is slow / stalls         | First-run image pulls can be slow; ensure Docker is running and retry. See `local-supabase.md`.         |
-| Signup returns a non-2xx response         | Confirm the stack is healthy (`supabase:status`) and migrations applied (`supabase:reset`).             |
+| Symptom                                   | Fix                                                                                                                                                                                     |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Not sure the machine is ready             | Run `npm run doctor` — it checks Docker, free disk, and ports `54321`/`5173` and prints how to fix gaps.                                                                                |
+| "Demo Mode" banner on `/signup`           | `apps/web/.env.local` is missing or `VITE_SUPABASE_URL` is unset/placeholder — rerun the setup command.                                                                                 |
+| Live e2e fails: "App is in demo mode"     | Same cause — ensure the stack is up and `.env.local` exists, then rerun.                                                                                                                |
+| `npm run test:e2e:live` can't launch Edge | Use `npm run test:e2e:live:chromium -w apps/web`, or install Microsoft Edge.                                                                                                            |
+| Port 5173 or 5174 already in use          | Stop the other process, or set `LIVE_E2E_PORT` for the live suite.                                                                                                                      |
+| `supabase start` is slow / stalls         | First-run image pulls can be slow; ensure Docker is running and retry. `docker login` raises Docker Hub pull limits. `npm run dev:full` retries automatically. See `local-supabase.md`. |
+| Signup returns a non-2xx response         | Confirm the stack is healthy (`supabase:status`) and migrations applied (`supabase:reset`).                                                                                             |
 
 ## Known limitations
 
