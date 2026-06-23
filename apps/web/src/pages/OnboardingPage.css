@@ -670,6 +670,30 @@
   background: var(--semantic-background-primary);
 }
 
+.onboarding__newcomer-groups {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.onboarding__fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.onboarding__legend {
+  padding: 0;
+  margin: 0 0 var(--spacing-2);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-lg-font-size, 1.125rem);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.onboarding__newcomer-explainers {
+  margin-top: var(--spacing-4);
+}
+
 .onboarding__glossary {
   position: fixed;
   inset: 0;

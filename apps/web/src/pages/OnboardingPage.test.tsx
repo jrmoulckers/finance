@@ -494,4 +494,64 @@ describe('OnboardingPage', () => {
     expect(completeOnboarding).toHaveBeenCalled();
     expect(screen.getByText(/student starter budget is already in place/i)).toBeInTheDocument();
   });
+
+  it('surfaces an optional, private newcomer tax-ID and income-type step', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+
+    expect(
+      screen.getByRole('heading', { name: /new to working or taxes in the us\?/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/we never ask for any real id numbers/i)).toBeInTheDocument();
+
+    expect(screen.getByRole('radiogroup', { name: /tax id status/i })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: /income type/i })).toBeInTheDocument();
+
+    // "Prefer not to say" is honored as a clearly skippable choice in both groups.
+    expect(screen.getAllByRole('radio', { name: /prefer not to say/i })).toHaveLength(2);
+
+    // Safe generic basics are visible before any selection is made.
+    expect(screen.getByRole('button', { name: /what is a w-2/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /what is a 1099/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /what is tax withholding/i })).toBeInTheDocument();
+  });
+
+  it('tailors explainers for ITIN holders and opens the ITIN explainer dialog', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+
+    fireEvent.click(screen.getByRole('radio', { name: /i use an itin/i }));
+    fireEvent.click(screen.getByRole('radio', { name: /1099 or contract/i }));
+
+    expect(localStorage.getItem('finance-onboarding-tax-id-status')).toBe('itin');
+    expect(localStorage.getItem('finance-onboarding-income-type')).toBe('1099');
+    expect(screen.getByText(/budget, save, and plan with an itin/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /using an itin/i }));
+
+    expect(
+      screen.getByRole('dialog', { name: /individual taxpayer identification number/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /why it matters/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close explainer/i }));
+
+    expect(
+      screen.queryByRole('dialog', { name: /individual taxpayer identification number/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('surfaces the 401(k) explainer for W-2 workers with an SSN', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+
+    fireEvent.click(screen.getByRole('radio', { name: /i have an ssn/i }));
+    fireEvent.click(screen.getByRole('radio', { name: /w-2 job/i }));
+
+    expect(screen.getByRole('button', { name: /what is a 401\(k\)/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /using an itin/i })).not.toBeInTheDocument();
+  });
 });

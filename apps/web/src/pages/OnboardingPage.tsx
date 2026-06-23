@@ -10,7 +10,7 @@
  * References: issue #1621, #2148
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { AppIcon } from '../components/icons';
@@ -29,6 +29,17 @@ import { applyTheme, THEME_STORAGE_KEY } from '../hooks/useTheme';
 import { setSimplifiedModePreference } from '../lib/accessibility-preferences';
 import { buildOnboardingProgressAnnouncement } from '../lib/a11y/onboarding-progress';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
+import {
+  newcomerExplainers,
+  type NewcomerExplainerKey,
+} from '../lib/education/newcomer-explainers';
+import {
+  getNewcomerGuidance,
+  isIncomeType,
+  isTaxIdStatus,
+  type IncomeType,
+  type TaxIdStatus,
+} from '../lib/onboarding/newcomer-tax-profile';
 import type { FeatureAvailability } from '../lib/local-only-mode';
 
 import './OnboardingPage.css';
@@ -100,6 +111,10 @@ const GOALS_STORAGE_KEY = 'finance-onboarding-goals';
 const COACH_MARKS_STORAGE_KEY = 'finance-onboarding-coach-marks-dismissed';
 const CHECKLIST_HIDDEN_STORAGE_KEY = 'finance-onboarding-checklist-hidden';
 const ANALYTICS_EVENTS_STORAGE_KEY = 'finance-onboarding-analytics-events';
+
+const ONBOARDING_STORAGE_PREFIX = 'finance-onboarding';
+const TAX_ID_STATUS_STORAGE_KEY = `${ONBOARDING_STORAGE_PREFIX}-tax-id-status`;
+const INCOME_TYPE_STORAGE_KEY = `${ONBOARDING_STORAGE_PREFIX}-income-type`;
 
 const LIFE_STAGE_OPTIONS: Array<{
   id: LifeStageId;
@@ -230,6 +245,94 @@ const GLOSSARY_TERMS: Record<GlossaryTermId, { title: string; body: string }> = 
     body: 'Budget variance is the difference between what you planned and what happened. It is a learning signal, not a grade.',
   },
 };
+
+type NewcomerChoiceOption<TValue extends string> = {
+  value: TValue;
+  label: string;
+  description: string;
+};
+
+const TAX_ID_STATUS_OPTIONS: Array<NewcomerChoiceOption<TaxIdStatus>> = [
+  {
+    value: 'ssn',
+    label: 'I have an SSN',
+    description: 'A Social Security Number.',
+  },
+  {
+    value: 'itin',
+    label: 'I use an ITIN',
+    description: 'An ITIN is used to file taxes when you do not have an SSN.',
+  },
+  {
+    value: 'none',
+    label: 'I do not have one yet',
+    description: 'You can still budget and save today.',
+  },
+  {
+    value: 'unspecified',
+    label: 'Prefer not to say',
+    description: 'Skip this — nothing here is required.',
+  },
+];
+
+const INCOME_TYPE_OPTIONS: Array<NewcomerChoiceOption<IncomeType>> = [
+  {
+    value: 'w2',
+    label: 'W-2 job',
+    description: 'Taxes come out of each paycheck for you.',
+  },
+  {
+    value: '1099',
+    label: '1099 or contract',
+    description: 'You handle your own taxes.',
+  },
+  {
+    value: 'hourly',
+    label: 'Hourly',
+    description: 'Hours can change week to week.',
+  },
+  {
+    value: 'seasonal',
+    label: 'Seasonal',
+    description: 'Busy and slow times of year.',
+  },
+  {
+    value: 'mixed',
+    label: 'A mix',
+    description: 'More than one of these.',
+  },
+  {
+    value: 'unspecified',
+    label: 'Prefer not to say',
+    description: 'Skip this — it stays optional.',
+  },
+];
+
+function readTaxIdStatus(): TaxIdStatus {
+  try {
+    const raw = localStorage.getItem(TAX_ID_STATUS_STORAGE_KEY);
+    return raw && isTaxIdStatus(raw) ? raw : 'unspecified';
+  } catch {
+    return 'unspecified';
+  }
+}
+
+function readIncomeType(): IncomeType {
+  try {
+    const raw = localStorage.getItem(INCOME_TYPE_STORAGE_KEY);
+    return raw && isIncomeType(raw) ? raw : 'unspecified';
+  } catch {
+    return 'unspecified';
+  }
+}
+
+function persistOnboardingCategory(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage can be unavailable (private mode); selections simply do not persist.
+  }
+}
 
 function firstOfCurrentMonthISO(): string {
   const date = new Date();
@@ -412,8 +515,21 @@ const OnboardingPage: React.FC = () => {
     targetDate: '',
   });
   const [goalReviewVisible, setGoalReviewVisible] = useState(false);
+  const [taxIdStatus, setTaxIdStatus] = useState<TaxIdStatus>(() => readTaxIdStatus());
+  const [incomeType, setIncomeType] = useState<IncomeType>(() => readIncomeType());
+  const [activeExplainer, setActiveExplainer] = useState<NewcomerExplainerKey | null>(null);
+  const explainerCloseRef = useRef<HTMLButtonElement>(null);
+  const explainerTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const analyticsEnabled = consent.categories.analytics;
+  const newcomerGuidance = useMemo(
+    () => getNewcomerGuidance({ taxIdStatus, incomeType }),
+    [taxIdStatus, incomeType],
+  );
+  const newcomerExplainerList = useMemo(
+    () => newcomerGuidance.explainers.map((key) => newcomerExplainers[key]),
+    [newcomerGuidance.explainers],
+  );
   const selectedLifeStageOptions = useMemo(
     () => LIFE_STAGE_OPTIONS.filter((option) => selectedLifeStages.includes(option.id)),
     [selectedLifeStages],
@@ -692,6 +808,71 @@ const OnboardingPage: React.FC = () => {
   const handleGoToDashboard = useCallback(() => {
     navigate('/dashboard');
   }, [navigate]);
+
+  const handleTaxIdStatusChange = useCallback(
+    (value: TaxIdStatus) => {
+      setTaxIdStatus(value);
+      persistOnboardingCategory(TAX_ID_STATUS_STORAGE_KEY, value);
+      // Only the chosen category is recorded — never a real ID number.
+      trackOnboardingEvent(analyticsEnabled, 'onboarding_tax_id_status_updated', {
+        taxIdStatus: value,
+      });
+    },
+    [analyticsEnabled],
+  );
+
+  const handleIncomeTypeChange = useCallback(
+    (value: IncomeType) => {
+      setIncomeType(value);
+      persistOnboardingCategory(INCOME_TYPE_STORAGE_KEY, value);
+      trackOnboardingEvent(analyticsEnabled, 'onboarding_income_type_updated', {
+        incomeType: value,
+      });
+    },
+    [analyticsEnabled],
+  );
+
+  const handleClearNewcomerProfile = useCallback(() => {
+    setTaxIdStatus('unspecified');
+    setIncomeType('unspecified');
+    persistOnboardingCategory(TAX_ID_STATUS_STORAGE_KEY, 'unspecified');
+    persistOnboardingCategory(INCOME_TYPE_STORAGE_KEY, 'unspecified');
+    trackOnboardingEvent(analyticsEnabled, 'onboarding_newcomer_profile_cleared');
+  }, [analyticsEnabled]);
+
+  const handleOpenExplainer = useCallback(
+    (key: NewcomerExplainerKey, event: React.MouseEvent<HTMLButtonElement>) => {
+      explainerTriggerRef.current = event.currentTarget;
+      setActiveExplainer(key);
+    },
+    [],
+  );
+
+  const handleCloseExplainer = useCallback(() => {
+    setActiveExplainer(null);
+    const trigger = explainerTriggerRef.current;
+    explainerTriggerRef.current = null;
+    trigger?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (activeExplainer) {
+      explainerCloseRef.current?.focus();
+    }
+  }, [activeExplainer]);
+
+  useEffect(() => {
+    if (!activeExplainer) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseExplainer();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeExplainer, handleCloseExplainer]);
 
   if (step === 'comfort') {
     return (
@@ -1076,6 +1257,128 @@ const OnboardingPage: React.FC = () => {
             </div>
           </section>
 
+          <section
+            className="onboarding__template-card"
+            aria-label="New to working or taxes in the US"
+          >
+            <div className="onboarding__template-header">
+              <div>
+                <h2 className="onboarding__path-title">New to working or taxes in the US?</h2>
+                <p className="onboarding__path-description">
+                  Optional and private. We never ask for any real ID numbers — only the category you
+                  pick. These choices stay in this browser, are never shared, and simply tailor the
+                  budgeting tips and explainers below.
+                </p>
+              </div>
+              <span className="onboarding__template-badge">Optional &amp; private</span>
+            </div>
+
+            <div className="onboarding__newcomer-groups">
+              <fieldset className="onboarding__fieldset">
+                <legend className="onboarding__legend">Tax ID status</legend>
+                <p className="onboarding__path-description" id="onboarding-tax-id-help">
+                  An ITIN is the number some people use to file taxes when they do not have an SSN.
+                  We never collect the number itself.
+                </p>
+                <div
+                  className="onboarding__choice-grid"
+                  role="radiogroup"
+                  aria-label="Tax ID status"
+                  aria-describedby="onboarding-tax-id-help"
+                >
+                  {TAX_ID_STATUS_OPTIONS.map((option) => (
+                    <label key={option.value} className="onboarding__choice-card">
+                      <input
+                        type="radio"
+                        name="onboarding-tax-id-status"
+                        value={option.value}
+                        checked={taxIdStatus === option.value}
+                        onChange={() => handleTaxIdStatusChange(option.value)}
+                      />
+                      <span>
+                        <strong>{option.label}</strong>
+                        <small>{option.description}</small>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="onboarding__fieldset">
+                <legend className="onboarding__legend">How you earn money</legend>
+                <p className="onboarding__path-description" id="onboarding-income-help">
+                  Pick the closest match. This helps tailor budgeting tips for steady, hourly,
+                  seasonal, or contract income.
+                </p>
+                <div
+                  className="onboarding__choice-grid"
+                  role="radiogroup"
+                  aria-label="Income type"
+                  aria-describedby="onboarding-income-help"
+                >
+                  {INCOME_TYPE_OPTIONS.map((option) => (
+                    <label key={option.value} className="onboarding__choice-card">
+                      <input
+                        type="radio"
+                        name="onboarding-income-type"
+                        value={option.value}
+                        checked={incomeType === option.value}
+                        onChange={() => handleIncomeTypeChange(option.value)}
+                      />
+                      <span>
+                        <strong>{option.label}</strong>
+                        <small>{option.description}</small>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+
+            <div className="onboarding__tailored-guidance" aria-live="polite">
+              <h3 className="onboarding__section-title">Budgeting tips for you</h3>
+              <p className="onboarding__path-description">{newcomerGuidance.summary}</p>
+              <ul className="onboarding__template-list" role="list">
+                {newcomerGuidance.tips.map((tip) => (
+                  <li key={tip} className="onboarding__template-item" role="listitem">
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="onboarding__newcomer-explainers">
+              <h3 className="onboarding__section-title">Learn the basics</h3>
+              <p className="onboarding__path-description">
+                Open any topic for a short, plain-language explanation. These are educational and
+                not tax advice.
+              </p>
+              <div className="onboarding__inline-actions">
+                {newcomerExplainerList.map((explainer) => (
+                  <button
+                    key={explainer.id}
+                    type="button"
+                    className="onboarding__link-button"
+                    onClick={(event) => handleOpenExplainer(explainer.id, event)}
+                    aria-haspopup="dialog"
+                  >
+                    {explainer.linkLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="onboarding__inline-actions">
+              <button
+                type="button"
+                className="onboarding__link-button"
+                onClick={handleClearNewcomerProfile}
+              >
+                Clear these choices
+              </button>
+            </div>
+          </section>
+
           {templateError && (
             <div className="onboarding__template-error" role="alert">
               {templateError}
@@ -1301,6 +1604,36 @@ const OnboardingPage: React.FC = () => {
                   type="button"
                   className="onboarding__path-btn onboarding__path-btn--primary"
                   onClick={() => setActiveGlossaryTerm(null)}
+                >
+                  Close explainer
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeExplainer && (
+            <div
+              className="onboarding__glossary"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="onboarding-newcomer-explainer-title"
+            >
+              <div className="onboarding__glossary-card">
+                <h2 id="onboarding-newcomer-explainer-title" className="onboarding__path-title">
+                  {newcomerExplainers[activeExplainer].title}
+                </h2>
+                <p className="onboarding__path-description">
+                  {newcomerExplainers[activeExplainer].body}
+                </p>
+                <h3 className="onboarding__section-title">Why it matters</h3>
+                <p className="onboarding__path-description">
+                  {newcomerExplainers[activeExplainer].whyItMatters}
+                </p>
+                <button
+                  ref={explainerCloseRef}
+                  type="button"
+                  className="onboarding__path-btn onboarding__path-btn--primary"
+                  onClick={handleCloseExplainer}
                 >
                   Close explainer
                 </button>
