@@ -34,6 +34,7 @@ import com.finance.android.ui.screens.BudgetEditScreen
 import com.finance.android.ui.screens.DashboardScreen
 import com.finance.android.ui.screens.GoalCreateScreen
 import com.finance.android.ui.screens.GoalEditScreen
+import com.finance.android.ui.screens.GoalPlannerScreen
 import com.finance.android.ui.screens.PlanningScreen
 import com.finance.android.ui.screens.ReceiptOcrScreen
 import com.finance.android.ui.screens.SettingsScreen
@@ -91,6 +92,9 @@ sealed class Route(val route: String) {
 
     /** Goal creation screen. */
     data object GoalCreate : Route("goal/create")
+
+    /** Teen savings goal planner — "save \$X/week, buy by [date]" (#2207). */
+    data object GoalPlanner : Route("goal/planner")
 
     /**
      * OAuth callback deep link destination.
@@ -530,6 +534,13 @@ fun FinanceNavHost(
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
             )
+        }
+
+        composable(Route.GoalPlanner.route) {
+            // TODO(human): add an in-app entry point (e.g. a "See your plan"
+            //  action on a goal card) to navigate here, and decide whether the
+            //  planner becomes a top-level tab. Requires UX/product sign-off.
+            GoalPlannerScreen()
         }
 
         // ── Edit screens ────────────────────────────────────────────
