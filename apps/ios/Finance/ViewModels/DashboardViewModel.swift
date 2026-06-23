@@ -13,6 +13,7 @@
 //
 // References: #414, #289
 
+import FinanceShared
 import Observation
 import os
 import SwiftUI
@@ -68,6 +69,92 @@ final class DashboardViewModel {
     /// Spending grouped by category for the current month, via Swift Export aggregator.
     private(set) var spendingByCategory: [String: Int64] = [:]
 
+    // MARK: - Savings Rate (#2162)
+    //
+    // FIRE savers optimise around savings rate, so it is a first-class
+    // dashboard metric. These values are computed from `savingsRateTransactions`
+    // — a broader, multi-month window — because a month-over-month trend needs
+    // more history than the five most-recent transactions shown elsewhere.
+
+    /// Broader transaction window used only for savings-rate math. The recent
+    /// transactions list is intentionally capped at five for the activity feed.
+    private var savingsRateTransactions: [TransactionItem] = []
+
+    /// Savings rate for the current (possibly partial) month.
+    private(set) var currentSavingsRate: SavingsRateResult = .undefined
+
+    /// Savings rate for the previous full month, used for the trend indicator.
+    private(set) var previousMonthSavingsRate: SavingsRateResult = .undefined
+
+    /// Income-weighted trailing three-month savings rate for context.
+    private(set) var trailingThreeMonthSavingsRate: SavingsRateResult = .undefined
+
+    /// Direction of the savings rate this month versus last month.
+    private(set) var savingsRateTrend: SavingsRateTrend = .notEnoughData
+
+    // MARK: - Savings Rate Presentation
+
+    /// Current savings rate as a compact string (e.g. "65%"), or an em dash
+    /// when there is no income to compute a rate.
+    var savingsRateDisplay: String {
+        guard currentSavingsRate.isDefined else { return "—" }
+        return String(format: "%.0f%%", currentSavingsRate.percent)
+    }
+
+    /// SF Symbol describing the trend direction. Always paired with text so the
+    /// indicator never relies on colour alone (accessibility requirement).
+    var savingsRateTrendSymbol: String {
+        switch savingsRateTrend {
+        case .improving: return "arrow.up.right"
+        case .declining: return "arrow.down.right"
+        case .flat: return "arrow.right"
+        case .notEnoughData: return "minus"
+        }
+    }
+
+    /// Short, localized description of the month-over-month trend.
+    var savingsRateTrendText: String {
+        switch savingsRateTrend {
+        case let .improving(delta):
+            return String(localized: "Up \(Self.formatPoints(delta)) pts vs last month")
+        case let .declining(delta):
+            return String(localized: "Down \(Self.formatPoints(delta)) pts vs last month")
+        case .flat:
+            return String(localized: "Steady vs last month")
+        case .notEnoughData:
+            return String(localized: "Not enough history yet")
+        }
+    }
+
+    /// Combined VoiceOver description of the savings-rate card.
+    var savingsRateAccessibilityLabel: String {
+        guard currentSavingsRate.isDefined else {
+            return String(localized: "Savings rate unavailable. Add income to see your rate.")
+        }
+        let rate = String(format: "%.0f", currentSavingsRate.percent)
+        switch savingsRateTrend {
+        case let .improving(delta):
+            return String(localized: "Savings rate \(rate) percent, up \(Self.formatPoints(delta)) points versus last month")
+        case let .declining(delta):
+            return String(localized: "Savings rate \(rate) percent, down \(Self.formatPoints(delta)) points versus last month")
+        case .flat:
+            return String(localized: "Savings rate \(rate) percent, steady versus last month")
+        case .notEnoughData:
+            return String(localized: "Savings rate \(rate) percent. Not enough history for a trend yet")
+        }
+    }
+
+    private static func formatPoints(_ value: Double) -> String {
+        String(format: "%.1f", value)
+    }
+
+    /// Computes the savings rate over a date range from the broad window.
+    private func savingsRateResult(from start: Date, to end: Date) -> SavingsRateResult {
+        let income = aggregator.totalIncome(transactions: savingsRateTransactions, from: start, to: end)
+        let spending = aggregator.totalSpending(transactions: savingsRateTransactions, from: start, to: end)
+        return SavingsRateCalculator.savingsRate(incomeMinorUnits: income, spendingMinorUnits: spending)
+    }
+
     /// Recomputes cached aggregation values from the current `recentTransactions`.
     ///
     /// Called once after data loads instead of on every view body evaluation.
@@ -101,6 +188,30 @@ final class DashboardViewModel {
             from: startOfMonth,
             to: endOfMonth
         )
+
+        recomputeSavingsRate(calendar: cal, startOfMonth: startOfMonth, endOfMonth: endOfMonth)
+    }
+
+    /// Recomputes the current/previous/trailing savings rates and the trend
+    /// indicator from the broad transaction window. Pure aside from the
+    /// injected aggregator, so behaviour is deterministic for a fixed dataset.
+    private func recomputeSavingsRate(calendar cal: Calendar, startOfMonth: Date, endOfMonth: Date) {
+        let startOfPrevMonth = cal.date(byAdding: .month, value: -1, to: startOfMonth) ?? startOfMonth
+        let endOfPrevMonth = cal.date(byAdding: DateComponents(day: -1), to: startOfMonth) ?? startOfMonth
+        let startOfTwoMonthsAgo = cal.date(byAdding: .month, value: -2, to: startOfMonth) ?? startOfMonth
+        let endOfTwoMonthsAgo = cal.date(byAdding: DateComponents(day: -1), to: startOfPrevMonth) ?? startOfPrevMonth
+
+        currentSavingsRate = savingsRateResult(from: startOfMonth, to: endOfMonth)
+        previousMonthSavingsRate = savingsRateResult(from: startOfPrevMonth, to: endOfPrevMonth)
+        let twoMonthsAgo = savingsRateResult(from: startOfTwoMonthsAgo, to: endOfTwoMonthsAgo)
+
+        trailingThreeMonthSavingsRate = SavingsRateCalculator.trailingAverage(
+            of: [currentSavingsRate, previousMonthSavingsRate, twoMonthsAgo]
+        )
+        savingsRateTrend = SavingsRateCalculator.trend(
+            current: currentSavingsRate,
+            previous: previousMonthSavingsRate
+        )
     }
 
     /// Formats a monetary amount using the Swift Export formatter module.
@@ -132,11 +243,13 @@ final class DashboardViewModel {
 
         do {
             // Instrumented with os_signpost for Instruments profiling (#903)
-            (accounts, recentTransactions, budgets) = try await PerformanceMonitor.shared.measure("Dashboard Load") {
+            (accounts, recentTransactions, budgets, savingsRateTransactions) = try await PerformanceMonitor.shared.measure("Dashboard Load") {
                 async let a = self.accountRepository.getAccounts()
                 async let t = self.transactionRepository.getRecentTransactions(limit: 5)
                 async let b = self.budgetRepository.getBudgets()
-                return try await (a, t, b)
+                // Broad window powers the savings-rate trend (#2162).
+                async let all = self.transactionRepository.getTransactions()
+                return try await (a, t, b, all)
             }
 
             recomputeAggregations()

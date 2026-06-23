@@ -37,6 +37,7 @@ struct DashboardView: View {
                                 OfflineBanner()
                             }
                             netWorthCard
+                            savingsRateCard
                             spendingSummaryCard
                             budgetHealthSection
                             quickAccessSection
@@ -95,6 +96,76 @@ struct DashboardView: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("net_worth_card")
         .accessibilityLabel(String(localized: "Net Worth"))
+    }
+
+    // MARK: - Savings Rate (#2162)
+
+    private var savingsRateCard: some View {
+        NavigationLink {
+            AnalyticsView(
+                transactionRepository: RepositoryProvider.shared.transactions,
+                accountRepository: RepositoryProvider.shared.accounts
+            )
+        } label: {
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "leaf.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.green)
+                            .accessibilityHidden(true)
+                        Text(String(localized: "Savings Rate"))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(viewModel.savingsRateDisplay)
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(.primary)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    savingsRateTrendRow
+                    Text(String(localized: "This month"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("savings_rate_card")
+        .accessibilityLabel(viewModel.savingsRateAccessibilityLabel)
+        .accessibilityHint(String(localized: "Opens savings rate history"))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// Trend row. The direction is conveyed by both an SF Symbol *and* text —
+    /// never colour alone — to satisfy non-colour-only accessibility.
+    private var savingsRateTrendRow: some View {
+        HStack(spacing: 4) {
+            Image(systemName: viewModel.savingsRateTrendSymbol)
+                .font(.caption.weight(.bold))
+                .accessibilityHidden(true)
+            Text(viewModel.savingsRateTrendText)
+                .font(.caption)
+        }
+        .foregroundStyle(savingsRateTrendColor)
+        .accessibilityHidden(true)
+    }
+
+    private var savingsRateTrendColor: Color {
+        switch viewModel.savingsRateTrend {
+        case .improving: return .green
+        case .declining: return .orange
+        case .flat, .notEnoughData: return .secondary
+        }
     }
 
     // MARK: - Spending Summary
