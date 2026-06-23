@@ -9,6 +9,9 @@ import com.finance.desktop.voice.VoiceCommandManager
 import com.finance.desktop.voice.VoiceCommandParser
 import com.finance.desktop.tray.FinanceSystemTray
 import com.finance.desktop.tray.QuickAddTransactionManager
+import com.finance.desktop.ai.BalancePredictor
+import com.finance.desktop.ai.HeuristicBalancePredictor
+import com.finance.desktop.widgets.AiFinanceWidgetProvider
 import com.finance.desktop.widgets.WidgetContentRenderer
 import com.finance.desktop.widgets.WidgetDataProvider
 import com.finance.desktop.widgets.WidgetRegistrationManager
@@ -39,6 +42,12 @@ val platformModule = module {
     single { WidgetDataProvider(get(), get(), get(), get()) }
     single { WidgetContentRenderer() }
     single { WidgetRegistrationManager(get(), get()) }
+
+    // ── AI-powered finance widgets (on-device prediction) ──
+    // Heuristic predictor ships today; swap to OnnxBalancePredictor once the
+    // Windows ML / ONNX native session is wired (see OnnxBalancePredictor TODO).
+    single<BalancePredictor> { HeuristicBalancePredictor() }
+    single { AiFinanceWidgetProvider(get(), get(), get()) }
 
     // ── Voice / Cortana integration ──
     single { VoiceCommandManager.create() }
