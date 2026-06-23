@@ -13,6 +13,8 @@ Finance is a multi-platform, native-first financial tracking application for per
 - `apps/` — Platform-specific applications (iOS, Android, Web, Windows)
 - `packages/` — Shared libraries (core logic, data models, sync engine)
 - `services/` — Backend services (consolidated API)
+- `config/` — Cross-cutting configuration (e.g., detekt, feature flags)
+- `build-logic/` — Gradle convention plugins and shared build configuration
 - `docs/` — Project documentation (AI workflow, architecture, design)
 - `tools/` — Development tooling and scripts
 - `.github/` — GitHub configuration, Copilot agents, skills, instructions
@@ -67,7 +69,7 @@ All work in this repository follows an issue-first, feature-branch + worktree wo
 2. **Always use a git worktree** for agent work — never commit directly in the main worktree or on `main`.
    - Naming: `wt-[agent-type]-[type/description-issue#]` (e.g., `wt-android-feat-transactions-443`)
    - **Scan first**: run `git worktree list` — if a worktree for this issue already exists, resume it
-   - Main worktree (`finance-human/`) is reserved for human work
+   - Main worktree (`finance/`) is reserved for human work
 3. **Commit messages must include issue references** in the format `type(scope): description (#N)`.
 4. **Push automatically** — `git push origin <branch>` is auto-approved.
 5. **Open a PR automatically** with `gh pr create --base main` — **always target `main`** (never a long-lived feature branch) and include `Closes #N` for resolved issues. See the **Branch & Merge Policy** in `docs/ai/fleet-operations.md` (the canonical rules).
@@ -171,7 +173,7 @@ The following operations MUST NEVER be performed by AI agents without explicit h
 > ⚠️ **MANDATORY — READ THIS CAREFULLY**
 >
 > Pushing feature branches and creating PRs is **NOT optional** and does **NOT require human approval**.
-> Agents **MUST** complete the full workflow: commit → `npm run ci:check` → push → create PR → monitor CI checks.
+> Agents **MUST** complete the full workflow: commit → pre-push lint & format check (`npm run format:check && npx eslint . --max-warnings 0`) → push → create PR → monitor CI checks.
 > **Stopping at a local commit and asking for permission to push is a workflow violation.**
 > A task is **INCOMPLETE** if it ends with only a local commit. Push and PR creation are auto-approved.
 
@@ -392,7 +394,7 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 2. **Shared config files** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) must be edited by only one agent per fleet run — assign ownership to `@kmp-engineer` (Gradle) or `@devops-engineer` (Node/CI).
 3. **Agents announce intent** — when starting a fleet task, the orchestrator should note which files each agent will touch in the issue or PR description.
 4. **Schema changes are serialized** — only `@backend-engineer` writes Supabase migrations; only `@kmp-engineer` writes SQLDelight `.sq` files. Both must be in sync (a single coordinated sprint task, not two independent ones).
-5. **After parallel work, the last agent to commit runs** `npm run ci:check` **before pushing** to catch any integration issues.
+5. **After parallel work, the last agent to commit runs** the pre-push checklist (`npm run format:check && npx eslint . --max-warnings 0`) **before pushing** to catch any integration issues.
 
 ### Fleet CI Monitoring & Self-Healing
 
@@ -407,7 +409,7 @@ After opening a PR, each fleet agent monitors its own CI status until all checks
 3. If CI fails: read logs with `gh run view <run-id> --log-failed`
 4. If merge conflicts (carry same P0 weight as red CI): trigger the **Merge Conflict Protocol** in `.github/instructions/workflow.instructions.md` — rebase, auto-resolve lockfiles/generated files, escalate semantic conflicts with `## Needs Human Action`
 5. Fix locally in the worktree
-6. Run `npm run ci:check` to confirm the fix before pushing
+6. Run `npm run format:check && npx eslint . --max-warnings 0` to confirm the fix before pushing
 7. Commit and push the fix (use `--force-with-lease` if the fix was a rebase) — restart the cycle
 8. **Once the quality gate is green, merge the PR** with `gh pr merge <number> --squash` (auto-approved). In a fleet, the orchestrator merges sub-agent PRs in the recommended merge order to avoid cross-PR conflict churn.
 
