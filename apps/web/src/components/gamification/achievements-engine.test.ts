@@ -23,6 +23,7 @@ function makeInput(overrides: Partial<GamificationInput> = {}): GamificationInpu
     accountCount: 0,
     totalSaved: 0,
     categoriesUsed: 0,
+    loggedToday: false,
     ...overrides,
   };
 }
@@ -159,6 +160,32 @@ describe('achievements-engine', () => {
       expect(state.streaks[0].current).toBe(5);
       expect(state.streaks[0].longest).toBe(12);
       expect(state.streaks[0].type).toBe('daily_logging');
+    });
+
+    it('attaches a count near-win metric to locked habit badges', () => {
+      const state = computeGamification(makeInput({ transactionCount: 8 }));
+      const badge = state.achievements.find((a) => a.id === 'transaction-10');
+      expect(badge?.status).toBe('locked');
+      expect(badge?.nearWin).toEqual({ remaining: 2, unit: 'check-in', format: 'count' });
+    });
+
+    it('attaches a currency near-win metric to locked saving badges', () => {
+      const state = computeGamification(makeInput({ totalSaved: 90000 }));
+      const badge = state.achievements.find((a) => a.id === 'saved-1000');
+      expect(badge?.status).toBe('locked');
+      expect(badge?.nearWin).toEqual({ remaining: 10000, unit: 'saved', format: 'currency' });
+    });
+
+    it('omits near-win metric once a badge is unlocked', () => {
+      const state = computeGamification(makeInput({ transactionCount: 10 }));
+      const badge = state.achievements.find((a) => a.id === 'transaction-10');
+      expect(badge?.status).toBe('unlocked');
+      expect(badge?.nearWin).toBeUndefined();
+    });
+
+    it('passes loggedToday through to the state', () => {
+      expect(computeGamification(makeInput({ loggedToday: true })).loggedToday).toBe(true);
+      expect(computeGamification(makeInput({ loggedToday: false })).loggedToday).toBe(false);
     });
   });
 

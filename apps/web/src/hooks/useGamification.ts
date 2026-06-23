@@ -70,6 +70,9 @@ export function useGamification(): UseGamificationResult {
       const txDates = new Set(transactions.map((tx) => tx.date));
       const sortedDates = Array.from(txDates).sort().reverse();
 
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const loggedToday = txDates.has(todayStr);
+
       let dailyLoggingStreak = 0;
       let longestDailyLoggingStreak = 0;
 
@@ -159,6 +162,7 @@ export function useGamification(): UseGamificationResult {
         accountCount: accounts.length,
         totalSaved,
         categoriesUsed,
+        loggedToday,
       };
 
       setState(computeGamification(input));

@@ -306,8 +306,15 @@
 @media (prefers-reduced-motion: reduce) {
   .achievement-badge,
   .achievement-badge__progress-fill,
-  .milestone-card__fill {
+  .milestone-card__fill,
+  .nearwin-card__fill {
     transition: none;
+  }
+
+  /* Static congratulatory state — no falling confetti when motion is reduced */
+  .achievement-celebration__confetti-piece {
+    animation: none;
+    opacity: 0;
   }
 }
 
@@ -316,7 +323,9 @@
   .achievement-badge,
   .streak-card,
   .milestone-card,
-  .achievements-level-card {
+  .achievements-level-card,
+  .nearwin-card,
+  .achievement-celebration {
     border-width: 2px;
   }
 }
@@ -328,6 +337,10 @@
   }
 
   .achievements-streaks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .achievements-nearwin-grid {
     grid-template-columns: 1fr;
   }
 
@@ -351,4 +364,210 @@
   margin-top: var(--spacing-3);
   display: flex;
   justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------------------
+ * Near-win cues — motivating loop toward the next win (Refs #2211)
+ * ------------------------------------------------------------------------- */
+
+.achievements-nearwin-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.nearwin-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-left: 4px solid var(--semantic-interactive-default);
+  border-radius: var(--border-radius-md);
+}
+
+.nearwin-card--streak {
+  border-left-color: var(--semantic-status-warning);
+}
+
+.nearwin-card--goal {
+  border-left-color: var(--semantic-status-positive);
+}
+
+.nearwin-card--badge {
+  border-left-color: var(--semantic-interactive-default);
+}
+
+.nearwin-card__icon {
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--semantic-interactive-default);
+}
+
+.nearwin-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.nearwin-card__message {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-2) 0;
+}
+
+.nearwin-card__track {
+  height: 6px;
+  background: var(--semantic-background-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.nearwin-card__fill {
+  height: 100%;
+  background: var(--semantic-interactive-default);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ---------------------------------------------------------------------------
+ * Celebration banner — tasteful unlock moment (Refs #2211)
+ * Text + emoji carry the message; confetti is purely decorative and is gated
+ * behind prefers-reduced-motion (no motion -> static congratulatory state).
+ * ------------------------------------------------------------------------- */
+
+.achievement-celebration {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-5);
+  margin-bottom: var(--spacing-6);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-status-positive);
+  border-left-width: 4px;
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.achievement-celebration__icon {
+  flex-shrink: 0;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--semantic-status-positive);
+}
+
+.achievement-celebration__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.achievement-celebration__eyebrow {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-status-positive);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.achievement-celebration__name {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: var(--spacing-1) 0;
+}
+
+.achievement-celebration__desc {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0;
+}
+
+.achievement-celebration__dismiss {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm, 6px);
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+}
+
+.achievement-celebration__dismiss:hover {
+  color: var(--semantic-text-primary);
+}
+
+.achievement-celebration__dismiss:focus-visible {
+  outline: 2px solid var(--semantic-interactive-default);
+  outline-offset: 2px;
+}
+
+.achievement-celebration__confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.achievement-celebration__confetti-piece {
+  position: absolute;
+  top: -10%;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: achievement-confetti-fall 1600ms ease-in forwards;
+}
+
+.achievement-celebration__confetti-piece--0 {
+  left: 12%;
+  background: var(--semantic-status-positive);
+  animation-delay: 0ms;
+}
+
+.achievement-celebration__confetti-piece--1 {
+  left: 38%;
+  background: var(--semantic-interactive-default);
+  animation-delay: 120ms;
+}
+
+.achievement-celebration__confetti-piece--2 {
+  left: 62%;
+  background: var(--semantic-status-warning);
+  animation-delay: 240ms;
+}
+
+.achievement-celebration__confetti-piece--3 {
+  left: 86%;
+  background: var(--semantic-status-info);
+  animation-delay: 360ms;
+}
+
+.achievement-celebration__confetti-piece:nth-child(n + 5) {
+  top: -22%;
+}
+
+.achievement-celebration__confetti-piece:nth-child(n + 9) {
+  top: -34%;
+}
+
+@keyframes achievement-confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(420%) rotate(320deg);
+    opacity: 0;
+  }
 }
