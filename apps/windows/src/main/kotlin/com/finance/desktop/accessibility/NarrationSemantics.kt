@@ -16,9 +16,15 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import com.finance.desktop.narration.A11yMetadata
+import com.finance.desktop.narration.AriaLive
+import com.finance.desktop.narration.Narration
+import com.finance.desktop.narration.screenReaderText
 
 // =============================================================================
 // Narration → Compose Desktop semantics / UI Automation mapping
@@ -61,7 +67,6 @@ class NarrationAnnouncer {
 /** Remembers a [NarrationAnnouncer] across recompositions. */
 @Composable
 fun rememberNarrationAnnouncer(): NarrationAnnouncer = remember { NarrationAnnouncer() }
-
 /**
  * Marks the composable as a polite live region whose announced value is [text].
  *
@@ -92,3 +97,123 @@ fun Modifier.narrationReplayShortcut(onReplay: () -> Unit): Modifier =
             false
         }
     }
+
+// =============================================================================
+// Narration A11yMetadata → Compose semantics descriptor (pure, unit-tested)
+// =============================================================================
+//
+// The narration contract attaches an [A11yMetadata] to every segment carrying
+// the spoken text, live-region politeness, role, and heading level. To satisfy
+// #2707 ("labels, descriptions, headings, and live regions") the merged chart
+// summary node must honour ALL of these — not just the content description.
+//
+// The mapping is split into a *pure* descriptor (this section) and a thin
+// [Modifier] applier (below). Keeping the projection pure lets CI assert the
+// label/heading/live-region mapping in plain JVM tests with no Compose UI
+// harness or Narrator device.
+//
+// TODO(human): the pure descriptor mapping is unit-tested here, but the
+// end-to-end Narrator/UIA behaviour (does Narrator actually speak the heading
+// and re-announce the polite live region on Alt+R?) still needs a manual pass
+// on a Windows build. Follow `docs/windows/chart-narration-validation-checklist.md`
+// and record the result there — see "## Needs Human Action".
+
+/** Live-region politeness projected onto Compose's [LiveRegionMode]. */
+enum class NarrationLiveRegion {
+    /** Not a live region — Narrator announces only on focus/navigation. */
+    OFF,
+
+    /** Narrator waits for a pause before announcing (routine state). */
+    POLITE,
+
+    /** Narrator interrupts to announce (reserved for critical results). */
+    ASSERTIVE,
+}
+
+/**
+ * The UI-Automation-facing projection of a narration's accessibility metadata:
+ * the spoken [contentDescription], whether the node is a heading (and at what
+ * [headingLevel]), and its [liveRegion] politeness.
+ *
+ * This is the deterministic seam #2707 asks for — everything Narrator/UIA needs
+ * to surface a narration, computed without touching Compose so it is testable.
+ */
+data class NarrationSemanticsDescriptor(
+    val contentDescription: String,
+    val headingLevel: Int?,
+    val liveRegion: NarrationLiveRegion,
+) {
+    /** True when this node should be exposed as a UIA heading. */
+    val isHeading: Boolean get() = headingLevel != null
+}
+
+/** Maps an [AriaLive] value from the contract onto the Compose-facing enum. */
+fun AriaLive.toNarrationLiveRegion(): NarrationLiveRegion =
+    when (this) {
+        AriaLive.OFF -> NarrationLiveRegion.OFF
+        AriaLive.POLITE -> NarrationLiveRegion.POLITE
+        AriaLive.ASSERTIVE -> NarrationLiveRegion.ASSERTIVE
+    }
+
+/** Projects a single segment's [A11yMetadata] to a [NarrationSemanticsDescriptor]. */
+fun A11yMetadata.toSemanticsDescriptor(): NarrationSemanticsDescriptor =
+    NarrationSemanticsDescriptor(
+        contentDescription = screenReaderText,
+        headingLevel = headingLevel,
+        liveRegion = ariaLive.toNarrationLiveRegion(),
+    )
+
+/**
+ * Projects a whole [Narration] to a single merged [NarrationSemanticsDescriptor].
+ *
+ * The spoken label is the headline + every segment ([screenReaderText]) so a
+ * Narrator user hears the complete chart summary from one node, while the
+ * heading level and live-region politeness are taken from the headline (the
+ * node's primary role in the reading order).
+ */
+fun Narration.toSemanticsDescriptor(): NarrationSemanticsDescriptor =
+    NarrationSemanticsDescriptor(
+        contentDescription = screenReaderText(),
+        headingLevel = headline.a11y.headingLevel,
+        liveRegion = headline.a11y.ariaLive.toNarrationLiveRegion(),
+    )
+
+// =============================================================================
+// Descriptor → Compose Modifier appliers
+// =============================================================================
+
+/**
+ * Applies [descriptor] to this node's semantics, mapping the narration's label,
+ * heading, and live-region politeness onto Compose/UI Automation.
+ *
+ * @param mergeDescendants when true (default for chart canvases) the node's
+ *   children are cleared so Narrator reads the single merged summary instead of
+ *   the inaccessible Canvas draw commands.
+ */
+fun Modifier.narrationSemantics(
+    descriptor: NarrationSemanticsDescriptor,
+    mergeDescendants: Boolean = true,
+): Modifier {
+    val apply: androidx.compose.ui.semantics.SemanticsPropertyReceiver.() -> Unit = {
+        contentDescription = descriptor.contentDescription
+        if (descriptor.isHeading) heading()
+        when (descriptor.liveRegion) {
+            NarrationLiveRegion.OFF -> Unit
+            NarrationLiveRegion.POLITE -> liveRegion = LiveRegionMode.Polite
+            NarrationLiveRegion.ASSERTIVE -> liveRegion = LiveRegionMode.Assertive
+        }
+    }
+    return if (mergeDescendants) {
+        this.clearAndSetSemantics(apply)
+    } else {
+        this.semantics(properties = apply)
+    }
+}
+
+/**
+ * Exposes [narration] as a single merged chart-summary node: the spoken
+ * summary label, a heading (per the narration's heading level), and the
+ * narration's live-region politeness — the full #2707 mapping in one call.
+ */
+fun Modifier.narrationSemantics(narration: Narration): Modifier =
+    narrationSemantics(narration.toSemanticsDescriptor())
