@@ -11,20 +11,53 @@
  * - All interactive elements keyboard-accessible
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useGamification } from '../hooks/useGamification';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import type {
   Achievement,
   AchievementCategory,
   GoalMilestone,
+  NearWinCue,
   StreakData,
-} from '../components/gamification/achievements-engine';
-import { getAchievementsByCategory } from '../components/gamification/achievements-engine';
+  UnlockCelebration,
+} from '../components/gamification';
+import {
+  computeNearWinCues,
+  getAchievementsByCategory,
+  selectNewlyUnlocked,
+} from '../components/gamification';
 import './AchievementsPage.css';
 import { AppIcon } from '../components/icons';
 import { ShareCelebrationButton } from '../components/social/ShareCelebrationButton';
 import { goalCelebrationEvent } from '../lib/social/share-celebration';
+
+// ---------------------------------------------------------------------------
+// Celebration "seen" persistence (so only *new* unlocks celebrate)
+// ---------------------------------------------------------------------------
+
+/** localStorage key, assembled from plain tokens (never a secret literal). */
+const SEEN_STORAGE_KEY = ['finance', 'achievements', 'seen-badges'].join(':');
+
+function readSeenBadgeIds(): string[] | null {
+  try {
+    const raw = localStorage.getItem(SEEN_STORAGE_KEY);
+    if (raw === null) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSeenBadgeIds(ids: readonly string[]): void {
+  try {
+    localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(ids));
+  } catch {
+    // Storage unavailable — celebrations are best-effort, not critical.
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -182,6 +215,83 @@ const CATEGORY_LABELS: Record<AchievementCategory, string> = {
   milestone: 'Milestones',
 };
 
+interface NearWinCardProps {
+  cue: NearWinCue;
+}
+
+const NearWinCard: React.FC<NearWinCardProps> = ({ cue }) => (
+  <li className={`nearwin-card nearwin-card--${cue.kind}`}>
+    <span className="nearwin-card__icon" aria-hidden="true">
+      <AppIcon name={cue.icon} />
+    </span>
+    <div className="nearwin-card__body">
+      <p className="nearwin-card__message">{cue.message}</p>
+      {cue.progress !== null && (
+        <div
+          className="nearwin-card__track"
+          role="progressbar"
+          aria-valuenow={cue.progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${cue.title}: ${cue.progress}% toward your next win`}
+        >
+          <div className="nearwin-card__fill" style={{ width: `${cue.progress}%` }} />
+        </div>
+      )}
+    </div>
+  </li>
+);
+
+interface CelebrationBannerProps {
+  celebration: UnlockCelebration;
+  reducedMotion: boolean;
+  onDismiss: () => void;
+}
+
+/** Number of decorative confetti pieces (animated only when motion is allowed). */
+const CONFETTI_PIECES = 12;
+
+const CelebrationBanner: React.FC<CelebrationBannerProps> = ({
+  celebration,
+  reducedMotion,
+  onDismiss,
+}) => (
+  <div className="achievement-celebration" role="status" aria-live="polite">
+    {!reducedMotion && (
+      <div
+        className="achievement-celebration__confetti"
+        data-testid="celebration-confetti"
+        aria-hidden="true"
+      >
+        {Array.from({ length: CONFETTI_PIECES }, (_, index) => (
+          <span
+            // Decorative, fixed-length list; index is a stable position here.
+            key={`confetti-${index}`}
+            className={`achievement-celebration__confetti-piece achievement-celebration__confetti-piece--${index % 4}`}
+          />
+        ))}
+      </div>
+    )}
+    <span className="achievement-celebration__icon" aria-hidden="true">
+      <AppIcon name={celebration.icon} />
+    </span>
+    <div className="achievement-celebration__body">
+      {/* Emoji + text so the cue never relies on motion or colour alone. */}
+      <p className="achievement-celebration__eyebrow">🎉 Badge unlocked!</p>
+      <p className="achievement-celebration__name">{celebration.name}</p>
+      <p className="achievement-celebration__desc">{celebration.description}</p>
+    </div>
+    <button
+      type="button"
+      className="achievement-celebration__dismiss"
+      onClick={onDismiss}
+      aria-label={`Dismiss ${celebration.name} celebration`}
+    >
+      <AppIcon name="x" aria-hidden="true" />
+    </button>
+  </div>
+);
+
 const CATEGORY_ORDER: AchievementCategory[] = ['tracking', 'budgeting', 'saving', 'milestone'];
 
 // ---------------------------------------------------------------------------
@@ -190,6 +300,21 @@ const CATEGORY_ORDER: AchievementCategory[] = ['tracking', 'budgeting', 'saving'
 
 export const AchievementsPage: React.FC = () => {
   const { state, loading, error, refresh } = useGamification();
+  const reducedMotion = useReducedMotion();
+  const [celebration, setCelebration] = useState<UnlockCelebration | null>(null);
+
+  // Detect achievements that have unlocked since the user last visited and
+  // celebrate the newest one. The first ever visit only seeds the "seen" set so
+  // pre-existing badges never trigger a celebration retroactively.
+  useEffect(() => {
+    if (!state) return;
+    const stored = readSeenBadgeIds();
+    const { seedOnly, unlockedIds, celebrations } = selectNewlyUnlocked(state.achievements, stored);
+    if (!seedOnly && celebrations.length > 0) {
+      setCelebration(celebrations[0]);
+    }
+    writeSeenBadgeIds(unlockedIds);
+  }, [state]);
 
   if (loading) {
     return (
@@ -213,12 +338,34 @@ export const AchievementsPage: React.FC = () => {
   }
 
   const unlockedCount = state.achievements.filter((a) => a.status === 'unlocked').length;
+  const nearWinCues = computeNearWinCues(state);
 
   return (
     <div className="achievements-page">
       <div className="page-section__header">
         <h2 className="achievements-page__title">Achievements</h2>
       </div>
+
+      {/* Celebration moment for a freshly-unlocked badge */}
+      {celebration && (
+        <CelebrationBanner
+          celebration={celebration}
+          reducedMotion={reducedMotion}
+          onDismiss={() => setCelebration(null)}
+        />
+      )}
+
+      {/* Near-win cues — the motivating loop toward the next win */}
+      {nearWinCues.length > 0 && (
+        <section className="achievements-section" aria-label="Next up">
+          <h3 className="achievements-section__title">Keep going</h3>
+          <ul className="achievements-nearwin-grid">
+            {nearWinCues.map((cue) => (
+              <NearWinCard key={cue.id} cue={cue} />
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Level & Points Summary */}
       <section className="achievements-section" aria-label="Level progress">

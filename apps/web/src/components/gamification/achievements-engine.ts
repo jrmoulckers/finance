@@ -21,6 +21,24 @@ export type AchievementCategory = 'budgeting' | 'saving' | 'tracking' | 'milesto
 /** Achievement unlock status. */
 export type AchievementStatus = 'locked' | 'unlocked' | 'new';
 
+/** How a near-win `remaining` value should be rendered. */
+export type NearWinFormat = 'count' | 'currency';
+
+/**
+ * Near-win metric describing how much remains before a locked badge unlocks.
+ *
+ * Only ever derived from healthy-habit signals (consistent check-ins, saving,
+ * on-time budgeting) — never from raw spending volume.
+ */
+export interface AchievementNearWin {
+  /** How many more units (count) or cents (currency) remain to unlock. */
+  readonly remaining: number;
+  /** Singular unit noun, e.g. 'check-in', 'day', 'on-time month', 'goal'. */
+  readonly unit: string;
+  /** Whether `remaining` is a plain count or a currency (cents) amount. */
+  readonly format: NearWinFormat;
+}
+
 /** A single achievement badge definition. */
 export interface Achievement {
   /** Unique identifier. */
@@ -37,6 +55,11 @@ export interface Achievement {
   readonly status: AchievementStatus;
   /** Progress toward unlocking (0-100). */
   readonly progress: number;
+  /**
+   * Near-win metric for locked badges that reward healthy habits. Absent when
+   * the badge is unlocked or has no "do N more" habit (e.g. positive net worth).
+   */
+  readonly nearWin?: AchievementNearWin;
   /** Optional date when achieved (ISO string). */
   readonly unlockedAt?: string;
 }
@@ -100,6 +123,11 @@ export interface GamificationInput {
   totalSaved: number;
   /** Number of categories used. */
   categoriesUsed: number;
+  /**
+   * True when today's streak action (logging at least one transaction) has
+   * already happened. Drives the streak-keep-alive near-win cue.
+   */
+  loggedToday: boolean;
 }
 
 /** Complete gamification state. */
@@ -111,6 +139,8 @@ export interface GamificationState {
   level: number;
   levelName: string;
   pointsToNextLevel: number;
+  /** True when today's daily streak action has already been completed. */
+  loggedToday: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -125,6 +155,16 @@ interface AchievementDefinition {
   category: AchievementCategory;
   check: (input: GamificationInput) => { unlocked: boolean; progress: number };
   points: number;
+  /**
+   * Optional healthy-habit near-win metric. Only present on badges that reward
+   * consistency, saving, or on-time behavior — never raw spending volume. When
+   * present and the badge is locked, the engine surfaces a "N more" cue.
+   */
+  nearWin?: {
+    unit: string;
+    format?: NearWinFormat;
+    metric: (input: GamificationInput) => { current: number; target: number };
+  };
 }
 
 const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
@@ -139,6 +179,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.transactionCount >= 1,
       progress: Math.min(input.transactionCount, 1) * 100,
     }),
+    nearWin: {
+      unit: 'check-in',
+      metric: (input) => ({ current: input.transactionCount, target: 1 }),
+    },
     points: 10,
   },
   {
@@ -151,6 +195,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.transactionCount >= 10,
       progress: Math.min(Math.round((input.transactionCount / 10) * 100), 100),
     }),
+    nearWin: {
+      unit: 'check-in',
+      metric: (input) => ({ current: input.transactionCount, target: 10 }),
+    },
     points: 25,
   },
   {
@@ -163,6 +211,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.transactionCount >= 100,
       progress: Math.min(Math.round((input.transactionCount / 100) * 100), 100),
     }),
+    nearWin: {
+      unit: 'check-in',
+      metric: (input) => ({ current: input.transactionCount, target: 100 }),
+    },
     points: 50,
   },
   {
@@ -175,6 +227,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.transactionCount >= 500,
       progress: Math.min(Math.round((input.transactionCount / 500) * 100), 100),
     }),
+    nearWin: {
+      unit: 'check-in',
+      metric: (input) => ({ current: input.transactionCount, target: 500 }),
+    },
     points: 100,
   },
   {
@@ -187,6 +243,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.longestDailyLoggingStreak >= 7,
       progress: Math.min(Math.round((input.longestDailyLoggingStreak / 7) * 100), 100),
     }),
+    nearWin: {
+      unit: 'day',
+      metric: (input) => ({ current: input.longestDailyLoggingStreak, target: 7 }),
+    },
     points: 30,
   },
   {
@@ -199,6 +259,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.longestDailyLoggingStreak >= 30,
       progress: Math.min(Math.round((input.longestDailyLoggingStreak / 30) * 100), 100),
     }),
+    nearWin: {
+      unit: 'day',
+      metric: (input) => ({ current: input.longestDailyLoggingStreak, target: 30 }),
+    },
     points: 75,
   },
 
@@ -213,6 +277,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.budgetCount >= 1,
       progress: Math.min(input.budgetCount, 1) * 100,
     }),
+    nearWin: {
+      unit: 'budget',
+      metric: (input) => ({ current: input.budgetCount, target: 1 }),
+    },
     points: 15,
   },
   {
@@ -225,6 +293,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.budgetAdherenceMonths >= 1,
       progress: Math.min(input.budgetAdherenceMonths, 1) * 100,
     }),
+    nearWin: {
+      unit: 'on-time month',
+      metric: (input) => ({ current: input.budgetAdherenceMonths, target: 1 }),
+    },
     points: 30,
   },
   {
@@ -237,6 +309,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.budgetAdherenceMonths >= 3,
       progress: Math.min(Math.round((input.budgetAdherenceMonths / 3) * 100), 100),
     }),
+    nearWin: {
+      unit: 'on-time month',
+      metric: (input) => ({ current: input.budgetAdherenceMonths, target: 3 }),
+    },
     points: 75,
   },
 
@@ -251,6 +327,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.goalCount >= 1,
       progress: Math.min(input.goalCount, 1) * 100,
     }),
+    nearWin: {
+      unit: 'goal',
+      metric: (input) => ({ current: input.goalCount, target: 1 }),
+    },
     points: 15,
   },
   {
@@ -263,6 +343,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.goalsCompleted >= 1,
       progress: Math.min(input.goalsCompleted, 1) * 100,
     }),
+    nearWin: {
+      unit: 'completed goal',
+      metric: (input) => ({ current: input.goalsCompleted, target: 1 }),
+    },
     points: 50,
   },
   {
@@ -275,6 +359,11 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.totalSaved >= 100000,
       progress: Math.min(Math.round((input.totalSaved / 100000) * 100), 100),
     }),
+    nearWin: {
+      unit: 'saved',
+      format: 'currency',
+      metric: (input) => ({ current: input.totalSaved, target: 100000 }),
+    },
     points: 40,
   },
   {
@@ -287,6 +376,11 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.totalSaved >= 1000000,
       progress: Math.min(Math.round((input.totalSaved / 1000000) * 100), 100),
     }),
+    nearWin: {
+      unit: 'saved',
+      format: 'currency',
+      metric: (input) => ({ current: input.totalSaved, target: 1000000 }),
+    },
     points: 100,
   },
 
@@ -301,6 +395,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.accountCount >= 1,
       progress: Math.min(input.accountCount, 1) * 100,
     }),
+    nearWin: {
+      unit: 'account',
+      metric: (input) => ({ current: input.accountCount, target: 1 }),
+    },
     points: 10,
   },
   {
@@ -313,6 +411,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.accountCount >= 3,
       progress: Math.min(Math.round((input.accountCount / 3) * 100), 100),
     }),
+    nearWin: {
+      unit: 'account',
+      metric: (input) => ({ current: input.accountCount, target: 3 }),
+    },
     points: 25,
   },
   {
@@ -325,6 +427,10 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
       unlocked: input.categoriesUsed >= 5,
       progress: Math.min(Math.round((input.categoriesUsed / 5) * 100), 100),
     }),
+    nearWin: {
+      unit: 'category',
+      metric: (input) => ({ current: input.categoriesUsed, target: 5 }),
+    },
     points: 20,
   },
   {
@@ -388,14 +494,30 @@ export function computeGamification(input: GamificationInput): GamificationState
   // Compute achievements
   const achievements: Achievement[] = ACHIEVEMENT_DEFINITIONS.map((def) => {
     const result = def.check(input);
+    const status: AchievementStatus = result.unlocked ? 'unlocked' : 'locked';
+
+    let nearWin: AchievementNearWin | undefined;
+    if (!result.unlocked && def.nearWin) {
+      const { current, target } = def.nearWin.metric(input);
+      const remaining = Math.max(0, target - current);
+      if (remaining > 0) {
+        nearWin = {
+          remaining,
+          unit: def.nearWin.unit,
+          format: def.nearWin.format ?? 'count',
+        };
+      }
+    }
+
     return {
       id: def.id,
       name: def.name,
       description: def.description,
       icon: def.icon,
       category: def.category,
-      status: result.unlocked ? 'unlocked' : 'locked',
+      status,
       progress: result.progress,
+      ...(nearWin ? { nearWin } : {}),
     };
   });
 
@@ -444,6 +566,7 @@ export function computeGamification(input: GamificationInput): GamificationState
     level: levelInfo.level,
     levelName: levelInfo.name,
     pointsToNextLevel: levelInfo.pointsToNext,
+    loggedToday: input.loggedToday,
   };
 }
 
