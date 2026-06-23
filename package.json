@@ -38,6 +38,8 @@
     "agent:issues": "node tools/agent-scripts/list-issues.js",
     "agent:pr-status": "node tools/agent-scripts/check-pr-status.js",
     "setup": "node tools/setup.js",
+    "doctor": "node tools/doctor.mjs",
+    "dev:full": "node tools/dev-full.mjs",
     "prepare": "husky",
     "changeset": "changeset",
     "version": "changeset version"

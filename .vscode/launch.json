@@ -1,0 +1,25 @@
+{
+  // Press F5 ("Web on edge (Microsoft Edge)") to bring up the full local edge
+  // stack and open the web app in Microsoft Edge with the debugger attached.
+  // The preLaunchTask starts Supabase + the Vite dev server (see tasks.json);
+  // VS Code waits for Vite to be ready, then launches Edge at :5173.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Web on edge (Microsoft Edge)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/web",
+      "preLaunchTask": "Dev: Full Stack (web on edge)"
+    },
+    {
+      "name": "Web on edge (Chromium fallback)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/web",
+      "preLaunchTask": "Dev: Full Stack (web on edge)"
+    }
+  ]
+}

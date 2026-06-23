@@ -1,0 +1,73 @@
+{
+  // One-click local full-stack web e2e (on edge). See docs/guides/full-stack-local.md.
+  // Run with: Terminal → Run Task… (Ctrl+Shift+P → "Tasks: Run Task").
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: Full Stack (web on edge)",
+      "detail": "Preflight, start Supabase, wire apps/web/.env.local, launch the web app at :5173.",
+      "type": "shell",
+      "command": "npm run dev:full -- --no-open",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^\\s*(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*(Preflight|Supabase|supabase|VITE|vite).*",
+          "endsPattern": ".*(Local:.*5173|ready in \\d+).*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "Doctor: Check local dev prereqs",
+      "detail": "Preflight health check (Docker, disk, ports, Supabase CLI).",
+      "type": "shell",
+      "command": "npm run doctor",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Dev: Full Stack — reset DB",
+      "detail": "Same as Dev: Full Stack but resets the database (migrations + seed) first.",
+      "type": "shell",
+      "command": "npm run dev:full -- --reset --no-open",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^\\s*(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*(Preflight|Supabase|supabase|reset|VITE|vite).*",
+          "endsPattern": ".*(Local:.*5173|ready in \\d+).*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    }
+  ]
+}

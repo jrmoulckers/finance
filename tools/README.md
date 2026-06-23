@@ -8,6 +8,49 @@ This directory contains cross-platform scripts and Git hooks that support the de
 
 ## Contents
 
+### `dev-full.mjs` — One-command local full-stack web e2e (on edge)
+
+The seamless developer entry point. Brings up the local Supabase **edge** stack
+(auth + Postgres/RLS via Docker), wires the web app to it (writes
+`apps/web/.env.local` from `supabase status`), and launches the web app — all in
+one command. Runs `doctor.mjs` first, retries `supabase start` on Docker Hub
+rate-limit stalls, and skips startup if the stack is already running. No global
+Supabase CLI required (uses `npx --yes supabase`).
+
+**Usage:**
+
+```bash
+npm run dev:full                 # preflight → stack → wire web → launch web → open browser
+npm run dev:full -- --reset      # also reset the DB (migrations + seed) first
+npm run dev:full -- --e2e        # bring up stack, run the live Playwright e2e suite
+npm run dev:full -- --no-open    # don't auto-open the browser
+npm run dev:full -- --skip-doctor
+node tools/dev-full.mjs --help
+```
+
+In VS Code, the **"Dev: Full Stack (web on edge)"** task and the **F5** launch
+config (`.vscode/tasks.json` / `launch.json`) wrap this for a true one-click
+start. See [`docs/guides/full-stack-local.md`](../docs/guides/full-stack-local.md).
+
+### `doctor.mjs` — Local dev preflight / health check
+
+Verifies the host is ready for the full local stack **before** you start it,
+catching the failures that otherwise stall a cold `supabase start`: Docker
+daemon reachable (not just installed), enough free disk to extract the Supabase
+images, required ports free (54321 Supabase, 5173 Vite), and a resolvable
+Supabase CLI. Exits non-zero on a hard failure so `dev-full.mjs` and CI can gate
+on it.
+
+**Usage:**
+
+```bash
+npm run doctor                         # human-readable report
+node tools/doctor.mjs --json           # machine-readable report
+node tools/doctor.mjs --quiet          # only warnings/failures
+node tools/doctor.mjs --min-disk-gb=40 # override the recommended-disk threshold
+node tools/doctor.mjs --help
+```
+
 ### `gradle.js` — Cross-platform Gradle wrapper
 
 A Node.js script that invokes `gradlew` (Unix) or `gradlew.bat` (Windows) automatically based on the current OS. It also auto-detects JDK 21 if `JAVA_HOME` is not already set.
