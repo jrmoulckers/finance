@@ -22,6 +22,8 @@
  */
 
 import {
+  Suspense,
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -41,11 +43,13 @@ import type {
   Account,
   Category,
   ContributionDesignation,
+  Currency,
   Transaction,
   TransactionSplit,
   TransactionStatus,
   TransactionType,
 } from '../../kmp/bridge';
+import { Currencies } from '../../kmp/bridge';
 import { BNPL_CUSTOM_FIELD_KEYS } from '../../lib/bnpl-liability';
 import {
   applyLocalTimestampToCustomFields,
@@ -70,6 +74,7 @@ import {
 } from '../../lib/mood-tags';
 import { buildDictationControlProps } from '../../lib/a11y/dictation-entry';
 import { validateTransactionSplits } from '../../lib/transactions/splits';
+import { getCurrencyDecimals, isFxFieldKey, readFxMetadata } from '../../lib/currency/minor-units';
 import { transactionSchema } from '../../lib/validation';
 import { DateInput } from '../common';
 import { CategoryConfirmation } from '../categorization';
@@ -78,6 +83,13 @@ import { CounterpartyInput } from '../transactions/CounterpartyInput';
 import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
+
+/**
+ * Currency picker + foreign-exchange entry fields, loaded lazily so their
+ * markup, the currency option list, and the conversion math stay out of the
+ * (saturated) shared route bundles until the transaction form is opened.
+ */
+const CurrencyFxSection = lazy(() => import('./CurrencyFxSection'));
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -195,10 +207,16 @@ function normalizeTransactionAmount(amountCents: number, type: TransactionType):
 
 function buildTransactionSnapshot(initialData?: Transaction) {
   const existingLocalTimestamp = localTimestampFromCustomFields(initialData?.customFields ?? null);
+  const fxMetadata = readFxMetadata(initialData?.customFields ?? null);
   const browserTimeZone = getBrowserTimeZone();
   return {
     transactionType: initialData?.type ?? 'EXPENSE',
-    amountCents: initialData?.amount.amount ?? 0,
+    // For a foreign-currency transaction, the form edits the ORIGINAL amount in
+    // the original currency; the stored `amount` is the converted base amount.
+    amountCents: fxMetadata?.originalAmountMinor ?? initialData?.amount.amount ?? 0,
+    transactionCurrencyCode: fxMetadata?.originalCurrency ?? '',
+    exchangeRateInput: fxMetadata?.rate ?? '',
+    rateCapturedAt: fxMetadata?.rateTimestamp ?? null,
     description: initialData?.payee ?? '',
     status: initialData?.status ?? 'PENDING',
     categoryId: initialData?.categoryId ?? '',
@@ -234,7 +252,7 @@ function buildTransactionSnapshot(initialData?: Transaction) {
     extraNotes: initialData?.extraNotes ?? '',
     customFieldEntries: initialData?.customFields
       ? Object.entries(initialData.customFields)
-          .filter(([key]) => !isLocalTimestampFieldKey(key))
+          .filter(([key]) => !isLocalTimestampFieldKey(key) && !isFxFieldKey(key))
           .map(([key, value]) => ({ key, value }))
       : [],
     localTime:
@@ -253,6 +271,7 @@ interface FormErrors {
   description?: string;
   accountId?: string;
   splits?: string;
+  rate?: string;
 }
 
 interface SplitFormRow {
@@ -329,16 +348,45 @@ export function TransactionForm({
 
   // -- state ---------------------------------------------------------------
   const [transactionType, setTransactionType] = useState<TransactionType>('EXPENSE');
+  const [accountId, setAccountId] = useState('');
+
+  // -- currency / foreign-exchange state -----------------------------------
+  // The transaction currency defaults from the selected account's currency but
+  // can be overridden per transaction (digital-nomad foreign spend). When a
+  // non-base currency is chosen we also capture the exchange rate used and the
+  // moment it was captured, so the base-currency (account) impact stays exact.
+  const [currencyCode, setCurrencyCode] = useState('');
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  const [exchangeRateInput, setExchangeRateInput] = useState('');
+  const [rateCapturedAt, setRateCapturedAt] = useState<string | null>(null);
+
+  const baseCurrency = useMemo<Currency>(() => {
+    const account = accounts.find((candidate) => candidate.id === accountId);
+    return account?.currency ?? Currencies.USD;
+  }, [accounts, accountId]);
+
+  // Effective entry currency: the user's override when set, else the account's.
+  const entryCurrencyCode = currencyTouched && currencyCode ? currencyCode : baseCurrency.code;
+  const entryCurrency = useMemo<Currency>(
+    () => ({ code: entryCurrencyCode, decimalPlaces: getCurrencyDecimals(entryCurrencyCode) }),
+    [entryCurrencyCode],
+  );
+  const isForeignEntry = entryCurrency.code !== baseCurrency.code;
+  // The amount field shows the entry-currency symbol (e.g. $, €, ฿). It is
+  // resolved inside the lazily-loaded CurrencyFxSection (which owns the `Intl`
+  // symbol path) and reported back here, keeping that code out of the shared
+  // route bundle. Defaults to "$" so a same-currency USD entry never flashes.
+  const [entrySymbol, setEntrySymbol] = useState('$');
+
   const amountInput = useAmountInput({
-    currencySymbol: '$',
-    decimalPlaces: 2,
+    currencySymbol: entrySymbol,
+    decimalPlaces: entryCurrency.decimalPlaces,
     allowNegative: transactionType !== 'INCOME',
   });
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TransactionStatus>('PENDING');
   const [categoryId, setCategoryId] = useState('');
   const [splitRows, setSplitRows] = useState<SplitFormRow[]>([]);
-  const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(todayISO);
   const [notes, setNotes] = useState('');
   const [tagsInput, setTagsInput] = useState('');
@@ -376,6 +424,9 @@ export function TransactionForm({
     () => ({
       transactionType,
       amountCents: amountInput.cents,
+      transactionCurrencyCode: currencyTouched ? currencyCode : '',
+      exchangeRateInput,
+      rateCapturedAt,
       description,
       status,
       categoryId,
@@ -408,9 +459,12 @@ export function TransactionForm({
       bnplInstallmentCount,
       categoryId,
       counterpartyName,
+      currencyCode,
+      currencyTouched,
       customFieldEntries,
       date,
       description,
+      exchangeRateInput,
       externalReferenceId,
       extraNotes,
       isBnplLiability,
@@ -423,6 +477,7 @@ export function TransactionForm({
       merchantZip,
       moodTag,
       notes,
+      rateCapturedAt,
       retirementContributionDesignation,
       retirementContributionYear,
       splitRows,
@@ -497,6 +552,10 @@ export function TransactionForm({
     setCategoryId(initialSnapshot.categoryId);
     setSplitRows(initialSnapshot.splitRows);
     setAccountId(initialSnapshot.accountId);
+    setCurrencyCode(initialSnapshot.transactionCurrencyCode);
+    setCurrencyTouched(initialSnapshot.transactionCurrencyCode !== '');
+    setExchangeRateInput(initialSnapshot.exchangeRateInput);
+    setRateCapturedAt(initialSnapshot.rateCapturedAt);
     setDate(initialSnapshot.date);
     setNotes(initialSnapshot.notes);
     setTagsInput(initialSnapshot.tagsInput);
@@ -633,6 +692,16 @@ export function TransactionForm({
     [accounts, accountId],
   );
 
+  // -- foreign-currency conversion (derived) -------------------------------
+  // The base-currency equivalent itself is computed in the lazily-loaded
+  // CurrencyFxSection (display) and recomputed at submit, keeping the
+  // conversion math out of this widely-imported bundle.
+  const parsedExchangeRate = Number.parseFloat(exchangeRateInput);
+  const hasValidExchangeRate =
+    exchangeRateInput.trim() !== '' &&
+    Number.isFinite(parsedExchangeRate) &&
+    parsedExchangeRate > 0;
+
   const updateSplitRow = useCallback((id: string, updates: Partial<SplitFormRow>) => {
     setSplitRows((rows) => rows.map((row) => (row.id === id ? { ...row, ...updates } : row)));
   }, []);
@@ -678,6 +747,10 @@ export function TransactionForm({
         fieldErrors.splits = `${splitValidation.error ?? 'Split amounts must equal the transaction total.'} ${splitRemainderText}`;
       }
 
+      if (isForeignEntry && !hasValidExchangeRate) {
+        fieldErrors.rate = 'Enter the exchange rate used.';
+      }
+
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -707,6 +780,32 @@ export function TransactionForm({
         delete customFields[BNPL_CUSTOM_FIELD_KEYS.installmentCount];
       }
 
+      // Foreign-currency entry: the user typed the ORIGINAL local amount; store
+      // the converted BASE (account) amount so balances stay correct, and keep
+      // the original amount, currency, rate, and rate timestamp in customFields.
+      // The conversion math is loaded lazily (only needed for foreign spend).
+      let baseAmountCents = normalizedAmountCents;
+      if (isForeignEntry) {
+        const { convertToBaseMinorUnits, buildFxCustomFields } =
+          await import('../../lib/currency/fx-convert');
+        baseAmountCents = convertToBaseMinorUnits({
+          originalMinorUnits: normalizedAmountCents,
+          originalDecimals: entryCurrency.decimalPlaces,
+          baseDecimals: baseCurrency.decimalPlaces,
+          rate: parsedExchangeRate,
+        });
+        Object.assign(
+          customFields,
+          buildFxCustomFields({
+            originalAmountMinor: normalizedAmountCents,
+            originalCurrency: entryCurrency.code,
+            rate: exchangeRateInput.trim(),
+            rateTimestamp: rateCapturedAt ?? new Date().toISOString(),
+            baseCurrency: baseCurrency.code,
+          }),
+        );
+      }
+
       // Preserve the captured local time + zone alongside the transaction in the
       // web store's flexible customFields bag (no schema change). Absent when the
       // user clears the field, which degrades to legacy date-only behavior.
@@ -723,8 +822,8 @@ export function TransactionForm({
         accountId,
         type: transactionType,
         status,
-        amount: { amount: normalizedAmountCents },
-        currency: selectedAccount.currency,
+        amount: { amount: baseAmountCents },
+        currency: baseCurrency,
         payee: description.trim(),
         date,
         categoryId:
@@ -780,6 +879,10 @@ export function TransactionForm({
         setCategoryId('');
         setSplitRows([]);
         setAccountId('');
+        setCurrencyCode('');
+        setCurrencyTouched(false);
+        setExchangeRateInput('');
+        setRateCapturedAt(null);
         setDate(todayISO());
         setNotes('');
         setTagsInput('');
@@ -814,6 +917,13 @@ export function TransactionForm({
       amountInput,
       description,
       accountId,
+      baseCurrency,
+      entryCurrency,
+      isForeignEntry,
+      hasValidExchangeRate,
+      parsedExchangeRate,
+      exchangeRateInput,
+      rateCapturedAt,
       selectedAccount,
       transactionType,
       status,
@@ -863,6 +973,7 @@ export function TransactionForm({
   const hasDescriptionError = Boolean(errors.description);
   const hasAccountError = Boolean(errors.accountId);
   const hasSplitError = Boolean(errors.splits);
+  const hasRateError = Boolean(errors.rate);
   const hasValidationErrors = Object.keys(errors).length > 0;
   const retirementContributionWarning =
     isRetirementContribution && selectedAccount
@@ -882,6 +993,9 @@ export function TransactionForm({
       : null,
     hasAccountError
       ? { fieldId: 'txn-account', label: 'Account', message: errors.accountId! }
+      : null,
+    hasRateError
+      ? { fieldId: 'txn-exchange-rate', label: 'Exchange rate', message: errors.rate! }
       : null,
     hasSplitError
       ? { fieldId: 'txn-splits-status', label: 'Splits', message: errors.splits! }
@@ -951,7 +1065,7 @@ export function TransactionForm({
                 data-dictation-label={dictationControls.amount.label}
                 amountInput={amountInput}
                 className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
-                placeholder="$0.00"
+                placeholder={amountInput.placeholderValue}
                 aria-invalid={hasAmountError}
                 aria-describedby={`txn-amount-help${hasAmountError ? ' txn-amount-error' : ''}`}
                 aria-required="true"
@@ -964,6 +1078,27 @@ export function TransactionForm({
                 </span>
               )}
             </div>
+
+            {/* Currency picker + foreign-exchange fields (lazily loaded) */}
+            <Suspense fallback={<div className="form-group" aria-hidden="true" />}>
+              <CurrencyFxSection
+                entryCurrencyCode={entryCurrencyCode}
+                baseCurrencyCode={baseCurrency.code}
+                onCurrencyChange={(code) => {
+                  setCurrencyCode(code);
+                  setCurrencyTouched(true);
+                }}
+                onEntrySymbolResolved={setEntrySymbol}
+                originalMinorUnits={amountInput.cents}
+                exchangeRateInput={exchangeRateInput}
+                onExchangeRateChange={(value) => {
+                  setExchangeRateInput(value);
+                  setRateCapturedAt(new Date().toISOString());
+                }}
+                rateError={errors.rate}
+                rateCapturedAt={rateCapturedAt}
+              />
+            </Suspense>
 
             {/* Payee */}
             <div className="form-group">

@@ -445,3 +445,144 @@ describe('TransactionForm', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Foreign-currency entry (issue #2202)
+// ---------------------------------------------------------------------------
+
+describe('TransactionForm — foreign-currency entry', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function typeAmount(digits: string) {
+    const amountInput = screen.getByLabelText('Amount');
+    for (const digit of digits) {
+      fireEvent.keyDown(amountInput, { key: digit });
+    }
+  }
+
+  it('defaults the currency picker from the selected account and follows account changes', async () => {
+    renderTransactionForm();
+
+    // The currency picker + FX fields load lazily once the form opens.
+    const currencyPicker = (await screen.findByLabelText('Currency')) as HTMLSelectElement;
+    // No account selected yet: defaults to the USD base.
+    expect(currencyPicker.value).toBe('USD');
+
+    // Selecting the EUR account moves the (untouched) currency to EUR.
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-2' } });
+    expect(currencyPicker.value).toBe('EUR');
+    // Same currency as the account => no exchange-rate field (no extra friction).
+    expect(screen.queryByLabelText('Exchange rate')).not.toBeInTheDocument();
+
+    // Selecting the USD account moves it back to USD.
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    expect(currencyPicker.value).toBe('USD');
+  });
+
+  it('reveals the exchange-rate field and announces the base equivalent for foreign spend', async () => {
+    renderTransactionForm();
+
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    typeAmount('100000'); // ฿1,000.00 (THB has 2 decimals)
+
+    // Override the currency to THB (picker loads lazily).
+    fireEvent.change(await screen.findByLabelText('Currency'), { target: { value: 'THB' } });
+
+    const rateField = await screen.findByLabelText('Exchange rate');
+    expect(rateField).toBeInTheDocument();
+    expect(rateField).toHaveAttribute('aria-required', 'true');
+
+    // Before a rate is entered, the live region prompts for one.
+    const equivalent = document.getElementById('txn-fx-equivalent');
+    expect(equivalent).toHaveAttribute('aria-live', 'polite');
+    expect(equivalent).toHaveTextContent(/Enter a rate to see the USD equivalent/i);
+
+    // 1 THB = 0.029 USD -> 1000.00 THB = $29.00 USD.
+    fireEvent.change(rateField, { target: { value: '0.029' } });
+    expect(equivalent).toHaveTextContent(/Base-currency equivalent/i);
+    expect(equivalent).toHaveTextContent(/29\.00/);
+    // The rate field is programmatically associated with the live equivalent.
+    expect(rateField.getAttribute('aria-describedby')).toContain('txn-fx-equivalent');
+  });
+
+  it('blocks submission with an associated error when the foreign rate is missing', async () => {
+    const { onSubmit } = renderTransactionForm();
+
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    typeAmount('100000');
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'Street food' } });
+    fireEvent.change(await screen.findByLabelText('Currency'), { target: { value: 'THB' } });
+    await screen.findByLabelText('Exchange rate');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
+    });
+
+    const rateField = screen.getByLabelText('Exchange rate');
+    expect(rateField).toHaveAttribute('aria-invalid', 'true');
+    expect(rateField.getAttribute('aria-describedby')).toContain('txn-exchange-rate-error');
+    expect(screen.getByText('Enter the exchange rate used.')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('stores the converted base amount and captures original amount, rate, and timestamp', async () => {
+    const { onSubmit } = renderTransactionForm();
+
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    typeAmount('100000'); // ฿1,000.00
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'Night market' } });
+    fireEvent.change(await screen.findByLabelText('Currency'), { target: { value: 'THB' } });
+    const rateField = await screen.findByLabelText('Exchange rate');
+    fireEvent.change(rateField, { target: { value: '0.029' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // Expense of 1000.00 THB at 0.029 -> -$29.00 stored in the USD account.
+        amount: { amount: -2900 },
+        currency: { code: 'USD', decimalPlaces: 2 },
+        payee: 'Night market',
+        customFields: expect.objectContaining({
+          fxAmtMinor: '-100000',
+          fxCcy: 'THB',
+          fxRate: '0.029',
+          fxBaseCcy: 'USD',
+          fxRateTs: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+        }),
+      }),
+    );
+  });
+
+  it('correctly converts a zero-decimal currency (JPY) into base cents', async () => {
+    const { onSubmit } = renderTransactionForm();
+
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    fireEvent.change(await screen.findByLabelText('Currency'), { target: { value: 'JPY' } });
+    // JPY has 0 decimals: typing "10000" means ¥10,000 (not ¥100.00).
+    typeAmount('10000');
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'Ramen' } });
+    // 1 JPY = 0.0067 USD -> 10000 JPY = $67.00.
+    const rateField = await screen.findByLabelText('Exchange rate');
+    fireEvent.change(rateField, { target: { value: '0.0067' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: { amount: -6700 },
+        currency: { code: 'USD', decimalPlaces: 2 },
+        customFields: expect.objectContaining({
+          fxAmtMinor: '-10000',
+          fxCcy: 'JPY',
+        }),
+      }),
+    );
+  });
+});
