@@ -240,32 +240,48 @@ export default defineConfig({
           chunkInfo.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
-        manualChunks(id) {
-          // React core (react + react-dom + react-router-dom)
-          if (
-            id.includes('node_modules/react-dom') ||
-            id.includes('node_modules/react-router-dom') ||
-            id.includes('node_modules/react/')
-          ) {
-            return 'vendor-react';
-          }
-
-          // Charting libraries (recharts + d3)
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3')) {
-            return 'vendor-charts';
-          }
-
-          // SQLite WASM (wa-sqlite + sql.js)
-          if (id.includes('node_modules/wa-sqlite') || id.includes('node_modules/sql.js')) {
-            return 'vendor-sqlite';
-          }
-
-          // Validation (zod)
-          if (id.includes('node_modules/zod')) {
-            return 'vendor-zod';
-          }
-
-          return getRouteChunkName(id) ?? undefined;
+        advancedChunks: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
+              priority: 100,
+            },
+            {
+              name: 'vendor-charts',
+              test: /node_modules[\\/](recharts|d3-[^\\/]+|d3|@reduxjs[\\/]toolkit|redux|immer|reselect|decimal\.js-light|victory-vendor)[\\/]/,
+              priority: 100,
+            },
+            {
+              name: 'vendor-sqlite',
+              test: /node_modules[\\/](wa-sqlite|sql\.js)[\\/]/,
+              priority: 100,
+            },
+            {
+              name: 'vendor-zod',
+              test: /node_modules[\\/]zod[\\/]/,
+              priority: 100,
+            },
+            {
+              name: 'vendor-ocr',
+              test: /node_modules[\\/]tesseract\.js[\\/]/,
+              priority: 100,
+            },
+            {
+              // Shared application infrastructure (SQLite-WASM data layer,
+              // repositories, auth, React contexts, i18n catalogs) is imported
+              // by nearly every route. Hoist it into one shared chunk instead
+              // of letting rolldown host it inside `route-dashboard`, which
+              // chronically inflated that chunk past the budget (#2983).
+              name: 'vendor-app',
+              test: /[\\/]src[\\/](db|auth|contexts|lib[\\/]i18n)[\\/]/,
+              priority: 50,
+            },
+            {
+              name: (id: string) => getRouteChunkName(id) ?? undefined,
+              priority: 10,
+            },
+          ],
         },
       },
     },

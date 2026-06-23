@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppIcon, type IconName } from '../components/icons';
 
-import { BudgetDonutChart } from '../components/charts';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { CurrencyDisplay } from '../components/common/CurrencyDisplay';
 import { ErrorBanner } from '../components/common/ErrorBanner';
@@ -19,6 +18,25 @@ import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
 import { calculateRolloverLedger, generateVarianceInsights } from '../lib/budgeting-beta';
 import '../styles/pages.css';
+
+/*
+ * Recharts is a heavy visualization dependency (recharts + redux-toolkit +
+ * immer + decimal.js-light ≈ 290 KB raw). The donut chart is a secondary,
+ * conditionally-rendered breakdown that is not above the fold, so we load it
+ * as its own async chunk to keep the `route-ledger` bundle lean (#2983).
+ */
+const BudgetDonutChart = React.lazy(() =>
+  import('../components/charts/BudgetDonutChart').then((module) => ({
+    default: module.BudgetDonutChart,
+  })),
+);
+
+/** Accessible, non-focus-trapping placeholder shown while the chart chunk loads. */
+const ChartFallback = ({ label }: { readonly label: string }) => (
+  <div className="card" role="status" aria-live="polite" style={{ minHeight: 260 }}>
+    <LoadingSpinner size={24} label={label} />
+  </div>
+);
 
 const PERIOD_LABELS: Record<string, string> = {
   WEEKLY: 'Weekly',
@@ -490,16 +508,18 @@ export const BudgetDetailPage: React.FC = () => {
             </div>
             <div>
               {foodBudgetBreakdown.length > 0 ? (
-                <BudgetDonutChart
-                  data={foodBudgetBreakdown.map((entry) => ({
-                    name: entry.categoryName,
-                    value: entry.spentAmount.amount,
-                  }))}
-                  currency={budget.currency.code}
-                  height={260}
-                  title="Subcategory spending"
-                  centerLabel={`${foodBudgetBreakdown.length} groups`}
-                />
+                <Suspense fallback={<ChartFallback label="Loading subcategory chart" />}>
+                  <BudgetDonutChart
+                    data={foodBudgetBreakdown.map((entry) => ({
+                      name: entry.categoryName,
+                      value: entry.spentAmount.amount,
+                    }))}
+                    currency={budget.currency.code}
+                    height={260}
+                    title="Subcategory spending"
+                    centerLabel={`${foodBudgetBreakdown.length} groups`}
+                  />
+                </Suspense>
               ) : (
                 <div>
                   <p className="card__title">Subcategory spending</p>
