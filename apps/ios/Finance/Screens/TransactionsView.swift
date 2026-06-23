@@ -272,17 +272,8 @@ struct TransactionsView: View {
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(transactionAccessibilityLabel(transaction))
+        .accessibilityLabel(transaction.accessibilityRowLabel())
         .accessibilityHint(String(localized: "Tap to edit. Swipe for more actions."))
-    }
-
-    private func transactionAccessibilityLabel(_ transaction: TransactionItem) -> String {
-        var label = "\(transaction.payee), \(transaction.category), \(transaction.accountName)"
-        if !transaction.tags.isEmpty {
-            let tagNames = transaction.tags.map(\.displayName).joined(separator: ", ")
-            label += ", " + String(localized: "Tags: \(tagNames)")
-        }
-        return label
     }
 }
 
