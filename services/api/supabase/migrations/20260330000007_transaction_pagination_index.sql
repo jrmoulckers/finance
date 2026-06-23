@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
--- Migration: 20260330000005_transaction_pagination_index
+-- Migration: 20260330000007_transaction_pagination_index
 -- Description: Add composite index for cursor-based transaction pagination (#1383)
 -- Issues: #1383
 --

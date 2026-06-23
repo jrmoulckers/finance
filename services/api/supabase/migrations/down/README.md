@@ -94,6 +94,13 @@ Each down migration matches its up migration with a `.down.sql` suffix:
 | `20260330000002_exchange_rates_enhancements.sql`            | `down/20260330000002_exchange_rates_enhancements.down.sql`            |
 | `20260330000003_bill_detection_enhancements.sql`            | `down/20260330000003_bill_detection_enhancements.down.sql`            |
 | `20260330000004_report_generation_enhancements.sql`         | `down/20260330000004_report_generation_enhancements.down.sql`         |
+| `20260330000005_audit_log_retention.sql`                    | `down/20260330000005_audit_log_retention.down.sql`                    |
+| `20260330000006_enforce_owner_id_rls.sql`                   | `down/20260330000006_enforce_owner_id_rls.down.sql`                   |
+| `20260330000007_transaction_pagination_index.sql`           | `down/20260330000007_transaction_pagination_index.down.sql`           |
+| `20260331000001_bank_connectivity_foundation.sql`           | `down/20260331000001_bank_connectivity_foundation.down.sql`           |
+| `20260331000002_add_mood_tag_to_transactions.sql`           | `down/20260331000002_add_mood_tag_to_transactions.down.sql`           |
+| `20260331000003_recompute_account_balance_trigger.sql`      | `down/20260331000003_recompute_account_balance_trigger.down.sql`      |
+| `20260331000004_privacy_trio_categories.sql`                | `down/20260331000004_privacy_trio_categories.down.sql`                |
 
 ## Timestamp Deduplication (#1323)
 
@@ -110,6 +117,18 @@ The following migrations were renamed to resolve duplicate timestamps:
 | `20260328000004_exchange_rates`              | `20260328000006_exchange_rates`              | Cascade from above              |
 | `20260328000005_bill_detection`              | `20260328000007_bill_detection`              | Cascade from above              |
 | `20260328000006_data_import_pipeline`        | `20260328000008_data_import_pipeline`        | Cascade from above              |
+
+## Migration Version Deduplication (#2980)
+
+The following migrations were renamed to resolve duplicate version prefixes that prevented the local Supabase stack from applying migrations (`supabase db reset` failed). Relative order was preserved; `audit_log_retention`, `add_mood_tag_to_transactions`, and `recompute_account_balance_trigger` kept their versions.
+
+| Original Name                                 | New Name                                      | Reason                                       |
+| --------------------------------------------- | --------------------------------------------- | -------------------------------------------- |
+| `20260330000005_enforce_owner_id_rls`         | `20260330000006_enforce_owner_id_rls`         | Collided with `audit_log_retention`          |
+| `20260330000005_transaction_pagination_index` | `20260330000007_transaction_pagination_index` | Collided with `audit_log_retention`          |
+| `20260331000002_privacy_trio_categories`      | `20260331000004_privacy_trio_categories`      | Collided with `add_mood_tag_to_transactions` |
+
+Separately, `20260330000001_investment_tables.sql` had its entire body duplicated (a second verbatim copy in lines 178–318) which failed on the repeated `CREATE INDEX`; the duplicate block was removed.
 
 ## Safety Notes
 

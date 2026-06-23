@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
--- DOWN Migration: 20260330000005_enforce_owner_id_rls
+-- DOWN Migration: 20260330000006_enforce_owner_id_rls
 -- Description: Revert owner_id enforcement on INSERT/UPDATE RLS policies
 -- Issues: #1316, #2881
 --

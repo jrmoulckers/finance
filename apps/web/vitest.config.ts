@@ -18,7 +18,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['src/test-setup.ts'],
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'e2e/**', 'e2e-live/**'],
     // Cap concurrent worker processes. The merged suite is large and each
     // jsdom worker can grow to the Node heap limit (NODE_OPTIONS
     // --max-old-space-size in CI). Without a cap, a high-core machine/runner
