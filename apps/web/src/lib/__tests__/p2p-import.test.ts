@@ -475,3 +475,59 @@ describe('buildImportableTransactions', () => {
     expect(buildImportableTransactions(plan)).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Provider fees
+// ---------------------------------------------------------------------------
+
+describe('provider fees', () => {
+  /** Cash App "Sent" with a $1.50 instant fee on a $50 spend. */
+  const CASHAPP_FEE_CSV = [
+    CASHAPP_HEADER,
+    'CA-9,2024-04-01,Sent P2P,USD,$50.00,$1.50,$48.50,COMPLETE,concert tickets,Box Office',
+  ].join('\n');
+
+  it('parses the provider fee column into integer cents', () => {
+    const { rows } = parseP2PCsv(CASHAPP_FEE_CSV);
+    expect(rows[0].amountCents).toBe(-5000);
+    expect(rows[0].feeCents).toBe(150);
+  });
+
+  it('folds the fee into net spending and surfaces the total fee', () => {
+    const plan = buildP2PImportPlan(CASHAPP_FEE_CSV);
+    expect(plan.summary.grossSpendingCents).toBe(5000); // principal only
+    expect(plan.summary.feesCents).toBe(150);
+    expect(plan.summary.netSpendingCents).toBe(5150); // principal + fee
+  });
+
+  it('adds the fee to the saved expense amount', () => {
+    const plan = buildP2PImportPlan(CASHAPP_FEE_CSV);
+    const [importable] = buildImportableTransactions(plan);
+    expect(importable.amountCents).toBe(-5150);
+    expect(importable.feeCents).toBe(150);
+    expect(importable.isNetted).toBe(false);
+  });
+
+  it('reports zero fees when no fee column is populated', () => {
+    expect(buildP2PImportPlan(VENMO_SPLIT_CSV).summary.feesCents).toBe(0);
+  });
+
+  it('still records a fee-only cost when a spend is fully reimbursed', () => {
+    const csv = [
+      VENMO_HEADER,
+      '2024-02-10T18:00:00,Payment,Complete,Pizza night,Me,Joes Pizza,- $40.00,$1.00',
+      '2024-02-11T09:00:00,Payment,Complete,pizza,Alice,Me,+ $20.00,',
+      '2024-02-11T09:05:00,Payment,Complete,pizza,Bob,Me,+ $20.00,',
+    ].join('\n');
+    const plan = buildP2PImportPlan(csv);
+    // Principal nets to zero, but the $1.00 fee remains a real cost.
+    expect(plan.summary.feesCents).toBe(100);
+    expect(plan.summary.netSpendingCents).toBe(100);
+
+    const importable = buildImportableTransactions(plan);
+    expect(importable).toHaveLength(1);
+    expect(importable[0].amountCents).toBe(-100);
+    expect(importable[0].feeCents).toBe(100);
+    expect(importable[0].isNetted).toBe(true);
+  });
+});

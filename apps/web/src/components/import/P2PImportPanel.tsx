@@ -223,6 +223,12 @@ export const P2PImportPanel: React.FC<P2PImportPanelProps> = ({
                 <dt>Transfers</dt>
                 <dd>{plan.summary.transferCount}</dd>
               </div>
+              {plan.summary.feesCents > 0 && (
+                <div className="p2p-import__stat">
+                  <dt>Provider fees</dt>
+                  <dd>{formatPlain(plan.summary.feesCents)}</dd>
+                </div>
+              )}
             </dl>
             <p className="p2p-import__summary-note">
               {plan.summary.netGroupCount > 0
@@ -264,7 +270,15 @@ export const P2PImportPanel: React.FC<P2PImportPanelProps> = ({
                       <td>{row.date}</td>
                       <td>{row.counterparty || '—'}</td>
                       <td>{row.note || '—'}</td>
-                      <td className="p2p-import__amount-col">{formatCents(row.amountCents)}</td>
+                      <td className="p2p-import__amount-col">
+                        {formatCents(row.amountCents)}
+                        {row.feeCents > 0 && (
+                          <span className="p2p-import__fee">
+                            {' '}
+                            + {formatPlain(row.feeCents)} fee
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <span className="p2p-import__class">
                           <AppIcon name={meta.icon} />

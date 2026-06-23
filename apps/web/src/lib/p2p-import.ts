@@ -705,6 +705,7 @@ function summarize(
   let grossSpendingCents = 0;
   let reimbursementCents = 0;
   let excludedFromBudgetCents = 0;
+  let feesCents = 0;
 
   const netByAnchor = new Map<number, number>();
   const anchoredMagnitude = new Map<number, number>();
@@ -720,10 +721,15 @@ function summarize(
       case 'spending': {
         spendingCount++;
         if (row.amountCents < 0) {
+          const fee = Math.max(0, row.feeCents);
           grossSpendingCents += Math.abs(row.amountCents);
-          netSpendingCents += netByAnchor.has(row.index)
-            ? (netByAnchor.get(row.index) ?? 0)
-            : Math.abs(row.amountCents);
+          feesCents += fee;
+          // The fee is a real, budget-affecting cost on top of the (possibly
+          // netted) principal, so fold it into net spending.
+          netSpendingCents +=
+            (netByAnchor.has(row.index)
+              ? (netByAnchor.get(row.index) ?? 0)
+              : Math.abs(row.amountCents)) + fee;
         }
         break;
       }
@@ -750,6 +756,7 @@ function summarize(
     reimbursementCents,
     netSpendingCents,
     excludedFromBudgetCents,
+    feesCents,
   };
 }
 
@@ -840,9 +847,10 @@ function stripClassification(row: P2PClassifiedRow): P2PParsedRow {
 
 /**
  * Produce the budget-affecting transactions to save. Each spending outflow
- * becomes one expense at its net (post-reimbursement) amount; reimbursements
- * and transfers are excluded so they never distort the budget. Fully
- * reimbursed spends (net zero) are omitted.
+ * becomes one expense at its net (post-reimbursement) amount **plus any
+ * provider fee**; reimbursements and transfers are excluded so they never
+ * distort the budget. A spend that nets to zero is omitted unless it carried a
+ * fee, which remains a real cost to record.
  */
 export function buildImportableTransactions(plan: P2PImportPlan): P2PImportableTransaction[] {
   const netByAnchor = new Map<number, P2PNetGroup>();
@@ -858,15 +866,20 @@ export function buildImportableTransactions(plan: P2PImportPlan): P2PImportableT
     const group = netByAnchor.get(row.index);
     const gross = Math.abs(row.amountCents);
     const net = group ? group.netSpendingCents : gross;
-    if (net <= 0) continue;
+    const fee = Math.max(0, row.feeCents);
+    // A provider fee is a real cost: a spend that nets to zero after
+    // reimbursements still leaves the fee to record.
+    const netWithFee = net + fee;
+    if (netWithFee <= 0) continue;
 
     importable.push({
       anchorIndex: row.index,
       date: row.date,
       payee: row.counterparty,
       note: row.note,
-      amountCents: -net,
+      amountCents: -netWithFee,
       reimbursedCents: group ? group.reimbursedCents : 0,
+      feeCents: fee,
       isNetted: group != null,
     });
   }

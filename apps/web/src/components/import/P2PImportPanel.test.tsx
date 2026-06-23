@@ -131,4 +131,21 @@ describe('P2PImportPanel', () => {
     renderPanel({ plan: buildP2PImportPlan(csv) });
     expect(screen.getByText(/skipped rows/i)).toBeInTheDocument();
   });
+
+  it('surfaces provider fees in the summary and preview when present', () => {
+    const csv = [
+      'Transaction ID,Date,Transaction Type,Currency,Amount,Fee,Net Amount,Status,Notes,Name of sender/receiver',
+      'CA-9,2024-04-01,Sent P2P,USD,$50.00,$1.50,$48.50,COMPLETE,concert tickets,Box Office',
+    ].join('\n');
+    renderPanel({ plan: buildP2PImportPlan(csv) });
+    const summary = screen.getByRole('group', { name: /import summary/i });
+    expect(within(summary).getByText(/provider fees/i)).toBeInTheDocument();
+    expect(screen.getByText(/\+ .*fee/i)).toBeInTheDocument();
+  });
+
+  it('hides the provider-fees stat when there are no fees', () => {
+    renderPanel();
+    const summary = screen.getByRole('group', { name: /import summary/i });
+    expect(within(summary).queryByText(/provider fees/i)).not.toBeInTheDocument();
+  });
 });

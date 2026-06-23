@@ -128,16 +128,19 @@ export function useP2PImport(): UseP2PImportResult {
 
     for (const transaction of importable) {
       const tags = transaction.isNetted ? ['p2p-import', 'net-of-reimbursement'] : ['p2p-import'];
-      const noteSuffix = transaction.isNetted
+      if (transaction.feeCents > 0) tags.push('p2p-fee');
+      const netSuffix = transaction.isNetted
         ? ` (net of ${formatReimbursed(transaction.reimbursedCents)} reimbursed)`
         : '';
+      const feeSuffix =
+        transaction.feeCents > 0 ? ` (incl. ${formatReimbursed(transaction.feeCents)} fee)` : '';
       const result = createTransaction({
         householdId: account.householdId as SyncId,
         accountId: account.id,
         type: 'EXPENSE',
         amount: { amount: Math.abs(transaction.amountCents) },
         payee: transaction.payee || null,
-        note: `${transaction.note || 'P2P payment'}${noteSuffix}`.trim(),
+        note: `${transaction.note || 'P2P payment'}${netSuffix}${feeSuffix}`.trim(),
         date: transaction.date,
         tags,
       });
