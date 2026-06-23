@@ -25,10 +25,15 @@
 // check fails. Safe to call from other scripts (dev-full.mjs runs it first).
 
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import net from 'node:net';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
+import { dependencyState } from './lib/dev-env.mjs';
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const args = process.argv.slice(2);
 
@@ -248,11 +253,36 @@ function checkSupabaseCli() {
   }
 }
 
+// --- Check: dependencies installed -------------------------------------------
+function checkDependencies() {
+  const { state, reason } = dependencyState(REPO_ROOT);
+  if (state === 'missing') {
+    add(
+      'Dependencies installed',
+      'warn',
+      reason || 'node_modules is missing (fresh clone).',
+      'Run `npm install`. `npm run dev:full` and VS Code F5 do this automatically on first run.',
+    );
+    return;
+  }
+  if (state === 'stale') {
+    add(
+      'Dependencies installed',
+      'warn',
+      reason || 'dependencies may be stale.',
+      'Run `npm install` (or `npm run dev:full`, which reinstalls automatically when the lockfile changes).',
+    );
+    return;
+  }
+  add('Dependencies installed', 'pass', 'node_modules present');
+}
+
 async function main() {
   checkDocker();
   checkDisk();
   await checkPorts();
   checkSupabaseCli();
+  checkDependencies();
 
   const failed = checks.filter((c) => c.level === 'fail');
   const warned = checks.filter((c) => c.level === 'warn');

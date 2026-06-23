@@ -9,10 +9,10 @@ For backend-only Supabase work (functions, migrations, Studio), see
 [`local-supabase.md`](./local-supabase.md). This guide is the web-to-edge
 end-to-end path on top of it.
 
-## Quick start (one command)
+## Quick start (clone → run)
 
-On a machine with **Docker Desktop running** and dependencies installed
-(`npm install`), a single command does everything — preflight checks, start the
+On a machine with **Docker Desktop running**, a single command does everything —
+**install dependencies** (on a fresh clone), run preflight checks, start the
 Supabase edge stack, wire the web app to it, and launch the web app:
 
 ```bash
@@ -21,22 +21,28 @@ npm run dev:full
 
 That runs [`tools/dev-full.mjs`](../../tools/dev-full.mjs), which:
 
-1. runs the **preflight** ([`npm run doctor`](../../tools/doctor.mjs)) — Docker
+1. **installs dependencies** (`npm install`) if `node_modules` is missing or
+   `package-lock.json` changed since the last install — so a fresh clone needs no
+   manual `npm install`;
+2. runs the **preflight** ([`npm run doctor`](../../tools/doctor.mjs)) — Docker
    daemon, free disk, ports `54321`/`5173`, Supabase CLI;
-2. starts Supabase (`supabase start`, retrying on Docker Hub rate-limit stalls;
+3. starts Supabase (`supabase start`, retrying on Docker Hub rate-limit stalls;
    skipped if already running);
-3. writes `apps/web/.env.local` from `supabase status` (takes the app out of
+4. writes `apps/web/.env.local` from `supabase status` (takes the app out of
    demo mode);
-4. launches the web app at <http://localhost:5173> and opens your browser.
+5. launches the web app at <http://localhost:5173> and opens your browser.
 
 Useful flags: `--reset` (reset DB first), `--e2e` (run the live e2e suite
-instead of the dev server), `--no-open`, `--skip-doctor`. Run
+instead of the dev server), `--no-open`, `--skip-install` (skip the auto
+dependency install), `--install` (force a reinstall), `--skip-doctor`. Run
 `node tools/dev-full.mjs --help` for the full list.
 
 > **VS Code one-click / F5** — Open the repo in VS Code and either run the
 > **"Dev: Full Stack (web on edge)"** task (Ctrl+Shift+P → _Tasks: Run Task_) or
-> press **F5** ("Web on edge (Microsoft Edge)"). Both wrap `npm run dev:full`
-> and, for F5, attach the debugger to Edge at `:5173`.
+> press **F5** ("Web on edge (Microsoft Edge)"). Both wrap `npm run dev:full`,
+> so on a **fresh clone, F5 installs dependencies, brings up the stack, and
+> launches the app** with no manual `npm install`; F5 also attaches the debugger
+> to Edge at `:5173`.
 
 > **Not sure the machine is ready?** Run `npm run doctor` first — it reports
 > exactly what's missing (and how to fix it) without starting anything.
@@ -84,6 +90,10 @@ The steps below are exactly what `npm run dev:full` automates. Run them by hand
 when you want finer control or are troubleshooting.
 
 ### 1. Install dependencies
+
+> `npm run dev:full` (and VS Code **F5**) installs dependencies automatically on
+> a fresh clone, so this step is optional when you use the one-command path. Run
+> it by hand only if you want to install without bringing up the stack.
 
 From the repo root:
 

@@ -7,6 +7,9 @@
 // Suggested npm script: "dev:full": "node tools/dev-full.mjs"
 //
 // Pipeline:
+//   0. Install dependencies (npm install)      — on a fresh/stale clone only;
+//                                                skip with --skip-install,
+//                                                force with --install
 //   1. Preflight (tools/doctor.mjs)            — skip with --skip-doctor
 //   2. supabase start (services/api)           — skipped if already running;
 //                                                retries with backoff on the
@@ -23,16 +26,22 @@
 //   node tools/dev-full.mjs --reset         # also reset the DB (migrations + seed)
 //   node tools/dev-full.mjs --e2e           # bring up stack, run the live e2e suite
 //   node tools/dev-full.mjs --no-open       # don't auto-open the browser
+//   node tools/dev-full.mjs --skip-install  # skip the automatic dependency install
+//   node tools/dev-full.mjs --install       # force a dependency (re)install
 //   node tools/dev-full.mjs --skip-doctor   # skip preflight (e.g. in CI)
 //   node tools/dev-full.mjs --help
 //
 // Everything here is cross-platform Node (Windows / macOS / Linux) and uses
-// `npx --yes supabase`, so no global Supabase CLI is required.
+// `npx --yes supabase`, so no global Supabase CLI is required. A fresh clone
+// needs no manual `npm install` — step 0 handles it, so VS Code F5 is truly
+// clone-to-run.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
+
+import { dependencyState, recordInstall } from './lib/dev-env.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -55,9 +64,13 @@ Options:
   --e2e           Run the live Playwright e2e suite instead of the dev server.
   --no-open       Do not auto-open the browser (dev mode only).
   --skip-doctor   Skip the preflight health check.
+  --skip-install  Skip the automatic dependency install.
+  --install       Force a dependency install even if it looks up to date.
   -h, --help      Show this help.
 
-Requires Docker Desktop running. No global Supabase CLI needed (uses npx).`);
+On a fresh clone this installs dependencies automatically (so VS Code F5 works
+clone-to-run with no manual npm install). Requires Docker Desktop running.
+No global Supabase CLI needed (uses npx).`);
   process.exit(0);
 }
 
@@ -66,6 +79,8 @@ const opts = {
   e2e: args.includes('--e2e'),
   noOpen: args.includes('--no-open'),
   skipDoctor: args.includes('--skip-doctor'),
+  skipInstall: args.includes('--skip-install'),
+  install: args.includes('--install'),
 };
 
 const isWin = process.platform === 'win32';
@@ -140,6 +155,27 @@ function runCapture(cmd, cmdArgs, options = {}) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// --- 0. Dependencies (auto-install on a fresh / stale clone) ------------------
+function ensureDependencies() {
+  if (opts.skipInstall) {
+    info('Skipping dependency install (--skip-install).');
+    return;
+  }
+  const { state, reason } = dependencyState(REPO_ROOT);
+  if (state === 'ok' && !opts.install) {
+    info('Dependencies present.');
+    return;
+  }
+  step('Installing dependencies (npm install)');
+  info(`${opts.install ? 'Forced by --install' : reason} — running npm install…`);
+  const code = runInherit('npm', ['install']);
+  if (code !== 0) {
+    fail('npm install failed.', 'Fix the errors above, then re-run `npm run dev:full`.');
+  }
+  recordInstall(REPO_ROOT);
+  info('Dependencies installed.');
+}
 
 // --- 1. Preflight ------------------------------------------------------------
 function preflight() {
@@ -297,6 +333,7 @@ function launchWeb() {
 
 async function main() {
   console.log('Finance — local full-stack web e2e (on edge)');
+  ensureDependencies();
   preflight();
   await startSupabase();
   resetDatabase();
