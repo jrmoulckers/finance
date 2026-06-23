@@ -226,15 +226,19 @@ The fleet orchestrator automatically:
 
 ## Using MCP Tools Effectively
 
-MCP (Model Context Protocol) servers extend agent capabilities. Five servers are configured in `.vscode/mcp.json`:
+MCP (Model Context Protocol) servers extend agent capabilities. Seven servers are configured in `.vscode/mcp.json`:
 
-| Server                  | What It Gives Agents                       | When to Use                                |
-| ----------------------- | ------------------------------------------ | ------------------------------------------ |
-| **GitHub**              | Issue/PR data, code search, Actions status | Referencing issues, checking CI status     |
-| **Sequential Thinking** | Step-by-step chain-of-thought reasoning    | Complex debugging, architecture analysis   |
-| **Memory**              | Persistent context across chat sessions    | Long-running tasks, maintaining decisions  |
-| **Filesystem**          | Sandboxed file read/write/search           | Agents that need to browse or edit code    |
-| **Context7**            | Live library/framework documentation       | Ensuring agents use current API signatures |
+| Server                  | What It Gives Agents                                       | When to Use                                |
+| ----------------------- | ---------------------------------------------------------- | ------------------------------------------ |
+| **GitHub**              | Issue/PR data, code search, Actions status                 | Referencing issues, checking CI status     |
+| **Sequential Thinking** | Step-by-step chain-of-thought reasoning                    | Complex debugging, architecture analysis   |
+| **Memory**              | Persistent context across chat sessions                    | Long-running tasks, maintaining decisions  |
+| **Filesystem**          | File read/write/search under a dedicated, secret-free root | Agents that need to browse or edit code    |
+| **Context7**            | Live library/framework documentation                       | Ensuring agents use current API signatures |
+| **Supabase**            | Read-only Supabase schema/data inspection                  | Checking DB schema or data (read-only)     |
+| **Playwright**          | Browser automation & E2E test authoring                    | Driving UI flows, debugging E2E tests      |
+
+> ⚠️ `filesystem` and `supabase` are **disabled for unattended/CI agents** and require least-privilege scoping. See [`mcp.md`](../ai/mcp.md) for the full tool-permission matrix, token scopes, and prompt-injection cautions.
 
 ### Tips for MCP
 
