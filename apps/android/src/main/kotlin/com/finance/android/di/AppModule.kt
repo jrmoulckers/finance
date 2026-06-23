@@ -50,6 +50,12 @@ import com.finance.android.ui.feedback.HapticAvailabilityChecker
 import com.finance.android.ui.theme.ThemeManager
 import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.android.ui.tips.TipsViewModel
+import com.finance.android.ui.voice.InMemoryVoiceDraftStore
+import com.finance.android.ui.voice.LocalUtteranceParser
+import com.finance.android.ui.voice.UtteranceParser
+import com.finance.android.ui.voice.VoiceDraftStore
+import com.finance.android.ui.voice.VoiceTransactionInstrumentation
+import com.finance.android.ui.voice.VoiceTransactionViewModel
 import com.finance.android.ui.insights.InsightsViewModel
 import com.finance.android.ui.quickactions.DeterministicQuickActionRanker
 import com.finance.android.ui.quickactions.QuickActionPreferences
@@ -285,4 +291,18 @@ val appModule = module {
 
     /** Conflict resolution ViewModel (#Sprint27). */
     viewModelOf(::ConflictResolutionViewModel)
+
+    // ── Voice transaction entry (#2383) ─────────────────────────────
+
+    /** Deterministic, offline-capable utterance parser (ML Kit decoupled). */
+    single<UtteranceParser> { LocalUtteranceParser() }
+
+    /** Privacy-safe voice entry instrumentation — no transaction content. */
+    single { VoiceTransactionInstrumentation(get()) }
+
+    /** Offline-safe draft store for failed Assistant handoffs. */
+    single<VoiceDraftStore> { InMemoryVoiceDraftStore() }
+
+    /** Voice transaction review/confirmation ViewModel (#2383). */
+    viewModelOf(::VoiceTransactionViewModel)
 }
