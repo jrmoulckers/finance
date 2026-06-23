@@ -78,3 +78,66 @@ export function recordInstall(repoRoot) {
     // Non-fatal: the marker is an optimization, not a correctness requirement.
   }
 }
+
+/**
+ * @typedef {'rate-limit'|'image'|'migration'|'unknown'} SupabaseFailureKind
+ * @typedef {{kind:SupabaseFailureKind, signal?:string}} SupabaseFailure
+ */
+
+/**
+ * Classify a failed `supabase start` from its combined stdout+stderr so the
+ * caller can react correctly instead of blaming everything on a Docker Hub
+ * rate-limit (the bug this fixes).
+ *
+ * Precedence is deliberate: **terminal, non-retryable** failures win over a
+ * transient rate-limit, because a cold pull can hit a rate-limit on one image
+ * (which then succeeds on retry) yet still fail fatally later — e.g. a migration
+ * error. Reporting the fatal cause is what the developer needs.
+ *
+ *  - `image`      — corrupt / unrunnable local image layers (truncated entrypoint
+ *                   scripts → ENOEXEC). Retrying never helps; the images must be
+ *                   re-pulled. Signals: `exec format error`, `corrupted` shared
+ *                   library, or `error running container: exit 255`.
+ *  - `migration`  — a database/SQL error while applying migrations (e.g.
+ *                   `permission denied for schema … (SQLSTATE 42501)`). Terminal;
+ *                   the migration itself must be fixed. Signals: `SQLSTATE`,
+ *                   `permission denied for`, `syntax error at or near`.
+ *  - `rate-limit` — a transient registry pull limit. Safe to retry with backoff.
+ *                   Signals: `Rate exceeded`, `toomanyrequests`, `Too Many
+ *                   Requests`, `pull rate limit`.
+ *  - `unknown`    — none of the above; caller may retry once but should surface
+ *                   the raw output.
+ *
+ * @param {string} output combined stdout+stderr from `supabase start`
+ * @returns {SupabaseFailure}
+ */
+export function classifySupabaseStartFailure(output) {
+  const lower = String(output || '').toLowerCase();
+  const has = (s) => lower.includes(s);
+
+  // 1. Corrupt local image layers — not fixable by retrying.
+  const imageSignals = ['exec format error', 'corrupted shared library', 'corrupted'];
+  const containerExec255 = has('error running container') && has('exit 255');
+  const imageHit = imageSignals.find(has);
+  if (imageHit || containerExec255) {
+    return { kind: 'image', signal: imageHit || 'error running container: exit 255' };
+  }
+
+  // 2. Migration / SQL error — terminal; surface the real DB error. Use
+  //    Postgres-specific phrasing so a Docker "permission denied while trying to
+  //    connect to the daemon socket" is NOT misread as a migration failure.
+  const migrationSignals = ['sqlstate', 'permission denied for', 'syntax error at or near'];
+  const migrationHit = migrationSignals.find(has);
+  if (migrationHit) {
+    return { kind: 'migration', signal: migrationHit };
+  }
+
+  // 3. Transient registry pull rate-limit — safe to retry with backoff.
+  const rateSignals = ['rate exceeded', 'toomanyrequests', 'too many requests', 'pull rate limit'];
+  const rateHit = rateSignals.find(has);
+  if (rateHit) {
+    return { kind: 'rate-limit', signal: rateHit };
+  }
+
+  return { kind: 'unknown' };
+}

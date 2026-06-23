@@ -14,9 +14,12 @@ The seamless developer entry point. Brings up the local Supabase **edge** stack
 (auth + Postgres/RLS via Docker), wires the web app to it (writes
 `apps/web/.env.local` from `supabase status`), and launches the web app — all in
 one command. On a **fresh clone it installs dependencies first** (so the path is
-truly clone → run), runs `doctor.mjs`, retries `supabase start` on Docker Hub
-rate-limit stalls, and skips startup if the stack is already running. No global
-Supabase CLI required (uses `npx --yes supabase`).
+truly clone → run), runs `doctor.mjs`, and skips startup if the stack is already
+running. When `supabase start` fails it **classifies the cause** instead of
+assuming a rate-limit: a true registry pull limit is retried with backoff, while
+a corrupt local image (`exit 255` / `exec format error`) or a migration/SQL error
+fails fast with the specific fix. No global Supabase CLI required (uses
+`npx --yes supabase`).
 
 Dependency install is automatic and idempotent: it runs `npm install` only when
 `node_modules` is missing or when `package-lock.json` has changed since the last

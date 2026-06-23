@@ -193,15 +193,43 @@ npm --prefix services/api run supabase:status
 
 ## Troubleshooting
 
-| Symptom                                   | Fix                                                                                                                                                                                     |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Not sure the machine is ready             | Run `npm run doctor` — it checks Docker, free disk, and ports `54321`/`5173` and prints how to fix gaps.                                                                                |
-| "Demo Mode" banner on `/signup`           | `apps/web/.env.local` is missing or `VITE_SUPABASE_URL` is unset/placeholder — rerun the setup command.                                                                                 |
-| Live e2e fails: "App is in demo mode"     | Same cause — ensure the stack is up and `.env.local` exists, then rerun.                                                                                                                |
-| `npm run test:e2e:live` can't launch Edge | Use `npm run test:e2e:live:chromium -w apps/web`, or install Microsoft Edge.                                                                                                            |
-| Port 5173 or 5174 already in use          | Stop the other process, or set `LIVE_E2E_PORT` for the live suite.                                                                                                                      |
-| `supabase start` is slow / stalls         | First-run image pulls can be slow; ensure Docker is running and retry. `docker login` raises Docker Hub pull limits. `npm run dev:full` retries automatically. See `local-supabase.md`. |
-| Signup returns a non-2xx response         | Confirm the stack is healthy (`supabase:status`) and migrations applied (`supabase:reset`).                                                                                             |
+| Symptom                                                                   | Fix                                                                                                                                                                                               |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Not sure the machine is ready                                             | Run `npm run doctor` — it checks Docker, free disk, and ports `54321`/`5173` and prints how to fix gaps.                                                                                          |
+| "Demo Mode" banner on `/signup`                                           | `apps/web/.env.local` is missing or `VITE_SUPABASE_URL` is unset/placeholder — rerun the setup command.                                                                                           |
+| Live e2e fails: "App is in demo mode"                                     | Same cause — ensure the stack is up and `.env.local` exists, then rerun.                                                                                                                          |
+| `npm run test:e2e:live` can't launch Edge                                 | Use `npm run test:e2e:live:chromium -w apps/web`, or install Microsoft Edge.                                                                                                                      |
+| Port 5173 or 5174 already in use                                          | Stop the other process, or set `LIVE_E2E_PORT` for the live suite.                                                                                                                                |
+| `supabase start` is slow / stalls                                         | First-run image pulls can be slow; ensure Docker is running and retry. `docker login` raises Docker Hub pull limits. `npm run dev:full` retries automatically. See `local-supabase.md`.           |
+| `supabase start` fails with `exit 255` / `exec format error`              | Corrupt local image layers — **not** a rate-limit. Re-pull the images (see "Docker image corruption" below). `npm run dev:full` now detects this and stops with the same fix instead of retrying. |
+| `supabase start` fails with `permission denied for schema …` / `SQLSTATE` | A migration error, not an environment problem. Fix the offending migration; retrying won't help. `npm run dev:full` surfaces this instead of mislabeling it a rate-limit.                         |
+| Signup returns a non-2xx response                                         | Confirm the stack is healthy (`supabase:status`) and migrations applied (`supabase:reset`).                                                                                                       |
+
+### Docker image corruption (`exit 255` / `exec format error`)
+
+If `supabase start` aborts with `error running container: exit 255`, `exec format
+error`, or `corrupted shared library`, one or more Supabase image layers extracted
+on this machine are truncated/corrupt (often the aftermath of an earlier disk-full
+event). Retrying or `docker login` will **not** help — the affected images must be
+re-pulled. On Docker Desktop's containerd image store, `docker image prune` alone
+reclaims **0 B**, so a daemon restart is required to actually release the blobs:
+
+1. **Stop the stack:** `npm --prefix services/api run supabase:stop`
+2. **Protect known-good images** so a prune can't evict them — give each a
+   placeholder container:
+   `docker create --name keep-<n> --entrypoint /bin/true <image>`
+3. **Remove the corrupt images:** `docker rmi <image …>` (untags them; the blobs
+   linger until GC). **Never** pass `--volumes` to any prune — that would delete
+   your local database.
+4. **Force a real image GC:** `docker desktop restart` (this is the step that
+   actually frees containerd blobs; `docker image prune -af` reports 0 B).
+5. **Remove the placeholders:** `docker rm -f keep-<n>`
+6. **Re-pull fresh:** `npm run dev:full` (or `npm --prefix services/api run
+supabase:start`) pulls clean layers.
+
+`npm run doctor` prints a pointer to this section, and `npm run dev:full` now
+classifies this failure and stops immediately with these steps instead of burning
+three retries on a non-transient error.
 
 ## Known limitations
 
