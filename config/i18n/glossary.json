@@ -1,0 +1,105 @@
+{
+  "description": "Canonical financial-terminology glossary. Source of truth for translated financial terms across every localized surface (Android, iOS, web, shared KMP Strings). A mistranslated financial term is a correctness bug, not polish — keep these consistent across all locales.",
+  "sourceLocale": "en-US",
+  "locales": ["en-US", "es-ES", "fr-FR"],
+  "terms": [
+    {
+      "concept": "Balance",
+      "en-US": "Balance",
+      "es-ES": "Saldo",
+      "fr-FR": "Solde",
+      "notes": "Account balance (money available), not 'equilibrio'.",
+      "doNotUse": { "es-ES": ["Equilibrio", "Balance"] }
+    },
+    {
+      "concept": "Credit",
+      "en-US": "Credit",
+      "es-ES": "Abono",
+      "fr-FR": "Crédit",
+      "notes": "Inflow to an account. Disambiguate from lending (línea de crédito).",
+      "doNotUse": { "es-ES": ["Crédito (cuando significa entrada de dinero)"] }
+    },
+    {
+      "concept": "Debit",
+      "en-US": "Debit",
+      "es-ES": "Cargo",
+      "fr-FR": "Débit",
+      "notes": "Outflow from an account."
+    },
+    {
+      "concept": "Budget",
+      "en-US": "Budget",
+      "es-ES": "Presupuesto",
+      "fr-FR": "Budget",
+      "notes": "Consistent across all surfaces (budgets list, dashboard, widgets)."
+    },
+    {
+      "concept": "Account",
+      "en-US": "Account",
+      "es-ES": "Cuenta",
+      "fr-FR": "Compte"
+    },
+    {
+      "concept": "Transaction",
+      "en-US": "Transaction",
+      "es-ES": "Transacción",
+      "fr-FR": "Transaction"
+    },
+    {
+      "concept": "Expense",
+      "en-US": "Expense",
+      "es-ES": "Gasto",
+      "fr-FR": "Dépense"
+    },
+    {
+      "concept": "Income",
+      "en-US": "Income",
+      "es-ES": "Ingreso",
+      "fr-FR": "Revenu"
+    },
+    {
+      "concept": "Savings goal",
+      "en-US": "Goal",
+      "es-ES": "Meta",
+      "fr-FR": "Objectif",
+      "notes": "Savings goal. Prefer 'Meta de ahorro' where context needs clarity."
+    },
+    {
+      "concept": "Net worth",
+      "en-US": "Net worth",
+      "es-ES": "Patrimonio neto",
+      "fr-FR": "Valeur nette"
+    },
+    {
+      "concept": "Category",
+      "en-US": "Category",
+      "es-ES": "Categoría",
+      "fr-FR": "Catégorie"
+    },
+    {
+      "concept": "Amount",
+      "en-US": "Amount",
+      "es-ES": "Importe",
+      "fr-FR": "Montant",
+      "notes": "Monetary amount. 'Cantidad' is acceptable for non-monetary counts only."
+    },
+    {
+      "concept": "Over budget",
+      "en-US": "Over budget",
+      "es-ES": "Presupuesto excedido",
+      "fr-FR": "Budget dépassé"
+    },
+    {
+      "concept": "Sync",
+      "en-US": "Sync",
+      "es-ES": "Sincronización",
+      "fr-FR": "Synchronisation"
+    },
+    {
+      "concept": "Currency conversion",
+      "en-US": "Currency conversion",
+      "es-ES": "Conversión de divisa",
+      "fr-FR": "Conversion de devise"
+    }
+  ]
+}

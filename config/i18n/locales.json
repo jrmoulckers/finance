@@ -1,0 +1,65 @@
+{
+  "description": "Locale catalog metadata: supported locales, fallback chain, and CLDR-aligned formatting expectations. The Android string resources under apps/android/src/main/res/values[-<locale>]/strings.xml are the platform projection of these locales; the 'enforced' locales below must reach 100% key coverage against the default catalog (checked by scripts/i18n/validate-locale-catalogs.js).",
+  "sourceLocale": "en-US",
+  "defaultPlatformResource": "apps/android/src/main/res/values/strings.xml",
+  "locales": [
+    {
+      "id": "en-US",
+      "name": "English (United States)",
+      "androidQualifier": "values",
+      "fallback": null,
+      "enforced": true,
+      "rtl": false,
+      "formatting": {
+        "currency": {
+          "iso4217Example": "USD",
+          "pattern": "$1,234.56",
+          "decimalSeparator": ".",
+          "groupSeparator": ",",
+          "symbolPosition": "before"
+        },
+        "number": { "decimalSeparator": ".", "groupSeparator": "," },
+        "date": { "shortPattern": "M/d/yy", "firstDayOfWeek": "sunday" }
+      }
+    },
+    {
+      "id": "es-ES",
+      "name": "Spanish",
+      "androidQualifier": "values-es",
+      "fallback": "en-US",
+      "enforced": true,
+      "rtl": false,
+      "formatting": {
+        "currency": {
+          "iso4217Example": "EUR",
+          "pattern": "1.234,56 €",
+          "decimalSeparator": ",",
+          "groupSeparator": ".",
+          "symbolPosition": "after"
+        },
+        "number": { "decimalSeparator": ",", "groupSeparator": "." },
+        "date": { "shortPattern": "d/M/yy", "firstDayOfWeek": "monday" },
+        "notes": "es-US / es-MX users see USD with es number conventions ($1,234.56 grouping varies by region). Format via CLDR with the account's ISO 4217 currency — never hardcode the symbol or separators."
+      }
+    },
+    {
+      "id": "fr-FR",
+      "name": "French",
+      "androidQualifier": "values-fr",
+      "fallback": "en-US",
+      "enforced": false,
+      "rtl": false,
+      "formatting": {
+        "currency": {
+          "iso4217Example": "EUR",
+          "pattern": "1 234,56 €",
+          "decimalSeparator": ",",
+          "groupSeparator": " ",
+          "symbolPosition": "after"
+        },
+        "number": { "decimalSeparator": ",", "groupSeparator": " " },
+        "date": { "shortPattern": "dd/MM/yyyy", "firstDayOfWeek": "monday" }
+      }
+    }
+  ]
+}

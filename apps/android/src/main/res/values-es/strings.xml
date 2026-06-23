@@ -352,4 +352,70 @@
     <string name="theme_system">Seguir sistema</string>
     <string name="theme_light">Claro</string>
     <string name="theme_dark">Oscuro</string>
+
+    <!-- Widgets (#381) -->
+    <string name="widget_balance_summary_description">Muestra tu patrimonio neto, los gastos de hoy y el número de cuentas de un vistazo.</string>
+    <string name="widget_quick_transaction_description">Botones rápidos para añadir transacciones de gasto o ingreso.</string>
+    <string name="widget_balance_summary_label">Saldo de la cuenta</string>
+    <string name="widget_quick_transaction_label">Transacción rápida</string>
+    <string name="widget_budget_summary_label">Estado del presupuesto</string>
+    <string name="widget_budget_summary_description">Muestra cómo van tus presupuestos: en buen camino, en alerta y excedidos.</string>
+    <string name="widget_goal_progress_label">Progreso de la meta</string>
+    <string name="widget_goal_progress_description">Muestra el progreso hacia tu meta de ahorro principal.</string>
+    <string name="tile_quick_transaction_label">Añadir transacción</string>
+
+    <!-- Data Import/Export (Sprint 26) -->
+    <string name="import_title">Importar datos</string>
+    <string name="import_select_format">Seleccionar formato</string>
+    <string name="import_choose_file">Elegir archivo</string>
+    <string name="import_map_columns">Asignar columnas</string>
+    <string name="import_start">Iniciar importación</string>
+    <string name="import_complete">Importación completada</string>
+    <string name="export_title">Exportar datos</string>
+    <string name="export_csv">Exportar a CSV</string>
+    <string name="export_pdf">Exportar a PDF</string>
+    <string name="a11y_import_screen">Pantalla de importación de datos</string>
+
+    <!-- Conflict Resolution (Sprint 27) -->
+    <string name="conflicts_title">Conflictos de sincronización</string>
+    <string name="conflicts_keep_local">Conservar local</string>
+    <string name="conflicts_keep_remote">Conservar remoto</string>
+    <string name="conflicts_merge">Combinar</string>
+    <string name="conflicts_none">Sin conflictos de sincronización</string>
+    <string name="conflicts_resolved">Todos los conflictos resueltos</string>
+    <string name="a11y_conflict_screen">Resolución de conflictos de sincronización</string>
+
+    <!-- Cognitive Accessibility (Sprint 28) -->
+    <string name="accessibility_title">Accesibilidad</string>
+    <string name="accessibility_simplified_mode">Modo simplificado</string>
+    <string name="accessibility_large_targets">Áreas táctiles grandes</string>
+    <string name="accessibility_plain_language">Lenguaje sencillo</string>
+    <string name="accessibility_step_by_step">Guías paso a paso</string>
+    <string name="accessibility_reduced_animations">Animaciones reducidas</string>
+    <string name="accessibility_font_scale">Tamaño del texto</string>
+    <string name="a11y_accessibility_prefs">Preferencias de accesibilidad</string>
+
+    <!-- Theme Preferences (Sprint 29) -->
+    <string name="theme_title">Apariencia</string>
+    <string name="theme_mode">Tema</string>
+    <string name="theme_material_you">Material You</string>
+    <string name="theme_accent_color">Color de acento</string>
+    <string name="theme_high_contrast">Alto contraste</string>
+    <string name="theme_font_scale">Tamaño del texto</string>
+    <string name="theme_reset">Restablecer valores predeterminados</string>
+    <string name="a11y_theme_prefs">Preferencias de tema</string>
+
+    <!-- Quick Entry Widget (Sprint 30) -->
+    <string name="widget_quick_entry_label">Entrada rápida de Finance</string>
+    <string name="widget_quick_entry_description">Entrada rápida de gastos con accesos directos por categoría</string>
+    <string name="a11y_quick_entry_widget">Widget de entrada rápida de Finance</string>
+
+    <!-- Platform Parity (Sprint 33) -->
+    <!-- TODO(human): native-speaker review (es-MX/LatAm) — confirm "Faltante"
+         vs "Pendiente"/"Sin traducir" for parity_missing, and neutral tone for
+         the parity labels below. See docs/i18n/localization-guide.md. -->
+    <string name="parity_title">Paridad entre plataformas</string>
+    <string name="parity_complete">Completo</string>
+    <string name="parity_partial">Parcial</string>
+    <string name="parity_missing">Faltante</string>
 </resources>
