@@ -19,16 +19,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAuth } from '../../auth/auth-context';
 import { useAccessibility } from '../../hooks/useAccessibility';
+import { useHiddenModules } from '../../hooks/useModuleVisibility';
 import { Icon } from '../common/Icon';
 import { IconToken } from '../../icons/tokens';
 
 import { MoreNavSheet } from './MoreNavSheet';
 import {
-  BOTTOM_NAV_PRIORITY_ITEMS,
   NAV_CONFIG,
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
-  PINNED_NAV_ITEMS,
   getBottomNavPriorityItems,
   getItemsByGroup,
   getPinnedNavItems,
@@ -99,14 +98,15 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
 }) => {
   const { logout } = useAuth();
   const { isSimplified } = useAccessibility();
+  const hiddenModules = useHiddenModules();
   const [moreOpen, setMoreOpen] = useState(false);
   const priorityItems = useMemo(
-    () => (isSimplified ? getBottomNavPriorityItems(true) : BOTTOM_NAV_PRIORITY_ITEMS),
-    [isSimplified],
+    () => getBottomNavPriorityItems(isSimplified, hiddenModules),
+    [isSimplified, hiddenModules],
   );
   const visibleItems = useMemo(
-    () => (isSimplified ? getVisibleNavItems(true) : NAV_CONFIG),
-    [isSimplified],
+    () => getVisibleNavItems(isSimplified, hiddenModules),
+    [isSimplified, hiddenModules],
   );
 
   const bottomNavItems = useMemo(
@@ -284,10 +284,11 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
 }) => {
   const { logout } = useAuth();
   const { isSimplified } = useAccessibility();
+  const hiddenModules = useHiddenModules();
   const isSettingsActive = isActive(activePath, '/settings');
   const pinnedItems = useMemo(
-    () => (isSimplified ? getPinnedNavItems(true) : PINNED_NAV_ITEMS),
-    [isSimplified],
+    () => getPinnedNavItems(isSimplified, hiddenModules),
+    [isSimplified, hiddenModules],
   );
 
   const handleSignOut = useCallback(async () => {
@@ -331,7 +332,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
             because they hold the most-used routes; Insights + Connect
             start collapsed to reduce cognitive load. */}
         {NAV_GROUP_ORDER.map((group) => {
-          const groupItems = getItemsByGroup(group, isSimplified);
+          const groupItems = getItemsByGroup(group, isSimplified, hiddenModules);
           if (groupItems.length === 0) {
             return null;
           }

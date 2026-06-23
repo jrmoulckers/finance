@@ -4,7 +4,11 @@ import React, { useCallback, useState } from 'react';
 
 import { CurrencyDisplay } from '../../components/common/CurrencyDisplay';
 import { CategorizationSettings } from '../../components/categorization';
-import { HapticSettings, SettingInfoWidget } from '../../components/settings';
+import {
+  HapticSettings,
+  MinimalistModeSettings,
+  SettingInfoWidget,
+} from '../../components/settings';
 import { CurrencyRatesSettings } from '../../components/settings/CurrencyRatesSettings';
 import '../../components/settings/currency-rates-settings.css';
 import { useAccessibility } from '../../hooks/useAccessibility';
@@ -516,6 +520,8 @@ export const SettingsPreferencesPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <MinimalistModeSettings />
 
       <AppearanceSettings />
 
