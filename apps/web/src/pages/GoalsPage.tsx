@@ -12,6 +12,7 @@ import {
   useToast,
 } from '../components/common';
 import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
+import { SharedGoalBadge } from '../components/goals/SharedGoalContributions';
 import { GoalForm } from '../components/forms';
 import { AppIcon, type IconName } from '../components/icons';
 import {
@@ -958,6 +959,7 @@ export const GoalsPage: React.FC = () => {
                               : 'Past due'}
                         </span>
                       </div>
+                      <SharedGoalBadge goalId={goal.id} goalName={goal.name} />
                       <div
                         style={{
                           display: 'flex',
