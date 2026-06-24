@@ -3,6 +3,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   useAccounts,
   useBills,
@@ -22,6 +24,8 @@ import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
 import { evaluatePrivacyScreenCoverage } from '../lib/security/privacy-screen';
 import { auditPrivacySurfaceCoverage, privacySurface } from '../lib/security/privacy-coverage';
 import { DashboardPage } from './DashboardPage';
+
+const dashboardCss = readFileSync(resolve(process.cwd(), 'src/pages/DashboardPage.css'), 'utf8');
 
 vi.mock('../hooks', () => ({
   useAccounts: vi.fn(),
@@ -762,6 +766,30 @@ describe('DashboardPage', () => {
       await screen.findByRole('region', { name: /mood and spending journal/i }, { timeout: 3000 }),
     ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /recent transactions/i })).toBeInTheDocument();
+  });
+
+  it('marks the financial summary grid for compact-width reflow (#2190)', () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+    const summary = screen.getByRole('region', { name: /financial summary/i });
+    const grid = summary.querySelector('.dashboard-summary-grid');
+    expect(grid).not.toBeNull();
+    expect(grid).toHaveClass('card-grid');
+  });
+
+  it('graduates the summary columns from stacked to two-up at compact width (#2190)', () => {
+    // iPhone SE (~<=375px): single stacked column.
+    const compactBlock = dashboardCss.slice(dashboardCss.indexOf('@media (max-width: 375px)'));
+    expect(compactBlock).toMatch(
+      /\.card-grid\.dashboard-summary-grid\s*\{[^}]*grid-template-columns:\s*1fr/,
+    );
+    // Larger phones / portrait tablets: two readable columns.
+    expect(dashboardCss).toMatch(/@media\s*\(min-width:\s*376px\)\s*and\s*\(max-width:\s*767px\)/);
+    // Cards may shrink below intrinsic width so currency strings never overflow.
+    expect(dashboardCss).toMatch(/\.dashboard-summary-grid\s*>\s*\.card\s*\{[^}]*min-width:\s*0/);
   });
 
   it('covers dashboard financial values when privacy screen is active and reveals them when inactive', async () => {

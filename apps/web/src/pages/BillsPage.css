@@ -1,0 +1,106 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Bills page responsive layout.
+ *
+ * Compact-width (iPhone SE-sized, ~320–375px) handling so the three-up bills
+ * summary, view toggle, and status filter reflow without horizontal scrolling
+ * and keep >=44px tap targets at large Dynamic Type / browser font scaling.
+ *
+ * Layout/CSS only — no business logic, totals, or data are affected.
+ *
+ * WCAG 2.2 AA: 1.4.10 Reflow (single column at 320px / 400% zoom, no loss of
+ * info), 2.5.8 Target Size (>=44px interactive controls on compact screens).
+ *
+ * References: issue #2190
+ */
+
+/* ---------------------------------------------------------------------------
+ * Bills summary — graduated reflow (3-up -> 2-up -> stacked)
+ *
+ * `minmax(0, 1fr)` lets columns shrink below their content's intrinsic width so
+ * long currency strings never force the card wider than the viewport.
+ * ------------------------------------------------------------------------- */
+
+.bills-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-4);
+  align-items: start;
+}
+
+.bills-summary__metric {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Small phones (large iPhone SE / mini): two up, total spans the full row. */
+@media (max-width: 639px) {
+  .bills-summary__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-3);
+  }
+
+  .bills-summary__metric:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Compact width (iPhone SE, ~<=375px): single readable column. */
+@media (max-width: 375px) {
+  .bills-summary__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bills-summary__metric:last-child {
+    grid-column: auto;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * View toggle (List / By payday) and status filter
+ *
+ * On compact screens stretch controls to full width and guarantee a >=44px
+ * tap target so they stay comfortably reachable at large text sizes.
+ * ------------------------------------------------------------------------- */
+
+.bills-view-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+  margin-bottom: var(--spacing-4);
+  padding: var(--spacing-1);
+  border-radius: var(--radius-md, 8px);
+  background-color: var(--semantic-surface-secondary, #f3f4f6);
+}
+
+.bills-view-toggle .form-button {
+  min-height: 44px;
+}
+
+.bills-filter {
+  margin-bottom: var(--spacing-4);
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 375px) {
+  .bills-view-toggle {
+    display: flex;
+    width: 100%;
+  }
+
+  .bills-view-toggle .form-button {
+    flex: 1 1 auto;
+  }
+
+  .bills-filter {
+    width: 100%;
+  }
+
+  .bills-filter select {
+    width: 100%;
+    min-height: 44px;
+  }
+}
