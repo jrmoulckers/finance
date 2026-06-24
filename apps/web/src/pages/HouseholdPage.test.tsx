@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAuth } from '../auth/auth-context';
@@ -495,6 +495,37 @@ describe('HouseholdPage', () => {
     expect(screen.getByText('Shared Budgets')).toBeInTheDocument();
     expect(screen.getByText('Shared Goals')).toBeInTheDocument();
     expect(screen.getByText('Permission Reference')).toBeInTheDocument();
+  });
+
+  it('surfaces a supportive money check-in card and opens the lazy flow (#2150)', async () => {
+    mockedUseHousehold.mockReturnValue(
+      mockHouseholdResult({
+        household: makeHousehold(),
+        members: [
+          makeOwnerMember(),
+          makeOwnerMember({
+            id: 'mem-2',
+            userId: 'user-2-bcdefg',
+            role: 'MEMBER',
+            displayName: 'Partner',
+          }),
+        ],
+      }),
+    );
+
+    render(<HouseholdPage />);
+
+    // The card is framed supportively — neutral summaries first, no surveillance.
+    expect(screen.getByRole('heading', { name: 'Money check-in' })).toBeInTheDocument();
+    expect(screen.getByText(/neutral summaries first/i)).toBeInTheDocument();
+    expect(screen.getByText(/No surveillance, no scorekeeping/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Start a money check-in/i }));
+
+    // Dialog body is lazy-loaded into its own chunk; wait for it to resolve.
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: /Opt in together/i })).toBeInTheDocument();
+    expect(within(dialog).getAllByRole('checkbox', { name: /opts in/i }).length).toBeGreaterThan(0);
   });
 
   it('adds a trusted helper as read-only through the friendly form', () => {

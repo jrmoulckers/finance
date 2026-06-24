@@ -1,0 +1,357 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the couples money check-in dialog (#2150).
+ *
+ * Builds on the shared `.form-dialog` modal primitives and consumes design
+ * tokens only. Supportive, low-pressure visual tone; never relies on color
+ * alone to convey state, and honours reduced-motion and high-contrast prefs.
+ */
+
+.money-check-in__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  max-width: 560px;
+  width: 100%;
+}
+
+.money-check-in__intro {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  margin-top: var(--spacing-1);
+}
+
+.money-check-in__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+  padding: 0;
+  list-style: none;
+}
+
+.money-check-in__step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-full, 9999px);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.money-check-in__step[aria-current='step'] {
+  border-color: var(--semantic-border-focus);
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.money-check-in__step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--semantic-background-secondary, var(--semantic-background-primary));
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.money-check-in__step[aria-current='step'] .money-check-in__step-index {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+}
+
+.money-check-in__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.money-check-in__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.money-check-in__section-title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.money-check-in__hint {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.money-check-in__fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-3);
+  margin: 0;
+}
+
+.money-check-in__legend {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  padding: 0 var(--spacing-1);
+}
+
+.money-check-in__checkbox,
+.money-check-in__radio {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  cursor: pointer;
+}
+
+.money-check-in__radio-label {
+  display: block;
+  font-weight: var(--font-weight-medium);
+}
+
+.money-check-in__radio-helper {
+  display: block;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.money-check-in__status {
+  background: var(--semantic-background-secondary, var(--semantic-background-primary));
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-3);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.money-check-in__summary-list,
+.money-check-in__detail-list,
+.money-check-in__recap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.money-check-in__summary-item {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-3);
+}
+
+.money-check-in__summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.money-check-in__summary-title {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.money-check-in__summary-amount {
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.money-check-in__detail-list {
+  margin-top: var(--spacing-3);
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--semantic-border-default);
+}
+
+.money-check-in__detail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.money-check-in__detail-empty {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.money-check-in__prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-4);
+}
+
+.money-check-in__prompt-category {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+}
+
+.money-check-in__prompt-text {
+  font-size: var(--type-scale-title-font-size);
+  color: var(--semantic-text-primary);
+}
+
+.money-check-in__note,
+.money-check-in__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.money-check-in__field-label {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.money-check-in__select,
+.money-check-in__textarea {
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font: inherit;
+}
+
+.money-check-in__textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+.money-check-in__select:focus-visible,
+.money-check-in__textarea:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.money-check-in__recap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-3);
+}
+
+.money-check-in__recap-title {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+
+.money-check-in__recap-line {
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.money-check-in__link-button {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: var(--spacing-1) 0;
+  color: var(--semantic-interactive-default);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.money-check-in__link-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.money-check-in__link-button:disabled {
+  color: var(--semantic-text-secondary);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.money-check-in__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.money-check-in__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.money-check-in__button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.money-check-in__button--primary {
+  background: var(--semantic-interactive-default);
+  border-color: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+}
+
+.money-check-in__button--primary:hover:not(:disabled) {
+  background: var(--semantic-interactive-hover, var(--semantic-interactive-default));
+}
+
+.money-check-in__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.money-check-in__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .money-check-in__button {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .money-check-in__summary-item,
+  .money-check-in__prompt,
+  .money-check-in__fieldset,
+  .money-check-in__button {
+    border-width: 2px;
+  }
+}
