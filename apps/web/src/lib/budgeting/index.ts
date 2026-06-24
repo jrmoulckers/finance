@@ -114,6 +114,35 @@ export {
   buildTripBudgetRollup,
   transactionMatchesTripBudgetScope,
 } from './trip-country-budget-scope';
+export type {
+  TripBudgetRollup,
+  TripBudgetTransaction,
+  TripCountryBudgetScope,
+  TripCurrencyConverter,
+} from './trip-country-budget-scope';
+export type {
+  TripBudgetView,
+  TripBudgetStatus,
+  TripBudgetStorageLike,
+  TripCountryBudget,
+  TripCountryBudgetFormInput,
+} from './trip-country-budgets';
+export {
+  TRIP_COUNTRY_BUDGET_STORAGE_KEY,
+  buildTripBudgetView,
+  canConvertCurrency,
+  collectTripBudgetCountries,
+  createTripCountryBudget,
+  createTripCurrencyConverter,
+  deleteTripCountryBudget,
+  filterTripCountryBudgets,
+  getTripBudgetStatus,
+  loadTripCountryBudgets,
+  parseTripBudgetAmount,
+  saveTripCountryBudget,
+  setTripCountryBudgetArchived,
+  splitTokens,
+} from './trip-country-budgets';
 export { reviewYnabMigrationRows } from './ynab-migration-review';
 
 export type {

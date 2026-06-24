@@ -6,6 +6,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { useBudgets } from '../hooks/useBudgets';
 import { useCategories } from '../hooks/useCategories';
 import { useSyncStatus } from '../hooks/useSyncStatus';
+import { useTransactions } from '../hooks/useTransactions';
+import { useDisplayCurrency } from '../hooks/useDisplayCurrency';
+import { useExchangeRates } from '../hooks/useExchangeRates';
 
 vi.mock('../components/forms', () => ({
   BudgetForm: ({ isOpen }: { isOpen: boolean }) =>
@@ -62,9 +65,24 @@ vi.mock('../hooks/useSyncStatus', () => ({
   useSyncStatus: vi.fn(),
 }));
 
+vi.mock('../hooks/useTransactions', () => ({
+  useTransactions: vi.fn(),
+}));
+
+vi.mock('../hooks/useDisplayCurrency', () => ({
+  useDisplayCurrency: vi.fn(),
+}));
+
+vi.mock('../hooks/useExchangeRates', () => ({
+  useExchangeRates: vi.fn(),
+}));
+
 const mockedUseBudgets = vi.mocked(useBudgets);
 const mockedUseCategories = vi.mocked(useCategories);
 const mockedUseSyncStatus = vi.mocked(useSyncStatus);
+const mockedUseTransactions = vi.mocked(useTransactions);
+const mockedUseDisplayCurrency = vi.mocked(useDisplayCurrency);
+const mockedUseExchangeRates = vi.mocked(useExchangeRates);
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
@@ -75,6 +93,46 @@ const syncMetadata = {
 
 describe('BudgetsPage', () => {
   beforeEach(() => {
+    try {
+      globalThis.localStorage?.clear();
+    } catch {
+      // Ignore unavailable storage in the test environment.
+    }
+    mockedUseTransactions.mockReturnValue({
+      transactions: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createTransaction: vi.fn(),
+      updateTransaction: vi.fn(),
+      deleteTransaction: vi.fn(),
+    });
+    mockedUseDisplayCurrency.mockReturnValue({
+      displayCurrency: 'USD',
+      setDisplayCurrency: vi.fn(),
+      supportedCurrencies: [
+        { value: 'USD', label: 'US Dollar (USD)' },
+        { value: 'THB', label: 'Thai Baht (THB)' },
+        { value: 'EUR', label: 'Euro (EUR)' },
+      ],
+    });
+    mockedUseExchangeRates.mockReturnValue({
+      rates: {},
+      loading: false,
+      error: null,
+      lastUpdated: null,
+      providerName: 'Static Rates',
+      isOffline: false,
+      isStale: false,
+      hasManualOverrides: false,
+      convert: vi.fn(),
+      getRate: vi.fn(),
+      setOverride: vi.fn(),
+      removeOverride: vi.fn(),
+      overrides: {},
+      clearOverrides: vi.fn(),
+      refresh: vi.fn(),
+    });
     mockedUseSyncStatus.mockReturnValue({
       isOnline: true,
       isOffline: false,
@@ -335,5 +393,45 @@ describe('BudgetsPage', () => {
 
     expect(screen.getByText('Food & Meals template')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /use food & meals template/i })).toBeInTheDocument();
+  });
+
+  it('surfaces the trip & country budgets section on the budgets page', () => {
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: /trip & country budgets/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Trip name')).toBeInTheDocument();
+    expect(screen.getByText(/no trip budgets match the current filter/i)).toBeInTheDocument();
+  });
+
+  it('creates a trip budget from the budgets surface and shows its roll-up', () => {
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Trip name'), {
+      target: { value: 'Bangkok Jan' },
+    });
+    fireEvent.change(screen.getByLabelText('Start date'), {
+      target: { value: '2026-01-01' },
+    });
+    fireEvent.change(screen.getByLabelText('End date'), {
+      target: { value: '2026-03-31' },
+    });
+    fireEvent.change(screen.getByLabelText('Local currency'), {
+      target: { value: 'THB' },
+    });
+    fireEvent.change(screen.getByLabelText('Budget (local currency)'), {
+      target: { value: '90000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /add trip budget/i }));
+
+    expect(screen.getByRole('heading', { name: 'Bangkok Jan' })).toBeInTheDocument();
+    expect(screen.getByText(/showing 1 trip budget/i)).toBeInTheDocument();
   });
 });
