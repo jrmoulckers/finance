@@ -7,7 +7,7 @@
  * References: issue #1105
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -32,6 +32,16 @@ import type {
   InvestmentIncomeExportInput,
   InvestmentRealizedGainExportInput,
 } from '../lib/export/investment-export';
+
+/**
+ * Crypto wallet & exchange connectivity panel — lazily loaded as its own chunk
+ * so its engine + form code never inflates the Investments route bundle.
+ */
+const CryptoConnectionsPanel = lazy(() =>
+  import('../components/investments/CryptoConnectionsPanel').then((module) => ({
+    default: module.CryptoConnectionsPanel,
+  })),
+);
 
 /** Color palette for the allocation pie chart. */
 const CHART_COLORS = [
@@ -561,6 +571,17 @@ export const InvestmentsPage: React.FC = () => {
           </section>
         </>
       )}
+
+      {/* Crypto wallets & exchanges — available even with no brokerage holdings (#2164) */}
+      <Suspense
+        fallback={
+          <p role="status" aria-live="polite" style={{ padding: 'var(--spacing-4, 16px)' }}>
+            Loading crypto connectivity…
+          </p>
+        }
+      >
+        <CryptoConnectionsPanel />
+      </Suspense>
     </>
   );
 };
