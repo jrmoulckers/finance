@@ -10,7 +10,7 @@
  * References: issues #1780, #1779, #1781, #1716, #1784, #1786, #2144, #2156
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { AppIcon } from '../components/icons';
 
@@ -66,6 +66,10 @@ import {
 } from '../lib/household/teen-review-summaries';
 
 import './HouseholdPage.css';
+
+// Lazy-loaded so the supportive couples money check-in flow lands in its own
+// sub-chunk and never grows this large route past the performance budget (#2150).
+const MoneyCheckInDialog = lazy(() => import('../components/household/MoneyCheckInDialog'));
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -301,6 +305,9 @@ export function HouseholdPage() {
     Record<string, { target: string; current: string }>
   >({});
   const [transactionDrafts, setTransactionDrafts] = useState<Record<string, string>>({});
+
+  // -- Couples money check-in (#2150) --------------------------------------
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
   // -- Handlers ------------------------------------------------------------
 
@@ -1105,6 +1112,30 @@ export function HouseholdPage() {
     new Set<HouseholdActivityType>(activityEvents.map((event) => event.type)),
   );
 
+  // -- Couples money check-in: derive supportive, neutral facts (#2150) -----
+  // The two partners default to the first two household members; the neutral
+  // facts reuse the same budget snapshots that power the scorecard plus any
+  // logged shared expenses (e.g. wedding spending).
+  const checkInPartners = members.slice(0, 2).map((member) => ({
+    id: member.id,
+    name: resolveMemberName(member),
+  }));
+  const checkInSnapshots = getScorecardBudgetSnapshots(budgetData.budgets, household.id);
+  const checkInFacts = {
+    categoryTotals: checkInSnapshots.map((snapshot) => ({
+      label: snapshot.name,
+      amountCents: snapshot.spentAmount,
+    })),
+    budgetDriftByCategory: checkInSnapshots.map((snapshot) => ({
+      label: snapshot.name,
+      amountCents: snapshot.spentAmount - snapshot.budgetAmount,
+    })),
+    sharedSpendingChanges: sharedExpenses.map((expense) => ({
+      label: expense.description,
+      amountCents: expense.amount,
+    })),
+  };
+
   // -- Household exists — full management UI --------------------------------
 
   return (
@@ -1122,6 +1153,25 @@ export function HouseholdPage() {
         </h1>
         <span className="household-header__badge">Family Plan</span>
       </header>
+
+      {/* Couples money check-in (#2150) — supportive, opt-in, never policing. */}
+      <section className="household-card" aria-labelledby="money-check-in-title">
+        <h2 id="money-check-in-title" className="household-card__title">
+          Money check-in
+        </h2>
+        <p className="household-card__description">
+          A supportive, opt-in space to talk money together. You will see neutral summaries first —
+          category totals, budget drift, and shared-spending changes — before any line items, and
+          you each choose what to share. No surveillance, no scorekeeping.
+        </p>
+        <button
+          type="button"
+          className="household-button household-button--primary"
+          onClick={() => setCheckInOpen(true)}
+        >
+          Start a money check-in
+        </button>
+      </section>
 
       <section className="household-card household-scorecard" aria-labelledby="scorecard-title">
         <div className="household-scorecard__header">
@@ -3041,6 +3091,18 @@ export function HouseholdPage() {
           </table>
         </div>
       </section>
+
+      {checkInOpen && (
+        <Suspense fallback={null}>
+          <MoneyCheckInDialog
+            isOpen={checkInOpen}
+            onClose={() => setCheckInOpen(false)}
+            householdId={household.id}
+            partners={checkInPartners}
+            facts={checkInFacts}
+          />
+        </Suspense>
+      )}
     </main>
   );
 }
