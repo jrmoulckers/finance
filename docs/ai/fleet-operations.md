@@ -269,8 +269,8 @@ After pushing a branch and opening a PR, the agent enters a monitoring loop:
          │                              │
     ┌────▼────────────────┐             │
     │  Fix locally        │             │
-    │  Run npm run        │             │
-    │    ci:check         │             │
+    │  Run format +       │             │
+    │    lint check       │             │
     └────┬────────────────┘             │
          │                              │
     ┌────▼────────────────┐             │

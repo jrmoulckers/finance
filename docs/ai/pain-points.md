@@ -21,7 +21,6 @@ This document tracks friction points, inefficiencies, and recurring failures in 
   - [Tooling](#tooling)
   - [Documentation](#documentation)
   - [Cross-Agent Coordination](#cross-agent-coordination)
-  - [Workflow](#workflow)
   - [Fleet Operations](#fleet-operations)
 - [Resolved Pain Points](#resolved-pain-points)
 - [Metrics Summary](#metrics-summary)
@@ -315,50 +314,6 @@ Document the manual restart procedure more prominently in [mcp.md](mcp.md).
 
 ---
 
-#### PP-0014: Husky pre-push hook blocks automated pushes
-
-| Field          | Value                           |
-| -------------- | ------------------------------- |
-| **ID**         | PP-0014                         |
-| **Severity**   | 🟠 High                         |
-| **Category**   | Tooling, Workflow               |
-| **First seen** | 2025-07                         |
-| **Status**     | Resolved (workaround canonical) |
-| **Owner**      | @devops-engineer                |
-
-**Description:**
-The `.husky/pre-push` hook requires interactive terminal confirmation, which AI agents cannot provide. All automated pushes are blocked by default.
-
-**Impact:**
-Every agent push requires a workaround. Was blocking in early fleet runs before workaround was discovered.
-
-**Current workaround:**
-Canonical: `$env:HUSKY = "0" ; git push --no-verify origin <branch>`. This is now the standard push command in all workflow docs.
-
-**Suggested fix:**
-Workaround is canonical and documented. The hook serves its purpose as a safety net for humans.
-
----
-
-#### PP-0017: Prettier has no Kotlin/Swift parser
-
-| Field          | Value            |
-| -------------- | ---------------- |
-| **ID**         | PP-0017          |
-| **Severity**   | 🟢 Low           |
-| **Category**   | Tooling          |
-| **First seen** | 2025-07          |
-| **Status**     | Resolved         |
-| **Owner**      | @devops-engineer |
-
-**Description:**
-`npm run format` (Prettier) fails when it encounters `.kt` or `.swift` files because no parser exists for these languages. This caused false formatting failures in early fleet runs.
-
-**Resolution:**
-Kotlin and Swift file patterns added to `.prettierignore`. Prettier now skips these files.
-
----
-
 #### PP-0020: `npm run format` slow on full monorepo
 
 | Field          | Value            |
@@ -435,33 +390,6 @@ Define a `## Agent Handoff` PR section template that includes: exported API surf
 
 ---
 
-### Workflow
-
-#### PP-0010: `force-with-lease` requires human approval but is needed for routine rebases
-
-| Field          | Value                    |
-| -------------- | ------------------------ |
-| **ID**         | PP-0010                  |
-| **Severity**   | 🟡 Medium                |
-| **Category**   | Workflow, Git / Worktree |
-| **First seen** | 2025-07                  |
-| **Status**     | Open                     |
-| **Owner**      | @architect               |
-
-**Description:**
-After `git rebase origin/main`, agents must force-push their feature branch. The `--force-with-lease` flag requires human approval per [restrictions.md](restrictions.md). This creates a bottleneck when the human is unavailable.
-
-**Impact:**
-Agent work is blocked until a human approves the force-push. Can delay a PR by hours.
-
-**Current workaround:**
-Agents can avoid rebasing until just before requesting human review. In practice, most rebases result in a clean fast-forward push without needing `--force-with-lease`.
-
-**Suggested fix:**
-Consider auto-approving `--force-with-lease` on the agent's own feature branch (when no other collaborator has pushed to it).
-
----
-
 ### Fleet Operations
 
 #### PP-0011: Fleet status tracking relies on manual PR comments
@@ -510,14 +438,15 @@ Define a merge-train pattern: merge PRs one at a time, each rebased on the prior
 
 ## Resolved Pain Points
 
-| ID      | Title                                | Severity | Resolved | Resolution                                                                   |
-| ------- | ------------------------------------ | -------- | -------- | ---------------------------------------------------------------------------- |
-| PP-0001 | `gh pr checks` shows stale results   | 🔴       | 2025-07  | `gh pr checks` is now the correct and canonical CI monitoring command        |
-| PP-0004 | No detection of stale worktrees      | 🟢       | 2025-07  | Cleanup script added: `node tools/cleanup-worktrees.js`                      |
-| PP-0007 | fleet-ops referenced wrong CI cmd    | 🟠       | 2025-07  | fleet-operations.md updated to use `gh pr checks`                            |
-| PP-0008 | Duplicated CI monitoring across docs | 🟡       | 2025-07  | Consolidated in this docs audit; ci-monitoring.md is the canonical reference |
-| PP-0014 | Husky pre-push blocks automated push | 🟠       | 2025-07  | Canonical workaround: `$env:HUSKY = "0" ; git push --no-verify`              |
-| PP-0017 | Prettier has no Kotlin/Swift parser  | 🟢       | 2025-07  | Kotlin and Swift patterns added to `.prettierignore`                         |
+| ID      | Title                                       | Severity | Resolved | Resolution                                                                              |
+| ------- | ------------------------------------------- | -------- | -------- | --------------------------------------------------------------------------------------- |
+| PP-0001 | `gh pr checks` shows stale results          | 🔴       | 2025-07  | `gh pr checks` is now the correct and canonical CI monitoring command                   |
+| PP-0004 | No detection of stale worktrees             | 🟢       | 2025-07  | Cleanup script added: `node tools/cleanup-worktrees.js`                                 |
+| PP-0007 | fleet-ops referenced wrong CI cmd           | 🟠       | 2025-07  | fleet-operations.md updated to use `gh pr checks`                                       |
+| PP-0008 | Duplicated CI monitoring across docs        | 🟡       | 2025-07  | Consolidated in this docs audit; ci-monitoring.md is the canonical reference            |
+| PP-0010 | force-with-lease needed for routine rebases | 🟡       | 2026-06  | Auto-approved on the agent's own feature branch (AGENTS.md Category 1, restrictions.md) |
+| PP-0014 | Husky pre-push blocks automated push        | 🟠       | 2025-07  | Canonical workaround: `$env:HUSKY = "0" ; git push --no-verify`                         |
+| PP-0017 | Prettier has no Kotlin/Swift parser         | 🟢       | 2025-07  | Kotlin and Swift patterns added to `.prettierignore`                                    |
 
 ---
 
@@ -536,4 +465,4 @@ Track these metrics monthly to measure improvement. See [workflow-metrics.md](wo
 
 ---
 
-_Last updated: 2025-07-18. Maintained by `@docs-writer`._
+_Last updated: 2026-06-24. Maintained by `@docs-writer`._
