@@ -20,6 +20,7 @@ import { useBills } from '../hooks';
 import type { Bill, BillFrequency, BillStatus } from '../kmp/bridge';
 import { AppIcon, type IconName } from '../components/icons';
 import { BillCalendarView } from '../components/bills/BillCalendarView';
+import './BillsPage.css';
 
 /** Which Bills view is active. */
 type BillsView = 'list' | 'payday';
@@ -218,15 +219,8 @@ export const BillsPage: React.FC = () => {
           {/* Summary Cards */}
           <section className="page-section" aria-label="Bills summary">
             <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 'var(--spacing-4)',
-                }}
-              >
-                <div>
+              <div className="bills-summary__grid">
+                <div className="bills-summary__metric">
                   <p className="card__title">Upcoming</p>
                   <p className="card__value" aria-live="polite">
                     {summary.upcomingCount} bills
@@ -240,7 +234,7 @@ export const BillsPage: React.FC = () => {
                     <CurrencyDisplay amount={summary.totalUpcoming} /> total
                   </p>
                 </div>
-                <div>
+                <div className="bills-summary__metric">
                   <p className="card__title">Overdue</p>
                   <p
                     className="card__value"
@@ -260,7 +254,7 @@ export const BillsPage: React.FC = () => {
                     <CurrencyDisplay amount={summary.totalOverdue} /> total
                   </p>
                 </div>
-                <div>
+                <div className="bills-summary__metric">
                   <p className="card__title">Total Bills</p>
                   <p className="card__value">{bills.length}</p>
                 </div>
@@ -269,18 +263,7 @@ export const BillsPage: React.FC = () => {
           </section>
 
           {/* View toggle: list vs. payday-aligned calendar */}
-          <div
-            role="group"
-            aria-label="Choose bills view"
-            style={{
-              display: 'inline-flex',
-              gap: 'var(--spacing-1)',
-              marginBottom: 'var(--spacing-4)',
-              padding: 'var(--spacing-1)',
-              borderRadius: 'var(--radius-md, 8px)',
-              backgroundColor: 'var(--semantic-surface-secondary, #f3f4f6)',
-            }}
-          >
+          <div role="group" aria-label="Choose bills view" className="bills-view-toggle">
             <button
               type="button"
               className="form-button"
@@ -316,14 +299,7 @@ export const BillsPage: React.FC = () => {
           ) : (
             <>
               {/* Filter */}
-              <div
-                style={{
-                  marginBottom: 'var(--spacing-4)',
-                  display: 'flex',
-                  gap: 'var(--spacing-2)',
-                  flexWrap: 'wrap',
-                }}
-              >
+              <div className="bills-filter">
                 <label htmlFor="bill-status-filter" className="sr-only">
                   Filter by status
                 </label>

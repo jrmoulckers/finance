@@ -41,6 +41,7 @@ import type { PredictionSummary } from '../lib/predictiveBalance';
 import { rollUpProtectedTransactions } from '../lib/ui/privacy';
 import { useHiddenModuleIds } from '../contexts/HiddenModulesContext';
 import '../components/dashboard/dashboard.css';
+import './DashboardPage.css';
 
 const CategoryPieChart = React.lazy(() =>
   import('../components/charts/CategoryPieChart').then((module) => ({
@@ -838,7 +839,7 @@ export const DashboardPage: React.FC = () => {
                 />
               </Suspense>
               <section className="page-section" aria-label="Financial summary">
-                <div className="card-grid card-grid--4">
+                <div className="card-grid card-grid--4 dashboard-summary-grid">
                   <Suspense
                     fallback={
                       <article className="card" role="status" aria-label="Loading savings rate">

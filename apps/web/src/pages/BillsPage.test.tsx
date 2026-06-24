@@ -3,8 +3,12 @@
 import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { useBills } from '../hooks';
 import { BillsPage } from './BillsPage';
+
+const billsCss = readFileSync(resolve(process.cwd(), 'src/pages/BillsPage.css'), 'utf8');
 
 vi.mock('../hooks', () => ({
   useBills: vi.fn(),
@@ -225,5 +229,45 @@ describe('BillsPage', () => {
 
     const markPaidButtons = screen.getAllByText('Mark Paid');
     expect(markPaidButtons.length).toBeGreaterThan(0);
+  });
+
+  describe('compact-width responsive layout (#2190)', () => {
+    it('reflows the summary into a grid of three labelled metrics', () => {
+      render(
+        <MemoryRouter>
+          <BillsPage />
+        </MemoryRouter>,
+      );
+
+      const summarySection = screen.getByRole('region', { name: 'Bills summary' });
+      const grid = summarySection.querySelector('.bills-summary__grid');
+      expect(grid).not.toBeNull();
+      expect(grid?.querySelectorAll('.bills-summary__metric')).toHaveLength(3);
+    });
+
+    it('applies scoped classes to the view toggle and status filter for compact tap targets', () => {
+      render(
+        <MemoryRouter>
+          <BillsPage />
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByRole('group', { name: 'Choose bills view' })).toHaveClass(
+        'bills-view-toggle',
+      );
+      expect(
+        screen.getByLabelText('Filter bills by status').closest('.bills-filter'),
+      ).not.toBeNull();
+    });
+
+    it('stacks the summary to a single column at iPhone SE width (<=375px)', () => {
+      // Compact-width media query collapses the summary to one column.
+      expect(billsCss).toMatch(/@media\s*\(max-width:\s*375px\)/);
+      const compactBlock = billsCss.slice(billsCss.indexOf('@media (max-width: 375px)'));
+      expect(compactBlock).toMatch(/\.bills-summary__grid\s*\{[^}]*grid-template-columns:\s*1fr/);
+      // Interactive controls stretch to full width with a >=44px tap target.
+      expect(compactBlock).toMatch(/\.bills-view-toggle[^}]*width:\s*100%/);
+      expect(billsCss).toMatch(/\.bills-view-toggle\s\.form-button\s*\{[^}]*min-height:\s*44px/);
+    });
   });
 });
