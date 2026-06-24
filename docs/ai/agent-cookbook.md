@@ -76,7 +76,11 @@ $env:HUSKY = "0" ; git push --no-verify origin feat/budget-rollover-134
 
 # 8. Create PR
 gh pr create --title "feat(core): implement budget rollover (#134)" \
-  --body "## Summary\nImplement budget rollover logic.\n\nCloses #134"
+  --body "## Summary
+
+Implement budget rollover logic.
+
+Closes #134"
 
 # 9. Monitor CI until green (remote CI is source of truth)
 gh pr checks <number>
@@ -116,7 +120,11 @@ $env:HUSKY = "0" ; git push --no-verify origin fix/auth-token-200
 
 # 7. Create PR
 gh pr create --title "fix(web): handle expired auth token gracefully (#200)" \
-  --body "## Summary\nFix expired token handling.\n\nCloses #200"
+  --body "## Summary
+
+Fix expired token handling.
+
+Closes #200"
 
 # 8. Monitor CI (remote CI is source of truth)
 gh pr checks <number>
@@ -152,7 +160,11 @@ $env:HUSKY = "0" ; git push --no-verify origin docs/api-reference-86
 
 # 6. Create PR
 gh pr create --title "docs: update API reference for sync endpoints (#86)" \
-  --body "## Summary\nUpdate API docs.\n\nCloses #86"
+  --body "## Summary
+
+Update API docs.
+
+Closes #86"
 
 # 7. Monitor CI (use the docs-only quick check locally), then self-merge once green AND MERGEABLE
 gh pr checks <number>

@@ -11,6 +11,7 @@ Solutions for the most common problems AI agents encounter in the Finance monore
 - [PR Failing "Lint & Format / ESLint & Prettier" Check](#pr-failing-lint--format--eslint--prettier-check)
 - [PR Failing Type-Check](#pr-failing-type-check)
 - [Merge Conflicts After Rebase](#merge-conflicts-after-rebase)
+- [PR Behind main / "Head Branch Is Not Up To Date"](#pr-behind-main--head-branch-is-not-up-to-date)
 - [Worktree Already Exists for Branch](#worktree-already-exists-for-branch)
 - [Pre-Push Hook Blocking Push](#pre-push-hook-blocking-push)
 - [CI Check Stuck or Not Running](#ci-check-stuck-or-not-running)
@@ -132,6 +133,44 @@ npm run format:check && npx eslint . --max-warnings 0
 git add -A && git commit --amend --no-edit
 $env:HUSKY = "0" ; git push --no-verify origin <branch-name>
 ```
+
+---
+
+## PR Behind main / "Head Branch Is Not Up To Date"
+
+### Symptoms
+
+- `gh pr merge` fails with "Pull request is not mergeable" or "head branch is not up to date"
+- `gh pr view <number> --json mergeable,mergeStateStatus` shows `mergeable=UNKNOWN` or `mergeStateStatus=BEHIND`
+- CI is green, but the merge is blocked because `main` advanced after you branched
+
+### Root Cause
+
+Another PR merged into `main` after you last pushed. Your branch is now behind, and the merge requires the head to be up to date with `main` first. This is **not** a code conflict — it is a stale-base condition, and it carries the same P0 urgency as a red CI check.
+
+### Fix
+
+```powershell
+# Sync with the latest main and replay your commits on top
+git fetch origin main
+git rebase origin/main
+
+# Re-run the pre-push workflow (a rebase can surface new lint/format drift)
+npm run format
+npx eslint . --fix
+npm run format:check && npx eslint . --max-warnings 0
+
+# Re-push your OWN branch. --force-with-lease is auto-approved for this —
+# it refuses to overwrite commits you haven't already seen.
+$env:HUSKY = "0" ; git push --force-with-lease --no-verify origin <branch-name>
+
+# Re-check until green AND mergeable, then self-merge
+gh pr checks <number>
+gh pr view <number> --json mergeable,mergeStateStatus
+gh pr merge <number> --squash
+```
+
+> **Never use plain `git push --force`** — it is forbidden. `--force-with-lease` on your **own** branch after a rebase is the only auto-approved force variant. See [Restrictions](restrictions.md).
 
 ---
 
