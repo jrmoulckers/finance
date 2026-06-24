@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { DateInput } from '../components/common';
 import { AmountInput } from '../components/forms/AmountInput';
 import { AppIcon } from '../components/icons';
@@ -9,32 +9,72 @@ import { useAmountInput } from '../hooks/useAmountInput';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
 import { Currencies, type Currency } from '../kmp/bridge';
-import type { ExtractedReceiptLineItem, ExtractedReceiptText } from '../lib/import';
+import type { ExtractedReceiptText } from '../lib/import';
 import { webReceiptOcrAdapter } from '../lib/import';
+import {
+  COGS_BUCKETS,
+  COGS_BUCKET_LABELS,
+  assignLineItemBucket,
+  attachReceiptImage,
+  buildReceiptAttachmentStorageKey,
+  computeBucketSubtotals,
+  createReceiptExpenseDraft,
+  detachReceiptImage,
+  draftToTransactionCustomFields,
+  draftToTransactionTags,
+  reconcileDraft,
+  toggleLineItemIncluded,
+  type CogsBucket,
+  type ReceiptExpenseDraft,
+  type ReconciliationStatus,
+} from '../lib/expenses/receipt-expense-draft';
 
 import '../styles/import.css';
 
-interface EditableReceiptLineItem extends ExtractedReceiptLineItem {
-  readonly accepted: boolean;
+type FlowStatus = 'idle' | 'processing' | 'ready' | 'saved';
+
+function formatMoney(cents: number): string {
+  const sign = cents < 0 ? '-' : '';
+  return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
-const emptyReceipt: ExtractedReceiptText = {
-  merchant: null,
-  date: null,
-  total: null,
-  currency: null,
-  lineItems: [],
-  rawText: '',
-  confidence: 0,
+function generateDraftId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+}
+
+function createObjectUrl(file: File): string {
+  if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+    return URL.createObjectURL(file);
+  }
+  return '';
+}
+
+function revokeObjectUrl(url: string | null): void {
+  if (url !== null && url.startsWith('blob:') && typeof URL.revokeObjectURL === 'function') {
+    URL.revokeObjectURL(url);
+  }
+}
+
+const RECONCILIATION_LABELS: Readonly<
+  Record<ReconciliationStatus, { icon: 'check-circle' | 'alert-triangle'; text: string }>
+> = {
+  balanced: { icon: 'check-circle', text: 'Mapped items match the receipt total.' },
+  over: { icon: 'alert-triangle', text: 'Mapped items are more than the receipt total.' },
+  under: { icon: 'alert-triangle', text: 'Mapped items are less than the receipt total.' },
+  unmapped: { icon: 'alert-triangle', text: 'No line items are mapped yet.' },
 };
 
-/** Web camera/gallery receipt OCR flow using on-device Tesseract.js WASM. */
+/** Web camera/gallery receipt OCR → saved expense + COGS mapping flow. */
 export const ReceiptOcrPage: React.FC = () => {
   const accountSelectId = useId();
+  const reconciliationId = useId();
   const { accounts } = useAccounts();
   const { createTransaction } = useTransactions();
-  const [receipt, setReceipt] = useState<ExtractedReceiptText>(emptyReceipt);
-  const [items, setItems] = useState<readonly EditableReceiptLineItem[]>([]);
+
+  const [draft, setDraft] = useState<ReceiptExpenseDraft | null>(null);
   const [merchant, setMerchant] = useState('');
   const amountInput = useAmountInput({
     currencySymbol: '$',
@@ -43,89 +83,150 @@ export const ReceiptOcrPage: React.FC = () => {
   });
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedAccountId, setSelectedAccountId] = useState('');
-  const [status, setStatus] = useState<'idle' | 'processing' | 'ready' | 'saved'>('idle');
+  const [status, setStatus] = useState<FlowStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+
+  const reviewHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+
+  // Revoke any outstanding object URL when the component unmounts.
+  useEffect(
+    () => () => {
+      revokeObjectUrl(objectUrlRef.current);
+    },
+    [],
+  );
 
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === selectedAccountId) ?? null,
     [accounts, selectedAccountId],
   );
 
-  const handleReceiptImage = (file: File) => {
-    setStatus('processing');
-    setError(null);
-    void webReceiptOcrAdapter
-      .extract(file)
-      .then((result) => {
-        setReceipt(result);
-        setMerchant(result.merchant ?? '');
-        amountInput.setCents(result.total ?? 0);
-        setDate(result.date ?? new Date().toISOString().slice(0, 10));
-        setItems(result.lineItems.map((item) => ({ ...item, accepted: true })));
-        setStatus('ready');
-      })
-      .catch(() => {
-        setError('Could not read the receipt image on this device. Please try another photo.');
-        setStatus('idle');
-      });
-  };
+  // Working draft keeps line-item edits while sourcing the total/merchant/date
+  // from the editable review controls so reconciliation stays reactive.
+  const workingDraft = useMemo<ReceiptExpenseDraft | null>(
+    () =>
+      draft === null ? null : { ...draft, merchant, dateIso: date, totalCents: amountInput.cents },
+    [draft, merchant, date, amountInput.cents],
+  );
 
-  const toggleLineItem = (index: number) => {
-    setItems((current) =>
-      current.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, accepted: !item.accepted } : item,
-      ),
+  const subtotals = useMemo(
+    () => (workingDraft === null ? null : computeBucketSubtotals(workingDraft)),
+    [workingDraft],
+  );
+  const reconciliation = useMemo(
+    () => (workingDraft === null ? null : reconcileDraft(workingDraft)),
+    [workingDraft],
+  );
+
+  useEffect(() => {
+    if (status === 'ready' && reviewHeadingRef.current !== null) {
+      reviewHeadingRef.current.focus();
+    }
+  }, [status]);
+
+  const handleReceiptImage = useCallback(
+    (file: File) => {
+      setStatus('processing');
+      setError(null);
+      void webReceiptOcrAdapter
+        .extract(file)
+        .then((result: ExtractedReceiptText) => {
+          const baseDraft = createReceiptExpenseDraft(result, {
+            fallbackDateIso: new Date().toISOString().slice(0, 10),
+          });
+
+          revokeObjectUrl(objectUrlRef.current);
+          const objectUrl = createObjectUrl(file);
+          objectUrlRef.current = objectUrl;
+          const fileName = file.name.length > 0 ? file.name : `receipt-${Date.now()}.jpg`;
+          const attachedDraft = attachReceiptImage(baseDraft, {
+            url: objectUrl,
+            fileName,
+            mimeType: file.type.length > 0 ? file.type : 'image/jpeg',
+            sizeBytes: file.size,
+            storageKey: buildReceiptAttachmentStorageKey(generateDraftId(), fileName),
+            altText:
+              baseDraft.merchant.length > 0
+                ? `Receipt photo from ${baseDraft.merchant}`
+                : 'Captured receipt photo',
+          });
+
+          setDraft(attachedDraft);
+          setMerchant(attachedDraft.merchant);
+          amountInput.setCents(attachedDraft.totalCents);
+          setDate(attachedDraft.dateIso);
+          setStatus('ready');
+        })
+        .catch(() => {
+          setError('Could not read the receipt image on this device. Please try another photo.');
+          setStatus('idle');
+        });
+    },
+    [amountInput],
+  );
+
+  const handleBucketChange = useCallback((index: number, bucket: CogsBucket) => {
+    setDraft((current) =>
+      current === null ? current : assignLineItemBucket(current, index, bucket),
     );
-  };
+  }, []);
+
+  const handleToggleIncluded = useCallback((index: number) => {
+    setDraft((current) => (current === null ? current : toggleLineItemIncluded(current, index)));
+  }, []);
+
+  const handleRemoveImage = useCallback(() => {
+    revokeObjectUrl(objectUrlRef.current);
+    objectUrlRef.current = null;
+    setDraft((current) => (current === null ? current : detachReceiptImage(current)));
+  }, []);
 
   const receiptCurrency = (code: string | null, fallback: Currency): Currency => {
     if (code === null) return fallback;
     return Currencies[code as keyof typeof Currencies] ?? fallback;
   };
 
-  const saveTransaction = () => {
+  const saveExpense = useCallback(() => {
+    if (workingDraft === null) return;
     if (selectedAccount === null) {
       setError('Choose an account before saving.');
       return;
     }
-
-    const totalCents = amountInput.cents;
-    if (totalCents <= 0 || merchant.trim().length === 0) {
+    if (workingDraft.totalCents <= 0 || workingDraft.merchant.trim().length === 0) {
       setError('Review merchant and amount before saving.');
       return;
     }
 
-    const acceptedItems = items.filter((item) => item.accepted);
     const transaction = createTransaction({
       householdId: selectedAccount.householdId,
       accountId: selectedAccount.id,
       type: 'EXPENSE',
       status: 'CLEARED',
-      amount: { amount: totalCents },
-      currency: receiptCurrency(receipt.currency, selectedAccount.currency),
-      payee: merchant,
-      note: `Receipt OCR (${Math.round(receipt.confidence)}% confidence)`,
-      date,
-      tags: ['receipt'],
-      customFields: {
-        receiptRawText: receipt.rawText,
-        receiptLineItems: JSON.stringify(acceptedItems),
-      },
+      amount: { amount: workingDraft.totalCents },
+      currency: receiptCurrency(workingDraft.currencyCode, selectedAccount.currency),
+      payee: workingDraft.merchant,
+      note: `Receipt OCR (${Math.round(workingDraft.confidence)}% confidence)`,
+      date: workingDraft.dateIso,
+      tags: draftToTransactionTags(workingDraft),
+      customFields: draftToTransactionCustomFields(workingDraft),
     });
 
     if (transaction === null) {
-      setError('Could not save the receipt transaction.');
+      setError('Could not save the receipt expense.');
       return;
     }
+    setError(null);
     setStatus('saved');
-  };
+  }, [workingDraft, selectedAccount, createTransaction]);
 
   return (
     <div className="import-wizard">
       <h2 className="import-wizard__title">Scan Receipt</h2>
       <p className="import-section-description">
-        Take or upload a receipt photo. OCR runs in this browser with Tesseract.js WASM; no server
-        OCR fallback is used.
+        Take or upload a receipt photo, review the extracted fields, map each line item to a cost
+        bucket, and save it as an expense. OCR runs in this browser with Tesseract.js WASM; no
+        server OCR fallback is used.
       </p>
 
       <section aria-labelledby="capture-heading">
@@ -146,7 +247,7 @@ export const ReceiptOcrPage: React.FC = () => {
 
       {status === 'processing' && (
         <div role="status" aria-live="polite" className="import-progress">
-          Reading receipt on device╬ô├ç┬¬
+          Reading receipt on device…
         </div>
       )}
 
@@ -157,11 +258,17 @@ export const ReceiptOcrPage: React.FC = () => {
         </div>
       )}
 
-      {(status === 'ready' || status === 'saved') && (
-        <section aria-labelledby="quick-entry-heading">
-          <h3 id="quick-entry-heading" className="import-section-heading">
-            Quick entry
+      {(status === 'ready' || status === 'saved') && workingDraft !== null && (
+        <section aria-labelledby="review-heading">
+          <h3
+            id="review-heading"
+            className="import-section-heading"
+            tabIndex={-1}
+            ref={reviewHeadingRef}
+          >
+            Review &amp; save as expense
           </h3>
+
           <div className="import-account-selector">
             <label htmlFor={accountSelectId} className="import-account-selector__label">
               Account
@@ -180,6 +287,7 @@ export const ReceiptOcrPage: React.FC = () => {
               ))}
             </select>
           </div>
+
           <label className="import-account-selector__label">
             Merchant
             <input value={merchant} onChange={(event) => setMerchant(event.target.value)} />
@@ -198,27 +306,125 @@ export const ReceiptOcrPage: React.FC = () => {
             Date
             <DateInput value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
-          <p>OCR confidence: {Math.round(receipt.confidence)}%</p>
+          <p>OCR confidence: {Math.round(workingDraft.confidence)}%</p>
 
-          {items.length > 0 && (
-            <fieldset>
-              <legend>Itemized split suggestions</legend>
-              {items.map((item, index) => (
-                <label key={`${item.description}-${index}`}>
-                  <input
-                    type="checkbox"
-                    checked={item.accepted}
-                    onChange={() => toggleLineItem(index)}
-                  />
-                  {item.description} ╬ô├ç├╢ ${(item.total / 100).toFixed(2)}
-                  {item.suggestedCategory === null ? '' : ` (${item.suggestedCategory})`}
-                </label>
-              ))}
+          {workingDraft.attachment !== null && (
+            <div className="receipt-attachment">
+              <h4 id="receipt-image-heading" className="import-section-heading">
+                Receipt image
+              </h4>
+              {workingDraft.attachment.url.length > 0 ? (
+                <img
+                  className="receipt-attachment__image"
+                  src={workingDraft.attachment.url}
+                  alt={workingDraft.attachment.altText}
+                />
+              ) : (
+                <p>{workingDraft.attachment.fileName} attached.</p>
+              )}
+              <button type="button" className="import-skip-all-button" onClick={handleRemoveImage}>
+                Remove receipt image
+              </button>
+            </div>
+          )}
+
+          {workingDraft.lineItems.length > 0 && (
+            <fieldset className="receipt-items">
+              <legend>Map line items to cost buckets</legend>
+              <table className="import-mapping-table receipt-items__table">
+                <thead>
+                  <tr>
+                    <th scope="col">Include</th>
+                    <th scope="col">Item</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Cost bucket</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workingDraft.lineItems.map((item, index) => {
+                    const selectId = `${reconciliationId}-bucket-${index}`;
+                    return (
+                      <tr key={`${item.description}-${index}`}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={item.included}
+                            aria-label={`Include ${item.description}`}
+                            onChange={() => handleToggleIncluded(index)}
+                          />
+                        </td>
+                        <td>{item.description}</td>
+                        <td>{formatMoney(item.amountCents)}</td>
+                        <td>
+                          <label className="sr-only" htmlFor={selectId}>
+                            Cost bucket for {item.description}
+                          </label>
+                          <select
+                            id={selectId}
+                            className="form-select"
+                            value={item.bucket}
+                            disabled={!item.included}
+                            onChange={(event) =>
+                              handleBucketChange(index, event.target.value as CogsBucket)
+                            }
+                          >
+                            {COGS_BUCKETS.map((bucket) => (
+                              <option key={bucket} value={bucket}>
+                                {COGS_BUCKET_LABELS[bucket]}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </fieldset>
           )}
 
-          <button type="button" onClick={saveTransaction} disabled={status === 'saved'}>
-            {status === 'saved' ? 'Saved' : 'Save transaction'}
+          {subtotals !== null && (
+            <div className="receipt-subtotals">
+              <h4 id="subtotal-heading" className="import-section-heading">
+                Per-bucket subtotals
+              </h4>
+              <dl className="receipt-subtotals__list">
+                {COGS_BUCKETS.map((bucket) => (
+                  <div key={bucket} className="receipt-subtotals__row">
+                    <dt>{COGS_BUCKET_LABELS[bucket]}</dt>
+                    <dd>{formatMoney(subtotals[bucket])}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          {reconciliation !== null && (
+            <div
+              id={reconciliationId}
+              role="status"
+              aria-live="polite"
+              className={`receipt-reconciliation receipt-reconciliation--${reconciliation.status}`}
+            >
+              <AppIcon name={RECONCILIATION_LABELS[reconciliation.status].icon} />
+              <span className="receipt-reconciliation__text">
+                {RECONCILIATION_LABELS[reconciliation.status].text} Mapped{' '}
+                {formatMoney(reconciliation.mappedTotalCents)} of{' '}
+                {formatMoney(reconciliation.receiptTotalCents)}
+                {reconciliation.differenceCents !== 0 &&
+                  ` (difference ${formatMoney(reconciliation.differenceCents)})`}
+                .
+              </span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="form-button"
+            onClick={saveExpense}
+            disabled={status === 'saved'}
+          >
+            {status === 'saved' ? 'Saved' : 'Save as expense'}
           </button>
         </section>
       )}
