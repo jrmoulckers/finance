@@ -56,7 +56,7 @@ git add -A && git commit --amend --no-edit
 $env:HUSKY = "0" ; git push --no-verify origin <branch-name>
 
 # Step 6: Create PR
-gh pr create --title "type(scope): description (#N)" --body "Closes #N"
+gh pr create --base main --title "type(scope): description (#N)" --body "Closes #N"
 
 # Step 7: Monitor CI — remote CI is the source of truth
 gh pr checks <number>   # poll until all checks are green
