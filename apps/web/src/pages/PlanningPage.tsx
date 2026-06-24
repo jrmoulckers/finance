@@ -38,6 +38,14 @@ import type {
   SweepLogEntry,
 } from '../lib/planning';
 import { projectRetirementHealthcareCosts } from '../lib/planning';
+import {
+  buildWeddingPlanSummary,
+  buildWeddingVendorBreakdown,
+  classifyDueUrgency,
+  listUpcomingInstallments,
+  type WeddingDueUrgency,
+  type WeddingVendorPlan,
+} from '../lib/planning/wedding-planner-rules';
 import './PlanningPage.css';
 import { AppIcon, type IconName } from '../components/icons';
 import { TrendLineChart } from '../components/charts';
@@ -46,11 +54,12 @@ import { TrendLineChart } from '../components/charts';
 // Types
 // ---------------------------------------------------------------------------
 
-type PlanningTab = 'scenarios' | 'life-events' | 'retirement' | 'goals' | 'sweep';
+type PlanningTab = 'scenarios' | 'life-events' | 'wedding' | 'retirement' | 'goals' | 'sweep';
 
 const TAB_CONFIG: { id: PlanningTab; label: string; icon: IconName }[] = [
   { id: 'scenarios', label: 'What-If Modeler', icon: 'sparkles' },
   { id: 'life-events', label: 'Life Events', icon: 'calendar' },
+  { id: 'wedding', label: 'Wedding', icon: 'gift' },
   { id: 'retirement', label: 'Retirement', icon: 'leaf' },
   { id: 'goals', label: 'Savings Goals', icon: 'target' },
   { id: 'sweep', label: 'Automations', icon: 'lightning' },
@@ -234,6 +243,172 @@ export function buildReallocationGuidance(
   amounts[0] += freedCents - amounts.reduce((sum, amount) => sum + amount, 0);
 
   return labels.map((label, index) => ({ label, amountCents: amounts[index] ?? 0 }));
+}
+
+// ---------------------------------------------------------------------------
+// Wedding workspace helpers (#2145)
+// ---------------------------------------------------------------------------
+
+const WEDDING_STORAGE_KEY = `finance:wedding-workspace`;
+const WEDDING_DEFAULT_BUDGET_CENTS = 35000_00;
+const WEDDING_DEFAULT_GUEST_COUNT = 75;
+
+export interface WeddingWorkspaceState {
+  readonly vendors: WeddingVendorPlan[];
+  readonly guestCount: number;
+  readonly budgetCents: number;
+}
+
+const WEDDING_URGENCY_META: Record<WeddingDueUrgency, { label: string; icon: IconName }> = {
+  overdue: { label: 'Overdue', icon: 'alert-triangle' },
+  'due-soon': { label: 'Due soon', icon: 'bell' },
+  upcoming: { label: 'Upcoming', icon: 'calendar' },
+};
+
+/** Return an ISO `YYYY-MM-DD` date offset from `now` by `daysFromNow` days. */
+export function weddingDateFromNow(daysFromNow: number, now = new Date()): string {
+  const date = new Date(now);
+  date.setDate(date.getDate() + daysFromNow);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Today as an ISO `YYYY-MM-DD` date (local time), used as the urgency anchor. */
+export function weddingTodayIso(now = new Date()): string {
+  return weddingDateFromNow(0, now);
+}
+
+/** Format an ISO date for display without UTC timezone drift. */
+export function formatWeddingDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return iso;
+  }
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/** Human-readable relative-day label for an installment. */
+export function weddingDueDayLabel(daysUntilDue: number): string {
+  if (daysUntilDue < 0) {
+    const overdue = Math.abs(daysUntilDue);
+    return `${overdue} day${overdue === 1 ? '' : 's'} overdue`;
+  }
+  if (daysUntilDue === 0) {
+    return 'Due today';
+  }
+  return `Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`;
+}
+
+/** Seed vendors for a ~$35k wedding six months out (within budget at 75 guests). */
+export function defaultWeddingVendors(): WeddingVendorPlan[] {
+  return [
+    {
+      id: 'venue',
+      name: 'Venue & reception hall',
+      contractedCents: 14000_00,
+      paidCents: 4000_00,
+      nextDueDate: weddingDateFromNow(14),
+    },
+    {
+      id: 'catering',
+      name: 'Catering',
+      contractedCents: 3000_00,
+      paidCents: 1000_00,
+      nextDueDate: weddingDateFromNow(45),
+      perGuestCents: 85_00,
+    },
+    {
+      id: 'photography',
+      name: 'Photography & video',
+      contractedCents: 4500_00,
+      paidCents: 1500_00,
+      nextDueDate: weddingDateFromNow(90),
+    },
+    {
+      id: 'rentals',
+      name: 'Rentals (tables, chairs, linens)',
+      contractedCents: 1000_00,
+      paidCents: 0,
+      nextDueDate: weddingDateFromNow(60),
+      perGuestCents: 30_00,
+    },
+    {
+      id: 'invitations',
+      name: 'Invitations & stationery',
+      contractedCents: 200_00,
+      paidCents: 200_00,
+      nextDueDate: null,
+      perGuestCents: 5_00,
+    },
+    {
+      id: 'florals',
+      name: 'Florals & décor',
+      contractedCents: 3000_00,
+      paidCents: 500_00,
+      nextDueDate: weddingDateFromNow(30),
+    },
+  ];
+}
+
+function isWeddingVendorPlan(value: unknown): value is WeddingVendorPlan {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const vendor = value as Record<string, unknown>;
+  return (
+    typeof vendor.id === 'string' &&
+    typeof vendor.name === 'string' &&
+    Number.isFinite(vendor.contractedCents) &&
+    Number.isFinite(vendor.paidCents) &&
+    (vendor.nextDueDate === null || typeof vendor.nextDueDate === 'string') &&
+    (vendor.perGuestCents === undefined || Number.isFinite(vendor.perGuestCents))
+  );
+}
+
+function defaultWeddingState(): WeddingWorkspaceState {
+  return {
+    vendors: defaultWeddingVendors(),
+    guestCount: WEDDING_DEFAULT_GUEST_COUNT,
+    budgetCents: WEDDING_DEFAULT_BUDGET_CENTS,
+  };
+}
+
+export function loadWeddingState(): WeddingWorkspaceState {
+  try {
+    const raw = localStorage.getItem(WEDDING_STORAGE_KEY);
+    if (!raw) {
+      return defaultWeddingState();
+    }
+    const parsed = JSON.parse(raw) as Partial<WeddingWorkspaceState>;
+    const vendors = Array.isArray(parsed.vendors)
+      ? parsed.vendors.filter(isWeddingVendorPlan)
+      : defaultWeddingVendors();
+    return {
+      vendors: vendors.length > 0 ? vendors : defaultWeddingVendors(),
+      guestCount: Number.isFinite(parsed.guestCount)
+        ? Math.max(0, Math.floor(parsed.guestCount as number))
+        : WEDDING_DEFAULT_GUEST_COUNT,
+      budgetCents: Number.isFinite(parsed.budgetCents)
+        ? Math.max(0, Math.round(parsed.budgetCents as number))
+        : WEDDING_DEFAULT_BUDGET_CENTS,
+    };
+  } catch {
+    return defaultWeddingState();
+  }
+}
+
+export function saveWeddingState(state: WeddingWorkspaceState): void {
+  try {
+    localStorage.setItem(WEDDING_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Local storage can be unavailable or full; keep the in-memory workspace usable.
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1592,6 +1767,407 @@ const SweepPanel: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
+// Wedding workspace panel (#2145)
+// ---------------------------------------------------------------------------
+
+/** Parse a dollar string into integer cents, or null when it is not a finite number. */
+function weddingDollarsToCents(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return null;
+  }
+  const dollars = Number(trimmed);
+  if (!Number.isFinite(dollars)) {
+    return null;
+  }
+  return Math.round(dollars * 100);
+}
+
+/** Inline progress bar for estimated spend against the budget ceiling. */
+const WeddingBudgetBar: React.FC<{ estimatedCents: number; budgetCents: number }> = ({
+  estimatedCents,
+  budgetCents,
+}) => {
+  const ratio = budgetCents > 0 ? Math.min(1, estimatedCents / budgetCents) : 1;
+  const over = estimatedCents > budgetCents;
+  return (
+    <div
+      className="wedding-budget-bar"
+      role="progressbar"
+      aria-valuenow={Math.round(estimatedCents / 100)}
+      aria-valuemin={0}
+      aria-valuemax={Math.round(budgetCents / 100)}
+      aria-label={`Estimated spend ${formatCurrency(estimatedCents)} of ${formatCurrency(
+        budgetCents,
+      )} budget`}
+    >
+      <span
+        className={`wedding-budget-bar__fill ${over ? 'wedding-budget-bar__fill--over' : ''}`}
+        style={{ width: `${ratio * 100}%` }}
+      />
+    </div>
+  );
+};
+
+/** Text + icon badge that conveys installment urgency without relying on colour alone. */
+const WeddingDueBadge: React.FC<{ urgency: WeddingDueUrgency }> = ({ urgency }) => {
+  const meta = WEDDING_URGENCY_META[urgency];
+  return (
+    <span className={`wedding-badge wedding-badge--${urgency}`}>
+      <AppIcon name={meta.icon} />
+      <span>{meta.label}</span>
+    </span>
+  );
+};
+
+/** Shared wedding budget workspace: vendors, deposits, guest-scaled estimates, due dates. */
+const WeddingWorkspacePanel: React.FC = () => {
+  const [state, setState] = useState<WeddingWorkspaceState>(loadWeddingState);
+  const { vendors, guestCount, budgetCents } = state;
+
+  const [name, setName] = useState('');
+  const [budgeted, setBudgeted] = useState('');
+  const [deposit, setDeposit] = useState('');
+  const [perGuest, setPerGuest] = useState('');
+  const [dueDate, setDueDate] = useState('');
+
+  const today = useMemo(() => weddingTodayIso(), []);
+
+  useEffect(() => {
+    saveWeddingState(state);
+  }, [state]);
+
+  const breakdown = useMemo(
+    () => buildWeddingVendorBreakdown(vendors, guestCount),
+    [vendors, guestCount],
+  );
+  const summary = useMemo(
+    () => buildWeddingPlanSummary(vendors, guestCount, budgetCents, today),
+    [vendors, guestCount, budgetCents, today],
+  );
+  const upcoming = useMemo(
+    () => listUpcomingInstallments(vendors, guestCount, today),
+    [vendors, guestCount, today],
+  );
+
+  const handleGuestCountChange = useCallback((value: string) => {
+    const next = Number(value);
+    setState((prev) => ({
+      ...prev,
+      guestCount: Number.isFinite(next) ? Math.max(0, Math.floor(next)) : 0,
+    }));
+  }, []);
+
+  const handleBudgetChange = useCallback((value: string) => {
+    const cents = weddingDollarsToCents(value);
+    setState((prev) => ({ ...prev, budgetCents: cents !== null ? Math.max(0, cents) : 0 }));
+  }, []);
+
+  const handleAddVendor = useCallback(() => {
+    const trimmedName = name.trim();
+    const budgetedCents = weddingDollarsToCents(budgeted);
+    if (!trimmedName || budgetedCents === null) {
+      return;
+    }
+    const depositCents = weddingDollarsToCents(deposit) ?? 0;
+    const perGuestCents = weddingDollarsToCents(perGuest);
+
+    const vendor: WeddingVendorPlan = {
+      id: `wedding-vendor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: trimmedName,
+      contractedCents: Math.max(0, budgetedCents),
+      paidCents: Math.max(0, depositCents),
+      nextDueDate: dueDate || null,
+      ...(perGuestCents && perGuestCents > 0 ? { perGuestCents } : {}),
+    };
+
+    setState((prev) => ({ ...prev, vendors: [...prev.vendors, vendor] }));
+    setName('');
+    setBudgeted('');
+    setDeposit('');
+    setPerGuest('');
+    setDueDate('');
+  }, [budgeted, deposit, dueDate, name, perGuest]);
+
+  const handleRemoveVendor = useCallback((id: string) => {
+    setState((prev) => ({ ...prev, vendors: prev.vendors.filter((vendor) => vendor.id !== id) }));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setState(defaultWeddingState());
+  }, []);
+
+  const headroomCents = Math.max(0, budgetCents - summary.estimatedTotalCents);
+  const summaryAnnouncement = `Estimated wedding total ${formatCurrency(
+    summary.estimatedTotalCents,
+  )} for ${guestCount} guest${guestCount === 1 ? '' : 's'}. ${formatCurrency(
+    summary.paidCents,
+  )} paid in deposits, ${formatCurrency(summary.remainingBalanceCents)} remaining.`;
+
+  return (
+    <div className="wedding-workspace">
+      <section className="planning-card" aria-labelledby="wedding-intro-title">
+        <h3 id="wedding-intro-title" className="planning-card__title">
+          Wedding budget workspace
+        </h3>
+        <p className="planning-card__description">
+          Track vendors, deposits paid, and upcoming installment due dates for your big day.
+          Catering, rentals, and invitations scale with the guest count, so totals update live as
+          your list grows.
+        </p>
+
+        <div className="wedding-controls" aria-label="Wedding plan controls">
+          <label className="life-events-field">
+            Guest count
+            <input
+              className="form-input"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={guestCount}
+              onChange={(e) => handleGuestCountChange(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Total budget (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="100"
+              value={(budgetCents / 100).toString()}
+              onChange={(e) => handleBudgetChange(e.target.value)}
+            />
+          </label>
+          <button
+            className="planning-btn planning-btn--small"
+            type="button"
+            onClick={handleReset}
+            aria-label="Reset wedding workspace to the sample plan"
+          >
+            <AppIcon name="refresh" /> Reset sample
+          </button>
+        </div>
+
+        <p className="wedding-announce" aria-live="polite">
+          {summaryAnnouncement}
+        </p>
+      </section>
+
+      {/* Budgeted-vs-actual summary */}
+      <section className="planning-card" aria-labelledby="wedding-summary-title">
+        <h3 id="wedding-summary-title" className="planning-card__title">
+          Budgeted vs. actual
+        </h3>
+
+        <WeddingBudgetBar estimatedCents={summary.estimatedTotalCents} budgetCents={budgetCents} />
+
+        {summary.overBudgetCents > 0 ? (
+          <p className="wedding-status wedding-status--over" role="status">
+            <AppIcon name="alert-triangle" />
+            <span>
+              Over budget by {formatCurrency(summary.overBudgetCents)} — trim a vendor or your guest
+              list to get back on track.
+            </span>
+          </p>
+        ) : (
+          <p className="wedding-status wedding-status--ok" role="status">
+            <AppIcon name="check-circle" />
+            <span>
+              Within your {formatCurrency(budgetCents)} budget with {formatCurrency(headroomCents)}{' '}
+              of headroom.
+            </span>
+          </p>
+        )}
+
+        <div className="planning-metrics" aria-label="Wedding budget summary">
+          <article className="planning-metric" aria-label="Estimated total">
+            <p className="planning-metric__label">Estimated total</p>
+            <p className="planning-metric__value">{formatCurrency(summary.estimatedTotalCents)}</p>
+          </article>
+          <article className="planning-metric" aria-label="Deposits paid">
+            <p className="planning-metric__label">Deposits paid</p>
+            <p className="planning-metric__value">{formatCurrency(summary.paidCents)}</p>
+          </article>
+          <article className="planning-metric" aria-label="Remaining balance">
+            <p className="planning-metric__label">Remaining</p>
+            <p className="planning-metric__value">
+              {formatCurrency(summary.remainingBalanceCents)}
+            </p>
+          </article>
+        </div>
+      </section>
+
+      {/* Upcoming installments */}
+      <section className="planning-card" aria-labelledby="wedding-due-title">
+        <h3 id="wedding-due-title" className="planning-card__title">
+          Upcoming installments
+        </h3>
+        {upcoming.length === 0 ? (
+          <p className="planning-card__description">
+            No outstanding installments with a due date. Add a vendor below to schedule the next
+            payment.
+          </p>
+        ) : (
+          <ul className="wedding-due-list" role="list" aria-label="Upcoming installments">
+            {upcoming.map((item) => (
+              <li key={item.vendorId} className="wedding-due-item" role="listitem">
+                <div className="wedding-due-item__main">
+                  <span className="wedding-due-item__name">{item.vendorName}</span>
+                  <WeddingDueBadge urgency={item.urgency} />
+                </div>
+                <div className="wedding-due-item__meta">
+                  <span className="wedding-due-item__amount">
+                    {formatCurrency(item.amountCents)}
+                  </span>
+                  <span className="wedding-due-item__date">
+                    {formatWeddingDate(item.dueDate)} · {weddingDueDayLabel(item.daysUntilDue)}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Vendor list */}
+      <section className="planning-card" aria-labelledby="wedding-vendors-title">
+        <h3 id="wedding-vendors-title" className="planning-card__title">
+          Vendors &amp; line items
+        </h3>
+        <ul className="wedding-vendor-list" role="list" aria-label="Wedding vendors">
+          {breakdown.map((vendor) => {
+            const urgency =
+              vendor.nextDueDate !== null ? classifyDueUrgency(vendor.nextDueDate, today) : null;
+            return (
+              <li key={vendor.id} className="wedding-vendor" role="listitem">
+                <div className="wedding-vendor__header">
+                  <span className="wedding-vendor__name">{vendor.name}</span>
+                  {vendor.guestSensitive && (
+                    <span className="wedding-vendor__per-guest">
+                      <AppIcon name="account" /> {formatCurrency(vendor.perGuestCents)}/guest
+                    </span>
+                  )}
+                </div>
+
+                <dl className="wedding-vendor__figures">
+                  <div className="wedding-vendor__figure">
+                    <dt>Estimated</dt>
+                    <dd>{formatCurrency(vendor.estimatedTotalCents)}</dd>
+                  </div>
+                  <div className="wedding-vendor__figure">
+                    <dt>Deposit paid</dt>
+                    <dd>{formatCurrency(vendor.paidCents)}</dd>
+                  </div>
+                  <div className="wedding-vendor__figure">
+                    <dt>Remaining</dt>
+                    <dd>{formatCurrency(vendor.remainingCents)}</dd>
+                  </div>
+                </dl>
+
+                <div className="wedding-vendor__footer">
+                  {vendor.paidInFull ? (
+                    <span className="wedding-badge wedding-badge--paid">
+                      <AppIcon name="check-circle" />
+                      <span>Paid in full</span>
+                    </span>
+                  ) : vendor.nextDueDate !== null && urgency !== null ? (
+                    <span className="wedding-vendor__due">
+                      <WeddingDueBadge urgency={urgency} />
+                      <span className="wedding-vendor__due-date">
+                        Next installment {formatWeddingDate(vendor.nextDueDate)}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="wedding-vendor__due-date">No installment scheduled</span>
+                  )}
+                  <button
+                    className="planning-btn planning-btn--small planning-btn--danger"
+                    type="button"
+                    onClick={() => handleRemoveVendor(vendor.id)}
+                    aria-label={`Remove ${vendor.name}`}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="life-events-form" aria-label="Add wedding vendor">
+          <label className="life-events-field">
+            Vendor name
+            <input
+              className="form-input"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="DJ / band"
+            />
+          </label>
+          <label className="life-events-field">
+            Budgeted (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              value={budgeted}
+              onChange={(e) => setBudgeted(e.target.value)}
+              placeholder="2500"
+            />
+          </label>
+          <label className="life-events-field">
+            Deposit paid (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              value={deposit}
+              onChange={(e) => setDeposit(e.target.value)}
+              placeholder="500"
+            />
+          </label>
+          <label className="life-events-field">
+            Per-guest cost (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              value={perGuest}
+              onChange={(e) => setPerGuest(e.target.value)}
+              placeholder="0"
+            />
+          </label>
+          <label className="life-events-field">
+            Next installment due
+            <input
+              className="form-input"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+          </label>
+          <button
+            className="planning-btn planning-btn--primary"
+            type="button"
+            onClick={handleAddVendor}
+            disabled={!name.trim() || weddingDollarsToCents(budgeted) === null}
+          >
+            Add Vendor
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Main page component
 // ---------------------------------------------------------------------------
 
@@ -1631,6 +2207,7 @@ export const PlanningPage: React.FC = () => {
       >
         {activeTab === 'scenarios' && <ScenariosPanel />}
         {activeTab === 'life-events' && <LifeEventsPanel />}
+        {activeTab === 'wedding' && <WeddingWorkspacePanel />}
         {activeTab === 'retirement' && <RetirementPanel />}
         {activeTab === 'goals' && <GoalsPanel />}
         {activeTab === 'sweep' && <SweepPanel />}
