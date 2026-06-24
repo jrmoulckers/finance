@@ -8,8 +8,13 @@ import type {
   ExpenseClassification,
   ExpenseTransactionInput,
   MileagePurposeSummary,
+  PlatformAuditSummary,
+  ShiftAuditGroup,
+  ShiftAuditLeg,
+  ShiftMileageAuditReport,
   TaxReadyExpenseReport,
   TripEntry,
+  WorkShift,
 } from './types';
 
 const MILEAGE_PURPOSE_ORDER = ['business', 'medical', 'moving', 'charity'] as const;
@@ -129,4 +134,177 @@ export function generateTaxReadyExpenseReport(options: {
     totalExpenseDeductionCents,
     grandTotalDeductionCents: totalMileageDeductionCents + totalExpenseDeductionCents,
   };
+}
+
+// --- Shift mileage audit report (IRS-friendly audit trail, #2137) ----------
+
+function roundMiles(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function buildPlatformAuditSummaries(shifts: ShiftAuditGroup[]): PlatformAuditSummary[] {
+  const byPlatform = new Map<string, PlatformAuditSummary>();
+
+  for (const shift of shifts) {
+    const existing = byPlatform.get(shift.platform) ?? {
+      platform: shift.platform,
+      shiftCount: 0,
+      legCount: 0,
+      miles: 0,
+      deductionCents: 0,
+    };
+
+    existing.shiftCount += 1;
+    existing.legCount += shift.legCount;
+    existing.miles = roundMiles(existing.miles + shift.miles);
+    existing.deductionCents += shift.deductionCents;
+    byPlatform.set(shift.platform, existing);
+  }
+
+  return [...byPlatform.values()].sort((left, right) =>
+    left.platform.localeCompare(right.platform),
+  );
+}
+
+/**
+ * Builds an IRS-friendly audit trail from work shifts: one row per leg (date,
+ * purpose, miles, rate, deduction, shift, platform) plus per-shift and
+ * per-platform rollups. Reuses {@link calculateTripDeduction} so the IRS rate
+ * is never hardcoded.
+ */
+export function generateShiftMileageAuditReport(options: {
+  shifts: WorkShift[];
+  startDate?: string | null;
+  endDate?: string | null;
+}): ShiftMileageAuditReport {
+  const { shifts, startDate = null, endDate = null } = options;
+
+  const legs: ShiftAuditLeg[] = [];
+  const shiftGroups: ShiftAuditGroup[] = [];
+
+  for (const shift of shifts) {
+    const shiftDate = shift.startedAt.slice(0, 10);
+    if (!isWithinPeriod(shiftDate, startDate, endDate)) {
+      continue;
+    }
+
+    let shiftMiles = 0;
+    let shiftDeductionCents = 0;
+
+    for (const leg of shift.legs) {
+      if (leg.purpose === 'personal') {
+        continue;
+      }
+
+      const calculation = calculateTripDeduction(leg);
+      shiftMiles += leg.miles;
+      shiftDeductionCents += calculation.deductionCents;
+
+      legs.push({
+        shiftId: shift.id,
+        platform: shift.platform,
+        legId: leg.id,
+        date: leg.date,
+        purpose: leg.purpose,
+        startLocation: leg.startLocation,
+        endLocation: leg.endLocation,
+        miles: leg.miles,
+        rateCentsPerMile: calculation.rateCentsPerMile,
+        deductionCents: calculation.deductionCents,
+        appliedYear: calculation.appliedYear,
+      });
+    }
+
+    shiftGroups.push({
+      shiftId: shift.id,
+      platform: shift.platform,
+      date: shiftDate,
+      startedAt: shift.startedAt,
+      endedAt: shift.endedAt,
+      status: shift.status,
+      legCount: shift.legs.length,
+      miles: roundMiles(shiftMiles),
+      deductionCents: shiftDeductionCents,
+    });
+  }
+
+  legs.sort((left, right) => right.date.localeCompare(left.date));
+  shiftGroups.sort((left, right) => right.startedAt.localeCompare(left.startedAt));
+
+  const totalMiles = roundMiles(legs.reduce((sum, leg) => sum + leg.miles, 0));
+  const totalDeductionCents = legs.reduce((sum, leg) => sum + leg.deductionCents, 0);
+
+  return {
+    period: {
+      startDate,
+      endDate,
+      label: formatPeriodLabel(startDate, endDate),
+    },
+    legs,
+    shifts: shiftGroups,
+    byPlatform: buildPlatformAuditSummaries(shiftGroups),
+    totalMiles,
+    totalDeductionCents,
+  };
+}
+
+function escapeCsvCell(value: string): string {
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  return value;
+}
+
+/**
+ * Serialises a shift audit report to CSV text suitable for an IRS audit trail.
+ * Money columns are emitted in dollars from integer cents.
+ */
+export function buildShiftMileageAuditCsv(report: ShiftMileageAuditReport): string {
+  const header = [
+    'Date',
+    'Platform',
+    'Shift ID',
+    'Purpose',
+    'Start',
+    'End',
+    'Miles',
+    'Rate (cents/mi)',
+    'Deduction (USD)',
+    'Applied year',
+  ];
+
+  const rows = report.legs.map((leg) =>
+    [
+      leg.date,
+      leg.platform,
+      leg.shiftId,
+      leg.purpose,
+      leg.startLocation,
+      leg.endLocation,
+      leg.miles.toFixed(1),
+      String(leg.rateCentsPerMile),
+      (leg.deductionCents / 100).toFixed(2),
+      String(leg.appliedYear),
+    ]
+      .map((cell) => escapeCsvCell(cell))
+      .join(','),
+  );
+
+  const totalRow = [
+    'Total',
+    '',
+    '',
+    '',
+    '',
+    '',
+    report.totalMiles.toFixed(1),
+    '',
+    (report.totalDeductionCents / 100).toFixed(2),
+    '',
+  ]
+    .map((cell) => escapeCsvCell(cell))
+    .join(',');
+
+  return [header.map((cell) => escapeCsvCell(cell)).join(','), ...rows, totalRow].join('\r\n');
 }

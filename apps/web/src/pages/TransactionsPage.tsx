@@ -30,6 +30,9 @@ import {
   MileageDashboard,
   TripEntry,
 } from '../components/mileage';
+// Imported directly (not via the mileage barrel) so the shift tracker only
+// loads on this route and does not inflate other route bundles (#2137).
+import { ShiftTracker } from '../components/mileage/ShiftTracker';
 import {
   TransactionFilters,
   TransactionSort,
@@ -1464,14 +1467,17 @@ export const TransactionsPage: React.FC = () => {
                   Mileage & business deductions
                 </h3>
                 <p className="page-summary">
-                  Track manual mileage, apply 2024 IRS rates, and tag deductible transactions
-                  locally on this device.
+                  Track mileage by work shift with one-tap route presets, apply 2024 IRS rates, and
+                  tag deductible transactions locally on this device.
                 </p>
               </div>
             </div>
             <div className="mileage-grid mileage-grid--columns">
               <MileageDashboard report={taxReport} />
               <DeductionSummary report={taxReport} />
+            </div>
+            <div className="mileage-grid" style={{ marginTop: 'var(--spacing-4)' }}>
+              <ShiftTracker />
             </div>
             <div
               className="mileage-grid mileage-grid--columns"
