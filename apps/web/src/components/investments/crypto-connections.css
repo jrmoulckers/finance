@@ -1,0 +1,321 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/*
+ * Styles for the crypto wallet & exchange connectivity panel.
+ * Tokens are consumed via CSS custom properties with safe fallbacks.
+ * Status is never communicated by colour alone — every badge pairs an
+ * icon + text label, and the surrounding markup carries ARIA semantics.
+ */
+
+.crypto-panel {
+  margin-bottom: var(--spacing-6, 24px);
+}
+
+.crypto-panel__card {
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-5, 20px);
+  background: var(--semantic-surface, #fff);
+}
+
+.crypto-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-3, 12px);
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.crypto-panel__title {
+  font-size: var(--type-scale-title-font-size, 1.25rem);
+  font-weight: var(--font-weight-semibold, 600);
+  margin: 0;
+}
+
+.crypto-panel__subtitle {
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  margin: var(--spacing-1, 4px) 0 0;
+}
+
+.crypto-panel__status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  flex-wrap: wrap;
+}
+
+.crypto-section {
+  margin-top: var(--spacing-5, 20px);
+  padding-top: var(--spacing-4, 16px);
+  border-top: 1px solid var(--semantic-border, #e5e7eb);
+}
+
+.crypto-section__title {
+  font-size: var(--type-scale-body-font-size, 1rem);
+  font-weight: var(--font-weight-semibold, 600);
+  margin: 0 0 var(--spacing-3, 12px);
+}
+
+.crypto-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  border-radius: var(--radius-full, 999px);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+  border: 1px solid transparent;
+}
+
+.crypto-badge--healthy {
+  background: var(--semantic-positive-subtle, #ecfdf5);
+  color: var(--semantic-positive-strong, #047857);
+  border-color: var(--semantic-positive, #059669);
+}
+
+.crypto-badge--manual {
+  background: var(--semantic-info-subtle, #eff6ff);
+  color: var(--semantic-info-strong, #1d4ed8);
+  border-color: var(--semantic-info, #2563eb);
+}
+
+.crypto-badge--stale {
+  background: var(--semantic-warning-subtle, #fffbeb);
+  color: var(--semantic-warning-strong, #b45309);
+  border-color: var(--semantic-warning, #d97706);
+}
+
+.crypto-badge--needs-attention,
+.crypto-badge--failed {
+  background: var(--semantic-negative-subtle, #fef2f2);
+  color: var(--semantic-negative-strong, #b91c1c);
+  border-color: var(--semantic-negative, #dc2626);
+}
+
+.crypto-form {
+  display: grid;
+  gap: var(--spacing-3, 12px);
+}
+
+.crypto-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3, 12px);
+  align-items: flex-end;
+}
+
+.crypto-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+  min-width: 10rem;
+  flex: 1 1 10rem;
+}
+
+.crypto-field__label {
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.crypto-field__hint {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.crypto-field__input,
+.crypto-field__select {
+  padding: var(--spacing-2, 8px);
+  border: 1px solid var(--semantic-border, #d1d5db);
+  border-radius: var(--radius-md, 8px);
+  font: inherit;
+  color: inherit;
+  background: var(--semantic-surface, #fff);
+}
+
+.crypto-field__input:focus-visible,
+.crypto-field__select:focus-visible,
+.crypto-btn:focus-visible,
+.crypto-segmented__option:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.crypto-segmented {
+  display: inline-flex;
+  border: 1px solid var(--semantic-border, #d1d5db);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+}
+
+.crypto-segmented__option {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  background: var(--semantic-surface, #fff);
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.crypto-segmented__option[aria-pressed='true'] {
+  background: var(--semantic-accent-subtle, #eff6ff);
+  color: var(--semantic-accent-strong, #1d4ed8);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.crypto-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--semantic-border, #d1d5db);
+  background: var(--semantic-surface, #fff);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.crypto-btn--primary {
+  background: var(--semantic-accent, #2563eb);
+  border-color: var(--semantic-accent, #2563eb);
+  color: var(--semantic-on-accent, #fff);
+}
+
+.crypto-btn--ghost {
+  background: none;
+}
+
+.crypto-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.crypto-validation {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+}
+
+.crypto-validation--invalid,
+.crypto-validation--duplicate-risk {
+  color: var(--semantic-negative-strong, #b91c1c);
+}
+
+.crypto-validation--valid {
+  color: var(--semantic-positive-strong, #047857);
+}
+
+.crypto-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-2, 8px);
+}
+
+.crypto-source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3, 12px);
+  flex-wrap: wrap;
+  padding: var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+}
+
+.crypto-source__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+}
+
+.crypto-source__label {
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.crypto-source__detail {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  word-break: break-all;
+}
+
+.crypto-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.crypto-table th,
+.crypto-table td {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  text-align: left;
+  border-bottom: 1px solid var(--semantic-border, #e5e7eb);
+}
+
+.crypto-table th[data-numeric='true'],
+.crypto-table td[data-numeric='true'] {
+  text-align: right;
+}
+
+.crypto-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1, 4px);
+}
+
+.crypto-chip {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  padding: 2px var(--spacing-2, 8px);
+  border-radius: var(--radius-full, 999px);
+  background: var(--semantic-surface-muted, #f3f4f6);
+  color: var(--semantic-text-secondary, #4b5563);
+}
+
+.crypto-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+  color: var(--semantic-warning-strong, #b45309);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+}
+
+.crypto-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4, 16px);
+}
+
+.crypto-total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+}
+
+.crypto-total__label {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.crypto-total__value {
+  font-size: var(--type-scale-title-font-size, 1.25rem);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.crypto-note {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  margin: var(--spacing-2, 8px) 0 0;
+}
+
+.crypto-empty {
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--type-scale-body-font-size, 0.9375rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crypto-btn,
+  .crypto-segmented__option {
+    transition: none;
+  }
+}
