@@ -1,5 +1,7 @@
 # AI-First Practice — Consultant Fleet Audit
 
+> **Historical (as of 2026-06-21).** This is a point-in-time consultant audit that kicked off the AI-capabilities remediation sweep. **Most of its systemic findings have since been addressed** — the non-existent MCP package pins were corrected, the security CI checks are now blocking (no longer `continue-on-error`), the Responsible-AI control claims and the merge / force-push policy were reconciled, and the documentation drift it catalogued was fixed across the eight audit areas. See [`CHANGELOG.md`](../CHANGELOG.md) for what changed and when. Read this for the original diagnosis, not for current status.
+
 **Date:** 2026-06-21 · **Method:** 7 specialist consultant agents, each owning one facet (agents, skills, instructions, MCP, docs, governance, industry benchmark). Read-only analysis. npm package names verified against the live registry.
 
 ---
