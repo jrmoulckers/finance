@@ -8,6 +8,21 @@ Entries are newest-first. Use ISO dates (`YYYY-MM`). Each entry should answer: _
 
 ---
 
+## 2026-06 — AI-capabilities audit (Areas 1–8)
+
+Source: a structured, area-by-area audit of every AI capability surface (agents, skills, instructions, global guidance, prompts, MCP, slash commands, and the `docs/ai` corpus), run to a single bar — accuracy + gaps + enrichment + consolidation. Each area landed as its own issue-linked PR. Highlights (the compliance-specialist / architect change is logged separately, below):
+
+- **Agents & skills registries reconciled** against the source-of-truth directories — `agents.md` / `skills.md` enumerations completed, every agent given a **Related skills** line, and a skill↔agent mapping table added. Counts pinned to **24 agents / 20 skills** with `npm run ai:manifest:check` wired in to catch future drift.
+- **Instructions:** added a 14th path-instruction file (`config.instructions.md`) and eradicated the dead `config/tokens/**` glob (repointed to `packages/design-tokens/**`); the [`instructions.md`](instructions.md) catalog and several `applyTo` labels were corrected.
+- **Global guidance:** restructured the [`copilot-instructions.md`](../../.github/copilot-instructions.md) opener into an explicit auto-approved-vs-gated **Operation Approval Policy**, and aligned three stale `ci:check` pre-push gates in [`AGENTS.md`](../../AGENTS.md) to `format:check && eslint`.
+- **Prompts & MCP:** the 7 reusable prompts were de-drifted (canonical label→agent pointer, `HUSKY=0` pushes, self-merge tails); the 7-server MCP posture (read-only, secret-free filesystem root) was synced across [`mcp.md`](mcp.md), the ai-agents guide, and the `mcp-agent-tooling` skill.
+- **Slash commands:** the prototype [`slash-commands.md`](slash-commands.md) doc was reconciled with its three `dispatch-*.js` scripts (full 24-agent roster, extended pre-push sequence).
+- **`docs/ai` corpus (8a–8e):** corrected onboarding/navigation counts and broken `gh pr create` newlines; restored U+FE0F variation selectors in pre-push anchor links; refreshed workflow / worktrees / metrics guidance; de-duplicated and resolved entries in [`pain-points.md`](pain-points.md); **consolidated the branch-protection docs to one source of truth** ([`.github/branch-protection.md`](../../.github/branch-protection.md)) and reconciled [`restrictions.md`](restrictions.md) to the active Husky hook model.
+
+This entry is the capstone; see the per-area PRs for the detailed diffs.
+
+---
+
 ## 2026-06 — Compliance specialist agent + architect enrichment
 
 Source: the AI-capabilities audit (Area 1 addendum). Added a 24th agent and broadened the architect's remit.
