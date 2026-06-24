@@ -77,7 +77,7 @@ You may use one short-lived integration branch **only** when a set of PRs is gen
 
 - Merging to `main` **auto-triggers the staging deploy** (`deploy-staging.yml`, `workflow_run` after _Web CI_ + _Lint & Format_ pass on `main`). Treat every merge to `main` with that weight.
 - **Production is never automatic** — it requires `workflow_dispatch` + human approval via the `production` GitHub environment. Agents do not deploy to production.
-- See [branch-protection.md](../architecture/branch-protection.md) and [deployment-pipeline.md](../deployment-pipeline.md) for the gating and environments.
+- See [branch-protection.md](../../.github/branch-protection.md) and [deployment-pipeline.md](../deployment-pipeline.md) for the gating and environments.
 
 ### Rule F — Merge mechanics
 

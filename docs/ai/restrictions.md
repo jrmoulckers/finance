@@ -183,23 +183,23 @@ Finance is a financial tracking application handling sensitive personal and mone
 
 These restrictions are enforced at multiple levels:
 
-| Level             | Mechanism                                    | Enforces?                       | Scope                                   |
-| ----------------- | -------------------------------------------- | ------------------------------- | --------------------------------------- |
-| **Server-side**   | GitHub branch protection / rulesets          | ✅ Hard block                   | Cannot be bypassed by any client        |
-| **Git hooks**     | `pre-push` hook in `tools/git-hooks/`        | ✅ Hard block (non-interactive) | Blocks AI agents; prompts humans        |
-| **IDE**           | Terminal allowlist/denylist                  | ⚠️ VS Code only                 | Only applies in Copilot Chat Agent Mode |
-| **Instructions**  | copilot-instructions.md, agent.md, AGENTS.md | ⚠️ Advisory                     | AI models should follow but can violate |
-| **Documentation** | This file                                    | ⚠️ Advisory                     | Reference for humans and AI             |
+| Level             | Mechanism                                                                            | Enforces?           | Scope                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------------- |
+| **Server-side**   | GitHub branch protection / rulesets                                                  | ✅ Hard block       | Cannot be bypassed by any client                                                |
+| **Git hooks**     | `.husky/pre-push` (auto-installed via `prepare`; fast format/lint/secret pre-flight) | ⚠️ Local pre-flight | Fast pre-push feedback; bypass with `HUSKY=0`. Server-side CI is the real gate. |
+| **IDE**           | Terminal allowlist/denylist                                                          | ⚠️ VS Code only     | Only applies in Copilot Chat Agent Mode                                         |
+| **Instructions**  | copilot-instructions.md, agent.md, AGENTS.md                                         | ⚠️ Advisory         | AI models should follow but can violate                                         |
+| **Documentation** | This file                                                                            | ⚠️ Advisory         | Reference for humans and AI                                                     |
 
 ### Understanding Enforcement Tiers
 
 **Hard enforcement (cannot be bypassed):**
 
 - GitHub branch protection rules prevent direct pushes to `main` — changes must go through PRs that pass the required CI checks before merging
-- The `pre-push` Git hook detects non-interactive sessions (AI agents) and blocks the push automatically
 
 **Soft enforcement (advisory — relies on AI model compliance):**
 
+- The auto-installed `.husky/pre-push` hook runs a fast format/lint/secret pre-flight before each push. It is a convenience, **not** a hard block — the documented agent flow bypasses it with `HUSKY=0`, and the server-side required checks remain the authoritative gate. (An optional human-confirmation variant lives in `tools/git-hooks/`; enable it with `git config core.hooksPath tools/git-hooks`. It refuses non-interactive pushes and is not installed by default.)
 - Instruction files tell AI agents what they should/shouldn't do
 - VS Code denylist blocks commands only within VS Code's Copilot Chat terminal
 - These layers are still valuable as a "first line of defense" for well-behaved AI tools
@@ -209,7 +209,7 @@ These restrictions are enforced at multiple levels:
 For full enforcement, repository collaborators must:
 
 1. **Enable GitHub branch protection** on `main` (see repository Settings → Rules)
-2. **Install git hooks** locally: `git config core.hooksPath tools/git-hooks`
+2. **Local hooks install automatically** on `npm install` (the `prepare` script wires up Husky → `.husky/`); no manual step is needed for the default fast pre-flight. To opt into the stricter human-confirmation hook instead, run `git config core.hooksPath tools/git-hooks`. The authoritative, non-bypassable layer is server-side branch protection — see [`.github/branch-protection.md`](../../.github/branch-protection.md).
 
 ## Agent Behavior When Hitting a Restriction
 

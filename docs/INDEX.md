@@ -115,7 +115,7 @@ ADRs document significant architectural decisions with context, alternatives, an
 | [Architecture Overview](architecture/overview.md)            | High-level system architecture overview                             |
 | [Android Architecture](architecture/android-architecture.md) | Android app architecture — screens, navigation, state management    |
 | [Architecture Diagrams](architecture/diagrams.md)            | Mermaid diagrams — system overview, data flow, sync, CI/CD, fleet   |
-| [Branch Protection](architecture/branch-protection.md)       | `main` branch rules — required checks, review policy                |
+| [Branch Protection](../.github/branch-protection.md)         | `main` branch rules — required checks, review policy                |
 | [Labels](architecture/labels.md)                             | GitHub label taxonomy — type, platform, priority, and status labels |
 | [Project Board](architecture/project-board.md)               | GitHub Projects V2 board structure, custom fields, and views        |
 
