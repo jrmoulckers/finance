@@ -1,0 +1,399 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the Trip & Country budgets section on the Budgets surface
+ * (TripCountryBudgetsSection.tsx).
+ *
+ * All values come from design-token CSS custom properties. Status and
+ * over-budget state are always reinforced with an icon and a text label in the
+ * markup, so colour here is reinforcement only — never the sole signal
+ * (WCAG 2.2 AA). The progress fill honours `prefers-reduced-motion`.
+ *
+ * Class names are prefixed `tcb-` (trip / country budget) to avoid clashing
+ * with the standalone Trip Budgets planner page (`.trip-*`).
+ *
+ * References: issue #2205
+ */
+
+.tcb {
+  margin-bottom: var(--spacing-6);
+}
+
+.tcb__intro {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.tcb__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-interactive-default);
+}
+
+.tcb__heading {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.tcb__subtitle {
+  margin: var(--spacing-1) 0 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  max-width: 70ch;
+}
+
+.tcb__rates {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: 0 0 var(--spacing-4) 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* --------------------------------------------------------------------------
+ * Form
+ * ------------------------------------------------------------------------ */
+
+.tcb-form {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  padding: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
+}
+
+.tcb-form__legend {
+  margin: 0 0 var(--spacing-3) 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.tcb-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--spacing-3);
+}
+
+.tcb-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+}
+
+.tcb-form__error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: 0;
+  min-height: 1.25rem;
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.tcb-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.tcb-field--inline {
+  min-width: 12rem;
+}
+
+.tcb-field__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.tcb-field__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.tcb-field__input:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+.tcb-field__hint {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* --------------------------------------------------------------------------
+ * Filters
+ * ------------------------------------------------------------------------ */
+
+.tcb-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-3);
+}
+
+.tcb-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.tcb__count {
+  margin: 0 0 var(--spacing-3) 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.tcb__empty {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+/* --------------------------------------------------------------------------
+ * Cards
+ * ------------------------------------------------------------------------ */
+
+.tcb-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-4);
+}
+
+@media (min-width: 640px) {
+  .tcb-cards {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+.tcb-card {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.tcb-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.tcb-card__name {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.tcb-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: var(--spacing-1) 0 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.tcb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  flex: 0 0 auto;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--semantic-border-default);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-secondary);
+}
+
+.tcb-badge--active {
+  color: var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
+}
+
+.tcb-badge--upcoming {
+  color: var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
+}
+
+.tcb-badge--ended {
+  color: var(--semantic-text-secondary);
+}
+
+.tcb-badge--archived {
+  color: var(--semantic-text-secondary);
+  border-style: dashed;
+}
+
+.tcb-card__progress {
+  height: 0.5rem;
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-secondary);
+  overflow: hidden;
+}
+
+.tcb-card__progress-fill {
+  height: 100%;
+  background: var(--semantic-status-positive);
+  transition: width 0.2s ease;
+}
+
+.tcb-card__progress-fill--over {
+  background: var(--semantic-status-negative);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tcb-card__progress-fill {
+    transition: none;
+  }
+}
+
+.tcb-card__figures {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-2);
+  margin: 0;
+}
+
+.tcb-card__figure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.tcb-card__figure dt {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  margin: 0;
+}
+
+.tcb-card__figure dd {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  text-align: right;
+}
+
+.tcb-card__muted {
+  color: var(--semantic-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.tcb-card__over {
+  color: var(--semantic-status-negative);
+}
+
+.tcb-card__note {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.tcb-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  border-top: 1px solid var(--semantic-border-default);
+  padding-top: var(--spacing-3);
+}
+
+.tcb-card__count {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.tcb-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+/* --------------------------------------------------------------------------
+ * Buttons
+ * ------------------------------------------------------------------------ */
+
+.tcb-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.tcb-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.tcb-button--primary {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+}
+
+.tcb-button--primary:hover {
+  background: var(--semantic-interactive-hover);
+}
+
+.tcb-button--ghost {
+  background: transparent;
+  color: var(--semantic-interactive-default);
+  border-color: var(--semantic-border-default);
+}
+
+.tcb-button--ghost:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.tcb-button--danger {
+  background: transparent;
+  color: var(--semantic-status-negative);
+  border-color: var(--semantic-border-default);
+}
+
+.tcb-button--danger:hover {
+  background: var(--semantic-background-secondary);
+}

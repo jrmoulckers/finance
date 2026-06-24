@@ -12,14 +12,33 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { SortableList } from '../components/common/SortableList';
 import { SyncIndicator } from '../components/common/SyncIndicator';
 import { BudgetForm } from '../components/forms';
+import { TripCountryBudgetsSection } from '../components/budgets/TripCountryBudgetsSection';
 import { OfflineBanner } from '../components/OfflineBanner';
 import type { CreateBudgetInput, CreateBudgetTemplateInput } from '../db/repositories/budgets';
 import { useBudgets } from '../hooks/useBudgets';
 import { useCategories } from '../hooks/useCategories';
 import { FOOD_MEAL_SUBCATEGORY_DEFINITIONS } from '../hooks/useCategories';
+import { useTransactions } from '../hooks/useTransactions';
+import { useDisplayCurrency } from '../hooks/useDisplayCurrency';
+import { useExchangeRates } from '../hooks/useExchangeRates';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
+import type { DisplayExchangeRate } from '../lib/budgeting/display-currency-rollups';
+import type { TripBudgetTransaction } from '../lib/budgeting/trip-country-budget-scope';
+import {
+  buildTripBudgetView,
+  collectTripBudgetCountries,
+  createTripCountryBudget,
+  deleteTripCountryBudget,
+  filterTripCountryBudgets,
+  loadTripCountryBudgets,
+  saveTripCountryBudget,
+  setTripCountryBudgetArchived,
+  type TripBudgetStorageLike,
+  type TripCountryBudget,
+  type TripCountryBudgetFormInput,
+} from '../lib/budgeting/trip-country-budgets';
 import {
   calculateActiveCadenceRange,
   generateVarianceInsights,
@@ -73,6 +92,31 @@ function todayIso(): string {
   ).padStart(2, '0')}`;
 }
 
+/**
+ * Resolve a localStorage-compatible store for persisted trip/country budgets.
+ *
+ * Falls back to a process-local in-memory shim when storage is unavailable
+ * (SSR / private browsing) so the surface degrades gracefully instead of
+ * throwing.
+ */
+const tripBudgetMemoryStore = new Map<string, string>();
+function resolveTripBudgetStorage(): TripBudgetStorageLike {
+  try {
+    if (globalThis.localStorage) return globalThis.localStorage;
+  } catch {
+    // Storage blocked (private mode) — fall through to the in-memory shim.
+  }
+  return {
+    getItem: (key) => tripBudgetMemoryStore.get(key) ?? null,
+    setItem: (key, value) => {
+      tripBudgetMemoryStore.set(key, value);
+    },
+    removeItem: (key) => {
+      tripBudgetMemoryStore.delete(key);
+    },
+  };
+}
+
 const CADENCE_LABELS: Record<PlanningCadence, string> = {
   WEEKLY: 'Weekly',
   BIWEEKLY: 'Biweekly',
@@ -99,6 +143,14 @@ export const BudgetsPage: React.FC = () => {
     foodMealTemplate,
     ensureFoodMealCategories,
   } = useCategories();
+  const { transactions } = useTransactions();
+  const { displayCurrency, supportedCurrencies } = useDisplayCurrency();
+  const {
+    rates: exchangeRates,
+    isOffline: ratesOffline,
+    isStale: ratesStale,
+    loading: ratesLoading,
+  } = useExchangeRates(displayCurrency);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -110,12 +162,88 @@ export const BudgetsPage: React.FC = () => {
   const [incomeAmountInput, setIncomeAmountInput] = useState('');
   const [incomeDateInput, setIncomeDateInput] = useState(todayIso);
   const [incomeEvents, setIncomeEvents] = useState<IncomeEventInput[]>([]);
+  const [tripBudgets, setTripBudgets] = useState<readonly TripCountryBudget[]>(() =>
+    loadTripCountryBudgets(resolveTripBudgetStorage()),
+  );
+  const [tripCountryFilter, setTripCountryFilter] = useState('');
+  const [showArchivedTrips, setShowArchivedTrips] = useState(false);
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
     [categories],
   );
   const starterTemplates = useMemo(() => getBudgetStarterTemplates(), []);
+
+  // --- Trip & country budgets (derived from real transactions + real rates) ---
+  const tripToday = useMemo(() => todayIso(), []);
+  const tripDisplayRates = useMemo<DisplayExchangeRate[]>(
+    () =>
+      Object.values(exchangeRates).map((rate) => ({
+        from: rate.from,
+        to: rate.to,
+        rate: rate.rate,
+        timestamp: rate.timestamp,
+        // When connectivity has degraded mark every rate offline so the engine
+        // discloses the whole roll-up as potentially stale.
+        source: ratesOffline ? 'offline' : rate.source,
+      })),
+    [exchangeRates, ratesOffline],
+  );
+  const tripTransactions = useMemo<TripBudgetTransaction[]>(
+    () =>
+      transactions.map((transaction) => ({
+        id: transaction.id,
+        amountCents: transaction.amount.amount,
+        currency: transaction.currency.code,
+        date: transaction.date,
+        merchantCountry: transaction.merchantCountry,
+        tags: transaction.tags,
+        accountId: transaction.accountId,
+        deleted: transaction.deletedAt != null,
+        kind:
+          transaction.type === 'INCOME'
+            ? 'income'
+            : transaction.type === 'TRANSFER'
+              ? 'transfer'
+              : 'expense',
+      })),
+    [transactions],
+  );
+  const tripCountries = useMemo(() => collectTripBudgetCountries(tripBudgets), [tripBudgets]);
+  const tripViews = useMemo(
+    () =>
+      filterTripCountryBudgets(tripBudgets, {
+        showArchived: showArchivedTrips,
+        countryFilter: tripCountryFilter,
+      }).map((budget) =>
+        buildTripBudgetView(budget, tripTransactions, tripToday, tripDisplayRates),
+      ),
+    [
+      tripBudgets,
+      showArchivedTrips,
+      tripCountryFilter,
+      tripTransactions,
+      tripToday,
+      tripDisplayRates,
+    ],
+  );
+
+  const handleCreateTripBudget = useCallback((input: TripCountryBudgetFormInput) => {
+    const storage = resolveTripBudgetStorage();
+    const budget = createTripCountryBudget(input, {
+      id: `trip-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+    });
+    setTripBudgets(saveTripCountryBudget(storage, budget));
+  }, []);
+
+  const handleArchiveTripBudget = useCallback((id: string, archived: boolean) => {
+    setTripBudgets(setTripCountryBudgetArchived(resolveTripBudgetStorage(), id, archived));
+  }, []);
+
+  const handleDeleteTripBudget = useCallback((id: string) => {
+    setTripBudgets(deleteTripCountryBudget(resolveTripBudgetStorage(), id));
+  }, []);
 
   const isLoading = loading || categoriesLoading;
   const resolvedError = error ?? categoriesError;
@@ -546,6 +674,27 @@ export const BudgetsPage: React.FC = () => {
             </div>
           </div>
         </section>
+      )}
+
+      {!resolvedError && (
+        <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
+          <TripCountryBudgetsSection
+            views={tripViews}
+            countries={tripCountries}
+            countryFilter={tripCountryFilter}
+            onCountryFilterChange={setTripCountryFilter}
+            showArchived={showArchivedTrips}
+            onShowArchivedChange={setShowArchivedTrips}
+            displayCurrency={displayCurrency}
+            supportedCurrencies={supportedCurrencies}
+            ratesStale={ratesStale || ratesOffline}
+            ratesLoading={ratesLoading}
+            today={tripToday}
+            onCreate={handleCreateTripBudget}
+            onArchiveChange={handleArchiveTripBudget}
+            onDelete={handleDeleteTripBudget}
+          />
+        </div>
       )}
 
       <BudgetForm
