@@ -131,10 +131,11 @@ describe('DebtPage', () => {
     expect(screen.getByText('Debt Management')).toBeDefined();
   });
 
-  it('renders all five tabs', () => {
+  it('renders all six tabs', () => {
     render(<DebtPage />);
     expect(screen.getByText('Payoff Planner')).toBeDefined();
     expect(screen.getByText('Payoff Rings')).toBeDefined();
+    expect(screen.getByText('Joint Debt')).toBeDefined();
     expect(screen.getByText('BNPL Dashboard')).toBeDefined();
     expect(screen.getByText('Student Loans')).toBeDefined();
     expect(screen.getByText('Credit Cards')).toBeDefined();
@@ -329,13 +330,49 @@ describe('DebtPage', () => {
     expect(screen.getByText('No credit cards')).toBeDefined();
   });
 
+  it('shows the Joint Debt empty state when no debts exist', () => {
+    render(<DebtPage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Joint Debt' }));
+    expect(screen.getByText('No debts to plan together')).toBeDefined();
+  });
+
+  it('builds a joint payoff comparison from both partners debts', () => {
+    mockUseAccountsState.accounts = [
+      buildAccount({
+        id: 'cc-joint',
+        name: 'Rewards Card',
+        type: 'CREDIT_CARD',
+        currentBalance: { amount: -300_000 },
+      }),
+      buildAccount({
+        id: 'loan-joint',
+        name: 'Car Loan',
+        type: 'LOAN',
+        currentBalance: { amount: -100_000 },
+      }),
+    ];
+    render(<DebtPage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Joint Debt' }));
+
+    expect(screen.getByRole('heading', { name: 'Joint Debt Payoff' })).toBeDefined();
+    // Comparison table is present with both strategies as column headers.
+    expect(screen.getByRole('columnheader', { name: /Avalanche/ })).toBeDefined();
+    expect(screen.getByRole('columnheader', { name: /Snowball/ })).toBeDefined();
+    // Ownership selection appears for each debt.
+    expect(screen.getByLabelText('Owner of Rewards Card')).toBeDefined();
+    expect(screen.getByLabelText('Treatment of Car Loan')).toBeDefined();
+    // Recommendation announces via a live region.
+    const status = screen.getByRole('status');
+    expect(status.textContent).toBeTruthy();
+  });
+
   it('has proper ARIA tab structure', () => {
     render(<DebtPage />);
     const tablist = screen.getByRole('tablist');
     expect(tablist).toBeDefined();
 
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(6);
 
     const tabpanel = screen.getByRole('tabpanel');
     expect(tabpanel).toBeDefined();
