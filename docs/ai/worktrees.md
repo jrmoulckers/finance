@@ -101,7 +101,7 @@ git rebase origin/main
 $env:HUSKY = "0" ; git push --no-verify origin <branch-name>
 
 # Step 7: Open PR (auto-approved, mandatory)
-gh pr create --fill --body "Closes #N"
+gh pr create --base main --fill --body "Closes #N"
 
 # Step 8: VERIFY the PR exists (catches silent gh-cli failures)
 gh pr view <branch-name> --json number
@@ -122,6 +122,7 @@ $env:HUSKY = "0" ; git push --no-verify origin feat/transactions-443
 
 # Open PR automatically
 gh pr create `
+  --base main `
   --title "feat(android): implement transaction list (#443)" `
   --body "## Summary
 ...

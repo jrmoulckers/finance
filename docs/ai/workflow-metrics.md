@@ -100,7 +100,7 @@ Metrics are NOT used to evaluate individual agent "performance." They measure sy
 
 #### Q-1: Avoidable CI Failure Rate
 
-**Definition:** Percentage of CI runs that fail due to issues that `npm run ci:check` would have caught locally (formatting, lint, type errors).
+**Definition:** Percentage of CI runs that fail due to issues the pre-push checklist would have caught locally — formatting and lint (`npm run format:check && npx eslint . --max-warnings 0`). Type-check is excluded: it is unreliable locally on TS 5.9.3 (see [CI Monitoring](ci-monitoring.md)), so type failures are a remote-CI concern, not an avoidable local miss.
 
 **Measurement:** `avoidable_failures / total_ci_runs × 100`
 
@@ -282,7 +282,7 @@ Most metrics are collected passively through existing tools:
 | Pain point count      | This repo (pain-points.md) | Manual count from the document                                     |
 | Self-healing attempts | PR commit history          | Count fix commits after CI failure on the same branch              |
 
-**Automated collection:** A future improvement is a `tools/workflow-metrics.js` script that queries the GitHub API and generates a metrics report. Until then, metrics are collected manually during sprint retrospectives.
+**Automated collection:** The `tools/workflow-metrics.js` collector queries the GitHub API and generates a metrics report (Markdown + JSON). Run it with `node tools/workflow-metrics.js` (see `--help` for options such as `--days` and `--out-dir`); it is not yet wired to an npm script. Metrics it does not cover are still gathered manually during sprint retrospectives.
 
 ---
 
@@ -346,4 +346,4 @@ Define thresholds that trigger action when crossed:
 
 ---
 
-_Last updated: 2025-07-18. Maintained by `@docs-writer`._
+_Last updated: 2026-06-24. Maintained by `@docs-writer`._

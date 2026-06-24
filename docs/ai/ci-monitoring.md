@@ -25,7 +25,7 @@ When a check fails:
 gh run view <run-id> --log-failed
 ```
 
-Fix locally, follow the [canonical pre-push workflow](workflow.md#-mandatory-pre-push-workflow-never-skip), push, and re-poll.
+Fix locally, follow the [canonical pre-push workflow](workflow.md#️-mandatory-pre-push-workflow-never-skip), push, and re-poll.
 
 ---
 
@@ -37,7 +37,7 @@ Local checks (`npm run ci:check`, `npm run format:check`, etc.) are useful for c
 
 TypeScript 5.9.3 rejects the `ignoreDeprecations` compiler option locally, causing `npm run type-check` (and therefore `npm run ci:check`) to fail even on clean code. Remote CI uses a compatible configuration and is not affected.
 
-**Workaround:** The [canonical pre-push workflow](workflow.md#-mandatory-pre-push-workflow-never-skip) intentionally checks only formatting and lint locally. Let remote CI handle the type-check.
+**Workaround:** The [canonical pre-push workflow](workflow.md#️-mandatory-pre-push-workflow-never-skip) intentionally checks only formatting and lint locally. Let remote CI handle the type-check.
 
 ---
 
@@ -47,7 +47,7 @@ When `gh pr checks` shows a failure:
 
 1. Read logs: `gh run view <run-id> --log-failed`
 2. Fix locally in the worktree
-3. Run the [canonical pre-push workflow](workflow.md#-mandatory-pre-push-workflow-never-skip)
+3. Run the [canonical pre-push workflow](workflow.md#️-mandatory-pre-push-workflow-never-skip)
 4. Push and re-poll `gh pr checks`
 5. Repeat until all checks are green
 
