@@ -61,4 +61,37 @@ describe('display currency rollups', () => {
     expect(rollup.spentCents).toBe(47_00);
     expect(rollup.remainingCents).toBe(163_00);
   });
+
+  it('rescales minor units across zero-decimal currencies (JPY -> USD)', () => {
+    // ¥10,000 stored as 10_000 minor units (0 decimals). At 100 JPY per USD
+    // this is exactly $100.00 = 10_000 USD cents (2 decimals). A naive
+    // multiply without precision scaling would yield 100 cents ($1.00).
+    const jpyRates: DisplayExchangeRate[] = [
+      { from: 'USD', to: 'JPY', rate: 100, timestamp: '2025-06-01T00:00:00Z', source: 'api' },
+    ];
+
+    const rollup = aggregateDisplayCurrencyAmounts(
+      [{ id: 'tokyo', amountCents: 10_000, currency: 'JPY' }],
+      'USD',
+      jpyRates,
+    );
+
+    expect(rollup.totalCents).toBe(100_00);
+    expect(rollup.convertedCurrencyCodes).toEqual(['JPY']);
+  });
+
+  it('rescales minor units across zero-decimal currencies (KRW -> USD)', () => {
+    // ₩100,000 (0 decimals) at 1,000 KRW per USD = $100.00 = 10_000 USD cents.
+    const krwRates: DisplayExchangeRate[] = [
+      { from: 'USD', to: 'KRW', rate: 1000, timestamp: '2025-06-01T00:00:00Z', source: 'api' },
+    ];
+
+    const rollup = aggregateDisplayCurrencyAmounts(
+      [{ id: 'seoul', amountCents: 100_000, currency: 'KRW' }],
+      'USD',
+      krwRates,
+    );
+
+    expect(rollup.totalCents).toBe(100_00);
+  });
 });
