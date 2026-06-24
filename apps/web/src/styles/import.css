@@ -576,3 +576,94 @@
     border: 2px solid var(--semantic-border-default);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Receipt → expense + COGS mapping (#2183)
+ * ------------------------------------------------------------------------- */
+
+.receipt-attachment {
+  margin: var(--spacing-4) 0;
+}
+
+.receipt-attachment__image {
+  display: block;
+  max-width: 240px;
+  max-height: 320px;
+  width: auto;
+  height: auto;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--card-border-radius, 8px);
+  margin-bottom: var(--spacing-2);
+}
+
+.receipt-items {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--card-border-radius, 8px);
+  padding: var(--spacing-3);
+  margin: var(--spacing-4) 0;
+}
+
+.receipt-items__table {
+  width: 100%;
+}
+
+.receipt-subtotals {
+  margin: var(--spacing-4) 0;
+}
+
+.receipt-subtotals__list {
+  margin: 0;
+}
+
+.receipt-subtotals__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-1) 0;
+}
+
+.receipt-subtotals__row dt {
+  color: var(--semantic-text-secondary);
+}
+
+.receipt-subtotals__row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--semantic-text-primary);
+}
+
+.receipt-reconciliation {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border-radius: var(--card-border-radius, 8px);
+  border: 2px solid var(--semantic-border-default);
+  margin: var(--spacing-4) 0;
+}
+
+.receipt-reconciliation--balanced {
+  border-color: var(--semantic-status-positive);
+  color: var(--semantic-status-positive);
+}
+
+.receipt-reconciliation--over,
+.receipt-reconciliation--under,
+.receipt-reconciliation--unmapped {
+  border-color: var(--semantic-status-warning);
+  color: var(--semantic-status-warning);
+}
+
+.receipt-reconciliation__text {
+  color: var(--semantic-text-primary);
+}
+
+@media (prefers-contrast: more) {
+  .receipt-reconciliation {
+    border-width: 3px;
+  }
+
+  .receipt-attachment__image {
+    border-width: 2px;
+  }
+}
