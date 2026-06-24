@@ -85,16 +85,20 @@ import type { Account } from '../kmp/bridge';
 // Imported directly (not via a shared barrel) so it stays code-split into the
 // lazy Debt page chunk and does not inflate other route bundles (#2175).
 import { DebtPayoffRings } from '../components/debt/DebtPayoffRings';
+// Imported directly (not via a shared barrel) for the same code-splitting
+// reason — keeps the joint-debt planner inside the lazy Debt chunk (#2153).
+import { JointDebtPlanner } from '../components/debt/JointDebtPlanner';
 
 // ---------------------------------------------------------------------------
 // Tab types
 // ---------------------------------------------------------------------------
 
-type DebtTab = 'payoff' | 'payoff-rings' | 'bnpl' | 'student-loans' | 'credit-cards';
+type DebtTab = 'payoff' | 'payoff-rings' | 'joint' | 'bnpl' | 'student-loans' | 'credit-cards';
 
 const TAB_LABELS: Record<DebtTab, string> = {
   payoff: 'Payoff Planner',
   'payoff-rings': 'Payoff Rings',
+  joint: 'Joint Debt',
   bnpl: 'BNPL Dashboard',
   'student-loans': 'Student Loans',
   'credit-cards': 'Credit Cards',
@@ -466,6 +470,7 @@ export function DebtPage(): React.ReactElement {
       >
         {activeTab === 'payoff' && <PayoffPlannerPanel />}
         {activeTab === 'payoff-rings' && <PayoffRingsPanel />}
+        {activeTab === 'joint' && <JointDebtPanel />}
         {activeTab === 'bnpl' && <BnplDashboardPanel />}
         {activeTab === 'student-loans' && <StudentLoanPanel />}
         {activeTab === 'credit-cards' && <CreditCardPanel />}
@@ -494,6 +499,29 @@ function PayoffRingsPanel(): React.ReactElement {
     [accounts],
   );
   return <DebtPayoffRings debts={debts} todayIso={todayIso} />;
+}
+
+// ---------------------------------------------------------------------------
+// Joint Debt panel (#2153)
+// ---------------------------------------------------------------------------
+
+/**
+ * Couples' joint debt payoff surface. Derives both partners' debts from the
+ * household's debt accounts and hands them to the accessible JointDebtPlanner,
+ * which adds the partner-ownership dimension, an avalanche/snowball comparison
+ * across the combined debts, a goal-impact view, and a recommendation mode.
+ */
+function JointDebtPanel(): React.ReactElement {
+  const { accounts } = useAccounts();
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const debts = useMemo(
+    () =>
+      accounts
+        .map(accountToDebt)
+        .filter((debt): debt is Debt => debt !== null && debt.balanceCents > 0),
+    [accounts],
+  );
+  return <JointDebtPlanner debts={debts} todayIso={todayIso} />;
 }
 
 // ---------------------------------------------------------------------------
