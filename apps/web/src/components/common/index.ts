@@ -109,3 +109,6 @@ export type {
   StreakTier,
   NumberCounterProps,
 } from './animations';
+
+export { ConvertedTotalIndicator } from './ConvertedTotalIndicator';
+export type { ConvertedTotalIndicatorProps } from './ConvertedTotalIndicator';

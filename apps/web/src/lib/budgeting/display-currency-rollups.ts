@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { getCurrencyFractionDigits } from '../currency-metadata';
 import { bankersRound } from './utils';
 
 export type CurrencyConversionSource = 'static' | 'stored' | 'api' | 'user-override' | 'offline';
@@ -105,10 +106,20 @@ export function convertDisplayCurrencyAmount(
   const targetCurrency = normalizeCurrency(displayCurrency);
   const rate = findRate(sourceCurrency, targetCurrency, rates);
 
+  // Exchange rates are quoted in MAJOR units (1 source = rate target), but
+  // amounts are stored in INTEGER minor units. When the source and target
+  // currencies have a different number of decimal places (e.g. JPY/KRW have
+  // 0, USD has 2) we must rescale by 10^(targetDecimals - sourceDecimals) so a
+  // ¥100 balance converts to the correct number of USD cents rather than
+  // silently dropping or inventing minor units. For equal-precision pairs the
+  // scale collapses to 1, preserving existing behaviour exactly.
+  const precisionScale =
+    10 ** (getCurrencyFractionDigits(targetCurrency) - getCurrencyFractionDigits(sourceCurrency));
+
   return {
     ...amount,
     currency: sourceCurrency,
-    displayAmountCents: bankersRound(amount.amountCents * rate.rate),
+    displayAmountCents: bankersRound(amount.amountCents * rate.rate * precisionScale),
     displayCurrency: targetCurrency,
     rate,
     stale: isStale(rate, options.staleAfter),

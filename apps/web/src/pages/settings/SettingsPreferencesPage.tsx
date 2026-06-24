@@ -15,6 +15,7 @@ import { useAccessibility } from '../../hooks/useAccessibility';
 import { useCategories } from '../../hooks/useCategories';
 import { useFontScale } from '../../hooks/useFontScale';
 import type { FontScalePreference } from '../../hooks/useFontScale';
+import { useDisplayCurrency } from '../../hooks/useDisplayCurrency';
 import { useLocalePreferences } from '../../hooks/useLocalePreferences';
 import { useTheme } from '../../hooks/useTheme';
 import type { DisplayDensity, ThemeValue } from '../../hooks/useTheme';
@@ -35,13 +36,11 @@ import { translate } from '../../lib/i18n';
 import { createSettingsCopy } from '../../lib/i18n/settings-catalog';
 import { setOnboardingComplete } from '../../lib/local-only-mode';
 
-const CURRENCY_STORAGE_KEY = 'finance-currency';
 const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
 
-type CurrencyPreference = string;
-
-const currencyOptions: Array<{ value: CurrencyPreference; label: string }> =
-  SUPPORTED_CURRENCY_METADATA.map(({ code, label }) => ({ value: code, label }));
+const currencyOptions: Array<{ value: string; label: string }> = SUPPORTED_CURRENCY_METADATA.map(
+  ({ code, label }) => ({ value: code, label }),
+);
 
 /** Labels for theme select options. */
 const THEME_LABELS: Record<ThemeValue, string> = {
@@ -114,9 +113,10 @@ export const SettingsPreferencesPage: React.FC = () => {
     speakAmount,
   } = useAccessibility();
   const displaySettings = useMoneyDisplay();
-  const [currency, setCurrency] = useState<CurrencyPreference>(
-    () => (localStorage.getItem(CURRENCY_STORAGE_KEY) as CurrencyPreference) || 'USD',
-  );
+  // Display currency is the shared, app-wide preference (single source of
+  // truth) that drives dashboard, analytics, and budget rollup totals — not a
+  // value isolated to this page. See `useDisplayCurrency` / issue #2203.
+  const { displayCurrency: currency, setDisplayCurrency } = useDisplayCurrency();
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     () => localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) !== 'false',
   );
@@ -142,11 +142,12 @@ export const SettingsPreferencesPage: React.FC = () => {
     [setDisplayDensity],
   );
 
-  const handleCurrencyChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextCurrency = event.target.value as CurrencyPreference;
-    localStorage.setItem(CURRENCY_STORAGE_KEY, nextCurrency);
-    setCurrency(nextCurrency);
-  }, []);
+  const handleCurrencyChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setDisplayCurrency(event.target.value);
+    },
+    [setDisplayCurrency],
+  );
 
   const handleLocaleChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -237,6 +238,7 @@ export const SettingsPreferencesPage: React.FC = () => {
                 <select
                   id="settings-currency"
                   aria-label={settingsCopy.text('currencyAria')}
+                  aria-describedby="settings-currency-hint"
                   className="settings-item__select"
                   value={currency}
                   onChange={handleCurrencyChange}
@@ -247,6 +249,10 @@ export const SettingsPreferencesPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                <p id="settings-currency-hint" className="settings-item__hint">
+                  Drives dashboard, analytics, and budget totals. Amounts in other currencies are
+                  converted and clearly marked.
+                </p>
               </div>
             </div>
           </SettingInfoWidget>

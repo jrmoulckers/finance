@@ -245,3 +245,10 @@ export { useMilestoneCheck } from './useMilestoneCheck';
 export type { UseMilestoneCheckResult } from './useMilestoneCheck';
 export { useSqliteEncryption } from './useSqliteEncryption';
 export type { UseSqliteEncryptionResult } from './useSqliteEncryption';
+export { useDisplayCurrency } from './useDisplayCurrency';
+export type { UseDisplayCurrencyResult } from './useDisplayCurrency';
+export { useDisplayCurrencyRollup } from './useDisplayCurrencyRollup';
+export type {
+  UseDisplayCurrencyRollupResult,
+  UseDisplayCurrencyRollupOptions,
+} from './useDisplayCurrencyRollup';
