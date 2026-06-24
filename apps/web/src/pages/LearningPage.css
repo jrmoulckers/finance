@@ -52,3 +52,211 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Credit-building education (issue #2174) ─────────────────────────────── */
+.credit-building {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border: 1px solid var(--semantic-border-default, #d0d7de);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  background: var(--semantic-background-elevated, var(--semantic-surface-primary, #ffffff));
+}
+
+.credit-building__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.credit-building__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  margin: 0;
+  color: var(--semantic-text-secondary, #475569);
+}
+
+.credit-building__title {
+  margin: 0;
+}
+
+.credit-building__intro,
+.credit-building__why,
+.credit-building__note {
+  color: var(--semantic-text-secondary, #475569);
+  max-width: 70ch;
+}
+
+.credit-building__lang {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.credit-building__lang-label {
+  font-size: 0.85rem;
+  color: var(--semantic-text-secondary, #475569);
+}
+
+.credit-building__lang-options {
+  display: inline-flex;
+  gap: 0.25rem;
+  border: 1px solid var(--semantic-border-default, #d0d7de);
+  border-radius: 999px;
+  padding: 0.2rem;
+}
+
+.credit-building__lang-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: transparent;
+  color: var(--semantic-text-primary, #111827);
+}
+
+.credit-building__lang-button[aria-pressed='true'] {
+  background: var(--semantic-interactive-default, #1d4ed8);
+  color: var(--semantic-text-inverse, #ffffff);
+  /* Underline so the active state is not signalled by colour alone. */
+  text-decoration: underline;
+}
+
+.credit-building__disclaimer {
+  font-size: 0.85rem;
+  color: var(--semantic-text-secondary, #475569);
+  border-inline-start: 3px solid var(--semantic-border-default, #d0d7de);
+  padding-inline-start: 0.75rem;
+  margin: 0;
+}
+
+.credit-building__subheading {
+  margin: 0 0 0.5rem;
+}
+
+.credit-building__explainer-list,
+.credit-building__steps,
+.credit-building__checklist-items {
+  display: grid;
+  gap: 1rem;
+}
+
+.credit-building__explainer-list {
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.credit-building__explainer,
+.credit-building__step,
+.credit-building__checklist-item {
+  border: 1px solid var(--semantic-border-default, #d0d7de);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: var(--semantic-background-primary, #ffffff);
+}
+
+.credit-building__explainer-title,
+.credit-building__step-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.credit-building__why-label {
+  color: var(--semantic-text-primary, #111827);
+}
+
+.credit-building__steps {
+  margin: 0;
+  padding-inline-start: 1.5rem;
+}
+
+.credit-building__checklist-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.credit-building__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.credit-building__progress-bar {
+  inline-size: 100%;
+  block-size: 0.75rem;
+}
+
+.credit-building__progress-status {
+  margin: 0;
+  font-weight: 600;
+  color: var(--semantic-text-primary, #111827);
+}
+
+.credit-building__checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.credit-building__checkbox {
+  margin-block-start: 0.25rem;
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+  flex: 0 0 auto;
+}
+
+.credit-building__checkbox-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.credit-building__checkbox-title {
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.credit-building__checkbox-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--semantic-interactive-default, #1d4ed8);
+  color: var(--semantic-interactive-default, #1d4ed8);
+}
+
+.credit-building__checkbox-detail {
+  color: var(--semantic-text-secondary, #475569);
+}
+
+.credit-building__checklist-item--done {
+  /* Keep a visible non-colour cue (the "Done" badge + checkbox state) so
+     completion is never indicated by colour alone. */
+  border-color: var(--semantic-interactive-default, #1d4ed8);
+}
+
+.credit-building__lang-button:focus-visible,
+.credit-building__checkbox:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #1d4ed8);
+  outline-offset: 2px;
+}
+
+.credit-building__lang-button {
+  transition: background-color 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .credit-building__lang-button {
+    transition: none;
+  }
+}
