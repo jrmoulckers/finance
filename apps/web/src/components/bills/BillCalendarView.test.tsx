@@ -99,6 +99,45 @@ describe('BillCalendarView', () => {
     expect(screen.getAllByText(/Short by/).length).toBeGreaterThan(0);
   });
 
+  it('flags a high-risk week when bills exceed the paycheck', () => {
+    seedSchedule('40'); // $40 income, well under the bill
+    const bills = [makeBill({ name: 'Rent', dueDate: isoOffset(3), amount: { amount: 120000 } })];
+
+    render(<BillCalendarView bills={bills} />);
+
+    expect(screen.getAllByText('High-risk week').length).toBeGreaterThan(0);
+  });
+
+  it('surfaces one-time (kid) expenses with a distinct badge and explainer', () => {
+    seedSchedule('2000');
+    const bills = [
+      makeBill({
+        name: 'Soccer signup',
+        dueDate: isoOffset(4),
+        frequency: 'ONE_TIME',
+        amount: { amount: 8500 },
+      }),
+    ];
+
+    render(<BillCalendarView bills={bills} />);
+
+    // A "One-time" tag is rendered next to the bill name.
+    expect(screen.getAllByText(/One-time/i).length).toBeGreaterThan(0);
+    // The schedule form explains where one-off kid expenses appear.
+    expect(screen.getByText(/school fees, birthdays/i)).toBeInTheDocument();
+  });
+
+  it('announces high-risk weeks in the live summary region', () => {
+    seedSchedule('40');
+    const bills = [makeBill({ name: 'Rent', dueDate: isoOffset(3), amount: { amount: 120000 } })];
+
+    const { container } = render(<BillCalendarView bills={bills} />);
+
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion).not.toBeNull();
+    expect(liveRegion?.textContent ?? '').toMatch(/high-risk/i);
+  });
+
   it('prompts for income before computing coverage', () => {
     seedSchedule(''); // no income provided
     const bills = [makeBill({ name: 'Water', dueDate: isoOffset(3), amount: { amount: 4000 } })];

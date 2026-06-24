@@ -283,6 +283,7 @@ export const CreateBillPage: React.FC = () => {
               value={frequency}
               onChange={(e) => setFrequency(e.target.value as BillFrequency)}
               disabled={submitting}
+              aria-describedby="bill-frequency-hint"
             >
               <option value="ONE_TIME">One-Time</option>
               <option value="WEEKLY">Weekly</option>
@@ -291,6 +292,17 @@ export const CreateBillPage: React.FC = () => {
               <option value="QUARTERLY">Quarterly</option>
               <option value="YEARLY">Yearly</option>
             </select>
+            <p
+              id="bill-frequency-hint"
+              style={{
+                marginTop: 'var(--spacing-1)',
+                fontSize: 'var(--type-scale-caption-font-size)',
+                color: 'var(--semantic-text-secondary)',
+              }}
+            >
+              Choose One-Time for one-off costs like school fees, birthdays, or sports signups —
+              they line up against your paydays in the bill calendar too.
+            </p>
           </div>
 
           {/* Auto-Pay */}

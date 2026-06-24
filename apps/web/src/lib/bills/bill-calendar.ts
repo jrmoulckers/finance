@@ -421,3 +421,116 @@ export function buildBillCalendar(options: BuildBillCalendarOptions): BillCalend
     totalCoverageCents: totalIncomeCents - totalDueCents,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Risk classification (high-risk pay periods) and one-time expenses
+// ---------------------------------------------------------------------------
+
+/**
+ * Risk level for a single pay period, judged against the expected income.
+ *  - `unknown`  – no income entered yet, so coverage cannot be assessed.
+ *  - `shortfall`– bills due before the next payday exceed expected income.
+ *  - `tight`    – covered, but the leftover buffer is a thin slice of income.
+ *  - `covered`  – comfortably covered.
+ *
+ * Both `shortfall` and `tight` are treated as "high-risk" so single parents see
+ * the weeks where money is dangerously close to running out before payday.
+ */
+export type PeriodRisk = 'covered' | 'tight' | 'shortfall' | 'unknown';
+
+/**
+ * Share of expected income that, when the leftover buffer falls below it, marks
+ * a pay period as financially "tight" (high-risk-adjacent). For example, with a
+ * 10% ratio a $2,000 paycheck is tight when under $200 is left after bills.
+ */
+export const TIGHT_COVERAGE_RATIO = 0.1;
+
+/** Plain-language labels for each {@link PeriodRisk}, safe for screen readers. */
+export const PERIOD_RISK_LABELS: Record<PeriodRisk, string> = {
+  covered: 'On track',
+  tight: 'Tight — little left after bills',
+  shortfall: 'High-risk — bills exceed this paycheck',
+  unknown: 'Add income to assess risk',
+};
+
+/** Classify how risky a pay period is, given whether income was supplied. */
+export function classifyPeriodRisk(period: PayPeriod, incomeProvided: boolean): PeriodRisk {
+  if (!incomeProvided || period.expectedIncomeCents <= 0) return 'unknown';
+  if (period.coverageCents < 0) return 'shortfall';
+  if (period.coverageCents < Math.round(period.expectedIncomeCents * TIGHT_COVERAGE_RATIO)) {
+    return 'tight';
+  }
+  return 'covered';
+}
+
+/**
+ * A pay period is "high-risk" when bills outpace — or come dangerously close to
+ * outpacing — the income landing on that payday.
+ */
+export function isHighRiskPeriod(period: PayPeriod, incomeProvided: boolean): boolean {
+  const risk = classifyPeriodRisk(period, incomeProvided);
+  return risk === 'shortfall' || risk === 'tight';
+}
+
+/**
+ * One-time (non-recurring) bill occurrences due in a period. These are the
+ * one-off "kid expenses" — school fees, birthdays, sports signups — planned
+ * alongside recurring bills rather than tracked separately.
+ */
+export function oneTimeOccurrences(period: PayPeriod): readonly BillOccurrence[] {
+  return period.bills.filter((bill) => bill.frequency === 'ONE_TIME');
+}
+
+/** Total of one-time expenses due in a period, in integer cents. */
+export function oneTimeDueCents(period: PayPeriod): number {
+  return oneTimeOccurrences(period).reduce((sum, bill) => sum + bill.amountCents, 0);
+}
+
+/** Calendar-wide risk + one-off-expense summary for the at-a-glance banner. */
+export interface CalendarRiskSummary {
+  /** Number of pay periods flagged high-risk (shortfall or tight). */
+  readonly highRiskPeriodCount: number;
+  /** Number of pay periods with an outright shortfall. */
+  readonly shortfallPeriodCount: number;
+  /** Payday of the first period that runs short, or `null` if none. */
+  readonly firstShortfallPaydayDate: LocalDate | null;
+  /** Total one-time (non-recurring) expenses across the horizon, in cents. */
+  readonly oneTimeDueCents: number;
+  /** Count of one-time expense occurrences across the horizon. */
+  readonly oneTimeCount: number;
+}
+
+/** Summarise risk and one-off expenses across an entire {@link BillCalendar}. */
+export function summarizeCalendarRisk(
+  calendar: BillCalendar,
+  incomeProvided: boolean,
+): CalendarRiskSummary {
+  let highRiskPeriodCount = 0;
+  let shortfallPeriodCount = 0;
+  let firstShortfallPaydayDate: LocalDate | null = null;
+  let totalOneTimeCents = 0;
+  let oneTimeCount = 0;
+
+  for (const period of calendar.periods) {
+    const risk = classifyPeriodRisk(period, incomeProvided);
+    if (risk === 'shortfall' || risk === 'tight') highRiskPeriodCount += 1;
+    if (risk === 'shortfall') {
+      shortfallPeriodCount += 1;
+      if (firstShortfallPaydayDate === null) firstShortfallPaydayDate = period.paydayDate;
+    }
+    for (const bill of period.bills) {
+      if (bill.frequency === 'ONE_TIME') {
+        totalOneTimeCents += bill.amountCents;
+        oneTimeCount += 1;
+      }
+    }
+  }
+
+  return {
+    highRiskPeriodCount,
+    shortfallPeriodCount,
+    firstShortfallPaydayDate,
+    oneTimeDueCents: totalOneTimeCents,
+    oneTimeCount,
+  };
+}

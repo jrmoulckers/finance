@@ -3,8 +3,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildBillCalendar,
+  classifyPeriodRisk,
   expandBillOccurrences,
   generatePaydays,
+  isHighRiskPeriod,
+  oneTimeDueCents,
+  oneTimeOccurrences,
+  summarizeCalendarRisk,
+  type PayPeriod,
   type PaydaySchedule,
 } from './bill-calendar';
 import type { Bill, BillFrequency, BillStatus } from '../../kmp/bridge';
@@ -326,5 +332,119 @@ describe('buildBillCalendar', () => {
     expect(calendar.periods).toHaveLength(3);
     expect(calendar.totalDueCents).toBe(0);
     expect(calendar.periods.every((p) => p.covered)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Risk classification + one-time (kid) expenses
+// ---------------------------------------------------------------------------
+
+describe('classifyPeriodRisk', () => {
+  const biweekly: PaydaySchedule = {
+    cadence: 'BIWEEKLY',
+    anchorDate: '2025-01-03',
+    expectedIncomeCents: 200_000,
+  };
+
+  function periodFor(amountCents: number): PayPeriod {
+    const calendar = buildBillCalendar({
+      bills: [makeBill({ amountCents, dueDate: '2025-01-20', frequency: 'ONE_TIME' })],
+      schedule: biweekly,
+      fromDate: '2025-01-20',
+      periodsToShow: 1,
+    });
+    return calendar.periods[0];
+  }
+
+  it('returns unknown when no income is provided', () => {
+    expect(classifyPeriodRisk(periodFor(50_000), false)).toBe('unknown');
+  });
+
+  it('returns shortfall when bills exceed expected income', () => {
+    expect(classifyPeriodRisk(periodFor(220_000), true)).toBe('shortfall');
+    expect(isHighRiskPeriod(periodFor(220_000), true)).toBe(true);
+  });
+
+  it('returns tight when the leftover buffer is under the threshold', () => {
+    // 200000 income, 10% ratio -> tight when coverage < 20000.
+    expect(classifyPeriodRisk(periodFor(185_000), true)).toBe('tight'); // 15000 left
+    expect(isHighRiskPeriod(periodFor(185_000), true)).toBe(true);
+  });
+
+  it('returns covered with a comfortable buffer and is not high-risk', () => {
+    expect(classifyPeriodRisk(periodFor(50_000), true)).toBe('covered');
+    expect(isHighRiskPeriod(periodFor(50_000), true)).toBe(false);
+  });
+});
+
+describe('one-time expenses and calendar risk summary', () => {
+  const biweekly: PaydaySchedule = {
+    cadence: 'BIWEEKLY',
+    anchorDate: '2025-01-03',
+    expectedIncomeCents: 200_000,
+  };
+
+  it('isolates one-time occurrences and sums them in integer cents', () => {
+    const bills = [
+      makeBill({ name: 'Rent', amountCents: 120_000, dueDate: '2025-01-20', frequency: 'MONTHLY' }),
+      makeBill({
+        name: 'Soccer signup',
+        amountCents: 8_500,
+        dueDate: '2025-01-22',
+        frequency: 'ONE_TIME',
+      }),
+      makeBill({
+        name: 'Birthday party',
+        amountCents: 6_000,
+        dueDate: '2025-01-24',
+        frequency: 'ONE_TIME',
+      }),
+    ];
+    const calendar = buildBillCalendar({
+      bills,
+      schedule: biweekly,
+      fromDate: '2025-01-20',
+      periodsToShow: 1,
+    });
+    const period = calendar.periods[0];
+    expect(oneTimeOccurrences(period).map((b) => b.name)).toEqual([
+      'Soccer signup',
+      'Birthday party',
+    ]);
+    expect(oneTimeDueCents(period)).toBe(14_500);
+  });
+
+  it('summarises high-risk periods, the first shortfall, and one-time totals', () => {
+    const bills = [
+      // Period 0 [01-17, 01-31): shortfall (240k > 200k)
+      makeBill({ amountCents: 180_000, dueDate: '2025-01-20', frequency: 'ONE_TIME' }),
+      makeBill({
+        name: 'Field trip',
+        amountCents: 60_000,
+        dueDate: '2025-01-22',
+        frequency: 'ONE_TIME',
+      }),
+      // Period 1 [01-31, 02-14): comfortably covered
+      makeBill({ amountCents: 5_000, dueDate: '2025-02-01', frequency: 'ONE_TIME' }),
+    ];
+    const calendar = buildBillCalendar({
+      bills,
+      schedule: biweekly,
+      fromDate: '2025-01-20',
+      periodsToShow: 2,
+    });
+
+    const withIncome = summarizeCalendarRisk(calendar, true);
+    expect(withIncome.highRiskPeriodCount).toBe(1);
+    expect(withIncome.shortfallPeriodCount).toBe(1);
+    expect(withIncome.firstShortfallPaydayDate).toBe('2025-01-17');
+    expect(withIncome.oneTimeCount).toBe(3);
+    expect(withIncome.oneTimeDueCents).toBe(245_000);
+
+    const withoutIncome = summarizeCalendarRisk(calendar, false);
+    expect(withoutIncome.highRiskPeriodCount).toBe(0);
+    expect(withoutIncome.firstShortfallPaydayDate).toBeNull();
+    // One-time totals are independent of income being known.
+    expect(withoutIncome.oneTimeCount).toBe(3);
   });
 });

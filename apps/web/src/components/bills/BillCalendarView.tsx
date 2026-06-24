@@ -25,8 +25,13 @@ import { CurrencyDisplay } from '../common';
 import { AppIcon } from '../icons';
 import {
   buildBillCalendar,
+  classifyPeriodRisk,
   DEFAULT_PERIODS_TO_SHOW,
+  oneTimeDueCents,
+  oneTimeOccurrences,
   PAYDAY_CADENCE_LABELS,
+  PERIOD_RISK_LABELS,
+  summarizeCalendarRisk,
   type PayPeriod,
   type PaydayCadence,
 } from '../../lib/bills/bill-calendar';
@@ -159,6 +164,24 @@ function CoverageStatus({
   );
 }
 
+/** High-risk-week badge shown with an icon + text (never colour alone). */
+function RiskBadge({
+  period,
+  incomeProvided,
+}: {
+  period: PayPeriod;
+  incomeProvided: boolean;
+}): React.ReactElement | null {
+  const risk = classifyPeriodRisk(period, incomeProvided);
+  if (risk !== 'shortfall' && risk !== 'tight') return null;
+  return (
+    <span className={`bill-risk-badge bill-risk-badge--${risk}`}>
+      <AppIcon name={risk === 'shortfall' ? 'flame' : 'alert-triangle'} />
+      {risk === 'shortfall' ? 'High-risk week' : 'Tight week'}
+    </span>
+  );
+}
+
 /** A single pay-period card. */
 function PayPeriodCard({
   period,
@@ -168,11 +191,21 @@ function PayPeriodCard({
   incomeProvided: boolean;
 }): React.ReactElement {
   const headingId = `pay-period-${period.index}`;
+  const risk = classifyPeriodRisk(period, incomeProvided);
+  const oneTimeBills = oneTimeOccurrences(period);
+  const accessibleStatus =
+    risk === 'unknown' ? 'pay period' : `pay period — ${PERIOD_RISK_LABELS[risk]}`;
   return (
-    <article className="card" aria-labelledby={headingId}>
-      <h4 id={headingId} style={{ margin: 0, fontWeight: 'var(--font-weight-semibold)' }}>
-        <AppIcon name="wallet" /> Payday {formatDate(period.paydayDate)}
-      </h4>
+    <article
+      className="card"
+      aria-label={`Payday ${formatDate(period.paydayDate)}, ${accessibleStatus}`}
+    >
+      <div className="bill-period-card__header">
+        <h4 id={headingId} style={{ margin: 0, fontWeight: 'var(--font-weight-semibold)' }}>
+          <AppIcon name="wallet" /> Payday {formatDate(period.paydayDate)}
+        </h4>
+        <RiskBadge period={period} incomeProvided={incomeProvided} />
+      </div>
       <p
         style={{ ...captionStyle, marginTop: 'var(--spacing-1)', marginBottom: 'var(--spacing-3)' }}
       >
@@ -199,6 +232,17 @@ function PayPeriodCard({
         <CoverageStatus period={period} incomeProvided={incomeProvided} />
       </div>
 
+      {oneTimeBills.length > 0 && (
+        <p className="bill-period-card__onetime" style={captionStyle}>
+          <AppIcon name="gift" /> Includes {oneTimeBills.length} one-time{' '}
+          {oneTimeBills.length === 1 ? 'expense' : 'expenses'} ·{' '}
+          <CurrencyDisplay
+            amount={oneTimeDueCents(period)}
+            context="one-time expenses this period"
+          />
+        </p>
+      )}
+
       {period.bills.length === 0 ? (
         <p style={captionStyle}>No bills due before this payday.</p>
       ) : (
@@ -217,6 +261,14 @@ function PayPeriodCard({
             >
               <span style={{ minWidth: 0 }}>
                 <span style={{ fontWeight: 'var(--font-weight-medium)' }}>{bill.name}</span>
+                {bill.frequency === 'ONE_TIME' && (
+                  <>
+                    {' '}
+                    <span className="bill-onetime-badge">
+                      <AppIcon name="gift" /> One-time
+                    </span>
+                  </>
+                )}
                 <br />
                 <span style={captionStyle}>
                   {bill.payee} · Due {formatDate(bill.dueDate)}
@@ -272,6 +324,11 @@ export const BillCalendarView: React.FC<BillCalendarViewProps> = ({ bills }) => 
   const anchorId = `${fieldIdPrefix}-anchor`;
   const incomeId = `${fieldIdPrefix}-income`;
 
+  const riskSummary = useMemo(
+    () => summarizeCalendarRisk(calendar, incomeProvided),
+    [calendar, incomeProvided],
+  );
+
   return (
     <section aria-label="Bills by pay period">
       <form
@@ -285,7 +342,9 @@ export const BillCalendarView: React.FC<BillCalendarViewProps> = ({ bills }) => 
             Your payday schedule
           </legend>
           <p style={{ ...captionStyle, marginTop: 'var(--spacing-1)' }}>
-            Tell us your pay cycle to see which bills fall in each pay period.
+            Tell us your pay cycle to see which bills fall in each pay period. One-time expenses —
+            school fees, birthdays, sports signups — appear here too when you add them as a One-Time
+            bill.
           </p>
 
           <div
@@ -374,8 +433,32 @@ export const BillCalendarView: React.FC<BillCalendarViewProps> = ({ bills }) => 
       <p aria-live="polite" style={{ ...captionStyle, marginBottom: 'var(--spacing-3)' }}>
         Next {calendar.periods.length} pay periods ·{' '}
         <CurrencyDisplay amount={calendar.totalDueCents} context="total bills due" /> in bills
-        {incomeProvided && (
-          <> · {calendar.totalCoverageCents >= 0 ? 'covered overall' : 'shortfall overall'}</>
+        {incomeProvided &&
+          (riskSummary.highRiskPeriodCount > 0 ? (
+            <>
+              {' '}
+              · <AppIcon name="flame" /> {riskSummary.highRiskPeriodCount} high-risk{' '}
+              {riskSummary.highRiskPeriodCount === 1 ? 'week' : 'weeks'} before payday
+              {riskSummary.firstShortfallPaydayDate !== null && (
+                <>
+                  {' '}
+                  — first shortfall on the {formatDate(riskSummary.firstShortfallPaydayDate)} payday
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {' '}
+              · <AppIcon name="check-circle" /> on track across every payday
+            </>
+          ))}
+        {riskSummary.oneTimeCount > 0 && (
+          <>
+            {' '}
+            · <AppIcon name="gift" /> {riskSummary.oneTimeCount} one-time{' '}
+            {riskSummary.oneTimeCount === 1 ? 'expense' : 'expenses'} (
+            <CurrencyDisplay amount={riskSummary.oneTimeDueCents} context="one-time expenses" />)
+          </>
         )}
       </p>
 
