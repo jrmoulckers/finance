@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import React from 'react';
 import {
   PlanningPage,
@@ -566,5 +566,57 @@ describe('PlanningPage', () => {
     expect(screen.getByText('Required RMD')).toBeTruthy();
     expect(screen.getByText('$37735.85')).toBeTruthy();
     expect(screen.getByRole('alert')).toHaveTextContent(/rmd reminder/i);
+  });
+
+  it('surfaces a wedding workspace tab with the budgeted-vs-actual summary', () => {
+    render(<PlanningPage />);
+    expect(screen.getByRole('tab', { name: /wedding/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: /wedding/i }));
+
+    expect(screen.getByRole('heading', { name: /wedding budget workspace/i })).toBeTruthy();
+    expect(screen.getByLabelText(/guest count/i)).toHaveValue(75);
+    // Default seed is within the $35,000 budget at 75 guests ($34,700 estimated).
+    expect(screen.getByText('$34700.00')).toBeTruthy();
+    expect(screen.getByText(/within your/i)).toBeTruthy();
+  });
+
+  it('recomputes guest-scaled totals live and reflects vendor deposits', () => {
+    render(<PlanningPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /wedding/i }));
+
+    const guestInput = screen.getByLabelText(/guest count/i);
+    const vendorList = screen.getByRole('list', { name: /wedding vendors/i });
+    const cateringRow = within(vendorList).getByText('Catering').closest('li') as HTMLElement;
+
+    // At 75 guests: catering = $3,000 base + $85 * 75 = $9,375; $1,000 deposit leaves $8,375.
+    expect(within(cateringRow).getByText('$9375.00')).toBeTruthy();
+    expect(within(cateringRow).getByText('$1000.00')).toBeTruthy();
+    expect(within(cateringRow).getByText('$8375.00')).toBeTruthy();
+
+    // Growing the guest list recomputes per-guest estimates and trips the over-budget state.
+    fireEvent.change(guestInput, { target: { value: '100' } });
+
+    expect(screen.getByText('$37700.00')).toBeTruthy();
+    expect(screen.getByText(/over budget by/i)).toBeTruthy();
+    // Catering at 100 guests: $3,000 + $85 * 100 = $11,500; $1,000 deposit leaves $10,500.
+    expect(within(cateringRow).getByText('$11500.00')).toBeTruthy();
+    expect(within(cateringRow).getByText('$10500.00')).toBeTruthy();
+  });
+
+  it('lets a couple add a wedding vendor with its deposit and due date', () => {
+    render(<PlanningPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /wedding/i }));
+
+    fireEvent.change(screen.getByLabelText(/vendor name/i), { target: { value: 'Live band' } });
+    fireEvent.change(screen.getByLabelText(/budgeted \(usd\)/i), { target: { value: '2500' } });
+    fireEvent.change(screen.getByLabelText(/deposit paid/i), { target: { value: '500' } });
+    fireEvent.click(screen.getByRole('button', { name: /add vendor/i }));
+
+    const vendorList = screen.getByRole('list', { name: /wedding vendors/i });
+    const bandRow = within(vendorList).getByText('Live band').closest('li') as HTMLElement;
+    expect(within(bandRow).getByText('$2500.00')).toBeTruthy(); // estimate
+    expect(within(bandRow).getByText('$500.00')).toBeTruthy(); // deposit
+    expect(within(bandRow).getByText('$2000.00')).toBeTruthy(); // remaining
   });
 });
