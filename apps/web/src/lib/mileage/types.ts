@@ -45,6 +45,58 @@ export interface MileageCalculation {
   appliedYear: number;
 }
 
+// --- Shift-based mileage (delivery-driver flow, #2137) ---------------------
+// A work shift groups multiple trip "legs" between deliveries so a driver can
+// start/pause/resume/end a shift and attach mileage to a platform without
+// re-typing full route details for every leg.
+
+export type ShiftStatus = 'active' | 'paused' | 'ended';
+
+/** Recurring route presets/hotspots a driver can tap to prefill a leg. */
+export type RoutePresetKind = 'home' | 'hotspot' | 'store-cluster' | 'gas-station';
+
+export interface RoutePreset {
+  id: string;
+  kind: RoutePresetKind;
+  label: string;
+  location: string;
+}
+
+/** A single pause window inside a shift; open while `resumedAt` is null. */
+export interface ShiftPause {
+  pausedAt: string;
+  resumedAt: string | null;
+}
+
+/**
+ * A work shift. `legs` reuse the existing {@link TripEntry} model (no duplicate
+ * trip model) so a leg is just a trip attached to this shift + platform.
+ */
+export interface WorkShift {
+  id: string;
+  platform: string;
+  status: ShiftStatus;
+  startedAt: string;
+  endedAt: string | null;
+  pauses: ShiftPause[];
+  legs: TripEntry[];
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A driver-facing summary of a single shift (miles + IRS-rate deduction). */
+export interface WorkShiftSummary {
+  shiftId: string;
+  platform: string;
+  date: string;
+  status: ShiftStatus;
+  legCount: number;
+  miles: number;
+  deductionCents: number;
+  activeDurationMs: number;
+}
+
 export interface BusinessExpenseMetadata {
   category: ExpenseCategory;
   businessUsePercent: number;
@@ -107,4 +159,50 @@ export interface TaxReadyExpenseReport {
   totalMileageDeductionCents: number;
   totalExpenseDeductionCents: number;
   grandTotalDeductionCents: number;
+}
+
+// --- Shift mileage audit report (IRS-friendly audit trail, #2137) ----------
+
+/** One audit row per leg: date, purpose, miles, rate, deduction, shift, platform. */
+export interface ShiftAuditLeg {
+  shiftId: string;
+  platform: string;
+  legId: string;
+  date: string;
+  purpose: TripPurpose;
+  startLocation: string;
+  endLocation: string;
+  miles: number;
+  rateCentsPerMile: number;
+  deductionCents: number;
+  appliedYear: number;
+}
+
+export interface ShiftAuditGroup {
+  shiftId: string;
+  platform: string;
+  date: string;
+  startedAt: string;
+  endedAt: string | null;
+  status: ShiftStatus;
+  legCount: number;
+  miles: number;
+  deductionCents: number;
+}
+
+export interface PlatformAuditSummary {
+  platform: string;
+  shiftCount: number;
+  legCount: number;
+  miles: number;
+  deductionCents: number;
+}
+
+export interface ShiftMileageAuditReport {
+  period: ReportPeriod;
+  legs: ShiftAuditLeg[];
+  shifts: ShiftAuditGroup[];
+  byPlatform: PlatformAuditSummary[];
+  totalMiles: number;
+  totalDeductionCents: number;
 }

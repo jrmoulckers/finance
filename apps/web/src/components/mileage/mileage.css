@@ -255,3 +255,170 @@
   color: var(--semantic-status-negative, var(--semantic-text-primary));
   border-color: color-mix(in srgb, var(--semantic-status-negative) 45%, transparent);
 }
+
+/* --- Shift-based mileage tracker (#2137) --------------------------------- */
+
+.shift-tracker__sr-status {
+  margin: 0;
+  min-height: 1.25rem;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.shift-start,
+.shift-quick-log__entry {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.shift-start .form-group,
+.shift-quick-log__entry .form-group {
+  flex: 1 1 12rem;
+}
+
+.shift-active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-3);
+  background: var(--semantic-background-secondary, rgba(15, 23, 42, 0.03));
+}
+
+.shift-active__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.shift-active__platform {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Shift status pill: meaning is carried by text + icon, never color alone. */
+.shift-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.shift-status--active {
+  color: var(--semantic-status-positive, var(--semantic-text-primary));
+  border-color: color-mix(in srgb, var(--semantic-status-positive) 40%, transparent);
+}
+
+.shift-status--paused {
+  color: var(--semantic-status-warning, var(--semantic-text-primary));
+  border-color: color-mix(in srgb, var(--semantic-status-warning) 40%, transparent);
+}
+
+.shift-status--ended {
+  color: var(--semantic-text-secondary);
+  border-color: var(--semantic-border-default);
+}
+
+.shift-active__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.shift-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.shift-metric__label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.shift-metric__value {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.shift-active__controls {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.shift-quick-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  border-top: 1px solid var(--semantic-border-default);
+  padding-top: var(--spacing-3);
+}
+
+.shift-quick-log__title {
+  margin: 0;
+  font-size: var(--type-scale-body-font-size);
+}
+
+.shift-presets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.shift-presets__legend {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.shift-presets__buttons {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.shift-preset-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.shift-preset-button[aria-pressed='true'] {
+  border-color: var(--semantic-interactive-default, var(--semantic-text-primary));
+  border-width: 2px;
+  font-weight: var(--font-weight-semibold);
+  background: color-mix(
+    in srgb,
+    var(--semantic-background-primary) 88%,
+    var(--semantic-interactive-default) 12%
+  );
+}
+
+.shift-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.shift-summary__amount {
+  text-align: right;
+  align-items: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shift-preset-button,
+  .shift-metric__value {
+    transition: none;
+  }
+}

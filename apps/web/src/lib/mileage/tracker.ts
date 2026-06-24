@@ -81,6 +81,15 @@ function sanitizeTripEntry(input: TripEntryDraft, existing?: TripEntry): TripEnt
   };
 }
 
+/**
+ * Public, validated trip builder. Reuses the same sanitisation/mileage logic
+ * the tracker uses so the shift layer can attach legs without duplicating the
+ * trip model.
+ */
+export function buildTripEntry(input: TripEntryDraft, existing?: TripEntry): TripEntry {
+  return sanitizeTripEntry(input, existing);
+}
+
 function writeTrips(entries: TripEntry[]): void {
   if (typeof window === 'undefined') {
     return;
