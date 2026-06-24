@@ -62,13 +62,13 @@ _Establish context; categorize the AI system and its risks._
 
 _Analyze, assess, benchmark, and monitor AI risk._
 
-| Control                                         | Status      | Where                                                                                                                                               |
-| ----------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Required CI quality gate before merge           | 🟡 Partial  | Branch protection + required checks; **not all** security scans are blocking yet (see [branch-protection.md](../architecture/branch-protection.md)) |
-| Workflow metric catalog                         | 🟡 Partial  | [`workflow-metrics.md`](workflow-metrics.md) — values are placeholders; not yet collected                                                           |
-| Agent-output eval harness (golden-task scoring) | 🔴 Gap      | Not implemented; a change to an agent prompt/skill has no measurable quality signal                                                                 |
-| Static analysis / security scanning             | 🟡 Partial  | CodeQL (JS/TS blocking; JVM advisory), secret detection, dependency review — several `continue-on-error`                                            |
-| Audit trail of AI contributions                 | ✅ In place | `Co-authored-by: Copilot` trailer + issue/PR history                                                                                                |
+| Control                                         | Status      | Where                                                                                                                                             |
+| ----------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Required CI quality gate before merge           | 🟡 Partial  | Branch protection + required checks; **not all** security scans are blocking yet (see [branch-protection.md](../../.github/branch-protection.md)) |
+| Workflow metric catalog                         | 🟡 Partial  | [`workflow-metrics.md`](workflow-metrics.md) — values are placeholders; not yet collected                                                         |
+| Agent-output eval harness (golden-task scoring) | 🔴 Gap      | Not implemented; a change to an agent prompt/skill has no measurable quality signal                                                               |
+| Static analysis / security scanning             | 🟡 Partial  | CodeQL (JS/TS blocking; JVM advisory), secret detection, dependency review — several `continue-on-error`                                          |
+| Audit trail of AI contributions                 | ✅ In place | `Co-authored-by: Copilot` trailer + issue/PR history                                                                                              |
 
 ### Manage
 
@@ -76,7 +76,7 @@ _Allocate resources to treat risks; respond, recover, communicate._
 
 | Control                                             | Status      | Where                                                                                                                          |
 | --------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Branch protection prevents direct writes to `main`  | ✅ In place | [`branch-protection.md`](../architecture/branch-protection.md) (requires human setup)                                          |
+| Branch protection prevents direct writes to `main`  | ✅ In place | [`branch-protection.md`](../../.github/branch-protection.md) (requires human setup)                                            |
 | Scoped self-merge (own PRs only) + quality gate     | ✅ In place | [`restrictions.md` § 2](restrictions.md), [Control Environment](responsible-ai.md#the-control-environment)                     |
 | CI self-healing loop with escalation                | ✅ In place | [`fleet-operations.md`](fleet-operations.md#ci-monitoring-and-self-healing)                                                    |
 | Human revert authority over any merged change       | ✅ In place | Standard git + maintainer access                                                                                               |

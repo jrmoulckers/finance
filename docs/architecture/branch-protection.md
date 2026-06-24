@@ -1,27 +1,26 @@
-# Branch Protection — main
+# Branch Protection — `main`
 
-## Required Status Checks
+> **Canonical reference:** the authoritative, always-current branch-protection
+> specification lives in
+> [`.github/branch-protection.md`](../../.github/branch-protection.md). It
+> documents the required-vs-informational status checks, the always-on
+> **Required Checks Gatekeeper** (#2860), the CODEOWNERS / separation-of-duties
+> approvals target (#2880), and the human setup checklist. This page is a short
+> architecture-level pointer so the rules are not duplicated — and cannot drift —
+> across two files.
 
-All PRs to `main` must pass:
+## Summary
 
-- Lint & Format (ESLint + Prettier)
-- PR Title Check (conventional commits)
-- Security Scanning (CodeQL JS/TS, dependency review, secret detection)
-- Security Scanning (CodeQL Java/Kotlin) — when Kotlin/Java files changed
-- CI — Shared Packages (KMP build + JVM tests) — when KMP files changed
-- Web CI (build + test) — when web files changed
-- Android CI (build + lint) — when Android files changed
-- iOS CI (build + test) — when iOS files changed
+- Every change reaches `main` through a pull request — no direct pushes, no
+  force pushes, and no branch deletion.
+- A PR may merge only when the **required CI status checks pass** and the PR is
+  `MERGEABLE`. The always-on _Required Checks Gatekeeper_ enforces lint, format,
+  and the blocking security scans on every PR.
+- Administrators are **not** exempt ("Include administrators").
+- AI agents self-merge **their own** PRs once the quality gate is green. Review
+  and approval requirements (CODEOWNERS, separation of duties) are a
+  human-configured hardening target — see the canonical doc for current status.
 
-## Rules
-
-- Require 1 approving review before merge
-- Dismiss stale reviews when new commits pushed
-- Require branches to be up to date before merging
-- No force pushes to main
-- No deletions of main
-
-## Enforcement
-
-These rules are configured in GitHub repository settings.
-To modify: Settings → Branches → Branch protection rules → main
+For the exact required-check list, the path-filter caveat, and the **Needs Human
+Action** setup steps, see
+[`.github/branch-protection.md`](../../.github/branch-protection.md).
