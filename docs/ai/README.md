@@ -89,6 +89,7 @@ Finance is developed with AI agents as first-class contributors. This means:
 │   ├── design-engineer.agent.md
 │   ├── devops-engineer.agent.md
 │   ├── docs-writer.agent.md
+│   ├── experimentation-engineer.agent.md
 │   ├── finance-domain.agent.md
 │   ├── ios-engineer.agent.md
 │   ├── kmp-engineer.agent.md
@@ -103,19 +104,25 @@ Finance is developed with AI agents as first-class contributors. This means:
 │   └── windows-engineer.agent.md
 ├── skills/                           # Reusable domain knowledge (20 skills as of 2026-06; .github/skills/ is the source of truth)
 │   ├── accessibility-testing/SKILL.md
-│   ├── dev-onboarding/SKILL.md
 │   ├── design-tokens/SKILL.md
+│   ├── dev-onboarding/SKILL.md
 │   ├── edge-sync/SKILL.md
 │   ├── financial-modeling/SKILL.md
+│   ├── fleet-orchestration/SKILL.md
+│   ├── go-to-market/SKILL.md
 │   ├── i18n-localization/SKILL.md
+│   ├── issue-management/SKILL.md
 │   ├── kmp-development/SKILL.md
 │   ├── mcp-agent-tooling/SKILL.md
+│   ├── monetization/SKILL.md
 │   ├── performance-budgets/SKILL.md
 │   ├── privacy-compliance/SKILL.md
+│   ├── project-management/SKILL.md
 │   ├── prompt-engineering/SKILL.md
 │   ├── security-review-methodology/SKILL.md
+│   ├── sprint-planning/SKILL.md
 │   ├── supabase-powersync/SKILL.md
-│   └── …                             # plus go-to-market, monetization, project-management, issue-management, sprint-planning, fleet-orchestration, ux-testing
+│   └── ux-testing/SKILL.md
 └── workflows/                        # CI/CD workflows
     └── copilot-setup-steps.yml       # CI environment for coding agent
 

@@ -56,7 +56,7 @@ These are the rules that cause the most rework when skipped:
 | Root agent guidance        | [`AGENTS.md`](../../AGENTS.md)                                             | Canonical policy for all AI tools     |
 | MCP servers                | [`.vscode/mcp.json`](../../.vscode/mcp.json) · [mcp.md](mcp.md)            | `mcp.json` (config) / `mcp.md` (docs) |
 
-> Counts drift quickly. Prefer counting the directory (or consulting the planned `ai-manifest`) over trusting a number written in prose. See the [CHANGELOG](CHANGELOG.md) for what changed and when.
+> Counts drift quickly. Prefer counting the directory (or running `npm run ai:manifest:check`, which flags any count claim that has drifted from the files) over trusting a number written in prose. See the [CHANGELOG](CHANGELOG.md) for what changed and when.
 
 ## Reference by Role
 
