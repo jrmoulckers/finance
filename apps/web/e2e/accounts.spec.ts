@@ -160,11 +160,14 @@ test.describe('Account detail page', () => {
       const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i });
       await expect(breadcrumb.getByRole('link', { name: /^accounts$/i })).toBeVisible();
 
-      // Should show edit and delete buttons
-      const editButton = page.getByRole('button', { name: /edit/i });
+      // Should show edit and delete buttons. Scope to <main> so the page-wide
+      // /edit/i regex does not also match the sidebar 'Building Credit' nav
+      // button ("Building Cr-edit-" contains "edit"), which lives in the
+      // <aside> and would otherwise trip a strict-mode violation.
+      const editButton = mainRegion.getByRole('button', { name: /edit/i });
       await expect(editButton).toBeVisible();
 
-      const deleteButton = page.getByRole('button', { name: /delete/i });
+      const deleteButton = mainRegion.getByRole('button', { name: /delete/i });
       await expect(deleteButton).toBeVisible();
 
       // Should show account details card

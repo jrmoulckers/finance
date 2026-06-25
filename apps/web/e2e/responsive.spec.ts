@@ -253,7 +253,10 @@ test.describe('Tablet viewport (768px)', () => {
     const sidebar = page.locator('aside[aria-label="Main navigation"]');
 
     for (const label of ['Dashboard', 'Accounts', 'Transactions', 'Budgets', 'Goals']) {
-      const navItem = sidebar.getByRole('button', { name: label });
+      // exact: true — accessible-name matching is a case-insensitive substring
+      // match by default, so a bare 'Budgets' would also match the sibling
+      // 'Trip Budgets' nav item (#3053) and trip a strict-mode violation.
+      const navItem = sidebar.getByRole('button', { name: label, exact: true });
       await expect(navItem).toBeVisible();
     }
   });
@@ -440,15 +443,16 @@ test.describe('Cross-viewport navigation', () => {
     const sidebar = page.locator('aside[aria-label="Main navigation"]');
 
     // Navigate to Accounts via sidebar.
-    await sidebar.getByRole('button', { name: 'Accounts' }).click();
+    await sidebar.getByRole('button', { name: 'Accounts', exact: true }).click();
     await expect(page).toHaveURL(/\/accounts/);
 
-    // Navigate to Budgets.
-    await sidebar.getByRole('button', { name: 'Budgets' }).click();
+    // Navigate to Budgets. exact: true so we don't also match the sibling
+    // 'Trip Budgets' nav item (#3053) — a bare 'Budgets' is a substring match.
+    await sidebar.getByRole('button', { name: 'Budgets', exact: true }).click();
     await expect(page).toHaveURL(/\/budgets/);
 
     // Navigate to Goals.
-    await sidebar.getByRole('button', { name: 'Goals' }).click();
+    await sidebar.getByRole('button', { name: 'Goals', exact: true }).click();
     await expect(page).toHaveURL(/\/goals/);
   });
 
