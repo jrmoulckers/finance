@@ -108,6 +108,11 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
+          # jdom2 GHSA-2363-cqg2-863c (CVE-2021-33813, XXE) is mitigated at build time:
+          # build.gradle.kts force-resolves org.jdom:jdom2 to the patched 2.0.6.1 via
+          # resolutionStrategy. dependency-review reads the declared graph (transitive
+          # 2.0.6), not the Gradle useVersion force, so this is a false positive. See #3057.
+          allow-ghsas: GHSA-2363-cqg2-863c
           deny-licenses: GPL-3.0, AGPL-3.0
           allow-dependencies-licenses: pkg:githubactions/trufflesecurity/trufflehog
 
