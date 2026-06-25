@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
+import { PRE_AUTH_ROUTE_SET, isUnauthenticatedSafeRoute } from './lib/auth/pre-auth-routes';
 import { ErrorBoundary, ToastProvider, UpdateBanner } from './components/common';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { NavigationGuard, ScrollToTop } from './components/navigation';
@@ -56,21 +57,6 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
     ? requiredProductionEnv('VITE_SUPABASE_ANON_KEY')
     : 'placeholder-anon-key';
 
-const PRE_AUTH_ROUTES = new Set([
-  '/login',
-  '/signup',
-  '/forgot-password',
-  '/reset-password',
-  '/legal',
-  '/beta',
-]);
-
-function isPreAuthRoute(pathname: string): boolean {
-  return Array.from(PRE_AUTH_ROUTES).some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
-}
-
 const authConfig = {
   supabaseUrl,
   supabaseAnonKey,
@@ -83,8 +69,12 @@ const authConfig = {
     if (isLighthouseAudit()) {
       return;
     }
-    // Redirect to login when session expires or user is not authenticated.
-    if (!isPreAuthRoute(window.location.pathname)) {
+    // Redirect to login when the session expires or the user is not
+    // authenticated — UNLESS they are on a route that is valid while logged out
+    // (pre-auth pages or the first-run /onboarding flow). Without the
+    // `/onboarding` exemption this fights App.tsx's onboarding auto-launch and
+    // produces an infinite full-page reload loop (#3059).
+    if (!isUnauthenticatedSafeRoute(window.location.pathname)) {
       window.location.href = '/login';
     }
   },
@@ -179,7 +169,7 @@ if (typeof window !== 'undefined' && !isLighthouseAudit()) {
 const DatabaseGate: FC<{ children: ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
 
-  if (PRE_AUTH_ROUTES.has(pathname)) {
+  if (PRE_AUTH_ROUTE_SET.has(pathname)) {
     return children;
   }
 
