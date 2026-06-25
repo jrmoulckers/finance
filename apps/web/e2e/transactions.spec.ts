@@ -218,11 +218,14 @@ test.describe('Transaction detail page', () => {
       // Should show Type label
       await expect(page.getByText('Type')).toBeVisible();
 
-      // Should show edit and delete buttons
-      const editButton = page.getByRole('button', { name: /edit/i });
+      // Should show edit and delete buttons. Scope to <main> so the page-wide
+      // /edit/i regex does not also match the sidebar 'Building Credit' nav
+      // button ("Building Cr-edit-" contains "edit"), which lives in the
+      // <aside> and would otherwise trip a strict-mode violation.
+      const editButton = mainRegion.getByRole('button', { name: /edit/i });
       await expect(editButton).toBeVisible();
 
-      const deleteButton = page.getByRole('button', { name: /delete/i });
+      const deleteButton = mainRegion.getByRole('button', { name: /delete/i });
       await expect(deleteButton).toBeVisible();
     } else {
       // No seed data — navigate to a fake ID and verify not-found
