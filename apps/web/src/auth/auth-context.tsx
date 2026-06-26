@@ -181,6 +181,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const LAST_USER_STORAGE_KEY = 'finance.lastUser';
 export const BETA_ACCESS_REQUIRED_MESSAGE = 'Beta access required';
 
+/**
+ * User-facing message shown when the auth backend cannot be reached or
+ * responds with a gateway/5xx error (e.g. the Edge Functions container is
+ * down, so the reverse proxy returns a 502 with an empty body). Surfacing
+ * this distinct message stops a transient server outage from looking like a
+ * credential or validation failure — or, worse, failing silently (#3066).
+ */
+export const SERVICE_UNAVAILABLE_MESSAGE =
+  'The server is temporarily unavailable. Please try again in a few minutes.';
+
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
@@ -494,6 +504,9 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         });
 
         if (!response.ok) {
+          if (isServiceUnavailableStatus(response.status)) {
+            throw new Error(SERVICE_UNAVAILABLE_MESSAGE);
+          }
           const body = (await response.json().catch(() => ({}))) as {
             error?: string;
           };
@@ -519,6 +532,10 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         setIsOffline(false);
         triggerPasskeyPromptCheck();
       } catch (err) {
+        if (isNetworkError(err)) {
+          setError(SERVICE_UNAVAILABLE_MESSAGE);
+          throw new Error(SERVICE_UNAVAILABLE_MESSAGE, { cause: err });
+        }
         const message = err instanceof Error ? err.message : 'An unexpected error occurred';
         setError(message);
         throw err;
@@ -763,6 +780,9 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         }
 
         if (!response.ok) {
+          if (isServiceUnavailableStatus(response.status)) {
+            throw new Error(SERVICE_UNAVAILABLE_MESSAGE);
+          }
           throw new Error(body.error ?? 'Signup failed');
         }
 
@@ -808,6 +828,10 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         }
         return { kind: 'authenticated' };
       } catch (err) {
+        if (isNetworkError(err)) {
+          setError(SERVICE_UNAVAILABLE_MESSAGE);
+          throw new Error(SERVICE_UNAVAILABLE_MESSAGE, { cause: err });
+        }
         const message = err instanceof Error ? err.message : 'An unexpected error occurred';
         setError(message);
         throw err;
@@ -1062,6 +1086,33 @@ export function isBetaEmailAllowed(
   }
 
   return typeof email === 'string' && allowedEmails.has(email.trim().toLowerCase());
+}
+
+/**
+ * Whether an HTTP status indicates the auth backend itself failed or was
+ * unreachable, as opposed to a client/validation error. Covers gateway
+ * failures (502/503/504), other 5xx, and opaque responses (status `0`,
+ * e.g. an intercepted or blocked fetch). These map to
+ * {@link SERVICE_UNAVAILABLE_MESSAGE} so an outage never looks like a bad
+ * password or duplicate-email problem (#3066).
+ */
+export function isServiceUnavailableStatus(status: number): boolean {
+  return status === 0 || status >= 500;
+}
+
+/**
+ * Whether a thrown error indicates the network or server could not be
+ * reached. `fetch()` rejects with a `TypeError` on DNS failure, refused or
+ * reset connection, a blocked request, or while offline; the exact message
+ * wording varies across browsers, so we match a few known phrasings too.
+ */
+export function isNetworkError(error: unknown): boolean {
+  if (error instanceof TypeError) {
+    return true;
+  }
+  return (
+    error instanceof Error && /network|failed to fetch|load failed|connection/i.test(error.message)
+  );
 }
 
 function cacheLastUser(nextUser: AuthUser): void {

@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AuthProvider,
+  SERVICE_UNAVAILABLE_MESSAGE,
   isBetaEmailAllowed,
+  isNetworkError,
+  isServiceUnavailableStatus,
   parseBetaAllowedEmails,
   useAuth,
   type AuthProviderConfig,
@@ -247,5 +250,165 @@ describe('AuthProvider refresh restoration', () => {
       expect.objectContaining({ credentials: 'include' }),
     );
     expect(onUnauthenticated).not.toHaveBeenCalled();
+  });
+});
+
+describe('backend-unreachable classification helpers', () => {
+  it('treats gateway/5xx and opaque (0) statuses as service-unavailable', () => {
+    expect(isServiceUnavailableStatus(0)).toBe(true);
+    expect(isServiceUnavailableStatus(500)).toBe(true);
+    expect(isServiceUnavailableStatus(502)).toBe(true);
+    expect(isServiceUnavailableStatus(503)).toBe(true);
+    expect(isServiceUnavailableStatus(504)).toBe(true);
+  });
+
+  it('does not treat client (4xx) or success statuses as service-unavailable', () => {
+    expect(isServiceUnavailableStatus(200)).toBe(false);
+    expect(isServiceUnavailableStatus(400)).toBe(false);
+    expect(isServiceUnavailableStatus(401)).toBe(false);
+    expect(isServiceUnavailableStatus(409)).toBe(false);
+    expect(isServiceUnavailableStatus(429)).toBe(false);
+  });
+
+  it('recognises fetch network rejections', () => {
+    expect(isNetworkError(new TypeError('Failed to fetch'))).toBe(true);
+    expect(isNetworkError(new TypeError('NetworkError when attempting to fetch resource'))).toBe(
+      true,
+    );
+    expect(isNetworkError(new Error('Load failed'))).toBe(true);
+    expect(isNetworkError(new Error('The network connection was lost'))).toBe(true);
+  });
+
+  it('does not misclassify ordinary errors as network errors', () => {
+    expect(isNetworkError(new Error('Incorrect password.'))).toBe(false);
+    expect(isNetworkError(new Error('Beta access required'))).toBe(false);
+    expect(isNetworkError('oops')).toBe(false);
+    expect(isNetworkError(undefined)).toBe(false);
+  });
+});
+
+describe('signup & login surface a clear message when the backend is unreachable (#3066)', () => {
+  const config: AuthProviderConfig = {
+    supabaseUrl: 'https://finance-test.supabase.co',
+    supabaseAnonKey: 'anon-key',
+    loginEndpoint: '/api/auth/login',
+    refreshEndpoint: '/api/auth/refresh',
+    logoutEndpoint: '/api/auth/logout',
+    signupEndpoint: '/api/auth/signup',
+  };
+
+  beforeEach(() => {
+    clearTokens();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearTokens();
+    localStorage.clear();
+  });
+
+  /** Probe that exposes the email signup/login actions plus the error state. */
+  function ActionProbe() {
+    const { signupWithEmail, loginWithEmail, isLoading, error } = useAuth();
+    return (
+      <div>
+        <span data-testid="loading-state">{isLoading ? 'loading' : 'ready'}</span>
+        <span data-testid="auth-error">{error ?? 'none'}</span>
+        <button
+          data-testid="do-signup"
+          onClick={() => {
+            void signupWithEmail('new@example.com', 'longenoughpassword').catch(() => {});
+          }}
+        >
+          signup
+        </button>
+        <button
+          data-testid="do-login"
+          onClick={() => {
+            void loginWithEmail('user@example.com', 'longenoughpassword').catch(() => {});
+          }}
+        >
+          login
+        </button>
+      </div>
+    );
+  }
+
+  /**
+   * Builds a fetch mock where the initial session-restore refresh returns
+   * 401 (anonymous) and the auth action under test resolves/rejects per
+   * `authResponse`.
+   */
+  function stubFetch(matchPath: string, authResponse: () => Promise<Response>) {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes(matchPath)) {
+        return authResponse();
+      }
+      // Initial mount refresh and anything else: no session.
+      return Promise.resolve(jsonResponse({ error: 'no session' }, 401));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  async function renderReady() {
+    render(
+      <AuthProvider config={config}>
+        <ActionProbe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('loading-state')).toHaveTextContent('ready'));
+  }
+
+  it('shows the service-unavailable message when signup returns a 502', async () => {
+    stubFetch('/api/auth/signup', () =>
+      Promise.resolve(new Response('', { status: 502, statusText: 'Bad Gateway' })),
+    );
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-signup'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent(SERVICE_UNAVAILABLE_MESSAGE),
+    );
+  });
+
+  it('shows the service-unavailable message when signup fetch rejects (network down)', async () => {
+    stubFetch('/api/auth/signup', () => Promise.reject(new TypeError('Failed to fetch')));
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-signup'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent(SERVICE_UNAVAILABLE_MESSAGE),
+    );
+  });
+
+  it('shows the service-unavailable message when login returns a 502', async () => {
+    stubFetch('/api/auth/login', () =>
+      Promise.resolve(new Response('', { status: 502, statusText: 'Bad Gateway' })),
+    );
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-login'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent(SERVICE_UNAVAILABLE_MESSAGE),
+    );
+  });
+
+  it('still shows the specific 4xx error message for a real client error', async () => {
+    stubFetch('/api/auth/login', () =>
+      Promise.resolve(jsonResponse({ error: 'Invalid login credentials' }, 400)),
+    );
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-login'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent('Invalid login credentials'),
+    );
   });
 });
