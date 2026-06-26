@@ -29,8 +29,12 @@
       "isBackground": true,
       "problemMatcher": {
         "owner": "vite",
+        // Sentinel regexp that never matches: the dev server streams
+        // human-readable status lines (URLs, box art, tips), not diagnostics.
+        // This stops VS Code surfacing every line as a Problem while the
+        // background begin/end patterns below still drive F5 ready-detection.
         "pattern": {
-          "regexp": "^\\s*(.*)$",
+          "regexp": "^__finance_no_problem__(.*)$",
           "message": 1
         },
         "background": {
@@ -68,8 +72,12 @@
       "isBackground": true,
       "problemMatcher": {
         "owner": "vite",
+        // Sentinel regexp that never matches: the dev server streams
+        // human-readable status lines (URLs, box art, tips), not diagnostics.
+        // This stops VS Code surfacing every line as a Problem while the
+        // background begin/end patterns below still drive F5 ready-detection.
         "pattern": {
-          "regexp": "^\\s*(.*)$",
+          "regexp": "^__finance_no_problem__(.*)$",
           "message": 1
         },
         "background": {
