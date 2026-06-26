@@ -386,10 +386,76 @@ async function storeConflicts(conflicts: SyncConflict[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Dev kill-switch (#3068, follow-up to #3064)
+// ---------------------------------------------------------------------------
+
+/**
+ * True only when this worker is running on the Vite **dev server** (serve
+ * mode, MODE `development`). A service worker must never control the dev
+ * server: its caching shadows Vite with a stale app shell + modules, which
+ * fights HMR / dependency re-optimization and triggers an infinite full-page
+ * reload loop. In dev the worker becomes a self-destruct kill-switch (below).
+ *
+ * Evaluates to `false` for production builds (`vite preview`, MODE
+ * `production`) and the Vitest runner (MODE `test`), where the worker behaves
+ * normally — so the dev branches are dead-code-eliminated from the production
+ * bundle.
+ */
+export const IS_DEV_SERVICE_WORKER: boolean = import.meta.env.MODE === 'development';
+
+/**
+ * Dev-only kill-switch: purge every cache this worker created, unregister the
+ * worker, and reload all controlled tabs so they reload fresh from the Vite
+ * dev server with no service worker in the way.
+ *
+ * The browser fetches the worker script out-of-band during its update check
+ * (not through the worker's own `fetch` handler), so a browser that still has
+ * a production worker installed from an earlier build picks this up on its
+ * next navigation and auto-heals — no manual `chrome://serviceworker-internals`
+ * unregister required. Best-effort: every step is guarded so a failure never
+ * leaves the worker half-alive.
+ */
+export async function selfDestructDevServiceWorker(): Promise<void> {
+  try {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => caches.delete(key)));
+  } catch {
+    // best-effort: cache purge is non-fatal
+  }
+
+  // Control any open tabs so they can be reloaded, then remove the
+  // registration so future loads are no longer controlled.
+  await self.clients.claim();
+
+  try {
+    await self.registration.unregister();
+  } catch {
+    // best-effort: unregister is non-fatal
+  }
+
+  const windowClients = await self.clients.matchAll({ type: 'window' });
+  await Promise.all(
+    windowClients.map((client) =>
+      (client as WindowClient).navigate((client as WindowClient).url).catch(() => {
+        // best-effort: a controlled reload may be disallowed; the boot-time
+        // unregisterDevServiceWorkers() in main.tsx covers that case.
+      }),
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Install -- pre-cache app shell
 // ---------------------------------------------------------------------------
 
 self.addEventListener('install', (event: ExtendableEvent) => {
+  if (IS_DEV_SERVICE_WORKER) {
+    // Activate immediately so the activate handler can self-destruct without
+    // waiting for old tabs to close. Skip precache entirely in dev.
+    void self.skipWaiting();
+    return;
+  }
+
   event.waitUntil(
     caches.open(STATIC_CACHE).then(async (cache) => {
       // Always precache the core app shell at the Vite public base path.
@@ -412,6 +478,11 @@ self.addEventListener('install', (event: ExtendableEvent) => {
 // ---------------------------------------------------------------------------
 
 self.addEventListener('activate', (event: ExtendableEvent) => {
+  if (IS_DEV_SERVICE_WORKER) {
+    event.waitUntil(selfDestructDevServiceWorker());
+    return;
+  }
+
   event.waitUntil(
     caches
       .keys()
@@ -428,6 +499,11 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
 // ---------------------------------------------------------------------------
 
 self.addEventListener('fetch', (event: FetchEvent) => {
+  if (IS_DEV_SERVICE_WORKER) {
+    // Never intercept on the dev server — let every request hit Vite fresh.
+    return;
+  }
+
   const { request } = event;
   const url = new URL(request.url);
 
