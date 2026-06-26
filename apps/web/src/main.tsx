@@ -17,7 +17,11 @@ import { applyStoredDisplayDensityPreference, applyStoredThemePreference } from 
 import { MoneyDisplayProvider } from './lib/display-settings';
 import { applyStoredSimplifiedModePreference } from './lib/accessibility-preferences';
 import { initMonitoring } from './lib/monitoring';
-import { registerAppServiceWorker } from './sw/register';
+import {
+  isViteDevServer,
+  registerAppServiceWorker,
+  unregisterDevServiceWorkers,
+} from './sw/register';
 import './theme/tokens.css';
 import './styles/responsive.css';
 import './styles/responsive-layout.css';
@@ -136,9 +140,16 @@ function isLighthouseAudit(): boolean {
 }
 
 if (typeof window !== 'undefined' && !isLighthouseAudit()) {
-  // Wait for the load event so the SW install doesn't compete with
-  // critical app-shell rendering.  No await — registration is best-effort.
-  if (document.readyState === 'complete') {
+  if (isViteDevServer()) {
+    // The Vite dev server must never be controlled by a service worker: its
+    // production caching fights HMR / dependency re-optimization and triggers
+    // an infinite full-page reload loop (the page "flashes", #3064). Proactively
+    // tear down any worker left behind by a prior production build so the dev
+    // session recovers without a manual "Unregister" in DevTools.
+    void unregisterDevServiceWorkers();
+  } else if (document.readyState === 'complete') {
+    // Wait for the load event so the SW install doesn't compete with
+    // critical app-shell rendering.  No await — registration is best-effort.
     void registerAppServiceWorker();
   } else {
     window.addEventListener('load', () => void registerAppServiceWorker(), { once: true });
