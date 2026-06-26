@@ -20,6 +20,15 @@
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/apps/web",
       "preLaunchTask": "Dev: Full Stack (web on edge)"
+    },
+    {
+      "name": "Run Getting Started Walkthrough (Extension)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "${workspaceFolder}",
+        "--extensionDevelopmentPath=${workspaceFolder}/.vscode/extensions/finance-getting-started"
+      ]
     }
   ]
 }

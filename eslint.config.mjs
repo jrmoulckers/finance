@@ -94,6 +94,7 @@ export default [
       'tools/**/*.js',
       'tools/**/*.mjs',
       'scripts/**/*.js',
+      '.vscode/extensions/**/*.js',
       '*.js',
       '*.cjs',
       '**/*.config.mjs',

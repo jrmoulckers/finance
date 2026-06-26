@@ -1,0 +1,111 @@
+{
+  "name": "finance-getting-started",
+  "displayName": "Finance — Getting Started",
+  "description": "First-run walkthrough for the Finance monorepo: check your dev environment, install dependencies, and run the app with one click.",
+  "version": "0.0.1",
+  "publisher": "finance",
+  "private": true,
+  "license": "BUSL-1.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jrmoulckers/finance.git",
+    "directory": ".vscode/extensions/finance-getting-started"
+  },
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "finance.checkEnv",
+        "title": "Check Dev Environment",
+        "category": "Finance"
+      },
+      {
+        "command": "finance.installDeps",
+        "title": "Install Dependencies",
+        "category": "Finance"
+      },
+      {
+        "command": "finance.fullSetup",
+        "title": "Full Setup (install + hooks + build)",
+        "category": "Finance"
+      },
+      {
+        "command": "finance.runDoctor",
+        "title": "Runtime Preflight (doctor)",
+        "category": "Finance"
+      },
+      {
+        "command": "finance.runApp",
+        "title": "Run the Web App (full local stack)",
+        "category": "Finance"
+      },
+      {
+        "command": "finance.openWalkthrough",
+        "title": "Open Getting Started Walkthrough",
+        "category": "Finance"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "gettingStarted",
+        "title": "Get Started with Finance",
+        "description": "Set up your dev environment for the Finance monorepo — one click per step.",
+        "steps": [
+          {
+            "id": "checkEnv",
+            "title": "Check your dev environment",
+            "description": "Verify Node.js, JDK 21, and Docker, and auto-install npm dependencies — all in one shot.\n\n[Check my environment](command:finance.checkEnv)",
+            "media": {
+              "markdown": "media/check-env.md"
+            },
+            "completionEvents": [
+              "onCommand:finance.checkEnv"
+            ]
+          },
+          {
+            "id": "installDeps",
+            "title": "Install dependencies",
+            "description": "Install every workspace's npm dependencies for the monorepo.\n\n[Install dependencies](command:finance.installDeps)",
+            "media": {
+              "markdown": "media/install-deps.md"
+            },
+            "completionEvents": [
+              "onCommand:finance.installDeps"
+            ]
+          },
+          {
+            "id": "fullSetup",
+            "title": "Full setup & first build",
+            "description": "Validate prerequisites, install, configure git hooks, and build every package.\n\n[Run full setup](command:finance.fullSetup)",
+            "media": {
+              "markdown": "media/full-setup.md"
+            },
+            "completionEvents": [
+              "onCommand:finance.fullSetup"
+            ]
+          },
+          {
+            "id": "runApp",
+            "title": "Run the app",
+            "description": "Start the full local stack and open the web app at localhost:5173.\n\n[Run the web app](command:finance.runApp)",
+            "media": {
+              "markdown": "media/run-app.md"
+            },
+            "completionEvents": [
+              "onCommand:finance.runApp"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
