@@ -14,7 +14,12 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { _resetServiceWorkerRegistrationForTesting, registerAppServiceWorker } from '../register';
+import {
+  _resetServiceWorkerRegistrationForTesting,
+  isViteDevServer,
+  registerAppServiceWorker,
+  unregisterDevServiceWorkers,
+} from '../register';
 
 describe('registerAppServiceWorker (#1965)', () => {
   beforeEach(() => {
@@ -23,6 +28,7 @@ describe('registerAppServiceWorker (#1965)', () => {
 
   afterEach(() => {
     _resetServiceWorkerRegistrationForTesting();
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -90,28 +96,98 @@ describe('registerAppServiceWorker (#1965)', () => {
     if (original) Object.defineProperty(navigator, 'serviceWorker', original);
   });
 
-  it('clears the singleton on failure so callers can retry', async () => {
-    const register = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValueOnce({ scope: '/' } as ServiceWorkerRegistration);
+  it('does not register a service worker on the Vite dev server (#3064)', async () => {
+    // The dev server runs in MODE 'development'; a production SW there shadows
+    // the dev server and causes an infinite HMR reload loop.
+    vi.stubEnv('MODE', 'development');
 
+    const register = vi.fn().mockResolvedValue({ scope: '/' } as ServiceWorkerRegistration);
     Object.defineProperty(navigator, 'serviceWorker', {
       value: { register },
       configurable: true,
       writable: true,
     });
 
+    expect(isViteDevServer()).toBe(true);
+
+    const result = await registerAppServiceWorker();
+
+    expect(register).not.toHaveBeenCalled();
+    expect(result).toBeNull();
+  });
+
+  it('still registers under the Vitest runner (MODE "test")', async () => {
+    // Guard against a regression where the dev-server skip also disables the
+    // SW in tests / production. The default Vitest MODE is 'test'.
+    expect(isViteDevServer()).toBe(false);
+
+    const register = vi.fn().mockResolvedValue({ scope: '/' } as ServiceWorkerRegistration);
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: { register },
+      configurable: true,
+      writable: true,
+    });
+
+    await registerAppServiceWorker();
+
+    expect(register).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('unregisterDevServiceWorkers (#3064)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('unregisters every worker and clears every cache', async () => {
+    const unregisterA = vi.fn().mockResolvedValue(true);
+    const unregisterB = vi.fn().mockResolvedValue(true);
+    const getRegistrations = vi
+      .fn()
+      .mockResolvedValue([{ unregister: unregisterA }, { unregister: unregisterB }]);
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: { getRegistrations },
+      configurable: true,
+      writable: true,
+    });
+
+    const cacheDelete = vi.fn().mockResolvedValue(true);
+    const cacheKeys = vi.fn().mockResolvedValue(['finance-static-v1', 'finance-sync-v1']);
+    vi.stubGlobal('caches', { keys: cacheKeys, delete: cacheDelete });
+
+    await unregisterDevServiceWorkers();
+
+    expect(unregisterA).toHaveBeenCalledTimes(1);
+    expect(unregisterB).toHaveBeenCalledTimes(1);
+    expect(cacheDelete).toHaveBeenCalledWith('finance-static-v1');
+    expect(cacheDelete).toHaveBeenCalledWith('finance-sync-v1');
+  });
+
+  it('is a no-op (no throw) when serviceWorker is unavailable', async () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'serviceWorker');
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+
+    await expect(unregisterDevServiceWorkers()).resolves.toBeUndefined();
+
+    if (original) Object.defineProperty(navigator, 'serviceWorker', original);
+  });
+
+  it('swallows errors so cleanup never blocks app start', async () => {
+    const getRegistrations = vi.fn().mockRejectedValue(new Error('boom'));
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: { getRegistrations },
+      configurable: true,
+      writable: true,
+    });
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const first = await registerAppServiceWorker();
-    expect(first).toBeNull();
+    await expect(unregisterDevServiceWorkers()).resolves.toBeUndefined();
     expect(consoleError).toHaveBeenCalled();
-
-    const second = await registerAppServiceWorker();
-    expect(second).toEqual({ scope: '/' });
-    expect(register).toHaveBeenCalledTimes(2);
-
-    consoleError.mockRestore();
   });
 });

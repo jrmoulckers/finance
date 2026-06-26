@@ -60,6 +60,22 @@ const SERVICE_WORKER_URL: string = import.meta.env.DEV
 let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
 /**
+ * True only when running against the Vite **dev server** (serve mode).
+ *
+ * A service worker must NOT run there: its production caching shadows the dev
+ * server with a stale app shell + cached modules, which fights HMR and Vite's
+ * dependency re-optimization and triggers an infinite full-page reload loop —
+ * the page "flashes" (#3064).
+ *
+ * `npm run dev` / `dev:full` start Vite in MODE `'development'`. A production
+ * build (and `vite preview`) is MODE `'production'`, and the Vitest runner is
+ * MODE `'test'`, so both still run / exercise the real registration path.
+ */
+export function isViteDevServer(): boolean {
+  return import.meta.env.MODE === 'development';
+}
+
+/**
  * Register the application service worker at the root scope.
  *
  * Idempotent — subsequent calls return the same in-flight promise.
@@ -69,6 +85,15 @@ let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null
  */
 export function registerAppServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (registrationPromise) {
+    return registrationPromise;
+  }
+
+  // Never run a service worker against the Vite dev server — its production
+  // caching shadows the dev server and causes an infinite HMR reload loop
+  // (the page "flashes", #3064). See isViteDevServer(). Offline + PWA
+  // installability only matter in production builds.
+  if (isViteDevServer()) {
+    registrationPromise = Promise.resolve(null);
     return registrationPromise;
   }
 
@@ -94,6 +119,39 @@ export function registerAppServiceWorker(): Promise<ServiceWorkerRegistration | 
     });
 
   return registrationPromise;
+}
+
+/**
+ * Remove any service worker — and its Cache Storage entries — left behind by a
+ * production build or an earlier session.
+ *
+ * A registered service worker persists across reloads, so a developer who once
+ * loaded a production build keeps hitting the dev-server reload loop (#3064)
+ * until the worker is unregistered. Running this on the Vite dev server makes
+ * that recovery automatic. Best-effort and non-fatal — failures are logged and
+ * swallowed so they never block app start.
+ */
+export async function unregisterDevServiceWorkers(): Promise<void> {
+  if (
+    typeof navigator === 'undefined' ||
+    !('serviceWorker' in navigator) ||
+    !navigator.serviceWorker
+  ) {
+    return;
+  }
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+
+    if (typeof caches !== 'undefined') {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console -- dev-only visibility; cleanup is non-fatal
+    console.error('[sw] dev service worker cleanup failed', error);
+  }
 }
 
 /**
