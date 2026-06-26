@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 
 import react from '@vitejs/plugin-react';
@@ -8,6 +17,81 @@ import { defineConfig, type Connect, type Plugin, type ResolvedConfig } from 'vi
 
 import { getRouteChunkName } from './src/lib/perf/route-chunks';
 import { applyBaseToWebManifest, type WebManifest } from './src/lib/pwa/manifest-base';
+
+/**
+ * Vite plugin that generates the design-token CSS before the dev server or a
+ * production build starts.
+ *
+ * `src/theme/tokens.css` `@import`s four generated stylesheets from
+ * `packages/design-tokens/build/web/`. Those files are produced by Style
+ * Dictionary (`npm run build:tokens`) and are gitignored, so a fresh clone — or
+ * a tree after `npm run clean` — has none, and Vite's PostCSS aborts with
+ * `ENOENT ... tokens.css`. This plugin runs the generator at `buildStart` when
+ * the outputs are missing or older than their token sources, making `vite`,
+ * `vite build`, and Storybook clone-to-run with no manual token build.
+ */
+function ensureDesignTokens(): Plugin {
+  const tokensRoot = resolve(__dirname, '../../packages/design-tokens');
+  const configScript = resolve(tokensRoot, 'config/style-dictionary.config.mjs');
+  const sourceDir = resolve(tokensRoot, 'tokens');
+  const outputs = [
+    'tokens.css',
+    'tokens-dark.css',
+    'tokens-dark-oled.css',
+    'tokens-high-contrast.css',
+  ].map((file) => resolve(tokensRoot, 'build/web', file));
+
+  const mtimeOf = (path: string): number => {
+    try {
+      return statSync(path).mtimeMs;
+    } catch {
+      return 0;
+    }
+  };
+
+  const tokensNeedBuild = (): boolean => {
+    // Any missing output forces a (re)generation.
+    if (outputs.some((path) => !existsSync(path))) return true;
+    // Otherwise regenerate only when a token source or the generator config is
+    // newer than the oldest generated output, so editing a token and restarting
+    // the dev server picks up the change.
+    const sourceFiles = readdirSync(sourceDir, { recursive: true }).map((rel) =>
+      resolve(sourceDir, rel.toString()),
+    );
+    const newestSource = [configScript, ...sourceFiles].reduce(
+      (newest, path) => Math.max(newest, mtimeOf(path)),
+      0,
+    );
+    const oldestOutput = outputs.reduce(
+      (oldest, path) => Math.min(oldest, mtimeOf(path)),
+      Infinity,
+    );
+    return newestSource > oldestOutput;
+  };
+
+  return {
+    name: 'ensure-design-tokens',
+    // Generate before any CSS module is transformed so the @imports resolve.
+    enforce: 'pre',
+    buildStart() {
+      if (!existsSync(configScript)) {
+        this.warn('design-tokens generator not found — skipping token generation.');
+        return;
+      }
+      if (!tokensNeedBuild()) return;
+      const result = spawnSync(process.execPath, [configScript], {
+        cwd: tokensRoot,
+        stdio: 'inherit',
+      });
+      if (result.status !== 0) {
+        this.error(
+          'Failed to generate design tokens (packages/design-tokens). ' +
+            'Run `npm run build:tokens` and retry.',
+        );
+      }
+    },
+  };
+}
 
 /**
  * Vite plugin that copies sql.js WASM binaries to the public assets directory.
@@ -198,6 +282,7 @@ export default defineConfig({
   // PUBLIC_BASE_PATH=/finance/. import.meta.env.BASE_URL reflects this at runtime.
   base: process.env.PUBLIC_BASE_PATH ?? '/',
   plugins: [
+    ensureDesignTokens(),
     react(),
     copySqlJsWasm(),
     swPrecacheManifest(),
