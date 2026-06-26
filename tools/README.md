@@ -65,6 +65,37 @@ node tools/doctor.mjs --min-disk-gb=40 # override the recommended-disk threshold
 node tools/doctor.mjs --help
 ```
 
+### `check-devenv.mjs` — Open-and-go dev environment bootstrap
+
+The "open the repo and it sets itself up" entry point. Runs **automatically when
+the folder opens in VS Code** (the `Setup: Check & heal dev environment` task in
+`.vscode/tasks.json` uses `runOn: folderOpen`) and is also available as
+`npm run check-devenv`. Its philosophy is **auto-heal what is safe, guide for what is
+not**:
+
+- **Auto-heals** npm dependencies — runs `npm install` when `node_modules` is
+  missing or stale (reusing the same lockfile-hash logic as `dev-full.mjs`, so a
+  plain `git checkout` does not trigger a redundant reinstall).
+- **Detects but never force-installs** the system tools that need elevation or a
+  reboot — Node.js (≥ the `engines.node` floor), a **JDK 21** (checks `PATH` then
+  falls back to `$JAVA_HOME/bin`), and Docker — printing the exact fix for each.
+- Stays **quiet when healthy** (a single confirmation line) and never interrupts
+  opening the folder: a merely-missing system tool is advisory (exit 0). It exits
+  non-zero only when an auto-heal it actually attempted (`npm install`) failed.
+
+For the heavyweight path (validate → install → git hooks → **first build**) use
+`setup.js` / `npm run setup`. For the runtime preflight (Docker daemon, disk,
+ports) use `doctor.mjs` / `npm run doctor`.
+
+**Usage:**
+
+```bash
+npm run check-devenv                    # check + auto-heal deps (the folder-open default)
+node tools/check-devenv.mjs --quiet     # print only when action is needed (silent when healthy)
+node tools/check-devenv.mjs --dry-run   # report what it would do; never installs
+node tools/check-devenv.mjs --help
+```
+
 ### `gradle.js` — Cross-platform Gradle wrapper
 
 A Node.js script that invokes `gradlew` (Unix) or `gradlew.bat` (Windows) automatically based on the current OS. It also auto-detects JDK 21 if `JAVA_HOME` is not already set.

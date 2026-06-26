@@ -1,37 +1,39 @@
 {
   "recommendations": [
-    // --- AI & Copilot ---
+    // --- AI & Copilot — the repo's agent/MCP workflow runs on these ---
     "github.copilot",
     "github.copilot-chat",
 
-    // --- Kotlin / JVM ---
+    // --- Web / TypeScript — driven by eslint.config.mjs, .prettierrc.json, .editorconfig ---
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+
+    // --- Testing — Vitest unit suites + Playwright e2e under apps/web ---
+    "vitest.explorer",
+    "ms-playwright.playwright",
+
+    // --- Kotlin / JVM — KMP shared (packages/) + Android + Windows; requires JDK 21 ---
     "mathiasfrohlich.Kotlin",
     "fwcd.kotlin",
     "vscjava.vscode-gradle",
 
-    // --- Swift / iOS (macOS only) ---
+    // --- Swift / iOS — macOS only; VS Code auto-hides it on Windows/Linux ---
     "sswg.swift-lang",
 
-    // --- Web / TypeScript ---
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode",
-
-    // --- Editor quality ---
-    "editorconfig.editorconfig",
-    "eamodio.gitlens",
-    "streetsidesoftware.code-spell-checker",
-
-    // --- Documentation ---
-    "yzhang.markdown-all-in-one",
+    // --- Docs & config — docs/ tree uses mermaid diagrams; many YAML/TOML config files ---
     "bierner.markdown-mermaid",
-
-    // --- Data & Config ---
     "redhat.vscode-yaml",
     "tamasfe.even-better-toml",
 
-    // --- GitHub integration ---
+    // --- GitHub workflow — issue -> PR flow and CI authoring ---
     "github.vscode-github-actions",
-    "GitHub.vscode-pull-request-github"
+    "github.vscode-pull-request-github"
   ],
-  "unwantedRecommendations": []
+  // Irrelevant "Other Recommendations" VS Code surfaces from Docker/AI files in the
+  // tree. Listing them here stops every contributor being nagged about them.
+  "unwantedRecommendations": [
+    "ms-windows-ai-studio.windows-ai-studio",
+    "ms-kubernetes-tools.vscode-kubernetes-tools"
+  ]
 }

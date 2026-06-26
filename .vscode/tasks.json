@@ -4,6 +4,24 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Setup: Check & heal dev environment",
+      "detail": "Runs automatically on folder open: verifies prerequisites (Node, JDK 21, Docker) and installs npm dependencies if missing. Guides you for anything it can't auto-install.",
+      "type": "process",
+      "command": "node",
+      "args": ["tools/check-devenv.mjs"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "showReuseMessage": false
+      },
+      "runOptions": {
+        "runOn": "folderOpen",
+        "instanceLimit": 1
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Dev: Full Stack (web on edge)",
       "detail": "Preflight, start Supabase, wire apps/web/.env.local, launch the web app at :5173.",
       "type": "shell",
