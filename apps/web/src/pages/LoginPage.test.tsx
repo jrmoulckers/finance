@@ -100,6 +100,14 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
+  it('renders the privacy-first brand tagline', () => {
+    renderLoginPage();
+
+    expect(
+      screen.getByText('Secure, private financial tracking for you and your household'),
+    ).toBeInTheDocument();
+  });
+
   it('renders sign in button', () => {
     renderLoginPage();
 
