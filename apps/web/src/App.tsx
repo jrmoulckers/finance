@@ -98,7 +98,19 @@ const STANDALONE_ROUTES: readonly string[] = [
   '/onboarding',
 ];
 
+/*
+ * Routes a visitor with incomplete onboarding is allowed to sit on WITHOUT being
+ * auto-redirected into `/onboarding`.
+ *
+ * `/login` and `/signup` are exempt so the account path can defer onboarding until
+ * AFTER signup (#3089): the onboarding "Create Account" choice navigates to `/signup`
+ * without marking onboarding complete, so the visitor must be able to reach (and stay
+ * on) the auth pages. Once authenticated, leaving an auth page for any other route
+ * re-triggers the auto-launch, which resumes onboarding at the post-signup step.
+ */
 const FIRST_RUN_ALLOWED_ROUTES: readonly string[] = [
+  '/login',
+  '/signup',
   '/forgot-password',
   '/reset-password',
   '/onboarding',

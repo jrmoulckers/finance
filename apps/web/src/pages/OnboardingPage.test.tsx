@@ -14,6 +14,7 @@ import type { NavigateOptions, To } from 'react-router-dom';
 
 import { App, shouldAutoLaunchOnboarding } from '../App';
 import OnboardingPage from './OnboardingPage';
+import { useAuth } from '../auth/auth-context';
 import { useBudgets } from '../hooks/useBudgets';
 import { useConsent } from '../hooks/useConsent';
 import { useConsentHistory } from '../hooks/useConsentHistory';
@@ -81,10 +82,33 @@ vi.mock('../hooks/useBudgets', () => ({
   useBudgets: vi.fn(),
 }));
 
+// Partial mock: keep the real AuthProvider/ProtectedRoute exports (used by App/routes)
+// and only stub useAuth so OnboardingPage can be rendered without an AuthProvider and
+// the post-signup (authenticated) start step can be exercised (#3089).
+vi.mock('../auth/auth-context', async () => {
+  const actual =
+    await vi.importActual<typeof import('../auth/auth-context')>('../auth/auth-context');
+  return {
+    ...actual,
+    useAuth: vi.fn(),
+  };
+});
+
 const mockedUseLocalOnlyMode = vi.mocked(useLocalOnlyMode);
 const mockedUseConsent = vi.mocked(useConsent);
 const mockedUseConsentHistory = vi.mocked(useConsentHistory);
 const mockedUseBudgets = vi.mocked(useBudgets);
+const mockedUseAuth = vi.mocked(useAuth);
+
+const unauthenticatedAuthReturn = {
+  isAuthenticated: false,
+  isLoading: false,
+} as unknown as ReturnType<typeof useAuth>;
+
+const authenticatedAuthReturn = {
+  isAuthenticated: true,
+  isLoading: false,
+} as unknown as ReturnType<typeof useAuth>;
 
 const defaultLocalOnlyReturn = {
   isLocalOnly: false,
@@ -172,6 +196,7 @@ beforeEach(() => {
   mockedUseConsent.mockReturnValue(defaultConsentReturn);
   mockedUseConsentHistory.mockReturnValue(defaultConsentHistoryReturn);
   mockedUseBudgets.mockReturnValue(defaultBudgetsReturn);
+  mockedUseAuth.mockReturnValue(unauthenticatedAuthReturn);
 });
 
 const renderWithRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -229,6 +254,14 @@ describe('OnboardingPage', () => {
     expect(shouldAutoLaunchOnboarding('/dashboard', true)).toBe(false);
     expect(shouldAutoLaunchOnboarding('/onboarding', false)).toBe(false);
     expect(shouldAutoLaunchOnboarding('/dashboard', false)).toBe(true);
+  });
+
+  it('lets a first-run visitor reach the auth pages so signup precedes onboarding', () => {
+    // /login and /signup are exempt so the account path can defer onboarding until
+    // after signup; only after authenticating and leaving these pages does the app
+    // resume onboarding (#3089).
+    expect(shouldAutoLaunchOnboarding('/signup', false)).toBe(false);
+    expect(shouldAutoLaunchOnboarding('/login', false)).toBe(false);
   });
 
   it('stores Huge text preferences from the comfort step', () => {
@@ -297,13 +330,36 @@ describe('OnboardingPage', () => {
     expect(screen.getByRole('heading', { name: /create account/i })).toBeInTheDocument();
   });
 
-  it('navigates to signup when Create Account is clicked', () => {
+  it('navigates to signup without completing onboarding when Create Account is clicked', () => {
+    const completeOnboarding = vi.fn();
+    mockedUseLocalOnlyMode.mockReturnValue({
+      ...defaultLocalOnlyReturn,
+      completeOnboarding,
+    });
+
     renderWithRouter(<OnboardingPage />);
     skipComfortStep();
 
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/signup');
+    // Onboarding stays incomplete so the education/template content runs AFTER
+    // signup, when the app re-launches onboarding for the authenticated user (#3089).
+    expect(completeOnboarding).not.toHaveBeenCalled();
+  });
+
+  it('starts at the education/template step for an authenticated (post-signup) visitor', () => {
+    mockedUseAuth.mockReturnValue(authenticatedAuthReturn);
+
+    renderWithRouter(<OnboardingPage />);
+
+    // Skips the pre-signup welcome (comfort/choose) and lands on the deferred
+    // education/template step.
+    expect(
+      screen.getByRole('heading', { name: /want a starter budget\? choose a template:/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /use student template/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /welcome to finance/i })).not.toBeInTheDocument();
   });
 
   it('shows privacy preferences step when Local Only is clicked', () => {

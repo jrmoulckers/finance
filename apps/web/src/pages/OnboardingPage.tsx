@@ -1,18 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * OnboardingPage — local-only onboarding path.
+ * OnboardingPage — first-run onboarding for the web app.
  *
- * Offers accessible comfort settings first, then two clear paths:
- *   1. Local Only — no account, no sync, all data stays on device
- *   2. Create Account — sign up for cloud sync and sharing
+ * Before signup it offers a genuine welcome/get-started experience:
+ *   1. Comfort settings (accessibility — no account details)
+ *   2. A path choice: Local Only vs Create Account
  *
- * References: issue #1621, #2148
+ * The financial-education and starter-budget-template content is deferred until
+ * AFTER signup for the account path (#3089): "Create Account" navigates to
+ * `/signup` without completing onboarding, and once the user is authenticated the
+ * app re-launches onboarding starting at the template/education step. Local-only
+ * users (who decline signup) see that content right after the privacy step.
+ *
+ * References: issue #1621, #2148, #3089
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useAuth } from '../auth/auth-context';
 import { AppIcon } from '../components/icons';
 import { useBudgets } from '../hooks/useBudgets';
 import { useConsent } from '../hooks/useConsent';
@@ -475,6 +482,7 @@ const FeatureRow: React.FC<{ feature: FeatureAvailability }> = ({ feature }) => 
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const { features, enableLocalOnly, completeOnboarding } = useLocalOnlyMode();
   const { acceptAll, rejectAll, consent } = useConsent();
   const { recordBulkChanges } = useConsentHistory();
@@ -484,7 +492,12 @@ const OnboardingPage: React.FC = () => {
   const studentTemplate = starterTemplates.find((template) => template.id === 'student') ?? null;
   const futureTemplates = starterTemplates.filter((template) => template.isAvailable === false);
 
-  const [step, setStep] = useState<OnboardingStep>('comfort');
+  const [step, setStep] = useState<OnboardingStep>(() =>
+    // Authenticated visitors have already completed signup (and saw the pre-signup
+    // welcome/comfort/choose screens), so resume onboarding at the deferred
+    // education/template step rather than repeating the welcome flow (#3089).
+    isAuthenticated ? 'template' : 'comfort',
+  );
   const [fontScaleValue, setFontScaleValue] = useState(DEFAULT_FONT_SCALE_INDEX);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [simplifiedMode, setSimplifiedMode] = useState(false);
@@ -731,9 +744,12 @@ const OnboardingPage: React.FC = () => {
   }, []);
 
   const handleCreateAccount = useCallback(() => {
-    completeOnboarding();
+    // Defer onboarding completion until AFTER signup (#3089). Onboarding stays
+    // incomplete so that, once the user is authenticated, the app re-launches
+    // onboarding at the education/template step. `/signup` is exempt from the
+    // first-run auto-redirect (see FIRST_RUN_ALLOWED_ROUTES in App.tsx).
     navigate('/signup');
-  }, [completeOnboarding, navigate]);
+  }, [navigate]);
 
   const handlePrivacyAcceptEssential = useCallback(() => {
     rejectAll();
@@ -1657,12 +1673,22 @@ const OnboardingPage: React.FC = () => {
           <p className="onboarding__subtitle">
             {starterBudgetCreated
               ? 'Your finance tracker is ready, and your student starter budget is already in place.'
-              : 'Your finance tracker is ready. All data is stored locally on this device.'}
+              : isAuthenticated
+                ? 'Your finance tracker is ready and synced to your account.'
+                : 'Your finance tracker is ready. All data is stored locally on this device.'}
           </p>
           <div className="onboarding__complete-details">
-            <p className="onboarding__complete-item">
-              <AppIcon name="lock" /> <strong>Local-only mode</strong> — no data leaves your browser
-            </p>
+            {isAuthenticated ? (
+              <p className="onboarding__complete-item">
+                <AppIcon name="cloud" /> <strong>Synced to your account</strong> — your data is
+                backed up and available on every device
+              </p>
+            ) : (
+              <p className="onboarding__complete-item">
+                <AppIcon name="lock" /> <strong>Local-only mode</strong> — no data leaves your
+                browser
+              </p>
+            )}
             {starterBudgetCreated && (
               <p className="onboarding__complete-item">
                 <AppIcon name="wallet" /> <strong>Starter budget added</strong> — realistic student
@@ -1673,10 +1699,17 @@ const OnboardingPage: React.FC = () => {
               <AppIcon name="database" /> <strong>SQLite storage</strong> — fast, reliable,
               offline-first
             </p>
-            <p className="onboarding__complete-item">
-              <AppIcon name="refresh" /> <strong>Upgrade anytime</strong> — create an account later
-              to enable sync
-            </p>
+            {isAuthenticated ? (
+              <p className="onboarding__complete-item">
+                <AppIcon name="check" /> <strong>Account active</strong> — sign in anywhere to pick
+                up where you left off
+              </p>
+            ) : (
+              <p className="onboarding__complete-item">
+                <AppIcon name="refresh" /> <strong>Upgrade anytime</strong> — create an account
+                later to enable sync
+              </p>
+            )}
           </div>
 
           {setupChecklistHidden ? (
