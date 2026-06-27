@@ -84,6 +84,11 @@ services:
   rest:
     image: postgrest/postgrest:v12.2.12
     restart: unless-stopped
+    # Opt in to autoheal: PostgREST going `unhealthy` (admin /ready on :3001
+    # failing) is what blocked edge-functions from starting during the #3066
+    # signup outage. Let the autoheal sidecar (#3074) restart it automatically.
+    labels:
+      autoheal: 'true'
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
       PGRST_DB_SCHEMAS: public
@@ -253,7 +258,12 @@ services:
     labels:
       autoheal: 'true'
     environment:
-      SUPABASE_URL: http://rest:3000
+      # Edge Functions reach GoTrue and PostgREST through Caddy's path routing
+      # (/auth/v1/* -> auth:9999, /rest/v1/* -> rest:3000), so SUPABASE_URL must
+      # be the public Caddy origin. http://rest:3000 only serves PostgREST and
+      # 4xx's every ${SUPABASE_URL}/auth/v1/signup call, making auth-signup fall
+      # through to a silent 202 no-op (#3066, #3079).
+      SUPABASE_URL: https://${DOMAIN}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgres://supabase_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
       JWT_SECRET: ${JWT_SECRET}
@@ -278,8 +288,12 @@ services:
       retries: 5
       start_period: 20s
     depends_on:
+      # service_started, NOT service_healthy: edge-functions must come up even
+      # when PostgREST is degraded. Auth/signup uses GoTrue + a direct DB URL,
+      # not PostgREST, so a hard health gate here turns one unhealthy backend
+      # into a total /api/* outage (#1246, regressed by #1327, re-fixed #3079).
       rest:
-        condition: service_healthy
+        condition: service_started
     command: start --main-service /home/deno/functions/main
     deploy:
       resources:
