@@ -265,6 +265,10 @@ services:
       # through to a silent 202 no-op (#3066, #3079).
       SUPABASE_URL: https://${DOMAIN}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      # auth-* functions (signup/login/refresh/logout/password-reset) send this
+      # as the GoTrue `apikey` header and require it via validateEnv; without it
+      # signup fails env validation even once the main service dispatches (#3081).
+      SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_DB_URL: postgres://supabase_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
       JWT_SECRET: ${JWT_SECRET}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
