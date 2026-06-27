@@ -246,6 +246,12 @@ services:
   edge-functions:
     image: supabase/edge-runtime:v1.67.4
     restart: unless-stopped
+    # Opt in to autoheal: if the healthcheck below reports `unhealthy`, the
+    # autoheal sidecar restarts this container automatically (#3074). Without
+    # this, a wedged-but-alive edge-runtime 502s every /api/auth/* request
+    # indefinitely because `restart: unless-stopped` only fires on process exit.
+    labels:
+      autoheal: 'true'
     environment:
       SUPABASE_URL: http://rest:3000
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
@@ -279,7 +285,10 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 256M
+          # Raised 256M -> 512M (#3074): the Deno edge-runtime hosting all auth,
+          # account, and feedback functions was OOM-prone at 256M, producing a
+          # crash-loop of 502s that read as a silent signup failure (#3066).
+          memory: 512M
         reservations:
           cpus: '0.1'
           memory: 64M
@@ -314,6 +323,9 @@ services:
   powersync:
     image: journeyapps/powersync-service:latest
     restart: unless-stopped
+    # Same incident took PowerSync down too; opt it into autoheal as well (#3074).
+    labels:
+      autoheal: 'true'
     command: ['start', '-r', 'unified']
     environment:
       POWERSYNC_CONFIG_PATH: /config/powersync.yaml
@@ -489,6 +501,45 @@ services:
     networks:
       - finance-internal
       - finance-external
+
+  # ---------------------------------------------------------------------------
+  # autoheal — restarts containers that report `unhealthy` (#3074)
+  # ---------------------------------------------------------------------------
+  # Plain Docker/Compose never acts on a failing healthcheck: it only marks the
+  # container `unhealthy` and leaves it running. `restart: unless-stopped` only
+  # fires when a process *exits*, so a wedged-but-alive edge-functions container
+  # 502s every /api/auth/* request until a human intervenes (the #3066 outage).
+  #
+  # autoheal watches the Docker event stream and restarts any container labeled
+  # `autoheal=true` that goes `unhealthy`. Only opted-in containers are touched.
+  #
+  # Security: it needs the Docker socket (host-root equivalent). It is pinned,
+  # runs with no-new-privileges, exposes no ports, and sits on the internal-only
+  # network. Hardening follow-up: front the socket with tecnativa/docker-socket-proxy.
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: '10'
+      AUTOHEAL_START_PERIOD: '30'
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: '30'
+      DOCKER_SOCK: /var/run/docker.sock
+      TZ: ${TZ:-UTC}
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 32M
+        reservations:
+          cpus: '0.01'
+          memory: 8M
+    networks:
+      - finance-internal
 
 # =============================================================================
 # Volumes — persistent data
