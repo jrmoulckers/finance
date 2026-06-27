@@ -11,6 +11,8 @@ test('login page renders', async ({ page }) => {
   await page.goto('/login');
   // The login page heading is the app brand name "Finance"
   await expect(page.getByRole('heading', { name: /finance/i })).toBeVisible();
+  // Privacy-first brand tagline (#3087)
+  await expect(page.getByText(/secure, private financial tracking/i)).toBeVisible();
   await expect(page.getByLabel(/email/i)).toBeVisible();
   await expect(page.getByLabel(/password/i)).toBeVisible();
 });

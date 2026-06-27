@@ -214,7 +214,7 @@ export const LoginPage: React.FC = () => {
             Finance
           </h1>
           <p className="auth-brand__tagline">
-            Secure financial tracking for you and your household
+            Secure, private financial tracking for you and your household
           </p>
         </header>
 
