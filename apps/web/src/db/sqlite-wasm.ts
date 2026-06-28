@@ -17,6 +17,7 @@
 
 import { extractTablesFromSql, isMutationSql, notifyDataChange } from '../lib/sync/crossTab';
 import {
+  clearSqliteAtRestEncryptionStores,
   hasEncryptedSqliteSnapshot,
   isSqliteAtRestEncryptionEnabled,
   isSqliteAtRestEncryptionSupported,
@@ -958,11 +959,13 @@ async function initIndexedDbBackend(): Promise<{
     });
   }
 
+  let savedBuffer: ArrayBuffer | null;
   try {
-    const savedBuffer = await loadFromIndexedDB(DB_NAME);
-    const db = savedBuffer ? new SQL.Database(new Uint8Array(savedBuffer)) : new SQL.Database();
-    return { sqlite3: SQL, db };
+    savedBuffer = await loadFromIndexedDB(DB_NAME);
   } catch (err) {
+    // Reading the persisted snapshot failed for a reason we cannot fix by
+    // discarding data — IndexedDB is blocked/unavailable, or an encrypted
+    // snapshot could not be decrypted. Surface it to the storage-error gate.
     const code = classifyError(err);
     throw new StorageError(
       code === 'UNKNOWN' ? 'INDEXEDDB_FAILED' : code,
@@ -970,6 +973,88 @@ async function initIndexedDbBackend(): Promise<{
       { cause: err, backend: 'indexeddb' },
     );
   }
+
+  try {
+    const db = await openSnapshotWithRecovery(SQL, savedBuffer, discardCorruptSnapshotStores);
+    return { sqlite3: SQL, db };
+  } catch (err) {
+    // Reached only if even a fresh, empty database cannot be created.
+    const code = classifyError(err);
+    throw new StorageError(
+      code === 'UNKNOWN' ? 'INDEXEDDB_FAILED' : code,
+      getUserFriendlyStorageMessage(code === 'UNKNOWN' ? 'INDEXEDDB_FAILED' : code),
+      { cause: err, backend: 'indexeddb' },
+    );
+  }
+}
+
+/**
+ * Discard every device-local SQLite snapshot store after corruption is
+ * detected, so no unreadable snapshot survives to re-trigger recovery on the
+ * next boot.
+ *
+ * A corrupt snapshot can live in EITHER the plaintext store ({@link IDB_STORE})
+ * or the encrypted store: {@link loadFromIndexedDB} prefers the encrypted
+ * snapshot whenever at-rest encryption is *supported* — even when the feature
+ * flag is off — so the bytes we failed to open may have come from either place.
+ * Clearing both (the durable copy lives on the sync server) is the only way to
+ * guarantee the next boot starts clean.
+ */
+async function discardCorruptSnapshotStores(): Promise<void> {
+  await deleteIndexedDbDatabase(IDB_STORE);
+  await clearSqliteAtRestEncryptionStores();
+}
+
+/**
+ * Open a persisted snapshot, automatically recovering from corruption.
+ *
+ * sql.js throws when handed bytes it cannot parse as a SQLite image (corrupt,
+ * truncated, or written by an incompatible build). Because the durable copy of
+ * the user's data lives on the sync server (local-first), an unreadable
+ * snapshot is discarded and we start from an empty database that re-hydrates on
+ * the next sync — rather than dead-ending the user at the storage-error gate
+ * with no recovery (#3094).
+ *
+ * Recovery is intentionally narrow: it triggers only when a snapshot exists but
+ * cannot be read. A missing snapshot is a normal first run, and a failure to
+ * *load* the snapshot bytes (IndexedDB unavailable) is handled by the caller.
+ */
+async function openSnapshotWithRecovery(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  SQL: any,
+  savedBuffer: ArrayBuffer | null,
+  discardCorruptSnapshot: () => Promise<void>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+  if (!savedBuffer) {
+    return new SQL.Database();
+  }
+
+  try {
+    const db = new SQL.Database(new Uint8Array(savedBuffer));
+    assertSnapshotReadable(db);
+    return db;
+  } catch (corruptionError) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[sqlite-wasm] Persisted database snapshot is unreadable; discarding it and ' +
+        'starting fresh. Local data will re-hydrate from the server on the next sync.',
+      corruptionError,
+    );
+    await discardCorruptSnapshot();
+    return new SQL.Database();
+  }
+}
+
+/**
+ * Force sql.js to read the database header and schema so a corrupt or truncated
+ * snapshot fails fast here — where {@link openSnapshotWithRecovery} can recover
+ * — instead of later during migrations or the first user query. Walking
+ * `sqlite_master` is cheap and throws on a malformed database image.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function assertSnapshotReadable(db: any): void {
+  db.exec('SELECT count(*) FROM sqlite_master;');
 }
 
 // ---------------------------------------------------------------------------
@@ -1340,6 +1425,44 @@ export function _createDbWrapperForTesting(
 const IDB_STORE = 'finance-sqlite';
 const IDB_KEY = 'db';
 
+/** Upper bound on how long {@link deleteIndexedDbDatabase} waits before giving up. */
+const IDB_DELETE_TIMEOUT_MS = 3_000;
+
+/**
+ * Delete an IndexedDB database by name, resolving even when the delete is
+ * blocked by another open connection or the environment has no IndexedDB.
+ *
+ * Self-healing must never hang on a stuck delete (e.g. a second tab still
+ * holding the database open), so a timeout guarantees the promise settles.
+ */
+function deleteIndexedDbDatabase(name: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof indexedDB === 'undefined') {
+      resolve();
+      return;
+    }
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(finish, IDB_DELETE_TIMEOUT_MS);
+
+    try {
+      const request = indexedDB.deleteDatabase(name);
+      request.onsuccess = finish;
+      request.onerror = finish;
+      // Another open connection blocks deletion; don't wait on it forever.
+      request.onblocked = finish;
+    } catch {
+      finish();
+    }
+  });
+}
+
 function openIDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(IDB_STORE, 1);
@@ -1454,6 +1577,13 @@ export const __sqliteIndexedDbPersistenceForTesting = {
   persistToIndexedDB,
   persistPlaintextToIndexedDB,
   deletePlaintextFromIndexedDB,
+};
+
+/** @internal Test seam for the corrupt-snapshot self-healing path (#3094). */
+export const __sqliteRecoveryForTesting = {
+  openSnapshotWithRecovery,
+  deleteIndexedDbDatabase,
+  discardCorruptSnapshotStores,
 };
 
 // ---------------------------------------------------------------------------

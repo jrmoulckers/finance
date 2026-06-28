@@ -58,6 +58,42 @@
   color: var(--semantic-text-secondary, #666);
 }
 
+/* Database recovery escape hatch (corrupt local store) */
+.db-error-recovery {
+  margin-top: var(--spacing-3);
+}
+
+.db-error-recovery__reset {
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--semantic-border-strong, var(--semantic-text-secondary, #666));
+  border-radius: var(--border-radius-md);
+  background: none;
+  color: var(--semantic-text-primary);
+  cursor: pointer;
+  font-size: var(--type-scale-label-font-size);
+  font-weight: var(--type-scale-label-font-weight);
+}
+
+.db-error-recovery__reset:hover:not(:disabled) {
+  background: var(--semantic-background-secondary);
+}
+
+.db-error-recovery__reset:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.db-error-recovery__reset:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.db-error-recovery__hint {
+  margin-top: var(--spacing-2);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #666);
+}
+
 .db-error-details__summary {
   cursor: pointer;
 }

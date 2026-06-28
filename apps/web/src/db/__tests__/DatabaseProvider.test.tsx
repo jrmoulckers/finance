@@ -25,7 +25,13 @@ vi.mock('../seed', () => ({
   seedDatabase: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock the local-data wipe used by the error-gate "Reset local data" button
+vi.mock('../../storage/wipeLocalData', () => ({
+  wipeLocalData: vi.fn().mockResolvedValue([]),
+}));
+
 const { initDatabaseWithDiagnostics } = await import('../sqlite-wasm');
+const { wipeLocalData } = await import('../../storage/wipeLocalData');
 
 const mockDb: SqliteDb = {
   exec: vi.fn(),
@@ -175,6 +181,51 @@ describe('DatabaseProvider', () => {
     });
 
     expect(callCount).toBe(2);
+  });
+
+  it('reset button wipes local data and reloads (self-healing escape hatch, #3094)', async () => {
+    const mockReload = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, reload: mockReload },
+      writable: true,
+      configurable: true,
+    });
+
+    (initDatabaseWithDiagnostics as Mock).mockRejectedValue(
+      new StorageError('INDEXEDDB_FAILED', 'Browser storage is unavailable.', {
+        backend: 'indexeddb',
+      }),
+    );
+
+    const user = userEvent.setup();
+
+    try {
+      render(
+        <DatabaseProvider>
+          <DbConsumer />
+        </DatabaseProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(1);
+      });
+
+      await user.click(screen.getByRole('button', { name: /reset local data/i }));
+
+      await waitFor(() => {
+        expect(wipeLocalData).toHaveBeenCalledTimes(1);
+      });
+      await waitFor(() => {
+        expect(mockReload).toHaveBeenCalledTimes(1);
+      });
+    } finally {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 
   it('exposes diagnostics via useStorageDiagnostics', async () => {
