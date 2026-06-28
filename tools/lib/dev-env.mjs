@@ -141,3 +141,50 @@ export function classifySupabaseStartFailure(output) {
 
   return { kind: 'unknown' };
 }
+
+/**
+ * HTTP statuses that mean the API gateway (Kong) has no healthy Edge Functions
+ * upstream — the runtime is down, wedged, or still booting. A 500/501 is treated
+ * as "runtime up, but the function itself errored" and is NOT a reason to
+ * recreate the stack.
+ */
+const RUNTIME_DOWN_STATUSES = new Set([502, 503, 504]);
+
+/**
+ * @typedef {{healthy: boolean, detail: string}} EdgeHealth
+ */
+
+/**
+ * Interpret a single Edge Functions health probe (pure; no IO).
+ *
+ * The local Supabase stack can be "running" (Kong + Postgres up, `supabase
+ * status` prints an API URL) while its Edge Functions runtime is dead — a stale
+ * or orphaned `supabase_edge_runtime_*` container that Docker's restart policy
+ * keeps "Up" but which fails to bootstrap any function and answers every
+ * `/functions/v1/*` call with HTTP 503. That state silently breaks edge auth
+ * (signup, login, refresh) even though the stack looks healthy, so dev-full.mjs
+ * probes a known function and heals (stop → start) when this returns unhealthy.
+ *
+ * - Healthy: the runtime booted a worker and produced a response we can read
+ *   (any status outside {502,503,504} — e.g. a 400 "email and password are
+ *   required" from auth-signup, a 401 from Kong, or even a 500 from the function
+ *   body). The function ran; the runtime is alive.
+ * - Unhealthy: a gateway 502/503/504 (the dead-runtime signature is 503) OR a
+ *   transport error (connection refused/reset, timeout) — nothing served the
+ *   request.
+ *
+ * @param {{status?: number|null, errorCode?: string|null}} [probe]
+ *   `status`: the HTTP status code if a response was received, else null.
+ *   `errorCode`: a transport error code/name (e.g. 'ECONNREFUSED', 'timeout')
+ *   when the request threw, else null.
+ * @returns {EdgeHealth}
+ */
+export function interpretEdgeProbe({ status = null, errorCode = null } = {}) {
+  if (typeof status === 'number') {
+    if (RUNTIME_DOWN_STATUSES.has(status)) {
+      return { healthy: false, detail: `HTTP ${status}` };
+    }
+    return { healthy: true, detail: `HTTP ${status}` };
+  }
+  return { healthy: false, detail: errorCode ? String(errorCode) : 'no response' };
+}

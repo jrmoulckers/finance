@@ -624,15 +624,55 @@ async function navigationHandler(request: Request): Promise<Response> {
 }
 
 /**
+ * Detects an HTML document returned for a **static-asset** request
+ * (`.js`, `.css`, `.wasm`, fonts, images, …).
+ *
+ * A dev server or misconfigured host answers an unknown `/assets/*.wasm`
+ * path with `200` + the SPA shell (`index.html`) via history-API fallback.
+ * Caching that HTML under the asset URL "poisons" the cache: `cacheFirst`
+ * would then serve the app shell for the binary on every later load, so
+ * `WebAssembly.instantiate()` receives `<!do…` instead of the `\0asm` magic
+ * word and the SQLite-WASM data layer crashes — which bounces a freshly
+ * signed-up user back to an empty form (#3091).
+ *
+ * Such a response must never be written to — nor served from — Cache
+ * Storage. The caller still returns it to the page so the real failure
+ * surfaces; we only refuse to persist it.
+ */
+function isHtmlForStaticAsset(request: Request, response: Response): boolean {
+  let pathname: string;
+  try {
+    pathname = new URL(request.url).pathname;
+  } catch {
+    return false;
+  }
+  if (!isStaticAsset(pathname)) {
+    return false;
+  }
+  return /\btext\/html\b/i.test(response.headers.get('Content-Type') ?? '');
+}
+
+/**
  * **Cache-first**: serve from cache if available, otherwise fetch from
  * the network and cache the response for next time.
+ *
+ * Exported so regression tests can assert the cache-poisoning guard
+ * (#3091): an HTML SPA-fallback response served under a static-asset URL
+ * is never persisted, and any such entry already in the cache is evicted
+ * on read so the cache self-heals without a CACHE_VERSION bump.
  */
-async function cacheFirst(request: Request, fallbackUrl?: string): Promise<Response> {
+export async function cacheFirst(request: Request, fallbackUrl?: string): Promise<Response> {
   const cache = await caches.open(STATIC_CACHE);
 
   const cached = await cache.match(request);
   if (cached) {
-    return cached;
+    if (isHtmlForStaticAsset(request, cached)) {
+      // Evict a previously poisoned entry (HTML cached under an asset URL)
+      // and fall through to the network so the cache self-heals (#3091).
+      await cache.delete(request);
+    } else {
+      return cached;
+    }
   }
 
   if (fallbackUrl) {
@@ -644,7 +684,7 @@ async function cacheFirst(request: Request, fallbackUrl?: string): Promise<Respo
 
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (response.ok && !isHtmlForStaticAsset(request, response)) {
       await cache.put(request, response.clone());
     }
     return response;
