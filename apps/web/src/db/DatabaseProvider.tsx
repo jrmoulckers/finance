@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ErrorBanner, LoadingSpinner } from '../components/common';
 import { seedDatabase } from './seed';
+import { wipeLocalData } from '../storage/wipeLocalData';
 import {
   initDatabaseWithDiagnostics,
   getUserFriendlyStorageMessage,
@@ -320,6 +321,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   const [isLoading, setIsLoading] = useState(!isE2E);
   const [initError, setInitError] = useState<InitError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [isResetting, setIsResetting] = useState(false);
 
   const retryInitialization = useCallback(() => {
     // Clear the cached singleton so the next init call actually retries
@@ -327,6 +329,26 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     // safer if the retry button is somehow pressed during a success).
     _resetInitSingletonForTesting();
     setReloadToken((currentValue) => currentValue + 1);
+  }, []);
+
+  const resetLocalDataAndReload = useCallback(async () => {
+    // Escape hatch for a wedged local store (e.g. corrupt IndexedDB that
+    // auto-recovery could not open). Clears device-local browser state and
+    // reloads; the durable copy of the user's data is on the sync server, so
+    // it re-hydrates on the next boot (#3094).
+    setIsResetting(true);
+    try {
+      await wipeLocalData();
+    } catch (wipeError) {
+      // A partial wipe is still better than a wedged state — reload regardless
+      // so the next boot re-runs init (and auto-recovery) against cleared data.
+      // eslint-disable-next-line no-console
+      console.warn('[db] Local data reset hit an error; reloading anyway.', wipeError);
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -405,6 +427,21 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     return (
       <div className="page-error-wrapper page-error-wrapper--centered" role="alert">
         <ErrorBanner message={errorMessage} onRetry={retryInitialization} />
+        <div className="db-error-recovery">
+          <button
+            type="button"
+            className="db-error-recovery__reset"
+            onClick={() => void resetLocalDataAndReload()}
+            disabled={isResetting}
+            aria-describedby="db-error-recovery-hint"
+          >
+            {isResetting ? 'Resetting local data…' : 'Reset local data & reload'}
+          </button>
+          <p id="db-error-recovery-hint" className="db-error-recovery__hint">
+            Clears data cached on this device and reloads. Your synced data stays safe on the
+            server.
+          </p>
+        </div>
         {initError?.detail && (
           <details className="db-error-details">
             <summary className="db-error-details__summary">Technical details</summary>
