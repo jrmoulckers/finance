@@ -395,7 +395,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' SENTRY_DSN_B64='$SENTRY_DSN_B64' TARGET_SHA='$TARGET_SHA' SHA_SHORT='$SHA_SHORT' bash -s" <<'DEPLOY'
             set -euo pipefail
-            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#~}" ;; esac
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac  # quote ~ for a literal strip (an unquoted ~ tilde-expands to $HOME and corrupts the path)
             export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
             export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
             export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
@@ -672,7 +672,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' ROLLBACK_SHA='$ROLLBACK_SHA' ROLLBACK_TAG='$ROLLBACK_TAG' DEPLOY_WEB='$DEPLOY_WEB' DEPLOY_BACKEND='$DEPLOY_BACKEND' SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' SENTRY_DSN_B64='$SENTRY_DSN_B64' bash -s" <<'DEPLOY'
             set -euo pipefail
-            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#~}" ;; esac
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac  # quote ~ for a literal strip (an unquoted ~ tilde-expands to $HOME and corrupts the path)
             cd "$DEPLOY_PATH"
             echo "→ git fetch --force --prune --tags origin main"
             git fetch --force --prune --tags origin main
