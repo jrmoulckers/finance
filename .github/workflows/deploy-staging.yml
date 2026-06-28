@@ -499,7 +499,7 @@ jobs:
       - name: Resolve staging target
         id: target
         env:
-          CONFIGURED_URL: ${{ vars.STAGING_URL || secrets.STAGING_URL || 'https://finance-staging.jrmoulckers.com' }}
+          CONFIGURED_URL: ${{ vars.STAGING_URL || secrets.STAGING_URL || 'https://finance.jrmoulckers.com' }}
         run: |
           echo "url=${CONFIGURED_URL%/}" >> "$GITHUB_OUTPUT"
 
@@ -529,7 +529,7 @@ jobs:
             local attempt http_code
             for attempt in 1 2 3 4 5; do
               http_code=$(curl -sSL -o "$HEALTH_RESPONSE" -w '%{http_code}' "$BASE_URL/health" || echo "000")
-              if [ "$http_code" = "200" ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"healthy"|healthy' "$HEALTH_RESPONSE"; then
+              if [ "$http_code" = "200" ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"(ok|healthy)"' "$HEALTH_RESPONSE"; then
                 return 0
               fi
               echo "Health check attempt ${attempt}/5 returned HTTP ${http_code}; retrying in 10s"
@@ -559,7 +559,7 @@ jobs:
           echo "### 🧪 Staging Smoke Tests Passed" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- Homepage returned HTTP 200" >> "$GITHUB_STEP_SUMMARY"
-          echo "- /health returned healthy" >> "$GITHUB_STEP_SUMMARY"
+          echo "- /health returned ok" >> "$GITHUB_STEP_SUMMARY"
           echo "- Basic page load marker detected" >> "$GITHUB_STEP_SUMMARY"
           echo "- URL: $BASE_URL" >> "$GITHUB_STEP_SUMMARY"
 
