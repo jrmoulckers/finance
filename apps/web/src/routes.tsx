@@ -137,9 +137,9 @@ const AuthenticatedRoute: FC<AuthenticatedRouteProps> = ({ children }) => {
 };
 
 const RootRedirect: FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
 
-  if (isLoading) {
+  if (isInitializing) {
     return <PageLoader />;
   }
 
@@ -151,9 +151,9 @@ const RootRedirect: FC = () => {
  * If the user is already logged in, they are sent to the dashboard.
  */
 const RedirectIfAuthenticated: FC<{ children: ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
 
-  if (isLoading) {
+  if (isInitializing) {
     return <PageLoader />;
   }
 

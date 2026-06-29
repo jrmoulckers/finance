@@ -149,6 +149,19 @@
 
 /* ─── Error / status banners ─────────────────────────────────────────────── */
 
+/*
+ * Reserve vertical space for the auth error so a failed sign-in renders the
+ * message inline without a layout shift / flash (#3108). The region is always
+ * present (and announces politely); the styled box only appears once filled.
+ */
+.auth-error-region {
+  margin-bottom: var(--spacing-4);
+}
+
+.auth-error-region:not(.auth-error-region--filled) {
+  margin-bottom: 0;
+}
+
 .auth-error {
   padding: var(--spacing-3);
   border-radius: var(--border-radius-md);

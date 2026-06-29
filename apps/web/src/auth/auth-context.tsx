@@ -125,6 +125,12 @@ export interface AuthContextValue extends AuthActions {
   isAuthenticated: boolean;
   /** Whether the auth state is still being determined (initial load). */
   isLoading: boolean;
+  /**
+   * Whether the *initial* auth bootstrap (cookie/session restore) is still in
+   * flight. Distinct from `isLoading`: route guards key off this so an
+   * in-flight login attempt no longer unmounts the login page (#3108).
+   */
+  isInitializing: boolean;
   /** The current authenticated user, or `null`. */
   user: AuthUser | null;
   /** The last authentication error, or `null`. */
@@ -216,6 +222,7 @@ interface AuthProviderProps {
 export function AuthProvider({ config, children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [webAuthnSupported] = useState(() => isWebAuthnSupported());
   const [webAuthnReady, setWebAuthnReady] = useState(false);
@@ -371,13 +378,17 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
               id: payload.sub ?? '',
               email: payload.email ?? '',
               hasPasskey: false,
-            }).finally(() => setIsLoading(false));
+            }).finally(() => {
+              setIsLoading(false);
+              setIsInitializing(false);
+            });
             return;
           }
         }
       }
 
       setIsLoading(false);
+      setIsInitializing(false);
       return;
     }
 
@@ -448,6 +459,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     }
 
     setIsLoading(false);
+    setIsInitializing(false);
   }
 
   // -----------------------------------------------------------------------
@@ -881,6 +893,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     () => ({
       isAuthenticated,
       isLoading,
+      isInitializing,
       user,
       error,
       webAuthnSupported,
@@ -902,6 +915,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     [
       isAuthenticated,
       isLoading,
+      isInitializing,
       user,
       error,
       webAuthnSupported,
@@ -1045,15 +1059,15 @@ export function ProtectedRoute({
   fallback = null,
   onUnauthenticated,
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isInitializing && !isAuthenticated) {
       onUnauthenticated?.();
     }
-  }, [isAuthenticated, isLoading, onUnauthenticated]);
+  }, [isAuthenticated, isInitializing, onUnauthenticated]);
 
-  if (isLoading) {
+  if (isInitializing) {
     return <>{fallback}</>;
   }
 
