@@ -1838,10 +1838,10 @@ const OnboardingPage: React.FC = () => {
             </section>
           )}
 
-          <section className="onboarding__coachmarks" aria-label="First-run coach marks">
+          <section className="onboarding__coachmarks" aria-label="Quick tips">
             <div className="onboarding__template-header">
               <div>
-                <h2 className="onboarding__path-title">First-run coach marks</h2>
+                <h2 className="onboarding__path-title">Quick tips</h2>
                 <p className="onboarding__path-description">
                   Plain-language tips for dashboard, budget, transactions, and goals. Dismiss once
                   or reopen later from help.
@@ -1854,7 +1854,7 @@ const OnboardingPage: React.FC = () => {
                 className="onboarding__path-btn onboarding__path-btn--secondary"
                 onClick={handleCoachMarksRestore}
               >
-                Reopen coach marks
+                Show tips
               </button>
             ) : (
               <>
@@ -1892,7 +1892,7 @@ const OnboardingPage: React.FC = () => {
                     className="onboarding__path-btn onboarding__path-btn--secondary"
                     onClick={handleCoachMarksDismiss}
                   >
-                    Dismiss all coach marks
+                    Hide tips
                   </button>
                 </div>
               </>

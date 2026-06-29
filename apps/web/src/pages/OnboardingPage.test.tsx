@@ -520,7 +520,7 @@ describe('OnboardingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
     expect(screen.getByRole('region', { name: /setup progress/i })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: /first-run coach marks/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /quick tips/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /hide checklist/i }));
 
@@ -528,12 +528,12 @@ describe('OnboardingPage', () => {
     expect(screen.getByText(/checklist hidden/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /show checklist/i }));
-    fireEvent.click(screen.getByRole('button', { name: /dismiss all coach marks/i }));
+    fireEvent.click(screen.getByRole('button', { name: /hide tips/i }));
 
     expect(localStorage.getItem('finance-onboarding-coach-marks-dismissed')).toBe('true');
-    expect(screen.getByRole('button', { name: /reopen coach marks/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /show tips/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /reopen coach marks/i }));
+    fireEvent.click(screen.getByRole('button', { name: /show tips/i }));
 
     expect(localStorage.getItem('finance-onboarding-coach-marks-dismissed')).toBe('false');
     expect(screen.getByText(/budget categories are planning buckets/i)).toBeInTheDocument();
