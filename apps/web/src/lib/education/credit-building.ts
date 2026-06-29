@@ -110,7 +110,7 @@ const EN_CONTENT: CreditEducationContent = {
   locale: 'en',
   sectionTitle: 'Building credit from zero',
   sectionIntro:
-    'If you are new to credit — or starting over — these plain-language guides explain how credit works in the United States and how a secured card can help you build a history step by step. Nothing here asks you to pay for or pull a credit score.',
+    'If you are new to credit, or starting over, these plain-language guides explain how credit works in the United States and how a secured card can help you build a history step by step. Nothing here asks you to pay for or pull a credit score.',
   disclaimer:
     'This is general education, not financial, legal, or credit-repair advice. Credit rules and card terms change, so always check the details with your bank or credit union.',
   languageToggleLabel: 'Reading language',
@@ -124,7 +124,7 @@ const EN_CONTENT: CreditEducationContent = {
       title: 'What is a FICO score?',
       body: 'A FICO score is a three-digit number, usually between 300 and 850, that lenders use to estimate how likely you are to repay borrowed money. It is built from your payment history, how much of your available credit you use, the length of your credit history, the mix of accounts you have, and how often you apply for new credit.',
       whyItMatters:
-        'A higher score can make it easier to rent a home, get a card or loan, and pay a lower interest rate. When you are starting out you may have no score yet — that is normal, and steady habits build one over time.',
+        'A higher score can make it easier to rent a home, get a card or loan, and pay a lower interest rate. When you are starting out you may have no score yet. That is normal, and steady habits build one over time.',
     },
     {
       id: 'utilization',
@@ -143,7 +143,7 @@ const EN_CONTENT: CreditEducationContent = {
     {
       id: 'hardInquiries',
       title: 'What is a hard inquiry?',
-      body: 'A hard inquiry happens when a lender checks your credit because you applied for a card or loan. A soft inquiry — like checking your own report or getting a pre-qualified offer — does not affect your score.',
+      body: 'A hard inquiry happens when a lender checks your credit because you applied for a card or loan. A soft inquiry, like checking your own report or getting a pre-qualified offer, does not affect your score.',
       whyItMatters:
         'Each hard inquiry can lower your score by a few points for a short time, and several in a row can look risky to lenders. Applying only when you need to, and spacing applications out, keeps the impact small.',
     },
@@ -152,22 +152,22 @@ const EN_CONTENT: CreditEducationContent = {
       title: 'What is a credit report?',
       body: 'A credit report is a detailed record of your accounts, balances, and payment history, kept by three main bureaus: Equifax, Experian, and TransUnion. In the U.S. you can get free copies of your reports at AnnualCreditReport.com.',
       whyItMatters:
-        'Checking your own report is a soft inquiry, so it never lowers your score. Reviewing it once in a while lets you catch errors or fraud and dispute anything that is wrong — an important habit while you build credit.',
+        'Checking your own report is a soft inquiry, so it never lowers your score. Reviewing it once in a while lets you catch errors or fraud and dispute anything that is wrong, an important habit while you build credit.',
     },
   ],
   securedHeading: 'How a secured card helps',
   securedIntro:
-    'A secured card is a real credit card backed by a refundable deposit you place up front. It works almost like any other card, reports to the credit bureaus, and is one of the most common ways to build credit from zero. Some issuers accept an ITIN instead of a Social Security number — it helps to ask before you apply.',
+    'A secured card is a real credit card backed by a refundable deposit you place up front. It works almost like any other card, reports to the credit bureaus, and is one of the most common ways to build credit from zero. Some issuers accept an ITIN instead of a Social Security number, so it helps to ask before you apply.',
   securedSteps: [
     {
       id: 'deposit',
       title: 'Place a refundable deposit',
-      body: 'You put down a deposit — often $200 to $500 — and that amount usually becomes your credit limit. The deposit is held safely and refunded when you close or upgrade the account in good standing. It is not a fee.',
+      body: 'You put down a deposit, often $200 to $500, and that amount usually becomes your credit limit. The deposit is held safely and refunded when you close or upgrade the account in good standing. It is not a fee.',
     },
     {
       id: 'lowUtilization',
       title: 'Keep your balance low',
-      body: 'Because the limit is small, even normal spending can push utilization high. Charging just one small recurring bill — like a phone plan or a streaming service — keeps utilization low and your report healthy.',
+      body: 'Because the limit is small, even normal spending can push utilization high. Charging just one small recurring bill, like a phone plan or a streaming service, keeps utilization low and your report healthy.',
     },
     {
       id: 'onTimePayments',
@@ -182,7 +182,7 @@ const EN_CONTENT: CreditEducationContent = {
   ],
   checklistHeading: 'Your credit-building checklist',
   checklistIntro:
-    'Work through these steps at your own pace. Tick off each one as you go — your progress is saved on this device only.',
+    'Work through these steps at your own pace. Tick off each one as you go. Your progress is saved on this device only.',
   checklistNoScoreNote:
     'None of these steps need you to buy or pull a credit score. They are habits and goals you fully control.',
   checklistItems: [
@@ -221,7 +221,7 @@ const EN_CONTENT: CreditEducationContent = {
       id: 'reviewFreeReport',
       label: 'Review your free credit report',
       detail:
-        'Check your free reports at AnnualCreditReport.com to catch errors — this is a soft pull and never lowers your score.',
+        'Check your free reports at AnnualCreditReport.com to catch errors. This is a soft pull and never lowers your score.',
     },
     {
       id: 'paymentBuffer',
@@ -230,7 +230,7 @@ const EN_CONTENT: CreditEducationContent = {
     },
   ],
   checklistProgressTemplate: '{done} of {total} steps done',
-  checklistAllDone: 'Great work — you have completed every step. Keep the habits going!',
+  checklistAllDone: 'Great work. You have completed every step. Keep the habits going!',
   checklistDoneBadge: 'Done',
 };
 
@@ -238,7 +238,7 @@ const ES_CONTENT: CreditEducationContent = {
   locale: 'es',
   sectionTitle: 'Crear crédito desde cero',
   sectionIntro:
-    'Si es nuevo en el crédito —o vuelve a empezar—, estas guías en lenguaje sencillo explican cómo funciona el crédito en Estados Unidos y cómo una tarjeta asegurada puede ayudarle a crear historial paso a paso. Nada de esto le pide pagar ni consultar una puntuación de crédito.',
+    'Si es nuevo en el crédito, o vuelve a empezar, estas guías en lenguaje sencillo explican cómo funciona el crédito en Estados Unidos y cómo una tarjeta asegurada puede ayudarle a crear historial paso a paso. Nada de esto le pide pagar ni consultar una puntuación de crédito.',
   disclaimer:
     'Esto es educación general, no asesoría financiera, legal ni de reparación de crédito. Las reglas del crédito y las condiciones de las tarjetas cambian, así que confirme siempre los detalles con su banco o cooperativa de crédito.',
   languageToggleLabel: 'Idioma de lectura',
@@ -271,7 +271,7 @@ const ES_CONTENT: CreditEducationContent = {
     {
       id: 'hardInquiries',
       title: '¿Qué es una consulta dura?',
-      body: 'Una consulta dura ocurre cuando un prestamista revisa su crédito porque usted solicitó una tarjeta o un préstamo. Una consulta suave —como revisar su propio informe o recibir una oferta precalificada— no afecta su puntuación.',
+      body: 'Una consulta dura ocurre cuando un prestamista revisa su crédito porque usted solicitó una tarjeta o un préstamo. Una consulta suave, como revisar su propio informe o recibir una oferta precalificada, no afecta su puntuación.',
       whyItMatters:
         'Cada consulta dura puede bajar su puntuación unos pocos puntos por poco tiempo, y varias seguidas pueden parecer arriesgadas a los prestamistas. Solicitar solo cuando lo necesite y espaciar las solicitudes mantiene el efecto pequeño.',
     },
@@ -290,12 +290,12 @@ const ES_CONTENT: CreditEducationContent = {
     {
       id: 'deposit',
       title: 'Entregue un depósito reembolsable',
-      body: 'Usted deja un depósito —a menudo de $200 a $500— y esa cantidad suele convertirse en su límite de crédito. El depósito se guarda de forma segura y se reembolsa cuando cierra o mejora la cuenta en buen estado. No es un cargo.',
+      body: 'Usted deja un depósito, a menudo de $200 a $500, y esa cantidad suele convertirse en su límite de crédito. El depósito se guarda de forma segura y se reembolsa cuando cierra o mejora la cuenta en buen estado. No es un cargo.',
     },
     {
       id: 'lowUtilization',
       title: 'Mantenga el saldo bajo',
-      body: 'Como el límite es pequeño, incluso un gasto normal puede subir mucho la utilización. Cargar solo una factura recurrente pequeña —como el plan del teléfono o un servicio de streaming— mantiene baja la utilización y sano su informe.',
+      body: 'Como el límite es pequeño, incluso un gasto normal puede subir mucho la utilización. Cargar solo una factura recurrente pequeña, como el plan del teléfono o un servicio de streaming, mantiene baja la utilización y sano su informe.',
     },
     {
       id: 'onTimePayments',

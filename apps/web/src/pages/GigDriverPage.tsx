@@ -298,7 +298,7 @@ export function GigDriverPage() {
         </h1>
         <p className="gig-driver__description">
           Estimate take-home pay after operating costs and taxes, and track what your vehicle really
-          costs per mile. Figures are estimates for planning — not tax advice.
+          costs per mile. Figures are estimates for planning, not tax advice.
         </p>
       </header>
 

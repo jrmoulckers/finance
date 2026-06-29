@@ -136,8 +136,7 @@ export const CustomizePanel: FC<CustomizePanelProps> = ({
           Customize Dashboard
         </h2>
         <p className="customize-panel__description">
-          Toggle widgets on or off, then drag the handles — or use the arrow buttons — to reorder
-          them.
+          Toggle widgets on or off. To reorder them, drag the handles or use the arrow buttons.
         </p>
 
         <ul className="customize-panel__list" role="list">

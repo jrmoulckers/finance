@@ -241,7 +241,7 @@ export function buildAllocationVisualAnalysis(
   const holdingGroups = investments
     .map((investment) => ({
       key: investment.id,
-      label: `${investment.symbol} — ${investment.name}`,
+      label: `${investment.symbol} (${investment.name})`,
       kind: 'holding' as const,
       valueCents: marketValue(investment),
       percent:

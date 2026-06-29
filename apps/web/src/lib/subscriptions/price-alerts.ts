@@ -201,7 +201,7 @@ export function detectAnomaly(subscription: Subscription): AnomalyResult {
         ? `${subscription.name} current price ($${(subscription.priceCents / 100).toFixed(2)}) ` +
           `differs from the consistent historical price ` +
           `($${(avg / 100).toFixed(2)}). This may indicate an unexpected charge.`
-        : 'All historical prices are identical — no anomaly.',
+        : 'All historical prices are identical. No anomaly.',
     };
   }
 

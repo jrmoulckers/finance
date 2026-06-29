@@ -38,7 +38,7 @@ import './DataImportWizardPage.css';
 // ---------------------------------------------------------------------------
 
 const FIELD_OPTIONS: readonly { value: TransactionField; label: string }[] = [
-  { value: 'skip', label: '— Skip —' },
+  { value: 'skip', label: 'Skip' },
   { value: 'date', label: 'Date' },
   { value: 'payee', label: 'Payee' },
   { value: 'amount', label: 'Amount' },

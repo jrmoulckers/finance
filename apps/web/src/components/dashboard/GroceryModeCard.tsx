@@ -195,7 +195,7 @@ export const GroceryModeCard: React.FC<GroceryModeCardProps> = ({
       `It may help to hold off on extras until ${paydayLabel}.`;
   } else if (isExactlyCovered) {
     answerSentence =
-      `You're right on track — your money is fully set aside for bills` +
+      `You're right on track. Your money is fully set aside for bills` +
       `${beforePaydayClause}. There's nothing extra to spend just yet.`;
   } else if (result.upcomingCriticalBillsCents > 0) {
     answerSentence =
@@ -214,7 +214,7 @@ export const GroceryModeCard: React.FC<GroceryModeCardProps> = ({
   const pinnedSentence = pinned
     ? pinned.remainingCents > 0
       ? `You still have ${money(pinned.remainingCents)} left in your ${pinned.name} budget.`
-      : `You've used up your ${pinned.name} budget for now — no stress, it resets next period.`
+      : `You've used up your ${pinned.name} budget for now. No stress, it resets next period.`
     : null;
 
   const categorySelectId = `${fieldPrefix}-category`;
@@ -272,8 +272,8 @@ export const GroceryModeCard: React.FC<GroceryModeCardProps> = ({
         </div>
       ) : (
         <p className="grocery-mode-card__bills-empty">
-          No critical bills are due{result.hasPayday ? ` before ${paydayLabel}` : ' soon'} — nice
-          and clear.
+          No critical bills are due{result.hasPayday ? ` before ${paydayLabel}` : ' soon'}. Nice and
+          clear.
         </p>
       )}
 
@@ -289,7 +289,7 @@ export const GroceryModeCard: React.FC<GroceryModeCardProps> = ({
               value={pinnedCategoryId}
               onChange={handleCategoryChange}
             >
-              <option value={NONE_VALUE}>None — just the overall answer</option>
+              <option value={NONE_VALUE}>None (just the overall answer)</option>
               {categoryOptions.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.name}
@@ -338,8 +338,8 @@ export const GroceryModeCard: React.FC<GroceryModeCardProps> = ({
             />
             <span>
               {affordability.affordable
-                ? `Yes — go for it. You'd still have ${money(affordability.remainingAfterCents)} free${beforePaydayClause}.`
-                : `Not just yet — that's about ${money(affordability.shortfallCents)} more than you have free${beforePaydayClause}. Maybe wait until ${paydayLabel}.`}
+                ? `Yes, go for it. You'd still have ${money(affordability.remainingAfterCents)} free${beforePaydayClause}.`
+                : `Not just yet. That's about ${money(affordability.shortfallCents)} more than you have free${beforePaydayClause}. Maybe wait until ${paydayLabel}.`}
             </span>
           </>
         )}

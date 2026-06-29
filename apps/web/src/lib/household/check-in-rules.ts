@@ -92,7 +92,7 @@ export const DEFAULT_CHECK_IN_PROMPTS: readonly CheckInPrompt[] = [
   {
     id: 'celebrate-a-win',
     category: 'celebration',
-    text: 'What is one money win — big or small — we want to celebrate together?',
+    text: 'What is one money win, big or small, we want to celebrate together?',
   },
 ];
 

@@ -114,12 +114,12 @@ function taxIdTips(taxIdStatus: TaxIdStatus): string[] {
   switch (taxIdStatus) {
     case 'itin':
       return [
-        'You can budget, save, and plan with an ITIN — it is the number used to file taxes when you do not have an SSN.',
+        'You can budget, save, and plan with an ITIN. It is the number used to file taxes when you do not have an SSN.',
         'Some banks and credit unions open accounts for ITIN holders, so it is worth asking which documents they accept.',
       ];
     case 'ssn':
       return [
-        'If your job offers a 401(k) or similar plan, you can usually join and may get matching contributions — it is worth checking.',
+        'If your job offers a 401(k) or similar plan, you can usually join and may get matching contributions. It is worth checking.',
       ];
     case 'none':
       return [
@@ -164,7 +164,7 @@ function taxIdExplainers(taxIdStatus: TaxIdStatus): NewcomerExplainerKey[] {
 
 function buildSummary(taxIdStatus: TaxIdStatus, incomeType: IncomeType): string {
   if (taxIdStatus === 'unspecified' && incomeType === 'unspecified') {
-    return 'Here are general money basics to get you started. Share more whenever you like — nothing here is required, and nothing is ever shared.';
+    return 'Here are general money basics to get you started. Share more whenever you like. Nothing here is required, and nothing is ever shared.';
   }
 
   const parts: string[] = [];

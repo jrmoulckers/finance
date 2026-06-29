@@ -343,7 +343,7 @@ export class MockProvider implements BankConnectionProvider {
     return {
       isHealthy: true,
       latencyMs: 12,
-      message: 'Mock provider — always healthy.',
+      message: 'Mock provider is always healthy.',
       checkedAt: new Date().toISOString(),
     };
   }

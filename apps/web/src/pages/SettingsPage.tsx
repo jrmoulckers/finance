@@ -85,7 +85,7 @@ export const SettingsPage: React.FC = () => {
               className={({ isActive }) =>
                 `settings-nav__link${isActive ? ' settings-nav__link--active' : ''}`
               }
-              aria-label={`${section.label} — ${section.description}`}
+              aria-label={`${section.label}: ${section.description}`}
             >
               {section.label}
             </NavLink>

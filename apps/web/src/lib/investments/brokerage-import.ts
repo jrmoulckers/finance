@@ -592,7 +592,7 @@ export function reconcileTrades(trades: readonly ParsedTrade[]): {
         type: 'oversold-position',
         severity: 'warning',
         symbol,
-        message: `Sells for ${symbol} exceed recorded buys — a buy may be missing from another broker's export.`,
+        message: `Sells for ${symbol} exceed recorded buys. A buy may be missing from another broker's export.`,
         tradeIds: oversoldIds,
       });
     }
@@ -621,8 +621,8 @@ export function reconcileTrades(trades: readonly ParsedTrade[]): {
       severity: group.crossBroker ? 'info' : 'warning',
       symbol: group.symbol,
       message: group.crossBroker
-        ? `Identical ${group.symbol} trade found in more than one broker export — confirm it is not the same trade counted twice.`
-        : `Identical ${group.symbol} trade appears ${group.tradeIds.length} times in one export — likely a duplicate import.`,
+        ? `Identical ${group.symbol} trade found in more than one broker export. Confirm it is not the same trade counted twice.`
+        : `Identical ${group.symbol} trade appears ${group.tradeIds.length} times in one export. This is likely a duplicate import.`,
       tradeIds: group.tradeIds,
     });
   }

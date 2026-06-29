@@ -230,7 +230,7 @@ export const FirePlannerPage: React.FC = () => {
     }
     const fiText = formatCurrency(plan.fiNumberCents);
     if (plan.yearsToFI.alreadyFI) {
-      return `Your FI number is ${fiText}. Your current investments already meet it — you are financially independent.`;
+      return `Your FI number is ${fiText}. Your current investments already meet it. You are financially independent.`;
     }
     if (!plan.yearsToFI.reachedFI) {
       return `Your FI number is ${fiText}. At these inputs your portfolio does not reach it within ${MAX_FI_SEARCH_YEARS} years.`;
@@ -266,7 +266,7 @@ export const FirePlannerPage: React.FC = () => {
         <div>
           <h2 className="fire-page__title">FIRE Planner</h2>
           <p className="fire-page__subtitle">
-            Model your path to financial independence — your FI number, when you can stop working,
+            Model your path to financial independence: your FI number, when you can stop working,
             and whether you have already hit Coast FI.
           </p>
         </div>
@@ -389,7 +389,7 @@ export const FirePlannerPage: React.FC = () => {
                   <span className="fire-status__icon" aria-hidden="true">
                     <AppIcon name="alert-triangle" />
                   </span>
-                  Not reached within {MAX_FI_SEARCH_YEARS} years — try higher contributions or
+                  Not reached within {MAX_FI_SEARCH_YEARS} years. Try higher contributions or
                   returns, or lower spending.
                 </span>
               ) : null}
@@ -405,7 +405,7 @@ export const FirePlannerPage: React.FC = () => {
                   <span className="fire-status__icon" aria-hidden="true">
                     <AppIcon name="check-circle" />
                   </span>
-                  Coast FI reached — your investments can grow to your FI number by age{' '}
+                  Coast FI reached. Your investments can grow to your FI number by age{' '}
                   {retirementAgeNumber} with no further contributions.
                 </span>
               ) : (
@@ -413,7 +413,7 @@ export const FirePlannerPage: React.FC = () => {
                   <span className="fire-status__icon" aria-hidden="true">
                     <AppIcon name="circle" />
                   </span>
-                  Not yet Coast FI — the amount you would need invested today to coast to FI by age{' '}
+                  Not yet Coast FI. The amount you would need invested today to coast to FI by age{' '}
                   {retirementAgeNumber}.
                 </span>
               )}

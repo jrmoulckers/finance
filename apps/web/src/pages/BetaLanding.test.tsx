@@ -40,7 +40,7 @@ describe('BetaLanding', () => {
     );
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Finance — Now in Beta' }),
+      await screen.findByRole('heading', { level: 1, name: 'Finance: Now in Beta' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Sign up for the beta' })).toHaveAttribute(
       'href',

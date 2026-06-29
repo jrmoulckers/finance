@@ -212,7 +212,7 @@ const PrivacyDashboardPage: React.FC = () => {
             type="checkbox"
             checked
             disabled
-            aria-label={`${CONSENT_LABELS.essential} — always required`}
+            aria-label={`${CONSENT_LABELS.essential}, always required`}
             className="privacy-dashboard__consent-toggle"
           />
         </div>
@@ -285,7 +285,7 @@ const PrivacyDashboardPage: React.FC = () => {
               <AppIcon name="download" /> Export Your Data
             </h3>
             <p className="privacy-dashboard__right-description">
-              Download all your financial data in JSON or CSV format. This is your data — you can
+              Download all your financial data in JSON or CSV format. This is your data. You can
               take it with you at any time.
             </p>
             <a href="/settings" className="privacy-dashboard__right-link">

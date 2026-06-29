@@ -76,7 +76,7 @@ const CLASSIFICATION_META: Record<
   transfer: {
     label: 'Transfer',
     icon: 'bank',
-    description: 'Money moved between accounts — excluded from spending.',
+    description: 'Money moved between accounts, excluded from spending.',
   },
 };
 
@@ -151,8 +151,8 @@ export const P2PImportPanel: React.FC<P2PImportPanelProps> = ({
         Venmo &amp; Cash App Import
       </h2>
       <p className="p2p-import__intro">
-        Import a Venmo or Cash App activity export (.csv). We detect likely reimbursements — money
-        friends pay you back or your roommate share — and keep them out of your budget so your
+        Import a Venmo or Cash App activity export (.csv). We detect likely reimbursements (money
+        friends pay you back or your roommate share) and keep them out of your budget so your
         spending stays accurate. Connecting a live account is not available here; export a CSV from
         the Venmo or Cash App website first.
       </p>

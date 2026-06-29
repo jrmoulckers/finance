@@ -103,7 +103,7 @@ export const EncryptionUnlockSettings: React.FC = () => {
   const handleVerifyPassphrase = useCallback(
     async (values: PassphraseDialogSubmitValues) => {
       await encryption.unlockWithPassphrase(values.passphrase);
-      announce('Passphrase verified — it can unlock your data.');
+      announce('Passphrase verified. It can unlock your data.');
     },
     [announce, encryption],
   );
@@ -149,7 +149,7 @@ export const EncryptionUnlockSettings: React.FC = () => {
       </h3>
       <p className="encryption-unlock__intro">
         Encrypt the local SQLite database and choose how to unlock it. Adding a passphrase, passkey,
-        or recovery code re-wraps the existing encryption key — your data is never re-encrypted or
+        or recovery code re-wraps the existing encryption key. Your data is never re-encrypted or
         moved.
       </p>
 
@@ -338,8 +338,8 @@ export const EncryptionUnlockSettings: React.FC = () => {
         <p>
           Your data key can be unlocked by any factor you set up. If you forget your passphrase, use
           your recovery code or passkey. If every factor that protects this device is lost, the
-          encrypted data on this device cannot be recovered — there is no backdoor. Keep at least
-          one recovery factor in a safe place.
+          encrypted data on this device cannot be recovered. There is no backdoor. Keep at least one
+          recovery factor in a safe place.
         </p>
       </div>
 
@@ -357,7 +357,7 @@ export const EncryptionUnlockSettings: React.FC = () => {
         <PassphraseDialog
           mode="change"
           title="Change your passphrase"
-          description="Enter your current passphrase, then choose a new one. Your encryption key is re-wrapped — your data is not re-encrypted."
+          description="Enter your current passphrase, then choose a new one. Your encryption key is re-wrapped. Your data is not re-encrypted."
           submitLabel="Update passphrase"
           onSubmit={handleChangePassphrase}
           onClose={() => setDialog(null)}

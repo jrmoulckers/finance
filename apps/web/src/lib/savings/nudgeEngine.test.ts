@@ -54,7 +54,7 @@ describe('nudgeEngine', () => {
     });
 
     expect(nudges[0]?.type).toBe('spending-drift');
-    expect(nudges[0]?.message).toContain('redirect from dining out');
+    expect(nudges[0]?.message).toContain('Redirect from dining out');
     expect(nudges.some((nudge) => nudge.type === 'retirement-gap')).toBe(true);
   });
 });

@@ -108,7 +108,7 @@ describe('GroceryModeCard', () => {
     render(<GroceryModeCard {...makeProps()} />);
     const input = screen.getByRole('textbox', { name: /can i afford/i });
     fireEvent.change(input, { target: { value: '50' } });
-    expect(screen.getByText(/Yes — go for it/i)).toBeInTheDocument();
+    expect(screen.getByText(/Yes, go for it/i)).toBeInTheDocument();
     expect(screen.getByText(/still have \$665\.00 free/i)).toBeInTheDocument();
   });
 

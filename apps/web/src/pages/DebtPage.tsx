@@ -790,7 +790,7 @@ function PayoffPlannerPanel(): React.ReactElement {
                 <p className="debt-hero__eyebrow">Debt-Free Date</p>
                 <h2>{formatCountdown(activeResult.totalMonths)}</h2>
                 <p>
-                  Keep going — this plan points to{' '}
+                  Keep going. This plan points to{' '}
                   {formatMonthYear(addMonthsToIsoDate(todayIso, activeResult.totalMonths))}.
                 </p>
               </div>
@@ -809,7 +809,7 @@ function PayoffPlannerPanel(): React.ReactElement {
           <section aria-label="Debt milestones" className="debt-milestones">
             <div className="debt-milestones__summary">
               <h2>Debt Milestones</h2>
-              <p>{milestones.percentPaidOff.toFixed(1)}% paid off — every payment is progress.</p>
+              <p>{milestones.percentPaidOff.toFixed(1)}% paid off. Every payment is progress.</p>
               <label>
                 Historical interest paid ($)
                 <input
@@ -1551,7 +1551,7 @@ function StrategyCard({
           <ol>
             {result.schedules.map((s) => (
               <li key={s.debtId}>
-                {s.debtName} — {s.monthsToPayoff} months
+                {s.debtName}: {s.monthsToPayoff} months
               </li>
             ))}
           </ol>
@@ -2839,7 +2839,7 @@ function CreditCardPanel(): React.ReactElement {
             <ul role="list" className="debt-beta-list" aria-label="Score factor directions">
               {creditScoreSimulator.result.factorImpacts.map((impact) => (
                 <li key={impact.factor}>
-                  <strong>{impact.factor.replace(/_/g, ' ')}:</strong> {impact.direction} —{' '}
+                  <strong>{impact.factor.replace(/_/g, ' ')}:</strong> {impact.direction}.{' '}
                   {impact.explanation}
                 </li>
               ))}

@@ -191,7 +191,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   return (
     <section
       className={`welcome-screen ${className}`.trim()}
-      aria-label="Welcome — first-run setup"
+      aria-label="Welcome to first-run setup"
     >
       <div className="welcome-screen__illustration" aria-hidden="true">
         <WelcomeIllustration />
@@ -199,7 +199,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <h1 className="welcome-screen__title">{greeting}</h1>
       <p className="welcome-screen__description">
         Take control of your finances. Track accounts, record transactions, set budgets, and reach
-        your savings goals — all in one place.
+        your savings goals, all in one place.
       </p>
       {onGetStarted && (
         <button type="button" className="welcome-screen__cta" onClick={onGetStarted}>

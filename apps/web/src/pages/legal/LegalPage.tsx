@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 
 import './legal.css';
 
-const DRAFT_NOTICE = 'DRAFT — pending legal review by jrmoulckers';
+const DRAFT_NOTICE = 'DRAFT. Pending legal review by jrmoulckers';
 
 type LegalDocumentId = 'privacy' | 'terms' | 'ccpa';
 

@@ -167,7 +167,7 @@ const FinancialHealthScoreCard: React.FC<FinancialHealthScoreCardProps> = ({ sco
       <p className="insights-overview-card__eyebrow">Financial Health Score</p>
       <p className="insights-health-score__value">{score.score}/8</p>
       <p className="insights-health-score__summary">
-        {score.label} — {score.percent}% of benchmark categories are on track.
+        {score.label}. {score.percent}% of benchmark categories are on track.
       </p>
     </div>
   </article>

@@ -302,7 +302,7 @@ export function MoneyCheckInDialog({
             Money check-in
           </h2>
           <p id={descriptionId} className="money-check-in__intro">
-            A supportive space to talk money together — neutral summaries first, your choice on what
+            A supportive space to talk money together. Neutral summaries first, your choice on what
             to share.
           </p>
           <ol className="money-check-in__steps" aria-label="Check-in steps">
@@ -390,7 +390,7 @@ export function MoneyCheckInDialog({
                 Neutral summary first
               </h3>
               <p className="money-check-in__hint">
-                These are neutral totals — no line items yet. Reveal detail only if you both want
+                These are neutral totals with no line items yet. Reveal detail only if you both want
                 to.
               </p>
 
@@ -517,8 +517,8 @@ export function MoneyCheckInDialog({
                 Share &amp; finish
               </h3>
               <p className="money-check-in__hint">
-                Choose what you each share. Private notes stay redacted — nothing is shared without
-                your say-so.
+                Choose what you each share. Private notes stay redacted, and nothing is shared
+                without your say-so.
               </p>
 
               {recapLines.length > 0 && (

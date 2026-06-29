@@ -24,7 +24,7 @@ export const NotFoundPage: React.FC = () => (
     <section className="auth-card" aria-labelledby="not-found-title">
       <header className="auth-brand">
         <h1 id="not-found-title" className="auth-brand__name">
-          404 — Page Not Found
+          404: Page Not Found
         </h1>
         <p className="auth-brand__tagline">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.

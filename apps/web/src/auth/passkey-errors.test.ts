@@ -37,22 +37,22 @@ describe('getPasskeyErrorMessage', () => {
 
   it('maps a generic "Unknown error" backend body to the unavailable message', () => {
     expect(getPasskeyErrorMessage(new Error('Unknown error'))).toBe(
-      "Passkey sign-in isn't available right now — use email/password.",
+      "Passkey sign-in isn't available right now. Use email/password instead.",
     );
   });
 
   it('maps unprovisioned/gateway Edge Function errors to the unavailable message', () => {
     expect(getPasskeyErrorMessage(new Error('Edge Function error (502)'))).toBe(
-      "Passkey sign-in isn't available right now — use email/password.",
+      "Passkey sign-in isn't available right now. Use email/password instead.",
     );
     expect(getPasskeyErrorMessage(new Error('Function not found'))).toBe(
-      "Passkey sign-in isn't available right now — use email/password.",
+      "Passkey sign-in isn't available right now. Use email/password instead.",
     );
   });
 
   it('maps an uninitialised WebAuthn client to the unavailable message', () => {
     expect(
       getPasskeyErrorMessage(new Error('Passkey sign-in is still initialising. Try again later.')),
-    ).toBe("Passkey sign-in isn't available right now — use email/password.");
+    ).toBe("Passkey sign-in isn't available right now. Use email/password instead.");
   });
 });

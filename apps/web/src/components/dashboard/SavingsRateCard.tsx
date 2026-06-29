@@ -107,7 +107,7 @@ export const SavingsRateCard: React.FC<SavingsRateCardProps> = ({
             {formatSavingsRatePercent(model.savingsRatePercent)}
           </span>
         ) : (
-          <span aria-label="Savings rate not available — no income recorded this month">N/A</span>
+          <span aria-label="Savings rate not available. No income recorded this month">N/A</span>
         )}
       </div>
       <p className="list-item__secondary">

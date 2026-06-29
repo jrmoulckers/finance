@@ -104,7 +104,7 @@ describe('detectScamAlerts', () => {
 
     const newMerchantAlert = alerts.find((alert) => alert.rule === 'new-merchant');
     expect(newMerchantAlert).toBeDefined();
-    expect(newMerchantAlert?.message).toContain('merchant you have not used before');
+    expect(newMerchantAlert?.message).toContain('which is new to you');
     expect(newMerchantAlert?.nextStep).toContain('number on your card');
   });
 
@@ -182,7 +182,7 @@ describe('detectScamAlerts', () => {
 
     const roundAlert = alerts.find((alert) => alert.rule === 'round-large-unfamiliar');
     expect(roundAlert).toBeDefined();
-    expect(roundAlert?.message).toContain('large round amount');
+    expect(roundAlert?.message).toContain('large and round');
     expect(roundAlert?.nextStep).toContain('number on your card');
   });
 

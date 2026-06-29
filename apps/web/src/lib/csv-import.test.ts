@@ -224,7 +224,7 @@ describe('validateImportRows', () => {
     const rows = [{ date: '2024-03-15', amount: '10.00', payee: 'ACME Corp', rowIndex: 1 }];
 
     const result = validateImportRows(rows, accountId, householdId);
-    expect(result.valid[0].warnings).toContain('Description was empty — used payee instead');
+    expect(result.valid[0].warnings).toContain('Description was empty, used payee instead');
     expect(result.valid[0].data.payee).toBe('ACME Corp');
   });
 
@@ -233,7 +233,7 @@ describe('validateImportRows', () => {
 
     const result = validateImportRows(rows, accountId, householdId);
     expect(result.valid[0].warnings).toContain(
-      'Description was empty — set to "Imported transaction"',
+      'Description was empty, set to "Imported transaction"',
     );
   });
 
