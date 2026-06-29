@@ -179,6 +179,11 @@
   font: inherit;
   font-weight: var(--font-weight-medium);
   cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.safe-to-spend-card__toggle:hover {
+  background: var(--semantic-background-secondary);
 }
 
 .safe-to-spend-card__toggle:focus-visible {
@@ -286,6 +291,11 @@
   cursor: pointer;
 }
 
+.customize-panel__toggle:hover .customize-panel__name {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .customize-panel__toggle input[type='checkbox'] {
   margin-top: 2px;
   accent-color: var(--semantic-interactive-default);
@@ -367,7 +377,8 @@
  * ------------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-customize-btn {
+  .dashboard-customize-btn,
+  .safe-to-spend-card__toggle {
     transition: none;
   }
 }
