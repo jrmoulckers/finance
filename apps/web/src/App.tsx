@@ -107,12 +107,17 @@ const STANDALONE_ROUTES: readonly string[] = [
  * without marking onboarding complete, so the visitor must be able to reach (and stay
  * on) the auth pages. Once authenticated, leaving an auth page for any other route
  * re-triggers the auto-launch, which resumes onboarding at the post-signup step.
+ *
+ * `/legal` is exempt (prefix match covers `/legal/privacy`, `/legal/terms`,
+ * `/legal/ccpa`) so pre-onboarding visitors can read the legal documents linked from
+ * the auth footers — bouncing them to `/onboarding` would be a compliance problem (#3110).
  */
 const FIRST_RUN_ALLOWED_ROUTES: readonly string[] = [
   '/login',
   '/signup',
   '/forgot-password',
   '/reset-password',
+  '/legal',
   '/onboarding',
 ];
 
