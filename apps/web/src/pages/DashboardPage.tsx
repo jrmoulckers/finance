@@ -1068,6 +1068,7 @@ export const DashboardPage: React.FC = () => {
           widgets={widgetLayout.widgets}
           onToggle={widgetLayout.toggleWidget}
           onMove={widgetLayout.moveWidget}
+          onReorder={widgetLayout.reorderWidget}
           onReset={widgetLayout.resetLayout}
           onClose={widgetLayout.stopCustomizing}
         />
