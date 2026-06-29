@@ -602,6 +602,16 @@
   outline-offset: 2px;
 }
 
+/*
+ * The afford field draws its border and focus ring on the wrapper
+ * (`:focus-within`, above). Suppress the inner input's own outline so focus
+ * shows a single ring on the wrapper instead of a doubled box-in-a-box. Focus
+ * visibility (WCAG 2.4.7) is preserved by the wrapper's ring.
+ */
+.grocery-mode-card__afford-input .grocery-mode-card__input:focus-visible {
+  outline: none;
+}
+
 .grocery-mode-card__afford-result {
   display: flex;
   align-items: flex-start;
