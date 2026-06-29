@@ -28,6 +28,7 @@ import { LegalLinks } from '../legal/LegalLinks';
 import { Breadcrumbs, NavShortcuts } from '../navigation';
 
 import { SkipToContent } from './SkipToContent';
+import { EyeIcon, EyeOffIcon } from './navIcons';
 
 export interface AppLayoutProps {
   activePath: string;
@@ -192,7 +193,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         label: isPrivacyMode ? 'Turn privacy mode off' : 'Turn privacy mode on',
         description: 'Mask or reveal financial amounts.',
         shortcut: 'Ctrl+Shift+P',
-        keywords: 'privacy mask sensitive amounts',
+        keywords: 'privacy mask sensitive amounts hide show balances values',
         perform: togglePrivacyMode,
       },
       {
@@ -272,19 +273,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             <button
               type="button"
               className={`icon-button${isPrivacyMode ? ' icon-button--active' : ''}${isSimplified ? ' icon-button--labeled' : ''}`}
-              aria-label={isPrivacyMode ? 'Turn privacy mode off' : 'Turn privacy mode on'}
+              aria-label={isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
               aria-pressed={isPrivacyMode}
-              title="Privacy mode"
+              title={isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
               onClick={togglePrivacyMode}
             >
-              <span className="icon-button__glyph" aria-hidden="true">
-                {isPrivacyMode ? '●' : '○'}
+              {isPrivacyMode ? <EyeOffIcon /> : <EyeIcon />}
+              <span className="icon-button__label">
+                {isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
               </span>
-              {isSimplified ? (
-                <span className="icon-button__label">
-                  {isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
-                </span>
-              ) : null}
             </button>
             <NotificationCenter
               notifications={notifications}
