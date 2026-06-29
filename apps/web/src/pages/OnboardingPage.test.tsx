@@ -264,6 +264,15 @@ describe('OnboardingPage', () => {
     expect(shouldAutoLaunchOnboarding('/login', false)).toBe(false);
   });
 
+  it('lets a first-run visitor reach the legal pages linked from the auth footers (#3110)', () => {
+    // Legal/Privacy/Terms/CCPA links must be reachable pre-onboarding for compliance;
+    // bouncing visitors to /onboarding would hide them. Prefix match covers the docs.
+    expect(shouldAutoLaunchOnboarding('/legal', false)).toBe(false);
+    expect(shouldAutoLaunchOnboarding('/legal/privacy', false)).toBe(false);
+    expect(shouldAutoLaunchOnboarding('/legal/terms', false)).toBe(false);
+    expect(shouldAutoLaunchOnboarding('/legal/ccpa', false)).toBe(false);
+  });
+
   it('stores Huge text preferences from the comfort step', () => {
     renderWithRouter(<OnboardingPage />);
 
