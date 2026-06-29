@@ -26,6 +26,17 @@ const PASSKEY_REGISTRATION_FAILED =
 const PASSKEY_AUTHENTICATION_FAILED =
   'Passkey sign-in failed. Try again, or sign in with email and password.';
 
+/**
+ * Shown when the passkey backend is unconfigured or unavailable — e.g. the
+ * Edge Functions are not provisioned in this environment (404/501), the
+ * gateway is down (502/503), the WebAuthn client never received its config,
+ * or the server returned an opaque body that decoded to "Unknown error".
+ * Tells the user passkeys aren't an option right now and points them to the
+ * always-available email/password path instead of surfacing a dead end (#3111).
+ */
+export const PASSKEY_UNAVAILABLE_MESSAGE =
+  "Passkey sign-in isn't available right now — use email/password.";
+
 export function getPasskeyErrorMessage(
   error: unknown,
   context: PasskeyErrorContext = 'authentication',
@@ -75,12 +86,8 @@ export function getPasskeyErrorMessage(
     return 'Sign in again before setting up a passkey.';
   }
 
-  if (
-    normalizedMessage.includes('internal server error') ||
-    normalizedMessage.includes('edge function error') ||
-    normalizedMessage.includes('function not found')
-  ) {
-    return 'The passkey service is unavailable. Try again in a few minutes or sign in with email and password.';
+  if (isServiceUnavailableError(normalizedMessage)) {
+    return PASSKEY_UNAVAILABLE_MESSAGE;
   }
 
   return (
@@ -117,5 +124,27 @@ function isNoPasskeyError(normalizedMessage: string): boolean {
     normalizedMessage.includes('no credential') ||
     normalizedMessage.includes('no passkey') ||
     normalizedMessage.includes('not registered')
+  );
+}
+
+/**
+ * Detect an unconfigured or unavailable passkey backend. Covers the generic
+ * "Unknown error" the WebAuthn client emits when an unprovisioned endpoint
+ * returns a non-JSON body, the explicit "Edge Function error (NNN)" wrapper,
+ * 404/5xx gateway statuses, "function not found"/"not implemented", and the
+ * "still initialising" guard from a client that never got its config (#3111).
+ */
+function isServiceUnavailableError(normalizedMessage: string): boolean {
+  return (
+    normalizedMessage.includes('unknown error') ||
+    normalizedMessage.includes('internal server error') ||
+    normalizedMessage.includes('edge function error') ||
+    normalizedMessage.includes('function not found') ||
+    normalizedMessage.includes('not implemented') ||
+    normalizedMessage.includes('service unavailable') ||
+    normalizedMessage.includes('bad gateway') ||
+    normalizedMessage.includes('still initialising') ||
+    normalizedMessage.includes('still initializing') ||
+    /\b(?:404|500|501|502|503|504)\b/.test(normalizedMessage)
   );
 }

@@ -34,4 +34,25 @@ describe('getPasskeyErrorMessage', () => {
   it('keeps specific server messages when no friendly mapping applies', () => {
     expect(getPasskeyErrorMessage(new Error('Rate limit exceeded'))).toBe('Rate limit exceeded');
   });
+
+  it('maps a generic "Unknown error" backend body to the unavailable message', () => {
+    expect(getPasskeyErrorMessage(new Error('Unknown error'))).toBe(
+      "Passkey sign-in isn't available right now — use email/password.",
+    );
+  });
+
+  it('maps unprovisioned/gateway Edge Function errors to the unavailable message', () => {
+    expect(getPasskeyErrorMessage(new Error('Edge Function error (502)'))).toBe(
+      "Passkey sign-in isn't available right now — use email/password.",
+    );
+    expect(getPasskeyErrorMessage(new Error('Function not found'))).toBe(
+      "Passkey sign-in isn't available right now — use email/password.",
+    );
+  });
+
+  it('maps an uninitialised WebAuthn client to the unavailable message', () => {
+    expect(
+      getPasskeyErrorMessage(new Error('Passkey sign-in is still initialising. Try again later.')),
+    ).toBe("Passkey sign-in isn't available right now — use email/password.");
+  });
 });
