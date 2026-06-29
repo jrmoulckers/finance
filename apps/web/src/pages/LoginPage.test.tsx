@@ -270,4 +270,40 @@ describe('LoginPage', () => {
       expect(preferredAuthMock.setPreferredAuthMethod).not.toHaveBeenCalled();
     });
   });
+
+  describe('failed login (#3108)', () => {
+    it('preserves email & password and shows the error inline without clearing the form', async () => {
+      const { default: userEvent } = await import('@testing-library/user-event');
+      const user = userEvent.setup();
+
+      authState.loginWithEmail.mockRejectedValue(new Error('Incorrect email or password'));
+
+      const { rerender } = renderLoginPage();
+
+      const emailInput = screen.getByLabelText('Email') as HTMLInputElement;
+      const passwordInput = screen.getByLabelText('Password') as HTMLInputElement;
+
+      await user.type(emailInput, 'wrong@example.com');
+      await user.type(passwordInput, 'badpassword1');
+      await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+      await waitFor(() => expect(authState.loginWithEmail).toHaveBeenCalledTimes(1));
+
+      // Inputs retain their values (no remount / no clear) after the failure.
+      expect(emailInput.value).toBe('wrong@example.com');
+      expect(passwordInput.value).toBe('badpassword1');
+
+      // Context surfaces the error; the form stays mounted and shows it inline.
+      authState.error = 'Incorrect email or password';
+      rerender(
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByText('Incorrect email or password')).toBeInTheDocument();
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('wrong@example.com');
+      expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('badpassword1');
+    });
+  });
 });

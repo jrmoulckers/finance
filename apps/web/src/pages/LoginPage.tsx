@@ -183,6 +183,9 @@ export const LoginPage: React.FC = () => {
 
     try {
       await loginWithEmail(normalizedEmail, password);
+    } catch {
+      // Error state is surfaced via auth context; swallow so the rejection
+      // doesn't bubble as unhandled. Inputs are preserved (#3108).
     } finally {
       setIsSubmitting(false);
     }
@@ -197,6 +200,8 @@ export const LoginPage: React.FC = () => {
       // Reaffirm the user's preference whenever they successfully sign in
       // with biometrics (#1983). Idempotent.
       setPreferredAuthMethod('passkey');
+    } catch {
+      // Error surfaced via auth context; swallow to avoid unhandled rejection.
     } finally {
       setIsSubmitting(false);
     }
@@ -230,17 +235,17 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
-        {error && (
-          <div
-            ref={errorRef}
-            id={authErrorId}
-            className="auth-error"
-            aria-live="polite"
-            tabIndex={-1}
-          >
-            {error}
-          </div>
-        )}
+        <div
+          className={`auth-error-region${error ? ' auth-error-region--filled' : ''}`}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {error && (
+            <div ref={errorRef} id={authErrorId} className="auth-error" tabIndex={-1}>
+              {error}
+            </div>
+          )}
+        </div>
 
         {/* ── Passkey-first layout: biometric primary when preferred (#1983) ── */}
         {/* Passkey UI is suppressed in demo mode (#2011) because the demo
