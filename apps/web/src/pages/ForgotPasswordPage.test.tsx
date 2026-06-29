@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForgotPasswordPage } from './ForgotPasswordPage';
@@ -66,11 +66,12 @@ describe('ForgotPasswordPage', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('shows a non-account-specific error when the request fails', async () => {
+  it('shows the generic message (not the backend error) when the request fails, and logs the real error', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ error: 'Could not send reset email.' }), { status: 502 }),
     );
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderForgotPasswordPage();
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'alex@example.com' } });
@@ -79,8 +80,37 @@ describe('ForgotPasswordPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Send reset link' }));
     });
 
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Could not send reset email.');
+    expect(
+      await screen.findByText(
+        "If an account exists for that email, you'll receive a reset link shortly.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Could not send reset email.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('shows the generic message when the network request rejects', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockRejectedValue(new Error('Network down'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderForgotPasswordPage();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'alex@example.com' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Send reset link' }));
     });
+
+    expect(
+      await screen.findByText(
+        "If an account exists for that email, you'll receive a reset link shortly.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    consoleSpy.mockRestore();
   });
 });

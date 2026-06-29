@@ -22,7 +22,6 @@ export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const redirectTo = useMemo(() => `${window.location.origin}/reset-password`, []);
@@ -30,7 +29,6 @@ export const ForgotPasswordPage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage(null);
-    setSubmitError(null);
 
     const parsedEmail = emailSchema.safeParse(email);
     if (!parsedEmail.success) {
@@ -43,10 +41,12 @@ export const ForgotPasswordPage: React.FC = () => {
 
     try {
       await requestPasswordResetEmail(parsedEmail.data, redirectTo);
-      setStatusMessage(GENERIC_SUCCESS_MESSAGE);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Could not send reset email.');
+      // eslint-disable-next-line no-console -- log the real failure for diagnostics; never reveal account existence to the user
+      console.error('[auth] reset email request failed', err); // SAFE: logs failure marker only, no PII
     } finally {
+      // Always show the generic message so a backend failure cannot be used to enumerate accounts.
+      setStatusMessage(GENERIC_SUCCESS_MESSAGE);
       setIsSubmitting(false);
     }
   };
@@ -64,12 +64,6 @@ export const ForgotPasswordPage: React.FC = () => {
         {statusMessage && (
           <div className="auth-info" role="status" aria-live="polite">
             {statusMessage}
-          </div>
-        )}
-
-        {submitError && (
-          <div className="auth-error" role="alert" aria-live="polite">
-            {submitError}
           </div>
         )}
 
