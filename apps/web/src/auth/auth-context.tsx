@@ -32,6 +32,7 @@ import {
 import {
   authenticateWithPasskey,
   initWebAuthn,
+  isWebAuthnReady,
   isWebAuthnSupported,
   registerPasskey,
   type WebAuthnConfig,
@@ -56,7 +57,7 @@ import {
   isDemoMode,
   restoreDemoSession,
 } from './demo-auth';
-import { getPasskeyErrorMessage } from './passkey-errors';
+import { getPasskeyErrorMessage, PASSKEY_UNAVAILABLE_MESSAGE } from './passkey-errors';
 import { appendSecurityAuditEvent } from '../lib/security-audit-log';
 import { getStepUpStatus, markStepUpAuthenticated } from '../lib/session-security';
 import '../styles/auth.css';
@@ -571,6 +572,15 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         throw new Error(message);
       }
 
+      // Don't attempt a ceremony the environment can't fulfil. If WebAuthn is
+      // unsupported or the client never received backend config, surface the
+      // clear unavailable message up front instead of letting a network call
+      // fall through to a generic "Unknown error" (#3111).
+      if (!webAuthnSupported || !isWebAuthnReady()) {
+        setError(PASSKEY_UNAVAILABLE_MESSAGE);
+        throw new Error(PASSKEY_UNAVAILABLE_MESSAGE);
+      }
+
       setIsLoading(true);
 
       try {
@@ -607,7 +617,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         setIsLoading(false);
       }
     },
-    [demoModeActive, webAuthnConfig],
+    [demoModeActive, webAuthnSupported, webAuthnConfig],
   );
 
   const registerNewPasskey = useCallback(async (): Promise<void> => {
