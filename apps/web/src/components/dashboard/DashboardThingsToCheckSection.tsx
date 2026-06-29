@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { useMemo, type FC } from 'react';
+import { Link } from 'react-router-dom';
 import { useTransactions } from '../../hooks';
 import type { Account } from '../../kmp/bridge';
 import {
   filterTransactionsByAccountPurpose,
   type AccountPurposeFilter,
 } from '../../lib/accountPurpose';
-import { detectScamAlerts } from '../../lib/notifications';
+import {
+  detectScamAlerts,
+  routeUnusualSpendAlert,
+  type ScamSpendingAlert,
+  type UnusualSpendRouteTarget,
+} from '../../lib/notifications';
 import { ErrorBanner, LoadingSpinner } from '../common';
 
 export interface DashboardThingsToCheckSectionProps {
@@ -16,6 +22,21 @@ export interface DashboardThingsToCheckSectionProps {
 }
 
 const scamAlertFilters = { type: 'EXPENSE' as const };
+
+/**
+ * Build a concise, screen-reader-friendly accessible name for an alert's review
+ * action. The visible label is always "Review", so each name starts with
+ * "Review" to satisfy WCAG 2.5.3 (Label in Name) while adding the context that
+ * 2.4.4 (Link Purpose) requires.
+ */
+function buildReviewActionLabel(alert: ScamSpendingAlert, route: UnusualSpendRouteTarget): string {
+  if (route.kind === 'transaction_filter') {
+    return `Review ${alert.transactionIds.length} flagged transactions: ${alert.title}`;
+  }
+  return alert.merchantName
+    ? `Review the flagged charge from ${alert.merchantName}`
+    : `Review this flagged transaction: ${alert.title}`;
+}
 
 const DashboardThingsToCheckSection: FC<DashboardThingsToCheckSectionProps> = ({
   accounts,
@@ -36,6 +57,14 @@ const DashboardThingsToCheckSection: FC<DashboardThingsToCheckSectionProps> = ({
     () => detectScamAlerts(filteredScamAlertTransactions),
     [filteredScamAlertTransactions],
   );
+  const reviewableAlerts = useMemo(
+    () =>
+      scamAlerts.slice(0, 5).map((alert) => {
+        const route = routeUnusualSpendAlert(alert);
+        return { alert, to: route.path, actionLabel: buildReviewActionLabel(alert, route) };
+      }),
+    [scamAlerts],
+  );
 
   return (
     <section className="page-section" aria-label="Things to check">
@@ -49,7 +78,7 @@ const DashboardThingsToCheckSection: FC<DashboardThingsToCheckSectionProps> = ({
           <p className="list-item__secondary">Everything looks normal.</p>
         ) : (
           <ul className="list-group" role="list" aria-label="Scam-focused unusual spending alerts">
-            {scamAlerts.slice(0, 5).map((alert) => (
+            {reviewableAlerts.map(({ alert, to, actionLabel }) => (
               <li key={alert.id} className="list-item" role="listitem">
                 <div className="list-item__content">
                   <p className="list-item__primary">{alert.title}</p>
@@ -58,6 +87,9 @@ const DashboardThingsToCheckSection: FC<DashboardThingsToCheckSectionProps> = ({
                     <strong>NEXT STEP:</strong> {alert.nextStep}
                   </p>
                 </div>
+                <Link to={to} className="list-item__action" aria-label={actionLabel}>
+                  Review
+                </Link>
               </li>
             ))}
           </ul>

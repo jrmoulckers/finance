@@ -804,3 +804,53 @@
 .spending-bar-chart__plot {
   margin-top: auto;
 }
+
+/* ---------------------------------------------------------------------------
+ * Things to check - per-item "Review" action link (issue #3153)
+ *
+ * Renders as a compact, right-aligned button-like link inside .list-item.
+ * Navigation target is computed per alert via routeUnusualSpendAlert.
+ * ------------------------------------------------------------------------- */
+
+.list-item__action {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--radius-sm, 4px);
+  background-color: var(--semantic-surface-secondary, #f3f4f6);
+  color: var(--semantic-text-primary, #111827);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: var(--font-weight-medium, 500);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.list-item__action:hover {
+  background-color: var(--semantic-surface-tertiary, #e5e7eb);
+}
+
+.list-item__action:focus-visible {
+  outline: 2px solid var(--semantic-focus-ring, #3b82f6);
+  outline-offset: 2px;
+}
+
+[data-theme='dark'] .list-item__action:hover {
+  background-color: var(--semantic-surface-tertiary, #374151);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-item__action {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .list-item__action {
+    border-width: 2px;
+  }
+}
