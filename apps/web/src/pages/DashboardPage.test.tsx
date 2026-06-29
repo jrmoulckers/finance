@@ -697,6 +697,84 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Client Retainer')).toBeInTheDocument();
   });
 
+  it('aggregates the All workspace net worth as the sum of every workspace (#3160)', () => {
+    // Personal $20,000 + Business $10,000 + shared "Both" $5,000.
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        {
+          id: 'ws-personal',
+          householdId: 'household-1',
+          name: 'Personal Checking',
+          type: 'CHECKING',
+          purpose: 'personal',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 2000000 },
+          isArchived: false,
+          sortOrder: 1,
+          icon: 'bank',
+          color: '#2563EB',
+          ...syncMetadata,
+        },
+        {
+          id: 'ws-business',
+          householdId: 'household-1',
+          name: 'Business Checking',
+          type: 'CHECKING',
+          purpose: 'business',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 1000000 },
+          isArchived: false,
+          sortOrder: 2,
+          icon: 'bank',
+          color: '#059669',
+          ...syncMetadata,
+        },
+        {
+          id: 'ws-both',
+          householdId: 'household-1',
+          name: 'Shared Card',
+          type: 'CHECKING',
+          purpose: 'both',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 500000 },
+          isArchived: false,
+          sortOrder: 3,
+          icon: 'credit-card',
+          color: '#DC2626',
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    const netWorthCard = screen.getByLabelText('Net worth');
+
+    // All = personal + business + shared = $35,000.00 (never mirrors one workspace).
+    expect(netWorthCard).toHaveTextContent('$35,000.00');
+
+    fireEvent.click(screen.getByRole('button', { name: '🏠 Personal' }));
+    expect(netWorthCard).toHaveTextContent('$20,000.00');
+    expect(netWorthCard).not.toHaveTextContent('$35,000.00');
+
+    fireEvent.click(screen.getByRole('button', { name: '💼 Business' }));
+    expect(netWorthCard).toHaveTextContent('$10,000.00');
+
+    // Back to All restores the full aggregate: 20,000 + 10,000 + 5,000 = 35,000.
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    expect(netWorthCard).toHaveTextContent('$35,000.00');
+  });
+
   it('surfaces an RMD reminder badge when a distribution is due', () => {
     mockedUseRmdTracking.mockReturnValue({
       statuses: [

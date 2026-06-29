@@ -24,8 +24,8 @@ import type { BudgetWithSpending } from '../db/repositories/budgets';
 import type { Bill, Goal, Transaction } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
 import {
-  filterAccountsByPurpose,
-  filterTransactionsByAccountPurpose,
+  selectWorkspaceAccounts,
+  selectWorkspaceTransactions,
   type AccountPurposeFilter,
 } from '../lib/accountPurpose';
 import { isLiabilityType } from '../lib/analytics/net-worth';
@@ -450,40 +450,30 @@ export const DashboardPage: React.FC = () => {
     [categories],
   );
   const filteredChartTransactions = useMemo(
-    () => filterTransactionsByAccountPurpose(chartTransactions, accounts, selectedPurposeFilter),
+    () => selectWorkspaceTransactions(chartTransactions, accounts, selectedPurposeFilter),
     [chartTransactions, accounts, selectedPurposeFilter],
   );
   const filteredPrevTransactions = useMemo(
-    () => filterTransactionsByAccountPurpose(prevTransactions, accounts, selectedPurposeFilter),
+    () => selectWorkspaceTransactions(prevTransactions, accounts, selectedPurposeFilter),
     [prevTransactions, accounts, selectedPurposeFilter],
   );
   const filteredCurrentMonthTransactions = useMemo(
-    () =>
-      filterTransactionsByAccountPurpose(currentMonthTransactions, accounts, selectedPurposeFilter),
+    () => selectWorkspaceTransactions(currentMonthTransactions, accounts, selectedPurposeFilter),
     [currentMonthTransactions, accounts, selectedPurposeFilter],
   );
   const filteredPreviousMonthTransactions = useMemo(
-    () =>
-      filterTransactionsByAccountPurpose(
-        previousMonthTransactions,
-        accounts,
-        selectedPurposeFilter,
-      ),
+    () => selectWorkspaceTransactions(previousMonthTransactions, accounts, selectedPurposeFilter),
     [previousMonthTransactions, accounts, selectedPurposeFilter],
   );
   const filteredRecentTransactions = useMemo(
     () =>
       data === null
         ? []
-        : filterTransactionsByAccountPurpose(
-            data.recentTransactions,
-            accounts,
-            selectedPurposeFilter,
-          ),
+        : selectWorkspaceTransactions(data.recentTransactions, accounts, selectedPurposeFilter),
     [data, accounts, selectedPurposeFilter],
   );
   const filteredAccounts = useMemo(
-    () => filterAccountsByPurpose(accounts, selectedPurposeFilter),
+    () => selectWorkspaceAccounts(accounts, selectedPurposeFilter),
     [accounts, selectedPurposeFilter],
   );
   const chartCurrency =
