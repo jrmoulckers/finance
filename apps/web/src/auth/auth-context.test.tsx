@@ -6,8 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AuthProvider,
   SERVICE_UNAVAILABLE_MESSAGE,
+  OAUTH_PROVIDER_UNAVAILABLE_MESSAGE,
   isBetaEmailAllowed,
   isNetworkError,
+  isOAuthStartHealthy,
   isServiceUnavailableStatus,
   parseBetaAllowedEmails,
   useAuth,
@@ -410,5 +412,151 @@ describe('signup & login surface a clear message when the backend is unreachable
     await waitFor(() =>
       expect(screen.getByTestId('auth-error')).toHaveTextContent('Invalid login credentials'),
     );
+  });
+});
+
+describe('isOAuthStartHealthy', () => {
+  function fakeResponse(init: { type?: string; redirected?: boolean; status: number }): Response {
+    return init as unknown as Response;
+  }
+
+  it('accepts an opaque-redirect from a healthy redirect:manual probe', () => {
+    expect(isOAuthStartHealthy(fakeResponse({ type: 'opaqueredirect', status: 0 }))).toBe(true);
+  });
+
+  it('accepts an explicit 3xx redirect', () => {
+    expect(isOAuthStartHealthy(fakeResponse({ type: 'default', status: 302 }))).toBe(true);
+    expect(
+      isOAuthStartHealthy(fakeResponse({ type: 'default', redirected: true, status: 200 })),
+    ).toBe(true);
+  });
+
+  it('rejects 5xx/502/0 outages and 4xx provider errors', () => {
+    expect(isOAuthStartHealthy(fakeResponse({ type: 'default', status: 502 }))).toBe(false);
+    expect(isOAuthStartHealthy(fakeResponse({ type: 'default', status: 500 }))).toBe(false);
+    expect(isOAuthStartHealthy(fakeResponse({ type: 'default', status: 0 }))).toBe(false);
+    expect(isOAuthStartHealthy(fakeResponse({ type: 'default', status: 400 }))).toBe(false);
+  });
+});
+
+describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
+  const config: AuthProviderConfig = {
+    supabaseUrl: 'https://finance-test.supabase.co',
+    supabaseAnonKey: 'anon-key',
+    loginEndpoint: '/api/auth/login',
+    refreshEndpoint: '/api/auth/refresh',
+    logoutEndpoint: '/api/auth/logout',
+    signupEndpoint: '/api/auth/signup',
+  };
+
+  let assignMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    clearTokens();
+    localStorage.clear();
+    assignMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      writable: true,
+      value: { assign: assignMock, href: 'http://localhost/login' },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearTokens();
+    localStorage.clear();
+  });
+
+  function OAuthProbe() {
+    const { loginWithOAuth, isLoading, error } = useAuth();
+    return (
+      <div>
+        <span data-testid="loading-state">{isLoading ? 'loading' : 'ready'}</span>
+        <span data-testid="auth-error">{error ?? 'none'}</span>
+        <button
+          data-testid="do-oauth"
+          onClick={() => {
+            void loginWithOAuth('google').catch(() => {});
+          }}
+        >
+          google
+        </button>
+      </div>
+    );
+  }
+
+  function stubStart(startResponse: () => Promise<Response>) {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/auth/oauth-start')) {
+        return startResponse();
+      }
+      return Promise.resolve(jsonResponse({ error: 'no session' }, 401));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  async function renderReady() {
+    render(
+      <AuthProvider config={config}>
+        <OAuthProbe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('loading-state')).toHaveTextContent('ready'));
+  }
+
+  it('navigates to oauth-start only after a healthy pre-flight', async () => {
+    stubStart(() => Promise.resolve(new Response(null, { status: 302 })));
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-oauth'));
+
+    await waitFor(() =>
+      expect(assignMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/auth/oauth-start?provider=google'),
+      ),
+    );
+    expect(screen.getByTestId('auth-error')).toHaveTextContent('none');
+  });
+
+  it('keeps the user in-app with an inline error when start returns 502', async () => {
+    stubStart(() => Promise.resolve(new Response('', { status: 502, statusText: 'Bad Gateway' })));
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-oauth'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent(SERVICE_UNAVAILABLE_MESSAGE),
+    );
+    expect(assignMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId('loading-state')).toHaveTextContent('ready');
+  });
+
+  it('keeps the user in-app with an inline error when the probe fetch rejects', async () => {
+    stubStart(() => Promise.reject(new TypeError('Failed to fetch')));
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-oauth'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent(SERVICE_UNAVAILABLE_MESSAGE),
+    );
+    expect(assignMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the provider-unavailable message when start is 4xx (not configured)', async () => {
+    stubStart(() => Promise.resolve(jsonResponse({ error: 'Unsupported provider' }, 400)));
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-oauth'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent(
+        OAUTH_PROVIDER_UNAVAILABLE_MESSAGE,
+      ),
+    );
+    expect(assignMock).not.toHaveBeenCalled();
   });
 });

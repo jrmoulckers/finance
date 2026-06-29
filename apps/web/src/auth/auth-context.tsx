@@ -102,7 +102,7 @@ export interface AuthActions {
   loginWithEmail: (email: string, password: string) => Promise<void>;
   /** Sign in with a registered passkey. */
   loginWithPasskey: (email?: string) => Promise<void>;
-  /** Sign in with an OAuth provider (opens popup/redirect). */
+  /** Sign in with an OAuth provider (pre-flights the start endpoint, then redirects). */
   loginWithOAuth: (provider: OAuthProvider) => Promise<void>;
   /** Register a new passkey for the current user. */
   registerNewPasskey: () => Promise<void>;
@@ -196,6 +196,16 @@ export const BETA_ACCESS_REQUIRED_MESSAGE = 'Beta access required';
  */
 export const SERVICE_UNAVAILABLE_MESSAGE =
   'The server is temporarily unavailable. Please try again in a few minutes.';
+
+/**
+ * User-facing message shown when an OAuth provider's sign-in cannot be
+ * started because the provider is not configured/enabled on the backend
+ * (e.g. the Edge Function answers 4xx for that provider). Distinct from
+ * {@link SERVICE_UNAVAILABLE_MESSAGE} so a not-yet-provisioned provider
+ * doesn't masquerade as a transient outage (#3109).
+ */
+export const OAUTH_PROVIDER_UNAVAILABLE_MESSAGE =
+  'That sign-in option is unavailable right now. Try another option or use email & password.';
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -865,17 +875,45 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
       setIsLoading(true);
 
+      const params = new URLSearchParams({
+        provider,
+        redirect_to: '/dashboard',
+      });
+      const startUrl = `/api/auth/oauth-start?${params.toString()}`;
+
       try {
-        // Drive OAuth through our Edge Function (#1886). The function
-        // generates PKCE + state in HttpOnly cookies, redirects to
-        // Supabase, and on return sets the refresh cookie at
-        // Path=/api/auth before bouncing to /dashboard.
-        const params = new URLSearchParams({
-          provider,
-          redirect_to: '/dashboard',
+        // Pre-flight the OAuth Edge Function (#1886) before leaving the SPA.
+        // A healthy start generates PKCE + state in HttpOnly cookies and
+        // replies 302 → Supabase; with `redirect: 'manual'` that surfaces as
+        // an opaque-redirect we never follow, so the probe is side-effect
+        // free aside from throwaway cookies that the real navigation rewrites.
+        // If the function is unprovisioned/down it answers 5xx (or the proxy
+        // returns 502), so we keep the user in-app with an inline error
+        // instead of hard-redirecting them onto a raw JSON/502 page (#3109).
+        const probe = await fetch(startUrl, {
+          method: 'GET',
+          credentials: 'include',
+          redirect: 'manual',
+          headers: { Accept: 'application/json' },
         });
-        window.location.href = `/api/auth/oauth-start?${params.toString()}`;
+
+        if (isOAuthStartHealthy(probe)) {
+          window.location.assign(startUrl);
+          return;
+        }
+
+        setError(
+          isServiceUnavailableStatus(probe.status)
+            ? SERVICE_UNAVAILABLE_MESSAGE
+            : OAUTH_PROVIDER_UNAVAILABLE_MESSAGE,
+        );
+        setIsLoading(false);
       } catch (err) {
+        if (isNetworkError(err)) {
+          setError(SERVICE_UNAVAILABLE_MESSAGE);
+          setIsLoading(false);
+          return;
+        }
         const message = err instanceof Error ? err.message : `OAuth login with ${provider} failed`;
         setError(message);
         setIsLoading(false);
@@ -1112,6 +1150,23 @@ export function isBetaEmailAllowed(
  */
 export function isServiceUnavailableStatus(status: number): boolean {
   return status === 0 || status >= 500;
+}
+
+/**
+ * Whether a pre-flight probe of `/api/auth/oauth-start` indicates the Edge
+ * Function is provisioned and healthy, so the SPA can safely hand the
+ * browser off to it. A healthy start replies with a 3xx redirect to the
+ * provider; under `redirect: 'manual'` that surfaces as an `opaqueredirect`
+ * (status `0`). Anything else (4xx provider/config error, 5xx outage, or a
+ * proxy 502) means we should keep the user in-app and show an inline error
+ * rather than dump them on a raw JSON/502 page (#3109).
+ */
+export function isOAuthStartHealthy(response: Response): boolean {
+  return (
+    response.type === 'opaqueredirect' ||
+    response.redirected ||
+    (response.status >= 300 && response.status < 400)
+  );
 }
 
 /**
