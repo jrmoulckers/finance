@@ -9,11 +9,13 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
+import { useAuth } from '../../auth/auth-context';
 import {
   DEFAULT_UNSAVED_CHANGES_MESSAGE,
-  EXIT_APP_CONFIRMATION_MESSAGE,
   getActiveGuardMessage,
+  resolveBackNavigation,
 } from '../../lib/navigation/guardrails';
 import type {
   NavigationGuardContextValue,
@@ -30,11 +32,17 @@ export interface NavigationGuardProps {
 }
 
 export function NavigationGuard({ children }: NavigationGuardProps) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { isAuthenticated } = useAuth();
   const guardsRef = useRef(new Map<string, NavigationGuardRegistration>());
   const [activeGuards, setActiveGuards] = useState<readonly NavigationGuardRegistration[]>([]);
   const allowExitRef = useRef(false);
   const activeGuardsRef = useRef(activeGuards);
   const confirmActiveNavigationRef = useRef<(fallbackMessage?: string) => boolean>(() => true);
+  const navigateRef = useRef(navigate);
+  const pathnameRef = useRef(pathname);
+  const isAuthenticatedRef = useRef(isAuthenticated);
 
   const syncGuards = useCallback(() => {
     setActiveGuards(Array.from(guardsRef.current.values()).filter((guard) => guard.when));
@@ -65,7 +73,10 @@ export function NavigationGuard({ children }: NavigationGuardProps) {
   useEffect(() => {
     activeGuardsRef.current = activeGuards;
     confirmActiveNavigationRef.current = confirmActiveNavigation;
-  }, [activeGuards, confirmActiveNavigation]);
+    navigateRef.current = navigate;
+    pathnameRef.current = pathname;
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [activeGuards, confirmActiveNavigation, isAuthenticated, navigate, pathname]);
 
   useEffect(() => {
     if (activeGuards.length === 0) {
@@ -107,18 +118,38 @@ export function NavigationGuard({ children }: NavigationGuardProps) {
       }
     };
 
+    // After consuming the exit anchor, push a fresh sentinel so the shell stays
+    // guarded against the next back press without leaving the user on the anchor.
+    const rearmExitSentinel = () => {
+      const baseState = (window.history.state ?? {}) as Record<string, unknown>;
+      window.history.pushState(
+        { ...baseState, [EXIT_SENTINEL_KEY]: true },
+        '',
+        window.location.href,
+      );
+    };
+
     const handlePopState = (event: PopStateEvent) => {
       const state = (event.state ?? {}) as Record<string, unknown>;
       if (!state[EXIT_ANCHOR_KEY] || allowExitRef.current) {
         return;
       }
 
-      const hasActiveGuards = activeGuardsRef.current.length > 0;
-      const confirmed = hasActiveGuards
-        ? confirmActiveNavigationRef.current()
-        : window.confirm(EXIT_APP_CONFIRMATION_MESSAGE);
+      const decision = resolveBackNavigation({
+        pathname: pathnameRef.current,
+        isAuthenticated: isAuthenticatedRef.current,
+        hasActiveGuards: activeGuardsRef.current.length > 0,
+      });
 
-      if (!confirmed) {
+      // Onboarding has no in-app back target: route into the app instead of
+      // prompting to leave, then re-arm the sentinel to stay guarded (#3106).
+      if (decision.kind === 'redirect') {
+        rearmExitSentinel();
+        navigateRef.current(decision.to);
+        return;
+      }
+
+      if (decision.kind === 'prompt' && !confirmActiveNavigationRef.current()) {
         window.history.forward();
         return;
       }

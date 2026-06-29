@@ -13,6 +13,50 @@ export const DEFAULT_UNSAVED_CHANGES_MESSAGE =
 export const EXIT_APP_CONFIRMATION_MESSAGE =
   'Leave Finance? Your navigation history will stay local to this device.';
 
+export const ONBOARDING_PATH = '/onboarding';
+export const SIGNED_OUT_HOME_PATH = '/login';
+export const SIGNED_IN_HOME_PATH = '/dashboard';
+
+/**
+ * The action a back-navigation that reaches the app-shell exit anchor should take.
+ *
+ * - `redirect`: keep the visitor in the app and route to `to` (used for onboarding).
+ * - `prompt`: confirm before leaving because unsaved edits would be lost.
+ * - `exit`: allow the browser back navigation to leave the app shell.
+ */
+export type BackNavigationDecision =
+  | { kind: 'redirect'; to: string }
+  | { kind: 'prompt' }
+  | { kind: 'exit' };
+
+/** True when `pathname` is the onboarding flow (exact match or sub-route). */
+export function isOnboardingPath(pathname: string): boolean {
+  return pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
+}
+
+/**
+ * Decide what a back press should do when it reaches the app-shell exit anchor.
+ *
+ * Onboarding has no in-app back target, so back should route into the app
+ * (`/dashboard` when signed in, `/login` otherwise) instead of prompting to
+ * leave (#3106). Everywhere else, only prompt on a genuine exit when there are
+ * unsaved changes; with nothing to lose, the back press is allowed through.
+ */
+export function resolveBackNavigation(options: {
+  pathname: string;
+  isAuthenticated: boolean;
+  hasActiveGuards: boolean;
+}): BackNavigationDecision {
+  if (isOnboardingPath(options.pathname)) {
+    return {
+      kind: 'redirect',
+      to: options.isAuthenticated ? SIGNED_IN_HOME_PATH : SIGNED_OUT_HOME_PATH,
+    };
+  }
+
+  return options.hasActiveGuards ? { kind: 'prompt' } : { kind: 'exit' };
+}
+
 export const NAVIGATION_HISTORY_LIMIT = 12;
 export const BREADCRUMB_HISTORY_LIMIT = 4;
 export const MAX_NAVIGATION_SHORTCUTS = 9;
