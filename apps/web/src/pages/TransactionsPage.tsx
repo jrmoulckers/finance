@@ -77,6 +77,7 @@ import {
 } from '../lib/accountPurpose';
 import { chooseLargeTextReflow } from '../lib/a11y/large-text-reflow';
 import { getTransactionLocalDay } from '../lib/transactions/local-timestamp';
+import { applyAdvancedFilters, sortTransactions } from '../lib/transactions/filter-sort';
 
 // Lazy-loaded so the quick-add affordance (dialog, presets, persistence helper)
 // lands in its own async chunk and stays out of the saturated ledger route chunk.
@@ -273,90 +274,6 @@ function getTodayIsoDate(): string {
 function getCurrentYearStartIsoDate(): string {
   const now = new Date();
   return `${now.getFullYear()}-01-01`;
-}
-
-// ---------------------------------------------------------------------------
-// Sort logic
-// ---------------------------------------------------------------------------
-
-function sortTransactions(
-  transactions: Transaction[],
-  sort: SortConfig,
-  categoryNames: Map<string, string>,
-): Transaction[] {
-  const sorted = [...transactions].sort((a, b) => {
-    let comparison = 0;
-
-    switch (sort.field) {
-      case 'date':
-        comparison = a.date.localeCompare(b.date);
-        break;
-      case 'amount':
-        comparison = Math.abs(a.amount.amount) - Math.abs(b.amount.amount);
-        break;
-      case 'payee':
-        comparison = (a.payee ?? '').localeCompare(b.payee ?? '');
-        break;
-      case 'category': {
-        const catA = a.categoryId ? (categoryNames.get(a.categoryId) ?? '') : '';
-        const catB = b.categoryId ? (categoryNames.get(b.categoryId) ?? '') : '';
-        comparison = catA.localeCompare(catB);
-        break;
-      }
-    }
-
-    if (sort.direction === 'desc') comparison = -comparison;
-
-    // Secondary sort: always by date descending for non-date primary sorts
-    if (comparison === 0 && sort.field !== 'date') {
-      comparison = b.date.localeCompare(a.date);
-    }
-
-    return comparison;
-  });
-
-  return sorted;
-}
-
-// ---------------------------------------------------------------------------
-// Local filtering (advanced filters applied on top of hook results)
-// ---------------------------------------------------------------------------
-
-function applyAdvancedFilters(
-  transactions: Transaction[],
-  filters: AdvancedFilters,
-): Transaction[] {
-  let result = transactions;
-
-  if (filters.categoryIds.length > 0) {
-    result = result.filter(
-      (t) => t.categoryId !== null && filters.categoryIds.includes(t.categoryId),
-    );
-  }
-
-  if (filters.accountIds.length > 0) {
-    result = result.filter((t) => filters.accountIds.includes(t.accountId));
-  }
-
-  if (filters.amountMin) {
-    const minCents = Math.round(parseFloat(filters.amountMin) * 100);
-    result = result.filter((t) => Math.abs(t.amount.amount) >= minCents);
-  }
-
-  if (filters.amountMax) {
-    const maxCents = Math.round(parseFloat(filters.amountMax) * 100);
-    result = result.filter((t) => Math.abs(t.amount.amount) <= maxCents);
-  }
-
-  if (filters.types.length > 0) {
-    result = result.filter((t) => filters.types.includes(t.type));
-  }
-
-  if (filters.statuses.length > 0) {
-    result = result.filter((t) => filters.statuses.includes(t.status));
-  }
-
-  return result;
 }
 
 // ---------------------------------------------------------------------------
