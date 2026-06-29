@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { TimePeriod, ViewType } from '../components/charts';
 import { AccountPurposeFilterControl } from '../components/accounts';
+import { RecentTransactionsCard } from '../components/transactions';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
@@ -144,14 +145,6 @@ function getPreviousMonthBounds(): { startDate: string; endDate: string } {
     startDate: formatLocalDate(startDate),
     endDate: formatLocalDate(endDate),
   };
-}
-
-function getTransactionDisplayAmount(transaction: Transaction): number {
-  if (transaction.type === 'EXPENSE') {
-    return -Math.abs(transaction.amount.amount);
-  }
-
-  return transaction.amount.amount;
 }
 
 function buildTrendData(transactions: Transaction[], days: number) {
@@ -557,11 +550,6 @@ export const DashboardPage: React.FC = () => {
   const chartPrivacyRollup = useMemo(
     () => rollUpProtectedTransactions(filteredChartTransactions, categories),
     [filteredChartTransactions, categories],
-  );
-
-  const recentPrivacyRollup = useMemo(
-    () => rollUpProtectedTransactions(filteredRecentTransactions, categories),
-    [filteredRecentTransactions, categories],
   );
 
   const { trendData, barData, categoryData, hasChartData } = useMemo(() => {
@@ -985,70 +973,11 @@ export const DashboardPage: React.FC = () => {
             <DashboardMoodJournalSection categories={categories} currency={chartCurrency} />
           </Suspense>
           {!isDashboardEmpty && visibleWidgetIds.has('recent-transactions') ? (
-            <section className="page-section" aria-label="Recent transactions">
-              <h3 className="page-section__title">Recent Transactions</h3>
-              <div className="card">
-                {(recentPrivacyRollup?.visibleTransactions.length ?? 0) === 0 &&
-                recentPrivacyRollup?.protectedRollup === null ? (
-                  <EmptyState
-                    title="No recent transactions"
-                    description="Transactions you add will appear here."
-                  />
-                ) : (
-                  <ul className="list-group recent-transactions__list" role="list">
-                    {recentPrivacyRollup?.protectedRollup !== null &&
-                      recentPrivacyRollup?.protectedRollup !== undefined && (
-                        <li className="list-item" role="listitem">
-                          <div className="list-item__content">
-                            <p className="list-item__primary">Protected</p>
-                            <p className="list-item__secondary">
-                              {recentPrivacyRollup.protectedRollup.count} protected transaction
-                              {recentPrivacyRollup.protectedRollup.count === 1 ? '' : 's'} hidden
-                            </p>
-                          </div>
-                          <div className="list-item__trailing">
-                            <CurrencyDisplay
-                              amount={recentPrivacyRollup.protectedRollup.totalCents}
-                              currency={recentPrivacyRollup.protectedRollup.currency}
-                              context="protected transactions total"
-                            />
-                          </div>
-                        </li>
-                      )}
-                    {recentPrivacyRollup?.visibleTransactions.map((transaction) => (
-                      <li key={transaction.id} className="list-item" role="listitem">
-                        <Link
-                          to={`/transactions/${transaction.id}`}
-                          className="list-item__link"
-                          aria-label={`View transaction: ${transaction.payee ?? transaction.note ?? 'Transaction'}`}
-                        >
-                          <div className="list-item__content">
-                            <p className="list-item__primary">
-                              {transaction.payee ??
-                                transaction.note ??
-                                (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')}
-                            </p>
-                            <p className="list-item__secondary">
-                              {transaction.categoryId !== null
-                                ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
-                                : 'Uncategorized'}
-                            </p>
-                          </div>
-                          <div className="list-item__trailing">
-                            <CurrencyDisplay
-                              amount={getTransactionDisplayAmount(transaction)}
-                              currency={transaction.currency.code}
-                              colorize
-                              showSign
-                            />
-                          </div>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
+            <RecentTransactionsCard
+              categories={categories}
+              accounts={accounts}
+              accountPurposeFilter={selectedPurposeFilter}
+            />
           ) : null}
         </>
       )}

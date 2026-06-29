@@ -1,0 +1,84 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * RecentTransactionsCard — condensed, scrollable dashboard card.
+ *
+ * Layout/visual only — no business logic. All values come from design tokens.
+ * The card body reuses the global `.card`, `.list-group`, `.list-item`, and
+ * `.search-bar` primitives; these rules add the header/"View all" row, the
+ * controls divider, and the scrollable list window.
+ *
+ * References: issue #3155
+ */
+
+.recent-transactions-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.recent-transactions-card__header .page-section__title {
+  margin: 0;
+}
+
+.recent-transactions-card__view-all {
+  flex-shrink: 0;
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-interactive-default);
+  text-decoration: none;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.recent-transactions-card__view-all:hover {
+  color: var(--semantic-interactive-hover);
+  text-decoration: underline;
+}
+
+.recent-transactions-card__view-all:focus-visible {
+  outline: 2px solid var(--semantic-focus-ring, #3b82f6);
+  outline-offset: 2px;
+}
+
+.recent-transactions-card__controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding-bottom: var(--spacing-3);
+  margin-bottom: var(--spacing-2);
+  border-bottom: 1px solid var(--semantic-border-default);
+}
+
+.recent-transactions-card__controls .search-bar {
+  margin-bottom: 0;
+}
+
+.recent-transactions-card__controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.recent-transactions-card__count {
+  margin: 0 0 var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* Scrollable window: keeps the card condensed while many rows remain reachable
+ * via keyboard (each row is a focusable link) and pointer/touch scrolling. */
+.recent-transactions-card__list {
+  max-height: 22rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (prefers-contrast: more) {
+  .recent-transactions-card__controls {
+    border-bottom-width: 2px;
+  }
+}
