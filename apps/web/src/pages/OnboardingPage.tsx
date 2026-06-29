@@ -1714,15 +1714,13 @@ const OnboardingPage: React.FC = () => {
 
           {setupChecklistHidden ? (
             <section className="onboarding__checklist" aria-label="Setup checklist hidden">
-              <p className="onboarding__path-description">
-                Fully set-up checklist hidden. You can restore it from help or settings.
-              </p>
+              <p className="onboarding__path-description">Checklist hidden.</p>
               <button
                 type="button"
                 className="onboarding__path-btn onboarding__path-btn--secondary"
                 onClick={() => handleChecklistHiddenChange(false)}
               >
-                Restore setup checklist
+                Show checklist
               </button>
             </section>
           ) : (
