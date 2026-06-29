@@ -718,3 +718,25 @@
     border-width: 2px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Spending-by-category bar chart card (#3152)
+ *
+ * In the dashboard charts row, grid cells stretch to the tallest sibling — the
+ * taller "Spending Trend" card (period selector, view toggle, and annotations
+ * sit above its plot). Lay the bar chart figure out as a flex column and push
+ * its plot to the bottom so its baseline lines up with the trend card's chart
+ * instead of floating in the vertical centre. When the cards stack at narrow
+ * widths the card is not stretched, so `margin-top: auto` is a no-op and the
+ * plot stays directly under the title.
+ * ------------------------------------------------------------------------- */
+
+.spending-bar-chart {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.spending-bar-chart__plot {
+  margin-top: auto;
+}
