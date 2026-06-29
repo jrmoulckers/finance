@@ -196,6 +196,20 @@ describe('AppLayout', () => {
     expect(within(header).getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   });
 
+  it('renders a discoverable, labeled hide-amounts toggle in the header', () => {
+    renderLayout();
+
+    const header = screen.getByRole('banner', { name: 'App header' });
+    const toggle = within(header).getByRole('button', { name: 'Hide amounts' });
+
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).toHaveAttribute('title', 'Hide amounts');
+    // The abstract circle glyph was replaced with a recognizable eye icon.
+    expect(toggle.querySelector('svg')).not.toBeNull();
+    expect(toggle.textContent).not.toContain('○');
+  });
+
   it('navigates to /settings when the header Settings button is clicked', () => {
     const onNavigate = vi.fn();
     renderLayout({ onNavigate });
