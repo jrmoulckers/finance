@@ -273,6 +273,14 @@ describe('OnboardingPage', () => {
     expect(shouldAutoLaunchOnboarding('/legal/ccpa', false)).toBe(false);
   });
 
+  it('lets a first-run visitor reach the bare legal aliases linked from the consent modal (#3119)', () => {
+    // The GDPR consent modal links to /privacy directly; that alias and its
+    // siblings must be exempt so the privacy notice is reachable pre-onboarding.
+    expect(shouldAutoLaunchOnboarding('/privacy', false)).toBe(false);
+    expect(shouldAutoLaunchOnboarding('/terms', false)).toBe(false);
+    expect(shouldAutoLaunchOnboarding('/ccpa', false)).toBe(false);
+  });
+
   it('stores Huge text preferences from the comfort step', () => {
     renderWithRouter(<OnboardingPage />);
 
