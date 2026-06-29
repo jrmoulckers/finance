@@ -180,45 +180,83 @@
   color: var(--semantic-status-negative);
 }
 
-.mood-calendar__legend {
-  display: flex;
-  gap: var(--spacing-1);
-}
-
-.mood-calendar__legend-chip,
 .mood-calendar__cell {
-  width: 2rem;
-  height: 2rem;
+  min-height: 2.75rem;
+  width: 100%;
+  min-width: 0;
+  padding: var(--spacing-1);
   border-radius: var(--border-radius-sm);
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px solid transparent;
+  gap: 2px;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--semantic-text-primary) 12%, transparent);
+  /* Fixed dark ink keeps the reason label legible on the light tints in both themes. */
+  color: #1f2937;
 }
 
-.mood-calendar__legend-chip--1,
-.mood-calendar__cell--1 {
+.mood-calendar__cell-emoji,
+.mood-calendar__cell-empty-mark {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.mood-calendar__cell-reason {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.625rem;
+  line-height: 1.2;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Reason tints: one hue per "what's behind it?" emotion. Each pairs with a
+   labeled legend swatch and visible text, so color is never the only signal. */
+.mood-reason--stressed {
   background: #fecaca;
 }
 
-.mood-calendar__legend-chip--2,
-.mood-calendar__cell--2 {
+.mood-reason--anxious {
   background: #fed7aa;
 }
 
-.mood-calendar__legend-chip--3,
-.mood-calendar__cell--3 {
-  background: #fde68a;
+.mood-reason--frustrated {
+  background: #fda4af;
 }
 
-.mood-calendar__legend-chip--4,
-.mood-calendar__cell--4 {
+.mood-reason--overwhelmed {
+  background: #ddd6fe;
+}
+
+.mood-reason--bored {
+  background: #e5e7eb;
+}
+
+.mood-reason--sad {
+  background: #bfdbfe;
+}
+
+.mood-reason--content {
+  background: #99f6e4;
+}
+
+.mood-reason--happy {
   background: #bbf7d0;
 }
 
-.mood-calendar__legend-chip--5,
-.mood-calendar__cell--5 {
-  background: #86efac;
+.mood-reason--excited {
+  background: #fde68a;
+}
+
+.mood-reason--celebratory {
+  background: #fbcfe8;
+}
+
+.mood-reason--unspecified {
+  background: #f1f5f9;
 }
 
 .mood-calendar__cell--empty {
@@ -229,6 +267,52 @@
 
 .mood-calendar__cell--today {
   border-color: var(--semantic-interactive-default);
+  box-shadow: 0 0 0 1px var(--semantic-interactive-default);
+}
+
+.mood-calendar__key {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.mood-calendar__key-label {
+  margin: 0;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+}
+
+.mood-calendar__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2) var(--spacing-3);
+}
+
+.mood-calendar__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.mood-calendar__legend-swatch {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--semantic-text-primary) 22%, transparent);
+}
+
+@media (prefers-contrast: more) {
+  .mood-calendar__cell,
+  .mood-calendar__legend-swatch {
+    border-width: 2px;
+  }
 }
 
 .mood-calendar__grid {
