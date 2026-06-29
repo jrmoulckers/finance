@@ -489,9 +489,9 @@ describe('OnboardingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /hide checklist/i }));
 
     expect(localStorage.getItem('finance-onboarding-checklist-hidden')).toBe('true');
-    expect(screen.getByText(/fully set-up checklist hidden/i)).toBeInTheDocument();
+    expect(screen.getByText(/checklist hidden/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /restore setup checklist/i }));
+    fireEvent.click(screen.getByRole('button', { name: /show checklist/i }));
     fireEvent.click(screen.getByRole('button', { name: /dismiss all coach marks/i }));
 
     expect(localStorage.getItem('finance-onboarding-coach-marks-dismissed')).toBe('true');
