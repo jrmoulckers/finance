@@ -4,13 +4,7 @@ import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { TimePeriod, ViewType } from '../components/charts';
 import { AccountPurposeFilterControl } from '../components/accounts';
-import {
-  CurrencyDisplay,
-  EmptyState,
-  ErrorBanner,
-  LoadingSpinner,
-  SyncIndicator,
-} from '../components/common';
+import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
   useAccounts,
@@ -776,7 +770,6 @@ export const DashboardPage: React.FC = () => {
             <span aria-hidden="true">{rmdDueCount}</span>
           </Link>
         )}
-        <SyncIndicator />
       </div>
       <button
         type="button"
