@@ -670,7 +670,7 @@ describe('DashboardPage', () => {
     expect(within(card).getByText('98.5%')).toBeInTheDocument();
     // Prior month mirrors current month in the mock → flat trend.
     expect(within(card).getByText('Flat vs last month')).toBeInTheDocument();
-    expect(within(card).getByText('Strong — at or above the 20% target')).toBeInTheDocument();
+    expect(within(card).getByText('Strong, at or above the 20% target')).toBeInTheDocument();
   });
 
   it('displays recent transactions section', () => {

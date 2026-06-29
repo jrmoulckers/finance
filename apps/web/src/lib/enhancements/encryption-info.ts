@@ -61,7 +61,7 @@ const DEFAULT_COMPLIANCE: readonly ComplianceChecklistItem[] = [
   { id: 'enc-at-rest', label: 'Data encrypted at rest with AES-256-GCM', satisfied: true },
   { id: 'enc-in-transit', label: 'TLS 1.3 enforced for all API traffic', satisfied: true },
   { id: 'key-derivation', label: 'Key derivation uses PBKDF2 ≥ 600K iterations', satisfied: true },
-  { id: 'no-inline-scripts', label: 'CSP strict — no inline scripts or eval', satisfied: true },
+  { id: 'no-inline-scripts', label: 'CSP strict, no inline scripts or eval', satisfied: true },
   { id: 'iv-unique', label: 'Unique IV per encryption operation', satisfied: true },
   { id: 'cert-pin', label: 'Certificate pinning for primary API', satisfied: true },
   { id: 'hsts', label: 'HSTS with preload enabled', satisfied: true },

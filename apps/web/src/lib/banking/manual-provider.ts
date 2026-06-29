@@ -348,14 +348,14 @@ export class ManualImportProvider implements BankConnectionProvider {
 
   /** Manual connections are always "active" once imported. */
   async getConnectionStatus(_connectionId: string): Promise<ConnectionStatus> {
-    return { status: 'active', message: 'Manual import — always active.' };
+    return { status: 'active', message: 'Manual import is always active.' };
   }
 
   /** Manual provider is always healthy (no external dependency). */
   async getProviderHealth(): Promise<ProviderHealth> {
     return {
       isHealthy: true,
-      message: 'Manual import provider — no external dependency.',
+      message: 'Manual import provider with no external dependency.',
       checkedAt: new Date().toISOString(),
     };
   }

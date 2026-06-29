@@ -194,7 +194,7 @@ const FINANCIAL_LESSONS: Lesson[] = [
       {
         label: 'Concert ticket',
         correct: true,
-        feedback: 'Right — optional fun spending is easier to adjust first.',
+        feedback: 'Right. Optional fun spending is easier to adjust first.',
       },
     ],
   },
@@ -207,7 +207,7 @@ const FINANCIAL_LESSONS: Lesson[] = [
       {
         label: 'Keep a small buffer',
         correct: true,
-        feedback: 'Right — a buffer helps bridge timing gaps.',
+        feedback: 'Right. A buffer helps bridge timing gaps.',
       },
       {
         label: 'Delete the bill',
@@ -224,7 +224,7 @@ const FINANCIAL_LESSONS: Lesson[] = [
       {
         label: 'Monthly phone bill',
         correct: true,
-        feedback: 'Right — repeated bills belong in the recurring plan.',
+        feedback: 'Right. Repeated bills belong in the recurring plan.',
       },
       {
         label: 'One-time gift',
@@ -239,7 +239,7 @@ const FINANCIAL_LESSONS: Lesson[] = [
 const GLOSSARY_TERMS: Record<GlossaryTermId, { title: string; body: string }> = {
   cashFlow: {
     title: 'Cash flow',
-    body: 'Cash flow is the timing of money coming in and going out. It is not advice — it simply helps you spot tight weeks before they happen.',
+    body: 'Cash flow is the timing of money coming in and going out. It is not advice. It simply helps you spot tight weeks before they happen.',
   },
   recurringExpense: {
     title: 'Recurring expense',
@@ -280,7 +280,7 @@ const TAX_ID_STATUS_OPTIONS: Array<NewcomerChoiceOption<TaxIdStatus>> = [
   {
     value: 'unspecified',
     label: 'Prefer not to say',
-    description: 'Skip this — nothing here is required.',
+    description: 'Skip this. Nothing here is required.',
   },
 ];
 
@@ -313,7 +313,7 @@ const INCOME_TYPE_OPTIONS: Array<NewcomerChoiceOption<IncomeType>> = [
   {
     value: 'unspecified',
     label: 'Prefer not to say',
-    description: 'Skip this — it stays optional.',
+    description: 'Skip this. It stays optional.',
   },
 ];
 
@@ -1182,7 +1182,7 @@ const OnboardingPage: React.FC = () => {
               className="onboarding__path-btn onboarding__path-btn--primary"
               onClick={handlePrivacyAcceptEssential}
             >
-              Essential Only — Maximum Privacy
+              Essential Only: Maximum Privacy
             </button>
             <p className="onboarding__privacy-note">
               No analytics, no error reporting, no sync. Your data never leaves this device.
@@ -1310,7 +1310,7 @@ const OnboardingPage: React.FC = () => {
               <div>
                 <h2 className="onboarding__path-title">New to working or taxes in the US?</h2>
                 <p className="onboarding__path-description">
-                  Optional and private. We never ask for any real ID numbers — only the category you
+                  Optional and private. We never ask for any real ID numbers, only the category you
                   pick. These choices stay in this browser, are never shared, and simply tailor the
                   budgeting tips and explainers below.
                 </p>
@@ -1711,34 +1711,34 @@ const OnboardingPage: React.FC = () => {
           <div className="onboarding__complete-details">
             {isAuthenticated ? (
               <p className="onboarding__complete-item">
-                <AppIcon name="cloud" /> <strong>Synced to your account</strong> — your data is
+                <AppIcon name="cloud" /> <strong>Synced to your account</strong>: your data is
                 backed up and available on every device
               </p>
             ) : (
               <p className="onboarding__complete-item">
-                <AppIcon name="lock" /> <strong>Local-only mode</strong> — no data leaves your
+                <AppIcon name="lock" /> <strong>Local-only mode</strong>: no data leaves your
                 browser
               </p>
             )}
             {starterBudgetCreated && (
               <p className="onboarding__complete-item">
-                <AppIcon name="wallet" /> <strong>Starter budget added</strong> — realistic student
+                <AppIcon name="wallet" /> <strong>Starter budget added</strong>: realistic student
                 categories are ready to edit
               </p>
             )}
             <p className="onboarding__complete-item">
-              <AppIcon name="database" /> <strong>SQLite storage</strong> — fast, reliable,
+              <AppIcon name="database" /> <strong>SQLite storage</strong>: fast, reliable,
               offline-first
             </p>
             {isAuthenticated ? (
               <p className="onboarding__complete-item">
-                <AppIcon name="check" /> <strong>Account active</strong> — sign in anywhere to pick
+                <AppIcon name="check" /> <strong>Account active</strong>: sign in anywhere to pick
                 up where you left off
               </p>
             ) : (
               <p className="onboarding__complete-item">
-                <AppIcon name="refresh" /> <strong>Upgrade anytime</strong> — create an account
-                later to enable sync
+                <AppIcon name="refresh" /> <strong>Upgrade anytime</strong>: create an account later
+                to enable sync
               </p>
             )}
           </div>

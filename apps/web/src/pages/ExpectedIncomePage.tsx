@@ -174,7 +174,7 @@ export function ExpectedIncomePage() {
         </h1>
         <p className="expected-income__description">
           Track money you are <em>expecting</em> separately from money that has actually arrived.
-          Only cleared payments count as spendable now — expected money is shown on its own so you
+          Only cleared payments count as spendable now. Expected money is shown on its own so you
           can plan bills without pretending late money has landed.
         </p>
       </header>
@@ -202,7 +202,7 @@ export function ExpectedIncomePage() {
               type="text"
               value={label}
               onChange={(event) => setLabel(event.target.value)}
-              placeholder="e.g. Child support — June"
+              placeholder="e.g. Child support, June"
               autoComplete="off"
               required
             />
@@ -302,7 +302,7 @@ export function ExpectedIncomePage() {
             <h3 className="expected-income__card-title">Spendable now</h3>
             <p className="expected-income__card-value">{formatCurrency(summary.realizedCents)}</p>
             <p className="expected-income__card-note">
-              Cleared payments only — money you actually have.
+              Cleared payments only. Money you actually have.
             </p>
           </div>
 

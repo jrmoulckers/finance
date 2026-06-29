@@ -582,14 +582,14 @@ describe('SettingsPage', () => {
 
       renderSettingsAt('/settings/sync');
 
-      expect(screen.getByText('Offline — changes saved locally')).toBeInTheDocument();
+      expect(screen.getByText('Offline. Changes saved locally')).toBeInTheDocument();
     });
 
     it('renders future features as disabled buttons with accessible labels', () => {
       renderSettingsAt('/settings/sync');
 
       const biometricLockButton = screen.getByRole('button', {
-        name: 'Biometric lock — available in a future update',
+        name: 'Biometric lock, available in a future update',
       });
 
       expect(biometricLockButton).toBeDisabled();

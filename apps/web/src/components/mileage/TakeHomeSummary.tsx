@@ -46,7 +46,7 @@ export function TakeHomeSummary({ result, periods }: TakeHomeSummaryProps) {
           </h3>
           <p className="mileage-card__description">
             Gross payouts minus operating costs and estimated self-employment plus income taxes.
-            Estimate only — not tax advice.
+            Estimate only. Not tax advice.
           </p>
         </div>
       </div>

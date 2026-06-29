@@ -270,7 +270,7 @@ export function validateTripEntry(trip: TripEntry): string[] {
   }
 
   if (trip.miles > 10_000) {
-    errors.push('Miles exceeds 10,000 for a single trip — please verify.');
+    errors.push('Miles exceeds 10,000 for a single trip. Please verify.');
   }
 
   if (!trip.date || !/^\d{4}-\d{2}-\d{2}$/.test(trip.date)) {

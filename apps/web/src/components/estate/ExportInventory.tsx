@@ -74,7 +74,7 @@ function buildPrintableHtml(
           ? `<h4>Beneficiaries</h4><ul>${item.beneficiaries
               .map(
                 (beneficiary) =>
-                  `<li>${escapeHtml(beneficiary.name || 'Unnamed beneficiary')} — ${escapeHtml(beneficiary.relationship || 'Relationship not recorded')}${beneficiary.sharePercent ? ` (${escapeHtml(beneficiary.sharePercent)}%)` : ''}${beneficiary.notes ? ` — ${escapeHtml(beneficiary.notes)}` : ''}</li>`,
+                  `<li>${escapeHtml(beneficiary.name || 'Unnamed beneficiary')}: ${escapeHtml(beneficiary.relationship || 'Relationship not recorded')}${beneficiary.sharePercent ? ` (${escapeHtml(beneficiary.sharePercent)}%)` : ''}${beneficiary.notes ? `. ${escapeHtml(beneficiary.notes)}` : ''}</li>`,
               )
               .join('')}</ul>`
           : '';

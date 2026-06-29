@@ -394,7 +394,7 @@ export function useCryptoConnections(
         state: quoteStateToSourceState(providerState),
         message:
           providerState === 'stale'
-            ? 'Manual prices may be out of date — refresh to re-capture.'
+            ? 'Manual prices may be out of date. Refresh to re-capture.'
             : undefined,
       });
     }

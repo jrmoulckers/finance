@@ -55,7 +55,7 @@ export interface AllocationPreset {
 export const ALLOCATION_PRESETS: readonly AllocationPreset[] = [
   {
     name: 'Aggressive Growth',
-    description: '90% stocks, 10% bonds — suited for long time horizons.',
+    description: '90% stocks, 10% bonds. Suited for long time horizons.',
     targets: [
       { assetClass: 'US_STOCKS', targetPercent: 60 },
       { assetClass: 'INTERNATIONAL_STOCKS', targetPercent: 30 },
@@ -74,7 +74,7 @@ export const ALLOCATION_PRESETS: readonly AllocationPreset[] = [
   },
   {
     name: 'Conservative',
-    description: '30% stocks, 50% bonds, 20% cash — lower volatility.',
+    description: '30% stocks, 50% bonds, 20% cash. Lower volatility.',
     targets: [
       { assetClass: 'US_STOCKS', targetPercent: 20 },
       { assetClass: 'INTERNATIONAL_STOCKS', targetPercent: 10 },

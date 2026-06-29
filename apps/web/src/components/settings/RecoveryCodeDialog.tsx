@@ -114,7 +114,7 @@ export const RecoveryCodeDialog: React.FC<RecoveryCodeDialogProps> = ({ code, on
           {copyState === 'copied'
             ? 'Recovery code copied to the clipboard.'
             : copyState === 'failed'
-              ? 'Could not copy automatically — select the code above and copy it manually.'
+              ? 'Could not copy automatically. Select the code above and copy it manually.'
               : ''}
         </p>
 

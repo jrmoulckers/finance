@@ -180,12 +180,12 @@ function getAccountPreference(
     if (treatments.includes('TAX_FREE')) {
       return {
         preferredAccountType: 'TAX_FREE',
-        reason: 'Sell in tax-free account — no tax impact.',
+        reason: 'Sell in tax-free account. No tax impact.',
       };
     }
     return {
       preferredAccountType: 'TAXABLE',
-      reason: 'Only taxable accounts available — consider tax-loss harvesting.',
+      reason: 'Only taxable accounts available. Consider tax-loss harvesting.',
     };
   }
 

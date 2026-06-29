@@ -553,13 +553,7 @@ function renderReadme(manifest: DataAccessManifest, locale: string): string {
     manifest.contents
       .map(
         (entry) =>
-          '- ' +
-          entry.path +
-          ' — ' +
-          entry.description +
-          ' (' +
-          entry.record_count +
-          ' record(s)).',
+          '- ' + entry.path + ': ' + entry.description + ' (' + entry.record_count + ' record(s)).',
       )
       .join('\n') +
     '\n'

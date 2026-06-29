@@ -194,7 +194,7 @@ function PayPeriodCard({
   const risk = classifyPeriodRisk(period, incomeProvided);
   const oneTimeBills = oneTimeOccurrences(period);
   const accessibleStatus =
-    risk === 'unknown' ? 'pay period' : `pay period — ${PERIOD_RISK_LABELS[risk]}`;
+    risk === 'unknown' ? 'pay period' : `pay period: ${PERIOD_RISK_LABELS[risk]}`;
   return (
     <article
       className="card"
@@ -342,9 +342,9 @@ export const BillCalendarView: React.FC<BillCalendarViewProps> = ({ bills }) => 
             Your payday schedule
           </legend>
           <p style={{ ...captionStyle, marginTop: 'var(--spacing-1)' }}>
-            Tell us your pay cycle to see which bills fall in each pay period. One-time expenses —
-            school fees, birthdays, sports signups — appear here too when you add them as a One-Time
-            bill.
+            Tell us your pay cycle to see which bills fall in each pay period. One-time expenses
+            such as school fees, birthdays, and sports signups appear here too when you add them as
+            a One-Time bill.
           </p>
 
           <div
@@ -442,7 +442,10 @@ export const BillCalendarView: React.FC<BillCalendarViewProps> = ({ bills }) => 
               {riskSummary.firstShortfallPaydayDate !== null && (
                 <>
                   {' '}
-                  — first shortfall on the {formatDate(riskSummary.firstShortfallPaydayDate)} payday
+                  with the first shortfall on the {formatDate(
+                    riskSummary.firstShortfallPaydayDate,
+                  )}{' '}
+                  payday
                 </>
               )}
             </>

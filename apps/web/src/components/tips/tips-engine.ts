@@ -163,7 +163,7 @@ function generateGoalTips(input: TipGeneratorInput): FinancialTip[] {
       id: 'goal-congratulations',
       title: `Congratulations on reaching ${input.goalsReached} goal${input.goalsReached > 1 ? 's' : ''}!`,
       description:
-        'You hit your savings target — consider setting a new, more ambitious goal to keep the momentum going.',
+        'You hit your savings target. Consider setting a new, more ambitious goal to keep the momentum going.',
       context: 'goals',
       severity: 'success',
       score: 75,

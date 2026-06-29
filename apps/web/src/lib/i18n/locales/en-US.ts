@@ -138,7 +138,7 @@ export const EN_US_CATALOG: MessageCatalog = {
   // ── Remittances (issue #2170) ────────────────────────────────────────────
   'remittance.page.title': 'Remittances',
   'remittance.page.subtitle':
-    'Track money you send abroad — the fees you pay, the exchange rate you get, and how much your recipient actually receives.',
+    'Track money you send abroad, including the fees you pay, the exchange rate you get, and how much your recipient actually receives.',
   'remittance.empty.title': 'No remittances yet',
   'remittance.empty.body':
     'Record a transfer to see the fees lost, the exchange rate you received, and how much arrived.',

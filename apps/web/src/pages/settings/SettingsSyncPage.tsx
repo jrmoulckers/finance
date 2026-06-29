@@ -90,7 +90,7 @@ export const SettingsSyncPage: React.FC = () => {
                   className={`settings-item__status-dot ${isOffline ? 'settings-item__status-dot--offline' : 'settings-item__status-dot--online'}`}
                 />
                 <span className="settings-item__value">
-                  {isOffline ? 'Offline — changes saved locally' : 'All synced'}
+                  {isOffline ? 'Offline. Changes saved locally' : 'All synced'}
                 </span>
               </span>
             </div>
@@ -107,7 +107,7 @@ export const SettingsSyncPage: React.FC = () => {
               className="settings-item settings-item--button"
               disabled
               aria-disabled="true"
-              aria-label="Biometric lock — available in a future update"
+              aria-label="Biometric lock, available in a future update"
             >
               <span className="settings-item__label">Biometric Lock</span>
               <span className="settings-item__value settings-item__value--muted">Coming soon</span>
@@ -122,9 +122,7 @@ export const SettingsSyncPage: React.FC = () => {
                   void handlePasskeyRegistration();
                 }}
                 disabled={!isAuthenticated || isPasskeyLoading}
-                aria-label={
-                  user?.hasPasskey ? 'Passkeys — registered' : 'Passkeys — set up a passkey'
-                }
+                aria-label={user?.hasPasskey ? 'Passkeys are registered' : 'Set up a passkey'}
               >
                 <span className="settings-item__label">Passkeys</span>
                 <span className="settings-item__value">
@@ -153,7 +151,7 @@ export const SettingsSyncPage: React.FC = () => {
                 <option value="password">Password (default)</option>
                 <option value="passkey" disabled={!webAuthnSupported}>
                   Passkey (biometrics)
-                  {!webAuthnSupported ? ' — not supported in this browser' : ''}
+                  {!webAuthnSupported ? ', not supported in this browser' : ''}
                 </option>
               </select>
               <p id="settings-preferred-auth-method-help" className="settings-item__help">

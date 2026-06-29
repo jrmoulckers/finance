@@ -140,7 +140,7 @@ export function goalNearWinCue(milestone: GoalMilestone): NearWinCue | null {
     id: `goal-${milestone.goalId}`,
     kind: 'goal',
     title: milestone.goalName,
-    message: `You're ${gap}% away — one more contribution to hit ${milestone.nextMilestone}% on ${milestone.goalName}.`,
+    message: `You're ${gap}% away. One more contribution to hit ${milestone.nextMilestone}% on ${milestone.goalName}.`,
     progress: milestone.progress,
     icon: GOAL_ICON,
   };

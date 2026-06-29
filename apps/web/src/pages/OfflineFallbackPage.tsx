@@ -84,7 +84,7 @@ export const OfflineFallbackPage: React.FC<OfflineFallbackPageProps> = ({ pendin
         <h1 className="offline-fallback__title">You&apos;re Offline</h1>
 
         <p className="offline-fallback__description">
-          This page isn&apos;t available offline yet. Your data is safe — any changes you&apos;ve
+          This page isn&apos;t available offline yet. Your data is safe. Any changes you&apos;ve
           made are saved locally and will sync when you reconnect.
         </p>
 

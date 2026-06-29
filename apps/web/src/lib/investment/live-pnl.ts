@@ -190,7 +190,7 @@ function describeStaleness(
     case 'delayed':
       return `${counts.delayedCount} quote(s) are delayed but still usable.`;
     case 'stale':
-      return `${counts.staleCount} quote(s) exceed the freshness policy — values may be out of date.`;
+      return `${counts.staleCount} quote(s) exceed the freshness policy. Values may be out of date.`;
     case 'critical':
       return `${counts.missingCount} missing and ${counts.failedCount} failed quote(s); some positions use the last known or previous-close price.`;
     case 'empty':

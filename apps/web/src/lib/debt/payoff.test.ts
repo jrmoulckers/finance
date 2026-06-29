@@ -182,7 +182,7 @@ describe('calculatePayoffProgress', () => {
     expect(progress.paidPrincipalCents).toBe(620_000);
     expect(progress.percentPaid).toBe(62);
     expect(progress.isPaidOff).toBe(false);
-    expect(progress.textAlternative).toBe('62% paid — $6,200 of $10,000');
+    expect(progress.textAlternative).toBe('62% paid, $6,200 of $10,000');
   });
 
   it('reports 100% paid when the balance is cleared', () => {

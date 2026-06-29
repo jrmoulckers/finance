@@ -118,7 +118,7 @@ export function validateImportRows(
         txType = upper as TransactionType;
       } else {
         txType = amountCents < 0 ? 'EXPENSE' : 'INCOME';
-        warnings.push(`Unknown type "${row.type}" — defaulting to ${txType}`);
+        warnings.push(`Unknown type "${row.type}", defaulting to ${txType}`);
       }
     } else {
       txType = amountCents < 0 ? 'EXPENSE' : 'INCOME';
@@ -133,11 +133,11 @@ export function validateImportRows(
 
     if (!description && payee) {
       description = payee;
-      warnings.push('Description was empty — used payee instead');
+      warnings.push('Description was empty, used payee instead');
     }
     if (!description) {
       description = 'Imported transaction';
-      warnings.push('Description was empty — set to "Imported transaction"');
+      warnings.push('Description was empty, set to "Imported transaction"');
     }
 
     // --- Tags --------------------------------------------------------------

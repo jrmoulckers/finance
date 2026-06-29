@@ -120,7 +120,7 @@ export function TripEntry({ trip = null, onSubmit, onCancel }: TripEntryProps) {
         <div>
           <h3 className="mileage-card__title">{isEditing ? 'Edit trip' : 'Log a trip'}</h3>
           <p className="mileage-card__description">
-            Manual mileage tracking only — no GPS required.
+            Manual mileage tracking only. No GPS required.
           </p>
         </div>
       </div>

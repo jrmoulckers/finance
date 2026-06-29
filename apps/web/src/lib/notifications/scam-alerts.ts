@@ -244,11 +244,7 @@ export function detectScamAlerts(
         id: `scam-new-merchant-${transaction.id}`,
         rule: 'new-merchant',
         title: 'New merchant to review',
-        message: buildMerchantMessage(
-          amount,
-          merchant.label,
-          '— a merchant you have not used before',
-        ),
+        message: buildMerchantMessage(amount, merchant.label, 'which is new to you'),
         nextStep: bankNextStep(),
         severity: 'info',
         transactionIds: [transaction.id],
@@ -271,7 +267,7 @@ export function detectScamAlerts(
         message: buildMerchantMessage(
           amount,
           merchant.label,
-          '— a large round amount to a merchant you have not used before',
+          'which is new to you, and the amount is unusually large and round',
         ),
         nextStep: bankNextStep(),
         severity: 'warning',

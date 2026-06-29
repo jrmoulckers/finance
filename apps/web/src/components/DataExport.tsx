@@ -632,7 +632,7 @@ export const DataExport: React.FC<DataExportProps> = ({
       case 'error':
         setStatus('error');
         setErrorMessage(
-          `Couldn't open the share sheet — ${outcome.message}. Try downloading instead.`,
+          `Couldn't open the share sheet: ${outcome.message}. Try downloading instead.`,
         );
         return;
     }
@@ -648,7 +648,7 @@ export const DataExport: React.FC<DataExportProps> = ({
         {showFinanceExports && dbUnavailable
           ? 'Database is not available. Please wait for it to initialize.'
           : showFinanceExports
-            ? 'Download your data directly, or generate a signed ZIP package for sharing. Everything happens on this device — no server roundtrip.'
+            ? 'Download your data directly, or generate a signed ZIP package for sharing. Everything happens on this device, with no server roundtrip.'
             : 'Download investment and tax-ready exports generated on this device.'}
       </p>
 
@@ -747,7 +747,7 @@ export const DataExport: React.FC<DataExportProps> = ({
                     title={
                       shareSupported
                         ? undefined
-                        : "Sharing isn't available in this browser — use Download ZIP."
+                        : "Sharing isn't available in this browser. Use Download ZIP."
                     }
                   >
                     Share my exported package
@@ -995,7 +995,7 @@ export const DataExport: React.FC<DataExportProps> = ({
         >
           <CheckIcon />
           <p className="data-export__feedback-message--success">
-            Delivered — your ZIP package is ready in the share destination.
+            Delivered. Your ZIP package is ready in the share destination.
           </p>
         </div>
       )}

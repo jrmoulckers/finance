@@ -392,7 +392,7 @@ export function JointDebtPlanner({ debts, todayIso }: JointDebtPlannerProps): Re
 
           {comparison && (
             <section className="joint-debt__section" aria-labelledby={`${baseId}-compare-title`}>
-              <h3 id={`${baseId}-compare-title`}>Avalanche vs. snowball — your combined debts</h3>
+              <h3 id={`${baseId}-compare-title`}>Avalanche vs. snowball: your combined debts</h3>
               <table className="joint-debt__table">
                 <caption className="joint-debt__caption">
                   Both strategies paid with an extra {formatUsdCents(extraCents)} per month across

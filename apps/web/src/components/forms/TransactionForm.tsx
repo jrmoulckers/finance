@@ -1279,7 +1279,7 @@ export function TransactionForm({
                         updateSplitRow(split.id, { categoryId: event.target.value })
                       }
                     >
-                      <option value="">— None —</option>
+                      <option value="">None</option>
                       {categories.map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.name}

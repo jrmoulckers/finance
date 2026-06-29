@@ -386,7 +386,7 @@ function generateRecommendations(
     recs.push({
       id: 'high-savings-rate',
       title: 'Excellent savings rate!',
-      description: `You're saving ${savingsRate}% of your income — well above the recommended 20%.`,
+      description: `You're saving ${savingsRate}% of your income, well above the recommended 20%.`,
       severity: 'success',
     });
   }
@@ -437,34 +437,34 @@ function buildBenchmarkSummary(benchmark: SpendingBenchmarkDefinition, value: nu
 
   if (benchmark.kind === 'savings') {
     if (value < benchmark.minPercent - 5) {
-      return `You save ${value}% of your income — significantly below the recommended ${rangeLabel} range.`;
+      return `You save ${value}% of your income, significantly below the recommended ${rangeLabel} range.`;
     }
     if (value < benchmark.minPercent) {
-      return `You save ${value}% of your income — slightly below the recommended ${rangeLabel} range.`;
+      return `You save ${value}% of your income, slightly below the recommended ${rangeLabel} range.`;
     }
     if (benchmark.recommendedPercent && value >= benchmark.recommendedPercent) {
-      return `You save ${value}% of your income — above the ${benchmark.recommendedPercent}% target.`;
+      return `You save ${value}% of your income, above the ${benchmark.recommendedPercent}% target.`;
     }
-    return `You save ${value}% of your income — within the recommended ${rangeLabel} range, with ${benchmark.recommendedPercent}% as the ideal target.`;
+    return `You save ${value}% of your income, within the recommended ${rangeLabel} range, with ${benchmark.recommendedPercent}% as the ideal target.`;
   }
 
   if (value < benchmark.minPercent) {
-    return `You spend ${value}% on ${lowerLabel} — below the typical ${rangeLabel} range.`;
+    return `You spend ${value}% on ${lowerLabel}, below the typical ${rangeLabel} range.`;
   }
   if (
     benchmark.recommendedPercent &&
     value > benchmark.recommendedPercent &&
     value <= benchmark.maxPercent
   ) {
-    return `You spend ${value}% on ${lowerLabel} — inside the ${rangeLabel} benchmark, but above the ideal ${benchmark.recommendedPercent}% target.`;
+    return `You spend ${value}% on ${lowerLabel}, inside the ${rangeLabel} benchmark, but above the ideal ${benchmark.recommendedPercent}% target.`;
   }
   if (value <= benchmark.maxPercent) {
-    return `You spend ${value}% on ${lowerLabel} — that's within the recommended ${rangeLabel} range.`;
+    return `You spend ${value}% on ${lowerLabel}. That's within the recommended ${rangeLabel} range.`;
   }
   if (value <= benchmark.maxPercent + 5) {
-    return `You spend ${value}% on ${lowerLabel} — slightly above the recommended ${rangeLabel} range.`;
+    return `You spend ${value}% on ${lowerLabel}, slightly above the recommended ${rangeLabel} range.`;
   }
-  return `You spend ${value}% on ${lowerLabel} — significantly above the recommended ${rangeLabel} range.`;
+  return `You spend ${value}% on ${lowerLabel}, significantly above the recommended ${rangeLabel} range.`;
 }
 
 function getBenchmarkLabel(benchmark: SpendingBenchmarkDefinition): string {

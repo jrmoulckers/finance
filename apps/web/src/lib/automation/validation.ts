@@ -58,7 +58,7 @@ export function validateConditionTree(
       diagnostics.push({
         severity: 'error',
         ruleId,
-        message: `Compound '${condition.type}' condition has no children — it will always ${condition.type === 'and' ? 'match (vacuous truth)' : 'fail'}.`,
+        message: `Compound '${condition.type}' condition has no children, so it will always ${condition.type === 'and' ? 'match (vacuous truth)' : 'fail'}.`,
         code: 'EMPTY_CONDITION_SET',
       });
     }
@@ -67,7 +67,7 @@ export function validateConditionTree(
       diagnostics.push({
         severity: 'error',
         ruleId,
-        message: 'NOT condition has no children — it will always match (vacuous NOT).',
+        message: 'NOT condition has no children, so it will always match (vacuous NOT).',
         code: 'UNREACHABLE_CONDITION',
       });
     }
@@ -76,7 +76,7 @@ export function validateConditionTree(
       diagnostics.push({
         severity: 'info',
         ruleId,
-        message: 'AND condition has only one child — it could be simplified to the child itself.',
+        message: 'AND condition has only one child, so it could be simplified to the child itself.',
         code: 'SIMPLIFIABLE_CONDITION',
       });
     }
@@ -85,7 +85,7 @@ export function validateConditionTree(
       diagnostics.push({
         severity: 'info',
         ruleId,
-        message: 'OR condition has only one child — it could be simplified to the child itself.',
+        message: 'OR condition has only one child, so it could be simplified to the child itself.',
         code: 'SIMPLIFIABLE_CONDITION',
       });
     }
@@ -134,7 +134,7 @@ export function detectConflictingActions(
     diagnostics.push({
       severity: 'error',
       ruleId,
-      message: `Rule has ${categorizeCount} categorize actions — only the last one will take effect.`,
+      message: `Rule has ${categorizeCount} categorize actions, so only the last one will take effect.`,
       code: 'CONFLICTING_ACTIONS',
     });
   }
@@ -143,7 +143,7 @@ export function detectConflictingActions(
     diagnostics.push({
       severity: 'error',
       ruleId,
-      message: `Rule has ${splitCount} split actions — a transaction can only be split once.`,
+      message: `Rule has ${splitCount} split actions, but a transaction can only be split once.`,
       code: 'CONFLICTING_ACTIONS',
     });
   }
@@ -153,7 +153,7 @@ export function detectConflictingActions(
       severity: 'warning',
       ruleId,
       message:
-        'Rule has both split and categorize actions — split children may override the top-level category.',
+        'Rule has both split and categorize actions, so split children may override the top-level category.',
       code: 'CONFLICTING_ACTIONS',
     });
   }
@@ -270,7 +270,7 @@ export function detectCircularDependencies(rules: readonly Rule[]): ValidationDi
         diagnostics.push({
           severity: 'warning',
           ruleId: a.rule.id,
-          message: `Potential circular dependency between rule "${a.rule.name}" (${a.rule.id}) and rule "${b.rule.name}" (${b.rule.id}) — evaluation order affects outcome.`,
+          message: `Potential circular dependency between rule "${a.rule.name}" (${a.rule.id}) and rule "${b.rule.name}" (${b.rule.id}). Evaluation order affects the outcome.`,
           code: 'CIRCULAR_DEPENDENCY',
         });
       }
@@ -304,7 +304,7 @@ export function validateRule(rule: Rule): ValidationResult {
     diagnostics.push({
       severity: 'warning',
       ruleId: rule.id,
-      message: 'Rule has no actions — it will match but do nothing.',
+      message: 'Rule has no actions, so it will match but do nothing.',
       code: 'NO_ACTIONS',
     });
   }

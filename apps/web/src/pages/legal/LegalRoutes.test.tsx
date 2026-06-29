@@ -25,7 +25,7 @@ describe('legal routes', () => {
     renderRoute(path);
 
     expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('DRAFT — pending legal review by jrmoulckers')).toBeInTheDocument();
+    expect(screen.getByText('DRAFT. Pending legal review by jrmoulckers')).toBeInTheDocument();
   });
 
   it('renders links from the legal index to each hosted document', async () => {

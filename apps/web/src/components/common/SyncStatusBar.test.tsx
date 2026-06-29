@@ -91,7 +91,7 @@ describe('SyncStatusBar', () => {
 
     render(<SyncStatusBar />);
 
-    expect(screen.getByText('Offline \u2014 changes saved locally')).toBeInTheDocument();
+    expect(screen.getByText('Offline. Changes saved locally')).toBeInTheDocument();
   });
 
   it('shows conflict count when conflicts exist', async () => {

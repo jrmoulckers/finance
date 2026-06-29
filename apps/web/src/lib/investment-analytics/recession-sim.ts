@@ -232,7 +232,7 @@ export function generateDefensiveSuggestions(
 
   if (cryptoPct > 10) {
     suggestions.push(
-      `Crypto allocation is ${cryptoPct}%. Consider reducing below 10% — crypto is highly volatile in recessions.`,
+      `Crypto allocation is ${cryptoPct}%. Consider reducing below 10%. Crypto is highly volatile in recessions.`,
     );
   }
 

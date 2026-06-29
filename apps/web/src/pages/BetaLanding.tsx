@@ -125,7 +125,7 @@ export const BetaLanding: FC = () => {
     <main className="beta-landing">
       <section className="beta-landing__hero" aria-labelledby="beta-landing-title">
         <p className="beta-landing__eyebrow">Private preview</p>
-        <h1 id="beta-landing-title">Finance — Now in Beta</h1>
+        <h1 id="beta-landing-title">Finance: Now in Beta</h1>
         <p className="beta-landing__tagline">
           Secure household budgeting, goals, and insights are ready for early testers. Help shape
           Finance before the public launch.

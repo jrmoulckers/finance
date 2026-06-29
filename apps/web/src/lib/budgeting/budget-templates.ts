@@ -42,7 +42,7 @@ export const TEMPLATE_50_30_20: BudgetTemplate = {
 export const TEMPLATE_80_20: BudgetTemplate = {
   id: '80-20',
   name: '80/20 Rule',
-  description: '80% spending, 20% savings — simple and effective.',
+  description: '80% spending, 20% savings. Simple and effective.',
   allocations: [
     { categoryName: 'Spending', percentOfIncome: 80, priority: TemplatePriority.NEEDS },
     { categoryName: 'Savings', percentOfIncome: 20, priority: TemplatePriority.SAVINGS },
@@ -53,7 +53,7 @@ export const TEMPLATE_80_20: BudgetTemplate = {
 export const TEMPLATE_BARE_BONES: BudgetTemplate = {
   id: 'bare-bones',
   name: 'Bare Bones',
-  description: 'Essentials only — maximize savings during tight months.',
+  description: 'Essentials only. Maximize savings during tight months.',
   allocations: [
     { categoryName: 'Housing', percentOfIncome: 30, priority: TemplatePriority.NEEDS },
     { categoryName: 'Food', percentOfIncome: 15, priority: TemplatePriority.NEEDS },

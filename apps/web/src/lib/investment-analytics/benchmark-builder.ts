@@ -48,7 +48,7 @@ export const TOTAL_MARKET_BENCHMARK: Benchmark = {
 export const BALANCED_60_40_BENCHMARK: Benchmark = {
   id: '60-40',
   name: '60/40 Balanced',
-  description: '60% US stocks, 40% US bonds — classic moderate allocation.',
+  description: '60% US stocks, 40% US bonds. A classic moderate allocation.',
   components: [
     { indexId: 'sp500', name: 'S&P 500', weightPercent: 60 },
     { indexId: 'agg-bond', name: 'US Aggregate Bond', weightPercent: 40 },

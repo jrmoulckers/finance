@@ -303,7 +303,7 @@ export const EncryptionDetails: React.FC = () => {
           'The current web client uses PBKDF2 with 600,000 iterations and a 256-bit AES-GCM target key for encrypted database persistence.',
           'Every encryption operation uses a fresh 12-byte IV, which protects against nonce reuse for AES-GCM.',
           'The secret material can come from a user-provided secret, an in-memory access token, or a per-tab session secret used before auth is ready.',
-          'Argon2id appears in broader architecture docs, but it is not the active web implementation today — this page intentionally reports PBKDF2 as the current behavior.',
+          'Argon2id appears in broader architecture docs, but it is not the active web implementation today. This page intentionally reports PBKDF2 as the current behavior.',
         ],
         note: encryptionSupported
           ? 'Web Crypto support detected in this browser.'
@@ -404,7 +404,7 @@ export const EncryptionDetails: React.FC = () => {
         diagnostics?.backend === 'indexeddb' && encryptionSupported
           ? 'PBKDF2-derived AES-GCM fallback is armed'
           : diagnostics?.backend === 'opfs'
-            ? 'OPFS sandbox active — no separate key rotation event'
+            ? 'OPFS sandbox active, no separate key rotation event'
             : encryptionSupported
               ? 'Encrypted fallback available when needed'
               : 'Encrypted persistence is unavailable in this browser',

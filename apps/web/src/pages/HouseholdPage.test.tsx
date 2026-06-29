@@ -613,7 +613,7 @@ describe('HouseholdPage', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("You're 15 days in and only 46% spent — great pace!"),
+      screen.getByText("You're 15 days in and only 46% spent. Great pace!"),
     ).toBeInTheDocument();
   });
 

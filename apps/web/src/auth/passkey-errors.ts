@@ -35,7 +35,7 @@ const PASSKEY_AUTHENTICATION_FAILED =
  * always-available email/password path instead of surfacing a dead end (#3111).
  */
 export const PASSKEY_UNAVAILABLE_MESSAGE =
-  "Passkey sign-in isn't available right now — use email/password.";
+  "Passkey sign-in isn't available right now. Use email/password instead.";
 
 export function getPasskeyErrorMessage(
   error: unknown,
