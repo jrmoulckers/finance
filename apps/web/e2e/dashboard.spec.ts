@@ -153,7 +153,13 @@ test.describe('Dashboard page', () => {
 
     if (hasSummary) {
       // The "Recent Transactions" section always renders when data is present.
-      const recentSection = authenticatedPage.getByLabel('Recent transactions');
+      // Scope to the region role: the card now also contains a search input
+      // with aria-label="Search recent transactions" (#3175), so a substring
+      // getByLabel('Recent transactions') would match both the section and the
+      // input and trip a strict-mode violation.
+      const recentSection = authenticatedPage.getByRole('region', {
+        name: 'Recent Transactions',
+      });
       await expect(recentSection).toBeVisible();
 
       const sectionHeading = recentSection.getByRole('heading', {
