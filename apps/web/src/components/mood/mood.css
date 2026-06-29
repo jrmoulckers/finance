@@ -243,12 +243,18 @@
   justify-items: center;
 }
 
-.mood-chart__summary,
 .mood-journal__stats,
 .mood-patterns__stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--spacing-3);
+  margin: 0;
+}
+
+.mood-chart__summary {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--spacing-2) var(--spacing-4);
   margin: 0;
 }
 
