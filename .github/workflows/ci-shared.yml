@@ -50,13 +50,6 @@ jobs:
     name: Lint & Test (KMP)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # contents: write is required only so the push-to-main run can submit the
-    # force-resolved Gradle dependency graph (see the Set up Gradle step). It is
-    # scoped to this single job; checks/pull-requests:write preserve the test reporter.
-    permissions:
-      contents: write
-      checks: write
-      pull-requests: write
 
     steps:
       - name: Checkout
@@ -77,11 +70,7 @@ jobs:
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-          # On push to main, submit the force-resolved dependency graph so Dependabot
-          # sees the patched transitive versions from build.gradle.kts resolutionStrategy.
-          # PRs (and non-main) only generate — no submit — so contents:write is never
-          # exercised on untrusted runs.
-          dependency-graph: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && 'generate-and-submit' || 'generate' }}
+          dependency-graph: generate
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
