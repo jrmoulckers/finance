@@ -1,54 +1,187 @@
 /* SPDX-License-Identifier: BUSL-1.1 */
 
 /* -------------------------------------------------------------------
- * SpendingTrendChart — chart-type toggle button styles.
+ * SpendingTrendChart — toolbar + chart styling.
  *
- * The view toggle uses inline SVG icons (line / bar / area).
- * Buttons must be uniformly sized and centre the icon visually.
+ * The toolbar above the chart holds the period segmented control
+ * (7D / 30D / 90D / 1Y) and the view toggle (line / bar / area).
+ * Both control groups follow the app's standard toggle-button pattern
+ * (cf. `.transaction-type-toggle`): border + radius, semantic tokens,
+ * and an interactive-coloured active state. They are sized to align
+ * with each other and stay legible on the card surface.
  * ------------------------------------------------------------------- */
 
+/* Container + header layout -------------------------------------------------- */
+
+.spending-trend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 0.75rem);
+}
+
+.spending-trend__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3, 0.75rem);
+}
+
+/* The shared `.chart-title` carries a bottom margin for stacked charts;
+ * inside the trend header it sits inline with the controls, so reset it. */
+.spending-trend__header .chart-title {
+  margin: 0;
+}
+
+.spending-trend__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2, 0.5rem);
+}
+
+/* Segmented control groups --------------------------------------------------- */
+
+.spending-trend__period-selector,
 .spending-trend__view-toggle {
   display: inline-flex;
   gap: var(--spacing-1, 0.25rem);
 }
 
+.spending-trend__period-selector {
+  flex-wrap: wrap;
+}
+
+/* Shared toggle-button base (period + view) --------------------------------- */
+
+.spending-trend__period-btn,
 .spending-trend__view-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
   height: 2rem;
-  padding: 0;
   border: 1px solid var(--semantic-border-default, #e5e7eb);
-  border-radius: 0.375rem;
+  border-radius: var(--border-radius-md, 0.375rem);
   background: var(--semantic-background-elevated, #ffffff);
   color: var(--semantic-text-secondary, #6b7280);
-  cursor: pointer;
+  font-family: inherit;
   line-height: 1;
+  cursor: pointer;
   transition:
-    background-color 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
+    background-color var(--duration-fast, 120ms) ease,
+    color var(--duration-fast, 120ms) ease,
+    border-color var(--duration-fast, 120ms) ease;
 }
 
+.spending-trend__period-btn {
+  min-width: 2.25rem;
+  padding: 0 var(--spacing-2, 0.5rem);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.spending-trend__view-btn {
+  width: 2rem;
+  padding: 0;
+}
+
+.spending-trend__period-btn:hover,
 .spending-trend__view-btn:hover {
   background: var(--semantic-background-secondary, #f3f4f6);
   color: var(--semantic-text-primary, #111827);
 }
 
+.spending-trend__period-btn:focus-visible,
 .spending-trend__view-btn:focus-visible {
   outline: 2px solid var(--semantic-border-focus, #2563eb);
   outline-offset: 2px;
 }
 
+.spending-trend__period-btn--active,
 .spending-trend__view-btn--active {
-  background: var(--semantic-background-secondary, #eef2ff);
-  border-color: var(--semantic-border-strong, #c7d2fe);
-  color: var(--semantic-text-primary, #1d4ed8);
+  background: var(--semantic-interactive-default, #2563eb);
+  border-color: var(--semantic-interactive-default, #2563eb);
+  color: var(--semantic-text-inverse, #ffffff);
+}
+
+.spending-trend__period-btn--active:hover,
+.spending-trend__view-btn--active:hover {
+  background: var(--semantic-interactive-hover, #1d4ed8);
+  border-color: var(--semantic-interactive-hover, #1d4ed8);
+  color: var(--semantic-text-inverse, #ffffff);
 }
 
 .spending-trend__view-btn svg {
   display: block;
   width: 1rem;
   height: 1rem;
+}
+
+/* Annotation row (avg/day + period comparison) ------------------------------ */
+
+.spending-trend__annotations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-1, 0.25rem) var(--spacing-3, 0.75rem);
+  min-height: 1.25rem;
+}
+
+.spending-trend__rate {
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.spending-trend__comparison {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1, 0.25rem);
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
+  border-radius: var(--border-radius-sm, 0.25rem);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+/* Direction is also conveyed by the ↑/↓ glyph and text — never colour alone. */
+.spending-trend__comparison--up {
+  color: var(--semantic-status-negative, #b91c1c);
+  background: color-mix(in srgb, var(--semantic-status-negative, #b91c1c) 12%, transparent);
+}
+
+.spending-trend__comparison--down {
+  color: var(--semantic-status-positive, #15803d);
+  background: color-mix(in srgb, var(--semantic-status-positive, #15803d) 12%, transparent);
+}
+
+/* Empty state --------------------------------------------------------------- */
+
+.spending-trend__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+  padding: var(--spacing-4, 1rem);
+  border: 1px dashed var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-md, 0.375rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  text-align: center;
+}
+
+/* Preferences --------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .spending-trend__period-btn,
+  .spending-trend__view-btn {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .spending-trend__period-btn,
+  .spending-trend__view-btn,
+  .spending-trend__empty {
+    border-width: 2px;
+  }
 }
