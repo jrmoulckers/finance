@@ -854,3 +854,35 @@
     border-width: 2px;
   }
 }
+
+/*
+ * Recent Transactions list — accessible row hover (#3158)
+ *
+ * The shared `.list-item__link` hover painted the row with
+ * `var(--semantic-surface-secondary, #f3f4f6)`. That token is undefined at
+ * runtime, so the near-white fallback was always used, and the dark override
+ * keyed off `[data-theme='dark']` never matched OS-driven dark mode
+ * (`prefers-color-scheme`). The result was a near-white block under near-white
+ * text, failing WCAG 2.2 AA. Scoped to this list we instead:
+ *   1. give the hovered/focused row an inset, rounded bounding box that matches
+ *      the card radius, and
+ *   2. paint it with a theme-adaptive tint of the current text colour — never a
+ *      fixed near-white block — so text/background contrast stays AA in light,
+ *      dark (both entry paths), and high-contrast themes. The defined
+ *      `--semantic-background-secondary` surface is the fallback for browsers
+ *      without `color-mix()`.
+ */
+.recent-transactions__list .list-item__link {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  margin-inline: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-2);
+  border-radius: var(--card-border-radius, var(--radius-md, 8px));
+}
+
+.recent-transactions__list .list-item__link:hover,
+.recent-transactions__list .list-item__link:focus-visible {
+  background-color: var(--semantic-background-secondary);
+  background-color: color-mix(in srgb, var(--semantic-text-primary) 6%, transparent);
+}
