@@ -8,7 +8,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { NavigateOptions, To } from 'react-router-dom';
 
@@ -462,6 +462,36 @@ describe('OnboardingPage', () => {
 
     expect(localStorage.getItem('finance-onboarding-completed-lessons')).toContain('needs-wants');
     expect(screen.getByText(/education lessons 3\/3 complete/i)).toBeInTheDocument();
+  });
+
+  it('deep-links the checklist "Edit guidance" link to the life-stage section', async () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+    fireEvent.click(screen.getByRole('button', { name: /edit guidance/i }));
+
+    expect(
+      screen.getByRole('heading', { name: /want a starter budget\? choose a template:/i }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.getElementById('onboarding-life-stage-guidance')).toHaveFocus(),
+    );
+  });
+
+  it('deep-links the checklist "Review lessons" link to the lessons section', async () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+    fireEvent.click(screen.getByRole('button', { name: /review lessons/i }));
+
+    expect(
+      screen.getByRole('heading', { name: /want a starter budget\? choose a template:/i }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.getElementById('onboarding-financial-lessons')).toHaveFocus(),
+    );
   });
 
   it('previews and saves an onboarding goal before checklist completion', () => {
