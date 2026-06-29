@@ -114,6 +114,8 @@ type Lesson = {
 
 const LIFE_STAGE_STORAGE_KEY = 'finance-onboarding-life-stages';
 const LESSONS_STORAGE_KEY = 'finance-onboarding-completed-lessons';
+const TEMPLATE_GUIDANCE_ANCHOR = 'onboarding-life-stage-guidance';
+const TEMPLATE_LESSONS_ANCHOR = 'onboarding-financial-lessons';
 const GOALS_STORAGE_KEY = 'finance-onboarding-goals';
 const COACH_MARKS_STORAGE_KEY = 'finance-onboarding-coach-marks-dismissed';
 const CHECKLIST_HIDDEN_STORAGE_KEY = 'finance-onboarding-checklist-hidden';
@@ -512,6 +514,7 @@ const OnboardingPage: React.FC = () => {
     readStringArray(LESSONS_STORAGE_KEY),
   );
   const [lessonFeedback, setLessonFeedback] = useState<Record<string, string>>({});
+  const [pendingTemplateAnchor, setPendingTemplateAnchor] = useState<string | null>(null);
   const [activeGlossaryTerm, setActiveGlossaryTerm] = useState<GlossaryTermId | null>(null);
   const [coachMarksDismissed, setCoachMarksDismissed] = useState(() =>
     readBoolean(COACH_MARKS_STORAGE_KEY),
@@ -890,6 +893,27 @@ const OnboardingPage: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [activeExplainer, handleCloseExplainer]);
 
+  useEffect(() => {
+    if (step !== 'template' || !pendingTemplateAnchor) {
+      return;
+    }
+    const anchor = pendingTemplateAnchor;
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(anchor);
+      if (target) {
+        target.scrollIntoView?.({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        target.focus({ preventScroll: true });
+      }
+      setPendingTemplateAnchor(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [step, pendingTemplateAnchor, reducedMotion]);
+
+  const openTemplateSection = useCallback((anchor: string) => {
+    setPendingTemplateAnchor(anchor);
+    setStep('template');
+  }, []);
+
   if (step === 'comfort') {
     return (
       <main className={onboardingClassName} aria-label="Comfort Preferences">
@@ -1195,7 +1219,12 @@ const OnboardingPage: React.FC = () => {
             </p>
           </header>
 
-          <section className="onboarding__template-card" aria-label="Life-stage tailored setup">
+          <section
+            id={TEMPLATE_GUIDANCE_ANCHOR}
+            tabIndex={-1}
+            className="onboarding__template-card"
+            aria-label="Life-stage tailored setup"
+          >
             <div className="onboarding__template-header">
               <div>
                 <h2 className="onboarding__path-title">Tailor setup to your life stage</h2>
@@ -1436,6 +1465,8 @@ const OnboardingPage: React.FC = () => {
           </section>
 
           <section
+            id={TEMPLATE_LESSONS_ANCHOR}
+            tabIndex={-1}
             className="onboarding__template-card onboarding__stacked-section"
             aria-label="Financial literacy lessons"
           >
@@ -1764,7 +1795,7 @@ const OnboardingPage: React.FC = () => {
                   <button
                     type="button"
                     className="onboarding__link-button"
-                    onClick={() => setStep('template')}
+                    onClick={() => openTemplateSection(TEMPLATE_GUIDANCE_ANCHOR)}
                   >
                     Edit guidance
                   </button>
@@ -1777,7 +1808,7 @@ const OnboardingPage: React.FC = () => {
                   <button
                     type="button"
                     className="onboarding__link-button"
-                    onClick={() => setStep('template')}
+                    onClick={() => openTemplateSection(TEMPLATE_LESSONS_ANCHOR)}
                   >
                     Review lessons
                   </button>
