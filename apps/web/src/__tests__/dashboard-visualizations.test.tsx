@@ -175,6 +175,7 @@ function setupDefaultMocks() {
     stopCustomizing: vi.fn(),
     toggleWidget: vi.fn(),
     moveWidget: vi.fn(),
+    reorderWidget: vi.fn(),
     resizeWidget: vi.fn(),
     resetLayout: vi.fn(),
   });
