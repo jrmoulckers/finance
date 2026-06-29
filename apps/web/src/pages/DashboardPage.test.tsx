@@ -74,9 +74,6 @@ vi.mock('../components/common/LoadingSpinner', () => ({
     </div>
   ),
 }));
-vi.mock('../components/common/SyncIndicator', () => ({
-  SyncIndicator: () => <span>Synced</span>,
-}));
 vi.mock('../components/OfflineBanner', () => ({
   OfflineBanner: () => null,
 }));
