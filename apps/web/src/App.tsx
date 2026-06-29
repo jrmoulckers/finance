@@ -111,6 +111,10 @@ const STANDALONE_ROUTES: readonly string[] = [
  * `/legal` is exempt (prefix match covers `/legal/privacy`, `/legal/terms`,
  * `/legal/ccpa`) so pre-onboarding visitors can read the legal documents linked from
  * the auth footers — bouncing them to `/onboarding` would be a compliance problem (#3110).
+ *
+ * The bare `/privacy`, `/terms`, and `/ccpa` aliases are also exempt: the GDPR consent
+ * modal links to `/privacy`, and bouncing that link to onboarding blocked the privacy
+ * notice during first run (#3119).
  */
 const FIRST_RUN_ALLOWED_ROUTES: readonly string[] = [
   '/login',
@@ -118,6 +122,9 @@ const FIRST_RUN_ALLOWED_ROUTES: readonly string[] = [
   '/forgot-password',
   '/reset-password',
   '/legal',
+  '/privacy',
+  '/terms',
+  '/ccpa',
   '/onboarding',
 ];
 
