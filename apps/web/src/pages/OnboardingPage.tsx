@@ -1755,10 +1755,10 @@ const OnboardingPage: React.FC = () => {
               </button>
             </section>
           ) : (
-            <section className="onboarding__checklist" aria-label="Fully set-up progress checklist">
+            <section className="onboarding__checklist" aria-label="Setup progress">
               <div className="onboarding__template-header">
                 <div>
-                  <h2 className="onboarding__path-title">Fully set-up progress checklist</h2>
+                  <h2 className="onboarding__path-title">Setup progress</h2>
                   <p className="onboarding__path-description">
                     Beta activation is complete when privacy is reviewed, setup has a first budget
                     or goal, and at least one confidence task is done.

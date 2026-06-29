@@ -519,9 +519,7 @@ describe('OnboardingPage', () => {
     continueToTemplateStep();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
-    expect(
-      screen.getByRole('region', { name: /fully set-up progress checklist/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /setup progress/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /first-run coach marks/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /hide checklist/i }));
