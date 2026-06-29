@@ -515,12 +515,17 @@
 .onboarding__template-badge {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
+  flex-shrink: 0;
+  width: auto;
+  max-width: 100%;
   padding: 0.25rem 0.625rem;
   border-radius: 999px;
   background: var(--semantic-background-secondary);
   color: var(--semantic-text-secondary);
   font-size: var(--type-scale-caption-font-size);
   font-weight: var(--font-weight-medium);
+  white-space: nowrap;
 }
 
 .onboarding__template-guidance {
