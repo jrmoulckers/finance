@@ -1005,7 +1005,7 @@ export const DashboardPage: React.FC = () => {
                     description="Transactions you add will appear here."
                   />
                 ) : (
-                  <ul className="list-group" role="list">
+                  <ul className="list-group recent-transactions__list" role="list">
                     {recentPrivacyRollup?.protectedRollup !== null &&
                       recentPrivacyRollup?.protectedRollup !== undefined && (
                         <li className="list-item" role="listitem">
