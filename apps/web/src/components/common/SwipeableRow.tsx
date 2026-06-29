@@ -14,6 +14,8 @@ import React, {
   type TouchEvent as ReactTouchEvent,
 } from 'react';
 
+import { useCoarsePointer } from '../../hooks/useCoarsePointer';
+
 import './swipeable-row.css';
 
 export type SwipeActionVariant = 'default' | 'success' | 'warning' | 'danger';
@@ -98,6 +100,7 @@ export function SwipeableRow({
   const pointerCapturedRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintId = useId();
+  const isCoarsePointer = useCoarsePointer();
 
   const [offsetX, setOffsetX] = useState(0);
   const [openSide, setOpenSide] = useState<OpenSide>(null);
@@ -515,6 +518,12 @@ export function SwipeableRow({
 
   const contentClasses = joinClassNames('swipeable-row__content', contentClassName);
   const actionHint = contextMenuActions.length > 0 ? `${hintId}-hint` : undefined;
+  // Swipe and long-press are touch-only gestures, so advertise them only on
+  // coarse/touch pointers. Mouse users get the right-click affordance instead,
+  // avoiding guidance for gestures their device can't perform (#3143).
+  const actionHintText = isCoarsePointer
+    ? 'Swipe horizontally or long-press to access transaction actions.'
+    : 'Right-click to access transaction actions.';
 
   return (
     <div
@@ -589,7 +598,7 @@ export function SwipeableRow({
 
       {contextMenuActions.length > 0 && (
         <span id={actionHint} className="sr-only">
-          Swipe horizontally, right-click, or long-press to access transaction actions.
+          {actionHintText}
         </span>
       )}
 

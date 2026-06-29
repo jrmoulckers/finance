@@ -50,6 +50,7 @@ import { useAccessibility } from '../hooks/useAccessibility';
 import { useAutoCategorize } from '../hooks/useAutoCategorize';
 import { useBulkTransactions } from '../hooks/useBulkTransactions';
 import { useCategories } from '../hooks/useCategories';
+import { prefersCoarsePointer } from '../hooks/useCoarsePointer';
 import { useFontScale } from '../hooks/useFontScale';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { recordPwaMeaningfulAction } from '../hooks/useInstallPrompt';
@@ -587,6 +588,13 @@ export const TransactionsPage: React.FC = () => {
 
   useEffect(() => {
     if (transactions.length === 0 || toast === null || typeof window === 'undefined') {
+      return;
+    }
+
+    // Swipe gestures only exist on touch devices, so the swipe tip is
+    // irrelevant (and confusing) for mouse + keyboard users. Gate it behind a
+    // coarse/touch pointer check (#3143).
+    if (!prefersCoarsePointer()) {
       return;
     }
 
