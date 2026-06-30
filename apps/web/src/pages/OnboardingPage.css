@@ -710,11 +710,45 @@
 }
 
 .onboarding__glossary-card {
+  position: relative;
   width: min(100%, 28rem);
   padding: var(--spacing-5);
   border-radius: var(--card-border-radius, var(--border-radius-md));
   background: var(--semantic-background-elevated, var(--semantic-background-secondary));
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.onboarding__glossary-card .onboarding__path-title {
+  padding-right: var(--spacing-6);
+}
+
+.onboarding__glossary-close {
+  position: absolute;
+  top: var(--spacing-3);
+  right: var(--spacing-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.onboarding__glossary-close:hover {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+}
+
+.onboarding__glossary-close:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
 }
 
 .onboarding__checklist,
@@ -744,6 +778,115 @@
 .onboarding__lesson-card p,
 .onboarding__goal-review p {
   margin: 0;
+  color: var(--semantic-text-secondary);
+  line-height: 1.5;
+}
+
+/* Lessons: opt-in, per-card completion, and choice feedback */
+.onboarding__lesson-optin {
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  border: 1px dashed var(--semantic-border-default);
+  background: var(--semantic-background-secondary);
+}
+
+.onboarding__lesson-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.onboarding__lesson-card--complete {
+  border-color: var(--semantic-status-positive);
+}
+
+.onboarding__lesson-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-inverse, #fff);
+  background: var(--semantic-status-positive);
+  white-space: nowrap;
+}
+
+.onboarding__lesson-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.onboarding__lesson-choice--selected {
+  background-color: var(--semantic-interactive-default);
+  border: 2px solid var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse, #fff);
+}
+
+.onboarding__lesson-choice--correct {
+  background-color: var(--semantic-status-positive);
+  border: 2px solid var(--semantic-status-positive);
+  color: var(--semantic-text-inverse, #fff);
+}
+
+.onboarding__lesson-choice-check {
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.onboarding__lesson-choice:disabled {
+  cursor: default;
+}
+
+.onboarding__lesson-choice.onboarding__path-btn--secondary:disabled {
+  color: var(--semantic-text-secondary);
+  border-color: var(--semantic-border-default);
+  background: var(--semantic-background-secondary);
+}
+
+/* Goal wizard: save confirmation and saved list */
+.onboarding__goal-saved {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--semantic-status-positive);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+  line-height: 1.5;
+}
+
+.onboarding__goal-saved strong {
+  color: var(--semantic-status-positive);
+}
+
+.onboarding__saved-goals {
+  margin-top: var(--spacing-4);
+}
+
+.onboarding__saved-goals-list {
+  display: grid;
+  gap: var(--spacing-2);
+  padding: 0;
+  margin: var(--spacing-2) 0 0;
+  list-style: none;
+}
+
+.onboarding__saved-goals-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--semantic-border-default);
+  background: var(--semantic-background-primary);
+}
+
+/* Template CTA clarifier */
+.onboarding__template-summary {
+  margin: 0 0 var(--spacing-3);
   color: var(--semantic-text-secondary);
   line-height: 1.5;
 }
