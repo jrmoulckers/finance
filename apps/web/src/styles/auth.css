@@ -202,7 +202,20 @@
   color: var(--semantic-text-secondary);
 }
 
-/* ─── Disclosure: "Use email & password" under biometric CTA (#1983) ────── */
+/* ─── Social sign-in section (moved outside the collapsible form, #3178) ──── */
+
+/*
+ * The OAuth button group renders as a sibling of the email <form> so social
+ * sign-in stays visible for passkey-primary users even when the email form is
+ * collapsed. The top margin replaces the flex `gap` it previously inherited
+ * from `.auth-actions` inside the form, keeping the non-passkey-primary layout
+ * pixel-identical.
+ */
+.auth-oauth-section {
+  margin-top: var(--spacing-4);
+}
+
+/* ─── Disclosure: email sign-in toggle under biometric CTA (#1983) ───────── */
 
 .auth-disclosure {
   display: inline-block;
