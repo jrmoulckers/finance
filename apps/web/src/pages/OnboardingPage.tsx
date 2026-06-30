@@ -405,6 +405,14 @@ function writeGoals(goals: StoredGoal[]): void {
   localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals));
 }
 
+const DEFAULT_GOAL_DRAFT: GoalDraft = {
+  name: 'Emergency buffer',
+  goalType: 'Emergency savings',
+  targetAmount: '1000',
+  startingBalance: '0',
+  targetDate: '',
+};
+
 function isLifeStageId(value: string): value is LifeStageId {
   return LIFE_STAGE_OPTIONS.some((option) => option.id === value);
 }
@@ -514,6 +522,10 @@ const OnboardingPage: React.FC = () => {
     readStringArray(LESSONS_STORAGE_KEY),
   );
   const [lessonFeedback, setLessonFeedback] = useState<Record<string, string>>({});
+  const [lessonSelections, setLessonSelections] = useState<Record<string, string>>({});
+  const [lessonsOptedIn, setLessonsOptedIn] = useState<boolean>(
+    () => readStringArray(LESSONS_STORAGE_KEY).length > 0,
+  );
   const [pendingTemplateAnchor, setPendingTemplateAnchor] = useState<string | null>(null);
   const [activeGlossaryTerm, setActiveGlossaryTerm] = useState<GlossaryTermId | null>(null);
   const [coachMarksDismissed, setCoachMarksDismissed] = useState(() =>
@@ -523,19 +535,16 @@ const OnboardingPage: React.FC = () => {
     readBoolean(CHECKLIST_HIDDEN_STORAGE_KEY),
   );
   const [savedGoals, setSavedGoals] = useState<StoredGoal[]>(() => readGoals());
-  const [goalDraft, setGoalDraft] = useState<GoalDraft>({
-    name: 'Emergency buffer',
-    goalType: 'Emergency savings',
-    targetAmount: '1000',
-    startingBalance: '0',
-    targetDate: '',
-  });
+  const [goalDraft, setGoalDraft] = useState<GoalDraft>(DEFAULT_GOAL_DRAFT);
   const [goalReviewVisible, setGoalReviewVisible] = useState(false);
+  const [goalSavedName, setGoalSavedName] = useState<string | null>(null);
   const [taxIdStatus, setTaxIdStatus] = useState<TaxIdStatus>(() => readTaxIdStatus());
   const [incomeType, setIncomeType] = useState<IncomeType>(() => readIncomeType());
   const [activeExplainer, setActiveExplainer] = useState<NewcomerExplainerKey | null>(null);
   const explainerCloseRef = useRef<HTMLButtonElement>(null);
   const explainerTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const glossaryCloseRef = useRef<HTMLButtonElement>(null);
+  const glossaryTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const analyticsEnabled = consent.categories.analytics;
   const newcomerGuidance = useMemo(
@@ -552,12 +561,7 @@ const OnboardingPage: React.FC = () => {
   );
   const selectedStageLabels = selectedLifeStageOptions.map((option) => option.label).join(', ');
   const monthlyContribution = calculateMonthlyContribution(goalDraft);
-  const allLessonsComplete = FINANCIAL_LESSONS.every((lesson) =>
-    completedLessonIds.includes(lesson.id),
-  );
-  const fullySetUp =
-    (starterBudgetCreated || savedGoals.length > 0) &&
-    (allLessonsComplete || selectedLifeStages.length > 0);
+  const fullySetUp = starterBudgetCreated || savedGoals.length > 0;
   const onboardingProgressAnnouncement = buildOnboardingProgressAnnouncement({
     stepLabel: ONBOARDING_STEP_LABELS[step],
     stepIndex: Math.max(ONBOARDING_STEP_ORDER.indexOf(step), 0),
@@ -665,6 +669,7 @@ const OnboardingPage: React.FC = () => {
 
   const handleLessonChoice = useCallback(
     (lesson: Lesson, choice: LessonChoice) => {
+      setLessonSelections((current) => ({ ...current, [lesson.id]: choice.label }));
       setLessonFeedback((current) => ({ ...current, [lesson.id]: choice.feedback }));
 
       if (!choice.correct) {
@@ -686,6 +691,7 @@ const OnboardingPage: React.FC = () => {
   const handleGoalDraftChange = useCallback((field: keyof GoalDraft, value: string) => {
     setGoalDraft((current) => ({ ...current, [field]: value }));
     setGoalReviewVisible(false);
+    setGoalSavedName(null);
   }, []);
 
   const handlePreviewGoal = useCallback(() => {
@@ -709,6 +715,8 @@ const OnboardingPage: React.FC = () => {
       return next;
     });
     setGoalReviewVisible(false);
+    setGoalDraft(DEFAULT_GOAL_DRAFT);
+    setGoalSavedName(nextGoal.name);
     trackOnboardingEvent(analyticsEnabled, 'onboarding_goal_saved', {
       goalType: nextGoal.goalType,
     });
@@ -893,6 +901,45 @@ const OnboardingPage: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [activeExplainer, handleCloseExplainer]);
 
+  const handleOpenGlossary = useCallback(
+    (term: GlossaryTermId, event: React.MouseEvent<HTMLButtonElement>) => {
+      glossaryTriggerRef.current = event.currentTarget;
+      setActiveGlossaryTerm(term);
+    },
+    [],
+  );
+
+  const handleCloseGlossary = useCallback(() => {
+    setActiveGlossaryTerm(null);
+    const trigger = glossaryTriggerRef.current;
+    glossaryTriggerRef.current = null;
+    trigger?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (activeGlossaryTerm) {
+      glossaryCloseRef.current?.focus();
+    }
+  }, [activeGlossaryTerm]);
+
+  useEffect(() => {
+    if (!activeGlossaryTerm) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseGlossary();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeGlossaryTerm, handleCloseGlossary]);
+
+  const handleOptIntoLessons = useCallback(() => {
+    setLessonsOptedIn(true);
+    trackOnboardingEvent(analyticsEnabled, 'onboarding_lessons_opted_in');
+  }, [analyticsEnabled]);
+
   useEffect(() => {
     if (step !== 'template' || !pendingTemplateAnchor) {
       return;
@@ -910,6 +957,9 @@ const OnboardingPage: React.FC = () => {
   }, [step, pendingTemplateAnchor, reducedMotion]);
 
   const openTemplateSection = useCallback((anchor: string) => {
+    if (anchor === TEMPLATE_LESSONS_ANCHOR) {
+      setLessonsOptedIn(true);
+    }
     setPendingTemplateAnchor(anchor);
     setStep('template');
   }, []);
@@ -1279,7 +1329,7 @@ const OnboardingPage: React.FC = () => {
               <button
                 type="button"
                 className="onboarding__link-button"
-                onClick={() => setActiveGlossaryTerm('cashFlow')}
+                onClick={(event) => handleOpenGlossary('cashFlow', event)}
                 aria-haspopup="dialog"
               >
                 What is cash flow?
@@ -1287,7 +1337,7 @@ const OnboardingPage: React.FC = () => {
               <button
                 type="button"
                 className="onboarding__link-button"
-                onClick={() => setActiveGlossaryTerm('recurringExpense')}
+                onClick={(event) => handleOpenGlossary('recurringExpense', event)}
                 aria-haspopup="dialog"
               >
                 What is a recurring expense?
@@ -1483,33 +1533,106 @@ const OnboardingPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="onboarding__lesson-grid">
-              {FINANCIAL_LESSONS.map((lesson) => {
-                const isComplete = completedLessonIds.includes(lesson.id);
-                return (
-                  <article key={lesson.id} className="onboarding__lesson-card">
-                    <h3 className="onboarding__section-title">{lesson.title}</h3>
-                    <p className="onboarding__path-description">{lesson.scenario}</p>
-                    <div className="onboarding__lesson-choices">
-                      {lesson.choices.map((choice) => (
-                        <button
-                          key={choice.label}
-                          type="button"
-                          className="onboarding__path-btn onboarding__path-btn--secondary"
-                          onClick={() => handleLessonChoice(lesson, choice)}
+            {lessonsOptedIn ? (
+              <>
+                <div className="onboarding__lesson-grid">
+                  {FINANCIAL_LESSONS.map((lesson) => {
+                    const isComplete = completedLessonIds.includes(lesson.id);
+                    const selectedLabel = lessonSelections[lesson.id];
+                    return (
+                      <article
+                        key={lesson.id}
+                        className={
+                          isComplete
+                            ? 'onboarding__lesson-card onboarding__lesson-card--complete'
+                            : 'onboarding__lesson-card'
+                        }
+                      >
+                        <div className="onboarding__lesson-card-head">
+                          <h3 className="onboarding__section-title">{lesson.title}</h3>
+                          {isComplete && (
+                            <span className="onboarding__lesson-status" role="status">
+                              Completed ✓
+                            </span>
+                          )}
+                        </div>
+                        <p className="onboarding__path-description">{lesson.scenario}</p>
+                        <div
+                          className="onboarding__lesson-choices"
+                          role="group"
+                          aria-label={`${lesson.title} answers`}
                         >
-                          {choice.label}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="onboarding__lesson-feedback" aria-live="polite">
-                      {isComplete ? 'Completed. ' : ''}
-                      {lessonFeedback[lesson.id] ?? 'Choose an answer to check your understanding.'}
-                    </p>
-                  </article>
-                );
-              })}
-            </div>
+                          {lesson.choices.map((choice) => {
+                            const isSelected = selectedLabel === choice.label;
+                            const isCorrectAnswer = isComplete && choice.correct;
+                            const choiceClassName = [
+                              'onboarding__path-btn',
+                              'onboarding__lesson-choice',
+                              isSelected
+                                ? 'onboarding__lesson-choice--selected'
+                                : 'onboarding__path-btn--secondary',
+                              isCorrectAnswer ? 'onboarding__lesson-choice--correct' : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ');
+                            return (
+                              <button
+                                key={choice.label}
+                                type="button"
+                                className={choiceClassName}
+                                aria-pressed={isSelected}
+                                disabled={isComplete}
+                                onClick={() => handleLessonChoice(lesson, choice)}
+                              >
+                                <span>{choice.label}</span>
+                                {isCorrectAnswer && (
+                                  <span
+                                    aria-hidden="true"
+                                    className="onboarding__lesson-choice-check"
+                                  >
+                                    ✓
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="onboarding__lesson-feedback" aria-live="polite">
+                          {isComplete ? 'Completed. ' : ''}
+                          {lessonFeedback[lesson.id] ??
+                            'Choose an answer to check your understanding.'}
+                        </p>
+                      </article>
+                    );
+                  })}
+                </div>
+                <div className="onboarding__inline-actions">
+                  <button
+                    type="button"
+                    className="onboarding__link-button"
+                    onClick={() => setLessonsOptedIn(false)}
+                  >
+                    Hide lessons
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="onboarding__lesson-optin">
+                <p className="onboarding__path-description">
+                  Lessons are optional. Opt in for three quick checks now, or take them anytime
+                  later from the Learn area in the app.
+                </p>
+                <div className="onboarding__inline-actions">
+                  <button
+                    type="button"
+                    className="onboarding__path-btn onboarding__path-btn--secondary"
+                    onClick={handleOptIntoLessons}
+                  >
+                    Yes, show me lessons
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           <section
@@ -1587,7 +1710,7 @@ const OnboardingPage: React.FC = () => {
               <button
                 type="button"
                 className="onboarding__link-button"
-                onClick={() => setActiveGlossaryTerm('savingsGoal')}
+                onClick={(event) => handleOpenGlossary('savingsGoal', event)}
                 aria-haspopup="dialog"
               >
                 What is a savings goal?
@@ -1612,16 +1735,42 @@ const OnboardingPage: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {goalSavedName && (
+              <div className="onboarding__goal-saved" role="status" aria-live="polite">
+                <strong>Goal saved ✓</strong> — {goalSavedName} is in your plan. Add another, or
+                continue when you are ready.
+              </div>
+            )}
+
+            {savedGoals.length > 0 && (
+              <div className="onboarding__saved-goals">
+                <h3 className="onboarding__section-title">Saved goals</h3>
+                <ul className="onboarding__saved-goals-list" role="list">
+                  {savedGoals.map((goal) => (
+                    <li key={goal.id} className="onboarding__saved-goals-item" role="listitem">
+                      <span>{goal.name}</span>
+                      <strong>${goal.monthlyContribution.toFixed(0)}/mo</strong>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
 
           <div className="onboarding__template-actions">
+            <p className="onboarding__template-summary">
+              We will set up the {studentTemplate.name} starter budget shown above — more templates
+              are coming soon, and you can rename categories or change amounts any time.
+            </p>
             <button
               type="button"
               className="onboarding__path-btn onboarding__path-btn--primary"
               onClick={handleApplyStudentTemplate}
               disabled={isApplyingTemplate}
+              aria-busy={isApplyingTemplate}
             >
-              {isApplyingTemplate ? 'Creating Student Budget…' : 'Use Student Template'}
+              {isApplyingTemplate ? 'Creating your budget…' : 'Create my budget'}
             </button>
             <button
               type="button"
@@ -1641,6 +1790,14 @@ const OnboardingPage: React.FC = () => {
               aria-labelledby="onboarding-glossary-title"
             >
               <div className="onboarding__glossary-card">
+                <button
+                  type="button"
+                  className="onboarding__glossary-close"
+                  aria-label="Close"
+                  onClick={handleCloseGlossary}
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
                 <h2 id="onboarding-glossary-title" className="onboarding__path-title">
                   {GLOSSARY_TERMS[activeGlossaryTerm].title}
                 </h2>
@@ -1648,11 +1805,12 @@ const OnboardingPage: React.FC = () => {
                   {GLOSSARY_TERMS[activeGlossaryTerm].body}
                 </p>
                 <button
+                  ref={glossaryCloseRef}
                   type="button"
                   className="onboarding__path-btn onboarding__path-btn--primary"
-                  onClick={() => setActiveGlossaryTerm(null)}
+                  onClick={handleCloseGlossary}
                 >
-                  Close explainer
+                  Got it
                 </button>
               </div>
             </div>
@@ -1666,6 +1824,14 @@ const OnboardingPage: React.FC = () => {
               aria-labelledby="onboarding-newcomer-explainer-title"
             >
               <div className="onboarding__glossary-card">
+                <button
+                  type="button"
+                  className="onboarding__glossary-close"
+                  aria-label="Close"
+                  onClick={handleCloseExplainer}
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
                 <h2 id="onboarding-newcomer-explainer-title" className="onboarding__path-title">
                   {newcomerExplainers[activeExplainer].title}
                 </h2>
@@ -1682,7 +1848,7 @@ const OnboardingPage: React.FC = () => {
                   className="onboarding__path-btn onboarding__path-btn--primary"
                   onClick={handleCloseExplainer}
                 >
-                  Close explainer
+                  Got it
                 </button>
               </div>
             </div>
@@ -1882,7 +2048,7 @@ const OnboardingPage: React.FC = () => {
                   <button
                     type="button"
                     className="onboarding__link-button"
-                    onClick={() => setActiveGlossaryTerm('budgetVariance')}
+                    onClick={(event) => handleOpenGlossary('budgetVariance', event)}
                     aria-haspopup="dialog"
                   >
                     Explain budget variance
@@ -1907,6 +2073,14 @@ const OnboardingPage: React.FC = () => {
               aria-labelledby="onboarding-complete-glossary-title"
             >
               <div className="onboarding__glossary-card">
+                <button
+                  type="button"
+                  className="onboarding__glossary-close"
+                  aria-label="Close"
+                  onClick={handleCloseGlossary}
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
                 <h2 id="onboarding-complete-glossary-title" className="onboarding__path-title">
                   {GLOSSARY_TERMS[activeGlossaryTerm].title}
                 </h2>
@@ -1914,11 +2088,12 @@ const OnboardingPage: React.FC = () => {
                   {GLOSSARY_TERMS[activeGlossaryTerm].body}
                 </p>
                 <button
+                  ref={glossaryCloseRef}
                   type="button"
                   className="onboarding__path-btn onboarding__path-btn--primary"
-                  onClick={() => setActiveGlossaryTerm(null)}
+                  onClick={handleCloseGlossary}
                 >
-                  Close explainer
+                  Got it
                 </button>
               </div>
             </div>
