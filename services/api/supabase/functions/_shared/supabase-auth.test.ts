@@ -16,6 +16,7 @@ import {
   buildAuthorizeUrl,
   generatePkceMaterial,
   isSupportedProvider,
+  requestPasswordRecovery,
 } from './supabase-auth.ts';
 
 // ---------------------------------------------------------------------------
@@ -99,8 +100,105 @@ Deno.test('buildAuthorizeUrl — embeds provider, challenge, redirect_to (no sta
 });
 
 // ---------------------------------------------------------------------------
+// requestPasswordRecovery
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  'requestPasswordRecovery — returns status 200 with no error code on success',
+  async () => {
+    await withRecoveryEnv(async () => {
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = () => Promise.resolve(new Response(null, { status: 200 }));
+        const result = await requestPasswordRecovery(
+          'user@example.com',
+          'https://app.example.com/reset-password',
+        );
+        assertEquals(result.status, 200);
+        assertEquals(result.errorCode, undefined);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+  },
+);
+
+Deno.test('requestPasswordRecovery — surfaces the GoTrue error code on a rate limit', async () => {
+  await withRecoveryEnv(async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ error_code: 'over_email_send_rate_limit' }), {
+            status: 429,
+          }),
+        );
+      const result = await requestPasswordRecovery(
+        'user@example.com',
+        'https://app.example.com/reset-password',
+      );
+      assertEquals(result.status, 429);
+      assertEquals(result.errorCode, 'over_email_send_rate_limit');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+Deno.test('requestPasswordRecovery — surfaces the error code on an SMTP/5xx failure', async () => {
+  await withRecoveryEnv(async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ error_code: 'unexpected_failure' }), { status: 500 }),
+        );
+      const result = await requestPasswordRecovery(
+        'user@example.com',
+        'https://app.example.com/reset-password',
+      );
+      assertEquals(result.status, 500);
+      assertEquals(result.errorCode, 'unexpected_failure');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+Deno.test(
+  'requestPasswordRecovery — returns status 0 when the request never completes',
+  async () => {
+    await withRecoveryEnv(async () => {
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = () => Promise.reject(new Error('network down'));
+        const result = await requestPasswordRecovery(
+          'user@example.com',
+          'https://app.example.com/reset-password',
+        );
+        assertEquals(result.status, 0);
+        assertEquals(result.errorCode, undefined);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+async function withRecoveryEnv(run: () => Promise<void>): Promise<void> {
+  Deno.env.set('SUPABASE_URL', 'https://example.supabase.co');
+  Deno.env.set('SUPABASE_ANON_KEY', 'anon-test-key-not-real');
+  try {
+    await run();
+  } finally {
+    Deno.env.delete('SUPABASE_URL');
+    Deno.env.delete('SUPABASE_ANON_KEY');
+  }
+}
 
 async function sha256Base64Url(input: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
