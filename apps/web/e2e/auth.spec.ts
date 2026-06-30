@@ -17,37 +17,25 @@ test('login page renders', async ({ page }) => {
   await expect(page.getByLabel(/password/i)).toBeVisible();
 });
 
-test('passkey-primary layout keeps social sign-in reachable (#3178)', async ({
-  page,
-}, testInfo) => {
-  // Forcing a platform authenticator is only reliable on Chromium, matching the
-  // visual-regression project scoping.
-  test.skip(
-    testInfo.project.name !== 'chromium',
-    'Platform-authenticator stubbing is exercised on the Chromium project only.',
-  );
-
-  // Simulate a returning user whose browser has a saved passkey, so the login
-  // page renders the biometric-first layout that collapses the email form.
-  await page.addInitScript(() => {
-    if (typeof window.PublicKeyCredential !== 'undefined') {
-      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = () =>
-        Promise.resolve(true);
-    }
-    localStorage.setItem('finance:preferred-auth-method', 'passkey');
-    localStorage.setItem('finance:has-registered-passkey', 'true');
-  });
-
+test('keeps social sign-in outside the collapsible email form (#3178)', async ({ page }) => {
   await page.goto('/login');
 
-  // Social sign-in must be reachable WITHOUT expanding the email disclosure.
-  await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign in with Apple' })).toBeVisible();
+  // Social sign-in renders in its own section that is a sibling of — not a
+  // descendant of — the email <form>. This is the regression invariant: a
+  // passkey-primary user's email form collapses (hidden), so the OAuth buttons
+  // must live outside it to stay reachable. Asserting the structure directly is
+  // deterministic and needs no WebAuthn/platform-authenticator stubbing (the
+  // passkey-primary collapse path is covered by the LoginPage unit tests).
+  const oauthSection = page.locator('.auth-oauth-section');
+  await expect(oauthSection.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+  await expect(oauthSection.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+  await expect(oauthSection.getByRole('button', { name: 'Sign in with Apple' })).toBeVisible();
 
-  // The email field stays collapsed in the passkey-primary layout — proving the
-  // social buttons are no longer gated behind the hidden form (#3178).
-  await expect(page.getByLabel('Email', { exact: true })).toBeHidden();
+  // None of the social buttons may be nested inside the collapsible email form.
+  const emailForm = page.locator('form#login-email-form');
+  await expect(emailForm.getByRole('button', { name: 'Sign in with Google' })).toHaveCount(0);
+  await expect(emailForm.getByRole('button', { name: 'Sign in with GitHub' })).toHaveCount(0);
+  await expect(emailForm.getByRole('button', { name: 'Sign in with Apple' })).toHaveCount(0);
 });
 
 test('signup page renders', async ({ page }) => {
