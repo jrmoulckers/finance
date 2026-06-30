@@ -195,7 +195,9 @@ describe('LoginPage', () => {
       const { container } = renderLoginPage();
 
       await waitFor(() =>
-        expect(screen.getByRole('button', { name: /use email & password/i })).toBeInTheDocument(),
+        expect(
+          screen.getByRole('button', { name: /sign in with email instead/i }),
+        ).toBeInTheDocument(),
       );
 
       // Form is hidden when biometric is primary and the disclosure is collapsed.
@@ -204,20 +206,39 @@ describe('LoginPage', () => {
       expect(form).toHaveAttribute('hidden');
     });
 
+    it('keeps social sign-in visible while the email form is collapsed (#3178)', async () => {
+      const { container } = renderLoginPage();
+
+      // Wait for the biometric-first layout to activate (async platform check).
+      await screen.findByRole('button', { name: /sign in with biometrics/i });
+
+      // The email/password form is collapsed (hidden)...
+      const form = container.querySelector('#login-email-form');
+      expect(form).toHaveAttribute('hidden');
+
+      // ...yet the social sign-in buttons remain visible, because they no longer
+      // live inside the hidden form (the bug this fixes).
+      expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeVisible();
+    });
+
     it('expands the email/password form when the disclosure is clicked', async () => {
       const { default: userEvent } = await import('@testing-library/user-event');
       const user = userEvent.setup();
 
       const { container } = renderLoginPage();
 
-      const disclosure = await screen.findByRole('button', { name: /use email & password/i });
+      const disclosure = await screen.findByRole('button', {
+        name: /sign in with email instead/i,
+      });
       await user.click(disclosure);
 
       const form = container.querySelector('#login-email-form');
       expect(form).not.toBeNull();
       expect(form).not.toHaveAttribute('hidden');
       // Toggle re-labelled
-      expect(screen.getByRole('button', { name: /hide email & password/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /hide email sign-in/i })).toBeInTheDocument();
     });
 
     it('records preferred=passkey after a successful biometric sign-in', async () => {

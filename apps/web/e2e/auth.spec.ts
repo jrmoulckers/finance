@@ -17,6 +17,39 @@ test('login page renders', async ({ page }) => {
   await expect(page.getByLabel(/password/i)).toBeVisible();
 });
 
+test('passkey-primary layout keeps social sign-in reachable (#3178)', async ({
+  page,
+}, testInfo) => {
+  // Forcing a platform authenticator is only reliable on Chromium, matching the
+  // visual-regression project scoping.
+  test.skip(
+    testInfo.project.name !== 'chromium',
+    'Platform-authenticator stubbing is exercised on the Chromium project only.',
+  );
+
+  // Simulate a returning user whose browser has a saved passkey, so the login
+  // page renders the biometric-first layout that collapses the email form.
+  await page.addInitScript(() => {
+    if (typeof window.PublicKeyCredential !== 'undefined') {
+      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = () =>
+        Promise.resolve(true);
+    }
+    localStorage.setItem('finance:preferred-auth-method', 'passkey');
+    localStorage.setItem('finance:has-registered-passkey', 'true');
+  });
+
+  await page.goto('/login');
+
+  // Social sign-in must be reachable WITHOUT expanding the email disclosure.
+  await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in with Apple' })).toBeVisible();
+
+  // The email field stays collapsed in the passkey-primary layout — proving the
+  // social buttons are no longer gated behind the hidden form (#3178).
+  await expect(page.getByLabel('Email', { exact: true })).toBeHidden();
+});
+
 test('signup page renders', async ({ page }) => {
   await page.goto('/signup');
   // The signup page has the brand heading "Finance" and tagline "Create your account"
