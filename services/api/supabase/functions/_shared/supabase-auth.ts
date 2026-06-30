@@ -242,23 +242,56 @@ export function buildAuthorizeUrl(
   return `${authUrl()}/authorize?${params.toString()}`;
 }
 
+/** Outcome of a password-recovery request to Supabase Auth (GoTrue). */
+export interface PasswordRecoveryResult {
+  /**
+   * Upstream GoTrue HTTP status, or `0` when the request never completed
+   * (network error / timeout before any response was received).
+   */
+  status: number;
+  /**
+   * Stable GoTrue error code on a non-2xx response (e.g.
+   * `over_email_send_rate_limit`, `validation_failed`, `unexpected_failure`).
+   * Machine-readable only — it NEVER contains user data such as the email
+   * address, so it is safe to log for operational diagnosis.
+   */
+  errorCode?: string;
+}
+
 /**
  * Ask Supabase Auth to send a password recovery email.
  *
- * Returns the upstream status code so callers can keep account-existence
- * responses generic while still surfacing service outages.
+ * Returns the upstream status plus a machine-readable error code (never the
+ * email or any user data) so callers can keep account-existence responses
+ * generic while still logging WHY a send failed — distinguishing an SMTP
+ * outage (5xx) from a rate limit (429) from a rejected redirect (400/422).
+ * A `status` of `0` means the request never reached GoTrue.
  */
-export async function requestPasswordRecovery(email: string, redirectTo: string): Promise<number> {
+export async function requestPasswordRecovery(
+  email: string,
+  redirectTo: string,
+): Promise<PasswordRecoveryResult> {
   const url = `${authUrl()}/recover?${new URLSearchParams({ redirect_to: redirectTo }).toString()}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: requireEnv('SUPABASE_ANON_KEY'),
-    },
-    body: JSON.stringify({ email }),
-  });
-  return response.status;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: requireEnv('SUPABASE_ANON_KEY'),
+      },
+      body: JSON.stringify({ email }),
+    });
+  } catch {
+    return { status: 0 };
+  }
+
+  if (response.ok) {
+    return { status: response.status };
+  }
+
+  const authError = await readSupabaseAuthError(response);
+  return { status: response.status, errorCode: authError.code ?? authError.error };
 }
 
 /** Update a user's password using the recovery access token from Supabase. */
