@@ -60,12 +60,21 @@ const SIMPLE_MODE_FONT_SCALE_INDEX = Math.max(
   DEFAULT_FONT_SCALE_INDEX,
 );
 
-type OnboardingStep = 'comfort' | 'choose' | 'privacy' | 'template' | 'complete';
+type OnboardingStep =
+  | 'comfort'
+  | 'choose'
+  | 'privacy'
+  | 'newcomer'
+  | 'goals'
+  | 'template'
+  | 'complete';
 
 const ONBOARDING_STEP_ORDER: readonly OnboardingStep[] = [
   'comfort',
   'choose',
   'privacy',
+  'newcomer',
+  'goals',
   'template',
   'complete',
 ];
@@ -74,9 +83,16 @@ const ONBOARDING_STEP_LABELS: Record<OnboardingStep, string> = {
   comfort: 'Comfort preferences',
   choose: 'Choose setup path',
   privacy: 'Privacy preferences',
+  newcomer: 'Personalize your setup',
+  goals: 'Set a savings goal',
   template: 'Starter budget template',
   complete: 'Setup complete',
 };
+
+// The deferred education/setup sequence (#3118) that runs after the privacy step
+// for local-only users, and as the resume point for authenticated post-signup
+// visitors (#3089).
+const DEFERRED_SETUP_START_STEP: OnboardingStep = 'newcomer';
 
 type LifeStageId = 'student' | 'first-job' | 'household' | 'caregiver' | 'freelancer' | 'retiree';
 type GlossaryTermId = 'cashFlow' | 'recurringExpense' | 'savingsGoal' | 'budgetVariance';
@@ -505,8 +521,8 @@ const OnboardingPage: React.FC = () => {
   const [step, setStep] = useState<OnboardingStep>(() =>
     // Authenticated visitors have already completed signup (and saw the pre-signup
     // welcome/comfort/choose screens), so resume onboarding at the deferred
-    // education/template step rather than repeating the welcome flow (#3089).
-    isAuthenticated ? 'template' : 'comfort',
+    // education/setup sequence rather than repeating the welcome flow (#3089).
+    isAuthenticated ? DEFERRED_SETUP_START_STEP : 'comfort',
   );
   const [fontScaleValue, setFontScaleValue] = useState(DEFAULT_FONT_SCALE_INDEX);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -545,6 +561,8 @@ const OnboardingPage: React.FC = () => {
   const explainerTriggerRef = useRef<HTMLButtonElement | null>(null);
   const glossaryCloseRef = useRef<HTMLButtonElement>(null);
   const glossaryTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStepRef = useRef<OnboardingStep>(step);
 
   const analyticsEnabled = consent.categories.analytics;
   const newcomerGuidance = useMemo(
@@ -562,10 +580,12 @@ const OnboardingPage: React.FC = () => {
   const selectedStageLabels = selectedLifeStageOptions.map((option) => option.label).join(', ');
   const monthlyContribution = calculateMonthlyContribution(goalDraft);
   const fullySetUp = starterBudgetCreated || savedGoals.length > 0;
+  const currentStepIndex = Math.max(ONBOARDING_STEP_ORDER.indexOf(step), 0);
+  const totalStepCount = ONBOARDING_STEP_ORDER.length;
   const onboardingProgressAnnouncement = buildOnboardingProgressAnnouncement({
     stepLabel: ONBOARDING_STEP_LABELS[step],
-    stepIndex: Math.max(ONBOARDING_STEP_ORDER.indexOf(step), 0),
-    totalSteps: ONBOARDING_STEP_ORDER.length,
+    stepIndex: currentStepIndex,
+    totalSteps: totalStepCount,
     status: templateError
       ? 'error'
       : isApplyingTemplate
@@ -586,6 +606,30 @@ const OnboardingPage: React.FC = () => {
       {onboardingProgressAnnouncement}
     </p>
   );
+
+  // Visible companion to the live region above (#3118). Marked aria-hidden so the
+  // step count is announced exactly once — by the polite live region — for screen
+  // readers, while sighted users still get a persistent progress cue.
+  const stepProgressIndicator =
+    step === 'complete' ? null : (
+      <div className="onboarding__progress" aria-hidden="true">
+        <p className="onboarding__progress-label">
+          Step {currentStepIndex + 1} of {totalStepCount}
+        </p>
+        <ol className="onboarding__progress-track">
+          {ONBOARDING_STEP_ORDER.map((orderedStep, index) => (
+            <li
+              key={orderedStep}
+              className={
+                index <= currentStepIndex
+                  ? 'onboarding__progress-dot onboarding__progress-dot--active'
+                  : 'onboarding__progress-dot'
+              }
+            />
+          ))}
+        </ol>
+      </div>
+    );
 
   const onboardingClassName = [
     'onboarding',
@@ -775,7 +819,7 @@ const OnboardingPage: React.FC = () => {
     );
     enableLocalOnly();
     setTemplateError(null);
-    setStep('template');
+    setStep(DEFERRED_SETUP_START_STEP);
   }, [enableLocalOnly, recordBulkChanges, rejectAll]);
 
   const handlePrivacyAcceptAll = useCallback(() => {
@@ -791,8 +835,34 @@ const OnboardingPage: React.FC = () => {
     );
     enableLocalOnly();
     setTemplateError(null);
-    setStep('template');
+    setStep(DEFERRED_SETUP_START_STEP);
   }, [acceptAll, enableLocalOnly, recordBulkChanges]);
+
+  // Deferred-setup wizard navigation (#3118). Selections in each step persist on
+  // change, so "Skip for now" and "Continue" both simply advance; "Back" steps
+  // through the sequence in reverse.
+  const handleNewcomerAdvance = useCallback(() => {
+    setTemplateError(null);
+    setStep('goals');
+  }, []);
+
+  const handleNewcomerBack = useCallback(() => {
+    setStep('privacy');
+  }, []);
+
+  const handleGoalsAdvance = useCallback(() => {
+    setTemplateError(null);
+    setStep('template');
+  }, []);
+
+  const handleGoalsBack = useCallback(() => {
+    setStep('newcomer');
+  }, []);
+
+  const handleTemplateBack = useCallback(() => {
+    setTemplateError(null);
+    setStep('goals');
+  }, []);
 
   const handleSkipStarterBudget = useCallback(() => {
     setStarterBudgetCreated(false);
@@ -940,8 +1010,11 @@ const OnboardingPage: React.FC = () => {
     trackOnboardingEvent(analyticsEnabled, 'onboarding_lessons_opted_in');
   }, [analyticsEnabled]);
 
+  // Deep-link from the completion checklist back into the deferred-setup wizard.
+  // The guidance + lessons anchors live on the `newcomer` step (#3118), so focus
+  // and scroll there once it renders.
   useEffect(() => {
-    if (step !== 'template' || !pendingTemplateAnchor) {
+    if (step !== 'newcomer' || !pendingTemplateAnchor) {
       return;
     }
     const anchor = pendingTemplateAnchor;
@@ -956,21 +1029,108 @@ const OnboardingPage: React.FC = () => {
     return () => cancelAnimationFrame(frame);
   }, [step, pendingTemplateAnchor, reducedMotion]);
 
-  const openTemplateSection = useCallback((anchor: string) => {
+  // Move focus to the heading of each step on transition so keyboard and screen
+  // reader users land at the top of the new content (#3118). Skipped when a
+  // deep-link anchor is pending, which manages its own focus target above.
+  useEffect(() => {
+    if (previousStepRef.current === step) {
+      return;
+    }
+    previousStepRef.current = step;
+    if (pendingTemplateAnchor) {
+      return;
+    }
+    stepHeadingRef.current?.focus();
+  }, [step, pendingTemplateAnchor]);
+
+  const openNewcomerSection = useCallback((anchor: string) => {
     if (anchor === TEMPLATE_LESSONS_ANCHOR) {
       setLessonsOptedIn(true);
     }
     setPendingTemplateAnchor(anchor);
-    setStep('template');
+    setStep('newcomer');
   }, []);
+
+  // Shared glossary/explainer dialogs (#3120). Rendered on whichever wizard step
+  // exposes their triggers; only one of each can be open at a time.
+  const glossaryModal = activeGlossaryTerm ? (
+    <div
+      className="onboarding__glossary"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-glossary-title"
+    >
+      <div className="onboarding__glossary-card">
+        <button
+          type="button"
+          className="onboarding__glossary-close"
+          aria-label="Close"
+          onClick={handleCloseGlossary}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+        <h2 id="onboarding-glossary-title" className="onboarding__path-title">
+          {GLOSSARY_TERMS[activeGlossaryTerm].title}
+        </h2>
+        <p className="onboarding__path-description">{GLOSSARY_TERMS[activeGlossaryTerm].body}</p>
+        <button
+          ref={glossaryCloseRef}
+          type="button"
+          className="onboarding__path-btn onboarding__path-btn--primary"
+          onClick={handleCloseGlossary}
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  const explainerModal = activeExplainer ? (
+    <div
+      className="onboarding__glossary"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-newcomer-explainer-title"
+    >
+      <div className="onboarding__glossary-card">
+        <button
+          type="button"
+          className="onboarding__glossary-close"
+          aria-label="Close"
+          onClick={handleCloseExplainer}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+        <h2 id="onboarding-newcomer-explainer-title" className="onboarding__path-title">
+          {newcomerExplainers[activeExplainer].title}
+        </h2>
+        <p className="onboarding__path-description">{newcomerExplainers[activeExplainer].body}</p>
+        <h3 className="onboarding__section-title">Why it matters</h3>
+        <p className="onboarding__path-description">
+          {newcomerExplainers[activeExplainer].whyItMatters}
+        </p>
+        <button
+          ref={explainerCloseRef}
+          type="button"
+          className="onboarding__path-btn onboarding__path-btn--primary"
+          onClick={handleCloseExplainer}
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   if (step === 'comfort') {
     return (
       <main className={onboardingClassName} aria-label="Comfort Preferences">
         {onboardingProgressLiveRegion}
         <div className="onboarding__container onboarding__container--narrow">
+          {stepProgressIndicator}
           <header className="onboarding__header">
-            <h1 className="onboarding__title">Welcome to Finance</h1>
+            <h1 className="onboarding__title" ref={stepHeadingRef} tabIndex={-1}>
+              Welcome to Finance
+            </h1>
             <h2 className="onboarding__preferences-title">Make it Yours</h2>
             <p className="onboarding__subtitle">
               Pick a few comfort settings now. You can change these any time later in Settings.
@@ -1111,8 +1271,11 @@ const OnboardingPage: React.FC = () => {
       <main className={onboardingClassName} aria-label="Get Started">
         {onboardingProgressLiveRegion}
         <div className="onboarding__container">
+          {stepProgressIndicator}
           <header className="onboarding__header">
-            <h1 className="onboarding__title">Welcome to Finance</h1>
+            <h1 className="onboarding__title" ref={stepHeadingRef} tabIndex={-1}>
+              Welcome to Finance
+            </h1>
             <p className="onboarding__subtitle">
               Your personal finance tracker. Choose how you want to get started.
             </p>
@@ -1218,8 +1381,11 @@ const OnboardingPage: React.FC = () => {
       <main className={onboardingClassName} aria-label="Privacy Preferences">
         {onboardingProgressLiveRegion}
         <div className="onboarding__container onboarding__container--narrow">
+          {stepProgressIndicator}
           <header className="onboarding__header">
-            <h1 className="onboarding__title">Privacy Preferences</h1>
+            <h1 className="onboarding__title" ref={stepHeadingRef} tabIndex={-1}>
+              Privacy Preferences
+            </h1>
             <p className="onboarding__subtitle">
               Even in local-only mode, you can choose to share anonymous usage data to help us
               improve the app. This is entirely optional.
@@ -1255,17 +1421,31 @@ const OnboardingPage: React.FC = () => {
     );
   }
 
-  if (step === 'template' && studentTemplate) {
+  if (step === 'newcomer') {
     return (
-      <main className={onboardingClassName} aria-label="Starter Budget Template">
+      <main className={onboardingClassName} aria-label="Personalize Your Setup">
         {onboardingProgressLiveRegion}
         <div className="onboarding__container onboarding__container--narrow">
+          {stepProgressIndicator}
+          {!isAuthenticated && (
+            <div className="onboarding__wizard-back-row">
+              <button
+                type="button"
+                className="onboarding__back-button"
+                onClick={handleNewcomerBack}
+              >
+                <span aria-hidden="true">←</span> Back
+              </button>
+            </div>
+          )}
           <header className="onboarding__header">
-            <h1 className="onboarding__title">Want a starter budget? Choose a template:</h1>
+            <h1 className="onboarding__title" ref={stepHeadingRef} tabIndex={-1}>
+              Personalize your setup
+            </h1>
             <p className="onboarding__subtitle">
               {selectedLifeStageOptions.length > 0
                 ? `Guidance is tailored for: ${selectedStageLabels}. You can change or skip this any time.`
-                : 'Start with optional guidance, short lessons, and a student-friendly budget you can edit any time.'}
+                : 'Optional: tailor guidance to your life stage and learn the basics. You can change or skip any of this at any time.'}
             </p>
           </header>
 
@@ -1474,46 +1654,6 @@ const OnboardingPage: React.FC = () => {
             </div>
           </section>
 
-          {templateError && (
-            <div className="onboarding__template-error" role="alert">
-              {templateError}
-            </div>
-          )}
-
-          <section className="onboarding__template-card" aria-label="Student starter budget">
-            <div className="onboarding__template-header">
-              <div>
-                <h2 className="onboarding__path-title">{studentTemplate.name}</h2>
-                <p className="onboarding__path-description">{studentTemplate.description}</p>
-              </div>
-              <span className="onboarding__template-badge">Available now</span>
-            </div>
-
-            <p className="onboarding__template-guidance">{studentTemplate.guidance}</p>
-
-            <ul className="onboarding__template-list" role="list">
-              {studentTemplate.categories.map((category) => (
-                <li key={category.name} className="onboarding__template-item" role="listitem">
-                  <span>
-                    {category.emoji} {category.name}
-                  </span>
-                  <strong>${(category.amountCents / 100).toFixed(0)}</strong>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="onboarding__coming-soon" aria-label="More templates coming soon">
-            <h2 className="onboarding__comparison-title">More templates coming soon</h2>
-            <div className="onboarding__coming-soon-list">
-              {futureTemplates.map((template) => (
-                <span key={template.id} className="onboarding__coming-soon-chip">
-                  {template.name}
-                </span>
-              ))}
-            </div>
-          </section>
-
           <section
             id={TEMPLATE_LESSONS_ANCHOR}
             tabIndex={-1}
@@ -1635,10 +1775,51 @@ const OnboardingPage: React.FC = () => {
             )}
           </section>
 
-          <section
-            className="onboarding__template-card onboarding__stacked-section"
-            aria-label="Goal-setting wizard"
-          >
+          <div className="onboarding__wizard-nav">
+            <button
+              type="button"
+              className="onboarding__path-btn onboarding__path-btn--secondary"
+              onClick={handleNewcomerAdvance}
+            >
+              Skip for now
+            </button>
+            <button
+              type="button"
+              className="onboarding__path-btn onboarding__path-btn--primary"
+              onClick={handleNewcomerAdvance}
+            >
+              Continue
+            </button>
+          </div>
+
+          {glossaryModal}
+          {explainerModal}
+        </div>
+      </main>
+    );
+  }
+
+  if (step === 'goals') {
+    return (
+      <main className={onboardingClassName} aria-label="Set a Savings Goal">
+        {onboardingProgressLiveRegion}
+        <div className="onboarding__container onboarding__container--narrow">
+          {stepProgressIndicator}
+          <div className="onboarding__wizard-back-row">
+            <button type="button" className="onboarding__back-button" onClick={handleGoalsBack}>
+              <span aria-hidden="true">←</span> Back
+            </button>
+          </div>
+          <header className="onboarding__header">
+            <h1 className="onboarding__title" ref={stepHeadingRef} tabIndex={-1}>
+              Set a savings goal
+            </h1>
+            <p className="onboarding__subtitle">
+              Optional: add a goal and preview the monthly estimate, or skip and set goals later.
+            </p>
+          </header>
+
+          <section className="onboarding__template-card" aria-label="Goal-setting wizard">
             <div className="onboarding__template-header">
               <div>
                 <h2 className="onboarding__path-title">Goal-setting wizard</h2>
@@ -1758,6 +1939,90 @@ const OnboardingPage: React.FC = () => {
             )}
           </section>
 
+          <div className="onboarding__wizard-nav">
+            <button
+              type="button"
+              className="onboarding__path-btn onboarding__path-btn--secondary"
+              onClick={handleGoalsAdvance}
+            >
+              Skip for now
+            </button>
+            <button
+              type="button"
+              className="onboarding__path-btn onboarding__path-btn--primary"
+              onClick={handleGoalsAdvance}
+            >
+              Continue
+            </button>
+          </div>
+
+          {glossaryModal}
+        </div>
+      </main>
+    );
+  }
+
+  if (step === 'template' && studentTemplate) {
+    return (
+      <main className={onboardingClassName} aria-label="Starter Budget Template">
+        {onboardingProgressLiveRegion}
+        <div className="onboarding__container onboarding__container--narrow">
+          {stepProgressIndicator}
+          <div className="onboarding__wizard-back-row">
+            <button type="button" className="onboarding__back-button" onClick={handleTemplateBack}>
+              <span aria-hidden="true">←</span> Back
+            </button>
+          </div>
+          <header className="onboarding__header">
+            <h1 className="onboarding__title" ref={stepHeadingRef} tabIndex={-1}>
+              Want a starter budget? Choose a template:
+            </h1>
+            <p className="onboarding__subtitle">
+              Start with a student-friendly budget you can rename or adjust any time, or skip and
+              build your own later.
+            </p>
+          </header>
+
+          {templateError && (
+            <div className="onboarding__template-error" role="alert">
+              {templateError}
+            </div>
+          )}
+
+          <section className="onboarding__template-card" aria-label="Student starter budget">
+            <div className="onboarding__template-header">
+              <div>
+                <h2 className="onboarding__path-title">{studentTemplate.name}</h2>
+                <p className="onboarding__path-description">{studentTemplate.description}</p>
+              </div>
+              <span className="onboarding__template-badge">Available now</span>
+            </div>
+
+            <p className="onboarding__template-guidance">{studentTemplate.guidance}</p>
+
+            <ul className="onboarding__template-list" role="list">
+              {studentTemplate.categories.map((category) => (
+                <li key={category.name} className="onboarding__template-item" role="listitem">
+                  <span>
+                    {category.emoji} {category.name}
+                  </span>
+                  <strong>${(category.amountCents / 100).toFixed(0)}</strong>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="onboarding__coming-soon" aria-label="More templates coming soon">
+            <h2 className="onboarding__comparison-title">More templates coming soon</h2>
+            <div className="onboarding__coming-soon-list">
+              {futureTemplates.map((template) => (
+                <span key={template.id} className="onboarding__coming-soon-chip">
+                  {template.name}
+                </span>
+              ))}
+            </div>
+          </section>
+
           <div className="onboarding__template-actions">
             <p className="onboarding__template-summary">
               We will set up the {studentTemplate.name} starter budget shown above — more templates
@@ -1781,78 +2046,6 @@ const OnboardingPage: React.FC = () => {
               Skip for now
             </button>
           </div>
-
-          {activeGlossaryTerm && (
-            <div
-              className="onboarding__glossary"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="onboarding-glossary-title"
-            >
-              <div className="onboarding__glossary-card">
-                <button
-                  type="button"
-                  className="onboarding__glossary-close"
-                  aria-label="Close"
-                  onClick={handleCloseGlossary}
-                >
-                  <span aria-hidden="true">×</span>
-                </button>
-                <h2 id="onboarding-glossary-title" className="onboarding__path-title">
-                  {GLOSSARY_TERMS[activeGlossaryTerm].title}
-                </h2>
-                <p className="onboarding__path-description">
-                  {GLOSSARY_TERMS[activeGlossaryTerm].body}
-                </p>
-                <button
-                  ref={glossaryCloseRef}
-                  type="button"
-                  className="onboarding__path-btn onboarding__path-btn--primary"
-                  onClick={handleCloseGlossary}
-                >
-                  Got it
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeExplainer && (
-            <div
-              className="onboarding__glossary"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="onboarding-newcomer-explainer-title"
-            >
-              <div className="onboarding__glossary-card">
-                <button
-                  type="button"
-                  className="onboarding__glossary-close"
-                  aria-label="Close"
-                  onClick={handleCloseExplainer}
-                >
-                  <span aria-hidden="true">×</span>
-                </button>
-                <h2 id="onboarding-newcomer-explainer-title" className="onboarding__path-title">
-                  {newcomerExplainers[activeExplainer].title}
-                </h2>
-                <p className="onboarding__path-description">
-                  {newcomerExplainers[activeExplainer].body}
-                </p>
-                <h3 className="onboarding__section-title">Why it matters</h3>
-                <p className="onboarding__path-description">
-                  {newcomerExplainers[activeExplainer].whyItMatters}
-                </p>
-                <button
-                  ref={explainerCloseRef}
-                  type="button"
-                  className="onboarding__path-btn onboarding__path-btn--primary"
-                  onClick={handleCloseExplainer}
-                >
-                  Got it
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </main>
     );
@@ -1866,7 +2059,9 @@ const OnboardingPage: React.FC = () => {
           <div className="onboarding__complete-icon" aria-hidden="true">
             <AppIcon name="sparkles" />
           </div>
-          <h1 className="onboarding__title">You&apos;re All Set!</h1>
+          <h1 className="onboarding__title" ref={stepHeadingRef} tabIndex={-1}>
+            You&apos;re All Set!
+          </h1>
           <p className="onboarding__subtitle">
             {starterBudgetCreated
               ? 'Your finance tracker is ready, and your student starter budget is already in place.'
@@ -1961,7 +2156,7 @@ const OnboardingPage: React.FC = () => {
                   <button
                     type="button"
                     className="onboarding__link-button"
-                    onClick={() => openTemplateSection(TEMPLATE_GUIDANCE_ANCHOR)}
+                    onClick={() => openNewcomerSection(TEMPLATE_GUIDANCE_ANCHOR)}
                   >
                     Edit guidance
                   </button>
@@ -1974,7 +2169,7 @@ const OnboardingPage: React.FC = () => {
                   <button
                     type="button"
                     className="onboarding__link-button"
-                    onClick={() => openTemplateSection(TEMPLATE_LESSONS_ANCHOR)}
+                    onClick={() => openNewcomerSection(TEMPLATE_LESSONS_ANCHOR)}
                   >
                     Review lessons
                   </button>
@@ -2065,39 +2260,7 @@ const OnboardingPage: React.FC = () => {
             )}
           </section>
 
-          {activeGlossaryTerm && (
-            <div
-              className="onboarding__glossary"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="onboarding-complete-glossary-title"
-            >
-              <div className="onboarding__glossary-card">
-                <button
-                  type="button"
-                  className="onboarding__glossary-close"
-                  aria-label="Close"
-                  onClick={handleCloseGlossary}
-                >
-                  <span aria-hidden="true">×</span>
-                </button>
-                <h2 id="onboarding-complete-glossary-title" className="onboarding__path-title">
-                  {GLOSSARY_TERMS[activeGlossaryTerm].title}
-                </h2>
-                <p className="onboarding__path-description">
-                  {GLOSSARY_TERMS[activeGlossaryTerm].body}
-                </p>
-                <button
-                  ref={glossaryCloseRef}
-                  type="button"
-                  className="onboarding__path-btn onboarding__path-btn--primary"
-                  onClick={handleCloseGlossary}
-                >
-                  Got it
-                </button>
-              </div>
-            </div>
-          )}
+          {glossaryModal}
 
           <button
             type="button"
