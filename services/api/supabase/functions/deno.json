@@ -10,6 +10,7 @@
       "health-check/**/*.test.ts",
       "auth-webhook/**/*.test.ts",
       "auth-refresh/**/*.test.ts",
+      "auth-oauth-start/**/*.test.ts",
       "passkey-register/**/*.test.ts",
       "passkey-authenticate/**/*.test.ts",
       "household-invite/**/*.test.ts",

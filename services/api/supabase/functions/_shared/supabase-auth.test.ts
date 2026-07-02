@@ -9,11 +9,16 @@
  * exercised by the per-function integration tests with fetch mocks.
  */
 
-import { assert, assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
+import {
+  assert,
+  assertEquals,
+  assertStringIncludes,
+} from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 
 import {
   SUPPORTED_PROVIDERS,
   buildAuthorizeUrl,
+  fetchProviderEnabled,
   generatePkceMaterial,
   isSupportedProvider,
   requestPasswordRecovery,
@@ -184,6 +189,87 @@ Deno.test(
     });
   },
 );
+
+// ---------------------------------------------------------------------------
+// fetchProviderEnabled (#3188)
+// ---------------------------------------------------------------------------
+
+Deno.test('fetchProviderEnabled — "enabled" when the external flag is true', async () => {
+  await withRecoveryEnv(async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (input) => {
+        assertStringIncludes(String(input), '/auth/v1/settings');
+        return Promise.resolve(
+          new Response(JSON.stringify({ external: { google: true, github: false } }), {
+            status: 200,
+          }),
+        );
+      };
+      assertEquals(await fetchProviderEnabled('google'), 'enabled');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+Deno.test(
+  'fetchProviderEnabled — "disabled" when the external flag is false or absent',
+  async () => {
+    await withRecoveryEnv(async () => {
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(JSON.stringify({ external: { google: true, github: false } }), {
+              status: 200,
+            }),
+          );
+        assertEquals(await fetchProviderEnabled('github'), 'disabled'); // explicit false
+        assertEquals(await fetchProviderEnabled('apple'), 'disabled'); // key absent
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+  },
+);
+
+Deno.test('fetchProviderEnabled — "unknown" on a non-2xx settings response', async () => {
+  await withRecoveryEnv(async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = () => Promise.resolve(new Response('nope', { status: 500 }));
+      assertEquals(await fetchProviderEnabled('google'), 'unknown');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+Deno.test('fetchProviderEnabled — "unknown" when the settings fetch rejects', async () => {
+  await withRecoveryEnv(async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = () => Promise.reject(new TypeError('network down'));
+      assertEquals(await fetchProviderEnabled('google'), 'unknown');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+Deno.test('fetchProviderEnabled — "unknown" when the settings body is not JSON', async () => {
+  await withRecoveryEnv(async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = () =>
+        Promise.resolve(new Response('<html>not json</html>', { status: 200 }));
+      assertEquals(await fetchProviderEnabled('google'), 'unknown');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Helpers

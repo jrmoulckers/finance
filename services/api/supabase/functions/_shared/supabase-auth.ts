@@ -242,6 +242,61 @@ export function buildAuthorizeUrl(
   return `${authUrl()}/authorize?${params.toString()}`;
 }
 
+/**
+ * Shape of the public GoTrue settings document served at
+ * `{SUPABASE_URL}/auth/v1/settings`. The `external` map exposes a per-provider
+ * boolean indicating whether that social provider is enabled on the backend.
+ */
+export interface GoTrueSettings {
+  external?: Record<string, boolean>;
+}
+
+/**
+ * Classified result of checking whether a provider is enabled on the backend:
+ *
+ * - `enabled`  — GoTrue reports the provider's `external` flag as `true`.
+ * - `disabled` — settings were read and the provider is absent/`false`.
+ * - `unknown`  — settings could not be read (network error or non-2xx); callers
+ *   should degrade as "backend temporarily unavailable" rather than guess.
+ */
+export type ProviderEnabledResult = 'enabled' | 'disabled' | 'unknown';
+
+/**
+ * Query GoTrue's public settings document to determine whether `provider` is
+ * actually enabled on the backend.
+ *
+ * A provider can be statically supported (google/github/apple) yet not enabled
+ * in GoTrue. Without this check, `auth-oauth-start` would 302 the browser to
+ * `/authorize` and the user would land on a raw
+ * `validation_failed: provider is not enabled` JSON page (#3188). Reading
+ * `/auth/v1/settings` auto-tracks whatever gets enabled later with no manual env
+ * sync. On any read failure we return `unknown` so the caller can surface a
+ * graceful in-app message instead of hard-redirecting onto a raw page.
+ */
+export async function fetchProviderEnabled(provider: AuthProvider): Promise<ProviderEnabledResult> {
+  const url = `${authUrl()}/settings`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { apikey: requireEnv('SUPABASE_ANON_KEY') },
+    });
+  } catch {
+    return 'unknown';
+  }
+
+  if (!response.ok) return 'unknown';
+
+  let settings: GoTrueSettings;
+  try {
+    settings = (await response.json()) as GoTrueSettings;
+  } catch {
+    return 'unknown';
+  }
+
+  return settings.external?.[provider] === true ? 'enabled' : 'disabled';
+}
+
 /** Outcome of a password-recovery request to Supabase Auth (GoTrue). */
 export interface PasswordRecoveryResult {
   /**

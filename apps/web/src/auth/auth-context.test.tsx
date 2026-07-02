@@ -559,4 +559,24 @@ describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
     );
     expect(assignMock).not.toHaveBeenCalled();
   });
+
+  it('degrades gracefully in-app when a supported-but-disabled provider is rejected (#3188)', async () => {
+    // A statically-supported provider that GoTrue has NOT enabled now answers
+    // the pre-flight probe with a 400 (auth-oauth-start gates on the provider
+    // actually being enabled). The probe is non-healthy, so we keep the user
+    // in-app with the graceful "option unavailable" message and never hand off
+    // to a raw GoTrue "provider is not enabled" page.
+    stubStart(() => Promise.resolve(jsonResponse({ error: 'Provider not enabled' }, 400)));
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-oauth'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent(
+        OAUTH_PROVIDER_UNAVAILABLE_MESSAGE,
+      ),
+    );
+    expect(assignMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId('loading-state')).toHaveTextContent('ready');
+  });
 });

@@ -95,7 +95,6 @@ export const LoginPage: React.FC = () => {
 
   const emailInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
-  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -138,12 +137,6 @@ export const LoginPage: React.FC = () => {
       cancelled = true;
     };
   }, [webAuthnSupported]);
-
-  useEffect(() => {
-    if (error) {
-      errorRef.current?.focus();
-    }
-  }, [error]);
 
   const handleEmailLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -235,18 +228,6 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
-        <div
-          className={`auth-error-region${error ? ' auth-error-region--filled' : ''}`}
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {error && (
-            <div ref={errorRef} id={authErrorId} className="auth-error" tabIndex={-1}>
-              {error}
-            </div>
-          )}
-        </div>
-
         {/* ── Passkey-first layout: biometric primary when preferred (#1983) ── */}
         {/* Passkey UI is suppressed in demo mode (#2011) because the demo
             build ships with a placeholder Supabase URL and no backend
@@ -281,6 +262,43 @@ export const LoginPage: React.FC = () => {
             </button>
           </div>
         )}
+
+        {/*
+          The sign-in error is a direct child of the card — NOT inside the
+          collapsible email form — so passkey- and OAuth-failure messages stay
+          visible when the email form is collapsed for passkey-primary users
+          (#1983). It sits adjacent to the sign-in controls and is announced
+          politely via the live region; we no longer steal visual focus to a
+          top-of-card box on every error (#3190).
+        */}
+        <div
+          className={`auth-error-region${error ? ' auth-error-region--filled' : ''}`}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {error && (
+            <div id={authErrorId} className="auth-error">
+              <svg
+                className="auth-error__icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path
+                  d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="auth-error__text">{error}</span>
+            </div>
+          )}
+        </div>
 
         <form
           id="login-email-form"

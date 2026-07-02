@@ -19,6 +19,7 @@ import { requireEnv, validateEnv } from '../_shared/env.ts';
 import { COOKIE_PKCE, COOKIE_POST_LOGIN, buildSetCookie } from '../_shared/cookie.ts';
 import {
   buildAuthorizeUrl,
+  fetchProviderEnabled,
   generatePkceMaterial,
   isSupportedProvider,
 } from '../_shared/supabase-auth.ts';
@@ -43,6 +44,27 @@ export const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({ error: 'Unsupported provider' }), {
       status: 400,
       headers: { ...NO_STORE, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Statically supported ≠ actually enabled on GoTrue. Verify the provider is
+  // enabled BEFORE issuing a 302 — otherwise the browser follows the redirect
+  // to GoTrue's `/authorize` and lands on a raw "provider is not enabled" JSON
+  // page (#3188). A disabled provider answers 400 (the SPA shows the graceful
+  // in-app "that option is unavailable" message); an unreadable settings
+  // document answers 503 (the SPA shows the "temporarily unavailable" message).
+  // Neither ever hard-redirects the user onto a raw page.
+  const providerEnabled = await fetchProviderEnabled(provider);
+  if (providerEnabled === 'disabled') {
+    return new Response(JSON.stringify({ error: 'Provider not enabled' }), {
+      status: 400,
+      headers: { ...NO_STORE, 'Content-Type': 'application/json' },
+    });
+  }
+  if (providerEnabled === 'unknown') {
+    return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
+      status: 503,
+      headers: { ...NO_STORE, 'Content-Type': 'application/json', 'Retry-After': '60' },
     });
   }
 

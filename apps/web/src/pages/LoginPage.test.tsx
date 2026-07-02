@@ -191,7 +191,7 @@ describe('LoginPage', () => {
       );
     });
 
-    it('collapses the email/password form behind a disclosure', async () => {
+    it('collapses the email/password form behind a disclosure (#3189)', async () => {
       const { container } = renderLoginPage();
 
       await waitFor(() =>
@@ -200,10 +200,16 @@ describe('LoginPage', () => {
         ).toBeInTheDocument(),
       );
 
-      // Form is hidden when biometric is primary and the disclosure is collapsed.
+      // The `hidden` attribute must actually collapse the form. `.auth-form`
+      // sets `display: flex`, so `auth.css` adds a `.auth-form[hidden]` override
+      // (#3189); jest-dom honours the `hidden` attribute directly, so the form
+      // and its fields report as not visible while collapsed.
       const form = container.querySelector('#login-email-form');
       expect(form).not.toBeNull();
       expect(form).toHaveAttribute('hidden');
+      expect(form).not.toBeVisible();
+      expect(screen.getByLabelText('Email')).not.toBeVisible();
+      expect(screen.getByLabelText('Password')).not.toBeVisible();
     });
 
     it('keeps social sign-in visible while the email form is collapsed (#3178)', async () => {
