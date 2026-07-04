@@ -160,16 +160,23 @@
 /* ─── Error / status banners ─────────────────────────────────────────────── */
 
 /*
- * Reserve vertical space for the auth error so a failed sign-in renders the
- * message inline without a layout shift / flash (#3108). The region is always
- * present (and announces politely); the styled box only appears once filled.
+ * Reserve a stable block of vertical space for the auth error so mounting or
+ * unmounting the inline banner never shifts the sibling form — the residual
+ * submit flash that #3192 closes on top of #3108. `min-height` holds exactly
+ * one compact banner (one line of caption text + the box's vertical padding),
+ * expressed with the same tokens the banner uses so it tracks the cognitive /
+ * high-contrast / accessibility type-scale overrides. The margin is constant
+ * (never toggled) so the reserved footprint is identical whether or not an
+ * error is present, keeping cumulative layout shift at zero. The region is
+ * always rendered and announces politely via aria-live; the styled box only
+ * appears once there is a message.
  */
 .auth-error-region {
+  min-height: calc(
+    var(--type-scale-caption-line-height, 1.5) * var(--type-scale-caption-font-size, 0.875rem) +
+      var(--spacing-2) * 2
+  );
   margin-bottom: var(--spacing-4);
-}
-
-.auth-error-region:not(.auth-error-region--filled) {
-  margin-bottom: 0;
 }
 
 /*
@@ -187,6 +194,7 @@
   background: var(--color-red-50, #fef2f2);
   color: var(--semantic-status-negative);
   font-size: var(--type-scale-caption-font-size, 0.875rem);
+  line-height: var(--type-scale-caption-line-height, 1.5);
   text-align: start;
 }
 

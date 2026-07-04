@@ -333,4 +333,35 @@ describe('LoginPage', () => {
       expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('badpassword1');
     });
   });
+
+  describe('error region reserves space & announces (#3192)', () => {
+    it('keeps the aria-live region mounted (reserving space) when there is no error', () => {
+      authState.error = null;
+      const { container } = renderLoginPage();
+
+      const region = container.querySelector('.auth-error-region');
+      // The region is always present so its reserved min-height stops the form
+      // from shifting on the first failed submit, and the polite live region
+      // stays available for screen-reader announcements.
+      expect(region).toBeInTheDocument();
+      expect(region).toHaveAttribute('aria-live', 'polite');
+      expect(region).toHaveAttribute('aria-atomic', 'true');
+      // No banner content while there is no error, but the region persists.
+      expect(container.querySelector('.auth-error')).toBeNull();
+    });
+
+    it('mounts the error banner inside that same live region without remounting it', () => {
+      authState.error = 'Incorrect email or password';
+      const { container } = renderLoginPage();
+
+      const region = container.querySelector('.auth-error-region');
+      expect(region).toBeInTheDocument();
+      expect(region).toHaveAttribute('aria-live', 'polite');
+      expect(region).toHaveAttribute('aria-atomic', 'true');
+
+      const banner = region?.querySelector('.auth-error');
+      expect(banner).not.toBeNull();
+      expect(screen.getByText('Incorrect email or password')).toBeInTheDocument();
+    });
+  });
 });
