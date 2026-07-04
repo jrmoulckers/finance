@@ -271,11 +271,7 @@ export const LoginPage: React.FC = () => {
           politely via the live region; we no longer steal visual focus to a
           top-of-card box on every error (#3190).
         */}
-        <div
-          className={`auth-error-region${error ? ' auth-error-region--filled' : ''}`}
-          aria-live="polite"
-          aria-atomic="true"
-        >
+        <div className="auth-error-region" aria-live="polite" aria-atomic="true">
           {error && (
             <div id={authErrorId} className="auth-error">
               <svg
