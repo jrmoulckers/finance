@@ -245,6 +245,19 @@ describe('SidebarNavigation', () => {
     onNavigate: vi.fn(),
   };
 
+  /** Props that turn on the relocated header quick actions (#3197). */
+  const quickActionProps = {
+    ...defaultProps,
+    showQuickActions: true,
+    notifications: [],
+    notificationUnreadCount: 3,
+    onMarkNotificationAsRead: vi.fn(),
+    onMarkAllNotificationsAsRead: vi.fn(),
+    onDismissNotification: vi.fn(),
+    isPrivacyMode: false,
+    onTogglePrivacyMode: vi.fn(),
+  };
+
   it('renders the pinned destinations at the top', () => {
     render(<SidebarNavigation {...defaultProps} />);
 
@@ -452,5 +465,56 @@ describe('SidebarNavigation', () => {
 
     // Money still contains the active route; no rising edge → stays collapsed.
     expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  // ─── Relocated header quick actions (#3197) ────────────────────────────────
+
+  it('does not render notifications or hide-amounts controls without showQuickActions', () => {
+    render(<SidebarNavigation {...defaultProps} />);
+
+    expect(screen.queryByRole('button', { name: /notifications/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hide amounts/i })).not.toBeInTheDocument();
+  });
+
+  it('renders a notifications bell with the unread count when showQuickActions is set', () => {
+    render(<SidebarNavigation {...quickActionProps} />);
+
+    const bell = screen.getByRole('button', { name: 'Notifications, 3 unread' });
+    expect(bell).toBeInTheDocument();
+    expect(bell).toHaveAttribute('aria-haspopup', 'true');
+  });
+
+  it('opens the notification panel from the sidebar bell', () => {
+    render(<SidebarNavigation {...quickActionProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 3 unread' }));
+
+    expect(screen.getByRole('region', { name: 'Notifications' })).toBeInTheDocument();
+  });
+
+  it('renders a hide-amounts toggle with header parity when showQuickActions is set', () => {
+    render(<SidebarNavigation {...quickActionProps} />);
+
+    const toggle = screen.getByRole('button', { name: 'Hide amounts' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).toHaveAttribute('title', 'Hide amounts');
+    expect(toggle.querySelector('svg')).not.toBeNull();
+  });
+
+  it('reflects active privacy mode on the sidebar hide-amounts toggle', () => {
+    render(<SidebarNavigation {...quickActionProps} isPrivacyMode />);
+
+    const toggle = screen.getByRole('button', { name: 'Show amounts' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(toggle).toHaveAttribute('title', 'Show amounts');
+  });
+
+  it('calls onTogglePrivacyMode when the sidebar hide-amounts toggle is clicked', () => {
+    const onTogglePrivacyMode = vi.fn();
+    render(<SidebarNavigation {...quickActionProps} onTogglePrivacyMode={onTogglePrivacyMode} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+
+    expect(onTogglePrivacyMode).toHaveBeenCalledTimes(1);
   });
 });
