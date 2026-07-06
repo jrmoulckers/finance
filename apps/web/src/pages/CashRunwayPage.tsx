@@ -25,6 +25,7 @@ import { IconToken } from '../icons/tokens';
 import { useAccounts } from '../hooks/useAccounts';
 import { useBills } from '../hooks/useBills';
 import { useInvoices } from '../hooks/useInvoices';
+import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { formatCurrency } from '../lib/currency';
 import {
@@ -33,6 +34,7 @@ import {
   type RecurrenceFrequency,
   type ScheduledCashEvent,
 } from '../lib/cashflow/cash-runway';
+import { formatDate } from '../utils/formatDate';
 import type { Account, BillFrequency } from '../kmp/bridge';
 
 import './CashRunwayPage.css';
@@ -55,15 +57,6 @@ const BILL_FREQUENCY_TO_RECURRENCE: Record<BillFrequency, RecurrenceFrequency> =
   YEARLY: 'yearly',
 };
 
-/** Format a `YYYY-MM-DD` date for display, e.g. "Jan 15, 2025". */
-function formatDate(isoDate: string): string {
-  const parsed = new Date(`${isoDate}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) {
-    return isoDate;
-  }
-  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 /** Clamp a past date forward to today so overdue items count as imminent. */
 function notBefore(isoDate: string, today: string): string {
   return isoDate < today ? today : isoDate;
@@ -74,6 +67,7 @@ export function CashRunwayPage() {
 
   const today = useMemo(() => todayIsoDate(), []);
   const reducedMotion = useReducedMotion();
+  const { locale } = useLocalePreferences();
 
   const { accounts, loading: accountsLoading } = useAccounts();
   const { bills } = useBills();
@@ -130,8 +124,8 @@ export function CashRunwayPage() {
   const isShortfall = forecast.status === 'shortfall';
   const statusIcon = isShortfall ? IconToken.WARNING : IconToken.SUCCESS;
   const statusHeadline = isShortfall
-    ? `Projected cash shortfall on ${formatDate(forecast.shortfallDate ?? forecast.startDate)}`
-    : `Cash stays positive through ${formatDate(forecast.endDate)}`;
+    ? `Projected cash shortfall on ${formatDate(forecast.shortfallDate ?? forecast.startDate, { locale })}`
+    : `Cash stays positive through ${formatDate(forecast.endDate, { locale })}`;
   const statusDetail = isShortfall
     ? forecast.runwayDays === 0
       ? 'Your cash is already below zero. Bring in revenue or defer outflows now.'
@@ -207,7 +201,7 @@ export function CashRunwayPage() {
                 <dt className="cash-runway__metric-label">Runway</dt>
                 <dd className="cash-runway__metric-value">
                   {isShortfall
-                    ? formatDate(forecast.shortfallDate ?? forecast.startDate)
+                    ? formatDate(forecast.shortfallDate ?? forecast.startDate, { locale })
                     : 'No shortfall'}
                 </dd>
               </div>
@@ -220,7 +214,7 @@ export function CashRunwayPage() {
                 >
                   {formatCurrency(forecast.minBalanceCents)}
                   <span className="cash-runway__metric-sub">
-                    on {formatDate(forecast.minBalanceDate)}
+                    on {formatDate(forecast.minBalanceDate, { locale })}
                   </span>
                 </dd>
               </div>
@@ -255,7 +249,7 @@ export function CashRunwayPage() {
             </h2>
             <p className="cash-runway__timeline-intro">
               Starting cash of {formatCurrency(forecast.startingCashCents)} on{' '}
-              {formatDate(forecast.startDate)}
+              {formatDate(forecast.startDate, { locale })}
               {forecast.timeline.length === 0
                 ? ' with no scheduled events in this horizon.'
                 : ', then each day with a scheduled inflow or outflow:'}
@@ -272,7 +266,9 @@ export function CashRunwayPage() {
                   return (
                     <li key={point.date} className="cash-runway__day">
                       <div className="cash-runway__day-head">
-                        <span className="cash-runway__day-date">{formatDate(point.date)}</span>
+                        <span className="cash-runway__day-date">
+                          {formatDate(point.date, { locale })}
+                        </span>
                         <span
                           className={`cash-runway__day-balance${
                             negative ? ' cash-runway__day-balance--negative' : ''

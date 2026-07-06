@@ -15,10 +15,24 @@ import { InvoicesPage } from './InvoicesPage';
 import type { Invoice } from '../lib/analytics/invoices';
 
 vi.mock('../hooks/useInvoices', () => ({ useInvoices: vi.fn() }));
+vi.mock('../hooks/useLocalePreferences', () => ({ useLocalePreferences: vi.fn() }));
 
 import { useInvoices } from '../hooks/useInvoices';
+import { useLocalePreferences } from '../hooks/useLocalePreferences';
 
 const mockedUseInvoices = vi.mocked(useInvoices);
+const mockedUseLocalePreferences = vi.mocked(useLocalePreferences);
+
+function mockLocale(locale: string): void {
+  mockedUseLocalePreferences.mockReturnValue({
+    locale,
+    timeZone: 'UTC',
+    supportedLocales: [],
+    timeZoneOptions: [],
+    setLocale: vi.fn(),
+    setTimeZone: vi.fn(),
+  });
+}
 
 const SAMPLE_INVOICE: Invoice = {
   id: 'inv-1',
@@ -34,6 +48,7 @@ const SAMPLE_INVOICE: Invoice = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLocale('en-US');
   mockedUseInvoices.mockReturnValue({
     invoices: [],
     pipelineGroups: [],
@@ -81,5 +96,46 @@ describe('InvoicesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete invoice' }));
     expect(deleteInvoice).toHaveBeenCalledWith('inv-1');
+  });
+
+  it('pluralizes the invoice count per pipeline group', () => {
+    const second: Invoice = { ...SAMPLE_INVOICE, id: 'inv-2' };
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE, second],
+      pipelineGroups: [
+        { status: 'Sent', label: 'Sent', invoices: [SAMPLE_INVOICE], totalCents: 120_000 },
+        { status: 'Paid', label: 'Paid', invoices: [SAMPLE_INVOICE, second], totalCents: 240_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    expect(screen.getByText('1 invoice')).toBeInTheDocument();
+    expect(screen.getByText('2 invoices')).toBeInTheDocument();
+  });
+
+  it('formats invoice dates using the active locale', () => {
+    mockLocale('en-GB');
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE],
+      pipelineGroups: [
+        { status: 'Sent', label: 'Sent', invoices: [SAMPLE_INVOICE], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    // en-GB renders day-first ("1 Jun 2026"); the removed en-US hardcode showed "Jun 1, 2026".
+    expect(screen.getByText(/Issued 1 Jun 2026/)).toBeInTheDocument();
   });
 });
