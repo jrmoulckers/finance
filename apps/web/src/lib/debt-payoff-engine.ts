@@ -230,6 +230,8 @@ export function calculateStrategyResult(
       totalPaidCents: 0,
       totalMonths: 0,
       timelineBalanceCents: [],
+      fullyPaidOff: true,
+      unpaidDebtIds: [],
     };
   }
 
@@ -362,6 +364,16 @@ export function calculateStrategyResult(
     totalPaidCents += s.totalPaidCents;
   }
 
+  // Any debt still carrying a balance at the horizon never amortized — its
+  // payment does not cover its interest. Report these so callers can warn the
+  // user instead of rendering the capped horizon as a real payoff countdown.
+  const unpaidDebtIds: string[] = [];
+  for (const id of orderedIds) {
+    if ((balances.get(id) ?? 0) > 0) {
+      unpaidDebtIds.push(id);
+    }
+  }
+
   return {
     strategy,
     schedules,
@@ -370,6 +382,8 @@ export function calculateStrategyResult(
     totalPaidCents,
     totalMonths: month,
     timelineBalanceCents,
+    fullyPaidOff: unpaidDebtIds.length === 0,
+    unpaidDebtIds,
   };
 }
 

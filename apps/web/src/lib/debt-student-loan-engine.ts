@@ -35,6 +35,7 @@ import type {
   StudentLoanWhatIfScenario,
 } from './debt-types';
 import { bankersRound, calculateMonthlyInterestCents } from './debt-payoff-engine';
+import { addMonthsToIsoDate } from './date-utils';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -137,13 +138,6 @@ function getStudentLoanAggregate(loans: readonly StudentLoan[]): {
     weightedAverageRateBps:
       totalBalanceCents > 0 ? bankersRound(rateWeightedSum / totalBalanceCents) : 0,
   };
-}
-
-function addMonthsToIsoDate(todayIso: string, months: number): string {
-  const [year, month, day] = todayIso.split('-').map((value) => Number.parseInt(value, 10));
-  const date = new Date(Date.UTC(year, Math.max(0, month - 1), day));
-  date.setUTCMonth(date.getUTCMonth() + months);
-  return date.toISOString().slice(0, 10);
 }
 
 /**

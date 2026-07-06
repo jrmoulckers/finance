@@ -181,6 +181,42 @@ describe('DebtPage', () => {
     expect(screen.getAllByText('Personal Loan').length).toBeGreaterThan(0);
   });
 
+  it('warns instead of showing a countdown when the payment never covers interest (#3355)', () => {
+    mockUseAccountsState.accounts = [
+      buildAccount({
+        id: 'cc-maxed',
+        name: 'Maxed Card',
+        type: 'CREDIT_CARD',
+        currentBalance: { amount: -600_000 },
+      }),
+    ];
+
+    render(<DebtPage />);
+
+    // With the default 19.99% APR and 3% minimum the card amortizes, so the
+    // hero shows the debt-free countdown.
+    expect(screen.getByRole('region', { name: 'Debt-free countdown' })).toBeDefined();
+
+    // Push the APR up and the minimum payment below the monthly interest, and
+    // remove the default extra payment so nothing covers the shortfall.
+    fireEvent.change(screen.getByLabelText('Extra monthly payment ($)'), {
+      target: { value: '0' },
+    });
+    const importRegion = screen.getByRole('region', { name: 'Imported debt accounts' });
+    const cardItem = within(importRegion).getByText('Maxed Card').closest('li') as HTMLElement;
+    fireEvent.change(within(cardItem).getByLabelText('APR (%)'), { target: { value: '24.99' } });
+    fireEvent.change(within(cardItem).getByLabelText('Minimum payment ($)'), {
+      target: { value: '100' },
+    });
+
+    // The hero now warns that the plan never reaches debt-free instead of
+    // rendering a misleading "100 years to debt-free" countdown.
+    expect(screen.queryByRole('region', { name: 'Debt-free countdown' })).toBeNull();
+    const warning = screen.getByRole('region', { name: 'Payment does not cover interest' });
+    expect(within(warning).getByText('This plan never reaches debt-free')).toBeDefined();
+    expect(within(warning).getByText('Maxed Card')).toBeDefined();
+  });
+
   it('switches tabs on click', () => {
     render(<DebtPage />);
     const bnplTab = screen.getByRole('tab', { name: 'BNPL Dashboard' });
