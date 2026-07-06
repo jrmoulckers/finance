@@ -24,6 +24,7 @@ import { useExchangeRates } from '../hooks/useExchangeRates';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
+import { computePreviousPeriodSpending } from '../lib/budget-previous-period';
 import type { DisplayExchangeRate } from '../lib/budgeting/display-currency-rollups';
 import type { TripBudgetTransaction } from '../lib/budgeting/trip-country-budget-scope';
 import {
@@ -430,6 +431,27 @@ export const BudgetsPage: React.FC = () => {
     return map;
   }, [budgets, categoriesById]);
 
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name])),
+    [categories],
+  );
+
+  const previousPeriod = useMemo(
+    () =>
+      computePreviousPeriodSpending(
+        transactions.map((transaction) => ({
+          type: transaction.type,
+          amountCents: transaction.amount.amount,
+          date: transaction.date,
+          categoryId: transaction.categoryId,
+          deleted: transaction.deletedAt != null,
+        })),
+        categoryNameById,
+        new Date(currentYear, currentMonth, 1),
+      ),
+    [transactions, categoryNameById, currentYear, currentMonth],
+  );
+
   return (
     <>
       <OfflineBanner />
@@ -784,9 +806,9 @@ export const BudgetsPage: React.FC = () => {
             totalBudget={totalBudgeted}
             daysElapsed={daysElapsed}
             totalDays={daysInMonth}
-            previousPeriodSpent={null}
+            previousPeriodSpent={previousPeriod.previousPeriodSpent}
             currentCategorySpending={currentCategorySpending}
-            previousCategorySpending={new Map()}
+            previousCategorySpending={previousPeriod.previousCategorySpending}
           />
           <section aria-label="Variance coaching" style={{ marginBottom: 'var(--spacing-6)' }}>
             <div className="card">
