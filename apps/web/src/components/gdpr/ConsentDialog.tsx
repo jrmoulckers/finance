@@ -66,12 +66,15 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({ onComplete }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFocusRef = useRef<HTMLButtonElement>(null);
 
-  // Focus trap: focus the dialog on mount
+  // Move focus to the primary action whenever the dialog opens or the
+  // quick-actions <-> detailed-preferences views swap. Without the showDetails
+  // dependency, clicking "Customize" (or "Back") unmounts the focused button
+  // and strands focus on <body> for keyboard and screen-reader users.
   useEffect(() => {
     if (needsConsent) {
       firstFocusRef.current?.focus();
     }
-  }, [needsConsent]);
+  }, [needsConsent, showDetails]);
 
   // Trap keyboard focus within the dialog
   useEffect(() => {

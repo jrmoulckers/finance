@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useDatabase } from '../../db/DatabaseProvider';
+import { useFocusTrap } from '../../accessibility/aria';
 import { useAccounts, useBudgets, useCategories, useGoals } from '../../hooks';
 import { executeFinancialQuery } from '../../lib/ai/executor';
 import { formatFinancialQueryResponse } from '../../lib/ai/formatter';
@@ -42,6 +43,7 @@ function createAssistantFallback(): FormattedFinancialResponse {
 
 export const QueryEngine: React.FC = () => {
   const db = useDatabase();
+  const dialogRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -66,16 +68,6 @@ export const QueryEngine: React.FC = () => {
       ),
     [accounts, budgets, categories, goals],
   );
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
-  }, [isOpen]);
 
   const appendAssistantMessage = useCallback(
     (text: string, response?: FormattedFinancialResponse) => {
@@ -160,6 +152,14 @@ export const QueryEngine: React.FC = () => {
     [inputValue, runQuery],
   );
 
+  useFocusTrap(dialogRef, { active: isOpen, restoreFocus: true, initialFocusRef: inputRef });
+
+  const handleDialogKeyDown = useCallback((event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') {
+      setIsOpen(false);
+    }
+  }, []);
+
   const dataLoading = categoriesLoading || accountsLoading || budgetsLoading || goalsLoading;
 
   return (
@@ -182,11 +182,13 @@ export const QueryEngine: React.FC = () => {
         >
           <div className="form-dialog__backdrop" />
           <section
+            ref={dialogRef}
             className="form-dialog__panel ai-query-engine__panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="ai-query-engine-title"
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={handleDialogKeyDown}
           >
             <header className="ai-query-engine__header">
               <div>
