@@ -15,6 +15,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { getCurrentLocale } from '../lib/i18n';
+
 const DEFAULT_MAX_CENTS = 99_999_999;
 const PASS_THROUGH_KEYS = new Set([
   'Tab',
@@ -132,16 +134,22 @@ export function parseAmountInput(
 
 /**
  * Format cents as a currency display string.
+ *
+ * Grouping and decimal separators follow the active locale (issue #3302) so a
+ * `,`-decimal locale sees "1.234,56" rather than a hardcoded US "1,234.56".
+ * `currencySymbol` is caller-supplied because this hook is symbol-based; pass
+ * the account/display currency's symbol rather than relying on the `$` default.
  */
 export function formatCentsDisplay(
   cents: number,
   currencySymbol: string = '$',
   decimalPlaces: number = 2,
+  locale: string = getCurrentLocale(),
 ): string {
   const signPrefix = cents < 0 ? '-' : '';
   const value = Math.abs(cents) / Math.pow(10, decimalPlaces);
 
-  return `${signPrefix}${currencySymbol}${value.toLocaleString('en-US', {
+  return `${signPrefix}${currencySymbol}${value.toLocaleString(locale, {
     minimumFractionDigits: decimalPlaces,
     maximumFractionDigits: decimalPlaces,
   })}`;

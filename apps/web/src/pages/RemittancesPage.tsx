@@ -32,8 +32,13 @@ import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import { useRemittances } from '../hooks/useRemittances';
 import { formatCurrency } from '../lib/currency';
 import { formatCurrencyGroup } from '../lib/currency-utils';
-import { SUPPORTED_CURRENCY_METADATA, minorUnitFactor } from '../lib/currency-metadata';
+import {
+  SUPPORTED_CURRENCY_METADATA,
+  getCurrencyFractionDigits,
+  minorUnitFactor,
+} from '../lib/currency-metadata';
 import { translate } from '../lib/i18n';
+import { normalizeNumberInput } from '../lib/i18n/local-currency-entry';
 import { quoteRemittance } from '../lib/remittance';
 import type { RemittanceFeeModel, RemittanceQuote, RemittanceRecord } from '../lib/remittance';
 import { formatDate } from '../utils/formatDate';
@@ -47,14 +52,19 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// FX rates carry more fractional precision than currency amounts; format/entry
+// allow up to 6 decimals (see `formatRate`).
+const RATE_MAX_DECIMALS = 6;
+
 function toMinor(value: string, currency: string): number {
-  const num = Number.parseFloat(value);
+  const normalized = normalizeNumberInput(value, getCurrencyFractionDigits(currency));
+  const num = Number.parseFloat(normalized);
   if (!Number.isFinite(num)) return Number.NaN;
   return Math.round(num * minorUnitFactor(currency));
 }
 
 function parseRate(value: string): number {
-  return Number.parseFloat(value);
+  return Number.parseFloat(normalizeNumberInput(value, RATE_MAX_DECIMALS));
 }
 
 function formatRate(rate: number, locale: string): string {

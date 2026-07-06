@@ -57,7 +57,18 @@ function failure(
   };
 }
 
-function normalizeNumberInput(input: string, decimalPlaces: number): string {
+/**
+ * Normalize a locale-entered decimal string to a canonical `.`-decimal form.
+ *
+ * Handles both `.`-decimal ("1,234.56") and `,`-decimal ("1.234,56") locales by
+ * treating the last-occurring separator as the decimal point and stripping the
+ * other as a grouping separator. When only a comma is present, `decimalPlaces`
+ * disambiguates a decimal comma ("7,24") from a grouping comma ("1,320").
+ *
+ * Exported so currency amount and FX-rate inputs can share one locale-aware
+ * parser instead of re-implementing `.`-only `parseFloat` (issue #3326).
+ */
+export function normalizeNumberInput(input: string, decimalPlaces: number): string {
   const compact = input.trim().replace(/[\s_]/g, '');
   const lastDot = compact.lastIndexOf('.');
   const lastComma = compact.lastIndexOf(',');

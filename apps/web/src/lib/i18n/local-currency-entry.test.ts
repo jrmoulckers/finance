@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getLocalCurrencyAmountPlaceholder,
   getLocalCurrencyAmountStep,
+  normalizeNumberInput,
   parseLocalCurrencyAmountInput,
 } from './local-currency-entry';
 
@@ -45,5 +46,16 @@ describe('local-currency-entry', () => {
     expect(getLocalCurrencyAmountStep('JPY')).toBe('1');
     expect(getLocalCurrencyAmountPlaceholder('USD')).toBe('0.00');
     expect(getLocalCurrencyAmountStep('BHD')).toBe('0.001');
+  });
+
+  it('normalizes both dot- and comma-decimal input to a canonical dot form (#3326)', () => {
+    // Comma-decimal locales ("1.234,56") must not silently drop the fraction.
+    expect(normalizeNumberInput('1.234,56', 2)).toBe('1234.56');
+    expect(normalizeNumberInput('7,24', 2)).toBe('7.24');
+    // Dot-decimal / US-grouped input is preserved.
+    expect(normalizeNumberInput('1,234.56', 2)).toBe('1234.56');
+    expect(normalizeNumberInput('500', 2)).toBe('500');
+    // A comma with more trailing digits than the currency allows is grouping.
+    expect(normalizeNumberInput('1,320', 0)).toBe('1320');
   });
 });
