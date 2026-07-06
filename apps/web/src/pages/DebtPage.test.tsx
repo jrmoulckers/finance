@@ -508,4 +508,42 @@ describe('DebtPage', () => {
     expect(screen.queryByTestId('empty-state')).toBeNull();
     expect(screen.queryByText(/Please fix the following/)).toBeNull();
   });
+
+  it('marks imported APR and minimum as estimated until confirmed (#3358)', () => {
+    mockUseAccountsState.accounts = [
+      buildAccount({
+        id: 'auto-est',
+        name: 'Car Loan',
+        type: 'LOAN',
+        currentBalance: { amount: -900_000 },
+      }),
+    ];
+    render(<DebtPage />);
+    const importRegion = screen.getByRole('region', { name: 'Imported debt accounts' });
+    const item = within(importRegion).getByText('Car Loan').closest('li') as HTMLElement;
+
+    expect(within(item).getByText(/Estimated APR/)).toBeDefined();
+    expect(within(item).getByText(/Estimated minimum payment/)).toBeDefined();
+
+    // Confirming the APR clears its "estimated" hint.
+    fireEvent.change(within(item).getByLabelText('APR (%)'), { target: { value: '6.5' } });
+    expect(within(item).queryByText(/Estimated APR/)).toBeNull();
+  });
+
+  it('prompts for a starting balance instead of showing 0% progress on imported debts (#3356)', () => {
+    mockUseAccountsState.accounts = [
+      buildAccount({
+        id: 'cc-fresh',
+        name: 'Store Card',
+        type: 'CREDIT_CARD',
+        currentBalance: { amount: -50_000 },
+      }),
+    ];
+    render(<DebtPage />);
+
+    // Imported debts default their original balance to the current balance, so
+    // no real payoff progress exists yet — guide rather than demoralize with 0%.
+    expect(screen.getByText(/setting each debt.*starting balance/i)).toBeDefined();
+    expect(screen.queryByText('0.0% paid off. Every payment is progress.')).toBeNull();
+  });
 });

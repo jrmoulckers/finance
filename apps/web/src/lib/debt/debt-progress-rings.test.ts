@@ -52,6 +52,25 @@ describe('debt progress rings', () => {
     expect(card.detailItems).toContain('Next milestone: 50% paid off');
   });
 
+  it('shows a starting-balance prompt instead of 0% when progress is untracked (#3356)', () => {
+    const untracked: DebtMilestoneSummary = {
+      ...milestones,
+      totalOriginalDebtCents: 1_100_00,
+      paidOffCents: 0,
+      percentPaidOff: 0,
+    };
+    const card = buildDebtPayoffProgressRingCard({
+      milestones: untracked,
+      activeResult: strategyResult,
+      interestSavedCents: 0,
+      debtFreeLabel: 'Jan 2027',
+      hasTrackedProgress: false,
+    });
+
+    expect(card.primaryText).toBe('Set a starting balance to track progress');
+    expect(card.ariaLabel).toContain('not tracked yet');
+  });
+
   it('clamps student loan ring progress and keeps payoff/interest text equivalent', () => {
     const summary: StudentLoanDashboardSummary = {
       monthlyPaymentCents: 200_00,
