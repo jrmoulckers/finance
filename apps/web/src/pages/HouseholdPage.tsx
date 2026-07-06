@@ -15,6 +15,7 @@ import type { FormEvent } from 'react';
 import { AppIcon } from '../components/icons';
 
 import { useAuth } from '../auth/auth-context';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { CurrencyDisplay } from '../components/common/CurrencyDisplay';
 import { useToast } from '../components/common/Toast';
 import {
@@ -245,6 +246,11 @@ export function HouseholdPage() {
   // -- Invite form state ---------------------------------------------------
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<HouseholdRole>('MEMBER');
+  const [memberPendingRemoval, setMemberPendingRemoval] = useState<{
+    id: string;
+    name: string;
+    isViewer: boolean;
+  } | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
@@ -1903,7 +1909,13 @@ export function HouseholdPage() {
                       </select>
                       <button
                         className="household-button household-button--danger household-button--small"
-                        onClick={() => removeMember(member.id)}
+                        onClick={() =>
+                          setMemberPendingRemoval({
+                            id: member.id,
+                            name,
+                            isViewer: member.role === 'VIEWER',
+                          })
+                        }
                         aria-label={
                           member.role === 'VIEWER'
                             ? `Revoke helper access for ${name}`
@@ -3109,6 +3121,25 @@ export function HouseholdPage() {
           />
         </Suspense>
       )}
+
+      <ConfirmDialog
+        isOpen={memberPendingRemoval !== null}
+        title={memberPendingRemoval?.isViewer ? 'Revoke helper access?' : 'Remove member?'}
+        message={
+          memberPendingRemoval?.isViewer
+            ? `Revoke ${memberPendingRemoval?.name}'s read-only access to this household? They'll no longer be able to see your shared finances.`
+            : `Remove ${memberPendingRemoval?.name} from this household? They'll lose access to your shared finances, and any outstanding settle-up balances with them will be orphaned. This can't be undone.`
+        }
+        confirmLabel={memberPendingRemoval?.isViewer ? 'Revoke access' : 'Remove'}
+        variant="danger"
+        onConfirm={() => {
+          if (memberPendingRemoval) {
+            removeMember(memberPendingRemoval.id);
+          }
+          setMemberPendingRemoval(null);
+        }}
+        onCancel={() => setMemberPendingRemoval(null)}
+      />
     </main>
   );
 }
