@@ -11,16 +11,26 @@
  * const { convert, formatAmount, rates, defaultCurrency } = useMultiCurrency();
  * ```
  *
- * References: issue #1075
+ * The `defaultCurrency` is NOT a private preference: it is a view onto the single
+ * shared display-currency preference (`useDisplayCurrency` / the `finance-currency`
+ * key). Changing it here updates Settings, Budgets, and the dashboard rollups too,
+ * and changes made there flow back into this hook — so every surface agrees on the
+ * user's chosen currency (#3291).
+ *
+ * References: issue #1075, issue #3291
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Currency } from '../kmp/bridge';
-import { Currencies } from '../kmp/bridge';
 import { formatCurrency } from '../lib/currency';
 import { STATIC_USD_RATES } from '../lib/currency/static-rates';
-import { SUPPORTED_CURRENCY_METADATA } from '../lib/currency-metadata';
+import { getCurrencyMetadata, SUPPORTED_CURRENCY_METADATA } from '../lib/currency-metadata';
+import {
+  DISPLAY_CURRENCY_CHANGE_EVENT,
+  getStoredDisplayCurrency,
+  setStoredDisplayCurrency,
+} from '../lib/display-currency';
 import { getCurrentLocale } from '../lib/i18n';
 
 // ---------------------------------------------------------------------------
@@ -81,7 +91,6 @@ export interface UseMultiCurrencyResult {
 // Constants
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY_DEFAULT_CURRENCY = 'finance-default-currency';
 const STORAGE_KEY_RATES = 'finance-exchange-rates';
 const STORAGE_KEY_RATES_UPDATED = 'finance-exchange-rates-updated';
 
@@ -92,29 +101,18 @@ const SUPPORTED_CURRENCIES: Currency[] = SUPPORTED_CURRENCY_METADATA.map(
   }),
 );
 
-const SUPPORTED_CURRENCY_CODES = new Set(SUPPORTED_CURRENCIES.map((currency) => currency.code));
-
 // ---------------------------------------------------------------------------
 // Storage helpers
 // ---------------------------------------------------------------------------
 
-function loadDefaultCurrency(): Currency {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_DEFAULT_CURRENCY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as Currency;
-      if (
-        parsed.code &&
-        typeof parsed.decimalPlaces === 'number' &&
-        SUPPORTED_CURRENCY_CODES.has(parsed.code)
-      ) {
-        return parsed;
-      }
-    }
-  } catch {
-    // Fall through to default
-  }
-  return Currencies.USD;
+/**
+ * Resolve a currency code to the {@link Currency} shape the multi-currency UI
+ * consumes, sourcing decimal places from the shared currency metadata. Unknown
+ * or invalid codes normalise to USD via {@link getCurrencyMetadata}.
+ */
+function resolveCurrency(code: string): Currency {
+  const { code: normalizedCode, decimalPlaces } = getCurrencyMetadata(code);
+  return { code: normalizedCode, decimalPlaces };
 }
 
 /**
@@ -154,12 +152,35 @@ function buildRates(): ExchangeRate[] {
 // ---------------------------------------------------------------------------
 
 export function useMultiCurrency(): UseMultiCurrencyResult {
-  const [defaultCurrency, setDefaultCurrencyState] = useState<Currency>(loadDefaultCurrency);
+  const [displayCurrencyCode, setDisplayCurrencyCode] = useState<string>(getStoredDisplayCurrency);
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+
+  // Keep the default currency in lock-step with the single shared display-
+  // currency preference (the `finance-currency` key). This mirrors the pattern
+  // in `useDisplayCurrency`, so a change made in Settings, Budgets, or another
+  // multi-currency widget — in this tab (custom event) or another (storage
+  // event) — is reflected here without a reload (#3291).
+  useEffect(() => {
+    const refresh = (): void => {
+      setDisplayCurrencyCode(getStoredDisplayCurrency());
+    };
+    refresh();
+    globalThis.addEventListener?.(DISPLAY_CURRENCY_CHANGE_EVENT, refresh);
+    globalThis.addEventListener?.('storage', refresh);
+    return () => {
+      globalThis.removeEventListener?.(DISPLAY_CURRENCY_CHANGE_EVENT, refresh);
+      globalThis.removeEventListener?.('storage', refresh);
+    };
+  }, []);
+
+  const defaultCurrency = useMemo(
+    () => resolveCurrency(displayCurrencyCode),
+    [displayCurrencyCode],
+  );
 
   const refreshRates = useCallback(() => {
     setLoading(true);
@@ -185,8 +206,10 @@ export function useMultiCurrency(): UseMultiCurrencyResult {
   }, [refreshToken]);
 
   const setDefaultCurrency = useCallback((currency: Currency) => {
-    setDefaultCurrencyState(currency);
-    localStorage.setItem(STORAGE_KEY_DEFAULT_CURRENCY, JSON.stringify(currency));
+    // Persist through the canonical setter so Settings, Budgets, and the
+    // dashboard rollups all observe the change via the shared preference (#3291).
+    const normalized = setStoredDisplayCurrency(currency.code);
+    setDisplayCurrencyCode(normalized);
   }, []);
 
   const rateMap = useMemo(() => {

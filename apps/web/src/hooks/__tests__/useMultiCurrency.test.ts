@@ -4,7 +4,12 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useMultiCurrency } from '../useMultiCurrency';
+import { useDisplayCurrency } from '../useDisplayCurrency';
 import { Currencies } from '../../kmp/bridge';
+import {
+  DISPLAY_CURRENCY_STORAGE_KEY,
+  LEGACY_MULTI_CURRENCY_STORAGE_KEY,
+} from '../../lib/display-currency';
 
 beforeEach(() => {
   localStorage.clear();
@@ -107,7 +112,7 @@ describe('useMultiCurrency', () => {
     expect(rate).toBeNull();
   });
 
-  it('sets default currency and persists it', () => {
+  it('persists the default currency to the shared display-currency key', () => {
     const { result, unmount } = renderHook(() => useMultiCurrency());
 
     act(() => {
@@ -115,11 +120,50 @@ describe('useMultiCurrency', () => {
     });
 
     expect(result.current.defaultCurrency.code).toBe('EUR');
+    // The choice is written to the single canonical key — never a private,
+    // divergent copy — so every surface stays in sync (#3291).
+    expect(localStorage.getItem(DISPLAY_CURRENCY_STORAGE_KEY)).toBe('EUR');
+    expect(localStorage.getItem(LEGACY_MULTI_CURRENCY_STORAGE_KEY)).toBeNull();
 
     unmount();
 
     const { result: result2 } = renderHook(() => useMultiCurrency());
     expect(result2.current.defaultCurrency.code).toBe('EUR');
+  });
+
+  it('hydrates the default currency from the shared display-currency preference (#3291)', () => {
+    localStorage.setItem(DISPLAY_CURRENCY_STORAGE_KEY, 'GBP');
+
+    const { result } = renderHook(() => useMultiCurrency());
+
+    expect(result.current.defaultCurrency.code).toBe('GBP');
+  });
+
+  it('propagates a single change to every reader of the shared preference (#3291)', () => {
+    const multi = renderHook(() => useMultiCurrency());
+    const display = renderHook(() => useDisplayCurrency());
+
+    expect(multi.result.current.defaultCurrency.code).toBe('USD');
+    expect(display.result.current.displayCurrency).toBe('USD');
+
+    // Changing the currency through the multi-currency dashboard hook...
+    act(() => {
+      multi.result.current.setDefaultCurrency(Currencies.EUR);
+    });
+
+    // ...is observed by the independent Settings/Budgets display-currency hook.
+    expect(display.result.current.displayCurrency).toBe('EUR');
+    expect(multi.result.current.defaultCurrency.code).toBe('EUR');
+
+    // ...and a change made the other way round flows back into the widgets,
+    // decimal places and all (JPY is zero-decimal).
+    act(() => {
+      display.result.current.setDisplayCurrency('JPY');
+    });
+
+    expect(multi.result.current.defaultCurrency.code).toBe('JPY');
+    expect(multi.result.current.defaultCurrency.decimalPlaces).toBe(0);
+    expect(display.result.current.displayCurrency).toBe('JPY');
   });
 
   it('calculates multi-currency totals', () => {
@@ -163,11 +207,8 @@ describe('useMultiCurrency', () => {
     expect(grandTotalCents).toBe(20000);
   });
 
-  it('falls back to USD when an unsupported default currency is stored', () => {
-    localStorage.setItem(
-      'finance-default-currency',
-      JSON.stringify({ code: 'ZZZ', decimalPlaces: 2 }),
-    );
+  it('falls back to USD when an invalid display currency is stored (#3291)', () => {
+    localStorage.setItem(DISPLAY_CURRENCY_STORAGE_KEY, 'not-a-currency');
 
     const { result } = renderHook(() => useMultiCurrency());
 

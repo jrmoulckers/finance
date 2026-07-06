@@ -16,6 +16,7 @@ import { applyStoredReducedMotionPreference } from './hooks/useReducedMotion';
 import { applyStoredDisplayDensityPreference, applyStoredThemePreference } from './hooks/useTheme';
 import { MoneyDisplayProvider } from './lib/display-settings';
 import { applyStoredSimplifiedModePreference } from './lib/accessibility-preferences';
+import { migrateLegacyDisplayCurrencyPreference } from './lib/display-currency';
 import { initMonitoring } from './lib/monitoring';
 import {
   isViteDevServer,
@@ -45,6 +46,10 @@ applyStoredDisplayDensityPreference();
 applyStoredFontScalePreference();
 applyStoredReducedMotionPreference();
 applyStoredSimplifiedModePreference();
+
+// Fold any legacy per-widget display-currency copy into the single shared
+// preference before React mounts, so every surface reads one source of truth (#3291).
+migrateLegacyDisplayCurrencyPreference();
 
 function requiredProductionEnv(name: string): never {
   throw new Error(`${name} is required for production builds`);
