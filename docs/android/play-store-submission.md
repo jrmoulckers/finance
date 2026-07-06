@@ -108,12 +108,13 @@ Google can issue a new one without affecting existing installations.
 ```
 
 Required GitHub Secrets:
-| Secret | Description |
-|--------|-------------|
-| `FINANCE_KEYSTORE_BASE64` | Base64-encoded upload keystore |
-| `FINANCE_KEYSTORE_PASSWORD` | Keystore password |
-| `FINANCE_KEY_ALIAS` | Key alias (e.g., `finance-upload`) |
-| `FINANCE_KEY_PASSWORD` | Key password |
+
+| Secret                      | Description                        |
+| --------------------------- | ---------------------------------- |
+| `FINANCE_KEYSTORE_BASE64`   | Base64-encoded upload keystore     |
+| `FINANCE_KEYSTORE_PASSWORD` | Keystore password                  |
+| `FINANCE_KEY_ALIAS`         | Key alias (e.g., `finance-upload`) |
+| `FINANCE_KEY_PASSWORD`      | Key password                       |
 
 ---
 

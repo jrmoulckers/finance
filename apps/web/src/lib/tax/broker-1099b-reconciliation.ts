@@ -39,21 +39,14 @@ export interface Broker1099BLotRow {
 
 export interface Broker1099BReconciliationDifference {
   readonly field:
-    | 'proceedsCents'
-    | 'costBasisCents'
-    | 'feesCents'
-    | 'washSaleAdjustmentCents'
-    | 'shares';
+    'proceedsCents' | 'costBasisCents' | 'feesCents' | 'washSaleAdjustmentCents' | 'shares';
   readonly appValue: number;
   readonly brokerValue: number;
   readonly variance: number;
 }
 
 export type Broker1099BReconciliationStatus =
-  | 'match'
-  | 'variance'
-  | 'missing-in-app'
-  | 'missing-in-broker';
+  'match' | 'variance' | 'missing-in-app' | 'missing-in-broker';
 
 export interface Broker1099BReconciliationRow {
   readonly key: string;

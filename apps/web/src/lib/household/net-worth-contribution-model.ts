@@ -28,28 +28,22 @@ export function buildNetWorthContributionModel(
   accounts: readonly NetWorthAccountInput[],
 ): NetWorthContributionModel {
   const rollup = buildPrivacyAwareNetWorthRollup(accounts);
-  const detailedRows = rollup.detailedAttributions.map(
-    (item): NetWorthContributionRow => ({
-      label: item.label,
-      amountCents: item.amountCents,
-      visibility: 'DETAILED',
-      ownerMemberId: item.ownerMemberId,
-      accountId: item.accountId,
-      explanation:
-        'Detailed accounts show account name and owner attribution in the shared roll-up.',
-    }),
-  );
-  const aggregateRows = rollup.aggregateAttributions.map(
-    (item): NetWorthContributionRow => ({
-      label: item.label,
-      amountCents: item.amountCents,
-      visibility: 'AGGREGATE_ONLY',
-      ownerMemberId: null,
-      accountId: null,
-      explanation:
-        'Aggregate-only accounts add to totals without exposing account names or owners.',
-    }),
-  );
+  const detailedRows = rollup.detailedAttributions.map((item): NetWorthContributionRow => ({
+    label: item.label,
+    amountCents: item.amountCents,
+    visibility: 'DETAILED',
+    ownerMemberId: item.ownerMemberId,
+    accountId: item.accountId,
+    explanation: 'Detailed accounts show account name and owner attribution in the shared roll-up.',
+  }));
+  const aggregateRows = rollup.aggregateAttributions.map((item): NetWorthContributionRow => ({
+    label: item.label,
+    amountCents: item.amountCents,
+    visibility: 'AGGREGATE_ONLY',
+    ownerMemberId: null,
+    accountId: null,
+    explanation: 'Aggregate-only accounts add to totals without exposing account names or owners.',
+  }));
   const excludedRow: NetWorthContributionRow[] =
     rollup.excludedAccountCount > 0
       ? [

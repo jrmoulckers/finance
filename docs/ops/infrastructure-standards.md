@@ -573,10 +573,10 @@ Secrets are scoped to GitHub Environments (`staging`, `production`). The same se
 
 ```yaml
 # In workflow YAML:
-environment: staging  # ← unlocks staging-scoped secrets
+environment: staging # ← unlocks staging-scoped secrets
 # secrets.SUPABASE_URL → staging Supabase URL
 
-environment: production  # ← unlocks production-scoped secrets
+environment: production # ← unlocks production-scoped secrets
 # secrets.SUPABASE_URL → production Supabase URL
 ```
 
@@ -969,15 +969,15 @@ Database objects outlive application code. Renaming a table requires a migration
 | Pattern | `snake_case` |
 | ------- | ------------ |
 
-| Convention      | Example                                         |
+| Convention | Example |
 | --------------- | ----------------------------------------------- | ------------------------------------------- |
-| Primary key     | `id` (UUID)                                     |
-| Foreign key     | `{referenced_table}_id`                         | `account_id`, `household_id`                |
-| Timestamps      | `created_at`, `updated_at`, `deleted_at`        |
-| Booleans        | `is_{adjective}` or `has_{noun}`                | `is_synced`, `is_rollover`, `has_passkey`   |
-| Ownership       | `owner_id` (references `auth.users`)            |
-| Sync fields     | `sync_version`, `is_synced`                     |
-| Soft delete     | `deleted_at` (nullable timestamp)               |
+| Primary key | `id` (UUID) |
+| Foreign key | `{referenced_table}_id` | `account_id`, `household_id` |
+| Timestamps | `created_at`, `updated_at`, `deleted_at` |
+| Booleans | `is_{adjective}` or `has_{noun}` | `is_synced`, `is_rollover`, `has_passkey` |
+| Ownership | `owner_id` (references `auth.users`) |
+| Sync fields | `sync_version`, `is_synced` |
+| Soft delete | `deleted_at` (nullable timestamp) |
 | Monetary values | Named descriptively, stored as `BIGINT` (cents) | `amount`, `target_amount`, `current_amount` |
 
 ### Index Naming

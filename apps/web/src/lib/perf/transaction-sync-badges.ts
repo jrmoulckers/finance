@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type TransactionSyncState =
-  | 'saved-local'
-  | 'queued'
-  | 'syncing'
-  | 'failed'
-  | 'conflicted'
-  | 'synced';
+  'saved-local' | 'queued' | 'syncing' | 'failed' | 'conflicted' | 'synced';
 export type TransactionSyncTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 export type TransactionSyncAction = 'retry-sync' | 'review-conflict' | null;
 

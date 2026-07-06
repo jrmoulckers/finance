@@ -4,13 +4,7 @@ import { parseCsv } from '../csv-parser';
 import { parseCurrencyToCents, parseDate } from './csv-parser';
 
 export type BrokerageActivityKind =
-  | 'fill'
-  | 'fee'
-  | 'dividend'
-  | 'transfer'
-  | 'option_event'
-  | 'corporate_action'
-  | 'crypto_trade';
+  'fill' | 'fee' | 'dividend' | 'transfer' | 'option_event' | 'corporate_action' | 'crypto_trade';
 
 export interface BrokerageProviderMetadata {
   readonly provider: string;

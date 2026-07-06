@@ -190,8 +190,7 @@ export function getNavigationTiming(): Record<string, number> | null {
   if (typeof performance === 'undefined') return null;
 
   const nav = performance.getEntriesByType('navigation')[0] as
-    | (PerformanceNavigationTiming & { startTime: number })
-    | undefined;
+    (PerformanceNavigationTiming & { startTime: number }) | undefined;
   if (!nav) return null;
 
   return {

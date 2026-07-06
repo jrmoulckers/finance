@@ -2,13 +2,7 @@
 
 export type OfflineCoverageEntity = 'account' | 'transaction' | 'budget' | 'receipt' | 'settings';
 export type OfflineCoverageOperation =
-  | 'create'
-  | 'edit'
-  | 'delete'
-  | 'categorize'
-  | 'add-note'
-  | 'upload'
-  | 'change-preference';
+  'create' | 'edit' | 'delete' | 'categorize' | 'add-note' | 'upload' | 'change-preference';
 
 export interface OfflineActionCoverageRule {
   readonly entity: OfflineCoverageEntity;

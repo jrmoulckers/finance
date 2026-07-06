@@ -3,12 +3,7 @@
 /** Market-data snapshot abstraction with deterministic stale-state semantics. References: issue #2637 */
 export type AssetKind = 'equity' | 'option' | 'crypto' | 'cash' | 'other';
 export type MarketSessionStatus =
-  | 'open'
-  | 'closed'
-  | 'pre-market'
-  | 'after-hours'
-  | '24x7'
-  | 'unknown';
+  'open' | 'closed' | 'pre-market' | 'after-hours' | '24x7' | 'unknown';
 export type QuoteFreshness = 'fresh' | 'delayed' | 'stale' | 'missing' | 'failed';
 
 export interface QuoteSnapshot {

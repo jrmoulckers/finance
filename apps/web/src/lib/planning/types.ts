@@ -215,11 +215,7 @@ export interface GoalMilestone {
 
 /** Types of sweep rule triggers. */
 export type SweepRuleType =
-  | 'round-up'
-  | 'percent-of-income'
-  | 'threshold'
-  | 'fixed-amount'
-  | 'date-based';
+  'round-up' | 'percent-of-income' | 'threshold' | 'fixed-amount' | 'date-based';
 
 /** A configurable sweep automation rule. */
 export interface SweepRule {

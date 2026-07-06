@@ -4,13 +4,7 @@ import type { Category, Goal, SyncId, Transaction } from '../kmp/bridge';
 
 export type ChoreFrequency = 'daily' | 'weekly';
 export type AllowanceDay =
-  | 'sunday'
-  | 'monday'
-  | 'tuesday'
-  | 'wednesday'
-  | 'thursday'
-  | 'friday'
-  | 'saturday';
+  'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
 
 export interface Chore {
   id: string;

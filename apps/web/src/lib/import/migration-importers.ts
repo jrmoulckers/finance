@@ -13,12 +13,7 @@ import type { YnabParseResult, YnabTransaction } from './ynab-parser';
 import type { ImportResult, ParsedTransaction } from './types';
 
 export type MigrationSource =
-  | 'mint'
-  | 'ynab'
-  | 'quicken-qif'
-  | 'quicken-qfx'
-  | 'quicken-ofx'
-  | 'generic';
+  'mint' | 'ynab' | 'quicken-qif' | 'quicken-qfx' | 'quicken-ofx' | 'generic';
 
 export interface MigrationTransaction {
   readonly source: MigrationSource;

@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type SavingsRuleType =
-  | 'payday_percentage'
-  | 'monthly_surplus'
-  | 'round_up'
-  | 'spending_reduction';
+  'payday_percentage' | 'monthly_surplus' | 'round_up' | 'spending_reduction';
 export type SavingsRisk = 'low' | 'medium' | 'high';
 export type SavingsSuggestionStatus = 'suggested' | 'approved' | 'dismissed';
 

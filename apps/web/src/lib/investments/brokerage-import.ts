@@ -140,9 +140,7 @@ export interface ReconciledHolding {
 
 /** Categories of reconciliation warning. */
 export type BrokerageWarningType =
-  | 'duplicate-within-broker'
-  | 'duplicate-cross-broker'
-  | 'oversold-position';
+  'duplicate-within-broker' | 'duplicate-cross-broker' | 'oversold-position';
 
 /** A group of trades flagged as duplicates of one another. */
 export interface DuplicateGroup {

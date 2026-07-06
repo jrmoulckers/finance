@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type FinanceQueryIntent =
-  | 'spend-by-category'
-  | 'spend-by-merchant'
-  | 'spend-by-account'
-  | 'net-worth'
-  | 'unknown';
+  'spend-by-category' | 'spend-by-merchant' | 'spend-by-account' | 'net-worth' | 'unknown';
 
 export interface FinanceQueryParseResult {
   readonly intent: FinanceQueryIntent;

@@ -1,15 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type ShareCardType =
-  | 'goal-milestone'
-  | 'goal-completion'
-  | 'badge-unlock'
-  | 'streak-milestone';
+  'goal-milestone' | 'goal-completion' | 'badge-unlock' | 'streak-milestone';
 export type RedactionPolicy =
-  | 'amount-hidden'
-  | 'percent-only'
-  | 'nickname-only'
-  | 'private-household';
+  'amount-hidden' | 'percent-only' | 'nickname-only' | 'private-household';
 
 export interface ShareCardPayload {
   readonly type: ShareCardType;

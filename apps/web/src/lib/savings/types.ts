@@ -273,11 +273,7 @@ export interface Milestone {
 
 /** Goal categories surfaced by the savings suggestion engine. */
 export type SuggestedGoalType =
-  | 'emergency-fund'
-  | 'discretionary-savings'
-  | 'big-purchase'
-  | 'retirement'
-  | 'debt-payoff';
+  'emergency-fund' | 'discretionary-savings' | 'big-purchase' | 'retirement' | 'debt-payoff';
 
 /** Contribution cadence for a suggested plan. */
 export type ContributionFrequency = 'weekly' | 'biweekly' | 'monthly';
@@ -406,11 +402,7 @@ export interface SuggestedGoalProjection {
 
 /** Nudge categories emitted by the local suggestion engine. */
 export type SavingsNudgeType =
-  | 'spending-drift'
-  | 'redirect-opportunity'
-  | 'retirement-gap'
-  | 'debt-push'
-  | 'goal-momentum';
+  'spending-drift' | 'redirect-opportunity' | 'retirement-gap' | 'debt-push' | 'goal-momentum';
 
 /** A contextual nudge built from recent spending and savings momentum. */
 export interface SavingsNudge {

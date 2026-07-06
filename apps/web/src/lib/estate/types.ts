@@ -11,13 +11,7 @@ export type EstateCategoryId =
   | 'important-contacts';
 
 export type EstateFieldInputType =
-  | 'text'
-  | 'textarea'
-  | 'currency'
-  | 'select'
-  | 'email'
-  | 'tel'
-  | 'date';
+  'text' | 'textarea' | 'currency' | 'select' | 'email' | 'tel' | 'date';
 
 export interface EstateFieldOption {
   readonly value: string;

@@ -42,12 +42,7 @@ export interface SubscriptionCandidate {
 export interface SubscriptionDecision {
   readonly candidateId: string;
   readonly action:
-    | 'confirm'
-    | 'rename'
-    | 'merge'
-    | 'dismiss'
-    | 'cancel'
-    | 'acknowledge-price-change';
+    'confirm' | 'rename' | 'merge' | 'dismiss' | 'cancel' | 'acknowledge-price-change';
   readonly name?: string;
   readonly mergeIntoId?: string;
   readonly effectiveDate?: string;

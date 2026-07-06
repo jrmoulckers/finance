@@ -2,10 +2,7 @@
 
 export type PeerBenchmarkConfidence = 'low' | 'medium' | 'high';
 export type PeerBenchmarkStatus =
-  | 'below-peer-range'
-  | 'within-peer-range'
-  | 'above-peer-range'
-  | 'no-data';
+  'below-peer-range' | 'within-peer-range' | 'above-peer-range' | 'no-data';
 
 export interface PeerBenchmarkProfile {
   readonly optedIn: boolean;

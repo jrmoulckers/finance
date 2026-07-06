@@ -20,14 +20,7 @@ import { bankersRound } from './utils';
 
 /** QIF account/transaction type from the !Type: header. */
 export type QifType =
-  | 'Bank'
-  | 'Cash'
-  | 'CCard'
-  | 'Invst'
-  | 'Oth A'
-  | 'Oth L'
-  | 'Memorized'
-  | string;
+  'Bank' | 'Cash' | 'CCard' | 'Invst' | 'Oth A' | 'Oth L' | 'Memorized' | string;
 
 /** A single parsed QIF record with raw field values. */
 export interface QifRecord {

@@ -2,10 +2,7 @@
 
 export type AppLockEvent = 'manual_lock' | 'unlock_success' | 'activity' | 'idle_check' | 'resume';
 export type AppLockAuditEvent =
-  | 'app_lock_enabled'
-  | 'app_locked'
-  | 'app_unlocked'
-  | 'app_lock_bypassed';
+  'app_lock_enabled' | 'app_locked' | 'app_unlocked' | 'app_lock_bypassed';
 export type AppLockReason = 'disabled' | 'manual' | 'idle_timeout' | 'resume' | 'unlock_success';
 
 export interface AppLockSettings {

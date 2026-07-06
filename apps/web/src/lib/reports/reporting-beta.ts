@@ -89,11 +89,7 @@ export interface AnnualSummary {
 }
 
 export type AnomalyModule =
-  | 'category-spend'
-  | 'merchant-spike'
-  | 'missing-income'
-  | 'duplicates'
-  | 'net-worth';
+  'category-spend' | 'merchant-spike' | 'missing-income' | 'duplicates' | 'net-worth';
 
 export type AnomalyStatus = 'needs-review' | 'expected' | 'ignored';
 
@@ -178,17 +174,15 @@ export function buildCategoryDrillDown(
   });
 
   const rows = filtered
-    .map(
-      (tx): DrillDownTransactionRow => ({
-        id: tx.id,
-        date: tx.date,
-        payee: tx.payee ?? tx.counterpartyName ?? 'Unknown payee',
-        accountName: accountNameFor(accountsById, tx.accountId),
-        amount: tx.type === 'EXPENSE' ? Math.abs(tx.amount.amount) : tx.amount.amount,
-        tags: tx.tags,
-        note: tx.note ?? tx.extraNotes ?? '',
-      }),
-    )
+    .map((tx): DrillDownTransactionRow => ({
+      id: tx.id,
+      date: tx.date,
+      payee: tx.payee ?? tx.counterpartyName ?? 'Unknown payee',
+      accountName: accountNameFor(accountsById, tx.accountId),
+      amount: tx.type === 'EXPENSE' ? Math.abs(tx.amount.amount) : tx.amount.amount,
+      tags: tx.tags,
+      note: tx.note ?? tx.extraNotes ?? '',
+    }))
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const total = rows.reduce((sum, row) => sum + row.amount, 0);

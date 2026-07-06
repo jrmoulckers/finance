@@ -7,13 +7,7 @@ export type VoiceState = 'unsupported' | 'idle' | 'starting' | 'listening' | 'pr
 export type VoiceIntent = 'expense' | 'income' | 'transfer' | 'split' | 'unknown';
 
 export type VoiceField =
-  | 'amount'
-  | 'payee'
-  | 'category'
-  | 'date'
-  | 'type'
-  | 'account'
-  | 'counterparty';
+  'amount' | 'payee' | 'category' | 'date' | 'type' | 'account' | 'counterparty';
 
 export interface VoiceFieldConfidence {
   readonly value: number;

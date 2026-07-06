@@ -3,10 +3,7 @@
 /** Platform quick-action registration descriptor for privacy-mode toggles. */
 export interface PrivacyQuickActionDescriptor {
   readonly platform:
-    | 'ios-control-center'
-    | 'android-quick-settings'
-    | 'web-shortcut'
-    | 'windows-secondary-tile';
+    'ios-control-center' | 'android-quick-settings' | 'web-shortcut' | 'windows-secondary-tile';
   readonly title: string;
   readonly description: string;
   readonly action: 'toggle-privacy-mode';

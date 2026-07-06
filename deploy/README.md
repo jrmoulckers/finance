@@ -702,10 +702,10 @@ during setup. In production, restrict it:
 ```yaml
 # In docker-compose.yml, change:
 ports:
-  - "${POSTGRES_PORT:-5432}:5432"
+  - '${POSTGRES_PORT:-5432}:5432'
 # To bind only to localhost:
 ports:
-  - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+  - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
 ```
 
 Or remove the `ports` directive entirely if you don't need direct access.

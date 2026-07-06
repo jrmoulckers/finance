@@ -3,11 +3,7 @@
 /** Reimbursement and split-payment matching engine for P2P flows. References: issue #2643 */
 export type P2PTransactionKind = 'bank' | 'p2p-payment' | 'p2p-request' | 'manual';
 export type P2PMatchType =
-  | 'reimbursement'
-  | 'roommate-rent'
-  | 'meal-split'
-  | 'pass-through-transfer'
-  | 'ambiguous';
+  'reimbursement' | 'roommate-rent' | 'meal-split' | 'pass-through-transfer' | 'ambiguous';
 export type P2POverrideState = 'none' | 'confirmed' | 'rejected' | 'edited';
 
 export interface P2PTransaction {

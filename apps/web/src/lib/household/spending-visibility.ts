@@ -7,10 +7,7 @@
  */
 
 export type SpendingVisibilityLevel =
-  | 'PRIVATE'
-  | 'AGGREGATE_ONLY'
-  | 'SHARED_TRANSACTIONS'
-  | 'CUSTOM';
+  'PRIVATE' | 'AGGREGATE_ONLY' | 'SHARED_TRANSACTIONS' | 'CUSTOM';
 
 export interface SpendingVisibilityRule {
   readonly id: string;

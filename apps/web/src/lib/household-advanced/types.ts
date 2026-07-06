@@ -34,11 +34,7 @@ export type HouseholdType = 'couple' | 'roommates' | 'family';
 
 /** Identifiers for every step in the onboarding flow. */
 export type OnboardingStepId =
-  | 'invite_partner'
-  | 'set_shared_categories'
-  | 'configure_privacy'
-  | 'set_budgets'
-  | 'review';
+  'invite_partner' | 'set_shared_categories' | 'configure_privacy' | 'set_budgets' | 'review';
 
 /** Metadata for a single onboarding step. */
 export interface OnboardingStep {

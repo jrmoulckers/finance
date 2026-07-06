@@ -129,10 +129,7 @@ export interface DeviceSession {
 
 /** Granular telemetry category. */
 export type TelemetryCategory =
-  | 'crash_reports'
-  | 'usage_analytics'
-  | 'performance_metrics'
-  | 'feature_flags';
+  'crash_reports' | 'usage_analytics' | 'performance_metrics' | 'feature_flags';
 
 /** Configuration for no-telemetry mode. */
 export interface TelemetryConfig {

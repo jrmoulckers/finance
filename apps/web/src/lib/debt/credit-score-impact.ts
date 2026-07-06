@@ -15,10 +15,7 @@ import { calculateCreditUtilizationSummary } from '../debt-credit-card-engine';
 export type CreditScoreImpactDirection = 'positive' | 'neutral' | 'negative' | 'unknown';
 export type CreditScoreImpactMagnitude = 'low' | 'medium' | 'high' | 'unknown';
 export type CreditScoreFactor =
-  | 'utilization'
-  | 'payment_history'
-  | 'new_credit'
-  | 'account_age_mix';
+  'utilization' | 'payment_history' | 'new_credit' | 'account_age_mix';
 
 export interface CreditScoreScenarioInput {
   readonly cards: readonly CreditCard[];

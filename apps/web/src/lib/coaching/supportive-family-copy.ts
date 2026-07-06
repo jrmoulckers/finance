@@ -21,10 +21,7 @@ export type SupportiveCopyTone = 'reassuring' | 'celebratory' | 'supportive';
 
 /** Stable identifiers for each supportive copy variant. */
 export type SupportiveFamilyCopyId =
-  | 'tight-month-reframe'
-  | 'celebrate-small-win'
-  | 'family-ready'
-  | 'steady-and-supported';
+  'tight-month-reframe' | 'celebrate-small-win' | 'family-ready' | 'steady-and-supported';
 
 /** A single piece of supportive coaching copy. */
 export interface SupportiveFamilyCopy {

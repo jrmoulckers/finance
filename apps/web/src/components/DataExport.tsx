@@ -40,13 +40,7 @@ import { recordThirdPartyConnectionGrant } from '../lib/third-party-permissions'
 import './data-export.css';
 
 type ExportStatus =
-  | 'idle'
-  | 'pending'
-  | 'generating'
-  | 'ready'
-  | 'delivered'
-  | 'error'
-  | 'cancelled';
+  'idle' | 'pending' | 'generating' | 'ready' | 'delivered' | 'error' | 'cancelled';
 type ExportRecord = Record<string, unknown>;
 
 interface ExportData {

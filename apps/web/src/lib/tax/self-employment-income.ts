@@ -15,11 +15,7 @@ export const SELF_EMPLOYMENT_FORM_TYPE_FIELD = 'tax.selfEmploymentFormType';
 
 export type SelfEmploymentFormType = '1099_NEC' | '1099_MISC' | '1099_K' | 'CASH' | 'OTHER';
 export type ExpectedTaxFormStatus =
-  | 'NOT_EXPECTED'
-  | 'EXPECTED'
-  | 'RECEIVED'
-  | 'RECONCILED'
-  | 'MISSING';
+  'NOT_EXPECTED' | 'EXPECTED' | 'RECEIVED' | 'RECONCILED' | 'MISSING';
 
 export interface SelfEmploymentIncomeRecord {
   readonly id: string;
@@ -60,10 +56,7 @@ export interface PayerIncomeSummary {
 }
 
 export type IncomeReconciliationStatus =
-  | 'MATCH'
-  | 'VARIANCE'
-  | 'MISSING_FORM'
-  | 'FORM_WITHOUT_TRANSACTIONS';
+  'MATCH' | 'VARIANCE' | 'MISSING_FORM' | 'FORM_WITHOUT_TRANSACTIONS';
 
 export interface IncomeReconciliationResult {
   readonly payerName: string;

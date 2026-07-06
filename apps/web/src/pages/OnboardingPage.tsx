@@ -61,13 +61,7 @@ const SIMPLE_MODE_FONT_SCALE_INDEX = Math.max(
 );
 
 type OnboardingStep =
-  | 'comfort'
-  | 'choose'
-  | 'privacy'
-  | 'newcomer'
-  | 'goals'
-  | 'template'
-  | 'complete';
+  'comfort' | 'choose' | 'privacy' | 'newcomer' | 'goals' | 'template' | 'complete';
 
 const ONBOARDING_STEP_ORDER: readonly OnboardingStep[] = [
   'comfort',

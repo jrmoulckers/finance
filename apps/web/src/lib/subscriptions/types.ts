@@ -121,11 +121,7 @@ export interface AnomalyResult {
 
 /** Phase of the cancellation workflow. */
 export type CancellationPhase =
-  | 'confirm_intent'
-  | 'check_contract'
-  | 'execute_cancellation'
-  | 'verify_cancelled'
-  | 'follow_up';
+  'confirm_intent' | 'check_contract' | 'execute_cancellation' | 'verify_cancelled' | 'follow_up';
 
 /** A single step in a guided cancellation workflow. */
 export interface CancellationStep {

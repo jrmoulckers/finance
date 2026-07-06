@@ -48,6 +48,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **iOS:** `Screens/AccountsView.swift`, `AccountDetailView.swift`, `AccountEditView.swift`, `ViewModels/AccountsViewModel.swift`, `Repositories/AccountRepository.swift`
 - **Web:** `pages/AccountsPage.tsx`, `pages/AccountDetailPage.tsx`, `components/forms/AccountForm.tsx`, `hooks/useAccounts.ts`, `db/repositories/accounts.ts`
 - **Windows:** `screens/AccountsScreen.kt`, `viewmodel/AccountsViewModel.kt`, `data/repository/AccountRepository.kt`
+
 </details>
 
 <details>
@@ -57,6 +58,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **iOS:** `Screens/TransactionsView.swift`, `TransactionCreateView.swift`, `TransactionDetailView.swift`, `TransactionEditView.swift`, `ViewModels/TransactionsViewModel.swift`, `TransactionCreateViewModel.swift`
 - **Web:** `pages/TransactionsPage.tsx`, `pages/TransactionDetailPage.tsx`, `components/forms/TransactionForm.tsx`, `components/forms/QuickEntry.tsx`, `hooks/useTransactions.ts`, `hooks/useQuickEntry.ts`
 - **Windows:** `screens/TransactionsScreen.kt`, `screens/QuickAddTransactionDialog.kt`, `viewmodel/TransactionsViewModel.kt`
+
 </details>
 
 <details>
@@ -66,6 +68,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **iOS:** `Screens/BudgetsView.swift`, `BudgetCreateView.swift`, `ViewModels/BudgetsViewModel.swift`, `BudgetCreateViewModel.swift`
 - **Web:** `pages/BudgetsPage.tsx`, `pages/BudgetDetailPage.tsx`, `components/forms/BudgetForm.tsx`, `hooks/useBudgets.ts`
 - **Windows:** `screens/BudgetsScreen.kt`, `viewmodel/BudgetsViewModel.kt`, `components/BudgetRolloverToggle.kt`
+
 </details>
 
 <details>
@@ -75,6 +78,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **iOS:** `Screens/GoalsView.swift`, `GoalCreateView.swift`, `ViewModels/GoalsViewModel.swift`, `GoalCreateViewModel.swift`
 - **Web:** `pages/GoalsPage.tsx`, `pages/GoalDetailPage.tsx`, `components/forms/GoalForm.tsx`, `hooks/useGoals.ts`
 - **Windows:** `screens/GoalsScreen.kt`, `viewmodel/GoalsViewModel.kt`
+
 </details>
 
 <details>
@@ -85,6 +89,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **Web:** `components/DataExport.tsx` (with tests and Storybook), `components/gdpr/` (ConsentDialog, PrivacySettings)
 - **Windows:** `screens/gdpr/` (GdprConsentDialog, PrivacySettingsScreen) — export is GDPR-focused but lacks a standalone export ViewModel
 - **KMP Shared:** `packages/core/.../export/` (DataExportService, CsvExportSerializer, JsonExportSerializer)
+
 </details>
 
 <details>
@@ -94,6 +99,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **iOS:** `Screens/LoginView.swift`, `Screens/AuthGateView.swift`, `Screens/LockScreenView.swift`, `Security/BiometricAuthManager.swift`, `Services/SupabaseAuthClient.swift`
 - **Web:** `auth/auth-context.tsx`, `auth/webauthn.ts`, `auth/token-storage.ts`, `pages/LoginPage.tsx`, `pages/SignupPage.tsx`
 - **Windows:** `screens/auth/LoginScreen.kt`, `viewmodel/AuthViewModel.kt`, `viewmodel/LoginViewModel.kt`, `security/WindowsHelloManager.kt`, `security/CredentialManager.kt`
+
 </details>
 
 ---
@@ -120,6 +126,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **Web:** `pages/HouseholdPage.tsx` (with CSS + tests), `hooks/useHousehold.ts`
 - **Windows:** `screens/HouseholdScreen.kt`, `viewmodel/HouseholdViewModel.kt`; sidebar nav entry `Screen.Household`
 - **KMP Shared:** `packages/core/.../household/` — HouseholdManager, RbacPermissions, InvitationStateMachine, DataPartitioning, HouseholdRole
+
 </details>
 
 <details>
@@ -130,6 +137,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **Web:** ❌ No investment page, hook, or component found. `WatchlistsPage.tsx` exists but is spending watchlists, not investment tracking
 - **Windows:** `screens/InvestmentScreen.kt`, `viewmodel/InvestmentViewModel.kt`; sidebar nav entry `Screen.Investments`
 - **KMP Shared:** `packages/core/.../investment/InvestmentEngine.kt`
+
 </details>
 
 <details>
@@ -140,6 +148,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **Web:** ❌ No bill reminders page or hook. Transaction recurring support exists but no dedicated bill tracker
 - **Windows:** 🟡 `notifications/EnhancedNotificationManager.kt` and `components/RecurringPreviewPanel.kt` reference reminders, but no dedicated `BillRemindersScreen`
 - **KMP Shared:** `packages/core/.../recurring/Reminder.kt`, `RecurringTransactionEngine.kt`
+
 </details>
 
 <details>
@@ -150,6 +159,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **Web:** ✅ `hooks/useMultiCurrency.ts` — full hook with ExchangeRate types, conversion, formatting, currency totals. `components/dashboard/CurrencyDisplay.tsx`
 - **Windows:** 🟡 Settings include currency selection; no dedicated conversion UI
 - **KMP Shared:** `packages/core/.../multicurrency/MultiCurrencyEngine.kt`
+
 </details>
 
 <details>
@@ -160,6 +170,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **Web:** ✅ Full pipeline — `pages/ImportPage.tsx`, `pages/DataImportWizardPage.tsx`, `hooks/useImport.ts`, `hooks/useDataImportWizard.ts`, `components/import/` (FileDropZone, ColumnMapper, ImportPreview, ImportProgress, ImportComplete), `lib/csv-parser.ts`, `lib/csv-column-mapper.ts`, `lib/csv-import-validator.ts`, `lib/csv-duplicate-detector.ts`
 - **Windows:** `screens/ImportWizardScreen.kt`, `viewmodel/ImportWizardViewModel.kt`, `data/CsvEncodingDetector.kt`; sidebar nav entry `Screen.Import`
 - **KMP Shared:** `packages/core/.../dataimport/` — CsvParser, CsvImportParser, DataImportService, ImportData, ImportTypes
+
 </details>
 
 <details>
@@ -170,6 +181,7 @@ These features are foundational. Every platform must implement them before v2.0.
 - **Web:** ✅ `components/forms/NaturalLanguageInput.tsx` (with CSS + tests), `hooks/useNaturalLanguageInput.ts`, `lib/nlParser.ts` (with tests)
 - **Windows:** `screens/NaturalLanguageScreen.kt`, `viewmodel/NaturalLanguageViewModel.kt`, `voice/VoiceCommandManager.kt`, `VoiceCommandParser.kt`, `screens/VoiceTransactionOverlay.kt`; sidebar nav entry `Screen.QuickAdd`
 - **KMP Shared:** `packages/core/.../nlp/NaturalLanguageParser.kt`
+
 </details>
 
 ---

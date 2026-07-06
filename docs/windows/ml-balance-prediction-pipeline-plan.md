@@ -114,9 +114,7 @@ is `float32[1, N]` where `N` is fixed by `feature_schema_version`.
   "reference_date": "2026-06-22", // local; never transmitted
   "horizon_days": 30, // one of the supported horizons {7, 14, 30}
   "currency": "USD",
-  "features": [
-    /* fixed-order float32 vector, length N */
-  ],
+  "features": [/* fixed-order float32 vector, length N */],
 }
 ```
 

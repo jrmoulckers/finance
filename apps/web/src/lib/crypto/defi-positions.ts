@@ -2,12 +2,7 @@
 
 /** Manual-entry DeFi position model separate from spot holdings. References: issue #2689 */
 export type DeFiPositionType =
-  | 'staking'
-  | 'liquidity-pool'
-  | 'lending'
-  | 'borrow'
-  | 'vault'
-  | 'farm';
+  'staking' | 'liquidity-pool' | 'lending' | 'borrow' | 'vault' | 'farm';
 export type LockStatus = 'liquid' | 'locked' | 'unbonding' | 'withdrawal-pending';
 
 export interface RewardBalance {

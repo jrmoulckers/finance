@@ -806,11 +806,7 @@ function isStaticAsset(pathname: string): boolean {
 }
 
 export type FetchStrategy =
-  | 'receipt-cache-first'
-  | 'network-first'
-  | 'network-only-no-store'
-  | 'cache-first'
-  | 'navigation';
+  'receipt-cache-first' | 'network-first' | 'network-only-no-store' | 'cache-first' | 'navigation';
 
 export function getFetchStrategyForPathname(
   pathname: string,

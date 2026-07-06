@@ -3,12 +3,7 @@
 export type OfflineEntity = 'account' | 'transaction' | 'budget' | 'receipt' | 'settings';
 export type OfflineOperation = 'create' | 'edit' | 'delete' | 'categorize' | 'add-note' | 'view';
 export type OfflineActionStatus =
-  | 'queued'
-  | 'syncing'
-  | 'synced'
-  | 'failed'
-  | 'needs-review'
-  | 'disabled';
+  'queued' | 'syncing' | 'synced' | 'failed' | 'needs-review' | 'disabled';
 
 export interface OfflineActionRequest {
   readonly entity: OfflineEntity;

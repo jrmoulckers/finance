@@ -27,12 +27,7 @@ import type { ChainId, LocalDate, StakingIncome } from './types';
 
 /** The kind of DeFi position, which drives reward-income classification. */
 export type DefiPositionKind =
-  | 'STAKING'
-  | 'LIQUIDITY_POOL'
-  | 'LENDING'
-  | 'BORROW'
-  | 'VAULT'
-  | 'FARM';
+  'STAKING' | 'LIQUIDITY_POOL' | 'LENDING' | 'BORROW' | 'VAULT' | 'FARM';
 
 /**
  * Lock / withdrawal state of a position.

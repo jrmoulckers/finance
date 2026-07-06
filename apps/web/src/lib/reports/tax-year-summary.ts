@@ -15,11 +15,7 @@ export type TaxSummarySectionKey =
   | 'estimated-payments';
 
 export type TaxSourceType =
-  | 'transaction'
-  | 'estimated-payment'
-  | 'investment-summary'
-  | 'manual-entry'
-  | 'checklist-item';
+  'transaction' | 'estimated-payment' | 'investment-summary' | 'manual-entry' | 'checklist-item';
 export type TaxQualityFlagSeverity = 'info' | 'warning';
 
 export interface TaxSummarySourceLink {
@@ -32,10 +28,7 @@ export interface TaxYearManualEntry {
   readonly id: string;
   readonly taxYear: number;
   readonly section:
-    | 'ordinary-income'
-    | 'deductible-expenses'
-    | 'charitable-giving'
-    | 'wash-sale-addbacks';
+    'ordinary-income' | 'deductible-expenses' | 'charitable-giving' | 'wash-sale-addbacks';
   readonly amountCents: number;
   readonly label: string;
 }
@@ -331,13 +324,11 @@ export function buildTaxYearSummaryReport(params: {
     (sum, summary) => sum + summary.longTermGainLossCents,
     0,
   );
-  const investmentSourceLinks = investmentSummaries.map(
-    (summary): TaxSummarySourceLink => ({
-      type: 'investment-summary',
-      id: `investment-${summary.taxYear}`,
-      label: `${summary.taxYear} investment tax summary`,
-    }),
-  );
+  const investmentSourceLinks = investmentSummaries.map((summary): TaxSummarySourceLink => ({
+    type: 'investment-summary',
+    id: `investment-${summary.taxYear}`,
+    label: `${summary.taxYear} investment tax summary`,
+  }));
   for (const source of investmentSourceLinks) addSectionSource(sources, 'capital-gains', source);
 
   let washSaleAddbacksCents = investmentSummaries.reduce(
@@ -396,14 +387,12 @@ export function buildTaxYearSummaryReport(params: {
     'wash-sale-addbacks': washSaleAddbacksCents,
     'estimated-payments': estimatedTaxPaymentsCents,
   };
-  const sections = sectionKeys.map(
-    (key): TaxYearSummarySection => ({
-      key,
-      label: SECTION_LABELS[key],
-      amountCents: amounts[key],
-      sourceLinks: sources.get(key) ?? [],
-    }),
-  );
+  const sections = sectionKeys.map((key): TaxYearSummarySection => ({
+    key,
+    label: SECTION_LABELS[key],
+    amountCents: amounts[key],
+    sourceLinks: sources.get(key) ?? [],
+  }));
 
   return {
     taxYear: params.taxYear,
