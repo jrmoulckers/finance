@@ -26,6 +26,11 @@ export const GLOSSARY_KEYS = [
   'dollarCostAveraging',
   'expenseRatio',
   'diversification',
+  'exchangeRate',
+  'fxMargin',
+  'midMarketRate',
+  'remittance',
+  'wireTransfer',
 ] as const;
 
 export type GlossaryKey = (typeof GLOSSARY_KEYS)[number];
