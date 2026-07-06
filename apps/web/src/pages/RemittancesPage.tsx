@@ -389,6 +389,9 @@ export const RemittancesPage: React.FC = () => {
     ) {
       next.referenceRate = t('remittance.form.referenceRate.invalid');
     }
+    if (sourceCurrency === destCurrency) {
+      next.destCurrency = t('remittance.form.destCurrency.sameCurrency');
+    }
     return next;
   }, [
     recipientName,
@@ -398,6 +401,8 @@ export const RemittancesPage: React.FC = () => {
     fee,
     fxRate,
     referenceRate,
+    sourceCurrency,
+    destCurrency,
     parsedSendMinor,
     parsedFeeMinor,
     parsedFx,
@@ -604,6 +609,12 @@ export const RemittancesPage: React.FC = () => {
                 className="remittance-field__input"
                 value={destCurrency}
                 onChange={(e) => setDestCurrency(e.target.value)}
+                aria-invalid={Boolean(errors.destCurrency)}
+                aria-describedby={describedBy(
+                  'remit-dest-currency',
+                  Boolean(errors.destCurrency),
+                  false,
+                )}
               >
                 {CURRENCY_OPTIONS.map((currency) => (
                   <option key={currency.code} value={currency.code}>
@@ -611,6 +622,11 @@ export const RemittancesPage: React.FC = () => {
                   </option>
                 ))}
               </select>
+              {errors.destCurrency && (
+                <p id="remit-dest-currency-error" className="remittance-field__error" role="alert">
+                  {errors.destCurrency}
+                </p>
+              )}
             </div>
           </div>
 

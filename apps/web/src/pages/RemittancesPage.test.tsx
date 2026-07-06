@@ -191,4 +191,26 @@ describe('RemittancesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete remittance' }));
     expect(deleteRemittance).toHaveBeenCalledWith('rem-1');
   });
+
+  it('blocks submission when the send and receive currencies match', () => {
+    const createRemittance = vi.fn();
+    mockUseRemittances.mockReturnValue(buildResult({ createRemittance }));
+    render(<RemittancesPage />);
+
+    fireEvent.change(screen.getByLabelText(/Recipient name/), {
+      target: { value: 'Familia García' },
+    });
+    fireEvent.change(screen.getByLabelText(/Date sent/), { target: { value: '2026-06-01' } });
+    fireEvent.change(screen.getByLabelText(/Amount you send/), { target: { value: '500' } });
+    fireEvent.change(screen.getByLabelText(/Exchange rate/), { target: { value: '17' } });
+    // Force the destination currency to match the source (USD) — not a real FX transfer.
+    fireEvent.change(screen.getByLabelText(/They receive/), { target: { value: 'USD' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Record remittance' }));
+
+    expect(createRemittance).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Choose a different currency from the one you send.'),
+    ).toBeInTheDocument();
+  });
 });
