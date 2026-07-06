@@ -206,4 +206,9 @@ export const EN_US_CATALOG: MessageCatalog = {
   'remittance.history.deleteAria': 'Delete remittance to {recipient} on {date}',
   'remittance.history.itemAria': '{amount} sent to {recipient} in {country} on {date}',
   'remittance.history.loading': 'Loading remittances',
+  'remittance.history.confirmDelete.title': 'Delete remittance',
+  'remittance.history.confirmDelete.message':
+    'Delete the remittance to {recipient} on {date}? This permanently removes it from your payment history and FX/fee totals.',
+  'remittance.history.confirmDelete.confirm': 'Delete remittance',
+  'remittance.history.confirmDelete.cancel': 'Cancel',
 };

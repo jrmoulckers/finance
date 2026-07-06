@@ -207,4 +207,9 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'remittance.history.deleteAria': 'Eliminar la remesa a {recipient} del {date}',
   'remittance.history.itemAria': '{amount} enviado a {recipient} en {country} el {date}',
   'remittance.history.loading': 'Cargando remesas',
+  'remittance.history.confirmDelete.title': 'Eliminar remesa',
+  'remittance.history.confirmDelete.message':
+    '¿Eliminar la remesa a {recipient} del {date}? Esto la quita permanentemente de tu historial de pagos y de los totales de FX y comisiones.',
+  'remittance.history.confirmDelete.confirm': 'Eliminar remesa',
+  'remittance.history.confirmDelete.cancel': 'Cancelar',
 };

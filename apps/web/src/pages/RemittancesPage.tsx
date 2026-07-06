@@ -27,7 +27,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 
-import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
+import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import { useRemittances } from '../hooks/useRemittances';
 import { formatCurrency } from '../lib/currency';
@@ -303,6 +303,15 @@ export const RemittancesPage: React.FC = () => {
       translate(id, values, locale).text,
     [locale],
   );
+
+  const [deletingRecord, setDeletingRecord] = useState<RemittanceRecord | null>(null);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (deletingRecord) {
+      deleteRemittance(deletingRecord.id);
+      setDeletingRecord(null);
+    }
+  }, [deletingRecord, deleteRemittance]);
 
   // Form state
   const [recipientName, setRecipientName] = useState('');
@@ -830,7 +839,7 @@ export const RemittancesPage: React.FC = () => {
                   record={record}
                   locale={locale}
                   t={t}
-                  onDelete={() => deleteRemittance(record.id)}
+                  onDelete={() => setDeletingRecord(record)}
                 />
               ))}
             </div>
@@ -845,6 +854,23 @@ export const RemittancesPage: React.FC = () => {
           <p className="remittance-empty__body">{t('remittance.empty.body')}</p>
         </section>
       )}
+
+      <ConfirmDialog
+        isOpen={deletingRecord !== null}
+        title={t('remittance.history.confirmDelete.title')}
+        message={
+          deletingRecord
+            ? t('remittance.history.confirmDelete.message', {
+                recipient: deletingRecord.recipient.name,
+                date: formatDate(deletingRecord.date, { locale }),
+              })
+            : ''
+        }
+        confirmLabel={t('remittance.history.confirmDelete.confirm')}
+        cancelLabel={t('remittance.history.confirmDelete.cancel')}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingRecord(null)}
+      />
     </div>
   );
 };

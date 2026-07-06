@@ -164,7 +164,7 @@ describe('RemittancesPage', () => {
     expect(screen.getByText('Familia García')).toBeInTheDocument();
   });
 
-  it('deletes a record via the delete button', () => {
+  it('deletes a record after confirming in the dialog', () => {
     const deleteRemittance = vi.fn();
     mockUseRemittances.mockReturnValue(
       buildResult({
@@ -185,6 +185,10 @@ describe('RemittancesPage', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Delete remittance to Familia García on Jun 1, 2026' }),
     );
+    // Deletion is gated by a confirmation dialog; nothing happens until confirmed.
+    expect(deleteRemittance).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete remittance' }));
     expect(deleteRemittance).toHaveBeenCalledWith('rem-1');
   });
 });
