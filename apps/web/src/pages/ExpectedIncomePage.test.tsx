@@ -3,15 +3,40 @@
 /**
  * Tests for ExpectedIncomePage (#2193).
  *
- * Uses the real localStorage-backed store (cleared between tests) to verify the
- * add/list flow and that the page keeps spendable-now money separate from
- * expected money.
+ * The #2193 expected-income store is still localStorage-backed (cleared between
+ * tests) so the add/list flow is exercised directly. The invoice pipeline it
+ * surfaces (#3229) now lives in the database, so `useInvoices` is mocked per
+ * project conventions rather than seeding its old localStorage key.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 
 import { ExpectedIncomePage } from './ExpectedIncomePage';
+import type { Invoice } from '../lib/analytics/invoices';
+
+vi.mock('../hooks/useInvoices', () => ({ useInvoices: vi.fn() }));
+
+import { useInvoices } from '../hooks/useInvoices';
+
+const mockedUseInvoices = vi.mocked(useInvoices);
+
+/** Point the mocked `useInvoices` at a fixed invoice list (page reads `.invoices`). */
+function mockInvoices(invoices: Invoice[]): void {
+  mockedUseInvoices.mockReturnValue({
+    invoices,
+    pipelineGroups: [],
+    forecastBuckets: [],
+    totalOutstandingCents: 0,
+    addInvoice: vi.fn(),
+    updateInvoice: vi.fn(),
+    updateInvoiceStatus: vi.fn(),
+    logInvoiceContact: vi.fn(),
+    recordPayment: vi.fn(),
+    deleteInvoice: vi.fn(),
+    refresh: vi.fn(),
+  });
+}
 
 function addPayment(options: {
   name: string;
@@ -37,6 +62,8 @@ function addPayment(options: {
 describe('ExpectedIncomePage', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    vi.clearAllMocks();
+    mockInvoices([]);
   });
 
   it('renders the heading and an empty state initially', () => {
@@ -121,22 +148,19 @@ describe('ExpectedIncomePage', () => {
   });
 
   it('surfaces sent and overdue invoices as expected income without re-entry (#3229)', () => {
-    window.localStorage.setItem(
-      'finance:invoices',
-      JSON.stringify([
-        {
-          id: 'inv-1',
-          clientName: 'Studio Delacroix',
-          amountCents: 120000,
-          issueDate: '2099-01-01',
-          paymentTerm: 'net-30',
-          status: 'Sent',
-          expectedPayDate: '2099-02-01',
-          createdAt: '2099-01-01T00:00:00.000Z',
-          updatedAt: '2099-01-01T00:00:00.000Z',
-        },
-      ]),
-    );
+    mockInvoices([
+      {
+        id: 'inv-1',
+        clientName: 'Studio Delacroix',
+        amountCents: 120000,
+        issueDate: '2099-01-01',
+        paymentTerm: 'net-30',
+        status: 'Sent',
+        expectedPayDate: '2099-02-01',
+        createdAt: '2099-01-01T00:00:00.000Z',
+        updatedAt: '2099-01-01T00:00:00.000Z',
+      },
+    ]);
 
     render(<ExpectedIncomePage />);
 

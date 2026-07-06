@@ -1,15 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Local-first invoice pipeline state for freelancers.
+ * Invoice pipeline state for freelancers, backed by the local database.
  *
- * Persists invoice records in localStorage and derives pipeline totals,
- * net-terms expected pay dates, overdue status, and forecast buckets.
+ * Persists invoice records in the encrypted SQLite-WASM (OPFS) store via the
+ * invoices repository — the same durable, sync-enabled path used by accounts,
+ * transactions and goals — instead of browser `localStorage`, so records survive
+ * a cache clear and no plaintext financial data is written to disk (issue #3273).
+ * Derives pipeline totals, net-terms expected pay dates, overdue status, and
+ * forecast buckets from the pure `lib/analytics/invoices` domain module.
  *
- * References: issue #2169
+ * References: issue #2169 (feature), issue #3273 (durable persistence)
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDatabase } from '../db/DatabaseProvider';
+import {
+  deleteInvoiceRecord,
+  getAllInvoices,
+  getInvoiceById,
+  importLegacyInvoices,
+  insertInvoice,
+  updateInvoiceRecord,
+} from '../db/repositories/invoices';
 import {
   computeInvoiceForecast,
   createInvoice,
@@ -26,8 +39,6 @@ import {
   type InvoiceStatus,
   type UpdateInvoiceInput,
 } from '../lib/analytics/invoices';
-
-const STORAGE_KEY = 'finance:invoices';
 
 export interface UseInvoicesResult {
   invoices: Invoice[];
@@ -63,133 +74,124 @@ function makeId(): string {
   );
 }
 
-function isInvoice(value: unknown): value is Invoice {
-  if (!value || typeof value !== 'object') return false;
-  const invoice = value as Partial<Invoice>;
-  return (
-    typeof invoice.id === 'string' &&
-    typeof invoice.clientName === 'string' &&
-    typeof invoice.amountCents === 'number' &&
-    typeof invoice.issueDate === 'string' &&
-    typeof invoice.paymentTerm === 'string' &&
-    typeof invoice.status === 'string' &&
-    typeof invoice.expectedPayDate === 'string'
-  );
-}
-
-function loadInvoices(): Invoice[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter(isInvoice) : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistInvoices(invoices: Invoice[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-}
-
 export function useInvoices(): UseInvoicesResult {
-  const [invoices, setInvoices] = useState<Invoice[]>(() =>
-    normalizeInvoiceStatuses(loadInvoices(), todayIsoDate()),
-  );
+  const db = useDatabase();
+
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [today, setToday] = useState(todayIsoDate);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
-    persistInvoices(invoices);
-  }, [invoices]);
+    const currentDate = todayIsoDate();
+    setToday(currentDate);
+    try {
+      // One-time migration of any records left in the pre-#3273 localStorage
+      // store, then read the durable list back from the database.
+      importLegacyInvoices(db);
+      setInvoices(normalizeInvoiceStatuses(getAllInvoices(db), currentDate));
+    } catch {
+      setInvoices([]);
+    }
+  }, [db, refreshToken]);
 
   const refresh = useCallback(() => {
-    const currentDate = todayIsoDate();
-    setToday(currentDate);
-    setInvoices((prev) => normalizeInvoiceStatuses(prev, currentDate));
+    setRefreshToken((token) => token + 1);
   }, []);
 
-  const addInvoice = useCallback((input: CreateInvoiceInput) => {
-    const now = new Date().toISOString();
-    const invoice = createInvoice(input, now, makeId());
-    setInvoices((prev) => normalizeInvoiceStatuses([invoice, ...prev], todayIsoDate()));
-    return invoice;
-  }, []);
+  const addInvoice = useCallback(
+    (input: CreateInvoiceInput): Invoice => {
+      const invoice = createInvoice(input, new Date().toISOString(), makeId());
+      try {
+        insertInvoice(db, invoice);
+        refresh();
+      } catch {
+        // Non-throwing convention: return the computed invoice even if the
+        // write failed so callers keep a stable synchronous signature.
+      }
+      return invoice;
+    },
+    [db, refresh],
+  );
 
-  const updateInvoice = useCallback((invoiceId: string, input: UpdateInvoiceInput) => {
-    const currentDate = todayIsoDate();
-    setToday(currentDate);
-    setInvoices((prev) =>
-      normalizeInvoiceStatuses(
-        prev.map((invoice) =>
-          invoice.id === invoiceId
-            ? applyInvoiceEdit(invoice, input, new Date().toISOString())
-            : invoice,
-        ),
-        currentDate,
-      ),
-    );
-  }, []);
+  const updateInvoice = useCallback(
+    (invoiceId: string, input: UpdateInvoiceInput) => {
+      try {
+        const existing = getInvoiceById(db, invoiceId);
+        if (!existing) return;
+        updateInvoiceRecord(db, applyInvoiceEdit(existing, input, new Date().toISOString()));
+        refresh();
+      } catch {
+        // Swallow — the invoices surface has no error channel.
+      }
+    },
+    [db, refresh],
+  );
 
-  const updateInvoiceStatus = useCallback((invoiceId: string, status: InvoiceStatus) => {
-    const currentDate = todayIsoDate();
-    setToday(currentDate);
-    setInvoices((prev) =>
-      normalizeInvoiceStatuses(
-        prev.map((invoice) =>
-          invoice.id === invoiceId
-            ? { ...invoice, status, updatedAt: new Date().toISOString() }
-            : invoice,
-        ),
-        currentDate,
-      ),
-    );
-  }, []);
+  const updateInvoiceStatus = useCallback(
+    (invoiceId: string, status: InvoiceStatus) => {
+      try {
+        const existing = getInvoiceById(db, invoiceId);
+        if (!existing) return;
+        updateInvoiceRecord(db, { ...existing, status, updatedAt: new Date().toISOString() });
+        refresh();
+      } catch {
+        // Swallow — the invoices surface has no error channel.
+      }
+    },
+    [db, refresh],
+  );
 
-  const deleteInvoice = useCallback((invoiceId: string) => {
-    setInvoices((prev) => prev.filter((invoice) => invoice.id !== invoiceId));
-  }, []);
+  const deleteInvoice = useCallback(
+    (invoiceId: string) => {
+      try {
+        deleteInvoiceRecord(db, invoiceId);
+        refresh();
+      } catch {
+        // Swallow — the invoices surface has no error channel.
+      }
+    },
+    [db, refresh],
+  );
 
-  const logInvoiceContact = useCallback((invoiceId: string) => {
-    const currentDate = todayIsoDate();
-    setToday(currentDate);
-    setInvoices((prev) =>
-      normalizeInvoiceStatuses(
-        prev.map((invoice) =>
-          invoice.id === invoiceId
-            ? recordInvoiceContact(invoice, currentDate, new Date().toISOString())
-            : invoice,
-        ),
-        currentDate,
-      ),
-    );
-  }, []);
+  const logInvoiceContact = useCallback(
+    (invoiceId: string) => {
+      try {
+        const existing = getInvoiceById(db, invoiceId);
+        if (!existing) return;
+        updateInvoiceRecord(
+          db,
+          recordInvoiceContact(existing, todayIsoDate(), new Date().toISOString()),
+        );
+        refresh();
+      } catch {
+        // Swallow — the invoices surface has no error channel.
+      }
+    },
+    [db, refresh],
+  );
 
   const recordPayment = useCallback(
     (invoiceId: string, paymentCents: number, paidDate?: string, link?: InvoicePaymentLink) => {
-      const currentDate = todayIsoDate();
-      setToday(currentDate);
-      setInvoices((prev) =>
-        normalizeInvoiceStatuses(
-          prev.map((invoice) =>
-            invoice.id === invoiceId
-              ? recordInvoicePayment(
-                  invoice,
-                  paymentCents,
-                  paidDate ?? currentDate,
-                  new Date().toISOString(),
-                  link,
-                )
-              : invoice,
+      try {
+        const existing = getInvoiceById(db, invoiceId);
+        if (!existing) return;
+        const currentDate = todayIsoDate();
+        updateInvoiceRecord(
+          db,
+          recordInvoicePayment(
+            existing,
+            paymentCents,
+            paidDate ?? currentDate,
+            new Date().toISOString(),
+            link,
           ),
-          currentDate,
-        ),
-      );
+        );
+        refresh();
+      } catch {
+        // Swallow — the invoices surface has no error channel.
+      }
     },
-    [],
+    [db, refresh],
   );
 
   const pipelineGroups = useMemo(() => groupInvoicesByStatus(invoices, today), [invoices, today]);

@@ -10,3 +10,5 @@ export * from './investments';
 export * from './investment-lots';
 export * from './bills';
 export * from './household';
+export * from './invoices';
+export * from './remittances';
