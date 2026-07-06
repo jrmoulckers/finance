@@ -80,16 +80,6 @@ export type { DividendHoldingInput } from './dividends';
 // #1639 — DRIP projections
 export { calculateYieldOnCost, simulateDRIP, projectPassiveIncome } from './drip-projections';
 
-// #1675, #1715 — FIRE calculator
-export {
-  calculateFINumber,
-  calculateFIPercent,
-  calculateCoastFI,
-  calculateSavingsRate,
-  calculateYearsToFI,
-  calculateFIREMetrics,
-} from './fire-calculator';
-
 // #1683 — Retirement readiness score
 export {
   calculatePIA,
@@ -360,8 +350,6 @@ export type {
   DRIPInput,
   DRIPYearResult,
   DRIPProjection,
-  FIREInput,
-  FIREMetrics,
   RetirementInput,
   RetirementScore,
   RetirementIncomeSources,

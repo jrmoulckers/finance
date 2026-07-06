@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-/** FIRE and Coast-FIRE planning helpers for web beta calculators (#2239). */
+/**
+ * FIRE and Coast-FIRE scenario-planning helpers for web beta calculators (#2239).
+ *
+ * All FIRE math (FI number, Coast-FI, years-to-FI) is delegated to the single
+ * canonical engine in `../fire`, which compounds **monthly and geometrically**
+ * on **real** (inflation-adjusted) returns. This module is a thin scenario layer
+ * on top of that engine — it does not implement its own compounding. Keeping one
+ * source of truth avoids the divergent (annual-vs-monthly) results that used to
+ * arise from the retired `fire-calculator`/`shared-fire` engines. See #3305.
+ */
 
-import {
-  calculateCoastFI,
-  calculateFINumber,
-  calculateFIPercent,
-  calculateSavingsRate,
-  calculateYearsToFI,
-} from './fire-calculator';
+import { coastFINumber, fiNumber, yearsToFI, MAX_FI_SEARCH_YEARS } from '../fire';
 
 export interface FirePlanningInput {
   readonly currentInvestedAssetsCents: number;
@@ -87,43 +90,60 @@ export function getFirePlanningWarnings(input: FirePlanningInput): readonly stri
   return warnings;
 }
 
+/** Percentage ratio (0–100+) with a guarded non-positive denominator → 0. */
+function ratioPercent(numeratorCents: number, denominatorCents: number): number {
+  if (denominatorCents <= 0) return 0;
+  return Math.round((numeratorCents / denominatorCents) * 10000) / 100;
+}
+
 export function calculateFirePlan(
   input: FirePlanningInput,
   scenario: FireScenarioOverride = { id: 'current', label: 'Current plan' },
 ): FirePlanResult {
   const scenarioInput = applyOverride(input, scenario);
   const investedAssets = Math.max(0, scenarioInput.currentInvestedAssetsCents);
-  const fiNumberCents = calculateFINumber(
-    Math.max(0, scenarioInput.annualExpensesCents),
-    scenarioInput.withdrawalRatePercent,
-  );
+  const annualExpensesCents = Math.max(0, scenarioInput.annualExpensesCents);
+  const annualContributionsCents = Math.max(0, scenarioInput.annualContributionsCents);
+  const swrRate = scenarioInput.withdrawalRatePercent / 100;
+  const realReturnRate = scenarioInput.expectedRealReturnPercent / 100;
   const yearsToTarget = Math.max(0, scenarioInput.targetRetirementAge - scenarioInput.currentAge);
-  const coastFITargetCents = calculateCoastFI(
+
+  // Delegate to the canonical engine (`../fire`) for consistent monthly,
+  // geometric compounding. An unreachable SWR makes `fiNumber` Infinite; clamp
+  // to 0 to preserve this module's `FirePlanResult` contract (the non-positive
+  // SWR is separately surfaced through `getFirePlanningWarnings`).
+  const rawFiNumberCents = fiNumber(annualExpensesCents, swrRate);
+  const fiNumberCents = Number.isFinite(rawFiNumberCents) ? rawFiNumberCents : 0;
+
+  const rawCoastCents = coastFINumber({
+    annualSpendingCents: annualExpensesCents,
+    swrRate,
+    realReturnRate,
+    yearsToTraditionalRetirement: yearsToTarget,
+  });
+  const coastFITargetCents = Number.isFinite(rawCoastCents) ? rawCoastCents : 0;
+
+  // Report whole years-to-FI (ceil of the monthly search) to match the prior
+  // annual-granularity contract; an unreachable plan caps at the search horizon.
+  const ytf = yearsToFI({
+    currentInvestedCents: investedAssets,
+    annualContributionCents: annualContributionsCents,
+    realReturnRate,
     fiNumberCents,
-    scenarioInput.expectedRealReturnPercent,
-    yearsToTarget,
-  );
-  const yearsToFI = calculateYearsToFI(
-    investedAssets,
-    Math.max(0, scenarioInput.annualContributionsCents),
-    scenarioInput.expectedRealReturnPercent,
-    fiNumberCents,
-  );
+  });
+  const yearsToFi = ytf.reachedFI ? Math.ceil(ytf.totalMonths / 12) : MAX_FI_SEARCH_YEARS;
 
   return {
     scenarioId: scenario.id,
     label: scenario.label,
     fiNumberCents,
-    fiPercent: calculateFIPercent(investedAssets, fiNumberCents),
+    fiPercent: ratioPercent(investedAssets, fiNumberCents),
     coastFITargetCents,
-    isCoastFI: investedAssets >= coastFITargetCents && fiNumberCents > 0,
-    savingsRatePercent: calculateSavingsRate(
-      Math.max(0, scenarioInput.annualContributionsCents),
-      scenarioInput.annualIncomeCents,
-    ),
-    yearsToFI,
-    fireAge: scenarioInput.currentAge + yearsToFI,
-    canReachFIByTargetAge: yearsToFI <= yearsToTarget,
+    isCoastFI: fiNumberCents > 0 && investedAssets >= coastFITargetCents,
+    savingsRatePercent: ratioPercent(annualContributionsCents, scenarioInput.annualIncomeCents),
+    yearsToFI: yearsToFi,
+    fireAge: scenarioInput.currentAge + yearsToFi,
+    canReachFIByTargetAge: yearsToFi <= yearsToTarget,
     warnings: getFirePlanningWarnings(scenarioInput),
   };
 }
