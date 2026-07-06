@@ -226,7 +226,7 @@ describe('CategoriesPage', () => {
   it('renders the category list with icon and color details', () => {
     render(<CategoriesPage />);
 
-    expect(screen.getByRole('heading', { name: 'Categories' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Categories', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('Food')).toBeInTheDocument();
     expect(screen.getByText('Income')).toBeInTheDocument();
     expect(screen.getByText('Utilities')).toBeInTheDocument();

@@ -144,9 +144,9 @@ export const NetWorthPage: React.FC = () => {
             gap: 'var(--spacing-2)',
           }}
         >
-          <h2 className="analytics-page__title" style={{ margin: 0 }}>
+          <h1 className="analytics-page__title" style={{ margin: 0 }}>
             Net Worth
-          </h2>
+          </h1>
           <ExplainThis glossaryKey="netWorth" />
         </div>
       </div>

@@ -127,7 +127,7 @@ describe('NetWorthPage', () => {
     });
 
     render(<NetWorthPage />);
-    expect(screen.getByRole('heading', { name: 'Net Worth', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Net Worth', level: 1 })).toBeInTheDocument();
     expect(screen.getByLabelText('Net worth summary')).toBeInTheDocument();
     expect(screen.getByText('Asset Class Breakdown')).toBeInTheDocument();
     expect(screen.getByText('Milestones')).toBeInTheDocument();

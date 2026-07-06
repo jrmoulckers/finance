@@ -183,7 +183,7 @@ export const CategoriesPage: React.FC = () => {
 
   const pageHeader = (
     <div className="page-header">
-      <h2 className="page-heading">Categories</h2>
+      <h1 className="page-heading">Categories</h1>
       <button
         type="button"
         className="form-button form-button--primary"
