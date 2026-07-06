@@ -125,6 +125,7 @@ function buildAccount(overrides: Partial<Account>): Account {
 describe('DebtPage', () => {
   beforeEach(() => {
     mockUseAccountsState.accounts = [];
+    localStorage.clear();
   });
   it('renders the page title', () => {
     render(<DebtPage />);
@@ -545,5 +546,22 @@ describe('DebtPage', () => {
     // no real payoff progress exists yet — guide rather than demoralize with 0%.
     expect(screen.getByText(/setting each debt.*starting balance/i)).toBeDefined();
     expect(screen.queryByText('0.0% paid off. Every payment is progress.')).toBeNull();
+  });
+
+  it('persists manually-entered debts across a reload (#3357)', () => {
+    const { unmount } = render(<DebtPage />);
+    fireEvent.change(screen.getByLabelText('Debt name'), { target: { value: 'Marcus Visa' } });
+    fireEvent.change(screen.getByLabelText('Debt balance ($)'), { target: { value: '1500' } });
+    fireEvent.change(screen.getByLabelText('Minimum payment ($)'), { target: { value: '45' } });
+    fireEvent.submit(document.querySelector('form.debt-entry-form') as HTMLFormElement);
+
+    // The debt is registered (empty state replaced) and written to storage.
+    expect(screen.queryByTestId('empty-state')).toBeNull();
+    expect(localStorage.getItem('finance.debt.tracker.v1')).toContain('Marcus Visa');
+
+    // Simulate a page reload: a fresh mount must rehydrate from localStorage.
+    unmount();
+    render(<DebtPage />);
+    expect(screen.queryByTestId('empty-state')).toBeNull();
   });
 });
