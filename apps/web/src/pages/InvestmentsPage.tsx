@@ -24,7 +24,7 @@ import {
 } from '../components/investments/InvestingBetaFeatures';
 import { InvestmentProjections } from '../components/investments/InvestmentProjections';
 import { DeFiPositionsCard } from '../components/investments/DeFiPositionsCard';
-import { useInvestments } from '../hooks';
+import { useInvestments, useDisplayCurrency } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
 import { AppIcon, type IconName } from '../components/icons';
@@ -32,6 +32,8 @@ import type {
   InvestmentIncomeExportInput,
   InvestmentRealizedGainExportInput,
 } from '../lib/export/investment-export';
+import { DEFAULT_ASSET_CLASS_MAP } from '../lib/investment/allocation';
+import { ASSET_CLASS_LABELS } from '../types/investment';
 
 /**
  * Crypto wallet & exchange connectivity panel — lazily loaded as its own chunk
@@ -89,21 +91,27 @@ function getInvestmentIcon(type: InvestmentType): IconName {
   }
 }
 
-/** Compute allocation data grouped by investment type. */
+/**
+ * Compute allocation data grouped by asset class (US stocks, bonds, crypto,
+ * etc.) rather than by instrument type, so the "Asset Allocation" chart answers
+ * the diversification question it poses. Investment types map to asset classes
+ * via {@link DEFAULT_ASSET_CLASS_MAP}.
+ */
 function computeAllocation(
   investments: Investment[],
 ): Array<{ name: string; value: number; percent: number }> {
-  const byType = new Map<string, number>();
+  const byClass = new Map<string, number>();
 
   for (const inv of investments) {
     const marketValue = inv.shares * inv.currentPricePerShare.amount;
-    const label = TYPE_LABELS[inv.type] ?? inv.type;
-    byType.set(label, (byType.get(label) ?? 0) + marketValue);
+    const assetClass = DEFAULT_ASSET_CLASS_MAP[inv.type] ?? 'OTHER';
+    const label = ASSET_CLASS_LABELS[assetClass] ?? assetClass;
+    byClass.set(label, (byClass.get(label) ?? 0) + marketValue);
   }
 
-  const totalValue = Array.from(byType.values()).reduce((sum, v) => sum + v, 0);
+  const totalValue = Array.from(byClass.values()).reduce((sum, v) => sum + v, 0);
 
-  return Array.from(byType.entries())
+  return Array.from(byClass.entries())
     .map(([name, value]) => ({
       name,
       value: Math.round(value),
@@ -116,6 +124,7 @@ function computeAllocation(
 export const InvestmentsPage: React.FC = () => {
   const investmentState = useInvestments();
   const { investments, summary, loading, error, refresh, getLots } = investmentState;
+  const { displayCurrency } = useDisplayCurrency();
   const optionalTaxData = investmentState as typeof investmentState & {
     realizedGains?: readonly InvestmentRealizedGainExportInput[];
     dividends?: readonly InvestmentIncomeExportInput[];
@@ -322,7 +331,7 @@ export const InvestmentsPage: React.FC = () => {
                         <Tooltip
                           formatter={(value) =>
                             formatCurrency(Math.round(Number(value ?? 0)), {
-                              currency: 'USD',
+                              currency: displayCurrency,
                             })
                           }
                         />
