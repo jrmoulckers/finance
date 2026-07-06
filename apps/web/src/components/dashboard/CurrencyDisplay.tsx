@@ -13,6 +13,7 @@ import { useCallback } from 'react';
 
 import { useMultiCurrency } from '../../hooks/useMultiCurrency';
 import type { Currency } from '../../kmp/bridge';
+import { getCurrentLocale } from '../../lib/i18n';
 
 import './CurrencyDisplay.css';
 
@@ -103,12 +104,14 @@ export function ExchangeRateIndicator({ from, to }: ExchangeRateIndicatorProps) 
           <span className="exchange-rate-indicator__rate">
             1 {from} = {rate.toFixed(4)} {to}
           </span>
+          <span className="exchange-rate-indicator__source">
+            Approximate rate — offline reference, not a live quote
+          </span>
           {lastUpdated && (
             <span className="exchange-rate-indicator__updated">
-              Updated: {new Date(lastUpdated).toLocaleString()}
+              Snapshot as of {new Date(lastUpdated).toLocaleDateString(getCurrentLocale())}
             </span>
           )}
-          <span className="exchange-rate-indicator__source">Source: Static rates</span>
         </>
       ) : (
         <span className="exchange-rate-indicator__unavailable">

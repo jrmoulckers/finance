@@ -20,11 +20,15 @@ describe('useMultiCurrency', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('loads exchange rates', () => {
+  it('loads exchange rates without fabricating a freshness timestamp', () => {
     const { result } = renderHook(() => useMultiCurrency());
 
     expect(result.current.rates.length).toBeGreaterThan(0);
-    expect(result.current.lastUpdated).not.toBeNull();
+    // Static snapshot rates carry no live "as of" time, so the hook must not
+    // stamp a misleading "updated now" timestamp (#3293).
+    expect(result.current.lastUpdated).toBeNull();
+    expect(result.current.rates.every((rate) => rate.updatedAt === null)).toBe(true);
+    expect(result.current.rates.every((rate) => rate.source === 'static')).toBe(true);
   });
 
   it('converts USD to EUR', () => {

@@ -82,6 +82,16 @@ describe('ExchangeRateIndicator', () => {
     expect(screen.getByText(/1 USD = 0\.9200 EUR/)).toBeInTheDocument();
   });
 
+  it('labels the rate as an approximate offline reference, not a live "updated now" quote', () => {
+    mockedHook.mockReturnValue(mockResult());
+
+    render(<ExchangeRateIndicator from="USD" to="EUR" />);
+
+    expect(screen.getByText(/approximate rate/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Updated:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Source: Static rates/)).not.toBeInTheDocument();
+  });
+
   it('shows loading state', () => {
     mockedHook.mockReturnValue(mockResult({ loading: true }));
 
