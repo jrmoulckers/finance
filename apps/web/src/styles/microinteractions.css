@@ -222,7 +222,11 @@ input[type='radio']:active {
    Accessibility overrides
    ========================================================================== */
 
-/* Reduced motion: strip all micro-interaction transitions/animations */
+/* Reduced motion: strip all micro-interaction transitions/animations.
+   Every animated/transitioned selector above is listed here so this file
+   self-gates motion for reduced-motion users — it does not rely solely on the
+   global `*` safety net in tokens.css / accessibility.css. Pseudo-elements
+   (nav indicator) and the decorative shake are included explicitly. */
 @media (prefers-reduced-motion: reduce) {
   .btn,
   .form-button,
@@ -240,12 +244,16 @@ input[type='radio']:active {
   select,
   textarea,
   .nav-item,
+  .nav-item::after,
   .sidebar-nav__link,
+  .sidebar-nav__link::after,
   .bottom-nav__link,
   .card,
   [class*='card'],
   input[type='checkbox'],
-  input[type='radio'] {
+  input[type='radio'],
+  .shake,
+  .confirm-dialog__confirm--danger:active {
     transition: none !important;
     animation: none !important;
   }
@@ -253,7 +261,9 @@ input[type='radio']:active {
   .btn:active:not(:disabled),
   .form-button:active:not(:disabled),
   button[type='submit']:active:not(:disabled),
-  button[type='button']:active:not(:disabled) {
+  button[type='button']:active:not(:disabled),
+  input[type='checkbox']:active,
+  input[type='radio']:active {
     transform: none !important;
   }
 

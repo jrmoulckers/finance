@@ -210,3 +210,33 @@ describe('Offline Fallback Styles', () => {
     expect(css).toContain('prefers-color-scheme: dark');
   });
 });
+
+describe('Microinteractions CSS (WCAG 2.3.3)', () => {
+  const css = loadCss('microinteractions.css');
+  const mainTsx = readFileSync(resolve(__dirname, '../../../src/main.tsx'), 'utf-8');
+
+  // Regression guard for #3199: the stylesheet was orphaned for its entire
+  // history — present in the repo but never imported — silently nullifying the
+  // shared hover state-layer (#3161) and micro-interaction library (#313/#314).
+  it('must be imported by main.tsx so its rules reach users (#3199)', () => {
+    expect(mainTsx).toContain("import './styles/microinteractions.css'");
+  });
+
+  it('should gate motion behind prefers-reduced-motion', () => {
+    expect(css).toContain('prefers-reduced-motion: reduce');
+  });
+
+  it('should disable the decorative shake animation under reduced motion', () => {
+    const reducedMotionBlock = css.slice(css.indexOf('prefers-reduced-motion: reduce'));
+    expect(reducedMotionBlock).toContain('.shake');
+  });
+
+  it('should disable the nav-indicator slide (::after) under reduced motion', () => {
+    const reducedMotionBlock = css.slice(css.indexOf('prefers-reduced-motion: reduce'));
+    expect(reducedMotionBlock).toContain('.nav-item::after');
+  });
+
+  it('should drop shadow-based effects in prefers-contrast: more', () => {
+    expect(css).toContain('prefers-contrast: more');
+  });
+});
