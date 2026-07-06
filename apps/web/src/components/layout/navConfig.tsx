@@ -105,7 +105,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/safety',
     icon: <PrivacyIcon />,
     group: 'money',
-    mobilePriority: 9,
+    mobilePriority: 5,
     description: 'Plain-English scam checks and safety tips.',
   },
   {
@@ -114,7 +114,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/bills',
     icon: <Icon name={IconToken.BILL} />,
     group: 'money',
-    mobilePriority: 10,
+    mobilePriority: 6,
     description: 'Upcoming and recurring bill reminders.',
   },
   {
@@ -123,7 +123,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/invoices',
     icon: <InvoicesIcon />,
     group: 'money',
-    mobilePriority: 13,
+    mobilePriority: 9,
     description: 'Freelance invoice pipeline and expected income.',
   },
   {
@@ -132,7 +132,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/remittances',
     icon: <Icon name={IconToken.TRANSFER} />,
     group: 'money',
-    mobilePriority: 14,
+    mobilePriority: 12,
     description: 'Track money sent abroad: fees, FX rate and what recipients receive.',
   },
   {
@@ -141,7 +141,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/expected-income',
     icon: <Icon name={IconToken.INCOME} />,
     group: 'money',
-    mobilePriority: 15,
+    mobilePriority: 14,
     description: 'Track expected vs. cleared income so late money is not counted as spendable.',
   },
   {
@@ -150,7 +150,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/investments',
     icon: <Icon name={IconToken.INVESTMENT} />,
     group: 'money',
-    mobilePriority: 11,
+    mobilePriority: 7,
     description: 'Holdings, performance and watchlists.',
   },
   {
@@ -168,7 +168,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/investments/tax',
     icon: <ReportsIcon />,
     group: 'money',
-    mobilePriority: 12,
+    mobilePriority: 8,
     description: 'Lot-level gains, estimated taxes and wash-sale guardrails.',
   },
   {
@@ -177,7 +177,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/subscriptions',
     icon: <Icon name={IconToken.CATEGORY_SUBSCRIPTIONS} />,
     group: 'money',
-    mobilePriority: 13,
+    mobilePriority: 10,
     description: 'Recurring memberships and renewals.',
   },
 
@@ -197,7 +197,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/trip-budgets',
     icon: <AppIcon name="globe" size={24} />,
     group: 'plan',
-    mobilePriority: 19,
+    mobilePriority: 20,
     description: 'Country/trip envelopes with local-currency spend and home-currency roll-up.',
   },
   {
@@ -215,7 +215,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/building-credit',
     icon: <Icon name={IconToken.SECURE} />,
     group: 'plan',
-    mobilePriority: 20,
+    mobilePriority: 21,
     description: 'Beginner credit lessons and a secured-card utilization tracker.',
   },
   {
@@ -224,7 +224,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/goals',
     icon: <Icon name={IconToken.GOALS} />,
     group: 'plan',
-    mobilePriority: 13,
+    mobilePriority: 11,
     description: 'Savings targets and progress.',
   },
   {
@@ -233,7 +233,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/planning',
     icon: <Icon name={IconToken.CHART_LINE} />,
     group: 'plan',
-    mobilePriority: 14,
+    mobilePriority: 13,
     description: 'Long-range projections and what-ifs.',
   },
   {
@@ -242,7 +242,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/fire',
     icon: <AppIcon name="flame" size={24} />,
     group: 'plan',
-    mobilePriority: 18,
+    mobilePriority: 19,
     description: 'Financial independence: FI number, years-to-FI and Coast FI.',
   },
   {
@@ -260,7 +260,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/estate',
     icon: <Icon name={IconToken.SECURE} />,
     group: 'plan',
-    mobilePriority: 16,
+    mobilePriority: 17,
     description: 'Estate and end-of-life inventory for beneficiaries.',
   },
   {
@@ -269,7 +269,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/categories',
     icon: <Icon name={IconToken.FILTER} />,
     group: 'plan',
-    mobilePriority: 17,
+    mobilePriority: 18,
     description: 'Customise how transactions are classified.',
   },
 
@@ -280,7 +280,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/insights',
     icon: <Icon name={IconToken.INSIGHTS} />,
     group: 'insights',
-    mobilePriority: 20,
+    mobilePriority: 22,
     description: 'Trends, anomalies and personalised tips.',
   },
   {
@@ -289,7 +289,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/cash-flow',
     icon: <Icon name={IconToken.TRANSFER} />,
     group: 'insights',
-    mobilePriority: 21,
+    mobilePriority: 23,
     description: 'Money in vs. money out over time.',
   },
   {
@@ -298,7 +298,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/cash-runway',
     icon: <Icon name={IconToken.CHART_LINE} />,
     group: 'insights',
-    mobilePriority: 27,
+    mobilePriority: 29,
     description: 'Forecast whether cash covers payroll, taxes and bills before revenue lands.',
   },
   {
@@ -307,7 +307,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/net-worth',
     icon: <Icon name={IconToken.NET_WORTH} />,
     group: 'insights',
-    mobilePriority: 22,
+    mobilePriority: 24,
     description: 'Assets minus liabilities, tracked monthly.',
   },
   {
@@ -316,7 +316,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/report-builder',
     icon: <Icon name={IconToken.REPORTS} />,
     group: 'insights',
-    mobilePriority: 23,
+    mobilePriority: 25,
     description: 'Build and export custom reports.',
   },
   {
@@ -325,7 +325,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/client-profitability',
     icon: <ReportsIcon />,
     group: 'insights',
-    mobilePriority: 24,
+    mobilePriority: 26,
     description: 'Revenue, cost and margin by client/project tag.',
   },
   {
@@ -334,7 +334,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/business-pnl',
     icon: <ReportsIcon />,
     group: 'insights',
-    mobilePriority: 27,
+    mobilePriority: 30,
     description: 'Weekly/monthly P&L with COGS, labor and margins.',
   },
   {
@@ -343,7 +343,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/achievements',
     icon: <Icon name={IconToken.SUCCESS} />,
     group: 'insights',
-    mobilePriority: 25,
+    mobilePriority: 27,
     description: 'Milestones and streaks you have earned.',
   },
   {
@@ -352,7 +352,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/watchlists',
     icon: <Icon name={IconToken.SEARCH} />,
     group: 'insights',
-    mobilePriority: 26,
+    mobilePriority: 28,
     description: 'Symbols and markets you follow.',
   },
 
@@ -363,7 +363,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/household',
     icon: <Icon name={IconToken.ACCOUNTS} />,
     group: 'connect',
-    mobilePriority: 30,
+    mobilePriority: 31,
     description: 'Shared budgets, goals and members.',
   },
   {
@@ -372,7 +372,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/bank-connections',
     icon: <Icon name={IconToken.BANK} />,
     group: 'connect',
-    mobilePriority: 31,
+    mobilePriority: 32,
     description: 'Linked institutions and sync status.',
   },
   {
@@ -381,7 +381,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/import',
     icon: <Icon name={IconToken.IMPORT} />,
     group: 'connect',
-    mobilePriority: 32,
+    mobilePriority: 33,
     description: 'Bring in CSVs, OFX files and receipts.',
   },
   {
@@ -390,7 +390,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     href: '/privacy-dashboard',
     icon: <Icon name={IconToken.SECURE} />,
     group: 'connect',
-    mobilePriority: 33,
+    mobilePriority: 34,
     description: 'Consent, data export and deletion.',
   },
 ]);
