@@ -15,6 +15,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { DateInput, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useTransactions } from '../hooks/useTransactions';
+import type { Transaction } from '../kmp/bridge';
 import { formatCurrency } from '../lib/currency';
 import { buildDatedExportFileName } from '../lib/export/simple-export';
 import {
@@ -24,6 +25,13 @@ import {
   type PnlGranularity,
   type PnlTotals,
 } from '../lib/business/profit-and-loss';
+import {
+  buildScheduleCReport,
+  SCHEDULE_C_DISCLAIMER,
+  summarizeTaxCategories,
+  type ScheduleCReportRow,
+  type TaxTaggableTransaction,
+} from '../lib/tax';
 
 import './BusinessPnlPage.css';
 
@@ -50,6 +58,32 @@ function amountClass(cents: number): string {
   if (cents > 0) return ' business-pnl__amount--positive';
   if (cents < 0) return ' business-pnl__amount--negative';
   return '';
+}
+
+/** Adapt an app transaction to the tax-tagging engine's input shape. */
+function toTaxTaggable(transaction: Transaction): TaxTaggableTransaction {
+  return {
+    id: transaction.id,
+    date: transaction.date,
+    type: transaction.type,
+    amountCents: transaction.amount.amount,
+    payee: transaction.payee ?? undefined,
+    memo: transaction.note ?? undefined,
+    customFields: transaction.customFields ?? undefined,
+  };
+}
+
+/** Pick the tax year to report: the end-date year, else the latest data year, else now. */
+function deriveTaxYear(transactions: readonly Transaction[], endDate: string): number {
+  const fromEnd = Number.parseInt(endDate.slice(0, 4), 10);
+  if (Number.isInteger(fromEnd)) return fromEnd;
+
+  let latest = 0;
+  for (const transaction of transactions) {
+    const year = Number.parseInt(transaction.date.slice(0, 4), 10);
+    if (Number.isInteger(year) && year > latest) latest = year;
+  }
+  return latest > 0 ? latest : new Date().getFullYear();
 }
 
 export function BusinessPnlPage() {
@@ -89,6 +123,18 @@ export function BusinessPnlPage() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }, [statement]);
+
+  const taxYear = useMemo(() => deriveTaxYear(transactions, endDate), [endDate, transactions]);
+
+  const scheduleC = useMemo(
+    () => buildScheduleCReport(summarizeTaxCategories(transactions.map(toTaxTaggable), taxYear)),
+    [taxYear, transactions],
+  );
+
+  const hasScheduleCData =
+    scheduleC.incomeRows.length > 0 ||
+    scheduleC.expenseRows.length > 0 ||
+    scheduleC.unmappedRows.length > 0;
 
   if (loading) {
     return <LoadingSpinner label="Loading profit and loss statement" />;
@@ -325,7 +371,117 @@ export function BusinessPnlPage() {
           </p>
         )}
       </section>
+
+      <section className="business-pnl__card" aria-labelledby="business-pnl-schedule-c-title">
+        <h2 id="business-pnl-schedule-c-title" className="business-pnl__card-title">
+          Schedule C view · tax year {taxYear}
+        </h2>
+        <p className="business-pnl__schedule-c-note" role="note">
+          {SCHEDULE_C_DISCLAIMER}
+        </p>
+        {hasScheduleCData ? (
+          <>
+            <div className="business-pnl__table-wrapper" tabIndex={0}>
+              <table className="business-pnl__table business-pnl__table--statement">
+                <caption className="business-pnl__caption business-pnl__sr-only">
+                  Estimated Schedule C income and expense lines for tax year {taxYear}.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Line</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="business-pnl__row business-pnl__row--emphasis">
+                    <th scope="row" colSpan={2}>
+                      Part I · Income
+                    </th>
+                    <td className={amountClass(scheduleC.totalIncomeCents).trim()}>
+                      {formatCurrency(scheduleC.totalIncomeCents)}
+                    </td>
+                  </tr>
+                  {scheduleC.incomeRows.map((row) => (
+                    <ScheduleCRow key={row.line.id} row={row} />
+                  ))}
+                  <tr className="business-pnl__row business-pnl__row--emphasis">
+                    <th scope="row" colSpan={2}>
+                      Part II · Expenses
+                    </th>
+                    <td>{formatCurrency(scheduleC.totalExpenseCents)}</td>
+                  </tr>
+                  {scheduleC.expenseRows.length > 0 ? (
+                    scheduleC.expenseRows.map((row) => <ScheduleCRow key={row.line.id} row={row} />)
+                  ) : (
+                    <tr className="business-pnl__row">
+                      <td colSpan={3}>No deductible business expenses mapped yet.</td>
+                    </tr>
+                  )}
+                  <tr className="business-pnl__row business-pnl__row--emphasis">
+                    <th scope="row" colSpan={2}>
+                      Net profit (Line 31)
+                    </th>
+                    <td className={amountClass(scheduleC.netProfitCents).trim()}>
+                      {formatCurrency(scheduleC.netProfitCents)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {scheduleC.unmappedRows.length > 0 && (
+              <details className="business-pnl__schedule-c-unmapped">
+                <summary>
+                  Not on Schedule C ({scheduleC.unmappedRows.length}
+                  {scheduleC.unmappedRows.length === 1 ? ' category' : ' categories'})
+                </summary>
+                <ul className="business-pnl__schedule-c-unmapped-list">
+                  {scheduleC.unmappedRows.map((row) => (
+                    <li key={row.category}>
+                      <span className="business-pnl__schedule-c-unmapped-amount">
+                        {formatCurrency(row.amountCents)}
+                      </span>{' '}
+                      {row.reason}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
+            {(scheduleC.reviewNeededCount > 0 || scheduleC.missingReceiptCount > 0) && (
+              <p className="business-pnl__schedule-c-flags">
+                {scheduleC.reviewNeededCount > 0 &&
+                  `${scheduleC.reviewNeededCount} transaction${
+                    scheduleC.reviewNeededCount === 1 ? '' : 's'
+                  } need review. `}
+                {scheduleC.missingReceiptCount > 0 &&
+                  `${scheduleC.missingReceiptCount} missing a receipt.`}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="business-pnl__empty">
+            No categorized business income or expenses for {taxYear} yet. Tag transactions as
+            business/deductible so they map onto Schedule C lines.
+          </p>
+        )}
+      </section>
     </main>
+  );
+}
+
+interface ScheduleCRowProps {
+  row: ScheduleCReportRow;
+}
+
+function ScheduleCRow({ row }: ScheduleCRowProps) {
+  return (
+    <tr className="business-pnl__row">
+      <th scope="row">{row.line.lineNumber}</th>
+      <td>{row.line.label}</td>
+      <td>{formatCurrency(row.amountCents)}</td>
+    </tr>
   );
 }
 
