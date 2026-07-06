@@ -10,6 +10,8 @@
  * References: issue #2169
  */
 
+import { escapeCsvField } from '../export/simple-export';
+
 export type InvoicePaymentTerm = 'due-on-receipt' | 'net-15' | 'net-30' | 'net-45' | 'net-60';
 
 export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue';
@@ -195,4 +197,52 @@ export function computeInvoiceForecast(invoices: Invoice[], todayIso: string): F
       a.expectedPayDate.localeCompare(b.expectedPayDate),
     ),
   }));
+}
+
+/** CSV header for {@link exportInvoicesCsv}. */
+export const INVOICE_CSV_HEADER =
+  'Client,Amount,Issue date,Payment term,Status,Expected pay date,Aging bucket';
+
+function invoiceAmountDollars(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+/**
+ * Serialize the invoice pipeline to CSV for bookkeeping/reconciliation outside
+ * the app. One row per invoice (with its effective status and aging bucket)
+ * plus a trailing totals row. Draft and paid invoices have a blank aging
+ * bucket because they are not part of the receivables forecast.
+ */
+export function exportInvoicesCsv(invoices: Invoice[], todayIso: string): string {
+  const normalized = normalizeInvoiceStatuses(invoices, todayIso);
+
+  const bucketByInvoiceId = new Map<string, string>();
+  for (const bucket of computeInvoiceForecast(invoices, todayIso)) {
+    for (const invoice of bucket.invoices) {
+      bucketByInvoiceId.set(invoice.id, bucket.label);
+    }
+  }
+
+  const rows = [...normalized]
+    .sort(
+      (a, b) =>
+        a.expectedPayDate.localeCompare(b.expectedPayDate) ||
+        a.clientName.localeCompare(b.clientName),
+    )
+    .map((invoice) =>
+      [
+        escapeCsvField(invoice.clientName),
+        invoiceAmountDollars(invoice.amountCents),
+        invoice.issueDate,
+        PAYMENT_TERM_LABELS[invoice.paymentTerm],
+        invoice.status,
+        invoice.expectedPayDate,
+        bucketByInvoiceId.get(invoice.id) ?? '',
+      ].join(','),
+    );
+
+  const totalCents = normalized.reduce((sum, invoice) => sum + invoice.amountCents, 0);
+  const totalRow = ['Total', invoiceAmountDollars(totalCents), '', '', '', '', ''].join(',');
+
+  return [INVOICE_CSV_HEADER, ...rows, totalRow].join('\n');
 }

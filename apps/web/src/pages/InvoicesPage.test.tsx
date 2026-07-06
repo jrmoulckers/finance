@@ -207,4 +207,42 @@ describe('InvoicesPage', () => {
 
     expect(screen.getByRole('article', { name: 'Past due forecast' })).toBeInTheDocument();
   });
+
+  it('disables the Export CSV button when there are no invoices (#3228)', () => {
+    render(<InvoicesPage />);
+
+    expect(screen.getByRole('button', { name: /export invoices as csv/i })).toBeDisabled();
+  });
+
+  it('exports a CSV blob download when invoices exist (#3228)', () => {
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE],
+      pipelineGroups: [],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    const createObjectURL = vi.fn((_blob: Blob | MediaSource) => 'blob:invoices');
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    render(<InvoicesPage />);
+    fireEvent.click(screen.getByRole('button', { name: /export invoices as csv/i }));
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(createObjectURL.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+
+    clickSpy.mockRestore();
+    delete (URL as unknown as Record<string, unknown>).createObjectURL;
+    delete (URL as unknown as Record<string, unknown>).revokeObjectURL;
+  });
 });

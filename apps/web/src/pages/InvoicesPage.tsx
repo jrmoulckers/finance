@@ -9,12 +9,13 @@
  * References: issue #2169
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ConfirmDialog, CurrencyDisplay, EmptyState } from '../components/common';
 import { useInvoices } from '../hooks/useInvoices';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import {
   computeExpectedPayDate,
+  exportInvoicesCsv,
   PAYMENT_TERM_LABELS,
   PAYMENT_TERMS,
   INVOICE_STATUSES,
@@ -22,6 +23,7 @@ import {
   type InvoicePaymentTerm,
   type InvoiceStatus,
 } from '../lib/analytics/invoices';
+import { buildDatedExportFileName } from '../lib/export/simple-export';
 import { formatDate } from '../utils/formatDate';
 import './analytics.css';
 
@@ -133,6 +135,19 @@ export const InvoicesPage: React.FC = () => {
     [invoices],
   );
 
+  const handleExportCsv = useCallback(() => {
+    const csv = exportInvoicesCsv(invoices, todayIsoDate());
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = buildDatedExportFileName('invoices', 'csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [invoices]);
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const amountCents = parseAmountToCents(amount);
@@ -167,6 +182,15 @@ export const InvoicesPage: React.FC = () => {
             Track net-terms work and forecast when freelance income should land.
           </p>
         </div>
+        <button
+          type="button"
+          className="analytics-export-btn"
+          onClick={handleExportCsv}
+          disabled={invoices.length === 0}
+          aria-label="Export invoices as CSV"
+        >
+          Export CSV
+        </button>
       </div>
 
       <section className="analytics-section" aria-label="Add invoice">
