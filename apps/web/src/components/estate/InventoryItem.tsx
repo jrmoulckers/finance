@@ -98,6 +98,20 @@ export const InventoryItem: React.FC<InventoryItemProps> = ({
 
   const title = useMemo(() => buildItemTitle(item, category), [category, item]);
 
+  const beneficiaryShareTotal = useMemo(
+    () =>
+      draft.beneficiaries.reduce((sum, beneficiary) => {
+        const parsed = Number.parseFloat(beneficiary.sharePercent);
+        return Number.isFinite(parsed) ? sum + parsed : sum;
+      }, 0),
+    [draft.beneficiaries],
+  );
+  const hasBeneficiaryShares = draft.beneficiaries.some(
+    (beneficiary) => beneficiary.sharePercent.trim() !== '',
+  );
+  const beneficiaryShareMismatch =
+    hasBeneficiaryShares && Math.abs(beneficiaryShareTotal - 100) > 0.01;
+
   const handleDetailChange = (fieldKey: string, value: string) => {
     setDraft((current) => ({
       ...current,
@@ -372,6 +386,13 @@ export const InventoryItem: React.FC<InventoryItemProps> = ({
                 </div>
               </div>
             ))}
+
+            {beneficiaryShareMismatch ? (
+              <p className="estate-beneficiaries__share-warning" role="status" aria-live="polite">
+                Beneficiary shares add up to {Number(beneficiaryShareTotal.toFixed(2))}%. Most plans
+                should total 100%.
+              </p>
+            ) : null}
           </div>
 
           {error ? (

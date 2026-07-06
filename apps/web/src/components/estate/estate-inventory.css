@@ -46,6 +46,16 @@
   color: var(--semantic-text-secondary);
 }
 
+.estate-beneficiaries__share-warning {
+  margin: var(--spacing-2) 0 0;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-status-warning);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+  font-weight: 600;
+}
+
 .estate-hero__stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
