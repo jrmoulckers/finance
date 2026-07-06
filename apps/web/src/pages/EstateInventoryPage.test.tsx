@@ -31,6 +31,14 @@ describe('EstateInventoryPage', () => {
     expect(screen.getByText('0 of 8 categories documented')).toBeTruthy();
   });
 
+  it('exposes the page title as the single level-1 heading', () => {
+    renderPage();
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: /Estate & end-of-life financial inventory/i }),
+    ).toBeTruthy();
+  });
+
   it('creates and persists a new bank account entry', () => {
     renderPage();
 

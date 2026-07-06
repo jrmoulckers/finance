@@ -81,6 +81,12 @@ describe('RemittancesPage', () => {
     expect(screen.getByText('No remittances yet')).toBeInTheDocument();
   });
 
+  it('exposes the page title as the single level-1 heading', () => {
+    mockUseRemittances.mockReturnValue(buildResult());
+    render(<RemittancesPage />);
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+  });
+
   it('renders a live estimate once amount and rate are entered', () => {
     mockUseRemittances.mockReturnValue(buildResult());
     render(<RemittancesPage />);

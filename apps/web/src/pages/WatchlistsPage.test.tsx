@@ -84,9 +84,11 @@ describe('WatchlistsPage', () => {
     });
   });
 
-  it('renders the page heading', () => {
+  it('renders the page heading as the single level-1 heading', () => {
     render(<WatchlistsPage />);
-    expect(screen.getByText('Spending Watchlists')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Spending Watchlists' }),
+    ).toBeInTheDocument();
   });
 
   it('shows empty state when no watchlists exist', () => {

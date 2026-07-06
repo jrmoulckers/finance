@@ -68,7 +68,7 @@ export const EstateInventory: React.FC = () => {
       <section className="estate-hero" aria-label="Estate inventory overview">
         <div>
           <p className="estate-hero__eyebrow">Local-first estate planning</p>
-          <h2 className="estate-hero__title">Estate &amp; end-of-life financial inventory</h2>
+          <h1 className="estate-hero__title">Estate &amp; end-of-life financial inventory</h1>
           <p className="estate-hero__description">
             Capture accounts, policies, property, debts, digital assets, and trusted contacts in one
             protected page that stays on this device unless you export it.

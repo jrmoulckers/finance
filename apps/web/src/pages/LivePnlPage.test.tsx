@@ -100,7 +100,9 @@ describe('LivePnlPage', () => {
       refresh: vi.fn(),
     });
     render(<LivePnlPage />);
-    expect(screen.getByRole('heading', { name: /Live P&L & Net Worth/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Live P&L & Net Worth/i, level: 1 }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Total net worth')).toBeInTheDocument();
   });
 });
