@@ -3,6 +3,7 @@
 package com.finance.core.aggregation
 
 import com.finance.core.TestFixtures
+import com.finance.core.currency.ExchangeRate
 import com.finance.models.*
 import com.finance.models.types.*
 import kotlinx.datetime.*
@@ -108,6 +109,197 @@ class FinancialAggregatorTest {
             TestFixtures.createAccount(type = AccountType.OTHER, currentBalance = Cents(3000)),
         )
         assertEquals(Cents(8000), FinancialAggregator.netWorth(accounts))
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // netWorth() — currency-aware (multi-currency)
+    // ═══════════════════════════════════════════════════════════════════
+
+    private val eur = Currency("EUR")
+    private val cny = Currency("CNY")
+
+    @Test
+    fun netWorth_multiCurrency_convertsToBaseCurrency() {
+        val accounts = listOf(
+            TestFixtures.createAccount(
+                type = AccountType.CHECKING,
+                currency = Currency.USD,
+                currentBalance = Cents(500000), // $5,000.00
+            ),
+            TestFixtures.createAccount(
+                type = AccountType.SAVINGS,
+                currency = eur,
+                currentBalance = Cents(500000), // €5,000.00
+            ),
+        )
+        val rates = listOf(
+            ExchangeRate(from = eur, to = Currency.USD, rate = 1.10, timestamp = TestFixtures.fixedInstant),
+        )
+
+        val result = FinancialAggregator.netWorth(accounts, Currency.USD, rates)
+
+        // €5,000 * 1.10 = $5,500 → 550000 cents, + $5,000 = 1,050,000 cents.
+        assertEquals(Cents(1050000), result.netWorth)
+        assertEquals(Currency.USD, result.baseCurrency)
+        assertEquals(setOf(eur), result.convertedCurrencies)
+        assertTrue(result.unconvertedCurrencies.isEmpty())
+        assertTrue(result.isMultiCurrency)
+        assertFalse(result.hasUnconvertedBalances)
+    }
+
+    @Test
+    fun netWorth_multiCurrency_usesInverseRateWhenOnlyReverseAvailable() {
+        val accounts = listOf(
+            TestFixtures.createAccount(
+                type = AccountType.SAVINGS,
+                currency = eur,
+                currentBalance = Cents(500000), // €5,000.00
+            ),
+        )
+        // Only USD->EUR is provided; EUR->USD must be derived via the inverse.
+        val rates = listOf(
+            ExchangeRate(from = Currency.USD, to = eur, rate = 0.8, timestamp = TestFixtures.fixedInstant),
+        )
+
+        val result = FinancialAggregator.netWorth(accounts, Currency.USD, rates)
+
+        // inverse(0.8) = 1.25 → €5,000 * 1.25 = $6,250 = 625000 cents.
+        assertEquals(Cents(625000), result.netWorth)
+        assertEquals(setOf(eur), result.convertedCurrencies)
+    }
+
+    @Test
+    fun netWorth_zeroDecimalCurrency_rescalesMinorUnits() {
+        // Regression for #3460: JPY has 0 decimal places, USD has 2. The
+        // minor-unit rescale (10^(2-0)) must be applied or the total is off 100x.
+        val accounts = listOf(
+            TestFixtures.createAccount(
+                type = AccountType.CHECKING,
+                currency = Currency.USD,
+                currentBalance = Cents(50000), // $500.00
+            ),
+            TestFixtures.createAccount(
+                type = AccountType.CASH,
+                currency = Currency.JPY,
+                currentBalance = Cents(100000), // ¥100,000 (0-decimal → 100000 minor units)
+            ),
+        )
+        val rates = listOf(
+            ExchangeRate(from = Currency.JPY, to = Currency.USD, rate = 0.01, timestamp = TestFixtures.fixedInstant),
+        )
+
+        val result = FinancialAggregator.netWorth(accounts, Currency.USD, rates)
+
+        // ¥100,000 * 0.01 USD/JPY = $1,000.00 = 100000 cents (NOT $10 / 1000 cents).
+        assertEquals(Cents(150000), result.netWorth)
+        assertEquals(setOf(Currency.JPY), result.convertedCurrencies)
+    }
+
+    @Test
+    fun netWorth_missingRate_excludesAndReportsCurrency() {
+        val accounts = listOf(
+            TestFixtures.createAccount(
+                type = AccountType.CHECKING,
+                currency = Currency.USD,
+                currentBalance = Cents(500000),
+            ),
+            TestFixtures.createAccount(
+                type = AccountType.SAVINGS,
+                currency = cny,
+                currentBalance = Cents(1000000),
+            ),
+        )
+
+        // No rate for CNY → it must be excluded from the total and reported.
+        val result = FinancialAggregator.netWorth(accounts, Currency.USD, exchangeRates = emptyList())
+
+        assertEquals(Cents(500000), result.netWorth)
+        assertEquals(setOf(cny), result.unconvertedCurrencies)
+        assertTrue(result.hasUnconvertedBalances)
+        assertTrue(result.convertedCurrencies.isEmpty())
+        assertTrue(result.isMultiCurrency)
+    }
+
+    @Test
+    fun netWorth_convertedLiability_subtractsFromTotal() {
+        val accounts = listOf(
+            TestFixtures.createAccount(
+                type = AccountType.CHECKING,
+                currency = Currency.USD,
+                currentBalance = Cents(500000), // $5,000.00
+            ),
+            TestFixtures.createAccount(
+                type = AccountType.CREDIT_CARD,
+                currency = eur,
+                currentBalance = Cents(100000), // €1,000.00 owed
+            ),
+        )
+        val rates = listOf(
+            ExchangeRate(from = eur, to = Currency.USD, rate = 1.10, timestamp = TestFixtures.fixedInstant),
+        )
+
+        val result = FinancialAggregator.netWorth(accounts, Currency.USD, rates)
+
+        // $5,000 - (€1,000 * 1.10 = $1,100) = $3,900 = 390000 cents.
+        assertEquals(Cents(390000), result.netWorth)
+        assertEquals(setOf(eur), result.convertedCurrencies)
+    }
+
+    @Test
+    fun netWorth_allBaseCurrency_matchesRawSumWithoutRates() {
+        val accounts = listOf(
+            TestFixtures.createAccount(
+                type = AccountType.CHECKING,
+                currency = Currency.USD,
+                currentBalance = Cents(100000),
+            ),
+            TestFixtures.createAccount(
+                type = AccountType.CREDIT_CARD,
+                currency = Currency.USD,
+                currentBalance = Cents(30000),
+            ),
+        )
+
+        val result = FinancialAggregator.netWorth(accounts, Currency.USD)
+
+        assertEquals(FinancialAggregator.netWorth(accounts), result.netWorth)
+        assertEquals(Cents(70000), result.netWorth)
+        assertFalse(result.isMultiCurrency)
+        assertFalse(result.hasUnconvertedBalances)
+    }
+
+    @Test
+    fun netWorth_currencyAware_excludesDeletedAndArchived() {
+        val accounts = listOf(
+            TestFixtures.createAccount(
+                type = AccountType.CHECKING,
+                currency = Currency.USD,
+                currentBalance = Cents(100000),
+            ),
+            TestFixtures.createAccount(
+                type = AccountType.SAVINGS,
+                currency = eur,
+                currentBalance = Cents(999999),
+                deletedAt = TestFixtures.fixedInstant,
+            ),
+            TestFixtures.createAccount(
+                type = AccountType.SAVINGS,
+                currency = eur,
+                currentBalance = Cents(888888),
+                isArchived = true,
+            ),
+        )
+        val rates = listOf(
+            ExchangeRate(from = eur, to = Currency.USD, rate = 1.10, timestamp = TestFixtures.fixedInstant),
+        )
+
+        val result = FinancialAggregator.netWorth(accounts, Currency.USD, rates)
+
+        // Only the active USD account counts; the EUR accounts are filtered out
+        // before conversion, so EUR is neither converted nor reported.
+        assertEquals(Cents(100000), result.netWorth)
+        assertFalse(result.isMultiCurrency)
+        assertTrue(result.convertedCurrencies.isEmpty())
     }
 
     // ═══════════════════════════════════════════════════════════════════

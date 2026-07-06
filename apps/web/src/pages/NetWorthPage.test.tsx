@@ -48,6 +48,11 @@ function makeNetWorthResult(overrides: Partial<UseNetWorthResult> = {}): UseNetW
     loading: false,
     error: null,
     refresh: vi.fn(),
+    displayCurrency: 'USD',
+    isConverted: false,
+    hasStaleRates: false,
+    unconvertedCurrencies: [],
+    conversionDisclosure: null,
     ...overrides,
   };
 }

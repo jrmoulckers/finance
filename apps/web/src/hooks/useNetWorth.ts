@@ -14,7 +14,7 @@
  * References: issue #1578
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import { getAllAccounts } from '../db/repositories/accounts';
 import { getAllTransactions } from '../db/repositories/transactions';
@@ -37,6 +37,9 @@ import {
   selectWorkspaceAccounts,
   selectWorkspaceTransactions,
 } from '../lib/accountPurpose';
+import type { Account, Transaction } from '../kmp/bridge';
+import type { DisplayCurrencyAmount } from '../lib/budgeting/display-currency-rollups';
+import { useDisplayCurrencyRollup } from './useDisplayCurrencyRollup';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,6 +66,16 @@ export interface UseNetWorthResult {
   error: string | null;
   /** Trigger a re-computation. */
   refresh: () => void;
+  /** ISO 4217 code the aggregated figures are expressed in (display-currency preference). */
+  displayCurrency: string;
+  /** `true` when at least one balance was converted from another currency. */
+  isConverted: boolean;
+  /** `true` when any converted rate is stale or the app is offline. */
+  hasStaleRates: boolean;
+  /** Currencies with no available rate; their accounts are excluded from the totals. */
+  unconvertedCurrencies: readonly string[];
+  /** Human-readable conversion/coverage disclosure, or `null` when nothing was converted. */
+  conversionDisclosure: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,59 +93,132 @@ export interface UseNetWorthResult {
 export function useNetWorth(purposeFilter: AccountPurposeFilter = 'all'): UseNetWorthResult {
   const db = useDatabase();
 
-  const [currentNetWorth, setCurrentNetWorth] = useState<NetWorthDataPoint | null>(null);
-  const [assetClasses, setAssetClasses] = useState<AssetClassBreakdown[]>([]);
-  const [milestones, setMilestones] = useState<NetWorthMilestone[]>([]);
-  const [history, setHistory] = useState<NetWorthSeriesPoint[]>([]);
-  const [periodComparison, setPeriodComparison] = useState<PeriodComparison | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [rawAccounts, setRawAccounts] = useState<Account[] | null>(null);
+  const [rawTransactions, setRawTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const refresh = useCallback(() => {
-    setLoading(true);
     setRefreshToken((t) => t + 1);
   }, []);
 
   useEffect(() => {
-    setLoading(true);
     setError(null);
-
     try {
-      const accounts = getAllAccounts(db);
-      const transactions = getAllTransactions(db);
-
-      const scopedAccounts = selectWorkspaceAccounts(accounts, purposeFilter);
-      const scopedTransactions = selectWorkspaceTransactions(transactions, accounts, purposeFilter);
-
-      const nw = computeCurrentNetWorth(scopedAccounts);
-      const classes = computeAssetClassBreakdown(scopedAccounts);
-      const ms = detectMilestones(nw.netWorth, nw.liabilities);
-      const series = buildNetWorthHistorySeries(scopedAccounts, scopedTransactions);
-
-      // Period-over-period delta from the two most recent history points
-      // (oldest-first series → last two entries are prior period vs. current).
-      const comparison =
-        series.length >= 2
-          ? computePeriodComparison(
-              series[series.length - 1].netWorthCents,
-              series[series.length - 2].netWorthCents,
-              series[series.length - 1].label,
-              series[series.length - 2].label,
-            )
-          : null;
-
-      setCurrentNetWorth(nw);
-      setAssetClasses(classes);
-      setMilestones(ms);
-      setHistory(series);
-      setPeriodComparison(comparison);
+      setRawAccounts(getAllAccounts(db));
+      setRawTransactions(getAllTransactions(db));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to compute net worth.');
-    } finally {
-      setLoading(false);
+      setRawAccounts([]);
+      setRawTransactions([]);
     }
-  }, [db, refreshToken, purposeFilter]);
+  }, [db, refreshToken]);
+
+  const scopedAccounts = useMemo(
+    () => (rawAccounts ? selectWorkspaceAccounts(rawAccounts, purposeFilter) : []),
+    [rawAccounts, purposeFilter],
+  );
+  const scopedTransactions = useMemo(
+    () =>
+      rawAccounts ? selectWorkspaceTransactions(rawTransactions, rawAccounts, purposeFilter) : [],
+    [rawAccounts, rawTransactions, purposeFilter],
+  );
+
+  // Convert every account balance into the user's display currency BEFORE
+  // aggregating. Summing raw minor units across currencies is meaningless
+  // (¥1,000 is not $1,000) — the root cause of #3282/#3235/#3238. The rollup
+  // reuses the shared exchange-rate primitives and the #3460 minor-unit
+  // rescale. Archived accounts are excluded here so they never pollute the
+  // conversion-coverage disclosure.
+  const balanceAmounts = useMemo<DisplayCurrencyAmount[]>(
+    () =>
+      scopedAccounts
+        .filter((account) => !account.isArchived)
+        .map((account) => ({
+          id: account.id,
+          amountCents: account.currentBalance.amount,
+          currency: account.currency.code,
+        })),
+    [scopedAccounts],
+  );
+
+  const {
+    rollup,
+    displayCurrency,
+    isConverted,
+    hasStaleRates,
+    unconvertedCurrencies,
+    loading: ratesLoading,
+  } = useDisplayCurrencyRollup(balanceAmounts);
+
+  // Map account id -> converted balance (display-currency minor units). Only
+  // convertible accounts appear; accounts whose currency has no available rate
+  // are surfaced via `unconvertedCurrencies` and excluded from the totals
+  // instead of being silently mis-added in their own minor units.
+  const convertedById = useMemo(
+    () => new Map(rollup.convertedAmounts.map((amount) => [amount.id, amount.displayAmountCents])),
+    [rollup],
+  );
+  const convertibleAccounts = useMemo(
+    () => scopedAccounts.filter((account) => convertedById.has(account.id)),
+    [scopedAccounts, convertedById],
+  );
+  const balanceOf = useCallback(
+    (account: Account) => convertedById.get(account.id) ?? account.currentBalance.amount,
+    [convertedById],
+  );
+
+  // Gate readiness on rates so the page never flashes an un-converted (wrong)
+  // total before the exchange rates resolve.
+  const ready = rawAccounts !== null && !ratesLoading;
+
+  const currentNetWorth = useMemo<NetWorthDataPoint | null>(
+    () => (ready ? computeCurrentNetWorth(convertibleAccounts, balanceOf) : null),
+    [ready, convertibleAccounts, balanceOf],
+  );
+  const assetClasses = useMemo<AssetClassBreakdown[]>(
+    () => (ready ? computeAssetClassBreakdown(convertibleAccounts, balanceOf) : []),
+    [ready, convertibleAccounts, balanceOf],
+  );
+  const milestones = useMemo<NetWorthMilestone[]>(
+    () =>
+      currentNetWorth
+        ? detectMilestones(currentNetWorth.netWorth, currentNetWorth.liabilities)
+        : [],
+    [currentNetWorth],
+  );
+
+  // History + period comparison stay in raw account currency: converting a
+  // historical series correctly requires point-in-time FX rates we do not yet
+  // fetch. The current-period headline above is the converted figure users act
+  // on; multi-currency history conversion is tracked as a follow-up.
+  const history = useMemo<NetWorthSeriesPoint[]>(
+    () => (ready ? buildNetWorthHistorySeries(scopedAccounts, scopedTransactions) : []),
+    [ready, scopedAccounts, scopedTransactions],
+  );
+  const periodComparison = useMemo<PeriodComparison | null>(
+    () =>
+      history.length >= 2
+        ? computePeriodComparison(
+            history[history.length - 1].netWorthCents,
+            history[history.length - 2].netWorthCents,
+            history[history.length - 1].label,
+            history[history.length - 2].label,
+          )
+        : null,
+    [history],
+  );
+
+  const conversionDisclosure = useMemo<string | null>(() => {
+    const parts: string[] = [];
+    if (rollup.convertedCurrencyCodes.length > 0) parts.push(rollup.disclosure);
+    if (unconvertedCurrencies.length > 0) {
+      parts.push(`Excluded ${unconvertedCurrencies.join(', ')} — no exchange rate available.`);
+    }
+    return parts.length > 0 ? parts.join(' ') : null;
+  }, [rollup, unconvertedCurrencies]);
+
+  const loading = rawAccounts === null || ratesLoading;
 
   return {
     currentNetWorth,
@@ -143,5 +229,10 @@ export function useNetWorth(purposeFilter: AccountPurposeFilter = 'all'): UseNet
     loading,
     error,
     refresh,
+    displayCurrency,
+    isConverted,
+    hasStaleRates,
+    unconvertedCurrencies,
+    conversionDisclosure,
   };
 }

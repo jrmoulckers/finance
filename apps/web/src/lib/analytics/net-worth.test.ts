@@ -29,7 +29,7 @@ function makeAccount(
     householdId: 'hh-1',
     name: overrides.name ?? 'Test Account',
     type: overrides.type,
-    currency: { code: 'USD', decimalPlaces: 2 },
+    currency: overrides.currency ?? { code: 'USD', decimalPlaces: 2 },
     currentBalance: { amount: overrides.balance } as Account['currentBalance'],
     isArchived: overrides.isArchived ?? false,
     sortOrder: 0,
@@ -96,6 +96,59 @@ describe('computeCurrentNetWorth', () => {
     expect(nw.liabilities).toBe(0);
     expect(nw.netWorth).toBe(0);
   });
+
+  it('aggregates multi-currency balances via a display-currency resolver (#3282)', () => {
+    // A raw sum would add ¥ minor units to $ cents 1:1 and report a nonsense
+    // total. The resolver supplies each balance already converted to USD cents,
+    // so aggregation happens in a single currency.
+    const usd = makeAccount({ type: 'CHECKING', balance: 500000 }); // $5,000.00
+    const eur = makeAccount({
+      type: 'SAVINGS',
+      balance: 500000, // €5,000.00
+      currency: { code: 'EUR', decimalPlaces: 2 },
+    });
+    const jpy = makeAccount({
+      type: 'CASH',
+      balance: 100000, // ¥100,000 (0-decimal)
+      currency: { code: 'JPY', decimalPlaces: 0 },
+    });
+    // Converted-to-USD-cents view of each account.
+    const convertedById: Record<string, number> = {
+      [usd.id]: 500000, // identity
+      [eur.id]: 550000, // €5,000 * 1.10
+      [jpy.id]: 100000, // ¥100,000 * 0.01 USD/JPY, rescaled to cents
+    };
+    const balanceOf = (account: Account): number =>
+      convertedById[account.id] ?? account.currentBalance.amount;
+
+    const nw = computeCurrentNetWorth([usd, eur, jpy], balanceOf);
+
+    expect(nw.assets).toBe(1150000); // $11,500.00
+    expect(nw.liabilities).toBe(0);
+    expect(nw.netWorth).toBe(1150000);
+
+    // The naive cross-currency sum would have been wrong.
+    const naive = computeCurrentNetWorth([usd, eur, jpy]);
+    expect(naive.netWorth).toBe(1100000);
+    expect(naive.netWorth).not.toBe(nw.netWorth);
+  });
+
+  it('applies the resolver to converted liabilities so they still reduce net worth', () => {
+    const usd = makeAccount({ type: 'CHECKING', balance: 500000 }); // $5,000.00
+    const eurCard = makeAccount({
+      type: 'CREDIT_CARD',
+      balance: 100000, // €1,000.00 owed
+      currency: { code: 'EUR', decimalPlaces: 2 },
+    });
+    const balanceOf = (account: Account): number =>
+      account.id === eurCard.id ? 110000 : account.currentBalance.amount; // €1,000 * 1.10
+
+    const nw = computeCurrentNetWorth([usd, eurCard], balanceOf);
+
+    expect(nw.assets).toBe(500000);
+    expect(nw.liabilities).toBe(110000);
+    expect(nw.netWorth).toBe(390000); // $3,900.00
+  });
 });
 
 describe('netWorthContribution', () => {
@@ -143,6 +196,24 @@ describe('netWorthContribution', () => {
     expect(naiveSum).toBe(2231079);
     expect(naiveSum - total).toBe(2 * 67299);
   });
+
+  it('uses an explicit converted balance when provided (multi-currency)', () => {
+    // The display-currency-aware caller passes each balance already converted
+    // into the display currency; the sign rule still applies to that value.
+    const eurSavings = makeAccount({
+      type: 'SAVINGS',
+      balance: 500000, // €5,000.00 in local minor units
+      currency: { code: 'EUR', decimalPlaces: 2 },
+    });
+    expect(netWorthContribution(eurSavings, 550000)).toBe(550000); // €5,000 → $5,500
+
+    const eurCard = makeAccount({
+      type: 'CREDIT_CARD',
+      balance: 100000, // €1,000.00 owed
+      currency: { code: 'EUR', decimalPlaces: 2 },
+    });
+    expect(netWorthContribution(eurCard, 110000)).toBe(-110000); // still a liability
+  });
 });
 
 describe('computeAssetClassBreakdown', () => {
@@ -162,6 +233,27 @@ describe('computeAssetClassBreakdown', () => {
     expect(classes[1].className).toBe('Checking');
     expect(classes[1].balance).toBe(800000);
     expect(classes[1].accountCount).toBe(2);
+  });
+
+  it('aggregates asset-class balances via a display-currency resolver (#3238)', () => {
+    const usdChecking = makeAccount({ type: 'CHECKING', balance: 500000 }); // $5,000.00
+    const eurSavings = makeAccount({
+      type: 'SAVINGS',
+      balance: 500000, // €5,000.00
+      currency: { code: 'EUR', decimalPlaces: 2 },
+    });
+    const balanceOf = (account: Account): number =>
+      account.id === eurSavings.id ? 550000 : account.currentBalance.amount; // €5,000 → $5,500
+
+    const classes = computeAssetClassBreakdown([usdChecking, eurSavings], balanceOf);
+    const savings = classes.find((c) => c.className === 'Savings');
+    const checking = classes.find((c) => c.className === 'Checking');
+
+    // Savings reflects the converted $5,500, not the raw €5,000 minor units.
+    expect(savings?.balance).toBe(550000);
+    expect(checking?.balance).toBe(500000);
+    // Converted savings ($5,500) outweighs checking ($5,000) → sorted first.
+    expect(classes[0].className).toBe('Savings');
   });
 
   it('computes asset percentages against assets only (excludes liabilities)', () => {

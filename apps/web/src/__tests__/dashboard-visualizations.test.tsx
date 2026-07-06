@@ -84,6 +84,36 @@ vi.mock('../hooks', () => ({
   useCoachAlerts: vi.fn(),
   useTransactions: vi.fn(),
   useWidgetLayout: vi.fn(),
+  useDisplayCurrencyRollup: vi.fn(
+    (amounts: { id: string; amountCents: number; currency: string }[] = []) => ({
+      displayCurrency: 'USD',
+      rollup: {
+        displayCurrency: 'USD',
+        totalCents: amounts.reduce((sum: number, amount) => sum + amount.amountCents, 0),
+        originalTotalsByCurrency: {},
+        convertedAmounts: amounts.map((amount) => ({
+          ...amount,
+          displayAmountCents: amount.amountCents,
+          displayCurrency: 'USD',
+          rate: { from: amount.currency, to: 'USD', rate: 1, timestamp: '', source: 'static' },
+          stale: false,
+        })),
+        convertedCurrencyCodes: [],
+        hasMixedCurrencies: false,
+        hasStaleRates: false,
+        rateSources: [],
+        oldestRateTimestamp: null,
+        disclosure: 'Shown in USD.',
+      },
+      isConverted: false,
+      isOffline: false,
+      isStale: false,
+      hasStaleRates: false,
+      lastUpdated: null,
+      loading: false,
+      unconvertedCurrencies: [],
+    }),
+  ),
 }));
 
 vi.mock('../components/charts', () => ({
