@@ -11,6 +11,11 @@ import {
   type ReactNode,
 } from 'react';
 
+import {
+  applyFontScalePreference,
+  getFontScaleOption,
+  getStoredFontScalePreference,
+} from '../hooks/useFontScale';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { formatCurrencyForScreenReader } from '../lib/a11y';
 
@@ -53,6 +58,20 @@ const ROOT_FONT_SIZES: Record<AccessibilityFontSize, string> = {
   normal: '16px',
   large: '18px',
   'extra-large': '20px',
+};
+
+/**
+ * Accessibility "Font size" root sizes in CSS pixels.
+ *
+ * Mirrors {@link ROOT_FONT_SIZES} numerically so the effective root font size
+ * can be reconciled with the Display "Text size" scale (see useFontScale),
+ * which applies an inline root font-size that outranks the
+ * `html[data-accessibility-font-size]` rules in accessibility.css.
+ */
+const ACCESSIBILITY_ROOT_FONT_PIXELS: Record<AccessibilityFontSize, number> = {
+  normal: 16,
+  large: 18,
+  'extra-large': 20,
 };
 
 export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
@@ -143,6 +162,15 @@ function applyDomSettings(
     settings.accessibilityMode === 'simplified' ? '56px' : '48px',
   );
 
+  // The Display "Text size" control (useFontScale) writes an inline root
+  // font-size, which outranks the html[data-accessibility-font-size] rules in
+  // accessibility.css. Apply the accessibility font size through the same
+  // inline channel so it is not silently defeated, using the larger of the two
+  // preferences so neither control shrinks a size the user chose elsewhere.
+  const accessibilityRootPixels = ACCESSIBILITY_ROOT_FONT_PIXELS[settings.fontSize];
+  const displayRootPixels = getFontScaleOption(getStoredFontScalePreference()).basePixels;
+  root.style.fontSize = `${Math.max(accessibilityRootPixels, displayRootPixels)}px`;
+
   return () => {
     body.classList.remove(
       'accessibility-simplified',
@@ -159,6 +187,9 @@ function applyDomSettings(
     delete root.dataset.accessibilityFontSize;
     root.style.removeProperty('--accessibility-root-font-size');
     root.style.removeProperty('--accessibility-touch-target-size');
+    // Hand the inline root font-size back to the Display "Text size" preference
+    // so removing the provider does not strand the accessibility size.
+    applyFontScalePreference(getStoredFontScalePreference());
   };
 }
 
