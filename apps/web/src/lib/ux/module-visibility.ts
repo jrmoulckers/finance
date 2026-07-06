@@ -101,6 +101,7 @@ export const HIDEABLE_MODULE_IDS: readonly string[] = Object.freeze([
   'expected-income',
   'investments',
   'tax-center',
+  'estimated-tax',
   'safety',
   // Plan
   'budgets',
@@ -182,7 +183,13 @@ export const HIDEABLE_MODULES: readonly HideableModule[] = [
   {
     id: 'tax-center',
     label: 'Tax Center',
-    description: 'Lot-level gains, estimated taxes and wash-sale guardrails.',
+    description: 'Lot-level investment gains and wash-sale guardrails.',
+    category: 'money',
+  },
+  {
+    id: 'estimated-tax',
+    label: 'Estimated Taxes',
+    description: 'Quarterly self-employment tax set-aside and next due date.',
     category: 'money',
   },
   {

@@ -56,6 +56,7 @@ const Household = lazy(() => import('./pages/HouseholdPage'));
 const ReportBuilder = lazy(() => import('./pages/ReportBuilderPage'));
 const ClientProfitability = lazy(() => import('./pages/ClientProfitabilityPage'));
 const BusinessPnl = lazy(() => import('./pages/BusinessPnlPage'));
+const EstimatedTax = lazy(() => import('./pages/EstimatedTaxPage'));
 const GigDriver = lazy(() => import('./pages/GigDriverPage'));
 const Investments = lazy(() => import('./pages/InvestmentsPage'));
 const LivePnl = lazy(() => import('./pages/LivePnlPage'));
@@ -458,6 +459,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Profit & Loss">
             <BusinessPnl />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/estimated-tax"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Estimated Taxes">
+            <EstimatedTax />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
