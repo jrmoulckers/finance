@@ -255,6 +255,39 @@ describe('TransactionForm', () => {
     );
   });
 
+  it('persists tax-treatment custom fields when a business category is selected', async () => {
+    const { onSubmit } = renderTransactionForm();
+
+    const amountInput = screen.getByLabelText('Amount');
+    fireEvent.keyDown(amountInput, { key: '9' });
+    fireEvent.keyDown(amountInput, { key: '9' });
+    fireEvent.keyDown(amountInput, { key: '0' });
+    fireEvent.keyDown(amountInput, { key: '0' });
+
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'Design software' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    fireEvent.change(screen.getByLabelText('Tax category'), {
+      target: { value: 'SCHEDULE_C_EXPENSE' },
+    });
+    fireEvent.change(screen.getByLabelText('Business purpose (optional)'), {
+      target: { value: 'Client logo design' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customFields: expect.objectContaining({
+          'tax.category': 'SCHEDULE_C_EXPENSE',
+          'tax.deductibleStatus': 'DEDUCTIBLE',
+          'tax.businessPurposeNote': 'Client logo design',
+        }),
+      }),
+    );
+  });
+
   it('submits balanced split lines with per-line categories and notes', async () => {
     const { onSubmit } = renderTransactionForm();
 
