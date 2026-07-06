@@ -182,6 +182,32 @@ describe('DebtPage', () => {
     expect(screen.getAllByText('Personal Loan').length).toBeGreaterThan(0);
   });
 
+  it('shows a per-debt payoff timeline with projected dates (#3368)', () => {
+    mockUseAccountsState.accounts = [
+      buildAccount({
+        id: 'cc-1',
+        name: 'Rewards Credit Card',
+        type: 'CREDIT_CARD',
+        currentBalance: { amount: -400_000 },
+      }),
+      buildAccount({
+        id: 'loan-1',
+        name: 'Personal Loan',
+        type: 'LOAN',
+        currentBalance: { amount: 800_000 },
+      }),
+    ];
+
+    render(<DebtPage />);
+
+    const timeline = screen.getByRole('region', { name: 'Payoff timeline' });
+    expect(within(timeline).getByText('Payoff Timeline')).toBeDefined();
+    // Each debt shows as its own dated milestone, in payoff order.
+    expect(within(timeline).getByText('Rewards Credit Card')).toBeDefined();
+    expect(within(timeline).getByText('Personal Loan')).toBeDefined();
+    expect(within(timeline).getAllByRole('listitem')).toHaveLength(2);
+  });
+
   it('warns instead of showing a countdown when the payment never covers interest (#3355)', () => {
     mockUseAccountsState.accounts = [
       buildAccount({
