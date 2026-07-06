@@ -50,10 +50,17 @@ const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => (
 const InvoiceCard: React.FC<{
   invoice: Invoice;
   locale: string;
+  isEditing: boolean;
+  onEdit: (invoice: Invoice) => void;
   onStatusChange: (invoiceId: string, status: InvoiceStatus) => void;
   onDelete: (invoice: Invoice) => void;
-}> = ({ invoice, locale, onStatusChange, onDelete }) => (
-  <article className={`invoice-card invoice-card--${invoice.status.toLowerCase()}`} role="listitem">
+}> = ({ invoice, locale, isEditing, onEdit, onStatusChange, onDelete }) => (
+  <article
+    className={`invoice-card invoice-card--${invoice.status.toLowerCase()}${
+      isEditing ? ' invoice-card--editing' : ''
+    }`}
+    role="listitem"
+  >
     <div className="invoice-card__main">
       <div>
         <h3 className="invoice-card__client">{invoice.clientName}</h3>
@@ -86,6 +93,14 @@ const InvoiceCard: React.FC<{
       <button
         className="analytics-export-btn"
         type="button"
+        aria-label={`Edit invoice for ${invoice.clientName}`}
+        onClick={() => onEdit(invoice)}
+      >
+        Edit
+      </button>
+      <button
+        className="analytics-export-btn"
+        type="button"
         aria-label={`Delete invoice for ${invoice.clientName}`}
         onClick={() => onDelete(invoice)}
       >
@@ -102,6 +117,7 @@ export const InvoicesPage: React.FC = () => {
     forecastBuckets,
     totalOutstandingCents,
     addInvoice,
+    updateInvoice,
     updateInvoiceStatus,
     deleteInvoice,
   } = useInvoices();
@@ -113,6 +129,27 @@ export const InvoicesPage: React.FC = () => {
   const [status, setStatus] = useState<InvoiceStatus>('Sent');
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+
+  const resetForm = useCallback(() => {
+    setEditingInvoiceId(null);
+    setClientName('');
+    setAmount('');
+    setIssueDate(todayIsoDate());
+    setPaymentTerm('net-30');
+    setStatus('Sent');
+    setFormError(null);
+  }, []);
+
+  const handleEdit = useCallback((invoice: Invoice) => {
+    setEditingInvoiceId(invoice.id);
+    setClientName(invoice.clientName);
+    setAmount((invoice.amountCents / 100).toString());
+    setIssueDate(invoice.issueDate);
+    setPaymentTerm(invoice.paymentTerm);
+    setStatus(invoice.status);
+    setFormError(null);
+  }, []);
 
   const handleConfirmDelete = () => {
     if (deletingInvoice) {
@@ -164,13 +201,12 @@ export const InvoicesPage: React.FC = () => {
       return;
     }
 
-    addInvoice({ clientName, amountCents, issueDate, paymentTerm, status });
-    setClientName('');
-    setAmount('');
-    setIssueDate(todayIsoDate());
-    setPaymentTerm('net-30');
-    setStatus('Sent');
-    setFormError(null);
+    if (editingInvoiceId) {
+      updateInvoice(editingInvoiceId, { clientName, amountCents, issueDate, paymentTerm, status });
+    } else {
+      addInvoice({ clientName, amountCents, issueDate, paymentTerm, status });
+    }
+    resetForm();
   };
 
   return (
@@ -193,7 +229,13 @@ export const InvoicesPage: React.FC = () => {
         </button>
       </div>
 
-      <section className="analytics-section" aria-label="Add invoice">
+      <section
+        className="analytics-section"
+        aria-label={editingInvoiceId ? 'Edit invoice' : 'Add invoice'}
+      >
+        <h2 className="analytics-section__title">
+          {editingInvoiceId ? 'Edit invoice' : 'Add invoice'}
+        </h2>
         <form className="invoice-form" onSubmit={handleSubmit}>
           <label className="invoice-form__field">
             Client name
@@ -267,8 +309,17 @@ export const InvoicesPage: React.FC = () => {
           </div>
           {formError && <p className="invoice-form__error">{formError}</p>}
           <button className="analytics-export-btn invoice-form__submit" type="submit">
-            Add invoice
+            {editingInvoiceId ? 'Save changes' : 'Add invoice'}
           </button>
+          {editingInvoiceId && (
+            <button
+              className="analytics-export-btn invoice-form__cancel"
+              type="button"
+              onClick={resetForm}
+            >
+              Cancel edit
+            </button>
+          )}
         </form>
       </section>
 
@@ -362,6 +413,8 @@ export const InvoicesPage: React.FC = () => {
                         key={invoice.id}
                         invoice={invoice}
                         locale={locale}
+                        isEditing={invoice.id === editingInvoiceId}
+                        onEdit={handleEdit}
                         onStatusChange={updateInvoiceStatus}
                         onDelete={setDeletingInvoice}
                       />

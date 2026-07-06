@@ -57,6 +57,7 @@ beforeEach(() => {
     forecastBuckets: [],
     totalOutstandingCents: 0,
     addInvoice: vi.fn(),
+    updateInvoice: vi.fn(),
     updateInvoiceStatus: vi.fn(),
     deleteInvoice: vi.fn(),
     refresh: vi.fn(),
@@ -86,6 +87,7 @@ describe('InvoicesPage', () => {
       forecastBuckets: [],
       totalOutstandingCents: 120_000,
       addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       deleteInvoice,
       refresh: vi.fn(),
@@ -111,6 +113,7 @@ describe('InvoicesPage', () => {
       forecastBuckets: [],
       totalOutstandingCents: 120_000,
       addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
@@ -131,6 +134,7 @@ describe('InvoicesPage', () => {
       forecastBuckets: [],
       totalOutstandingCents: 120_000,
       addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
@@ -151,6 +155,7 @@ describe('InvoicesPage', () => {
       forecastBuckets: [],
       totalOutstandingCents: 240_000,
       addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
@@ -178,6 +183,7 @@ describe('InvoicesPage', () => {
       forecastBuckets: [],
       totalOutstandingCents: 120_000,
       addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
@@ -199,6 +205,7 @@ describe('InvoicesPage', () => {
       ],
       totalOutstandingCents: 120_000,
       addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
@@ -221,6 +228,7 @@ describe('InvoicesPage', () => {
       forecastBuckets: [],
       totalOutstandingCents: 120_000,
       addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
@@ -244,5 +252,64 @@ describe('InvoicesPage', () => {
     clickSpy.mockRestore();
     delete (URL as unknown as Record<string, unknown>).createObjectURL;
     delete (URL as unknown as Record<string, unknown>).revokeObjectURL;
+  });
+
+  it('enters edit mode and saves changes to an existing invoice (#3218)', () => {
+    const updateInvoice = vi.fn();
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE],
+      pipelineGroups: [
+        { status: 'Sent', label: 'Sent', invoices: [SAMPLE_INVOICE], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoice,
+      updateInvoiceStatus: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit invoice for Etsy Wholesale' }));
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Edit invoice' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+    const clientInput = screen.getByLabelText(/client name/i);
+    expect(clientInput).toHaveValue('Etsy Wholesale');
+
+    fireEvent.change(clientInput, { target: { value: 'Etsy Wholesale LLC' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(updateInvoice).toHaveBeenCalledTimes(1);
+    expect(updateInvoice).toHaveBeenCalledWith(
+      'inv-1',
+      expect.objectContaining({ clientName: 'Etsy Wholesale LLC', amountCents: 120_000 }),
+    );
+  });
+
+  it('cancels edit mode and restores the add-invoice form (#3218)', () => {
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE],
+      pipelineGroups: [
+        { status: 'Sent', label: 'Sent', invoices: [SAMPLE_INVOICE], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit invoice for Etsy Wholesale' }));
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel edit' }));
+
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add invoice' })).toBeInTheDocument();
   });
 });

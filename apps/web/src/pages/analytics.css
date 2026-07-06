@@ -506,6 +506,16 @@
   align-self: end;
 }
 
+.invoice-form__cancel {
+  align-self: end;
+  background: var(--semantic-background-primary);
+}
+
+.invoice-card--editing {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
 .invoice-forecast-list {
   display: flex;
   flex-direction: column;

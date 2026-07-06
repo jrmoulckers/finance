@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   computeInvoiceForecast,
   createInvoice,
+  applyInvoiceEdit,
   groupInvoicesByStatus,
   normalizeInvoiceStatuses,
   type CreateInvoiceInput,
@@ -20,6 +21,7 @@ import {
   type Invoice,
   type InvoicePipelineGroup,
   type InvoiceStatus,
+  type UpdateInvoiceInput,
 } from '../lib/analytics/invoices';
 
 const STORAGE_KEY = 'finance:invoices';
@@ -30,6 +32,7 @@ export interface UseInvoicesResult {
   forecastBuckets: ForecastBucket[];
   totalOutstandingCents: number;
   addInvoice: (input: CreateInvoiceInput) => Invoice;
+  updateInvoice: (invoiceId: string, input: UpdateInvoiceInput) => void;
   updateInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => void;
   deleteInvoice: (invoiceId: string) => void;
   refresh: () => void;
@@ -106,6 +109,21 @@ export function useInvoices(): UseInvoicesResult {
     return invoice;
   }, []);
 
+  const updateInvoice = useCallback((invoiceId: string, input: UpdateInvoiceInput) => {
+    const currentDate = todayIsoDate();
+    setToday(currentDate);
+    setInvoices((prev) =>
+      normalizeInvoiceStatuses(
+        prev.map((invoice) =>
+          invoice.id === invoiceId
+            ? applyInvoiceEdit(invoice, input, new Date().toISOString())
+            : invoice,
+        ),
+        currentDate,
+      ),
+    );
+  }, []);
+
   const updateInvoiceStatus = useCallback((invoiceId: string, status: InvoiceStatus) => {
     const currentDate = todayIsoDate();
     setToday(currentDate);
@@ -138,6 +156,7 @@ export function useInvoices(): UseInvoicesResult {
     forecastBuckets,
     totalOutstandingCents,
     addInvoice,
+    updateInvoice,
     updateInvoiceStatus,
     deleteInvoice,
     refresh,
