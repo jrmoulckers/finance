@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { BudgetDonutChart, type BudgetSlice } from './BudgetDonutChart';
 
@@ -113,5 +113,19 @@ describe('BudgetDonutChart', () => {
       'aria-live',
       'polite',
     );
+  });
+
+  it('renders a screen-reader data-table alternative listing each allocation', () => {
+    render(<BudgetDonutChart data={sampleData} />);
+    const table = screen.getByRole('table', { name: /budget breakdown data table/i });
+    expect(within(table).getByRole('rowheader', { name: 'Housing' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Groceries' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Savings' })).toBeInTheDocument();
+    expect(within(table).getByText('54.5%')).toBeInTheDocument();
+  });
+
+  it('omits the data table when there is no data', () => {
+    render(<BudgetDonutChart data={[]} />);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });
