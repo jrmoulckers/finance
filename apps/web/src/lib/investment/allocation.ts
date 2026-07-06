@@ -64,7 +64,7 @@ export const ALLOCATION_PRESETS: readonly AllocationPreset[] = [
   },
   {
     name: 'Balanced',
-    description: '60% stocks, 30% bonds, 10% alternatives.',
+    description: '60% stocks, 30% bonds, 10% cash.',
     targets: [
       { assetClass: 'US_STOCKS', targetPercent: 40 },
       { assetClass: 'INTERNATIONAL_STOCKS', targetPercent: 20 },

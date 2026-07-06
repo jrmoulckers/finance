@@ -95,6 +95,16 @@ describe('ALLOCATION_PRESETS', () => {
   it('includes at least 3 presets', () => {
     expect(ALLOCATION_PRESETS.length).toBeGreaterThanOrEqual(3);
   });
+
+  it('describes the Balanced preset by the classes it actually targets (cash, not alternatives)', () => {
+    const balanced = ALLOCATION_PRESETS.find((p) => p.name === 'Balanced');
+    expect(balanced).toBeDefined();
+    // It allocates the final 10% to CASH, so the copy must say cash and must
+    // not claim "alternatives" (which it does not hold).
+    expect(balanced?.targets.some((t) => t.assetClass === 'CASH')).toBe(true);
+    expect(balanced?.description.toLowerCase()).toContain('cash');
+    expect(balanced?.description.toLowerCase()).not.toContain('alternative');
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,11 @@ import { InvestmentsPage } from './InvestmentsPage';
 
 vi.mock('../hooks', () => ({
   useInvestments: vi.fn(),
+  useDisplayCurrency: vi.fn(() => ({
+    displayCurrency: 'USD',
+    setDisplayCurrency: vi.fn(),
+    supportedCurrencies: [],
+  })),
 }));
 
 vi.mock('../components/DataExport', () => ({
