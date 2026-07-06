@@ -141,4 +141,30 @@ describe('BudgetAnalytics', () => {
     render(<BudgetAnalytics {...defaultProps} totalIncome={0} />);
     expect(screen.getByText('0%')).toBeInTheDocument();
   });
+
+  it('warns when a category is on pace to overspend its budget', () => {
+    render(
+      <BudgetAnalytics
+        {...defaultProps}
+        categoryBudgets={
+          new Map([
+            ['Food', 150_000], // spent $1,000 in 15/30 days -> projects $2,000 vs $1,500 budget
+            ['Housing', 400_000],
+            ['Transport', 200_000],
+            ['Entertainment', 200_000],
+            ['Health', 200_000],
+          ])
+        }
+      />,
+    );
+    const warnings = screen.getAllByText(/On pace to overspend by/);
+    expect(warnings).toHaveLength(1);
+    // Projected $2,000 - $1,500 budget = $500 (50,000 cents) overspend.
+    expect(screen.getByLabelText(/Food:.*on pace to overspend by/i)).toBeInTheDocument();
+  });
+
+  it('omits overspend warnings when no category budgets are provided', () => {
+    render(<BudgetAnalytics {...defaultProps} />);
+    expect(screen.queryByText(/On pace to overspend by/)).not.toBeInTheDocument();
+  });
 });

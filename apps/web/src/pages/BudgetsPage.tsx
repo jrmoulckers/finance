@@ -431,6 +431,16 @@ export const BudgetsPage: React.FC = () => {
     return map;
   }, [budgets, categoriesById]);
 
+  const categoryBudgets = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const budget of budgets) {
+      const category = categoriesById.get(budget.categoryId);
+      const name = category?.name ?? budget.name;
+      map.set(name, (map.get(name) ?? 0) + budget.amount.amount);
+    }
+    return map;
+  }, [budgets, categoriesById]);
+
   const categoryNameById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
@@ -809,6 +819,7 @@ export const BudgetsPage: React.FC = () => {
             previousPeriodSpent={previousPeriod.previousPeriodSpent}
             currentCategorySpending={currentCategorySpending}
             previousCategorySpending={previousPeriod.previousCategorySpending}
+            categoryBudgets={categoryBudgets}
           />
           <section aria-label="Variance coaching" style={{ marginBottom: 'var(--spacing-6)' }}>
             <div className="card">
