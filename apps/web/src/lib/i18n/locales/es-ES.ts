@@ -3,6 +3,16 @@
 import type { MessageCatalog } from '../catalog-loader';
 
 export const ES_ES_CATALOG: MessageCatalog = {
+  // Etiquetas accesibles de moneda (lector de pantalla + señal visible de negativo).
+  'a11y.currency.negative': 'negativo {amount}',
+  'a11y.currency.withContext': '{label}, {context}',
+  'currency.display.negativeCue': 'Negativo {amount}',
+  'currency.display.amountHidden': 'Importe oculto',
+  // Ventana emergente del glosario "Explicar esto".
+  'education.explain.trigger': 'Explicar {term}',
+  'education.explain.close': 'Cerrar la explicación de {term}',
+  'education.explain.example': 'Ejemplo',
+  'education.explain.whyItMatters': 'Por qué es importante',
   'settings.language': 'Idioma',
   'settings.timeZone': 'Zona horaria de casa',
   'settings.languageDescription': 'Detectado desde tu navegador; puedes cambiarlo cuando quieras.',

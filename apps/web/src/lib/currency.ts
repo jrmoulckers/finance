@@ -17,7 +17,7 @@
  * References: issue #1351
  */
 
-import { getCurrentLocale } from './i18n';
+import { getCurrentLocale, translate } from './i18n';
 import { minorUnitFactor } from './currency-metadata';
 import { formatAmount, MaskingMode } from './ui/privacy';
 
@@ -169,7 +169,11 @@ export function formatCurrencyLabel(
   options: FormatCurrencyOptions = {},
 ): string {
   if (amountInCents < 0) {
-    return `negative ${formatCurrency(Math.abs(amountInCents), options)}`;
+    return translate(
+      'a11y.currency.negative',
+      { amount: formatCurrency(Math.abs(amountInCents), options) },
+      options.locale,
+    ).text;
   }
   return formatCurrency(amountInCents, options);
 }

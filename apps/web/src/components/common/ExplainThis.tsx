@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
+import { useLocalePreferences } from '../../hooks/useLocalePreferences';
+import { translate } from '../../lib/i18n';
 import {
   getContextualTip,
   getGlossaryEntry,
@@ -46,6 +48,7 @@ export function ExplainThis(props: ExplainThisProps) {
   const popoverId = useId();
   const titleId = useId();
   const definitionId = useId();
+  const { locale } = useLocalePreferences();
 
   const entry = useMemo(() => {
     if ('glossaryKey' in props && props.glossaryKey) {
@@ -131,7 +134,8 @@ export function ExplainThis(props: ExplainThisProps) {
     };
   }, [closePopover, interactionMode, isOpen]);
 
-  const buttonAriaLabel = props.buttonLabel ?? `Explain ${entry.term}`;
+  const buttonAriaLabel =
+    props.buttonLabel ?? translate('education.explain.trigger', { term: entry.term }, locale).text;
   const wrapperClassName = ['explain-this', props.className].filter(Boolean).join(' ');
 
   return (
@@ -169,7 +173,7 @@ export function ExplainThis(props: ExplainThisProps) {
               ref={closeButtonRef}
               type="button"
               className="explain-this__close"
-              aria-label={`Close explanation for ${entry.term}`}
+              aria-label={translate('education.explain.close', { term: entry.term }, locale).text}
               onClick={closePopover}
             >
               <AppIcon name="x" size={14} />
@@ -181,12 +185,16 @@ export function ExplainThis(props: ExplainThisProps) {
           </p>
 
           <div className="explain-this__section">
-            <span className="explain-this__section-label">Example</span>
+            <span className="explain-this__section-label">
+              {translate('education.explain.example', {}, locale).text}
+            </span>
             <p>{entry.example}</p>
           </div>
 
           <div className="explain-this__section explain-this__section--accent">
-            <span className="explain-this__section-label">Why it matters</span>
+            <span className="explain-this__section-label">
+              {translate('education.explain.whyItMatters', {}, locale).text}
+            </span>
             <p>{entry.whyItMatters}</p>
           </div>
         </div>

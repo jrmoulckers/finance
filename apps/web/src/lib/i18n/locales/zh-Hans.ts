@@ -16,6 +16,16 @@ import type { MessageCatalog } from '../catalog-loader';
  * References: issue #3311
  */
 export const ZH_HANS_CATALOG: MessageCatalog = {
+  // 无障碍货币标签（屏幕阅读器 + 仅颜色负数的可见提示）。
+  'a11y.currency.negative': '负{amount}',
+  'a11y.currency.withContext': '{label}，{context}',
+  'currency.display.negativeCue': '负{amount}',
+  'currency.display.amountHidden': '金额已隐藏',
+  // “解释”术语弹窗界面文字。
+  'education.explain.trigger': '解释{term}',
+  'education.explain.close': '关闭{term}的解释',
+  'education.explain.example': '示例',
+  'education.explain.whyItMatters': '为什么重要',
   'settings.language': '语言',
   'settings.timeZone': '家乡时区',
   'settings.languageDescription': '根据你的浏览器检测；可随时更改。',
