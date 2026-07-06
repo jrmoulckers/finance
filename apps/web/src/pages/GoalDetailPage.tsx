@@ -3,6 +3,7 @@
 import React, { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppIcon, type IconName } from '../components/icons';
+import { pluralize } from '../lib/ui/pluralize';
 
 import {
   ConfirmDialog,
@@ -245,7 +246,11 @@ export const GoalDetailPage: React.FC = () => {
             <div>
               <dt className="card__title">Time Remaining</dt>
               <dd>
-                {daysLeft > 0 ? `${daysLeft} days left` : daysLeft === 0 ? 'Due today' : 'Past due'}
+                {daysLeft > 0
+                  ? `${daysLeft} ${pluralize(daysLeft, 'day')} left`
+                  : daysLeft === 0
+                    ? 'Due today'
+                    : 'Past due'}
               </dd>
             </div>
           )}
@@ -337,7 +342,7 @@ export const GoalDetailPage: React.FC = () => {
               {daysLeft === null
                 ? 'No due date'
                 : daysLeft > 0
-                  ? `${daysLeft} days left`
+                  ? `${daysLeft} ${pluralize(daysLeft, 'day')} left`
                   : 'Past due'}
             </span>
           </div>

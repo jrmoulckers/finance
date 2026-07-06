@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppIcon } from '../components/icons';
+import { pluralize } from '../lib/ui/pluralize';
 
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { AccountDeleteDialog, AccountPurposeBadge } from '../components/accounts';
@@ -315,7 +316,7 @@ export const AccountDetailPage: React.FC = () => {
             <p className="page-muted-text">
               {reconciliationLoading
                 ? 'Loading reconciliation status…'
-                : `${unclearedTransactionCount} transactions uncleared`}
+                : `${unclearedTransactionCount} ${pluralize(unclearedTransactionCount, 'transaction')} uncleared`}
             </p>
           </div>
           <button type="button" className="form-button" onClick={handleStartReconciliation}>

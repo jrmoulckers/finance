@@ -14,6 +14,7 @@ import {
 import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
 import { SharedGoalBadge } from '../components/goals/SharedGoalContributions';
 import { GoalForm } from '../components/forms';
+import { pluralize } from '../lib/ui/pluralize';
 import { AppIcon, type IconName } from '../components/icons';
 import {
   ContributionPlanner,
@@ -947,7 +948,7 @@ export const GoalsPage: React.FC = () => {
                           {daysLeft === null
                             ? 'No due date'
                             : daysLeft > 0
-                              ? `${daysLeft} days left`
+                              ? `${daysLeft} ${pluralize(daysLeft, 'day')} left`
                               : 'Past due'}
                         </span>
                       </div>
