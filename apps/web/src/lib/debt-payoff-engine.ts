@@ -206,9 +206,10 @@ export function calculateSnowballOrder(debts: readonly Debt[]): string[] {
 /**
  * Simulates a full multi-debt payoff using the given strategy and extra payment.
  *
- * Extra payment is allocated to the target debt (per strategy ordering).
- * When a debt is paid off, its minimum payment rolls into the extra amount
- * for the next target.
+ * Extra payment is allocated to debts in strategy order. When a debt is
+ * cleared, its minimum rolls into the pool for the next target, and any
+ * money left over in a debt's payoff month cascades onto the next debt in
+ * the same month (a true snowball, with no wasted surplus).
  *
  * @param debts - All debts to include.
  * @param strategy - 'avalanche' or 'snowball'.
@@ -262,32 +263,54 @@ export function calculateStrategyResult(
 
     month++;
 
-    // Find current target debt (first unpaid in order)
-    let targetId: string | null = null;
-    for (const id of orderedIds) {
-      if ((balances.get(id) ?? 0) > 0) {
-        targetId = id;
-        break;
-      }
-    }
+    // Determine this month's interest and each debt's own minimum payment.
+    // Any money beyond a debt's own minimum — the user's extra payment, the
+    // minimums freed by debts cleared in earlier months, and the unused part
+    // of a minimum that over-covers a nearly-paid debt — joins a shared pool
+    // that cascades to debts in strategy order within THIS month.
+    const monthInterest = new Map<string, number>();
+    const monthPayment = new Map<string, number>();
+    let pool = safeExtra + freedUpPayment;
 
-    // Process each debt
     for (const id of orderedIds) {
       const balance = balances.get(id) ?? 0;
       if (balance <= 0) continue;
 
       const debt = debtMap.get(id)!;
       const interestCents = calculateMonthlyInterestCents(balance, debt.annualRateBps);
+      monthInterest.set(id, interestCents);
 
-      // Calculate payment: minimum + extra (if this is the target debt)
-      let payment = debt.minimumPaymentCents;
-      if (id === targetId) {
-        payment += safeExtra + freedUpPayment;
-      }
+      const payoffCents = balance + interestCents;
+      const minPaymentCents = Math.min(debt.minimumPaymentCents, payoffCents);
+      monthPayment.set(id, minPaymentCents);
+      // If the minimum over-covers this debt, the surplus cascades too.
+      pool += debt.minimumPaymentCents - minPaymentCents;
+    }
 
-      // Cap payment at balance + interest
-      payment = Math.min(payment, balance + interestCents);
+    // Cascade the pool across debts in strategy order. When a debt is fully
+    // covered, the leftover immediately flows to the next target this month.
+    for (const id of orderedIds) {
+      if (pool <= 0) break;
+      const balance = balances.get(id) ?? 0;
+      if (balance <= 0) continue;
 
+      const interestCents = monthInterest.get(id) ?? 0;
+      const payoffCents = balance + interestCents;
+      const alreadyCents = monthPayment.get(id) ?? 0;
+      const roomCents = Math.max(0, payoffCents - alreadyCents);
+      const appliedCents = Math.min(pool, roomCents);
+      monthPayment.set(id, alreadyCents + appliedCents);
+      pool -= appliedCents;
+    }
+
+    // Commit payments, update balances, record schedules, and detect payoffs.
+    for (const id of orderedIds) {
+      const balance = balances.get(id) ?? 0;
+      if (balance <= 0) continue;
+
+      const debt = debtMap.get(id)!;
+      const interestCents = monthInterest.get(id) ?? 0;
+      const payment = monthPayment.get(id) ?? 0;
       const principalCents = Math.max(0, payment - interestCents);
       const newBalance = Math.max(0, balance - principalCents);
       balances.set(id, newBalance);
@@ -303,11 +326,10 @@ export function calculateStrategyResult(
         remainingBalanceCents: newBalance,
       });
 
-      // If debt just got paid off
+      // If debt just got paid off, free its minimum for future months.
       if (newBalance <= 0 && balance > 0) {
         payoffMonths.set(id, month);
         payoffOrder.push(id);
-        // Free up this debt's minimum for the next target
         freedUpPayment += debt.minimumPaymentCents;
       }
     }

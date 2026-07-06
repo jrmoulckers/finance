@@ -388,6 +388,43 @@ describe('calculateStrategyResult', () => {
       expect(carPaymentAfter).toBeGreaterThan(carPaymentBefore);
     }
   });
+
+  it('cascades surplus onto the next debt within the payoff month', () => {
+    // Card A clears quickly; the large extra payment overshoots its payoff,
+    // and the leftover must cascade onto Card B in the SAME month.
+    const cascadeDebts: Debt[] = [
+      {
+        id: 'a',
+        name: 'Card A',
+        balanceCents: 500_00,
+        annualRateBps: 2299,
+        minimumPaymentCents: 25_00,
+        type: 'credit_card',
+      },
+      {
+        id: 'b',
+        name: 'Card B',
+        balanceCents: 1_200_00,
+        annualRateBps: 1999,
+        minimumPaymentCents: 35_00,
+        type: 'credit_card',
+      },
+    ];
+    const result = calculateStrategyResult(cascadeDebts, 'snowball', 400_00);
+
+    // Without the same-month cascade this reported 5 months; redistributing
+    // the discarded surplus clears the plan a month earlier.
+    expect(result.totalMonths).toBe(4);
+
+    const aSchedule = result.schedules.find((s) => s.debtId === 'a')!;
+    const bSchedule = result.schedules.find((s) => s.debtId === 'b')!;
+    const aPayoffMonth = aSchedule.monthsToPayoff;
+
+    // In the month Card A is cleared, Card B receives far more than its own
+    // minimum because the unused portion of that month's payment cascaded.
+    const bPaymentInPayoffMonth = bSchedule.entries[aPayoffMonth - 1]?.paymentCents ?? 0;
+    expect(bPaymentInPayoffMonth).toBeGreaterThan(35_00);
+  });
 });
 
 // ---------------------------------------------------------------------------
