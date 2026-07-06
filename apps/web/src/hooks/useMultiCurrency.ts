@@ -212,7 +212,13 @@ export function useMultiCurrency(): UseMultiCurrencyResult {
       const rate = getRate(from.code, to.code);
       if (rate === null) return amountCents;
 
-      return Math.round(amountCents * rate);
+      // `amountCents` is in the source currency's minor units, but the rate
+      // converts *major* units (e.g. 1 USD = 149.5 JPY). Rescale by the
+      // minor-unit delta so converting to/from currencies with a different
+      // number of decimal places — notably the zero-decimal JPY/KRW — is not
+      // off by a power of ten (#3460).
+      const scaleFactor = Math.pow(10, to.decimalPlaces - from.decimalPlaces);
+      return Math.round(amountCents * rate * scaleFactor);
     },
     [getRate],
   );

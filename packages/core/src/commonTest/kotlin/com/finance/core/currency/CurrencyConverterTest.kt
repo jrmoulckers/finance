@@ -90,9 +90,11 @@ class CurrencyConverterTest {
         val rate = ExchangeRate(Currency.USD, Currency.JPY, 149.50, timestamp)
         val converter = CurrencyConverter(FakeRateProvider(mapOf((Currency.USD to Currency.JPY) to rate)))
 
-        // $100.00 = 10000 cents. 10000 * 149.50 = 1,495,000
+        // $100.00 = 10000 US cents (2 decimals). At 149.50 JPY/USD that is
+        // ¥14,950, and JPY has 0 decimal places, so the minor-unit result is
+        // 14950 — NOT the unscaled 1,495,000 (off by 100x before #3460).
         val result = converter.convert(Cents(10000), Currency.USD, Currency.JPY)
-        assertEquals(Cents(1495000), result.convertedAmount)
+        assertEquals(Cents(14950), result.convertedAmount)
     }
 
     @Test
@@ -100,10 +102,71 @@ class CurrencyConverterTest {
         val rate = ExchangeRate(Currency.JPY, Currency.USD, 0.0067, timestamp)
         val converter = CurrencyConverter(FakeRateProvider(mapOf((Currency.JPY to Currency.USD) to rate)))
 
-        // ¥10,000 = 10000 (JPY has 0 decimal places, so 10000 "cents" = ¥10,000)
-        // 10000 * 0.0067 = 67.0
+        // ¥10,000 = 10000 (JPY has 0 decimal places, so 10000 minor units = ¥10,000).
+        // ¥10,000 * 0.0067 USD/JPY = $67.00, and USD has 2 decimals, so the
+        // minor-unit result is 6700 US cents — NOT 67 (off by 100x before #3460).
         val result = converter.convert(Cents(10000), Currency.JPY, Currency.USD)
-        assertEquals(Cents(67), result.convertedAmount)
+        assertEquals(Cents(6700), result.convertedAmount)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Minor-unit rescale (#3460) — converting across currencies with a
+    // different number of decimal places must not be off by a power of ten
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    fun convert_usdJpy_roundTrip_rescalesMinorUnits() = runTest {
+        val toJpy = ExchangeRate(Currency.USD, Currency.JPY, 149.5, timestamp)
+        val toUsd = ExchangeRate(Currency.JPY, Currency.USD, 1.0 / 149.5, timestamp)
+        val converter = CurrencyConverter(
+            FakeRateProvider(
+                mapOf(
+                    (Currency.USD to Currency.JPY) to toJpy,
+                    (Currency.JPY to Currency.USD) to toUsd,
+                ),
+            ),
+        )
+
+        // $100.00 (10000 US cents) -> ¥14,950 (JPY has 0 decimals -> 14950)
+        val jpy = converter.convert(Cents(10000), Currency.USD, Currency.JPY)
+        assertEquals(Cents(14950), jpy.convertedAmount)
+
+        // ...and back again round-trips cleanly to $100.00.
+        val backToUsd = converter.convert(jpy.convertedAmount, Currency.JPY, Currency.USD)
+        assertEquals(Cents(10000), backToUsd.convertedAmount)
+    }
+
+    @Test
+    fun convert_usdKrw_roundTrip_rescalesMinorUnits() = runTest {
+        val krw = Currency("KRW") // 0 decimal places, like JPY
+        val toKrw = ExchangeRate(Currency.USD, krw, 1320.0, timestamp)
+        val toUsd = ExchangeRate(krw, Currency.USD, 1.0 / 1320.0, timestamp)
+        val converter = CurrencyConverter(
+            FakeRateProvider(
+                mapOf(
+                    (Currency.USD to krw) to toKrw,
+                    (krw to Currency.USD) to toUsd,
+                ),
+            ),
+        )
+
+        // $100.00 (10000 US cents) -> ₩132,000 (KRW has 0 decimals -> 132000)
+        val won = converter.convert(Cents(10000), Currency.USD, krw)
+        assertEquals(Cents(132000), won.convertedAmount)
+
+        val backToUsd = converter.convert(won.convertedAmount, krw, Currency.USD)
+        assertEquals(Cents(10000), backToUsd.convertedAmount)
+    }
+
+    @Test
+    fun convert_usdToEur_sameScale_noRegression() = runTest {
+        // Both USD and EUR use 2 decimals, so the rescale factor is 1 and the
+        // result is identical to a plain rate multiply (regression guard).
+        val rate = ExchangeRate(Currency.USD, Currency.EUR, 0.92, timestamp)
+        val converter = CurrencyConverter(FakeRateProvider(mapOf((Currency.USD to Currency.EUR) to rate)))
+
+        val result = converter.convert(Cents(10000), Currency.USD, Currency.EUR)
+        assertEquals(Cents(9200), result.convertedAmount)
     }
 
     // ═══════════════════════════════════════════════════════════════════
