@@ -21,4 +21,18 @@ describe('shared debt payoff rules', () => {
     expect(extra.monthsToPayoff).toBeLessThan(base.monthsToPayoff);
     expect(extra.goalCashFlowFreedCents).toBe(395_00);
   });
+
+  it('rolls freed minimum payments into the next debt (snowball)', () => {
+    // Three debts, +$100/mo. As each debt clears, its minimum must roll into
+    // the next target. Verified against a hand-run snowball: without rolling
+    // this is 27 months / $937.85 interest; rolling clears in 19 / $738.41.
+    const threeDebts = [
+      { id: 'card1', balanceCents: 2000_00, annualRateBps: 2299, minimumPaymentCents: 60_00 },
+      { id: 'card2', balanceCents: 1200_00, annualRateBps: 1899, minimumPaymentCents: 40_00 },
+      { id: 'loan', balanceCents: 800_00, annualRateBps: 999, minimumPaymentCents: 50_00 },
+    ];
+    const rolled = calculateSharedPayoff(threeDebts, 'snowball', 100_00);
+    expect(rolled.monthsToPayoff).toBe(19);
+    expect(rolled.totalInterestCents).toBe(73841);
+  });
 });
