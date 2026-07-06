@@ -34,10 +34,12 @@ import {
   calculateDebtToIncomeTrend,
   calculateExtraPaymentImpactScenarios,
   calculateInterestSavedCents,
+  calculateMonthlyInterestCents,
   calculatePayoffStrategyRecommendation,
   calculateStrategyResult,
   compareStrategies,
 } from '../lib/debt-payoff-engine';
+import { addMonthsToIsoDate } from '../lib/date-utils';
 import { aggregateBnplDashboard, type BnplObligationDraft } from '../lib/debt/bnpl-aggregation';
 import {
   calculateStudentLoanDashboardSummary,
@@ -315,13 +317,6 @@ function formatMonthYear(dateIso: string): string {
   }).format(new Date(`${dateIso}T00:00:00.000Z`));
 }
 
-function addMonthsToIsoDate(todayIso: string, months: number): string {
-  const [year, month, day] = todayIso.split('-').map((value) => Number.parseInt(value, 10));
-  const date = new Date(Date.UTC(year, Math.max(0, month - 1), day));
-  date.setUTCMonth(date.getUTCMonth() + months);
-  return date.toISOString().slice(0, 10);
-}
-
 function formatCountdown(months: number): string {
   if (months <= 0) return 'Debt-free today';
   const years = Math.floor(months / 12);
@@ -331,6 +326,16 @@ function formatCountdown(months: number): string {
   if (remainingMonths > 0)
     parts.push(`${remainingMonths} month${remainingMonths === 1 ? '' : 's'}`);
   return `${parts.join(', ')} to debt-free`;
+}
+
+/**
+ * Joins debt names into a human-readable list ("A", "A and B", "A, B, and C").
+ */
+function formatDebtNameList(names: readonly string[]): string {
+  if (names.length === 0) return 'this debt';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
 function formatStrategyName(strategy: PayoffStrategy): string {
@@ -699,6 +704,13 @@ function PayoffPlannerPanel(): React.ReactElement {
         : null,
     [activeResult, interestSavedCents, milestones, todayIso],
   );
+  const underwaterDebts = useMemo(
+    () =>
+      activeResult && !activeResult.fullyPaidOff
+        ? debts.filter((debt) => activeResult.unpaidDebtIds.includes(debt.id))
+        : [],
+    [activeResult, debts],
+  );
 
   useEffect(() => {
     if (!hasRestoredConsolidation || debts.length === 0) return;
@@ -785,25 +797,62 @@ function PayoffPlannerPanel(): React.ReactElement {
         />
       ) : (
         <>
-          {activeResult && (
-            <section className="debt-hero" aria-label="Debt-free countdown">
-              <div>
-                <p className="debt-hero__eyebrow">Debt-Free Date</p>
-                <h2>{formatCountdown(activeResult.totalMonths)}</h2>
-                <p>
-                  Keep going. This plan points to{' '}
-                  {formatMonthYear(addMonthsToIsoDate(todayIso, activeResult.totalMonths))}.
-                </p>
-              </div>
-              <div className="debt-hero__savings" aria-live="polite">
-                <span>Interest saved</span>
-                <strong>
-                  <CurrencyDisplay amount={interestSavedCents} context="interest saved" />
-                </strong>
-                <p>Compared with making minimum payments only.</p>
-              </div>
-            </section>
-          )}
+          {activeResult &&
+            (activeResult.fullyPaidOff ? (
+              <section className="debt-hero" aria-label="Debt-free countdown">
+                <div>
+                  <p className="debt-hero__eyebrow">Debt-Free Date</p>
+                  <h2>{formatCountdown(activeResult.totalMonths)}</h2>
+                  <p>
+                    Keep going. This plan points to{' '}
+                    {formatMonthYear(addMonthsToIsoDate(todayIso, activeResult.totalMonths))}.
+                  </p>
+                </div>
+                <div className="debt-hero__savings" aria-live="polite">
+                  <span>Interest saved</span>
+                  <strong>
+                    <CurrencyDisplay amount={interestSavedCents} context="interest saved" />
+                  </strong>
+                  <p>Compared with making minimum payments only.</p>
+                </div>
+              </section>
+            ) : (
+              <section
+                className="debt-hero debt-hero--warning"
+                aria-label="Payment does not cover interest"
+              >
+                <div role="alert">
+                  <p className="debt-hero__eyebrow">Payment Too Low</p>
+                  <h2>This plan never reaches debt-free</h2>
+                  <p>
+                    Your current payment doesn&rsquo;t cover the monthly interest on{' '}
+                    {formatDebtNameList(underwaterDebts.map((debt) => debt.name))}, so the balance
+                    keeps growing instead of shrinking. Increase your monthly payment to start
+                    making real progress.
+                  </p>
+                </div>
+                <ul className="debt-hero__underwater">
+                  {underwaterDebts.map((debt) => (
+                    <li key={debt.id}>
+                      <span className="debt-hero__underwater-name">{debt.name}</span>: minimum{' '}
+                      <CurrencyDisplay
+                        amount={debt.minimumPaymentCents}
+                        context="minimum payment"
+                      />{' '}
+                      vs.{' '}
+                      <CurrencyDisplay
+                        amount={calculateMonthlyInterestCents(
+                          debt.balanceCents,
+                          debt.annualRateBps,
+                        )}
+                        context="monthly interest"
+                      />{' '}
+                      interest each month
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
 
           {debtProgressRing && <ProgressRingCard card={debtProgressRing} />}
 

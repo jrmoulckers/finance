@@ -102,6 +102,19 @@ export interface StrategyResult {
   readonly totalMonths: number;
   /** Month-by-month combined remaining balance for chart display. */
   readonly timelineBalanceCents: number[];
+  /**
+   * `true` when every debt amortizes to zero within the simulation horizon.
+   * `false` when at least one debt never pays off (its payment does not cover
+   * its interest), in which case `totalMonths` is the capped horizon rather
+   * than a real payoff date and should not be shown as a countdown.
+   */
+  readonly fullyPaidOff: boolean;
+  /**
+   * Ids of debts that still carry a balance at the end of the simulation
+   * (i.e. non-amortizing debts whose payment never covers interest). Empty
+   * when `fullyPaidOff` is `true`.
+   */
+  readonly unpaidDebtIds: readonly string[];
 }
 
 /** Side-by-side strategy comparison. */

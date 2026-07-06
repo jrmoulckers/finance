@@ -19,6 +19,8 @@ const strategyResult: StrategyResult = {
   totalPaidCents: 1_025_00,
   totalMonths: 18,
   timelineBalanceCents: [],
+  fullyPaidOff: true,
+  unpaidDebtIds: [],
 };
 
 const milestones: DebtMilestoneSummary = {

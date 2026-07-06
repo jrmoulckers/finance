@@ -674,6 +674,34 @@
   color: var(--semantic-positive, #059669);
 }
 
+.debt-hero--warning {
+  background: linear-gradient(
+    135deg,
+    var(--semantic-negative-bg, #fee2e2),
+    var(--semantic-warning-bg, #fef3c7)
+  );
+}
+
+.debt-hero--warning h2 {
+  color: var(--semantic-negative, #b91c1c);
+}
+
+.debt-hero__underwater {
+  min-width: 190px;
+  margin: 0;
+  padding-left: var(--spacing-4, 1rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-primary, #111);
+}
+
+.debt-hero__underwater li + li {
+  margin-top: var(--spacing-1, 0.25rem);
+}
+
+.debt-hero__underwater-name {
+  font-weight: var(--font-weight-bold, 700);
+}
+
 .debt-milestones {
   display: flex;
   justify-content: space-between;
