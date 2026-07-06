@@ -170,4 +170,50 @@ describe('learning adaptive recommendations', () => {
     expect(recommendations.map((item) => item.moduleId)).toContain('debt-management');
     expect(recommendations.map((item) => item.moduleId)).toContain('investing-fundamentals');
   });
+
+  it('raises the debt topic when only manually-entered debts exist (#3372)', () => {
+    const profile = buildLearningActivityProfile({
+      dashboardData: {
+        ...emptyDashboard,
+        monthlyBudget: 300000,
+        budgetSpent: 180000,
+        incomeThisMonth: 500000,
+        spentThisMonth: 240000,
+      },
+      // No CREDIT_CARD/LOAN accounts — the user tracks debts by hand.
+      accounts: [createAccount({ id: 'check-1', type: 'CHECKING' })],
+      goals: [createGoal({ name: 'Vacation' })],
+      transactions: [createTransaction({}), createTransaction({ id: 'transaction-2' })],
+      manualDebtCount: 3,
+    });
+
+    expect(profile.hasDebtAccounts).toBe(true);
+
+    const recommendations = suggestNextLessons({
+      modules: LEARNING_MODULES,
+      progress: createEmptyLearningProgress(),
+      activityProfile: profile,
+      limit: 3,
+    });
+
+    expect(recommendations.map((item) => item.moduleId)).toContain('debt-management');
+  });
+
+  it('leaves the debt topic quiet without debt accounts or manual debts', () => {
+    const profile = buildLearningActivityProfile({
+      dashboardData: {
+        ...emptyDashboard,
+        monthlyBudget: 300000,
+        budgetSpent: 180000,
+        incomeThisMonth: 500000,
+        spentThisMonth: 240000,
+      },
+      accounts: [createAccount({ id: 'check-1', type: 'CHECKING' })],
+      goals: [createGoal({ name: 'Vacation' })],
+      transactions: [createTransaction({})],
+      manualDebtCount: 0,
+    });
+
+    expect(profile.hasDebtAccounts).toBe(false);
+  });
 });
