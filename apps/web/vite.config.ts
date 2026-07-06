@@ -353,13 +353,25 @@ export default defineConfig({
               priority: 100,
             },
             {
+              // Locale catalogs (i18n message packs) are large, text-heavy, and
+              // grow with every new string. Keep them in their own shared chunk
+              // so cumulative catalog growth does not push the core shared-infra
+              // chunk (`vendor-app`) past the lazy-chunk budget (#3478). This
+              // preserves the #2983 goal of keeping db/auth/contexts unified
+              // while isolating the most separable, fastest-growing contributor.
+              name: 'vendor-i18n',
+              test: /[\\/]src[\\/]lib[\\/]i18n[\\/]/,
+              priority: 60,
+            },
+            {
               // Shared application infrastructure (SQLite-WASM data layer,
-              // repositories, auth, React contexts, i18n catalogs) is imported
-              // by nearly every route. Hoist it into one shared chunk instead
-              // of letting rolldown host it inside `route-dashboard`, which
-              // chronically inflated that chunk past the budget (#2983).
+              // repositories, auth, React contexts) is imported by nearly every
+              // route. Hoist it into one shared chunk instead of letting
+              // rolldown host it inside `route-dashboard`, which chronically
+              // inflated that chunk past the budget (#2983). Locale catalogs are
+              // split into `vendor-i18n` above (#3478).
               name: 'vendor-app',
-              test: /[\\/]src[\\/](db|auth|contexts|lib[\\/]i18n)[\\/]/,
+              test: /[\\/]src[\\/](db|auth|contexts)[\\/]/,
               priority: 50,
             },
             {
