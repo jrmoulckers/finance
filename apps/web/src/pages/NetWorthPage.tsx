@@ -40,6 +40,7 @@ const AssetClassList: React.FC<AssetClassListProps> = ({ classes }) => (
   <div className="analytics-breakdown" role="list" aria-label="Asset class breakdown">
     {classes.map((cls, idx) => {
       const color = CHART_COLORS[idx % CHART_COLORS.length];
+      const basis = cls.isLiability ? 'liabilities' : 'assets';
       return (
         <div key={cls.className} className="analytics-breakdown__item" role="listitem">
           <div className="analytics-breakdown__bar-wrapper">
@@ -57,7 +58,7 @@ const AssetClassList: React.FC<AssetClassListProps> = ({ classes }) => (
               aria-valuenow={cls.percent}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${cls.className}: ${cls.percent}% of total`}
+              aria-label={`${cls.className}: ${cls.percent}% of ${basis}`}
             >
               <div
                 className="analytics-breakdown__fill"
@@ -65,7 +66,9 @@ const AssetClassList: React.FC<AssetClassListProps> = ({ classes }) => (
               />
             </div>
           </div>
-          <span className="analytics-breakdown__percent">{cls.percent}%</span>
+          <span className="analytics-breakdown__percent">
+            {cls.percent}%<span className="sr-only"> of {basis}</span>
+          </span>
         </div>
       );
     })}

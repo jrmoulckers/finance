@@ -163,6 +163,38 @@ describe('computeAssetClassBreakdown', () => {
     expect(classes[1].balance).toBe(800000);
     expect(classes[1].accountCount).toBe(2);
   });
+
+  it('computes asset percentages against assets only (excludes liabilities)', () => {
+    const accounts = [
+      makeAccount({ type: 'INVESTMENT', balance: 30_000_000 }), // $300K
+      makeAccount({ type: 'LOAN', balance: 20_000_000 }), // $200K mortgage
+    ];
+
+    const classes = computeAssetClassBreakdown(accounts);
+    const investments = classes.find((c) => c.className === 'Investments');
+    const loans = classes.find((c) => c.className === 'Loans');
+
+    // Investments are 100% of assets — NOT diluted to 60% by the loan.
+    expect(investments?.isLiability).toBe(false);
+    expect(investments?.percent).toBe(100);
+    // Loans are 100% of liabilities, reported against their own denominator.
+    expect(loans?.isLiability).toBe(true);
+    expect(loans?.percent).toBe(100);
+  });
+
+  it('orders asset classes before liability classes', () => {
+    const accounts = [
+      makeAccount({ type: 'CREDIT_CARD', balance: 5_000_000 }),
+      makeAccount({ type: 'CHECKING', balance: 1_000_000 }),
+      makeAccount({ type: 'INVESTMENT', balance: 2_000_000 }),
+    ];
+
+    const classes = computeAssetClassBreakdown(accounts);
+
+    // Assets first (by balance desc), then liabilities.
+    expect(classes.map((c) => c.className)).toEqual(['Investments', 'Checking', 'Credit Cards']);
+    expect(classes[classes.length - 1].isLiability).toBe(true);
+  });
 });
 
 describe('detectMilestones', () => {
@@ -184,6 +216,20 @@ describe('detectMilestones', () => {
     const milestones = detectMilestones(5_000_000, 100000);
     const debtFree = milestones.find((m) => m.label === 'Debt-free');
     expect(debtFree?.reached).toBe(false);
+  });
+
+  it('includes FIRE-scale milestones beyond $100K', () => {
+    const milestones = detectMilestones(60_000_000, 0); // $600K net worth
+
+    const first250k = milestones.find((m) => m.label === 'First $250K');
+    const first500k = milestones.find((m) => m.label === 'First $500K');
+    const first1m = milestones.find((m) => m.label === 'First $1M');
+
+    expect(first250k?.reached).toBe(true);
+    expect(first500k?.reached).toBe(true);
+    // $600K has not yet reached the $1M marker.
+    expect(first1m).toBeDefined();
+    expect(first1m?.reached).toBe(false);
   });
 });
 

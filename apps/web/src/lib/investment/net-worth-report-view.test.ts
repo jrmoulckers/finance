@@ -36,6 +36,7 @@ describe('net-worth report view helpers', () => {
         {
           className: 'Investments',
           balance: 10_000_00,
+          isLiability: false,
           percent: 100,
           accountCount: 1,
           accountTypes: ['INVESTMENT'],

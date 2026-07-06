@@ -36,7 +36,9 @@ export interface AssetClassBreakdown {
   accountTypes: AccountType[];
   /** Total balance in cents. */
   balance: number;
-  /** Percentage of total assets or liabilities. */
+  /** Whether this class represents liabilities (credit cards, loans). */
+  isLiability: boolean;
+  /** Percentage of total assets (asset classes) or total liabilities (liability classes). */
   percent: number;
   /** Number of accounts in this class. */
   accountCount: number;
@@ -157,7 +159,10 @@ export function computeCurrentNetWorth(accounts: Account[]): NetWorthDataPoint {
  * @returns Array of AssetClassBreakdown sorted by balance descending
  */
 export function computeAssetClassBreakdown(accounts: Account[]): AssetClassBreakdown[] {
-  const classMap = new Map<string, { types: Set<AccountType>; balance: number; count: number }>();
+  const classMap = new Map<
+    string,
+    { types: Set<AccountType>; balance: number; count: number; isLiability: boolean }
+  >();
 
   for (const acct of accounts) {
     if (acct.isArchived) continue;
@@ -166,6 +171,7 @@ export function computeAssetClassBreakdown(accounts: Account[]): AssetClassBreak
       types: new Set<AccountType>(),
       balance: 0,
       count: 0,
+      isLiability: info.isLiability,
     };
     existing.types.add(acct.type);
     existing.balance += Math.abs(acct.currentBalance.amount);
@@ -173,20 +179,38 @@ export function computeAssetClassBreakdown(accounts: Account[]): AssetClassBreak
     classMap.set(info.className, existing);
   }
 
-  const totalBalance = Array.from(classMap.values()).reduce((sum, c) => sum + c.balance, 0);
+  // Assets and liabilities each get their own 100% denominator. Mixing them —
+  // as the previous implementation did — diluted asset allocation by debt (a
+  // FIRE user's investment share would drop just because they carry a
+  // mortgage), so percentages are now a share *within* their own group.
+  let totalAssets = 0;
+  let totalLiabilities = 0;
+  for (const data of classMap.values()) {
+    if (data.isLiability) {
+      totalLiabilities += data.balance;
+    } else {
+      totalAssets += data.balance;
+    }
+  }
 
   const result: AssetClassBreakdown[] = [];
   for (const [className, data] of classMap.entries()) {
+    const denominator = data.isLiability ? totalLiabilities : totalAssets;
     result.push({
       className,
       accountTypes: Array.from(data.types),
       balance: data.balance,
-      percent: totalBalance > 0 ? Math.round((data.balance / totalBalance) * 100) : 0,
+      isLiability: data.isLiability,
+      percent: denominator > 0 ? Math.round((data.balance / denominator) * 100) : 0,
       accountCount: data.count,
     });
   }
 
-  return result.sort((a, b) => b.balance - a.balance);
+  // Assets first (balance descending), then liabilities (balance descending).
+  return result.sort((a, b) => {
+    if (a.isLiability !== b.isLiability) return a.isLiability ? 1 : -1;
+    return b.balance - a.balance;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +225,9 @@ const DEFAULT_MILESTONES: Array<{ label: string; thresholdCents: number }> = [
   { label: 'First $25K', thresholdCents: 2_500_000 },
   { label: 'First $50K', thresholdCents: 5_000_000 },
   { label: 'First $100K', thresholdCents: 10_000_000 },
+  { label: 'First $250K', thresholdCents: 25_000_000 },
+  { label: 'First $500K', thresholdCents: 50_000_000 },
+  { label: 'First $1M', thresholdCents: 100_000_000 },
   { label: 'Debt-free', thresholdCents: 0 },
 ];
 
