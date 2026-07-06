@@ -31,6 +31,8 @@
  * References: issue #2206
  */
 
+import { getCurrentLocale } from '../i18n';
+
 // ---------------------------------------------------------------------------
 // Types & constants
 // ---------------------------------------------------------------------------
@@ -325,7 +327,7 @@ export function formatLocalTimestamp(
   const utcMillis = wallClockToUtcMillis(timestamp.localDateTime);
   if (utcMillis === null) return timestamp.localDateTime;
 
-  const formatted = new Intl.DateTimeFormat('en-US', {
+  const formatted = new Intl.DateTimeFormat(getCurrentLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

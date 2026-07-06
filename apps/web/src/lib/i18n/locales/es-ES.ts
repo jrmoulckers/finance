@@ -16,6 +16,9 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'settings.language': 'Idioma',
   'settings.timeZone': 'Zona horaria de casa',
   'settings.languageDescription': 'Detectado desde tu navegador; puedes cambiarlo cuando quieras.',
+  'settings.language.betaBadge': 'beta · mayormente en inglés',
+  'settings.language.betaNotice':
+    'Este idioma está en fase beta: la mayoría de las pantallas seguirán en inglés hasta que se complete la traducción.',
   'settings.currencyRates.title': 'Tipos de cambio',
   'settings.currencyRates.loading': 'Cargando tipos…',
   'settings.currencyRates.error': 'Error al cargar los tipos: {error}',
@@ -228,4 +231,25 @@ export const ES_ES_CATALOG: MessageCatalog = {
     '¿Eliminar la remesa a {recipient} del {date}? Esto la quita permanentemente de tu historial de pagos y de los totales de FX y comisiones.',
   'remittance.history.confirmDelete.confirm': 'Eliminar remesa',
   'remittance.history.confirmDelete.cancel': 'Cancelar',
+
+  // ── Panel multidivisa (incidencia #3306) ─────────────────────────────────
+  'dashboard.currency.selector.label': 'Moneda',
+  'dashboard.currency.selector.selectAria': 'Seleccionar {label}',
+  'dashboard.currency.selector.noDecimals': 'sin decimales',
+  'dashboard.currency.selector.decimals': {
+    one: '{count} decimal',
+    other: '{count} decimales',
+  },
+  'dashboard.currency.rate.regionAria': 'Tipo de cambio de {from} a {to}',
+  'dashboard.currency.rate.loading': 'Cargando tipos…',
+  'dashboard.currency.rate.source':
+    'Tipo aproximado: referencia sin conexión, no una cotización en vivo',
+  'dashboard.currency.rate.snapshot': 'Instantánea del {date}',
+  'dashboard.currency.rate.unavailable': 'Tipo no disponible para {from}/{to}',
+  'dashboard.currency.totals.title': 'Totales multidivisa',
+  'dashboard.currency.totals.empty': 'No hay elementos para mostrar.',
+  'dashboard.currency.totals.breakdownAria': 'Desglose por moneda',
+  'dashboard.currency.totals.convertedAria': 'Convertido a {code}',
+  'dashboard.currency.totals.grandAria': 'Total general en {code}',
+  'dashboard.currency.totals.grandLabel': 'Total',
 };

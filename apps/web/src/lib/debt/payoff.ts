@@ -20,6 +20,8 @@
  * References: issue #2175
  */
 
+import { getCurrentLocale } from '../i18n';
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -209,7 +211,7 @@ export function formatPercent(value: number): string {
 
 /** Formats an ISO date (YYYY-MM-DD) as "Mon YYYY" in UTC. */
 export function formatMonthYear(dateIso: string): string {
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(getCurrentLocale(), {
     month: 'short',
     year: 'numeric',
     timeZone: 'UTC',

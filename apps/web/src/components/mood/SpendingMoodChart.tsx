@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 
 import { formatCurrencyValue } from '../../lib/currency';
+import { getCurrentLocale } from '../../lib/i18n';
 import { calculateMoodCorrelations, type MoodJournalEntry } from '../../lib/mood';
 
 function formatCorrelationLabel(value: number): string {
@@ -53,7 +54,7 @@ export const SpendingMoodChart: React.FC<SpendingMoodChartProps> = ({
 
     return Array.from(grouped, ([date, value]) => ({
       date,
-      label: new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+      label: new Date(`${date}T00:00:00`).toLocaleDateString(getCurrentLocale(), {
         month: 'short',
         day: 'numeric',
       }),

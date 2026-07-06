@@ -17,6 +17,7 @@ import type { CreateGoalInput, GoalContributionInput } from '../db/repositories/
 import { useGoals } from '../hooks';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
+import { getCurrentLocale } from '../lib/i18n';
 import { ShareCelebrationButton } from '../components/social/ShareCelebrationButton';
 import { SharedGoalContributions } from '../components/goals/SharedGoalContributions';
 import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
@@ -149,7 +150,7 @@ export const GoalDetailPage: React.FC = () => {
 
   const formattedTargetDate =
     targetDate !== null
-      ? targetDate.toLocaleDateString('en-US', {
+      ? targetDate.toLocaleDateString(getCurrentLocale(), {
           year: 'numeric',
           month: 'long',
           day: 'numeric',

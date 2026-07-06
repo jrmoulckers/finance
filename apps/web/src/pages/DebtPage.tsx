@@ -14,6 +14,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
+import { getCurrentLocale } from '../lib/i18n';
 import { pluralize } from '../lib/ui/pluralize';
 import { ExplainThis } from '../components/common/ExplainThis';
 import { useAccounts } from '../hooks/useAccounts';
@@ -314,7 +315,7 @@ function formatRateBps(bps: number): string {
 }
 
 function formatMonthYear(dateIso: string): string {
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(getCurrentLocale(), {
     month: 'short',
     year: 'numeric',
     timeZone: 'UTC',

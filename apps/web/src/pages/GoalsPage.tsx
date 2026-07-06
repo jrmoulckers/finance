@@ -30,6 +30,7 @@ import { useAccounts, useCategories, useGoals, useTransactions } from '../hooks'
 import { useTaxReserve } from '../hooks/useTaxReserve';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
+import { getCurrentLocale } from '../lib/i18n';
 import {
   buildSavingsAnalysisSnapshot,
   generateSavingsNudges,
@@ -154,7 +155,7 @@ function formatCurrencyAmount(amount: number, currency = 'USD'): string {
 }
 
 function formatDueDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getCurrentLocale(), { month: 'short', day: 'numeric' });
 }
 
 function formatDueCountdown(days: number): string {
@@ -859,7 +860,7 @@ export const GoalsPage: React.FC = () => {
                             }}
                           >
                             {targetDate !== null
-                              ? targetDate.toLocaleDateString('en-US', {
+                              ? targetDate.toLocaleDateString(getCurrentLocale(), {
                                   month: 'short',
                                   year: 'numeric',
                                 })

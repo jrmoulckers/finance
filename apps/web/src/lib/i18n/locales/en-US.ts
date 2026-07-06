@@ -16,6 +16,9 @@ export const EN_US_CATALOG: MessageCatalog = {
   'settings.language': 'Language',
   'settings.timeZone': 'Home time zone',
   'settings.languageDescription': 'Detected from your browser; change it anytime.',
+  'settings.language.betaBadge': 'beta · mostly English',
+  'settings.language.betaNotice':
+    'This language is in beta — most screens still appear in English until translation is complete.',
   'settings.currencyRates.title': 'Currency Rates',
   'settings.currencyRates.loading': 'Loading rates…',
   'settings.currencyRates.error': 'Error loading rates: {error}',
@@ -227,4 +230,24 @@ export const EN_US_CATALOG: MessageCatalog = {
     'Delete the remittance to {recipient} on {date}? This permanently removes it from your payment history and FX/fee totals.',
   'remittance.history.confirmDelete.confirm': 'Delete remittance',
   'remittance.history.confirmDelete.cancel': 'Cancel',
+
+  // ── Multi-currency dashboard (issue #3306) ───────────────────────────────
+  'dashboard.currency.selector.label': 'Currency',
+  'dashboard.currency.selector.selectAria': 'Select {label}',
+  'dashboard.currency.selector.noDecimals': 'no decimals',
+  'dashboard.currency.selector.decimals': {
+    one: '{count} decimal',
+    other: '{count} decimals',
+  },
+  'dashboard.currency.rate.regionAria': 'Exchange rate from {from} to {to}',
+  'dashboard.currency.rate.loading': 'Loading rates…',
+  'dashboard.currency.rate.source': 'Approximate rate — offline reference, not a live quote',
+  'dashboard.currency.rate.snapshot': 'Snapshot as of {date}',
+  'dashboard.currency.rate.unavailable': 'Rate unavailable for {from}/{to}',
+  'dashboard.currency.totals.title': 'Multi-Currency Totals',
+  'dashboard.currency.totals.empty': 'No items to display.',
+  'dashboard.currency.totals.breakdownAria': 'Currency breakdown',
+  'dashboard.currency.totals.convertedAria': 'Converted to {code}',
+  'dashboard.currency.totals.grandAria': 'Grand total in {code}',
+  'dashboard.currency.totals.grandLabel': 'Total',
 };

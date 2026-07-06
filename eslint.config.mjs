@@ -42,6 +42,62 @@ const moneyTemplateRule = {
   },
 };
 
+const dateLocaleRule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        "Disallow hardcoded 'en-US' locales in date formatting; dates must follow the user's active locale via getCurrentLocale() or the formatDate helper.",
+    },
+    schema: [],
+    messages: {
+      hardcodedDateLocale:
+        "Hardcoded 'en-US' date formatting ignores the user's locale. Pass getCurrentLocale() (from lib/i18n) or use the formatDate helper from utils/formatDate.",
+    },
+  },
+  create(context) {
+    const filename = context.filename ?? context.getFilename?.() ?? '';
+    const normalized = filename.replace(/\\/g, '/');
+    const isTestFile =
+      /\.test\.[cm]?[jt]sx?$/.test(normalized) || normalized.includes('/__tests__/');
+
+    function firstArgIsEnUs(node) {
+      const first = node.arguments?.[0];
+      return first != null && first.type === 'Literal' && first.value === 'en-US';
+    }
+
+    return {
+      CallExpression(node) {
+        if (isTestFile) return;
+        const callee = node.callee;
+        if (
+          callee?.type === 'MemberExpression' &&
+          callee.property?.type === 'Identifier' &&
+          (callee.property.name === 'toLocaleDateString' ||
+            callee.property.name === 'toLocaleTimeString') &&
+          firstArgIsEnUs(node)
+        ) {
+          context.report({ node: node.arguments[0], messageId: 'hardcodedDateLocale' });
+        }
+      },
+      NewExpression(node) {
+        if (isTestFile) return;
+        const callee = node.callee;
+        if (
+          callee?.type === 'MemberExpression' &&
+          callee.object?.type === 'Identifier' &&
+          callee.object.name === 'Intl' &&
+          callee.property?.type === 'Identifier' &&
+          callee.property.name === 'DateTimeFormat' &&
+          firstArgIsEnUs(node)
+        ) {
+          context.report({ node: node.arguments[0], messageId: 'hardcodedDateLocale' });
+        }
+      },
+    };
+  },
+};
+
 export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -54,6 +110,7 @@ export default [
       finance: {
         rules: {
           'no-money-template-interpolation': moneyTemplateRule,
+          'no-hardcoded-date-locale': dateLocaleRule,
         },
       },
     },
@@ -74,6 +131,12 @@ export default [
     ],
     rules: {
       'finance/no-money-template-interpolation': 'error',
+    },
+  },
+  {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    rules: {
+      'finance/no-hardcoded-date-locale': 'error',
     },
   },
   {

@@ -26,6 +26,7 @@ import { useWidgetLayout } from '../hooks/useWidgetLayout';
 import type { BudgetWithSpending } from '../db/repositories/budgets';
 import type { Bill, Goal, Transaction } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
+import { getCurrentLocale } from '../lib/i18n';
 import {
   selectWorkspaceAccounts,
   selectWorkspaceTransactions,
@@ -167,7 +168,7 @@ function buildTrendData(transactions: Transaction[], days: number) {
     const dateKey = formatLocalDate(pointDate);
 
     return {
-      label: pointDate.toLocaleDateString('en-US', {
+      label: pointDate.toLocaleDateString(getCurrentLocale(), {
         month: 'short',
         day: 'numeric',
       }),

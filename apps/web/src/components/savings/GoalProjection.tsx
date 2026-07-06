@@ -3,6 +3,7 @@
 import React from 'react';
 
 import { CurrencyDisplay } from '../common';
+import { getCurrentLocale } from '../../lib/i18n';
 import type { SuggestedGoalProjection } from '../../lib/savings';
 
 export interface GoalProjectionProps {
@@ -15,7 +16,7 @@ function formatProjectionDate(date: string | null): string {
     return 'Keep contributing to unlock a projection';
   }
 
-  return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(getCurrentLocale(), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

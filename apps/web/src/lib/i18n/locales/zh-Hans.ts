@@ -29,6 +29,8 @@ export const ZH_HANS_CATALOG: MessageCatalog = {
   'settings.language': '语言',
   'settings.timeZone': '家乡时区',
   'settings.languageDescription': '根据你的浏览器检测；可随时更改。',
+  'settings.language.betaBadge': '测试版 · 多为英文',
+  'settings.language.betaNotice': '此语言尚处于测试阶段——在翻译完成前，大多数界面仍以英文显示。',
   'settings.currencyRates.title': '汇率',
   'settings.currencyRates.loading': '正在加载汇率…',
   'settings.currencyRates.error': '加载汇率失败：{error}',
@@ -177,4 +179,24 @@ export const ZH_HANS_CATALOG: MessageCatalog = {
   'remittance.history.deleteAria': '删除 {date} 汇给 {recipient} 的记录',
   'remittance.history.itemAria': '{date} 汇给 {country} 的 {recipient} {amount}',
   'remittance.history.loading': '正在加载汇款记录',
+
+  // ── 多币种仪表板（问题 #3306）────────────────────────────────────────────
+  'dashboard.currency.selector.label': '货币',
+  'dashboard.currency.selector.selectAria': '选择{label}',
+  'dashboard.currency.selector.noDecimals': '无小数位',
+  'dashboard.currency.selector.decimals': {
+    one: '{count} 位小数',
+    other: '{count} 位小数',
+  },
+  'dashboard.currency.rate.regionAria': '从 {from} 到 {to} 的汇率',
+  'dashboard.currency.rate.loading': '正在加载汇率…',
+  'dashboard.currency.rate.source': '近似汇率——离线参考，非实时报价',
+  'dashboard.currency.rate.snapshot': '截至 {date} 的快照',
+  'dashboard.currency.rate.unavailable': '{from}/{to} 汇率不可用',
+  'dashboard.currency.totals.title': '多币种合计',
+  'dashboard.currency.totals.empty': '暂无可显示的项目。',
+  'dashboard.currency.totals.breakdownAria': '按货币细分',
+  'dashboard.currency.totals.convertedAria': '换算为 {code}',
+  'dashboard.currency.totals.grandAria': '{code} 总计',
+  'dashboard.currency.totals.grandLabel': '合计',
 };

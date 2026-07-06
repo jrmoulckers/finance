@@ -12,6 +12,7 @@ import { Link, useParams } from 'react-router-dom';
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInvestments } from '../hooks';
 import { formatGainLoss } from '../lib/currency';
+import { getCurrentLocale } from '../lib/i18n';
 import type { InvestmentType } from '../kmp/bridge';
 
 /** Human-readable labels for investment types. */
@@ -231,7 +232,7 @@ export const InvestmentDetailPage: React.FC = () => {
               <>
                 <dt style={{ color: 'var(--semantic-text-secondary)' }}>Last Price Update</dt>
                 <dd style={{ margin: 0 }}>
-                  {new Date(investment.lastPriceUpdate).toLocaleDateString('en-US', {
+                  {new Date(investment.lastPriceUpdate).toLocaleDateString(getCurrentLocale(), {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
@@ -244,7 +245,7 @@ export const InvestmentDetailPage: React.FC = () => {
 
             <dt style={{ color: 'var(--semantic-text-secondary)' }}>Added</dt>
             <dd style={{ margin: 0 }}>
-              {new Date(investment.createdAt).toLocaleDateString('en-US', {
+              {new Date(investment.createdAt).toLocaleDateString(getCurrentLocale(), {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
