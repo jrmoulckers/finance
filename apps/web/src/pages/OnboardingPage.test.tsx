@@ -19,6 +19,9 @@ import { useBudgets } from '../hooks/useBudgets';
 import { useConsent } from '../hooks/useConsent';
 import { useConsentHistory } from '../hooks/useConsentHistory';
 import { useLocalOnlyMode } from '../hooks/useLocalOnlyMode';
+import { useGoals } from '../hooks/useGoals';
+import { useDatabase } from '../db/DatabaseProvider';
+import { getPrimaryHouseholdId } from '../db/repositories/household';
 
 const createMatchMedia = (matches: boolean = false) =>
   vi.fn().mockImplementation((query: string) => ({
@@ -82,6 +85,29 @@ vi.mock('../hooks/useBudgets', () => ({
   useBudgets: vi.fn(),
 }));
 
+vi.mock('../hooks/useGoals', () => ({
+  useGoals: vi.fn(),
+}));
+
+vi.mock('../db/DatabaseProvider', async () => {
+  const actual =
+    await vi.importActual<typeof import('../db/DatabaseProvider')>('../db/DatabaseProvider');
+  return {
+    ...actual,
+    useDatabase: vi.fn(() => ({})),
+  };
+});
+
+vi.mock('../db/repositories/household', async () => {
+  const actual = await vi.importActual<typeof import('../db/repositories/household')>(
+    '../db/repositories/household',
+  );
+  return {
+    ...actual,
+    getPrimaryHouseholdId: vi.fn(() => 'household-1'),
+  };
+});
+
 // Partial mock: keep the real AuthProvider/ProtectedRoute exports (used by App/routes)
 // and only stub useAuth so OnboardingPage can be rendered without an AuthProvider and
 // the post-signup (authenticated) start step can be exercised (#3089).
@@ -99,6 +125,9 @@ const mockedUseConsent = vi.mocked(useConsent);
 const mockedUseConsentHistory = vi.mocked(useConsentHistory);
 const mockedUseBudgets = vi.mocked(useBudgets);
 const mockedUseAuth = vi.mocked(useAuth);
+const mockedUseGoals = vi.mocked(useGoals);
+const mockedUseDatabase = vi.mocked(useDatabase);
+const mockedGetPrimaryHouseholdId = vi.mocked(getPrimaryHouseholdId);
 
 const unauthenticatedAuthReturn = {
   isAuthenticated: false,
@@ -182,6 +211,20 @@ const defaultBudgetsReturn = {
   getBudgetSpendingBreakdown: vi.fn(() => []),
 };
 
+const createGoalMock = vi.fn(() => ({ id: 'goal-1' }));
+
+const defaultGoalsReturn = {
+  goals: [],
+  loading: false,
+  error: null,
+  refresh: vi.fn(),
+  createGoal: createGoalMock,
+  updateGoal: vi.fn(),
+  contributeToGoal: vi.fn(),
+  deleteGoal: vi.fn(),
+  reorderGoals: vi.fn(),
+} as unknown as ReturnType<typeof useGoals>;
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('matchMedia', createMatchMedia(false));
@@ -197,6 +240,11 @@ beforeEach(() => {
   mockedUseConsentHistory.mockReturnValue(defaultConsentHistoryReturn);
   mockedUseBudgets.mockReturnValue(defaultBudgetsReturn);
   mockedUseAuth.mockReturnValue(unauthenticatedAuthReturn);
+  mockedUseGoals.mockReturnValue(defaultGoalsReturn);
+  mockedUseDatabase.mockReturnValue({} as unknown as ReturnType<typeof useDatabase>);
+  mockedGetPrimaryHouseholdId.mockReturnValue(
+    'household-1' as unknown as ReturnType<typeof getPrimaryHouseholdId>,
+  );
 });
 
 const renderWithRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -592,8 +640,70 @@ describe('OnboardingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
-    expect(localStorage.getItem('finance-onboarding-goals')).toContain('Move fund');
+    // #3405: the goal is migrated into the real goals store (minor units) and the
+    // onboarding-only localStorage cache is cleared once persisted.
+    expect(createGoalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: 'household-1',
+        name: 'Move fund',
+        targetAmount: { amount: 120_000 },
+        currentAmount: { amount: 20_000 },
+      }),
+    );
+    expect(localStorage.getItem('finance-onboarding-goals')).toBe('[]');
     expect(screen.getByText(/1 goal saved/i)).toBeInTheDocument();
+  });
+
+  it('migrates onboarding goals into the real goals store when creating the starter budget (#3405)', () => {
+    mockedUseBudgets.mockReturnValue({
+      ...defaultBudgetsReturn,
+      createBudgetTemplate: vi.fn(() => [
+        { id: 'budget-1', householdId: 'household-1' },
+      ]) as unknown as typeof defaultBudgetsReturn.createBudgetTemplate,
+    });
+
+    renderWithRouter(<OnboardingPage />);
+
+    goToGoalsStep();
+    fireEvent.change(screen.getByLabelText(/goal name/i), { target: { value: 'Emergency fund' } });
+    fireEvent.change(screen.getByLabelText(/target amount/i), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText(/starting balance/i), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: /preview goal/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save goal/i }));
+
+    // goals -> template, then create the starter budget (the household now exists).
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create my budget/i }));
+
+    expect(createGoalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: 'household-1',
+        name: 'Emergency fund',
+        targetAmount: { amount: 100_000 },
+        currentAmount: { amount: 0 },
+      }),
+    );
+    expect(localStorage.getItem('finance-onboarding-goals')).toBe('[]');
+  });
+
+  it('keeps onboarding goals in local storage when no household exists yet (#3405)', () => {
+    mockedGetPrimaryHouseholdId.mockReturnValue(
+      null as unknown as ReturnType<typeof getPrimaryHouseholdId>,
+    );
+
+    renderWithRouter(<OnboardingPage />);
+
+    goToGoalsStep();
+    fireEvent.change(screen.getByLabelText(/target amount/i), { target: { value: '750' } });
+    fireEvent.click(screen.getByRole('button', { name: /preview goal/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save goal/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+
+    // The goal must not be silently dropped: with no household to attach it to,
+    // it stays cached locally so a later completion can still migrate it.
+    expect(createGoalMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem('finance-onboarding-goals')).toContain('750');
   });
 
   it('blocks previewing a goal until a positive target amount is entered (#3410)', () => {

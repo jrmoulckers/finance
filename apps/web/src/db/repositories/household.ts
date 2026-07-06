@@ -274,6 +274,20 @@ export function getHouseholdById(db: SqliteDb, id: SyncId): Household | null {
   return row ? mapHousehold(row) : null;
 }
 
+/**
+ * Returns the id of the primary (oldest, non-deleted) household, or `null` when
+ * no household exists yet. Used to attach records created before any
+ * household-scoped entity is available — e.g. savings goals saved during
+ * onboarding, which happens before the first budget/account exists (#3405).
+ */
+export function getPrimaryHouseholdId(db: SqliteDb): SyncId | null {
+  const row = queryOne(
+    db,
+    `SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1`,
+  );
+  return row ? requireString(row.id, 'household.id') : null;
+}
+
 /** Create a new household and add the creator as OWNER member. */
 export function createHousehold(db: SqliteDb, input: CreateHouseholdInput): Household {
   const id = crypto.randomUUID();

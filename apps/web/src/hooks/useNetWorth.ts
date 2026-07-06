@@ -21,12 +21,14 @@ import { getAllTransactions } from '../db/repositories/transactions';
 import {
   computeCurrentNetWorth,
   computeAssetClassBreakdown,
+  computePeriodComparison,
   detectMilestones,
 } from '../lib/analytics/net-worth';
 import type {
   NetWorthDataPoint,
   AssetClassBreakdown,
   NetWorthMilestone,
+  PeriodComparison,
 } from '../lib/analytics/net-worth';
 import { buildNetWorthHistorySeries } from '../lib/visualization/net-worth-history';
 import type { NetWorthSeriesPoint } from '../lib/visualization/net-worth-projection';
@@ -50,6 +52,11 @@ export interface UseNetWorthResult {
   milestones: NetWorthMilestone[];
   /** Trailing monthly net-worth history, oldest first (for trend + projection). */
   history: NetWorthSeriesPoint[];
+  /**
+   * Period-over-period change between the two most recent history points
+   * (typically month-over-month), or `null` when fewer than two points exist.
+   */
+  periodComparison: PeriodComparison | null;
   /** True while data is being computed. */
   loading: boolean;
   /** Human-readable error message or null. */
@@ -77,6 +84,7 @@ export function useNetWorth(purposeFilter: AccountPurposeFilter = 'all'): UseNet
   const [assetClasses, setAssetClasses] = useState<AssetClassBreakdown[]>([]);
   const [milestones, setMilestones] = useState<NetWorthMilestone[]>([]);
   const [history, setHistory] = useState<NetWorthSeriesPoint[]>([]);
+  const [periodComparison, setPeriodComparison] = useState<PeriodComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -102,10 +110,23 @@ export function useNetWorth(purposeFilter: AccountPurposeFilter = 'all'): UseNet
       const ms = detectMilestones(nw.netWorth, nw.liabilities);
       const series = buildNetWorthHistorySeries(scopedAccounts, scopedTransactions);
 
+      // Period-over-period delta from the two most recent history points
+      // (oldest-first series → last two entries are prior period vs. current).
+      const comparison =
+        series.length >= 2
+          ? computePeriodComparison(
+              series[series.length - 1].netWorthCents,
+              series[series.length - 2].netWorthCents,
+              series[series.length - 1].label,
+              series[series.length - 2].label,
+            )
+          : null;
+
       setCurrentNetWorth(nw);
       setAssetClasses(classes);
       setMilestones(ms);
       setHistory(series);
+      setPeriodComparison(comparison);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to compute net worth.');
     } finally {
@@ -113,5 +134,14 @@ export function useNetWorth(purposeFilter: AccountPurposeFilter = 'all'): UseNet
     }
   }, [db, refreshToken, purposeFilter]);
 
-  return { currentNetWorth, assetClasses, milestones, history, loading, error, refresh };
+  return {
+    currentNetWorth,
+    assetClasses,
+    milestones,
+    history,
+    periodComparison,
+    loading,
+    error,
+    refresh,
+  };
 }
