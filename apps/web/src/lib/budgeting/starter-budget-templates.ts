@@ -167,16 +167,83 @@ const FOOD_MEALS_TEMPLATE: BudgetStarterTemplate = {
   ],
 };
 
+const PROFESSIONAL_TEMPLATE: BudgetStarterTemplate = {
+  id: 'professional',
+  name: 'Professional',
+  description:
+    'A starter budget for a steady entry-level paycheck: rent, groceries, commute, a student-loan payment, an emergency fund, and savings.',
+  guidance:
+    'Starting points for a steady early-career paycheck. Adjust to your take-home pay - a common split is needs ~50%, wants ~30%, savings & debt ~20%.',
+  isAvailable: true,
+  categories: [
+    { emoji: '🏠', name: 'Rent/Housing', amountCents: 120_000, icon: 'home', color: '#7C3AED' },
+    {
+      emoji: '🍽️',
+      name: 'Food & Groceries',
+      amountCents: 40_000,
+      icon: 'utensils',
+      color: '#16A34A',
+    },
+    {
+      emoji: '🚇',
+      name: 'Commute & Transport',
+      amountCents: 15_000,
+      icon: 'car',
+      color: '#2563EB',
+    },
+    {
+      emoji: '💡',
+      name: 'Utilities',
+      amountCents: 12_000,
+      icon: 'wallet',
+      color: '#0EA5E9',
+    },
+    {
+      emoji: '🎓',
+      name: 'Student Loan Payment',
+      amountCents: 30_000,
+      icon: 'package',
+      color: '#F59E0B',
+    },
+    {
+      emoji: '🛟',
+      name: 'Emergency Fund',
+      amountCents: 30_000,
+      icon: 'wallet',
+      color: '#0284C7',
+    },
+    {
+      emoji: '📈',
+      name: 'Retirement & Savings',
+      amountCents: 25_000,
+      icon: 'wallet',
+      color: '#059669',
+    },
+    {
+      emoji: '📱',
+      name: 'Phone & Subscriptions',
+      amountCents: 8_000,
+      icon: 'wallet',
+      color: '#6366F1',
+    },
+    {
+      emoji: '💊',
+      name: 'Health & Wellness',
+      amountCents: 8_000,
+      icon: 'heart-pulse',
+      color: '#EF4444',
+    },
+    {
+      emoji: '🎉',
+      name: 'Fun & Social',
+      amountCents: 20_000,
+      icon: 'film',
+      color: '#DB2777',
+    },
+  ],
+};
+
 const COMING_SOON_TEMPLATES: readonly BudgetStarterTemplate[] = [
-  {
-    id: 'professional',
-    name: 'Professional',
-    description: 'Built for early-career budgets with commuting and career growth costs.',
-    guidance: 'Coming soon',
-    categories: [],
-    isAvailable: false,
-    availabilityLabel: 'Coming soon',
-  },
   {
     id: 'retiree',
     name: 'Retiree',
@@ -192,6 +259,7 @@ const STARTER_BUDGET_TEMPLATES: readonly BudgetStarterTemplate[] = [
   STUDENT_TEMPLATE,
   FOOD_MEALS_TEMPLATE,
   SINGLE_PARENT_FAMILY_TEMPLATE,
+  PROFESSIONAL_TEMPLATE,
   ...COMING_SOON_TEMPLATES,
 ] as const;
 
