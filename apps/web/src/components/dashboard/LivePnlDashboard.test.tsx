@@ -141,4 +141,80 @@ describe('LivePnlDashboard', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('feed down');
     expect(screen.getByText('Paused')).toBeInTheDocument();
   });
+
+  it('discloses simulated prices when isSimulated is set', () => {
+    render(
+      <LivePnlDashboard
+        view={viewFor(110_00)}
+        isLive
+        isSimulated
+        onRefresh={() => {}}
+        now={nowMs}
+      />,
+    );
+    expect(screen.getByText(/simulated/i)).toBeInTheDocument();
+    expect(screen.getByText(/not real quotes/i)).toBeInTheDocument();
+  });
+
+  it('does not disclose simulation when prices come from a real feed', () => {
+    render(
+      <LivePnlDashboard
+        view={viewFor(110_00)}
+        isLive
+        isSimulated={false}
+        onRefresh={() => {}}
+        now={nowMs}
+      />,
+    );
+    expect(screen.queryByText(/not real quotes/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a "not tracked" realized card instead of a misleading $0 when realized is untracked', () => {
+    render(
+      <LivePnlDashboard
+        view={viewFor(110_00)}
+        isLive
+        realizedTracked={false}
+        onRefresh={() => {}}
+        now={nowMs}
+      />,
+    );
+    const realizedCard = screen.getByLabelText('Realized profit and loss');
+    expect(within(realizedCard).getByText(/isn't tracked yet/i)).toBeInTheDocument();
+    expect(
+      within(realizedCard).getByLabelText(/Realized profit and loss today: not tracked/i),
+    ).toBeInTheDocument();
+  });
+
+  it('discloses positions excluded for currency mismatch', () => {
+    const mixedView = buildLivePnlView({
+      positions: [
+        ...positions,
+        {
+          accountId: 'eu',
+          brokerage: 'Beta',
+          symbol: 'SAP',
+          assetClass: 'equity',
+          quantity: 5,
+          previousCloseCents: 120_00,
+          costBasisCents: 500_00,
+          currency: 'EUR',
+        },
+      ],
+      quotes: [quote(110_00)],
+      baseAccounts,
+      now: NOW,
+      currency: 'USD',
+      lastUpdated: NOW,
+    });
+    render(<LivePnlDashboard view={mixedView} isLive onRefresh={() => {}} now={nowMs} />);
+    const notice = screen.getByText(/excluded from these USD totals/i);
+    expect(notice).toBeInTheDocument();
+    expect(notice).toHaveTextContent('EUR');
+  });
+
+  it('discloses that day P&L is measured from the last saved price', () => {
+    render(<LivePnlDashboard view={viewFor(110_00)} isLive onRefresh={() => {}} now={nowMs} />);
+    expect(screen.getByText(/last saved price/i)).toBeInTheDocument();
+  });
 });

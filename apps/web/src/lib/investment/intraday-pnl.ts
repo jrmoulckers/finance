@@ -52,6 +52,10 @@ export interface IntradayPnlReport {
   readonly netWorthDeltaCents: number;
   readonly staleSymbols: readonly string[];
   readonly missingBasisSymbols: readonly string[];
+  /** Symbols dropped because their currency differs from the report currency. */
+  readonly excludedSymbols: readonly string[];
+  /** Distinct non-report currencies that were excluded from the totals. */
+  readonly excludedCurrencies: readonly string[];
   readonly breakdowns: {
     readonly byAccount: readonly PnlBreakdown[];
     readonly byBrokerage: readonly PnlBreakdown[];
@@ -115,12 +119,18 @@ export function computeIntradayPnl(input: IntradayPnlInput): IntradayPnlReport {
   const byAssetClass = new Map<string, MutableBreakdown>();
   const staleSymbols = new Set<string>();
   const missingBasisSymbols = new Set<string>();
+  const excludedSymbols = new Set<string>();
+  const excludedCurrencies = new Set<string>();
   let totalMarketValueCents = 0;
   let dayPnlCents = 0;
   let unrealizedPnlCents = 0;
 
   for (const position of input.positions) {
-    if (position.currency !== input.currency) continue;
+    if (position.currency !== input.currency) {
+      excludedSymbols.add(position.symbol.toUpperCase());
+      excludedCurrencies.add(position.currency);
+      continue;
+    }
     const symbol = position.symbol.toUpperCase();
     const quote = quotesBySymbol.get(symbol);
     if (isProblemFreshness(evaluateQuoteFreshness(quote, input.now).freshness))
@@ -180,6 +190,8 @@ export function computeIntradayPnl(input: IntradayPnlInput): IntradayPnlReport {
     netWorthDeltaCents: dayPnlCents + realizedPnlCents + cashMovementCents,
     staleSymbols: [...staleSymbols].sort(),
     missingBasisSymbols: [...missingBasisSymbols].sort(),
+    excludedSymbols: [...excludedSymbols].sort(),
+    excludedCurrencies: [...excludedCurrencies].sort(),
     breakdowns: {
       byAccount: finalize(byAccount),
       byBrokerage: finalize(byBrokerage),

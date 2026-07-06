@@ -65,6 +65,12 @@ export interface UseLivePnlResult {
   error: string | null;
   /** Whether the price source is currently emitting updates. */
   isLive: boolean;
+  /**
+   * `true` when quotes come from the built-in offline price simulation rather
+   * than a real market-data feed, so the UI can disclose that figures are demo
+   * values. `false` once a real vendor source is injected.
+   */
+  isSimulated: boolean;
   /** ISO timestamp of the most recent price update, or `null`. */
   lastUpdated: string | null;
   /** Force an immediate price refresh. */
@@ -195,6 +201,11 @@ export function useLivePnl(options: UseLivePnlOptions = {}): UseLivePnlResult {
     stalenessTickMs = 5_000,
   } = options;
 
+  // The shipped web app never injects a source, so it always runs on the
+  // offline simulation. A caller (vendor adapter / test) that injects a source
+  // is treated as a real feed.
+  const isSimulated = injectedSource === undefined;
+
   const { investments, loading: investmentsLoading } = useInvestments();
   const { accounts, loading: accountsLoading } = useAccounts();
 
@@ -298,6 +309,7 @@ export function useLivePnl(options: UseLivePnlOptions = {}): UseLivePnlResult {
     loading: investmentsLoading || accountsLoading,
     error,
     isLive,
+    isSimulated,
     lastUpdated,
     refresh,
   };
