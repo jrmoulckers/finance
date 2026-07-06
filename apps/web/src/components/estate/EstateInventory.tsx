@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 
+import { ConfirmDialog } from '../common';
 import { getAccessInfo, saveAccessInfo } from '../../lib/estate/accessInfo';
 import { ESTATE_CATEGORIES, getEstateCategory } from '../../lib/estate/categories';
 import {
@@ -23,11 +24,20 @@ import { InventoryItem } from './InventoryItem';
 import { TrustedContacts } from './TrustedContacts';
 import './estate-inventory.css';
 
+function describeInventoryItem(item: EstateInventoryItem): string {
+  const category = getEstateCategory(item.categoryId);
+  const named = category.summaryFields
+    .map((field) => item.details[field]?.trim())
+    .find((value) => Boolean(value));
+  return named || `this ${category.shortLabel.toLowerCase()} entry`;
+}
+
 export const EstateInventory: React.FC = () => {
   const [items, setItems] = useState<EstateInventoryItem[]>(() => listInventoryItems());
   const [accessInfo, setAccessInfo] = useState<EstateAccessInfo>(() => getAccessInfo());
   const [selectedCategoryId, setSelectedCategoryId] = useState<EstateCategoryId>('bank-accounts');
   const [pendingItem, setPendingItem] = useState<EstateInventoryItem | null>(null);
+  const [itemPendingDelete, setItemPendingDelete] = useState<EstateInventoryItem | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
   const activeCategory = useMemo(() => getEstateCategory(selectedCategoryId), [selectedCategoryId]);
@@ -49,12 +59,33 @@ export const EstateInventory: React.FC = () => {
   };
 
   const handleDeleteItem = (itemId: string) => {
+    const target = items.find((item) => item.id === itemId);
+    if (!target) {
+      // Unsaved draft entry - nothing is persisted, so just discard it.
+      if (pendingItem?.id === itemId) {
+        setPendingItem(null);
+      }
+      return;
+    }
+    setItemPendingDelete(target);
+  };
+
+  const confirmDeleteItem = () => {
+    if (!itemPendingDelete) {
+      return;
+    }
+    const itemId = itemPendingDelete.id;
     deleteInventoryItem(itemId);
     setItems((current) => current.filter((item) => item.id !== itemId));
     if (pendingItem?.id === itemId) {
       setPendingItem(null);
     }
+    setItemPendingDelete(null);
     setSavedMessage('Entry removed from this device.');
+  };
+
+  const cancelDeleteItem = () => {
+    setItemPendingDelete(null);
   };
 
   const handleAccessInfoChange = (nextAccessInfo: EstateAccessInfo) => {
@@ -188,6 +219,21 @@ export const EstateInventory: React.FC = () => {
       </div>
 
       <TrustedContacts accessInfo={accessInfo} onChange={handleAccessInfoChange} />
+
+      <ConfirmDialog
+        isOpen={Boolean(itemPendingDelete)}
+        title="Delete estate entry?"
+        message={
+          itemPendingDelete
+            ? `Permanently remove ${describeInventoryItem(itemPendingDelete)} from this device? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        cancelLabel="Keep entry"
+        variant="danger"
+        onConfirm={confirmDeleteItem}
+        onCancel={cancelDeleteItem}
+      />
     </div>
   );
 };
