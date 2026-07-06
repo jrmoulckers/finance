@@ -129,6 +129,60 @@ describe('PWA meta tags in index.html (#1329)', () => {
   it('has lang attribute on html element', () => {
     expect(html).toMatch(/<html\s+lang="[^"]+"/);
   });
+
+  it('references the externalized service-worker update script (#3210)', () => {
+    // The SW auto-update driver must be an external same-origin file so it is
+    // allowed by the deployed CSP `script-src 'self'` (deploy/Caddyfile).
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const scriptSrcs = [...doc.querySelectorAll('script')].map((script) =>
+      script.getAttribute('src'),
+    );
+    expect(scriptSrcs).toContain('/sw-update.js');
+  });
+
+  it("has no inline <script> bodies so CSP script-src 'self' is satisfied (#3210)", () => {
+    // An inline <script> with executable content is blocked by the deployed
+    // CSP (no 'unsafe-inline'), which silently broke the SW auto-update. Parse
+    // the document with a real HTML parser (not a hand-rolled regex, which
+    // CodeQL flags as a bad HTML filter) and assert every <script> is an
+    // external src-based reference with an empty body. HTML comments — which
+    // may mention `<script>` — are ignored by the parser.
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const inlineScripts = [...doc.querySelectorAll('script')].filter(
+      (script) => !script.getAttribute('src') && (script.textContent ?? '').trim().length > 0,
+    );
+    expect(inlineScripts).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Externalized service-worker update script (#3210)
+// ---------------------------------------------------------------------------
+
+describe('externalized service-worker update script (#3210)', () => {
+  const swUpdatePath = resolve(__dirname, '../../public/sw-update.js');
+  let source: string;
+
+  beforeEach(() => {
+    source = readFileSync(swUpdatePath, 'utf-8');
+  });
+
+  it('is shipped as a static public asset served from the app origin', () => {
+    expect(existsSync(swUpdatePath)).toBe(true);
+  });
+
+  it('posts SKIP_WAITING to activate a waiting service worker', () => {
+    expect(source).toContain("postMessage({ type: 'SKIP_WAITING' })");
+  });
+
+  it('activates newly-installed workers via the updatefound/controllerchange handlers', () => {
+    expect(source).toContain('updatefound');
+    expect(source).toContain('controllerchange');
+  });
+
+  it('skips activation during Lighthouse audits', () => {
+    expect(source).toMatch(/Lighthouse/);
+  });
 });
 
 // ---------------------------------------------------------------------------
