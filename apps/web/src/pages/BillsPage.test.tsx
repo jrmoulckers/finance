@@ -107,7 +107,7 @@ describe('BillsPage', () => {
     const summarySection = screen.getByRole('region', { name: 'Bills summary' });
     expect(within(summarySection).getByText('Upcoming')).toBeInTheDocument();
     expect(within(summarySection).getByText('Overdue')).toBeInTheDocument();
-    expect(within(summarySection).getAllByText('1 bills')).toHaveLength(2);
+    expect(within(summarySection).getAllByText('1 bill')).toHaveLength(2);
   });
 
   it('renders notification enable banner when permission is default', () => {
