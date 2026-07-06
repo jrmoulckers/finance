@@ -3,6 +3,7 @@
 import React, { useCallback, useState } from 'react';
 
 import { CurrencyDisplay } from '../../components/common/CurrencyDisplay';
+import { ReadAloudButton } from '../../components/common/ReadAloudButton';
 import { CategorizationSettings } from '../../components/categorization';
 import {
   HapticSettings,
@@ -111,7 +112,6 @@ export const SettingsPreferencesPage: React.FC = () => {
     setReduceMotion,
     setHighContrast,
     setSpeakAmounts,
-    speakAmount,
   } = useAccessibility();
   const displaySettings = useMoneyDisplay();
   // Display currency is the shared, app-wide preference (single source of
@@ -518,21 +518,12 @@ export const SettingsPreferencesPage: React.FC = () => {
                     className="accessibility-preview__amount"
                     context="Available for groceries, medications, and household bills"
                   />
-                  {speakAmounts ? (
-                    <button
-                      type="button"
-                      className="transaction-item__text-action accessibility-preview__speak-button"
-                      onClick={() =>
-                        speakAmount(
-                          248000,
-                          currency,
-                          'Available for groceries, medications, and household bills',
-                        )
-                      }
-                    >
-                      Read amount aloud
-                    </button>
-                  ) : null}
+                  <ReadAloudButton
+                    amount={248000}
+                    currency={currency}
+                    context="Available for groceries, medications, and household bills"
+                    label="Read amount aloud"
+                  />
                 </div>
                 <p className="accessibility-preview__note">
                   Essential pages stay visible, controls become larger, and buttons use clearer

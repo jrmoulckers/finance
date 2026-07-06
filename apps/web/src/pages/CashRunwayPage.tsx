@@ -20,7 +20,7 @@
 
 import { useMemo, useState } from 'react';
 
-import { EmptyState, Icon } from '../components/common';
+import { EmptyState, Icon, ReadAloudButton } from '../components/common';
 import { IconToken } from '../icons/tokens';
 import { useAccounts } from '../hooks/useAccounts';
 import { useBills } from '../hooks/useBills';
@@ -295,6 +295,11 @@ export function CashRunwayPage() {
                   <span className="cash-runway__metric-sub">
                     on {formatDate(forecast.minBalanceDate, { locale })}
                   </span>
+                  <ReadAloudButton
+                    amount={forecast.minBalanceCents}
+                    currency={displayCurrency}
+                    context="minimum projected balance"
+                  />
                 </dd>
               </div>
               <div className="cash-runway__metric">

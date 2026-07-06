@@ -3,7 +3,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AccountPurposeBadge } from '../components/accounts';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+  ReadAloudButton,
+} from '../components/common';
 import { AccountForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { useEffectiveMaskingMode } from '../contexts/PrivacyModeContext';
@@ -62,7 +68,8 @@ const MultiCurrencyTotal: React.FC<{
     currency: { code: string };
   }>;
   colorize?: boolean;
-}> = ({ accounts, colorize = false }) => {
+  readAloud?: boolean;
+}> = ({ accounts, colorize = false, readAloud = false }) => {
   const maskingMode = useEffectiveMaskingMode();
   const currencyItems = accounts.map((acc) => ({
     currency: acc.currency.code,
@@ -74,7 +81,16 @@ const MultiCurrencyTotal: React.FC<{
     const singleCurrency = getSingleCurrency(currencyItems);
     const total = accounts.reduce((sum, acc) => sum + netWorthContribution(acc), 0);
     return (
-      <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />
+      <>
+        <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />
+        {readAloud ? (
+          <ReadAloudButton
+            amount={total}
+            currency={singleCurrency ?? 'USD'}
+            context="total net worth"
+          />
+        ) : null}
+      </>
     );
   }
 
@@ -236,7 +252,7 @@ export const AccountsPage: React.FC = () => {
       {offlineBanner}
       {pageHeader}
       <p className="page-summary" aria-live="polite">
-        Net worth: <MultiCurrencyTotal accounts={accounts} colorize />
+        Net worth: <MultiCurrencyTotal accounts={accounts} colorize readAloud />
         {isMultiCurrency && convertedTotal !== null && (
           <span
             className="page-summary__converted"

@@ -425,6 +425,7 @@ body.accessibility-simplified .more-sheet__item,
 body.accessibility-simplified .settings-item__select,
 body.accessibility-simplified .settings-item__input,
 body.accessibility-simplified .transaction-item__text-action,
+body.accessibility-simplified .read-aloud-button,
 body.accessibility-simplified .icon-button {
   font-size: 1rem;
   font-weight: var(--font-weight-semibold, 600);
@@ -582,6 +583,41 @@ body.accessibility-simplified .transactions-page--simplified .transaction-list-i
 .transactions-page__speech-button,
 .accessibility-preview__speak-button {
   background: var(--semantic-background-secondary, #f3f4f6);
+}
+
+/*
+ * Read-aloud control for primary amounts (#3278).
+ *
+ * Opt-in via the "Read amounts aloud" accessibility preference. Meaning is
+ * conveyed by the text label, border, and speaker icon — never colour alone
+ * (WCAG 2.2 §1.4.1). Uses semantic tokens so it flips correctly under the
+ * high-contrast palettes defined above, and inherits the base
+ * :focus-visible ring for keyboard operation.
+ */
+.read-aloud-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1, 4px);
+  min-height: 40px;
+  margin-inline-start: var(--spacing-2, 8px);
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-default, #111111);
+  border-radius: var(--border-radius-md, 8px);
+  background: var(--semantic-background-secondary, #f3f4f6);
+  color: var(--semantic-text-primary, #111111);
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.read-aloud-button__icon {
+  flex: none;
+}
+
+.read-aloud-button__label {
+  white-space: nowrap;
 }
 
 body.accessibility-simplified .transaction-item__actions {

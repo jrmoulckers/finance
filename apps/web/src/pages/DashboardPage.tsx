@@ -5,7 +5,13 @@ import { Link } from 'react-router-dom';
 import type { TimePeriod, ViewType } from '../components/charts';
 import { AccountPurposeFilterControl } from '../components/accounts';
 import { RecentTransactionsCard } from '../components/transactions';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+  ReadAloudButton,
+} from '../components/common';
 import { ExplainThis } from '../components/common/ExplainThis';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
@@ -889,6 +895,11 @@ export const DashboardPage: React.FC = () => {
                           amount={displayNetWorth}
                           currency={netWorthRollup.displayCurrency}
                           colorize
+                          context="net worth"
+                        />
+                        <ReadAloudButton
+                          amount={displayNetWorth}
+                          currency={netWorthRollup.displayCurrency}
                           context="net worth"
                         />
                       </div>

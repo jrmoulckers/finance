@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { useInvestments } from '../hooks';
 import { InvestmentsPage } from './InvestmentsPage';
+import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 
 vi.mock('../hooks', () => ({
   useInvestments: vi.fn(),
@@ -113,6 +114,20 @@ describe('InvestmentsPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
     mockedUseInvestments.mockReturnValue(baseMockReturn);
+  });
+
+  it('exposes a labelled read-aloud control for total portfolio value when "Read amounts aloud" is enabled (#3278)', () => {
+    render(
+      <AccessibilityProvider initialSettings={{ speakAmounts: true }}>
+        <MemoryRouter>
+          <InvestmentsPage />
+        </MemoryRouter>
+      </AccessibilityProvider>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Read aloud: total portfolio value' }),
+    ).toBeInTheDocument();
   });
 
   it('renders portfolio summary with total value', () => {

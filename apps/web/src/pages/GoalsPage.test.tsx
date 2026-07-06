@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { useAccounts, useCategories, useGoals, useTransactions } from '../hooks';
 import { GoalsPage } from './GoalsPage';
+import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 
 vi.mock('../hooks', () => ({
   useAccounts: vi.fn(),
@@ -353,6 +354,20 @@ describe('GoalsPage', () => {
       updateTransaction: vi.fn(),
       deleteTransaction: vi.fn(),
     });
+  });
+
+  it('exposes a labelled read-aloud control for total saved when "Read amounts aloud" is enabled (#3278)', () => {
+    render(
+      <AccessibilityProvider initialSettings={{ speakAmounts: true }}>
+        <MemoryRouter>
+          <GoalsPage />
+        </MemoryRouter>
+      </AccessibilityProvider>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Read aloud: total saved across goals' }),
+    ).toBeInTheDocument();
   });
 
   it('renders without crashing', () => {

@@ -90,6 +90,7 @@ vi.mock('../components/common', () => ({
       </div>
     ) : null,
   CurrencyDisplay: ({ amount }: { amount: number }) => <span>{amount}</span>,
+  ReadAloudButton: () => null,
   DragDropProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   DraggableTransaction: ({
     children,

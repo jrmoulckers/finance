@@ -8,6 +8,8 @@ export { ConflictResolutionDialog } from './ConflictResolutionDialog';
 export type { ConflictResolutionDialogProps } from './ConflictResolutionDialog';
 export { CurrencyDisplay } from './CurrencyDisplay';
 export type { CurrencyDisplayProps } from './CurrencyDisplay';
+export { ReadAloudButton } from './ReadAloudButton';
+export type { ReadAloudButtonProps } from './ReadAloudButton';
 export { CommandPalette } from './CommandPalette';
 export type { CommandPaletteAction, CommandPaletteProps } from './CommandPalette';
 export { DateInput } from './DateInput';

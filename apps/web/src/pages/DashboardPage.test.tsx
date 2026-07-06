@@ -24,6 +24,7 @@ import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
 import { evaluatePrivacyScreenCoverage } from '../lib/security/privacy-screen';
 import { auditPrivacySurfaceCoverage, privacySurface } from '../lib/security/privacy-coverage';
 import { DashboardPage } from './DashboardPage';
+import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 
 const dashboardCss = readFileSync(resolve(process.cwd(), 'src/pages/DashboardPage.css'), 'utf8');
 
@@ -641,6 +642,20 @@ describe('DashboardPage', () => {
       updateTransaction: vi.fn(),
       deleteTransaction: vi.fn(),
     }));
+  });
+
+  it('exposes a labelled read-aloud control for net worth when "Read amounts aloud" is enabled (#3278)', async () => {
+    render(
+      <AccessibilityProvider initialSettings={{ speakAmounts: true }}>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </AccessibilityProvider>,
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Read aloud: net worth' }),
+    ).toBeInTheDocument();
   });
 
   it('renders without crashing', async () => {
