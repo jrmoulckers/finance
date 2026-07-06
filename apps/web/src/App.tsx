@@ -96,6 +96,7 @@ const STANDALONE_ROUTES: readonly string[] = [
   '/legal',
   '/beta',
   '/onboarding',
+  '/invite',
 ];
 
 /*
@@ -126,6 +127,7 @@ const FIRST_RUN_ALLOWED_ROUTES: readonly string[] = [
   '/terms',
   '/ccpa',
   '/onboarding',
+  '/invite',
 ];
 
 function isStandalonePath(pathname: string): boolean {

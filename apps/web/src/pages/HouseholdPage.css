@@ -677,6 +677,20 @@
   margin-bottom: var(--spacing-3);
 }
 
+/* Shareable invite link surfaced after an invitation is persisted (#3377). */
+.household-invite-success__message {
+  margin: 0 0 var(--spacing-2);
+}
+
+.household-invite-success__link {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.household-invite-success__link .household-invitation-item__code-text {
+  overflow-wrap: anywhere;
+}
+
 /* ---------------------------------------------------------------------------
  * Household scorecard (#2188)
  * ------------------------------------------------------------------------- */
