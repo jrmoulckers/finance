@@ -7,6 +7,7 @@ export interface EducationEntry {
 
 export const GLOSSARY_KEYS = [
   'budget',
+  'zeroBasedBudget',
   'sinkingFund',
   'emergencyFund',
   'apr',

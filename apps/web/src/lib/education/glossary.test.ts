@@ -41,4 +41,13 @@ describe('financial glossary', () => {
   it('explains FX margin in terms of the mid-market reference rate', () => {
     expect(getGlossaryEntry('fxMargin').definition.toLowerCase()).toContain('mid-market');
   });
+
+  it('explains zero-based / envelope budgeting for a first-time budgeter (#3414)', () => {
+    expect(GLOSSARY_KEYS).toContain('zeroBasedBudget');
+    const entry = getGlossaryEntry('zeroBasedBudget');
+    expect(entry.term.toLowerCase()).toContain('zero-based');
+    // Defines the "give every dollar a job" idea without assuming prior knowledge.
+    expect(entry.definition.toLowerCase()).toContain('job');
+    expect(entry.definition.toLowerCase()).toContain('zero');
+  });
 });

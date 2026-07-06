@@ -558,6 +558,10 @@ export const BudgetsPage: React.FC = () => {
               <div>
                 <p className="card__title">
                   {envelopeSummary.readyToAssignCents < 0 ? 'Over-assigned' : 'Ready to assign'}
+                  <ExplainThis
+                    glossaryKey="zeroBasedBudget"
+                    buttonLabel="Explain assigning every dollar"
+                  />
                 </p>
                 <p className="card__value">
                   <CurrencyDisplay amount={Math.abs(envelopeSummary.readyToAssignCents)} colorize />
