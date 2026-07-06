@@ -59,7 +59,7 @@ const InvoiceCard: React.FC<{
   <article className={`invoice-card invoice-card--${invoice.status.toLowerCase()}`} role="listitem">
     <div className="invoice-card__main">
       <div>
-        <h4 className="invoice-card__client">{invoice.clientName}</h4>
+        <h3 className="invoice-card__client">{invoice.clientName}</h3>
         <p className="invoice-card__meta">
           Issued {formatDate(invoice.issueDate)} · {PAYMENT_TERM_LABELS[invoice.paymentTerm]} ·
           expected {formatDate(invoice.expectedPayDate)}
@@ -143,7 +143,7 @@ export const InvoicesPage: React.FC = () => {
     <div className="analytics-page invoices-page">
       <div className="analytics-page__header">
         <div>
-          <h2 className="analytics-page__title">Invoices</h2>
+          <h1 className="analytics-page__title">Invoices</h1>
           <p className="invoice-subtitle">
             Track net-terms work and forecast when freelance income should land.
           </p>
@@ -225,7 +225,7 @@ export const InvoicesPage: React.FC = () => {
         aria-label="Expected income forecast"
         aria-live="polite"
       >
-        <h3 className="analytics-section__title">Expected-income forecast</h3>
+        <h2 className="analytics-section__title">Expected-income forecast</h2>
         <div className="analytics-metrics-grid">
           <article className="analytics-metric-card" aria-label="Outstanding invoice total">
             <p className="analytics-metric-card__label">Outstanding</p>
@@ -269,7 +269,7 @@ export const InvoicesPage: React.FC = () => {
       </section>
 
       <section className="analytics-section" aria-label="Invoice pipeline">
-        <h3 className="analytics-section__title">Pipeline by status</h3>
+        <h2 className="analytics-section__title">Pipeline by status</h2>
         {invoices.length === 0 ? (
           <EmptyState
             title="No invoices yet"
@@ -281,7 +281,7 @@ export const InvoicesPage: React.FC = () => {
               <article key={group.status} className="invoice-pipeline-group">
                 <div className="invoice-pipeline-group__header">
                   <div>
-                    <h4>{group.label}</h4>
+                    <h3>{group.label}</h3>
                     <p>{group.invoices.length} invoices</p>
                   </div>
                   <CurrencyDisplay amount={group.totalCents} />

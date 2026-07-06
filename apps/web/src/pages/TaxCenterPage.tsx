@@ -224,7 +224,7 @@ export const TaxCenterPage: React.FC = () => {
       </div>
 
       <div className="page-section__header" style={{ marginBottom: 'var(--spacing-6)' }}>
-        <h2
+        <h1
           style={{
             fontSize: 'var(--type-scale-headline-font-size)',
             fontWeight: 'var(--type-scale-headline-font-weight)',
@@ -232,7 +232,7 @@ export const TaxCenterPage: React.FC = () => {
           }}
         >
           Tax Center
-        </h2>
+        </h1>
         <p style={{ color: 'var(--semantic-text-secondary)', margin: 0 }}>
           Analyze lot-level realized P&amp;L, estimated taxes, and wash-sale guardrails before you
           trade.
@@ -251,14 +251,14 @@ export const TaxCenterPage: React.FC = () => {
             }}
           >
             <div>
-              <h3
+              <h2
                 style={{
                   fontWeight: 'var(--font-weight-semibold)',
                   marginBottom: 'var(--spacing-1)',
                 }}
               >
                 Retirement contribution limits
-              </h3>
+              </h2>
               <p style={{ color: 'var(--semantic-text-secondary)', margin: 0 }}>
                 Tracks transactions tagged as retirement contributions against configured IRS
                 limits.
@@ -370,14 +370,14 @@ export const TaxCenterPage: React.FC = () => {
         <>
           <section className="page-section" aria-label="Sale lot matching">
             <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
-              <h3
+              <h2
                 style={{
                   fontWeight: 'var(--font-weight-semibold)',
                   marginBottom: 'var(--spacing-4)',
                 }}
               >
                 Sale analyzer
-              </h3>
+              </h2>
               <div
                 style={{
                   display: 'grid',
@@ -550,14 +550,14 @@ export const TaxCenterPage: React.FC = () => {
                   borderColor: 'var(--semantic-warning, #d97706)',
                 }}
               >
-                <h3
+                <h2
                   style={{
                     fontWeight: 'var(--font-weight-semibold)',
                     marginBottom: 'var(--spacing-3)',
                   }}
                 >
                   Wash-sale guardrails
-                </h3>
+                </h2>
                 {washSaleAlerts.map((alert) => (
                   <p
                     key={`${alert.closedLotId}-${alert.soldDate}`}
@@ -576,14 +576,14 @@ export const TaxCenterPage: React.FC = () => {
 
           <section className="page-section" aria-label="Closed tax lots">
             <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
-              <h3
+              <h2
                 style={{
                   fontWeight: 'var(--font-weight-semibold)',
                   marginBottom: 'var(--spacing-4)',
                 }}
               >
                 Matched closed lots
-              </h3>
+              </h2>
               {matchResult.unmatchedShares > 0 && (
                 <p style={{ color: 'var(--semantic-negative, #dc2626)' }}>
                   {matchResult.unmatchedShares.toLocaleString()} shares could not be matched to open
@@ -659,14 +659,14 @@ export const TaxCenterPage: React.FC = () => {
 
           <section className="page-section" aria-label="Unrealized gains for open lots">
             <div className="card">
-              <h3
+              <h2
                 style={{
                   fontWeight: 'var(--font-weight-semibold)',
                   marginBottom: 'var(--spacing-4)',
                 }}
               >
                 Open lots · unrealized gains
-              </h3>
+              </h2>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>

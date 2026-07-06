@@ -14,8 +14,8 @@
  * money/numbers are formatted per the active locale (CLDR).
  *
  * Accessibility (WCAG 2.2 AA):
- * - Section landmarks with `aria-label`; one `<h1>`-less page heading via `<h2>`
- *   to match sibling pages, with `<h3>` sub-section headings.
+ * - Section landmarks with `aria-label`; a single page-level `<h1>` heading,
+ *   with `<h2>` sub-section headings.
  * - Every control has an associated `<label>`; required fields set
  *   `aria-required`; errors wire `aria-invalid` + `aria-describedby` to
  *   `role="alert"` messages.
@@ -114,7 +114,7 @@ const Estimate: React.FC<EstimateProps> = ({ quote, locale, t }) => (
     aria-label={t('remittance.preview.title')}
     aria-live="polite"
   >
-    <h3 className="remittance-section__title">{t('remittance.preview.title')}</h3>
+    <h2 className="remittance-section__title">{t('remittance.preview.title')}</h2>
     <dl className="remittance-estimate__grid">
       <div className="remittance-estimate__item remittance-estimate__item--hero">
         <dt>{t('remittance.preview.received')}</dt>
@@ -218,7 +218,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ record, locale, t, onDelete }
     >
       <header className="remittance-card__header">
         <div>
-          <h4 className="remittance-card__name">{record.recipient.name}</h4>
+          <h3 className="remittance-card__name">{record.recipient.name}</h3>
           <p className="remittance-card__meta">
             {country} · {formatDate(record.date, { locale })} · {feeModelLabel}
           </p>
@@ -461,13 +461,13 @@ export const RemittancesPage: React.FC = () => {
   return (
     <div className="remittance-page">
       <header className="remittance-page__header">
-        <h2 className="remittance-page__title">{t('remittance.page.title')}</h2>
+        <h1 className="remittance-page__title">{t('remittance.page.title')}</h1>
         <p className="remittance-page__subtitle">{t('remittance.page.subtitle')}</p>
       </header>
 
       {/* Entry form */}
       <section className="remittance-section" aria-label={t('remittance.form.title')}>
-        <h3 className="remittance-section__title">{t('remittance.form.title')}</h3>
+        <h2 className="remittance-section__title">{t('remittance.form.title')}</h2>
         <form className="remittance-form" onSubmit={handleSubmit} noValidate>
           {submitError && (
             <p className="remittance-form__banner-error" role="alert">
@@ -764,7 +764,7 @@ export const RemittancesPage: React.FC = () => {
             aria-label={t('remittance.summary.title')}
             aria-live="polite"
           >
-            <h3 className="remittance-section__title">{t('remittance.summary.title')}</h3>
+            <h2 className="remittance-section__title">{t('remittance.summary.title')}</h2>
             <div className="remittance-summary-grid">
               <article className="remittance-metric" aria-label={t('remittance.summary.totalSent')}>
                 <p className="remittance-metric__label">{t('remittance.summary.totalSent')}</p>
@@ -810,9 +810,9 @@ export const RemittancesPage: React.FC = () => {
           </section>
 
           <section className="remittance-section" aria-label={t('remittance.history.title')}>
-            <h3 className="remittance-section__title">
+            <h2 className="remittance-section__title">
               {t('remittance.history.title')} ({summary.count})
-            </h3>
+            </h2>
             <div className="remittance-history" role="list">
               {remittances.map((record) => (
                 <HistoryItem
@@ -831,7 +831,7 @@ export const RemittancesPage: React.FC = () => {
           className="remittance-section remittance-empty"
           aria-label={t('remittance.empty.title')}
         >
-          <h3 className="remittance-empty__title">{t('remittance.empty.title')}</h3>
+          <h2 className="remittance-empty__title">{t('remittance.empty.title')}</h2>
           <p className="remittance-empty__body">{t('remittance.empty.body')}</p>
         </section>
       )}

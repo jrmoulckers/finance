@@ -159,7 +159,7 @@
 }
 
 .transactions-page-header h2,
-.page-header-with-actions h2 {
+.page-header-with-actions h1 {
   flex: 1;
   min-width: 0;
 }
@@ -172,7 +172,7 @@
   }
 
   .transactions-page-header h2,
-  .page-header-with-actions h2 {
+  .page-header-with-actions h1 {
     text-align: center;
   }
 }
