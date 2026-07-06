@@ -237,7 +237,14 @@ export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInpu
   return updatedGoal;
 }
 
-/** Add a positive contribution amount to a goal's current progress. */
+/**
+ * Apply a signed adjustment to a goal's current progress.
+ *
+ * A positive amount records a contribution; a negative amount records a
+ * withdrawal or correction. A withdrawal cannot exceed the amount already
+ * saved, and a goal that drops back below its target is reverted from
+ * `COMPLETED` to `ACTIVE`.
+ */
 export function contributeToGoal(
   db: SqliteDb,
   goalId: SyncId,
@@ -248,13 +255,21 @@ export function contributeToGoal(
     return null;
   }
 
-  if (!Number.isFinite(input.amount.amount) || input.amount.amount <= 0) {
-    throw new Error('Contribution amount must be greater than zero.');
+  if (!Number.isFinite(input.amount.amount) || input.amount.amount === 0) {
+    throw new Error('Adjustment amount must be a non-zero value.');
   }
 
   const nextCurrentAmount = existingGoal.currentAmount.amount + input.amount.amount;
+  if (nextCurrentAmount < 0) {
+    throw new Error('A withdrawal cannot exceed the amount saved for this goal.');
+  }
+
   const nextStatus =
-    nextCurrentAmount >= existingGoal.targetAmount.amount ? 'COMPLETED' : existingGoal.status;
+    nextCurrentAmount >= existingGoal.targetAmount.amount
+      ? 'COMPLETED'
+      : existingGoal.status === 'COMPLETED'
+        ? 'ACTIVE'
+        : existingGoal.status;
 
   const contributionId = crypto.randomUUID();
 
