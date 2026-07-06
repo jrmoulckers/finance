@@ -5,7 +5,9 @@
  *
  * Mocks the useInvoices hook (not localStorage) per project conventions and
  * asserts the page exposes its title as the single level-1 heading so the
- * heading hierarchy stays intact (issue #3203).
+ * heading hierarchy stays intact (issue #3203), gives per-invoice controls
+ * distinguishing accessible names (#3222), and surfaces the past-due bucket in
+ * the forecast summary (#3219).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -90,7 +92,7 @@ describe('InvoicesPage', () => {
     });
     render(<InvoicesPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete invoice for Etsy Wholesale' }));
     // Deletion is gated by a confirmation dialog; nothing happens until confirmed.
     expect(deleteInvoice).not.toHaveBeenCalled();
 
@@ -165,5 +167,44 @@ describe('InvoicesPage', () => {
     );
     expect(values).toContain('Etsy Wholesale');
     expect(values).toContain('Maple & Co');
+  });
+
+  it('gives each invoice control a distinguishing accessible name (#3222)', () => {
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE],
+      pipelineGroups: [
+        { status: 'Sent', label: 'Sent', invoices: [SAMPLE_INVOICE], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    expect(screen.getByRole('combobox', { name: 'Status for Etsy Wholesale' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Delete invoice for Etsy Wholesale' }),
+    ).toBeInTheDocument();
+  });
+
+  it('surfaces the past-due bucket in the forecast summary (#3219)', () => {
+    mockedUseInvoices.mockReturnValue({
+      invoices: [],
+      pipelineGroups: [],
+      forecastBuckets: [
+        { id: 'past-due', label: 'Past due', invoices: [SAMPLE_INVOICE], totalCents: 120_000 },
+      ],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    expect(screen.getByRole('article', { name: 'Past due forecast' })).toBeInTheDocument();
   });
 });
