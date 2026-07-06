@@ -40,6 +40,33 @@ describe('useMultiCurrency', () => {
     expect(converted).toBe(9200);
   });
 
+  it('rescales minor units when converting to a zero-decimal currency (#3460)', () => {
+    const { result } = renderHook(() => useMultiCurrency());
+
+    // $100.00 = 10000 US cents (2 decimals). At 149.5 JPY/USD that is ¥14,950,
+    // and JPY has 0 decimal places, so the minor-unit value is 14950 — NOT the
+    // unscaled 1,495,000 that the pre-#3460 code produced.
+    const converted = result.current.convert(10000, Currencies.USD, Currencies.JPY);
+    expect(converted).toBe(14950);
+  });
+
+  it('round-trips USD -> JPY -> USD without a power-of-ten error (#3460)', () => {
+    const { result } = renderHook(() => useMultiCurrency());
+
+    const jpy = result.current.convert(10000, Currencies.USD, Currencies.JPY);
+    expect(jpy).toBe(14950);
+
+    const backToUsd = result.current.convert(jpy, Currencies.JPY, Currencies.USD);
+    expect(backToUsd).toBe(10000);
+  });
+
+  it('leaves same-scale USD <-> EUR conversion unchanged (#3460 no regression)', () => {
+    const { result } = renderHook(() => useMultiCurrency());
+
+    // Both currencies use 2 decimals, so the rescale factor is 1.
+    expect(result.current.convert(10000, Currencies.USD, Currencies.EUR)).toBe(9200);
+  });
+
   it('returns same amount when converting to same currency', () => {
     const { result } = renderHook(() => useMultiCurrency());
 
@@ -116,6 +143,24 @@ describe('useMultiCurrency', () => {
     expect(eurTotal?.totalCents).toBe(5000);
     // EUR converted to USD: 5000 / 0.92 ≈ 5435
     expect(eurTotal?.convertedCents).toBeGreaterThan(5000);
+  });
+
+  it('calculates a correct converted grand total including a zero-decimal JPY item (#3460)', () => {
+    const { result } = renderHook(() => useMultiCurrency());
+
+    // Default display currency is USD. $100.00 plus ¥14,950 (which is $100.00)
+    // must convert to a $200.00 grand total — 20000 US cents — not a value
+    // inflated ~100x by the missing minor-unit rescale.
+    const totals = result.current.calculateMultiCurrencyTotal([
+      { amountCents: 10000, currency: Currencies.USD },
+      { amountCents: 14950, currency: Currencies.JPY },
+    ]);
+
+    const jpyTotal = totals.find((t) => t.currency.code === 'JPY');
+    expect(jpyTotal?.convertedCents).toBe(10000);
+
+    const grandTotalCents = totals.reduce((sum, t) => sum + t.convertedCents, 0);
+    expect(grandTotalCents).toBe(20000);
   });
 
   it('falls back to USD when an unsupported default currency is stored', () => {

@@ -5,6 +5,7 @@ package com.finance.core.currency
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
 import com.finance.core.money.MoneyOperations
+import kotlin.math.pow
 
 /**
  * Converts monetary amounts between currencies using exchange rates.
@@ -22,7 +23,13 @@ class CurrencyConverter(
         val rate = rateProvider.getRate(from, to)
             ?: throw CurrencyConversionException("No exchange rate available for ${from.code} -> ${to.code}")
 
-        val converted = MoneyOperations.multiply(amount, rate.rate)
+        // `amount` is in the source currency's minor units, but `rate` converts
+        // *major* units (e.g. 1 USD = 149.5 JPY). Rescale by the minor-unit
+        // delta (10^(toDecimals - fromDecimals)) so converting to/from
+        // zero-decimal currencies like JPY/KRW is not off by a power of ten
+        // (#3460). Banker's rounding is still applied by MoneyOperations.multiply.
+        val scaleFactor = 10.0.pow(to.decimalPlaces - from.decimalPlaces)
+        val converted = MoneyOperations.multiply(amount, rate.rate * scaleFactor)
         return ConversionResult(
             originalAmount = amount,
             convertedAmount = converted,
