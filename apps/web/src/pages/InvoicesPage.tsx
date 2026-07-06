@@ -12,9 +12,12 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ConfirmDialog, CurrencyDisplay, EmptyState } from '../components/common';
 import { InvoicePaymentDialog } from '../components/invoices/InvoicePaymentDialog';
+import { useAccounts } from '../hooks/useAccounts';
 import { useInvoices } from '../hooks/useInvoices';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
+import { useTransactions } from '../hooks/useTransactions';
 import {
+  buildInvoiceCashInflow,
   computeExpectedPayDate,
   exportInvoicesCsv,
   FOLLOW_UP_STALE_DAYS,
@@ -160,6 +163,8 @@ export const InvoicesPage: React.FC = () => {
     recordPayment,
     deleteInvoice,
   } = useInvoices();
+  const { accounts } = useAccounts();
+  const { createTransaction } = useTransactions();
   const { locale } = useLocalePreferences();
   const [clientName, setClientName] = useState('');
   const [amount, setAmount] = useState('');
@@ -199,13 +204,49 @@ export const InvoicesPage: React.FC = () => {
   };
 
   const handleRecordPayment = useCallback(
-    (paymentCents: number, paidDate: string) => {
-      if (payingInvoice) {
-        recordPayment(payingInvoice.id, paymentCents, paidDate);
-        setPayingInvoice(null);
-      }
+    (paymentCents: number, paidDate: string, accountId: string) => {
+      if (!payingInvoice) return;
+
+      const account = accounts.find((candidate) => candidate.id === accountId);
+      if (!account) return;
+
+      // Marking an invoice paid must move real money: record the cash inflow
+      // first, and only tie the payment to the invoice once it succeeds so a
+      // "paid" invoice always has a linked transaction backing it (#3266).
+      const transaction = createTransaction(
+        buildInvoiceCashInflow(payingInvoice, {
+          accountId: account.id,
+          householdId: account.householdId,
+          currency: account.currency,
+          paymentCents,
+          paidDateIso: paidDate,
+        }),
+      );
+      if (!transaction) return;
+
+      recordPayment(payingInvoice.id, paymentCents, paidDate, {
+        accountId: account.id,
+        transactionId: transaction.id,
+      });
+      setPayingInvoice(null);
     },
-    [payingInvoice, recordPayment],
+    [accounts, createTransaction, payingInvoice, recordPayment],
+  );
+
+  const handleStatusChange = useCallback(
+    (invoiceId: string, nextStatus: InvoiceStatus) => {
+      // Routing a "Paid" selection through the payment dialog records the cash
+      // inflow instead of silently flipping status with no money movement.
+      if (nextStatus === 'Paid') {
+        const invoice = invoices.find((candidate) => candidate.id === invoiceId);
+        if (invoice && !invoiceIsFullyPaid(invoice)) {
+          setPayingInvoice(invoice);
+          return;
+        }
+      }
+      updateInvoiceStatus(invoiceId, nextStatus);
+    },
+    [invoices, updateInvoiceStatus],
   );
 
   const expectedPayDate = useMemo(
@@ -503,7 +544,7 @@ export const InvoicesPage: React.FC = () => {
                         locale={locale}
                         isEditing={invoice.id === editingInvoiceId}
                         onEdit={handleEdit}
-                        onStatusChange={updateInvoiceStatus}
+                        onStatusChange={handleStatusChange}
                         onRecordPayment={setPayingInvoice}
                         onDelete={setDeletingInvoice}
                       />
@@ -532,6 +573,7 @@ export const InvoicesPage: React.FC = () => {
       <InvoicePaymentDialog
         isOpen={payingInvoice !== null}
         invoice={payingInvoice}
+        accounts={accounts}
         onSubmit={handleRecordPayment}
         onCancel={() => setPayingInvoice(null)}
       />

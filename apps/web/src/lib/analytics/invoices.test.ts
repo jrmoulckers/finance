@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyInvoiceEdit,
+  buildInvoiceCashInflow,
   computeExpectedPayDate,
   computeInvoiceForecast,
   exportInvoicesCsv,
@@ -24,6 +25,7 @@ import {
   recordInvoicePayment,
   type Invoice,
 } from './invoices';
+import { Currencies } from '../../kmp/bridge';
 
 function makeInvoice(overrides: Partial<Invoice>): Invoice {
   return {
@@ -379,6 +381,60 @@ describe('recordInvoicePayment', () => {
     const negative = recordInvoicePayment(invoice, -5000, '2024-02-10', '2024-02-10T10:00:00Z');
     expect(negative.amountPaidCents).toBe(0);
     expect(negative.status).toBe('Sent');
+  });
+
+  it('links the cash-inflow account and transaction when a link is supplied (#3266)', () => {
+    const invoice = makeInvoice({ amountCents: 400000, status: 'Sent' });
+    const paid = recordInvoicePayment(invoice, 400000, '2024-02-10', '2024-02-10T10:00:00Z', {
+      accountId: 'acc-1',
+      transactionId: 'txn-9',
+    });
+
+    expect(paid.status).toBe('Paid');
+    expect(paid.paymentAccountId).toBe('acc-1');
+    expect(paid.paymentTransactionId).toBe('txn-9');
+  });
+
+  it('leaves the payment link fields unset when no link is supplied', () => {
+    const invoice = makeInvoice({ amountCents: 400000, status: 'Sent' });
+    const paid = recordInvoicePayment(invoice, 150000, '2024-02-10', '2024-02-10T10:00:00Z');
+
+    expect(paid.paymentAccountId).toBeUndefined();
+    expect(paid.paymentTransactionId).toBeUndefined();
+  });
+});
+
+describe('buildInvoiceCashInflow', () => {
+  it('builds a positive INCOME transaction in the receiving account currency (#3266)', () => {
+    const invoice = makeInvoice({ clientName: 'Acme Studio', amountCents: 400000 });
+    const input = buildInvoiceCashInflow(invoice, {
+      accountId: 'acc-1',
+      householdId: 'hh-1',
+      currency: Currencies.EUR,
+      paymentCents: 250000,
+      paidDateIso: '2024-02-10',
+    });
+
+    expect(input.type).toBe('INCOME');
+    expect(input.amount).toEqual({ amount: 250000 });
+    expect(input.accountId).toBe('acc-1');
+    expect(input.householdId).toBe('hh-1');
+    expect(input.currency).toEqual(Currencies.EUR);
+    expect(input.payee).toBe('Acme Studio');
+    expect(input.date).toBe('2024-02-10');
+  });
+
+  it('always records a positive inflow even if given a negative amount', () => {
+    const invoice = makeInvoice({ amountCents: 400000 });
+    const input = buildInvoiceCashInflow(invoice, {
+      accountId: 'acc-1',
+      householdId: 'hh-1',
+      currency: Currencies.USD,
+      paymentCents: -5000,
+      paidDateIso: '2024-02-10',
+    });
+
+    expect(input.amount).toEqual({ amount: 5000 });
   });
 });
 

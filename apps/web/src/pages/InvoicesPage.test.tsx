@@ -15,15 +15,29 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 import { InvoicesPage } from './InvoicesPage';
 import type { Invoice } from '../lib/analytics/invoices';
+import type { Account, Transaction } from '../kmp/bridge';
 
 vi.mock('../hooks/useInvoices', () => ({ useInvoices: vi.fn() }));
 vi.mock('../hooks/useLocalePreferences', () => ({ useLocalePreferences: vi.fn() }));
+vi.mock('../hooks/useAccounts', () => ({ useAccounts: vi.fn() }));
+vi.mock('../hooks/useTransactions', () => ({ useTransactions: vi.fn() }));
 
 import { useInvoices } from '../hooks/useInvoices';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
+import { useAccounts } from '../hooks/useAccounts';
+import { useTransactions } from '../hooks/useTransactions';
 
 const mockedUseInvoices = vi.mocked(useInvoices);
 const mockedUseLocalePreferences = vi.mocked(useLocalePreferences);
+const mockedUseAccounts = vi.mocked(useAccounts);
+const mockedUseTransactions = vi.mocked(useTransactions);
+
+const SAMPLE_ACCOUNT = {
+  id: 'acc-1',
+  householdId: 'hh-1',
+  name: 'Checking',
+  currency: { code: 'USD', decimalPlaces: 2 },
+} as unknown as Account;
 
 function mockLocale(locale: string): void {
   mockedUseLocalePreferences.mockReturnValue({
@@ -34,6 +48,33 @@ function mockLocale(locale: string): void {
     setLocale: vi.fn(),
     setTimeZone: vi.fn(),
   });
+}
+
+const SAMPLE_TRANSACTION = { id: 'txn-1' } as unknown as Transaction;
+
+function mockAccounts(accounts: Account[]): void {
+  mockedUseAccounts.mockReturnValue({
+    accounts,
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createAccount: vi.fn(),
+    updateAccount: vi.fn(),
+    deleteAccount: vi.fn(),
+  });
+}
+
+function mockTransactions(createTransaction = vi.fn(() => SAMPLE_TRANSACTION)) {
+  mockedUseTransactions.mockReturnValue({
+    transactions: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createTransaction,
+    updateTransaction: vi.fn(),
+    deleteTransaction: vi.fn(),
+  });
+  return createTransaction;
 }
 
 const SAMPLE_INVOICE: Invoice = {
@@ -51,6 +92,8 @@ const SAMPLE_INVOICE: Invoice = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockLocale('en-US');
+  mockAccounts([SAMPLE_ACCOUNT]);
+  mockTransactions();
   mockedUseInvoices.mockReturnValue({
     invoices: [],
     pipelineGroups: [],
@@ -106,8 +149,9 @@ describe('InvoicesPage', () => {
     expect(deleteInvoice).toHaveBeenCalledWith('inv-1');
   });
 
-  it('records a payment through the payment dialog', () => {
+  it('records a payment through the payment dialog and books a linked cash inflow', () => {
     const recordPayment = vi.fn();
+    const createTransaction = mockTransactions();
     mockedUseInvoices.mockReturnValue({
       invoices: [SAMPLE_INVOICE],
       pipelineGroups: [
@@ -133,10 +177,67 @@ describe('InvoicesPage', () => {
     fireEvent.change(screen.getByLabelText('Payment amount'), { target: { value: '500.00' } });
     fireEvent.click(screen.getByRole('button', { name: 'Record payment' }));
 
+    // A cash-inflow (INCOME) transaction is booked against the chosen account.
+    expect(createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: 'acc-1',
+        householdId: 'hh-1',
+        type: 'INCOME',
+        amount: { amount: 50_000 },
+        currency: { code: 'USD', decimalPlaces: 2 },
+      }),
+    );
+    // The invoice payment is linked to the account and the created transaction.
     expect(recordPayment).toHaveBeenCalledWith(
       'inv-1',
       50_000,
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      { accountId: 'acc-1', transactionId: 'txn-1' },
+    );
+  });
+
+  it('routes a "Paid" status selection through the payment dialog to book the inflow', () => {
+    const recordPayment = vi.fn();
+    const updateInvoiceStatus = vi.fn();
+    const createTransaction = mockTransactions();
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE],
+      pipelineGroups: [
+        { status: 'Sent', label: 'Sent', invoices: [SAMPLE_INVOICE], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+      updateInvoiceStatus,
+      logInvoiceContact: vi.fn(),
+      recordPayment,
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Status for Etsy Wholesale' }), {
+      target: { value: 'Paid' },
+    });
+
+    // Marking Paid opens the payment dialog rather than silently flipping status.
+    expect(
+      screen.getByRole('dialog', { name: 'Record payment for Etsy Wholesale' }),
+    ).toBeInTheDocument();
+    expect(updateInvoiceStatus).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Payment amount'), { target: { value: '1200.00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Record payment' }));
+
+    expect(createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'INCOME', amount: { amount: 120_000 } }),
+    );
+    expect(recordPayment).toHaveBeenCalledWith(
+      'inv-1',
+      120_000,
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      { accountId: 'acc-1', transactionId: 'txn-1' },
     );
   });
 

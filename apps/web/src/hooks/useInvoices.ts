@@ -21,6 +21,7 @@ import {
   type CreateInvoiceInput,
   type ForecastBucket,
   type Invoice,
+  type InvoicePaymentLink,
   type InvoicePipelineGroup,
   type InvoiceStatus,
   type UpdateInvoiceInput,
@@ -37,7 +38,12 @@ export interface UseInvoicesResult {
   updateInvoice: (invoiceId: string, input: UpdateInvoiceInput) => void;
   updateInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => void;
   logInvoiceContact: (invoiceId: string) => void;
-  recordPayment: (invoiceId: string, paymentCents: number, paidDate?: string) => void;
+  recordPayment: (
+    invoiceId: string,
+    paymentCents: number,
+    paidDate?: string,
+    link?: InvoicePaymentLink,
+  ) => void;
   deleteInvoice: (invoiceId: string) => void;
   refresh: () => void;
 }
@@ -163,7 +169,7 @@ export function useInvoices(): UseInvoicesResult {
   }, []);
 
   const recordPayment = useCallback(
-    (invoiceId: string, paymentCents: number, paidDate?: string) => {
+    (invoiceId: string, paymentCents: number, paidDate?: string, link?: InvoicePaymentLink) => {
       const currentDate = todayIsoDate();
       setToday(currentDate);
       setInvoices((prev) =>
@@ -175,6 +181,7 @@ export function useInvoices(): UseInvoicesResult {
                   paymentCents,
                   paidDate ?? currentDate,
                   new Date().toISOString(),
+                  link,
                 )
               : invoice,
           ),

@@ -19,6 +19,7 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import { useAmountInput } from '../../hooks/useAmountInput';
 import { invoiceOutstandingCents, type Invoice } from '../../lib/analytics/invoices';
+import type { Account } from '../../kmp/bridge';
 import { CurrencyDisplay } from '../common';
 import { AmountInput } from '../forms/AmountInput';
 import '../forms/forms.css';
@@ -26,7 +27,9 @@ import '../forms/forms.css';
 export interface InvoicePaymentDialogProps {
   isOpen: boolean;
   invoice: Invoice | null;
-  onSubmit: (paymentCents: number, paidDate: string) => void;
+  /** Accounts the cash inflow can be deposited into (#3266). */
+  accounts: Account[];
+  onSubmit: (paymentCents: number, paidDate: string, accountId: string) => void;
   onCancel: () => void;
 }
 
@@ -37,12 +40,14 @@ function todayIsoDate(): string {
 export function InvoicePaymentDialog({
   isOpen,
   invoice,
+  accounts,
   onSubmit,
   onCancel,
 }: InvoicePaymentDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const amountErrorId = useId();
+  const accountErrorId = useId();
   const titleId = useId();
 
   const amountInput = useAmountInput({
@@ -52,6 +57,8 @@ export function InvoicePaymentDialog({
   });
   const [paidDate, setPaidDate] = useState(todayIsoDate);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState('');
+  const [accountError, setAccountError] = useState<string | null>(null);
 
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
 
@@ -61,6 +68,8 @@ export function InvoicePaymentDialog({
     amountInput.reset(0);
     setPaidDate(todayIsoDate());
     setAmountError(null);
+    setAccountError(null);
+    setAccountId(invoice?.paymentAccountId ?? accounts[0]?.id ?? '');
 
     const id = requestAnimationFrame(() => {
       amountInputRef.current?.focus();
@@ -99,11 +108,17 @@ export function InvoicePaymentDialog({
         setAmountError('Payment cannot exceed the outstanding balance.');
         return;
       }
+      if (!accountId) {
+        setAmountError(null);
+        setAccountError('Select an account to deposit the payment into.');
+        return;
+      }
 
       setAmountError(null);
-      onSubmit(paymentCents, paidDate);
+      setAccountError(null);
+      onSubmit(paymentCents, paidDate, accountId);
     },
-    [amountInput.cents, invoice, onSubmit, paidDate],
+    [accountId, amountInput.cents, invoice, onSubmit, paidDate],
   );
 
   if (!isOpen || invoice === null) {
@@ -113,8 +128,11 @@ export function InvoicePaymentDialog({
   const outstanding = invoiceOutstandingCents(invoice);
   const projectedOutstanding = Math.max(0, outstanding - amountInput.cents);
   const hasAmountError = amountError !== null;
+  const hasAccountError = accountError !== null;
+  const noAccounts = accounts.length === 0;
   const amountId = `${titleId}-amount`;
   const dateInputId = `${titleId}-date`;
+  const accountInputId = `${titleId}-account`;
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
@@ -190,6 +208,51 @@ export function InvoicePaymentDialog({
                 onChange={(event) => setPaidDate(event.target.value)}
               />
             </div>
+
+            <div className="form-group">
+              <label
+                htmlFor={accountInputId}
+                className="form-group__label form-group__label--required"
+              >
+                Deposit account
+              </label>
+              <select
+                id={accountInputId}
+                className={`form-input${hasAccountError ? ' form-input--error' : ''}`}
+                value={accountId}
+                disabled={noAccounts}
+                aria-invalid={hasAccountError}
+                aria-describedby={hasAccountError ? accountErrorId : undefined}
+                aria-required="true"
+                onChange={(event) => {
+                  setAccountId(event.target.value);
+                  setAccountError(null);
+                }}
+              >
+                {noAccounts ? (
+                  <option value="">No accounts available</option>
+                ) : (
+                  accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} · {account.currency.code}
+                    </option>
+                  ))
+                )}
+              </select>
+              <p className="form-hint">
+                Records the payment as a cash inflow so it hits your balance and net worth.
+              </p>
+              {hasAccountError && (
+                <span id={accountErrorId} className="form-error" role="alert">
+                  {accountError}
+                </span>
+              )}
+              {noAccounts && (
+                <span className="form-error" role="alert">
+                  Add an account first to record this payment as a cash inflow.
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="form-actions">
@@ -200,7 +263,11 @@ export function InvoicePaymentDialog({
             >
               Cancel
             </button>
-            <button type="submit" className="form-button form-button--primary">
+            <button
+              type="submit"
+              className="form-button form-button--primary"
+              disabled={noAccounts}
+            >
               Record payment
             </button>
           </div>
