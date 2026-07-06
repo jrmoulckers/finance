@@ -25,9 +25,12 @@
  * References: issues #1780, #1779, #1781, #1716, #1784, #1786, #2144, #2156
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../auth/auth-context';
+import { useDatabase } from '../db/DatabaseProvider';
+import { readHouseholdValue, writeHouseholdValue } from '../db/repositories/householdData';
+import type { SqliteDb } from '../db/sqlite-wasm';
 import type {
   AddChildChoreInput,
   ChildProfile,
@@ -624,46 +627,8 @@ export interface UseHouseholdResult {
   refresh: () => void;
 }
 
-/** Stable demo seed used to distribute shared-budget pace across members. */
-export interface HouseholdScorecardSeed {
-  readonly memberWeight: number;
-  readonly paceOffset: number;
-}
-
-const SCORECARD_PACE_OFFSETS = [-0.1, 0.18, 0.08, -0.02] as const;
-
-/**
- * Return deterministic local-first scorecard seeds for household members.
- *
- * The scorecard is currently demo-backed, so we use small role-aware weight
- * and pace offsets to create believable per-member pacing until real member-
- * level budget attribution lands.
- */
-export function getHouseholdScorecardSeeds(
-  members: readonly Pick<HouseholdMember, 'role'>[],
-): HouseholdScorecardSeed[] {
-  if (members.length === 0) {
-    return [];
-  }
-
-  if (members.length === 1) {
-    return [{ memberWeight: 1, paceOffset: 0 }];
-  }
-
-  const rawWeights = members.map((member, index) => {
-    const roleBias = member.role === 'OWNER' ? 0.15 : member.role === 'ADMIN' ? 0.08 : 0;
-    return Math.max(0.7, 1 + roleBias - index * 0.04);
-  });
-  const totalWeight = rawWeights.reduce((sum, value) => sum + value, 0) || members.length;
-
-  return members.map((_, index) => ({
-    memberWeight: rawWeights[index] / totalWeight,
-    paceOffset: SCORECARD_PACE_OFFSETS[index % SCORECARD_PACE_OFFSETS.length] ?? 0,
-  }));
-}
-
 // ---------------------------------------------------------------------------
-// Simulated storage (local state — bridged to SQLite repositories in production)
+// Persistence (encrypted SQLite/OPFS via the household data repository, #3378)
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEY_HOUSEHOLD = 'finance-household';
@@ -682,17 +647,22 @@ const STORAGE_KEY_SHOPPING_BUDGETS = 'finance-household-shopping-budgets';
 const STORAGE_KEY_RECONCILIATION_PLANS = 'finance-household-reconciliation-plans';
 const STORAGE_KEY_RECONCILIATION_SNAPSHOTS = 'finance-household-reconciliation-snapshots';
 
-function loadFromStorage<T>(key: string, fallback: T): T {
+function loadFromStorage<T>(db: SqliteDb | null, key: string, fallback: T): T {
+  if (!db) {
+    return fallback;
+  }
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    return readHouseholdValue<T>(db, key, fallback);
   } catch {
     return fallback;
   }
 }
 
-function saveToStorage<T>(key: string, value: T): void {
-  localStorage.setItem(key, JSON.stringify(value));
+function saveToStorage<T>(db: SqliteDb | null, key: string, value: T): void {
+  if (!db) {
+    return;
+  }
+  writeHouseholdValue(db, key, value);
 }
 
 function toCents(amount: number): number {
@@ -1128,6 +1098,17 @@ export function useHousehold(): UseHouseholdResult {
   // guard with a try/catch and degrade gracefully to anonymous behaviour.
   const authUser = useOptionalAuthUser();
 
+  // Household data is persisted in the encrypted SQLite/OPFS database (issue
+  // #3378). Access the database defensively: if the household screen is ever
+  // mounted without a `DatabaseProvider` (e.g. isolated unit tests, or the
+  // guarded reads elsewhere on this page), the hook still renders with
+  // in-memory-only state instead of throwing. `dbRef` lets the memoized
+  // mutation callbacks reach the current database handle without adding it to
+  // every dependency array.
+  const db = useOptionalDatabase();
+  const dbRef = useRef<SqliteDb | null>(db);
+  dbRef.current = db;
+
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [invitations, setInvitations] = useState<HouseholdInvitation[]>([]);
@@ -1160,40 +1141,68 @@ export function useHousehold(): UseHouseholdResult {
     setError(null);
 
     try {
-      setHousehold(loadFromStorage<Household | null>(STORAGE_KEY_HOUSEHOLD, null));
-      setMembers(loadFromStorage<HouseholdMember[]>(STORAGE_KEY_MEMBERS, []));
-      setInvitations(loadFromStorage<HouseholdInvitation[]>(STORAGE_KEY_INVITATIONS, []));
-      setAccountSharings(loadFromStorage<AccountSharing[]>(STORAGE_KEY_ACCOUNT_SHARINGS, []));
-      setSharedBudgets(loadFromStorage<SharedBudget[]>(STORAGE_KEY_SHARED_BUDGETS, []));
-      setSharedGoals(loadFromStorage<SharedGoal[]>(STORAGE_KEY_SHARED_GOALS, []));
-      setSharedExpenses(loadFromStorage<SharedExpense[]>(STORAGE_KEY_SHARED_EXPENSES, []));
-      setSharedSettlements(loadFromStorage<SharedSettlement[]>(STORAGE_KEY_SHARED_SETTLEMENTS, []));
-      setActivityEvents(loadFromStorage<HouseholdActivityEvent[]>(STORAGE_KEY_ACTIVITY_EVENTS, []));
-      setRecurringBills(loadFromStorage<RecurringSharedBill[]>(STORAGE_KEY_RECURRING_BILLS, []));
-      setGoalPledges(loadFromStorage<GoalContributionPledge[]>(STORAGE_KEY_GOAL_PLEDGES, []));
-      setShoppingBudgets(loadFromStorage<SharedShoppingBudget[]>(STORAGE_KEY_SHOPPING_BUDGETS, []));
+      setHousehold(loadFromStorage<Household | null>(dbRef.current, STORAGE_KEY_HOUSEHOLD, null));
+      setMembers(loadFromStorage<HouseholdMember[]>(dbRef.current, STORAGE_KEY_MEMBERS, []));
+      setInvitations(
+        loadFromStorage<HouseholdInvitation[]>(dbRef.current, STORAGE_KEY_INVITATIONS, []),
+      );
+      setAccountSharings(
+        loadFromStorage<AccountSharing[]>(dbRef.current, STORAGE_KEY_ACCOUNT_SHARINGS, []),
+      );
+      setSharedBudgets(
+        loadFromStorage<SharedBudget[]>(dbRef.current, STORAGE_KEY_SHARED_BUDGETS, []),
+      );
+      setSharedGoals(loadFromStorage<SharedGoal[]>(dbRef.current, STORAGE_KEY_SHARED_GOALS, []));
+      setSharedExpenses(
+        loadFromStorage<SharedExpense[]>(dbRef.current, STORAGE_KEY_SHARED_EXPENSES, []),
+      );
+      setSharedSettlements(
+        loadFromStorage<SharedSettlement[]>(dbRef.current, STORAGE_KEY_SHARED_SETTLEMENTS, []),
+      );
+      setActivityEvents(
+        loadFromStorage<HouseholdActivityEvent[]>(dbRef.current, STORAGE_KEY_ACTIVITY_EVENTS, []),
+      );
+      setRecurringBills(
+        loadFromStorage<RecurringSharedBill[]>(dbRef.current, STORAGE_KEY_RECURRING_BILLS, []),
+      );
+      setGoalPledges(
+        loadFromStorage<GoalContributionPledge[]>(dbRef.current, STORAGE_KEY_GOAL_PLEDGES, []),
+      );
+      setShoppingBudgets(
+        loadFromStorage<SharedShoppingBudget[]>(dbRef.current, STORAGE_KEY_SHOPPING_BUDGETS, []),
+      );
       setReconciliationPlans(
-        loadFromStorage<HouseholdReconciliationPlan[]>(STORAGE_KEY_RECONCILIATION_PLANS, []),
+        loadFromStorage<HouseholdReconciliationPlan[]>(
+          dbRef.current,
+          STORAGE_KEY_RECONCILIATION_PLANS,
+          [],
+        ),
       );
       setReconciliationSnapshots(
-        loadFromStorage<ReconciliationSnapshot[]>(STORAGE_KEY_RECONCILIATION_SNAPSHOTS, []),
+        loadFromStorage<ReconciliationSnapshot[]>(
+          dbRef.current,
+          STORAGE_KEY_RECONCILIATION_SNAPSHOTS,
+          [],
+        ),
       );
 
-      const storedChildren = loadFromStorage<ChildProfile[]>(STORAGE_KEY_CHILDREN, []).map(
-        normalizeChildProfile,
-      );
+      const storedChildren = loadFromStorage<ChildProfile[]>(
+        dbRef.current,
+        STORAGE_KEY_CHILDREN,
+        [],
+      ).map(normalizeChildProfile);
       const processedChildren = applyHouseholdKidsWeeklyProcessing(storedChildren);
       setChildren(processedChildren);
 
       if (JSON.stringify(storedChildren) !== JSON.stringify(processedChildren)) {
-        saveToStorage(STORAGE_KEY_CHILDREN, processedChildren);
+        saveToStorage(dbRef.current, STORAGE_KEY_CHILDREN, processedChildren);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load household data.');
     } finally {
       setLoading(false);
     }
-  }, [refreshToken]);
+  }, [db, refreshToken]);
 
   const getActorMemberId = useCallback((): SyncId | null => {
     return (
@@ -1233,7 +1242,7 @@ export function useHousehold(): UseHouseholdResult {
 
       setActivityEvents((current) => {
         const updated = [event, ...current].slice(0, 100);
-        saveToStorage(STORAGE_KEY_ACTIVITY_EVENTS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_ACTIVITY_EVENTS, updated);
         return updated;
       });
       return event;
@@ -1280,16 +1289,16 @@ export function useHousehold(): UseHouseholdResult {
           isSynced: false,
         };
 
-        saveToStorage(STORAGE_KEY_HOUSEHOLD, newHousehold);
-        saveToStorage(STORAGE_KEY_MEMBERS, [ownerMember]);
-        saveToStorage(STORAGE_KEY_SHARED_EXPENSES, []);
-        saveToStorage(STORAGE_KEY_SHARED_SETTLEMENTS, []);
-        saveToStorage(STORAGE_KEY_ACTIVITY_EVENTS, []);
-        saveToStorage(STORAGE_KEY_RECURRING_BILLS, []);
-        saveToStorage(STORAGE_KEY_GOAL_PLEDGES, []);
-        saveToStorage(STORAGE_KEY_SHOPPING_BUDGETS, []);
-        saveToStorage(STORAGE_KEY_RECONCILIATION_PLANS, []);
-        saveToStorage(STORAGE_KEY_RECONCILIATION_SNAPSHOTS, []);
+        saveToStorage(dbRef.current, STORAGE_KEY_HOUSEHOLD, newHousehold);
+        saveToStorage(dbRef.current, STORAGE_KEY_MEMBERS, [ownerMember]);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHARED_EXPENSES, []);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHARED_SETTLEMENTS, []);
+        saveToStorage(dbRef.current, STORAGE_KEY_ACTIVITY_EVENTS, []);
+        saveToStorage(dbRef.current, STORAGE_KEY_RECURRING_BILLS, []);
+        saveToStorage(dbRef.current, STORAGE_KEY_GOAL_PLEDGES, []);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHOPPING_BUDGETS, []);
+        saveToStorage(dbRef.current, STORAGE_KEY_RECONCILIATION_PLANS, []);
+        saveToStorage(dbRef.current, STORAGE_KEY_RECONCILIATION_SNAPSHOTS, []);
 
         const createdEvent: HouseholdActivityEvent = {
           id: crypto.randomUUID(),
@@ -1306,7 +1315,7 @@ export function useHousehold(): UseHouseholdResult {
           syncVersion: 1,
           isSynced: false,
         };
-        saveToStorage(STORAGE_KEY_ACTIVITY_EVENTS, [createdEvent]);
+        saveToStorage(dbRef.current, STORAGE_KEY_ACTIVITY_EVENTS, [createdEvent]);
 
         setHousehold(newHousehold);
         setMembers([ownerMember]);
@@ -1356,7 +1365,7 @@ export function useHousehold(): UseHouseholdResult {
         };
 
         const updated = [...invitations, invitation];
-        saveToStorage(STORAGE_KEY_INVITATIONS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, updated);
         setInvitations(updated);
         appendActivity({
           type: 'MEMBERS',
@@ -1395,7 +1404,7 @@ export function useHousehold(): UseHouseholdResult {
               ? { ...inv, status: 'EXPIRED' as const, updatedAt: new Date().toISOString() }
               : inv,
           );
-          saveToStorage(STORAGE_KEY_INVITATIONS, updatedInvs);
+          saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, updatedInvs);
           setInvitations(updatedInvs);
           setError('This invitation has expired.');
           return null;
@@ -1425,8 +1434,8 @@ export function useHousehold(): UseHouseholdResult {
 
         const updatedMembers = [...members, newMember];
 
-        saveToStorage(STORAGE_KEY_INVITATIONS, updatedInvs);
-        saveToStorage(STORAGE_KEY_MEMBERS, updatedMembers);
+        saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, updatedInvs);
+        saveToStorage(dbRef.current, STORAGE_KEY_MEMBERS, updatedMembers);
         setInvitations(updatedInvs);
         setMembers(updatedMembers);
         appendActivity({
@@ -1463,7 +1472,7 @@ export function useHousehold(): UseHouseholdResult {
         );
         const changed = updated.some((inv, i) => inv !== invitations[i]);
         if (!changed) return false;
-        saveToStorage(STORAGE_KEY_INVITATIONS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, updated);
         setInvitations(updated);
         appendActivity({
           type: 'MEMBERS',
@@ -1514,7 +1523,7 @@ export function useHousehold(): UseHouseholdResult {
         };
 
         const updated = [...members, helper];
-        saveToStorage(STORAGE_KEY_MEMBERS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_MEMBERS, updated);
         setMembers(updated);
         appendActivity({
           type: 'MEMBERS',
@@ -1544,7 +1553,7 @@ export function useHousehold(): UseHouseholdResult {
         );
         const changed = updated.some((m, i) => m !== members[i]);
         if (!changed) return false;
-        saveToStorage(STORAGE_KEY_MEMBERS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_MEMBERS, updated);
         setMembers(updated);
         appendActivity({
           type: 'MEMBERS',
@@ -1569,7 +1578,7 @@ export function useHousehold(): UseHouseholdResult {
       try {
         const updated = members.filter((m) => m.id !== memberId);
         if (updated.length === members.length) return false;
-        saveToStorage(STORAGE_KEY_MEMBERS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_MEMBERS, updated);
         setMembers(updated);
         appendActivity({
           type: 'MEMBERS',
@@ -1614,7 +1623,7 @@ export function useHousehold(): UseHouseholdResult {
               ? { ...as, sharingMode: input.sharingMode, updatedAt: now }
               : as,
           );
-          saveToStorage(STORAGE_KEY_ACCOUNT_SHARINGS, updated);
+          saveToStorage(dbRef.current, STORAGE_KEY_ACCOUNT_SHARINGS, updated);
           setAccountSharings(updated);
           appendActivity({
             type: 'ACCOUNTS',
@@ -1645,7 +1654,7 @@ export function useHousehold(): UseHouseholdResult {
         };
 
         const updated = [...accountSharings, newSharing];
-        saveToStorage(STORAGE_KEY_ACCOUNT_SHARINGS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_ACCOUNT_SHARINGS, updated);
         setAccountSharings(updated);
         appendActivity({
           type: 'ACCOUNTS',
@@ -1698,7 +1707,7 @@ export function useHousehold(): UseHouseholdResult {
               ? { ...sb, mode: input.mode, isActive: true, updatedAt: now }
               : sb,
           );
-          saveToStorage(STORAGE_KEY_SHARED_BUDGETS, updated);
+          saveToStorage(dbRef.current, STORAGE_KEY_SHARED_BUDGETS, updated);
           setSharedBudgets(updated);
           appendActivity({
             type: 'BUDGETS',
@@ -1726,7 +1735,7 @@ export function useHousehold(): UseHouseholdResult {
         };
 
         const updated = [...sharedBudgets, newSharedBudget];
-        saveToStorage(STORAGE_KEY_SHARED_BUDGETS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHARED_BUDGETS, updated);
         setSharedBudgets(updated);
         appendActivity({
           type: 'BUDGETS',
@@ -1751,7 +1760,7 @@ export function useHousehold(): UseHouseholdResult {
       try {
         const updated = sharedBudgets.filter((sb) => sb.id !== sharedBudgetId);
         if (updated.length === sharedBudgets.length) return false;
-        saveToStorage(STORAGE_KEY_SHARED_BUDGETS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHARED_BUDGETS, updated);
         setSharedBudgets(updated);
         appendActivity({
           type: 'BUDGETS',
@@ -1787,7 +1796,7 @@ export function useHousehold(): UseHouseholdResult {
           const updated = sharedGoals.map((sg) =>
             sg.goalId === input.goalId ? { ...sg, isShared: input.isShared, updatedAt: now } : sg,
           );
-          saveToStorage(STORAGE_KEY_SHARED_GOALS, updated);
+          saveToStorage(dbRef.current, STORAGE_KEY_SHARED_GOALS, updated);
           setSharedGoals(updated);
           appendActivity({
             type: 'GOALS',
@@ -1814,7 +1823,7 @@ export function useHousehold(): UseHouseholdResult {
         };
 
         const updated = [...sharedGoals, newSharedGoal];
-        saveToStorage(STORAGE_KEY_SHARED_GOALS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHARED_GOALS, updated);
         setSharedGoals(updated);
         appendActivity({
           type: 'GOALS',
@@ -1883,7 +1892,7 @@ export function useHousehold(): UseHouseholdResult {
         };
 
         const updated = [...sharedExpenses, expense];
-        saveToStorage(STORAGE_KEY_SHARED_EXPENSES, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHARED_EXPENSES, updated);
         setSharedExpenses(updated);
         appendActivity({
           type: 'EXPENSES',
@@ -1938,7 +1947,7 @@ export function useHousehold(): UseHouseholdResult {
         };
 
         const updated = [...sharedSettlements, settlement];
-        saveToStorage(STORAGE_KEY_SHARED_SETTLEMENTS, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHARED_SETTLEMENTS, updated);
         setSharedSettlements(updated);
         appendActivity({
           type: 'SETTLEMENTS',
@@ -2009,7 +2018,7 @@ export function useHousehold(): UseHouseholdResult {
       bill.cycles = [buildRecurringBillCycle(bill, 0, new Date(), crypto.randomUUID())];
 
       const updated = [...recurringBills, bill];
-      saveToStorage(STORAGE_KEY_RECURRING_BILLS, updated);
+      saveToStorage(dbRef.current, STORAGE_KEY_RECURRING_BILLS, updated);
       setRecurringBills(updated);
       appendActivity({
         type: 'BILLS',
@@ -2034,7 +2043,7 @@ export function useHousehold(): UseHouseholdResult {
       );
       const changed = updated.some((bill, index) => bill !== recurringBills[index]);
       if (!changed) return false;
-      saveToStorage(STORAGE_KEY_RECURRING_BILLS, updated);
+      saveToStorage(dbRef.current, STORAGE_KEY_RECURRING_BILLS, updated);
       setRecurringBills(updated);
       appendActivity({
         type: 'BILLS',
@@ -2082,7 +2091,7 @@ export function useHousehold(): UseHouseholdResult {
       }
 
       const activityCycle = updatedCycle as RecurringSharedBillCycle;
-      saveToStorage(STORAGE_KEY_RECURRING_BILLS, updatedBills);
+      saveToStorage(dbRef.current, STORAGE_KEY_RECURRING_BILLS, updatedBills);
       setRecurringBills(updatedBills);
       appendActivity({
         type: 'BILLS',
@@ -2159,8 +2168,8 @@ export function useHousehold(): UseHouseholdResult {
           : entry,
       );
 
-      saveToStorage(STORAGE_KEY_SHARED_EXPENSES, updatedExpenses);
-      saveToStorage(STORAGE_KEY_RECURRING_BILLS, updatedBills);
+      saveToStorage(dbRef.current, STORAGE_KEY_SHARED_EXPENSES, updatedExpenses);
+      saveToStorage(dbRef.current, STORAGE_KEY_RECURRING_BILLS, updatedBills);
       setSharedExpenses(updatedExpenses);
       setRecurringBills(updatedBills);
       appendActivity({
@@ -2240,7 +2249,7 @@ export function useHousehold(): UseHouseholdResult {
       const updated = existing
         ? goalPledges.map((pledge) => (pledge.id === existing.id ? saved : pledge))
         : [...goalPledges, saved];
-      saveToStorage(STORAGE_KEY_GOAL_PLEDGES, updated);
+      saveToStorage(dbRef.current, STORAGE_KEY_GOAL_PLEDGES, updated);
       setGoalPledges(updated);
       appendActivity({
         type: 'GOALS',
@@ -2291,7 +2300,7 @@ export function useHousehold(): UseHouseholdResult {
       }
 
       const savedPledge = saved as GoalContributionPledge;
-      saveToStorage(STORAGE_KEY_GOAL_PLEDGES, updated);
+      saveToStorage(dbRef.current, STORAGE_KEY_GOAL_PLEDGES, updated);
       setGoalPledges(updated);
       appendActivity({
         type: 'GOALS',
@@ -2347,7 +2356,7 @@ export function useHousehold(): UseHouseholdResult {
       const updated = existing
         ? shoppingBudgets.map((budget) => (budget.id === existing.id ? saved : budget))
         : [...shoppingBudgets, saved];
-      saveToStorage(STORAGE_KEY_SHOPPING_BUDGETS, updated);
+      saveToStorage(dbRef.current, STORAGE_KEY_SHOPPING_BUDGETS, updated);
       setShoppingBudgets(updated);
       appendActivity({
         type: 'SHOPPING',
@@ -2401,7 +2410,7 @@ export function useHousehold(): UseHouseholdResult {
         };
         sharedExpenseId = expense.id;
         const updatedExpenses = [...sharedExpenses, expense];
-        saveToStorage(STORAGE_KEY_SHARED_EXPENSES, updatedExpenses);
+        saveToStorage(dbRef.current, STORAGE_KEY_SHARED_EXPENSES, updatedExpenses);
         setSharedExpenses(updatedExpenses);
       }
 
@@ -2423,7 +2432,7 @@ export function useHousehold(): UseHouseholdResult {
           ? { ...entry, trips: [...entry.trips, trip], updatedAt: now }
           : entry,
       );
-      saveToStorage(STORAGE_KEY_SHOPPING_BUDGETS, updatedBudgets);
+      saveToStorage(dbRef.current, STORAGE_KEY_SHOPPING_BUDGETS, updatedBudgets);
       setShoppingBudgets(updatedBudgets);
       appendActivity({
         type: 'SHOPPING',
@@ -2486,7 +2495,7 @@ export function useHousehold(): UseHouseholdResult {
         isSynced: false,
       };
       const updated = [plan, ...reconciliationPlans.filter((entry) => entry.name !== name)];
-      saveToStorage(STORAGE_KEY_RECONCILIATION_PLANS, updated);
+      saveToStorage(dbRef.current, STORAGE_KEY_RECONCILIATION_PLANS, updated);
       setReconciliationPlans(updated);
       appendActivity({
         type: 'RECONCILIATION',
@@ -2529,7 +2538,7 @@ export function useHousehold(): UseHouseholdResult {
         isSynced: false,
       };
       const updated = [snapshot, ...reconciliationSnapshots];
-      saveToStorage(STORAGE_KEY_RECONCILIATION_SNAPSHOTS, updated);
+      saveToStorage(dbRef.current, STORAGE_KEY_RECONCILIATION_SNAPSHOTS, updated);
       setReconciliationSnapshots(updated);
       appendActivity({
         type: 'RECONCILIATION',
@@ -2556,7 +2565,7 @@ export function useHousehold(): UseHouseholdResult {
       try {
         const newChild = buildChildProfile(input, crypto.randomUUID());
         const updated = [...applyHouseholdKidsWeeklyProcessing(children), newChild];
-        saveToStorage(STORAGE_KEY_CHILDREN, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_CHILDREN, updated);
         setChildren(updated);
         return newChild;
       } catch (err) {
@@ -2580,7 +2589,7 @@ export function useHousehold(): UseHouseholdResult {
           return null;
         }
 
-        saveToStorage(STORAGE_KEY_CHILDREN, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_CHILDREN, updated);
         setChildren(updated);
         return chore;
       } catch (err) {
@@ -2599,7 +2608,7 @@ export function useHousehold(): UseHouseholdResult {
           return false;
         }
 
-        saveToStorage(STORAGE_KEY_CHILDREN, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_CHILDREN, updated);
         setChildren(updated);
         return true;
       } catch (err) {
@@ -2620,7 +2629,7 @@ export function useHousehold(): UseHouseholdResult {
           return null;
         }
 
-        saveToStorage(STORAGE_KEY_CHILDREN, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_CHILDREN, updated);
         setChildren(updated);
         return child;
       } catch (err) {
@@ -2641,7 +2650,7 @@ export function useHousehold(): UseHouseholdResult {
           return null;
         }
 
-        saveToStorage(STORAGE_KEY_CHILDREN, updated);
+        saveToStorage(dbRef.current, STORAGE_KEY_CHILDREN, updated);
         setChildren(updated);
         return child;
       } catch (err) {
@@ -2719,6 +2728,25 @@ export function useHousehold(): UseHouseholdResult {
 function useOptionalAuthUser(): { id: string; email: string; name?: string } | null {
   try {
     return useAuth().user;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Access the encrypted SQLite database without crashing if the household screen
+ * is mounted outside a `DatabaseProvider`.
+ *
+ * `useDatabase` throws when no provider is mounted. The household feature keeps
+ * all persistence behind this guard (mirroring the optional account/budget
+ * reads on {@link ../pages/HouseholdPage}) so the hook degrades to in-memory
+ * state — never throwing — in isolated tests or provider-less render paths.
+ *
+ * Issue #3378.
+ */
+function useOptionalDatabase(): SqliteDb | null {
+  try {
+    return useDatabase();
   } catch {
     return null;
   }

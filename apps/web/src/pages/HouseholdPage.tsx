@@ -34,7 +34,6 @@ import {
   calculateReconciliationSummary,
   calculateShoppingBudgetSummary,
   createEqualSharedExpenseSplits,
-  getHouseholdScorecardSeeds,
   type HouseholdActivityType,
   type PayerRotationMode,
   type RecurringBillCadence,
@@ -46,6 +45,8 @@ import {
 } from '../hooks/useHousehold';
 import { getScorecardBudgetSnapshots, useBudgets } from '../hooks/useBudgets';
 import type { ScorecardBudgetSnapshot, UseBudgetsResult } from '../hooks/useBudgets';
+import { useAccounts } from '../hooks/useAccounts';
+import type { UseAccountsResult } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import type { UseCategoriesResult } from '../hooks/useCategories';
 import { useGoals } from '../hooks/useGoals';
@@ -53,10 +54,12 @@ import type { UseGoalsResult } from '../hooks/useGoals';
 import { useTransactions } from '../hooks/useTransactions';
 import type { UseTransactionsResult } from '../hooks/useTransactions';
 import type {
+  AccountSharing,
   HouseholdMember,
   HouseholdRole,
   AccountSharingMode,
   SharedBudgetMode,
+  Transaction,
 } from '../kmp/bridge';
 import { ROLE_PERMISSIONS } from '../kmp/bridge';
 import { buildInviteUrl, getMemberDisplayName } from '../lib/household/display-name';
@@ -120,30 +123,6 @@ const SHARING_MODE_LABELS: Record<AccountSharingMode, string> = {
 const BUDGET_MODE_LABELS: Record<SharedBudgetMode, string> = {
   FLEX: 'Flex (overall limit)',
   CATEGORY: 'Category (per-category limits)',
-};
-
-/** Demo account IDs for account sharing toggles. */
-const DEMO_ACCOUNT_IDS = ['acct-checking', 'acct-savings', 'acct-credit'];
-const DEMO_ACCOUNT_NAMES: Record<string, string> = {
-  'acct-checking': 'Checking Account',
-  'acct-savings': 'Savings Account',
-  'acct-credit': 'Credit Card',
-};
-
-/** Demo budget IDs for shared budget configuration. */
-const DEMO_BUDGET_IDS = ['budget-groceries', 'budget-dining', 'budget-entertainment'];
-const DEMO_BUDGET_NAMES: Record<string, string> = {
-  'budget-groceries': 'Groceries',
-  'budget-dining': 'Dining Out',
-  'budget-entertainment': 'Entertainment',
-};
-
-/** Demo goal IDs for shared goals. */
-const DEMO_GOAL_IDS = ['goal-vacation', 'goal-emergency', 'goal-car'];
-const DEMO_GOAL_NAMES: Record<string, string> = {
-  'goal-vacation': 'Family Vacation',
-  'goal-emergency': 'Emergency Fund',
-  'goal-car': 'New Car',
 };
 
 const DEFAULT_CHORE_FREQUENCY: ChoreFrequency = 'weekly';
@@ -222,12 +201,24 @@ export function HouseholdPage() {
   // Issue #2188: scorecard pace uses live budgets when available and falls
   // back to deterministic demo snapshots for local-first households.
   const budgetData = useOptionalBudgets();
+  const accountData = useOptionalAccounts();
 
   // Issue #2191: child finance rollups combine existing child profiles with
   // local transactions and savings goals.
   const goalData = useOptionalGoals();
   const transactionData = useOptionalTransactions();
   const categoryData = useOptionalCategories();
+
+  // Issues #3375/#3376: resolve real account/budget/goal names for household
+  // sharing surfaces and reconciliation labels instead of hardcoded demo maps.
+  const budgetNameById = useMemo(
+    () => new Map(budgetData.budgets.map((budget) => [budget.id, budget.name])),
+    [budgetData.budgets],
+  );
+  const goalNameById = useMemo(
+    () => new Map(goalData.goals.map((goal) => [goal.id, goal.name])),
+    [goalData.goals],
+  );
   const childFinance = useMemo(
     () =>
       buildChildFinanceRollup({
@@ -281,7 +272,7 @@ export function HouseholdPage() {
   const [recurringBillPayer, setRecurringBillPayer] = useState('');
   const [recurringBillRotation, setRecurringBillRotation] =
     useState<PayerRotationMode>('ROUND_ROBIN');
-  const [goalPledgeGoalId, setGoalPledgeGoalId] = useState(DEMO_GOAL_IDS[0]);
+  const [goalPledgeGoalId, setGoalPledgeGoalId] = useState('');
   const [goalPledgeMemberId, setGoalPledgeMemberId] = useState('');
   const [goalPledgeAmount, setGoalPledgeAmount] = useState('');
   const [shoppingBudgetName, setShoppingBudgetName] = useState('Groceries and supplies');
@@ -664,7 +655,7 @@ export function HouseholdPage() {
     }
     const obligationSeeds = [
       ...sharedBudgets.map((budget) => ({
-        label: DEMO_BUDGET_NAMES[budget.budgetId] ?? 'Shared budget',
+        label: budgetNameById.get(budget.budgetId) ?? 'Shared budget',
         amount: 300,
         sourceId: budget.budgetId,
         sourceType: 'BUDGET' as const,
@@ -708,7 +699,14 @@ export function HouseholdPage() {
     if (!plan) {
       setHouseholdBetaError('Failed to create reconciliation plan.');
     }
-  }, [members, recurringBills, setReconciliationPlan, sharedBudgets, sharedExpenseBalances]);
+  }, [
+    budgetNameById,
+    members,
+    recurringBills,
+    setReconciliationPlan,
+    sharedBudgets,
+    sharedExpenseBalances,
+  ]);
 
   const handleMarkReconciled = useCallback(
     (planId: string) => {
@@ -1091,20 +1089,29 @@ export function HouseholdPage() {
       buildHouseholdScorecard({
         members,
         budgetSnapshots: getScorecardBudgetSnapshots(budgetData.budgets, household.id),
+        transactions: transactionData.transactions,
+        accountSharings,
         resolveMemberName,
         referenceDate: new Date(),
       }),
-    [budgetData.budgets, household.id, members, resolveMemberName],
+    [
+      accountSharings,
+      budgetData.budgets,
+      household.id,
+      members,
+      resolveMemberName,
+      transactionData.transactions,
+    ],
   );
 
   const recurringBillReminders = useMemo(
     () => buildRecurringBillReminders(recurringBills),
     [recurringBills],
   );
-  const goalPledgeProgress = useMemo(
-    () => DEMO_GOAL_IDS.map((goalId) => calculateGoalPledgeProgress(goalPledges, goalId)),
-    [goalPledges],
-  );
+  const goalPledgeProgress = useMemo(() => {
+    const pledgedGoalIds = Array.from(new Set(goalPledges.map((pledge) => pledge.goalId)));
+    return pledgedGoalIds.map((goalId) => calculateGoalPledgeProgress(goalPledges, goalId));
+  }, [goalPledges]);
   const shoppingBudgetSummaries = useMemo(
     () =>
       shoppingBudgets.map((budget) => ({
@@ -1530,15 +1537,20 @@ export function HouseholdPage() {
           <form onSubmit={handleSaveGoalPledge} className="household-beta-form" noValidate>
             <select
               className="household-form-select"
-              value={goalPledgeGoalId}
+              value={goalPledgeGoalId || goalData.goals[0]?.id || ''}
               onChange={(e) => setGoalPledgeGoalId(e.target.value)}
               aria-label="Pledge goal"
+              disabled={goalData.goals.length === 0}
             >
-              {DEMO_GOAL_IDS.map((goalId) => (
-                <option key={goalId} value={goalId}>
-                  Pledge: {DEMO_GOAL_NAMES[goalId]}
-                </option>
-              ))}
+              {goalData.goals.length === 0 ? (
+                <option value="">No goals yet — create one first</option>
+              ) : (
+                goalData.goals.map((goal) => (
+                  <option key={goal.id} value={goal.id}>
+                    Pledge: {goal.name}
+                  </option>
+                ))
+              )}
             </select>
             <select
               className="household-form-select"
@@ -1570,9 +1582,9 @@ export function HouseholdPage() {
             {goalPledgeProgress.map((progress) => (
               <li key={progress.goalId} className="household-beta-list__item">
                 <span>
-                  <strong>Goal: {DEMO_GOAL_NAMES[progress.goalId]}</strong> pledged{' '}
-                  <CurrencyDisplay amount={dollarsToCents(progress.totalPledged)} /> · contributed{' '}
-                  <CurrencyDisplay amount={dollarsToCents(progress.totalContributed)} />
+                  <strong>Goal: {goalNameById.get(progress.goalId) ?? 'Shared goal'}</strong>{' '}
+                  pledged <CurrencyDisplay amount={dollarsToCents(progress.totalPledged)} /> ·
+                  contributed <CurrencyDisplay amount={dollarsToCents(progress.totalContributed)} />
                 </span>
                 {progress.members.map((memberProgress) => (
                   <button
@@ -2888,50 +2900,56 @@ export function HouseholdPage() {
           are visible to all members (ours).
         </p>
         <ul className="household-sharing-list" role="list" aria-label="Account sharing settings">
-          {DEMO_ACCOUNT_IDS.map((accountId) => {
-            const sharing = accountSharings.find((as) => as.accountId === accountId);
-            const mode: AccountSharingMode = sharing?.sharingMode ?? 'PRIVATE';
-            const isShared = mode === 'SHARED';
-            return (
-              <li key={accountId} className="household-sharing-item">
-                <div className="household-sharing-item__info">
-                  <span className="household-sharing-item__name">
-                    {DEMO_ACCOUNT_NAMES[accountId]}
-                  </span>
-                  <span
-                    className={`household-sharing-item__badge ${isShared ? 'household-sharing-item__badge--shared' : 'household-sharing-item__badge--private'}`}
+          {accountData.accounts.length === 0 ? (
+            <li className="household-sharing-item household-sharing-item--empty">
+              <span className="household-sharing-item__name">
+                No accounts yet. Add an account to choose what to share with your household.
+              </span>
+            </li>
+          ) : (
+            accountData.accounts.map((account) => {
+              const sharing = accountSharings.find((as) => as.accountId === account.id);
+              const mode: AccountSharingMode = sharing?.sharingMode ?? 'PRIVATE';
+              const isShared = mode === 'SHARED';
+              return (
+                <li key={account.id} className="household-sharing-item">
+                  <div className="household-sharing-item__info">
+                    <span className="household-sharing-item__name">{account.name}</span>
+                    <span
+                      className={`household-sharing-item__badge ${isShared ? 'household-sharing-item__badge--shared' : 'household-sharing-item__badge--private'}`}
+                    >
+                      {isShared ? (
+                        <>
+                          <AppIcon name="unlock" /> Shared
+                        </>
+                      ) : (
+                        <>
+                          <AppIcon name="lock" /> Private
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <button
+                    className={`household-toggle ${isShared ? 'household-toggle--active' : ''}`}
+                    role="switch"
+                    aria-checked={isShared}
+                    aria-label={`Toggle sharing for ${account.name}`}
+                    onClick={() =>
+                      setAccountSharing({
+                        accountId: account.id,
+                        sharingMode: isShared ? 'PRIVATE' : 'SHARED',
+                      })
+                    }
                   >
-                    {isShared ? (
-                      <>
-                        <AppIcon name="unlock" /> Shared
-                      </>
-                    ) : (
-                      <>
-                        <AppIcon name="lock" /> Private
-                      </>
-                    )}
-                  </span>
-                </div>
-                <button
-                  className={`household-toggle ${isShared ? 'household-toggle--active' : ''}`}
-                  role="switch"
-                  aria-checked={isShared}
-                  aria-label={`Toggle sharing for ${DEMO_ACCOUNT_NAMES[accountId]}`}
-                  onClick={() =>
-                    setAccountSharing({
-                      accountId,
-                      sharingMode: isShared ? 'PRIVATE' : 'SHARED',
-                    })
-                  }
-                >
-                  <span className="household-toggle__track">
-                    <span className="household-toggle__thumb" />
-                  </span>
-                  <span className="household-toggle__label">{SHARING_MODE_LABELS[mode]}</span>
-                </button>
-              </li>
-            );
-          })}
+                    <span className="household-toggle__track">
+                      <span className="household-toggle__thumb" />
+                    </span>
+                    <span className="household-toggle__label">{SHARING_MODE_LABELS[mode]}</span>
+                  </button>
+                </li>
+              );
+            })
+          )}
         </ul>
         <div className="household-card__note" role="note">
           <strong>Privacy boundary:</strong> Private ("mine only") accounts, transactions, and
@@ -2952,59 +2970,69 @@ export function HouseholdPage() {
           overall spending limit) or category mode (per-category limits).
         </p>
         <ul className="household-budget-list" role="list" aria-label="Shared budget settings">
-          {DEMO_BUDGET_IDS.map((budgetId) => {
-            const shared = sharedBudgets.find((sb) => sb.budgetId === budgetId);
-            const isActive = shared?.isActive ?? false;
-            const mode: SharedBudgetMode = shared?.mode ?? 'CATEGORY';
-            return (
-              <li key={budgetId} className="household-budget-item">
-                <div className="household-budget-item__info">
-                  <span className="household-budget-item__name">{DEMO_BUDGET_NAMES[budgetId]}</span>
-                  {isActive && (
-                    <span className="household-budget-item__mode">{BUDGET_MODE_LABELS[mode]}</span>
-                  )}
-                </div>
-                <div className="household-budget-item__controls">
-                  {isActive && (
-                    <select
-                      className="household-form-select household-form-select--small"
-                      value={mode}
-                      onChange={(e) =>
-                        setSharedBudget({
-                          budgetId,
-                          mode: e.target.value as SharedBudgetMode,
-                        })
-                      }
-                      aria-label={`Budget mode for ${DEMO_BUDGET_NAMES[budgetId]}`}
+          {budgetData.budgets.length === 0 ? (
+            <li className="household-budget-item household-budget-item--empty">
+              <span className="household-budget-item__name">
+                No budgets yet. Create a budget to share it with your household.
+              </span>
+            </li>
+          ) : (
+            budgetData.budgets.map((budget) => {
+              const shared = sharedBudgets.find((sb) => sb.budgetId === budget.id);
+              const isActive = shared?.isActive ?? false;
+              const mode: SharedBudgetMode = shared?.mode ?? 'CATEGORY';
+              return (
+                <li key={budget.id} className="household-budget-item">
+                  <div className="household-budget-item__info">
+                    <span className="household-budget-item__name">{budget.name}</span>
+                    {isActive && (
+                      <span className="household-budget-item__mode">
+                        {BUDGET_MODE_LABELS[mode]}
+                      </span>
+                    )}
+                  </div>
+                  <div className="household-budget-item__controls">
+                    {isActive && (
+                      <select
+                        className="household-form-select household-form-select--small"
+                        value={mode}
+                        onChange={(e) =>
+                          setSharedBudget({
+                            budgetId: budget.id,
+                            mode: e.target.value as SharedBudgetMode,
+                          })
+                        }
+                        aria-label={`Budget mode for ${budget.name}`}
+                      >
+                        <option value="FLEX">Flex</option>
+                        <option value="CATEGORY">Category</option>
+                      </select>
+                    )}
+                    <button
+                      className={`household-toggle ${isActive ? 'household-toggle--active' : ''}`}
+                      role="switch"
+                      aria-checked={isActive}
+                      aria-label={`Toggle sharing for ${budget.name}`}
+                      onClick={() => {
+                        if (isActive && shared) {
+                          removeSharedBudget(shared.id);
+                        } else {
+                          setSharedBudget({ budgetId: budget.id, mode });
+                        }
+                      }}
                     >
-                      <option value="FLEX">Flex</option>
-                      <option value="CATEGORY">Category</option>
-                    </select>
-                  )}
-                  <button
-                    className={`household-toggle ${isActive ? 'household-toggle--active' : ''}`}
-                    role="switch"
-                    aria-checked={isActive}
-                    aria-label={`Toggle sharing for ${DEMO_BUDGET_NAMES[budgetId]}`}
-                    onClick={() => {
-                      if (isActive && shared) {
-                        removeSharedBudget(shared.id);
-                      } else {
-                        setSharedBudget({ budgetId, mode });
-                      }
-                    }}
-                  >
-                    <span className="household-toggle__track">
-                      <span className="household-toggle__thumb" />
-                    </span>
-                    <span className="household-toggle__label">
-                      {isActive ? 'Shared' : 'Personal'}
-                    </span>
-                  </button>
-                </div>
-              </li>
-            );
-          })}
+                      <span className="household-toggle__track">
+                        <span className="household-toggle__thumb" />
+                      </span>
+                      <span className="household-toggle__label">
+                        {isActive ? 'Shared' : 'Personal'}
+                      </span>
+                    </button>
+                  </div>
+                </li>
+              );
+            })
+          )}
         </ul>
       </section>
 
@@ -3020,34 +3048,42 @@ export function HouseholdPage() {
           contribution tracking shows who contributed what.
         </p>
         <ul className="household-goal-list" role="list" aria-label="Shared goal settings">
-          {DEMO_GOAL_IDS.map((goalId) => {
-            const shared = sharedGoals.find((sg) => sg.goalId === goalId);
-            const isShared = shared?.isShared ?? false;
-            return (
-              <li key={goalId} className="household-goal-item">
-                <div className="household-goal-item__info">
-                  <span className="household-goal-item__name">{DEMO_GOAL_NAMES[goalId]}</span>
-                  {isShared && (
-                    <span className="household-goal-item__badge">Shared with household</span>
-                  )}
-                </div>
-                <button
-                  className={`household-toggle ${isShared ? 'household-toggle--active' : ''}`}
-                  role="switch"
-                  aria-checked={isShared}
-                  aria-label={`Toggle sharing for ${DEMO_GOAL_NAMES[goalId]}`}
-                  onClick={() => setSharedGoal({ goalId, isShared: !isShared })}
-                >
-                  <span className="household-toggle__track">
-                    <span className="household-toggle__thumb" />
-                  </span>
-                  <span className="household-toggle__label">
-                    {isShared ? 'Shared' : 'Personal'}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+          {goalData.goals.length === 0 ? (
+            <li className="household-goal-item household-goal-item--empty">
+              <span className="household-goal-item__name">
+                No goals yet. Create a savings goal to share it with your household.
+              </span>
+            </li>
+          ) : (
+            goalData.goals.map((goal) => {
+              const shared = sharedGoals.find((sg) => sg.goalId === goal.id);
+              const isShared = shared?.isShared ?? false;
+              return (
+                <li key={goal.id} className="household-goal-item">
+                  <div className="household-goal-item__info">
+                    <span className="household-goal-item__name">{goal.name}</span>
+                    {isShared && (
+                      <span className="household-goal-item__badge">Shared with household</span>
+                    )}
+                  </div>
+                  <button
+                    className={`household-toggle ${isShared ? 'household-toggle--active' : ''}`}
+                    role="switch"
+                    aria-checked={isShared}
+                    aria-label={`Toggle sharing for ${goal.name}`}
+                    onClick={() => setSharedGoal({ goalId: goal.id, isShared: !isShared })}
+                  >
+                    <span className="household-toggle__track">
+                      <span className="household-toggle__thumb" />
+                    </span>
+                    <span className="household-toggle__label">
+                      {isShared ? 'Shared' : 'Personal'}
+                    </span>
+                  </button>
+                </li>
+              );
+            })
+          )}
         </ul>
       </section>
 
@@ -3197,6 +3233,15 @@ function useOptionalBudgets(): Pick<UseBudgetsResult, 'budgets'> {
   }
 }
 
+/** Read account data without crashing if no DatabaseProvider is mounted. */
+function useOptionalAccounts(): Pick<UseAccountsResult, 'accounts'> {
+  try {
+    return { accounts: useAccounts().accounts };
+  } catch {
+    return { accounts: [] };
+  }
+}
+
 function useOptionalGoals(): Pick<UseGoalsResult, 'goals' | 'createGoal'> {
   try {
     const { goals, createGoal } = useGoals();
@@ -3304,11 +3349,15 @@ interface HouseholdScorecardViewModel {
 function buildHouseholdScorecard({
   members,
   budgetSnapshots,
+  transactions,
+  accountSharings,
   resolveMemberName,
   referenceDate,
 }: {
   members: HouseholdMember[];
   budgetSnapshots: ScorecardBudgetSnapshot[];
+  transactions: Transaction[];
+  accountSharings: AccountSharing[];
   resolveMemberName: (member: HouseholdMember) => string;
   referenceDate: Date;
 }): HouseholdScorecardViewModel {
@@ -3339,7 +3388,40 @@ function buildHouseholdScorecard({
     };
   }
 
-  const seeds = getHouseholdScorecardSeeds(members);
+  // Real per-member attribution (#3379). Spend is distributed using each
+  // member's ACTUAL transactions in the category, attributed via the owning
+  // account (account_sharing.owner_id -> member.userId). Budgets have no
+  // per-member assignment in the data model, so a household category budget is
+  // split equally across members — a transparent, non-fabricated basis. No
+  // synthetic role/index/pace weighting remains.
+  const memberIndexByUserId = new Map<string, number>();
+  members.forEach((member, index) => {
+    memberIndexByUserId.set(member.userId, index);
+  });
+  const memberIndexByAccountId = new Map<string, number>();
+  accountSharings.forEach((sharing) => {
+    const memberIndex = memberIndexByUserId.get(sharing.ownerId);
+    if (memberIndex !== undefined) {
+      memberIndexByAccountId.set(sharing.accountId, memberIndex);
+    }
+  });
+
+  const realSpendByCategory = new Map<string, number[]>();
+  transactions.forEach((transaction) => {
+    if (transaction.type !== 'EXPENSE' || !transaction.categoryId) {
+      return;
+    }
+    const memberIndex = memberIndexByAccountId.get(transaction.accountId);
+    if (memberIndex === undefined) {
+      return;
+    }
+    const perMember =
+      realSpendByCategory.get(transaction.categoryId) ?? new Array<number>(members.length).fill(0);
+    perMember[memberIndex] += Math.abs(transaction.amount.amount);
+    realSpendByCategory.set(transaction.categoryId, perMember);
+  });
+
+  const equalWeights = members.map(() => 1);
   const categoriesByMember = members.map(() =>
     budgetSnapshots.map((budget) => ({
       name: budget.name,
@@ -3349,37 +3431,13 @@ function buildHouseholdScorecard({
   );
 
   budgetSnapshots.forEach((budget, budgetIndex) => {
-    const budgetWeights =
-      members.length === 1
-        ? [1]
-        : normalizeWeights(
-            seeds.map((seed, memberIndex) => {
-              const focusIndex =
-                budgetSnapshots.length > 1 ? (memberIndex + 1) % budgetSnapshots.length : 0;
-              const focusFactor =
-                budgetSnapshots.length > 1 && budgetIndex === focusIndex ? 1.08 : 1;
-              return seed.memberWeight * focusFactor;
-            }),
-          );
-
+    const realSpendWeights = realSpendByCategory.get(budget.categoryId);
     const spentWeights =
-      members.length === 1
-        ? [1]
-        : normalizeWeights(
-            budgetWeights.map((weight, memberIndex) => {
-              const seed = seeds[memberIndex];
-              const focusIndex =
-                budgetSnapshots.length > 1 ? (memberIndex + 1) % budgetSnapshots.length : 0;
-              const paceFactor = 1 + seed.paceOffset * 1.6;
-              const focusFactor =
-                budgetSnapshots.length > 1 && budgetIndex === focusIndex
-                  ? 1 + Math.max(seed.paceOffset, 0) * 2.5
-                  : 1;
-              return Math.max(0.35, weight * paceFactor * focusFactor);
-            }),
-          );
+      realSpendWeights && realSpendWeights.some((weight) => weight > 0)
+        ? realSpendWeights
+        : equalWeights;
 
-    const allocatedBudget = allocateAmount(budget.budgetAmount, budgetWeights);
+    const allocatedBudget = allocateAmount(budget.budgetAmount, equalWeights);
     const allocatedSpent = allocateAmount(budget.spentAmount, spentWeights);
 
     members.forEach((_, memberIndex) => {

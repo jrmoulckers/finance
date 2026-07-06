@@ -14,6 +14,8 @@ import {
 } from '../hooks/householdKids';
 import { useBudgets } from '../hooks/useBudgets';
 import type { UseBudgetsResult } from '../hooks/useBudgets';
+import { useAccounts } from '../hooks/useAccounts';
+import type { UseAccountsResult } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import type { UseCategoriesResult } from '../hooks/useCategories';
 import { useGoals } from '../hooks/useGoals';
@@ -35,20 +37,6 @@ vi.mock('../hooks/useHousehold', async () => {
   return {
     ...actual,
     useHousehold: vi.fn(),
-    getHouseholdScorecardSeeds: (members: Array<{ role: string }>) => {
-      if (members.length === 0) {
-        return [];
-      }
-
-      if (members.length === 1) {
-        return [{ memberWeight: 1, paceOffset: 0 }];
-      }
-
-      return members.map(() => ({
-        memberWeight: 1 / members.length,
-        paceOffset: 0,
-      }));
-    },
   };
 });
 
@@ -59,6 +47,10 @@ vi.mock('../hooks/useBudgets', async () => {
     useBudgets: vi.fn(),
   };
 });
+
+vi.mock('../hooks/useAccounts', () => ({
+  useAccounts: vi.fn(),
+}));
 
 vi.mock('../hooks/useGoals', () => ({
   useGoals: vi.fn(),
@@ -82,6 +74,7 @@ vi.mock('../components/common/Toast', () => ({
 
 const mockedUseHousehold = vi.mocked(useHousehold);
 const mockedUseBudgets = vi.mocked(useBudgets);
+const mockedUseAccounts = vi.mocked(useAccounts);
 const mockedUseGoals = vi.mocked(useGoals);
 const mockedUseTransactions = vi.mocked(useTransactions);
 const mockedUseCategories = vi.mocked(useCategories);
@@ -102,6 +95,93 @@ function mockBudgetsResult(overrides: Partial<UseBudgetsResult> = {}): UseBudget
     getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
     ...overrides,
   };
+}
+
+function mockAccountsResult(overrides: Partial<UseAccountsResult> = {}): UseAccountsResult {
+  return {
+    accounts: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createAccount: vi.fn(),
+    updateAccount: vi.fn(),
+    deleteAccount: vi.fn(),
+    ...overrides,
+  };
+}
+
+/** Minimal account fixture for the account-sharing surface (#3375). */
+function makeAccount(
+  overrides: Record<string, unknown> = {},
+): UseAccountsResult['accounts'][number] {
+  return {
+    id: 'acct-1',
+    householdId: 'hh-1',
+    name: 'Account',
+    type: 'CHECKING',
+    currency: 'USD',
+    currentBalance: { amount: 0 },
+    isArchived: false,
+    sortOrder: 0,
+    icon: null,
+    color: null,
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: true,
+    ...overrides,
+  } as unknown as UseAccountsResult['accounts'][number];
+}
+
+/** Minimal budget fixture for the shared-budget surface (#3375). */
+function makeBudget(overrides: Record<string, unknown> = {}): UseBudgetsResult['budgets'][number] {
+  return {
+    id: 'budget-1',
+    householdId: 'hh-1',
+    categoryId: 'cat-1',
+    name: 'Budget',
+    amount: { amount: 50000 },
+    spentAmount: { amount: 0 },
+    remainingAmount: { amount: 50000 },
+    currency: 'USD',
+    period: 'MONTHLY',
+    startDate: '2025-01-01',
+    endDate: null,
+    isRollover: false,
+    sortOrder: 0,
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: true,
+    ...overrides,
+  } as unknown as UseBudgetsResult['budgets'][number];
+}
+
+/** Minimal goal fixture for the shared-goal surface (#3376). */
+function makeGoal(overrides: Record<string, unknown> = {}): UseGoalsResult['goals'][number] {
+  return {
+    id: 'goal-1',
+    householdId: 'hh-1',
+    name: 'Goal',
+    description: null,
+    targetAmount: { amount: 100000 },
+    currentAmount: { amount: 0 },
+    currency: 'USD',
+    targetDate: null,
+    status: 'ACTIVE',
+    icon: null,
+    color: null,
+    accountId: null,
+    sortOrder: 0,
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: true,
+    ...overrides,
+  } as unknown as UseGoalsResult['goals'][number];
 }
 
 function mockGoalsResult(overrides: Partial<UseGoalsResult> = {}): UseGoalsResult {
@@ -430,6 +510,7 @@ describe('HouseholdPage', () => {
       dismissToast: vi.fn(),
     });
     mockedUseBudgets.mockReturnValue(mockBudgetsResult());
+    mockedUseAccounts.mockReturnValue(mockAccountsResult());
     mockedUseGoals.mockReturnValue(mockGoalsResult());
     mockedUseTransactions.mockReturnValue(mockTransactionsResult());
     mockedUseCategories.mockReturnValue(mockCategoriesResult());
@@ -1084,6 +1165,11 @@ describe('HouseholdPage', () => {
         ],
       }),
     );
+    mockedUseAccounts.mockReturnValue(
+      mockAccountsResult({
+        accounts: [makeAccount({ id: 'acct-checking', name: 'Checking Account' })],
+      }),
+    );
 
     render(<HouseholdPage />);
 
@@ -1119,6 +1205,13 @@ describe('HouseholdPage', () => {
         ],
       }),
     );
+    mockedUseBudgets.mockReturnValue(
+      mockBudgetsResult({
+        budgets: [
+          makeBudget({ id: 'budget-groceries', name: 'Groceries', categoryId: 'cat-groceries' }),
+        ],
+      }),
+    );
 
     render(<HouseholdPage />);
 
@@ -1143,6 +1236,11 @@ describe('HouseholdPage', () => {
             isSynced: true,
           },
         ],
+      }),
+    );
+    mockedUseGoals.mockReturnValue(
+      mockGoalsResult({
+        goals: [makeGoal({ id: 'goal-vacation', name: 'Family Vacation' })],
       }),
     );
 

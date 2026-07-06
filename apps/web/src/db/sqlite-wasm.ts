@@ -664,6 +664,58 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_remittance_sync      ON remittance (is_synced);`,
     ],
   },
+  {
+    version: 15,
+    label: 'add-household-collection-tables',
+    up: [
+      // Household / shared-finance data previously lived in plaintext
+      // `localStorage` (issue #3378), which never synced to a partner's device,
+      // never survived a cache clear, and was not encrypted. These tables move
+      // every household collection into the encrypted SQLite/OPFS database so it
+      // rides the same at-rest encryption and (future) PowerSync path as goals
+      // and budgets.
+      //
+      // Each collection uses a uniform "document" row: the queryable / sync
+      // columns (id, household_id, timestamps, sync metadata) are promoted, and
+      // the full entity — including nested aggregates such as a child's chores,
+      // a recurring bill's cycles, or a reconciliation plan's obligations — is
+      // stored as JSON in `data`. This mirrors the existing JSON-column pattern
+      // (transaction splits, reconciliation history) and keeps the shape a
+      // faithful, loss-free round-trip of the hook's in-memory model.
+      //
+      // Names are `hh_`-prefixed so they never collide with the normalized
+      // `household` / `household_member` tables from migration v1.
+      ...[
+        'hh_household',
+        'hh_member',
+        'hh_invitation',
+        'hh_account_sharing',
+        'hh_shared_budget',
+        'hh_shared_goal',
+        'hh_shared_expense',
+        'hh_shared_settlement',
+        'hh_child',
+        'hh_activity_event',
+        'hh_recurring_bill',
+        'hh_goal_pledge',
+        'hh_shopping_budget',
+        'hh_reconciliation_plan',
+        'hh_reconciliation_snapshot',
+      ].flatMap((table) => [
+        `CREATE TABLE IF NOT EXISTS ${table} (
+          id TEXT PRIMARY KEY,
+          household_id TEXT NOT NULL,
+          data TEXT NOT NULL,
+          created_at TEXT,
+          updated_at TEXT,
+          deleted_at TEXT,
+          sync_version INTEGER NOT NULL DEFAULT 0,
+          is_synced INTEGER NOT NULL DEFAULT 0
+        );`,
+        `CREATE INDEX IF NOT EXISTS idx_${table}_household ON ${table} (household_id);`,
+      ]),
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection

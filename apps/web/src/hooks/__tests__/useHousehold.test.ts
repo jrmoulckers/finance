@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { act, renderHook } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { DatabaseContext, type DatabaseContextValue } from '../../db/DatabaseProvider';
+import type { SqliteDb } from '../../db/sqlite-wasm';
 
 import {
   buildRecurringBillReminders,
@@ -13,6 +17,32 @@ import {
   simplifySettleUpBalances,
   useHousehold,
 } from '../useHousehold';
+
+// Household persistence is exercised against an in-memory stand-in for the
+// encrypted SQLite repository so the hook's storage round-trips can be asserted
+// without booting SQLite-WASM. The store survives unmount/remount within a test
+// and is cleared between tests (issue #3378).
+const { householdStore } = vi.hoisted(() => ({
+  householdStore: new Map<string, string>(),
+}));
+
+vi.mock('../../db/repositories/householdData', () => ({
+  HOUSEHOLD_SINGLETON_KEY: 'finance-household',
+  readHouseholdValue: (_db: unknown, key: string, fallback: unknown): unknown =>
+    householdStore.has(key) ? JSON.parse(householdStore.get(key) as string) : fallback,
+  writeHouseholdValue: (_db: unknown, key: string, value: unknown): void => {
+    householdStore.set(key, JSON.stringify(value));
+  },
+}));
+
+// Provide a database context so `useHousehold` follows its SQLite persistence
+// path. The handle itself is opaque — the mocked repository above ignores it.
+const wrapper = ({ children }: { children: ReactNode }) =>
+  createElement(
+    DatabaseContext.Provider,
+    { value: { db: {} as SqliteDb, diagnostics: {} as DatabaseContextValue['diagnostics'] } },
+    children,
+  );
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -31,6 +61,7 @@ vi.stubGlobal('crypto', {
 beforeEach(() => {
   uuidCounter = 0;
   localStorage.clear();
+  householdStore.clear();
   vi.clearAllMocks();
 });
 
@@ -40,7 +71,7 @@ beforeEach(() => {
 
 describe('useHousehold', () => {
   it('returns null household when none exists', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     expect(result.current.loading).toBe(false);
     expect(result.current.household).toBeNull();
@@ -49,7 +80,7 @@ describe('useHousehold', () => {
   });
 
   it('creates a household with the owner as first member', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     let household!: ReturnType<typeof result.current.createHousehold>;
     act(() => {
@@ -63,7 +94,7 @@ describe('useHousehold', () => {
   });
 
   it('invites a member with specified role', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Test Household' });
@@ -85,7 +116,7 @@ describe('useHousehold', () => {
   });
 
   it('returns null when inviting without a household', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     let invitation!: ReturnType<typeof result.current.inviteMember>;
     act(() => {
@@ -100,7 +131,7 @@ describe('useHousehold', () => {
   });
 
   it('revokes a pending invitation', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Test' });
@@ -122,7 +153,7 @@ describe('useHousehold', () => {
   });
 
   it('adds and revokes a trusted helper as a read-only VIEWER member', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Test Household' });
@@ -156,7 +187,7 @@ describe('useHousehold', () => {
   });
 
   it('updates a member role', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Test' });
@@ -176,7 +207,7 @@ describe('useHousehold', () => {
   });
 
   it('removes a member', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Test' });
@@ -194,7 +225,7 @@ describe('useHousehold', () => {
   });
 
   it('sets account sharing mode', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Test' });
@@ -214,8 +245,8 @@ describe('useHousehold', () => {
     expect(result.current.accountSharings[0]?.sharingMode).toBe('PRIVATE');
   });
 
-  it('persists household data to localStorage', () => {
-    const { result, unmount } = renderHook(() => useHousehold());
+  it('persists household data across remounts via the encrypted database', () => {
+    const { result, unmount } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Persistent Family' });
@@ -224,14 +255,14 @@ describe('useHousehold', () => {
     unmount();
 
     // Re-mount and check data is restored
-    const { result: result2 } = renderHook(() => useHousehold());
+    const { result: result2 } = renderHook(() => useHousehold(), { wrapper });
 
     expect(result2.current.household?.name).toBe('Persistent Family');
     expect(result2.current.members).toHaveLength(1);
   });
 
   it('links and persists a college fund goal for an existing child profile', () => {
-    const { result, unmount } = renderHook(() => useHousehold());
+    const { result, unmount } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'College Family' });
@@ -256,12 +287,12 @@ describe('useHousehold', () => {
 
     unmount();
 
-    const { result: result2 } = renderHook(() => useHousehold());
+    const { result: result2 } = renderHook(() => useHousehold(), { wrapper });
     expect(result2.current.children[0]?.collegeFundGoalId).toBe('goal-college-1');
   });
 
   it('checks permissions correctly', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     expect(result.current.checkPermission('OWNER', 'MANAGE_MEMBERS')).toBe(true);
     expect(result.current.checkPermission('VIEWER', 'MANAGE_MEMBERS')).toBe(false);
@@ -341,7 +372,7 @@ describe('shared expense settlement helpers', () => {
 
 describe('household beta helpers and persistence', () => {
   it('creates recurring bill reminders and marks a cycle paid into shared expenses', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Beta Household' });
@@ -386,7 +417,7 @@ describe('household beta helpers and persistence', () => {
   });
 
   it('tracks goal pledges, contributions, and catch-up recommendations', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Goal Household' });
@@ -413,7 +444,7 @@ describe('household beta helpers and persistence', () => {
   });
 
   it('summarizes shopping trips and can generate a shared expense', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Shopping Household' });
@@ -454,7 +485,7 @@ describe('household beta helpers and persistence', () => {
   });
 
   it('calculates privacy-aware reconciliation true-up suggestions and snapshots a period', () => {
-    const { result } = renderHook(() => useHousehold());
+    const { result } = renderHook(() => useHousehold(), { wrapper });
 
     act(() => {
       result.current.createHousehold({ name: 'Reconcile Household' });
