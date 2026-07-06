@@ -1160,3 +1160,70 @@
   background: var(--semantic-background-primary, #1f2937);
   border-color: var(--semantic-border, #374151);
 }
+
+/* ---------------------------------------------------------------------------
+ * Payoff timeline (#3368) — per-debt payoff dates / snowball milestones
+ * ------------------------------------------------------------------------- */
+
+.payoff-timeline {
+  margin-top: var(--spacing-5, 1.5rem);
+}
+
+.payoff-timeline__intro {
+  color: var(--semantic-text-secondary, #666);
+  margin: 0 0 var(--spacing-3, 0.75rem);
+}
+
+.payoff-timeline__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 0.5rem);
+}
+
+.payoff-timeline__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--spacing-1, 0.25rem) var(--spacing-3, 0.75rem);
+  padding: var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-primary, #fff);
+}
+
+.payoff-timeline__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--semantic-primary-bg, #dbeafe);
+  color: var(--semantic-primary, #2563eb);
+  font-weight: var(--font-weight-bold, 700);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.payoff-timeline__name {
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-text-primary, #111);
+}
+
+.payoff-timeline__date {
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-positive, #059669);
+}
+
+.payoff-timeline__months {
+  grid-column: 2 / -1;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #666);
+}
+
+[data-theme='dark'] .payoff-timeline__item {
+  background: var(--semantic-background-primary, #1f2937);
+  border-color: var(--semantic-border, #374151);
+}

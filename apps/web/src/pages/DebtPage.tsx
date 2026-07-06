@@ -40,6 +40,7 @@ import {
   compareStrategies,
 } from '../lib/debt-payoff-engine';
 import { addMonthsToIsoDate } from '../lib/date-utils';
+import { buildPayoffMilestones } from '../lib/debt/payoff-milestones';
 import { aggregateBnplDashboard, type BnplObligationDraft } from '../lib/debt/bnpl-aggregation';
 import {
   calculateStudentLoanDashboardSummary,
@@ -702,6 +703,10 @@ function PayoffPlannerPanel(): React.ReactElement {
       debts.length > 0 ? calculateStrategyResult(debts, activeStrategy, extraPaymentCents) : null,
     [activeStrategy, debts, extraPaymentCents],
   );
+  const payoffMilestones = useMemo(
+    () => (activeResult ? buildPayoffMilestones(activeResult, todayIso) : []),
+    [activeResult, todayIso],
+  );
   const minimumOnlyResult = useMemo(
     () => (debts.length > 0 ? calculateStrategyResult(debts, activeStrategy, 0) : null),
     [activeStrategy, debts],
@@ -968,6 +973,32 @@ function PayoffPlannerPanel(): React.ReactElement {
             ))}
 
           {debtProgressRing && <ProgressRingCard card={debtProgressRing} />}
+
+          {payoffMilestones.length > 1 && (
+            <section className="payoff-timeline" aria-label="Payoff timeline">
+              <h2>Payoff Timeline</h2>
+              <p className="payoff-timeline__intro">
+                Your {formatStrategyName(activeStrategy)} plan clears one debt at a time &mdash;
+                here&rsquo;s when each one is gone.
+              </p>
+              <ol className="payoff-timeline__list">
+                {payoffMilestones.map((milestone, index) => (
+                  <li key={milestone.debtId} className="payoff-timeline__item">
+                    <span className="payoff-timeline__index" aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    <span className="payoff-timeline__name">{milestone.debtName}</span>
+                    <span className="payoff-timeline__date">
+                      {formatMonthYear(milestone.payoffDateIso)}
+                    </span>
+                    <span className="payoff-timeline__months">
+                      in {milestone.monthsToPayoff} {pluralize(milestone.monthsToPayoff, 'month')}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
           <section aria-label="Debt milestones" className="debt-milestones">
             <div className="debt-milestones__summary">
