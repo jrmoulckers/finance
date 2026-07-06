@@ -88,9 +88,10 @@ graph TD
 **Authentication**: Bearer token (required)
 
 **Request Body**:
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `changes` | `Change[]` | Yes | Array of local mutations |
+
+| Field     | Type       | Required | Description              |
+| --------- | ---------- | -------- | ------------------------ |
+| `changes` | `Change[]` | Yes      | Array of local mutations |
 
 **Response**: `200 OK` with `SyncResult`
 **Errors**: `401 Unauthorized`, `429 Too Many Requests`

@@ -204,8 +204,8 @@ The codebase demonstrates **strong security architecture** — envelope encrypti
 - **Recommendation:** Replace the wildcard with explicit allowed origins:
   `	ypescript
 const ALLOWED_ORIGINS = [
-  'https://app.finance.example.com',
-  'http://localhost:5173', // dev only, behind env check
+'https://app.finance.example.com',
+'http://localhost:5173', // dev only, behind env check
 ];
 `
   The `Access-Control-Allow-Origin` header must match the request's `Origin` header or be rejected. Note: browsers will not send cookies with `credentials: 'include'` when the server responds with `*`, but the `apikey` header is still sent, allowing abuse of the Supabase anon key.

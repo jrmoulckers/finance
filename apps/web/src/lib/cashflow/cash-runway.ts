@@ -41,12 +41,7 @@ export type CashEventDirection = 'inflow' | 'outflow';
 
 /** How often a scheduled event repeats within the horizon. */
 export type RecurrenceFrequency =
-  | 'once'
-  | 'weekly'
-  | 'biweekly'
-  | 'monthly'
-  | 'quarterly'
-  | 'yearly';
+  'once' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
 
 /** A scheduled cash movement, optionally recurring. */
 export interface ScheduledCashEvent {

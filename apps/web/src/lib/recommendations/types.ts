@@ -7,12 +7,7 @@ import type { DetectedSubscription } from '../analytics/subscriptions';
 import type { EmergencyRunwayResult } from '../savings/types';
 
 export type RecommendationCategory =
-  | 'cash-flow'
-  | 'spending'
-  | 'budget'
-  | 'savings'
-  | 'emergency-fund'
-  | 'subscriptions';
+  'cash-flow' | 'spending' | 'budget' | 'savings' | 'emergency-fund' | 'subscriptions';
 
 export type RecommendationPriority = 'critical' | 'high' | 'medium' | 'low';
 

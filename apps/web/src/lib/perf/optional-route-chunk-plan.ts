@@ -2,13 +2,7 @@
 
 export type OptionalChunkRoute = 'dashboard' | 'transactions';
 export type OptionalChunkCategory =
-  | 'primary-shell'
-  | 'chart'
-  | 'analytics'
-  | 'tax'
-  | 'investment'
-  | 'receipt'
-  | 'education';
+  'primary-shell' | 'chart' | 'analytics' | 'tax' | 'investment' | 'receipt' | 'education';
 
 export interface RouteImportDescriptor {
   readonly route: OptionalChunkRoute;

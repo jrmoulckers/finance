@@ -12,11 +12,7 @@
 import { SINGLE_PARENT_FAMILY_TEMPLATE } from './single-parent-starter-template';
 
 export type BudgetStarterTemplateId =
-  | 'student'
-  | 'food-meals'
-  | 'professional'
-  | 'family'
-  | 'retiree';
+  'student' | 'food-meals' | 'professional' | 'family' | 'retiree';
 
 export interface BudgetStarterTemplateCategory {
   readonly emoji: string;

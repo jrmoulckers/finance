@@ -19,10 +19,7 @@ export interface LearnedDetectionThreshold {
 }
 
 export type ReviewAction =
-  | 'merge-duplicate'
-  | 'link-transfer'
-  | 'keep-separate'
-  | 'ignore-suggestion';
+  'merge-duplicate' | 'link-transfer' | 'keep-separate' | 'ignore-suggestion';
 
 export interface CandidateScore {
   readonly leftId: string;

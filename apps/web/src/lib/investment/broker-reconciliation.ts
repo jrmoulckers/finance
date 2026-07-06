@@ -4,10 +4,7 @@
 export type BrokerActivityType = 'BUY' | 'SELL' | 'DIVIDEND' | 'TRANSFER' | 'FEE' | 'CASH';
 export type ReconciliationSeverity = 'info' | 'warning' | 'critical';
 export type ReconciliationIssueType =
-  | 'duplicate-activity'
-  | 'position-mismatch'
-  | 'cash-mismatch'
-  | 'possible-transfer';
+  'duplicate-activity' | 'position-mismatch' | 'cash-mismatch' | 'possible-transfer';
 
 export interface BrokerActivity {
   readonly id: string;

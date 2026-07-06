@@ -24,11 +24,7 @@ export type ImportSessionId = string;
 
 /** Status of an import session. */
 export type ImportSessionStatus =
-  | 'pending'
-  | 'in_progress'
-  | 'completed'
-  | 'rolled_back'
-  | 'failed';
+  'pending' | 'in_progress' | 'completed' | 'rolled_back' | 'failed';
 
 /** Strategy for handling duplicates during import. */
 export type MergeStrategy = 'skip' | 'overwrite' | 'keep_both';

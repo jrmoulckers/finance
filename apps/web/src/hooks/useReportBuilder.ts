@@ -50,15 +50,7 @@ import { useTransactions } from './useTransactions';
 // ---------------------------------------------------------------------------
 
 export type ReportFieldType =
-  | 'date'
-  | 'payee'
-  | 'amount'
-  | 'category'
-  | 'account'
-  | 'type'
-  | 'note'
-  | 'balance'
-  | 'tags';
+  'date' | 'payee' | 'amount' | 'category' | 'account' | 'type' | 'note' | 'balance' | 'tags';
 
 export interface ReportField {
   readonly id: string;
@@ -84,13 +76,7 @@ export type ReportTemplate =
   | 'custom';
 
 export type DatePreset =
-  | 'this-month'
-  | 'last-month'
-  | 'this-quarter'
-  | 'last-quarter'
-  | 'ytd'
-  | 'last-year'
-  | 'custom';
+  'this-month' | 'last-month' | 'this-quarter' | 'last-quarter' | 'ytd' | 'last-year' | 'custom';
 
 export interface ReportConfig {
   readonly name: string;

@@ -17,12 +17,7 @@ import { DEFAULT_LOCALE, getCurrentLocale, translate } from '../../lib/i18n';
 
 /** The context/page where a tip is relevant. */
 export type TipContext =
-  | 'dashboard'
-  | 'accounts'
-  | 'transactions'
-  | 'budgets'
-  | 'goals'
-  | 'general';
+  'dashboard' | 'accounts' | 'transactions' | 'budgets' | 'goals' | 'general';
 
 /** Severity/importance of a tip. */
 export type TipSeverity = 'info' | 'warning' | 'success' | 'critical';

@@ -422,11 +422,11 @@ components independently (§6.4) rather than hashing them together.
 Given a `CapturedTransaction` and a window of existing `Transaction`s, compute a composite score
 per candidate-existing pair:
 
-| Component    | Rule                                                                                                                                           | Weight      |
+| Component | Rule | Weight |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ | ---- |
-| **Amount**   | exact `Cents` equality → `1.0`; else within `AMOUNT_TOLERANCE_PERCENT` (10%, `SubscriptionDetector.kt:25`) → linear decay to `0.0`; else `0.0` | 0.50        |
-| **Merchant** | `MerchantNormalizer.similarity` (Sørensen–Dice), in `[0,1]`                                                                                    | 0.30        |
-| **Date**     | `                                                                                                                                              | daysBetween | `within window (default ±3 days,`INTERVAL_TOLERANCE_DAYS`, `SubscriptionDetector.kt:31`) → linear decay; outside → `0.0` | 0.20 |
+| **Amount** | exact `Cents` equality → `1.0`; else within `AMOUNT_TOLERANCE_PERCENT` (10%, `SubscriptionDetector.kt:25`) → linear decay to `0.0`; else `0.0` | 0.50 |
+| **Merchant** | `MerchantNormalizer.similarity` (Sørensen–Dice), in `[0,1]` | 0.30 |
+| **Date** | `                                                                                                                                             | daysBetween |`within window (default ±3 days,`INTERVAL_TOLERANCE_DAYS`, `SubscriptionDetector.kt:31`) → linear decay; outside → `0.0` | 0.20 |
 
 `compositeScore = 0.50·amount + 0.30·merchant + 0.20·date`.
 

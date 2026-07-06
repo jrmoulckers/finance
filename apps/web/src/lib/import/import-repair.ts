@@ -9,13 +9,7 @@ import { parseCurrencyToCents, parseDate } from './csv-parser';
 
 export type RepairSeverity = 'blocking' | 'warning' | 'info';
 export type RepairField =
-  | 'date'
-  | 'amount'
-  | 'payee'
-  | 'category'
-  | 'account'
-  | 'note'
-  | 'sourceReference';
+  'date' | 'amount' | 'payee' | 'category' | 'account' | 'note' | 'sourceReference';
 export type DuplicateRepairAction = 'skip' | 'import' | 'replace';
 
 export interface RepairIssue {

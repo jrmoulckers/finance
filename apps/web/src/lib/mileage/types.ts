@@ -3,12 +3,7 @@
 export type TripPurpose = 'business' | 'medical' | 'charity' | 'moving' | 'personal';
 export type MileageRatePurpose = Exclude<TripPurpose, 'personal'>;
 export type ExpenseCategory =
-  | 'travel'
-  | 'meals'
-  | 'equipment'
-  | 'home-office'
-  | 'professional-services'
-  | 'subscriptions';
+  'travel' | 'meals' | 'equipment' | 'home-office' | 'professional-services' | 'subscriptions';
 export type DeductionType = 'mileage' | 'business-expense';
 export type BusinessExpenseSource = 'manual' | 'rule';
 

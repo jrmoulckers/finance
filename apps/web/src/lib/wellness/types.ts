@@ -15,12 +15,7 @@
 
 /** Application status for a scholarship. */
 export type ScholarshipStatus =
-  | 'researching'
-  | 'in_progress'
-  | 'submitted'
-  | 'awarded'
-  | 'rejected'
-  | 'waitlisted';
+  'researching' | 'in_progress' | 'submitted' | 'awarded' | 'rejected' | 'waitlisted';
 
 /** A scholarship application entry. */
 export interface Scholarship {
@@ -532,10 +527,7 @@ export interface MoodCorrelationSummary {
 
 /** Stress signals shown as gentle alerts in the wellness dashboard. */
 export type StressIndicatorKind =
-  | 'declining-savings'
-  | 'debt-pressure'
-  | 'irregular-income'
-  | 'bill-crunch';
+  'declining-savings' | 'debt-pressure' | 'irregular-income' | 'bill-crunch';
 
 /** A single detected financial stress signal. */
 export interface StressIndicator {

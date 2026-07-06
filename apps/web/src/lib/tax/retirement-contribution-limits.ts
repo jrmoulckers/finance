@@ -15,14 +15,7 @@
 const NEAR_LIMIT_THRESHOLD = 0.9;
 
 export type RetirementAccountType =
-  | 'TRADITIONAL_IRA'
-  | 'ROTH_IRA'
-  | '401K'
-  | 'ROTH_401K'
-  | '403B'
-  | 'SEP_IRA'
-  | 'HSA'
-  | 'FSA';
+  'TRADITIONAL_IRA' | 'ROTH_IRA' | '401K' | 'ROTH_401K' | '403B' | 'SEP_IRA' | 'HSA' | 'FSA';
 
 export type RetirementTaxTreatment = 'PRE_TAX' | 'ROTH' | 'AFTER_TAX' | 'EMPLOYER';
 export type ContributionDesignation = 'EMPLOYEE' | 'EMPLOYER';

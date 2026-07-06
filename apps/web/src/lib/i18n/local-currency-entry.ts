@@ -7,11 +7,7 @@ import {
 } from '../currency-metadata';
 
 export type LocalCurrencyAmountError =
-  | 'required'
-  | 'invalid'
-  | 'too-many-decimals'
-  | 'not-positive'
-  | 'too-large';
+  'required' | 'invalid' | 'too-many-decimals' | 'not-positive' | 'too-large';
 
 export interface LocalCurrencyAmountParseSuccess {
   readonly ok: true;
@@ -31,8 +27,7 @@ export interface LocalCurrencyAmountParseFailure {
 }
 
 export type LocalCurrencyAmountParseResult =
-  | LocalCurrencyAmountParseSuccess
-  | LocalCurrencyAmountParseFailure;
+  LocalCurrencyAmountParseSuccess | LocalCurrencyAmountParseFailure;
 
 const LOCAL_CURRENCY_AMOUNT_ERROR_IDS: Readonly<Record<LocalCurrencyAmountError, string>> = {
   required: 'transaction.localAmount.error.required',

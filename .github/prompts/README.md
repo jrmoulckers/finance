@@ -26,9 +26,10 @@ The CLI loads the `.prompt.md` file and follows the instructions inside, substit
 Deploys N sprints across all agent types in parallel. Each sprint dispatches up to 15 agents, each working in its own worktree with full CI validation.
 
 **Parameters:**
-| Name | Default | Description |
-|------|---------|-------------|
-| `N` | `3` | Number of sprints to run |
+
+| Name | Default | Description              |
+| ---- | ------- | ------------------------ |
+| `N`  | `3`     | Number of sprints to run |
 
 **Examples:**
 
@@ -54,10 +55,11 @@ Run 5 sprints using the sprint prompt
 Deploys only specific agent types for focused work. Use when you want to run a subset of the fleet.
 
 **Parameters:**
-| Name | Default | Description |
-|----------|---------|-------------|
-| `agents` | (none) | Comma-separated agent types |
-| `N` | `2` | Number of sprints |
+
+| Name     | Default | Description                 |
+| -------- | ------- | --------------------------- |
+| `agents` | (none)  | Comma-separated agent types |
+| `N`      | `2`     | Number of sprints           |
 
 **Examples:**
 
@@ -148,9 +150,10 @@ Rebase all open PRs
 Dispatches code-review agents in parallel to review all (or selected) open PRs.
 
 **Parameters:**
-| Name | Default | Description |
-|---------|---------|-------------|
-| `scope` | `all` | `all` or comma-separated PR numbers |
+
+| Name    | Default | Description                         |
+| ------- | ------- | ----------------------------------- |
+| `scope` | `all`   | `all` or comma-separated PR numbers |
 
 **Examples:**
 
@@ -176,9 +179,10 @@ Review PRs 42, 57, 63 using the review prompt
 Prunes stale worktrees, identifies stale PRs/issues, finds duplicates, and lists merged branches.
 
 **Parameters:**
-| Name | Default | Description |
-|-------------|---------|-------------|
-| `stale-days`| `30` | Days of inactivity before flagging as stale |
+
+| Name         | Default | Description                                 |
+| ------------ | ------- | ------------------------------------------- |
+| `stale-days` | `30`    | Days of inactivity before flagging as stale |
 
 **Examples:**
 

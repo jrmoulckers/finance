@@ -10,14 +10,7 @@ import type {
 /** UI-ready, accessible presentation model for cash-flow Sankey reports (#2480). */
 
 export type CashFlowSankeyColorToken =
-  | 'income'
-  | 'expense'
-  | 'transfer'
-  | 'debt'
-  | 'savings'
-  | 'available-cash'
-  | 'surplus'
-  | 'deficit';
+  'income' | 'expense' | 'transfer' | 'debt' | 'savings' | 'available-cash' | 'surplus' | 'deficit';
 
 export interface CashFlowSankeyLegendItem {
   readonly token: CashFlowSankeyColorToken;

@@ -25,12 +25,7 @@
  * - `account` matches against `Transaction.accountId`
  */
 export type TagConditionField =
-  | 'counterpartyName'
-  | 'category'
-  | 'amount'
-  | 'account'
-  | 'description'
-  | 'type';
+  'counterpartyName' | 'category' | 'amount' | 'account' | 'description' | 'type';
 
 /**
  * Comparison operators available for tag rule conditions.

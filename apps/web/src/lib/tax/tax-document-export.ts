@@ -8,18 +8,9 @@ import type { AnnualMileageSummary } from './mileage-log';
 import type { PayerIncomeSummary } from './self-employment-income';
 
 export type TaxChecklistSection =
-  | 'INCOME'
-  | 'INVESTMENTS'
-  | 'DEDUCTIONS'
-  | 'ESTIMATED_PAYMENTS'
-  | 'DOCUMENTS';
+  'INCOME' | 'INVESTMENTS' | 'DEDUCTIONS' | 'ESTIMATED_PAYMENTS' | 'DOCUMENTS';
 export type TaxChecklistStatus =
-  | 'NOT_STARTED'
-  | 'REQUESTED'
-  | 'RECEIVED'
-  | 'REVIEWED'
-  | 'EXPORTED'
-  | 'NOT_APPLICABLE';
+  'NOT_STARTED' | 'REQUESTED' | 'RECEIVED' | 'REVIEWED' | 'EXPORTED' | 'NOT_APPLICABLE';
 
 export interface TaxChecklistItem {
   readonly id: string;

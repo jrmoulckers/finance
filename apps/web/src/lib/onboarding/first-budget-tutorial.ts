@@ -11,11 +11,7 @@
  */
 
 export type FirstBudgetTutorialStepId =
-  | 'income'
-  | 'fixed-expenses'
-  | 'flexible-spending'
-  | 'savings'
-  | 'review';
+  'income' | 'fixed-expenses' | 'flexible-spending' | 'savings' | 'review';
 
 export type FirstBudgetCategoryKind = 'income' | 'fixed' | 'flexible' | 'savings';
 

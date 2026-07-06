@@ -73,25 +73,12 @@ export interface SyncMetadata {
 
 /** Maps to KMP `com.finance.models.AccountType`. */
 export type AccountType =
-  | 'CHECKING'
-  | 'SAVINGS'
-  | 'CREDIT_CARD'
-  | 'CASH'
-  | 'INVESTMENT'
-  | 'LOAN'
-  | 'OTHER';
+  'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'CASH' | 'INVESTMENT' | 'LOAN' | 'OTHER';
 
 export type AccountPurpose = 'personal' | 'business' | 'both';
 
 export type RetirementAccountType =
-  | 'TRADITIONAL_IRA'
-  | 'ROTH_IRA'
-  | '401K'
-  | 'ROTH_401K'
-  | '403B'
-  | 'SEP_IRA'
-  | 'HSA'
-  | 'FSA';
+  'TRADITIONAL_IRA' | 'ROTH_IRA' | '401K' | 'ROTH_401K' | '403B' | 'SEP_IRA' | 'HSA' | 'FSA';
 
 export type RetirementTaxTreatment = 'PRE_TAX' | 'ROTH' | 'AFTER_TAX' | 'EMPLOYER';
 export type HsaCoverageLevel = 'SELF_ONLY' | 'FAMILY';
@@ -421,14 +408,7 @@ export interface GoalContribution {
 
 /** Maps to KMP `com.finance.models.InvestmentType`. */
 export type InvestmentType =
-  | 'STOCK'
-  | 'BOND'
-  | 'ETF'
-  | 'MUTUAL_FUND'
-  | 'CRYPTO'
-  | 'REAL_ESTATE'
-  | 'COMMODITY'
-  | 'OTHER';
+  'STOCK' | 'BOND' | 'ETF' | 'MUTUAL_FUND' | 'CRYPTO' | 'REAL_ESTATE' | 'COMMODITY' | 'OTHER';
 
 /** Maps to KMP `com.finance.models.Investment`. */
 export interface Investment extends SyncMetadata {

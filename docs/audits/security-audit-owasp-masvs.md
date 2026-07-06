@@ -53,10 +53,11 @@ The remaining findings are defense-in-depth improvements with no active data exp
 - **Issue:** The `CRON_SECRET` comparison uses JavaScript's `!==` operator, which short-circuits on the first differing byte. This creates a timing side-channel that could allow an attacker to brute-force the secret one character at a time. The `auth-webhook` function correctly uses `constantTimeEqual()` (line 51--63 of `auth-webhook/index.ts`), but `process-recurring` does not.
 - **MASVS:** MASVS-CRYPTO-2 (use proven cryptographic primitives correctly)
 - **Remediation:** Import or inline the `constantTimeEqual()` function from `auth-webhook/index.ts` (or extract it to `_shared/auth.ts`) and use it for the comparison:
-  `	ypescript
+
+```typescript
 const token = authHeader.replace('Bearer ', '');
 if (!constantTimeEqual(token, cronSecret)) { ... }
-`
+```
 
 ### C-2: JVM/Android SecureRandom instantiated per call --- Severity: MEDIUM
 
@@ -65,7 +66,8 @@ if (!constantTimeEqual(token, cronSecret)) { ... }
 - **Issue:** While functionally correct, repeated instantiation wastes entropy pool initialization. On Android particularly, early-boot entropy starvation is a known issue. A singleton `SecureRandom` instance would be both more performant and safer.
 - **MASVS:** MASVS-CRYPTO-1 (strong random number generation)
 - **Remediation:** Use a companion object singleton:
-  `kotlin
+
+```kotlin
 actual object PlatformSHA256 {
     private val secureRandom = java.security.SecureRandom()
     actual fun randomBytes(size: Int): ByteArray {
@@ -74,7 +76,7 @@ actual object PlatformSHA256 {
         return bytes
     }
 }
-`
+```
 
 ### C-3: JVM KeyStore uses hardcoded password --- Severity: MEDIUM
 
@@ -198,9 +200,10 @@ actual object PlatformSHA256 {
 - **Issue:** The email delivery uses `http://` (plaintext) to connect to the SMTP relay. If the relay is on a different host or traverses a network boundary, email content (including notification subjects and bodies) is transmitted unencrypted.
 - **MASVS:** MASVS-NETWORK-1 (use TLS for all network communication)
 - **Remediation:** Change to `https://` and validate the relay certificate. If the relay is localhost-only (same Deno isolate), document this as an accepted risk. Add a validation check:
-  `	ypescript
+
+```typescript
 const protocol = smtpHost === 'localhost' || smtpHost === '127.0.0.1' ? 'http' : 'https';
-`
+```
 
 ### N-2: PASS --- CORS is origin-allowlist based, never wildcard
 
@@ -255,12 +258,13 @@ const protocol = smtpHost === 'localhost' || smtpHost === '127.0.0.1' ? 'http' :
 - **Issue:** The `role` field from the request body is passed directly to the database insert (line 141) without validation against an allowlist. If the DB has a CHECK constraint this is caught, but relying solely on DB-level validation means the error message may leak schema details.
 - **MASVS:** MASVS-CODE-4 (validate all input)
 - **Remediation:** Add application-level validation:
-  `	ypescript
+
+```typescript
 const VALID_ROLES = ['member', 'admin'] as const;
 if (!VALID_ROLES.includes(role)) {
   return errorResponse(req, 'Invalid role. Must be "member" or "admin".');
 }
-`
+```
 
 ### Q-3: household-invite POST does not validate expires_in_hours --- Severity: LOW
 
@@ -268,11 +272,12 @@ if (!VALID_ROLES.includes(role)) {
 - **Issue:** `expires_in_hours` is used directly in expiry calculation (line 132) without bounds checking. A malicious request could set `expires_in_hours: 999999` (creating invitations valid for ~114 years) or `expires_in_hours: 0` (immediately expired) or negative values.
 - **MASVS:** MASVS-CODE-4 (validate all input)
 - **Remediation:**
-  `	ypescript
+
+```typescript
 const MAX_EXPIRY_HOURS = 168; // 7 days
 const MIN_EXPIRY_HOURS = 1;
 const validExpiry = Math.min(MAX_EXPIRY_HOURS, Math.max(MIN_EXPIRY_HOURS, expires_in_hours));
-`
+```
 
 ### Q-4: CSV export vulnerable to formula injection --- Severity: LOW
 
@@ -280,12 +285,13 @@ const validExpiry = Math.min(MAX_EXPIRY_HOURS, Math.max(MIN_EXPIRY_HOURS, expire
 - **Issue:** The `recordsToCsv()` function escapes commas, quotes, and newlines, but does not sanitize values starting with `=`, `+`, `-`, or `@`. If a user has entered a payee name like `=CMD('calc')`, the exported CSV could execute formulas when opened in Excel or Google Sheets (CSV injection / formula injection).
 - **MASVS:** MASVS-CODE-4 (validate and sanitize output)
 - **Remediation:** Prefix values starting with `=`, `+`, `-`, `@`, `\t`, `\r` with a single quote:
-  `	ypescript
+
+```typescript
 const FORMULA_TRIGGERS = ['=', '+', '-', '@', '\t', '\r'];
 if (FORMULA_TRIGGERS.some(t => str.startsWith(t))) {
   return "'$`{str.replace(/"/g, '""')}";
   }
-  `
+```
 
 ### Q-5: PASS --- All Edge Functions use parameterized queries
 

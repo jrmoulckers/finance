@@ -13,13 +13,7 @@ export interface SmartNotification {
   readonly status: SmartNotificationStatus;
   readonly entityId?: string;
   readonly entityType?:
-    | 'bill'
-    | 'budget'
-    | 'goal'
-    | 'account'
-    | 'transaction'
-    | 'merchant'
-    | 'category';
+    'bill' | 'budget' | 'goal' | 'account' | 'transaction' | 'merchant' | 'category';
   readonly dueDate?: string;
   readonly financialImpactCents?: number;
   readonly deduplicationKey?: string;

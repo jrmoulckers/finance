@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type SimpleModeSurface =
-  | 'dashboard'
-  | 'transactions'
-  | 'budgets'
-  | 'bills'
-  | 'goals'
-  | 'reports'
-  | 'settings';
+  'dashboard' | 'transactions' | 'budgets' | 'bills' | 'goals' | 'reports' | 'settings';
 
 export interface SimpleModePlan {
   surface: SimpleModeSurface;

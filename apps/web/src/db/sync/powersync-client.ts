@@ -35,11 +35,7 @@ export interface PowerSyncConfig {
 
 /** Current PowerSync connection status. */
 export type PowerSyncConnectionStatus =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'syncing'
-  | 'error';
+  'disconnected' | 'connecting' | 'connected' | 'syncing' | 'error';
 
 /** Snapshot of the PowerSync sync state for the UI. */
 export interface PowerSyncStatus {

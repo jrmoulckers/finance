@@ -25,9 +25,7 @@ export const SIGNED_IN_HOME_PATH = '/dashboard';
  * - `exit`: allow the browser back navigation to leave the app shell.
  */
 export type BackNavigationDecision =
-  | { kind: 'redirect'; to: string }
-  | { kind: 'prompt' }
-  | { kind: 'exit' };
+  { kind: 'redirect'; to: string } | { kind: 'prompt' } | { kind: 'exit' };
 
 /** True when `pathname` is the onboarding flow (exact match or sub-route). */
 export function isOnboardingPath(pathname: string): boolean {

@@ -90,8 +90,7 @@ export function clearSlowNetworkDegradation(): void {
 }
 
 function getNavigatorConnection():
-  | (EventTarget & { effectiveType?: NetworkEffectiveType; saveData?: boolean })
-  | null {
+  (EventTarget & { effectiveType?: NetworkEffectiveType; saveData?: boolean }) | null {
   const nav = navigator as Navigator & {
     connection?: EventTarget & { effectiveType?: NetworkEffectiveType; saveData?: boolean };
     mozConnection?: EventTarget & { effectiveType?: NetworkEffectiveType; saveData?: boolean };

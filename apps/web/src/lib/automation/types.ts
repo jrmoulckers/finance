@@ -45,12 +45,7 @@ export interface Transaction {
 
 /** Comparison operators for numeric conditions. */
 export type AmountOperator =
-  | 'greater_than'
-  | 'less_than'
-  | 'equal'
-  | 'greater_or_equal'
-  | 'less_or_equal'
-  | 'between';
+  'greater_than' | 'less_than' | 'equal' | 'greater_or_equal' | 'less_or_equal' | 'between';
 
 /** Pattern matching mode for string conditions. */
 export type PatternMode = 'substring' | 'regex' | 'starts_with' | 'exact';

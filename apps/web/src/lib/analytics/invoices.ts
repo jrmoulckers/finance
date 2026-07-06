@@ -42,11 +42,7 @@ export interface InvoicePipelineGroup {
 }
 
 export type ForecastBucketId =
-  | 'past-due'
-  | 'next-30'
-  | 'days-31-60'
-  | 'days-61-90'
-  | 'days-90-plus';
+  'past-due' | 'next-30' | 'days-31-60' | 'days-61-90' | 'days-90-plus';
 
 export interface ForecastBucket {
   readonly id: ForecastBucketId;

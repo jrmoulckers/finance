@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type HapticEventType =
-  | 'budget_warning'
-  | 'budget_critical'
-  | 'budget_exceeded'
-  | 'goal_reached'
-  | 'savings_milestone';
+  'budget_warning' | 'budget_critical' | 'budget_exceeded' | 'goal_reached' | 'savings_milestone';
 
 export type HapticPattern = readonly number[];
 

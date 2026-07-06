@@ -3,13 +3,7 @@
 import type { SensitiveSurfaceCategory } from './privacy-screen';
 
 export type SensitiveSurfaceArea =
-  | 'dashboard'
-  | 'chart'
-  | 'detail'
-  | 'export'
-  | 'notification'
-  | 'search'
-  | 'navigation';
+  'dashboard' | 'chart' | 'detail' | 'export' | 'notification' | 'search' | 'navigation';
 
 export interface PrivacySurfaceCoverageItem {
   readonly id: string;

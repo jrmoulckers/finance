@@ -291,11 +291,9 @@ export async function registerPasskey(
     authenticatorSelection: options.authenticatorSelection
       ? {
           authenticatorAttachment: options.authenticatorSelection.authenticatorAttachment as
-            | AuthenticatorAttachment
-            | undefined,
+            AuthenticatorAttachment | undefined,
           residentKey: options.authenticatorSelection.residentKey as
-            | ResidentKeyRequirement
-            | undefined,
+            ResidentKeyRequirement | undefined,
           requireResidentKey: options.authenticatorSelection.requireResidentKey ?? false,
           userVerification:
             (options.authenticatorSelection.userVerification as UserVerificationRequirement) ??

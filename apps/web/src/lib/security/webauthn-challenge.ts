@@ -7,13 +7,7 @@ import {
 } from './passkey-gate';
 
 export type WebAuthnChallengeStatus =
-  | 'created'
-  | 'verified'
-  | 'unsupported'
-  | 'cancelled'
-  | 'failed'
-  | 'expired'
-  | 'replayed';
+  'created' | 'verified' | 'unsupported' | 'cancelled' | 'failed' | 'expired' | 'replayed';
 
 export interface WebAuthnAppLockChallenge extends PasskeyGateChallenge {
   readonly id: string;

@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { readonly [key: string]: JsonValue };
+  string | number | boolean | null | JsonValue[] | { readonly [key: string]: JsonValue };
 export type AuditActionType =
   | 'data_export_generated'
   | 'account_deletion_attempted'

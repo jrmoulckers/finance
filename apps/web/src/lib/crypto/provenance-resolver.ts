@@ -2,11 +2,7 @@
 
 /** Bridge, wrap, and self-transfer provenance resolver for crypto tax evidence. References: issue #2674 */
 export type ProvenanceClassification =
-  | 'self-transfer'
-  | 'bridge'
-  | 'wrap'
-  | 'taxable-swap'
-  | 'ambiguous';
+  'self-transfer' | 'bridge' | 'wrap' | 'taxable-swap' | 'ambiguous';
 
 export interface AssetIdentity {
   readonly canonicalAsset: string;

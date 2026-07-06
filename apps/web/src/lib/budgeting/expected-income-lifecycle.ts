@@ -2,11 +2,7 @@
 
 export type ExpectedIncomeStatus = 'expected' | 'cleared' | 'late' | 'partial' | 'missed';
 export type ExpectedIncomeSourceType =
-  | 'child_support'
-  | 'freelance'
-  | 'reimbursement'
-  | 'tips'
-  | 'other';
+  'child_support' | 'freelance' | 'reimbursement' | 'tips' | 'other';
 
 export interface ExpectedIncomeRecord {
   readonly id: string;

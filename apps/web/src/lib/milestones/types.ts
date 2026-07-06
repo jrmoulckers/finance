@@ -3,11 +3,7 @@
 import type { IconName } from '../../components/icons';
 
 export type MilestoneCategory =
-  | 'net-worth'
-  | 'goal-progress'
-  | 'savings-streak'
-  | 'debt-reduction'
-  | 'debt-payoff';
+  'net-worth' | 'goal-progress' | 'savings-streak' | 'debt-reduction' | 'debt-payoff';
 
 export interface GoalSnapshot {
   readonly goalId: string;

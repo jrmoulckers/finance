@@ -442,12 +442,7 @@ export interface EquityTaxImplication {
 
 /** Source of passive income. */
 export type PassiveIncomeType =
-  | 'DIVIDEND'
-  | 'INTEREST'
-  | 'RENTAL'
-  | 'ROYALTY'
-  | 'DISTRIBUTION'
-  | 'OTHER';
+  'DIVIDEND' | 'INTEREST' | 'RENTAL' | 'ROYALTY' | 'DISTRIBUTION' | 'OTHER';
 
 /** Frequency of passive income payments. */
 export type PaymentFrequency = 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL' | 'IRREGULAR';

@@ -6,8 +6,7 @@ import { getQueueSize } from '../db/mutation-queue';
 const QUEUE_POLL_INTERVAL_MS = 5_000;
 
 type MutationQueueMessage =
-  | { type: 'MUTATION_REPLAY_STARTED' }
-  | { type: 'MUTATION_REPLAY_FINISHED'; queueSize: number };
+  { type: 'MUTATION_REPLAY_STARTED' } | { type: 'MUTATION_REPLAY_FINISHED'; queueSize: number };
 
 /** Shape returned by {@link useMutationQueue}. */
 export interface UseMutationQueueResult {

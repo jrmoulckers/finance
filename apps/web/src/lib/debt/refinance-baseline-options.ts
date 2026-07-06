@@ -3,9 +3,7 @@
 import type { StudentLoan, StudentLoanDashboardSummary } from '../debt-types';
 
 export type RefinanceBaselineId =
-  | 'current_required'
-  | 'selected_payoff_strategy'
-  | 'student_loan_baseline';
+  'current_required' | 'selected_payoff_strategy' | 'student_loan_baseline';
 
 export interface RefinanceBaselineOption {
   readonly id: RefinanceBaselineId;

@@ -9,11 +9,7 @@
 
 export type TaxReceiptStatus = 'not-required' | 'required-attached' | 'required-missing';
 export type TaxForm1099Status =
-  | 'not-expected'
-  | 'expected'
-  | 'received'
-  | 'reconciled'
-  | 'variance';
+  'not-expected' | 'expected' | 'received' | 'reconciled' | 'variance';
 export type TaxReconciliationChecklistStatus = 'open' | 'done';
 
 export interface TaxReconciliationTransactionInput {
@@ -39,13 +35,7 @@ export interface TaxForm1099Input {
   readonly taxYear: number;
   readonly payerName: string;
   readonly formType:
-    | '1099-NEC'
-    | '1099-MISC'
-    | '1099-K'
-    | '1099-INT'
-    | '1099-DIV'
-    | '1099-B'
-    | 'OTHER';
+    '1099-NEC' | '1099-MISC' | '1099-K' | '1099-INT' | '1099-DIV' | '1099-B' | 'OTHER';
   readonly expectedAmountCents?: number;
   readonly receivedAmountCents?: number;
   readonly reconciled?: boolean;

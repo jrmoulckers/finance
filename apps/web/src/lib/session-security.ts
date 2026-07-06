@@ -3,10 +3,7 @@
 import { appendSecurityAuditEvent } from './security-audit-log';
 
 export type RiskyAction =
-  | 'data_export'
-  | 'account_deletion'
-  | 'passkey_change'
-  | 'third_party_permission_change';
+  'data_export' | 'account_deletion' | 'passkey_change' | 'third_party_permission_change';
 
 export interface StepUpStatus {
   readonly required: boolean;

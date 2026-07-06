@@ -235,10 +235,7 @@ export interface CategoryDropZone {
 
 /** Data categories eligible for anonymous benchmarking */
 export type PrivacyDataCategory =
-  | 'spending_by_category'
-  | 'savings_rate'
-  | 'income_bracket'
-  | 'debt_ratio';
+  'spending_by_category' | 'savings_rate' | 'income_bracket' | 'debt_ratio';
 
 /** Differential privacy configuration */
 export interface DifferentialPrivacyConfig {

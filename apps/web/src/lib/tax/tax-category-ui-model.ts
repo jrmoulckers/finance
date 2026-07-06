@@ -20,11 +20,7 @@ import {
 } from './tax-category-tagging';
 
 export type TaxTransactionFilter =
-  | 'uncategorized-for-tax'
-  | 'missing-receipt'
-  | 'review-needed'
-  | 'deductible'
-  | 'non-deductible';
+  'uncategorized-for-tax' | 'missing-receipt' | 'review-needed' | 'deductible' | 'non-deductible';
 
 export interface TaxCategoryEditModel {
   readonly transactionId: string;

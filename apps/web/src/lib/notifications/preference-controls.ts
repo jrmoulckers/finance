@@ -51,18 +51,16 @@ export function buildNotificationPreferenceViewModel(params: {
   const preferences = normalizeNotificationPreferences(params.preferences);
   const quietHoursValidation = validateQuietHours(preferences.quietHours);
   const controls = preferences.channelPreferences.flatMap((preference) =>
-    ALL_CHANNELS.map(
-      (channel): NotificationPreferenceControl => ({
-        alertType: preference.alertType,
-        channel,
-        checked: preference.channels.includes(channel),
-        disabled: !isAvailable(channel, params.availability),
-        label: `${CHANNEL_LABELS[channel]} ${preference.alertType.replaceAll('_', ' ')}`,
-        describedBy: !isAvailable(channel, params.availability)
-          ? `${CHANNEL_LABELS[channel]} delivery is not available on this device yet.`
-          : 'Press Space to toggle this delivery channel.',
-      }),
-    ),
+    ALL_CHANNELS.map((channel): NotificationPreferenceControl => ({
+      alertType: preference.alertType,
+      channel,
+      checked: preference.channels.includes(channel),
+      disabled: !isAvailable(channel, params.availability),
+      label: `${CHANNEL_LABELS[channel]} ${preference.alertType.replaceAll('_', ' ')}`,
+      describedBy: !isAvailable(channel, params.availability)
+        ? `${CHANNEL_LABELS[channel]} delivery is not available on this device yet.`
+        : 'Press Space to toggle this delivery channel.',
+    })),
   );
 
   return {

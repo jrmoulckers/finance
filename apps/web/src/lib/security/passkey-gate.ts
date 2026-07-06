@@ -3,11 +3,7 @@
 /** App-lock helpers built on WebAuthn user verification/passkeys. */
 
 export type AppLockDecisionReason =
-  | 'disabled'
-  | 'manual'
-  | 'idle_timeout'
-  | 'resume'
-  | 'unsupported';
+  'disabled' | 'manual' | 'idle_timeout' | 'resume' | 'unsupported';
 export type PasskeyGateStatus = 'unlocked' | 'unsupported' | 'cancelled' | 'failed';
 
 export interface AppLockPolicy {
