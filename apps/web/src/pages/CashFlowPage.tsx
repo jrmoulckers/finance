@@ -112,29 +112,60 @@ const IncomeExpenseChart: React.FC<IncomeExpenseChartProps> = ({ aggregates }) =
   const maxValue = Math.max(...aggregates.flatMap((a) => [a.income, a.expenses]), 1);
 
   return (
-    <div
-      className="analytics-bar-chart"
-      role="img"
-      aria-label="Monthly income versus expenses bar chart"
-    >
-      {aggregates.map((agg) => (
-        <div key={agg.month} className="analytics-bar-chart__group">
-          <div className="analytics-bar-chart__bars">
-            <div
-              className="analytics-bar-chart__bar analytics-bar-chart__bar--income"
-              style={{ height: `${Math.max((agg.income / maxValue) * 100, 1)}%` }}
-              title={`Income: $${(agg.income / 100).toFixed(2)}`}
-            />
-            <div
-              className="analytics-bar-chart__bar analytics-bar-chart__bar--expense"
-              style={{ height: `${Math.max((agg.expenses / maxValue) * 100, 1)}%` }}
-              title={`Expenses: $${(agg.expenses / 100).toFixed(2)}`}
-            />
+    <>
+      <div
+        className="analytics-bar-chart"
+        role="img"
+        aria-label="Monthly income versus expenses bar chart"
+      >
+        {aggregates.map((agg) => (
+          <div key={agg.month} className="analytics-bar-chart__group">
+            <div className="analytics-bar-chart__bars">
+              <div
+                className="analytics-bar-chart__bar analytics-bar-chart__bar--income"
+                style={{ height: `${Math.max((agg.income / maxValue) * 100, 1)}%` }}
+                title={`Income: $${(agg.income / 100).toFixed(2)}`}
+              />
+              <div
+                className="analytics-bar-chart__bar analytics-bar-chart__bar--expense"
+                style={{ height: `${Math.max((agg.expenses / maxValue) * 100, 1)}%` }}
+                title={`Expenses: $${(agg.expenses / 100).toFixed(2)}`}
+              />
+            </div>
+            <span className="analytics-bar-chart__label">{agg.month.slice(5)}</span>
           </div>
-          <span className="analytics-bar-chart__label">{agg.month.slice(5)}</span>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      {/* Text alternative for the bar chart: screen-reader users get the same
+          per-month figures the sighted chart encodes with bar heights/colors. */}
+      <table className="sr-only">
+        <caption>Monthly income versus expenses</caption>
+        <thead>
+          <tr>
+            <th scope="col">Month</th>
+            <th scope="col">Income</th>
+            <th scope="col">Expenses</th>
+            <th scope="col">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {aggregates.map((agg) => (
+            <tr key={agg.month}>
+              <th scope="row">{agg.month}</th>
+              <td>
+                <CurrencyDisplay amount={agg.income} />
+              </td>
+              <td>
+                <CurrencyDisplay amount={agg.expenses} />
+              </td>
+              <td>
+                <CurrencyDisplay amount={agg.netIncome} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 };
 
@@ -192,6 +223,10 @@ export const CashFlowPage: React.FC = () => {
     const now = new Date();
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const currentAggregate = aggregates.length > 0 ? aggregates[aggregates.length - 1] : null;
+    // Seed the forecast with the current month's net cash flow so far — not the
+    // multi-period cumulative total, which would overstate a single month's
+    // projected end position by a factor of the reporting window.
+    const currentMonthNetCents = currentAggregate?.netIncome ?? 0;
     const expectedIncomeRemaining = Math.max(
       0,
       summary.averageMonthlyIncome - (currentAggregate?.income ?? 0),
@@ -202,7 +237,7 @@ export const CashFlowPage: React.FC = () => {
     );
 
     return forecastMonthEndBalance({
-      currentBalanceCents: summary.totalNetIncome,
+      currentBalanceCents: currentMonthNetCents,
       today: formatLocalDate(now),
       monthEnd: formatLocalDate(monthEnd),
       expectedIncome:
