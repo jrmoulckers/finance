@@ -40,6 +40,7 @@
  */
 
 import type { LocalDate, Transaction } from '../../kmp/bridge';
+import { escapeCsvField } from '../export/simple-export';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -408,4 +409,52 @@ export function buildProfitAndLoss(
     periods,
     totals: finalizeBucket(combined),
   };
+}
+
+// ---------------------------------------------------------------------------
+// CSV export
+// ---------------------------------------------------------------------------
+
+/** Format an integer cent amount as major currency units with two decimals. */
+function formatCsvAmount(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+/** Format a basis-point margin as a plain percentage, or blank when N/A. */
+function formatCsvMargin(bps: number | null): string {
+  return bps === null || !Number.isFinite(bps) ? '' : (bps / 100).toFixed(1);
+}
+
+const PNL_CSV_HEADER =
+  'Period,Revenue,COGS,Gross profit,Gross margin %,Labor,Overhead,Operating expenses,Net profit,Net margin %,Transactions';
+
+function pnlCsvRow(label: string, totals: PnlTotals): string {
+  return [
+    escapeCsvField(label),
+    formatCsvAmount(totals.revenueCents),
+    formatCsvAmount(totals.cogsCents),
+    formatCsvAmount(totals.grossProfitCents),
+    formatCsvMargin(totals.grossMarginBps),
+    formatCsvAmount(totals.laborCents),
+    formatCsvAmount(totals.overheadCents),
+    formatCsvAmount(totals.operatingExpensesCents),
+    formatCsvAmount(totals.netProfitCents),
+    formatCsvMargin(totals.netMarginBps),
+    String(totals.transactionCount),
+  ].join(',');
+}
+
+/**
+ * Serialize a profit-and-loss statement as CSV for handing to an accountant.
+ *
+ * Emits one row per reporting period followed by an "All periods" totals row.
+ * Amounts are major currency units with two decimals; margins are plain
+ * percentages (blank when revenue is zero and the margin is N/A). The totals
+ * transaction count is exact because P&L classification never splits a
+ * transaction across buckets.
+ */
+export function exportBusinessPnlCsv(statement: PnlStatement): string {
+  const rows = statement.periods.map((period) => pnlCsvRow(period.label, period));
+  const totals = pnlCsvRow('All periods', statement.totals);
+  return [PNL_CSV_HEADER, ...rows, totals].join('\n');
 }

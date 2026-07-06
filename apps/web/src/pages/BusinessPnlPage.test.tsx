@@ -151,4 +151,44 @@ describe('BusinessPnlPage', () => {
     render(<BusinessPnlPage />);
     expect(screen.getByText(/No revenue or expense transactions/i)).toBeInTheDocument();
   });
+
+  const EXPORT_BUTTON = /download profit and loss statement as csv/i;
+
+  it('enables the Download CSV button when the statement has periods', () => {
+    mockUseTransactions.mockReturnValue(mockResult());
+    render(<BusinessPnlPage />);
+    expect(screen.getByRole('button', { name: EXPORT_BUTTON })).toBeEnabled();
+  });
+
+  it('disables the Download CSV button when there are no transactions', () => {
+    mockUseTransactions.mockReturnValue(mockResult({ transactions: [] }));
+    render(<BusinessPnlPage />);
+    expect(screen.getByRole('button', { name: EXPORT_BUTTON })).toBeDisabled();
+  });
+
+  it('generates a CSV blob download when the button is clicked', async () => {
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn((_blob: Blob | MediaSource) => 'blob:business-pnl');
+    const revokeObjectURL = vi.fn();
+    // jsdom does not implement the object-URL helpers; provide test doubles.
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    mockUseTransactions.mockReturnValue(mockResult());
+    render(<BusinessPnlPage />);
+
+    await user.click(screen.getByRole('button', { name: EXPORT_BUTTON }));
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(createObjectURL.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+
+    clickSpy.mockRestore();
+    delete (URL as unknown as Record<string, unknown>).createObjectURL;
+    delete (URL as unknown as Record<string, unknown>).revokeObjectURL;
+  });
 });
