@@ -26,6 +26,7 @@ import {
   type CategoryDrillDown,
   type SpendingTrendInsight,
 } from '../lib/reports/reporting-beta';
+import { computeSavingsRatePercent } from '../lib/savings/savings-rate-format';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -664,10 +665,7 @@ export function useInsights(): UseInsightsResult {
         daysElapsed > 0 ? Math.round(totalSpentThisMonth / daysElapsed) : 0;
 
       const netCashFlow = totalIncomeThisMonth - totalSpentThisMonth;
-      const savingsRate =
-        totalIncomeThisMonth > 0
-          ? Math.round(((totalIncomeThisMonth - totalSpentThisMonth) / totalIncomeThisMonth) * 100)
-          : 0;
+      const savingsRate = computeSavingsRatePercent(totalIncomeThisMonth, totalSpentThisMonth);
 
       const topCategories = categorySpending.slice(0, 5);
       const recommendations = generateRecommendations(

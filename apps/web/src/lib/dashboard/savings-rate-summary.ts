@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { computeSavingsRatePercent } from '../savings/savings-rate-format';
+
 export interface MonthlyCashFlow {
   readonly month: string;
   readonly incomeCents: number;
@@ -29,8 +31,7 @@ function summarize(month: string, rows: readonly MonthlyCashFlow[]): SavingsRate
     incomeCents,
     expenseCents,
     savingsCents,
-    savingsRatePercent:
-      incomeCents === 0 ? 0 : Math.round((savingsCents / incomeCents) * 10000) / 100,
+    savingsRatePercent: computeSavingsRatePercent(incomeCents, expenseCents),
   };
 }
 
