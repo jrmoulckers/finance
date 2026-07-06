@@ -162,6 +162,21 @@ describe('Security headers in Caddyfile', () => {
     expect(cspLine).not.toMatch(/(?<!wasm-)'unsafe-eval'/);
   });
 
+  it("CSP script-src does not allow 'unsafe-inline' (inline scripts are externalized — #3210)", () => {
+    // The deployed CSP intentionally omits 'unsafe-inline' from script-src.
+    // An inline <script> would be blocked — which is exactly what broke the PWA
+    // service-worker auto-update in #3210 — so scripts must be externalized to
+    // same-origin files rather than the policy loosened. Scoped to the
+    // script-src directive so the separate `style-src ... 'unsafe-inline'` is
+    // not matched.
+    const cspLine = caddyfileContent
+      .split('\n')
+      .find((line) => line.includes('Content-Security-Policy'));
+    expect(cspLine).toBeDefined();
+    const scriptSrc = cspLine?.match(/script-src([^;]*)/)?.[1] ?? '';
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
+  });
+
   it('CSP allows worker-src self for service worker', () => {
     const cspLine = caddyfileContent
       .split('\n')
