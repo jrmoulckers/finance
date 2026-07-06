@@ -12,6 +12,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { WeeklyDigest } from '../components/insights';
 import { RecommendationsFeed } from '../components/recommendations';
 import { WellnessOverview } from '../components/wellness';
@@ -524,6 +525,11 @@ export const InsightsPage: React.FC = () => {
       <EmptyState
         title="No wealth insights yet"
         description="Add accounts, transactions, budgets, or goals to generate your personalized digest."
+        action={
+          <Link to="/accounts" className="form-button form-button--primary">
+            Add your first account
+          </Link>
+        }
       />
     );
   }

@@ -731,6 +731,15 @@ export const BudgetsPage: React.FC = () => {
         <EmptyState
           title="No budget envelopes yet"
           description="Start by entering expected income above, then create budget envelopes that assign every dollar to spending, saving, or debt categories."
+          action={
+            <button
+              type="button"
+              className="form-button form-button--primary"
+              onClick={handleAddBudget}
+            >
+              Create your first budget
+            </button>
+          }
         />
       ) : (
         <>
