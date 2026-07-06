@@ -77,7 +77,11 @@ import {
 } from '../lib/accountPurpose';
 import { chooseLargeTextReflow } from '../lib/a11y/large-text-reflow';
 import { getTransactionLocalDay } from '../lib/transactions/local-timestamp';
-import { applyAdvancedFilters, sortTransactions } from '../lib/transactions/filter-sort';
+import {
+  applyAdvancedFilters,
+  matchesTransactionQuery,
+  sortTransactions,
+} from '../lib/transactions/filter-sort';
 
 // Lazy-loaded so the quick-add affordance (dialog, presets, persistence helper)
 // lands in its own async chunk and stays out of the saturated ledger route chunk.
@@ -312,14 +316,17 @@ export const TransactionsPage: React.FC = () => {
   const advancedFilters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
   const sortConfig = useMemo(() => sortFromParams(searchParams), [searchParams]);
 
-  // Build hook filters from URL params + search query
+  // Build hook filters from the URL date params. Free-text search is applied
+  // client-side in the `transactions` memo below (alongside the purpose filter,
+  // advanced filters, and sort) so the register narrows live as the user types.
+  // The underlying live-query hook does not re-run when only the search term
+  // changes, so keeping search out of the DB query is what makes it work (#3200).
   const hookFilters = useMemo(
     () => ({
-      searchTerm: query.trim() || undefined,
       startDate: advancedFilters.startDate || undefined,
       endDate: advancedFilters.endDate || undefined,
     }),
-    [query, advancedFilters.startDate, advancedFilters.endDate],
+    [advancedFilters.startDate, advancedFilters.endDate],
   );
 
   const {
@@ -374,6 +381,12 @@ export const TransactionsPage: React.FC = () => {
     () => new Map(accounts.map((account) => [account.id, account.name])),
     [accounts],
   );
+  // Free-text search context so matches can resolve category and account names,
+  // mirroring the repository's SQL search fields (#3200 / #3155).
+  const searchContext = useMemo(
+    () => ({ categoryNames, accountNames }),
+    [categoryNames, accountNames],
+  );
   const visibleFilterAccounts = useMemo(
     () => filterAccountsByPurpose(accounts, selectedPurposeFilter),
     [accounts, selectedPurposeFilter],
@@ -415,19 +428,26 @@ export const TransactionsPage: React.FC = () => {
     [categoryNames, learnFromFeedback],
   );
 
-  // Apply purpose filter, advanced local filters, then sort
+  // Apply the purpose filter, free-text search, advanced local filters, then
+  // sort. All narrowing happens client-side here so the register updates live
+  // as the user types in the search box or adjusts controls (#3200).
   const transactions = useMemo(() => {
     const purposeFiltered = filterTransactionsByAccountPurpose(
       rawTransactions,
       accounts,
       selectedPurposeFilter,
     );
-    const filtered = applyAdvancedFilters(purposeFiltered, advancedFilters);
+    const searched = purposeFiltered.filter((transaction) =>
+      matchesTransactionQuery(transaction, query, searchContext),
+    );
+    const filtered = applyAdvancedFilters(searched, advancedFilters);
     return sortTransactions(filtered, sortConfig, categoryNames);
   }, [
     rawTransactions,
     accounts,
     selectedPurposeFilter,
+    query,
+    searchContext,
     advancedFilters,
     sortConfig,
     categoryNames,
