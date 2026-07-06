@@ -50,14 +50,21 @@ export interface DetectedSubscription {
 
 /** Summary of all detected subscriptions. */
 export interface SubscriptionSummary {
-  /** Total monthly cost of all active subscriptions in cents. */
+  /** Total monthly cost of all non-cancelled subscriptions in cents (active + flagged). */
   totalMonthlyCents: number;
-  /** Total annual projected cost of all active subscriptions in cents. */
+  /** Total annual projected cost of all non-cancelled subscriptions in cents. */
   totalAnnualCents: number;
-  /** Count of active subscriptions. */
+  /** Count of active (non-flagged, non-cancelled) subscriptions. */
   activeCount: number;
   /** Count of subscriptions flagged as potentially unused. */
   flaggedCount: number;
+  /**
+   * Combined monthly cost of flagged subscriptions in cents — the potential
+   * savings a user would free up by cancelling everything flagged.
+   */
+  flaggedMonthlyCents: number;
+  /** Annual projection of the flagged (potential savings) monthly cost, in cents. */
+  flaggedAnnualCents: number;
   /** Count of cancelled subscriptions. */
   cancelledCount: number;
   /** Breakdown by category. */
@@ -217,6 +224,7 @@ export function computeSubscriptionSummary(
   subscriptions: DetectedSubscription[],
 ): SubscriptionSummary {
   let totalMonthlyCents = 0;
+  let flaggedMonthlyCents = 0;
   let activeCount = 0;
   let flaggedCount = 0;
   let cancelledCount = 0;
@@ -229,8 +237,15 @@ export function computeSubscriptionSummary(
       continue;
     }
 
-    if (sub.status === 'flagged') flaggedCount++;
-    activeCount++;
+    // Flagged subs are still being paid until cancelled, so they count toward
+    // the current monthly total — but they are tracked separately (not as
+    // "active") and summed as potential savings.
+    if (sub.status === 'flagged') {
+      flaggedCount++;
+      flaggedMonthlyCents += sub.monthlyCostCents;
+    } else {
+      activeCount++;
+    }
     totalMonthlyCents += sub.monthlyCostCents;
 
     const catKey = sub.categoryName;
@@ -256,6 +271,8 @@ export function computeSubscriptionSummary(
     totalAnnualCents: totalMonthlyCents * 12,
     activeCount,
     flaggedCount,
+    flaggedMonthlyCents,
+    flaggedAnnualCents: flaggedMonthlyCents * 12,
     cancelledCount,
     byCategory,
   };

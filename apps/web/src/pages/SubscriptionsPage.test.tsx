@@ -39,6 +39,8 @@ describe('SubscriptionsPage', () => {
         totalAnnualCents: 0,
         activeCount: 0,
         flaggedCount: 0,
+        flaggedMonthlyCents: 0,
+        flaggedAnnualCents: 0,
         cancelledCount: 0,
         byCategory: [],
       },
@@ -61,6 +63,8 @@ describe('SubscriptionsPage', () => {
         totalAnnualCents: 0,
         activeCount: 0,
         flaggedCount: 0,
+        flaggedMonthlyCents: 0,
+        flaggedAnnualCents: 0,
         cancelledCount: 0,
         byCategory: [],
       },
@@ -83,6 +87,8 @@ describe('SubscriptionsPage', () => {
         totalAnnualCents: 0,
         activeCount: 0,
         flaggedCount: 0,
+        flaggedMonthlyCents: 0,
+        flaggedAnnualCents: 0,
         cancelledCount: 0,
         byCategory: [],
       },
@@ -130,8 +136,10 @@ describe('SubscriptionsPage', () => {
       summary: {
         totalMonthlyCents: 2598,
         totalAnnualCents: 31176,
-        activeCount: 2,
+        activeCount: 1,
         flaggedCount: 1,
+        flaggedMonthlyCents: 999,
+        flaggedAnnualCents: 11988,
         cancelledCount: 0,
         byCategory: [
           {
@@ -155,5 +163,9 @@ describe('SubscriptionsPage', () => {
     expect(screen.getByText('Netflix')).toBeInTheDocument();
     expect(screen.getByText('Spotify')).toBeInTheDocument();
     expect(screen.getByText('All Subscriptions (2)')).toBeInTheDocument();
+    expect(screen.getByText('Potential Savings')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Potential monthly savings from cancelling flagged subscriptions'),
+    ).toBeInTheDocument();
   });
 });
