@@ -161,6 +161,50 @@ export const financialGlossary: Record<GlossaryKey, EducationEntry> = {
     whyItMatters:
       'Diversification can lower risk and make your results less dependent on one company, sector, or market move.',
   },
+  exchangeRate: {
+    term: 'Exchange Rate',
+    definition:
+      'An exchange rate is how much one currency is worth in another currency at a given moment.',
+    example:
+      'If the US dollar to Chinese yuan exchange rate is 7.2, then $1 is worth about ¥7.2, so $500 is worth about ¥3,600.',
+    whyItMatters:
+      'The rate decides how much your family actually receives, and it moves from day to day, so the same amount sent can arrive as more or less.',
+  },
+  midMarketRate: {
+    term: 'Mid-Market Rate',
+    definition:
+      'The mid-market rate is the "real" exchange rate banks use with each other, halfway between the buy and sell price, before any markup is added.',
+    example:
+      'If the mid-market rate is ¥7.20 per dollar but a transfer service offers you ¥7.05, the difference is the markup you are paying.',
+    whyItMatters:
+      'It is the fair reference point to compare against, so you can see how much a provider is really charging beyond any stated fee.',
+  },
+  fxMargin: {
+    term: 'FX Margin',
+    definition:
+      'The FX margin, or exchange-rate markup, is the gap between the mid-market rate and the rate a provider gives you. It is a hidden cost on top of any upfront fee.',
+    example:
+      'A service advertising "no fee" but paying ¥7.05 when the mid-market rate is ¥7.20 is still charging about 2% through the margin.',
+    whyItMatters:
+      'Two transfers with the same fee can cost very different amounts once the margin is included, so comparing the rate matters as much as comparing the fee.',
+  },
+  remittance: {
+    term: 'Remittance',
+    definition:
+      'A remittance is money you send to family or friends in another country, usually on a regular basis.',
+    example: 'Sending part of each paycheck home to parents abroad is a remittance.',
+    whyItMatters:
+      'Tracking each remittance with its fee and exchange rate shows the true monthly cost of supporting people back home and helps you pick cheaper ways to send.',
+  },
+  wireTransfer: {
+    term: 'Wire Transfer',
+    definition:
+      'A wire transfer is a way to move money electronically between banks, often across countries using networks identified by SWIFT or IBAN codes.',
+    example:
+      'An international wire might cost a flat fee of $15 to $45 and take one to three business days to arrive.',
+    whyItMatters:
+      'Wires are reliable for larger amounts but can carry higher flat fees than app-based transfers, so the best choice depends on how much you send.',
+  },
 };
 
 export function getGlossaryEntry(key: GlossaryKey): EducationEntry {
