@@ -27,6 +27,13 @@ export interface PeriodComparison {
   readonly change: number;
   /** Whether spending went up, down, or stayed flat. */
   readonly direction: ChangeDirection;
+  /**
+   * True when the previous value was zero and the current value is non-zero, so
+   * there is no baseline to compute a percentage from. In this case `change` is
+   * not meaningful (it is reported as 0); consumers should render an honest
+   * "new" state or an absolute delta rather than a misleading percentage.
+   */
+  readonly isNew?: boolean;
 }
 
 /** Spending data for a single category across two periods. */
@@ -41,6 +48,11 @@ export interface CategoryTrend {
   readonly change: number;
   /** Direction of the change. */
   readonly direction: ChangeDirection;
+  /**
+   * True when there was no spending in the previous period, so `change` has no
+   * meaningful baseline. Consumers should render a "new" state instead.
+   */
+  readonly isNew?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,16 +146,22 @@ export function getBudgetHealth(
 /**
  * Compare two period values and return the percentage change and direction.
  *
+ * When the previous value was zero and the current value is non-zero, growth
+ * has no meaningful percentage baseline (a jump from $0 to $500 and from $0 to
+ * $5 would both be "+100%"). Such results are flagged with `isNew` and report a
+ * `change` of 0 so callers can render an honest "new" state or an absolute
+ * delta instead of a misleading capped percentage.
+ *
  * @param current - Current period value (cents or any numeric).
  * @param previous - Previous period value (cents or any numeric).
- * @returns Object with `change` (percentage) and `direction`.
+ * @returns Object with `change` (percentage), `direction`, and optional `isNew`.
  */
 export function comparePeriods(current: number, previous: number): PeriodComparison {
   if (previous === 0 && current === 0) {
     return { change: 0, direction: 'flat' };
   }
   if (previous === 0) {
-    return { change: 100, direction: 'up' };
+    return { change: 0, direction: current > 0 ? 'up' : 'down', isNew: true };
   }
 
   const change = Math.round(((current - previous) / Math.abs(previous)) * 100);
@@ -184,6 +202,7 @@ export function buildCategoryTrends(
       previous,
       change: comparison.change,
       direction: comparison.direction,
+      ...(comparison.isNew ? { isNew: true } : {}),
     });
   }
 
