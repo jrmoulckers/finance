@@ -20,6 +20,8 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { ConfirmDialog, EmptyState, Icon } from '../components/common';
 import { IconToken } from '../icons/tokens';
 import { formatCurrency } from '../lib/currency';
+import { useInvoices } from '../hooks/useInvoices';
+import { invoiceOutstandingCents } from '../lib/analytics/invoices';
 import {
   CONFIDENCE_LABELS,
   CONFIDENCE_LEVELS,
@@ -102,6 +104,35 @@ export function ExpectedIncomePage() {
   const sortedItems = useMemo(
     () => sortExpectedIncome(items, referenceDate),
     [items, referenceDate],
+  );
+
+  // Issue #3229: sent/overdue invoices are also money the user is waiting on.
+  // Surface them here (read-only, derived from the invoice pipeline) so a
+  // freelancer sees one list instead of re-entering payments. These are managed
+  // on the Invoices page and already feed Cash Runway, so we never write them to
+  // the expected-income store — that would double-count them.
+  const { invoices } = useInvoices();
+  const invoiceExpectedRows = useMemo(
+    () =>
+      invoices
+        .filter(
+          (invoice) =>
+            (invoice.status === 'Sent' || invoice.status === 'Overdue') &&
+            invoiceOutstandingCents(invoice) > 0,
+        )
+        .map((invoice) => ({
+          id: invoice.id,
+          clientName: invoice.clientName,
+          outstandingCents: invoiceOutstandingCents(invoice),
+          expectedPayDate: invoice.expectedPayDate,
+          status: invoice.status,
+        }))
+        .sort((a, b) => a.expectedPayDate.localeCompare(b.expectedPayDate)),
+    [invoices],
+  );
+  const invoiceExpectedTotalCents = useMemo(
+    () => invoiceExpectedRows.reduce((total, row) => total + row.outstandingCents, 0),
+    [invoiceExpectedRows],
   );
 
   const handleSubmit = useCallback(
@@ -435,6 +466,51 @@ export function ExpectedIncomePage() {
           </ul>
         )}
       </section>
+
+      {invoiceExpectedRows.length > 0 && (
+        <section
+          className="expected-income__list-section expected-income__invoices"
+          aria-labelledby="expected-income-invoices-title"
+        >
+          <h2 id="expected-income-invoices-title" className="expected-income__section-title">
+            From your invoices ({invoiceExpectedRows.length})
+          </h2>
+          <p className="expected-income__invoices-note">
+            Sent and overdue invoices are money you are waiting on too. They are managed on the
+            Invoices page and already flow into your Cash Runway, so you do not need to re-enter
+            them here.
+          </p>
+          <ul className="expected-income__list">
+            {invoiceExpectedRows.map((row) => (
+              <li key={row.id} className="expected-income__item expected-income__item--invoice">
+                <div className="expected-income__item-main">
+                  <h3 className="expected-income__item-title">{row.clientName}</h3>
+                  <p className="expected-income__item-meta">
+                    <span className="expected-income__item-amount">
+                      {formatCurrency(row.outstandingCents)}
+                    </span>
+                    {' · '}
+                    <time dateTime={row.expectedPayDate}>
+                      {formatExpectedDate(row.expectedPayDate)}
+                    </time>
+                    {' · '}
+                    <span className="expected-income__item-confidence">Invoice · {row.status}</span>
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="expected-income__invoices-total">
+            Invoiced and awaiting payment:{' '}
+            <strong>{formatCurrency(invoiceExpectedTotalCents)}</strong>
+            {' · '}
+            Total you are waiting on (manual entries plus invoices):{' '}
+            <strong>
+              {formatCurrency(summary.expectedNotYetReceivedCents + invoiceExpectedTotalCents)}
+            </strong>
+          </p>
+        </section>
+      )}
 
       <ConfirmDialog
         isOpen={pendingDelete !== null}
