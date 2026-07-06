@@ -5,6 +5,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { BulkEditToolbar } from './BulkEditToolbar';
 import type { BulkEditToolbarProps } from './BulkEditToolbar';
 
+// Focus-trap behaviour is unit-tested with the hook itself; mock it here so
+// these component tests do not depend on real DOM focus management.
+vi.mock('../../accessibility/aria', () => ({
+  useFocusTrap: vi.fn(),
+}));
+
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
@@ -98,7 +104,7 @@ describe('BulkEditToolbar', () => {
   it('opens category picker on click', () => {
     renderToolbar();
     fireEvent.click(screen.getByRole('button', { name: /change category/i }));
-    expect(screen.getByRole('listbox', { name: /select category/i })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /select category/i })).toBeInTheDocument();
     expect(screen.getByText('Food')).toBeInTheDocument();
     expect(screen.getByText('Transport')).toBeInTheDocument();
   });
@@ -115,6 +121,14 @@ describe('BulkEditToolbar', () => {
     renderToolbar();
     fireEvent.click(screen.getByRole('button', { name: /delete 3 selected/i }));
     expect(screen.getByText(/Delete 3 transactions\?/)).toBeInTheDocument();
+  });
+
+  it('exposes the delete confirmation as a described modal alertdialog', () => {
+    renderToolbar();
+    fireEvent.click(screen.getByRole('button', { name: /delete 3 selected/i }));
+    const dialog = screen.getByRole('alertdialog', { name: /confirm deletion/i });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAttribute('aria-describedby', 'bulk-delete-confirm-text');
   });
 
   it('calls onBulkDelete on confirm', () => {

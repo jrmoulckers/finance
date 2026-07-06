@@ -351,6 +351,26 @@ describe('QuickEntry', () => {
     expect(screen.getByLabelText('Description')).toHaveAttribute('aria-required', 'true');
   });
 
+  it('associates an amount validation error with only the amount field', () => {
+    renderQuickEntry();
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    const amount = screen.getByLabelText('Amount');
+    expect(amount).toHaveAttribute('aria-invalid', 'true');
+    expect(amount).toHaveAttribute('aria-describedby', 'quick-entry-error');
+    expect(screen.getByRole('alert')).toHaveAttribute('id', 'quick-entry-error');
+    expect(screen.getByLabelText('Description')).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('associates a description validation error with only the description field', () => {
+    renderQuickEntry();
+    enterIncrementalAmount('500');
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    const description = screen.getByLabelText('Description');
+    expect(description).toHaveAttribute('aria-invalid', 'true');
+    expect(description).toHaveAttribute('aria-describedby', 'quick-entry-error');
+    expect(screen.getByLabelText('Amount')).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
   it('success counter uses aria-live for screen reader updates', () => {
     renderQuickEntry();
     enterIncrementalAmount('100');
