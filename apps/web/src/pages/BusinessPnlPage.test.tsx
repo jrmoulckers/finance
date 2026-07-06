@@ -29,6 +29,7 @@ function makeTransaction(options: {
   type: TransactionType;
   amountCents: number;
   tags?: readonly string[];
+  customFields?: Record<string, string> | null;
 }): Transaction {
   nextId += 1;
   return {
@@ -55,7 +56,7 @@ function makeTransaction(options: {
     merchantCountry: null,
     externalReferenceId: null,
     statementDescription: null,
-    customFields: null,
+    customFields: options.customFields ?? null,
     extraNotes: null,
     counterpartyName: null,
     counterpartyAccountId: null,
@@ -190,5 +191,53 @@ describe('BusinessPnlPage', () => {
     clickSpy.mockRestore();
     delete (URL as unknown as Record<string, unknown>).createObjectURL;
     delete (URL as unknown as Record<string, unknown>).revokeObjectURL;
+  });
+
+  it('maps tagged transactions to Schedule C lines with a disclaimer', () => {
+    mockUseTransactions.mockReturnValue(
+      mockResult({
+        transactions: [
+          makeTransaction({
+            date: '2024-02-01',
+            type: 'INCOME',
+            amountCents: 900_000,
+            customFields: {
+              'tax.category': 'SCHEDULE_C_INCOME',
+              'tax.deductibleStatus': 'DEDUCTIBLE',
+            },
+          }),
+          makeTransaction({
+            date: '2024-02-02',
+            type: 'EXPENSE',
+            amountCents: 120_000,
+            customFields: {
+              'tax.category': 'HOME_OFFICE',
+              'tax.deductibleStatus': 'DEDUCTIBLE',
+            },
+          }),
+          makeTransaction({
+            date: '2024-02-03',
+            type: 'EXPENSE',
+            amountCents: 40_000,
+            customFields: {
+              'tax.category': 'CHARITABLE_CASH',
+              'tax.deductibleStatus': 'DEDUCTIBLE',
+            },
+          }),
+        ],
+      }),
+    );
+    render(<BusinessPnlPage />);
+
+    const section = screen.getByRole('region', { name: /Schedule C view/i });
+    // Income line 1 and expense line 30 are mapped from the tagged transactions.
+    expect(within(section).getByText('Gross receipts or sales')).toBeInTheDocument();
+    expect(within(section).getByText('Expenses for business use of home')).toBeInTheDocument();
+    // Net profit = $9,000 income − $1,200 home office = $7,800.
+    expect(within(section).getByText('$7,800.00')).toBeInTheDocument();
+    // Personal charitable gift is surfaced as not-on-Schedule-C, never silently dropped.
+    expect(within(section).getByText(/Not on Schedule C/i)).toBeInTheDocument();
+    // The advisory disclaimer is always present.
+    expect(within(section).getByText(/not tax advice/i)).toBeInTheDocument();
   });
 });

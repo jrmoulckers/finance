@@ -21,6 +21,7 @@ export * from './home-office-deductions';
 export * from './charitable-donations';
 export * from './tax-document-export';
 export * from './tax-category-tagging';
+export * from './schedule-c';
 export * from './capital-gains-reporting';
 export * from './retirement-contribution-limits';
 export * from './regional-conventions';

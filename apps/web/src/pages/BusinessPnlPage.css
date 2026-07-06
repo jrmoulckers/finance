@@ -301,3 +301,43 @@
     transition: none;
   }
 }
+
+.business-pnl__schedule-c-note {
+  margin: 0 0 var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.business-pnl__schedule-c-unmapped {
+  margin-top: var(--spacing-3);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.business-pnl__schedule-c-unmapped > summary {
+  cursor: pointer;
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.business-pnl__schedule-c-unmapped-list {
+  margin: var(--spacing-2) 0 0;
+  padding-left: var(--spacing-4);
+  display: grid;
+  gap: var(--spacing-1);
+}
+
+.business-pnl__schedule-c-unmapped-amount {
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.business-pnl__schedule-c-flags {
+  margin: var(--spacing-3) 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
