@@ -24,7 +24,7 @@ import {
 } from '../components/investments/InvestingBetaFeatures';
 import { InvestmentProjections } from '../components/investments/InvestmentProjections';
 import { DeFiPositionsCard } from '../components/investments/DeFiPositionsCard';
-import { useInvestments, useDisplayCurrency } from '../hooks';
+import { useInvestments } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
 import { AppIcon, type IconName } from '../components/icons';
@@ -123,8 +123,16 @@ function computeAllocation(
 /** Investment portfolio page component. */
 export const InvestmentsPage: React.FC = () => {
   const investmentState = useInvestments();
-  const { investments, summary, loading, error, refresh, getLots } = investmentState;
-  const { displayCurrency } = useDisplayCurrency();
+  const {
+    investments,
+    summary,
+    loading,
+    error,
+    refresh,
+    getLots,
+    displayCurrency,
+    conversionDisclosure,
+  } = investmentState;
   const optionalTaxData = investmentState as typeof investmentState & {
     realizedGains?: readonly InvestmentRealizedGainExportInput[];
     dividends?: readonly InvestmentIncomeExportInput[];
@@ -239,13 +247,13 @@ export const InvestmentsPage: React.FC = () => {
                 <div>
                   <p className="card__title">Total Value</p>
                   <p className="card__value" aria-live="polite">
-                    <CurrencyDisplay amount={summary.totalValue} />
+                    <CurrencyDisplay amount={summary.totalValue} currency={displayCurrency} />
                   </p>
                 </div>
                 <div>
                   <p className="card__title">Cost Basis</p>
                   <p className="card__value">
-                    <CurrencyDisplay amount={summary.totalCostBasis} />
+                    <CurrencyDisplay amount={summary.totalCostBasis} currency={displayCurrency} />
                   </p>
                 </div>
                 <div>
@@ -259,7 +267,8 @@ export const InvestmentsPage: React.FC = () => {
                           : 'var(--semantic-negative, #dc2626)',
                     }}
                   >
-                    {formatGainLoss(summary.totalGainLoss)} ({summary.totalGainLossPercent}%)
+                    {formatGainLoss(summary.totalGainLoss, { currency: displayCurrency })} (
+                    {summary.totalGainLossPercent}%)
                   </p>
                 </div>
                 <div>
@@ -267,6 +276,19 @@ export const InvestmentsPage: React.FC = () => {
                   <p className="card__value">{investments.length}</p>
                 </div>
               </div>
+              {conversionDisclosure && (
+                <p
+                  role="note"
+                  style={{
+                    marginTop: 'var(--spacing-3)',
+                    marginBottom: 0,
+                    fontSize: 'var(--type-scale-caption-font-size)',
+                    color: 'var(--semantic-text-secondary)',
+                  }}
+                >
+                  {conversionDisclosure}
+                </p>
+              )}
             </div>
           </section>
 

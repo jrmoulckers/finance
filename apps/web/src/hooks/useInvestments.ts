@@ -40,6 +40,8 @@ import type { Investment, InvestmentLot, SyncId } from '../kmp/bridge';
 import { computeAllocation, analyzeFees, DEFAULT_ASSET_CLASS_MAP } from '../lib/investment';
 import type { HoldingWithClass, FeeHoldingInput } from '../lib/investment';
 import type { AllocationAnalysis, AllocationTarget, FeeAnalysis } from '../types/investment';
+import type { DisplayCurrencyAmount } from '../lib/budgeting/display-currency-rollups';
+import { useDisplayCurrencyRollup } from './useDisplayCurrencyRollup';
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -63,6 +65,16 @@ export interface UseInvestmentsResult {
   investments: Investment[];
   /** Computed portfolio summary statistics. */
   summary: PortfolioSummary;
+  /** ISO 4217 code the summary figures are expressed in (display-currency preference). */
+  displayCurrency: string;
+  /** `true` when at least one holding's value was converted from another currency. */
+  isConverted: boolean;
+  /** `true` when any converted rate is stale or the app is offline. */
+  hasStaleRates: boolean;
+  /** Currencies with no available rate; their holdings are excluded from the summary totals. */
+  unconvertedCurrencies: readonly string[];
+  /** Human-readable conversion/coverage disclosure, or `null` when nothing was converted. */
+  conversionDisclosure: string | null;
   /** `true` while the initial or refresh load is in progress. */
   loading: boolean;
   /** Human-readable error message from the last failed operation, or `null`. */
@@ -135,14 +147,34 @@ export interface UseInvestmentsResult {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Compute portfolio summary from a list of investments. */
-function computeSummary(investments: Investment[]): PortfolioSummary {
+/**
+ * Compute portfolio summary from a list of investments.
+ *
+ * Market value and cost basis are read through the optional {@link valueOf} and
+ * {@link costBasisOf} resolvers rather than off each holding directly, so a
+ * multi-currency portfolio can be converted into a single display currency
+ * *before* aggregation. Summing raw minor units across currencies is meaningless
+ * (a EUR holding is not a USD holding) — the root cause of #3239. Callers with
+ * mixed currencies must pass resolvers that return each holding's value already
+ * converted into one common currency.
+ *
+ * @param investments - Holdings to aggregate (already filtered to convertible ones by the caller).
+ * @param valueOf - Resolves a holding's market value in cents. Defaults to
+ *   `shares * currentPricePerShare` (correct only for a single-currency portfolio).
+ * @param costBasisOf - Resolves a holding's cost basis in cents. Defaults to
+ *   `shares * costBasisPerShare` (correct only for a single-currency portfolio).
+ */
+export function computeSummary(
+  investments: Investment[],
+  valueOf: (inv: Investment) => number = (inv) => inv.shares * inv.currentPricePerShare.amount,
+  costBasisOf: (inv: Investment) => number = (inv) => inv.shares * inv.costBasisPerShare.amount,
+): PortfolioSummary {
   let totalValue = 0;
   let totalCostBasis = 0;
 
   for (const inv of investments) {
-    totalValue += inv.shares * inv.currentPricePerShare.amount;
-    totalCostBasis += inv.shares * inv.costBasisPerShare.amount;
+    totalValue += valueOf(inv);
+    totalCostBasis += costBasisOf(inv);
   }
 
   const totalGainLoss = totalValue - totalCostBasis;
@@ -196,7 +228,74 @@ export function useInvestments(): UseInvestmentsResult {
     }
   }, [db, refreshToken]);
 
-  const summary = computeSummary(investments);
+  // Convert each holding's market value and cost basis into the user's display
+  // currency BEFORE aggregating the summary cards. Summing raw minor units
+  // across currencies is meaningless (a EUR holding is not a USD holding) — the
+  // root cause of #3239. This reuses the shared exchange-rate rollup and the
+  // #3460 minor-unit rescale, exactly as the net-worth aggregation does (#3514).
+  // Each holding contributes a `:value` and a `:cost` amount so both totals are
+  // converted with the same rate coverage.
+  const valuationAmounts = useMemo<DisplayCurrencyAmount[]>(() => {
+    const amounts: DisplayCurrencyAmount[] = [];
+    for (const inv of investments) {
+      const currency = inv.currency.code;
+      amounts.push({
+        id: `${inv.id}:value`,
+        amountCents: Math.round(inv.shares * inv.currentPricePerShare.amount),
+        currency,
+      });
+      amounts.push({
+        id: `${inv.id}:cost`,
+        amountCents: Math.round(inv.shares * inv.costBasisPerShare.amount),
+        currency,
+      });
+    }
+    return amounts;
+  }, [investments]);
+
+  const {
+    rollup,
+    displayCurrency,
+    isConverted,
+    hasStaleRates,
+    unconvertedCurrencies,
+    loading: ratesLoading,
+  } = useDisplayCurrencyRollup(valuationAmounts);
+
+  // Map holding id -> converted market value / cost basis (display-currency
+  // minor units). Holdings whose currency has no available rate are absent from
+  // these maps; they are surfaced via `unconvertedCurrencies` and excluded from
+  // the totals rather than silently mis-added in their own minor units.
+  const { valueById, costById } = useMemo(() => {
+    const valueMap = new Map<string, number>();
+    const costMap = new Map<string, number>();
+    for (const amount of rollup.convertedAmounts) {
+      if (amount.id.endsWith(':value')) {
+        valueMap.set(amount.id.slice(0, -':value'.length), amount.displayAmountCents);
+      } else if (amount.id.endsWith(':cost')) {
+        costMap.set(amount.id.slice(0, -':cost'.length), amount.displayAmountCents);
+      }
+    }
+    return { valueById: valueMap, costById: costMap };
+  }, [rollup]);
+
+  const summary = useMemo<PortfolioSummary>(() => {
+    const convertible = investments.filter((inv) => valueById.has(inv.id));
+    return computeSummary(
+      convertible,
+      (inv) => valueById.get(inv.id) ?? inv.shares * inv.currentPricePerShare.amount,
+      (inv) => costById.get(inv.id) ?? inv.shares * inv.costBasisPerShare.amount,
+    );
+  }, [investments, valueById, costById]);
+
+  const conversionDisclosure = useMemo<string | null>(() => {
+    const parts: string[] = [];
+    if (rollup.convertedCurrencyCodes.length > 0) parts.push(rollup.disclosure);
+    if (unconvertedCurrencies.length > 0) {
+      parts.push(`Excluded ${unconvertedCurrencies.join(', ')} — no exchange rate available.`);
+    }
+    return parts.length > 0 ? parts.join(' ') : null;
+  }, [rollup, unconvertedCurrencies]);
 
   const createInvestment = useCallback(
     (input: CreateInvestmentInput): Investment | null => {
@@ -354,7 +453,14 @@ export function useInvestments(): UseInvestmentsResult {
   return {
     investments,
     summary,
-    loading,
+    displayCurrency,
+    isConverted,
+    hasStaleRates,
+    unconvertedCurrencies,
+    conversionDisclosure,
+    // Gate on exchange-rate readiness so the summary cards never flash an
+    // un-converted (wrong) total before the rates resolve.
+    loading: loading || ratesLoading,
     error,
     refresh,
     createInvestment,
