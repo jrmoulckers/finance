@@ -32,3 +32,22 @@ export function addMonthsToIsoDate(todayIso: string, months: number): string {
   target.setUTCDate(Math.min(day, lastDayOfTargetMonth));
   return target.toISOString().slice(0, 10);
 }
+
+/**
+ * Counts whole calendar months from one ISO `YYYY-MM-DD` date to another, based
+ * on year and month only (the day component is ignored).
+ *
+ * This is the month-granularity inverse of {@link addMonthsToIsoDate}:
+ * `monthsUntilIsoDate(today, addMonthsToIsoDate(today, n))` returns `n` for any
+ * non-negative `n`. A `toIso` earlier than `fromIso` yields a negative count,
+ * which callers can treat as an unreachable (past) target date.
+ *
+ * @param fromIso - Start date as `YYYY-MM-DD`.
+ * @param toIso - End date as `YYYY-MM-DD`.
+ * @returns Whole months between the two dates (may be negative).
+ */
+export function monthsUntilIsoDate(fromIso: string, toIso: string): number {
+  const [fromYear, fromMonth] = fromIso.split('-').map((value) => Number.parseInt(value, 10));
+  const [toYear, toMonth] = toIso.split('-').map((value) => Number.parseInt(value, 10));
+  return (toYear - fromYear) * 12 + (toMonth - fromMonth);
+}

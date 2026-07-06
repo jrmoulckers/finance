@@ -569,9 +569,14 @@
 [data-theme='dark'] .student-loan-stat-card,
 [data-theme='dark'] .student-loan-card,
 [data-theme='dark'] .student-loan-form,
-[data-theme='dark'] .student-loan-what-if {
+[data-theme='dark'] .student-loan-what-if,
+[data-theme='dark'] .debt-whatif {
   background: var(--semantic-background-primary, #1f2937);
   border-color: var(--semantic-border, #374151);
+}
+
+[data-theme='dark'] .debt-whatif__result {
+  background: var(--semantic-background-secondary, #111827);
 }
 
 /* ---------------------------------------------------------------------------
@@ -600,7 +605,8 @@
   .student-loan-stat-card,
   .student-loan-card,
   .student-loan-form,
-  .student-loan-what-if {
+  .student-loan-what-if,
+  .debt-whatif {
     border-width: 2px;
   }
 
@@ -936,6 +942,59 @@
   padding: var(--spacing-2, 0.5rem);
   text-align: left;
   vertical-align: top;
+}
+
+.debt-whatif {
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--semantic-background-primary, #fff);
+  padding: var(--spacing-4, 1rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.debt-whatif__header h2 {
+  margin: 0 0 var(--spacing-1, 0.25rem);
+  font-size: var(--font-size-lg, 1.125rem);
+}
+
+.debt-whatif__header p {
+  margin: 0 0 var(--spacing-3, 0.75rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.debt-whatif__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-3, 0.75rem);
+  align-items: end;
+}
+
+.debt-whatif label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.debt-whatif input {
+  width: 100%;
+  padding: var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-primary, #fff);
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.debt-whatif__result {
+  margin: var(--spacing-3, 0.75rem) 0 0;
+  padding: var(--spacing-3, 0.75rem);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-secondary, #f9fafb);
+  font-size: var(--font-size-sm, 0.875rem);
+  line-height: var(--line-height-relaxed, 1.6);
 }
 
 .credit-card-form {

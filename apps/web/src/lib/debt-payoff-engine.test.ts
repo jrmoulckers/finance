@@ -23,11 +23,13 @@ import {
   calculateDebtToIncomeTrend,
   calculateExtraPaymentImpactScenarios,
   calculateInterestSavedCents,
+  calculateLumpSumImpact,
   calculateMonthlyInterestCents,
   calculatePayoffStrategyRecommendation,
   calculateSnowballOrder,
   calculateStrategyResult,
   compareStrategies,
+  solveExtraPaymentForTargetDate,
 } from './debt-payoff-engine';
 import type { Debt } from './debt-types';
 
@@ -777,5 +779,117 @@ describe('debt beta milestone and DTI additions', () => {
     );
 
     expect(changedIncomeTrend.trend[1].monthlyIncomeCents).toBe(200_000);
+  });
+});
+
+describe('calculateLumpSumImpact', () => {
+  const debts: Debt[] = [
+    {
+      id: 'cc',
+      name: 'Credit Card',
+      balanceCents: 500_000,
+      annualRateBps: 1999,
+      minimumPaymentCents: 15_000,
+      type: 'credit_card',
+    },
+    {
+      id: 'car',
+      name: 'Car Loan',
+      balanceCents: 900_000,
+      annualRateBps: 599,
+      minimumPaymentCents: 20_000,
+      type: 'auto_loan',
+    },
+  ];
+
+  it('reduces months and interest versus the same plan without the lump sum', () => {
+    const impact = calculateLumpSumImpact(debts, 'snowball', 10_000, 300_000, 1);
+
+    expect(impact.lumpSumCents).toBe(300_000);
+    expect(impact.appliedMonth).toBe(1);
+    expect(impact.withLumpSumMonths).toBeLessThan(impact.baselineMonths);
+    expect(impact.monthsSaved).toBeGreaterThan(0);
+    expect(impact.interestSavedCents).toBeGreaterThan(0);
+  });
+
+  it('reports no impact for a zero lump sum', () => {
+    const impact = calculateLumpSumImpact(debts, 'snowball', 10_000, 0);
+
+    expect(impact.monthsSaved).toBe(0);
+    expect(impact.interestSavedCents).toBe(0);
+    expect(impact.withLumpSumMonths).toBe(impact.baselineMonths);
+  });
+
+  it('clamps negative lump sums and fractional months to safe values', () => {
+    const impact = calculateLumpSumImpact(debts, 'avalanche', 5_000, -100_000, 2.9);
+
+    expect(impact.lumpSumCents).toBe(0);
+    expect(impact.appliedMonth).toBe(2);
+    expect(impact.monthsSaved).toBe(0);
+  });
+
+  it('saves more when the lump sum lands sooner', () => {
+    const early = calculateLumpSumImpact(debts, 'avalanche', 10_000, 300_000, 1);
+    const late = calculateLumpSumImpact(debts, 'avalanche', 10_000, 300_000, 12);
+
+    expect(early.interestSavedCents).toBeGreaterThanOrEqual(late.interestSavedCents);
+  });
+});
+
+describe('solveExtraPaymentForTargetDate', () => {
+  const debts: Debt[] = [
+    {
+      id: 'cc',
+      name: 'Credit Card',
+      balanceCents: 500_000,
+      annualRateBps: 1999,
+      minimumPaymentCents: 15_000,
+      type: 'credit_card',
+    },
+  ];
+
+  it('returns zero extra when the minimum-only plan already meets the target', () => {
+    const baseline = calculateStrategyResult(debts, 'avalanche', 0);
+    const solution = solveExtraPaymentForTargetDate(debts, 'avalanche', baseline.totalMonths + 12);
+
+    expect(solution.feasible).toBe(true);
+    expect(solution.requiredExtraPaymentCents).toBe(0);
+    expect(solution.resultingMonths).toBeLessThanOrEqual(baseline.totalMonths);
+  });
+
+  it('finds the minimum extra payment needed to hit an aggressive target', () => {
+    const target = 12;
+    const solution = solveExtraPaymentForTargetDate(debts, 'avalanche', target);
+
+    expect(solution.feasible).toBe(true);
+    expect(solution.requiredExtraPaymentCents).toBeGreaterThan(0);
+    expect(solution.resultingMonths).toBeLessThanOrEqual(target);
+
+    // The solution is minimal: one cent less misses the target.
+    const oneCentLess = calculateStrategyResult(
+      debts,
+      'avalanche',
+      solution.requiredExtraPaymentCents - 1,
+    );
+    const monthsOneCentLess = oneCentLess.fullyPaidOff
+      ? oneCentLess.totalMonths
+      : Number.POSITIVE_INFINITY;
+    expect(monthsOneCentLess).toBeGreaterThan(target);
+  });
+
+  it('marks impossible targets as infeasible', () => {
+    const solution = solveExtraPaymentForTargetDate(debts, 'avalanche', 0);
+
+    expect(solution.feasible).toBe(false);
+    expect(solution.requiredExtraPaymentCents).toBe(0);
+    expect(solution.resultingMonths).toBeGreaterThan(0);
+  });
+
+  it('returns a trivially feasible solution for an empty debt list', () => {
+    const solution = solveExtraPaymentForTargetDate([], 'avalanche', 12);
+
+    expect(solution.feasible).toBe(true);
+    expect(solution.requiredExtraPaymentCents).toBe(0);
+    expect(solution.resultingMonths).toBe(0);
   });
 });

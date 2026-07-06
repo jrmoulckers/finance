@@ -34,12 +34,14 @@ import {
   calculateDebtToIncomeTrend,
   calculateExtraPaymentImpactScenarios,
   calculateInterestSavedCents,
+  calculateLumpSumImpact,
   calculateMonthlyInterestCents,
   calculatePayoffStrategyRecommendation,
   calculateStrategyResult,
   compareStrategies,
+  solveExtraPaymentForTargetDate,
 } from '../lib/debt-payoff-engine';
-import { addMonthsToIsoDate } from '../lib/date-utils';
+import { addMonthsToIsoDate, monthsUntilIsoDate } from '../lib/date-utils';
 import { buildPayoffMilestones } from '../lib/debt/payoff-milestones';
 import { aggregateBnplDashboard, type BnplObligationDraft } from '../lib/debt/bnpl-aggregation';
 import {
@@ -616,6 +618,9 @@ function PayoffPlannerPanel(): React.ReactElement {
   const [dtiAnnualRaise, setDtiAnnualRaise] = useState('0');
   const [dtiTarget, setDtiTarget] = useState('36');
   const [impactScenarioInput, setImpactScenarioInput] = useState('25, 50, 100, 200');
+  const [lumpSumInput, setLumpSumInput] = useState('');
+  const [lumpSumMonthsInput, setLumpSumMonthsInput] = useState('1');
+  const [targetMonthInput, setTargetMonthInput] = useState('');
   const [consolidationForm, setConsolidationForm] = useState<ConsolidationFormState>(
     DEFAULT_CONSOLIDATION_FORM,
   );
@@ -748,6 +753,31 @@ function PayoffPlannerPanel(): React.ReactElement {
   );
   const diminishingReturnScenario = extraPaymentScenarios.find(
     (scenario) => scenario.isDiminishingReturn,
+  );
+  const lumpSumCents = parseCurrencyInput(lumpSumInput);
+  const lumpSumMonths = Math.max(1, Number.parseInt(lumpSumMonthsInput, 10) || 1);
+  const lumpSumImpact = useMemo(
+    () =>
+      debts.length > 0 && lumpSumCents > 0
+        ? calculateLumpSumImpact(
+            debts,
+            activeStrategy,
+            extraPaymentCents,
+            lumpSumCents,
+            lumpSumMonths,
+          )
+        : null,
+    [debts, activeStrategy, extraPaymentCents, lumpSumCents, lumpSumMonths],
+  );
+  const targetMonths = targetMonthInput
+    ? monthsUntilIsoDate(todayIso, `${targetMonthInput}-01`)
+    : null;
+  const targetDateSolution = useMemo(
+    () =>
+      debts.length > 0 && targetMonths !== null && targetMonths >= 1
+        ? solveExtraPaymentForTargetDate(debts, activeStrategy, targetMonths)
+        : null,
+    [debts, activeStrategy, targetMonths],
   );
   const consolidationComparison = useMemo(() => {
     if (debts.length === 0) return null;
@@ -1700,6 +1730,131 @@ function PayoffPlannerPanel(): React.ReactElement {
                 </tbody>
               </table>
             </div>
+          </section>
+          <section aria-label="One-time payment what-if" className="debt-whatif">
+            <div className="debt-whatif__header">
+              <h2>One-Time Payment What-If</h2>
+              <p>
+                Model a windfall — a tax refund, bonus, or gift — thrown at your{' '}
+                {formatStrategyName(activeStrategy)} plan to see how much sooner you reach
+                debt-free.
+              </p>
+            </div>
+            <div className="debt-whatif__controls">
+              <label>
+                Lump sum ($)
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={lumpSumInput}
+                  onChange={(event) => setLumpSumInput(event.target.value)}
+                  placeholder="1,500"
+                />
+              </label>
+              <label>
+                Apply in (months from now)
+                <input
+                  type="number"
+                  min={1}
+                  value={lumpSumMonthsInput}
+                  onChange={(event) => setLumpSumMonthsInput(event.target.value)}
+                />
+              </label>
+            </div>
+            <p className="debt-whatif__result" role="status" aria-live="polite">
+              {debts.length === 0 ? (
+                'Add a debt to model a one-time payment.'
+              ) : lumpSumImpact && lumpSumImpact.lumpSumCents > 0 ? (
+                <>
+                  A{' '}
+                  <CurrencyDisplay amount={lumpSumImpact.lumpSumCents} context="one-time payment" />{' '}
+                  payment applied{' '}
+                  {formatMonthYear(addMonthsToIsoDate(todayIso, lumpSumImpact.appliedMonth))}{' '}
+                  {lumpSumImpact.monthsSaved > 0 ? (
+                    <>
+                      makes you debt-free by{' '}
+                      {formatMonthYear(
+                        addMonthsToIsoDate(todayIso, lumpSumImpact.withLumpSumMonths),
+                      )}{' '}
+                      — {lumpSumImpact.monthsSaved} {pluralize(lumpSumImpact.monthsSaved, 'month')}{' '}
+                      sooner and{' '}
+                      <CurrencyDisplay
+                        amount={lumpSumImpact.interestSavedCents}
+                        context="interest saved"
+                      />{' '}
+                      less interest.
+                    </>
+                  ) : lumpSumImpact.interestSavedCents > 0 ? (
+                    <>
+                      saves{' '}
+                      <CurrencyDisplay
+                        amount={lumpSumImpact.interestSavedCents}
+                        context="interest saved"
+                      />{' '}
+                      in interest, though your debt-free month stays the same.
+                    </>
+                  ) : (
+                    'is too small to change your payoff timeline at this size.'
+                  )}
+                </>
+              ) : (
+                'Enter a lump-sum amount to see the impact.'
+              )}
+            </p>
+          </section>
+          <section aria-label="Target debt-free date calculator" className="debt-whatif">
+            <div className="debt-whatif__header">
+              <h2>Hit a Target Date</h2>
+              <p>
+                Pick the month you want to be debt-free and we&apos;ll find the extra monthly
+                payment it takes on your {formatStrategyName(activeStrategy)} plan.
+              </p>
+            </div>
+            <label>
+              Target debt-free month
+              <input
+                type="month"
+                value={targetMonthInput}
+                onChange={(event) => setTargetMonthInput(event.target.value)}
+              />
+            </label>
+            <p className="debt-whatif__result" role="status" aria-live="polite">
+              {debts.length === 0 ? (
+                'Add a debt to calculate a target payoff.'
+              ) : !targetMonthInput ? (
+                'Pick a target month to see the required payment.'
+              ) : targetMonths !== null && targetMonths < 1 ? (
+                'Pick a month in the future.'
+              ) : targetDateSolution && targetDateSolution.feasible ? (
+                targetDateSolution.requiredExtraPaymentCents === 0 ? (
+                  <>
+                    You are already on track to be debt-free by{' '}
+                    {formatMonthYear(`${targetMonthInput}-01`)} with your current plan — no extra
+                    payment needed.
+                  </>
+                ) : (
+                  <>
+                    To be debt-free by {formatMonthYear(`${targetMonthInput}-01`)}, pay about{' '}
+                    <CurrencyDisplay
+                      amount={targetDateSolution.requiredExtraPaymentCents}
+                      context="required extra payment"
+                    />{' '}
+                    extra per month on top of your minimums.
+                  </>
+                )
+              ) : targetDateSolution ? (
+                <>
+                  That target is sooner than your plan allows. The soonest you can realistically be
+                  debt-free is{' '}
+                  {formatMonthYear(
+                    addMonthsToIsoDate(todayIso, Math.max(1, targetDateSolution.resultingMonths)),
+                  )}
+                  .
+                </>
+              ) : (
+                'Pick a target month to see the required payment.'
+              )}
+            </p>
           </section>
         </>
       )}

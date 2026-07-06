@@ -208,6 +208,75 @@ describe('DebtPage', () => {
     expect(within(timeline).getAllByRole('listitem')).toHaveLength(2);
   });
 
+  it('models a one-time lump-sum payment what-if (#3370)', () => {
+    mockUseAccountsState.accounts = [
+      buildAccount({
+        id: 'cc-1',
+        name: 'Rewards Credit Card',
+        type: 'CREDIT_CARD',
+        currentBalance: { amount: -400_000 },
+      }),
+      buildAccount({
+        id: 'loan-1',
+        name: 'Personal Loan',
+        type: 'LOAN',
+        currentBalance: { amount: 800_000 },
+      }),
+    ];
+
+    render(<DebtPage />);
+
+    const region = screen.getByRole('region', { name: 'One-time payment what-if' });
+    // Prompts for input before an amount is entered.
+    expect(within(region).getByText(/Enter a lump-sum amount/i)).toBeDefined();
+
+    fireEvent.change(within(region).getByLabelText('Lump sum ($)'), {
+      target: { value: '2000' },
+    });
+
+    // The prompt is replaced by an impact summary that renders the lump sum.
+    expect(within(region).queryByText(/Enter a lump-sum amount/i)).toBeNull();
+    expect(
+      within(region)
+        .getAllByTestId('currency')
+        .some((element) => element.textContent === '200000'),
+    ).toBe(true);
+  });
+
+  it('solves for the extra payment needed to hit a target date (#3369)', () => {
+    mockUseAccountsState.accounts = [
+      buildAccount({
+        id: 'cc-1',
+        name: 'Rewards Credit Card',
+        type: 'CREDIT_CARD',
+        currentBalance: { amount: -400_000 },
+      }),
+      buildAccount({
+        id: 'loan-1',
+        name: 'Personal Loan',
+        type: 'LOAN',
+        currentBalance: { amount: 800_000 },
+      }),
+    ];
+
+    render(<DebtPage />);
+
+    const region = screen.getByRole('region', { name: 'Target debt-free date calculator' });
+    expect(within(region).getByText(/Pick a target month/i)).toBeDefined();
+
+    // An aggressive six-month target on ~$12k of debt requires a real extra payment.
+    const now = new Date();
+    const targetMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 6, 1))
+      .toISOString()
+      .slice(0, 7);
+    fireEvent.change(within(region).getByLabelText('Target debt-free month'), {
+      target: { value: targetMonth },
+    });
+
+    expect(within(region).getByText(/pay about/i)).toBeDefined();
+    expect(within(region).getAllByTestId('currency').length).toBeGreaterThan(0);
+  });
+
   it('warns instead of showing a countdown when the payment never covers interest (#3355)', () => {
     mockUseAccountsState.accounts = [
       buildAccount({
