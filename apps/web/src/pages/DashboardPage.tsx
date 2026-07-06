@@ -14,6 +14,7 @@ import {
   useBudgets,
   useCategories,
   useDashboardData,
+  useDisplayCurrencyRollup,
   useGoals,
   usePredictiveBalance,
   useRetirementPlanner,
@@ -644,6 +645,23 @@ export const DashboardPage: React.FC = () => {
     () => filteredAccounts.reduce((sum, account) => sum + account.currentBalance.amount, 0),
     [filteredAccounts],
   );
+  // Convert each account balance into the user's display currency before
+  // summing so the card honours the display-currency preference instead of
+  // rendering a raw cross-currency total in hardcoded USD (#3284/#3282). Sign
+  // semantics are intentionally left unchanged here (sign-blind sum, matching
+  // `netWorth` above) — the liability-sign fix is tracked separately (#3202);
+  // this change only fixes the currency of the displayed figure.
+  const netWorthDisplayAmounts = useMemo(
+    () =>
+      filteredAccounts.map((account) => ({
+        id: account.id,
+        amountCents: account.currentBalance.amount,
+        currency: account.currency.code,
+      })),
+    [filteredAccounts],
+  );
+  const netWorthRollup = useDisplayCurrencyRollup(netWorthDisplayAmounts);
+  const displayNetWorth = netWorthRollup.rollup.totalCents;
   const debtSummary = useMemo(
     () =>
       filteredAccounts.reduce(
@@ -866,9 +884,14 @@ export const DashboardPage: React.FC = () => {
                         <ExplainThis glossaryKey="netWorth" buttonLabel="Explain net worth" />
                       </div>
                       <div className="card__value" aria-live="polite">
-                        <CurrencyDisplay amount={netWorth} colorize context="net worth" />
+                        <CurrencyDisplay
+                          amount={displayNetWorth}
+                          currency={netWorthRollup.displayCurrency}
+                          colorize
+                          context="net worth"
+                        />
                       </div>
-                      {netWorth < 0 ? (
+                      {displayNetWorth < 0 ? (
                         <p
                           className="dashboard-card-reassurance"
                           style={{

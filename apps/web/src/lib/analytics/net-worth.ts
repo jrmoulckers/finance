@@ -110,13 +110,18 @@ export function isLiabilityType(type: AccountType): boolean {
  * of every non-archived account yields the same `netWorth` value.
  *
  * @param account - Account (or minimal `type` + `currentBalance` shape)
+ * @param balance - Balance in cents to use for the contribution. Defaults to
+ *   the account's own `currentBalance.amount`; pass a display-currency-converted
+ *   value to aggregate a multi-currency portfolio in a single currency (#3282).
  * @returns Signed cents — positive for assets, negative for liabilities
  */
-export function netWorthContribution(account: {
-  readonly type: AccountType;
-  readonly currentBalance: { readonly amount: number };
-}): number {
-  const balance = account.currentBalance.amount;
+export function netWorthContribution(
+  account: {
+    readonly type: AccountType;
+    readonly currentBalance: { readonly amount: number };
+  },
+  balance: number = account.currentBalance.amount,
+): number {
   return isLiabilityType(account.type) ? -Math.abs(balance) : balance;
 }
 
@@ -127,16 +132,29 @@ export function netWorthContribution(account: {
 /**
  * Computes the current net worth snapshot from accounts.
  *
+ * Balances are read through the optional {@link balanceOf} resolver rather than
+ * summed directly, so a multi-currency portfolio can be converted into a single
+ * display currency *before* aggregation. Adding raw minor units across
+ * currencies is meaningless (¥1,000 is not $1,000); callers with mixed
+ * currencies must pass a resolver that returns each account's balance already
+ * converted into one common currency (#3282, #3235, #3238).
+ *
  * @param accounts - All non-archived, non-deleted accounts
+ * @param balanceOf - Resolves each account's balance in cents. Defaults to the
+ *   account's own `currentBalance.amount` (correct only for a single-currency
+ *   portfolio).
  * @returns Net worth data point for the current moment
  */
-export function computeCurrentNetWorth(accounts: Account[]): NetWorthDataPoint {
+export function computeCurrentNetWorth(
+  accounts: Account[],
+  balanceOf: (account: Account) => number = (account) => account.currentBalance.amount,
+): NetWorthDataPoint {
   let assets = 0;
   let liabilities = 0;
 
   for (const acct of accounts) {
     if (acct.isArchived) continue;
-    const balance = acct.currentBalance.amount;
+    const balance = balanceOf(acct);
     if (isLiabilityType(acct.type)) {
       liabilities += Math.abs(balance);
     } else {
@@ -155,10 +173,20 @@ export function computeCurrentNetWorth(accounts: Account[]): NetWorthDataPoint {
 /**
  * Groups accounts by asset class and computes breakdown.
  *
+ * Like {@link computeCurrentNetWorth}, balances are read through the optional
+ * {@link balanceOf} resolver so a multi-currency portfolio is converted into a
+ * single display currency before the per-class totals and percentages are
+ * derived (#3238).
+ *
  * @param accounts - All non-archived, non-deleted accounts
+ * @param balanceOf - Resolves each account's balance in cents. Defaults to the
+ *   account's own `currentBalance.amount` (correct only for a single currency).
  * @returns Array of AssetClassBreakdown sorted by balance descending
  */
-export function computeAssetClassBreakdown(accounts: Account[]): AssetClassBreakdown[] {
+export function computeAssetClassBreakdown(
+  accounts: Account[],
+  balanceOf: (account: Account) => number = (account) => account.currentBalance.amount,
+): AssetClassBreakdown[] {
   const classMap = new Map<
     string,
     { types: Set<AccountType>; balance: number; count: number; isLiability: boolean }
@@ -174,7 +202,7 @@ export function computeAssetClassBreakdown(accounts: Account[]): AssetClassBreak
       isLiability: info.isLiability,
     };
     existing.types.add(acct.type);
-    existing.balance += Math.abs(acct.currentBalance.amount);
+    existing.balance += Math.abs(balanceOf(acct));
     existing.count += 1;
     classMap.set(info.className, existing);
   }

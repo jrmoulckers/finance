@@ -40,9 +40,11 @@ import './analytics.css';
 
 interface AssetClassListProps {
   classes: AssetClassBreakdown[];
+  /** ISO 4217 code the balances are expressed in (converted display currency). */
+  displayCurrency: string;
 }
 
-const AssetClassList: React.FC<AssetClassListProps> = ({ classes }) => (
+const AssetClassList: React.FC<AssetClassListProps> = ({ classes, displayCurrency }) => (
   <div className="analytics-breakdown" role="list" aria-label="Asset class breakdown">
     {classes.map((cls, idx) => {
       const color = CHART_COLORS[idx % CHART_COLORS.length];
@@ -55,7 +57,7 @@ const AssetClassList: React.FC<AssetClassListProps> = ({ classes }) => (
                 {cls.className} ({cls.accountCount})
               </span>
               <span className="analytics-breakdown__amount">
-                <CurrencyDisplay amount={cls.balance} />
+                <CurrencyDisplay amount={cls.balance} currency={displayCurrency} />
               </span>
             </div>
             <div
@@ -105,6 +107,8 @@ const MilestoneList: React.FC<MilestoneListProps> = ({ milestones }) => (
 
 interface NetWorthChangeIndicatorProps {
   comparison: PeriodComparison;
+  /** ISO 4217 code the change amount is expressed in. */
+  currency: string;
 }
 
 const NET_WORTH_CHANGE_ICON = { up: '▲', down: '▼', flat: '→' } as const;
@@ -117,7 +121,10 @@ const NET_WORTH_CHANGE_ICON = { up: '▲', down: '▼', flat: '→' } as const;
  * percentage denominator uses the absolute prior value, so a recovery from a
  * negative net worth still reads as an increase.
  */
-const NetWorthChangeIndicator: React.FC<NetWorthChangeIndicatorProps> = ({ comparison }) => {
+const NetWorthChangeIndicator: React.FC<NetWorthChangeIndicatorProps> = ({
+  comparison,
+  currency,
+}) => {
   const { changeCents, changePercent, previousLabel } = comparison;
   const direction = changeCents > 0 ? 'up' : changeCents < 0 ? 'down' : 'flat';
 
@@ -128,6 +135,7 @@ const NetWorthChangeIndicator: React.FC<NetWorthChangeIndicatorProps> = ({ compa
       </span>{' '}
       <CurrencyDisplay
         amount={changeCents}
+        currency={currency}
         colorize
         showSign
         context={`change versus ${previousLabel}`}
@@ -159,6 +167,8 @@ export const NetWorthPage: React.FC = () => {
     loading,
     error,
     refresh,
+    displayCurrency,
+    conversionDisclosure,
   } = useNetWorth(purposeFilter);
 
   if (loading) {
@@ -242,9 +252,11 @@ export const NetWorthPage: React.FC = () => {
                   : 'analytics-metric-card__value--negative'
               }`}
             >
-              <CurrencyDisplay amount={currentNetWorth.netWorth} />
+              <CurrencyDisplay amount={currentNetWorth.netWorth} currency={displayCurrency} />
             </p>
-            {periodComparison && <NetWorthChangeIndicator comparison={periodComparison} />}
+            {periodComparison && (
+              <NetWorthChangeIndicator comparison={periodComparison} currency={displayCurrency} />
+            )}
           </article>
           <article className="analytics-metric-card" aria-label="Total assets">
             <div
@@ -258,7 +270,7 @@ export const NetWorthPage: React.FC = () => {
               <ExplainThis glossaryKey="asset" buttonLabel="Explain what counts as an asset" />
             </div>
             <p className="analytics-metric-card__value analytics-metric-card__value--positive">
-              <CurrencyDisplay amount={currentNetWorth.assets} />
+              <CurrencyDisplay amount={currentNetWorth.assets} currency={displayCurrency} />
             </p>
           </article>
           <article className="analytics-metric-card" aria-label="Total liabilities">
@@ -273,10 +285,22 @@ export const NetWorthPage: React.FC = () => {
               <ExplainThis glossaryKey="liability" />
             </div>
             <p className="analytics-metric-card__value analytics-metric-card__value--negative">
-              <CurrencyDisplay amount={currentNetWorth.liabilities} />
+              <CurrencyDisplay amount={currentNetWorth.liabilities} currency={displayCurrency} />
             </p>
           </article>
         </div>
+        {conversionDisclosure && (
+          <p
+            role="note"
+            style={{
+              marginTop: 'var(--spacing-2)',
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--semantic-text-secondary)',
+            }}
+          >
+            {conversionDisclosure}
+          </p>
+        )}
       </section>
 
       {/* Net worth growth + forward projection */}
@@ -290,7 +314,7 @@ export const NetWorthPage: React.FC = () => {
       {assetClasses.length > 0 && (
         <section className="analytics-section" aria-label="Asset classes">
           <h3 className="analytics-section__title">Asset Class Breakdown</h3>
-          <AssetClassList classes={assetClasses} />
+          <AssetClassList classes={assetClasses} displayCurrency={displayCurrency} />
         </section>
       )}
 
