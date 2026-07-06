@@ -83,6 +83,11 @@ describe('InvestmentsPage', () => {
       totalGainLoss: 107500,
       totalGainLossPercent: 15.36,
     },
+    displayCurrency: 'USD',
+    isConverted: false,
+    hasStaleRates: false,
+    unconvertedCurrencies: [],
+    conversionDisclosure: null,
     loading: false,
     error: null,
     refresh: vi.fn(),
@@ -121,6 +126,43 @@ describe('InvestmentsPage', () => {
     expect(screen.getByText('Total Value')).toBeInTheDocument();
     expect(screen.getByText('Cost Basis')).toBeInTheDocument();
     expect(screen.getByText('Holdings')).toBeInTheDocument();
+  });
+
+  it('converts the summary into the display currency and discloses the conversion (#3239)', () => {
+    mockedUseInvestments.mockReturnValue({
+      ...baseMockReturn,
+      summary: {
+        totalValue: 500000,
+        totalCostBasis: 400000,
+        totalGainLoss: 100000,
+        totalGainLossPercent: 25,
+      },
+      displayCurrency: 'EUR',
+      isConverted: true,
+      conversionDisclosure: 'Converted GBP to EUR. Some rates may be stale or offline.',
+    });
+
+    render(
+      <MemoryRouter>
+        <InvestmentsPage />
+      </MemoryRouter>,
+    );
+
+    // The summary total renders in the display currency (EUR), never hardcoded USD.
+    expect(screen.getByText('€5,000.00')).toBeInTheDocument();
+    expect(
+      screen.getByText('Converted GBP to EUR. Some rates may be stale or offline.'),
+    ).toBeInTheDocument();
+  });
+
+  it('omits the conversion disclosure for a single-currency portfolio', () => {
+    render(
+      <MemoryRouter>
+        <InvestmentsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText(/Converted /)).not.toBeInTheDocument();
   });
 
   it('renders holdings table with investment symbols', () => {

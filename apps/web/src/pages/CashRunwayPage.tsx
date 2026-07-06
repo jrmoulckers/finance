@@ -24,10 +24,12 @@ import { EmptyState, Icon } from '../components/common';
 import { IconToken } from '../icons/tokens';
 import { useAccounts } from '../hooks/useAccounts';
 import { useBills } from '../hooks/useBills';
+import { useDisplayCurrencyRollup } from '../hooks/useDisplayCurrencyRollup';
 import { useInvoices } from '../hooks/useInvoices';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { formatCurrency } from '../lib/currency';
+import type { DisplayCurrencyAmount } from '../lib/budgeting/display-currency-rollups';
 import {
   forecastCashRunway,
   todayIsoDate,
@@ -73,26 +75,86 @@ export function CashRunwayPage() {
   const { bills } = useBills();
   const { invoices } = useInvoices();
 
-  const startingCashCents = useMemo(
-    () =>
-      accounts
-        .filter((account) => !account.isArchived && CASH_ACCOUNT_TYPES.has(account.type))
-        .reduce((sum, account) => sum + account.currentBalance.amount, 0),
+  const cashAccounts = useMemo(
+    () => accounts.filter((account) => !account.isArchived && CASH_ACCOUNT_TYPES.has(account.type)),
     [accounts],
   );
 
-  const events = useMemo<ScheduledCashEvent[]>(() => {
-    const billEvents = bills
-      .filter((bill) => bill.status === 'UPCOMING' || bill.status === 'OVERDUE')
-      .map<ScheduledCashEvent>((bill) => ({
+  const upcomingBills = useMemo(
+    () => bills.filter((bill) => bill.status === 'UPCOMING' || bill.status === 'OVERDUE'),
+    [bills],
+  );
+
+  // Convert every currency-bearing forecast input into the user's display
+  // currency BEFORE combining them. Cash account balances AND bills each carry
+  // their own currency, so summing their raw minor units is meaningless (a
+  // ₹40,000 balance is not $40,000) — the root cause of #3240. This reuses the
+  // shared exchange-rate rollup and the #3460 minor-unit rescale, exactly as the
+  // net-worth aggregation does (#3514). Invoices do not yet carry a currency
+  // (#14) and are treated as already being in the display currency, consistent
+  // with the rest of the invoice pipeline.
+  const conversionInputs = useMemo<DisplayCurrencyAmount[]>(() => {
+    const amounts: DisplayCurrencyAmount[] = [];
+    for (const account of cashAccounts) {
+      amounts.push({
+        id: `account:${account.id}`,
+        amountCents: account.currentBalance.amount,
+        currency: account.currency.code,
+      });
+    }
+    for (const bill of upcomingBills) {
+      amounts.push({
         id: `bill:${bill.id}`,
-        label: bill.name || bill.payee,
-        direction: 'outflow',
         amountCents: Math.abs(bill.amount.amount),
-        date: notBefore(bill.dueDate, today),
-        frequency: BILL_FREQUENCY_TO_RECURRENCE[bill.frequency],
-        category: 'Bill',
-      }));
+        currency: bill.currency.code,
+      });
+    }
+    return amounts;
+  }, [cashAccounts, upcomingBills]);
+
+  const {
+    rollup,
+    displayCurrency,
+    unconvertedCurrencies,
+    loading: ratesLoading,
+  } = useDisplayCurrencyRollup(conversionInputs);
+
+  // Map input id -> converted amount (display-currency minor units). Inputs whose
+  // currency has no available rate are absent here; they are surfaced via
+  // `unconvertedCurrencies` and excluded from the forecast rather than mixed in
+  // using their own (incomparable) minor units.
+  const convertedById = useMemo(
+    () => new Map(rollup.convertedAmounts.map((amount) => [amount.id, amount.displayAmountCents])),
+    [rollup],
+  );
+
+  const startingCashCents = useMemo(
+    () =>
+      cashAccounts.reduce(
+        (sum, account) => sum + (convertedById.get(`account:${account.id}`) ?? 0),
+        0,
+      ),
+    [cashAccounts, convertedById],
+  );
+
+  const events = useMemo<ScheduledCashEvent[]>(() => {
+    const billEvents = upcomingBills.flatMap<ScheduledCashEvent>((bill) => {
+      const amountCents = convertedById.get(`bill:${bill.id}`);
+      // Skip bills whose currency has no rate — disclosed via
+      // `unconvertedCurrencies`, never mixed into the forecast in raw units.
+      if (amountCents === undefined) return [];
+      return [
+        {
+          id: `bill:${bill.id}`,
+          label: bill.name || bill.payee,
+          direction: 'outflow',
+          amountCents,
+          date: notBefore(bill.dueDate, today),
+          frequency: BILL_FREQUENCY_TO_RECURRENCE[bill.frequency],
+          category: 'Bill',
+        },
+      ];
+    });
 
     const invoiceEvents = invoices
       .filter((invoice) => invoice.status === 'Sent' || invoice.status === 'Overdue')
@@ -107,12 +169,29 @@ export function CashRunwayPage() {
       }));
 
     return [...billEvents, ...invoiceEvents];
-  }, [bills, invoices, today]);
+  }, [upcomingBills, invoices, today, convertedById]);
 
   const forecast = useMemo(
     () => forecastCashRunway({ startingCashCents, events, horizonWeeks, today }),
     [events, horizonWeeks, startingCashCents, today],
   );
+
+  // Gate on exchange-rate readiness so the page never flashes an un-converted
+  // (wrong) starting-cash figure before the rates resolve.
+  const loading = accountsLoading || ratesLoading;
+
+  const conversionDisclosure = useMemo<string | null>(() => {
+    const parts: string[] = [];
+    if (rollup.convertedCurrencyCodes.length > 0) parts.push(rollup.disclosure);
+    if (unconvertedCurrencies.length > 0) {
+      parts.push(`Excluded ${unconvertedCurrencies.join(', ')} — no exchange rate available.`);
+    }
+    return parts.length > 0 ? parts.join(' ') : null;
+  }, [rollup, unconvertedCurrencies]);
+
+  /** Format cents in the resolved display currency (all forecast figures are converted into it). */
+  const formatDisplay = (cents: number, options: { signDisplay?: 'exceptZero' } = {}): string =>
+    formatCurrency(cents, { currency: displayCurrency, ...options });
 
   const hasInputs = events.length > 0 || startingCashCents !== 0;
 
@@ -143,8 +222,8 @@ export function CashRunwayPage() {
         </h1>
         <p className="cash-runway__description">
           Project your running cash balance forward to see whether you can cover payroll, taxes and
-          recurring bills before revenue lands. Figures are planning estimates in your account
-          currency.
+          recurring bills before revenue lands. Figures are planning estimates, converted into your
+          display currency.
         </p>
       </header>
 
@@ -171,7 +250,7 @@ export function CashRunwayPage() {
         </div>
       </section>
 
-      {hasInputs ? (
+      {!loading && hasInputs ? (
         <>
           <section
             className={`cash-runway__status cash-runway__status--${forecast.status}`}
@@ -194,7 +273,7 @@ export function CashRunwayPage() {
               <div className="cash-runway__metric">
                 <dt className="cash-runway__metric-label">Starting cash</dt>
                 <dd className="cash-runway__metric-value">
-                  {formatCurrency(forecast.startingCashCents)}
+                  {formatDisplay(forecast.startingCashCents)}
                 </dd>
               </div>
               <div className="cash-runway__metric">
@@ -212,7 +291,7 @@ export function CashRunwayPage() {
                     forecast.minBalanceCents < 0 ? ' cash-runway__metric-value--negative' : ''
                   }`}
                 >
-                  {formatCurrency(forecast.minBalanceCents)}
+                  {formatDisplay(forecast.minBalanceCents)}
                   <span className="cash-runway__metric-sub">
                     on {formatDate(forecast.minBalanceDate, { locale })}
                   </span>
@@ -221,13 +300,13 @@ export function CashRunwayPage() {
               <div className="cash-runway__metric">
                 <dt className="cash-runway__metric-label">Expected inflows</dt>
                 <dd className="cash-runway__metric-value cash-runway__metric-value--positive">
-                  {formatCurrency(forecast.totalInflowCents)}
+                  {formatDisplay(forecast.totalInflowCents)}
                 </dd>
               </div>
               <div className="cash-runway__metric">
                 <dt className="cash-runway__metric-label">Scheduled outflows</dt>
                 <dd className="cash-runway__metric-value cash-runway__metric-value--negative">
-                  {formatCurrency(forecast.totalOutflowCents)}
+                  {formatDisplay(forecast.totalOutflowCents)}
                 </dd>
               </div>
               <div className="cash-runway__metric">
@@ -237,10 +316,23 @@ export function CashRunwayPage() {
                     forecast.endingBalanceCents < 0 ? ' cash-runway__metric-value--negative' : ''
                   }`}
                 >
-                  {formatCurrency(forecast.endingBalanceCents)}
+                  {formatDisplay(forecast.endingBalanceCents)}
                 </dd>
               </div>
             </dl>
+            {conversionDisclosure && (
+              <p
+                role="note"
+                style={{
+                  marginTop: 'var(--spacing-3)',
+                  marginBottom: 0,
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--semantic-text-secondary)',
+                }}
+              >
+                {conversionDisclosure}
+              </p>
+            )}
           </section>
 
           <section className="cash-runway__card" aria-labelledby="cash-runway-timeline-title">
@@ -248,7 +340,7 @@ export function CashRunwayPage() {
               Projected balance timeline
             </h2>
             <p className="cash-runway__timeline-intro">
-              Starting cash of {formatCurrency(forecast.startingCashCents)} on{' '}
+              Starting cash of {formatDisplay(forecast.startingCashCents)} on{' '}
               {formatDate(forecast.startDate, { locale })}
               {forecast.timeline.length === 0
                 ? ' with no scheduled events in this horizon.'
@@ -281,7 +373,7 @@ export function CashRunwayPage() {
                               className="cash-runway__day-balance-icon"
                             />
                           ) : null}
-                          {formatCurrency(point.balanceCents)}
+                          {formatDisplay(point.balanceCents)}
                           {negative ? (
                             <span className="cash-runway__sr-only"> (shortfall)</span>
                           ) : null}
@@ -314,7 +406,7 @@ export function CashRunwayPage() {
                             <span
                               className={`cash-runway__event-amount cash-runway__event-amount--${occurrence.direction}`}
                             >
-                              {formatCurrency(occurrence.amountCents, {
+                              {formatDisplay(occurrence.amountCents, {
                                 signDisplay: 'exceptZero',
                               })}
                             </span>
@@ -334,7 +426,7 @@ export function CashRunwayPage() {
         </>
       ) : (
         <EmptyState
-          title={accountsLoading ? 'Loading your cash position…' : 'No cash data yet'}
+          title={loading ? 'Loading your cash position…' : 'No cash data yet'}
           description="Add a checking, savings or cash account and schedule bills or expected invoice payments to project your cash runway."
         />
       )}
