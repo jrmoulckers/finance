@@ -19,6 +19,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getUnresolvedConflicts, resolveConflict, type SyncConflict } from '../../db/sync';
+import { useFocusTrap } from '../../accessibility/aria';
 
 import '../../styles/conflict-resolution.css';
 
@@ -48,31 +49,20 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isResolving, setIsResolving] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Trap focus within the dialog while it is open and actually rendered (i.e.
+  // once conflicts have loaded), restoring focus to the trigger element on
+  // close. Replaces the previous manual focus() call, which never trapped Tab.
+  useFocusTrap(dialogRef, { active: isOpen && conflicts.length > 0, restoreFocus: true });
 
   // Load conflicts when dialog opens.
   useEffect(() => {
     if (!isOpen) return;
 
-    previousFocusRef.current = document.activeElement as HTMLElement | null;
-
     void getUnresolvedConflicts().then((unresolved) => {
       setConflicts(unresolved);
       setCurrentIndex(0);
     });
-  }, [isOpen]);
-
-  // Focus management.
-  useEffect(() => {
-    if (isOpen && dialogRef.current) {
-      dialogRef.current.focus();
-    }
-
-    return () => {
-      if (!isOpen && previousFocusRef.current) {
-        previousFocusRef.current.focus();
-      }
-    };
   }, [isOpen]);
 
   // Keyboard handler.

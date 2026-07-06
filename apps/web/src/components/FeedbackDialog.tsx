@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import packageJson from '../../package.json';
 import { buildFeedbackDiagnostics, submitFeedback } from '../lib/feedback';
+import { useFocusTrap } from '../accessibility/aria';
 
 const BUILD_SHA =
   import.meta.env.VITE_BUILD_SHA ??
@@ -40,7 +41,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset form state when dialog opens/closes
+  // Reset form state when dialog opens.
   useEffect(() => {
     if (isOpen) {
       setSubject('');
@@ -49,49 +50,23 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
       setSubmitted(false);
       setIsSubmitting(false);
       setError(null);
-      // Focus first input on open
-      requestAnimationFrame(() => {
-        firstInputRef.current?.focus();
-      });
     }
   }, [isOpen]);
 
-  // Focus trap
-  useEffect(() => {
-    if (!isOpen) return;
+  // Trap focus within the dialog, focus the first field on open, and restore
+  // focus to the trigger element when the dialog closes. The previous
+  // hand-rolled trap never restored focus on close (issue #3338).
+  useFocusTrap(panelRef, { active: isOpen, restoreFocus: true, initialFocusRef: firstInputRef });
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
+  const handlePanelKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
         onClose();
-        return;
       }
-
-      if (e.key !== 'Tab') return;
-
-      const panel = panelRef.current;
-      if (!panel) return;
-
-      const focusable = panel.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+    },
+    [onClose],
+  );
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -139,6 +114,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
         aria-modal="true"
         aria-labelledby="feedback-dialog-title"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handlePanelKeyDown}
       >
         <h2 id="feedback-dialog-title" className="form-dialog__title">
           Send feedback
