@@ -12,9 +12,13 @@ import {
   computeExpectedPayDate,
   computeInvoiceForecast,
   exportInvoicesCsv,
+  FOLLOW_UP_STALE_DAYS,
   getEffectiveInvoiceStatus,
+  getInvoicesNeedingFollowUp,
   groupInvoicesByStatus,
   INVOICE_CSV_HEADER,
+  invoiceNeedsFollowUp,
+  recordInvoiceContact,
   type Invoice,
 } from './invoices';
 
@@ -29,6 +33,7 @@ function makeInvoice(overrides: Partial<Invoice>): Invoice {
     expectedPayDate: overrides.expectedPayDate ?? '2024-01-31',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
+    lastContactedDate: overrides.lastContactedDate,
   };
 }
 
@@ -240,5 +245,75 @@ describe('applyInvoiceEdit', () => {
     );
 
     expect(updated.status).toBe('Overdue');
+  });
+});
+
+describe('invoiceNeedsFollowUp', () => {
+  it('flags an overdue invoice that has never been contacted', () => {
+    const invoice = makeInvoice({ status: 'Sent', expectedPayDate: '2024-01-31' });
+    expect(invoiceNeedsFollowUp(invoice, '2024-02-15')).toBe(true);
+  });
+
+  it('does not flag an invoice that is not yet overdue', () => {
+    const invoice = makeInvoice({ status: 'Sent', expectedPayDate: '2024-02-28' });
+    expect(invoiceNeedsFollowUp(invoice, '2024-02-15')).toBe(false);
+  });
+
+  it('does not flag a paid invoice', () => {
+    const invoice = makeInvoice({ status: 'Paid', expectedPayDate: '2024-01-31' });
+    expect(invoiceNeedsFollowUp(invoice, '2024-02-15')).toBe(false);
+  });
+
+  it('does not flag an overdue invoice contacted within the stale window', () => {
+    const invoice = makeInvoice({
+      status: 'Sent',
+      expectedPayDate: '2024-01-31',
+      lastContactedDate: '2024-02-14',
+    });
+    expect(invoiceNeedsFollowUp(invoice, '2024-02-15')).toBe(false);
+  });
+
+  it('flags an overdue invoice last contacted at least the stale window ago', () => {
+    const contacted = makeInvoice({
+      status: 'Sent',
+      expectedPayDate: '2024-01-31',
+      lastContactedDate: '2024-02-01',
+    });
+    expect(getEffectiveInvoiceStatus(contacted, '2024-02-15')).toBe('Overdue');
+    expect(FOLLOW_UP_STALE_DAYS).toBe(7);
+    expect(invoiceNeedsFollowUp(contacted, '2024-02-15')).toBe(true);
+  });
+});
+
+describe('getInvoicesNeedingFollowUp', () => {
+  it('returns only overdue invoices needing follow-up, oldest expected pay date first', () => {
+    const oldest = makeInvoice({ id: 'a', expectedPayDate: '2024-01-15', status: 'Sent' });
+    const newer = makeInvoice({ id: 'b', expectedPayDate: '2024-01-31', status: 'Sent' });
+    const paid = makeInvoice({ id: 'c', expectedPayDate: '2024-01-10', status: 'Paid' });
+    const recentlyContacted = makeInvoice({
+      id: 'd',
+      expectedPayDate: '2024-01-20',
+      status: 'Sent',
+      lastContactedDate: '2024-02-15',
+    });
+
+    const result = getInvoicesNeedingFollowUp(
+      [newer, paid, recentlyContacted, oldest],
+      '2024-02-16',
+    );
+
+    expect(result.map((invoice) => invoice.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('recordInvoiceContact', () => {
+  it('records the contact date and bumps updatedAt without mutating the original', () => {
+    const invoice = makeInvoice({ id: 'inv-9' });
+    const updated = recordInvoiceContact(invoice, '2024-02-15', '2024-02-15T09:30:00Z');
+
+    expect(updated.lastContactedDate).toBe('2024-02-15');
+    expect(updated.updatedAt).toBe('2024-02-15T09:30:00Z');
+    expect(updated.id).toBe('inv-9');
+    expect(invoice.lastContactedDate).toBeUndefined();
   });
 });

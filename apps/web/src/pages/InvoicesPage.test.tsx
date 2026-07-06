@@ -59,6 +59,7 @@ beforeEach(() => {
     addInvoice: vi.fn(),
     updateInvoice: vi.fn(),
     updateInvoiceStatus: vi.fn(),
+    logInvoiceContact: vi.fn(),
     deleteInvoice: vi.fn(),
     refresh: vi.fn(),
   });
@@ -89,6 +90,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice,
       refresh: vi.fn(),
     });
@@ -115,6 +117,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -136,6 +139,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -157,6 +161,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -185,6 +190,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -207,6 +213,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -230,6 +237,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -266,6 +274,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice,
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -299,6 +308,7 @@ describe('InvoicesPage', () => {
       addInvoice: vi.fn(),
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -311,5 +321,68 @@ describe('InvoicesPage', () => {
 
     expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add invoice' })).toBeInTheDocument();
+  });
+
+  it('surfaces overdue invoices needing follow-up and logs a reminder (#3227)', () => {
+    const logInvoiceContact = vi.fn();
+    const overdue: Invoice = {
+      ...SAMPLE_INVOICE,
+      id: 'inv-od',
+      clientName: 'Late Corp',
+      status: 'Sent',
+      issueDate: '2019-12-01',
+      expectedPayDate: '2020-01-01',
+    };
+    mockedUseInvoices.mockReturnValue({
+      invoices: [overdue],
+      pipelineGroups: [
+        { status: 'Overdue', label: 'Overdue', invoices: [overdue], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      logInvoiceContact,
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    expect(screen.getByRole('heading', { name: 'Needs follow-up' })).toBeInTheDocument();
+    expect(screen.getByText(/last contacted never/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log follow-up for Late Corp' }));
+    expect(logInvoiceContact).toHaveBeenCalledWith('inv-od');
+  });
+
+  it('hides the follow-up section when the overdue invoice was recently contacted (#3227)', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const contacted: Invoice = {
+      ...SAMPLE_INVOICE,
+      id: 'inv-od2',
+      clientName: 'Late Corp',
+      status: 'Sent',
+      issueDate: '2019-12-01',
+      expectedPayDate: '2020-01-01',
+      lastContactedDate: today,
+    };
+    mockedUseInvoices.mockReturnValue({
+      invoices: [contacted],
+      pipelineGroups: [
+        { status: 'Overdue', label: 'Overdue', invoices: [contacted], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    expect(screen.queryByRole('heading', { name: 'Needs follow-up' })).not.toBeInTheDocument();
   });
 });
