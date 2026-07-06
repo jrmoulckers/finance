@@ -37,7 +37,7 @@ import type {
   SweepEvaluation,
   SweepLogEntry,
 } from '../lib/planning';
-import { projectRetirementHealthcareCosts } from '../lib/planning';
+import { analyzeEducationFund, projectRetirementHealthcareCosts } from '../lib/planning';
 import {
   buildWeddingPlanSummary,
   buildWeddingVendorBreakdown,
@@ -54,13 +54,15 @@ import { TrendLineChart } from '../components/charts';
 // Types
 // ---------------------------------------------------------------------------
 
-type PlanningTab = 'scenarios' | 'life-events' | 'wedding' | 'retirement' | 'goals' | 'sweep';
+type PlanningTab =
+  'scenarios' | 'life-events' | 'wedding' | 'retirement' | 'education' | 'goals' | 'sweep';
 
 const TAB_CONFIG: { id: PlanningTab; label: string; icon: IconName }[] = [
   { id: 'scenarios', label: 'What-If Modeler', icon: 'sparkles' },
   { id: 'life-events', label: 'Life Events', icon: 'calendar' },
   { id: 'wedding', label: 'Wedding', icon: 'gift' },
   { id: 'retirement', label: 'Retirement', icon: 'leaf' },
+  { id: 'education', label: 'College Fund', icon: 'medal' },
   { id: 'goals', label: 'Savings Goals', icon: 'target' },
   { id: 'sweep', label: 'Automations', icon: 'lightning' },
 ];
@@ -2173,6 +2175,249 @@ const WeddingWorkspacePanel: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
+// Education / 529 college fund planner
+// ---------------------------------------------------------------------------
+
+/** Age at which college is assumed to begin. */
+const EDUCATION_START_AGE = 18;
+/** Assumed annual tuition inflation (5.00%). */
+const EDUCATION_TUITION_INFLATION_BPS = 500;
+/** Assumed annual investment return (6.00%). */
+const EDUCATION_ANNUAL_RETURN_BPS = 600;
+/** Assumed state income tax rate for 529 benefit estimate (5.00%). */
+const EDUCATION_STATE_TAX_BPS = 500;
+
+/**
+ * Parse a dollar string into non-negative integer cents.
+ *
+ * @param value - The raw input value in dollars
+ * @returns The value in cents, floored at 0
+ */
+function educationDollarsToCents(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return Math.round(parsed * 100);
+}
+
+/**
+ * Education / 529 college fund planner panel.
+ *
+ * Surfaces the shared `analyzeEducationFund` engine so a family can project
+ * college costs and check whether their 529 savings are on track. Results
+ * update live as the inputs change.
+ */
+const EducationPanel: React.FC = () => {
+  const [childAge, setChildAge] = useState('0');
+  const [annualTuition, setAnnualTuition] = useState('22000');
+  const [educationYears, setEducationYears] = useState('4');
+  const [currentBalance, setCurrentBalance] = useState('0');
+  const [monthlyContribution, setMonthlyContribution] = useState('250');
+
+  const beneficiaryAge = Math.max(0, Math.min(17, Math.floor(Number(childAge) || 0)));
+
+  const result = useMemo(
+    () =>
+      analyzeEducationFund({
+        beneficiaryAge,
+        educationStartAge: EDUCATION_START_AGE,
+        educationYears: Math.max(1, Math.floor(Number(educationYears) || 1)),
+        currentAnnualTuitionCents: educationDollarsToCents(annualTuition),
+        tuitionInflationBps: EDUCATION_TUITION_INFLATION_BPS,
+        currentBalanceCents: educationDollarsToCents(currentBalance),
+        monthlyContributionCents: educationDollarsToCents(monthlyContribution),
+        annualReturnBps: EDUCATION_ANNUAL_RETURN_BPS,
+        stateTaxRateBps: EDUCATION_STATE_TAX_BPS,
+      }),
+    [beneficiaryAge, educationYears, annualTuition, currentBalance, monthlyContribution],
+  );
+
+  const coveragePercent = Math.max(0, Math.min(100, Math.round(result.coverageRatioBps / 100)));
+  const fullyFunded = result.fundingGapCents <= 0;
+  const yearsToStart = Math.max(0, EDUCATION_START_AGE - beneficiaryAge);
+
+  const announcement = fullyFunded
+    ? `On track: projected savings of ${formatCurrency(
+        result.projectedBalanceCents,
+      )} cover the estimated ${formatCurrency(result.totalProjectedCostCents)} cost of college.`
+    : `Projected shortfall of ${formatCurrency(
+        result.fundingGapCents,
+      )}. Contributing ${formatCurrency(
+        result.requiredMonthlyContributionCents,
+      )} per month would fully fund the goal.`;
+
+  return (
+    <div className="education-planner">
+      <section className="planning-card" aria-labelledby="education-intro-title">
+        <h3 id="education-intro-title" className="planning-card__title">
+          College fund (529) planner
+        </h3>
+        <p className="planning-card__description">
+          Project your child&apos;s college costs and see whether your 529 savings are on track.
+          Assumes college starts at age {EDUCATION_START_AGE},{' '}
+          {EDUCATION_TUITION_INFLATION_BPS / 100}% annual tuition inflation, and a{' '}
+          {EDUCATION_ANNUAL_RETURN_BPS / 100}% expected return.
+        </p>
+        <div className="life-events-form" aria-label="Education fund inputs">
+          <label className="life-events-field">
+            Child&apos;s current age (years)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={17}
+              step={1}
+              value={childAge}
+              onChange={(e) => setChildAge(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Current annual tuition (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="500"
+              value={annualTuition}
+              onChange={(e) => setAnnualTuition(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Years of college
+            <input
+              className="form-input"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={8}
+              step={1}
+              value={educationYears}
+              onChange={(e) => setEducationYears(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Current 529 balance (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="100"
+              value={currentBalance}
+              onChange={(e) => setCurrentBalance(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Monthly contribution (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="25"
+              value={monthlyContribution}
+              onChange={(e) => setMonthlyContribution(e.target.value)}
+            />
+          </label>
+        </div>
+        <p className="education-announce" aria-live="polite">
+          {announcement}
+        </p>
+      </section>
+
+      <section className="planning-card" aria-labelledby="education-projection-title">
+        <h3 id="education-projection-title" className="planning-card__title">
+          Funding projection
+        </h3>
+        <div
+          className="education-coverage-bar"
+          role="progressbar"
+          aria-valuenow={coveragePercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Projected 529 savings cover ${coveragePercent}% of estimated college costs`}
+        >
+          <span
+            className={`education-coverage-bar__fill ${
+              fullyFunded ? '' : 'education-coverage-bar__fill--gap'
+            }`}
+            style={{ width: `${coveragePercent}%` }}
+          />
+        </div>
+        <p
+          className={`education-status ${
+            fullyFunded ? 'education-status--ok' : 'education-status--gap'
+          }`}
+          role="status"
+        >
+          <AppIcon name={fullyFunded ? 'check-circle' : 'alert-triangle'} />
+          <span>
+            {coveragePercent}% funded —{' '}
+            {fullyFunded ? 'on track' : `${formatCurrency(result.fundingGapCents)} short`}
+          </span>
+        </p>
+        <div className="planning-metrics" aria-label="Education funding summary">
+          <article className="planning-metric" aria-label="Projected total cost of college">
+            <p className="planning-metric__label">Projected cost</p>
+            <p className="planning-metric__value">
+              {formatCurrency(result.totalProjectedCostCents)}
+            </p>
+          </article>
+          <article className="planning-metric" aria-label="Projected 529 balance at college start">
+            <p className="planning-metric__label">Projected savings</p>
+            <p className="planning-metric__value">{formatCurrency(result.projectedBalanceCents)}</p>
+          </article>
+          <article className="planning-metric" aria-label={fullyFunded ? 'Surplus' : 'Shortfall'}>
+            <p className="planning-metric__label">{fullyFunded ? 'Surplus' : 'Shortfall'}</p>
+            <p className="planning-metric__value">{formatCurrency(result.fundingGapCents)}</p>
+          </article>
+          <article
+            className="planning-metric"
+            aria-label="Monthly contribution needed to fully fund"
+          >
+            <p className="planning-metric__label">Needed / month</p>
+            <p className="planning-metric__value">
+              {formatCurrency(result.requiredMonthlyContributionCents)}
+            </p>
+          </article>
+          <article className="planning-metric" aria-label="Estimated annual state tax benefit">
+            <p className="planning-metric__label">Annual tax benefit</p>
+            <p className="planning-metric__value">{formatCurrency(result.annualTaxBenefitCents)}</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="planning-card" aria-labelledby="education-allocation-title">
+        <h3 id="education-allocation-title" className="planning-card__title">
+          Suggested allocation
+        </h3>
+        <p className="planning-card__description">
+          {yearsToStart} year{yearsToStart === 1 ? '' : 's'} until college.{' '}
+          {result.suggestedAllocation.description}.
+        </p>
+        <dl className="education-allocation">
+          <div className="education-allocation__item">
+            <dt>Equities</dt>
+            <dd>{result.suggestedAllocation.equityPercent}%</dd>
+          </div>
+          <div className="education-allocation__item">
+            <dt>Bonds</dt>
+            <dd>{result.suggestedAllocation.bondPercent}%</dd>
+          </div>
+          <div className="education-allocation__item">
+            <dt>Cash</dt>
+            <dd>{result.suggestedAllocation.cashPercent}%</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Main page component
 // ---------------------------------------------------------------------------
 
@@ -2214,6 +2459,7 @@ export const PlanningPage: React.FC = () => {
         {activeTab === 'life-events' && <LifeEventsPanel />}
         {activeTab === 'wedding' && <WeddingWorkspacePanel />}
         {activeTab === 'retirement' && <RetirementPanel />}
+        {activeTab === 'education' && <EducationPanel />}
         {activeTab === 'goals' && <GoalsPanel />}
         {activeTab === 'sweep' && <SweepPanel />}
       </div>

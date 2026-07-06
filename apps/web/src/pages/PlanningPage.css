@@ -1022,6 +1022,84 @@
   color: var(--semantic-text-secondary);
 }
 
+/* Education / 529 college fund planner */
+.education-planner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.education-announce {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.education-coverage-bar {
+  height: 12px;
+  width: 100%;
+  background: var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  margin-bottom: var(--spacing-3);
+}
+
+.education-coverage-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--semantic-status-positive);
+  transition: width 0.3s ease;
+}
+
+.education-coverage-bar__fill--gap {
+  background: var(--semantic-status-warning);
+}
+
+.education-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin: 0 0 var(--spacing-3);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: 600;
+}
+
+.education-status--ok {
+  color: var(--semantic-status-positive);
+}
+
+.education-status--gap {
+  color: var(--semantic-status-warning);
+}
+
+.education-allocation {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-4);
+  margin: 0;
+}
+
+.education-allocation__item {
+  padding: var(--spacing-4);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  text-align: center;
+}
+
+.education-allocation__item dt {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin-bottom: var(--spacing-1);
+}
+
+.education-allocation__item dd {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: 700;
+  color: var(--semantic-text-primary);
+}
+
 .wedding-badge--paid {
   color: var(--semantic-status-positive);
   border-color: var(--semantic-status-positive);
@@ -1196,6 +1274,7 @@
   .readiness-score__fill,
   .goal-progress__fill,
   .wedding-budget-bar__fill,
+  .education-coverage-bar__fill,
   .planning-btn,
   .scenario-item {
     transition: none;
