@@ -15,6 +15,7 @@ import React, {
 } from 'react';
 
 import { useCoarsePointer } from '../../hooks/useCoarsePointer';
+import { useFocusTrap } from '../../accessibility/aria';
 
 import './swipeable-row.css';
 
@@ -94,6 +95,7 @@ export function SwipeableRow({
   ...rest
 }: SwipeableRowProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<GestureState | null>(null);
   const offsetRef = useRef(0);
   const suppressClickRef = useRef(false);
@@ -106,6 +108,15 @@ export function SwipeableRow({
   const [openSide, setOpenSide] = useState<OpenSide>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [menuState, setMenuState] = useState<MenuState | null>(null);
+
+  // Move focus into the context menu when it opens, keep Tab within it, and
+  // return focus to the row when it closes so keyboard users are never
+  // stranded on the inert page behind the popup.
+  useFocusTrap(menuRef, {
+    active: menuState !== null,
+    restoreFocus: true,
+    inertBackground: false,
+  });
 
   const setOffset = useCallback((value: number) => {
     offsetRef.current = value;
@@ -604,6 +615,7 @@ export function SwipeableRow({
 
       {menuState !== null && (
         <div
+          ref={menuRef}
           className="swipeable-row__menu"
           role="menu"
           aria-label="Row actions"

@@ -153,7 +153,6 @@
   gap: var(--spacing-3, 12px);
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
   border-bottom: 1px solid var(--semantic-border-default);
-  cursor: pointer;
   transition: background-color 0.1s ease;
 }
 
@@ -171,6 +170,29 @@
     var(--semantic-interactive-default) 5%,
     var(--semantic-background-primary)
   );
+}
+
+/* Clickable main region of a notification row (native button, not a
+   div-onClick), so screen readers announce it with a button role and it is
+   reachable and operable from the keyboard. */
+.notification-item__main {
+  display: flex;
+  flex: 1;
+  gap: var(--spacing-3, 12px);
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notification-item__main:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm, 4px);
 }
 
 .notification-item__indicator {
@@ -202,8 +224,10 @@
 }
 
 .notification-item__content {
+  display: flex;
   flex: 1;
   min-width: 0;
+  flex-direction: column;
 }
 
 .notification-item__title {

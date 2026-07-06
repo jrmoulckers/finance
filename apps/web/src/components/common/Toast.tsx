@@ -137,7 +137,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   return (
     <ToastContext.Provider value={{ showToast, dismissToast }}>
       {children}
-      <div className="toast-container" aria-label="Notifications">
+      <div className="toast-container" aria-label="Notifications" role="region" tabIndex={-1}>
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={dismissToast} />
         ))}
@@ -259,16 +259,39 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const role = toast.type === 'error' ? 'alert' : 'status';
   const typeLabel = getToastTypeLabel(toast.type);
   const ariaLabel = getToastAriaLabel(toast.type, toast.message);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const handleDismiss = useCallback(() => {
+    const el = rootRef.current;
+    const container = el?.parentElement ?? null;
+    // When the dismissed toast holds focus, relocate focus to an adjacent
+    // toast (or the toast region) so keyboard users are not dropped onto
+    // <body> after the element is removed.
+    let nextTarget: HTMLElement | null = null;
+    if (el?.contains(document.activeElement) && container) {
+      const toastEls = Array.from(container.querySelectorAll<HTMLElement>('.toast'));
+      const index = toastEls.indexOf(el);
+      const sibling = toastEls[index + 1] ?? toastEls[index - 1] ?? null;
+      nextTarget = sibling?.querySelector<HTMLElement>('.toast__dismiss') ?? container;
+    }
+
+    onDismiss(toast.id);
+
+    if (nextTarget) {
+      const target = nextTarget;
+      requestAnimationFrame(() => target.focus());
+    }
+  }, [onDismiss, toast.id]);
 
   return (
-    <div className={`toast toast--${toast.type}`} role={role} aria-label={ariaLabel}>
+    <div ref={rootRef} className={`toast toast--${toast.type}`} role={role} aria-label={ariaLabel}>
       <span className="toast__icon">{TOAST_ICONS[toast.type]}</span>
       <span className="toast__type-label">{typeLabel}</span>
       <p className="toast__message">{toast.message}</p>
       <button
         type="button"
         className="toast__dismiss"
-        onClick={() => onDismiss(toast.id)}
+        onClick={handleDismiss}
         aria-label={getToastDismissLabel()}
       >
         &times;

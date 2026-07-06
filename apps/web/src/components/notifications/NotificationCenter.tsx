@@ -83,7 +83,7 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const firstItemRef = useRef<HTMLLIElement>(null);
+  const firstItemRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
 
   const closePanel = useCallback(() => {
@@ -236,41 +236,36 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
               {visibleNotifications.map((notification, index) => (
                 <li
                   key={notification.id}
-                  ref={index === 0 ? firstItemRef : undefined}
                   role="listitem"
                   className={`notification-item ${
                     notification.status === 'unread' ? 'notification-item--unread' : ''
                   }`}
-                  onClick={() => handleItemClick(notification)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleItemClick(notification);
-                    }
-                  }}
-                  tabIndex={0}
-                  aria-label={`${notification.title}: ${notification.message}`}
                 >
-                  <span
-                    className={`notification-item__indicator notification-item__indicator--${
-                      notification.status === 'read' ? 'read' : notification.severity
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <div className="notification-item__content">
-                    <p className="notification-item__title">{notification.title}</p>
-                    <p className="notification-item__message">{notification.message}</p>
-                    <span className="notification-item__time">
-                      {formatRelativeTime(notification.createdAt)}
+                  <button
+                    ref={index === 0 ? firstItemRef : undefined}
+                    type="button"
+                    className="notification-item__main"
+                    onClick={() => handleItemClick(notification)}
+                    aria-label={`${notification.title}: ${notification.message}`}
+                  >
+                    <span
+                      className={`notification-item__indicator notification-item__indicator--${
+                        notification.status === 'read' ? 'read' : notification.severity
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <span className="notification-item__content">
+                      <span className="notification-item__title">{notification.title}</span>
+                      <span className="notification-item__message">{notification.message}</span>
+                      <span className="notification-item__time">
+                        {formatRelativeTime(notification.createdAt)}
+                      </span>
                     </span>
-                  </div>
+                  </button>
                   <div className="notification-item__action">
                     <button
                       className="notification-item__dismiss"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDismiss(notification.id);
-                      }}
+                      onClick={() => onDismiss(notification.id)}
                       aria-label={`Dismiss notification: ${notification.title}`}
                       type="button"
                     >
