@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { addMonthsToIsoDate } from './date-utils';
+import { addMonthsToIsoDate, monthsUntilIsoDate } from './date-utils';
 
 describe('addMonthsToIsoDate', () => {
   it('adds whole months for a mid-month start date', () => {
@@ -35,5 +35,34 @@ describe('addMonthsToIsoDate', () => {
 
   it('handles large month counts (100-year non-amortizing horizon)', () => {
     expect(addMonthsToIsoDate('2025-01-31', 1200)).toBe('2125-01-31');
+  });
+});
+
+describe('monthsUntilIsoDate', () => {
+  it('counts whole months within a year', () => {
+    expect(monthsUntilIsoDate('2025-01-15', '2025-05-15')).toBe(4);
+  });
+
+  it('counts across a year boundary', () => {
+    expect(monthsUntilIsoDate('2025-11-01', '2026-03-01')).toBe(4);
+  });
+
+  it('ignores the day component', () => {
+    expect(monthsUntilIsoDate('2025-01-31', '2025-02-01')).toBe(1);
+  });
+
+  it('returns zero within the same month', () => {
+    expect(monthsUntilIsoDate('2025-06-01', '2025-06-30')).toBe(0);
+  });
+
+  it('returns a negative count for past dates', () => {
+    expect(monthsUntilIsoDate('2025-06-01', '2025-03-01')).toBe(-3);
+  });
+
+  it('is the month-granularity inverse of addMonthsToIsoDate', () => {
+    const today = '2025-04-10';
+    for (const n of [0, 1, 6, 18, 60]) {
+      expect(monthsUntilIsoDate(today, addMonthsToIsoDate(today, n))).toBe(n);
+    }
   });
 });

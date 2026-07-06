@@ -25,10 +25,13 @@ import type {
   DebtToIncomeTrendOptions,
   DebtToIncomeTrendPoint,
   ExtraPaymentImpactScenario,
+  LumpSumImpact,
+  OneTimePayment,
   PayoffStrategy,
   PayoffStrategyRecommendation,
   StrategyComparison,
   StrategyResult,
+  TargetDateSolution,
 } from './debt-types';
 
 // ---------------------------------------------------------------------------
@@ -214,12 +217,16 @@ export function calculateSnowballOrder(debts: readonly Debt[]): string[] {
  * @param debts - All debts to include.
  * @param strategy - 'avalanche' or 'snowball'.
  * @param extraPaymentCents - Additional monthly payment beyond all minimums (in cents).
+ * @param oneTimePayments - Optional one-time lump sums applied in specific months
+ *   (e.g. a tax refund). Each joins that month's shared pool and cascades in
+ *   strategy order like any other extra.
  * @returns Full strategy result with per-debt schedules and timeline.
  */
 export function calculateStrategyResult(
   debts: readonly Debt[],
   strategy: PayoffStrategy,
   extraPaymentCents: number,
+  oneTimePayments: readonly OneTimePayment[] = [],
 ): StrategyResult {
   if (debts.length === 0) {
     return {
@@ -236,6 +243,15 @@ export function calculateStrategyResult(
   }
 
   const safeExtra = Math.max(0, extraPaymentCents);
+
+  // Sum any one-time lump sums by the month they land in. Only positive amounts
+  // in real (>= 1) months count.
+  const oneTimeByMonth = new Map<number, number>();
+  for (const payment of oneTimePayments) {
+    if (payment.month >= 1 && payment.cents > 0) {
+      oneTimeByMonth.set(payment.month, (oneTimeByMonth.get(payment.month) ?? 0) + payment.cents);
+    }
+  }
 
   // Order debts by strategy
   const orderedIds =
@@ -272,7 +288,7 @@ export function calculateStrategyResult(
     // that cascades to debts in strategy order within THIS month.
     const monthInterest = new Map<string, number>();
     const monthPayment = new Map<string, number>();
-    let pool = safeExtra + freedUpPayment;
+    let pool = safeExtra + freedUpPayment + (oneTimeByMonth.get(month) ?? 0);
 
     for (const id of orderedIds) {
       const balance = balances.get(id) ?? 0;
@@ -406,6 +422,132 @@ export function compareStrategies(
     snowball,
     interestSavingsCents: snowball.totalInterestCents - avalanche.totalInterestCents,
     timeSavingsMonths: snowball.totalMonths - avalanche.totalMonths,
+  };
+}
+
+/**
+ * Model the effect of a one-time lump-sum payment on the active plan.
+ *
+ * Runs the same strategy twice — once with the recurring extra only, once with
+ * the lump sum added in the chosen month — and reports how much sooner the user
+ * reaches debt-free and how much interest they avoid. Savings are clamped at
+ * zero so a lump sum never appears to cost time or money.
+ *
+ * @param debts - All debts to include.
+ * @param strategy - Active payoff strategy.
+ * @param extraPaymentCents - Recurring monthly extra payment (cents).
+ * @param lumpSumCents - One-time amount to apply (cents); <= 0 yields no effect.
+ * @param appliedMonth - 1-indexed month to apply the lump sum (default: 1).
+ * @returns The lump sum's impact on months-to-debt-free and total interest.
+ */
+export function calculateLumpSumImpact(
+  debts: readonly Debt[],
+  strategy: PayoffStrategy,
+  extraPaymentCents: number,
+  lumpSumCents: number,
+  appliedMonth = 1,
+): LumpSumImpact {
+  const safeMonth = Math.max(1, Math.floor(appliedMonth));
+  const safeLumpSum = Math.max(0, lumpSumCents);
+
+  const baseline = calculateStrategyResult(debts, strategy, extraPaymentCents);
+  const withLumpSum =
+    safeLumpSum > 0
+      ? calculateStrategyResult(debts, strategy, extraPaymentCents, [
+          { month: safeMonth, cents: safeLumpSum },
+        ])
+      : baseline;
+
+  return {
+    lumpSumCents: safeLumpSum,
+    appliedMonth: safeMonth,
+    baselineMonths: baseline.totalMonths,
+    withLumpSumMonths: withLumpSum.totalMonths,
+    monthsSaved: Math.max(0, baseline.totalMonths - withLumpSum.totalMonths),
+    interestSavedCents: Math.max(0, baseline.totalInterestCents - withLumpSum.totalInterestCents),
+  };
+}
+
+/**
+ * Solve for the minimum recurring extra payment needed to be debt-free by a
+ * target month.
+ *
+ * More extra payment never increases the number of months to debt-free, so the
+ * relationship is monotonic and a binary search over the extra amount finds the
+ * smallest payment that reaches the target. The search upper bound pays every
+ * balance (plus its first month of interest) at once, clearing all debt in the
+ * first month; if even that cannot meet the target, the target is infeasible.
+ *
+ * @param debts - All debts to include.
+ * @param strategy - Active payoff strategy.
+ * @param targetMonths - Desired months-to-debt-free (>= 1).
+ * @returns The required extra payment and whether the target is achievable.
+ */
+export function solveExtraPaymentForTargetDate(
+  debts: readonly Debt[],
+  strategy: PayoffStrategy,
+  targetMonths: number,
+): TargetDateSolution {
+  if (debts.length === 0) {
+    return { feasible: true, requiredExtraPaymentCents: 0, resultingMonths: 0 };
+  }
+
+  const target = Math.floor(targetMonths);
+
+  // Months to debt-free at a given extra; Infinity when the plan never clears.
+  const monthsAt = (extraCents: number): number => {
+    const result = calculateStrategyResult(debts, strategy, extraCents);
+    return result.fullyPaidOff ? result.totalMonths : Number.POSITIVE_INFINITY;
+  };
+
+  const baseline = calculateStrategyResult(debts, strategy, 0);
+
+  if (target < 1) {
+    return { feasible: false, requiredExtraPaymentCents: 0, resultingMonths: baseline.totalMonths };
+  }
+
+  // Already on track with no extra payment.
+  if (baseline.fullyPaidOff && baseline.totalMonths <= target) {
+    return { feasible: true, requiredExtraPaymentCents: 0, resultingMonths: baseline.totalMonths };
+  }
+
+  // Upper bound: enough extra to clear every balance (and its first-month
+  // interest) in month one.
+  const totalBalanceCents = debts.reduce((sum, d) => sum + Math.max(0, d.balanceCents), 0);
+  const firstMonthInterestCents = debts.reduce(
+    (sum, d) => sum + calculateMonthlyInterestCents(Math.max(0, d.balanceCents), d.annualRateBps),
+    0,
+  );
+  const maxExtraCents = totalBalanceCents + firstMonthInterestCents;
+
+  const fastestMonths = monthsAt(maxExtraCents);
+  if (fastestMonths > target) {
+    // Even the largest payment cannot beat the target; report the soonest the
+    // user could realistically be debt-free instead of the minimum-only plan.
+    return {
+      feasible: false,
+      requiredExtraPaymentCents: 0,
+      resultingMonths: Number.isFinite(fastestMonths) ? fastestMonths : baseline.totalMonths,
+    };
+  }
+
+  // Binary search the smallest extra in [0, maxExtraCents] meeting the target.
+  let lo = 0;
+  let hi = maxExtraCents;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (monthsAt(mid) <= target) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+
+  const resultingMonths = monthsAt(lo);
+  return {
+    feasible: true,
+    requiredExtraPaymentCents: lo,
+    resultingMonths: Number.isFinite(resultingMonths) ? resultingMonths : baseline.totalMonths,
   };
 }
 

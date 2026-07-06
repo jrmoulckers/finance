@@ -153,6 +153,51 @@ export interface ExtraPaymentImpactScenario {
   readonly payoffOrder: string[];
 }
 
+/**
+ * A one-time extra payment applied in a specific month (e.g. a tax refund or
+ * bonus thrown at the current target debt), on top of any recurring extra.
+ */
+export interface OneTimePayment {
+  /** 1-indexed month the lump sum is applied (month 1 = the coming month). */
+  readonly month: number;
+  /** Lump-sum amount in cents. */
+  readonly cents: number;
+}
+
+/**
+ * Effect of a one-time lump-sum payment on the active plan: how much sooner the
+ * user reaches debt-free and how much interest they avoid versus the same plan
+ * without the lump sum.
+ */
+export interface LumpSumImpact {
+  /** The lump sum modeled, in cents. */
+  readonly lumpSumCents: number;
+  /** Month the lump sum is applied (1-indexed). */
+  readonly appliedMonth: number;
+  /** Plan result without the lump sum. */
+  readonly baselineMonths: number;
+  /** Plan result with the lump sum applied. */
+  readonly withLumpSumMonths: number;
+  /** Months shaved off the debt-free date (>= 0). */
+  readonly monthsSaved: number;
+  /** Interest avoided by applying the lump sum, in cents (>= 0). */
+  readonly interestSavedCents: number;
+}
+
+/**
+ * Result of solving for the recurring extra payment needed to be debt-free by a
+ * target month. Infeasible when no achievable payment reaches the target (e.g.
+ * the target is in the past or sooner than paying every balance in full allows).
+ */
+export interface TargetDateSolution {
+  /** Whether a payment exists that meets the target. */
+  readonly feasible: boolean;
+  /** Minimum recurring extra payment (cents) that meets the target; 0 when infeasible. */
+  readonly requiredExtraPaymentCents: number;
+  /** Months to debt-free at the required payment; the capped horizon when infeasible. */
+  readonly resultingMonths: number;
+}
+
 /** Payoff milestone reached as principal is paid down. */
 export interface DebtMilestone {
   /** Milestone threshold percentage. */
