@@ -11,6 +11,8 @@
  */
 
 import { escapeCsvField } from '../export/simple-export';
+import type { Currency } from '../../kmp/bridge';
+import type { CreateTransactionInput } from '../../db/repositories/transactions';
 
 export type InvoicePaymentTerm = 'due-on-receipt' | 'net-15' | 'net-30' | 'net-45' | 'net-60';
 
@@ -32,6 +34,10 @@ export interface Invoice {
   readonly amountPaidCents?: number;
   /** ISO date the most recent payment was received. */
   readonly paidDate?: string;
+  /** Account id the most recent cash inflow for this invoice landed in (#3266). */
+  readonly paymentAccountId?: string;
+  /** Transaction id of the most recent cash inflow recorded for this invoice (#3266). */
+  readonly paymentTransactionId?: string;
 }
 
 export interface CreateInvoiceInput {
@@ -187,18 +193,29 @@ export function invoiceIsFullyPaid(invoice: Invoice): boolean {
   return (invoice.amountPaidCents ?? 0) >= invoice.amountCents;
 }
 
+/** Links an invoice payment to the cash-inflow transaction it produced (#3266). */
+export interface InvoicePaymentLink {
+  /** Account the cash inflow landed in. */
+  readonly accountId: string;
+  /** Id of the created cash-inflow transaction. */
+  readonly transactionId: string;
+}
+
 /**
  * Record a (full or partial) payment against an invoice.
  *
  * Payments accumulate; the total is clamped to the invoice amount so the
  * outstanding balance never goes negative. Negative payment amounts are
  * ignored. When the cumulative payment covers the full amount the status is
- * advanced to `Paid`.
+ * advanced to `Paid`. When a `link` is supplied the invoice records the
+ * account and transaction the cash inflow landed in so paid revenue is tied to
+ * a real balance (issue #3266).
  *
  * @param invoice - The invoice receiving payment.
  * @param paymentCents - Amount received in this payment, in cents.
  * @param paidDateIso - ISO date the payment was received.
  * @param nowIso - Current timestamp (ISO 8601) for updatedAt.
+ * @param link - Optional link to the cash-inflow transaction and its account.
  * @returns A new invoice with the payment recorded.
  */
 export function recordInvoicePayment(
@@ -206,6 +223,7 @@ export function recordInvoicePayment(
   paymentCents: number,
   paidDateIso: string,
   nowIso: string,
+  link?: InvoicePaymentLink,
 ): Invoice {
   const priorPaid = invoice.amountPaidCents ?? 0;
   const nextPaid = Math.min(priorPaid + Math.max(0, paymentCents), invoice.amountCents);
@@ -216,6 +234,48 @@ export function recordInvoicePayment(
     paidDate: paidDateIso,
     status: fullyPaid ? 'Paid' : invoice.status,
     updatedAt: nowIso,
+    ...(link ? { paymentAccountId: link.accountId, paymentTransactionId: link.transactionId } : {}),
+  };
+}
+
+/** Context needed to turn an invoice payment into a cash-inflow transaction. */
+export interface InvoiceCashInflowContext {
+  /** Account the money landed in. */
+  readonly accountId: string;
+  /** Household that owns the receiving account. */
+  readonly householdId: string;
+  /** Currency of the receiving account. */
+  readonly currency: Currency;
+  /** Amount received in this payment, in cents. */
+  readonly paymentCents: number;
+  /** ISO date the payment was received. */
+  readonly paidDateIso: string;
+}
+
+/**
+ * Build the cash-inflow transaction for an invoice payment.
+ *
+ * Marking an invoice paid should move real money: this produces an `INCOME`
+ * transaction against the chosen account so paid revenue shows up in balances,
+ * net worth and reconciliation instead of living only in the invoice pipeline
+ * (issue #3266). Amounts are positive cents (the app's income convention) and
+ * the transaction adopts the receiving account's currency — invoices do not yet
+ * carry their own currency (see #14), so the account the payment lands in is the
+ * source of truth for currency.
+ */
+export function buildInvoiceCashInflow(
+  invoice: Invoice,
+  context: InvoiceCashInflowContext,
+): CreateTransactionInput {
+  return {
+    householdId: context.householdId,
+    accountId: context.accountId,
+    type: 'INCOME',
+    amount: { amount: Math.abs(Math.round(context.paymentCents)) },
+    currency: context.currency,
+    payee: invoice.clientName,
+    note: `Invoice payment from ${invoice.clientName}`,
+    date: context.paidDateIso,
   };
 }
 

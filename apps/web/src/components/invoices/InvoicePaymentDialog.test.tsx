@@ -12,7 +12,23 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { MoneyDisplayProvider } from '../../lib/display-settings';
 import type { Invoice } from '../../lib/analytics/invoices';
+import type { Account } from '../../kmp/bridge';
 import { InvoicePaymentDialog } from './InvoicePaymentDialog';
+
+const ACCOUNTS = [
+  {
+    id: 'acc-1',
+    householdId: 'hh-1',
+    name: 'Checking',
+    currency: { code: 'USD', decimalPlaces: 2 },
+  },
+  {
+    id: 'acc-2',
+    householdId: 'hh-1',
+    name: 'Savings',
+    currency: { code: 'USD', decimalPlaces: 2 },
+  },
+] as unknown as Account[];
 
 function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
   return {
@@ -39,6 +55,7 @@ function renderDialog(props: Partial<ComponentProps<typeof InvoicePaymentDialog>
       <InvoicePaymentDialog
         isOpen
         invoice={makeInvoice()}
+        accounts={ACCOUNTS}
         onSubmit={onSubmit}
         onCancel={onCancel}
         {...props}
@@ -50,7 +67,7 @@ function renderDialog(props: Partial<ComponentProps<typeof InvoicePaymentDialog>
 }
 
 describe('InvoicePaymentDialog', () => {
-  it('records a valid partial payment with the entered date', () => {
+  it('records a valid partial payment with the entered date and deposit account', () => {
     const { onSubmit, onCancel } = renderDialog();
 
     expect(
@@ -61,8 +78,28 @@ describe('InvoicePaymentDialog', () => {
     fireEvent.change(screen.getByLabelText('Payment date'), { target: { value: '2024-02-15' } });
     fireEvent.click(screen.getByRole('button', { name: 'Record payment' }));
 
-    expect(onSubmit).toHaveBeenCalledWith(150000, '2024-02-15');
+    expect(onSubmit).toHaveBeenCalledWith(150000, '2024-02-15', 'acc-1');
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('submits the chosen deposit account when the user picks a different one', () => {
+    const { onSubmit } = renderDialog();
+
+    fireEvent.change(screen.getByLabelText('Payment amount'), { target: { value: '1500.00' } });
+    fireEvent.change(screen.getByLabelText('Deposit account'), { target: { value: 'acc-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Record payment' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(150000, expect.any(String), 'acc-2');
+  });
+
+  it('disables recording a payment when there are no accounts to deposit into', () => {
+    const { onSubmit } = renderDialog({ accounts: [] });
+
+    expect(screen.getByRole('button', { name: 'Record payment' })).toBeDisabled();
+    expect(
+      screen.getByText('Add an account first to record this payment as a cash inflow.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('rejects a non-positive amount', () => {

@@ -32,6 +32,13 @@
  * When revenue is zero the margin is `null` (N/A) rather than a divide-by-zero.
  * ──────────────────────────────────────────────────────────────────────────
  *
+ * SIGN & REFUNDS — a transaction's *type* carries its direction (income is an
+ * inflow, expense an outflow) and amounts are stored as unsigned magnitudes,
+ * matching the rest of the app (see `reconciliation.ts`). A refund/chargeback
+ * is therefore an expense classified as revenue and *reduces* the revenue
+ * bucket; symmetrically a vendor refund is income classified as a cost and
+ * *reduces* that cost bucket. Buckets are thus net figures (issue #3223).
+ *
  * This module is pure and deterministic: same input → same output, no clock,
  * no I/O. Splits are not expanded — a transaction's whole amount is allocated
  * to its single classified bucket.
@@ -75,13 +82,13 @@ export interface PnlOptions extends PnlTagConfig {
 
 /** The aggregated money + margin figures for a slice of activity. */
 export interface PnlTotals {
-  /** Total sales (cents, ≥ 0). */
+  /** Total sales, net of refunds/chargebacks (cents; normally ≥ 0). */
   readonly revenueCents: number;
-  /** Cost of goods sold (cents, ≥ 0). */
+  /** Cost of goods sold, net of vendor refunds (cents; normally ≥ 0). */
   readonly cogsCents: number;
-  /** Labor / payroll cost (cents, ≥ 0). */
+  /** Labor / payroll cost, net of reversals (cents; normally ≥ 0). */
   readonly laborCents: number;
-  /** Other operating expenses (cents, ≥ 0). */
+  /** Other operating expenses, net of reversals (cents; normally ≥ 0). */
   readonly overheadCents: number;
   /** Gross profit: revenue − COGS (cents, may be negative). */
   readonly grossProfitCents: number;
@@ -140,6 +147,32 @@ function magnitudeCents(value: number): number {
     return 0;
   }
   return Math.abs(Math.round(value));
+}
+
+/**
+ * Signed cash-flow magnitude for a transaction: income is a positive inflow and
+ * expense a negative outflow. Mirrors the app-wide convention (see
+ * `reconciliation.ts`) where amounts are stored as unsigned magnitudes and the
+ * transaction *type* carries the direction. Transfers and voids never reach
+ * this helper — {@link classifyTransaction} drops them first.
+ */
+function signedFlowCents(transaction: Transaction): number {
+  const magnitude = magnitudeCents(transaction.amount.amount);
+  return transaction.type === 'EXPENSE' ? -magnitude : magnitude;
+}
+
+/**
+ * The signed amount a transaction contributes to its P&L bucket.
+ *
+ * Revenue is fed by inflows, so an income sale *adds* to revenue while a refund
+ * or chargeback (an expense classified as revenue) *reduces* it. Cost buckets
+ * are fed by outflows, so an expense *adds* cost while a vendor refund (income
+ * classified as a cost) *reduces* it. Honouring the sign this way stops refunds
+ * from inflating revenue or costs (issue #3223).
+ */
+function bucketContributionCents(transaction: Transaction, category: PnlCategory): number {
+  const flow = signedFlowCents(transaction);
+  return category === 'revenue' ? flow : -flow;
 }
 
 function normalizeTag(tag: string): string {
@@ -387,7 +420,7 @@ export function buildProfitAndLoss(
       continue;
     }
 
-    const cents = magnitudeCents(transaction.amount.amount);
+    const cents = bucketContributionCents(transaction, category);
     const key = periodKey(transaction.date, granularity);
     const bucket = buckets.get(key) ?? emptyBucket();
     addToBucket(bucket, category, cents);
