@@ -8,7 +8,7 @@ import { AppLayout } from './components/layout';
 import { FocusManager } from './components/layout/FocusManager';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
 import { SessionSecurityBoundary } from './components/SessionSecurityBoundary';
-import { useBudgets, useNotifications, useTransactions } from './hooks';
+import { useBudgets, useDocumentTitle, useNotifications, useTransactions } from './hooks';
 import { useHaptics } from './hooks/useHaptics';
 import { useMilestoneCheck } from './hooks/useMilestoneCheck';
 import { useSpendingPace } from './hooks/useSpendingPace';
@@ -393,6 +393,9 @@ const AuthenticatedShell: FC<{
  */
 export const App: FC = () => {
   const location = useLocation();
+  // Keep the browser tab title in sync with the route for every branch below
+  // (standalone, authenticated, onboarding). See #3104.
+  useDocumentTitle();
   const activePath = location.pathname === '/' ? '/' : location.pathname;
   const pageTitle = derivePageTitle(activePath);
   const isStandalonePage = isStandalonePath(activePath);

@@ -163,6 +163,7 @@ export { useExchangeRates } from './useExchangeRates';
 export type { UseExchangeRatesResult } from './useExchangeRates';
 export { useLocalePreferences } from './useLocalePreferences';
 export type { UseLocalePreferencesResult } from './useLocalePreferences';
+export { useDocumentTitle } from './useDocumentTitle';
 export { useMerchants } from './useMerchants';
 export type { UseMerchantsResult } from './useMerchants';
 export { useAnnouncer } from './useAnnouncer';
