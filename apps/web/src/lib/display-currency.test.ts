@@ -12,8 +12,10 @@ import {
   DEFAULT_DISPLAY_CURRENCY,
   DISPLAY_CURRENCY_CHANGE_EVENT,
   DISPLAY_CURRENCY_STORAGE_KEY,
+  LEGACY_MULTI_CURRENCY_STORAGE_KEY,
   SUPPORTED_DISPLAY_CURRENCIES,
   getStoredDisplayCurrency,
+  migrateLegacyDisplayCurrencyPreference,
   setStoredDisplayCurrency,
 } from './display-currency';
 
@@ -62,5 +64,69 @@ describe('display-currency preference', () => {
   it('exposes a non-empty supported currency list including USD', () => {
     expect(SUPPORTED_DISPLAY_CURRENCIES.length).toBeGreaterThan(1);
     expect(SUPPORTED_DISPLAY_CURRENCIES.some((option) => option.value === 'USD')).toBe(true);
+  });
+});
+
+describe('migrateLegacyDisplayCurrencyPreference (#3291)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('seeds the canonical key from a legacy finance-default-currency object', () => {
+    localStorage.setItem(
+      LEGACY_MULTI_CURRENCY_STORAGE_KEY,
+      JSON.stringify({ code: 'EUR', decimalPlaces: 2 }),
+    );
+
+    migrateLegacyDisplayCurrencyPreference();
+
+    expect(localStorage.getItem(DISPLAY_CURRENCY_STORAGE_KEY)).toBe('EUR');
+    expect(getStoredDisplayCurrency()).toBe('EUR');
+    // The legacy key is removed so it can never diverge again.
+    expect(localStorage.getItem(LEGACY_MULTI_CURRENCY_STORAGE_KEY)).toBeNull();
+  });
+
+  it('tolerates a legacy bare code string', () => {
+    localStorage.setItem(LEGACY_MULTI_CURRENCY_STORAGE_KEY, '"gbp"');
+
+    migrateLegacyDisplayCurrencyPreference();
+
+    expect(getStoredDisplayCurrency()).toBe('GBP');
+    expect(localStorage.getItem(LEGACY_MULTI_CURRENCY_STORAGE_KEY)).toBeNull();
+  });
+
+  it('does not overwrite an explicit canonical preference', () => {
+    localStorage.setItem(DISPLAY_CURRENCY_STORAGE_KEY, 'JPY');
+    localStorage.setItem(
+      LEGACY_MULTI_CURRENCY_STORAGE_KEY,
+      JSON.stringify({ code: 'EUR', decimalPlaces: 2 }),
+    );
+
+    migrateLegacyDisplayCurrencyPreference();
+
+    // The Settings choice (JPY) wins over the legacy widget copy (EUR)...
+    expect(getStoredDisplayCurrency()).toBe('JPY');
+    // ...and the redundant legacy key is still cleared.
+    expect(localStorage.getItem(LEGACY_MULTI_CURRENCY_STORAGE_KEY)).toBeNull();
+  });
+
+  it('is a no-op when no legacy value exists', () => {
+    migrateLegacyDisplayCurrencyPreference();
+
+    expect(localStorage.getItem(DISPLAY_CURRENCY_STORAGE_KEY)).toBeNull();
+    expect(getStoredDisplayCurrency()).toBe(DEFAULT_DISPLAY_CURRENCY);
+  });
+
+  it('is idempotent across repeated startups', () => {
+    localStorage.setItem(
+      LEGACY_MULTI_CURRENCY_STORAGE_KEY,
+      JSON.stringify({ code: 'CAD', decimalPlaces: 2 }),
+    );
+
+    migrateLegacyDisplayCurrencyPreference();
+    migrateLegacyDisplayCurrencyPreference();
+
+    expect(getStoredDisplayCurrency()).toBe('CAD');
+    expect(localStorage.getItem(LEGACY_MULTI_CURRENCY_STORAGE_KEY)).toBeNull();
   });
 });
