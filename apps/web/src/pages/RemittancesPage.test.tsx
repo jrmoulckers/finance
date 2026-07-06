@@ -33,6 +33,7 @@ function buildResult(overrides: Partial<ReturnType<typeof useRemittances>> = {})
   return {
     remittances: [],
     summary: EMPTY_SUMMARY,
+    recipientBreakdown: [],
     loading: false,
     error: null,
     refresh: vi.fn(),
@@ -85,6 +86,37 @@ describe('RemittancesPage', () => {
     mockUseRemittances.mockReturnValue(buildResult());
     render(<RemittancesPage />);
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+  });
+
+  it('renders a per-supplier breakdown when records exist', () => {
+    mockUseRemittances.mockReturnValue(
+      buildResult({
+        remittances: [SAMPLE_RECORD],
+        summary: {
+          count: 1,
+          sentByCurrency: { USD: 50_500 },
+          feesByCurrency: { USD: 500 },
+          receivedByCurrency: { MXN: 850_000 },
+          totalCostByCurrency: { USD: 1_929 },
+          destinationCountries: ['MX'],
+        },
+        recipientBreakdown: [
+          {
+            name: 'Mumbai Textiles',
+            country: 'IN',
+            count: 3,
+            lastDate: '2026-06-01',
+            sentByCurrency: { USD: 151_500 },
+            receivedByCurrency: { INR: 12_600_000 },
+            totalCostByCurrency: { USD: 5_787 },
+          },
+        ],
+      }),
+    );
+    render(<RemittancesPage />);
+
+    expect(screen.getByRole('region', { name: 'By supplier' })).toBeInTheDocument();
+    expect(screen.getByText(/Mumbai Textiles/)).toBeInTheDocument();
   });
 
   it('renders a live estimate once amount and rate are entered', () => {

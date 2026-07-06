@@ -295,8 +295,16 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ record, locale, t, onDelete }
 
 export const RemittancesPage: React.FC = () => {
   const { locale } = useLocalePreferences();
-  const { remittances, summary, loading, error, refresh, createRemittance, deleteRemittance } =
-    useRemittances();
+  const {
+    remittances,
+    summary,
+    recipientBreakdown,
+    loading,
+    error,
+    refresh,
+    createRemittance,
+    deleteRemittance,
+  } = useRemittances();
 
   const t = useCallback(
     (id: string, values: Record<string, string | number> = {}) =>
@@ -843,6 +851,30 @@ export const RemittancesPage: React.FC = () => {
               </article>
             </div>
           </section>
+
+          {recipientBreakdown.length > 0 && (
+            <section className="remittance-section" aria-label={t('remittance.bySupplier.title')}>
+              <h2 className="remittance-section__title">{t('remittance.bySupplier.title')}</h2>
+              <div className="remittance-summary-grid" role="list">
+                {recipientBreakdown.map((recipient) => (
+                  <article key={recipient.name} className="remittance-metric" role="listitem">
+                    <p className="remittance-metric__label">
+                      {recipient.name}
+                      {recipient.country ? ` · ${formatCountry(recipient.country, locale)}` : ''}
+                    </p>
+                    <p className="remittance-metric__value">
+                      {formatCurrencyGroup(recipient.sentByCurrency, locale)}
+                    </p>
+                    <p className="remittance-metric__label">
+                      {t('remittance.bySupplier.transfers', { count: recipient.count })} ·{' '}
+                      {t('remittance.summary.totalCost')}:{' '}
+                      {formatCurrencyGroup(recipient.totalCostByCurrency, locale)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="remittance-section" aria-label={t('remittance.history.title')}>
             <h2 className="remittance-section__title">
