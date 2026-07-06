@@ -70,6 +70,7 @@ describe('LivePnlPage', () => {
       loading: true,
       error: null,
       isLive: false,
+      isSimulated: false,
       lastUpdated: null,
       refresh: vi.fn(),
     });
@@ -83,6 +84,7 @@ describe('LivePnlPage', () => {
       loading: false,
       error: null,
       isLive: false,
+      isSimulated: false,
       lastUpdated: null,
       refresh: vi.fn(),
     });
@@ -96,6 +98,7 @@ describe('LivePnlPage', () => {
       loading: false,
       error: null,
       isLive: true,
+      isSimulated: true,
       lastUpdated: NOW,
       refresh: vi.fn(),
     });

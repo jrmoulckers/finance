@@ -18,7 +18,7 @@ import { LivePnlDashboard } from '../components/dashboard/LivePnlDashboard';
 import { useLivePnl } from '../hooks/useLivePnl';
 
 export const LivePnlPage: React.FC = () => {
-  const { view, loading, error, isLive, refresh } = useLivePnl();
+  const { view, loading, error, isLive, isSimulated, refresh } = useLivePnl();
 
   if (loading) {
     return (
@@ -37,7 +37,16 @@ export const LivePnlPage: React.FC = () => {
     );
   }
 
-  return <LivePnlDashboard view={view} isLive={isLive} error={error} onRefresh={refresh} />;
+  return (
+    <LivePnlDashboard
+      view={view}
+      isLive={isLive}
+      isSimulated={isSimulated}
+      realizedTracked={false}
+      error={error}
+      onRefresh={refresh}
+    />
+  );
 };
 
 export default LivePnlPage;

@@ -102,4 +102,75 @@ describe('computeIntradayPnl', () => {
     expect(report.staleSymbols).toEqual(['SPY-PUT']);
     expect(report.missingBasisSymbols).toEqual(['SPY-PUT']);
   });
+
+  it('reports positions excluded because their currency differs from the report currency', () => {
+    const positions: IntradayPosition[] = [
+      {
+        accountId: 'us',
+        brokerage: 'A',
+        symbol: 'VTI',
+        assetClass: 'equity',
+        quantity: 10,
+        previousCloseCents: 100_00,
+        costBasisCents: 900_00,
+        currency: 'USD',
+      },
+      {
+        accountId: 'eu',
+        brokerage: 'B',
+        symbol: 'SAP',
+        assetClass: 'equity',
+        quantity: 5,
+        previousCloseCents: 120_00,
+        costBasisCents: 500_00,
+        currency: 'EUR',
+      },
+      {
+        accountId: 'uk',
+        brokerage: 'C',
+        symbol: 'HSBA',
+        assetClass: 'equity',
+        quantity: 8,
+        previousCloseCents: 60_00,
+        costBasisCents: 400_00,
+        currency: 'GBP',
+      },
+    ];
+
+    const report = computeIntradayPnl({
+      positions,
+      quotes: [quote('VTI', 110_00)],
+      now,
+      currency: 'USD',
+    });
+
+    // Only the USD position contributes to the totals.
+    expect(report.totalMarketValueCents).toBe(1100_00);
+    // The foreign positions are surfaced so the UI can disclose them.
+    expect(report.excludedSymbols).toEqual(['HSBA', 'SAP']);
+    expect(report.excludedCurrencies).toEqual(['EUR', 'GBP']);
+  });
+
+  it('reports no exclusions when every position matches the report currency', () => {
+    const report = computeIntradayPnl({
+      positions: [
+        {
+          accountId: 'us',
+          brokerage: 'A',
+          symbol: 'VTI',
+          assetClass: 'equity',
+          quantity: 10,
+          previousCloseCents: 100_00,
+          costBasisCents: 900_00,
+          currency: 'USD',
+        },
+      ],
+      quotes: [quote('VTI', 110_00)],
+      now,
+      currency: 'USD',
+    });
+
+    expect(report.excludedSymbols).toEqual([]);
+    expect(report.excludedCurrencies).toEqual([]);
+  });
 });

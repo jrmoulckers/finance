@@ -37,6 +37,14 @@ export interface LivePnlDashboardProps {
   view: LivePnlView;
   /** Whether the price source is currently streaming. */
   isLive: boolean;
+  /** True when quotes are simulated (offline demo) rather than a real feed. */
+  isSimulated?: boolean;
+  /**
+   * Whether intraday realized P&L is actually sourced. When `false` the card
+   * discloses that closed-trade P&L isn't tracked yet instead of showing a
+   * misleading $0.00.
+   */
+  realizedTracked?: boolean;
   /** Last price-source error, if any. */
   error?: string | null;
   /** Invoked when the user requests an immediate refresh. */
@@ -214,6 +222,8 @@ const ASSET_CLASS_LABEL: Record<string, string> = {
 export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
   view,
   isLive,
+  isSimulated = false,
+  realizedTracked = true,
   error,
   onRefresh,
   now,
@@ -223,6 +233,8 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
   const updatedLabel =
     ageMs === null ? 'Awaiting first update' : `Updated ${formatRelativeAge(ageMs)}`;
   const { currency } = view;
+  const excludedCurrencies = view.report.excludedCurrencies;
+  const excludedCount = view.report.excludedSymbols.length;
 
   // Concise summary announced to assistive tech whenever totals change.
   const liveSummary = `${view.indicators.day.label === 'flat' ? 'No change' : `Day ${view.indicators.day.label}`} ${view.dayPnlPercent}%. ${updatedLabel}. Market data ${view.staleness.label}.`;
@@ -260,6 +272,23 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
       {error && (
         <p className="live-pnl__error" role="alert">
           <span aria-hidden="true">⚠</span> {error}
+        </p>
+      )}
+
+      {isSimulated && (
+        <p className="live-pnl__notice live-pnl__notice--info" role="note">
+          <span aria-hidden="true">ⓘ</span> Prices are <strong>simulated</strong> for demonstration.
+          This dashboard illustrates intraday movement without a live market-data feed — figures are
+          not real quotes.
+        </p>
+      )}
+
+      {excludedCount > 0 && (
+        <p className="live-pnl__notice live-pnl__notice--warning" role="note">
+          <span aria-hidden="true">⚠</span> {excludedCount} position
+          {excludedCount === 1 ? '' : 's'} priced in {excludedCurrencies.join(', ')}{' '}
+          {excludedCurrencies.length === 1 ? 'is' : 'are'} excluded from these {currency} totals.
+          Multi-currency roll-up is not yet converted.
         </p>
       )}
 
@@ -322,18 +351,39 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
 
         <article className="live-pnl__metric" aria-label="Realized profit and loss">
           <p className="live-pnl__metric-label">Realized P&amp;L (today)</p>
-          <p className="live-pnl__metric-value">
-            <PnlFigure
-              amountCents={view.realizedPnlCents}
-              indicator={view.indicators.realized}
-              currency={currency}
-              context="realized profit and loss today"
-              showTag
-            />
-          </p>
-          <p className="live-pnl__metric-sub">Closed trades booked today</p>
+          {realizedTracked ? (
+            <>
+              <p className="live-pnl__metric-value">
+                <PnlFigure
+                  amountCents={view.realizedPnlCents}
+                  indicator={view.indicators.realized}
+                  currency={currency}
+                  context="realized profit and loss today"
+                  showTag
+                />
+              </p>
+              <p className="live-pnl__metric-sub">Closed trades booked today</p>
+            </>
+          ) : (
+            <>
+              <p
+                className="live-pnl__metric-value live-pnl__metric-value--muted"
+                aria-label="Realized profit and loss today: not tracked"
+              >
+                —
+              </p>
+              <p className="live-pnl__metric-sub">
+                Intraday realized P&amp;L isn&apos;t tracked yet
+              </p>
+            </>
+          )}
         </article>
       </section>
+
+      <p className="live-pnl__footnote">
+        Today&apos;s P&amp;L is measured from each holding&apos;s last saved price, which may differ
+        from the official previous close.
+      </p>
 
       {/* Breakdowns */}
       <section className="live-pnl__section" aria-label="Profit and loss by brokerage">

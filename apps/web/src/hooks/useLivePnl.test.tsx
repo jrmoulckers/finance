@@ -220,4 +220,17 @@ describe('useLivePnl', () => {
     });
     expect(spy).toHaveBeenCalled();
   });
+
+  it('flags an injected (real) source as not simulated', () => {
+    const source = new ManualPriceSource({ now: () => NOW });
+    const { result } = renderHook(() => useLivePnl({ source, now: () => NOW }));
+    expect(result.current.isSimulated).toBe(false);
+  });
+
+  it('flags the default offline source as simulated', () => {
+    const { result } = renderHook(() =>
+      useLivePnl({ autoStart: false, now: () => NOW, baseCurrency: 'USD' }),
+    );
+    expect(result.current.isSimulated).toBe(true);
+  });
 });

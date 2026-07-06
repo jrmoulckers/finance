@@ -166,6 +166,34 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Disclosure notices (simulated data, excluded currencies)
+ * ------------------------------------------------------------------------- */
+
+.live-pnl__notice {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--semantic-border-default);
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.live-pnl__notice--warning {
+  border-color: var(--semantic-status-warning);
+  color: var(--semantic-status-warning);
+}
+
+.live-pnl__footnote {
+  margin: calc(-1 * var(--spacing-4)) 0 var(--spacing-6);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* ---------------------------------------------------------------------------
  * Metric cards
  * ------------------------------------------------------------------------- */
 
@@ -194,6 +222,10 @@
   font-weight: var(--font-weight-semibold);
   color: var(--semantic-text-primary);
   margin: 0;
+}
+
+.live-pnl__metric-value--muted {
+  color: var(--semantic-text-secondary);
 }
 
 .live-pnl__metric-sub {
