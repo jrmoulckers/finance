@@ -1,0 +1,29 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * TrendLineChart legend — mirrors the accessible, pattern-encoded legend used
+ * by NetWorthProjectionChart so series are distinguishable without relying on
+ * colour alone (WCAG 2.2 SC 1.4.1). Swatches reproduce each line's dash
+ * pattern; labels name the pattern in text.
+ */
+
+.trend-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4, 1rem);
+  margin: var(--spacing-2, 0.5rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trend-chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.trend-chart__legend-swatch {
+  flex: 0 0 auto;
+}

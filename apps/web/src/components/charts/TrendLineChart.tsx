@@ -14,7 +14,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import { CHART_COLORS, formatChartCurrency } from './chart-palette';
@@ -24,6 +23,34 @@ import {
   useChartKeyboardNavigation,
 } from './chart-accessibility';
 import { buildChartTextSummary } from '../../lib/a11y/chart-table-audit';
+import './trend-line-chart.css';
+
+/**
+ * Per-series stroke patterns. Colour alone must never be the only way to tell
+ * two lines apart (WCAG 2.2 SC 1.4.1 Use of Color), so each series also gets a
+ * distinct dash pattern that is mirrored in the legend swatch and label. The
+ * cycle is deliberately small and high-contrast between neighbours.
+ */
+interface SeriesPattern {
+  /** SVG `strokeDasharray`; `undefined` renders a solid line. */
+  readonly dash?: string;
+  /** Human-readable pattern name, surfaced in the legend and a11y summary. */
+  readonly name: string;
+}
+
+const SERIES_PATTERNS: readonly SeriesPattern[] = [
+  { dash: undefined, name: 'solid' },
+  { dash: '6 5', name: 'dashed' },
+  { dash: '2 4', name: 'dotted' },
+  { dash: '8 4 2 4', name: 'dash-dot' },
+  { dash: '10 6', name: 'long-dashed' },
+  { dash: '1 6', name: 'fine-dotted' },
+];
+
+/** Resolve the stroke pattern for a series by its index (cycles the set). */
+function seriesPattern(index: number): SeriesPattern {
+  return SERIES_PATTERNS[index % SERIES_PATTERNS.length];
+}
 
 export interface TrendDataPoint {
   label: string;
@@ -61,13 +88,13 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
   const description = useMemo(() => {
     if (data.length === 0) return 'Line chart with no data.';
     const seriesDesc = series
-      .map((s) => {
+      .map((s, index) => {
         const values = data.map((d) =>
           typeof d[s.dataKey] === 'number' ? (d[s.dataKey] as number) : 0,
         );
         const min = Math.min(...values);
         const max = Math.max(...values);
-        return `${s.name}: range ${formatChartCurrency(min, currency)} to ${formatChartCurrency(max, currency)}`;
+        return `${s.name} (${seriesPattern(index).name} line): range ${formatChartCurrency(min, currency)} to ${formatChartCurrency(max, currency)}`;
       })
       .join('. ');
     return `Line chart "${title}" with ${data.length} data points and ${series.length} series. ${seriesDesc}.`;
@@ -158,7 +185,6 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
                   borderRadius: '0.375rem',
                 }}
               />
-              <Legend />
               {series.map((trendSeries, index) => (
                 <Line
                   key={trendSeries.dataKey}
@@ -167,6 +193,7 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
                   name={trendSeries.name}
                   stroke={CHART_COLORS[index % CHART_COLORS.length]}
                   strokeWidth={2}
+                  strokeDasharray={seriesPattern(index).dash}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
                   isAnimationActive={!disableAnimation}
@@ -176,6 +203,36 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
             </LineChart>
           </ResponsiveContainer>
         </div>
+      )}
+      {data.length > 0 && (
+        <ul className="trend-chart__legend" aria-label={`${title} legend`}>
+          {series.map((trendSeries, index) => {
+            const pattern = seriesPattern(index);
+            return (
+              <li key={trendSeries.dataKey} className="trend-chart__legend-item">
+                <svg
+                  className="trend-chart__legend-swatch"
+                  width="28"
+                  height="10"
+                  viewBox="0 0 28 10"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <line
+                    x1="0"
+                    y1="5"
+                    x2="28"
+                    y2="5"
+                    stroke={CHART_COLORS[index % CHART_COLORS.length]}
+                    strokeWidth="2"
+                    strokeDasharray={pattern.dash}
+                  />
+                </svg>
+                <span>{`${trendSeries.name} (${pattern.name} line)`}</span>
+              </li>
+            );
+          })}
+        </ul>
       )}
       <div
         id={`${chartId}-live`}
