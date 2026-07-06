@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useId, useRef, type KeyboardEvent } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
-import { SHORTCUT_CATEGORIES } from '../../hooks/useKeyboardShortcuts';
+import { SHORTCUT_CATEGORIES, type ShortcutCategory } from '../../hooks/useKeyboardShortcuts';
 
 import '../forms/forms.css';
 
@@ -11,6 +11,12 @@ export interface KeyboardShortcutsModalProps {
   isOpen: boolean;
   onClose: () => void;
   singleKeyShortcutsEnabled?: boolean;
+  /**
+   * Additional shortcut categories appended after the built-in ones. Used to
+   * fold the locked Ctrl+1..9 navigation shortcuts into this single help
+   * dialog instead of a second competing modal.
+   */
+  extraCategories?: readonly ShortcutCategory[];
 }
 
 /** Accessible help dialog listing the app's keyboard shortcuts. */
@@ -18,11 +24,16 @@ export function KeyboardShortcutsModal({
   isOpen,
   onClose,
   singleKeyShortcutsEnabled = true,
+  extraCategories,
 }: KeyboardShortcutsModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const categories =
+    extraCategories && extraCategories.length > 0
+      ? [...SHORTCUT_CATEGORIES, ...extraCategories]
+      : SHORTCUT_CATEGORIES;
 
   useFocusTrap(panelRef, {
     active: isOpen,
@@ -91,7 +102,7 @@ export function KeyboardShortcutsModal({
             </tr>
           </thead>
           <tbody>
-            {SHORTCUT_CATEGORIES.map((category) => (
+            {categories.map((category) => (
               <React.Fragment key={category.title}>
                 <tr className="keyboard-shortcuts__category-row">
                   <th scope="rowgroup" colSpan={2}>

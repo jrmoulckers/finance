@@ -131,4 +131,22 @@ describe('KeyboardShortcutsModal', () => {
     const backdrop = container.querySelector('.form-dialog__backdrop');
     expect(backdrop).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders appended extra shortcut categories', () => {
+    render(
+      <KeyboardShortcutsModal
+        isOpen={true}
+        onClose={vi.fn()}
+        extraCategories={[
+          {
+            title: 'Locked navigation',
+            shortcuts: [{ keys: 'Ctrl + 1', description: 'Dashboard' }],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('Locked navigation')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
 });
