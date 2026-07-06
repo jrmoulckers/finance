@@ -200,9 +200,7 @@ async function waitForAuthenticatedApp(page: Page): Promise<void> {
   await page.waitForURL('**/dashboard', { timeout: 30_000 });
   await Promise.any([
     page.getByRole('main', { name: /dashboard/i }).waitFor({ state: 'visible', timeout: 30_000 }),
-    page
-      .locator('aside[aria-label="Main navigation"]')
-      .waitFor({ state: 'visible', timeout: 30_000 }),
+    page.locator('aside[aria-label="Sidebar"]').waitFor({ state: 'visible', timeout: 30_000 }),
     page.locator('nav.bottom-nav').waitFor({ state: 'visible', timeout: 30_000 }),
   ]);
 }

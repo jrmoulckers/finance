@@ -19,7 +19,7 @@ async function navigateViaPrimaryNav(
   expectedUrl: RegExp,
 ): Promise<void> {
   const exactLabel = new RegExp(`^${label}$`, 'i');
-  const sidebar = page.locator('aside[aria-label="Main navigation"]');
+  const sidebar = page.locator('aside[aria-label="Sidebar"]');
 
   if (await sidebar.isVisible().catch(() => false)) {
     await sidebar.getByRole('button', { name: exactLabel }).click();
