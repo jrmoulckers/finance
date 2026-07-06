@@ -151,6 +151,8 @@ export const QuickEntry: FC<QuickEntryProps> = ({
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  const accountRef = useRef<HTMLSelectElement>(null);
 
   const [transactionType, setTransactionType] = useState<TransactionType>(getLastType);
   const amountInput = useAmountInput({
@@ -163,6 +165,7 @@ export const QuickEntry: FC<QuickEntryProps> = ({
   const [description, setDescription] = useState('');
   const [accountId, setAccountId] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState<'amount' | 'description' | 'account' | null>(null);
   const [successCount, setSuccessCount] = useState(0);
   const [suggestion, setSuggestion] = useState<CategorySuggestion | null>(null);
 
@@ -178,6 +181,7 @@ export const QuickEntry: FC<QuickEntryProps> = ({
       setTransactionType(getLastType());
       setSuccessCount(0);
       setError(null);
+      setErrorField(null);
 
       const id = requestAnimationFrame(() => {
         amountInputRef.current?.focus();
@@ -225,6 +229,7 @@ export const QuickEntry: FC<QuickEntryProps> = ({
     amountInput.setSign(transactionType === 'EXPENSE' ? 'negative' : 'positive');
     setDescription('');
     setError(null);
+    setErrorField(null);
     setSuggestion(null);
     // Keep type and account for rapid re-entry
     requestAnimationFrame(() => {
@@ -239,18 +244,24 @@ export const QuickEntry: FC<QuickEntryProps> = ({
       const normalizedAmountCents = normalizeTransactionAmount(amountInput.cents, transactionType);
       if (normalizedAmountCents === 0) {
         setError('Enter a valid amount.');
+        setErrorField('amount');
+        amountInputRef.current?.focus();
         return;
       }
 
       const trimmedDescription = description.trim();
       if (!trimmedDescription) {
         setError('Enter a description.');
+        setErrorField('description');
+        descriptionRef.current?.focus();
         return;
       }
 
       const selectedAccount = accounts.find((a) => a.id === accountId);
       if (!selectedAccount) {
         setError('Select an account.');
+        setErrorField('account');
+        accountRef.current?.focus();
         return;
       }
 
@@ -304,8 +315,6 @@ export const QuickEntry: FC<QuickEntryProps> = ({
 
   if (!isOpen) return null;
 
-  const hasError = Boolean(error);
-
   return (
     <div className="quick-entry" role="presentation" onKeyDown={handleKeyDown}>
       <div className="quick-entry__backdrop" aria-hidden="true" onClick={onClose} />
@@ -336,7 +345,7 @@ export const QuickEntry: FC<QuickEntryProps> = ({
         </div>
 
         {error && (
-          <div className="form-banner-error" role="alert">
+          <div id="quick-entry-error" className="form-banner-error" role="alert">
             {error}
           </div>
         )}
@@ -369,10 +378,11 @@ export const QuickEntry: FC<QuickEntryProps> = ({
             <AmountInput
               ref={amountInputRef}
               amountInput={amountInput}
-              className={`form-input quick-entry__amount-input${hasError ? ' form-input--error' : ''}`}
+              className={`form-input quick-entry__amount-input${errorField === 'amount' ? ' form-input--error' : ''}`}
               placeholder="$0.00"
               aria-label="Amount"
-              aria-invalid={hasError}
+              aria-invalid={errorField === 'amount'}
+              aria-describedby={errorField === 'amount' ? 'quick-entry-error' : undefined}
               aria-required="true"
               autoComplete="off"
               toggleLabel="Toggle quick entry amount sign"
@@ -381,6 +391,7 @@ export const QuickEntry: FC<QuickEntryProps> = ({
 
           {/* Description */}
           <input
+            ref={descriptionRef}
             className="form-input quick-entry__description"
             type="text"
             placeholder="What was it for?"
@@ -388,9 +399,12 @@ export const QuickEntry: FC<QuickEntryProps> = ({
             onChange={(e) => {
               setDescription(e.target.value);
               setError(null);
+              setErrorField(null);
             }}
             aria-label="Description"
             aria-required="true"
+            aria-invalid={errorField === 'description'}
+            aria-describedby={errorField === 'description' ? 'quick-entry-error' : undefined}
             autoComplete="off"
           />
 
@@ -404,10 +418,13 @@ export const QuickEntry: FC<QuickEntryProps> = ({
           {/* Account selector (compact) */}
           {accounts.length > 1 && (
             <select
+              ref={accountRef}
               className="form-select quick-entry__account"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               aria-label="Account"
+              aria-invalid={errorField === 'account'}
+              aria-describedby={errorField === 'account' ? 'quick-entry-error' : undefined}
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>

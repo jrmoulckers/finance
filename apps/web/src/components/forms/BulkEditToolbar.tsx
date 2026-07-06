@@ -17,7 +17,8 @@
  * References: issue #318
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusTrap } from '../../accessibility/aria';
 import type { Category, SyncId } from '../../kmp/bridge';
 import type { BulkUpdateFields, BulkOperationResult } from '../../hooks/useBulkTransactions';
 import { AppIcon } from '../icons';
@@ -61,6 +62,28 @@ export const BulkEditToolbar: React.FC<BulkEditToolbarProps> = ({
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [operationResult, setOperationResult] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const wasConfirmingRef = useRef(false);
+
+  // Trap focus inside the destructive-delete confirmation and move focus onto
+  // it when it appears, so screen-reader users are told an alertdialog opened.
+  useFocusTrap(confirmRef, {
+    active: showDeleteConfirm,
+    restoreFocus: false,
+    initialFocusRef: confirmRef,
+    inertBackground: false,
+  });
+
+  // Return focus to the Delete trigger when the confirmation closes (e.g. via
+  // Cancel) so keyboard and screen-reader users are not stranded on <body>.
+  useEffect(() => {
+    if (wasConfirmingRef.current && !showDeleteConfirm) {
+      deleteTriggerRef.current?.focus();
+    }
+    wasConfirmingRef.current = showDeleteConfirm;
+  }, [showDeleteConfirm]);
 
   const allSelected = selectionCount === totalCount && totalCount > 0;
 
@@ -116,16 +139,10 @@ export const BulkEditToolbar: React.FC<BulkEditToolbarProps> = ({
             <AppIcon name="folder" /> Category
           </button>
           {showCategoryPicker && (
-            <div
-              className="bulk-edit-toolbar__dropdown"
-              role="listbox"
-              aria-label="Select category"
-            >
+            <div className="bulk-edit-toolbar__dropdown" role="group" aria-label="Select category">
               <button
                 type="button"
                 className="bulk-edit-toolbar__dropdown-item"
-                role="option"
-                aria-selected={false}
                 onClick={() => handleCategoryChange(null)}
               >
                 Uncategorized
@@ -135,8 +152,6 @@ export const BulkEditToolbar: React.FC<BulkEditToolbarProps> = ({
                   key={cat.id}
                   type="button"
                   className="bulk-edit-toolbar__dropdown-item"
-                  role="option"
-                  aria-selected={false}
                   onClick={() => handleCategoryChange(cat.id)}
                 >
                   {cat.name}
@@ -149,6 +164,7 @@ export const BulkEditToolbar: React.FC<BulkEditToolbarProps> = ({
         {/* Bulk delete */}
         {!showDeleteConfirm ? (
           <button
+            ref={deleteTriggerRef}
             type="button"
             className="bulk-edit-toolbar__button bulk-edit-toolbar__button--danger"
             onClick={() => setShowDeleteConfirm(true)}
@@ -158,11 +174,15 @@ export const BulkEditToolbar: React.FC<BulkEditToolbarProps> = ({
           </button>
         ) : (
           <div
+            ref={confirmRef}
             className="bulk-edit-toolbar__confirm"
             role="alertdialog"
+            aria-modal="true"
             aria-label="Confirm deletion"
+            aria-describedby="bulk-delete-confirm-text"
+            tabIndex={-1}
           >
-            <span className="bulk-edit-toolbar__confirm-text">
+            <span id="bulk-delete-confirm-text" className="bulk-edit-toolbar__confirm-text">
               Delete {selectionCount} transaction{selectionCount !== 1 ? 's' : ''}?
             </span>
             <button
