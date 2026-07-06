@@ -10,8 +10,10 @@ import { describe, expect, it } from 'vitest';
 import {
   computeExpectedPayDate,
   computeInvoiceForecast,
+  exportInvoicesCsv,
   getEffectiveInvoiceStatus,
   groupInvoicesByStatus,
+  INVOICE_CSV_HEADER,
   type Invoice,
 } from './invoices';
 
@@ -121,5 +123,60 @@ describe('computeInvoiceForecast', () => {
     expect(forecast.find((bucket) => bucket.id === 'days-31-60')?.totalCents).toBe(30000);
     expect(forecast.find((bucket) => bucket.id === 'days-61-90')?.totalCents).toBe(40000);
     expect(forecast.find((bucket) => bucket.id === 'days-90-plus')?.totalCents).toBe(50000);
+  });
+});
+
+describe('exportInvoicesCsv', () => {
+  it('emits a header, one sorted row per invoice with status/bucket, and a totals row', () => {
+    const csv = exportInvoicesCsv(
+      [
+        makeInvoice({
+          id: 'a',
+          clientName: 'Acme Studio',
+          amountCents: 100000,
+          status: 'Sent',
+          expectedPayDate: '2024-01-31',
+        }),
+        makeInvoice({
+          id: 'b',
+          clientName: 'Beta Co',
+          amountCents: 50000,
+          status: 'Sent',
+          expectedPayDate: '2024-01-10',
+        }),
+        makeInvoice({
+          id: 'c',
+          clientName: 'Ceta LLC',
+          amountCents: 30000,
+          status: 'Paid',
+          expectedPayDate: '2024-01-05',
+        }),
+      ],
+      '2024-01-15',
+    );
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe(INVOICE_CSV_HEADER);
+    // Sorted by expected pay date: Ceta (paid, no bucket), Beta (overdue), Acme.
+    expect(lines[1]).toBe('Ceta LLC,300.00,2024-01-01,Net-30,Paid,2024-01-05,');
+    expect(lines[2]).toBe('Beta Co,500.00,2024-01-01,Net-30,Overdue,2024-01-10,Past due');
+    expect(lines[3]).toBe('Acme Studio,1000.00,2024-01-01,Net-30,Sent,2024-01-31,Next 30 days');
+    expect(lines[lines.length - 1]).toBe('Total,1800.00,,,,,');
+  });
+
+  it('quotes client names that contain commas', () => {
+    const csv = exportInvoicesCsv(
+      [makeInvoice({ id: 'a', clientName: 'Ramirez, Diego', amountCents: 20000 })],
+      '2024-01-01',
+    );
+
+    expect(csv).toContain('"Ramirez, Diego",200.00,');
+  });
+
+  it('returns the header and a zero totals row for an empty pipeline', () => {
+    expect(exportInvoicesCsv([], '2024-01-15').split('\n')).toEqual([
+      INVOICE_CSV_HEADER,
+      'Total,0.00,,,,,',
+    ]);
   });
 });
