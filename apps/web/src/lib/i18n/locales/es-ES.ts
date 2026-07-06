@@ -152,6 +152,7 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'remittance.form.date.required': 'Introduce la fecha en que enviaste el dinero.',
   'remittance.form.sourceCurrency.label': 'Tú envías (moneda)',
   'remittance.form.destCurrency.label': 'Reciben (moneda)',
+  'remittance.form.destCurrency.sameCurrency': 'Elige una moneda diferente a la que envías.',
   'remittance.form.sendAmount.label': 'Importe que envías',
   'remittance.form.sendAmount.required': 'Introduce el importe que envías.',
   'remittance.form.sendAmount.invalid': 'Introduce un importe válido mayor que cero.',
