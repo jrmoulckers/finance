@@ -35,7 +35,14 @@ vi.mock('recharts', async () => {
   const React = await import('react');
   const mock = (name: string) =>
     function MockComponent(props: Record<string, unknown>) {
-      return React.createElement('div', { 'data-testid': name }, props.children as never);
+      const label = props.label as { value?: unknown } | undefined;
+      const labelText =
+        label && typeof label === 'object' && 'value' in label ? String(label.value) : undefined;
+      return React.createElement(
+        'div',
+        { 'data-testid': name, 'data-label': labelText },
+        props.children as never,
+      );
     };
   return {
     ResponsiveContainer: mock('ResponsiveContainer'),
@@ -120,5 +127,19 @@ describe('NetWorthProjectionChart', () => {
   it('shows an empty state when there is no history at all', () => {
     render(<NetWorthProjectionChart history={[]} />);
     expect(screen.getByText(/Add account balances and transactions/)).toBeInTheDocument();
+  });
+
+  it('draws a labeled break-even reference line only when net worth is underwater', () => {
+    // Climbing but still-negative history crosses $0 in view.
+    const { container, rerender } = render(
+      <NetWorthProjectionChart
+        history={makeHistory([-2_600_000, -2_400_000, -2_000_000, -1_500_000])}
+      />,
+    );
+    expect(container.querySelector('[data-label="Break-even ($0)"]')).not.toBeNull();
+
+    // A purely-positive series keeps full vertical resolution — no zero line.
+    rerender(<NetWorthProjectionChart history={GROWING} />);
+    expect(container.querySelector('[data-label="Break-even ($0)"]')).toBeNull();
   });
 });

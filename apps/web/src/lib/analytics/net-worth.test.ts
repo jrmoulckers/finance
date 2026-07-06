@@ -241,6 +241,41 @@ describe('detectMilestones', () => {
     // Ladder extends to at least $10M so HNW users always have a next target.
     expect(milestones.some((m) => m.label === 'First $10M')).toBe(true);
   });
+
+  it('adds a negative-side ladder for users climbing out of debt', () => {
+    // Marcus: -$26K net worth, still carrying $26K of debt.
+    const milestones = detectMilestones(-2_600_000, 2_600_000);
+
+    const past50k = milestones.find((m) => m.label === '-$50K');
+    const past25k = milestones.find((m) => m.label === '-$25K');
+    const breakEven = milestones.find((m) => m.label === 'Break-even ($0)');
+
+    // Climbed above -$50K, but not yet to -$25K or break-even.
+    expect(past50k?.reached).toBe(true);
+    expect(past25k?.reached).toBe(false);
+    expect(breakEven).toBeDefined();
+    expect(breakEven?.reached).toBe(false);
+    // The positive ladder is still present as future targets.
+    expect(milestones.some((m) => m.label === 'First $1K')).toBe(true);
+  });
+
+  it('marks break-even as reached once net worth crosses $0', () => {
+    // Just crossed into the black (+$300) but still under the first $1K rung.
+    const milestones = detectMilestones(30_000, 500_000);
+    const breakEven = milestones.find((m) => m.label === 'Break-even ($0)');
+    const first1k = milestones.find((m) => m.label === 'First $1K');
+
+    expect(breakEven?.reached).toBe(true);
+    expect(first1k?.reached).toBe(false);
+    // Debt-free stays keyed on liabilities, distinct from break-even.
+    expect(milestones.find((m) => m.label === 'Debt-free')?.reached).toBe(false);
+  });
+
+  it('omits the negative-side ladder for positive-net-worth users', () => {
+    const milestones = detectMilestones(1_500_000, 0); // $15K, out of debt
+    expect(milestones.some((m) => m.label === 'Break-even ($0)')).toBe(false);
+    expect(milestones.some((m) => m.label === '-$50K')).toBe(false);
+  });
 });
 
 describe('computePeriodComparison', () => {

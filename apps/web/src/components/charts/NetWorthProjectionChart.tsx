@@ -200,6 +200,18 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
     return [...actualRows, ...projectedRows];
   }, [visible, projection]);
 
+  // Only pin the axis to $0 and draw the break-even line when the series is
+  // (or is projected to be) underwater; forcing a purely-positive chart to
+  // include zero would waste vertical resolution.
+  const crossesZero = useMemo(
+    () =>
+      chartData.some(
+        (row) =>
+          (row.actual !== null && row.actual < 0) || (row.projected !== null && row.projected < 0),
+      ),
+    [chartData],
+  );
+
   const description = useMemo(() => {
     if (visible.length === 0) return `${title}: no net worth history yet.`;
     const values = visible.map((point) => point.netWorthCents);
@@ -314,6 +326,11 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
                   tickFormatter={(value: number) => formatChartCurrency(value, currency)}
                   tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
                   width={80}
+                  domain={
+                    crossesZero
+                      ? [(min: number) => Math.min(0, min), (max: number) => Math.max(0, max)]
+                      : ['auto', 'auto']
+                  }
                 />
                 <Tooltip
                   formatter={(value) => formatChartCurrency(Number(value ?? 0), currency)}
@@ -331,6 +348,19 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
                     label={{
                       value: 'Now',
                       position: 'top',
+                      fill: 'var(--semantic-text-secondary, #6B7280)',
+                      fontSize: 11,
+                    }}
+                  />
+                )}
+                {crossesZero && (
+                  <ReferenceLine
+                    y={0}
+                    stroke="var(--semantic-text-secondary, #6B7280)"
+                    strokeDasharray="4 2"
+                    label={{
+                      value: 'Break-even ($0)',
+                      position: 'insideTopLeft',
                       fill: 'var(--semantic-text-secondary, #6B7280)',
                       fontSize: 11,
                     }}

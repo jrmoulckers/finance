@@ -235,7 +235,31 @@ const DEFAULT_MILESTONES: Array<{ label: string; thresholdCents: number }> = [
 ];
 
 /**
+ * Negative-side milestones for users climbing out of debt toward $0 net worth.
+ *
+ * Ordered deepest-debt first so the ladder reads as an upward climb. These are
+ * only surfaced while the user is still below the first positive rung (see
+ * {@link detectMilestones}); the "Break-even ($0)" marker recognizes the single
+ * most meaningful moment of a debt-payoff journey — crossing from negative to
+ * zero net worth — which is distinct from the "Debt-free" marker (liabilities
+ * reaching zero).
+ */
+const DEBT_MILESTONES: Array<{ label: string; thresholdCents: number }> = [
+  { label: '-$100K', thresholdCents: -10_000_000 },
+  { label: '-$50K', thresholdCents: -5_000_000 },
+  { label: '-$25K', thresholdCents: -2_500_000 },
+  { label: '-$10K', thresholdCents: -1_000_000 },
+  { label: '-$5K', thresholdCents: -500_000 },
+  { label: 'Break-even ($0)', thresholdCents: 0 },
+];
+
+/**
  * Detects which milestones have been reached.
+ *
+ * Users still below the first positive milestone also receive a negative-side
+ * ladder (see {@link DEBT_MILESTONES}) so debt-payoff progress toward $0 is
+ * recognized. Higher-net-worth users are not cluttered with already-passed
+ * debt markers.
  *
  * @param currentNetWorth - Current net worth in cents
  * @param totalLiabilities - Total liabilities in cents
@@ -245,7 +269,13 @@ export function detectMilestones(
   currentNetWorth: number,
   totalLiabilities: number,
 ): NetWorthMilestone[] {
-  return DEFAULT_MILESTONES.map((m, idx) => {
+  const firstPositiveThresholdCents = DEFAULT_MILESTONES[0]?.thresholdCents ?? 0;
+  const scale =
+    currentNetWorth < firstPositiveThresholdCents
+      ? [...DEBT_MILESTONES, ...DEFAULT_MILESTONES]
+      : DEFAULT_MILESTONES;
+
+  return scale.map((m, idx) => {
     let reached: boolean;
     if (m.label === 'Debt-free') {
       reached = totalLiabilities === 0;
