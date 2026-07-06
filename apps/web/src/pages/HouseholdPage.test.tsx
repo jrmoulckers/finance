@@ -584,7 +584,36 @@ describe('HouseholdPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /revoke helper access for aunt maria/i }));
 
+    // The destructive action is gated behind a confirmation dialog.
+    expect(removeMember).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+
     expect(removeMember).toHaveBeenCalledWith('helper-1');
+  });
+
+  it('does not remove a member when the confirmation is cancelled', () => {
+    const removeMember = vi.fn().mockReturnValue(true);
+    mockedUseHousehold.mockReturnValue(
+      mockHouseholdResult({
+        household: makeHousehold(),
+        members: [
+          makeOwnerMember(),
+          makeOwnerMember({ id: 'partner-1', role: 'MEMBER', displayName: 'Chidi Okafor' }),
+        ],
+        removeMember,
+      }),
+    );
+
+    render(<HouseholdPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Chidi Okafor' }));
+
+    // Confirmation appears; cancelling must not remove the member.
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(removeMember).not.toHaveBeenCalled();
   });
 
   it('renders the mid-month scorecard with demo-backed pace messaging', () => {
