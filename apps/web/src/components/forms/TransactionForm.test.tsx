@@ -410,7 +410,7 @@ describe('TransactionForm', () => {
   it('includes additional fields in submission data', async () => {
     const { onSubmit } = renderTransactionForm();
 
-    // Fill required fields ΓÇö amount uses keyDown events with useAmountInput
+    // Fill required fields - amount uses keyDown events with useAmountInput
     const amountInput = screen.getByLabelText('Amount');
     fireEvent.keyDown(amountInput, { key: '5' });
     fireEvent.keyDown(amountInput, { key: '0' });

@@ -146,7 +146,7 @@ function toExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 // ---------------------------------------------------------------------------
-// Schema ΓÇö matches packages/models SQLDelight .sq files
+// Schema - matches packages/models SQLDelight .sq files
 // ---------------------------------------------------------------------------
 
 /**
