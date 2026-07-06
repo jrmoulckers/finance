@@ -12,3 +12,4 @@ export * from './bills';
 export * from './household';
 export * from './invoices';
 export * from './remittances';
+export * from './householdData';
