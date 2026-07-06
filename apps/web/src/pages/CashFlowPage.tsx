@@ -47,21 +47,62 @@ function formatLocalDate(date: Date): string {
   ).padStart(2, '0')}`;
 }
 
-const PeriodSelector: React.FC<PeriodSelectorProps> = ({ value, onChange }) => (
-  <div className="analytics-period-selector" role="tablist" aria-label="Time period">
-    {PERIOD_OPTIONS.map((opt) => (
-      <button
-        key={opt}
-        role="tab"
-        aria-selected={value === opt}
-        className={`analytics-period-selector__btn ${value === opt ? 'analytics-period-selector__btn--active' : ''}`}
-        onClick={() => onChange(opt)}
-      >
-        {opt}M
-      </button>
-    ))}
-  </div>
-);
+/**
+ * Format an ISO `YYYY-MM-DD` string for display (e.g. "Mar 20, 2025").
+ *
+ * Parsed as a local date (not UTC) so the day does not shift in negative
+ * timezone offsets. Falls back to the raw string if it cannot be parsed.
+ */
+function formatDisplayDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  if (!year || !month || !day) {
+    return iso;
+  }
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+const PeriodSelector: React.FC<PeriodSelectorProps> = ({ value, onChange }) => {
+  // Roving-focus arrow-key handling for the radiogroup single-select pattern.
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      nextIndex = (index + 1) % PERIOD_OPTIONS.length;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      nextIndex = (index - 1 + PERIOD_OPTIONS.length) % PERIOD_OPTIONS.length;
+    }
+    if (nextIndex === null) {
+      return;
+    }
+    event.preventDefault();
+    onChange(PERIOD_OPTIONS[nextIndex]);
+  };
+
+  return (
+    <div className="analytics-period-selector" role="radiogroup" aria-label="Time period">
+      {PERIOD_OPTIONS.map((opt, index) => {
+        const selected = value === opt;
+        return (
+          <button
+            key={opt}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={selected ? 0 : -1}
+            className={`analytics-period-selector__btn ${selected ? 'analytics-period-selector__btn--active' : ''}`}
+            onClick={() => onChange(opt)}
+            onKeyDown={(event) => handleKeyDown(event, index)}
+          >
+            {opt}M
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 
 interface IncomeExpenseChartProps {
   aggregates: MonthlyAggregate[];
@@ -224,9 +265,9 @@ export const CashFlowPage: React.FC = () => {
             gap: 'var(--spacing-2)',
           }}
         >
-          <h2 className="analytics-page__title" style={{ margin: 0 }}>
+          <h1 className="analytics-page__title" style={{ margin: 0 }}>
             Cash Flow
-          </h2>
+          </h1>
           <ExplainThis glossaryKey="cashFlow" buttonLabel="Explain cash flow" />
         </div>
         <div className="analytics-page__actions">
@@ -258,7 +299,7 @@ export const CashFlowPage: React.FC = () => {
           </article>
           <article className="analytics-metric-card" aria-label="Lowest projected balance">
             <p className="analytics-metric-card__label">
-              Lowest balance ({monthEndForecast.lowestBalanceDate})
+              Lowest balance ({formatDisplayDate(monthEndForecast.lowestBalanceDate)})
             </p>
             <p
               className={`analytics-metric-card__value ${
