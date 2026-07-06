@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { LocalDate, Transaction } from '../../kmp/bridge';
+import { escapeCsvField } from '../export/simple-export';
 
 export const DEFAULT_CLIENT_TAG_PREFIXES = ['client:', 'project:'] as const;
 
@@ -202,4 +203,48 @@ export function buildClientProfitabilityReport(
     leastProfitable: rows.length > 0 ? rows[rows.length - 1] : null,
     clientCount: rows.length,
   };
+}
+
+function formatCsvAmount(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+function formatCsvMargin(margin: number | null): string {
+  return margin === null || !Number.isFinite(margin) ? '' : margin.toFixed(1);
+}
+
+/**
+ * Serialize a client/project profitability report as CSV for download.
+ *
+ * Amounts are emitted in major currency units with two decimals to match the
+ * app's other CSV exports (e.g. cash flow). Client/project labels are escaped so
+ * that a comma or quote in a client name cannot break the row structure. A
+ * trailing "All clients" row carries the report totals; its transaction column
+ * is intentionally left blank because a single transaction can be split across
+ * multiple clients and must not be double counted.
+ */
+export function exportClientProfitabilityCsv(report: ClientProfitabilitySummary): string {
+  const header = 'Client / project,Revenue,Cost,Net profit,Margin %,Transactions';
+
+  const rows = report.rows.map((row) =>
+    [
+      escapeCsvField(row.client),
+      formatCsvAmount(row.revenue),
+      formatCsvAmount(row.expenses),
+      formatCsvAmount(row.netProfit),
+      formatCsvMargin(row.profitMargin),
+      String(row.transactionCount),
+    ].join(','),
+  );
+
+  const totals = [
+    escapeCsvField('All clients'),
+    formatCsvAmount(report.totalRevenue),
+    formatCsvAmount(report.totalExpenses),
+    formatCsvAmount(report.netProfit),
+    formatCsvMargin(report.profitMargin),
+    '',
+  ].join(',');
+
+  return [header, ...rows, totals].join('\n');
 }
