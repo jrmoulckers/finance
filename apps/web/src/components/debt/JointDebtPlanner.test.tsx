@@ -50,8 +50,15 @@ describe('JointDebtPlanner', () => {
 
     const avalancheHeader = screen.getByRole('columnheader', { name: /Avalanche/ });
     expect(avalancheHeader.getAttribute('scope')).toBe('col');
-    // Avalanche is recommended for this higher-rate-vs-lower-rate mix.
-    expect(avalancheHeader.textContent).toContain('recommended');
+
+    const snowballHeader = screen.getByRole('columnheader', { name: /Snowball/ });
+    expect(snowballHeader.getAttribute('scope')).toBe('col');
+    // With freed-up minimum payments correctly rolled forward (#3354), avalanche's
+    // interest edge for this small mix ($63.56) stays under the $100 "meaningful
+    // savings" threshold and both strategies clear in the same number of months, so
+    // snowball is recommended for momentum. The badge renders on the recommended
+    // column.
+    expect(snowballHeader.textContent).toContain('recommended');
 
     const rowHeader = screen.getByRole('rowheader', { name: 'Time to debt-free' });
     expect(rowHeader.getAttribute('scope')).toBe('row');
