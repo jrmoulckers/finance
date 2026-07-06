@@ -23,7 +23,7 @@
 }
 
 .converted-total-indicator__text {
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .converted-total-indicator__stale {
