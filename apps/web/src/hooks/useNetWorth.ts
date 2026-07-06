@@ -30,6 +30,11 @@ import type {
 } from '../lib/analytics/net-worth';
 import { buildNetWorthHistorySeries } from '../lib/visualization/net-worth-history';
 import type { NetWorthSeriesPoint } from '../lib/visualization/net-worth-projection';
+import {
+  type AccountPurposeFilter,
+  selectWorkspaceAccounts,
+  selectWorkspaceTransactions,
+} from '../lib/accountPurpose';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,8 +62,15 @@ export interface UseNetWorthResult {
 // Hook
 // ---------------------------------------------------------------------------
 
-/** Computes net worth analytics from local account data. */
-export function useNetWorth(): UseNetWorthResult {
+/**
+ * Computes net worth analytics from local account data.
+ *
+ * @param purposeFilter - Optional business/personal workspace scope. Defaults to
+ *   `'all'`, which aggregates every account. Passing `'business'` or `'personal'`
+ *   restricts the snapshot, asset classes, milestones, and history to that
+ *   workspace so a small-business owner can separate business from personal net worth.
+ */
+export function useNetWorth(purposeFilter: AccountPurposeFilter = 'all'): UseNetWorthResult {
   const db = useDatabase();
 
   const [currentNetWorth, setCurrentNetWorth] = useState<NetWorthDataPoint | null>(null);
@@ -82,10 +94,13 @@ export function useNetWorth(): UseNetWorthResult {
       const accounts = getAllAccounts(db);
       const transactions = getAllTransactions(db);
 
-      const nw = computeCurrentNetWorth(accounts);
-      const classes = computeAssetClassBreakdown(accounts);
+      const scopedAccounts = selectWorkspaceAccounts(accounts, purposeFilter);
+      const scopedTransactions = selectWorkspaceTransactions(transactions, accounts, purposeFilter);
+
+      const nw = computeCurrentNetWorth(scopedAccounts);
+      const classes = computeAssetClassBreakdown(scopedAccounts);
       const ms = detectMilestones(nw.netWorth, nw.liabilities);
-      const series = buildNetWorthHistorySeries(accounts, transactions);
+      const series = buildNetWorthHistorySeries(scopedAccounts, scopedTransactions);
 
       setCurrentNetWorth(nw);
       setAssetClasses(classes);
@@ -96,7 +111,7 @@ export function useNetWorth(): UseNetWorthResult {
     } finally {
       setLoading(false);
     }
-  }, [db, refreshToken]);
+  }, [db, refreshToken, purposeFilter]);
 
   return { currentNetWorth, assetClasses, milestones, history, loading, error, refresh };
 }
