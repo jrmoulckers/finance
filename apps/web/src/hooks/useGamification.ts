@@ -22,6 +22,8 @@ import {
   type GamificationInput,
   type GamificationState,
 } from '../components/gamification/achievements-engine';
+import { computeCurrentNetWorth } from '../lib/analytics/net-worth';
+import { computeLoggingStreak } from '../lib/gamification/logging-streak';
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -66,52 +68,15 @@ export function useGamification(): UseGamificationResult {
       const budgets = getAllBudgets(db);
       const transactions = getAllTransactions(db);
 
-      // Compute daily logging streak from transaction dates
+      // Daily logging streak. Transaction dates are stored as *local* calendar
+      // dates, so the streak anchors to the local "today"/"yesterday" and
+      // avoids the UTC off-by-one that affects evening logging in western zones.
       const txDates = new Set(transactions.map((tx) => tx.date));
-      const sortedDates = Array.from(txDates).sort().reverse();
-
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const loggedToday = txDates.has(todayStr);
-
-      let dailyLoggingStreak = 0;
-      let longestDailyLoggingStreak = 0;
-
-      if (sortedDates.length > 0) {
-        // Count current streak from today backwards
-        const today = new Date();
-        const checkDate = new Date(today);
-        let currentStreak = 0;
-
-        for (let i = 0; i < 365; i++) {
-          const dateStr = checkDate.toISOString().slice(0, 10);
-          if (txDates.has(dateStr)) {
-            currentStreak++;
-          } else if (currentStreak > 0) {
-            break;
-          }
-          checkDate.setDate(checkDate.getDate() - 1);
-        }
-
-        dailyLoggingStreak = currentStreak;
-
-        // Compute longest streak
-        let tempStreak = 0;
-        for (let i = 0; i < sortedDates.length; i++) {
-          if (i === 0) {
-            tempStreak = 1;
-          } else {
-            const prev = new Date(`${sortedDates[i - 1]}T00:00:00`);
-            const curr = new Date(`${sortedDates[i]}T00:00:00`);
-            const diffDays = Math.round((prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24));
-            if (diffDays === 1) {
-              tempStreak++;
-            } else {
-              tempStreak = 1;
-            }
-          }
-          longestDailyLoggingStreak = Math.max(longestDailyLoggingStreak, tempStreak);
-        }
-      }
+      const {
+        current: dailyLoggingStreak,
+        longest: longestDailyLoggingStreak,
+        loggedToday,
+      } = computeLoggingStreak(txDates);
 
       // Budget adherence: count budgets where spending <= budget amount
       let budgetAdherenceMonths = 0;
@@ -158,7 +123,10 @@ export function useGamification(): UseGamificationResult {
         })),
         dailyLoggingStreak,
         longestDailyLoggingStreak,
-        netWorth: accounts.reduce((sum, a) => sum + a.currentBalance.amount, 0),
+        // Net worth must subtract liabilities (credit cards, loans) rather
+        // than summing every balance as a positive asset. Reuse the canonical
+        // helper so achievement thresholds match the /net-worth screen.
+        netWorth: computeCurrentNetWorth(accounts).netWorth,
         accountCount: accounts.length,
         totalSaved,
         categoriesUsed,
