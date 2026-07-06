@@ -18,6 +18,7 @@ import {
   SyncIndicator,
   useToast,
 } from '../components/common';
+import { SkipLink } from '../components/common/SkipLink';
 import { SwipeableRow } from '../components/common/SwipeableRow';
 import { CategoryConfirmation } from '../components/categorization';
 import { TransactionForm } from '../components/forms';
@@ -1352,6 +1353,8 @@ export const TransactionsPage: React.FC = () => {
             )}
           </div>
 
+          <SkipLink targetId="transaction-results" label="Skip to transaction results" />
+
           <AccountPurposeFilterControl
             value={selectedPurposeFilter}
             onChange={setSelectedPurposeFilter}
@@ -1449,6 +1452,10 @@ export const TransactionsPage: React.FC = () => {
               )}
             </div>
           </section>
+
+          <h2 id="transaction-results" className="sr-only">
+            Transaction results
+          </h2>
 
           {isLoading ? (
             <div

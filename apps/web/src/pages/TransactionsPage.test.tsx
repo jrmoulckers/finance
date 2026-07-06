@@ -506,6 +506,20 @@ describe('TransactionsPage', () => {
     expect(screen.getByRole('searchbox', { name: /search transactions/i })).toBeInTheDocument();
   });
 
+  it('offers a bypass-block skip link that targets the transaction results region (#3348)', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    const skipLink = screen.getByRole('link', { name: /skip to transaction results/i });
+    expect(skipLink).toHaveAttribute('href', '#transaction-results');
+
+    const resultsTarget = screen.getByRole('heading', { name: /transaction results/i });
+    expect(resultsTarget).toHaveAttribute('id', 'transaction-results');
+  });
+
   it('displays filter and sort controls', () => {
     render(
       <MemoryRouter>
