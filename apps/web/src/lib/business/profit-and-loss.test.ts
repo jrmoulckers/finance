@@ -331,6 +331,74 @@ describe('buildProfitAndLoss', () => {
     expect(statement.totals.grossProfitCents).toBe(60_000);
   });
 
+  it('reduces revenue when a refund/chargeback (expense classified as revenue) is recorded', () => {
+    const statement = buildProfitAndLoss(
+      [
+        makeTransaction({ date: '2024-01-05', type: 'INCOME', amountCents: 100_000 }), // sale $1,000
+        // A refund to a client: money leaves the business (EXPENSE) but reverses
+        // revenue, so it is tagged into the revenue bucket.
+        makeTransaction({
+          date: '2024-01-20',
+          type: 'EXPENSE',
+          amountCents: 15_000,
+          tags: ['revenue'],
+        }),
+      ],
+      { granularity: 'monthly' },
+    );
+
+    // The refund reduces revenue instead of inflating it (issue #3223).
+    expect(statement.totals.revenueCents).toBe(85_000);
+    expect(statement.totals.grossProfitCents).toBe(85_000);
+    expect(statement.totals.netProfitCents).toBe(85_000);
+    expect(statement.totals.transactionCount).toBe(2);
+  });
+
+  it('reduces a cost bucket when a vendor refund (income classified as a cost) is recorded', () => {
+    const statement = buildProfitAndLoss(
+      [
+        makeTransaction({ date: '2024-01-05', type: 'INCOME', amountCents: 100_000 }),
+        makeTransaction({
+          date: '2024-01-06',
+          type: 'EXPENSE',
+          amountCents: 40_000,
+          tags: ['cogs'],
+        }),
+        // A supplier refunds part of a COGS purchase: money comes back in
+        // (INCOME) but reverses a cost, so it is tagged into the cogs bucket.
+        makeTransaction({
+          date: '2024-01-15',
+          type: 'INCOME',
+          amountCents: 10_000,
+          tags: ['cogs'],
+        }),
+      ],
+      { granularity: 'monthly' },
+    );
+
+    expect(statement.totals.cogsCents).toBe(30_000);
+    expect(statement.totals.grossProfitCents).toBe(70_000);
+  });
+
+  it('returns null margins when refunds push revenue to zero or below', () => {
+    const statement = buildProfitAndLoss(
+      [
+        makeTransaction({ date: '2024-01-05', type: 'INCOME', amountCents: 50_000 }),
+        makeTransaction({
+          date: '2024-01-25',
+          type: 'EXPENSE',
+          amountCents: 60_000,
+          tags: ['sales'],
+        }),
+      ],
+      { granularity: 'monthly' },
+    );
+
+    expect(statement.totals.revenueCents).toBe(-10_000);
+    expect(statement.totals.grossMarginBps).toBeNull();
+    expect(statement.totals.netMarginBps).toBeNull();
+  });
+
   it('groups transactions into monthly periods sorted chronologically', () => {
     const statement = buildProfitAndLoss(
       [
