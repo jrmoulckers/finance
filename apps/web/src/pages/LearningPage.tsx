@@ -27,6 +27,7 @@ import {
   getCreditEducation,
   resolveCreditEducationLocale,
 } from '../lib/education/credit-building';
+import { readDebtTracker } from '../lib/debt/debt-tracker-persistence';
 import './LearningPage.css';
 
 // Built from a template literal so storage keys never look like hard-coded
@@ -265,16 +266,17 @@ export function LearningPage(): React.ReactElement {
     saveLearningProgress(progress);
   }, [progress]);
 
-  const activityProfile = useMemo(
-    () =>
-      buildLearningActivityProfile({
-        dashboardData: data,
-        accounts,
-        goals,
-        transactions,
-      }),
-    [accounts, data, goals, transactions],
-  );
+  const activityProfile = useMemo(() => {
+    const storage = typeof window === 'undefined' ? null : window.localStorage;
+    const manualDebtCount = storage ? readDebtTracker(storage).manualDebts.length : 0;
+    return buildLearningActivityProfile({
+      dashboardData: data,
+      accounts,
+      goals,
+      transactions,
+      manualDebtCount,
+    });
+  }, [accounts, data, goals, transactions]);
 
   const recommendations = useMemo(
     () =>

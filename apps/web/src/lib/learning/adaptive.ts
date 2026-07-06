@@ -36,17 +36,20 @@ export function buildLearningActivityProfile(input: {
   accounts: readonly Account[];
   goals: readonly Goal[];
   transactions: readonly Transaction[];
+  manualDebtCount?: number;
 }): LearningActivityProfile {
-  const { dashboardData, accounts, goals, transactions } = input;
+  const { dashboardData, accounts, goals, transactions, manualDebtCount = 0 } = input;
   const hasBudget = (dashboardData?.monthlyBudget ?? 0) > 0;
   const budgetUtilization =
     dashboardData !== null && dashboardData.monthlyBudget > 0
       ? dashboardData.budgetSpent / dashboardData.monthlyBudget
       : null;
   const savingsAccounts = accounts.filter((account) => account.type === 'SAVINGS');
-  const hasDebtAccounts = accounts.some(
-    (account) => account.type === 'CREDIT_CARD' || account.type === 'LOAN',
-  );
+  // Count manually-tracked debts too: a debt-payoff user who enters cards and
+  // loans by hand (rather than linking accounts) still needs debt lessons.
+  const hasDebtAccounts =
+    accounts.some((account) => account.type === 'CREDIT_CARD' || account.type === 'LOAN') ||
+    manualDebtCount > 0;
   const hasInvestmentAccounts = accounts.some((account) => account.type === 'INVESTMENT');
   const monthlySurplusCents =
     (dashboardData?.incomeThisMonth ?? 0) - (dashboardData?.spentThisMonth ?? 0);
