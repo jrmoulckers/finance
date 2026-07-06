@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+
+import { useFocusTrap } from '../../accessibility/aria';
 
 import { useAuth } from '../../auth/auth-context';
 import { useDatabase } from '../../db/DatabaseProvider';
@@ -143,6 +145,7 @@ export function useAccountDeletion(): {
     memberHouseholds: 0,
     pendingInvites: 0,
   });
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const openDeleteModal = useCallback(() => {
     setConfirmationText('');
@@ -157,6 +160,22 @@ export function useAccountDeletion(): {
     setConfirmationText('');
     setError(null);
   }, [completionReceipt, isDeleting]);
+
+  // Trap focus within the modal, move initial focus into it, and restore focus
+  // to the trigger element on close (issue #3331). closeDeleteModal is itself
+  // guarded so Escape cannot dismiss the modal mid-deletion or after the
+  // receipt is shown.
+  useFocusTrap(dialogRef, { active: isOpen, restoreFocus: true });
+
+  const handleDialogKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDeleteModal();
+      }
+    },
+    [closeDeleteModal],
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -249,10 +268,12 @@ export function useAccountDeletion(): {
 
   const deleteModal = isOpen ? (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="delete-account-title"
       aria-describedby="delete-account-description"
+      onKeyDown={handleDialogKeyDown}
       style={{
         position: 'fixed',
         inset: 0,

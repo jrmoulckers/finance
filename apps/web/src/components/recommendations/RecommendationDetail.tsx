@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
 import { AppIcon } from '../icons';
+import { useFocusTrap } from '../../accessibility/aria';
 import type { PersonalizedRecommendation } from '../../lib/recommendations';
 
 export interface RecommendationDetailProps {
@@ -52,6 +53,22 @@ export const RecommendationDetail: React.FC<RecommendationDetailProps> = ({
   recommendation,
   onClose,
 }) => {
+  const dialogRef = useRef<HTMLElement>(null);
+
+  // Trap focus within the modal while it is open and restore focus to the
+  // trigger element when it closes.
+  useFocusTrap(dialogRef, { active: recommendation !== null, restoreFocus: true });
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
   if (!recommendation) {
     return null;
   }
@@ -59,11 +76,13 @@ export const RecommendationDetail: React.FC<RecommendationDetailProps> = ({
   return (
     <div className="recommendation-detail__backdrop" role="presentation" onClick={onClose}>
       <section
+        ref={dialogRef}
         className="recommendation-detail"
         role="dialog"
         aria-modal="true"
         aria-labelledby="recommendation-detail-title"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={handleKeyDown}
       >
         <div className="recommendation-detail__header">
           <div>
