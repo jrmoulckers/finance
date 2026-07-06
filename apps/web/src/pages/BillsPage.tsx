@@ -9,6 +9,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { pluralize } from '../lib/ui/pluralize';
 import {
   ConfirmDialog,
   CurrencyDisplay,
@@ -223,7 +224,7 @@ export const BillsPage: React.FC = () => {
                 <div className="bills-summary__metric">
                   <p className="card__title">Upcoming</p>
                   <p className="card__value" aria-live="polite">
-                    {summary.upcomingCount} bills
+                    {summary.upcomingCount} {pluralize(summary.upcomingCount, 'bill')}
                   </p>
                   <p
                     style={{
@@ -243,7 +244,7 @@ export const BillsPage: React.FC = () => {
                         summary.overdueCount > 0 ? 'var(--semantic-negative, #dc2626)' : 'inherit',
                     }}
                   >
-                    {summary.overdueCount} bills
+                    {summary.overdueCount} {pluralize(summary.overdueCount, 'bill')}
                   </p>
                   <p
                     style={{

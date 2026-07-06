@@ -14,6 +14,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
+import { pluralize } from '../lib/ui/pluralize';
 import { ExplainThis } from '../components/common/ExplainThis';
 import { useAccounts } from '../hooks/useAccounts';
 import './DebtPage.css';
@@ -1331,7 +1332,8 @@ function PayoffPlannerPanel(): React.ReactElement {
                   <p>{recommendation.snowballMotivationNote}</p>
                   <p>
                     Minimum-only baseline for {formatStrategyName(activeStrategy)}:{' '}
-                    {minimumOnlyResult?.totalMonths ?? 0} months and{' '}
+                    {minimumOnlyResult?.totalMonths ?? 0}{' '}
+                    {pluralize(minimumOnlyResult?.totalMonths ?? 0, 'month')} and{' '}
                     <CurrencyDisplay
                       amount={minimumOnlyResult?.totalInterestCents ?? 0}
                       context="minimum only interest"
@@ -1551,7 +1553,7 @@ function StrategyCard({
           <ol>
             {result.schedules.map((s) => (
               <li key={s.debtId}>
-                {s.debtName}: {s.monthsToPayoff} months
+                {s.debtName}: {s.monthsToPayoff} {pluralize(s.monthsToPayoff, 'month')}
               </li>
             ))}
           </ol>
@@ -2262,7 +2264,7 @@ function StudentLoanPanel(): React.ReactElement {
                   <dd>
                     {refinancePanelModel.payoffMonthsDifference === null
                       ? 'Not amortizing'
-                      : `${refinancePanelModel.payoffMonthsDifference} months`}
+                      : `${refinancePanelModel.payoffMonthsDifference} ${pluralize(refinancePanelModel.payoffMonthsDifference, 'month')}`}
                   </dd>
                   <dt>Break-even month</dt>
                   <dd>{refinancePanelModel.breakEvenMonth ?? 'No break-even'}</dd>
@@ -2411,7 +2413,7 @@ function StudentLoanPanel(): React.ReactElement {
                     <dd>
                       {scenario.monthsToPayoff === null
                         ? 'Not amortizing'
-                        : `${scenario.monthsToPayoff} months`}
+                        : `${scenario.monthsToPayoff} ${pluralize(scenario.monthsToPayoff, 'month')}`}
                     </dd>
                     <dt>Forgiven</dt>
                     <dd>
