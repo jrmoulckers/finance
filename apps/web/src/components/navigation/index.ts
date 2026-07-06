@@ -13,7 +13,7 @@ export { Breadcrumb } from './Breadcrumb';
 export type { BreadcrumbProps, BreadcrumbSegment } from './Breadcrumb';
 export { Breadcrumbs } from './Breadcrumbs';
 export type { BreadcrumbsProps } from './Breadcrumbs';
-export { NavShortcuts } from './NavShortcuts';
+export { NavShortcuts, buildNavShortcutCategory } from './NavShortcuts';
 export type { NavShortcutsProps } from './NavShortcuts';
 export { NavigationGuard, NavigationGuardContext } from './NavigationGuard';
 export type { NavigationGuardProps } from './NavigationGuard';

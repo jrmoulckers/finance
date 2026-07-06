@@ -25,7 +25,7 @@ import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { getVisibleNavItems } from './navConfig';
 import { InstallBanner } from '../common/InstallBanner';
 import { LegalLinks } from '../legal/LegalLinks';
-import { Breadcrumbs, NavShortcuts } from '../navigation';
+import { Breadcrumbs, NavShortcuts, buildNavShortcutCategory } from '../navigation';
 
 import { SkipToContent } from './SkipToContent';
 import { EyeIcon, EyeOffIcon } from './navIcons';
@@ -104,6 +104,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   // module-visibility catalogue/hook.
   const hiddenModuleIds = useHiddenModules();
   const shortcutItems = useMemo(() => getVisibleNavItems(isSimplified), [isSimplified]);
+  const navShortcutCategory = useMemo(
+    () => buildNavShortcutCategory(shortcutItems),
+    [shortcutItems],
+  );
   const { showHelp, setShowHelp, singleKeyShortcutsEnabled } = useKeyboardShortcuts({
     onNavigate,
     onNewTransaction: () => onNavigate('/transactions?new=transaction'),
@@ -394,13 +398,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         isOpen={showHelp}
         onClose={closeKeyboardShortcuts}
         singleKeyShortcutsEnabled={singleKeyShortcutsEnabled}
+        extraCategories={navShortcutCategory ? [navShortcutCategory] : undefined}
       />
-      <NavShortcuts
-        isOpen={showHelp}
-        onClose={closeKeyboardShortcuts}
-        onNavigate={onNavigate}
-        items={shortcutItems}
-      />
+      {/* Headless: registers the always-on Ctrl+1..9 nav shortcuts. Its
+          reference list is folded into the single KeyboardShortcutsModal above
+          so "?" opens exactly one dialog (#3329, #3347). */}
+      <NavShortcuts onNavigate={onNavigate} items={shortcutItems} />
       <ConflictResolutionDialog isOpen={showConflicts} onClose={closeConflictDialog} />
       <FeedbackDialog isOpen={showFeedback} onClose={closeFeedbackDialog} />
     </div>

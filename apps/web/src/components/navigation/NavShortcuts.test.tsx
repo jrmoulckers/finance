@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { NavShortcuts } from './NavShortcuts';
-
-vi.mock('../../accessibility/aria', () => ({
-  useFocusTrap: vi.fn(),
-}));
+import { NavShortcuts, buildNavShortcutCategory } from './NavShortcuts';
 
 const items = [
   { id: 'dashboard', label: 'Dashboard', href: '/dashboard' },
@@ -16,18 +12,15 @@ const items = [
 ] as const;
 
 describe('NavShortcuts', () => {
-  it('renders the locked shortcut order in the overlay', () => {
-    render(<NavShortcuts isOpen={true} onClose={vi.fn()} onNavigate={vi.fn()} items={items} />);
+  it('renders nothing (headless: no competing modal surface)', () => {
+    const { container } = render(<NavShortcuts onNavigate={vi.fn()} items={items} />);
 
-    expect(screen.getByRole('dialog', { name: 'Navigation shortcuts' })).toBeInTheDocument();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Accounts')).toBeInTheDocument();
-    expect(screen.getByText('Transactions')).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('navigates with Ctrl+digit shortcuts', () => {
     const onNavigate = vi.fn();
-    render(<NavShortcuts isOpen={false} onClose={vi.fn()} onNavigate={onNavigate} items={items} />);
+    render(<NavShortcuts onNavigate={onNavigate} items={items} />);
 
     fireEvent.keyDown(window, { key: '2', ctrlKey: true });
 
@@ -36,7 +29,7 @@ describe('NavShortcuts', () => {
 
   it('ignores Ctrl+digit shortcuts while typing in an input', () => {
     const onNavigate = vi.fn();
-    render(<NavShortcuts isOpen={false} onClose={vi.fn()} onNavigate={onNavigate} items={items} />);
+    render(<NavShortcuts onNavigate={onNavigate} items={items} />);
 
     const input = document.createElement('input');
     document.body.appendChild(input);
@@ -45,5 +38,23 @@ describe('NavShortcuts', () => {
 
     expect(onNavigate).not.toHaveBeenCalled();
     document.body.removeChild(input);
+  });
+});
+
+describe('buildNavShortcutCategory', () => {
+  it('builds a "Locked navigation" category from the nav items', () => {
+    const category = buildNavShortcutCategory(items);
+
+    expect(category).not.toBeNull();
+    expect(category?.title).toBe('Locked navigation');
+    expect(category?.shortcuts).toHaveLength(3);
+    expect(category?.shortcuts.map((shortcut) => shortcut.keys)).toContain('Ctrl + 1');
+    expect(category?.shortcuts.some((shortcut) => shortcut.description.includes('Accounts'))).toBe(
+      true,
+    );
+  });
+
+  it('returns null when there are no navigation items', () => {
+    expect(buildNavShortcutCategory([])).toBeNull();
   });
 });

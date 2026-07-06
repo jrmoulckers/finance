@@ -86,6 +86,7 @@ vi.mock('./navConfig', () => ({
 vi.mock('../navigation', () => ({
   Breadcrumbs: () => null,
   NavShortcuts: () => null,
+  buildNavShortcutCategory: () => null,
 }));
 
 vi.mock('../../contexts/PrivacyModeContext', () => ({
