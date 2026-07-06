@@ -236,10 +236,16 @@ function isBudgetActiveInMonth(
   );
 }
 
-function getPredictedRemainingIncomeCents(prediction: PredictionSummary | null): number {
+function getPredictedRemainingIncomeCents(
+  prediction: PredictionSummary | null,
+  visibleAccountIds?: ReadonlySet<string>,
+): number {
   return (
     prediction?.accounts.reduce(
-      (sum, account) => sum + Math.max(0, account.projectedIncomeCents),
+      (sum, account) =>
+        visibleAccountIds && !visibleAccountIds.has(account.accountId)
+          ? sum
+          : sum + Math.max(0, account.projectedIncomeCents),
       0,
     ) ?? 0
   );
@@ -477,6 +483,35 @@ export const DashboardPage: React.FC = () => {
     () => new Set(filteredAccounts.map((account) => account.id)),
     [filteredAccounts],
   );
+  // Workspace-scoped monthly income and spend, derived from the same scoped
+  // transaction set as net worth. This keeps every summary figure consistent with
+  // the selected workspace so "All" is a true aggregate across workspaces
+  // (All === Personal + Business + Shared) rather than reusing the unscoped
+  // useDashboardData totals, which always cover every account.
+  const incomeThisMonth = useMemo(
+    () =>
+      filteredCurrentMonthTransactions.reduce(
+        (sum, transaction) =>
+          transaction.type === 'INCOME' ? sum + transaction.amount.amount : sum,
+        0,
+      ),
+    [filteredCurrentMonthTransactions],
+  );
+  const spentThisMonth = useMemo(
+    () =>
+      filteredCurrentMonthTransactions.reduce(
+        (sum, transaction) =>
+          transaction.type === 'EXPENSE' ? sum + Math.abs(transaction.amount.amount) : sum,
+        0,
+      ),
+    [filteredCurrentMonthTransactions],
+  );
+  // Predicted remaining income scoped to the visible workspace only, so projected
+  // income never leaks across workspaces into the "Safe to Spend" income figure.
+  const scopedPredictedIncomeCents = useMemo(
+    () => getPredictedRemainingIncomeCents(prediction, filteredAccountIds),
+    [prediction, filteredAccountIds],
+  );
   const filteredBills = useMemo(
     () =>
       selectedPurposeFilter === 'all'
@@ -507,8 +542,7 @@ export const DashboardPage: React.FC = () => {
     );
 
     return calculateSafeToSpend({
-      expectedMonthlyIncomeCents:
-        (data?.incomeThisMonth ?? 0) + getPredictedRemainingIncomeCents(prediction),
+      expectedMonthlyIncomeCents: incomeThisMonth + scopedPredictedIncomeCents,
       remainingBillsCents: getRemainingBillsDueThisMonthCents(
         filteredBills,
         currentMonthRange.startDate,
@@ -520,18 +554,18 @@ export const DashboardPage: React.FC = () => {
         spendingPace.paces,
         categoryNames,
         billCategoryIds,
-        data?.spentThisMonth ?? 0,
+        spentThisMonth,
       ),
     });
   }, [
     activeMonthlyBudgets,
     categoryNames,
     currentMonthRange,
-    data?.incomeThisMonth,
-    data?.spentThisMonth,
+    incomeThisMonth,
+    spentThisMonth,
+    scopedPredictedIncomeCents,
     filteredBills,
     filteredGoals,
-    prediction,
     spendingPace.paces,
     dashboardAsOf,
   ]);
@@ -608,15 +642,6 @@ export const DashboardPage: React.FC = () => {
   const netWorth = useMemo(
     () => filteredAccounts.reduce((sum, account) => sum + account.currentBalance.amount, 0),
     [filteredAccounts],
-  );
-  const spentThisMonth = useMemo(
-    () =>
-      filteredCurrentMonthTransactions.reduce(
-        (sum, transaction) =>
-          transaction.type === 'EXPENSE' ? sum + Math.abs(transaction.amount.amount) : sum,
-        0,
-      ),
-    [filteredCurrentMonthTransactions],
   );
   const debtSummary = useMemo(
     () =>

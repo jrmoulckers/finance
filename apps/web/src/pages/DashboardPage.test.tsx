@@ -775,6 +775,51 @@ describe('DashboardPage', () => {
     expect(netWorthCard).toHaveTextContent('$35,000.00');
   });
 
+  it('scopes Safe-to-Spend income by workspace so All === Personal + Business (#3212)', async () => {
+    // Default fixtures: personal account-1 has an expense this month, business
+    // account-2 has the only income this month ($4,500). Prediction adds $0.
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    const card = await screen.findByLabelText('Safe to spend this month');
+    fireEvent.click(within(card).getByRole('button', { name: /show simple breakdown/i }));
+
+    // Read the "Income" figure from the breakdown definition list.
+    const incomeText = () =>
+      (
+        within(screen.getByLabelText('Safe to spend this month')).getByText('Income')
+          .nextElementSibling?.textContent ?? ''
+      ).trim();
+    const incomeDollars = () => Number(incomeText().replace(/[^0-9.-]/g, ''));
+
+    // All: income comes from the business account only.
+    expect(incomeText()).toBe('$4,500.00');
+    const all = incomeDollars();
+
+    // Personal: no income this month → income must drop to $0 (previously it
+    // stayed at $4,500 because the card read the unscoped useDashboardData total).
+    fireEvent.click(screen.getByRole('button', { name: '🏠 Personal' }));
+    expect(incomeText()).toBe('$0.00');
+    const personal = incomeDollars();
+
+    // Business: the $4,500 income belongs here.
+    fireEvent.click(screen.getByRole('button', { name: '💼 Business' }));
+    expect(incomeText()).toBe('$4,500.00');
+    const business = incomeDollars();
+
+    // Back to All restores the aggregate.
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    expect(incomeText()).toBe('$4,500.00');
+
+    // Core invariant: All income is the exact sum of every workspace, and the
+    // reported P1 symptom (All mirroring Personal) can never recur.
+    expect(all).toBe(personal + business);
+    expect(all).toBeGreaterThan(personal);
+  });
+
   it('surfaces an RMD reminder badge when a distribution is due', () => {
     mockedUseRmdTracking.mockReturnValue({
       statuses: [
