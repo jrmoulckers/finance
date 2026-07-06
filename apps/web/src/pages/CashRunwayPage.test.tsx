@@ -21,6 +21,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CashRunwayPage } from './CashRunwayPage';
 import { useAccounts } from '../hooks/useAccounts';
 import { useExchangeRates, type UseExchangeRatesResult } from '../hooks/useExchangeRates';
+import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 import type { Account } from '../kmp/bridge';
 
 vi.mock('../hooks/useAccounts', () => ({ useAccounts: vi.fn() }));
@@ -120,6 +121,20 @@ describe('CashRunwayPage multi-currency starting cash (#3240)', () => {
       ...baseRatesResult,
       rates: { INR: usdToInr },
     });
+  });
+
+  it('exposes a labelled read-aloud control for the minimum projected balance when "Read amounts aloud" is enabled (#3278)', () => {
+    mockAccounts([cashAccount('usd', 'USD', 2, 200000)]);
+
+    render(
+      <AccessibilityProvider initialSettings={{ speakAmounts: true }}>
+        <CashRunwayPage />
+      </AccessibilityProvider>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Read aloud: minimum projected balance' }),
+    ).toBeInTheDocument();
   });
 
   it('converts each cash balance into the display currency before summing', () => {

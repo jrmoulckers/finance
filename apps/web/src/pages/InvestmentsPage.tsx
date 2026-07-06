@@ -16,6 +16,7 @@ import {
   ErrorBanner,
   ExplainThis,
   LoadingSpinner,
+  ReadAloudButton,
 } from '../components/common';
 import { DataExport } from '../components/DataExport';
 import {
@@ -248,6 +249,11 @@ export const InvestmentsPage: React.FC = () => {
                   <p className="card__title">Total Value</p>
                   <p className="card__value" aria-live="polite">
                     <CurrencyDisplay amount={summary.totalValue} currency={displayCurrency} />
+                    <ReadAloudButton
+                      amount={summary.totalValue}
+                      currency={displayCurrency}
+                      context="total portfolio value"
+                    />
                   </p>
                 </div>
                 <div>

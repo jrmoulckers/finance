@@ -8,6 +8,7 @@ import {
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
+  ReadAloudButton,
   SortableList,
   useToast,
 } from '../components/common';
@@ -674,6 +675,7 @@ export const GoalsPage: React.FC = () => {
                     <p className="card__title">Saved</p>
                     <p className="card__value">
                       <CurrencyDisplay amount={totalSaved} />
+                      <ReadAloudButton amount={totalSaved} context="total saved across goals" />
                     </p>
                   </div>
                   <div>

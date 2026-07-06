@@ -20,6 +20,7 @@ import {
   ErrorBanner,
   ExplainThis,
   LoadingSpinner,
+  ReadAloudButton,
 } from '../components/common';
 import { AccountPurposeFilterControl } from '../components/accounts';
 import { AppIcon } from '../components/icons';
@@ -253,6 +254,11 @@ export const NetWorthPage: React.FC = () => {
               }`}
             >
               <CurrencyDisplay amount={currentNetWorth.netWorth} currency={displayCurrency} />
+              <ReadAloudButton
+                amount={currentNetWorth.netWorth}
+                currency={displayCurrency}
+                context="net worth"
+              />
             </p>
             {periodComparison && (
               <NetWorthChangeIndicator comparison={periodComparison} currency={displayCurrency} />

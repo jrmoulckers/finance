@@ -16,6 +16,7 @@ import {
   ErrorBanner,
   ExplainThis,
   LoadingSpinner,
+  ReadAloudButton,
   SyncIndicator,
   useToast,
 } from '../components/common';
@@ -288,7 +289,7 @@ function getCurrentYearStartIsoDate(): string {
 
 export const TransactionsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { isSimplified, speakAmounts, speakAmount } = useAccessibility();
+  const { isSimplified } = useAccessibility();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -1756,21 +1757,12 @@ export const TransactionsPage: React.FC = () => {
                                   context={`${transactionLabel} transaction amount`}
                                 />
                               </div>
-                              {speakAmounts ? (
-                                <button
-                                  type="button"
-                                  className="transaction-item__text-action transactions-page__speech-button"
-                                  onClick={() =>
-                                    speakAmount(
-                                      getTransactionDisplayAmount(transaction),
-                                      transaction.currency.code,
-                                      `${transactionLabel} transaction amount`,
-                                    )
-                                  }
-                                >
-                                  Read amount
-                                </button>
-                              ) : null}
+                              <ReadAloudButton
+                                amount={getTransactionDisplayAmount(transaction)}
+                                currency={transaction.currency.code}
+                                context={`${transactionLabel} transaction amount`}
+                                label="Read amount"
+                              />
                               <div
                                 className="transaction-item__actions"
                                 aria-label="Transaction actions"

@@ -8,6 +8,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { useTransactions } from '../hooks/useTransactions';
 import { useDisplayCurrency } from '../hooks/useDisplayCurrency';
+import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 
 vi.mock('../components/forms', () => ({
@@ -325,6 +326,20 @@ describe('BudgetsPage', () => {
         missingSubcategoryDefinitions: [],
       }),
     });
+  });
+
+  it('exposes a labelled read-aloud control for total remaining when "Read amounts aloud" is enabled (#3278)', () => {
+    render(
+      <AccessibilityProvider initialSettings={{ speakAmounts: true }}>
+        <MemoryRouter>
+          <BudgetsPage />
+        </MemoryRouter>
+      </AccessibilityProvider>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Read aloud: total remaining across budgets' }),
+    ).toBeInTheDocument();
   });
 
   it('renders without crashing', () => {

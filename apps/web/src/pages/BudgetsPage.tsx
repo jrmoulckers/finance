@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { BudgetAnalytics } from '../components/budgets';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { CurrencyDisplay } from '../components/common/CurrencyDisplay';
+import { ReadAloudButton } from '../components/common/ReadAloudButton';
 import { EmptyState } from '../components/common/EmptyState';
 import { ErrorBanner } from '../components/common/ErrorBanner';
 import { ExplainThis } from '../components/common/ExplainThis';
@@ -805,6 +806,10 @@ export const BudgetsPage: React.FC = () => {
                   <p className="card__title">Remaining</p>
                   <p className="card__value">
                     <CurrencyDisplay amount={totalRemaining} colorize />
+                    <ReadAloudButton
+                      amount={totalRemaining}
+                      context="total remaining across budgets"
+                    />
                   </p>
                 </div>
               </div>

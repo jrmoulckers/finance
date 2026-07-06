@@ -7,6 +7,7 @@ import { PrivacyModeProvider } from '../contexts/PrivacyModeContext';
 import { useAccounts } from '../hooks';
 import { evaluatePrivacyScreenCoverage } from '../lib/security/privacy-screen';
 import { auditPrivacySurfaceCoverage, privacySurface } from '../lib/security/privacy-coverage';
+import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 import type { Account } from '../kmp/bridge';
 import { AccountsPage } from './AccountsPage';
 
@@ -141,6 +142,18 @@ describe('AccountsPage', () => {
       updateAccount: vi.fn(),
       deleteAccount: vi.fn(),
     });
+  });
+
+  it('exposes a labelled read-aloud control for total net worth when "Read amounts aloud" is enabled (#3278)', () => {
+    render(
+      <AccessibilityProvider initialSettings={{ speakAmounts: true }}>
+        <MemoryRouter>
+          <AccountsPage />
+        </MemoryRouter>
+      </AccessibilityProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Read aloud: total net worth' })).toBeInTheDocument();
   });
 
   it('renders without crashing', () => {

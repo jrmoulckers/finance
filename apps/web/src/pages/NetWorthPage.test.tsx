@@ -11,6 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { NetWorthPage } from './NetWorthPage';
+import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 
 // Mock the hook
 vi.mock('../hooks/useNetWorth', () => ({
@@ -60,6 +61,27 @@ function makeNetWorthResult(overrides: Partial<UseNetWorthResult> = {}): UseNetW
 describe('NetWorthPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('exposes a labelled read-aloud control for net worth when "Read amounts aloud" is enabled (#3278)', () => {
+    mockUseNetWorth.mockReturnValue(
+      makeNetWorthResult({
+        currentNetWorth: {
+          label: '2024-03-15',
+          assets: 2000000,
+          liabilities: 500000,
+          netWorth: 1500000,
+        },
+      }),
+    );
+
+    render(
+      <AccessibilityProvider initialSettings={{ speakAmounts: true }}>
+        <NetWorthPage />
+      </AccessibilityProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Read aloud: net worth' })).toBeInTheDocument();
   });
 
   it('shows loading spinner while loading', () => {
