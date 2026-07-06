@@ -91,10 +91,25 @@ describe('ExpectedIncomePage', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'One-off gift' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete One-off gift' }));
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Remove expected income' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
     expect(
       screen.queryByRole('heading', { level: 3, name: 'One-off gift' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('No expected income yet')).toBeInTheDocument();
+  });
+
+  it('keeps the payment when the delete is cancelled', () => {
+    render(<ExpectedIncomePage />);
+    addPayment({ name: 'One-off gift', amount: '100.00', date: '2026-06-10' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete One-off gift' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('heading', { level: 3, name: 'One-off gift' })).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
   it('validates the amount field', () => {
