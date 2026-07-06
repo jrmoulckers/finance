@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Currency } from '../kmp/bridge';
 import { Currencies } from '../kmp/bridge';
 import { formatCurrency } from '../lib/currency';
+import { STATIC_USD_RATES } from '../lib/currency/static-rates';
 import { SUPPORTED_CURRENCY_METADATA } from '../lib/currency-metadata';
 import { getCurrentLocale } from '../lib/i18n';
 
@@ -30,7 +31,11 @@ export interface ExchangeRate {
   readonly from: string;
   readonly to: string;
   readonly rate: number;
-  readonly updatedAt: string;
+  /**
+   * ISO timestamp of when the rate was fetched, or `null` for offline
+   * static-snapshot rates that have no meaningful "as of" time.
+   */
+  readonly updatedAt: string | null;
   readonly source: string;
 }
 
@@ -89,25 +94,6 @@ const SUPPORTED_CURRENCIES: Currency[] = SUPPORTED_CURRENCY_METADATA.map(
 
 const SUPPORTED_CURRENCY_CODES = new Set(SUPPORTED_CURRENCIES.map((currency) => currency.code));
 
-/**
- * Static exchange rates (USD base).
- * In production, these would be fetched from an API.
- */
-const STATIC_RATES: Record<string, number> = {
-  USD: 1.0,
-  EUR: 0.92,
-  GBP: 0.79,
-  JPY: 149.5,
-  CAD: 1.36,
-  AUD: 1.53,
-  CHF: 0.88,
-  CNY: 7.24,
-  INR: 83.12,
-  MXN: 17.15,
-  BRL: 4.97,
-  KRW: 1320.0,
-};
-
 // ---------------------------------------------------------------------------
 // Storage helpers
 // ---------------------------------------------------------------------------
@@ -131,21 +117,29 @@ function loadDefaultCurrency(): Currency {
   return Currencies.USD;
 }
 
+/**
+ * Build all cross-currency pairs from the shared static USD-base table.
+ *
+ * Rates come from the single canonical {@link STATIC_USD_RATES} snapshot
+ * (shared with `StaticRateProvider`) so there is no second table to drift.
+ * `updatedAt` is deliberately `null`: these are approximate offline
+ * reference rates, not live quotes, and stamping "now" would misrepresent
+ * them as freshly fetched.
+ */
 function buildRates(): ExchangeRate[] {
-  const now = new Date().toISOString();
   const rates: ExchangeRate[] = [];
 
-  const codes = Object.keys(STATIC_RATES);
+  const codes = Object.keys(STATIC_USD_RATES);
   for (const from of codes) {
     for (const to of codes) {
       if (from !== to) {
-        const fromRate = STATIC_RATES[from]!;
-        const toRate = STATIC_RATES[to]!;
+        const fromRate = STATIC_USD_RATES[from]!;
+        const toRate = STATIC_USD_RATES[to]!;
         rates.push({
           from,
           to,
           rate: toRate / fromRate,
-          updatedAt: now,
+          updatedAt: null,
           source: 'static',
         });
       }
@@ -179,10 +173,10 @@ export function useMultiCurrency(): UseMultiCurrencyResult {
     try {
       const builtRates = buildRates();
       setRates(builtRates);
-      const now = new Date().toISOString();
-      setLastUpdated(now);
+      // Static snapshot rates have no live "as of" time; do not fabricate one.
+      setLastUpdated(null);
       localStorage.setItem(STORAGE_KEY_RATES, JSON.stringify(builtRates));
-      localStorage.setItem(STORAGE_KEY_RATES_UPDATED, now);
+      localStorage.removeItem(STORAGE_KEY_RATES_UPDATED);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load exchange rates.');
     } finally {
