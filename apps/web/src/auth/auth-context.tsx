@@ -200,14 +200,37 @@ export const SERVICE_UNAVAILABLE_MESSAGE =
   'The server is temporarily unavailable. Please try again in a few minutes.';
 
 /**
- * User-facing message shown when an OAuth provider's sign-in cannot be
- * started because the provider is not configured/enabled on the backend
- * (e.g. the Edge Function answers 4xx for that provider). Distinct from
+ * Generic fallback shown when an OAuth provider's sign-in cannot be started
+ * because the provider is not configured/enabled on the backend (e.g. the
+ * Edge Function answers 4xx for that provider). Distinct from
  * {@link SERVICE_UNAVAILABLE_MESSAGE} so a not-yet-provisioned provider
- * doesn't masquerade as a transient outage (#3109).
+ * doesn't masquerade as a transient outage (#3109). Prefer the
+ * provider-named {@link oauthProviderUnavailableMessage} when the provider
+ * is known — it tells the user exactly which button failed (#3187).
  */
 export const OAUTH_PROVIDER_UNAVAILABLE_MESSAGE =
   'That sign-in option is unavailable right now. Try another option or use email & password.';
+
+/** Human-readable display labels for each supported OAuth provider. */
+const OAUTH_PROVIDER_LABELS: Record<OAuthProvider, string> = {
+  google: 'Google',
+  github: 'GitHub',
+  apple: 'Apple',
+};
+
+/**
+ * Build the user-facing message shown when a specific OAuth provider is not
+ * enabled/configured on the backend. Naming the provider (e.g. "Google
+ * sign-in isn't available right now") is clearer and more accessible than a
+ * generic "that option" string when three social buttons are offered — the
+ * user knows exactly which path failed and what to do instead (#3187). The
+ * message deliberately points at the always-available email & password path
+ * rather than promising passkey, which may be unsupported on the device.
+ */
+export function oauthProviderUnavailableMessage(provider: OAuthProvider): string {
+  const label = OAUTH_PROVIDER_LABELS[provider];
+  return `${label} sign-in isn't available right now. Try another option or use email & password.`;
+}
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -957,7 +980,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         setError(
           isServiceUnavailableStatus(probe.status)
             ? SERVICE_UNAVAILABLE_MESSAGE
-            : OAUTH_PROVIDER_UNAVAILABLE_MESSAGE,
+            : oauthProviderUnavailableMessage(provider),
         );
         setIsLoading(false);
       } catch (err) {

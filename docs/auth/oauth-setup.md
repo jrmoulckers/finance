@@ -7,6 +7,12 @@ This document describes how to configure Google Sign-In and Apple Sign-In
 for the Finance app across all platforms, using **Supabase Auth** as the
 identity broker.
 
+> **Deploying?** For the exact environment configuration required to
+> **enable** providers in a live Supabase deployment (including the
+> `GOTRUE_EXTERNAL_*` variables and GitHub), and how the app degrades
+> gracefully when a provider is not yet enabled, see
+> [`oauth-provider-enablement.md`](./oauth-provider-enablement.md) (#3187).
+
 ## Architecture
 
 ```

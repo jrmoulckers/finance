@@ -11,6 +11,7 @@ import {
   isNetworkError,
   isOAuthStartHealthy,
   isServiceUnavailableStatus,
+  oauthProviderUnavailableMessage,
   parseBetaAllowedEmails,
   useAuth,
   type AuthProviderConfig,
@@ -523,6 +524,33 @@ describe('isOAuthStartHealthy', () => {
   });
 });
 
+describe('oauthProviderUnavailableMessage (#3187)', () => {
+  it('names each supported provider in the friendly message', () => {
+    expect(oauthProviderUnavailableMessage('google')).toContain('Google sign-in');
+    expect(oauthProviderUnavailableMessage('github')).toContain('GitHub sign-in');
+    expect(oauthProviderUnavailableMessage('apple')).toContain('Apple sign-in');
+  });
+
+  it('always points the user at the email & password fallback', () => {
+    for (const provider of ['google', 'github', 'apple'] as const) {
+      expect(oauthProviderUnavailableMessage(provider)).toContain('email & password');
+    }
+  });
+
+  it('never leaks the raw GoTrue "provider is not enabled" string', () => {
+    for (const provider of ['google', 'github', 'apple'] as const) {
+      expect(oauthProviderUnavailableMessage(provider)).not.toContain('provider is not enabled');
+      expect(oauthProviderUnavailableMessage(provider)).not.toContain('validation_failed');
+    }
+  });
+
+  it('is more specific than the generic fallback constant', () => {
+    // The generic constant remains exported for callers that cannot resolve a
+    // provider; the per-provider message is distinct and names the provider.
+    expect(oauthProviderUnavailableMessage('google')).not.toBe(OAUTH_PROVIDER_UNAVAILABLE_MESSAGE);
+  });
+});
+
 describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
   const config: AuthProviderConfig = {
     supabaseUrl: 'https://finance-test.supabase.co',
@@ -630,7 +658,7 @@ describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
     expect(assignMock).not.toHaveBeenCalled();
   });
 
-  it('shows the provider-unavailable message when start is 4xx (not configured)', async () => {
+  it('shows the provider-named unavailable message when start is 4xx (not configured)', async () => {
     stubStart(() => Promise.resolve(jsonResponse({ error: 'Unsupported provider' }, 400)));
     await renderReady();
 
@@ -638,7 +666,7 @@ describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('auth-error')).toHaveTextContent(
-        OAUTH_PROVIDER_UNAVAILABLE_MESSAGE,
+        oauthProviderUnavailableMessage('google'),
       ),
     );
     expect(assignMock).not.toHaveBeenCalled();
@@ -648,8 +676,9 @@ describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
     // A statically-supported provider that GoTrue has NOT enabled now answers
     // the pre-flight probe with a 400 (auth-oauth-start gates on the provider
     // actually being enabled). The probe is non-healthy, so we keep the user
-    // in-app with the graceful "option unavailable" message and never hand off
-    // to a raw GoTrue "provider is not enabled" page.
+    // in-app with the graceful, provider-named "option unavailable" message
+    // (#3187) and never hand off to a raw GoTrue "provider is not enabled"
+    // page.
     stubStart(() => Promise.resolve(jsonResponse({ error: 'Provider not enabled' }, 400)));
     await renderReady();
 
@@ -657,7 +686,7 @@ describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('auth-error')).toHaveTextContent(
-        OAUTH_PROVIDER_UNAVAILABLE_MESSAGE,
+        oauthProviderUnavailableMessage('google'),
       ),
     );
     expect(assignMock).not.toHaveBeenCalled();
