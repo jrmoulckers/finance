@@ -138,4 +138,32 @@ describe('InvoicesPage', () => {
     // en-GB renders day-first ("1 Jun 2026"); the removed en-US hardcode showed "Jun 1, 2026".
     expect(screen.getByText(/Issued 1 Jun 2026/)).toBeInTheDocument();
   });
+
+  it('offers existing client names as autocomplete suggestions', () => {
+    const second: Invoice = { ...SAMPLE_INVOICE, id: 'inv-2', clientName: 'Maple & Co' };
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE, second],
+      pipelineGroups: [
+        { status: 'Sent', label: 'Sent', invoices: [SAMPLE_INVOICE, second], totalCents: 240_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 240_000,
+      addInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    const { container } = render(<InvoicesPage />);
+
+    const input = screen.getByPlaceholderText('Acme Studio');
+    expect(input).toHaveAttribute('list', 'invoice-client-suggestions');
+
+    const datalist = container.querySelector('#invoice-client-suggestions');
+    expect(datalist).not.toBeNull();
+    const values = Array.from(datalist!.querySelectorAll('option')).map((option) =>
+      option.getAttribute('value'),
+    );
+    expect(values).toContain('Etsy Wholesale');
+    expect(values).toContain('Maple & Co');
+  });
 });

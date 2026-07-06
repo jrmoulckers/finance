@@ -119,6 +119,14 @@ export const InvoicesPage: React.FC = () => {
   );
   const maxForecastCents = Math.max(...forecastBuckets.map((bucket) => bucket.totalCents), 1);
 
+  const clientSuggestions = useMemo(
+    () =>
+      Array.from(
+        new Set(invoices.map((invoice) => invoice.clientName.trim()).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b)),
+    [invoices],
+  );
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const amountCents = parseAmountToCents(amount);
@@ -164,8 +172,17 @@ export const InvoicesPage: React.FC = () => {
               value={clientName}
               onChange={(event) => setClientName(event.target.value)}
               placeholder="Acme Studio"
+              list="invoice-client-suggestions"
+              autoComplete="off"
               required
             />
+            {clientSuggestions.length > 0 && (
+              <datalist id="invoice-client-suggestions">
+                {clientSuggestions.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            )}
           </label>
           <label className="invoice-form__field">
             Amount
