@@ -20,6 +20,13 @@ describe('useAmountInput', () => {
     expect(formatCentsDisplay(1234567)).toBe('$12,345.67');
   });
 
+  it('honors the active locale for grouping and decimal separators (#3302)', () => {
+    // de-DE uses "." for grouping and "," for the decimal separator.
+    expect(formatCentsDisplay(1234567, '$', 2, 'de-DE')).toBe('$12.345,67');
+    // en-US keeps the familiar grouping.
+    expect(formatCentsDisplay(1234567, '$', 2, 'en-US')).toBe('$12,345.67');
+  });
+
   it('parses text input into cents', () => {
     expect(parseAmountInput('$12.34')).toBe(1234);
   });
