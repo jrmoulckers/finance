@@ -119,4 +119,32 @@ describe('ExpectedIncomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add payment' }));
     expect(screen.getByRole('alert')).toHaveTextContent(/amount/i);
   });
+
+  it('surfaces sent and overdue invoices as expected income without re-entry (#3229)', () => {
+    window.localStorage.setItem(
+      'finance:invoices',
+      JSON.stringify([
+        {
+          id: 'inv-1',
+          clientName: 'Studio Delacroix',
+          amountCents: 120000,
+          issueDate: '2099-01-01',
+          paymentTerm: 'net-30',
+          status: 'Sent',
+          expectedPayDate: '2099-02-01',
+          createdAt: '2099-01-01T00:00:00.000Z',
+          updatedAt: '2099-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
+
+    render(<ExpectedIncomePage />);
+
+    const section = screen.getByRole('region', { name: /from your invoices/i });
+    expect(
+      within(section).getByRole('heading', { level: 3, name: 'Studio Delacroix' }),
+    ).toBeInTheDocument();
+    const invoiceList = within(section).getByRole('list');
+    expect(within(invoiceList).getByText('$1,200.00')).toBeInTheDocument();
+  });
 });

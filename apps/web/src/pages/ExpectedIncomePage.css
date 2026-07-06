@@ -308,3 +308,27 @@
     transition: none;
   }
 }
+
+.expected-income__invoices {
+  margin-top: var(--spacing-6);
+}
+
+.expected-income__invoices-note {
+  margin: 0 0 var(--spacing-4);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.expected-income__item--invoice {
+  background: var(--semantic-surface-secondary, var(--semantic-background-primary));
+}
+
+.expected-income__invoices-total {
+  margin: var(--spacing-4) 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.expected-income__invoices-total strong {
+  color: var(--semantic-text-primary);
+}
