@@ -355,7 +355,7 @@ export const WatchlistsPage: React.FC = () => {
                 required
                 aria-required="true"
               >
-                <option value="">Select categoryΓÇª</option>
+                <option value="">Select category...</option>
                 {availableCategories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}

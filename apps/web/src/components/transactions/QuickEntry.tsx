@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Quick Entry ΓÇö floating action button that expands to a compact transaction form.
+ * Quick Entry - floating action button that expands to a compact transaction form.
  *
  * Provides a keyboard-first, accessible way to quickly log transactions.
  * The FAB shows a "+" icon; clicking or pressing "n" expands the form.
@@ -337,7 +337,7 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
                 aria-busy={saving}
                 data-testid="quick-entry-save"
               >
-                {saving ? 'SavingΓÇª' : 'Save'}
+                {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </form>

@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: BUSL-1.1 */
 
 /**
- * Quick Entry ΓÇö floating action button + compact transaction form.
+ * Quick Entry - floating action button + compact transaction form.
  *
  * Uses design tokens for all visual values. Respects prefers-reduced-motion
  * and prefers-color-scheme. See tokens.css for available custom properties.
  */
 
 /* ==========================================================================
- * FAB ΓÇö Floating Action Button
+ * FAB - Floating Action Button
  * ========================================================================== */
 
 .quick-entry-fab {

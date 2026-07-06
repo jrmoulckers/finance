@@ -267,7 +267,7 @@ export function GoalContributionDialog({
                 disabled={submitting}
                 aria-busy={submitting}
               >
-                {submitting ? 'ContributingΓÇª' : 'Submit'}
+                {submitting ? 'Contributing...' : 'Submit'}
               </button>
             </div>
           </form>
@@ -277,7 +277,7 @@ export function GoalContributionDialog({
       <ConfirmDialog
         isOpen={pendingInput !== null}
         title="Contribution exceeds goal"
-        message="This would exceed your goal ΓÇö still contribute?"
+        message="This would exceed your goal. Still contribute?"
         confirmLabel="Still Contribute"
         cancelLabel="Go Back"
         variant="warning"
