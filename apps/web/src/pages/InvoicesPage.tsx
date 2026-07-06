@@ -70,6 +70,7 @@ const InvoiceCard: React.FC<{
       <label className="invoice-card__status-label">
         Status
         <select
+          aria-label={`Status for ${invoice.clientName}`}
           value={invoice.status}
           onChange={(event) => onStatusChange(invoice.id, event.target.value as InvoiceStatus)}
         >
@@ -80,7 +81,12 @@ const InvoiceCard: React.FC<{
           ))}
         </select>
       </label>
-      <button className="analytics-export-btn" type="button" onClick={() => onDelete(invoice)}>
+      <button
+        className="analytics-export-btn"
+        type="button"
+        aria-label={`Delete invoice for ${invoice.clientName}`}
+        onClick={() => onDelete(invoice)}
+      >
         Delete
       </button>
     </div>
@@ -245,7 +251,7 @@ export const InvoicesPage: React.FC = () => {
       <section className="analytics-section" aria-label="Expected income forecast">
         <p className="sr-only" role="status">
           Outstanding invoices total <CurrencyDisplay amount={totalOutstandingCents} />.
-          {forecastBuckets.slice(1, 3).map((bucket) => (
+          {forecastBuckets.slice(0, 3).map((bucket) => (
             <React.Fragment key={bucket.id}>
               {' '}
               {bucket.label}: <CurrencyDisplay amount={bucket.totalCents} />.
@@ -260,14 +266,20 @@ export const InvoicesPage: React.FC = () => {
               <CurrencyDisplay amount={totalOutstandingCents} />
             </p>
           </article>
-          {forecastBuckets.slice(1, 3).map((bucket) => (
+          {forecastBuckets.slice(0, 3).map((bucket) => (
             <article
               key={bucket.id}
               className="analytics-metric-card"
               aria-label={`${bucket.label} forecast`}
             >
               <p className="analytics-metric-card__label">{bucket.label}</p>
-              <p className="analytics-metric-card__value analytics-metric-card__value--positive">
+              <p
+                className={`analytics-metric-card__value ${
+                  bucket.id === 'past-due'
+                    ? 'analytics-metric-card__value--negative'
+                    : 'analytics-metric-card__value--positive'
+                }`}
+              >
                 <CurrencyDisplay amount={bucket.totalCents} />
               </p>
             </article>
