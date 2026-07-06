@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { DigestPeriod, MetricChange, TrendDirection } from './types';
+import { computeSavingsRatePercent } from '../savings/savings-rate-format';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -71,14 +72,21 @@ function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * MS_PER_DAY);
 }
 
-function makeMonthWindow(baseDate: Date, dayOfMonth: number): PeriodWindow {
+/**
+ * Build a calendar-month window.
+ *
+ * @param baseDate - Any date within the target month
+ * @param endDay - Optional day-of-month to end at (for a month-to-date window).
+ *   When omitted, the window spans the **full** month (its last day). Only the
+ *   in-progress current month should be month-to-date; completed past months
+ *   must use the full month or their income/spend — and the savings rate
+ *   derived from them — is understated.
+ */
+function makeMonthWindow(baseDate: Date, endDay?: number): PeriodWindow {
   const startDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
   const lastDay = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate();
-  const endDate = new Date(
-    baseDate.getFullYear(),
-    baseDate.getMonth(),
-    Math.min(dayOfMonth, lastDay),
-  );
+  const endDayOfMonth = endDay === undefined ? lastDay : Math.min(endDay, lastDay);
+  const endDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), endDayOfMonth);
 
   return {
     label: startDate.toLocaleDateString('en-US', { month: 'short' }),
@@ -110,7 +118,8 @@ export function buildPeriodWindows(
   return Array.from({ length: count }, (_unused, index) => {
     const monthOffset = count - index - 1;
     const monthDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-    return makeMonthWindow(monthDate, dayOfMonth);
+    // Only the current month (offset 0) is month-to-date; past months are full.
+    return makeMonthWindow(monthDate, monthOffset === 0 ? dayOfMonth : undefined);
   });
 }
 
@@ -125,9 +134,5 @@ export function getMonthToDateWindows(now: Date): {
 }
 
 export function calculateRate(income: number, spending: number): number {
-  if (income <= 0) {
-    return 0;
-  }
-
-  return roundToOne(((income - spending) / income) * 100);
+  return computeSavingsRatePercent(income, spending);
 }

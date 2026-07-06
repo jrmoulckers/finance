@@ -87,4 +87,31 @@ describe('analyzeSavingsRate', () => {
     expect(analysis.change.direction).toBe('up');
     expect(analysis.history).toHaveLength(6);
   });
+
+  it('counts a full completed month even when a paycheck posts after today (#3308)', () => {
+    // Clock is the 6th; last month's income/spend land on the 15th and 20th.
+    const transactions = [
+      makeTransaction({
+        id: 'income-prev',
+        type: 'INCOME',
+        amount: { amount: 100_000 },
+        date: '2025-01-15',
+      }),
+      makeTransaction({
+        id: 'expense-prev',
+        type: 'EXPENSE',
+        amount: { amount: -40_000 },
+        date: '2025-01-20',
+      }),
+    ];
+
+    const analysis = analyzeSavingsRate(transactions, 'monthly', new Date('2025-02-06T12:00:00Z'));
+    const january = analysis.history.find((entry) => entry.label === 'Jan');
+
+    // A truncated Jan 1-6 window would miss both and report $0 income / 0% rate.
+    expect(january?.income).toBe(100_000);
+    expect(january?.spending).toBe(40_000);
+    expect(january?.rate).toBe(60);
+    expect(analysis.previousRate).toBe(60);
+  });
 });
