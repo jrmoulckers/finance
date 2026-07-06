@@ -908,12 +908,18 @@ export function HouseholdPage() {
         return;
       }
 
+      const yearsUntilCollege = Math.max(18 - child.age, 1);
+      const collegeStartDate = new Date();
+      collegeStartDate.setFullYear(collegeStartDate.getFullYear() + yearsUntilCollege);
+      const targetDate = collegeStartDate.toISOString().slice(0, 10);
+
       const createdGoal = goalData.createGoal({
         householdId: household.id,
         name: `${child.name} College Fund`,
         description: `Dedicated college fund for ${child.name}.`,
         targetAmount: { amount: dollarsToCents(targetAmount) },
         currentAmount: { amount: dollarsToCents(currentAmount) },
+        targetDate,
         status: 'ACTIVE',
         icon: '🎓',
         color: '#7c3aed',
