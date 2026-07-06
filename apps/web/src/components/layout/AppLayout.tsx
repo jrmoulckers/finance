@@ -24,6 +24,7 @@ import { getSimpleModePlan, type SimpleModeSurface } from '../../lib/a11y/simple
 import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { getVisibleNavItems } from './navConfig';
 import { InstallBanner } from '../common/InstallBanner';
+import { SampleDataBanner } from '../common/SampleDataBanner';
 import { LegalLinks } from '../legal/LegalLinks';
 import { Breadcrumbs, NavShortcuts, buildNavShortcutCategory } from '../navigation';
 
@@ -389,6 +390,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         />
       </div>
       <InstallBanner />
+      <SampleDataBanner />
       <CommandPalette
         isOpen={showCommandPalette}
         actions={commandPaletteActions}

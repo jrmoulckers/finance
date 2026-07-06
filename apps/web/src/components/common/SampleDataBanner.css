@@ -1,0 +1,95 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/*
+ * SampleDataBanner styling — token-driven, CSP-compliant (no inline styles).
+ * Amber accent marks the workspace as sample data without relying on color
+ * alone: the "Sample data" text badge carries the meaning for users who cannot
+ * perceive the accent. References: issue #3415.
+ */
+
+.sample-data-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3, 0.75rem);
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  background-color: var(--semantic-background-elevated, #ffffff);
+  border: 1px solid var(--semantic-status-warning, #b45309);
+  border-radius: var(--radius-md, 8px);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.sample-data-banner__content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 0.75rem);
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.sample-data-banner__badge {
+  flex: none;
+  padding: 0.125rem var(--spacing-2, 0.5rem);
+  border-radius: var(--radius-sm, 4px);
+  background-color: var(--semantic-status-warning, #b45309);
+  color: var(--semantic-text-inverse, #ffffff);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.sample-data-banner__text {
+  margin: 0;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #4b5563);
+}
+
+.sample-data-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2, 0.5rem);
+  flex: none;
+}
+
+.sample-data-banner__button {
+  padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.sample-data-banner__button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.sample-data-banner__button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.sample-data-banner__button--primary {
+  background-color: var(--semantic-status-warning, #b45309);
+  color: var(--semantic-text-inverse, #ffffff);
+}
+
+.sample-data-banner__button--dismiss {
+  background-color: transparent;
+  color: var(--semantic-text-primary, #111827);
+  border-color: var(--semantic-border-default, #d1d5db);
+}
+
+@media (max-width: 40rem) {
+  .sample-data-banner__actions {
+    width: 100%;
+  }
+
+  .sample-data-banner__button {
+    flex: 1 1 auto;
+  }
+}

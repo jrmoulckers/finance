@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ErrorBanner, LoadingSpinner } from '../components/common';
 import { seedDatabase } from './seed';
+import { requestCleanSlate } from './sampleData';
 import { wipeLocalData } from '../storage/wipeLocalData';
 import {
   initDatabaseWithDiagnostics,
@@ -338,6 +339,9 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     // it re-hydrates on the next boot (#3094).
     setIsResetting(true);
     try {
+      // Ask the next boot to honor a genuine clean slate instead of re-seeding
+      // sample data, so the empty-workspace experience is reachable (#3415).
+      requestCleanSlate();
       await wipeLocalData();
     } catch (wipeError) {
       // A partial wipe is still better than a wedged state — reload regardless
