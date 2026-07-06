@@ -12,12 +12,13 @@ import {
   LoadingSpinner,
 } from '../components/common';
 import { GoalForm } from '../components/forms';
-import type { CreateGoalInput } from '../db/repositories/goals';
+import type { CreateGoalInput, GoalContributionInput } from '../db/repositories/goals';
 import { useGoals } from '../hooks';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
 import { ShareCelebrationButton } from '../components/social/ShareCelebrationButton';
 import { SharedGoalContributions } from '../components/goals/SharedGoalContributions';
+import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
 import { goalCelebrationEvent } from '../lib/social/share-celebration';
 import '../styles/pages.css';
 
@@ -43,8 +44,9 @@ export const GoalDetailPage: React.FC = () => {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null);
+  const [isContributeOpen, setIsContributeOpen] = useState(false);
 
-  const { goals, loading, error, refresh, updateGoal, deleteGoal } = useGoals();
+  const { goals, loading, error, refresh, updateGoal, deleteGoal, contributeToGoal } = useGoals();
 
   const goal = id ? (goals.find((g) => g.id === id) ?? null) : null;
 
@@ -72,6 +74,17 @@ export const GoalDetailPage: React.FC = () => {
       navigate('/goals', { replace: true });
     }
   }, [deleteGoal, deletingGoal, navigate]);
+
+  const handleContributionSubmit = useCallback(
+    async (input: GoalContributionInput) => {
+      const updated = contributeToGoal(input.goalId, input);
+      if (updated === null) {
+        throw new Error('Failed to contribute to goal.');
+      }
+      setIsContributeOpen(false);
+    },
+    [contributeToGoal],
+  );
 
   if (loading) {
     return (
@@ -178,6 +191,14 @@ export const GoalDetailPage: React.FC = () => {
           {shareEvent && (
             <ShareCelebrationButton event={shareEvent} label={`Share ${goal.name} progress`} />
           )}
+          <button
+            type="button"
+            className="form-button form-button--primary"
+            onClick={() => setIsContributeOpen(true)}
+            aria-label={`Contribute to ${goal.name}`}
+          >
+            <AppIcon name="wallet" /> Contribute
+          </button>
           <button
             type="button"
             className="form-button form-button--secondary"
@@ -333,6 +354,13 @@ export const GoalDetailPage: React.FC = () => {
       </section>
 
       <SharedGoalContributions goal={goal} />
+
+      <GoalContributionDialog
+        isOpen={isContributeOpen}
+        goal={isContributeOpen ? goal : null}
+        onSubmit={handleContributionSubmit}
+        onCancel={() => setIsContributeOpen(false)}
+      />
 
       <GoalForm
         isOpen={isFormOpen}

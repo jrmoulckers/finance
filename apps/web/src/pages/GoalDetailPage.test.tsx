@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -322,5 +322,27 @@ describe('GoalDetailPage', () => {
     const backLink = screen.getByRole('link', { name: /back to goals/i });
     expect(backLink).toBeInTheDocument();
     expect(backLink).toHaveAttribute('href', '/goals');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Contribute from detail (issue #3391)
+  // ---------------------------------------------------------------------------
+
+  it('shows a Contribute action on the goal detail page', () => {
+    renderWithRoute();
+
+    expect(
+      screen.getByRole('button', { name: /contribute to emergency fund/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the contribution dialog when Contribute is clicked', () => {
+    renderWithRoute();
+
+    fireEvent.click(screen.getByRole('button', { name: /contribute to emergency fund/i }));
+
+    expect(
+      screen.getByRole('dialog', { name: /contribute to emergency fund/i }),
+    ).toBeInTheDocument();
   });
 });
