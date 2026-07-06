@@ -5,7 +5,7 @@
  *
  * Renders a modal dialog with fields for creating or editing a savings goal:
  * name (required), target amount (required), current amount (defaults to zero),
- * target date (optional), and description (optional).
+ * target date (optional), funding account (optional), and description (optional).
  *
  * Validates input client-side with accessible error messages using
  * `aria-invalid` and `aria-describedby`. The household ID is resolved from the
@@ -34,6 +34,7 @@ import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateGoalInput } from '../../db/repositories/goals';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { useAmountInput } from '../../hooks/useAmountInput';
+import { useAccounts } from '../../hooks/useAccounts';
 import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Goal, GoalStatus, SyncId } from '../../kmp/bridge';
 import { goalSchema } from '../../lib/validation';
@@ -160,18 +161,21 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
     allowNegative: false,
   });
   const [targetDate, setTargetDate] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const db = useDatabase();
+  const { accounts } = useAccounts();
   const initialValues = useMemo(
     () => ({
       name: initialData?.name ?? '',
       targetAmount: initialData?.targetAmount.amount ?? 0,
       currentAmount: initialData?.currentAmount.amount ?? 0,
       targetDate: initialData?.targetDate ?? '',
+      accountId: initialData?.accountId ?? '',
       description: initialData?.description ?? '',
     }),
     [initialData],
@@ -182,6 +186,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       targetAmountInput.cents !== initialValues.targetAmount ||
       currentAmountInput.cents !== initialValues.currentAmount ||
       targetDate !== initialValues.targetDate ||
+      accountId !== initialValues.accountId ||
       description !== initialValues.description);
   const { confirmNavigation } = useNavigationGuard({
     when: isDirty,
@@ -208,6 +213,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
     targetAmountInput.setCents(initialValues.targetAmount);
     currentAmountInput.setCents(initialValues.currentAmount);
     setTargetDate(initialValues.targetDate);
+    setAccountId(initialValues.accountId);
     setDescription(initialValues.description);
     setErrors({});
     setSubmitting(false);
@@ -262,6 +268,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
         targetAmount: { amount: targetAmountInput.cents },
         currentAmount: { amount: currentAmountInput.cents },
         targetDate: targetDate || null,
+        accountId: accountId || null,
         status: initialData?.status ?? DEFAULT_GOAL_STATUS,
       };
 
@@ -287,6 +294,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       currentAmountInput.cents,
       db,
       description,
+      accountId,
       initialData,
       isEditing,
       name,
@@ -418,6 +426,27 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
                   {errors.targetDate}
                 </span>
               )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="goal-account" className="form-group__label">
+                Funding Account
+              </label>
+              <select
+                id="goal-account"
+                className="form-select"
+                value={accountId}
+                onChange={(event) => setAccountId(event.target.value)}
+              >
+                <option value="">No linked account</option>
+                {accounts
+                  .filter((account) => !account.isArchived)
+                  .map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+              </select>
             </div>
 
             <div className="form-group">
