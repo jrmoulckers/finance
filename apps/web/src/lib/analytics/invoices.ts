@@ -28,6 +28,10 @@ export interface Invoice {
   readonly updatedAt: string;
   /** ISO date of the most recent follow-up sent for an overdue invoice. */
   readonly lastContactedDate?: string;
+  /** Total amount received so far, in cents (supports partial payments). */
+  readonly amountPaidCents?: number;
+  /** ISO date the most recent payment was received. */
+  readonly paidDate?: string;
 }
 
 export interface CreateInvoiceInput {
@@ -173,6 +177,48 @@ export function getInvoicesNeedingFollowUp(invoices: Invoice[], todayIso: string
     .sort((a, b) => a.expectedPayDate.localeCompare(b.expectedPayDate));
 }
 
+/** Amount still owed on an invoice after any partial payments, in cents (never negative). */
+export function invoiceOutstandingCents(invoice: Invoice): number {
+  return Math.max(0, invoice.amountCents - (invoice.amountPaidCents ?? 0));
+}
+
+/** Whether an invoice has been paid in full (recorded payments cover the total). */
+export function invoiceIsFullyPaid(invoice: Invoice): boolean {
+  return (invoice.amountPaidCents ?? 0) >= invoice.amountCents;
+}
+
+/**
+ * Record a (full or partial) payment against an invoice.
+ *
+ * Payments accumulate; the total is clamped to the invoice amount so the
+ * outstanding balance never goes negative. Negative payment amounts are
+ * ignored. When the cumulative payment covers the full amount the status is
+ * advanced to `Paid`.
+ *
+ * @param invoice - The invoice receiving payment.
+ * @param paymentCents - Amount received in this payment, in cents.
+ * @param paidDateIso - ISO date the payment was received.
+ * @param nowIso - Current timestamp (ISO 8601) for updatedAt.
+ * @returns A new invoice with the payment recorded.
+ */
+export function recordInvoicePayment(
+  invoice: Invoice,
+  paymentCents: number,
+  paidDateIso: string,
+  nowIso: string,
+): Invoice {
+  const priorPaid = invoice.amountPaidCents ?? 0;
+  const nextPaid = Math.min(priorPaid + Math.max(0, paymentCents), invoice.amountCents);
+  const fullyPaid = nextPaid >= invoice.amountCents;
+  return {
+    ...invoice,
+    amountPaidCents: nextPaid,
+    paidDate: paidDateIso,
+    status: fullyPaid ? 'Paid' : invoice.status,
+    updatedAt: nowIso,
+  };
+}
+
 export function createInvoice(input: CreateInvoiceInput, nowIso: string, id: string): Invoice {
   const invoice: Invoice = {
     id,
@@ -253,6 +299,9 @@ export function computeInvoiceForecast(invoices: Invoice[], todayIso: string): F
   for (const invoice of normalizeInvoiceStatuses(invoices, todayIso)) {
     if (invoice.status === 'Draft' || invoice.status === 'Paid') continue;
 
+    const outstandingCents = invoiceOutstandingCents(invoice);
+    if (outstandingCents <= 0) continue;
+
     const daysUntilPay = diffDays(todayIso, invoice.expectedPayDate);
     let bucketId: ForecastBucketId;
     if (daysUntilPay < 0) bucketId = 'past-due';
@@ -264,7 +313,7 @@ export function computeInvoiceForecast(invoices: Invoice[], todayIso: string): F
     const bucket = bucketById.get(bucketId);
     if (bucket) {
       bucket.invoices.push(invoice);
-      (bucket as { totalCents: number }).totalCents += invoice.amountCents;
+      (bucket as { totalCents: number }).totalCents += outstandingCents;
     }
   }
 

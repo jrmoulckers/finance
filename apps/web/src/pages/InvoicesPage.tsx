@@ -11,6 +11,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { ConfirmDialog, CurrencyDisplay, EmptyState } from '../components/common';
+import { InvoicePaymentDialog } from '../components/invoices/InvoicePaymentDialog';
 import { useInvoices } from '../hooks/useInvoices';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import {
@@ -18,6 +19,8 @@ import {
   exportInvoicesCsv,
   FOLLOW_UP_STALE_DAYS,
   getInvoicesNeedingFollowUp,
+  invoiceIsFullyPaid,
+  invoiceOutstandingCents,
   PAYMENT_TERM_LABELS,
   PAYMENT_TERMS,
   INVOICE_STATUSES,
@@ -55,62 +58,94 @@ const InvoiceCard: React.FC<{
   isEditing: boolean;
   onEdit: (invoice: Invoice) => void;
   onStatusChange: (invoiceId: string, status: InvoiceStatus) => void;
+  onRecordPayment: (invoice: Invoice) => void;
   onDelete: (invoice: Invoice) => void;
-}> = ({ invoice, locale, isEditing, onEdit, onStatusChange, onDelete }) => (
-  <article
-    className={`invoice-card invoice-card--${invoice.status.toLowerCase()}${
-      isEditing ? ' invoice-card--editing' : ''
-    }`}
-    role="listitem"
-  >
-    <div className="invoice-card__main">
-      <div>
-        <h3 className="invoice-card__client">{invoice.clientName}</h3>
-        <p className="invoice-card__meta">
-          Issued {formatDate(invoice.issueDate, { locale })} ·{' '}
-          {PAYMENT_TERM_LABELS[invoice.paymentTerm]} · expected{' '}
-          {formatDate(invoice.expectedPayDate, { locale })}
+}> = ({ invoice, locale, isEditing, onEdit, onStatusChange, onRecordPayment, onDelete }) => {
+  const paidCents = invoice.amountPaidCents ?? 0;
+  const outstandingCents = invoiceOutstandingCents(invoice);
+  const fullyPaid = invoiceIsFullyPaid(invoice);
+  const canRecordPayment = invoice.status !== 'Draft' && !fullyPaid;
+
+  return (
+    <article
+      className={`invoice-card invoice-card--${invoice.status.toLowerCase()}${
+        isEditing ? ' invoice-card--editing' : ''
+      }`}
+      role="listitem"
+    >
+      <div className="invoice-card__main">
+        <div>
+          <h3 className="invoice-card__client">{invoice.clientName}</h3>
+          <p className="invoice-card__meta">
+            Issued {formatDate(invoice.issueDate, { locale })} ·{' '}
+            {PAYMENT_TERM_LABELS[invoice.paymentTerm]} · expected{' '}
+            {formatDate(invoice.expectedPayDate, { locale })}
+          </p>
+        </div>
+        <div className="invoice-card__amount">
+          <CurrencyDisplay amount={invoice.amountCents} />
+          <StatusBadge status={invoice.status} />
+        </div>
+      </div>
+      {paidCents > 0 && (
+        <p className="invoice-card__payment">
+          Paid <CurrencyDisplay amount={paidCents} /> of{' '}
+          <CurrencyDisplay amount={invoice.amountCents} /> ·{' '}
+          {fullyPaid ? (
+            'paid in full'
+          ) : (
+            <>
+              <CurrencyDisplay amount={outstandingCents} /> outstanding
+            </>
+          )}
+          {invoice.paidDate ? ` · last payment ${formatDate(invoice.paidDate, { locale })}` : ''}
         </p>
-      </div>
-      <div className="invoice-card__amount">
-        <CurrencyDisplay amount={invoice.amountCents} />
-        <StatusBadge status={invoice.status} />
-      </div>
-    </div>
-    <div className="invoice-card__actions">
-      <label className="invoice-card__status-label">
-        Status
-        <select
-          aria-label={`Status for ${invoice.clientName}`}
-          value={invoice.status}
-          onChange={(event) => onStatusChange(invoice.id, event.target.value as InvoiceStatus)}
+      )}
+      <div className="invoice-card__actions">
+        <label className="invoice-card__status-label">
+          Status
+          <select
+            aria-label={`Status for ${invoice.clientName}`}
+            value={invoice.status}
+            onChange={(event) => onStatusChange(invoice.id, event.target.value as InvoiceStatus)}
+          >
+            {INVOICE_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </label>
+        {canRecordPayment && (
+          <button
+            className="analytics-export-btn"
+            type="button"
+            aria-label={`Record payment for ${invoice.clientName}`}
+            onClick={() => onRecordPayment(invoice)}
+          >
+            Record payment
+          </button>
+        )}
+        <button
+          className="analytics-export-btn"
+          type="button"
+          aria-label={`Edit invoice for ${invoice.clientName}`}
+          onClick={() => onEdit(invoice)}
         >
-          {INVOICE_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button
-        className="analytics-export-btn"
-        type="button"
-        aria-label={`Edit invoice for ${invoice.clientName}`}
-        onClick={() => onEdit(invoice)}
-      >
-        Edit
-      </button>
-      <button
-        className="analytics-export-btn"
-        type="button"
-        aria-label={`Delete invoice for ${invoice.clientName}`}
-        onClick={() => onDelete(invoice)}
-      >
-        Delete
-      </button>
-    </div>
-  </article>
-);
+          Edit
+        </button>
+        <button
+          className="analytics-export-btn"
+          type="button"
+          aria-label={`Delete invoice for ${invoice.clientName}`}
+          onClick={() => onDelete(invoice)}
+        >
+          Delete
+        </button>
+      </div>
+    </article>
+  );
+};
 
 export const InvoicesPage: React.FC = () => {
   const {
@@ -122,6 +157,7 @@ export const InvoicesPage: React.FC = () => {
     updateInvoice,
     updateInvoiceStatus,
     logInvoiceContact,
+    recordPayment,
     deleteInvoice,
   } = useInvoices();
   const { locale } = useLocalePreferences();
@@ -133,6 +169,7 @@ export const InvoicesPage: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
 
   const resetForm = useCallback(() => {
     setEditingInvoiceId(null);
@@ -160,6 +197,16 @@ export const InvoicesPage: React.FC = () => {
       setDeletingInvoice(null);
     }
   };
+
+  const handleRecordPayment = useCallback(
+    (paymentCents: number, paidDate: string) => {
+      if (payingInvoice) {
+        recordPayment(payingInvoice.id, paymentCents, paidDate);
+        setPayingInvoice(null);
+      }
+    },
+    [payingInvoice, recordPayment],
+  );
 
   const expectedPayDate = useMemo(
     () => (issueDate ? computeExpectedPayDate(issueDate, paymentTerm) : todayIsoDate()),
@@ -457,6 +504,7 @@ export const InvoicesPage: React.FC = () => {
                         isEditing={invoice.id === editingInvoiceId}
                         onEdit={handleEdit}
                         onStatusChange={updateInvoiceStatus}
+                        onRecordPayment={setPayingInvoice}
                         onDelete={setDeletingInvoice}
                       />
                     ))}
@@ -479,6 +527,13 @@ export const InvoicesPage: React.FC = () => {
         confirmLabel="Delete invoice"
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeletingInvoice(null)}
+      />
+
+      <InvoicePaymentDialog
+        isOpen={payingInvoice !== null}
+        invoice={payingInvoice}
+        onSubmit={handleRecordPayment}
+        onCancel={() => setPayingInvoice(null)}
       />
     </div>
   );

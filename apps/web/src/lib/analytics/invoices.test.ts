@@ -17,8 +17,11 @@ import {
   getInvoicesNeedingFollowUp,
   groupInvoicesByStatus,
   INVOICE_CSV_HEADER,
+  invoiceIsFullyPaid,
   invoiceNeedsFollowUp,
+  invoiceOutstandingCents,
   recordInvoiceContact,
+  recordInvoicePayment,
   type Invoice,
 } from './invoices';
 
@@ -34,6 +37,8 @@ function makeInvoice(overrides: Partial<Invoice>): Invoice {
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     lastContactedDate: overrides.lastContactedDate,
+    amountPaidCents: overrides.amountPaidCents,
+    paidDate: overrides.paidDate,
   };
 }
 
@@ -315,5 +320,91 @@ describe('recordInvoiceContact', () => {
     expect(updated.updatedAt).toBe('2024-02-15T09:30:00Z');
     expect(updated.id).toBe('inv-9');
     expect(invoice.lastContactedDate).toBeUndefined();
+  });
+});
+
+describe('invoiceOutstandingCents', () => {
+  it('returns the full amount when nothing is paid', () => {
+    expect(invoiceOutstandingCents(makeInvoice({ amountCents: 400000 }))).toBe(400000);
+  });
+
+  it('subtracts partial payments', () => {
+    expect(
+      invoiceOutstandingCents(makeInvoice({ amountCents: 400000, amountPaidCents: 150000 })),
+    ).toBe(250000);
+  });
+
+  it('never returns a negative outstanding balance', () => {
+    expect(
+      invoiceOutstandingCents(makeInvoice({ amountCents: 400000, amountPaidCents: 500000 })),
+    ).toBe(0);
+  });
+});
+
+describe('invoiceIsFullyPaid', () => {
+  it('is false when a balance remains', () => {
+    expect(invoiceIsFullyPaid(makeInvoice({ amountCents: 400000, amountPaidCents: 150000 }))).toBe(
+      false,
+    );
+  });
+
+  it('is true when payments cover the full amount', () => {
+    expect(invoiceIsFullyPaid(makeInvoice({ amountCents: 400000, amountPaidCents: 400000 }))).toBe(
+      true,
+    );
+  });
+});
+
+describe('recordInvoicePayment', () => {
+  it('accumulates partial payments without mutating the original', () => {
+    const invoice = makeInvoice({ amountCents: 400000, status: 'Sent' });
+    const first = recordInvoicePayment(invoice, 150000, '2024-02-10', '2024-02-10T10:00:00Z');
+    expect(first.amountPaidCents).toBe(150000);
+    expect(first.paidDate).toBe('2024-02-10');
+    expect(first.status).toBe('Sent');
+    expect(invoice.amountPaidCents).toBeUndefined();
+
+    const second = recordInvoicePayment(first, 250000, '2024-02-20', '2024-02-20T10:00:00Z');
+    expect(second.amountPaidCents).toBe(400000);
+    expect(second.paidDate).toBe('2024-02-20');
+    expect(second.status).toBe('Paid');
+  });
+
+  it('clamps overpayment to the invoice amount and ignores negative payments', () => {
+    const invoice = makeInvoice({ amountCents: 400000, status: 'Sent' });
+    const over = recordInvoicePayment(invoice, 999999, '2024-02-10', '2024-02-10T10:00:00Z');
+    expect(over.amountPaidCents).toBe(400000);
+    expect(over.status).toBe('Paid');
+
+    const negative = recordInvoicePayment(invoice, -5000, '2024-02-10', '2024-02-10T10:00:00Z');
+    expect(negative.amountPaidCents).toBe(0);
+    expect(negative.status).toBe('Sent');
+  });
+});
+
+describe('computeInvoiceForecast with partial payments', () => {
+  it('buckets only the outstanding balance and drops fully-paid invoices', () => {
+    const partiallyPaid = makeInvoice({
+      id: 'p',
+      amountCents: 400000,
+      amountPaidCents: 150000,
+      status: 'Sent',
+      expectedPayDate: '2024-02-10',
+    });
+    const fullyPaidSent = makeInvoice({
+      id: 'f',
+      amountCents: 200000,
+      amountPaidCents: 200000,
+      status: 'Sent',
+      expectedPayDate: '2024-02-10',
+    });
+
+    const forecast = computeInvoiceForecast([partiallyPaid, fullyPaidSent], '2024-02-01');
+    const total = forecast.reduce((sum, bucket) => sum + bucket.totalCents, 0);
+
+    expect(total).toBe(250000);
+    const bucket = forecast.find((b) => b.invoices.some((invoice) => invoice.id === 'p'));
+    expect(bucket?.totalCents).toBe(250000);
+    expect(forecast.every((b) => b.invoices.every((invoice) => invoice.id !== 'f'))).toBe(true);
   });
 });

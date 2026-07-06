@@ -688,6 +688,12 @@
   font-size: var(--type-scale-caption-font-size);
 }
 
+.invoice-card__payment {
+  margin: var(--spacing-2) 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
 .invoice-card__amount {
   display: flex;
   flex-direction: column;

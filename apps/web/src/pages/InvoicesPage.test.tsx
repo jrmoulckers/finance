@@ -60,6 +60,7 @@ beforeEach(() => {
     updateInvoice: vi.fn(),
     updateInvoiceStatus: vi.fn(),
     logInvoiceContact: vi.fn(),
+    recordPayment: vi.fn(),
     deleteInvoice: vi.fn(),
     refresh: vi.fn(),
   });
@@ -91,6 +92,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice,
       refresh: vi.fn(),
     });
@@ -102,6 +104,79 @@ describe('InvoicesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete invoice' }));
     expect(deleteInvoice).toHaveBeenCalledWith('inv-1');
+  });
+
+  it('records a payment through the payment dialog', () => {
+    const recordPayment = vi.fn();
+    mockedUseInvoices.mockReturnValue({
+      invoices: [SAMPLE_INVOICE],
+      pipelineGroups: [
+        { status: 'Sent', label: 'Sent', invoices: [SAMPLE_INVOICE], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 120_000,
+      addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
+      recordPayment,
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Record payment for Etsy Wholesale' }));
+    expect(
+      screen.getByRole('dialog', { name: 'Record payment for Etsy Wholesale' }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Payment amount'), { target: { value: '500.00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Record payment' }));
+
+    expect(recordPayment).toHaveBeenCalledWith(
+      'inv-1',
+      50_000,
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
+  });
+
+  it('summarizes progress on a partially paid invoice and hides payment on drafts', () => {
+    const partiallyPaid: Invoice = {
+      ...SAMPLE_INVOICE,
+      id: 'inv-paid',
+      amountPaidCents: 40_000,
+      paidDate: '2026-06-15',
+    };
+    const draft: Invoice = { ...SAMPLE_INVOICE, id: 'inv-draft', status: 'Draft' };
+    mockedUseInvoices.mockReturnValue({
+      invoices: [partiallyPaid, draft],
+      pipelineGroups: [
+        {
+          status: 'Sent',
+          label: 'Sent',
+          invoices: [partiallyPaid],
+          totalCents: 120_000,
+        },
+        { status: 'Draft', label: 'Draft', invoices: [draft], totalCents: 120_000 },
+      ],
+      forecastBuckets: [],
+      totalOutstandingCents: 80_000,
+      addInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+      updateInvoiceStatus: vi.fn(),
+      logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
+      deleteInvoice: vi.fn(),
+      refresh: vi.fn(),
+    });
+    render(<InvoicesPage />);
+
+    const paymentLine = screen.getByText(
+      (_, element) => element?.classList.contains('invoice-card__payment') ?? false,
+    );
+    expect(paymentLine).toHaveTextContent('outstanding');
+    // Draft invoices cannot receive payments, so only the Sent invoice offers the control.
+    expect(screen.getAllByRole('button', { name: /^Record payment for/ })).toHaveLength(1);
   });
 
   it('pluralizes the invoice count per pipeline group', () => {
@@ -118,6 +193,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -140,6 +216,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -162,6 +239,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -191,6 +269,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -214,6 +293,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -238,6 +318,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -275,6 +356,7 @@ describe('InvoicesPage', () => {
       updateInvoice,
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -309,6 +391,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -344,6 +427,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact,
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
@@ -378,6 +462,7 @@ describe('InvoicesPage', () => {
       updateInvoice: vi.fn(),
       updateInvoiceStatus: vi.fn(),
       logInvoiceContact: vi.fn(),
+      recordPayment: vi.fn(),
       deleteInvoice: vi.fn(),
       refresh: vi.fn(),
     });
