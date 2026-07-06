@@ -107,12 +107,12 @@ function classifySavingsRate(
     return { tone: 'caution', statusLabel: 'Spending more than you earn this period' };
   }
   if (savingsRatePercent < 10) {
-    return { tone: 'neutral', statusLabel: 'Saving a little — aim for 20%' };
+    return { tone: 'neutral', statusLabel: 'Saving a little, aim for 20%' };
   }
   if (savingsRatePercent < 20) {
     return { tone: 'positive', statusLabel: 'Solid progress toward a 20% goal' };
   }
-  return { tone: 'positive', statusLabel: 'Strong — at or above the 20% target' };
+  return { tone: 'positive', statusLabel: 'Strong, at or above the 20% target' };
 }
 
 /**

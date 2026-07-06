@@ -61,7 +61,7 @@ export function StreakBadge({
     <span
       className={`streak-badge streak-badge--${resolvedTier} ${staticClass} ${shimmerClass} ${className}`.trim()}
       role="img"
-      aria-label={`${count} day streak — ${resolvedTier} tier`}
+      aria-label={`${count} day streak, ${resolvedTier} tier`}
       data-testid="streak-badge"
     >
       <span

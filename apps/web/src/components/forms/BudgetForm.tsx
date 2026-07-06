@@ -638,8 +638,9 @@ export function BudgetForm({
                   )}
                   {overAssignmentWarning && !hasAmountError && (
                     <p className="form-group__help" role="status">
-                      This would assign {formatCents(overAssignmentWarning.proposedTotalCents)} —{' '}
-                      {formatCents(overAssignmentWarning.overByCents)} over expected income.
+                      This would assign {formatCents(overAssignmentWarning.proposedTotalCents)},
+                      which is {formatCents(overAssignmentWarning.overByCents)} over expected
+                      income.
                     </p>
                   )}
                 </div>

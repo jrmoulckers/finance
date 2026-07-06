@@ -22,7 +22,7 @@ export const SETTING_DESCRIPTIONS: Record<string, SettingDescription> = {
   currency: {
     summary: 'Sets the default display currency for all accounts and transactions.',
     impact:
-      'Changing this does not convert existing transaction amounts — it only affects how new transactions are displayed by default.',
+      'Changing this does not convert existing transaction amounts. It only affects how new transactions are displayed by default.',
     recommendation: 'Choose the currency you use most frequently for daily spending.',
   },
   theme: {
@@ -55,7 +55,7 @@ export const SETTING_DESCRIPTIONS: Record<string, SettingDescription> = {
   monitoring: {
     summary: 'Sends anonymous error reports to help improve app stability.',
     impact:
-      'Only crash data and performance metrics are collected — never financial data, account names, or transaction details.',
+      'Only crash data and performance metrics are collected, never financial data, account names, or transaction details.',
     recommendation:
       'Enable to help the development team fix bugs faster. Disable if you prefer maximum privacy.',
   },

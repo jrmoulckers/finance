@@ -1160,8 +1160,8 @@ export function HouseholdPage() {
           Money check-in
         </h2>
         <p className="household-card__description">
-          A supportive, opt-in space to talk money together. You will see neutral summaries first —
-          category totals, budget drift, and shared-spending changes — before any line items, and
+          A supportive, opt-in space to talk money together. You will see neutral summaries first
+          (category totals, budget drift, and shared-spending changes) before any line items, and
           you each choose what to share. No surveillance, no scorekeeping.
         </p>
         <button
@@ -2735,8 +2735,8 @@ export function HouseholdPage() {
           Invite Member
         </h2>
         <p className="household-card__description">
-          Send an invitation to join your household. New members start with privacy-by-default —
-          nothing is shared until they explicitly choose to share accounts.
+          Send an invitation to join your household. New members start with privacy-by-default.
+          Nothing is shared until they explicitly choose to share accounts.
         </p>
 
         {inviteSuccess && (
@@ -2783,7 +2783,7 @@ export function HouseholdPage() {
             >
               {ROLE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label} — {opt.description}
+                  {opt.label}: {opt.description}
                 </option>
               ))}
             </select>
@@ -3389,7 +3389,7 @@ function buildHouseholdScorecard({
         topOverspendingCategory,
         motivation:
           statusTone === 'positive'
-            ? `You're ${dayOfMonth} days in and only ${formatPercent(spendPace)} spent — great pace!`
+            ? `You're ${dayOfMonth} days in and only ${formatPercent(spendPace)} spent. Great pace!`
             : topOverspendingCategory
               ? `Heads up: you're ahead of pace in ${topOverspendingCategory.name}.`
               : "Heads up: you're spending faster than the month is moving.",

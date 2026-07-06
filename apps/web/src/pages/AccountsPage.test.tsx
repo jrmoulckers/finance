@@ -7,6 +7,7 @@ import { PrivacyModeProvider } from '../contexts/PrivacyModeContext';
 import { useAccounts } from '../hooks';
 import { evaluatePrivacyScreenCoverage } from '../lib/security/privacy-screen';
 import { auditPrivacySurfaceCoverage, privacySurface } from '../lib/security/privacy-coverage';
+import type { Account } from '../kmp/bridge';
 import { AccountsPage } from './AccountsPage';
 
 vi.mock('../hooks', () => ({
@@ -45,6 +46,32 @@ const syncMetadata = {
   syncVersion: 1,
   isSynced: true,
 };
+
+/** Builds a minimal Account for net-worth rendering assertions. */
+function makeMockAccount(overrides: {
+  id: string;
+  name: string;
+  type: Account['type'];
+  balance: number;
+  purpose?: Account['purpose'];
+  currency?: Account['currency'];
+  isArchived?: boolean;
+}): Account {
+  return {
+    id: overrides.id,
+    householdId: 'household-1',
+    name: overrides.name,
+    type: overrides.type,
+    currency: overrides.currency ?? { code: 'USD', decimalPlaces: 2 },
+    currentBalance: { amount: overrides.balance },
+    purpose: overrides.purpose ?? 'personal',
+    isArchived: overrides.isArchived ?? false,
+    sortOrder: 0,
+    icon: null,
+    color: null,
+    ...syncMetadata,
+  } as Account;
+}
 
 describe('AccountsPage', () => {
   beforeEach(() => {
@@ -157,6 +184,105 @@ describe('AccountsPage', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText(/net worth/i)).toBeInTheDocument();
+  });
+
+  it('computes net worth as assets minus liabilities within one workspace (issue #3202)', () => {
+    // Live /accounts data from the bug report: three assets + one positive
+    // credit-card balance, all in the same workspace. The top-level "Net worth"
+    // total and the single workspace subtotal must both equal assets - liability.
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        makeMockAccount({ id: 'a-checking', name: 'Checking', type: 'CHECKING', balance: 956405 }),
+        makeMockAccount({ id: 'a-savings', name: 'Savings', type: 'SAVINGS', balance: 1200000 }),
+        makeMockAccount({ id: 'a-cash', name: 'Cash', type: 'CASH', balance: 7375 }),
+        makeMockAccount({
+          id: 'a-card',
+          name: 'Credit Card',
+          type: 'CREDIT_CARD',
+          balance: 67299,
+        }),
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+
+    render(
+      <PrivacyModeProvider initialValue={false}>
+        <MemoryRouter>
+          <AccountsPage />
+        </MemoryRouter>
+      </PrivacyModeProvider>,
+    );
+
+    // 9,564.05 + 12,000.00 + 73.75 - 672.99 = $20,964.81 (matches /net-worth).
+    // Appears for the top-level total and the single workspace subtotal.
+    expect(screen.getAllByText('$20,964.81').length).toBeGreaterThanOrEqual(2);
+    // The old sign-blind sum ($22,310.79 = assets + liability) must never appear.
+    expect(screen.queryByText('$22,310.79')).not.toBeInTheDocument();
+  });
+
+  it('nets liabilities across workspaces while keeping per-workspace subtotals correct', () => {
+    // Assets in Personal, the credit card in Business — verifies the top-level
+    // aggregate nets across workspaces and each subtotal is liability-aware.
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        makeMockAccount({
+          id: 'a-checking',
+          name: 'Checking',
+          type: 'CHECKING',
+          balance: 956405,
+          purpose: 'personal',
+        }),
+        makeMockAccount({
+          id: 'a-savings',
+          name: 'Savings',
+          type: 'SAVINGS',
+          balance: 1200000,
+          purpose: 'personal',
+        }),
+        makeMockAccount({
+          id: 'a-cash',
+          name: 'Cash',
+          type: 'CASH',
+          balance: 7375,
+          purpose: 'personal',
+        }),
+        makeMockAccount({
+          id: 'a-card',
+          name: 'Credit Card',
+          type: 'CREDIT_CARD',
+          balance: 67299,
+          purpose: 'business',
+        }),
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+
+    render(
+      <PrivacyModeProvider initialValue={false}>
+        <MemoryRouter>
+          <AccountsPage />
+        </MemoryRouter>
+      </PrivacyModeProvider>,
+    );
+
+    // Top-level net worth still nets to $20,964.81.
+    expect(screen.getByText('$20,964.81')).toBeInTheDocument();
+    // Personal subtotal = 9,564.05 + 12,000.00 + 73.75 = $21,637.80 (assets only).
+    expect(screen.getByText('$21,637.80')).toBeInTheDocument();
+    // Business subtotal is the lone credit card, shown as a negative contribution.
+    expect(screen.getByText('-$672.99')).toBeInTheDocument();
+    // The inflated figure must never appear anywhere on the page.
+    expect(screen.queryByText('$22,310.79')).not.toBeInTheDocument();
   });
 
   it('shows multi-currency indicator when accounts have different currencies', async () => {

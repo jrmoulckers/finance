@@ -181,7 +181,7 @@ function draftFromEvent(event: CelebrationEvent): CelebrationDraft {
         type: 'badge-unlock',
         title: 'Badge unlocked! 🏅',
         message: description
-          ? `I just earned the "${event.badgeName}" badge — ${description}!`
+          ? `I just earned the "${event.badgeName}" badge. ${description}!`
           : `I just earned the "${event.badgeName}" badge!`,
         percentComplete: null,
         payload: {

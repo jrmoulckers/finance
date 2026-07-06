@@ -243,22 +243,110 @@ export function buildAuthorizeUrl(
 }
 
 /**
+ * Shape of the public GoTrue settings document served at
+ * `{SUPABASE_URL}/auth/v1/settings`. The `external` map exposes a per-provider
+ * boolean indicating whether that social provider is enabled on the backend.
+ */
+export interface GoTrueSettings {
+  external?: Record<string, boolean>;
+}
+
+/**
+ * Classified result of checking whether a provider is enabled on the backend:
+ *
+ * - `enabled`  — GoTrue reports the provider's `external` flag as `true`.
+ * - `disabled` — settings were read and the provider is absent/`false`.
+ * - `unknown`  — settings could not be read (network error or non-2xx); callers
+ *   should degrade as "backend temporarily unavailable" rather than guess.
+ */
+export type ProviderEnabledResult = 'enabled' | 'disabled' | 'unknown';
+
+/**
+ * Query GoTrue's public settings document to determine whether `provider` is
+ * actually enabled on the backend.
+ *
+ * A provider can be statically supported (google/github/apple) yet not enabled
+ * in GoTrue. Without this check, `auth-oauth-start` would 302 the browser to
+ * `/authorize` and the user would land on a raw
+ * `validation_failed: provider is not enabled` JSON page (#3188). Reading
+ * `/auth/v1/settings` auto-tracks whatever gets enabled later with no manual env
+ * sync. On any read failure we return `unknown` so the caller can surface a
+ * graceful in-app message instead of hard-redirecting onto a raw page.
+ */
+export async function fetchProviderEnabled(provider: AuthProvider): Promise<ProviderEnabledResult> {
+  const url = `${authUrl()}/settings`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { apikey: requireEnv('SUPABASE_ANON_KEY') },
+    });
+  } catch {
+    return 'unknown';
+  }
+
+  if (!response.ok) return 'unknown';
+
+  let settings: GoTrueSettings;
+  try {
+    settings = (await response.json()) as GoTrueSettings;
+  } catch {
+    return 'unknown';
+  }
+
+  return settings.external?.[provider] === true ? 'enabled' : 'disabled';
+}
+
+/** Outcome of a password-recovery request to Supabase Auth (GoTrue). */
+export interface PasswordRecoveryResult {
+  /**
+   * Upstream GoTrue HTTP status, or `0` when the request never completed
+   * (network error / timeout before any response was received).
+   */
+  status: number;
+  /**
+   * Stable GoTrue error code on a non-2xx response (e.g.
+   * `over_email_send_rate_limit`, `validation_failed`, `unexpected_failure`).
+   * Machine-readable only — it NEVER contains user data such as the email
+   * address, so it is safe to log for operational diagnosis.
+   */
+  errorCode?: string;
+}
+
+/**
  * Ask Supabase Auth to send a password recovery email.
  *
- * Returns the upstream status code so callers can keep account-existence
- * responses generic while still surfacing service outages.
+ * Returns the upstream status plus a machine-readable error code (never the
+ * email or any user data) so callers can keep account-existence responses
+ * generic while still logging WHY a send failed — distinguishing an SMTP
+ * outage (5xx) from a rate limit (429) from a rejected redirect (400/422).
+ * A `status` of `0` means the request never reached GoTrue.
  */
-export async function requestPasswordRecovery(email: string, redirectTo: string): Promise<number> {
+export async function requestPasswordRecovery(
+  email: string,
+  redirectTo: string,
+): Promise<PasswordRecoveryResult> {
   const url = `${authUrl()}/recover?${new URLSearchParams({ redirect_to: redirectTo }).toString()}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: requireEnv('SUPABASE_ANON_KEY'),
-    },
-    body: JSON.stringify({ email }),
-  });
-  return response.status;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: requireEnv('SUPABASE_ANON_KEY'),
+      },
+      body: JSON.stringify({ email }),
+    });
+  } catch {
+    return { status: 0 };
+  }
+
+  if (response.ok) {
+    return { status: response.status };
+  }
+
+  const authError = await readSupabaseAuthError(response);
+  return { status: response.status, errorCode: authError.code ?? authError.error };
 }
 
 /** Update a user's password using the recovery access token from Supabase. */

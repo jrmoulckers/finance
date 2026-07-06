@@ -109,7 +109,7 @@ export const ConvertedTotalIndicator: React.FC<ConvertedTotalIndicatorProps> = (
 
   const unconvertedText =
     unconvertedCurrencies && unconvertedCurrencies.length > 0
-      ? `${unconvertedCurrencies.join(', ')} not converted — no rate available`
+      ? `${unconvertedCurrencies.join(', ')} not converted (no rate available)`
       : null;
 
   const label = [`${convertedText}.`, staleText ? `${staleText}.` : null, unconvertedText]

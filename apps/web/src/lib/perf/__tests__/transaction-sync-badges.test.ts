@@ -12,7 +12,7 @@ describe('transaction sync badges', () => {
     });
 
     expect(badge.label).toBe('Queued #2');
-    expect(badge.description).toBe('Saved on this device — will sync when online.');
+    expect(badge.description).toBe('Saved on this device. Will sync when online.');
     expect(badge.ariaLabel).toContain('Saved on this device');
     expect(badge.action).toBeNull();
   });

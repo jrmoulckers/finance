@@ -34,6 +34,7 @@ import {
   useWidgetLayout,
 } from '../hooks';
 import { DashboardPage } from '../pages/DashboardPage';
+import type { Transaction } from '../kmp/bridge';
 import { SpendingBarChart, type SpendingCategory } from '../components/charts/SpendingBarChart';
 import {
   TrendLineChart,
@@ -175,6 +176,7 @@ function setupDefaultMocks() {
     stopCustomizing: vi.fn(),
     toggleWidget: vi.fn(),
     moveWidget: vi.fn(),
+    reorderWidget: vi.fn(),
     resizeWidget: vi.fn(),
     resetLayout: vi.fn(),
   });
@@ -190,6 +192,69 @@ function setupDefaultMocks() {
     conflictCount: 0,
   });
 
+  const recentTransactions: Transaction[] = [
+    {
+      id: 'txn-1',
+      householdId: 'hh-1',
+      accountId: 'acct-1',
+      categoryId: 'cat-food',
+      type: 'EXPENSE',
+      status: 'CLEARED',
+      amount: { amount: 6742 },
+      currency: { code: 'USD', decimalPlaces: 2 },
+      payee: 'Grocery Store',
+      note: null,
+      date: '2025-03-06',
+      transferAccountId: null,
+      transferTransactionId: null,
+      isRecurring: false,
+      recurringRuleId: null,
+      tags: [],
+      merchantAddress: null,
+      merchantCity: null,
+      merchantState: null,
+      merchantZip: null,
+      merchantCountry: null,
+      externalReferenceId: null,
+      statementDescription: null,
+      customFields: null,
+      extraNotes: null,
+      counterpartyName: null,
+      counterpartyAccountId: null,
+      ...syncMetadata,
+    },
+    {
+      id: 'txn-2',
+      householdId: 'hh-1',
+      accountId: 'acct-1',
+      categoryId: 'cat-income',
+      type: 'INCOME',
+      status: 'CLEARED',
+      amount: { amount: 450000 },
+      currency: { code: 'USD', decimalPlaces: 2 },
+      payee: 'Monthly Salary',
+      note: null,
+      date: '2025-03-06',
+      transferAccountId: null,
+      transferTransactionId: null,
+      isRecurring: false,
+      recurringRuleId: null,
+      tags: [],
+      merchantAddress: null,
+      merchantCity: null,
+      merchantState: null,
+      merchantZip: null,
+      merchantCountry: null,
+      externalReferenceId: null,
+      statementDescription: null,
+      customFields: null,
+      extraNotes: null,
+      counterpartyName: null,
+      counterpartyAccountId: null,
+      ...syncMetadata,
+    },
+  ];
+
   mockedUseDashboardData.mockReturnValue({
     data: {
       netWorth: 2475000,
@@ -197,68 +262,7 @@ function setupDefaultMocks() {
       incomeThisMonth: 450000,
       monthlyBudget: 350000,
       budgetSpent: 234050,
-      recentTransactions: [
-        {
-          id: 'txn-1',
-          householdId: 'hh-1',
-          accountId: 'acct-1',
-          categoryId: 'cat-food',
-          type: 'EXPENSE',
-          status: 'CLEARED',
-          amount: { amount: 6742 },
-          currency: { code: 'USD', decimalPlaces: 2 },
-          payee: 'Grocery Store',
-          note: null,
-          date: '2025-03-06',
-          transferAccountId: null,
-          transferTransactionId: null,
-          isRecurring: false,
-          recurringRuleId: null,
-          tags: [],
-          merchantAddress: null,
-          merchantCity: null,
-          merchantState: null,
-          merchantZip: null,
-          merchantCountry: null,
-          externalReferenceId: null,
-          statementDescription: null,
-          customFields: null,
-          extraNotes: null,
-          counterpartyName: null,
-          counterpartyAccountId: null,
-          ...syncMetadata,
-        },
-        {
-          id: 'txn-2',
-          householdId: 'hh-1',
-          accountId: 'acct-1',
-          categoryId: 'cat-income',
-          type: 'INCOME',
-          status: 'CLEARED',
-          amount: { amount: 450000 },
-          currency: { code: 'USD', decimalPlaces: 2 },
-          payee: 'Monthly Salary',
-          note: null,
-          date: '2025-03-06',
-          transferAccountId: null,
-          transferTransactionId: null,
-          isRecurring: false,
-          recurringRuleId: null,
-          tags: [],
-          merchantAddress: null,
-          merchantCity: null,
-          merchantState: null,
-          merchantZip: null,
-          merchantCountry: null,
-          externalReferenceId: null,
-          statementDescription: null,
-          customFields: null,
-          extraNotes: null,
-          counterpartyName: null,
-          counterpartyAccountId: null,
-          ...syncMetadata,
-        },
-      ],
+      recentTransactions,
       accountSummary: [
         { type: 'CHECKING', total: 1200000 },
         { type: 'SAVINGS', total: 1275000 },
@@ -456,15 +460,15 @@ function setupDefaultMocks() {
     refresh: vi.fn(),
   });
 
-  mockedUseTransactions.mockReturnValue({
-    transactions: [],
+  mockedUseTransactions.mockImplementation((filters) => ({
+    transactions: filters && 'startDate' in filters ? [] : recentTransactions,
     loading: false,
     error: null,
     refresh: vi.fn(),
     createTransaction: vi.fn(),
     updateTransaction: vi.fn(),
     deleteTransaction: vi.fn(),
-  });
+  }));
   mockedUseBills.mockReturnValue({
     bills: [],
     loading: false,
@@ -528,7 +532,11 @@ describe('DashboardPage rendering with data (#1334)', () => {
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
     expect(screen.getByText('Budget Health')).toBeInTheDocument();
-    expect(await screen.findByText('What needs attention now')).toBeInTheDocument();
+    // The financial coach is a lazily-loaded section; give the dynamic import
+    // headroom to resolve under cold-transform CI conditions.
+    expect(
+      await screen.findByText('What needs attention now', undefined, { timeout: 5000 }),
+    ).toBeInTheDocument();
   });
 
   it('displays budget health percentage', () => {

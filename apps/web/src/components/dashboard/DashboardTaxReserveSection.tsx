@@ -151,7 +151,7 @@ const DashboardTaxReserveSection: FC<DashboardTaxReserveSectionProps> = ({
                 currency={taxReserveCurrency}
                 context="current month taxable income"
               />{' '}
-              this month — set aside{' '}
+              this month. Set aside{' '}
               <CurrencyDisplay
                 amount={taxReserve.summary.currentMonthRecommendedCents}
                 currency={taxReserveCurrency}

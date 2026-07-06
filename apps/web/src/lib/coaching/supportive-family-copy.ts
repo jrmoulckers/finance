@@ -51,10 +51,10 @@ export const SUPPORTIVE_FAMILY_COACHING_COPY: Readonly<
   'tight-month-reframe': {
     id: 'tight-month-reframe',
     tone: 'reassuring',
-    headline: 'This month was tight — and that is okay',
+    headline: 'This month was tight, and that is okay',
     body: 'Family costs rarely arrive on a tidy schedule. A tight month is just a tight month, not a verdict on you or how you parent.',
     smallWin:
-      'Pick one small win for next month — even setting aside a few dollars toward birthdays counts.',
+      'Pick one small win for next month. Even setting aside a few dollars toward birthdays counts.',
   },
   'celebrate-small-win': {
     id: 'celebrate-small-win',
@@ -67,14 +67,14 @@ export const SUPPORTIVE_FAMILY_COACHING_COPY: Readonly<
     id: 'family-ready',
     tone: 'supportive',
     headline: 'Your family categories are ready',
-    body: 'These envelopes flex with real life — school fees, childcare, sports, and the surprises in between. Every amount is yours to adjust.',
+    body: 'These envelopes flex with real life: school fees, childcare, sports, and the surprises in between. Every amount is yours to adjust.',
     smallWin: 'Start with the one category that feels most urgent this week.',
   },
   'steady-and-supported': {
     id: 'steady-and-supported',
     tone: 'supportive',
     headline: 'You are doing this, one month at a time',
-    body: 'Budgeting for a family is a lot to carry. You do not have to be perfect here — just present.',
+    body: 'Budgeting for a family is a lot to carry. You do not have to be perfect here, just present.',
     smallWin: 'Check in on a single category today; that is enough for now.',
   },
 });

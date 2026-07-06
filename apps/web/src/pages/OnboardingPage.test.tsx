@@ -8,7 +8,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { NavigateOptions, To } from 'react-router-dom';
 
@@ -209,10 +209,20 @@ const continuePastComfortStep = () => {
   fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
 };
 
-const continueToTemplateStep = () => {
+const goToNewcomerStep = () => {
   continuePastComfortStep();
   fireEvent.click(screen.getByRole('button', { name: /start local only/i }));
   fireEvent.click(screen.getByRole('button', { name: /essential only/i }));
+};
+
+const goToGoalsStep = () => {
+  goToNewcomerStep();
+  fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+};
+
+const goToTemplateStep = () => {
+  goToGoalsStep();
+  fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
 };
 
 describe('OnboardingPage', () => {
@@ -312,14 +322,38 @@ describe('OnboardingPage', () => {
     renderWithRouter(<OnboardingPage />);
 
     expect(screen.getByRole('status', { name: /onboarding progress/i })).toHaveTextContent(
-      'Step 1 of 5: Comfort preferences. Current step.',
+      'Step 1 of 7: Comfort preferences. Current step.',
     );
 
     fireEvent.click(screen.getByRole('button', { name: /continue/i }));
 
     expect(screen.getByRole('status', { name: /onboarding progress/i })).toHaveTextContent(
-      'Step 2 of 5: Choose setup path. Current step.',
+      'Step 2 of 7: Choose setup path. Current step.',
     );
+
+    fireEvent.click(screen.getByRole('button', { name: /start local only/i }));
+    fireEvent.click(screen.getByRole('button', { name: /essential only/i }));
+
+    expect(screen.getByRole('status', { name: /onboarding progress/i })).toHaveTextContent(
+      'Step 4 of 7: Personalize your setup. Current step.',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+
+    expect(screen.getByRole('status', { name: /onboarding progress/i })).toHaveTextContent(
+      'Step 5 of 7: Set a savings goal. Current step.',
+    );
+  });
+
+  it('shows a visible step-progress indicator on each wizard step', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    expect(screen.getByText('Step 1 of 7')).toBeInTheDocument();
+
+    goToNewcomerStep();
+
+    expect(screen.getByText('Step 4 of 7')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /personalize your setup/i })).toBeInTheDocument();
   });
 
   it('stores comfort preferences and lets the user skip ahead', () => {
@@ -365,17 +399,15 @@ describe('OnboardingPage', () => {
     expect(completeOnboarding).not.toHaveBeenCalled();
   });
 
-  it('starts at the education/template step for an authenticated (post-signup) visitor', () => {
+  it('starts at the deferred setup wizard for an authenticated (post-signup) visitor', () => {
     mockedUseAuth.mockReturnValue(authenticatedAuthReturn);
 
     renderWithRouter(<OnboardingPage />);
 
-    // Skips the pre-signup welcome (comfort/choose) and lands on the deferred
-    // education/template step.
-    expect(
-      screen.getByRole('heading', { name: /want a starter budget\? choose a template:/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /use student template/i })).toBeInTheDocument();
+    // Skips the pre-signup welcome (comfort/choose) and lands on the first deferred
+    // setup step (#3089, #3118).
+    expect(screen.getByRole('heading', { name: /personalize your setup/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^continue$/i })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /welcome to finance/i })).not.toBeInTheDocument();
   });
 
@@ -396,17 +428,20 @@ describe('OnboardingPage', () => {
     expect(screen.getByText('Cloud Sync')).toBeInTheDocument();
   });
 
-  it('shows the starter budget template step after privacy selection', () => {
+  it('shows the starter budget template step after the deferred setup wizard', () => {
     renderWithRouter(<OnboardingPage />);
 
     continuePastComfortStep();
     fireEvent.click(screen.getByRole('button', { name: /start local only/i }));
     fireEvent.click(screen.getByRole('button', { name: /essential only/i }));
+    // newcomer -> goals -> template
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
 
     expect(
       screen.getByRole('heading', { name: /want a starter budget\? choose a template:/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /use student template/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create my budget/i })).toBeInTheDocument();
     expect(screen.getByText(/adjust these based on your income/i)).toBeInTheDocument();
   });
 
@@ -424,7 +459,7 @@ describe('OnboardingPage', () => {
 
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToNewcomerStep();
     fireEvent.click(screen.getByLabelText(/freelancer/i));
     fireEvent.click(screen.getByLabelText(/caregiver/i));
 
@@ -440,13 +475,13 @@ describe('OnboardingPage', () => {
   it('shows glossary explainers from onboarding coach copy', () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToNewcomerStep();
     fireEvent.click(screen.getByRole('button', { name: /what is cash flow/i }));
 
     expect(screen.getByRole('dialog', { name: /cash flow/i })).toBeInTheDocument();
     expect(screen.getByText(/timing of money coming in and going out/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /close explainer/i }));
+    fireEvent.click(screen.getByRole('button', { name: /got it/i }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -454,26 +489,72 @@ describe('OnboardingPage', () => {
   it('completes financial-literacy lessons and reflects progress in the checklist', () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToNewcomerStep();
+    fireEvent.click(screen.getByRole('button', { name: /yes, show me lessons/i }));
     fireEvent.click(screen.getByRole('button', { name: /concert ticket/i }));
     fireEvent.click(screen.getByRole('button', { name: /keep a small buffer/i }));
     fireEvent.click(screen.getByRole('button', { name: /monthly phone bill/i }));
-    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
     expect(localStorage.getItem('finance-onboarding-completed-lessons')).toContain('needs-wants');
+
+    // Lessons live on the newcomer step now; advance through goals + template and
+    // skip the starter budget to reach the completion checklist (#3118).
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+
     expect(screen.getByText(/education lessons 3\/3 complete/i)).toBeInTheDocument();
+  });
+
+  it('keeps financial-literacy lessons opt-in and not required to proceed', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    goToNewcomerStep();
+
+    // Lessons are gated behind an explicit opt-in, so the answer choices are hidden.
+    expect(screen.getByRole('button', { name: /yes, show me lessons/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /concert ticket/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /yes, show me lessons/i }));
+
+    expect(screen.getByRole('button', { name: /concert ticket/i })).toBeInTheDocument();
+  });
+
+  it('resets the goal form and confirms the save', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    goToGoalsStep();
+    const goalNameInput = screen.getByLabelText(/goal name/i) as HTMLInputElement;
+    fireEvent.change(goalNameInput, { target: { value: 'Move fund' } });
+    fireEvent.click(screen.getByRole('button', { name: /preview goal/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save goal/i }));
+
+    // The form clears for the next goal and a confirmation is announced.
+    expect(goalNameInput.value).toBe('Emergency buffer');
+    expect(screen.getByText(/is in your plan/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /saved goals/i })).toBeInTheDocument();
+  });
+
+  it('dismisses an explainer dialog with the top-right close control', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    goToNewcomerStep();
+    fireEvent.click(screen.getByRole('button', { name: /what is cash flow/i }));
+
+    const dialog = screen.getByRole('dialog', { name: /cash flow/i });
+    fireEvent.click(within(dialog).getByRole('button', { name: /^close$/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('deep-links the checklist "Edit guidance" link to the life-stage section', async () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToTemplateStep();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     fireEvent.click(screen.getByRole('button', { name: /edit guidance/i }));
 
-    expect(
-      screen.getByRole('heading', { name: /want a starter budget\? choose a template:/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /personalize your setup/i })).toBeInTheDocument();
     await waitFor(() =>
       expect(document.getElementById('onboarding-life-stage-guidance')).toHaveFocus(),
     );
@@ -482,13 +563,11 @@ describe('OnboardingPage', () => {
   it('deep-links the checklist "Review lessons" link to the lessons section', async () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToTemplateStep();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     fireEvent.click(screen.getByRole('button', { name: /review lessons/i }));
 
-    expect(
-      screen.getByRole('heading', { name: /want a starter budget\? choose a template:/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /personalize your setup/i })).toBeInTheDocument();
     await waitFor(() =>
       expect(document.getElementById('onboarding-financial-lessons')).toHaveFocus(),
     );
@@ -497,7 +576,7 @@ describe('OnboardingPage', () => {
   it('previews and saves an onboarding goal before checklist completion', () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToGoalsStep();
     fireEvent.change(screen.getByLabelText(/goal name/i), { target: { value: 'Move fund' } });
     fireEvent.change(screen.getByLabelText(/target amount/i), { target: { value: '1200' } });
     fireEvent.change(screen.getByLabelText(/starting balance/i), { target: { value: '200' } });
@@ -507,6 +586,8 @@ describe('OnboardingPage', () => {
     expect(screen.getByText(/estimated monthly contribution: \$1000/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /save goal/i }));
+    // Advance goals -> template, then skip the starter budget to reach the checklist.
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
     expect(localStorage.getItem('finance-onboarding-goals')).toContain('Move fund');
@@ -516,7 +597,7 @@ describe('OnboardingPage', () => {
   it('lets users hide, restore, dismiss, and reopen post-onboarding setup help', () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToTemplateStep();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
     expect(screen.getByRole('region', { name: /setup progress/i })).toBeInTheDocument();
@@ -584,7 +665,10 @@ describe('OnboardingPage', () => {
     continuePastComfortStep();
     fireEvent.click(screen.getByRole('button', { name: /start local only/i }));
     fireEvent.click(screen.getByRole('button', { name: /essential only/i }));
-    fireEvent.click(screen.getByRole('button', { name: /use student template/i }));
+    // newcomer -> goals -> template, where the starter budget CTA lives (#3118)
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create my budget/i }));
 
     expect(rejectAll).toHaveBeenCalled();
     expect(enableLocalOnly).toHaveBeenCalled();
@@ -599,7 +683,7 @@ describe('OnboardingPage', () => {
   it('surfaces an optional, private newcomer tax-ID and income-type step', () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToNewcomerStep();
 
     expect(
       screen.getByRole('heading', { name: /new to working or taxes in the us\?/i }),
@@ -621,7 +705,7 @@ describe('OnboardingPage', () => {
   it('tailors explainers for ITIN holders and opens the ITIN explainer dialog', () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToNewcomerStep();
 
     fireEvent.click(screen.getByRole('radio', { name: /i use an itin/i }));
     fireEvent.click(screen.getByRole('radio', { name: /1099 or contract/i }));
@@ -637,7 +721,7 @@ describe('OnboardingPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /why it matters/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /close explainer/i }));
+    fireEvent.click(screen.getByRole('button', { name: /got it/i }));
 
     expect(
       screen.queryByRole('dialog', { name: /individual taxpayer identification number/i }),
@@ -647,7 +731,7 @@ describe('OnboardingPage', () => {
   it('surfaces the 401(k) explainer for W-2 workers with an SSN', () => {
     renderWithRouter(<OnboardingPage />);
 
-    continueToTemplateStep();
+    goToNewcomerStep();
 
     fireEvent.click(screen.getByRole('radio', { name: /i have an ssn/i }));
     fireEvent.click(screen.getByRole('radio', { name: /w-2 job/i }));

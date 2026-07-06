@@ -413,6 +413,38 @@ describe('signup & login surface a clear message when the backend is unreachable
       expect(screen.getByTestId('auth-error')).toHaveTextContent('Invalid login credentials'),
     );
   });
+
+  it('keeps a prior error visible while a retry request is in flight (#3192)', async () => {
+    // The login endpoint fails the first time (surfacing an error) and then
+    // hangs on the retry so we can observe state while the request is pending.
+    let loginAttempts = 0;
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/auth/login')) {
+        loginAttempts += 1;
+        if (loginAttempts === 1) {
+          return Promise.resolve(jsonResponse({ error: 'Invalid login credentials' }, 400));
+        }
+        // Second attempt never resolves: the request stays in flight.
+        return new Promise<Response>(() => {});
+      }
+      return Promise.resolve(jsonResponse({ error: 'no session' }, 401));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderReady();
+
+    // First attempt fails and the banner appears.
+    fireEvent.click(screen.getByTestId('do-login'));
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent('Invalid login credentials'),
+    );
+
+    // Retry: the request is in flight (loading) and the prior error is NOT
+    // eagerly cleared — it must stay put until the new result resolves (#3192).
+    fireEvent.click(screen.getByTestId('do-login'));
+    await waitFor(() => expect(screen.getByTestId('loading-state')).toHaveTextContent('loading'));
+    expect(screen.getByTestId('auth-error')).toHaveTextContent('Invalid login credentials');
+  });
 });
 
 describe('isOAuthStartHealthy', () => {
@@ -558,5 +590,25 @@ describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
       ),
     );
     expect(assignMock).not.toHaveBeenCalled();
+  });
+
+  it('degrades gracefully in-app when a supported-but-disabled provider is rejected (#3188)', async () => {
+    // A statically-supported provider that GoTrue has NOT enabled now answers
+    // the pre-flight probe with a 400 (auth-oauth-start gates on the provider
+    // actually being enabled). The probe is non-healthy, so we keep the user
+    // in-app with the graceful "option unavailable" message and never hand off
+    // to a raw GoTrue "provider is not enabled" page.
+    stubStart(() => Promise.resolve(jsonResponse({ error: 'Provider not enabled' }, 400)));
+    await renderReady();
+
+    fireEvent.click(screen.getByTestId('do-oauth'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-error')).toHaveTextContent(
+        OAUTH_PROVIDER_UNAVAILABLE_MESSAGE,
+      ),
+    );
+    expect(assignMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId('loading-state')).toHaveTextContent('ready');
   });
 });

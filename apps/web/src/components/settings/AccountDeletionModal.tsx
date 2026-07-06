@@ -233,7 +233,7 @@ export function useAccountDeletion(): {
       setConfirmationText('');
       setIsDeleting(false);
     } catch {
-      setError("Couldn't delete account — please try again or contact support.");
+      setError("Couldn't delete account. Please try again or contact support.");
       setIsDeleting(false);
     }
   }, [db, confirmationText, isAuthenticated, isDeleting, logout]);
@@ -375,7 +375,7 @@ export function useAccountDeletion(): {
                 <li>
                   {householdImpact.soloOwnedHouseholds} household
                   {householdImpact.soloOwnedHouseholds === 1 ? '' : 's'} you solely own will be
-                  deleted entirely — any other invited members lose access.
+                  deleted entirely, and any other invited members lose access.
                 </li>
               )}
               {householdImpact.memberHouseholds > 0 && (

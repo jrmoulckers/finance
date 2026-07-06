@@ -3,7 +3,7 @@
 export { AppLayout } from './AppLayout';
 export type { AppLayoutProps } from './AppLayout';
 export { BottomNavigation, SidebarNavigation, NAV_ITEMS } from './Navigation';
-export type { NavigationProps, NavItem } from './Navigation';
+export type { NavigationProps, SidebarNavigationProps, NavItem } from './Navigation';
 export {
   NAV_CONFIG,
   NAV_GROUP_LABELS,

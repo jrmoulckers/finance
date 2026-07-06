@@ -204,10 +204,10 @@ function buildAlertMessage(watchlist: Watchlist, percentage: number, spentCents:
   const thresholdDollars = (watchlist.thresholdCents / 100).toFixed(2);
 
   if (percentage >= 100) {
-    return `${watchlist.categoryName}: $${spentDollars} spent — exceeded $${thresholdDollars} limit!`;
+    return `${watchlist.categoryName}: $${spentDollars} spent, exceeded $${thresholdDollars} limit!`;
   }
   if (percentage >= 80) {
-    return `${watchlist.categoryName}: $${spentDollars} of $${thresholdDollars} (${Math.round(percentage)}%) — approaching limit`;
+    return `${watchlist.categoryName}: $${spentDollars} of $${thresholdDollars} (${Math.round(percentage)}%), approaching limit`;
   }
   return `${watchlist.categoryName}: $${spentDollars} of $${thresholdDollars} (${Math.round(percentage)}%)`;
 }

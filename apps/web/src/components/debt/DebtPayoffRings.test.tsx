@@ -49,7 +49,7 @@ describe('DebtPayoffRings', () => {
     expect(ring.getAttribute('aria-label')).toContain('Auto Loan');
 
     // Visible progress text alternative (no colour-only signalling).
-    expect(screen.getByText('38% paid — $3,800 of $10,000')).toBeDefined();
+    expect(screen.getByText('38% paid, $3,800 of $10,000')).toBeDefined();
 
     // Estimated payoff date is surfaced as a year.
     const payoffDate = screen.getByText('Estimated payoff date').nextElementSibling;
@@ -62,7 +62,7 @@ describe('DebtPayoffRings', () => {
     // 38% paid → only the 25% milestone is reached.
     expect(within(milestones).getAllByText('Reached')).toHaveLength(1);
     expect(within(milestones).getAllByText('In progress')).toHaveLength(3);
-    expect(within(milestones).getByText(/25% paid off — milestone reached/)).toBeDefined();
+    expect(within(milestones).getByText(/25% paid off, milestone reached/)).toBeDefined();
   });
 
   it('computes months saved and interest saved for an extra payment', () => {

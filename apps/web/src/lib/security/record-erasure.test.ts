@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   checkRetentionPolicy,
   createErasureRequest,
@@ -104,11 +104,44 @@ describe('record-erasure', () => {
     });
 
     it('does not contain actual financial data', () => {
-      const request = createErasureRequest('transaction', 'tx-123', 'cleanup');
-      const receipt = generateErasureReceipt(request);
-      // Verify no financial amounts or account numbers appear in the receipt
-      expect(receipt).not.toMatch(/\$\d+/);
-      expect(receipt).not.toMatch(/\d{4}-\d{4}-\d{4}/);
+      // The receipt embeds a random requestId (crypto.randomUUID()). A random
+      // v4 UUID lands three 4-digit groups separated by hyphens ~1.3% of the
+      // time (e.g. "1234-5678-9012"), which used to trip the account-number
+      // assertion below and fail this test on unrelated CI runs. Pin the id to
+      // a digit-group-free value so the receipt is deterministic and the
+      // assertions reflect only real record data. (#3206)
+      const fixedRequestId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+      const uuidSpy = vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(fixedRequestId);
+
+      try {
+        const request = createErasureRequest('transaction', 'tx-123', 'cleanup');
+        const receipt = generateErasureReceipt(request);
+        const parsed = JSON.parse(receipt);
+
+        // The receipt is metadata-only: it must never embed monetary amounts
+        // or account-number-formatted strings from the erased record.
+        expect(receipt).not.toMatch(/\$\d/); // no dollar amounts
+        expect(receipt).not.toMatch(/\d{4}-\d{4}-\d{4}/); // no account numbers
+
+        // Strengthen the guarantee structurally: only known-safe metadata keys
+        // may be serialized, so a future change that spills a raw record field
+        // (amount, balance, account number) fails here instead of silently
+        // leaking into the receipt.
+        const expectedKeys = [
+          'type',
+          'requestId',
+          'recordType',
+          'recordId',
+          'requestedAt',
+          'completedAt',
+          'status',
+          'cascadeActions',
+          'reason',
+        ];
+        expect(Object.keys(parsed).sort()).toEqual(expectedKeys.sort());
+      } finally {
+        uuidSpy.mockRestore();
+      }
     });
   });
 });

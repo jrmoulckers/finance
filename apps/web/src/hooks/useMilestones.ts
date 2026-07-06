@@ -138,7 +138,7 @@ const MILESTONE_DEFS: Record<
   },
   'goal-75': {
     title: 'Almost There!',
-    description: '75% complete — the finish line is in sight!',
+    description: '75% complete. The finish line is in sight!',
     icon: 'flame',
   },
   'goal-100': {
@@ -153,7 +153,7 @@ const MILESTONE_DEFS: Record<
   },
   'streak-30': {
     title: '30-Day Streak!',
-    description: "A full month — you're building a habit!",
+    description: "A full month. You're building a habit!",
     icon: 'trophy',
   },
   'streak-90': {

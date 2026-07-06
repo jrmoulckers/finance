@@ -981,6 +981,27 @@
     padding: var(--spacing-2);
     border-top: 1px solid var(--navigation-border);
   }
+  /* Quick actions relocated from the hidden header (#3197): a compact toolbar
+     pinned above the footer links. */
+  .app-sidebar__quick-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    padding-block: var(--spacing-1);
+  }
+  .app-sidebar__notifications {
+    position: relative;
+    display: inline-flex;
+  }
+  /* The footer sits at the bottom of the pinned sidebar, so the notification
+     panel must open upward from the bell instead of downward off-screen. */
+  .app-sidebar__notifications .notification-panel {
+    top: auto;
+    bottom: calc(100% + var(--spacing-2));
+    right: auto;
+    left: 0;
+    margin-top: 0;
+  }
   .bottom-nav {
     display: none;
   }

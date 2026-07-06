@@ -536,7 +536,7 @@ export const BudgetDetailPage: React.FC = () => {
                 <ul style={{ display: 'grid', gap: 'var(--spacing-2)', paddingLeft: '1.25rem' }}>
                   {foodBudgetBreakdown.map((entry) => (
                     <li key={entry.categoryId}>
-                      {entry.categoryName} —{' '}
+                      {entry.categoryName}:{' '}
                       <CurrencyDisplay
                         amount={entry.spentAmount.amount}
                         currency={budget.currency.code}

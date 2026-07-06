@@ -479,7 +479,7 @@ export function classifyRow(row: P2PParsedRow, options?: P2PClassifyOptions): Cl
       return {
         classification: 'reimbursement',
         confidence: 82,
-        reasons: ['You requested this money — collecting a shared cost'],
+        reasons: ['You requested this money, collecting a shared cost'],
       };
     }
     if (hasSharedNoun) {
@@ -509,14 +509,14 @@ export function classifyRow(row: P2PParsedRow, options?: P2PClassifyOptions): Cl
       return {
         classification: 'spending',
         confidence: 65,
-        reasons: ['Outgoing shared payment — incoming repayments will be netted against it'],
+        reasons: ['Outgoing shared payment. Incoming repayments will be netted against it'],
       };
     }
     if (hasSharedNoun) {
       return {
         classification: 'spending',
         confidence: 60,
-        reasons: ['Outgoing payment for a commonly-shared category — review for splits'],
+        reasons: ['Outgoing payment for a commonly-shared category. Review for splits'],
       };
     }
     return {

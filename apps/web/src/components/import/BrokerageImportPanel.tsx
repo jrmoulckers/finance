@@ -209,11 +209,11 @@ export const BrokerageImportPanel: React.FC = () => {
       </h2>
       <p className="brokerage-import__intro">
         Export a trade-confirmation or activity CSV from each broker and add them one at a time. We
-        recognize common layouts automatically — Fidelity, Charles Schwab, Robinhood, Interactive
-        Brokers, E*TRADE and Vanguard, plus the crypto venues Coinbase and Kraken — and fill in the
+        recognize common layouts automatically (Fidelity, Charles Schwab, Robinhood, Interactive
+        Brokers, E*TRADE and Vanguard, plus the crypto venues Coinbase and Kraken) and fill in the
         broker name and column mapping for you, so you don&apos;t have to remap every file by hand.
         Buys, sells and dividends are reconciled into a single holdings view with average cost
-        basis. Connecting a live brokerage account is not available here — all parsing happens on
+        basis. Connecting a live brokerage account is not available here. All parsing happens on
         this device and nothing is saved automatically.
       </p>
 
@@ -246,7 +246,7 @@ export const BrokerageImportPanel: React.FC = () => {
           accept=".csv"
           onFile={handleFile}
           inputLabel="Choose a broker trade-confirmation CSV file to import"
-          hint=".csv files up to 10 MB — recognized broker exports fill in the name automatically"
+          hint=".csv files up to 10 MB. Recognized broker exports fill in the name automatically"
         />
 
         <div className="brokerage-import__field">
@@ -292,8 +292,8 @@ export const BrokerageImportPanel: React.FC = () => {
                 <AppIcon name="check-circle" />
                 <span>
                   Recognized a <strong>{pending.detected.broker}</strong>{' '}
-                  {pending.detected.assetClass === 'crypto' ? 'crypto' : 'brokerage'} export —
-                  broker name and columns were filled in for you. Review and adjust below if needed.
+                  {pending.detected.assetClass === 'crypto' ? 'crypto' : 'brokerage'} export. Broker
+                  name and columns were filled in for you. Review and adjust below if needed.
                 </span>
               </p>
             )}
@@ -422,7 +422,7 @@ export const BrokerageImportPanel: React.FC = () => {
             {sources.map((source, index) => (
               <li key={`${source.broker}-${index}`} className="brokerage-import__source-item">
                 <span>
-                  {source.broker} — {source.trades.length} trade
+                  {source.broker}: {source.trades.length} trade
                   {source.trades.length === 1 ? '' : 's'}
                   {source.errors.length > 0 ? `, ${source.errors.length} skipped` : ''}
                 </span>

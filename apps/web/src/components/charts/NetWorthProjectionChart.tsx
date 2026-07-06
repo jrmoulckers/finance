@@ -229,7 +229,7 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
   }, [projection, currency]);
 
   const assumptionsText = projection.hasProjection
-    ? `Forecast assumes a steady ${paceText} (${projection.methodSummary}), projected ${projection.horizonMonths} months ahead. Estimate only — not financial advice.`
+    ? `Forecast assumes a steady ${paceText} (${projection.methodSummary}), projected ${projection.horizonMonths} months ahead. Estimate only. Not financial advice.`
     : projection.reason;
 
   const dataPointRows = useMemo(() => {

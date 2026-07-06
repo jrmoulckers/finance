@@ -212,11 +212,14 @@ test.describe('Transaction detail page', () => {
       const detailsCard = page.locator('article[aria-label="Transaction details"]');
       await expect(detailsCard).toBeVisible();
 
-      // Should show Amount label
-      await expect(page.getByText('Amount')).toBeVisible();
+      // Should show Amount label. Scope to the details card and match exactly:
+      // the shared app header now has a "Hide amounts" privacy toggle (#3172)
+      // on every page, so a substring getByText('Amount') would also match the
+      // toggle and trip a strict-mode violation.
+      await expect(detailsCard.getByText('Amount', { exact: true })).toBeVisible();
 
-      // Should show Type label
-      await expect(page.getByText('Type')).toBeVisible();
+      // Should show Type label (scoped + exact for the same reason).
+      await expect(detailsCard.getByText('Type', { exact: true })).toBeVisible();
 
       // Should show edit and delete buttons. Scope to <main> so the page-wide
       // /edit/i regex does not also match the sidebar 'Building Credit' nav

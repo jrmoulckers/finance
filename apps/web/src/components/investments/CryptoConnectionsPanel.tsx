@@ -491,7 +491,7 @@ export const CryptoConnectionsPanel: React.FC<CryptoConnectionsPanelProps> = ({
         <section className="crypto-section" aria-label="Connected sources">
           <h4 className="crypto-section__title">Connected sources ({sources.length})</h4>
           {sources.length === 0 ? (
-            <p className="crypto-empty">Nothing connected yet — add a wallet or exchange above.</p>
+            <p className="crypto-empty">Nothing connected yet. Add a wallet or exchange above.</p>
           ) : (
             <ul className="crypto-list">
               {sources.map((source) => (
@@ -663,7 +663,7 @@ export const CryptoConnectionsPanel: React.FC<CryptoConnectionsPanelProps> = ({
                 </tbody>
               </table>
               <p className="crypto-note">
-                Each source contributes once — the merge groups identical assets and shows the
+                Each source contributes once. The merge groups identical assets and shows the
                 per-source breakdown so nothing is double-counted.
               </p>
             </>
@@ -829,7 +829,7 @@ export const CryptoConnectionsPanel: React.FC<CryptoConnectionsPanelProps> = ({
             <h4 className="crypto-section__title">Reconcile a wallet transfer</h4>
             <p className="crypto-note" style={{ marginTop: 0 }}>
               Check whether a movement between your wallets is a non-taxable self-transfer, wrap, or
-              bridge — so it is not counted twice or taxed as a swap.
+              bridge, so it is not counted twice or taxed as a swap.
             </p>
             <form className="crypto-form__row" onSubmit={handleReconcile}>
               <div className="crypto-field">
@@ -910,7 +910,7 @@ export const CryptoConnectionsPanel: React.FC<CryptoConnectionsPanelProps> = ({
                   <ul className="crypto-list" aria-label="Reconciliation result">
                     {rcResult.map((resolution) => (
                       <li key={resolution.movementIds.join('-')} className="crypto-source__detail">
-                        <strong>{resolution.classification}</strong> —{' '}
+                        <strong>{resolution.classification}</strong>:{' '}
                         {resolution.taxable ? 'taxable' : 'not taxable'} (confidence{' '}
                         {Math.round(resolution.confidence * 100)}%). {resolution.explanation}
                       </li>

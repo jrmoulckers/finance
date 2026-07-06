@@ -80,7 +80,7 @@ export const InvestmentDetailPage: React.FC = () => {
             marginBottom: 0,
           }}
         >
-          {investment.symbol} — {investment.name}
+          {investment.symbol} ({investment.name})
         </h2>
         <span
           style={{

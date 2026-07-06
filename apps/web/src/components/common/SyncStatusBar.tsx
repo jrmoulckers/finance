@@ -197,7 +197,7 @@ function renderStatusText(
     case 'error':
       return 'Sync failed';
     case 'offline':
-      return 'Offline \u2014 changes saved locally';
+      return 'Offline. Changes saved locally';
     case 'conflict':
       return `${conflictCount} conflict${conflictCount !== 1 ? 's' : ''} need attention`;
   }

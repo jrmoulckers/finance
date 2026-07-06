@@ -183,7 +183,7 @@ export function suggestAllocation(yearsToEducation: number): AllocationSuggestio
       equityPercent: 90,
       bondPercent: 10,
       cashPercent: 0,
-      description: 'Aggressive growth — mostly equities for long time horizon',
+      description: 'Aggressive growth, mostly equities for long time horizon',
     };
   }
   if (yearsToEducation >= 10) {
@@ -191,7 +191,7 @@ export function suggestAllocation(yearsToEducation: number): AllocationSuggestio
       equityPercent: 70,
       bondPercent: 25,
       cashPercent: 5,
-      description: 'Growth-oriented — balanced with some bonds',
+      description: 'Growth-oriented, balanced with some bonds',
     };
   }
   if (yearsToEducation >= 5) {
@@ -199,7 +199,7 @@ export function suggestAllocation(yearsToEducation: number): AllocationSuggestio
       equityPercent: 50,
       bondPercent: 40,
       cashPercent: 10,
-      description: 'Moderate — shifting toward capital preservation',
+      description: 'Moderate, shifting toward capital preservation',
     };
   }
   if (yearsToEducation >= 2) {
@@ -207,14 +207,14 @@ export function suggestAllocation(yearsToEducation: number): AllocationSuggestio
       equityPercent: 25,
       bondPercent: 50,
       cashPercent: 25,
-      description: 'Conservative — protecting accumulated savings',
+      description: 'Conservative, protecting accumulated savings',
     };
   }
   return {
     equityPercent: 10,
     bondPercent: 30,
     cashPercent: 60,
-    description: 'Capital preservation — education expenses imminent',
+    description: 'Capital preservation, education expenses imminent',
   };
 }
 

@@ -24,6 +24,7 @@ vi.mock('../../auth/auth-context', () => ({
 
 vi.mock('../../hooks', () => ({
   useKeyboardShortcuts: vi.fn(),
+  useBreakpoint: vi.fn(),
   useNotifications: () => ({
     notifications: [],
     unreadCount: 0,
@@ -96,10 +97,20 @@ vi.mock('../../contexts/PrivacyModeContext', () => ({
   }),
 }));
 
-import { useKeyboardShortcuts } from '../../hooks';
+import { useBreakpoint, useKeyboardShortcuts } from '../../hooks';
 import { AppLayout } from './AppLayout';
 
 const mockSetShowHelp = vi.fn();
+
+/** Set the mocked breakpoint. Header quick actions render only on mobile. */
+function mockBreakpoint(kind: 'mobile' | 'tablet' | 'desktop') {
+  vi.mocked(useBreakpoint).mockReturnValue({
+    breakpoint: kind,
+    isMobile: kind === 'mobile',
+    isTablet: kind === 'tablet',
+    isDesktop: kind === 'desktop',
+  });
+}
 
 describe('AppLayout', () => {
   beforeEach(() => {
@@ -111,6 +122,7 @@ describe('AppLayout', () => {
       shortcutCategories: [],
       singleKeyShortcutsEnabled: true,
     });
+    mockBreakpoint('mobile');
     mockSetShowHelp.mockClear();
   });
 
@@ -193,6 +205,43 @@ describe('AppLayout', () => {
     renderLayout();
 
     const header = screen.getByRole('banner', { name: 'App header' });
+    expect(within(header).getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+  });
+
+  it('renders a discoverable, labeled hide-amounts toggle in the header', () => {
+    renderLayout();
+
+    const header = screen.getByRole('banner', { name: 'App header' });
+    const toggle = within(header).getByRole('button', { name: 'Hide amounts' });
+
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).toHaveAttribute('title', 'Hide amounts');
+    // The abstract circle glyph was replaced with a recognizable eye icon.
+    expect(toggle.querySelector('svg')).not.toBeNull();
+    expect(toggle.textContent).not.toContain('○');
+  });
+
+  it('renders the notifications bell in the header on mobile', () => {
+    renderLayout();
+
+    const header = screen.getByRole('banner', { name: 'App header' });
+    expect(within(header).getByRole('button', { name: /notifications/i })).toBeInTheDocument();
+  });
+
+  it('relocates the hide-amounts toggle and notifications out of the header at ≥768px (#3197)', () => {
+    mockBreakpoint('desktop');
+    renderLayout();
+
+    const header = screen.getByRole('banner', { name: 'App header' });
+    // At ≥768px the header is display:none and its quick actions move to the
+    // sidebar. They must NOT be duplicated in the (hidden) header DOM, otherwise
+    // Playwright strict-mode locators match two nodes with the same name (#3197).
+    expect(within(header).queryByRole('button', { name: 'Hide amounts' })).not.toBeInTheDocument();
+    expect(
+      within(header).queryByRole('button', { name: /notifications/i }),
+    ).not.toBeInTheDocument();
+    // Non-relocated header actions stay put.
     expect(within(header).getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   });
 

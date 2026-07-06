@@ -169,7 +169,7 @@ export function AccountDeleteDialog({
               role="alert"
               aria-live="polite"
             >
-              {deleteTransactions && <strong>⚠️ Permanent — this cannot be undone.</strong>}
+              {deleteTransactions && <strong>⚠️ Permanent. This cannot be undone.</strong>}
             </p>
           </div>
         )}

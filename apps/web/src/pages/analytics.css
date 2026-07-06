@@ -562,7 +562,7 @@
   margin-bottom: var(--spacing-3);
 }
 
-.invoice-pipeline-group__header h4,
+.invoice-pipeline-group__header h3,
 .invoice-pipeline-group__header p {
   margin: 0;
 }

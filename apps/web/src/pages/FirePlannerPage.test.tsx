@@ -24,7 +24,7 @@ describe('FirePlannerPage', () => {
   it('renders the planner with labelled inputs', () => {
     render(<FirePlannerPage />);
 
-    expect(screen.getByRole('heading', { name: 'FIRE Planner', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'FIRE Planner', level: 1 })).toBeInTheDocument();
     expect(screen.getByLabelText('Current invested assets')).toBeInTheDocument();
     expect(screen.getByLabelText('Annual spending in retirement')).toBeInTheDocument();
     expect(screen.getByLabelText('Annual contributions')).toBeInTheDocument();

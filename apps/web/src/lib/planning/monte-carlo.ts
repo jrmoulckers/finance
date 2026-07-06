@@ -271,7 +271,7 @@ function assessFactors(
     factors.push({
       label: 'Close to target',
       impact: 'neutral',
-      description: `Projected savings cover ${Math.round(fundingRatio * 100)}% of your target — small adjustments can close the gap.`,
+      description: `Projected savings cover ${Math.round(fundingRatio * 100)}% of your target. Small adjustments can close the gap.`,
     });
   } else {
     factors.push({
@@ -292,7 +292,7 @@ function assessFactors(
     factors.push({
       label: 'Moderate time horizon',
       impact: 'neutral',
-      description: `${yearsToRetirement} years to retirement — consistent saving is important.`,
+      description: `${yearsToRetirement} years to retirement. Consistent saving is important.`,
     });
   } else {
     factors.push({
@@ -313,13 +313,13 @@ function assessFactors(
     factors.push({
       label: 'Adequate savings rate',
       impact: 'neutral',
-      description: `Saving ${Math.round(savingsRate * 100)}% of income — consider increasing to 15-20%.`,
+      description: `Saving ${Math.round(savingsRate * 100)}% of income. Consider increasing to 15-20%.`,
     });
   } else {
     factors.push({
       label: 'Low savings rate',
       impact: 'negative',
-      description: `Saving only ${Math.round(savingsRate * 100)}% of income — aim for at least 15%.`,
+      description: `Saving only ${Math.round(savingsRate * 100)}% of income. Aim for at least 15%.`,
     });
   }
 

@@ -251,7 +251,7 @@ export const CsvImportWizard: React.FC<CsvImportWizardProps> = ({
             onChange={(e) => handleMappingChange(field.key, e.target.value)}
             aria-required={field.required}
           >
-            <option value="">— Select column —</option>
+            <option value="">Select column</option>
             {parseResult?.headers.map((header, i) => (
               <option key={i} value={i}>
                 {header}

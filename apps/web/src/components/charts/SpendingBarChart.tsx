@@ -81,6 +81,7 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
   return (
     <div
       ref={containerRef}
+      className="spending-bar-chart"
       role="figure"
       aria-label={description}
       aria-roledescription="bar chart"
@@ -101,48 +102,50 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
       >
         {announcement}
       </div>
-      <ResponsiveContainer width="100%" height={height}>
-        <BarChart
-          data={data}
-          margin={{ top: 8, right: 16, bottom: 8, left: 16 }}
-          aria-labelledby={`${chartId}-title`}
-          aria-describedby={`${chartId}-desc`}
-          role="img"
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--semantic-border-default, #E5E7EB)" />
-          <XAxis
-            dataKey="name"
-            tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
-          />
-          <YAxis
-            tickFormatter={(v: number) => formatChartCurrency(v, currency, 'en-US', maskingMode)}
-            tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
-            width={80}
-          />
-          <Tooltip
-            formatter={(value) =>
-              formatChartCurrency(Number(value ?? 0), currency, 'en-US', maskingMode)
-            }
-            contentStyle={{
-              background: 'var(--semantic-background-elevated, #FFFFFF)',
-              border: '1px solid var(--semantic-border-default, #E5E7EB)',
-              borderRadius: '0.375rem',
-            }}
-          />
-          <Bar dataKey="amount" isAnimationActive={!disableAnimation} animationDuration={600}>
-            {data.map((entry, index) => (
-              <Cell
-                key={entry.name}
-                fill={CHART_COLORS[index % CHART_COLORS.length]}
-                data-chart-point=""
-                tabIndex={-1}
-                role="listitem"
-                aria-label={`${entry.name}: ${formatChartCurrency(entry.amount, currency, 'en-US', maskingMode)}`}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="spending-bar-chart__plot">
+        <ResponsiveContainer width="100%" height={height}>
+          <BarChart
+            data={data}
+            margin={{ top: 8, right: 16, bottom: 8, left: 16 }}
+            aria-labelledby={`${chartId}-title`}
+            aria-describedby={`${chartId}-desc`}
+            role="img"
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--semantic-border-default, #E5E7EB)" />
+            <XAxis
+              dataKey="name"
+              tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
+            />
+            <YAxis
+              tickFormatter={(v: number) => formatChartCurrency(v, currency, 'en-US', maskingMode)}
+              tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
+              width={80}
+            />
+            <Tooltip
+              formatter={(value) =>
+                formatChartCurrency(Number(value ?? 0), currency, 'en-US', maskingMode)
+              }
+              contentStyle={{
+                background: 'var(--semantic-background-elevated, #FFFFFF)',
+                border: '1px solid var(--semantic-border-default, #E5E7EB)',
+                borderRadius: '0.375rem',
+              }}
+            />
+            <Bar dataKey="amount" isAnimationActive={!disableAnimation} animationDuration={600}>
+              {data.map((entry, index) => (
+                <Cell
+                  key={entry.name}
+                  fill={CHART_COLORS[index % CHART_COLORS.length]}
+                  data-chart-point=""
+                  tabIndex={-1}
+                  role="listitem"
+                  aria-label={`${entry.name}: ${formatChartCurrency(entry.amount, currency, 'en-US', maskingMode)}`}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

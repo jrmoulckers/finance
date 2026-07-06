@@ -448,8 +448,8 @@ export const TIGHT_COVERAGE_RATIO = 0.1;
 /** Plain-language labels for each {@link PeriodRisk}, safe for screen readers. */
 export const PERIOD_RISK_LABELS: Record<PeriodRisk, string> = {
   covered: 'On track',
-  tight: 'Tight — little left after bills',
-  shortfall: 'High-risk — bills exceed this paycheck',
+  tight: 'Tight, little left after bills',
+  shortfall: 'High-risk, bills exceed this paycheck',
   unknown: 'Add income to assess risk',
 };
 

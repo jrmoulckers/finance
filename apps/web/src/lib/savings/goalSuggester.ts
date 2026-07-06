@@ -375,7 +375,7 @@ export function suggestSavingsGoals(
         reason:
           currentRunwayMonths < 3
             ? 'Your current cash buffer is below the typical 3-month safety baseline.'
-            : 'You have a starter buffer — stretching to 6 months increases resilience.',
+            : 'You have a starter buffer. Stretching to 6 months increases resilience.',
         reasoning: [
           `Your liquid accounts cover about ${currentRunwayMonths.toFixed(1)} months of expenses today.`,
           `A ${snapshot.liquidSavingsCents < emergencyFundFloorCents ? '3' : '6'}-month emergency buffer is about $${(emergencyTargetCents / 100).toLocaleString()}.`,
@@ -486,7 +486,7 @@ export function suggestSavingsGoals(
             currentRetirementRate > 0
               ? `You are currently contributing about ${currentRetirementRate}% of income toward retirement.`
               : 'No recurring retirement contribution pattern is visible yet in your local data.',
-            `You already have $${(snapshot.retirementSavingsCents / 100).toLocaleString()} in retirement accounts — keep compounding on your side.`,
+            `You already have $${(snapshot.retirementSavingsCents / 100).toLocaleString()} in retirement accounts. Keep compounding on your side.`,
           ],
           priority: currentRetirementRate < 8 ? 'high' : 'medium',
           targetCents: Math.round(snapshot.annualizedIncomeCents * recommendedRetirementRate),

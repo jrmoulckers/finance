@@ -300,8 +300,8 @@ export const CreateBillPage: React.FC = () => {
                 color: 'var(--semantic-text-secondary)',
               }}
             >
-              Choose One-Time for one-off costs like school fees, birthdays, or sports signups —
-              they line up against your paydays in the bill calendar too.
+              Choose One-Time for one-off costs like school fees, birthdays, or sports signups. They
+              line up against your paydays in the bill calendar too.
             </p>
           </div>
 

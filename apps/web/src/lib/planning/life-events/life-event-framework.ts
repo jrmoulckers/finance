@@ -23,9 +23,9 @@ const MILESTONE_PERCENTS = [25, 50, 75, 100] as const;
 
 /** Milestone celebration labels. */
 const MILESTONE_LABELS: Record<number, string> = {
-  25: '25% saved — great start!',
+  25: '25% saved. Great start!',
   50: 'Halfway there!',
-  75: '75% — almost there!',
+  75: '75% saved. Almost there!',
   100: 'Fully funded! 🎉',
 };
 

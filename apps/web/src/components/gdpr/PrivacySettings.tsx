@@ -126,7 +126,7 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
             type="checkbox"
             checked
             disabled
-            aria-label={`${CONSENT_LABELS.essential} — always required`}
+            aria-label={`${CONSENT_LABELS.essential} (always required)`}
             className="settings-item__checkbox"
           />
         </div>

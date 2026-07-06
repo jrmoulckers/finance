@@ -126,7 +126,7 @@ export function FamilyKidsCategoryCard({
               <p className="family-kids-setup__lede">
                 Seed kid-specific categories for school fees, childcare, activities &amp; sports,
                 birthdays &amp; gifts, field trips &amp; supplies, kids&rsquo; clothing, and medical
-                co-pays &mdash; the real costs of raising a family.
+                co-pays. These are the real costs of raising a family.
               </p>
               <p className="family-kids-setup__status">
                 {plan.isComplete

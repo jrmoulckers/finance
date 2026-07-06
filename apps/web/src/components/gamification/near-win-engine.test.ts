@@ -177,7 +177,7 @@ describe('goalNearWinCue', () => {
     expect(cue).not.toBeNull();
     expect(cue?.kind).toBe('goal');
     expect(cue?.progress).toBe(40);
-    expect(cue?.message).toBe("You're 10% away — one more contribution to hit 50% on Car Fund.");
+    expect(cue?.message).toBe("You're 10% away. One more contribution to hit 50% on Car Fund.");
   });
 
   it('returns null for a completed goal', () => {

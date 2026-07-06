@@ -616,7 +616,7 @@ export const GoalsPage: React.FC = () => {
                   taxReserve.summary.currentMonthNetIncomeCents,
                   taxReserveCurrency,
                 )}{' '}
-                this month — set aside{' '}
+                this month. Set aside{' '}
                 {formatCurrencyAmount(
                   taxReserve.summary.currentMonthRecommendedCents,
                   taxReserveCurrency,
@@ -693,7 +693,7 @@ export const GoalsPage: React.FC = () => {
               </h3>
               <p style={{ color: 'var(--semantic-text-secondary)', marginBottom: 0 }}>
                 We analyze your local income, expenses, cash buffer, and active goals to suggest
-                realistic next moves — nothing leaves this device.
+                realistic next moves. Nothing leaves this device.
               </p>
             </div>
 

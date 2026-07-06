@@ -192,7 +192,7 @@ export const SignupPage: React.FC = () => {
 
         {demoMode && (
           <div className="auth-demo-banner" role="status">
-            Demo Mode — No backend configured. Data is stored locally.
+            Demo Mode. No backend configured. Data is stored locally.
           </div>
         )}
 

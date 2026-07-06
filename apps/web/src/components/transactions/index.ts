@@ -8,6 +8,8 @@ export { TransactionSort, DEFAULT_SORT } from './TransactionSort';
 export type { SortConfig, SortField, SortDirection, TransactionSortProps } from './TransactionSort';
 export { TransactionEditPanel } from './TransactionEditPanel';
 export type { TransactionEditPanelProps } from './TransactionEditPanel';
+export { RecentTransactionsCard } from './RecentTransactionsCard';
+export type { RecentTransactionsCardProps } from './RecentTransactionsCard';
 export { TransactionBulkActionsToolbar } from './TransactionBulkActionsToolbar';
 export type { TransactionBulkActionsToolbarProps } from './TransactionBulkActionsToolbar';
 export { LazyReceiptImage } from './LazyReceiptImage';
