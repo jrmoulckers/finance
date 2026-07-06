@@ -15,6 +15,7 @@ import {
   createGoal,
   createTransaction,
 } from './repositories';
+import { markSampleDataSeeded, shouldSeedSampleData } from './sampleData';
 
 interface SeedTransactionInput {
   readonly accountId: string;
@@ -55,6 +56,13 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
   const accountCount = Number(existingAccounts?.count ?? 0);
 
   if (accountCount > 0) {
+    return;
+  }
+
+  if (!shouldSeedSampleData()) {
+    // A clean slate was requested (or seeding is disabled for this build):
+    // leave the workspace genuinely empty instead of seeding sample data so the
+    // real "empty account" experience is reachable (#3415).
     return;
   }
 
@@ -505,6 +513,9 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
     });
 
     releaseSavepoint(db, seedSavepoint);
+    // Mark the workspace as sample data so the UI can label it and offer a
+    // one-click clean slate (#3415).
+    markSampleDataSeeded();
   } catch (error) {
     try {
       rollbackToSavepoint(db, seedSavepoint);
