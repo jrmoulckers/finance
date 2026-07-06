@@ -291,4 +291,39 @@ describe('goalSuggester', () => {
     const purchaseSuggestion = suggestions.find((suggestion) => suggestion.type === 'big-purchase');
     expect(purchaseSuggestion?.linkedGoalId).toBe('goal-vacation');
   });
+
+  it('offers a $1,000 starter emergency fund for a zero-history user (#3419)', () => {
+    const now = new Date('2025-06-15T00:00:00Z');
+    // A brand-new user: one small checking account, no transaction history yet.
+    const newUserAccounts: Account[] = [
+      {
+        id: 'checking',
+        householdId,
+        name: 'Checking',
+        type: 'CHECKING',
+        currency,
+        currentBalance: { amount: 20_000 },
+        isArchived: false,
+        sortOrder: 1,
+        icon: 'bank',
+        color: '#2563EB',
+        ...syncMetadata,
+      },
+    ];
+
+    const snapshot = buildSavingsAnalysisSnapshot(newUserAccounts, [], [], [], now);
+    // No trailing spending, so the history-based 3–6 month target can't be derived.
+    expect(snapshot.monthlyExpensesCents).toBe(0);
+
+    const suggestions = suggestSavingsGoals(snapshot, now);
+    const starter = suggestions.find((suggestion) => suggestion.type === 'emergency-fund');
+    expect(starter).toBeDefined();
+    // The widely-recommended $1,000 starter fund, surfaced immediately.
+    expect(starter?.targetCents).toBe(100_000);
+    expect(starter?.priority).toBe('high');
+    expect(starter?.title).toContain('$1,000');
+    // Unlinked so the Goals page "Add goal" button creates it in one click.
+    expect(starter?.linkedGoalId).toBeNull();
+    expect(starter?.contributionPlan.recommendedMonthlyContributionCents).toBeGreaterThan(0);
+  });
 });

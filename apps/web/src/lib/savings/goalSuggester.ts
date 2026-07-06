@@ -32,6 +32,9 @@ const EMERGENCY_GOAL_KEYWORDS = ['emergency', 'rainy day', 'runway', 'buffer'];
 const RETIREMENT_GOAL_KEYWORDS = ['retirement', '401k', 'ira', 'roth', 'pension', 'nest egg'];
 const DEBT_GOAL_KEYWORDS = ['debt', 'payoff', 'loan', 'credit card', 'student loan'];
 const MONTHS_IN_TRAILING_AVERAGE = 3;
+// A $1,000 starter emergency fund is a widely-recommended first milestone for
+// someone who has no spending history yet to base a 3–6 month target on.
+const STARTER_EMERGENCY_FUND_CENTS = 100_000;
 
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -393,6 +396,41 @@ export function suggestSavingsGoals(
           currentRunwayMonths < 3
             ? Math.max(Math.ceil(emergencyGapCents / 12), Math.round(availableCapacityCents * 0.45))
             : Math.max(Math.ceil(emergencyGapCents / 18), Math.round(availableCapacityCents * 0.3)),
+      }),
+    );
+  }
+
+  if (
+    snapshot.monthlyExpensesCents === 0 &&
+    snapshot.liquidSavingsCents < STARTER_EMERGENCY_FUND_CENTS
+  ) {
+    // Zero-history beginner path: with no trailing spending we can't derive a
+    // 3–6 month target, so offer the common $1,000 starter fund and a clear
+    // first step instead of telling a brand-new user to come back later.
+    const starterGapCents = Math.max(STARTER_EMERGENCY_FUND_CENTS - snapshot.liquidSavingsCents, 0);
+    const starterMonthlyCents = Math.max(
+      Math.ceil(starterGapCents / 12),
+      Math.round(availableCapacityCents * 0.3),
+    );
+
+    suggestions.push(
+      createSuggestion({
+        id: emergencyGoal?.id ?? 'suggested-emergency-fund-starter',
+        type: 'emergency-fund',
+        title: emergencyGoal?.name ?? 'Start a $1,000 emergency fund',
+        reason:
+          'A $1,000 starter fund is a common first milestone that covers most everyday surprises while you build the habit.',
+        reasoning: [
+          "You don't have enough spending history yet to calculate a 3–6 month target, so this uses the widely-recommended $1,000 starter amount.",
+          'An emergency fund keeps a surprise — a car repair or a medical copay — from going onto a high-interest credit card.',
+          "Once you've tracked a few weeks of spending, this target refines to about 3 months of your real expenses.",
+        ],
+        priority: 'high',
+        targetCents: STARTER_EMERGENCY_FUND_CENTS,
+        currentCents: snapshot.liquidSavingsCents,
+        linkedGoalId: emergencyGoal?.id ?? null,
+        monthlyCapacityCents: Math.max(availableCapacityCents, Math.ceil(starterGapCents / 12)),
+        desiredMonthlyContributionCents: starterMonthlyCents,
       }),
     );
   }
