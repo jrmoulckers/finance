@@ -169,7 +169,16 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     icon: <ReportsIcon />,
     group: 'money',
     mobilePriority: 8,
-    description: 'Lot-level gains, estimated taxes and wash-sale guardrails.',
+    description: 'Lot-level investment gains and wash-sale guardrails.',
+  },
+  {
+    id: 'estimated-tax',
+    label: 'Estimated Taxes',
+    href: '/estimated-tax',
+    icon: <ReportsIcon />,
+    group: 'money',
+    mobilePriority: 35,
+    description: 'Quarterly self-employment tax set-aside and next due date.',
   },
   {
     id: 'subscriptions',
