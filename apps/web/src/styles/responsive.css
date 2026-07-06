@@ -726,8 +726,8 @@
   outline-offset: 2px;
 }
 .settings-item__checkbox {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   justify-self: end;
   accent-color: var(--semantic-interactive-default);
 }
