@@ -66,6 +66,7 @@ import {
   buildStudentLoanProgressRingCard,
   type DebtProgressRingCard,
 } from '../lib/debt/debt-progress-rings';
+import { readDebtTracker, writeDebtTracker } from '../lib/debt/debt-tracker-persistence';
 import { buildCreditScoreSimulatorPanelModel } from '../lib/debt/credit-score-simulator-panel';
 import { buildCreditScoreAssumptionSummary } from '../lib/debt/credit-score-simulator-assumptions';
 import {
@@ -592,8 +593,14 @@ function JointDebtPanel(): React.ReactElement {
 
 function PayoffPlannerPanel(): React.ReactElement {
   const { accounts, loading, error } = useAccounts();
-  const [manualDebts, setManualDebts] = useState<Debt[]>([]);
-  const [debtAdjustments, setDebtAdjustments] = useState<Record<string, Partial<Debt>>>({});
+  const [manualDebts, setManualDebts] = useState<Debt[]>(() => {
+    const storage = getLocalStorage();
+    return storage ? readDebtTracker(storage).manualDebts : [];
+  });
+  const [debtAdjustments, setDebtAdjustments] = useState<Record<string, Partial<Debt>>>(() => {
+    const storage = getLocalStorage();
+    return storage ? readDebtTracker(storage).debtAdjustments : {};
+  });
   const [manualForm, setManualForm] = useState<DebtFormState>(DEFAULT_DEBT_FORM);
   const [manualErrors, setManualErrors] = useState<
     Partial<Record<'name' | 'balance' | 'minimumPayment', string>>
@@ -671,6 +678,11 @@ function PayoffPlannerPanel(): React.ReactElement {
     }
     setHasRestoredConsolidation(true);
   }, [debts, hasRestoredConsolidation]);
+
+  useEffect(() => {
+    const storage = getLocalStorage();
+    if (storage) writeDebtTracker(storage, { manualDebts, debtAdjustments });
+  }, [manualDebts, debtAdjustments]);
   const extraPaymentCents = parseCurrencyInput(extraPayment);
   const monthlyIncomeCents = parseCurrencyInput(monthlyIncome);
   const manualInterestPaidCents = parseCurrencyInput(manualInterestPaid);
