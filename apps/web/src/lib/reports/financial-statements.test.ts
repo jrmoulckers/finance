@@ -343,6 +343,23 @@ describe('generateBalanceSheet', () => {
     expect(report.liabilities.map((line) => line.label)).toEqual(['Auto Loan', 'Visa']);
   });
 
+  it('excludes archived accounts so it reconciles with the net worth page', () => {
+    const report = generateBalanceSheet([
+      account({ id: 'active', type: 'CHECKING', currentBalance: { amount: 500_000 } }),
+      account({
+        id: 'archived',
+        name: 'Old Savings',
+        type: 'SAVINGS',
+        currentBalance: { amount: 300_000 },
+        isArchived: true,
+      }),
+    ]);
+
+    expect(report.totalAssets).toBe(500_000);
+    expect(report.assets.map((line) => line.label)).toEqual(['Checking']);
+    expect(report.netWorth).toBe(500_000);
+  });
+
   it('uses transactions after the as-of date to estimate historical balances', () => {
     const report = generateBalanceSheet(
       [account({ id: 'checking', currentBalance: { amount: 150_000 } })],
