@@ -501,6 +501,17 @@ describe('PlanningPage', () => {
     expect(screen.getByText(/Projected monthly free cash flow: \$1400.00/i)).toBeTruthy();
   });
 
+  it('offers a new-baby life-event template that adds childcare costs (#3388)', () => {
+    render(<PlanningPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /life events/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'New baby arrives' }));
+    fireEvent.click(screen.getByRole('button', { name: /add event/i }));
+
+    expect(screen.getByRole('heading', { name: 'New baby arrives' })).toBeTruthy();
+    expect(screen.getByText(/Adds \$1800\.00\/mo/i)).toBeTruthy();
+  });
+
   it('shows empty state on goals tab when no goals', () => {
     render(<PlanningPage />);
     fireEvent.click(screen.getByRole('tab', { name: /savings goals/i }));

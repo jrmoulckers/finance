@@ -1086,13 +1086,18 @@ const HealthcareProjectionSection: React.FC<{ params: RetirementParams }> = ({ p
 
 const LIFE_EVENT_TEMPLATES: readonly Omit<LifeEvent, 'id'>[] = [
   {
+    name: 'New baby arrives',
+    date: defaultLifeEventDate(0),
+    monthlyCostChangeCents: 180000,
+  },
+  {
     name: 'Childcare ends',
-    date: defaultLifeEventDate(24),
+    date: defaultLifeEventDate(60),
     monthlyCostChangeCents: -120000,
   },
   {
     name: 'Child starts kindergarten',
-    date: defaultLifeEventDate(18),
+    date: defaultLifeEventDate(60),
     monthlyCostChangeCents: -80000,
   },
   {
