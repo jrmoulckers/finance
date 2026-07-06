@@ -598,6 +598,72 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_category_sort ON category (sort_order);`,
     ],
   },
+  {
+    version: 14,
+    label: 'add-invoices-and-remittances',
+    up: [
+      // Move the freelancer invoice pipeline and cross-border remittance history
+      // off browser localStorage onto the encrypted SQLite/OPFS store so business
+      // records are durable and ride the sync path like accounts/transactions
+      // (#3273). These are web-first tables today; the durable model is expected
+      // to land in the shared KMP/PowerSync schema next (note for @kmp-engineer /
+      // @backend-engineer). `household_id` is nullable so a record created before
+      // any household exists (e.g. a clean-slate workspace) still persists; it is
+      // resolved to the primary household when one is present, mirroring the goal
+      // onboarding pattern (getPrimaryHouseholdId, #3405).
+      `CREATE TABLE IF NOT EXISTS invoice (
+        id                     TEXT    NOT NULL PRIMARY KEY,
+        household_id           TEXT,
+        client_name            TEXT    NOT NULL,
+        amount_cents           INTEGER NOT NULL,
+        issue_date             TEXT    NOT NULL,
+        payment_term           TEXT    NOT NULL,
+        status                 TEXT    NOT NULL DEFAULT 'Sent',
+        expected_pay_date      TEXT    NOT NULL,
+        last_contacted_date    TEXT,
+        amount_paid_cents      INTEGER NOT NULL DEFAULT 0,
+        paid_date              TEXT,
+        payment_account_id     TEXT,
+        payment_transaction_id TEXT,
+        created_at             TEXT    NOT NULL,
+        updated_at             TEXT    NOT NULL,
+        deleted_at             TEXT,
+        sync_version           INTEGER NOT NULL DEFAULT 0,
+        is_synced              INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (household_id)           REFERENCES household(id),
+        FOREIGN KEY (payment_account_id)     REFERENCES account(id),
+        FOREIGN KEY (payment_transaction_id) REFERENCES "transaction"(id)
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_invoice_household ON invoice (household_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_invoice_status    ON invoice (status);`,
+      `CREATE INDEX IF NOT EXISTS idx_invoice_sync      ON invoice (is_synced);`,
+
+      `CREATE TABLE IF NOT EXISTS remittance (
+        id                TEXT    NOT NULL PRIMARY KEY,
+        household_id      TEXT,
+        date              TEXT    NOT NULL,
+        source_currency   TEXT    NOT NULL,
+        dest_currency     TEXT    NOT NULL,
+        send_amount_minor INTEGER NOT NULL,
+        fee_minor         INTEGER NOT NULL,
+        fx_rate           REAL    NOT NULL,
+        fee_model         TEXT    NOT NULL,
+        reference_rate    REAL,
+        recipient_name    TEXT    NOT NULL,
+        recipient_country TEXT    NOT NULL,
+        note              TEXT,
+        created_at        TEXT    NOT NULL,
+        updated_at        TEXT    NOT NULL,
+        deleted_at        TEXT,
+        sync_version      INTEGER NOT NULL DEFAULT 0,
+        is_synced         INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (household_id) REFERENCES household(id)
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_remittance_household ON remittance (household_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_remittance_date      ON remittance (date);`,
+      `CREATE INDEX IF NOT EXISTS idx_remittance_sync      ON remittance (is_synced);`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection

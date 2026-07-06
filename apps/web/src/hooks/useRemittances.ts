@@ -1,17 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * React hook for remittance tracking (issue #2170).
+ * React hook for remittance tracking (issue #2170), backed by the local database.
  *
- * Edge / client-side only: remittance entries are persisted to `localStorage`
- * (no SQLite repository, no network) so the workflow is fully offline. Follows
- * the project's hook conventions — captures errors in state (never throws),
- * exposes a `refresh()` and a `refreshToken`-driven effect, and returns a
- * consistent CRUD-style shape.
+ * Persists remittance history in the encrypted SQLite-WASM (OPFS) store via the
+ * remittances repository — the same durable, sync-enabled path used by accounts
+ * and transactions — instead of browser `localStorage`, so records survive a
+ * cache clear and no plaintext financial data is written to disk (issue #3273).
+ * Follows the project's hook conventions — captures errors in state (never
+ * throws), exposes a `refresh()` and a `refreshToken`-driven effect, and returns
+ * a consistent CRUD-style shape.
+ *
+ * References: issue #2170 (feature), issue #3273 (durable persistence)
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useDatabase } from '../db/DatabaseProvider';
+import {
+  deleteRemittanceRecord,
+  getAllRemittances,
+  importLegacyRemittances,
+  insertRemittance,
+} from '../db/repositories/remittances';
 import { summarizeRemittances, summarizeByRecipient } from '../lib/remittance';
 import type {
   CreateRemittanceInput,
@@ -19,8 +30,6 @@ import type {
   RemittanceSummary,
   RemittanceRecipientBreakdown,
 } from '../lib/remittance';
-
-const STORAGE_KEY = 'finance-remittances';
 
 export interface UseRemittancesResult {
   readonly remittances: readonly RemittanceRecord[];
@@ -33,25 +42,6 @@ export interface UseRemittancesResult {
   readonly deleteRemittance: (id: string) => boolean;
 }
 
-function readStorage(): RemittanceRecord[] {
-  try {
-    const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as RemittanceRecord[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeStorage(records: readonly RemittanceRecord[]): void {
-  try {
-    globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(records));
-  } catch {
-    // Best-effort persistence; storage may be unavailable (private mode, quota).
-  }
-}
-
 function generateId(): string {
   try {
     return (
@@ -62,15 +52,9 @@ function generateId(): string {
   }
 }
 
-/** Most recent first (by send date, then creation instant). */
-function sortRecords(records: readonly RemittanceRecord[]): RemittanceRecord[] {
-  return [...records].sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-    return a.createdAt < b.createdAt ? 1 : -1;
-  });
-}
-
 export function useRemittances(): UseRemittancesResult {
+  const db = useDatabase();
+
   const [remittances, setRemittances] = useState<readonly RemittanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,48 +69,52 @@ export function useRemittances(): UseRemittancesResult {
     setLoading(true);
     setError(null);
     try {
-      setRemittances(sortRecords(readStorage()));
+      // One-time migration of any records left in the pre-#3273 localStorage
+      // store, then read the durable list back from the database (sorted).
+      importLegacyRemittances(db);
+      setRemittances(getAllRemittances(db));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load remittances.');
+      setRemittances([]);
     } finally {
       setLoading(false);
     }
-  }, [refreshToken]);
+  }, [db, refreshToken]);
 
-  const createRemittance = useCallback((input: CreateRemittanceInput): RemittanceRecord | null => {
-    try {
-      const record: RemittanceRecord = {
-        ...input,
-        id: generateId(),
-        createdAt: new Date().toISOString(),
-      };
-      setRemittances((current) => {
-        const next = sortRecords([record, ...current]);
-        writeStorage(next);
-        return next;
-      });
-      return record;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save the remittance.');
-      return null;
-    }
-  }, []);
+  const createRemittance = useCallback(
+    (input: CreateRemittanceInput): RemittanceRecord | null => {
+      try {
+        const record: RemittanceRecord = {
+          ...input,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        };
+        const persisted = insertRemittance(db, record);
+        refresh();
+        return persisted;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to save the remittance.');
+        return null;
+      }
+    },
+    [db, refresh],
+  );
 
-  const deleteRemittance = useCallback((id: string): boolean => {
-    try {
-      let removed = false;
-      setRemittances((current) => {
-        const next = current.filter((record) => record.id !== id);
-        removed = next.length !== current.length;
-        writeStorage(next);
-        return next;
-      });
-      return removed;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete the remittance.');
-      return false;
-    }
-  }, []);
+  const deleteRemittance = useCallback(
+    (id: string): boolean => {
+      try {
+        const removed = deleteRemittanceRecord(db, id);
+        if (removed) {
+          refresh();
+        }
+        return removed;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete the remittance.');
+        return false;
+      }
+    },
+    [db, refresh],
+  );
 
   const summary = useMemo(() => summarizeRemittances(remittances), [remittances]);
   const recipientBreakdown = useMemo(() => summarizeByRecipient(remittances), [remittances]);
