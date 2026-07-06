@@ -336,6 +336,30 @@ describe('BudgetsPage', () => {
     expect(screen.getByText('Budgets')).toBeInTheDocument();
   });
 
+  it('shows a create-budget call-to-action in the empty state (#3402)', () => {
+    mockedUseBudgets.mockReturnValue({
+      budgets: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(),
+      updateBudget: vi.fn(),
+      deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn(),
+      reorderBudgets: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('No budget envelopes yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create your first budget/i })).toBeInTheDocument();
+  });
+
   it('displays budget summary labels', () => {
     render(
       <MemoryRouter>

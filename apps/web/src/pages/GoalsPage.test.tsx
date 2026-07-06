@@ -364,6 +364,29 @@ describe('GoalsPage', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Goals' })).toBeTruthy();
   });
 
+  it('shows a create-goal call-to-action in the empty state (#3402)', () => {
+    mockedUseGoals.mockReturnValue({
+      goals: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createGoal: vi.fn(),
+      updateGoal: vi.fn(),
+      contributeToGoal: vi.fn(),
+      deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <GoalsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('No goals yet')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /create your first goal/i })).toBeTruthy();
+  });
+
   it('displays goals summary and ai suggestions', () => {
     render(
       <MemoryRouter>

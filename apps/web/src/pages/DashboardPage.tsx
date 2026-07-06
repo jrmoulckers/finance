@@ -807,6 +807,13 @@ export const DashboardPage: React.FC = () => {
                   ? 'Add accounts, budgets, or transactions to see your financial summary here.'
                   : 'Try a different purpose filter or tag more accounts for this view.'
               }
+              action={
+                selectedPurposeFilter === 'all' ? (
+                  <Link to="/accounts" className="form-button form-button--primary">
+                    Add your first account
+                  </Link>
+                ) : undefined
+              }
             />
           ) : (
             <>

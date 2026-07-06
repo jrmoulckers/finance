@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { InsightsPage } from './InsightsPage';
+import type { ReactNode } from 'react';
 import type { CategorySpending, UseInsightsResult } from '../hooks/useInsights';
 
 vi.mock('../hooks/useInsights', async () => {
@@ -213,7 +214,12 @@ vi.mock('../components/wellness', () => ({
 
 vi.mock('../components/common', () => ({
   CurrencyDisplay: ({ amount }: { amount: number }) => <span>{amount}</span>,
-  EmptyState: ({ title }: { title: string }) => <div>{title}</div>,
+  EmptyState: ({ title, action }: { title: string; action?: ReactNode }) => (
+    <div>
+      {title}
+      {action}
+    </div>
+  ),
   ErrorBanner: ({ message }: { message: string }) => <div>{message}</div>,
   LoadingSpinner: ({ label }: { label: string }) => <div aria-label={label} />,
 }));
@@ -553,6 +559,10 @@ describe('InsightsPage', () => {
     );
 
     expect(screen.getByText('No wealth insights yet')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /add your first account/i })).toHaveAttribute(
+      'href',
+      '/accounts',
+    );
   });
 
   it('renders the wealth digest experience', () => {
