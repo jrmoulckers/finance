@@ -21,7 +21,7 @@ describe('TripBudgetsPage', () => {
     render(<TripBudgetsPage />);
 
     expect(
-      screen.getByRole('heading', { name: 'Trip & Country Budgets', level: 2 }),
+      screen.getByRole('heading', { name: 'Trip & Country Budgets', level: 1 }),
     ).toBeInTheDocument();
 
     expect(screen.getByLabelText('Trip name')).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('TripBudgetsPage', () => {
     render(<TripBudgetsPage />);
 
     const card = screen
-      .getByRole('heading', { name: 'Bangkok Jan–Mar', level: 4 })
+      .getByRole('heading', { name: 'Bangkok Jan–Mar', level: 3 })
       .closest('article') as HTMLElement;
 
     expect(within(card).getByText(/20,500/)).toBeInTheDocument(); // local spend
@@ -81,7 +81,7 @@ describe('TripBudgetsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Create trip envelope' }));
 
-    expect(screen.getByRole('heading', { name: 'Lisbon Spring', level: 4 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Lisbon Spring', level: 3 })).toBeInTheDocument();
   });
 
   it('logs local-currency spend and updates the trip transaction count', () => {
@@ -94,7 +94,7 @@ describe('TripBudgetsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add spend' }));
 
     const card = screen
-      .getByRole('heading', { name: 'Bangkok Jan–Mar', level: 4 })
+      .getByRole('heading', { name: 'Bangkok Jan–Mar', level: 3 })
       .closest('article') as HTMLElement;
     expect(within(card).getByText('3 transactions')).toBeInTheDocument();
   });
@@ -104,7 +104,7 @@ describe('TripBudgetsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Archive Bangkok Jan/ }));
 
-    expect(screen.getByRole('heading', { name: 'Archived trips', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Archived trips', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Reopen Bangkok Jan/ })).toBeInTheDocument();
   });
 

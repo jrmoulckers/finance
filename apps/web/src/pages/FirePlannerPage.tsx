@@ -264,7 +264,7 @@ export const FirePlannerPage: React.FC = () => {
           <AppIcon name="flame" />
         </span>
         <div>
-          <h2 className="fire-page__title">FIRE Planner</h2>
+          <h1 className="fire-page__title">FIRE Planner</h1>
           <p className="fire-page__subtitle">
             Model your path to financial independence: your FI number, when you can stop working,
             and whether you have already hit Coast FI.
@@ -279,7 +279,7 @@ export const FirePlannerPage: React.FC = () => {
           aria-label="Financial independence inputs"
           onSubmit={(event) => event.preventDefault()}
         >
-          <h3 className="fire-form__legend">Your numbers</h3>
+          <h2 className="fire-form__legend">Your numbers</h2>
           <div className="fire-form__grid">
             <NumberField
               id={fid('current')}

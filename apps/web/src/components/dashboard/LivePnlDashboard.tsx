@@ -231,7 +231,7 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
     <div className="live-pnl">
       <header className="live-pnl__header">
         <div>
-          <h2 className="live-pnl__title">Live P&amp;L &amp; Net Worth</h2>
+          <h1 className="live-pnl__title">Live P&amp;L &amp; Net Worth</h1>
           <p className="live-pnl__subtitle">
             Cross-broker intraday performance across {view.report.breakdowns.byBrokerage.length}{' '}
             brokerage{view.report.breakdowns.byBrokerage.length === 1 ? '' : 's'}.
@@ -337,7 +337,7 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
 
       {/* Breakdowns */}
       <section className="live-pnl__section" aria-label="Profit and loss by brokerage">
-        <h3 className="live-pnl__section-title">By Brokerage</h3>
+        <h2 className="live-pnl__section-title">By Brokerage</h2>
         <BreakdownTable
           id="pnl-by-brokerage"
           caption="Market value and intraday P&L for each brokerage."
@@ -348,7 +348,7 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
       </section>
 
       <section className="live-pnl__section" aria-label="Profit and loss by asset class">
-        <h3 className="live-pnl__section-title">By Asset Class</h3>
+        <h2 className="live-pnl__section-title">By Asset Class</h2>
         <BreakdownTable
           id="pnl-by-asset-class"
           caption="Market value and intraday P&L grouped by asset class, including volatile crypto."
@@ -360,7 +360,7 @@ export const LivePnlDashboard: React.FC<LivePnlDashboardProps> = ({
       </section>
 
       <section className="live-pnl__section" aria-label="Profit and loss by symbol">
-        <h3 className="live-pnl__section-title">By Symbol</h3>
+        <h2 className="live-pnl__section-title">By Symbol</h2>
         <BreakdownTable
           id="pnl-by-symbol"
           caption="Market value and intraday P&L for each holding. Stale or missing quotes are flagged."

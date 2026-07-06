@@ -176,9 +176,9 @@ const TripCard: React.FC<TripCardProps> = ({ report, onArchive, onUnarchive }) =
     <article className="trip-card" aria-labelledby={`${report.id}-name`}>
       <header className="trip-card__header">
         <div>
-          <h4 className="trip-card__name" id={`${report.id}-name`}>
+          <h3 className="trip-card__name" id={`${report.id}-name`}>
             {report.name}
-          </h4>
+          </h3>
           <p className="trip-card__meta">
             <AppIcon name="map-pin" size={16} />
             <span>{report.country || 'Any country'}</span>
@@ -419,7 +419,7 @@ export const TripBudgetsPage: React.FC = () => {
           <AppIcon name="globe" />
         </span>
         <div>
-          <h2 className="trip-page__title">Trip &amp; Country Budgets</h2>
+          <h1 className="trip-page__title">Trip &amp; Country Budgets</h1>
           <p className="trip-page__subtitle">
             Budget a trip in its local currency, track spend inside the trip dates, and roll every
             envelope up into one home-currency view. Archive a trip when it ends. Its history stays
@@ -439,9 +439,9 @@ export const TripBudgetsPage: React.FC = () => {
 
       <div className="trip-layout">
         <section className="trip-section" aria-labelledby={fid('trips-heading')}>
-          <h3 className="trip-section__heading" id={fid('trips-heading')}>
+          <h2 className="trip-section__heading" id={fid('trips-heading')}>
             Active trips
-          </h3>
+          </h2>
           {activeReports.length === 0 ? (
             <p className="trip-empty">
               No active trips. Use the form to plan your next destination.
@@ -461,9 +461,9 @@ export const TripBudgetsPage: React.FC = () => {
 
           {archivedReports.length > 0 ? (
             <>
-              <h3 className="trip-section__heading" id={fid('archived-heading')}>
+              <h2 className="trip-section__heading" id={fid('archived-heading')}>
                 Archived trips
-              </h3>
+              </h2>
               <div className="trip-cards">
                 {archivedReports.map((report) => (
                   <TripCard
@@ -484,9 +484,9 @@ export const TripBudgetsPage: React.FC = () => {
             aria-labelledby={fid('create-heading')}
             onSubmit={handleCreateTrip}
           >
-            <h3 className="trip-form__heading" id={fid('create-heading')}>
+            <h2 className="trip-form__heading" id={fid('create-heading')}>
               Plan a new trip
-            </h3>
+            </h2>
 
             <Field id={fid('name')} label="Trip name" hint="e.g. Bangkok Jan–Mar">
               <input
@@ -612,9 +612,9 @@ export const TripBudgetsPage: React.FC = () => {
             aria-labelledby={fid('spend-heading')}
             onSubmit={handleAddSpend}
           >
-            <h3 className="trip-form__heading" id={fid('spend-heading')}>
+            <h2 className="trip-form__heading" id={fid('spend-heading')}>
               Log local-currency spend
-            </h3>
+            </h2>
 
             <Field id={fid('spend-trip')} label="Trip">
               <select
@@ -686,9 +686,9 @@ export const TripBudgetsPage: React.FC = () => {
 
       <section className="trip-section" aria-labelledby={fid('ledger-heading')}>
         <div className="trip-ledger__head">
-          <h3 className="trip-section__heading" id={fid('ledger-heading')}>
+          <h2 className="trip-section__heading" id={fid('ledger-heading')}>
             Spend ledger
-          </h3>
+          </h2>
           <Field id={fid('filter')} label="Filter by trip">
             <select
               id={fid('filter')}

@@ -132,7 +132,7 @@ const WatchlistItem: React.FC<WatchlistItemProps> = ({
       </button>
       <div className="watchlist-item__content">
         <div className="watchlist-item__header">
-          <h4 className="watchlist-item__name">{watchlist.categoryName}</h4>
+          <h3 className="watchlist-item__name">{watchlist.categoryName}</h3>
           <span className="watchlist-item__period">{watchlist.period}</span>
         </div>
         <div className="watchlist-item__spending">
@@ -267,14 +267,14 @@ export const WatchlistsPage: React.FC = () => {
   return (
     <>
       <div className="page-header-with-actions">
-        <h2
+        <h1
           style={{
             fontSize: 'var(--type-scale-headline-font-size)',
             fontWeight: 'var(--type-scale-headline-font-weight)',
           }}
         >
           Spending Watchlists
-        </h2>
+        </h1>
         <button
           type="button"
           className="add-button"
@@ -288,7 +288,7 @@ export const WatchlistsPage: React.FC = () => {
       {/* Active alerts */}
       {alerts.length > 0 && (
         <section className="page-section" aria-label="Spending alerts">
-          <h3 className="page-section__title">Active Alerts</h3>
+          <h2 className="page-section__title">Active Alerts</h2>
           <div className="watchlist-alerts" role="log" aria-label="Spending alert notifications">
             {alerts.map((alert) => (
               <AlertCard key={alert.watchlist.id} alert={alert} onDismiss={dismissAlert} />
@@ -311,7 +311,7 @@ export const WatchlistsPage: React.FC = () => {
         />
       ) : (
         <section className="page-section" aria-label="Configured watchlists">
-          <h3 className="page-section__title">Your Watchlists</h3>
+          <h2 className="page-section__title">Your Watchlists</h2>
           <div className="card">
             <SortableList
               items={watchlists}
@@ -345,7 +345,7 @@ export const WatchlistsPage: React.FC = () => {
           aria-modal="true"
         >
           <form className="watchlist-form card" onSubmit={handleAddSubmit}>
-            <h3 className="watchlist-form__title">Add Watchlist</h3>
+            <h2 className="watchlist-form__title">Add Watchlist</h2>
             <div className="watchlist-form__field">
               <label htmlFor="wl-category">Category</label>
               <select
