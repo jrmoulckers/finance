@@ -313,11 +313,11 @@ export function LearningPage(): React.ReactElement {
   };
 
   return (
-    <main className="learning-page" aria-label="Financial literacy learning path">
+    <div className="learning-page">
       <header className="learning-page__header">
         <div>
           <p className="learning-page__eyebrow">Local-first financial education</p>
-          <h1 className="learning-page__title">Personalized Financial Literacy Learning Path</h1>
+          <h2 className="learning-page__title">Personalized Financial Literacy Learning Path</h2>
           <p className="learning-page__subtitle">
             Learn budgeting, saving, debt, investing, and tax planning with a structured path that
             stays entirely on-device.
@@ -360,7 +360,7 @@ export function LearningPage(): React.ReactElement {
       )}
 
       <CreditBuildingSection />
-    </main>
+    </div>
   );
 }
 

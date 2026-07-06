@@ -3,24 +3,46 @@
 /**
  * Tests for BuildingCreditPage.
  *
- * Covers: accessible structure (landmark, headings, labeled inputs), the
+ * Covers: accessible structure (headings, labeled inputs, debounced status), the
  * lessons content, and the secured-card utilization tracker reacting to
  * balance/limit input with the correct classification and guidance.
  *
  * References: issue #2174
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { BuildingCreditPage } from './BuildingCreditPage';
 
 describe('BuildingCreditPage', () => {
-  it('renders an accessible main landmark and page heading', () => {
+  it('defers the main landmark to AppLayout and renders an h2 page heading (#3404)', () => {
     render(<BuildingCreditPage />);
 
-    expect(screen.getByRole('main', { name: 'Building credit' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Building credit' })).toBeInTheDocument();
+    // AppLayout owns the single <main> and <h1>; the page must not duplicate them.
+    expect(screen.queryByRole('main')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Building credit' })).toBeInTheDocument();
+  });
+
+  it('announces a debounced, concise utilization summary (#3413)', () => {
+    vi.useFakeTimers();
+    try {
+      render(<BuildingCreditPage />);
+      fireEvent.change(screen.getByLabelText('Current balance'), { target: { value: '300' } });
+      fireEvent.change(screen.getByLabelText('Credit limit'), { target: { value: '1000' } });
+
+      const status = screen.getByRole('status');
+      // Nothing is announced until the debounce settles, so a screen reader does
+      // not re-read the entire result block on every keystroke.
+      expect(status).toHaveTextContent('');
+
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+      expect(status).toHaveTextContent(/of credit limit used/i);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('labels every tracker input for assistive technology', () => {
