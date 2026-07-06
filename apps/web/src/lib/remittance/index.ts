@@ -25,5 +25,5 @@ export {
   totalCostMinor,
 } from './remittance-math';
 
-export { summarizeRemittances } from './remittance-summary';
-export type { RemittanceSummary } from './remittance-summary';
+export { summarizeRemittances, summarizeByRecipient } from './remittance-summary';
+export type { RemittanceSummary, RemittanceRecipientBreakdown } from './remittance-summary';

@@ -34,6 +34,32 @@ export interface RemittanceSummary {
   readonly destinationCountries: readonly string[];
 }
 
+/**
+ * Per-recipient (per-supplier) rollup of a remittance history.
+ *
+ * A small-business owner who pays the same overseas suppliers every month needs
+ * to see how much has gone to *each* supplier, not just a single global total.
+ * Amounts stay grouped per currency — exactly like {@link RemittanceSummary} —
+ * so a supplier paid in more than one corridor is never naively summed across
+ * currencies.
+ */
+export interface RemittanceRecipientBreakdown {
+  /** Recipient display name (user-entered, never translated). */
+  readonly name: string;
+  /** Recipient destination country (first non-empty value seen). */
+  readonly country: string;
+  /** Number of remittances sent to this recipient. */
+  readonly count: number;
+  /** Most recent send date for this recipient (`YYYY-MM-DD`). */
+  readonly lastDate: string;
+  /** Total paid (converted principal + fee), grouped by source currency. */
+  readonly sentByCurrency: Record<string, number>;
+  /** Total received, grouped by destination currency. */
+  readonly receivedByCurrency: Record<string, number>;
+  /** Total cost (fee + FX margin), grouped by source currency. */
+  readonly totalCostByCurrency: Record<string, number>;
+}
+
 function addTo(map: Record<string, number>, key: string, amount: number): void {
   map[key] = (map[key] ?? 0) + amount;
 }
@@ -83,4 +109,74 @@ export function summarizeRemittances(records: readonly RemittanceRecord[]): Remi
     totalCostByCurrency,
     destinationCountries: countries,
   };
+}
+
+/**
+ * Group a remittance history by recipient so per-supplier spend is visible.
+ *
+ * Records are grouped by trimmed recipient name and re-quoted with
+ * {@link quoteRemittance} for the same rounding as the per-row display. The
+ * result is sorted by transfer count (desc), then most recent date (desc), then
+ * name — so the busiest supplier relationships surface first without ever
+ * comparing amounts across currencies.
+ */
+export function summarizeByRecipient(
+  records: readonly RemittanceRecord[],
+): RemittanceRecipientBreakdown[] {
+  const groups = new Map<
+    string,
+    {
+      name: string;
+      country: string;
+      count: number;
+      lastDate: string;
+      sentByCurrency: Record<string, number>;
+      receivedByCurrency: Record<string, number>;
+      totalCostByCurrency: Record<string, number>;
+    }
+  >();
+
+  for (const record of records) {
+    const name = record.recipient.name.trim();
+    let group = groups.get(name);
+    if (!group) {
+      group = {
+        name,
+        country: record.recipient.country.trim(),
+        count: 0,
+        lastDate: record.date,
+        sentByCurrency: {},
+        receivedByCurrency: {},
+        totalCostByCurrency: {},
+      };
+      groups.set(name, group);
+    }
+
+    const quote = quoteRemittance({
+      sendAmountMinor: record.sendAmountMinor,
+      feeMinor: record.feeMinor,
+      fxRate: record.fxRate,
+      feeModel: record.feeModel,
+      sourceCurrency: record.sourceCurrency,
+      destCurrency: record.destCurrency,
+      referenceRate: record.referenceRate ?? undefined,
+    });
+
+    group.count += 1;
+    if (record.date > group.lastDate) {
+      group.lastDate = record.date;
+    }
+    if (!group.country && record.recipient.country.trim()) {
+      group.country = record.recipient.country.trim();
+    }
+    addTo(group.sentByCurrency, record.sourceCurrency, quote.totalPaidMinor);
+    addTo(group.receivedByCurrency, record.destCurrency, quote.receivedMinor);
+    addTo(group.totalCostByCurrency, record.sourceCurrency, quote.totalCostMinor ?? quote.feeMinor);
+  }
+
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.count !== b.count) return b.count - a.count;
+    if (a.lastDate !== b.lastDate) return a.lastDate < b.lastDate ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
 }

@@ -12,14 +12,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { summarizeRemittances } from '../lib/remittance';
-import type { CreateRemittanceInput, RemittanceRecord, RemittanceSummary } from '../lib/remittance';
+import { summarizeRemittances, summarizeByRecipient } from '../lib/remittance';
+import type {
+  CreateRemittanceInput,
+  RemittanceRecord,
+  RemittanceSummary,
+  RemittanceRecipientBreakdown,
+} from '../lib/remittance';
 
 const STORAGE_KEY = 'finance-remittances';
 
 export interface UseRemittancesResult {
   readonly remittances: readonly RemittanceRecord[];
   readonly summary: RemittanceSummary;
+  readonly recipientBreakdown: readonly RemittanceRecipientBreakdown[];
   readonly loading: boolean;
   readonly error: string | null;
   readonly refresh: () => void;
@@ -123,10 +129,12 @@ export function useRemittances(): UseRemittancesResult {
   }, []);
 
   const summary = useMemo(() => summarizeRemittances(remittances), [remittances]);
+  const recipientBreakdown = useMemo(() => summarizeByRecipient(remittances), [remittances]);
 
   return {
     remittances,
     summary,
+    recipientBreakdown,
     loading,
     error,
     refresh,

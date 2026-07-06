@@ -205,6 +205,11 @@ export const EN_US_CATALOG: MessageCatalog = {
   'remittance.summary.totalCost': 'Total cost',
   'remittance.summary.destinations': 'Destinations',
   'remittance.summary.none': '—',
+  'remittance.bySupplier.title': 'By supplier',
+  'remittance.bySupplier.transfers': {
+    one: '{count} transfer',
+    other: '{count} transfers',
+  },
   'remittance.history.title': 'History',
   'remittance.history.sent': 'Sent',
   'remittance.history.fee': 'Fee',
