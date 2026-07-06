@@ -11,6 +11,7 @@
 import { type FC, useCallback, useEffect, useId, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
+import { AccessibleChartDataTable } from './chart-accessibility';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 
 export interface CategorySlice {
@@ -131,6 +132,17 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
     chartSlices[next].focus();
   }, []);
 
+  const tableRows = data.map((slice, i) => {
+    const percent = total > 0 ? ((slice.value / total) * 100).toFixed(1) : '0.0';
+    const formattedValue = formatChartCurrency(slice.value, currency, 'en-US', maskingMode);
+    return {
+      id: `${chartId}-row-${i}`,
+      rowHeader: slice.name,
+      cells: [formattedValue, `${percent}%`],
+      ariaLabel: `${slice.name}: ${formattedValue} (${percent}%)`,
+    };
+  });
+
   return (
     <div ref={containerRef} role="figure" aria-label={description} aria-roledescription="pie chart">
       <h3 id={`${chartId}-title`} className="chart-title">
@@ -178,6 +190,18 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
           })}
         </ul>
       </div>
+      {data.length > 0 && (
+        <AccessibleChartDataTable
+          captionId={`${chartId}-table-caption`}
+          title={title}
+          rowHeaderLabel="Category"
+          columns={[
+            { key: 'amount', header: 'Amount' },
+            { key: 'share', header: 'Share' },
+          ]}
+          rows={tableRows}
+        />
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { CategoryPieChart, type CategorySlice } from './CategoryPieChart';
 
@@ -126,5 +126,20 @@ describe('CategoryPieChart', () => {
     expect(screen.getByRole('status', { name: /chart point announcement/i })).toHaveTextContent(
       'Food: $450 (56.3%)',
     );
+  });
+
+  it('renders a screen-reader data-table alternative listing each category', () => {
+    render(<CategoryPieChart data={sampleData} />);
+    const table = screen.getByRole('table', { name: /spending by category data table/i });
+    expect(within(table).getByRole('rowheader', { name: 'Food' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Transport' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Entertainment' })).toBeInTheDocument();
+    expect(within(table).getByText('$450')).toBeInTheDocument();
+    expect(within(table).getByText('56.3%')).toBeInTheDocument();
+  });
+
+  it('omits the data table when there is no data', () => {
+    render(<CategoryPieChart data={[]} />);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });

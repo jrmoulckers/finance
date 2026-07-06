@@ -7,6 +7,7 @@
 import { type FC, useCallback, useId, useMemo, useRef, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
+import { AccessibleChartDataTable } from './chart-accessibility';
 import { useArrowKeyNavigation } from '../../accessibility/aria';
 
 export interface BudgetSlice {
@@ -62,6 +63,21 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
       [pointAnnouncements],
     ),
   });
+
+  const tableRows = useMemo(
+    () =>
+      data.map((entry, index) => {
+        const percent = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
+        const formattedValue = formatChartCurrency(entry.value, currency);
+        return {
+          id: `${chartId}-row-${index}`,
+          rowHeader: entry.name,
+          cells: [formattedValue, `${percent}%`],
+          ariaLabel: `${entry.name}: ${formattedValue} (${percent}%)`,
+        };
+      }),
+    [chartId, currency, data, total],
+  );
 
   return (
     <div
@@ -137,6 +153,18 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
           />
         </PieChart>
       </ResponsiveContainer>
+      {data.length > 0 && (
+        <AccessibleChartDataTable
+          captionId={`${chartId}-table-caption`}
+          title={title}
+          rowHeaderLabel="Category"
+          columns={[
+            { key: 'amount', header: 'Amount' },
+            { key: 'share', header: 'Share' },
+          ]}
+          rows={tableRows}
+        />
+      )}
     </div>
   );
 };
