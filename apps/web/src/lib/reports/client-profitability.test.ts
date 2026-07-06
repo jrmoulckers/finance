@@ -4,7 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { Transaction } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
-import { buildClientProfitabilityReport, extractClientProjectLabels } from './client-profitability';
+import {
+  buildClientProfitabilityReport,
+  exportClientProfitabilityCsv,
+  extractClientProjectLabels,
+} from './client-profitability';
 
 function transaction(overrides: Partial<Transaction>): Transaction {
   return {
@@ -168,5 +172,86 @@ describe('buildClientProfitabilityReport', () => {
     expect(report.rows).toHaveLength(2);
     expect(report.rows.map((row) => row.revenue).sort((a, b) => b - a)).toEqual([5_001, 5_000]);
     expect(report.totalRevenue).toBe(10_001);
+  });
+});
+
+describe('exportClientProfitabilityCsv', () => {
+  it('emits a header, one row per client, and a dollar-denominated totals row', () => {
+    const csv = exportClientProfitabilityCsv(
+      buildClientProfitabilityReport([
+        transaction({
+          id: 'acme-income',
+          type: 'INCOME',
+          amount: { amount: 10_000 },
+          tags: ['client:Acme'],
+        }),
+        transaction({
+          id: 'acme-cost',
+          type: 'EXPENSE',
+          amount: { amount: 2_500 },
+          tags: ['client:Acme'],
+        }),
+        transaction({
+          id: 'beta-income',
+          type: 'INCOME',
+          amount: { amount: 5_000 },
+          tags: ['client:Beta'],
+        }),
+      ]),
+    );
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe('Client / project,Revenue,Cost,Net profit,Margin %,Transactions');
+    expect(lines).toContain('Acme,100.00,25.00,75.00,75.0,2');
+    expect(lines).toContain('Beta,50.00,0.00,50.00,100.0,1');
+    // Totals land on the last row; the transaction column is blank because a
+    // split transaction must not be double counted across clients.
+    expect(lines[lines.length - 1]).toBe('All clients,150.00,25.00,125.00,83.3,');
+  });
+
+  it('quotes client/project names that contain commas or quotes', () => {
+    const csv = exportClientProfitabilityCsv(
+      buildClientProfitabilityReport([
+        transaction({
+          id: 'comma',
+          type: 'INCOME',
+          amount: { amount: 4_000 },
+          tags: ['client:Beta, LLC'],
+        }),
+        transaction({
+          id: 'quote',
+          type: 'INCOME',
+          amount: { amount: 2_000 },
+          tags: ['client:Say "Hi"'],
+        }),
+      ]),
+    );
+
+    expect(csv).toContain('"Beta, LLC",40.00,0.00,40.00,100.0,1');
+    expect(csv).toContain('"Say ""Hi""",20.00,0.00,20.00,100.0,1');
+  });
+
+  it('leaves the margin blank when a client has no revenue', () => {
+    const csv = exportClientProfitabilityCsv(
+      buildClientProfitabilityReport([
+        transaction({
+          id: 'cost-only',
+          type: 'EXPENSE',
+          amount: { amount: 3_000 },
+          tags: ['client:Gamma'],
+        }),
+      ]),
+    );
+
+    expect(csv).toContain('Gamma,0.00,30.00,-30.00,,1');
+  });
+
+  it('returns the header and an empty totals row for a report with no clients', () => {
+    const csv = exportClientProfitabilityCsv(buildClientProfitabilityReport([]));
+
+    expect(csv.split('\n')).toEqual([
+      'Client / project,Revenue,Cost,Net profit,Margin %,Transactions',
+      'All clients,0.00,0.00,0.00,,',
+    ]);
   });
 });

@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { CashFlowPage } from './CashFlowPage';
 
 // Mock the hook
@@ -168,5 +168,58 @@ describe('CashFlowPage', () => {
     expect(screen.getByRole('radio', { name: '6M' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '12M' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '24M' })).toBeInTheDocument();
+  });
+
+  // A two-month window where the multi-period cumulative net (800000) differs
+  // from the current month's net (200000), so a seeding regression is visible.
+  const twoMonthResult = {
+    aggregates: [
+      { month: '2024-01', income: 1000000, expenses: 400000, netIncome: 600000 },
+      { month: '2024-02', income: 500000, expenses: 300000, netIncome: 200000 },
+    ],
+    summary: {
+      averageMonthlyIncome: 750000,
+      averageMonthlyExpenses: 350000,
+      averageMonthlyNetIncome: 400000,
+      totalIncome: 1500000,
+      totalExpenses: 700000,
+      totalNetIncome: 800000,
+      monthCount: 2,
+    },
+    incomeSources: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    exportCsv: vi.fn(),
+  } as ReturnType<typeof useCashFlow>;
+
+  it('seeds the month-end forecast with the current month net, not the multi-period total', () => {
+    mockUseCashFlow.mockReturnValue(twoMonthResult);
+
+    render(<CashFlowPage />);
+
+    // Current month net (200000) + remaining avg income (250000) − remaining
+    // avg outflow (50000) = 400000 → $4,000.00. The old code seeded the forecast
+    // with the 2-month cumulative net (800000), which produced $10,000.00.
+    const projectedCard = screen.getByLabelText('Projected end-of-month balance');
+    expect(within(projectedCard).getByText('$4,000.00')).toBeInTheDocument();
+    expect(within(projectedCard).queryByText('$10,000.00')).not.toBeInTheDocument();
+  });
+
+  it('exposes an accessible data table alternative for the income vs. expenses chart', () => {
+    mockUseCashFlow.mockReturnValue(twoMonthResult);
+
+    render(<CashFlowPage />);
+
+    const table = screen.getByRole('table', { name: /monthly income versus expenses/i });
+    expect(within(table).getByRole('columnheader', { name: 'Income' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Expenses' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Net' })).toBeInTheDocument();
+
+    // The February row exposes the same figures the bars encode visually.
+    expect(within(table).getByRole('rowheader', { name: '2024-02' })).toBeInTheDocument();
+    expect(within(table).getByText('$5,000.00')).toBeInTheDocument(); // income
+    expect(within(table).getByText('$3,000.00')).toBeInTheDocument(); // expenses
+    expect(within(table).getByText('$2,000.00')).toBeInTheDocument(); // net
   });
 });

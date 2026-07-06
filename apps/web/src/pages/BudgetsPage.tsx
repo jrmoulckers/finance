@@ -558,6 +558,10 @@ export const BudgetsPage: React.FC = () => {
               <div>
                 <p className="card__title">
                   {envelopeSummary.readyToAssignCents < 0 ? 'Over-assigned' : 'Ready to assign'}
+                  <ExplainThis
+                    glossaryKey="zeroBasedBudget"
+                    buttonLabel="Explain assigning every dollar"
+                  />
                 </p>
                 <p className="card__value">
                   <CurrencyDisplay amount={Math.abs(envelopeSummary.readyToAssignCents)} colorize />
@@ -731,6 +735,15 @@ export const BudgetsPage: React.FC = () => {
         <EmptyState
           title="No budget envelopes yet"
           description="Start by entering expected income above, then create budget envelopes that assign every dollar to spending, saving, or debt categories."
+          action={
+            <button
+              type="button"
+              className="form-button form-button--primary"
+              onClick={handleAddBudget}
+            >
+              Create your first budget
+            </button>
+          }
         />
       ) : (
         <>

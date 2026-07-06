@@ -630,4 +630,63 @@ describe('PlanningPage', () => {
     expect(within(bandRow).getByText('$500.00')).toBeTruthy(); // deposit
     expect(within(bandRow).getByText('$2000.00')).toBeTruthy(); // remaining
   });
+
+  it('surfaces a College Fund tab with a live 529 funding projection', () => {
+    render(<PlanningPage />);
+    expect(screen.getByRole('tab', { name: /college fund/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: /college fund/i }));
+
+    expect(screen.getByRole('heading', { name: /college fund \(529\) planner/i })).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: /college costs/i })).toBeTruthy();
+    expect(screen.getByText('Projected cost')).toBeTruthy();
+    expect(screen.getByText('Needed / month')).toBeTruthy();
+    expect(screen.getByText('Annual tax benefit')).toBeTruthy();
+    // The default seed ($250/mo from birth) does not fully fund four years of college.
+    expect(screen.getAllByText(/short/i).length).toBeGreaterThan(0);
+  });
+
+  it('recomputes 529 coverage live when the monthly contribution changes', () => {
+    render(<PlanningPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /college fund/i }));
+
+    const bar = screen.getByRole('progressbar', { name: /college costs/i });
+    // A large monthly contribution fully funds the goal and flips the status to on-track.
+    fireEvent.change(screen.getByLabelText('Monthly contribution (USD)'), {
+      target: { value: '5000' },
+    });
+
+    expect(bar).toHaveAttribute('aria-valuenow', '100');
+    expect(screen.getAllByText(/on track/i).length).toBeGreaterThan(0);
+  });
+
+  it('surfaces a Down Payment tab with a live home-purchase projection', () => {
+    render(<PlanningPage />);
+    expect(screen.getByRole('tab', { name: /down payment/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: /down payment/i }));
+
+    expect(screen.getByRole('heading', { name: /home down payment planner/i })).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: /cash needed to close/i })).toBeTruthy();
+    expect(screen.getByText('Down payment')).toBeTruthy();
+    expect(screen.getByText('Closing costs')).toBeTruthy();
+    expect(screen.getByText('Total cash needed')).toBeTruthy();
+    expect(screen.getByText('PMI required')).toBeTruthy();
+    // The default seed ($0 saved) leaves a gap toward the cash needed to close.
+    expect(screen.getAllByText(/to go|short/i).length).toBeGreaterThan(0);
+  });
+
+  it('recomputes the down-payment coverage live when current savings change', () => {
+    render(<PlanningPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /down payment/i }));
+
+    const bar = screen.getByRole('progressbar', { name: /cash needed to close/i });
+    // $150k covers a 20% down payment ($80k) plus 3% closing ($12k) on a $400k home.
+    fireEvent.change(screen.getByLabelText('Current savings (USD)'), {
+      target: { value: '150000' },
+    });
+
+    expect(bar).toHaveAttribute('aria-valuenow', '100');
+    expect(screen.getAllByText(/ready to close/i).length).toBeGreaterThan(0);
+  });
 });

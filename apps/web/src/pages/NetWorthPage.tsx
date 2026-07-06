@@ -25,7 +25,11 @@ import { AccountPurposeFilterControl } from '../components/accounts';
 import { AppIcon } from '../components/icons';
 import { NetWorthProjectionChart } from '../components/charts/NetWorthProjectionChart';
 import { useNetWorth } from '../hooks/useNetWorth';
-import type { AssetClassBreakdown, NetWorthMilestone } from '../lib/analytics/net-worth';
+import type {
+  AssetClassBreakdown,
+  NetWorthMilestone,
+  PeriodComparison,
+} from '../lib/analytics/net-worth';
 import type { AccountPurposeFilter } from '../lib/accountPurpose';
 import { CHART_COLORS } from '../components/charts/chart-palette';
 import './analytics.css';
@@ -99,14 +103,63 @@ const MilestoneList: React.FC<MilestoneListProps> = ({ milestones }) => (
   </div>
 );
 
+interface NetWorthChangeIndicatorProps {
+  comparison: PeriodComparison;
+}
+
+const NET_WORTH_CHANGE_ICON = { up: '▲', down: '▼', flat: '→' } as const;
+
+/**
+ * Period-over-period net worth change (typically month-over-month).
+ *
+ * Direction is conveyed with an arrow glyph, an explicit +/− sign, and plain
+ * text ("vs {previous period}") — never colour alone (WCAG 2.2 §1.4.1). The
+ * percentage denominator uses the absolute prior value, so a recovery from a
+ * negative net worth still reads as an increase.
+ */
+const NetWorthChangeIndicator: React.FC<NetWorthChangeIndicatorProps> = ({ comparison }) => {
+  const { changeCents, changePercent, previousLabel } = comparison;
+  const direction = changeCents > 0 ? 'up' : changeCents < 0 ? 'down' : 'flat';
+
+  return (
+    <p className="analytics-metric-card__change" aria-live="polite">
+      <span className="analytics-metric-card__change-icon" aria-hidden="true">
+        {NET_WORTH_CHANGE_ICON[direction]}
+      </span>{' '}
+      <CurrencyDisplay
+        amount={changeCents}
+        colorize
+        showSign
+        context={`change versus ${previousLabel}`}
+      />
+      {direction !== 'flat' && (
+        <span className="analytics-metric-card__change-percent">
+          {' '}
+          ({changePercent > 0 ? '+' : ''}
+          {changePercent}%)
+        </span>
+      )}{' '}
+      <span className="analytics-metric-card__change-period">vs {previousLabel}</span>
+    </p>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Page component
 // ---------------------------------------------------------------------------
 
 export const NetWorthPage: React.FC = () => {
   const [purposeFilter, setPurposeFilter] = useState<AccountPurposeFilter>('all');
-  const { currentNetWorth, assetClasses, milestones, history, loading, error, refresh } =
-    useNetWorth(purposeFilter);
+  const {
+    currentNetWorth,
+    assetClasses,
+    milestones,
+    history,
+    periodComparison,
+    loading,
+    error,
+    refresh,
+  } = useNetWorth(purposeFilter);
 
   if (loading) {
     return (
@@ -191,6 +244,7 @@ export const NetWorthPage: React.FC = () => {
             >
               <CurrencyDisplay amount={currentNetWorth.netWorth} />
             </p>
+            {periodComparison && <NetWorthChangeIndicator comparison={periodComparison} />}
           </article>
           <article className="analytics-metric-card" aria-label="Total assets">
             <div

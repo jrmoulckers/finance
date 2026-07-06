@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -16,9 +16,11 @@ import { DateInput, ErrorBanner, LoadingSpinner } from '../components/common';
 import { CHART_COLORS, formatChartCurrency } from '../components/charts/chart-palette';
 import { useTransactions } from '../hooks/useTransactions';
 import { formatCurrency } from '../lib/currency';
+import { buildDatedExportFileName } from '../lib/export/simple-export';
 import {
   DEFAULT_CLIENT_TAG_PREFIXES,
   buildClientProfitabilityReport,
+  exportClientProfitabilityCsv,
   type ClientProfitabilityRow,
 } from '../lib/reports/client-profitability';
 
@@ -77,6 +79,19 @@ export function ClientProfitabilityPage() {
     [report.rows],
   );
 
+  const handleExportCsv = useCallback(() => {
+    const csv = exportClientProfitabilityCsv(report);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = buildDatedExportFileName('client-profitability', 'csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [report]);
+
   if (loading) {
     return <LoadingSpinner label="Loading client profitability report" />;
   }
@@ -100,6 +115,15 @@ export function ClientProfitabilityPage() {
           Tag transactions with {tagExamples} to allocate real income and costs to client or project
           profit-and-loss reporting.
         </p>
+        <button
+          type="button"
+          className="client-profitability__export-btn"
+          onClick={handleExportCsv}
+          disabled={report.rows.length === 0}
+          aria-label="Download client profitability report as CSV"
+        >
+          Download CSV
+        </button>
       </header>
 
       <section className="client-profitability__card" aria-labelledby="client-filters-title">

@@ -8,6 +8,7 @@ import {
   buildProfitAndLoss,
   classifyTransaction,
   compilePnlTagSets,
+  exportBusinessPnlCsv,
   formatMarginPercent,
   marginBasisPoints,
   periodKey,
@@ -471,5 +472,60 @@ describe('DEFAULT_PNL_TAGS', () => {
     expect(DEFAULT_PNL_TAGS.cogs).toContain('cogs');
     expect(DEFAULT_PNL_TAGS.labor).toContain('payroll');
     expect(DEFAULT_PNL_TAGS.overhead).toContain('opex');
+  });
+});
+
+describe('exportBusinessPnlCsv', () => {
+  it('emits a header, one row per period, and an All periods totals row', () => {
+    const csv = exportBusinessPnlCsv(
+      buildProfitAndLoss([
+        makeTransaction({ date: '2024-01-05', type: 'INCOME', amountCents: 100_000 }),
+        makeTransaction({
+          date: '2024-01-06',
+          type: 'EXPENSE',
+          amountCents: 30_000,
+          tags: ['cogs'],
+        }),
+        makeTransaction({
+          date: '2024-01-07',
+          type: 'EXPENSE',
+          amountCents: 20_000,
+          tags: ['labor'],
+        }),
+        makeTransaction({ date: '2024-01-08', type: 'EXPENSE', amountCents: 10_000 }),
+        makeTransaction({ date: '2024-02-05', type: 'INCOME', amountCents: 50_000 }),
+      ]),
+    );
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe(
+      'Period,Revenue,COGS,Gross profit,Gross margin %,Labor,Overhead,Operating expenses,Net profit,Net margin %,Transactions',
+    );
+    expect(lines).toContain(
+      'Jan 2024,1000.00,300.00,700.00,70.0,200.00,100.00,300.00,400.00,40.0,4',
+    );
+    expect(lines).toContain('Feb 2024,500.00,0.00,500.00,100.0,0.00,0.00,0.00,500.00,100.0,1');
+    expect(lines[lines.length - 1]).toBe(
+      'All periods,1500.00,300.00,1200.00,80.0,200.00,100.00,300.00,900.00,60.0,5',
+    );
+  });
+
+  it('leaves both margins blank for a period with no revenue', () => {
+    const csv = exportBusinessPnlCsv(
+      buildProfitAndLoss([
+        makeTransaction({ date: '2024-03-05', type: 'EXPENSE', amountCents: 5_000 }),
+      ]),
+    );
+
+    expect(csv).toContain('Mar 2024,0.00,0.00,0.00,,0.00,50.00,50.00,-50.00,,1');
+  });
+
+  it('returns the header and an empty totals row for an empty statement', () => {
+    const csv = exportBusinessPnlCsv(buildProfitAndLoss([]));
+
+    expect(csv.split('\n')).toEqual([
+      'Period,Revenue,COGS,Gross profit,Gross margin %,Labor,Overhead,Operating expenses,Net profit,Net margin %,Transactions',
+      'All periods,0.00,0.00,0.00,,0.00,0.00,0.00,0.00,,0',
+    ]);
   });
 });

@@ -49,7 +49,7 @@ describe('starter budget templates', () => {
     expect(calculateStarterTemplateTotal('food-meals')).toBe(70_000);
   });
 
-  it('keeps future starter templates visible but unavailable while family is available', () => {
+  it('exposes the professional template as available while retiree stays coming soon', () => {
     const templateIds = getBudgetStarterTemplates().map((template) => template.id);
 
     expect(templateIds).toEqual(['student', 'food-meals', 'family', 'professional', 'retiree']);
@@ -57,7 +57,27 @@ describe('starter budget templates', () => {
       'student',
       'food-meals',
       'family',
+      'professional',
     ]);
+
+    const retiree = getBudgetStarterTemplateById('retiree');
+    expect(retiree?.isAvailable).toBe(false);
+    expect(retiree?.availabilityLabel).toBe('Coming soon');
+  });
+
+  it('includes a professional starter template with an emergency fund and student loan payment', () => {
+    const professionalTemplate = getBudgetStarterTemplateById('professional');
+
+    expect(professionalTemplate).not.toBeNull();
+    expect(professionalTemplate?.isAvailable).toBe(true);
+    expect(professionalTemplate?.availabilityLabel).toBeUndefined();
+
+    const categoryNames = professionalTemplate?.categories.map((category) => category.name) ?? [];
+    expect(categoryNames).toContain('Emergency Fund');
+    expect(categoryNames).toContain('Student Loan Payment');
+    expect(categoryNames).toContain('Rent/Housing');
+
+    expect(calculateStarterTemplateTotal('professional')).toBe(308_000);
   });
 
   it('shares the student income guidance copy', () => {

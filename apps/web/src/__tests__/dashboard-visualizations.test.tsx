@@ -703,6 +703,10 @@ describe('DashboardPage empty state (#1334)', () => {
     );
 
     expect(screen.getByText('No dashboard data yet')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /add your first account/i })).toHaveAttribute(
+      'href',
+      '/accounts',
+    );
   });
 
   it('shows empty state when data is null', () => {

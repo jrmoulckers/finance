@@ -72,6 +72,8 @@ export function useSubscriptions(): UseSubscriptionsResult {
     totalAnnualCents: 0,
     activeCount: 0,
     flaggedCount: 0,
+    flaggedMonthlyCents: 0,
+    flaggedAnnualCents: 0,
     cancelledCount: 0,
     byCategory: [],
   });

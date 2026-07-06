@@ -37,7 +37,11 @@ import type {
   SweepEvaluation,
   SweepLogEntry,
 } from '../lib/planning';
-import { projectRetirementHealthcareCosts } from '../lib/planning';
+import {
+  analyzeEducationFund,
+  analyzeHomePurchase,
+  projectRetirementHealthcareCosts,
+} from '../lib/planning';
 import {
   buildWeddingPlanSummary,
   buildWeddingVendorBreakdown,
@@ -54,13 +58,16 @@ import { TrendLineChart } from '../components/charts';
 // Types
 // ---------------------------------------------------------------------------
 
-type PlanningTab = 'scenarios' | 'life-events' | 'wedding' | 'retirement' | 'goals' | 'sweep';
+type PlanningTab =
+  'scenarios' | 'life-events' | 'wedding' | 'retirement' | 'education' | 'home' | 'goals' | 'sweep';
 
 const TAB_CONFIG: { id: PlanningTab; label: string; icon: IconName }[] = [
   { id: 'scenarios', label: 'What-If Modeler', icon: 'sparkles' },
   { id: 'life-events', label: 'Life Events', icon: 'calendar' },
   { id: 'wedding', label: 'Wedding', icon: 'gift' },
   { id: 'retirement', label: 'Retirement', icon: 'leaf' },
+  { id: 'education', label: 'College Fund', icon: 'medal' },
+  { id: 'home', label: 'Down Payment', icon: 'home' },
   { id: 'goals', label: 'Savings Goals', icon: 'target' },
   { id: 'sweep', label: 'Automations', icon: 'lightning' },
 ];
@@ -2173,6 +2180,551 @@ const WeddingWorkspacePanel: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
+// Education / 529 college fund planner
+// ---------------------------------------------------------------------------
+
+/** Age at which college is assumed to begin. */
+const EDUCATION_START_AGE = 18;
+/** Assumed annual tuition inflation (5.00%). */
+const EDUCATION_TUITION_INFLATION_BPS = 500;
+/** Assumed annual investment return (6.00%). */
+const EDUCATION_ANNUAL_RETURN_BPS = 600;
+/** Assumed state income tax rate for 529 benefit estimate (5.00%). */
+const EDUCATION_STATE_TAX_BPS = 500;
+
+/**
+ * Parse a dollar string into non-negative integer cents.
+ *
+ * @param value - The raw input value in dollars
+ * @returns The value in cents, floored at 0
+ */
+function educationDollarsToCents(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return Math.round(parsed * 100);
+}
+
+/**
+ * Education / 529 college fund planner panel.
+ *
+ * Surfaces the shared `analyzeEducationFund` engine so a family can project
+ * college costs and check whether their 529 savings are on track. Results
+ * update live as the inputs change.
+ */
+const EducationPanel: React.FC = () => {
+  const [childAge, setChildAge] = useState('0');
+  const [annualTuition, setAnnualTuition] = useState('22000');
+  const [educationYears, setEducationYears] = useState('4');
+  const [currentBalance, setCurrentBalance] = useState('0');
+  const [monthlyContribution, setMonthlyContribution] = useState('250');
+
+  const beneficiaryAge = Math.max(0, Math.min(17, Math.floor(Number(childAge) || 0)));
+
+  const result = useMemo(
+    () =>
+      analyzeEducationFund({
+        beneficiaryAge,
+        educationStartAge: EDUCATION_START_AGE,
+        educationYears: Math.max(1, Math.floor(Number(educationYears) || 1)),
+        currentAnnualTuitionCents: educationDollarsToCents(annualTuition),
+        tuitionInflationBps: EDUCATION_TUITION_INFLATION_BPS,
+        currentBalanceCents: educationDollarsToCents(currentBalance),
+        monthlyContributionCents: educationDollarsToCents(monthlyContribution),
+        annualReturnBps: EDUCATION_ANNUAL_RETURN_BPS,
+        stateTaxRateBps: EDUCATION_STATE_TAX_BPS,
+      }),
+    [beneficiaryAge, educationYears, annualTuition, currentBalance, monthlyContribution],
+  );
+
+  const coveragePercent = Math.max(0, Math.min(100, Math.round(result.coverageRatioBps / 100)));
+  const fullyFunded = result.fundingGapCents <= 0;
+  const yearsToStart = Math.max(0, EDUCATION_START_AGE - beneficiaryAge);
+
+  const announcement = fullyFunded
+    ? `On track: projected savings of ${formatCurrency(
+        result.projectedBalanceCents,
+      )} cover the estimated ${formatCurrency(result.totalProjectedCostCents)} cost of college.`
+    : `Projected shortfall of ${formatCurrency(
+        result.fundingGapCents,
+      )}. Contributing ${formatCurrency(
+        result.requiredMonthlyContributionCents,
+      )} per month would fully fund the goal.`;
+
+  return (
+    <div className="education-planner">
+      <section className="planning-card" aria-labelledby="education-intro-title">
+        <h3 id="education-intro-title" className="planning-card__title">
+          College fund (529) planner
+        </h3>
+        <p className="planning-card__description">
+          Project your child&apos;s college costs and see whether your 529 savings are on track.
+          Assumes college starts at age {EDUCATION_START_AGE},{' '}
+          {EDUCATION_TUITION_INFLATION_BPS / 100}% annual tuition inflation, and a{' '}
+          {EDUCATION_ANNUAL_RETURN_BPS / 100}% expected return.
+        </p>
+        <div className="life-events-form" aria-label="Education fund inputs">
+          <label className="life-events-field">
+            Child&apos;s current age (years)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={17}
+              step={1}
+              value={childAge}
+              onChange={(e) => setChildAge(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Current annual tuition (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="500"
+              value={annualTuition}
+              onChange={(e) => setAnnualTuition(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Years of college
+            <input
+              className="form-input"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={8}
+              step={1}
+              value={educationYears}
+              onChange={(e) => setEducationYears(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Current 529 balance (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="100"
+              value={currentBalance}
+              onChange={(e) => setCurrentBalance(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Monthly contribution (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="25"
+              value={monthlyContribution}
+              onChange={(e) => setMonthlyContribution(e.target.value)}
+            />
+          </label>
+        </div>
+        <p className="education-announce" aria-live="polite">
+          {announcement}
+        </p>
+      </section>
+
+      <section className="planning-card" aria-labelledby="education-projection-title">
+        <h3 id="education-projection-title" className="planning-card__title">
+          Funding projection
+        </h3>
+        <div
+          className="education-coverage-bar"
+          role="progressbar"
+          aria-valuenow={coveragePercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Projected 529 savings cover ${coveragePercent}% of estimated college costs`}
+        >
+          <span
+            className={`education-coverage-bar__fill ${
+              fullyFunded ? '' : 'education-coverage-bar__fill--gap'
+            }`}
+            style={{ width: `${coveragePercent}%` }}
+          />
+        </div>
+        <p
+          className={`education-status ${
+            fullyFunded ? 'education-status--ok' : 'education-status--gap'
+          }`}
+          role="status"
+        >
+          <AppIcon name={fullyFunded ? 'check-circle' : 'alert-triangle'} />
+          <span>
+            {coveragePercent}% funded —{' '}
+            {fullyFunded ? 'on track' : `${formatCurrency(result.fundingGapCents)} short`}
+          </span>
+        </p>
+        <div className="planning-metrics" aria-label="Education funding summary">
+          <article className="planning-metric" aria-label="Projected total cost of college">
+            <p className="planning-metric__label">Projected cost</p>
+            <p className="planning-metric__value">
+              {formatCurrency(result.totalProjectedCostCents)}
+            </p>
+          </article>
+          <article className="planning-metric" aria-label="Projected 529 balance at college start">
+            <p className="planning-metric__label">Projected savings</p>
+            <p className="planning-metric__value">{formatCurrency(result.projectedBalanceCents)}</p>
+          </article>
+          <article className="planning-metric" aria-label={fullyFunded ? 'Surplus' : 'Shortfall'}>
+            <p className="planning-metric__label">{fullyFunded ? 'Surplus' : 'Shortfall'}</p>
+            <p className="planning-metric__value">{formatCurrency(result.fundingGapCents)}</p>
+          </article>
+          <article
+            className="planning-metric"
+            aria-label="Monthly contribution needed to fully fund"
+          >
+            <p className="planning-metric__label">Needed / month</p>
+            <p className="planning-metric__value">
+              {formatCurrency(result.requiredMonthlyContributionCents)}
+            </p>
+          </article>
+          <article className="planning-metric" aria-label="Estimated annual state tax benefit">
+            <p className="planning-metric__label">Annual tax benefit</p>
+            <p className="planning-metric__value">{formatCurrency(result.annualTaxBenefitCents)}</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="planning-card" aria-labelledby="education-allocation-title">
+        <h3 id="education-allocation-title" className="planning-card__title">
+          Suggested allocation
+        </h3>
+        <p className="planning-card__description">
+          {yearsToStart} year{yearsToStart === 1 ? '' : 's'} until college.{' '}
+          {result.suggestedAllocation.description}.
+        </p>
+        <dl className="education-allocation">
+          <div className="education-allocation__item">
+            <dt>Equities</dt>
+            <dd>{result.suggestedAllocation.equityPercent}%</dd>
+          </div>
+          <div className="education-allocation__item">
+            <dt>Bonds</dt>
+            <dd>{result.suggestedAllocation.bondPercent}%</dd>
+          </div>
+          <div className="education-allocation__item">
+            <dt>Cash</dt>
+            <dd>{result.suggestedAllocation.cashPercent}%</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Home down payment planner
+// ---------------------------------------------------------------------------
+
+/** Assumed mortgage APR (7.00%) for the affordability estimate. */
+const HOME_MORTGAGE_RATE_BPS = 700;
+/** Assumed mortgage term in years. */
+const HOME_LOAN_TERM_YEARS = 30;
+/** Assumed annual property tax rate (1.20% of home price). */
+const HOME_PROPERTY_TAX_BPS = 120;
+/** Assumed annual homeowner's insurance ($1,800). */
+const HOME_ANNUAL_INSURANCE_CENTS = 180000;
+/** Assumed closing costs (3.00% of home price). */
+const HOME_CLOSING_COST_BPS = 300;
+/** Front-end DTI guideline ceiling (28.00%). */
+const HOME_DTI_GUIDELINE_BPS = 2800;
+
+/**
+ * Parse a dollar string into non-negative integer cents.
+ *
+ * @param value - The raw input value in dollars
+ * @returns The value in cents, floored at 0
+ */
+function homeDollarsToCents(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return Math.round(parsed * 100);
+}
+
+/**
+ * Home down payment planner panel.
+ *
+ * Surfaces the shared `analyzeHomePurchase` engine so a couple saving for a
+ * house can see the down payment and closing costs they need, whether their
+ * savings are on pace, and a rough monthly-payment / affordability estimate.
+ * Results update live as the inputs change.
+ */
+const DownPaymentPanel: React.FC = () => {
+  const [homePrice, setHomePrice] = useState('400000');
+  const [downPaymentPercent, setDownPaymentPercent] = useState('20');
+  const [currentSavings, setCurrentSavings] = useState('0');
+  const [monthlySavings, setMonthlySavings] = useState('1500');
+  const [yearsToPurchase, setYearsToPurchase] = useState('3');
+  const [annualIncome, setAnnualIncome] = useState('120000');
+
+  const years = Math.max(0, Math.min(30, Math.floor(Number(yearsToPurchase) || 0)));
+  const downPaymentBps = Math.max(
+    0,
+    Math.min(10000, Math.round((Number(downPaymentPercent) || 0) * 100)),
+  );
+
+  const targetDate = useMemo(() => {
+    const now = new Date();
+    return new Date(now.getFullYear() + years, now.getMonth(), 1).toISOString().slice(0, 10);
+  }, [years]);
+
+  const result = useMemo(
+    () =>
+      analyzeHomePurchase({
+        homePriceCents: homeDollarsToCents(homePrice),
+        currentSavingsCents: homeDollarsToCents(currentSavings),
+        monthlySavingsCents: homeDollarsToCents(monthlySavings),
+        targetDate,
+        mortgageRateBps: HOME_MORTGAGE_RATE_BPS,
+        loanTermYears: HOME_LOAN_TERM_YEARS,
+        propertyTaxRateBps: HOME_PROPERTY_TAX_BPS,
+        annualInsuranceCents: HOME_ANNUAL_INSURANCE_CENTS,
+        annualIncomeCents: homeDollarsToCents(annualIncome),
+        existingMonthlyDebtCents: 0,
+        downPaymentBps,
+        closingCostBps: HOME_CLOSING_COST_BPS,
+      }),
+    [homePrice, currentSavings, monthlySavings, targetDate, annualIncome, downPaymentBps],
+  );
+
+  const currentSavingsCents = homeDollarsToCents(currentSavings);
+  const savedPercent =
+    result.totalCashNeededCents > 0
+      ? Math.max(
+          0,
+          Math.min(100, Math.round((currentSavingsCents / result.totalCashNeededCents) * 100)),
+        )
+      : 100;
+  const fullyFunded = result.savingsGapCents <= 0;
+  const frontEndDtiPercent = (result.frontEndDtiBps / 100).toFixed(1);
+  const withinDtiGuideline = result.frontEndDtiBps <= HOME_DTI_GUIDELINE_BPS;
+
+  let announcement: string;
+  if (fullyFunded) {
+    announcement = `On track: your ${formatCurrency(
+      currentSavingsCents,
+    )} covers the ${formatCurrency(
+      result.totalCashNeededCents,
+    )} needed for the down payment and closing costs.`;
+  } else if (result.requiredMonthlySavingsCents !== null) {
+    announcement = `You're ${formatCurrency(result.savingsGapCents)} short. Saving ${formatCurrency(
+      result.requiredMonthlySavingsCents,
+    )} per month reaches your goal in about ${years} year${years === 1 ? '' : 's'}.`;
+  } else {
+    announcement = `You're ${formatCurrency(
+      result.savingsGapCents,
+    )} short of the cash needed to close.`;
+  }
+
+  return (
+    <div className="home-planner">
+      <section className="planning-card" aria-labelledby="home-intro-title">
+        <h3 id="home-intro-title" className="planning-card__title">
+          Home down payment planner
+        </h3>
+        <p className="planning-card__description">
+          See the down payment and closing costs you need for a home, and whether your savings are
+          on pace. Assumes a {HOME_MORTGAGE_RATE_BPS / 100}% mortgage over {HOME_LOAN_TERM_YEARS}{' '}
+          years, {HOME_PROPERTY_TAX_BPS / 100}% property tax, and {HOME_CLOSING_COST_BPS / 100}%
+          closing costs.
+        </p>
+        <div className="life-events-form" aria-label="Down payment inputs">
+          <label className="life-events-field">
+            Target home price (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="5000"
+              value={homePrice}
+              onChange={(e) => setHomePrice(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Down payment (%)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={100}
+              step="1"
+              value={downPaymentPercent}
+              onChange={(e) => setDownPaymentPercent(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Current savings (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="500"
+              value={currentSavings}
+              onChange={(e) => setCurrentSavings(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Monthly savings (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="50"
+              value={monthlySavings}
+              onChange={(e) => setMonthlySavings(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Years until purchase
+            <input
+              className="form-input"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={30}
+              step={1}
+              value={yearsToPurchase}
+              onChange={(e) => setYearsToPurchase(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Combined annual income (USD)
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="1000"
+              value={annualIncome}
+              onChange={(e) => setAnnualIncome(e.target.value)}
+            />
+          </label>
+        </div>
+        <p className="home-announce" aria-live="polite">
+          {announcement}
+        </p>
+      </section>
+
+      <section className="planning-card" aria-labelledby="home-projection-title">
+        <h3 id="home-projection-title" className="planning-card__title">
+          Cash needed to close
+        </h3>
+        <div
+          className="home-coverage-bar"
+          role="progressbar"
+          aria-valuenow={savedPercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Current savings cover ${savedPercent}% of the cash needed to close`}
+        >
+          <span
+            className={`home-coverage-bar__fill ${fullyFunded ? '' : 'home-coverage-bar__fill--gap'}`}
+            style={{ width: `${savedPercent}%` }}
+          />
+        </div>
+        <p
+          className={`home-status ${fullyFunded ? 'home-status--ok' : 'home-status--gap'}`}
+          role="status"
+        >
+          <AppIcon name={fullyFunded ? 'check-circle' : 'alert-triangle'} />
+          <span>
+            {savedPercent}% saved —{' '}
+            {fullyFunded ? 'ready to close' : `${formatCurrency(result.savingsGapCents)} to go`}
+          </span>
+        </p>
+        <div className="planning-metrics" aria-label="Down payment summary">
+          <article className="planning-metric" aria-label="Down payment needed">
+            <p className="planning-metric__label">Down payment</p>
+            <p className="planning-metric__value">{formatCurrency(result.downPaymentCents)}</p>
+          </article>
+          <article className="planning-metric" aria-label="Estimated closing costs">
+            <p className="planning-metric__label">Closing costs</p>
+            <p className="planning-metric__value">{formatCurrency(result.closingCostsCents)}</p>
+          </article>
+          <article className="planning-metric" aria-label="Total cash needed to close">
+            <p className="planning-metric__label">Total cash needed</p>
+            <p className="planning-metric__value">{formatCurrency(result.totalCashNeededCents)}</p>
+          </article>
+          <article
+            className="planning-metric"
+            aria-label={fullyFunded ? 'Savings surplus' : 'Still to save'}
+          >
+            <p className="planning-metric__label">{fullyFunded ? 'Surplus' : 'Still to save'}</p>
+            <p className="planning-metric__value">{formatCurrency(result.savingsGapCents)}</p>
+          </article>
+          <article
+            className="planning-metric"
+            aria-label="Monthly savings needed to hit the target date"
+          >
+            <p className="planning-metric__label">Needed / month</p>
+            <p className="planning-metric__value">
+              {result.requiredMonthlySavingsCents !== null
+                ? formatCurrency(result.requiredMonthlySavingsCents)
+                : '—'}
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className="planning-card" aria-labelledby="home-affordability-title">
+        <h3 id="home-affordability-title" className="planning-card__title">
+          Monthly cost &amp; affordability
+        </h3>
+        <div className="planning-metrics" aria-label="Affordability summary">
+          <article className="planning-metric" aria-label="Estimated total monthly housing cost">
+            <p className="planning-metric__label">Est. monthly housing</p>
+            <p className="planning-metric__value">
+              {formatCurrency(result.totalMonthlyHousingCents)}
+            </p>
+          </article>
+          <article className="planning-metric" aria-label="Front-end debt-to-income ratio">
+            <p className="planning-metric__label">Housing DTI</p>
+            <p className="planning-metric__value">{frontEndDtiPercent}%</p>
+          </article>
+          <article
+            className="planning-metric"
+            aria-label="Whether private mortgage insurance is required"
+          >
+            <p className="planning-metric__label">PMI required</p>
+            <p className="planning-metric__value">{result.pmiRequired ? 'Yes' : 'No'}</p>
+          </article>
+        </div>
+        <p
+          className={`home-guideline ${
+            withinDtiGuideline ? 'home-guideline--ok' : 'home-guideline--warn'
+          }`}
+          role="status"
+        >
+          <AppIcon name={withinDtiGuideline ? 'check-circle' : 'alert-triangle'} />
+          <span>
+            {withinDtiGuideline
+              ? `Housing costs are ${frontEndDtiPercent}% of income — within the 28% guideline.`
+              : `Housing costs are ${frontEndDtiPercent}% of income — above the 28% guideline.`}
+            {result.pmiRequired ? ' A down payment of 20% or more avoids PMI.' : ''}
+          </span>
+        </p>
+      </section>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Main page component
 // ---------------------------------------------------------------------------
 
@@ -2214,6 +2766,8 @@ export const PlanningPage: React.FC = () => {
         {activeTab === 'life-events' && <LifeEventsPanel />}
         {activeTab === 'wedding' && <WeddingWorkspacePanel />}
         {activeTab === 'retirement' && <RetirementPanel />}
+        {activeTab === 'education' && <EducationPanel />}
+        {activeTab === 'home' && <DownPaymentPanel />}
         {activeTab === 'goals' && <GoalsPanel />}
         {activeTab === 'sweep' && <SweepPanel />}
       </div>

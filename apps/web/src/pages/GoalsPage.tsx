@@ -768,6 +768,15 @@ export const GoalsPage: React.FC = () => {
             <EmptyState
               title="No goals yet"
               description="Create a savings goal to track progress toward something important."
+              action={
+                <button
+                  type="button"
+                  className="form-button form-button--primary"
+                  onClick={handleOpenForm}
+                >
+                  Create your first goal
+                </button>
+              }
             />
           ) : (
             <section aria-label="Goal list">

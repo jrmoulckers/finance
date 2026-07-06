@@ -21,9 +21,12 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
 import { AppIcon } from '../components/icons';
+import { useDatabase } from '../db/DatabaseProvider';
+import { getPrimaryHouseholdId } from '../db/repositories/household';
 import { useBudgets } from '../hooks/useBudgets';
 import { useConsent } from '../hooks/useConsent';
 import { useConsentHistory } from '../hooks/useConsentHistory';
+import { useGoals } from '../hooks/useGoals';
 import {
   DEFAULT_FONT_SCALE_PREFERENCE,
   FONT_SCALE_OPTIONS,
@@ -530,6 +533,8 @@ const OnboardingPage: React.FC = () => {
   const { acceptAll, rejectAll, consent } = useConsent();
   const { recordBulkChanges } = useConsentHistory();
   const { createBudgetTemplate } = useBudgets();
+  const { createGoal } = useGoals();
+  const db = useDatabase();
 
   const starterTemplates = useMemo(() => getBudgetStarterTemplates(), []);
   const studentTemplate = starterTemplates.find((template) => template.id === 'student') ?? null;
@@ -798,6 +803,46 @@ const OnboardingPage: React.FC = () => {
     });
   }, [analyticsEnabled, goalDraft, monthlyContribution]);
 
+  const persistOnboardingGoalsToStore = useCallback(() => {
+    // Goals captured during onboarding live only in a standalone localStorage
+    // key until now; migrate them into the real goals store so they show up on
+    // /goals just like starter budgets do (#3405). Amounts are entered in whole
+    // currency units and stored as minor units (cents) to match the goals repo.
+    // A migration failure must never block onboarding completion.
+    try {
+      const pendingGoals = readGoals();
+      if (pendingGoals.length === 0) {
+        return;
+      }
+
+      const householdId = getPrimaryHouseholdId(db);
+      if (!householdId) {
+        return;
+      }
+
+      let migratedAny = false;
+      for (const goal of pendingGoals) {
+        const created = createGoal({
+          householdId,
+          name: goal.name,
+          description: goal.goalType || null,
+          targetAmount: { amount: Math.round(goal.targetAmount * 100) },
+          currentAmount: { amount: Math.round(goal.startingBalance * 100) },
+          targetDate: goal.targetDate ? goal.targetDate : null,
+        });
+        if (created) {
+          migratedAny = true;
+        }
+      }
+
+      if (migratedAny) {
+        writeGoals([]);
+      }
+    } catch {
+      // Best-effort migration; onboarding completion continues regardless.
+    }
+  }, [createGoal, db]);
+
   const handleCoachMarksDismiss = useCallback(() => {
     setCoachMarksDismissed(true);
     writeBoolean(COACH_MARKS_STORAGE_KEY, true);
@@ -899,9 +944,10 @@ const OnboardingPage: React.FC = () => {
   const handleSkipStarterBudget = useCallback(() => {
     setStarterBudgetCreated(false);
     setTemplateError(null);
+    persistOnboardingGoalsToStore();
     completeOnboarding();
     setStep('complete');
-  }, [completeOnboarding]);
+  }, [completeOnboarding, persistOnboardingGoalsToStore]);
 
   const handleApplyStudentTemplate = useCallback(() => {
     if (!studentTemplate) {
@@ -923,6 +969,7 @@ const OnboardingPage: React.FC = () => {
       }
 
       setStarterBudgetCreated(true);
+      persistOnboardingGoalsToStore();
       completeOnboarding();
       setStep('complete');
     } catch (error) {
@@ -932,7 +979,7 @@ const OnboardingPage: React.FC = () => {
     } finally {
       setIsApplyingTemplate(false);
     }
-  }, [completeOnboarding, createBudgetTemplate, studentTemplate]);
+  }, [completeOnboarding, createBudgetTemplate, persistOnboardingGoalsToStore, studentTemplate]);
 
   const handleGoToDashboard = useCallback(() => {
     navigate('/dashboard');

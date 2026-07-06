@@ -340,6 +340,8 @@ describe('calculateStrategyResult', () => {
     expect(result.totalMonths).toBe(0);
     expect(result.totalInterestCents).toBe(0);
     expect(result.schedules).toHaveLength(0);
+    expect(result.fullyPaidOff).toBe(true);
+    expect(result.unpaidDebtIds).toEqual([]);
   });
 
   it('avalanche targets highest rate first', () => {
@@ -358,6 +360,47 @@ describe('calculateStrategyResult', () => {
     const result = calculateStrategyResult(debts, 'avalanche', 10_000);
     expect(result.payoffOrder).toHaveLength(2);
     expect(result.totalMonths).toBeGreaterThan(0);
+    expect(result.totalMonths).toBeLessThan(1200);
+    expect(result.fullyPaidOff).toBe(true);
+    expect(result.unpaidDebtIds).toEqual([]);
+  });
+
+  it('flags a non-amortizing plan when the minimum does not cover interest', () => {
+    // $6,000 @ 24.99% APR → ~$124.95/mo interest, but the minimum is $100 and
+    // there is no extra payment, so the balance never amortizes.
+    const underwater: Debt[] = [
+      {
+        id: 'maxed-card',
+        name: 'Maxed Card',
+        balanceCents: 600_000,
+        annualRateBps: 2499,
+        minimumPaymentCents: 10_000,
+        type: 'credit_card',
+      },
+    ];
+    const result = calculateStrategyResult(underwater, 'avalanche', 0);
+    expect(result.fullyPaidOff).toBe(false);
+    expect(result.unpaidDebtIds).toEqual(['maxed-card']);
+    expect(result.payoffOrder).toHaveLength(0);
+    expect(result.totalMonths).toBe(1200);
+  });
+
+  it('clears a non-amortizing debt once the extra payment covers the shortfall', () => {
+    const underwater: Debt[] = [
+      {
+        id: 'maxed-card',
+        name: 'Maxed Card',
+        balanceCents: 600_000,
+        annualRateBps: 2499,
+        minimumPaymentCents: 10_000,
+        type: 'credit_card',
+      },
+    ];
+    // Adding $200/mo of extra payment pushes the total payment well above the
+    // monthly interest, so the debt now amortizes.
+    const result = calculateStrategyResult(underwater, 'avalanche', 20_000);
+    expect(result.fullyPaidOff).toBe(true);
+    expect(result.unpaidDebtIds).toEqual([]);
     expect(result.totalMonths).toBeLessThan(1200);
   });
 

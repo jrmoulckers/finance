@@ -180,6 +180,15 @@ export const SubscriptionsPage: React.FC = () => {
             <p className="analytics-metric-card__label">Flagged</p>
             <p className="analytics-metric-card__value">{summary.flaggedCount}</p>
           </article>
+          <article
+            className="analytics-metric-card"
+            aria-label="Potential monthly savings from cancelling flagged subscriptions"
+          >
+            <p className="analytics-metric-card__label">Potential Savings</p>
+            <p className="analytics-metric-card__value analytics-metric-card__value--positive">
+              <CurrencyDisplay amount={summary.flaggedMonthlyCents} />
+            </p>
+          </article>
         </div>
       </section>
 
