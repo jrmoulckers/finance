@@ -3,6 +3,7 @@
 import React from 'react';
 
 import { formatCurrencyForScreenReader } from '../../lib/a11y';
+import { translate } from '../../lib/i18n';
 import { useEffectiveMaskingMode, useIsPrivacyModeActive } from '../../contexts/PrivacyModeContext';
 import { useLocalePreferences } from '../../hooks/useLocalePreferences';
 import { getCurrencyFractionDigits } from '../../lib/currency-metadata';
@@ -87,7 +88,8 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
       ? displaySettings.negativeFormat === 'parentheses'
         ? `(${formattedAbsolute})`
         : displaySettings.negativeFormat === 'color-only'
-          ? `Negative ${formattedAbsolute}`
+          ? translate('currency.display.negativeCue', { amount: formattedAbsolute }, resolvedLocale)
+              .text
           : formattedBase
       : formattedBase;
 
@@ -107,7 +109,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   // "negative" prefix and optional context so screen readers convey
   // sign and meaning regardless of visual negative format.
   const label = isPrivacyMode
-    ? 'Amount hidden'
+    ? translate('currency.display.amountHidden', {}, resolvedLocale).text
     : (ariaLabel ?? formatCurrencyForScreenReader(amount, currency, context, resolvedLocale));
 
   return (

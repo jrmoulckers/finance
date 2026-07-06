@@ -3,6 +3,16 @@
 import type { MessageCatalog } from '../catalog-loader';
 
 export const EN_US_CATALOG: MessageCatalog = {
+  // Accessible currency labels (screen-reader + visible color-only negative cue).
+  'a11y.currency.negative': 'negative {amount}',
+  'a11y.currency.withContext': '{label}, {context}',
+  'currency.display.negativeCue': 'Negative {amount}',
+  'currency.display.amountHidden': 'Amount hidden',
+  // "Explain this" glossary popover chrome.
+  'education.explain.trigger': 'Explain {term}',
+  'education.explain.close': 'Close explanation for {term}',
+  'education.explain.example': 'Example',
+  'education.explain.whyItMatters': 'Why it matters',
   'settings.language': 'Language',
   'settings.timeZone': 'Home time zone',
   'settings.languageDescription': 'Detected from your browser; change it anytime.',

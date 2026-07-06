@@ -15,6 +15,7 @@ import type { IconName } from '../components/icons';
  */
 
 import { formatCurrency } from './currency';
+import { translate } from './i18n';
 
 // ---------------------------------------------------------------------------
 // Currency formatting for screen readers
@@ -55,9 +56,13 @@ export function formatCurrencyForScreenReader(
 ): string {
   const isNegative = amountInCents < 0;
   const formatted = formatCurrency(Math.abs(amountInCents), { currency, locale });
-  const base = isNegative ? `negative ${formatted}` : formatted;
+  const base = isNegative
+    ? translate('a11y.currency.negative', { amount: formatted }, locale).text
+    : formatted;
 
-  return context ? `${base}, ${context}` : base;
+  return context
+    ? translate('a11y.currency.withContext', { label: base, context }, locale).text
+    : base;
 }
 
 // ---------------------------------------------------------------------------
