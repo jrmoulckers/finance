@@ -74,7 +74,7 @@ jobs:
           xcode-version: latest-stable
 
       - name: Cache SPM packages
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.SPM_CACHE_DIR }}
           key: ${{ runner.os }}-spm-pkgs-${{ hashFiles('apps/ios/Package.resolved', 'apps/ios/Package.swift') }}
@@ -82,7 +82,7 @@ jobs:
             ${{ runner.os }}-spm-pkgs-
 
       - name: Cache DerivedData
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.DERIVED_DATA_DIR }}
           key: ${{ runner.os }}-dd-${{ hashFiles('apps/ios/Package.resolved', 'apps/ios/Package.swift', 'apps/ios/**/*.swift') }}
