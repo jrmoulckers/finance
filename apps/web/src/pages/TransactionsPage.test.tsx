@@ -541,6 +541,78 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
   });
 
+  it('filters the register live by free-text search and restores on clear (#3200)', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    // All transactions are visible before searching.
+    expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
+    expect(screen.getByText('Electric Bill')).toBeInTheDocument();
+
+    const searchBox = screen.getByRole('searchbox', { name: /search transactions/i });
+
+    // Typing a payee substring narrows the rendered register immediately, even
+    // though the mocked data hook returns every row regardless of its filters.
+    fireEvent.change(searchBox, { target: { value: 'Grocery' } });
+
+    expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument();
+    expect(screen.queryByText('Electric Bill')).not.toBeInTheDocument();
+
+    // Clearing the search restores the full list.
+    fireEvent.change(searchBox, { target: { value: '' } });
+
+    expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
+    expect(screen.getByText('Electric Bill')).toBeInTheDocument();
+  });
+
+  it('matches free-text search against transaction tags (#3200)', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    // "groceries" is only present as a tag on the Grocery Store transaction.
+    fireEvent.change(screen.getByRole('searchbox', { name: /search transactions/i }), {
+      target: { value: 'groceries' },
+    });
+
+    expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument();
+    expect(screen.queryByText('Electric Bill')).not.toBeInTheDocument();
+  });
+
+  it('composes free-text search with the account-purpose filter (#3200)', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    // Scope to business accounts: only the salary (account-2) remains.
+    fireEvent.click(screen.getByRole('button', { name: '💼 Business' }));
+    expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
+    expect(screen.queryByText('Grocery Store')).not.toBeInTheDocument();
+
+    const searchBox = screen.getByRole('searchbox', { name: /search transactions/i });
+
+    // A search matching only a personal-account transaction yields no rows,
+    // proving purpose + search compose with AND semantics.
+    fireEvent.change(searchBox, { target: { value: 'Grocery' } });
+    expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument();
+    expect(screen.queryByText('Grocery Store')).not.toBeInTheDocument();
+
+    // A search matching the in-scope transaction keeps it visible.
+    fireEvent.change(searchBox, { target: { value: 'Salary' } });
+    expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
+  });
+
   it('displays edit and delete actions for each transaction', () => {
     render(
       <MemoryRouter>
