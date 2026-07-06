@@ -16,6 +16,8 @@ import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import {
   computeExpectedPayDate,
   exportInvoicesCsv,
+  FOLLOW_UP_STALE_DAYS,
+  getInvoicesNeedingFollowUp,
   PAYMENT_TERM_LABELS,
   PAYMENT_TERMS,
   INVOICE_STATUSES,
@@ -119,6 +121,7 @@ export const InvoicesPage: React.FC = () => {
     addInvoice,
     updateInvoice,
     updateInvoiceStatus,
+    logInvoiceContact,
     deleteInvoice,
   } = useInvoices();
   const { locale } = useLocalePreferences();
@@ -169,6 +172,11 @@ export const InvoicesPage: React.FC = () => {
       Array.from(
         new Set(invoices.map((invoice) => invoice.clientName.trim()).filter(Boolean)),
       ).sort((a, b) => a.localeCompare(b)),
+    [invoices],
+  );
+
+  const followUpInvoices = useMemo(
+    () => getInvoicesNeedingFollowUp(invoices, todayIsoDate()),
     [invoices],
   );
 
@@ -381,6 +389,39 @@ export const InvoicesPage: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {followUpInvoices.length > 0 && (
+        <section className="analytics-section" aria-label="Invoices needing follow-up">
+          <h2 className="analytics-section__title">Needs follow-up</h2>
+          <p className="invoice-followup__subtitle">
+            Overdue invoices you haven&rsquo;t chased in the last {FOLLOW_UP_STALE_DAYS} days.
+          </p>
+          <ul className="invoice-followup-list">
+            {followUpInvoices.map((invoice) => (
+              <li key={invoice.id} className="invoice-followup-row">
+                <div className="invoice-followup-row__info">
+                  <span className="invoice-followup-row__client">{invoice.clientName}</span>
+                  <span className="invoice-followup-row__meta">
+                    <CurrencyDisplay amount={invoice.amountCents} /> &middot; expected{' '}
+                    {formatDate(invoice.expectedPayDate, { locale })} &middot; last contacted{' '}
+                    {invoice.lastContactedDate
+                      ? formatDate(invoice.lastContactedDate, { locale })
+                      : 'never'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="invoice-followup-row__action"
+                  aria-label={`Log follow-up for ${invoice.clientName}`}
+                  onClick={() => logInvoiceContact(invoice.id)}
+                >
+                  Log follow-up
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="analytics-section" aria-label="Invoice pipeline">
         <h2 className="analytics-section__title">Pipeline by status</h2>

@@ -26,6 +26,8 @@ export interface Invoice {
   readonly expectedPayDate: string;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /** ISO date of the most recent follow-up sent for an overdue invoice. */
+  readonly lastContactedDate?: string;
 }
 
 export interface CreateInvoiceInput {
@@ -130,6 +132,45 @@ export function normalizeInvoiceStatuses(invoices: Invoice[], todayIso: string):
     const effectiveStatus = getEffectiveInvoiceStatus(invoice, todayIso);
     return effectiveStatus === invoice.status ? invoice : { ...invoice, status: effectiveStatus };
   });
+}
+
+/** Days without a follow-up before an overdue invoice is flagged for chasing. */
+export const FOLLOW_UP_STALE_DAYS = 7;
+
+/**
+ * Record that a follow-up was sent for an invoice on the given date.
+ *
+ * @param invoice - The invoice being chased.
+ * @param contactDateIso - ISO date the follow-up was sent.
+ * @param nowIso - Current timestamp (ISO 8601) for updatedAt.
+ * @returns A new invoice with the last-contacted date recorded.
+ */
+export function recordInvoiceContact(
+  invoice: Invoice,
+  contactDateIso: string,
+  nowIso: string,
+): Invoice {
+  return { ...invoice, lastContactedDate: contactDateIso, updatedAt: nowIso };
+}
+
+/**
+ * Whether an overdue invoice needs a follow-up: it is effectively overdue and
+ * has either never been contacted or was last contacted at least
+ * {@link FOLLOW_UP_STALE_DAYS} days ago.
+ */
+export function invoiceNeedsFollowUp(invoice: Invoice, todayIso: string): boolean {
+  if (getEffectiveInvoiceStatus(invoice, todayIso) !== 'Overdue') return false;
+  if (!invoice.lastContactedDate) return true;
+  return diffDays(invoice.lastContactedDate, todayIso) >= FOLLOW_UP_STALE_DAYS;
+}
+
+/**
+ * Overdue invoices that need a follow-up, oldest expected pay date first.
+ */
+export function getInvoicesNeedingFollowUp(invoices: Invoice[], todayIso: string): Invoice[] {
+  return invoices
+    .filter((invoice) => invoiceNeedsFollowUp(invoice, todayIso))
+    .sort((a, b) => a.expectedPayDate.localeCompare(b.expectedPayDate));
 }
 
 export function createInvoice(input: CreateInvoiceInput, nowIso: string, id: string): Invoice {

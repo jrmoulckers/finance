@@ -16,6 +16,7 @@ import {
   applyInvoiceEdit,
   groupInvoicesByStatus,
   normalizeInvoiceStatuses,
+  recordInvoiceContact,
   type CreateInvoiceInput,
   type ForecastBucket,
   type Invoice,
@@ -34,6 +35,7 @@ export interface UseInvoicesResult {
   addInvoice: (input: CreateInvoiceInput) => Invoice;
   updateInvoice: (invoiceId: string, input: UpdateInvoiceInput) => void;
   updateInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => void;
+  logInvoiceContact: (invoiceId: string) => void;
   deleteInvoice: (invoiceId: string) => void;
   refresh: () => void;
 }
@@ -143,6 +145,21 @@ export function useInvoices(): UseInvoicesResult {
     setInvoices((prev) => prev.filter((invoice) => invoice.id !== invoiceId));
   }, []);
 
+  const logInvoiceContact = useCallback((invoiceId: string) => {
+    const currentDate = todayIsoDate();
+    setToday(currentDate);
+    setInvoices((prev) =>
+      normalizeInvoiceStatuses(
+        prev.map((invoice) =>
+          invoice.id === invoiceId
+            ? recordInvoiceContact(invoice, currentDate, new Date().toISOString())
+            : invoice,
+        ),
+        currentDate,
+      ),
+    );
+  }, []);
+
   const pipelineGroups = useMemo(() => groupInvoicesByStatus(invoices, today), [invoices, today]);
   const forecastBuckets = useMemo(() => computeInvoiceForecast(invoices, today), [invoices, today]);
   const totalOutstandingCents = useMemo(
@@ -158,6 +175,7 @@ export function useInvoices(): UseInvoicesResult {
     addInvoice,
     updateInvoice,
     updateInvoiceStatus,
+    logInvoiceContact,
     deleteInvoice,
     refresh,
   };
