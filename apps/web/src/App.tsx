@@ -5,12 +5,12 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { MilestoneToast } from './components/celebrations';
 import { ConsentDialog } from './components/gdpr';
 import { AppLayout } from './components/layout';
+import { FocusManager } from './components/layout/FocusManager';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
 import { SessionSecurityBoundary } from './components/SessionSecurityBoundary';
 import { useBudgets, useNotifications, useTransactions } from './hooks';
 import { useHaptics } from './hooks/useHaptics';
 import { useMilestoneCheck } from './hooks/useMilestoneCheck';
-import { useRouteAnnouncer } from './hooks/useRouteAnnouncer';
 import { useSpendingPace } from './hooks/useSpendingPace';
 import type { HapticEventType } from './lib/haptics/types';
 import { isOnboardingComplete } from './lib/local-only-mode';
@@ -401,9 +401,6 @@ export const App: FC = () => {
   const shouldStartOnboarding =
     shouldAutoLaunchOnboarding(activePath, isOnboardingComplete()) && !isLighthouseAudit();
 
-  // Announce route transitions to screen readers (#1684)
-  useRouteAnnouncer();
-
   if (shouldStartOnboarding) {
     return (
       <PrivacyModeProvider>
@@ -415,11 +412,15 @@ export const App: FC = () => {
 
   return isStandalonePage ? (
     <PrivacyModeProvider>
+      {/* Announces route changes and moves focus to #main-content (#1684, #3330, #3342) */}
+      <FocusManager resolveTitle={derivePageTitle} />
       <ConsentDialog />
       <AppRoutes />
     </PrivacyModeProvider>
   ) : (
     <PrivacyModeProvider>
+      {/* Announces route changes and moves focus to #main-content (#1684, #3330, #3342) */}
+      <FocusManager resolveTitle={derivePageTitle} />
       <ConsentDialog />
       <AuthenticatedShell activePath={activePath} pageTitle={pageTitle} />
       <BudgetHapticNotifier />
