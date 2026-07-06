@@ -199,6 +199,14 @@ html {
   grid-column: 1;
 }
 
+/* Simplified (elder) mode: enlarge the settings checkbox to the comfortable
+   tap target promised by --accessibility-touch-target-size (56px in simplified,
+   48px otherwise). The 24px base in responsive.css already meets WCAG 2.5.8. */
+[data-accessibility-mode='simplified'] .settings-item__checkbox {
+  width: var(--accessibility-touch-target-size, 24px);
+  height: var(--accessibility-touch-target-size, 24px);
+}
+
 /* Transactions: amounts and actions wrap instead of colliding at Huge text. */
 .transaction-list-item__trailing,
 .transaction-item__actions {
