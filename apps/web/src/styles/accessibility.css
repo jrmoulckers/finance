@@ -315,6 +315,14 @@ html[data-accessibility-font-size='extra-large'] {
   font-size: 20px;
 }
 
+/*
+ * In-app "High contrast" toggle and Simplified mode.
+ *
+ * The default palette below targets light themes. Dark and OLED themes get a
+ * matching high-contrast DARK palette further down so enabling high contrast
+ * strengthens separation within the user's chosen theme instead of forcing a
+ * white background over it (see issue #3277).
+ */
 body.accessibility-high-contrast,
 body.accessibility-simplified {
   --semantic-background-primary: #ffffff;
@@ -335,6 +343,37 @@ body.accessibility-simplified {
   --semantic-status-info: #1d4ed8;
   --semantic-amount-positive: #14532d;
   --semantic-amount-negative: #7f1d1d;
+}
+
+/*
+ * High-contrast DARK palette for dark and OLED themes. All foreground colors
+ * exceed WCAG AAA (7:1) contrast against the near-black surfaces, so a user who
+ * prefers a dark theme keeps it when turning on high contrast or Simplified
+ * mode. Higher specificity than the light rule above (theme attribute on <html>
+ * plus the body class) so it wins for dark themes only.
+ */
+[data-theme='dark'] body.accessibility-high-contrast,
+[data-theme='dark'] body.accessibility-simplified,
+[data-theme='dark-oled'] body.accessibility-high-contrast,
+[data-theme='dark-oled'] body.accessibility-simplified {
+  --semantic-background-primary: #000000;
+  --semantic-background-secondary: #0a0a0a;
+  --semantic-background-elevated: #141414;
+  --semantic-text-primary: #ffffff;
+  --semantic-text-secondary: #f3f4f6;
+  --semantic-text-inverse: #000000;
+  --semantic-border-default: #ffffff;
+  --semantic-border-focus: #ffffff;
+  --semantic-border-error: #fecaca;
+  --semantic-interactive-default: #93c5fd;
+  --semantic-interactive-hover: #bfdbfe;
+  --semantic-interactive-pressed: #dbeafe;
+  --semantic-status-positive: #86efac;
+  --semantic-status-negative: #fca5a5;
+  --semantic-status-warning: #fcd34d;
+  --semantic-status-info: #93c5fd;
+  --semantic-amount-positive: #86efac;
+  --semantic-amount-negative: #fca5a5;
 }
 
 body.accessibility-simplified {
