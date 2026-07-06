@@ -12,6 +12,7 @@
 import React, { useMemo, useState } from 'react';
 import { ConfirmDialog, CurrencyDisplay, EmptyState } from '../components/common';
 import { useInvoices } from '../hooks/useInvoices';
+import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import {
   computeExpectedPayDate,
   PAYMENT_TERM_LABELS,
@@ -21,6 +22,7 @@ import {
   type InvoicePaymentTerm,
   type InvoiceStatus,
 } from '../lib/analytics/invoices';
+import { formatDate } from '../utils/formatDate';
 import './analytics.css';
 
 function todayIsoDate(): string {
@@ -37,14 +39,6 @@ function parseAmountToCents(value: string): number | null {
   return Math.round(amount * 100);
 }
 
-function formatDate(date: string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(`${date}T00:00:00`));
-}
-
 const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => (
   <span className={`invoice-status-badge invoice-status-badge--${status.toLowerCase()}`}>
     {status}
@@ -53,16 +47,18 @@ const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => (
 
 const InvoiceCard: React.FC<{
   invoice: Invoice;
+  locale: string;
   onStatusChange: (invoiceId: string, status: InvoiceStatus) => void;
   onDelete: (invoice: Invoice) => void;
-}> = ({ invoice, onStatusChange, onDelete }) => (
+}> = ({ invoice, locale, onStatusChange, onDelete }) => (
   <article className={`invoice-card invoice-card--${invoice.status.toLowerCase()}`} role="listitem">
     <div className="invoice-card__main">
       <div>
         <h3 className="invoice-card__client">{invoice.clientName}</h3>
         <p className="invoice-card__meta">
-          Issued {formatDate(invoice.issueDate)} · {PAYMENT_TERM_LABELS[invoice.paymentTerm]} ·
-          expected {formatDate(invoice.expectedPayDate)}
+          Issued {formatDate(invoice.issueDate, { locale })} ·{' '}
+          {PAYMENT_TERM_LABELS[invoice.paymentTerm]} · expected{' '}
+          {formatDate(invoice.expectedPayDate, { locale })}
         </p>
       </div>
       <div className="invoice-card__amount">
@@ -101,6 +97,7 @@ export const InvoicesPage: React.FC = () => {
     updateInvoiceStatus,
     deleteInvoice,
   } = useInvoices();
+  const { locale } = useLocalePreferences();
   const [clientName, setClientName] = useState('');
   const [amount, setAmount] = useState('');
   const [issueDate, setIssueDate] = useState(todayIsoDate);
@@ -219,7 +216,7 @@ export const InvoicesPage: React.FC = () => {
             </select>
           </label>
           <div className="invoice-form__preview" aria-live="polite">
-            Expected pay date: <strong>{formatDate(expectedPayDate)}</strong>
+            Expected pay date: <strong>{formatDate(expectedPayDate, { locale })}</strong>
           </div>
           {formError && <p className="invoice-form__error">{formError}</p>}
           <button className="analytics-export-btn invoice-form__submit" type="submit">
@@ -228,11 +225,16 @@ export const InvoicesPage: React.FC = () => {
         </form>
       </section>
 
-      <section
-        className="analytics-section"
-        aria-label="Expected income forecast"
-        aria-live="polite"
-      >
+      <section className="analytics-section" aria-label="Expected income forecast">
+        <p className="sr-only" role="status">
+          Outstanding invoices total <CurrencyDisplay amount={totalOutstandingCents} />.
+          {forecastBuckets.slice(1, 3).map((bucket) => (
+            <React.Fragment key={bucket.id}>
+              {' '}
+              {bucket.label}: <CurrencyDisplay amount={bucket.totalCents} />.
+            </React.Fragment>
+          ))}
+        </p>
         <h2 className="analytics-section__title">Expected-income forecast</h2>
         <div className="analytics-metrics-grid">
           <article className="analytics-metric-card" aria-label="Outstanding invoice total">
@@ -290,7 +292,9 @@ export const InvoicesPage: React.FC = () => {
                 <div className="invoice-pipeline-group__header">
                   <div>
                     <h3>{group.label}</h3>
-                    <p>{group.invoices.length} invoices</p>
+                    <p>
+                      {group.invoices.length} {group.invoices.length === 1 ? 'invoice' : 'invoices'}
+                    </p>
                   </div>
                   <CurrencyDisplay amount={group.totalCents} />
                 </div>
@@ -304,6 +308,7 @@ export const InvoicesPage: React.FC = () => {
                       <InvoiceCard
                         key={invoice.id}
                         invoice={invoice}
+                        locale={locale}
                         onStatusChange={updateInvoiceStatus}
                         onDelete={setDeletingInvoice}
                       />
