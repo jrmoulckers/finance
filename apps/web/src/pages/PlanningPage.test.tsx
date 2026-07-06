@@ -659,4 +659,34 @@ describe('PlanningPage', () => {
     expect(bar).toHaveAttribute('aria-valuenow', '100');
     expect(screen.getAllByText(/on track/i).length).toBeGreaterThan(0);
   });
+
+  it('surfaces a Down Payment tab with a live home-purchase projection', () => {
+    render(<PlanningPage />);
+    expect(screen.getByRole('tab', { name: /down payment/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: /down payment/i }));
+
+    expect(screen.getByRole('heading', { name: /home down payment planner/i })).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: /cash needed to close/i })).toBeTruthy();
+    expect(screen.getByText('Down payment')).toBeTruthy();
+    expect(screen.getByText('Closing costs')).toBeTruthy();
+    expect(screen.getByText('Total cash needed')).toBeTruthy();
+    expect(screen.getByText('PMI required')).toBeTruthy();
+    // The default seed ($0 saved) leaves a gap toward the cash needed to close.
+    expect(screen.getAllByText(/to go|short/i).length).toBeGreaterThan(0);
+  });
+
+  it('recomputes the down-payment coverage live when current savings change', () => {
+    render(<PlanningPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /down payment/i }));
+
+    const bar = screen.getByRole('progressbar', { name: /cash needed to close/i });
+    // $150k covers a 20% down payment ($80k) plus 3% closing ($12k) on a $400k home.
+    fireEvent.change(screen.getByLabelText('Current savings (USD)'), {
+      target: { value: '150000' },
+    });
+
+    expect(bar).toHaveAttribute('aria-valuenow', '100');
+    expect(screen.getAllByText(/ready to close/i).length).toBeGreaterThan(0);
+  });
 });
