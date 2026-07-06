@@ -64,6 +64,11 @@ import {
   getRetirementAccountTypeLabel,
   supportsEmployerRetirementContributions,
 } from '../../lib/tax/retirement-contribution-metadata';
+import {
+  TAX_CATEGORY_PLANNING_COPY,
+  buildTaxCategoryCustomFieldPatch,
+} from '../../lib/tax/tax-category-ui-model';
+import type { DeductibleStatus, TaxCategory } from '../../lib/tax/tax-category-tagging';
 import type { CategorySuggestion } from '../../lib/categorization';
 import type { MerchantMatchResult } from '../../lib/merchants';
 import {
@@ -205,6 +210,63 @@ function normalizeTransactionAmount(amountCents: number, type: TransactionType):
   return amountCents;
 }
 
+// Tax treatment options (issue #3226). Selecting a category writes the `tax.*`
+// custom fields the tax-reserve engine and Schedule C report already consume.
+// Labels stay in the presentation layer; the enum lives in tax-category-tagging.
+const TAX_CATEGORY_OPTIONS: readonly { value: TaxCategory; label: string }[] = [
+  { value: 'SCHEDULE_C_INCOME', label: 'Business income (Schedule C)' },
+  { value: 'SCHEDULE_C_EXPENSE', label: 'Business expense (Schedule C)' },
+  { value: 'BUSINESS_MEALS', label: 'Business meals' },
+  { value: 'HOME_OFFICE', label: 'Home office' },
+  { value: 'BUSINESS_MILEAGE', label: 'Car / mileage' },
+  { value: 'CAPITALIZED_ASSET', label: 'Equipment / capitalized asset' },
+  { value: 'CHARITABLE_CASH', label: 'Charitable donation (cash)' },
+  { value: 'CHARITABLE_NON_CASH', label: 'Charitable donation (non-cash)' },
+  { value: 'MEDICAL', label: 'Medical' },
+  { value: 'EDUCATION', label: 'Education' },
+  { value: 'STATE_LOCAL_TAX', label: 'State / local tax' },
+  { value: 'RETIREMENT_CONTRIBUTION', label: 'Retirement contribution' },
+  { value: 'INVESTMENT_TAX', label: 'Investment / capital gains' },
+  { value: 'REVIEW_NEEDED', label: 'Needs review' },
+];
+
+const DEDUCTIBLE_STATUS_OPTIONS: readonly { value: DeductibleStatus; label: string }[] = [
+  { value: 'DEDUCTIBLE', label: 'Fully deductible' },
+  { value: 'PARTIALLY_DEDUCTIBLE', label: 'Partially deductible' },
+  { value: 'NON_DEDUCTIBLE', label: 'Not deductible' },
+  { value: 'REIMBURSABLE', label: 'Reimbursable' },
+  { value: 'CAPITALIZED', label: 'Capitalized' },
+  { value: 'REVIEW_NEEDED', label: 'Needs review' },
+];
+
+const MANAGED_TAX_FIELD_KEYS = new Set([
+  'tax.category',
+  'tax.deductibleStatus',
+  'tax.businessPurposeNote',
+]);
+
+/** Whether a custom-field key is owned by the Tax treatment section (issue #3226). */
+function isManagedTaxFieldKey(key: string): boolean {
+  return MANAGED_TAX_FIELD_KEYS.has(key);
+}
+
+/** Sensible default deductible status when a tax category is first selected. */
+function defaultDeductibleStatusFor(category: string): DeductibleStatus {
+  switch (category) {
+    case 'SCHEDULE_C_INCOME':
+    case 'STATE_LOCAL_TAX':
+      return 'NON_DEDUCTIBLE';
+    case 'BUSINESS_MEALS':
+      return 'PARTIALLY_DEDUCTIBLE';
+    case 'CAPITALIZED_ASSET':
+      return 'CAPITALIZED';
+    case 'REVIEW_NEEDED':
+      return 'REVIEW_NEEDED';
+    default:
+      return 'DEDUCTIBLE';
+  }
+}
+
 function buildTransactionSnapshot(initialData?: Transaction) {
   const existingLocalTimestamp = localTimestampFromCustomFields(initialData?.customFields ?? null);
   const fxMetadata = readFxMetadata(initialData?.customFields ?? null);
@@ -243,6 +305,9 @@ function buildTransactionSnapshot(initialData?: Transaction) {
     isBnplLiability: initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.liabilityType] === 'BNPL',
     bnplInstallmentCount:
       initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.installmentCount] ?? '4',
+    taxCategory: initialData?.customFields?.['tax.category'] ?? '',
+    taxDeductibleStatus: initialData?.customFields?.['tax.deductibleStatus'] ?? '',
+    taxBusinessPurposeNote: initialData?.customFields?.['tax.businessPurposeNote'] ?? '',
     merchantCity: initialData?.merchantCity ?? '',
     merchantState: initialData?.merchantState ?? '',
     merchantZip: initialData?.merchantZip ?? '',
@@ -252,7 +317,10 @@ function buildTransactionSnapshot(initialData?: Transaction) {
     extraNotes: initialData?.extraNotes ?? '',
     customFieldEntries: initialData?.customFields
       ? Object.entries(initialData.customFields)
-          .filter(([key]) => !isLocalTimestampFieldKey(key) && !isFxFieldKey(key))
+          .filter(
+            ([key]) =>
+              !isLocalTimestampFieldKey(key) && !isFxFieldKey(key) && !isManagedTaxFieldKey(key),
+          )
           .map(([key, value]) => ({ key, value }))
       : [],
     localTime:
@@ -404,6 +472,9 @@ export function TransactionForm({
   const [merchantMatch, setMerchantMatch] = useState<MerchantMatchResult | null>(null);
   const [isBnplLiability, setIsBnplLiability] = useState(false);
   const [bnplInstallmentCount, setBnplInstallmentCount] = useState('4');
+  const [taxCategory, setTaxCategory] = useState('');
+  const [taxDeductibleStatus, setTaxDeductibleStatus] = useState('');
+  const [taxBusinessPurposeNote, setTaxBusinessPurposeNote] = useState('');
 
   // -- additional details state ---------------------------------------------
   const [additionalOpen, setAdditionalOpen] = useState(false);
@@ -442,6 +513,9 @@ export function TransactionForm({
       counterpartyName,
       isBnplLiability,
       bnplInstallmentCount,
+      taxCategory,
+      taxDeductibleStatus,
+      taxBusinessPurposeNote,
       merchantCity,
       merchantState,
       merchantZip,
@@ -484,6 +558,9 @@ export function TransactionForm({
       statementDescription,
       status,
       tagsInput,
+      taxBusinessPurposeNote,
+      taxCategory,
+      taxDeductibleStatus,
       transactionType,
     ],
   );
@@ -567,6 +644,9 @@ export function TransactionForm({
     setMerchantMatch(null);
     setIsBnplLiability(initialSnapshot.isBnplLiability);
     setBnplInstallmentCount(initialSnapshot.bnplInstallmentCount);
+    setTaxCategory(initialSnapshot.taxCategory);
+    setTaxDeductibleStatus(initialSnapshot.taxDeductibleStatus);
+    setTaxBusinessPurposeNote(initialSnapshot.taxBusinessPurposeNote);
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
@@ -778,6 +858,27 @@ export function TransactionForm({
       } else {
         delete customFields[BNPL_CUSTOM_FIELD_KEYS.liabilityType];
         delete customFields[BNPL_CUSTOM_FIELD_KEYS.installmentCount];
+      }
+
+      // Tax treatment (issue #3226): persist the tax.* custom fields the
+      // tax-reserve engine and Schedule C report read. Cleared when no category
+      // is selected so the deductible pipeline never sees stale data.
+      if (taxCategory) {
+        Object.assign(
+          customFields,
+          buildTaxCategoryCustomFieldPatch({
+            category: taxCategory as TaxCategory,
+            deductibleStatus: (taxDeductibleStatus ||
+              defaultDeductibleStatusFor(taxCategory)) as DeductibleStatus,
+            ...(taxBusinessPurposeNote.trim()
+              ? { businessPurposeNote: taxBusinessPurposeNote.trim() }
+              : {}),
+          }),
+        );
+      } else {
+        delete customFields['tax.category'];
+        delete customFields['tax.deductibleStatus'];
+        delete customFields['tax.businessPurposeNote'];
       }
 
       // Foreign-currency entry: the user typed the ORIGINAL local amount; store
@@ -1216,6 +1317,67 @@ export function TransactionForm({
                   onChange={(event) => setBnplInstallmentCount(event.target.value)}
                   aria-label="Number of BNPL installments"
                 />
+              )}
+            </fieldset>
+
+            <fieldset className="form-group form-fieldset">
+              <legend className="form-group__label">Tax treatment</legend>
+              <p className="form-group__help">
+                Flag business income and tax-deductible expenses so your Schedule C view and
+                quarterly tax reserve run on real data instead of guesses.{' '}
+                {TAX_CATEGORY_PLANNING_COPY}
+              </p>
+              <label htmlFor="txn-tax-category" className="form-group__label">
+                Tax category
+              </label>
+              <select
+                id="txn-tax-category"
+                className="form-select"
+                value={taxCategory}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setTaxCategory(next);
+                  if (next && !taxDeductibleStatus) {
+                    setTaxDeductibleStatus(defaultDeductibleStatusFor(next));
+                  }
+                }}
+              >
+                <option value="">Not a business / tax item</option>
+                {TAX_CATEGORY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {taxCategory && (
+                <>
+                  <label htmlFor="txn-tax-deductible-status" className="form-group__label">
+                    Deductible status
+                  </label>
+                  <select
+                    id="txn-tax-deductible-status"
+                    className="form-select"
+                    value={taxDeductibleStatus || defaultDeductibleStatusFor(taxCategory)}
+                    onChange={(event) => setTaxDeductibleStatus(event.target.value)}
+                  >
+                    {DEDUCTIBLE_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <label htmlFor="txn-tax-note" className="form-group__label">
+                    Business purpose (optional)
+                  </label>
+                  <input
+                    id="txn-tax-note"
+                    className="form-input"
+                    type="text"
+                    value={taxBusinessPurposeNote}
+                    onChange={(event) => setTaxBusinessPurposeNote(event.target.value)}
+                    placeholder="e.g. Client logo design software"
+                  />
+                </>
               )}
             </fieldset>
 
