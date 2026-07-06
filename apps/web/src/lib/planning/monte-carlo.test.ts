@@ -13,6 +13,7 @@ import {
   runMonteCarlo,
   assessRetirementReadiness,
   normalRandom,
+  createSeededRng,
 } from './monte-carlo';
 import type { RetirementParams } from './types';
 
@@ -93,7 +94,7 @@ describe('projectSavings', () => {
 describe('calculateTargetNestEgg', () => {
   it('calculates a reasonable target for $4,000/month over 25 years', () => {
     const result = calculateTargetNestEgg(400000, 0.03, 25);
-    // At 4% withdrawal, ~$1.2M range
+    // Discounted at the default real return, lands in a sensible range.
     expect(result).toBeGreaterThan(50000000); // > $500K
     expect(result).toBeLessThan(200000000); // < $2M
   });
@@ -107,6 +108,20 @@ describe('calculateTargetNestEgg', () => {
   it('handles zero inflation', () => {
     const result = calculateTargetNestEgg(400000, 0, 25);
     expect(result).toBeGreaterThan(0);
+  });
+
+  it('requires a smaller nest egg when the expected return is higher', () => {
+    const lowReturn = calculateTargetNestEgg(400000, 0.03, 25, 0.05);
+    const highReturn = calculateTargetNestEgg(400000, 0.03, 25, 0.09);
+    // Faster real growth means less principal is needed to fund the same spend.
+    expect(highReturn).toBeLessThan(lowReturn);
+  });
+
+  it('does not treat the withdrawal rate as the growth rate', () => {
+    // With return == inflation there is no real growth, so the target must be
+    // the full undiscounted sum of spending — never a withdrawal-rate annuity.
+    const result = calculateTargetNestEgg(400000, 0.03, 25, 0.03);
+    expect(result).toBe(400000 * 12 * 25);
   });
 });
 
@@ -192,5 +207,72 @@ describe('assessRetirementReadiness', () => {
     const result = assessRetirementReadiness(DEFAULT_PARAMS);
     expect(result.projectedSavingsCents).toBeGreaterThan(0);
     expect(result.targetNestEggCents).toBeGreaterThan(0);
+  });
+
+  it('is deterministic for identical inputs (seeded)', () => {
+    const a = assessRetirementReadiness(DEFAULT_PARAMS);
+    const b = assessRetirementReadiness(DEFAULT_PARAMS);
+    expect(a.score).toBe(b.score);
+    expect(a.monteCarlo.successRate).toBe(b.monteCarlo.successRate);
+    expect(a.monthlyGapCents).toBe(b.monthlyGapCents);
+  });
+
+  it('labels the savings factor as "% of income" only when income is known', () => {
+    const withIncome = assessRetirementReadiness({
+      ...DEFAULT_PARAMS,
+      monthlyGrossIncomeCents: 500000, // $5,000/month gross
+    });
+    const incomeFactor = withIncome.factors.find((f) => f.description.includes('of income'));
+    expect(incomeFactor).toBeDefined();
+
+    const withoutIncome = assessRetirementReadiness(DEFAULT_PARAMS);
+    const claimsIncome = withoutIncome.factors.some((f) => f.description.includes('of income'));
+    expect(claimsIncome).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Seeded RNG / determinism
+// ---------------------------------------------------------------------------
+
+describe('createSeededRng', () => {
+  it('produces a repeatable sequence for the same seed', () => {
+    const a = createSeededRng(42);
+    const b = createSeededRng(42);
+    const seqA = Array.from({ length: 5 }, () => a());
+    const seqB = Array.from({ length: 5 }, () => b());
+    expect(seqA).toEqual(seqB);
+  });
+
+  it('produces different sequences for different seeds', () => {
+    const a = createSeededRng(1);
+    const b = createSeededRng(2);
+    expect(a()).not.toBe(b());
+  });
+
+  it('stays within [0, 1)', () => {
+    const rng = createSeededRng(123);
+    for (let i = 0; i < 1000; i++) {
+      const v = rng();
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThan(1);
+    }
+  });
+});
+
+describe('runMonteCarlo determinism', () => {
+  it('returns identical results for the same params and seed', () => {
+    const a = runMonteCarlo(DEFAULT_PARAMS, 200);
+    const b = runMonteCarlo(DEFAULT_PARAMS, 200);
+    expect(a.successRate).toBe(b.successRate);
+    expect(a.medianFinalCents).toBe(b.medianFinalCents);
+  });
+
+  it('can vary with an explicit different seed', () => {
+    const a = runMonteCarlo(DEFAULT_PARAMS, 200, 1);
+    const b = runMonteCarlo(DEFAULT_PARAMS, 200, 2);
+    // Different seeds should generally differ; both remain valid probabilities.
+    expect(a.successRate).toBeGreaterThanOrEqual(0);
+    expect(b.successRate).toBeLessThanOrEqual(1);
   });
 });

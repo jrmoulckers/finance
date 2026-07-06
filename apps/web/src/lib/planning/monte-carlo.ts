@@ -39,15 +39,44 @@ const SCORE_THRESHOLDS = {
 // ---------------------------------------------------------------------------
 
 /**
+ * Default seed for Monte Carlo simulations. A fixed seed makes readiness
+ * scores and contribution-gap recommendations reproducible: identical inputs
+ * always yield identical results, so the number no longer wanders on every
+ * unrelated re-render or parameter tweak.
+ */
+export const DEFAULT_MONTE_CARLO_SEED = 0x9e3779b9;
+
+/**
+ * Create a deterministic pseudo-random generator (mulberry32).
+ *
+ * @param seed - 32-bit unsigned seed
+ * @returns A function returning uniform floats in [0, 1)
+ */
+export function createSeededRng(seed: number): () => number {
+  let a = seed >>> 0;
+  return function next(): number {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
  * Generate a normally distributed random number using Box-Muller transform.
  *
  * @param mean - Mean of the distribution
  * @param stdDev - Standard deviation of the distribution
+ * @param rng - Uniform [0,1) source (defaults to Math.random for ad-hoc use)
  * @returns A random sample from the normal distribution
  */
-export function normalRandom(mean: number, stdDev: number): number {
-  const u1 = Math.random();
-  const u2 = Math.random();
+export function normalRandom(
+  mean: number,
+  stdDev: number,
+  rng: () => number = Math.random,
+): number {
+  const u1 = rng();
+  const u2 = rng();
   // Box-Muller: Z = sqrt(-2 * ln(u1)) * cos(2π * u2)
   const z = Math.sqrt(-2 * Math.log(u1 || 1e-10)) * Math.cos(2 * Math.PI * u2);
   return mean + stdDev * z;
@@ -88,32 +117,40 @@ export function projectSavings(
 /**
  * Calculate the nest egg needed to sustain desired spending through retirement.
  *
- * Uses the 4% rule variant adjusted for inflation and planning horizon.
+ * Models the portfolio as the present value of an inflation-growing spending
+ * stream, discounted at the **real return** (expected return net of
+ * inflation). This is horizon-aware and, for long early-retirement horizons at
+ * ~4% real return, converges to the familiar 25x / 4%-rule target.
+ *
+ * NOTE: earlier versions discounted at the *withdrawal rate*, which is not a
+ * growth rate — that conflated the safe-withdrawal assumption with portfolio
+ * returns and produced targets that diverged from the 25x rule. The discount
+ * rate is now derived from `annualReturnRate` and `inflationRate`.
  *
  * @param monthlySpendingCents - Desired monthly spending in today's cents
- * @param inflationRate - Annual inflation rate
+ * @param inflationRate - Annual inflation rate (e.g. 0.03)
  * @param retirementYears - Number of years in retirement
- * @param withdrawalRate - Safe withdrawal rate (default 0.04)
+ * @param annualReturnRate - Expected nominal annual return (e.g. 0.07)
  * @returns Required nest egg in cents
  */
 export function calculateTargetNestEgg(
   monthlySpendingCents: number,
   inflationRate: number,
   retirementYears: number,
-  withdrawalRate: number = 0.04,
+  annualReturnRate: number = 0.07,
 ): number {
-  // Inflate monthly spending to retirement-start dollars
   const annualSpending = monthlySpendingCents * 12;
-  // Present value of annuity for retirement years, adjusted for inflation
-  const realRate = (1 + withdrawalRate) / (1 + inflationRate) - 1;
+  // Real return: portfolio growth net of inflation. This — not the withdrawal
+  // rate — is the correct discount rate for the retirement spending annuity.
+  const realReturn = (1 + annualReturnRate) / (1 + inflationRate) - 1;
 
-  if (realRate <= 0) {
-    // When inflation exceeds withdrawal rate, use simple multiplication
+  if (realReturn <= 0) {
+    // No real growth: the portfolio must hold the full undiscounted spend.
     return Math.round(annualSpending * retirementYears);
   }
 
-  // PV of annuity: payment * (1 - (1+r)^-n) / r
-  const pvFactor = (1 - Math.pow(1 + realRate, -retirementYears)) / realRate;
+  // PV of a growing annuity, expressed in real terms: payment * (1 - (1+r)^-n) / r
+  const pvFactor = (1 - Math.pow(1 + realReturn, -retirementYears)) / realReturn;
   return Math.round(annualSpending * pvFactor);
 }
 
@@ -133,16 +170,20 @@ export function calculateNetRetirementSpending(
  * Run a Monte Carlo simulation for retirement planning.
  *
  * Each iteration models year-by-year portfolio growth using normally
- * distributed random returns, with withdrawals in retirement years.
+ * distributed random returns, with withdrawals in retirement years. A fixed
+ * default seed makes results reproducible for identical inputs.
  *
  * @param params - Retirement planning parameters
  * @param iterations - Number of simulation iterations (default 1000)
+ * @param seed - PRNG seed for reproducibility (default {@link DEFAULT_MONTE_CARLO_SEED})
  * @returns Aggregated Monte Carlo results
  */
 export function runMonteCarlo(
   params: RetirementParams,
   iterations: number = DEFAULT_ITERATIONS,
+  seed: number = DEFAULT_MONTE_CARLO_SEED,
 ): MonteCarloResult {
+  const rng = createSeededRng(seed);
   const yearsToRetirement = Math.max(0, params.retirementAge - params.currentAge);
   const totalYears = params.planningHorizonAge - params.currentAge;
   const retirementYears = totalYears - yearsToRetirement;
@@ -174,7 +215,7 @@ export function runMonteCarlo(
     let succeeded = true;
 
     for (let year = 0; year < totalYears; year++) {
-      const annualReturn = normalRandom(params.annualReturnRate, params.annualReturnStdDev);
+      const annualReturn = normalRandom(params.annualReturnRate, params.annualReturnStdDev, rng);
 
       if (year < yearsToRetirement) {
         // Accumulation phase: grow + contribute
@@ -254,7 +295,14 @@ function assessFactors(
     params.desiredMonthlySpendingCents,
     params.monthlyRetirementIncomeCents,
   );
-  const savingsRate =
+  // A true savings rate is contribution / gross income. When income is known
+  // we report that; otherwise we fall back to a contribution-coverage ratio
+  // (how much of the combined monthly retirement commitment the contribution
+  // funds) and are careful NOT to call it a "percent of income".
+  const grossIncomeCents = params.monthlyGrossIncomeCents ?? 0;
+  const hasIncome = grossIncomeCents > 0;
+  const savingsRate = hasIncome ? params.monthlyContributionCents / grossIncomeCents : 0;
+  const contributionCoverage =
     params.monthlyContributionCents > 0
       ? params.monthlyContributionCents /
         (params.monthlyContributionCents + netMonthlyRetirementNeedCents)
@@ -302,25 +350,50 @@ function assessFactors(
     });
   }
 
-  // Savings rate factor
-  if (savingsRate >= 0.2) {
-    factors.push({
-      label: 'Strong savings rate',
-      impact: 'positive',
-      description: `Saving ${Math.round(savingsRate * 100)}% of income is above the recommended 15%.`,
-    });
-  } else if (savingsRate >= 0.1) {
-    factors.push({
-      label: 'Adequate savings rate',
-      impact: 'neutral',
-      description: `Saving ${Math.round(savingsRate * 100)}% of income. Consider increasing to 15-20%.`,
-    });
+  // Savings rate factor. Only claim a "percent of income" when gross income
+  // is actually known; otherwise describe the contribution-coverage ratio.
+  if (hasIncome) {
+    const pct = Math.round(savingsRate * 100);
+    if (savingsRate >= 0.2) {
+      factors.push({
+        label: 'Strong savings rate',
+        impact: 'positive',
+        description: `Saving ${pct}% of income is above the recommended 15%.`,
+      });
+    } else if (savingsRate >= 0.1) {
+      factors.push({
+        label: 'Adequate savings rate',
+        impact: 'neutral',
+        description: `Saving ${pct}% of income. Consider increasing to 15-20%.`,
+      });
+    } else {
+      factors.push({
+        label: 'Low savings rate',
+        impact: 'negative',
+        description: `Saving only ${pct}% of income. Aim for at least 15%.`,
+      });
+    }
   } else {
-    factors.push({
-      label: 'Low savings rate',
-      impact: 'negative',
-      description: `Saving only ${Math.round(savingsRate * 100)}% of income. Aim for at least 15%.`,
-    });
+    const pct = Math.round(contributionCoverage * 100);
+    if (contributionCoverage >= 0.5) {
+      factors.push({
+        label: 'Strong contribution level',
+        impact: 'positive',
+        description: `Your contribution funds ${pct}% of your combined monthly retirement commitment.`,
+      });
+    } else if (contributionCoverage >= 0.25) {
+      factors.push({
+        label: 'Moderate contribution level',
+        impact: 'neutral',
+        description: `Your contribution funds ${pct}% of your combined monthly retirement commitment. Consider increasing it.`,
+      });
+    } else {
+      factors.push({
+        label: 'Low contribution level',
+        impact: 'negative',
+        description: `Your contribution funds only ${pct}% of your combined monthly retirement commitment.`,
+      });
+    }
   }
 
   return factors;
@@ -413,6 +486,7 @@ export function assessRetirementReadiness(params: RetirementParams): RetirementR
     ),
     params.annualInflationRate,
     retirementYears,
+    params.annualReturnRate,
   );
 
   // Monte Carlo

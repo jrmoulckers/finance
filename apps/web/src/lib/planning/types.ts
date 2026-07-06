@@ -95,6 +95,13 @@ export interface RetirementParams {
   readonly monthlyRetirementIncomeCents: number;
   /** Annual return standard deviation for Monte Carlo (e.g. 0.15 = 15%). */
   readonly annualReturnStdDev: number;
+  /**
+   * Current gross monthly income in cents, used to compute a true savings
+   * rate (contribution / income). Optional: when absent or zero, readiness
+   * factors fall back to a contribution-coverage ratio and avoid claiming a
+   * "percent of income".
+   */
+  readonly monthlyGrossIncomeCents?: number;
 }
 
 /** Result of a single Monte Carlo iteration. */
