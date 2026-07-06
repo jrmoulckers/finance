@@ -782,16 +782,6 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
-      path="/learning"
-      element={
-        <AuthenticatedRoute>
-          <RouteBoundary name="Learning">
-            <Learning />
-          </RouteBoundary>
-        </AuthenticatedRoute>
-      }
-    />
-    <Route
       path="/privacy-dashboard"
       element={
         <AuthenticatedRoute>
