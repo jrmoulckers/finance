@@ -108,4 +108,34 @@ describe('GoalContributionDialog', () => {
       });
     });
   });
+
+  it('submits a withdrawal as a negative amount', async () => {
+    const { onSubmit, onCancel } = renderDialog();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Withdraw' }));
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100.00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        goalId: 'goal-1',
+        amount: { amount: -10000 },
+        note: null,
+      });
+    });
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it('blocks a withdrawal larger than the saved amount', async () => {
+    const { onSubmit } = renderDialog();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Withdraw' }));
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '300.00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    expect(
+      await screen.findByText('You can only withdraw up to the amount saved for this goal.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });

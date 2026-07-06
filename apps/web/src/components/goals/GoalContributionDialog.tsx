@@ -42,6 +42,7 @@ export function GoalContributionDialog({
     allowNegative: false,
   });
   const [note, setNote] = useState('');
+  const [mode, setMode] = useState<'contribute' | 'withdraw'>('contribute');
   const [amountError, setAmountError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +57,7 @@ export function GoalContributionDialog({
 
     amountInput.reset(0);
     setNote('');
+    setMode('contribute');
     setAmountError(null);
     setSubmitError(null);
     setSubmitting(false);
@@ -101,19 +103,28 @@ export function GoalContributionDialog({
       return null;
     }
 
-    const amountInMinorUnits = amountInput.cents;
-    if (amountInMinorUnits <= 0) {
-      setAmountError('Enter a positive contribution amount.');
+    const magnitude = amountInput.cents;
+    if (magnitude <= 0) {
+      setAmountError(
+        mode === 'withdraw'
+          ? 'Enter a positive amount to withdraw.'
+          : 'Enter a positive contribution amount.',
+      );
+      return null;
+    }
+
+    if (mode === 'withdraw' && magnitude > goal.currentAmount.amount) {
+      setAmountError('You can only withdraw up to the amount saved for this goal.');
       return null;
     }
 
     setAmountError(null);
     return {
       goalId: goal.id,
-      amount: { amount: amountInMinorUnits },
+      amount: { amount: mode === 'withdraw' ? -magnitude : magnitude },
       note: note.trim() || null,
     };
-  }, [amountInput.cents, goal, note]);
+  }, [amountInput.cents, goal, mode, note]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent) => {
@@ -124,7 +135,10 @@ export function GoalContributionDialog({
         return;
       }
 
-      if (goal.currentAmount.amount + input.amount.amount > goal.targetAmount.amount) {
+      if (
+        input.amount.amount > 0 &&
+        goal.currentAmount.amount + input.amount.amount > goal.targetAmount.amount
+      ) {
         setPendingInput(input);
         return;
       }
@@ -161,10 +175,11 @@ export function GoalContributionDialog({
   }
 
   const hasAmountError = amountError !== null;
+  const signedPreview = mode === 'withdraw' ? -amountInput.cents : amountInput.cents;
   const projectedAmount =
     amountInput.cents <= 0
       ? goal.currentAmount.amount
-      : goal.currentAmount.amount + amountInput.cents;
+      : Math.max(0, goal.currentAmount.amount + signedPreview);
 
   return (
     <>
@@ -178,7 +193,7 @@ export function GoalContributionDialog({
           aria-labelledby={titleId}
         >
           <h2 id={titleId} className="form-dialog__title">
-            Contribute to {goal.name}
+            {mode === 'withdraw' ? 'Withdraw from' : 'Contribute to'} {goal.name}
           </h2>
 
           <div
@@ -196,7 +211,9 @@ export function GoalContributionDialog({
               </p>
             </div>
             <div>
-              <p className="card__title">After contribution</p>
+              <p className="card__title">
+                {mode === 'withdraw' ? 'After withdrawal' : 'After contribution'}
+              </p>
               <p className="card__value">
                 <CurrencyDisplay amount={projectedAmount} currency={goal.currency.code} />
               </p>
@@ -211,6 +228,38 @@ export function GoalContributionDialog({
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-fields">
+              <fieldset className="form-radio-group form-fieldset">
+                <legend className="form-radio-group__legend">Adjustment type</legend>
+                <div className="form-radio-group__options">
+                  <label className="form-radio-option">
+                    <input
+                      type="radio"
+                      name="goal-adjustment-mode"
+                      value="contribute"
+                      checked={mode === 'contribute'}
+                      onChange={() => {
+                        setMode('contribute');
+                        setAmountError(null);
+                      }}
+                    />
+                    <span className="form-radio-option__label">Contribute</span>
+                  </label>
+                  <label className="form-radio-option">
+                    <input
+                      type="radio"
+                      name="goal-adjustment-mode"
+                      value="withdraw"
+                      checked={mode === 'withdraw'}
+                      onChange={() => {
+                        setMode('withdraw');
+                        setAmountError(null);
+                      }}
+                    />
+                    <span className="form-radio-option__label">Withdraw</span>
+                  </label>
+                </div>
+              </fieldset>
+
               <div className="form-group">
                 <label
                   htmlFor="goal-contribution-amount"
@@ -247,7 +296,7 @@ export function GoalContributionDialog({
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   rows={3}
-                  placeholder="Optional note about this contribution"
+                  placeholder="Optional note about this adjustment"
                 />
               </div>
             </div>
@@ -267,7 +316,13 @@ export function GoalContributionDialog({
                 disabled={submitting}
                 aria-busy={submitting}
               >
-                {submitting ? 'Contributing...' : 'Submit'}
+                {submitting
+                  ? mode === 'withdraw'
+                    ? 'Withdrawing...'
+                    : 'Contributing...'
+                  : mode === 'withdraw'
+                    ? 'Withdraw'
+                    : 'Submit'}
               </button>
             </div>
           </form>
