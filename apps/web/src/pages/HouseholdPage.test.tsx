@@ -665,6 +665,34 @@ describe('HouseholdPage', () => {
     });
   });
 
+  it('accepts a newborn (age 0) when creating a child profile (#3382)', () => {
+    const createChildProfile = vi.fn().mockReturnValue(makeChild({ age: 0 }));
+    mockedUseHousehold.mockReturnValue(
+      mockHouseholdResult({
+        household: makeHousehold(),
+        members: [makeOwnerMember()],
+        createChildProfile,
+      }),
+    );
+
+    render(<HouseholdPage />);
+
+    fireEvent.change(screen.getByLabelText(/child name/i), { target: { value: 'Ada Jr.' } });
+    fireEvent.change(screen.getByLabelText(/^age$/i), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText(/weekly allowance/i), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText(/starting balance/i), { target: { value: '0' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /add child profile/i }));
+
+    expect(createChildProfile).toHaveBeenCalledWith({
+      name: 'Ada Jr.',
+      age: 0,
+      weeklyAllowance: 0,
+      allowanceDay: 'friday',
+      balance: 0,
+    });
+  });
+
   it('toggles chores and records withdrawals through the household hook', () => {
     const toggleChildChoreCompletion = vi.fn();
     const recordChildWithdrawal = vi.fn().mockReturnValue(makeChild({ balance: 9 }));

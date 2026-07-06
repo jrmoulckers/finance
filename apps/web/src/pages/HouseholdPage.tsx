@@ -762,8 +762,8 @@ export function HouseholdPage() {
         return;
       }
 
-      if (!Number.isInteger(parsedAge) || parsedAge < 1) {
-        setKidError('Enter a valid age.');
+      if (!Number.isInteger(parsedAge) || parsedAge < 0) {
+        setKidError('Enter a valid age (0 for under one year).');
         return;
       }
 
@@ -2220,7 +2220,7 @@ export function HouseholdPage() {
                 id="child-age"
                 className="household-form-input"
                 type="number"
-                min="1"
+                min="0"
                 step="1"
                 value={childAge}
                 onChange={(e) => setChildAge(e.target.value)}
