@@ -1,0 +1,32 @@
+.estimated-tax {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.estimated-tax__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.estimated-tax__eyebrow {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.estimated-tax__title {
+  font-size: var(--type-scale-display-font-size);
+  font-weight: var(--type-scale-display-font-weight);
+  margin: 0;
+}
+
+.estimated-tax__description {
+  color: var(--semantic-text-secondary);
+  margin: 0;
+  max-width: 72ch;
+}
