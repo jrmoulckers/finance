@@ -162,4 +162,12 @@ describe('LearningPage', () => {
 
     expect(screen.getByText('100% on this attempt')).toBeInTheDocument();
   });
+
+  it('never renders a raw internal issue reference as user-facing copy', () => {
+    render(<LearningPage />);
+
+    // Guards against shipping developer placeholders like "Issue #1665" /
+    // "Issue #2174" as eyebrow labels again (issue #3201).
+    expect(screen.queryAllByText(/^Issue #\d+$/)).toHaveLength(0);
+  });
 });

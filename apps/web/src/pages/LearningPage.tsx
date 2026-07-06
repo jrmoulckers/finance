@@ -89,7 +89,7 @@ export function CreditBuildingSection(): React.ReactElement {
   return (
     <section className="credit-building" aria-labelledby="credit-building-heading">
       <header className="credit-building__header">
-        <p className="credit-building__eyebrow">Issue #2174</p>
+        <p className="credit-building__eyebrow">Building credit from zero</p>
         <h2 id="credit-building-heading" className="credit-building__title">
           {content.sectionTitle}
         </h2>
@@ -316,7 +316,7 @@ export function LearningPage(): React.ReactElement {
     <main className="learning-page" aria-label="Financial literacy learning path">
       <header className="learning-page__header">
         <div>
-          <p className="learning-page__eyebrow">Issue #1665</p>
+          <p className="learning-page__eyebrow">Local-first financial education</p>
           <h1 className="learning-page__title">Personalized Financial Literacy Learning Path</h1>
           <p className="learning-page__subtitle">
             Learn budgeting, saving, debt, investing, and tax planning with a structured path that
