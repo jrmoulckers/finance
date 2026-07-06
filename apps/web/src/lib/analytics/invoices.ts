@@ -36,6 +36,14 @@ export interface CreateInvoiceInput {
   readonly status?: InvoiceStatus;
 }
 
+export interface UpdateInvoiceInput {
+  readonly clientName: string;
+  readonly amountCents: number;
+  readonly issueDate: string;
+  readonly paymentTerm: InvoicePaymentTerm;
+  readonly status: InvoiceStatus;
+}
+
 export interface InvoicePipelineGroup {
   readonly status: InvoiceStatus;
   readonly label: string;
@@ -138,6 +146,34 @@ export function createInvoice(input: CreateInvoiceInput, nowIso: string, id: str
   };
 
   return { ...invoice, status: getEffectiveInvoiceStatus(invoice, nowIso.slice(0, 10)) };
+}
+
+/**
+ * Apply an edit to an existing invoice, recomputing the derived expected pay
+ * date and effective status while preserving the original id and createdAt.
+ *
+ * @param invoice - The existing invoice being edited.
+ * @param input - The full set of user-editable invoice fields.
+ * @param nowIso - Current timestamp (ISO 8601) used for updatedAt and status.
+ * @returns A new invoice with the edits applied.
+ */
+export function applyInvoiceEdit(
+  invoice: Invoice,
+  input: UpdateInvoiceInput,
+  nowIso: string,
+): Invoice {
+  const updated: Invoice = {
+    ...invoice,
+    clientName: input.clientName.trim(),
+    amountCents: input.amountCents,
+    issueDate: input.issueDate,
+    paymentTerm: input.paymentTerm,
+    status: input.status,
+    expectedPayDate: computeExpectedPayDate(input.issueDate, input.paymentTerm),
+    updatedAt: nowIso,
+  };
+
+  return { ...updated, status: getEffectiveInvoiceStatus(updated, nowIso.slice(0, 10)) };
 }
 
 export function groupInvoicesByStatus(

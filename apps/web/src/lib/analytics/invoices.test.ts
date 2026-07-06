@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  applyInvoiceEdit,
   computeExpectedPayDate,
   computeInvoiceForecast,
   exportInvoicesCsv,
@@ -178,5 +179,66 @@ describe('exportInvoicesCsv', () => {
       INVOICE_CSV_HEADER,
       'Total,0.00,,,,,',
     ]);
+  });
+});
+
+describe('applyInvoiceEdit', () => {
+  it('recomputes the expected pay date from the edited issue date and term', () => {
+    const invoice = makeInvoice({ issueDate: '2024-01-01', paymentTerm: 'net-30' });
+
+    const updated = applyInvoiceEdit(
+      invoice,
+      {
+        clientName: 'Acme Studio',
+        amountCents: 100000,
+        issueDate: '2024-03-01',
+        paymentTerm: 'net-15',
+        status: 'Sent',
+      },
+      '2024-03-01T12:00:00Z',
+    );
+
+    expect(updated.expectedPayDate).toBe('2024-03-16');
+  });
+
+  it('preserves id and createdAt while bumping updatedAt and editable fields', () => {
+    const invoice = makeInvoice({ id: 'inv-42', clientName: 'Old Name', amountCents: 50000 });
+
+    const updated = applyInvoiceEdit(
+      invoice,
+      {
+        clientName: '  New Studio  ',
+        amountCents: 275000,
+        issueDate: '2024-02-10',
+        paymentTerm: 'net-45',
+        status: 'Sent',
+      },
+      '2024-02-10T09:30:00Z',
+    );
+
+    expect(updated.id).toBe('inv-42');
+    expect(updated.createdAt).toBe('2024-01-01T00:00:00Z');
+    expect(updated.updatedAt).toBe('2024-02-10T09:30:00Z');
+    expect(updated.clientName).toBe('New Studio');
+    expect(updated.amountCents).toBe(275000);
+    expect(updated.paymentTerm).toBe('net-45');
+  });
+
+  it('derives the effective overdue status when the edited term is already past due', () => {
+    const invoice = makeInvoice({ status: 'Sent' });
+
+    const updated = applyInvoiceEdit(
+      invoice,
+      {
+        clientName: 'Acme Studio',
+        amountCents: 100000,
+        issueDate: '2024-01-01',
+        paymentTerm: 'net-15',
+        status: 'Sent',
+      },
+      '2024-06-01T00:00:00Z',
+    );
+
+    expect(updated.status).toBe('Overdue');
   });
 });
