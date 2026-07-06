@@ -18,7 +18,7 @@
  * References: issue #2174
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Icon } from '../components/common';
 import { IconToken } from '../icons/tokens';
@@ -102,13 +102,22 @@ export function BuildingCreditPage() {
     : NO_LIMIT_DETAIL;
   const showPayDown = hasLimit && utilization.payDownToTargetCents > 0;
 
+  // Announce a concise, debounced summary instead of re-reading the whole
+  // result block on every keystroke (#3413, WCAG 2.2 4.1.3 Status Messages).
+  const [announcedSummary, setAnnouncedSummary] = useState('');
+  useEffect(() => {
+    const summary = hasLimit ? `${meterValueText}. ${utilization.levelLabel}.` : '';
+    const timeout = window.setTimeout(() => setAnnouncedSummary(summary), 600);
+    return () => window.clearTimeout(timeout);
+  }, [hasLimit, meterValueText, utilization.levelLabel]);
+
   return (
-    <main className="building-credit" aria-labelledby="building-credit-title">
+    <div className="building-credit">
       <header className="building-credit__header">
         <p className="building-credit__eyebrow">Building credit from zero</p>
-        <h1 id="building-credit-title" className="building-credit__title">
+        <h2 id="building-credit-title" className="building-credit__title">
           Building credit
-        </h1>
+        </h2>
         <p className="building-credit__description">{PAGE_DESCRIPTION}</p>
       </header>
 
@@ -182,7 +191,10 @@ export function BuildingCreditPage() {
           </div>
         </div>
 
-        <div className={resultClassName} role="status">
+        <div className={resultClassName}>
+          <p className="sr-only" role="status">
+            {announcedSummary}
+          </p>
           <div className="building-credit__result-heading">
             <Icon name={statusIcon} className="building-credit__result-icon" aria-hidden="true" />
             <p className="building-credit__result-headline">{utilization.headline}</p>
@@ -282,7 +294,7 @@ export function BuildingCreditPage() {
           ))}
         </ul>
       </section>
-    </main>
+    </div>
   );
 }
 
