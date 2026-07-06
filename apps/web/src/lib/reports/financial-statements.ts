@@ -364,7 +364,11 @@ export function generateBalanceSheet(
     };
   };
 
-  const activeAccounts = accounts.filter((account) => account.deletedAt === null);
+  // Exclude archived accounts so the balance sheet reconciles with the Net
+  // Worth page (computeCurrentNetWorth), which also skips archived accounts.
+  const activeAccounts = accounts.filter(
+    (account) => account.deletedAt === null && !account.isArchived,
+  );
   const assets = activeAccounts
     .filter((account) => !isLiabilityAccount(account))
     .map(lineForAccount);

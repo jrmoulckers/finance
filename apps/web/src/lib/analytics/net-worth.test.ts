@@ -231,6 +231,16 @@ describe('detectMilestones', () => {
     expect(first1m).toBeDefined();
     expect(first1m?.reached).toBe(false);
   });
+
+  it('includes HNW milestones beyond $100K', () => {
+    const milestones = detectMilestones(150_000_000, 0); // $1.5M, no debt
+    const first1m = milestones.find((m) => m.label === 'First $1M');
+    const first25m = milestones.find((m) => m.label === 'First $2.5M');
+    expect(first1m?.reached).toBe(true);
+    expect(first25m?.reached).toBe(false);
+    // Ladder extends to at least $10M so HNW users always have a next target.
+    expect(milestones.some((m) => m.label === 'First $10M')).toBe(true);
+  });
 });
 
 describe('computePeriodComparison', () => {

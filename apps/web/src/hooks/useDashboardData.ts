@@ -16,6 +16,7 @@
  */
 
 import { useCallback } from 'react';
+import { computeCurrentNetWorth } from '../lib/analytics/net-worth';
 import { getAllAccounts } from '../db/repositories/accounts';
 import { getBudgetWithSpending, getBudgetsByPeriod } from '../db/repositories/budgets';
 import { getRecentTransactions, getTransactionsByDateRange } from '../db/repositories/transactions';
@@ -73,7 +74,10 @@ function isBudgetActiveInMonth(budget: Budget, startDate: string, endDate: strin
 
 function aggregateDashboardData(db: SqliteDb): DashboardData {
   const accounts = getAllAccounts(db);
-  const netWorth = accounts.reduce((sum, account) => sum + account.currentBalance.amount, 0);
+  // Reconcile with the Net Worth page and Accounts page: exclude archived
+  // accounts and subtract liabilities (a sign-blind sum overstated net worth
+  // and double-counted debt). See computeCurrentNetWorth for the canonical rule.
+  const netWorth = computeCurrentNetWorth(accounts).netWorth;
 
   const accountTotals = new Map<string, number>();
   for (const account of accounts) {

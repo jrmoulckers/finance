@@ -228,6 +228,9 @@ const DEFAULT_MILESTONES: Array<{ label: string; thresholdCents: number }> = [
   { label: 'First $250K', thresholdCents: 25_000_000 },
   { label: 'First $500K', thresholdCents: 50_000_000 },
   { label: 'First $1M', thresholdCents: 100_000_000 },
+  { label: 'First $2.5M', thresholdCents: 250_000_000 },
+  { label: 'First $5M', thresholdCents: 500_000_000 },
+  { label: 'First $10M', thresholdCents: 1_000_000_000 },
   { label: 'Debt-free', thresholdCents: 0 },
 ];
 
