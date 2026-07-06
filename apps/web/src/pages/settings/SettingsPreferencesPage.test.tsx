@@ -121,6 +121,43 @@ describe('SettingsPreferencesPage currency display polish', () => {
     expect(localStorage.getItem('finance-time-zone-preference')).toBe('Asia/Tokyo');
   });
 
+  it('honestly marks fallback-only locales as beta and leaves translated locales unmarked', () => {
+    renderPreferences();
+
+    const languageSelect = screen.getByLabelText('Language');
+    const options = within(languageSelect).getAllByRole('option');
+
+    const badged = options.filter((option) =>
+      /beta · mostly English/i.test(option.textContent ?? ''),
+    );
+    const badgedValues = badged.map((option) => option.getAttribute('value')).sort();
+
+    // de-DE, ja-JP, and ar are fallback-only (English placeholder catalogs).
+    expect(badgedValues).toEqual(['ar', 'de-DE', 'ja-JP']);
+
+    // Source (en-US) and starter (es-ES, zh-Hans) locales must NOT be badged.
+    const spanishOption = within(languageSelect).getByRole('option', { name: /Español/ });
+    expect(spanishOption.textContent).not.toMatch(/beta/i);
+    const chineseOption = within(languageSelect).getByRole('option', { name: /简体中文/ });
+    expect(chineseOption.textContent).not.toMatch(/beta/i);
+  });
+
+  it('surfaces a beta notice only while a fallback-only locale is active', () => {
+    renderPreferences();
+
+    // Default active locale (en-US) is fully translated — no notice.
+    expect(screen.queryByText(/this language is in beta/i)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'de-DE' } });
+
+    expect(localStorage.getItem('finance-locale-preference')).toBe('de-DE');
+    expect(screen.getByText(/this language is in beta/i)).toBeInTheDocument();
+
+    // Switching back to a translated locale removes the notice.
+    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'es-ES' } });
+    expect(screen.queryByText(/this language is in beta/i)).not.toBeInTheDocument();
+  });
+
   it('offers and persists compact display density', () => {
     renderPreferences();
 

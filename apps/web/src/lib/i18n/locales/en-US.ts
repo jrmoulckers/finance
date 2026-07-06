@@ -16,6 +16,9 @@ export const EN_US_CATALOG: MessageCatalog = {
   'settings.language': 'Language',
   'settings.timeZone': 'Home time zone',
   'settings.languageDescription': 'Detected from your browser; change it anytime.',
+  'settings.language.betaBadge': 'beta · mostly English',
+  'settings.language.betaNotice':
+    'This language is in beta — most screens still appear in English until translation is complete.',
   'settings.currencyRates.title': 'Currency Rates',
   'settings.currencyRates.loading': 'Loading rates…',
   'settings.currencyRates.error': 'Error loading rates: {error}',

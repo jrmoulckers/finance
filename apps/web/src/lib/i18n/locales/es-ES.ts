@@ -16,6 +16,9 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'settings.language': 'Idioma',
   'settings.timeZone': 'Zona horaria de casa',
   'settings.languageDescription': 'Detectado desde tu navegador; puedes cambiarlo cuando quieras.',
+  'settings.language.betaBadge': 'beta · mayormente en inglés',
+  'settings.language.betaNotice':
+    'Este idioma está en fase beta: la mayoría de las pantallas seguirán en inglés hasta que se complete la traducción.',
   'settings.currencyRates.title': 'Tipos de cambio',
   'settings.currencyRates.loading': 'Cargando tipos…',
   'settings.currencyRates.error': 'Error al cargar los tipos: {error}',

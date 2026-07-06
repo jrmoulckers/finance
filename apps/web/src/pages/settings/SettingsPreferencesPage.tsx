@@ -33,6 +33,7 @@ import {
 } from '../../lib/accessibility-preferences';
 import { SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
 import { translate } from '../../lib/i18n';
+import { getLocalePack } from '../../lib/i18n/locale-packs';
 import { createSettingsCopy } from '../../lib/i18n/settings-catalog';
 import { setOnboardingComplete } from '../../lib/local-only-mode';
 
@@ -265,20 +266,36 @@ export const SettingsPreferencesPage: React.FC = () => {
                 <select
                   id="settings-language"
                   aria-label="Language"
+                  aria-describedby={
+                    getLocalePack(localePreferences.locale)?.status === 'fallback-only'
+                      ? 'settings-language-beta'
+                      : undefined
+                  }
                   className="settings-item__select"
                   value={localePreferences.locale}
                   onChange={handleLocaleChange}
                 >
-                  {localePreferences.supportedLocales.map((option) => (
-                    <option key={option.code} value={option.code}>
-                      {option.nativeLabel} ({option.label})
-                    </option>
-                  ))}
+                  {localePreferences.supportedLocales.map((option) => {
+                    const isFallbackOnly = getLocalePack(option.code)?.status === 'fallback-only';
+                    const betaBadge = isFallbackOnly
+                      ? ` — ${translate('settings.language.betaBadge', {}, localePreferences.locale).text}`
+                      : '';
+                    return (
+                      <option key={option.code} value={option.code}>
+                        {option.nativeLabel} ({option.label}){betaBadge}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <p className="settings-item__description">
                 {translate('settings.languageDescription', {}, localePreferences.locale).text}
               </p>
+              {getLocalePack(localePreferences.locale)?.status === 'fallback-only' && (
+                <p id="settings-language-beta" className="settings-item__description" role="status">
+                  {translate('settings.language.betaNotice', {}, localePreferences.locale).text}
+                </p>
+              )}
             </div>
           </SettingInfoWidget>
           <SettingInfoWidget settingKey="time-zone">

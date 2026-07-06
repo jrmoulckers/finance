@@ -29,6 +29,8 @@ export const ZH_HANS_CATALOG: MessageCatalog = {
   'settings.language': '语言',
   'settings.timeZone': '家乡时区',
   'settings.languageDescription': '根据你的浏览器检测；可随时更改。',
+  'settings.language.betaBadge': '测试版 · 多为英文',
+  'settings.language.betaNotice': '此语言尚处于测试阶段——在翻译完成前，大多数界面仍以英文显示。',
   'settings.currencyRates.title': '汇率',
   'settings.currencyRates.loading': '正在加载汇率…',
   'settings.currencyRates.error': '加载汇率失败：{error}',
