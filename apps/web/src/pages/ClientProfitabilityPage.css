@@ -31,6 +31,29 @@
   max-width: 72ch;
 }
 
+.client-profitability__export-btn {
+  align-self: flex-start;
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.client-profitability__export-btn:hover:not(:disabled) {
+  background: var(--semantic-background-secondary);
+}
+
+.client-profitability__export-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .client-profitability__card {
   background: var(--semantic-surface-primary);
   border: 1px solid var(--semantic-border-default);
