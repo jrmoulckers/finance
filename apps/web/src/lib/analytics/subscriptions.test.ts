@@ -233,4 +233,71 @@ describe('computeSubscriptionSummary', () => {
     expect(summary.totalMonthlyCents).toBe(0);
     expect(summary.cancelledCount).toBe(1);
   });
+
+  it('tracks flagged subscriptions as potential savings without counting them active', () => {
+    const subs = [
+      {
+        id: 'sub-1',
+        name: 'Netflix',
+        categoryId: null,
+        categoryName: 'Streaming',
+        amountCents: 1599,
+        cadence: 'monthly' as const,
+        monthlyCostCents: 1599,
+        annualCostCents: 19188,
+        transactionCount: 3,
+        lastDate: '2024-03-15',
+        status: 'active' as const,
+      },
+      {
+        id: 'sub-2',
+        name: 'Unused Gym',
+        categoryId: null,
+        categoryName: 'Fitness',
+        amountCents: 4000,
+        cadence: 'monthly' as const,
+        monthlyCostCents: 4000,
+        annualCostCents: 48000,
+        transactionCount: 3,
+        lastDate: '2024-03-15',
+        status: 'flagged' as const,
+      },
+    ];
+
+    const summary = computeSubscriptionSummary(subs);
+
+    // Flagged subs are still being paid, so they stay in the current total...
+    expect(summary.totalMonthlyCents).toBe(5599);
+    expect(summary.totalAnnualCents).toBe(67188);
+    // ...but they are NOT counted as active.
+    expect(summary.activeCount).toBe(1);
+    expect(summary.flaggedCount).toBe(1);
+    // Potential savings = the flagged monthly cost, projected annually.
+    expect(summary.flaggedMonthlyCents).toBe(4000);
+    expect(summary.flaggedAnnualCents).toBe(48000);
+  });
+
+  it('reports zero potential savings when nothing is flagged', () => {
+    const subs = [
+      {
+        id: 'sub-1',
+        name: 'Netflix',
+        categoryId: null,
+        categoryName: 'Streaming',
+        amountCents: 1599,
+        cadence: 'monthly' as const,
+        monthlyCostCents: 1599,
+        annualCostCents: 19188,
+        transactionCount: 3,
+        lastDate: '2024-03-15',
+        status: 'active' as const,
+      },
+    ];
+
+    const summary = computeSubscriptionSummary(subs);
+    expect(summary.flaggedCount).toBe(0);
+    expect(summary.flaggedMonthlyCents).toBe(0);
+    expect(summary.flaggedAnnualCents).toBe(0);
+    expect(summary.activeCount).toBe(1);
+  });
 });
