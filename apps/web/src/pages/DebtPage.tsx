@@ -12,7 +12,7 @@
  * References: issues #1662, #1685, #1690, #1681, #1761, #1569
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
 import { pluralize } from '../lib/ui/pluralize';
 import { ExplainThis } from '../components/common/ExplainThis';
@@ -441,6 +441,40 @@ function getLocalStorage(): Storage | null {
  */
 export function DebtPage(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<DebtTab>('payoff');
+  const debtTabKeys = useMemo(() => Object.keys(TAB_LABELS) as DebtTab[], []);
+
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, tab: DebtTab) => {
+      const currentIndex = debtTabKeys.indexOf(tab);
+      let nextIndex: number;
+      switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          nextIndex = (currentIndex + 1) % debtTabKeys.length;
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          nextIndex = (currentIndex - 1 + debtTabKeys.length) % debtTabKeys.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = debtTabKeys.length - 1;
+          break;
+        default:
+          return;
+      }
+      event.preventDefault();
+      const nextTab = debtTabKeys[nextIndex];
+      if (!nextTab) {
+        return;
+      }
+      setActiveTab(nextTab);
+      document.getElementById(`debt-tab-${nextTab}`)?.focus();
+    },
+    [debtTabKeys],
+  );
 
   return (
     <section className="debt-page" aria-label="Debt Management">
@@ -451,15 +485,17 @@ export function DebtPage(): React.ReactElement {
 
       <nav className="debt-page__tabs" aria-label="Debt management sections">
         <ul role="tablist" className="debt-page__tab-list">
-          {(Object.keys(TAB_LABELS) as DebtTab[]).map((tab) => (
+          {debtTabKeys.map((tab) => (
             <li key={tab} role="presentation">
               <button
                 role="tab"
                 aria-selected={activeTab === tab}
                 aria-controls={`debt-panel-${tab}`}
                 id={`debt-tab-${tab}`}
+                tabIndex={activeTab === tab ? 0 : -1}
                 className={`debt-page__tab ${activeTab === tab ? 'debt-page__tab--active' : ''}`}
                 onClick={() => setActiveTab(tab)}
+                onKeyDown={(event) => handleTabKeyDown(event, tab)}
               >
                 {TAB_LABELS[tab]}
               </button>
@@ -539,6 +575,12 @@ function PayoffPlannerPanel(): React.ReactElement {
   const [manualDebts, setManualDebts] = useState<Debt[]>([]);
   const [debtAdjustments, setDebtAdjustments] = useState<Record<string, Partial<Debt>>>({});
   const [manualForm, setManualForm] = useState<DebtFormState>(DEFAULT_DEBT_FORM);
+  const [manualErrors, setManualErrors] = useState<
+    Partial<Record<'name' | 'balance' | 'minimumPayment', string>>
+  >({});
+  const manualNameRef = useRef<HTMLInputElement>(null);
+  const manualBalanceRef = useRef<HTMLInputElement>(null);
+  const manualMinimumRef = useRef<HTMLInputElement>(null);
   const [extraPayment, setExtraPayment] = useState('100');
   const [activeStrategy, setActiveStrategy] = useState<PayoffStrategy>('avalanche');
   const [monthlyIncome, setMonthlyIncome] = useState('5000');
@@ -770,6 +812,30 @@ function PayoffPlannerPanel(): React.ReactElement {
       const balanceCents = parseCurrencyInput(manualForm.balance);
       const originalInput = parseCurrencyInput(manualForm.originalBalance);
       const minimumPaymentCents = parseCurrencyInput(manualForm.minimumPayment);
+
+      const errors: Partial<Record<'name' | 'balance' | 'minimumPayment', string>> = {};
+      if (!manualForm.name.trim()) {
+        errors.name = 'Enter a name for this debt.';
+      }
+      if (!(balanceCents > 0)) {
+        errors.balance = 'Enter a balance greater than $0.';
+      }
+      if (!(minimumPaymentCents > 0)) {
+        errors.minimumPayment = 'Enter a minimum payment greater than $0.';
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setManualErrors(errors);
+        if (errors.name) {
+          manualNameRef.current?.focus();
+        } else if (errors.balance) {
+          manualBalanceRef.current?.focus();
+        } else {
+          manualMinimumRef.current?.focus();
+        }
+        return;
+      }
+
       const debt: Debt = {
         id: createDebtId(),
         name: manualForm.name.trim(),
@@ -780,11 +846,15 @@ function PayoffPlannerPanel(): React.ReactElement {
         type: manualForm.type,
       };
 
-      if (!debt.name || debt.balanceCents <= 0 || debt.minimumPaymentCents <= 0) return;
+      setManualErrors({});
       setManualDebts((current) => [...current, debt]);
       setManualForm(DEFAULT_DEBT_FORM);
     },
     [manualForm],
+  );
+
+  const manualErrorMessages = Object.values(manualErrors).filter((message): message is string =>
+    Boolean(message),
   );
 
   return (
@@ -793,7 +863,17 @@ function PayoffPlannerPanel(): React.ReactElement {
         <EmptyState
           title="No debts added"
           description="Add your debts or connect debt accounts to compare payoff strategies and see how extra payments can save you money."
-          action={<button type="button">Add Debt</button>}
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                manualNameRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+                manualNameRef.current?.focus();
+              }}
+            >
+              Add Debt
+            </button>
+          }
         />
       ) : (
         <>
@@ -1110,27 +1190,48 @@ function PayoffPlannerPanel(): React.ReactElement {
 
       <section aria-label="Manual debt entry">
         <h2>Add Debt Manually</h2>
+        {manualErrorMessages.length > 0 ? (
+          <div role="alert" className="debt-entry-form__error-summary">
+            Please fix the following before adding this debt: {manualErrorMessages.join(' ')}
+          </div>
+        ) : null}
         <form className="debt-entry-form" onSubmit={handleManualSubmit} noValidate>
           <label>
             Debt name
             <input
+              ref={manualNameRef}
               type="text"
               value={manualForm.name}
               onChange={(event) => handleManualFieldChange('name', event.target.value)}
               required
+              aria-invalid={manualErrors.name ? true : undefined}
+              aria-describedby={manualErrors.name ? 'manual-debt-name-error' : undefined}
             />
           </label>
+          {manualErrors.name ? (
+            <span id="manual-debt-name-error" className="debt-entry-form__error">
+              {manualErrors.name}
+            </span>
+          ) : null}
           <label>
             Debt balance ($)
             <input
+              ref={manualBalanceRef}
               type="number"
               min="0"
               step="0.01"
               value={manualForm.balance}
               onChange={(event) => handleManualFieldChange('balance', event.target.value)}
               required
+              aria-invalid={manualErrors.balance ? true : undefined}
+              aria-describedby={manualErrors.balance ? 'manual-debt-balance-error' : undefined}
             />
           </label>
+          {manualErrors.balance ? (
+            <span id="manual-debt-balance-error" className="debt-entry-form__error">
+              {manualErrors.balance}
+            </span>
+          ) : null}
           <label>
             Original balance ($)
             <input
@@ -1155,14 +1256,24 @@ function PayoffPlannerPanel(): React.ReactElement {
           <label>
             Minimum payment ($)
             <input
+              ref={manualMinimumRef}
               type="number"
               min="0"
               step="0.01"
               value={manualForm.minimumPayment}
               onChange={(event) => handleManualFieldChange('minimumPayment', event.target.value)}
               required
+              aria-invalid={manualErrors.minimumPayment ? true : undefined}
+              aria-describedby={
+                manualErrors.minimumPayment ? 'manual-debt-minimum-error' : undefined
+              }
             />
           </label>
+          {manualErrors.minimumPayment ? (
+            <span id="manual-debt-minimum-error" className="debt-entry-form__error">
+              {manualErrors.minimumPayment}
+            </span>
+          ) : null}
           <label>
             Debt type
             <select
