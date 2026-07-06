@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 
-import { EmptyState, Icon } from '../components/common';
+import { ConfirmDialog, EmptyState, Icon } from '../components/common';
 import { IconToken } from '../icons/tokens';
 import { formatCurrency } from '../lib/currency';
 import {
@@ -86,6 +86,7 @@ export function ExpectedIncomePage() {
   const [cleared, setCleared] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<ExpectedIncomeItem | null>(null);
 
   useEffect(() => {
     const refresh = () => setItems(loadExpectedIncomeItems());
@@ -161,9 +162,16 @@ export function ExpectedIncomePage() {
   }, []);
 
   const handleDelete = useCallback((item: ExpectedIncomeItem) => {
-    deleteExpectedIncomeItem(item.id);
-    setStatusMessage(`Removed “${item.label}”.`);
+    setPendingDelete(item);
   }, []);
+
+  const confirmDelete = useCallback(() => {
+    if (pendingDelete) {
+      deleteExpectedIncomeItem(pendingDelete.id);
+      setStatusMessage(`Removed “${pendingDelete.label}”.`);
+    }
+    setPendingDelete(null);
+  }, [pendingDelete]);
 
   return (
     <main className="expected-income" aria-labelledby="expected-income-title">
@@ -427,6 +435,19 @@ export function ExpectedIncomePage() {
           </ul>
         )}
       </section>
+
+      <ConfirmDialog
+        isOpen={pendingDelete !== null}
+        title="Remove expected income"
+        message={
+          pendingDelete
+            ? `Remove “${pendingDelete.label}” from your expected income? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Remove"
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </main>
   );
 }
