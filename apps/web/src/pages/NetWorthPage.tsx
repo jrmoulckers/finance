@@ -13,7 +13,7 @@
  * References: issue #1578
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CurrencyDisplay,
   EmptyState,
@@ -21,10 +21,12 @@ import {
   ExplainThis,
   LoadingSpinner,
 } from '../components/common';
+import { AccountPurposeFilterControl } from '../components/accounts';
 import { AppIcon } from '../components/icons';
 import { NetWorthProjectionChart } from '../components/charts/NetWorthProjectionChart';
 import { useNetWorth } from '../hooks/useNetWorth';
 import type { AssetClassBreakdown, NetWorthMilestone } from '../lib/analytics/net-worth';
+import type { AccountPurposeFilter } from '../lib/accountPurpose';
 import { CHART_COLORS } from '../components/charts/chart-palette';
 import './analytics.css';
 
@@ -99,8 +101,9 @@ const MilestoneList: React.FC<MilestoneListProps> = ({ milestones }) => (
 // ---------------------------------------------------------------------------
 
 export const NetWorthPage: React.FC = () => {
+  const [purposeFilter, setPurposeFilter] = useState<AccountPurposeFilter>('all');
   const { currentNetWorth, assetClasses, milestones, history, loading, error, refresh } =
-    useNetWorth();
+    useNetWorth(purposeFilter);
 
   if (loading) {
     return (
@@ -124,32 +127,43 @@ export const NetWorthPage: React.FC = () => {
   }
 
   const isEmpty = currentNetWorth.assets === 0 && currentNetWorth.liabilities === 0;
+  const workspaceLabel =
+    purposeFilter === 'business' ? 'business' : purposeFilter === 'personal' ? 'personal' : '';
+  const emptyDescription =
+    purposeFilter === 'all'
+      ? 'Your accounts have no balances yet. Update account balances to see your net worth.'
+      : `No ${workspaceLabel} accounts have balances yet. Switch workspace above or update account balances.`;
+
+  const header = (
+    <div className="analytics-page__header">
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 'var(--spacing-2)',
+        }}
+      >
+        <h1 className="analytics-page__title" style={{ margin: 0 }}>
+          Net Worth
+        </h1>
+        <ExplainThis glossaryKey="netWorth" />
+      </div>
+      <AccountPurposeFilterControl value={purposeFilter} onChange={setPurposeFilter} />
+    </div>
+  );
 
   if (isEmpty) {
     return (
-      <EmptyState
-        title="No net worth data"
-        description="Your accounts have no balances yet. Update account balances to see your net worth."
-      />
+      <div className="analytics-page">
+        {header}
+        <EmptyState title="No net worth data" description={emptyDescription} />
+      </div>
     );
   }
 
   return (
     <div className="analytics-page">
-      <div className="analytics-page__header">
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-2)',
-          }}
-        >
-          <h1 className="analytics-page__title" style={{ margin: 0 }}>
-            Net Worth
-          </h1>
-          <ExplainThis glossaryKey="netWorth" />
-        </div>
-      </div>
+      {header}
 
       {/* Key figures */}
       <section className="analytics-section" aria-label="Net worth summary">

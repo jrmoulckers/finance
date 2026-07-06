@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { NetWorthPage } from './NetWorthPage';
 
 // Mock the hook
@@ -160,5 +160,63 @@ describe('NetWorthPage', () => {
       screen.getByRole('region', { name: 'Net worth growth and projection' }),
     ).toBeInTheDocument();
     expect(screen.getByTestId('net-worth-projection-chart')).toBeInTheDocument();
+  });
+
+  it('renders the workspace purpose filter and defaults to all accounts', () => {
+    mockUseNetWorth.mockReturnValue({
+      currentNetWorth: {
+        label: '2024-03-15',
+        assets: 2000000,
+        liabilities: 500000,
+        netWorth: 1500000,
+      },
+      assetClasses: [],
+      milestones: [],
+      history: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    render(<NetWorthPage />);
+    expect(screen.getByRole('group', { name: 'Filter by account purpose' })).toBeInTheDocument();
+    expect(mockUseNetWorth).toHaveBeenCalledWith('all');
+  });
+
+  it('scopes net worth to the business workspace when selected', () => {
+    mockUseNetWorth.mockReturnValue({
+      currentNetWorth: {
+        label: '2024-03-15',
+        assets: 2000000,
+        liabilities: 500000,
+        netWorth: 1500000,
+      },
+      assetClasses: [],
+      milestones: [],
+      history: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    render(<NetWorthPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Business/ }));
+    expect(mockUseNetWorth).toHaveBeenLastCalledWith('business');
+  });
+
+  it('keeps the workspace filter visible when the selected workspace has no balances', () => {
+    mockUseNetWorth.mockReturnValue({
+      currentNetWorth: { label: '2024-03-15', assets: 0, liabilities: 0, netWorth: 0 },
+      assetClasses: [],
+      milestones: [],
+      history: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    render(<NetWorthPage />);
+    expect(screen.getByText('No net worth data')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Filter by account purpose' })).toBeInTheDocument();
   });
 });
