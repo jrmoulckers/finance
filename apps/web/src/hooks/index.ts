@@ -120,6 +120,7 @@ export type {
 } from './useFormValidation';
 export { useBreakpoint } from './useBreakpoint';
 export type { UseBreakpointResult, Breakpoint } from './useBreakpoint';
+export { useCoarsePointer, prefersCoarsePointer } from './useCoarsePointer';
 export { useDeepLink, matchRoute } from './useDeepLink';
 export type { UseDeepLinkResult, RouteParams, RoutePattern } from './useDeepLink';
 export { useVirtualList } from './useVirtualList';

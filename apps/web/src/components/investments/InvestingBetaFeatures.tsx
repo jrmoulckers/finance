@@ -963,7 +963,7 @@ const SignalList: React.FC<{
         {signals.map((signal) => (
           <li key={signal.id}>
             <strong>
-              {severityLabel(signal.severity)} — {signal.label}:
+              {severityLabel(signal.severity)}, {signal.label}:
             </strong>{' '}
             {signal.detail}
           </li>

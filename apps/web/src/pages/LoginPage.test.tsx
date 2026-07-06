@@ -191,17 +191,42 @@ describe('LoginPage', () => {
       );
     });
 
-    it('collapses the email/password form behind a disclosure', async () => {
+    it('collapses the email/password form behind a disclosure (#3189)', async () => {
       const { container } = renderLoginPage();
 
       await waitFor(() =>
-        expect(screen.getByRole('button', { name: /use email & password/i })).toBeInTheDocument(),
+        expect(
+          screen.getByRole('button', { name: /sign in with email instead/i }),
+        ).toBeInTheDocument(),
       );
 
-      // Form is hidden when biometric is primary and the disclosure is collapsed.
+      // The `hidden` attribute must actually collapse the form. `.auth-form`
+      // sets `display: flex`, so `auth.css` adds a `.auth-form[hidden]` override
+      // (#3189); jest-dom honours the `hidden` attribute directly, so the form
+      // and its fields report as not visible while collapsed.
       const form = container.querySelector('#login-email-form');
       expect(form).not.toBeNull();
       expect(form).toHaveAttribute('hidden');
+      expect(form).not.toBeVisible();
+      expect(screen.getByLabelText('Email')).not.toBeVisible();
+      expect(screen.getByLabelText('Password')).not.toBeVisible();
+    });
+
+    it('keeps social sign-in visible while the email form is collapsed (#3178)', async () => {
+      const { container } = renderLoginPage();
+
+      // Wait for the biometric-first layout to activate (async platform check).
+      await screen.findByRole('button', { name: /sign in with biometrics/i });
+
+      // The email/password form is collapsed (hidden)...
+      const form = container.querySelector('#login-email-form');
+      expect(form).toHaveAttribute('hidden');
+
+      // ...yet the social sign-in buttons remain visible, because they no longer
+      // live inside the hidden form (the bug this fixes).
+      expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeVisible();
     });
 
     it('expands the email/password form when the disclosure is clicked', async () => {
@@ -210,14 +235,16 @@ describe('LoginPage', () => {
 
       const { container } = renderLoginPage();
 
-      const disclosure = await screen.findByRole('button', { name: /use email & password/i });
+      const disclosure = await screen.findByRole('button', {
+        name: /sign in with email instead/i,
+      });
       await user.click(disclosure);
 
       const form = container.querySelector('#login-email-form');
       expect(form).not.toBeNull();
       expect(form).not.toHaveAttribute('hidden');
       // Toggle re-labelled
-      expect(screen.getByRole('button', { name: /hide email & password/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /hide email sign-in/i })).toBeInTheDocument();
     });
 
     it('records preferred=passkey after a successful biometric sign-in', async () => {
@@ -304,6 +331,37 @@ describe('LoginPage', () => {
       expect(screen.getByText('Incorrect email or password')).toBeInTheDocument();
       expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('wrong@example.com');
       expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('badpassword1');
+    });
+  });
+
+  describe('error region reserves space & announces (#3192)', () => {
+    it('keeps the aria-live region mounted (reserving space) when there is no error', () => {
+      authState.error = null;
+      const { container } = renderLoginPage();
+
+      const region = container.querySelector('.auth-error-region');
+      // The region is always present so its reserved min-height stops the form
+      // from shifting on the first failed submit, and the polite live region
+      // stays available for screen-reader announcements.
+      expect(region).toBeInTheDocument();
+      expect(region).toHaveAttribute('aria-live', 'polite');
+      expect(region).toHaveAttribute('aria-atomic', 'true');
+      // No banner content while there is no error, but the region persists.
+      expect(container.querySelector('.auth-error')).toBeNull();
+    });
+
+    it('mounts the error banner inside that same live region without remounting it', () => {
+      authState.error = 'Incorrect email or password';
+      const { container } = renderLoginPage();
+
+      const region = container.querySelector('.auth-error-region');
+      expect(region).toBeInTheDocument();
+      expect(region).toHaveAttribute('aria-live', 'polite');
+      expect(region).toHaveAttribute('aria-atomic', 'true');
+
+      const banner = region?.querySelector('.auth-error');
+      expect(banner).not.toBeNull();
+      expect(screen.getByText('Incorrect email or password')).toBeInTheDocument();
     });
   });
 });

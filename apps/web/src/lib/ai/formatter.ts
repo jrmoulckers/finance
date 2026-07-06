@@ -102,7 +102,7 @@ export function formatFinancialQueryResponse(
           .slice(0, limit)
           .map(
             (row) =>
-              `${row.date}: ${row.description} (${row.categoryName}, ${row.accountName}) — ${formatCurrency(row.amountCents, row.currency)}`,
+              `${row.date}: ${row.description} (${row.categoryName}, ${row.accountName}), ${formatCurrency(row.amountCents, row.currency)}`,
           ),
         emptyState: 'Try lowering the threshold or removing one of the filters.',
       };

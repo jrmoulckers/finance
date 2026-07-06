@@ -8,7 +8,7 @@ import { KeyboardShortcutsModal, SyncStatusBar } from '../common';
 import { CommandPalette, type CommandPaletteAction } from '../common/CommandPalette';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { NotificationCenter } from '../notifications';
-import { useKeyboardShortcuts } from '../../hooks';
+import { useBreakpoint, useKeyboardShortcuts } from '../../hooks';
 import { useAccessibility } from '../../hooks/useAccessibility';
 import { useHiddenModules } from '../../hooks/useModuleVisibility';
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
@@ -28,6 +28,7 @@ import { LegalLinks } from '../legal/LegalLinks';
 import { Breadcrumbs, NavShortcuts } from '../navigation';
 
 import { SkipToContent } from './SkipToContent';
+import { EyeIcon, EyeOffIcon } from './navIcons';
 
 export interface AppLayoutProps {
   activePath: string;
@@ -90,6 +91,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   onNotificationAction,
 }) => {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  // The `.app-header` is `display:none` at ≥768px, so its quick actions are
+  // rendered here only on mobile; the desktop sidebar hosts them instead. Gating
+  // by breakpoint keeps exactly one instance of each control in the DOM (#3197).
+  const { isMobile } = useBreakpoint();
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [simpleModeEnabled, setSimpleModeEnabled] = useState(getStoredSimplifiedModePreference);
   const { isSimplified } = useAccessibility();
@@ -192,7 +197,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         label: isPrivacyMode ? 'Turn privacy mode off' : 'Turn privacy mode on',
         description: 'Mask or reveal financial amounts.',
         shortcut: 'Ctrl+Shift+P',
-        keywords: 'privacy mask sensitive amounts',
+        keywords: 'privacy mask sensitive amounts hide show balances values',
         perform: togglePrivacyMode,
       },
       {
@@ -231,6 +236,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         onOpenShortcuts={openKeyboardShortcuts}
         onOpenFeedback={openFeedbackDialog}
         simpleMode={simpleModeEnabled}
+        showQuickActions={!isMobile}
+        notifications={notifications}
+        notificationUnreadCount={notificationUnreadCount}
+        onMarkNotificationAsRead={onMarkNotificationAsRead}
+        onMarkAllNotificationsAsRead={onMarkAllNotificationsAsRead}
+        onDismissNotification={onDismissNotification}
+        onNotificationAction={onNotificationAction}
+        isPrivacyMode={isPrivacyMode}
+        onTogglePrivacyMode={togglePrivacyMode}
       />
       <div className={`app-shell${isSimplified ? ' app-shell--simplified' : ''}`}>
         <SyncStatusBar />
@@ -269,31 +283,31 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 {isSimplified ? <span className="icon-button__label">Review alerts</span> : null}
               </button>
             )}
-            <button
-              type="button"
-              className={`icon-button${isPrivacyMode ? ' icon-button--active' : ''}${isSimplified ? ' icon-button--labeled' : ''}`}
-              aria-label={isPrivacyMode ? 'Turn privacy mode off' : 'Turn privacy mode on'}
-              aria-pressed={isPrivacyMode}
-              title="Privacy mode"
-              onClick={togglePrivacyMode}
-            >
-              <span className="icon-button__glyph" aria-hidden="true">
-                {isPrivacyMode ? '●' : '○'}
-              </span>
-              {isSimplified ? (
-                <span className="icon-button__label">
-                  {isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
-                </span>
-              ) : null}
-            </button>
-            <NotificationCenter
-              notifications={notifications}
-              unreadCount={notificationUnreadCount}
-              onMarkAsRead={onMarkNotificationAsRead}
-              onMarkAllAsRead={onMarkAllNotificationsAsRead}
-              onDismiss={onDismissNotification}
-              onAction={onNotificationAction}
-            />
+            {isMobile ? (
+              <>
+                <button
+                  type="button"
+                  className={`icon-button${isPrivacyMode ? ' icon-button--active' : ''}${isSimplified ? ' icon-button--labeled' : ''}`}
+                  aria-label={isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
+                  aria-pressed={isPrivacyMode}
+                  title={isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
+                  onClick={togglePrivacyMode}
+                >
+                  {isPrivacyMode ? <EyeOffIcon /> : <EyeIcon />}
+                  <span className="icon-button__label">
+                    {isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
+                  </span>
+                </button>
+                <NotificationCenter
+                  notifications={notifications}
+                  unreadCount={notificationUnreadCount}
+                  onMarkAsRead={onMarkNotificationAsRead}
+                  onMarkAllAsRead={onMarkAllNotificationsAsRead}
+                  onDismiss={onDismissNotification}
+                  onAction={onNotificationAction}
+                />
+              </>
+            ) : null}
             {!isSimplified ? (
               <button
                 type="button"

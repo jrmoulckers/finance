@@ -422,7 +422,7 @@ export const TripBudgetsPage: React.FC = () => {
           <h2 className="trip-page__title">Trip &amp; Country Budgets</h2>
           <p className="trip-page__subtitle">
             Budget a trip in its local currency, track spend inside the trip dates, and roll every
-            envelope up into one home-currency view. Archive a trip when it ends — its history stays
+            envelope up into one home-currency view. Archive a trip when it ends. Its history stays
             intact.
           </p>
         </div>
@@ -581,7 +581,7 @@ export const TripBudgetsPage: React.FC = () => {
             <Field
               id={fid('rate')}
               label="FX rate (home per 1 local)"
-              hint="Stored rate — for example 0.028 home dollars per local unit. Never fetched live."
+              hint="Stored rate, for example 0.028 home dollars per local unit. Never fetched live."
             >
               <input
                 id={fid('rate')}

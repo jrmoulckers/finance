@@ -63,7 +63,7 @@ export function MilestoneAnimation({
     <div
       className={`milestone-animation ${pulseClass} ${className}`.trim()}
       role="img"
-      aria-label={`${milestone}% milestone reached — ${displayPct}% complete`}
+      aria-label={`${milestone}% milestone reached, ${displayPct}% complete`}
       data-testid="milestone-animation"
       style={
         {

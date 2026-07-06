@@ -176,15 +176,15 @@ export function generateExamplePayload(): CrashReportPayload {
 /** Human-readable descriptions of each field in the crash report. */
 export const CRASH_REPORT_FIELD_DESCRIPTIONS: Record<string, string> = {
   errorType: 'The JavaScript error type (e.g., TypeError, RangeError)',
-  errorMessage: 'A scrubbed description of what went wrong — no financial data included',
-  stackTrace: 'Code file paths and line numbers to help locate the bug — no variable values',
+  errorMessage: 'A scrubbed description of what went wrong, with no financial data included',
+  stackTrace: 'Code file paths and line numbers to help locate the bug, with no variable values',
   timestamp: 'When the error occurred (UTC)',
   appVersion: 'The version of the app you are running',
   userAgent: 'Your browser name and version',
-  currentRoute: 'Which page you were on (e.g., /transactions) — no query parameters',
+  currentRoute: 'Which page you were on (e.g., /transactions), with no query parameters',
   sessionId: 'A random session ID that cannot be linked back to your account',
   viewport: 'Your browser window size (width × height in pixels)',
-  breadcrumbs: 'Recent navigation actions (e.g., "clicked button") — no financial details',
+  breadcrumbs: 'Recent navigation actions (e.g., "clicked button"), with no financial details',
 };
 
 /** Fields that are explicitly NEVER included in crash reports. */

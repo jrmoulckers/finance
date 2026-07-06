@@ -333,9 +333,9 @@ export const TripCountryBudgetsSection: React.FC<TripCountryBudgetsSectionProps>
             Trip &amp; country budgets
           </h3>
           <p className="tcb__subtitle">
-            Budget a named trip in its local currency and watch spend — drawn from your real
-            transactions — roll up into {displayCurrency}. Filter by country, then archive a
-            finished trip without losing its history.
+            Budget a named trip in its local currency and watch spend, drawn from your real
+            transactions, roll up into {displayCurrency}. Filter by country, then archive a finished
+            trip without losing its history.
           </p>
         </div>
       </div>

@@ -179,6 +179,11 @@
   font: inherit;
   font-weight: var(--font-weight-medium);
   cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.safe-to-spend-card__toggle:hover {
+  background: var(--semantic-background-secondary);
 }
 
 .safe-to-spend-card__toggle:focus-visible {
@@ -223,18 +228,23 @@
   gap: var(--spacing-2);
   padding: var(--spacing-2) var(--spacing-3);
   border: 1px solid var(--semantic-border-default);
-  border-radius: var(--border-radius-md);
-  background: var(--semantic-background-primary);
+  border-radius: 999px;
+  background: var(--semantic-background-secondary, #f5f5f5);
   color: var(--semantic-text-secondary);
   font: inherit;
   font-size: var(--type-scale-caption-font-size);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: background-color var(--duration-fast, 100ms) ease;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    color var(--duration-fast, 100ms) ease,
+    box-shadow var(--duration-fast, 100ms) ease;
 }
 
 .dashboard-customize-btn:hover {
-  background: var(--semantic-background-secondary);
+  background: var(--semantic-background-primary, #ffffff);
+  color: var(--semantic-text-primary);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
 }
 
 .dashboard-customize-btn:focus-visible {
@@ -266,6 +276,31 @@
   gap: var(--spacing-2);
   max-height: 400px;
   overflow-y: auto;
+  /* Themed scrollbar — Firefox / standards. */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--semantic-border-default) 80%, transparent) transparent;
+  scrollbar-gutter: stable;
+}
+
+/* Themed scrollbar — Chromium / WebKit, scoped to the customize modal list. */
+.customize-panel__list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.customize-panel__list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: var(--border-radius-md);
+}
+
+.customize-panel__list::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--semantic-border-default) 80%, transparent);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius-md);
+  background-clip: padding-box;
+}
+
+.customize-panel__list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--semantic-interactive-default);
 }
 
 .customize-panel__item {
@@ -276,6 +311,41 @@
   border: 1px solid var(--semantic-border-default);
   border-radius: var(--border-radius-md);
   background: var(--semantic-background-primary);
+  transition:
+    border-color var(--duration-fast, 100ms) ease,
+    box-shadow var(--duration-fast, 100ms) ease,
+    opacity var(--duration-fast, 100ms) ease;
+}
+
+/* Drag-and-drop reordering affordances. */
+.customize-panel__drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 1.25rem;
+  color: var(--semantic-text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.customize-panel__item--dragging {
+  opacity: 0.6;
+}
+
+.customize-panel__item--dragging,
+.customize-panel__item--dragging .customize-panel__drag-handle {
+  cursor: grabbing;
+}
+
+.customize-panel__item--drag-over {
+  border-color: var(--semantic-interactive-default);
+  box-shadow: inset 0 0 0 2px
+    color-mix(in srgb, var(--semantic-interactive-default) 45%, transparent);
 }
 
 .customize-panel__toggle {
@@ -284,6 +354,11 @@
   gap: var(--spacing-3);
   flex: 1;
   cursor: pointer;
+}
+
+.customize-panel__toggle:hover .customize-panel__name {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .customize-panel__toggle input[type='checkbox'] {
@@ -367,7 +442,12 @@
  * ------------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-customize-btn {
+  .dashboard-customize-btn,
+  .safe-to-spend-card__toggle {
+    transition: none;
+  }
+
+  .customize-panel__item {
     transition: none;
   }
 }
@@ -573,6 +653,23 @@
   font: inherit;
 }
 
+/*
+ * A native <select> under the default `appearance: auto` ignores
+ * `border-radius`, so it painted square corners while its sibling text input
+ * (which shares the base rule above) renders rounded. Set `appearance: none`
+ * so the select honors the shared radius/border tokens, and restore an
+ * explicit chevron. Scoped to the select only — the text input must keep its
+ * native appearance. Mirrors the existing `.form-select` and
+ * `.transaction-sort__select` pattern (same chevron data-URI). (#3195)
+ */
+.grocery-mode-card__select {
+  appearance: none;
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+}
+
 .grocery-mode-card__afford-input {
   display: flex;
   align-items: center;
@@ -600,6 +697,16 @@
 .grocery-mode-card__afford-input:focus-within {
   outline: 2px solid var(--semantic-border-focus);
   outline-offset: 2px;
+}
+
+/*
+ * The afford field draws its border and focus ring on the wrapper
+ * (`:focus-within`, above). Suppress the inner input's own outline so focus
+ * shows a single ring on the wrapper instead of a doubled box-in-a-box. Focus
+ * visibility (WCAG 2.4.7) is preserved by the wrapper's ring.
+ */
+.grocery-mode-card__afford-input .grocery-mode-card__input:focus-visible {
+  outline: none;
 }
 
 .grocery-mode-card__afford-result {
@@ -691,4 +798,108 @@
   .savings-rate-card {
     border-width: 2px;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * Spending-by-category bar chart card (#3152)
+ *
+ * In the dashboard charts row, grid cells stretch to the tallest sibling — the
+ * taller "Spending Trend" card (period selector, view toggle, and annotations
+ * sit above its plot). Lay the bar chart figure out as a flex column and push
+ * its plot to the bottom so its baseline lines up with the trend card's chart
+ * instead of floating in the vertical centre. When the cards stack at narrow
+ * widths the card is not stretched, so `margin-top: auto` is a no-op and the
+ * plot stays directly under the title.
+ * ------------------------------------------------------------------------- */
+
+.spending-bar-chart {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.spending-bar-chart__plot {
+  margin-top: auto;
+}
+
+/* ---------------------------------------------------------------------------
+ * Things to check - per-item "Review" action link (issue #3153)
+ *
+ * Renders as a compact, right-aligned button-like link inside .list-item.
+ * Navigation target is computed per alert via routeUnusualSpendAlert.
+ * ------------------------------------------------------------------------- */
+
+.list-item__action {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--radius-sm, 4px);
+  background-color: var(--semantic-surface-secondary, #f3f4f6);
+  color: var(--semantic-text-primary, #111827);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: var(--font-weight-medium, 500);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.list-item__action:hover {
+  background-color: var(--semantic-surface-tertiary, #e5e7eb);
+}
+
+.list-item__action:focus-visible {
+  outline: 2px solid var(--semantic-focus-ring, #3b82f6);
+  outline-offset: 2px;
+}
+
+[data-theme='dark'] .list-item__action:hover {
+  background-color: var(--semantic-surface-tertiary, #374151);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-item__action {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .list-item__action {
+    border-width: 2px;
+  }
+}
+
+/*
+ * Recent Transactions list — accessible row hover (#3158)
+ *
+ * The shared `.list-item__link` hover painted the row with
+ * `var(--semantic-surface-secondary, #f3f4f6)`. That token is undefined at
+ * runtime, so the near-white fallback was always used, and the dark override
+ * keyed off `[data-theme='dark']` never matched OS-driven dark mode
+ * (`prefers-color-scheme`). The result was a near-white block under near-white
+ * text, failing WCAG 2.2 AA. Scoped to this list we instead:
+ *   1. give the hovered/focused row an inset, rounded bounding box that matches
+ *      the card radius, and
+ *   2. paint it with a theme-adaptive tint of the current text colour — never a
+ *      fixed near-white block — so text/background contrast stays AA in light,
+ *      dark (both entry paths), and high-contrast themes. The defined
+ *      `--semantic-background-secondary` surface is the fallback for browsers
+ *      without `color-mix()`.
+ */
+.recent-transactions__list .list-item__link {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  margin-inline: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-2);
+  border-radius: var(--card-border-radius, var(--radius-md, 8px));
+}
+
+.recent-transactions__list .list-item__link:hover,
+.recent-transactions__list .list-item__link:focus-visible {
+  background-color: var(--semantic-background-secondary);
+  background-color: color-mix(in srgb, var(--semantic-text-primary) 6%, transparent);
 }

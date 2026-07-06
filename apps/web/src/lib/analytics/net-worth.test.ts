@@ -13,6 +13,7 @@ import {
   detectMilestones,
   computePeriodComparison,
   isLiabilityType,
+  netWorthContribution,
 } from './net-worth';
 import type { Account } from '../../kmp/bridge';
 
@@ -94,6 +95,53 @@ describe('computeCurrentNetWorth', () => {
     expect(nw.assets).toBe(0);
     expect(nw.liabilities).toBe(0);
     expect(nw.netWorth).toBe(0);
+  });
+});
+
+describe('netWorthContribution', () => {
+  it('returns the raw balance for asset accounts', () => {
+    expect(netWorthContribution(makeAccount({ type: 'CHECKING', balance: 956405 }))).toBe(956405);
+    expect(netWorthContribution(makeAccount({ type: 'SAVINGS', balance: 1200000 }))).toBe(1200000);
+    expect(netWorthContribution(makeAccount({ type: 'CASH', balance: 7375 }))).toBe(7375);
+    expect(netWorthContribution(makeAccount({ type: 'INVESTMENT', balance: 1250000 }))).toBe(
+      1250000,
+    );
+  });
+
+  it('subtracts liabilities stored as positive amounts owed', () => {
+    // Production convention (issue #3202): credit cards / loans store a
+    // positive balance owed, so they must reduce net worth.
+    expect(netWorthContribution(makeAccount({ type: 'CREDIT_CARD', balance: 67299 }))).toBe(-67299);
+    expect(netWorthContribution(makeAccount({ type: 'LOAN', balance: 2500000 }))).toBe(-2500000);
+  });
+
+  it('subtracts liabilities stored with a negative sign convention', () => {
+    // Mirrors computeCurrentNetWorth's Math.abs handling so both sign
+    // conventions reduce net worth by the same magnitude.
+    expect(netWorthContribution(makeAccount({ type: 'CREDIT_CARD', balance: -125000 }))).toBe(
+      -125000,
+    );
+  });
+
+  it('summing contributions equals assets minus liabilities and matches computeCurrentNetWorth', () => {
+    // Reproduces the live /accounts data from issue #3202.
+    const accounts = [
+      makeAccount({ type: 'CHECKING', balance: 956405 }), // $9,564.05
+      makeAccount({ type: 'SAVINGS', balance: 1200000 }), // $12,000.00
+      makeAccount({ type: 'CASH', balance: 7375 }), // $73.75
+      makeAccount({ type: 'CREDIT_CARD', balance: 67299 }), // $672.99 owed
+    ];
+
+    const total = accounts.reduce((sum, acct) => sum + netWorthContribution(acct), 0);
+
+    // assets 21,637.80 - liability 672.99 = 20,964.81 (what /net-worth shows).
+    expect(total).toBe(2096481);
+    expect(total).toBe(computeCurrentNetWorth(accounts).netWorth);
+
+    // The old sign-blind sum overstated by exactly 2x the liability ($22,310.79).
+    const naiveSum = accounts.reduce((sum, acct) => sum + acct.currentBalance.amount, 0);
+    expect(naiveSum).toBe(2231079);
+    expect(naiveSum - total).toBe(2 * 67299);
   });
 });
 

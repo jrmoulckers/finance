@@ -20,11 +20,11 @@ const NET_WORTH_MILESTONES_CENTS: readonly number[] = [
 /** Celebration messages by milestone tier */
 const CELEBRATION_MESSAGES: Readonly<Record<number, string>> = {
   [10_000_00]: '🎉 You crossed $10,000 in net worth!',
-  [50_000_00]: '🚀 $50,000 milestone reached — incredible progress!',
+  [50_000_00]: '🚀 $50,000 milestone reached. Incredible progress!',
   [100_000_00]: '💎 Six figures! Your net worth hit $100,000!',
   [500_000_00]: '🏆 Half a million! $500,000 net worth achieved!',
   [1_000_000_00]: '🎊 MILLIONAIRE! You reached $1,000,000 net worth!',
-  [5_000_000_00]: '🌟 $5,000,000 — extraordinary wealth building!',
+  [5_000_000_00]: '🌟 $5,000,000. Extraordinary wealth building!',
   [10_000_000_00]: '👑 $10,000,000 net worth. Legendary!',
 };
 
@@ -112,7 +112,7 @@ export function generateStreakNotification(
     type: 'streak',
     streakCount,
     title: 'Streak Milestone!',
-    message: `🔥 ${streakCount} ${streakLabel} — keep it going!`,
+    message: `🔥 ${streakCount} ${streakLabel}. Keep it going!`,
     timestamp,
     dismissed: false,
   };

@@ -899,7 +899,7 @@ const ScenariosPanel: React.FC = () => {
 
           {selectedScenario && (
             <section className="planning-card" aria-label={`Edit ${selectedScenario.name}`}>
-              <h3 className="planning-card__title">{selectedScenario.name} — Adjustments</h3>
+              <h3 className="planning-card__title">{selectedScenario.name}: Adjustments</h3>
               <ul role="list" aria-label="Adjustments">
                 {selectedScenario.adjustments.map((adj) => (
                   <li key={adj.id} role="listitem" className="factor-item">
@@ -1330,7 +1330,7 @@ const LifeEventsPanel: React.FC = () => {
               <li>Today: {formatCurrency(baseMonthlyFreeCashFlowCents)}/mo</li>
               {projections.map((event) => (
                 <li key={event.id}>
-                  {formatLifeEventMonth(event.date)} — {event.name}:{' '}
+                  {formatLifeEventMonth(event.date)}, {event.name}:{' '}
                   {formatCurrency(event.projectedMonthlyFreeCashFlowCents)}/mo
                 </li>
               ))}
@@ -1968,7 +1968,7 @@ const WeddingWorkspacePanel: React.FC = () => {
           <p className="wedding-status wedding-status--over" role="status">
             <AppIcon name="alert-triangle" />
             <span>
-              Over budget by {formatCurrency(summary.overBudgetCents)} — trim a vendor or your guest
+              Over budget by {formatCurrency(summary.overBudgetCents)}. Trim a vendor or your guest
               list to get back on track.
             </span>
           </p>

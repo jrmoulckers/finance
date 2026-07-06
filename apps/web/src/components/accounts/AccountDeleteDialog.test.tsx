@@ -112,7 +112,7 @@ describe('AccountDeleteDialog', () => {
     render(<AccountDeleteDialog {...defaultProps} />);
     const checkbox = screen.getByRole('checkbox');
     fireEvent.click(checkbox);
-    expect(screen.getByText(/permanent — this cannot be undone/i)).toBeInTheDocument();
+    expect(screen.getByText(/permanent\. this cannot be undone/i)).toBeInTheDocument();
   });
 
   it('has proper ARIA attributes', () => {

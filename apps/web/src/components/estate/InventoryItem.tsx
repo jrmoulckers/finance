@@ -430,7 +430,7 @@ export const InventoryItem: React.FC<InventoryItemProps> = ({
                 {item.beneficiaries.map((beneficiary) => (
                   <li key={beneficiary.id}>
                     <strong>{maskValue(beneficiary.name)}</strong>
-                    {beneficiary.relationship ? ` — ${maskValue(beneficiary.relationship)}` : ''}
+                    {beneficiary.relationship ? `: ${maskValue(beneficiary.relationship)}` : ''}
                     {beneficiary.sharePercent ? ` (${beneficiary.sharePercent}%)` : ''}
                   </li>
                 ))}

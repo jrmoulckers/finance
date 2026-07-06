@@ -33,7 +33,7 @@ export function generateSavingsNudges(context: SavingsNudgeContext): SavingsNudg
       type: 'spending-drift',
       tone: 'warning',
       title: 'Savings slowed this week',
-      message: `You saved ${formatCurrency(weeklySavingsDropCents, context.currencyCode)} less this week — redirect from ${context.topDiscretionaryCategory.categoryName.toLowerCase()}?`,
+      message: `You saved ${formatCurrency(weeklySavingsDropCents, context.currencyCode)} less this week. Redirect from ${context.topDiscretionaryCategory.categoryName.toLowerCase()}?`,
       actionLabel: 'Review category',
       linkedSuggestionId: discretionarySuggestion?.id ?? null,
     });

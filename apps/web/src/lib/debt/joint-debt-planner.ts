@@ -314,7 +314,7 @@ export function recommendForCouple(
     );
   } else {
     rationale.push(
-      'Snowball clears the smallest balances first for quick, motivating wins — the interest difference here is small.',
+      'Snowball clears the smallest balances first for quick, motivating wins. The interest difference here is small.',
     );
   }
 

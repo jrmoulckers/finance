@@ -244,7 +244,7 @@ export function generateRecommendations(
       priority: 'high',
       label: 'Apply for unemployment benefits',
       description:
-        'File for unemployment benefits immediately — most states have a waiting period before payments begin.',
+        'File for unemployment benefits immediately. Most states have a waiting period before payments begin.',
     });
   }
 

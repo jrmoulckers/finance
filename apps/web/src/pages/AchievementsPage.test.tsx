@@ -306,7 +306,7 @@ describe('AchievementsPage', () => {
 
     // Goal near-win cue framed as one more contribution
     expect(
-      within(nextUp).getByText("You're 10% away — one more contribution to hit 50% on Car Fund."),
+      within(nextUp).getByText("You're 10% away. One more contribution to hit 50% on Car Fund."),
     ).toBeInTheDocument();
 
     // Badge near-win cue with correct "N more" math

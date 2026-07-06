@@ -183,9 +183,9 @@ export const EDUCATION_CONTENT: readonly EducationContent[] = [
     shortExplanation:
       'Compound interest means you earn interest on your interest, causing your money to grow exponentially over time.',
     fullExplanation:
-      "When you earn compound interest, each period's interest is added to your principal. In the next period, you earn interest on the new, larger balance. Over long periods, this creates exponential growth — which is why starting to save early makes such a big difference.",
+      "When you earn compound interest, each period's interest is added to your principal. In the next period, you earn interest on the new, larger balance. Over long periods, this creates exponential growth, which is why starting to save early makes such a big difference.",
     example:
-      "If you invest $1,000 at 5% annual compound interest, after 1 year you have $1,050. After 2 years, you earn 5% on $1,050 (not just $1,000), giving you $1,102.50. After 30 years, you'd have $4,321.94 — more than quadrupling your money.",
+      "If you invest $1,000 at 5% annual compound interest, after 1 year you have $1,050. After 2 years, you earn 5% on $1,050 (not just $1,000), giving you $1,102.50. After 30 years, you'd have $4,321.94, more than quadrupling your money.",
     difficulty: 'beginner',
     relatedTermIds: ['compound_interest', 'apy', 'simple_interest'],
   },
@@ -222,7 +222,7 @@ export const EDUCATION_CONTENT: readonly EducationContent[] = [
     shortExplanation:
       'An emergency fund is 3-6 months of expenses in a liquid, accessible account for unexpected costs.',
     fullExplanation:
-      "An emergency fund protects you from going into debt when unexpected expenses arise — car repairs, medical bills, or job loss. Keep it in a high-yield savings account where it's accessible but earning interest. Start with a $1,000 mini emergency fund, then build to 3-6 months of essential expenses.",
+      "An emergency fund protects you from going into debt when unexpected expenses arise, such as car repairs, medical bills, or job loss. Keep it in a high-yield savings account where it's accessible but earning interest. Start with a $1,000 mini emergency fund, then build to 3-6 months of essential expenses.",
     example:
       "If your monthly essential expenses are $3,000, aim for $9,000-$18,000 in your emergency fund. At $500/month saved, you'd reach $9,000 in 18 months.",
     difficulty: 'beginner',
@@ -233,7 +233,7 @@ export const EDUCATION_CONTENT: readonly EducationContent[] = [
     conceptKey: 'credit_utilization',
     title: 'Credit Utilization and Your Score',
     shortExplanation:
-      'Credit utilization — the percentage of your credit limit you use — is one of the biggest factors in your credit score.',
+      'Credit utilization, the percentage of your credit limit you use, is one of the biggest factors in your credit score.',
     fullExplanation:
       'Credit utilization is calculated by dividing your total credit card balances by your total credit limits. It accounts for about 30% of your FICO score. Keeping utilization below 30% is good; below 10% is excellent. You can improve utilization by paying down balances, requesting credit limit increases, or spreading purchases across cards.',
     example:
@@ -250,7 +250,7 @@ export const EDUCATION_CONTENT: readonly EducationContent[] = [
     fullExplanation:
       'Dollar-cost averaging (DCA) means investing the same dollar amount at regular intervals. When prices are low, you buy more shares; when high, fewer shares. Over time, this tends to lower your average cost per share compared to trying to time the market. Most 401(k) contributions naturally use DCA.',
     example:
-      'Investing $500/month: at $50/share you buy 10 shares, at $25/share you buy 20 shares. After 2 months, you have 30 shares for $1,000 — average cost of $33.33/share rather than $37.50.',
+      'Investing $500/month: at $50/share you buy 10 shares, at $25/share you buy 20 shares. After 2 months, you have 30 shares for $1,000, an average cost of $33.33/share rather than $37.50.',
     difficulty: 'advanced',
     relatedTermIds: ['dollar_cost_averaging', 'diversification'],
   },

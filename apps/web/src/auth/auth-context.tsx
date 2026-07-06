@@ -499,7 +499,11 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
   const loginWithEmail = useCallback(
     async (email: string, password: string): Promise<void> => {
-      setError(null);
+      // Intentionally do NOT clear the error here. On a retry the prior banner
+      // must stay put until the new result arrives — an eager clear unmounts it
+      // (form jumps up) and the fast failure remounts it (form jumps down),
+      // which is the residual submit flash from #3108 that #3192 closes. The
+      // error is cleared on the success paths below and overwritten on failure.
       setIsLoading(true);
 
       try {
@@ -515,6 +519,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
             throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
           }
           setIsOffline(false);
+          setError(null);
           triggerPasskeyPromptCheck();
           return;
         }
@@ -553,6 +558,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
         }
         setIsOffline(false);
+        setError(null);
         triggerPasskeyPromptCheck();
       } catch (err) {
         if (isNetworkError(err)) {

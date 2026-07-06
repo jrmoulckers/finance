@@ -78,6 +78,8 @@ export interface UseWidgetLayoutResult {
   toggleWidget: (id: WidgetId) => void;
   /** Move a widget up or down in the display order. */
   moveWidget: (id: WidgetId, direction: 'up' | 'down') => void;
+  /** Move a widget to an arbitrary position (used by drag-and-drop reordering). */
+  reorderWidget: (id: WidgetId, targetIndex: number) => void;
   /** Change the size of a widget. */
   resizeWidget: (id: WidgetId, size: WidgetSize) => void;
   /** Reset to the default layout. */
@@ -143,6 +145,29 @@ export function useWidgetLayout(): UseWidgetLayoutResult {
     [updateLayout],
   );
 
+  const reorderWidget = useCallback(
+    (id: WidgetId, targetIndex: number) => {
+      updateLayout((current) => {
+        const sorted = [...current.widgets].sort((a, b) => a.order - b.order);
+        const fromIndex = sorted.findIndex((w) => w.id === id);
+        if (fromIndex === -1) return current;
+
+        const clampedTarget = Math.max(0, Math.min(targetIndex, sorted.length - 1));
+        if (fromIndex === clampedTarget) return current;
+
+        // Remove the dragged widget and re-insert it at the target slot, then
+        // normalise every order value to its new array index.
+        const reordered = [...sorted];
+        const [moved] = reordered.splice(fromIndex, 1);
+        reordered.splice(clampedTarget, 0, moved);
+        const updatedWidgets = reordered.map((w, i) => ({ ...w, order: i }));
+
+        return { ...current, widgets: updatedWidgets };
+      });
+    },
+    [updateLayout],
+  );
+
   const resizeWidget = useCallback(
     (id: WidgetId, size: WidgetSize) => {
       updateLayout((current) => ({
@@ -167,6 +192,7 @@ export function useWidgetLayout(): UseWidgetLayoutResult {
     stopCustomizing,
     toggleWidget,
     moveWidget,
+    reorderWidget,
     resizeWidget,
     resetLayout,
   };

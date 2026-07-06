@@ -82,7 +82,7 @@ export function useTransactionConfirmation(): UseTransactionConfirmationResult {
         type: 'transaction_confirmation',
         severity: 'success',
         title: `${typeLabel} recorded`,
-        message: `${amount} ${confirmation.payee ? `— ${confirmation.payee} ` : ''}in ${confirmation.accountName}`,
+        message: `${amount} ${confirmation.payee ? `(${confirmation.payee}) ` : ''}in ${confirmation.accountName}`,
         createdAt: confirmation.timestamp,
         status: 'unread',
         entityId: confirmation.transactionId,

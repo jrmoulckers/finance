@@ -18,11 +18,22 @@ function renderPanel(overrides = {}) {
     widgets: defaultLayout.widgets,
     onToggle: vi.fn(),
     onMove: vi.fn(),
+    onReorder: vi.fn(),
     onReset: vi.fn(),
     onClose: vi.fn(),
     ...overrides,
   };
   return { ...render(<CustomizePanel {...props} />), props };
+}
+
+/** Minimal DataTransfer stand-in for jsdom, which lacks a real implementation. */
+function mockDataTransfer() {
+  return {
+    setData: vi.fn(),
+    getData: vi.fn(),
+    effectAllowed: '',
+    dropEffect: '',
+  };
 }
 
 describe('CustomizePanel', () => {
@@ -33,6 +44,7 @@ describe('CustomizePanel', () => {
         widgets={[]}
         onToggle={vi.fn()}
         onMove={vi.fn()}
+        onReorder={vi.fn()}
         onReset={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -98,6 +110,79 @@ describe('CustomizePanel', () => {
     fireEvent.click(downButtons[0]);
 
     expect(props.onMove).toHaveBeenCalledOnce();
+  });
+
+  it('announces the move via the live status region', () => {
+    renderPanel();
+
+    const downButtons = screen.getAllByLabelText(/move .+ down/i);
+    fireEvent.click(downButtons[0]);
+
+    expect(screen.getByRole('status')).toHaveTextContent(/moved to position 2 of/i);
+  });
+
+  it('renders a drag handle for each widget', () => {
+    const { container } = renderPanel();
+    const handles = container.querySelectorAll('.customize-panel__drag-handle');
+    const defaultLayout = buildDefaultLayout();
+    expect(handles.length).toBe(defaultLayout.widgets.length);
+  });
+
+  it('marks widget rows as draggable', () => {
+    const { container } = renderPanel();
+    const items = container.querySelectorAll('li.customize-panel__item');
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      expect(item).toHaveAttribute('draggable', 'true');
+    }
+  });
+
+  it('calls onReorder when a widget is dropped onto another position', () => {
+    const { props, container } = renderPanel();
+    const items = container.querySelectorAll('li.customize-panel__item');
+    const dataTransfer = mockDataTransfer();
+
+    fireEvent.dragStart(items[0], { dataTransfer });
+    fireEvent.dragEnter(items[2], { dataTransfer });
+    fireEvent.dragOver(items[2], { dataTransfer });
+    fireEvent.drop(items[2], { dataTransfer });
+
+    expect(props.onReorder).toHaveBeenCalledOnce();
+    expect(props.onReorder).toHaveBeenCalledWith(expect.any(String), 2);
+  });
+
+  it('announces the drag reorder via the live status region', () => {
+    const { container } = renderPanel();
+    const items = container.querySelectorAll('li.customize-panel__item');
+    const dataTransfer = mockDataTransfer();
+
+    fireEvent.dragStart(items[0], { dataTransfer });
+    fireEvent.drop(items[2], { dataTransfer });
+
+    expect(screen.getByRole('status')).toHaveTextContent(/moved to position 3 of/i);
+  });
+
+  it('does not call onReorder when a widget is dropped onto itself', () => {
+    const { props, container } = renderPanel();
+    const items = container.querySelectorAll('li.customize-panel__item');
+    const dataTransfer = mockDataTransfer();
+
+    fireEvent.dragStart(items[0], { dataTransfer });
+    fireEvent.drop(items[0], { dataTransfer });
+
+    expect(props.onReorder).not.toHaveBeenCalled();
+  });
+
+  it('clears the dragging state after drag end', () => {
+    const { container } = renderPanel();
+    const items = container.querySelectorAll('li.customize-panel__item');
+    const dataTransfer = mockDataTransfer();
+
+    fireEvent.dragStart(items[0], { dataTransfer });
+    expect(items[0]).toHaveClass('customize-panel__item--dragging');
+
+    fireEvent.dragEnd(items[0], { dataTransfer });
+    expect(items[0]).not.toHaveClass('customize-panel__item--dragging');
   });
 
   it('calls onReset when Reset to Defaults is clicked', () => {

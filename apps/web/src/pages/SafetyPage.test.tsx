@@ -99,7 +99,7 @@ describe('SafetyPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Things to check' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'New merchant to review' })).toBeInTheDocument();
-    expect(screen.getByText(/merchant you have not used before/i)).toBeInTheDocument();
+    expect(screen.getByText(/which is new to you/i)).toBeInTheDocument();
     expect(screen.getByText(/call your bank using the number on your card/i)).toBeInTheDocument();
   });
 

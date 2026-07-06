@@ -29,6 +29,44 @@ button[type='button']:active:not(:disabled) {
 }
 
 /* --------------------------------------------------------------------------
+   1b. Button / toggle hover — subtle state layer
+
+   Many buttons and toggles only define :focus-visible (or nothing) and lack a
+   visible :hover affordance, so pointer users can't tell they're interactive.
+   This adds a consistent, theme-aware hover "state layer" for native buttons
+   and role-based buttons that don't already define their own hover.
+
+   - The layer is painted via background-IMAGE (a flat translucent gradient) so
+     it sits on top of the element's existing background-COLOR. Coloured buttons
+     (e.g. primary blue) keep their colour instead of being repainted neutral.
+   - Specificity is intentionally low (one element + one pseudo-class). Any
+     component that sets its own hover via the `background` shorthand resets
+     background-image and wins the cascade, so existing hovers never regress.
+   - Contrast: the layer shifts background luminance by < 8%, preserving WCAG
+     AA text contrast. No transform is used, so motion preferences are honoured.
+   -------------------------------------------------------------------------- */
+
+button:hover:not(:disabled):not([aria-disabled='true']),
+[role='button']:hover:not([aria-disabled='true']) {
+  background-image: linear-gradient(
+    var(--hover-state-layer, rgba(17, 24, 39, 0.06)),
+    var(--hover-state-layer, rgba(17, 24, 39, 0.06))
+  );
+}
+
+/* Dark surfaces read better with a light-tint hover layer than a dark one. */
+[data-theme='dark'],
+[data-theme='dark-oled'] {
+  --hover-state-layer: rgba(255, 255, 255, 0.09);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']):not([data-theme='high-contrast']) {
+    --hover-state-layer: rgba(255, 255, 255, 0.09);
+  }
+}
+
+/* --------------------------------------------------------------------------
    2. Toggle switch — smooth slide + color transition
    -------------------------------------------------------------------------- */
 

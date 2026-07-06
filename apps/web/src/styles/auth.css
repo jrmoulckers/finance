@@ -59,6 +59,16 @@
   gap: var(--spacing-4);
 }
 
+/*
+ * The email/password form collapses behind the "Sign in with email instead"
+ * disclosure for passkey-primary users (#1983). Without this rule the
+ * `.auth-form { display: flex }` above wins over the UA `[hidden]` rule, so the
+ * form never actually hides and the toggle appears to do nothing (#3189).
+ */
+.auth-form[hidden] {
+  display: none;
+}
+
 .auth-actions {
   display: flex;
   flex-direction: column;
@@ -150,25 +160,51 @@
 /* ─── Error / status banners ─────────────────────────────────────────────── */
 
 /*
- * Reserve vertical space for the auth error so a failed sign-in renders the
- * message inline without a layout shift / flash (#3108). The region is always
- * present (and announces politely); the styled box only appears once filled.
+ * Reserve a stable block of vertical space for the auth error so mounting or
+ * unmounting the inline banner never shifts the sibling form — the residual
+ * submit flash that #3192 closes on top of #3108. `min-height` holds exactly
+ * one compact banner (one line of caption text + the box's vertical padding),
+ * expressed with the same tokens the banner uses so it tracks the cognitive /
+ * high-contrast / accessibility type-scale overrides. The margin is constant
+ * (never toggled) so the reserved footprint is identical whether or not an
+ * error is present, keeping cumulative layout shift at zero. The region is
+ * always rendered and announces politely via aria-live; the styled box only
+ * appears once there is a message.
  */
 .auth-error-region {
+  min-height: calc(
+    var(--type-scale-caption-line-height, 1.5) * var(--type-scale-caption-font-size, 0.875rem) +
+      var(--spacing-2) * 2
+  );
   margin-bottom: var(--spacing-4);
 }
 
-.auth-error-region:not(.auth-error-region--filled) {
-  margin-bottom: 0;
-}
-
+/*
+ * Compact, left-aligned inline alert (#3190). Presented as contextual feedback
+ * next to the sign-in controls — a leading warning icon on a tinted background —
+ * rather than a full-width centred box that reads like a focused button. The
+ * parent `.auth-error-region` still announces politely.
+ */
 .auth-error {
-  padding: var(--spacing-3);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
   border-radius: var(--border-radius-md);
   background: var(--color-red-50, #fef2f2);
   color: var(--semantic-status-negative);
-  font-size: var(--type-scale-body-font-size, 1rem);
-  text-align: center;
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  line-height: var(--type-scale-caption-line-height, 1.5);
+  text-align: start;
+}
+
+.auth-error__icon {
+  flex: 0 0 auto;
+  margin-top: 0.1em;
+}
+
+.auth-error__text {
+  margin: 0;
 }
 
 .auth-info {
@@ -202,7 +238,20 @@
   color: var(--semantic-text-secondary);
 }
 
-/* ─── Disclosure: "Use email & password" under biometric CTA (#1983) ────── */
+/* ─── Social sign-in section (moved outside the collapsible form, #3178) ──── */
+
+/*
+ * The OAuth button group renders as a sibling of the email <form> so social
+ * sign-in stays visible for passkey-primary users even when the email form is
+ * collapsed. The top margin replaces the flex `gap` it previously inherited
+ * from `.auth-actions` inside the form, keeping the non-passkey-primary layout
+ * pixel-identical.
+ */
+.auth-oauth-section {
+  margin-top: var(--spacing-4);
+}
+
+/* ─── Disclosure: email sign-in toggle under biometric CTA (#1983) ───────── */
 
 .auth-disclosure {
   display: inline-block;

@@ -271,7 +271,7 @@ export const SettingsPreferencesPage: React.FC = () => {
                 >
                   {localePreferences.supportedLocales.map((option) => (
                     <option key={option.code} value={option.code}>
-                      {option.nativeLabel} — {option.label}
+                      {option.nativeLabel} ({option.label})
                     </option>
                   ))}
                 </select>

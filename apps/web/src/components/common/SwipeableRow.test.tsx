@@ -68,6 +68,23 @@ function renderRow(options: { leftActions?: SwipeAction[]; rightActions?: SwipeA
   };
 }
 
+/**
+ * Stub `matchMedia` so the coarse-pointer hook reports a touch device
+ * (`coarse = true`) or a mouse device (`coarse = false`).
+ */
+function stubPointer(coarse: boolean) {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: coarse && (query === '(pointer: coarse)' || query === '(hover: none)'),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+  }));
+}
+
 describe('SwipeableRow', () => {
   const originalPointerEvent = window.PointerEvent;
 
@@ -78,6 +95,7 @@ describe('SwipeableRow', () => {
 
   afterEach(() => {
     window.PointerEvent = originalPointerEvent;
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -140,5 +158,27 @@ describe('SwipeableRow', () => {
     fireEvent.touchEnd(content);
 
     expect(rightHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps swipe and long-press guidance on touch (coarse) pointers', () => {
+    stubPointer(true);
+    const { row } = renderRow();
+
+    const hintId = row.getAttribute('aria-describedby');
+    expect(hintId).toBeTruthy();
+    const hint = document.getElementById(hintId as string);
+    expect(hint?.textContent?.trim()).toBe(
+      'Swipe horizontally or long-press to access transaction actions.',
+    );
+  });
+
+  it('drops swipe/long-press wording for fine (mouse) pointers', () => {
+    stubPointer(false);
+    const { row } = renderRow();
+
+    const hintId = row.getAttribute('aria-describedby');
+    expect(hintId).toBeTruthy();
+    const hint = document.getElementById(hintId as string);
+    expect(hint?.textContent?.trim()).toBe('Right-click to access transaction actions.');
   });
 });

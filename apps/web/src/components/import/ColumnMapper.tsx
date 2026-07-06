@@ -22,7 +22,7 @@ import type {
 
 /** Available transaction fields for mapping dropdowns. */
 export const TRANSACTION_FIELDS: { value: TransactionField | ''; label: string }[] = [
-  { value: '', label: '\u2014 Unmapped \u2014' },
+  { value: '', label: 'Unmapped' },
   { value: 'date', label: 'Date' },
   { value: 'amount', label: 'Amount' },
   { value: 'description', label: 'Description' },

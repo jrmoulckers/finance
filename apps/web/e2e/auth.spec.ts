@@ -17,6 +17,27 @@ test('login page renders', async ({ page }) => {
   await expect(page.getByLabel(/password/i)).toBeVisible();
 });
 
+test('keeps social sign-in outside the collapsible email form (#3178)', async ({ page }) => {
+  await page.goto('/login');
+
+  // Social sign-in renders in its own section that is a sibling of — not a
+  // descendant of — the email <form>. This is the regression invariant: a
+  // passkey-primary user's email form collapses (hidden), so the OAuth buttons
+  // must live outside it to stay reachable. Asserting the structure directly is
+  // deterministic and needs no WebAuthn/platform-authenticator stubbing (the
+  // passkey-primary collapse path is covered by the LoginPage unit tests).
+  const oauthSection = page.locator('.auth-oauth-section');
+  await expect(oauthSection.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+  await expect(oauthSection.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+  await expect(oauthSection.getByRole('button', { name: 'Sign in with Apple' })).toBeVisible();
+
+  // None of the social buttons may be nested inside the collapsible email form.
+  const emailForm = page.locator('form#login-email-form');
+  await expect(emailForm.getByRole('button', { name: 'Sign in with Google' })).toHaveCount(0);
+  await expect(emailForm.getByRole('button', { name: 'Sign in with GitHub' })).toHaveCount(0);
+  await expect(emailForm.getByRole('button', { name: 'Sign in with Apple' })).toHaveCount(0);
+});
+
 test('signup page renders', async ({ page }) => {
   await page.goto('/signup');
   // The signup page has the brand heading "Finance" and tagline "Create your account"

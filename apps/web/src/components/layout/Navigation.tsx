@@ -17,11 +17,13 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { AppNotification } from '../../lib/notifications';
 import { useAuth } from '../../auth/auth-context';
 import { useAccessibility } from '../../hooks/useAccessibility';
 import { useHiddenModules } from '../../hooks/useModuleVisibility';
 import { Icon } from '../common/Icon';
 import { IconToken } from '../../icons/tokens';
+import { NotificationCenter } from '../notifications';
 
 import { MoreNavSheet } from './MoreNavSheet';
 import {
@@ -35,7 +37,14 @@ import {
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
-import { ChevronDownIcon, KeyboardIcon, MoreIcon, SignOutIcon } from './navIcons';
+import {
+  ChevronDownIcon,
+  EyeIcon,
+  EyeOffIcon,
+  KeyboardIcon,
+  MoreIcon,
+  SignOutIcon,
+} from './navIcons';
 
 // ---------------------------------------------------------------------------
 // Back-compat shims for existing consumers / tests.
@@ -71,6 +80,35 @@ export interface NavigationProps {
   onOpenShortcuts?: () => void;
   onOpenFeedback?: () => void;
   simpleMode?: boolean;
+}
+
+/**
+ * Props for {@link SidebarNavigation}. Extends {@link NavigationProps} with the
+ * quick actions relocated from the app header (which is `display:none` at
+ * ≥768px). The controls are gated by `showQuickActions` so exactly one
+ * instance of each lives in the DOM per breakpoint — the header keeps them for
+ * `<768px`, the sidebar hosts them for `≥768px` — avoiding duplicate
+ * accessible-name (strict-mode) collisions (#3197).
+ */
+export interface SidebarNavigationProps extends NavigationProps {
+  /** Render the relocated header quick actions (notifications + hide-amounts). */
+  showQuickActions?: boolean;
+  /** All notifications, newest first. */
+  notifications?: readonly AppNotification[];
+  /** Number of unread notifications (drives the bell badge). */
+  notificationUnreadCount?: number;
+  /** Mark a single notification as read. */
+  onMarkNotificationAsRead?: (id: string) => void;
+  /** Mark every notification as read. */
+  onMarkAllNotificationsAsRead?: () => void;
+  /** Dismiss a single notification. */
+  onDismissNotification?: (id: string) => void;
+  /** Handle a notification's primary action (e.g. "View budget"). */
+  onNotificationAction?: (notification: AppNotification) => void;
+  /** Whether privacy mode (masked amounts) is active. */
+  isPrivacyMode?: boolean;
+  /** Toggle privacy mode. */
+  onTogglePrivacyMode?: () => void;
 }
 
 function isActive(activePath: string, href: string): boolean {
@@ -275,12 +313,21 @@ const SidebarGroup: React.FC<SidebarGroupProps> = ({
 };
 
 /** Sidebar navigation for wide viewports. */
-export const SidebarNavigation: React.FC<NavigationProps> = ({
+export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   activePath,
   onNavigate,
   onOpenShortcuts,
   onOpenFeedback,
   simpleMode = false,
+  showQuickActions = false,
+  notifications = [],
+  notificationUnreadCount = 0,
+  onMarkNotificationAsRead = () => undefined,
+  onMarkAllNotificationsAsRead = () => undefined,
+  onDismissNotification = () => undefined,
+  onNotificationAction,
+  isPrivacyMode = false,
+  onTogglePrivacyMode = () => undefined,
 }) => {
   const { logout } = useAuth();
   const { isSimplified } = useAccessibility();
@@ -354,6 +401,37 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
 
       {/* Pinned footer — always visible without scrolling. */}
       <div className="app-sidebar__footer">
+        {/* Quick actions relocated from the header, which is hidden at ≥768px.
+            Rendered only when `showQuickActions` so the header copies (used at
+            <768px) never coexist with these in the DOM — keeping notification
+            state single-sourced and accessible names unique (#3197). */}
+        {showQuickActions ? (
+          <div className="app-sidebar__quick-actions" role="group" aria-label="Quick actions">
+            <div className="app-sidebar__notifications">
+              <NotificationCenter
+                notifications={notifications}
+                unreadCount={notificationUnreadCount}
+                onMarkAsRead={onMarkNotificationAsRead}
+                onMarkAllAsRead={onMarkAllNotificationsAsRead}
+                onDismiss={onDismissNotification}
+                onAction={onNotificationAction}
+              />
+            </div>
+            <button
+              type="button"
+              className={`icon-button${isPrivacyMode ? ' icon-button--active' : ''}`}
+              aria-label={isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
+              aria-pressed={isPrivacyMode}
+              title={isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
+              onClick={onTogglePrivacyMode}
+            >
+              {isPrivacyMode ? <EyeOffIcon /> : <EyeIcon />}
+              <span className="icon-button__label">
+                {isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
+              </span>
+            </button>
+          </div>
+        ) : null}
         {onOpenShortcuts && !isSimplified ? (
           <button
             type="button"

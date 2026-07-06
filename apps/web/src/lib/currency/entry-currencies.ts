@@ -71,7 +71,7 @@ export function getCurrencyLabel(code: string): string {
   }
   try {
     const name = currencyDisplayNames?.of(normalized);
-    return name && name !== normalized ? `${normalized} — ${name}` : normalized;
+    return name && name !== normalized ? `${normalized} (${name})` : normalized;
   } catch {
     return normalized;
   }

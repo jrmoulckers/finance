@@ -375,7 +375,7 @@ export function calculatePayoffProgress(input: LoanPayoffInput): PayoffProgress 
     currentBalanceCents: current,
     paidPrincipalCents: paid,
     percentPaid,
-    textAlternative: `${formatPercent(percentPaid)} paid — ${formatUsdCents(paid)} of ${formatUsdCents(original)}`,
+    textAlternative: `${formatPercent(percentPaid)} paid, ${formatUsdCents(paid)} of ${formatUsdCents(original)}`,
     isPaidOff: current <= 0,
   };
 }
@@ -397,8 +397,8 @@ export function calculatePayoffMilestones(input: LoanPayoffInput): readonly Payo
       isReached,
       remainingToReachCents,
       label: isReached
-        ? `${thresholdPercent}% paid off — milestone reached`
-        : `${thresholdPercent}% paid off — ${formatUsdCents(remainingToReachCents)} to go`,
+        ? `${thresholdPercent}% paid off, milestone reached`
+        : `${thresholdPercent}% paid off, ${formatUsdCents(remainingToReachCents)} to go`,
     };
   });
 }
