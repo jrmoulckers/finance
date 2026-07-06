@@ -60,6 +60,9 @@ function syntheticLot(investment: Investment): DisplayTaxLot {
     shares: investment.shares,
     costPerShare: investment.costBasisPerShare.amount,
     acquiredDate,
+    // createdAt is when the holding was added to the app, not when it was
+    // actually purchased, so the holding-period classification is an estimate.
+    acquiredDateEstimated: true,
     currentPricePerShare: investment.currentPricePerShare.amount,
     currency: investment.currency.code,
   };
@@ -131,6 +134,11 @@ export const TaxCenterPage: React.FC = () => {
       return lots.map((lot) => displayLot(investment, lot));
     });
   }, [getLots, investments]);
+
+  const hasEstimatedAcquisitionDates = useMemo(
+    () => taxLots.some((lot) => lot.acquiredDateEstimated),
+    [taxLots],
+  );
 
   const activeSymbol = saleSymbol || taxLots[0]?.symbol || '';
   const activeLots = taxLots.filter((lot) => lot.symbol === activeSymbol);
@@ -538,6 +546,32 @@ export const TaxCenterPage: React.FC = () => {
                   may be disallowed.
                 </p>
               )}
+              {taxSummary.netDeductibleLoss > 0 && (
+                <p style={{ marginTop: 'var(--spacing-3)' }}>
+                  Net capital loss: {formatCurrency(taxSummary.netDeductibleLoss)} is deductible
+                  against ordinary income this year
+                  {taxSummary.lossCarryforward > 0 && (
+                    <>
+                      {' '}
+                      and {formatCurrency(taxSummary.lossCarryforward)} carries forward to future
+                      years
+                    </>
+                  )}
+                  . Assumes the $3,000 single/MFJ annual limit.
+                </p>
+              )}
+              {hasEstimatedAcquisitionDates && (
+                <p
+                  style={{
+                    marginTop: 'var(--spacing-3)',
+                    color: 'var(--semantic-text-secondary)',
+                  }}
+                >
+                  Holdings without recorded purchase lots use an estimated acquisition date (when
+                  the holding was added), so short- vs. long-term classification and the estimated
+                  tax for those are approximate. Add purchase lots for exact holding periods.
+                </p>
+              )}
             </div>
           </section>
 
@@ -708,6 +742,15 @@ export const TaxCenterPage: React.FC = () => {
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
                             {lot.acquiredDate}
+                            {lot.acquiredDateEstimated && (
+                              <span
+                                title="Estimated acquisition date — add a purchase lot for the exact date"
+                                style={{ color: 'var(--semantic-text-secondary)' }}
+                              >
+                                {' '}
+                                (est.)
+                              </span>
+                            )}
                           </td>
                           <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
                             {lot.shares.toLocaleString()}

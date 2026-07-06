@@ -6,6 +6,7 @@ import {
   computeTaxSummary,
   detectWashSaleGuardrails,
   matchSaleLots,
+  type ClosedTaxLot,
   type TaxLot,
 } from './tax-center';
 
@@ -14,6 +15,21 @@ function lot(overrides: Partial<TaxLot> & { id: string; acquiredDate: string }):
     symbol: 'AAPL',
     shares: 10,
     costPerShare: 10000,
+    ...overrides,
+  };
+}
+
+function closed(
+  overrides: Partial<ClosedTaxLot> & { lotId: string; gainLoss: number },
+): ClosedTaxLot {
+  return {
+    symbol: 'AAPL',
+    acquiredDate: '2023-01-01',
+    soldDate: '2024-06-01',
+    shares: 10,
+    proceeds: 0,
+    costBasis: 0,
+    term: 'SHORT_TERM',
     ...overrides,
   };
 }
@@ -141,5 +157,60 @@ describe('computeTaxSummary', () => {
     expect(summary.washSaleDisallowedLoss).toBe(30000);
     expect(summary.taxableLongTermGainLoss).toBe(0);
     expect(summary.estimatedTax).toBe(0);
+  });
+
+  it('nets a long-term loss against a short-term gain before estimating tax', () => {
+    // $10,000 ST gain, $4,000 LT loss → residual $6,000 ST gain taxed at 35%.
+    const summary = computeTaxSummary(
+      [
+        closed({ lotId: 'st', term: 'SHORT_TERM', gainLoss: 1_000_000 }),
+        closed({ lotId: 'lt', term: 'LONG_TERM', gainLoss: -400_000 }),
+      ],
+      35,
+      15,
+    );
+
+    expect(summary.estimatedTax).toBe(210_000); // 6,000 * 35%, not 10,000 * 35%
+    expect(summary.netDeductibleLoss).toBe(0);
+    expect(summary.lossCarryforward).toBe(0);
+  });
+
+  it('taxes both categories independently when both are gains', () => {
+    const summary = computeTaxSummary(
+      [
+        closed({ lotId: 'st', term: 'SHORT_TERM', gainLoss: 200_000 }),
+        closed({ lotId: 'lt', term: 'LONG_TERM', gainLoss: 300_000 }),
+      ],
+      35,
+      15,
+    );
+
+    expect(summary.estimatedTax).toBe(115_000); // 2,000*35% + 3,000*15%
+    expect(summary.netDeductibleLoss).toBe(0);
+    expect(summary.lossCarryforward).toBe(0);
+  });
+
+  it('caps a net capital loss deduction at the $3,000 annual limit and carries the rest forward', () => {
+    // $2,000 ST loss + $5,000 LT loss = $7,000 net loss.
+    const summary = computeTaxSummary(
+      [
+        closed({ lotId: 'st', term: 'SHORT_TERM', gainLoss: -200_000 }),
+        closed({ lotId: 'lt', term: 'LONG_TERM', gainLoss: -500_000 }),
+      ],
+      35,
+      15,
+    );
+
+    expect(summary.estimatedTax).toBe(0);
+    expect(summary.netDeductibleLoss).toBe(300_000); // $3,000 cap
+    expect(summary.lossCarryforward).toBe(400_000); // $4,000 remainder
+  });
+
+  it('deducts a small net capital loss fully with no carryforward', () => {
+    const summary = computeTaxSummary([closed({ lotId: 'st', gainLoss: -100_000 })], 35, 15);
+
+    expect(summary.estimatedTax).toBe(0);
+    expect(summary.netDeductibleLoss).toBe(100_000); // full $1,000, under the cap
+    expect(summary.lossCarryforward).toBe(0);
   });
 });

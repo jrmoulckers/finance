@@ -14,6 +14,13 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const WASH_SALE_WINDOW_DAYS = 30;
 const EPSILON = 1e-8;
 
+/**
+ * Annual net capital loss deductible against ordinary income (IRC §1211(b)),
+ * in cents. $3,000 for single/MFJ ($1,500 MFS — not modelled here). Losses
+ * beyond this carry forward to future tax years.
+ */
+const CAPITAL_LOSS_ANNUAL_LIMIT_CENTS = 3_000_00;
+
 export type HoldingPeriodTerm = 'SHORT_TERM' | 'LONG_TERM';
 export type TaxLotMatchingMethod = 'FIFO' | 'SPECIFIC_ID';
 
@@ -23,6 +30,13 @@ export interface TaxLot {
   readonly shares: number;
   readonly costPerShare: number;
   readonly acquiredDate: LocalDate;
+  /**
+   * True when {@link acquiredDate} is an estimate (e.g. the record-creation date
+   * of an aggregate holding without recorded purchase lots) rather than a real
+   * purchase date. Consumers should disclose that holding-period (ST/LT)
+   * classification for such lots is approximate.
+   */
+  readonly acquiredDateEstimated?: boolean;
 }
 
 export interface TaxSaleInput {
@@ -74,6 +88,13 @@ export interface TaxSummary {
   readonly taxableShortTermGainLoss: number;
   readonly taxableLongTermGainLoss: number;
   readonly estimatedTax: number;
+  /**
+   * Portion of a net capital loss deductible against ordinary income this year
+   * (capped at the annual limit). Zero when the year nets to a gain.
+   */
+  readonly netDeductibleLoss: number;
+  /** Net capital loss beyond the annual deduction limit, carried to future years. */
+  readonly lossCarryforward: number;
 }
 
 export interface UnrealizedTaxLot {
@@ -241,10 +262,36 @@ export function computeTaxSummary(
     }
   }
 
+  // Net short-term and long-term against each other when one category nets to a
+  // gain and the other to a loss (IRC §1222 netting). Tax applies only to the
+  // residual gains, so a long-term loss correctly offsets a short-term gain.
+  let residualShortTerm = taxableShortTermGainLoss;
+  let residualLongTerm = taxableLongTermGainLoss;
+  if (residualShortTerm > 0 && residualLongTerm < 0) {
+    const applied = Math.min(residualShortTerm, -residualLongTerm);
+    residualShortTerm -= applied;
+    residualLongTerm += applied;
+  } else if (residualLongTerm > 0 && residualShortTerm < 0) {
+    const applied = Math.min(residualLongTerm, -residualShortTerm);
+    residualLongTerm -= applied;
+    residualShortTerm += applied;
+  }
+
   const estimatedTax = roundCents(
-    Math.max(0, taxableShortTermGainLoss) * (shortTermTaxRatePercent / 100) +
-      Math.max(0, taxableLongTermGainLoss) * (longTermTaxRatePercent / 100),
+    Math.max(0, residualShortTerm) * (shortTermTaxRatePercent / 100) +
+      Math.max(0, residualLongTerm) * (longTermTaxRatePercent / 100),
   );
+
+  // A net capital loss offsets up to the annual limit against ordinary income;
+  // any excess carries forward to future tax years.
+  const netCapitalGainLoss = residualShortTerm + residualLongTerm;
+  let netDeductibleLoss = 0;
+  let lossCarryforward = 0;
+  if (netCapitalGainLoss < 0) {
+    const totalLoss = -netCapitalGainLoss;
+    netDeductibleLoss = roundCents(Math.min(totalLoss, CAPITAL_LOSS_ANNUAL_LIMIT_CENTS));
+    lossCarryforward = roundCents(totalLoss - netDeductibleLoss);
+  }
 
   return {
     shortTermGainLoss,
@@ -254,6 +301,8 @@ export function computeTaxSummary(
     taxableShortTermGainLoss,
     taxableLongTermGainLoss,
     estimatedTax,
+    netDeductibleLoss,
+    lossCarryforward,
   };
 }
 
