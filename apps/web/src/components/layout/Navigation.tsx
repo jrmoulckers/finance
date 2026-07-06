@@ -343,11 +343,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   }, [logout]);
 
   return (
-    <aside
-      className="app-sidebar"
-      aria-label="Main navigation"
-      data-simple-mode={simpleMode || undefined}
-    >
+    <aside className="app-sidebar" aria-label="Sidebar" data-simple-mode={simpleMode || undefined}>
       <div className="app-sidebar__header">
         <span className="app-sidebar__logo">Finance</span>
       </div>
