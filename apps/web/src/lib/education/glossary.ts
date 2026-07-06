@@ -9,6 +9,15 @@ export const financialGlossary: Record<GlossaryKey, EducationEntry> = {
     whyItMatters:
       'A budget helps you give every dollar a job so you can avoid surprises and make progress on goals.',
   },
+  zeroBasedBudget: {
+    term: 'Zero-Based Budget',
+    definition:
+      'A zero-based (or "envelope") budget gives every dollar you expect to receive a specific job — bills, groceries, savings — until the money left to assign reaches zero.',
+    example:
+      'If $2,000 lands in your account, you might assign $1,200 to bills, $500 to groceries and gas, and $300 to savings. That leaves $0 "ready to assign" — not because it is spent, but because all of it now has a plan.',
+    whyItMatters:
+      'When every dollar has a job, "ready to assign" money is just a decision you have not made yet, so nothing quietly slips through the cracks.',
+  },
   sinkingFund: {
     term: 'Sinking Fund',
     definition:

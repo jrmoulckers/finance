@@ -632,6 +632,9 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
     expect(screen.getByText('Budget Health')).toBeInTheDocument();
+    // Beginner explainers on the headline cards (#3418).
+    expect(screen.getByRole('button', { name: 'Explain net worth' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explain Spent This Month' })).toBeInTheDocument();
     expect(await screen.findByText('What needs attention now')).toBeInTheDocument();
   });
 
@@ -773,6 +776,43 @@ describe('DashboardPage', () => {
     // Back to All restores the full aggregate: 20,000 + 10,000 + 5,000 = 35,000.
     fireEvent.click(screen.getByRole('button', { name: 'All' }));
     expect(netWorthCard).toHaveTextContent('$35,000.00');
+  });
+
+  it('reassures a first-time user when net worth is negative (#3418)', () => {
+    // A brand-new grad whose debts outweigh their cash: net worth is negative.
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        {
+          id: 'ws-negative',
+          householdId: 'household-1',
+          name: 'Everyday Checking',
+          type: 'CHECKING',
+          purpose: 'personal',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: -3800000 },
+          isArchived: false,
+          sortOrder: 1,
+          icon: 'bank',
+          color: '#DC2626',
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    // Reassurance is text (not color-only) so a negative first number is not alarming.
+    expect(screen.getByText(/normal when you have student loans/i)).toBeInTheDocument();
   });
 
   it('scopes Safe-to-Spend income by workspace so All === Personal + Business (#3212)', async () => {

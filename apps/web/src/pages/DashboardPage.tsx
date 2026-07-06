@@ -6,6 +6,7 @@ import type { TimePeriod, ViewType } from '../components/charts';
 import { AccountPurposeFilterControl } from '../components/accounts';
 import { RecentTransactionsCard } from '../components/transactions';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { ExplainThis } from '../components/common/ExplainThis';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
   useAccounts,
@@ -862,16 +863,41 @@ export const DashboardPage: React.FC = () => {
                     <article className="card" aria-label="Net worth">
                       <div className="card__header">
                         <h3 className="card__title">Net Worth</h3>
+                        <ExplainThis glossaryKey="netWorth" buttonLabel="Explain net worth" />
                       </div>
                       <div className="card__value" aria-live="polite">
                         <CurrencyDisplay amount={netWorth} colorize context="net worth" />
                       </div>
+                      {netWorth < 0 ? (
+                        <p
+                          className="dashboard-card-reassurance"
+                          style={{
+                            marginTop: 'var(--spacing-1)',
+                            color: 'var(--semantic-text-secondary)',
+                          }}
+                        >
+                          A negative number is normal when you have student loans — it improves as
+                          you pay them down and build savings.
+                        </p>
+                      ) : null}
                     </article>
                   ) : null}
                   {visibleWidgetIds.has('monthly-spending') ? (
                     <article className="card" aria-label="Monthly spending">
                       <div className="card__header">
                         <h3 className="card__title">Spent This Month</h3>
+                        <ExplainThis
+                          buttonLabel="Explain Spent This Month"
+                          content={{
+                            term: 'Spent This Month',
+                            definition:
+                              'The total you have spent so far this calendar month, across the accounts shown here.',
+                            example:
+                              'If you spent $400 on groceries and $150 on gas since the 1st, this shows $550.',
+                            whyItMatters:
+                              'Watching it grow through the month helps you catch overspending early, while you can still adjust.',
+                          }}
+                        />
                       </div>
                       <div className="card__value" aria-live="polite">
                         <CurrencyDisplay amount={spentThisMonth} context="spent this month" />

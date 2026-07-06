@@ -1272,7 +1272,10 @@ function PayoffPlannerPanel(): React.ReactElement {
                     context="interest"
                   />
                 </dd>
-                <dt>Payoff months</dt>
+                <dt>
+                  Payoff months{' '}
+                  <ExplainThis glossaryKey="amortization" buttonLabel="Explain amortizing" />
+                </dt>
                 <dd>{consolidationPanelModel.payoffMonths ?? 'Not amortizing'}</dd>
                 <dt>Fees</dt>
                 <dd>
@@ -2090,7 +2093,10 @@ function StudentLoanPanel(): React.ReactElement {
                 </p>
               </article>
               <article className="student-loan-stat-card">
-                <h3>Estimated Payoff</h3>
+                <h3>
+                  Estimated Payoff{' '}
+                  <ExplainThis glossaryKey="amortization" buttonLabel="Explain amortizing" />
+                </h3>
                 <p className="student-loan-stat-card__value">
                   {summary.estimatedPayoffDate
                     ? formatMonthYear(summary.estimatedPayoffDate)
@@ -2260,7 +2266,10 @@ function StudentLoanPanel(): React.ReactElement {
                       colorize
                     />
                   </dd>
-                  <dt>Payoff-date change</dt>
+                  <dt>
+                    Payoff-date change{' '}
+                    <ExplainThis glossaryKey="amortization" buttonLabel="Explain amortizing" />
+                  </dt>
                   <dd>
                     {refinancePanelModel.payoffMonthsDifference === null
                       ? 'Not amortizing'
@@ -2409,7 +2418,10 @@ function StudentLoanPanel(): React.ReactElement {
                         context="scenario total paid"
                       />
                     </dd>
-                    <dt>Payoff time</dt>
+                    <dt>
+                      Payoff time{' '}
+                      <ExplainThis glossaryKey="amortization" buttonLabel="Explain amortizing" />
+                    </dt>
                     <dd>
                       {scenario.monthsToPayoff === null
                         ? 'Not amortizing'
