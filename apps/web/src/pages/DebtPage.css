@@ -812,7 +812,8 @@
 }
 
 .debt-import-list__item h3,
-.debt-entry-form button {
+.debt-entry-form button,
+.debt-entry-form__error {
   grid-column: 1 / -1;
 }
 
@@ -965,6 +966,31 @@
 
 .credit-utilization--warning {
   background: var(--semantic-warning-bg, #fef3c7);
+}
+
+/* ---------------------------------------------------------------------------
+ * Manual debt entry — validation feedback (#3361)
+ * ------------------------------------------------------------------------ */
+
+.debt-entry-form input[aria-invalid='true'] {
+  border-color: var(--semantic-negative, #dc2626);
+  outline-color: var(--semantic-negative, #dc2626);
+}
+
+.debt-entry-form__error {
+  color: var(--semantic-negative, #dc2626);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-regular, 400);
+}
+
+.debt-entry-form__error-summary {
+  padding: var(--spacing-3, 0.75rem);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-negative-bg, #fee2e2);
+  border-left: 3px solid var(--semantic-negative, #dc2626);
+  color: var(--semantic-negative, #b91c1c);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
 }
 
 .credit-utilization--high,

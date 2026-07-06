@@ -439,4 +439,73 @@ describe('DebtPage', () => {
     const labelledBy = tabpanel.getAttribute('aria-labelledby');
     expect(labelledBy).toBe('debt-tab-payoff');
   });
+
+  it('moves between tabs with arrow keys using roving tabindex (#3362)', () => {
+    render(<DebtPage />);
+    const payoffTab = screen.getByRole('tab', { name: 'Payoff Planner' });
+    const ringsTab = screen.getByRole('tab', { name: 'Payoff Rings' });
+    const creditTab = screen.getByRole('tab', { name: 'Credit Cards' });
+
+    // Roving tabindex: only the active tab is in the tab order.
+    expect(payoffTab.getAttribute('tabindex')).toBe('0');
+    expect(ringsTab.getAttribute('tabindex')).toBe('-1');
+
+    // ArrowRight moves focus + selection to the next tab (automatic activation).
+    fireEvent.keyDown(payoffTab, { key: 'ArrowRight' });
+    expect(ringsTab.getAttribute('aria-selected')).toBe('true');
+    expect(ringsTab.getAttribute('tabindex')).toBe('0');
+    expect(payoffTab.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(ringsTab);
+
+    // Home jumps to the first tab.
+    fireEvent.keyDown(ringsTab, { key: 'Home' });
+    expect(payoffTab.getAttribute('aria-selected')).toBe('true');
+
+    // ArrowLeft from the first tab wraps to the last.
+    fireEvent.keyDown(payoffTab, { key: 'ArrowLeft' });
+    expect(creditTab.getAttribute('aria-selected')).toBe('true');
+
+    // End jumps to the last tab.
+    fireEvent.keyDown(payoffTab, { key: 'End' });
+    expect(creditTab.getAttribute('aria-selected')).toBe('true');
+    expect(creditTab.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('focuses the manual debt name field when the empty-state CTA is activated (#3360)', () => {
+    render(<DebtPage />);
+    const emptyState = screen.getByTestId('empty-state');
+    const addButton = within(emptyState).getByRole('button', { name: 'Add Debt' });
+    fireEvent.click(addButton);
+    expect(document.activeElement).toBe(screen.getByLabelText('Debt name'));
+  });
+
+  it('surfaces manual-entry validation errors instead of failing silently (#3361)', () => {
+    const { container } = render(<DebtPage />);
+    const form = container.querySelector('form.debt-entry-form') as HTMLFormElement;
+    fireEvent.submit(form);
+
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain('Enter a name for this debt.');
+
+    const nameInput = screen.getByLabelText('Debt name');
+    expect(nameInput.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(nameInput);
+
+    // Empty state is still shown because no valid debt was added.
+    expect(screen.getByTestId('empty-state')).toBeDefined();
+  });
+
+  it('adds a manual debt and clears the error summary when the form is valid (#3361)', () => {
+    const { container } = render(<DebtPage />);
+    fireEvent.change(screen.getByLabelText('Debt name'), { target: { value: 'Visa' } });
+    fireEvent.change(screen.getByLabelText('Debt balance ($)'), { target: { value: '1200' } });
+    fireEvent.change(screen.getByLabelText('Minimum payment ($)'), { target: { value: '50' } });
+
+    const form = container.querySelector('form.debt-entry-form') as HTMLFormElement;
+    fireEvent.submit(form);
+
+    // Adding a valid debt replaces the empty state with payoff results.
+    expect(screen.queryByTestId('empty-state')).toBeNull();
+    expect(screen.queryByText(/Please fix the following/)).toBeNull();
+  });
 });
