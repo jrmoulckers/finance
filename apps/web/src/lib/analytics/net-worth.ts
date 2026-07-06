@@ -97,6 +97,27 @@ export function isLiabilityType(type: AccountType): boolean {
   return ASSET_CLASS_MAP[type]?.isLiability ?? false;
 }
 
+/**
+ * Computes a single account's signed contribution to net worth, in cents.
+ *
+ * Assets contribute their balance directly; liabilities (credit cards, loans)
+ * contribute the negative of their absolute balance so they always *reduce*
+ * net worth — regardless of whether the stored balance uses a positive
+ * amount-owed convention or a negative sign convention. This is the
+ * per-account form of {@link computeCurrentNetWorth}: summing the contribution
+ * of every non-archived account yields the same `netWorth` value.
+ *
+ * @param account - Account (or minimal `type` + `currentBalance` shape)
+ * @returns Signed cents — positive for assets, negative for liabilities
+ */
+export function netWorthContribution(account: {
+  readonly type: AccountType;
+  readonly currentBalance: { readonly amount: number };
+}): number {
+  const balance = account.currentBalance.amount;
+  return isLiabilityType(account.type) ? -Math.abs(balance) : balance;
+}
+
 // ---------------------------------------------------------------------------
 // Core calculations
 // ---------------------------------------------------------------------------

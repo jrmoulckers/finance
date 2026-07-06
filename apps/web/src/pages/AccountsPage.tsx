@@ -21,6 +21,7 @@ import {
   ACCOUNT_PURPOSE_ORDER,
   normalizeAccountPurpose,
 } from '../lib/accountPurpose';
+import { netWorthContribution } from '../lib/analytics/net-worth';
 import { formatAmount, MaskingMode } from '../lib/ui/privacy';
 import '../styles/pages.css';
 
@@ -48,9 +49,18 @@ const ACCOUNT_TYPE_ORDER: AccountType[] = [
  * Renders a multi-currency total display.
  * If all accounts share the same currency, shows a single CurrencyDisplay.
  * If mixed, shows per-currency breakdown with a "(multiple currencies)" indicator.
+ *
+ * The total is a **net worth** figure: liability accounts (credit cards, loans)
+ * subtract from the total via {@link netWorthContribution} rather than being
+ * summed sign-blind. This keeps the Accounts page consistent with the
+ * dedicated Net Worth page (see `lib/analytics/net-worth.ts`).
  */
 const MultiCurrencyTotal: React.FC<{
-  accounts: ReadonlyArray<{ currentBalance: { amount: number }; currency: { code: string } }>;
+  accounts: ReadonlyArray<{
+    type: AccountType;
+    currentBalance: { amount: number };
+    currency: { code: string };
+  }>;
   colorize?: boolean;
 }> = ({ accounts, colorize = false }) => {
   const maskingMode = useEffectiveMaskingMode();
@@ -62,14 +72,14 @@ const MultiCurrencyTotal: React.FC<{
 
   if (!isMixed) {
     const singleCurrency = getSingleCurrency(currencyItems);
-    const total = accounts.reduce((sum, acc) => sum + acc.currentBalance.amount, 0);
+    const total = accounts.reduce((sum, acc) => sum + netWorthContribution(acc), 0);
     return (
       <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />
     );
   }
 
   const amounts = accounts.map((acc) => ({
-    amount: acc.currentBalance.amount,
+    amount: netWorthContribution(acc),
     currency: acc.currency.code,
   }));
   const groups = groupByCurrency(amounts);
@@ -132,14 +142,13 @@ export const AccountsPage: React.FC = () => {
     try {
       let total = 0;
       for (const account of accounts) {
+        // Liabilities subtract from the converted net-worth total, matching
+        // the single-currency path and the Net Worth page.
+        const contribution = netWorthContribution(account);
         if (account.currency.code === 'USD') {
-          total += account.currentBalance.amount;
+          total += contribution;
         } else {
-          const converted = await convert(
-            account.currentBalance.amount,
-            account.currency.code,
-            'USD',
-          );
+          const converted = await convert(contribution, account.currency.code, 'USD');
           total += converted;
         }
       }
