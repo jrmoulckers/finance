@@ -84,6 +84,12 @@ describe('getGoalStatusIndicator', () => {
   it('returns just started for <25%', () => {
     expect(getGoalStatusIndicator(10).label).toBe('Just started');
   });
+
+  it('uses a calm neutral tone (not negative) for a brand-new goal <25% (#3392)', () => {
+    expect(getGoalStatusIndicator(0).tone).toBe('neutral');
+    expect(getGoalStatusIndicator(10).tone).toBe('neutral');
+    expect(getGoalStatusIndicator(24).tone).toBe('neutral');
+  });
 });
 
 describe('getBudgetStatusIndicator', () => {

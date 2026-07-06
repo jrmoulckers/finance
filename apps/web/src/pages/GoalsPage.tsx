@@ -787,14 +787,6 @@ export const GoalsPage: React.FC = () => {
                     0,
                   );
                   const goalStatus = getGoalStatusIndicator(percentComplete);
-                  const statusTone =
-                    percentComplete >= 100
-                      ? 'positive'
-                      : percentComplete >= 50
-                        ? 'positive'
-                        : percentComplete >= 25
-                          ? 'warning'
-                          : 'negative';
                   const targetDate = goal.targetDate
                     ? new Date(`${goal.targetDate}T00:00:00`)
                     : null;
@@ -923,7 +915,7 @@ export const GoalsPage: React.FC = () => {
                         aria-label={`${goal.name}: ${percentComplete} percent of goal reached, ${goalStatus.label}`}
                       >
                         <div
-                          className={`progress-bar__fill progress-bar__fill--${statusTone}`}
+                          className={`progress-bar__fill progress-bar__fill--${goalStatus.tone}`}
                           style={{ width: `${Math.min(percentComplete, 100)}%` }}
                         />
                       </div>

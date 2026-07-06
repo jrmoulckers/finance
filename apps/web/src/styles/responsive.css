@@ -530,6 +530,9 @@
 .progress-bar__fill--negative {
   background: var(--semantic-status-negative);
 }
+.progress-bar__fill--neutral {
+  background: var(--semantic-interactive-default);
+}
 .progress-ring {
   display: inline-flex;
   align-items: center;
