@@ -144,7 +144,7 @@ describe('CashFlowPage', () => {
     expect(screen.getByText('Export CSV')).toBeInTheDocument();
   });
 
-  it('renders period selector tabs', () => {
+  it('renders period selector options', () => {
     mockUseCashFlow.mockReturnValue({
       aggregates: [{ month: '2024-01', income: 100000, expenses: 50000, netIncome: 50000 }],
       summary: {
@@ -164,8 +164,9 @@ describe('CashFlowPage', () => {
     });
 
     render(<CashFlowPage />);
-    expect(screen.getByRole('tab', { name: '6M' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '12M' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '24M' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Time period' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '6M' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '12M' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '24M' })).toBeInTheDocument();
   });
 });
