@@ -171,52 +171,6 @@ export interface DRIPProjection {
 }
 
 // ---------------------------------------------------------------------------
-// #1675, #1715 — FIRE metrics
-// ---------------------------------------------------------------------------
-
-/** Core FIRE calculation inputs. */
-export interface FIREInput {
-  /** Current portfolio/investment value in cents. */
-  readonly currentPortfolioCents: number;
-  /** Annual expenses in cents. */
-  readonly annualExpensesCents: number;
-  /** Annual savings (contributions) in cents. */
-  readonly annualSavingsCents: number;
-  /** Annual gross income in cents. */
-  readonly annualIncomeCents: number;
-  /** Expected annual real return rate (percentage, e.g. 7 = 7%). */
-  readonly expectedReturnPercent: number;
-  /** Current age. */
-  readonly currentAge: number;
-  /** Target retirement age. */
-  readonly targetRetirementAge: number;
-  /** Safe withdrawal rate (percentage, default 4). */
-  readonly withdrawalRatePercent: number;
-}
-
-/** FIRE dashboard metrics. */
-export interface FIREMetrics {
-  /** FI number = annual expenses / withdrawal rate. In cents. */
-  readonly fiNumberCents: number;
-  /** FI percentage = current portfolio / FI number × 100. */
-  readonly fiPercent: number;
-  /** CoastFI amount needed now (cents) to coast to retirement with no more contributions. */
-  readonly coastFICents: number;
-  /** Whether the user has already reached CoastFI. */
-  readonly isCoastFI: boolean;
-  /** Savings rate = annual savings / annual income × 100. */
-  readonly savingsRatePercent: number;
-  /** Estimated years until FI from current trajectory. */
-  readonly yearsToFI: number;
-  /** Projected FI date (ISO). */
-  readonly projectedFIDate: LocalDate;
-  /** Annual passive income at current portfolio value using SWR, in cents. */
-  readonly currentPassiveIncomeCents: number;
-  /** Income replacement percentage. */
-  readonly incomeReplacementPercent: number;
-}
-
-// ---------------------------------------------------------------------------
 // #1683 — Retirement readiness score
 // ---------------------------------------------------------------------------
 

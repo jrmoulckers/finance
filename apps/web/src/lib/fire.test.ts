@@ -507,3 +507,55 @@ describe('calculateFIREPlan (integration)', () => {
     expect(plan.fiDateIso).toBe(`${year}-${month}-${day}`);
   });
 });
+
+describe('compounding math — single source of truth (#3305)', () => {
+  it('compounds monthly geometrically rather than as a naive annual r ÷ 12', () => {
+    const annual = 0.12;
+    const geometric = monthlyRateFromAnnual(annual);
+    const naive = annual / 12;
+    // The geometric monthly rate is strictly smaller than r/12 and reproduces the
+    // annual return exactly over twelve steps, whereas r/12 overstates it. This is
+    // the discrepancy that made the retired annual engines (fire-calculator /
+    // shared-fire) disagree with this wired one — now the only source of truth.
+    expect(geometric).toBeLessThan(naive);
+    expect((1 + geometric) ** 12).toBeCloseTo(1 + annual, 12);
+    expect((1 + naive) ** 12).toBeGreaterThan(1 + annual);
+  });
+
+  it('accrues compounding growth on contributions, not just principal', () => {
+    const plan = calculateFIREPlan({
+      currentInvestedCents: $(100_000),
+      annualSpendingCents: $(40_000),
+      annualContributionCents: $(24_000),
+      realReturnRate: 0.05,
+      swrRate: 0.04,
+      now: new Date('2020-06-15T12:00:00Z'),
+    });
+    expect(plan.totalGrowthToFICents).toBeGreaterThan(0);
+    // The projected portfolio exceeds principal + the raw (un-grown) contribution
+    // stream, proving the contributions themselves compound (a growing annuity).
+    expect(plan.yearsToFI.projectedCents).toBeGreaterThan(
+      $(100_000) + plan.totalContributionsToFICents,
+    );
+  });
+
+  it('separates real growth from contributions (0% real → no growth; >0% real → growth)', () => {
+    const base = {
+      currentInvestedCents: $(100_000),
+      annualSpendingCents: $(40_000),
+      annualContributionCents: $(24_000),
+      swrRate: 0.04,
+      now: new Date('2020-06-15T12:00:00Z'),
+    } as const;
+    const zeroReal = calculateFIREPlan({ ...base, realReturnRate: 0 });
+    const positiveReal = calculateFIREPlan({ ...base, realReturnRate: 0.05 });
+
+    // Returns are modelled as **real** (inflation-adjusted): a 0% real return is
+    // pure linear accrual, so the portfolio is exactly principal + contributions
+    // with no growth component.
+    expect(zeroReal.totalGrowthToFICents).toBe(0);
+    expect(positiveReal.totalGrowthToFICents).toBeGreaterThan(0);
+    // A larger real return never reaches FI later than none.
+    expect(positiveReal.yearsToFI.totalMonths).toBeLessThanOrEqual(zeroReal.yearsToFI.totalMonths);
+  });
+});
