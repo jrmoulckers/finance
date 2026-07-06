@@ -244,6 +244,9 @@ export function HouseholdPage() {
   } | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  // The just-created invite's code, surfaced as a shareable link once the
+  // invitation has actually been persisted to the synced store (#3377).
+  const [lastInviteCode, setLastInviteCode] = useState<string | null>(null);
 
   // -- Trusted helper form state -------------------------------------------
   const [trustedHelperName, setTrustedHelperName] = useState('');
@@ -332,7 +335,7 @@ export function HouseholdPage() {
       e.preventDefault();
       setInviteError(null);
       setInviteSuccess(false);
-
+      setLastInviteCode(null);
       const trimmedEmail = inviteEmail.trim();
       if (!trimmedEmail) {
         setInviteError('Email address is required.');
@@ -348,6 +351,7 @@ export function HouseholdPage() {
       if (result) {
         setInviteEmail('');
         setInviteSuccess(true);
+        setLastInviteCode(result.inviteCode);
       } else {
         setInviteError('Failed to send invitation.');
       }
@@ -2769,9 +2773,26 @@ export function HouseholdPage() {
           Nothing is shared until they explicitly choose to share accounts.
         </p>
 
-        {inviteSuccess && (
+        {inviteSuccess && lastInviteCode && (
           <div className="household-banner--success" role="status">
-            Invitation sent successfully! The invite code has been generated.
+            <p className="household-invite-success__message">
+              Invitation saved. Share this link with the person you invited — they open it, sign in,
+              and join from their own device:
+            </p>
+            <button
+              type="button"
+              className="household-invitation-item__code household-invite-success__link"
+              onClick={() => void handleCopyInvite(lastInviteCode)}
+              aria-label="Copy the invitation link to share"
+              title="Click to copy the full invite link"
+            >
+              <code className="household-invitation-item__code-text">
+                {buildInviteUrl(lastInviteCode)}
+              </code>
+              <span aria-hidden="true" className="household-invitation-item__code-hint">
+                Copy link
+              </span>
+            </button>
           </div>
         )}
 
@@ -2794,6 +2815,7 @@ export function HouseholdPage() {
               onChange={(e) => {
                 setInviteEmail(e.target.value);
                 setInviteSuccess(false);
+                setLastInviteCode(null);
               }}
               placeholder="partner@example.com"
               aria-required="true"

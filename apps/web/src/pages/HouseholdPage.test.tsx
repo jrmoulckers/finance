@@ -257,6 +257,7 @@ function mockHouseholdResult(overrides: Partial<UseHouseholdResult> = {}): UseHo
     createHousehold: vi.fn(),
     inviteMember: vi.fn(),
     acceptInvitation: vi.fn(),
+    getInvitationByCode: vi.fn(),
     revokeInvitation: vi.fn(),
     addTrustedHelper: vi.fn(),
     updateMemberRole: vi.fn(),

@@ -78,6 +78,29 @@ export interface InviteMemberInput {
   role: HouseholdRole;
 }
 
+/**
+ * Discriminated outcome of an attempt to accept a household invitation (#3377).
+ *
+ * The accept screen needs to distinguish *why* an acceptance did or didn't
+ * succeed so it can render precise, accessible messaging (not-found vs expired
+ * vs revoked vs already-joined) instead of a single opaque error.
+ */
+export type AcceptInvitationResult =
+  /** Joined successfully — `member` is the newly created membership. */
+  | { status: 'ACCEPTED'; member: HouseholdMember }
+  /** The current user was already a member of this household — idempotent no-op. */
+  | { status: 'ALREADY_MEMBER'; member: HouseholdMember }
+  /** No invitation matched the supplied code (wrong/expired link, not yet synced). */
+  | { status: 'NOT_FOUND' }
+  /** The invitation was already accepted (by this or another device). */
+  | { status: 'ALREADY_ACCEPTED' }
+  /** The invitation's expiry has passed. */
+  | { status: 'EXPIRED' }
+  /** The inviter revoked the invitation before it was accepted. */
+  | { status: 'REVOKED' }
+  /** An unexpected error occurred while accepting. */
+  | { status: 'ERROR'; message: string };
+
 /** Friendly local-first ways a read-only trusted helper can access shared finances. */
 export type TrustedHelperAccessMethod = 'SHARED_DEVICE' | 'READ_ONLY_SUMMARY' | 'INVITE_LATER';
 
@@ -544,8 +567,19 @@ export interface UseHouseholdResult {
   // -- Invitation flow (#1779) ---
   /** Invite a member to the household. */
   inviteMember: (input: InviteMemberInput) => HouseholdInvitation | null;
-  /** Accept an invitation by invite code. */
-  acceptInvitation: (inviteCode: string) => HouseholdMember | null;
+  /**
+   * Look up a single invitation by its invite code, reading directly from the
+   * synced store so it resolves on the invitee's own device (#3377). Returns
+   * the invitation regardless of status so the accept screen can distinguish
+   * pending / accepted / expired / revoked. `null` when no invitation matches.
+   */
+  getInvitationByCode: (inviteCode: string) => HouseholdInvitation | null;
+  /**
+   * Accept an invitation by invite code, joining the current authenticated user
+   * to the invitation's household. Reads the invitation from the synced store
+   * (not just in-memory state) so acceptance works cross-device (#3377).
+   */
+  acceptInvitation: (inviteCode: string) => AcceptInvitationResult;
   /** Revoke a pending invitation. */
   revokeInvitation: (invitationId: SyncId) => boolean;
 
@@ -1385,76 +1419,170 @@ export function useHousehold(): UseHouseholdResult {
     [appendActivity, household, invitations],
   );
 
+  // Read the freshest invitation snapshot from the synced store. Acceptance
+  // happens on the *invitee's* device, whose in-memory `invitations` state is
+  // empty until sync delivers the row — so we must read the store directly
+  // rather than trust the render-time snapshot (#3377). Falls back to in-memory
+  // state when no database is mounted (isolated tests / provider-less renders).
+  const readStoredInvitations = useCallback(
+    (): HouseholdInvitation[] =>
+      loadFromStorage<HouseholdInvitation[]>(dbRef.current, STORAGE_KEY_INVITATIONS, invitations),
+    [invitations],
+  );
+
+  const getInvitationByCode = useCallback(
+    (inviteCode: string): HouseholdInvitation | null => {
+      const code = inviteCode.trim();
+      if (!code) {
+        return null;
+      }
+      const stored = readStoredInvitations();
+      return (
+        stored.find((inv) => inv.inviteCode === code) ??
+        invitations.find((inv) => inv.inviteCode === code) ??
+        null
+      );
+    },
+    [invitations, readStoredInvitations],
+  );
+
   const acceptInvitation = useCallback(
-    (inviteCode: string): HouseholdMember | null => {
+    (inviteCode: string): AcceptInvitationResult => {
+      const code = inviteCode.trim();
+      if (!code) {
+        setError('Invalid or expired invitation code.');
+        return { status: 'NOT_FOUND' };
+      }
+
       try {
-        const invitation = invitations.find(
-          (inv) => inv.inviteCode === inviteCode && inv.status === 'PENDING',
+        // Authoritative, freshest view of the synced store (see note above).
+        const invitationList = readStoredInvitations();
+        const memberList = loadFromStorage<HouseholdMember[]>(
+          dbRef.current,
+          STORAGE_KEY_MEMBERS,
+          members,
         );
 
+        const invitation = invitationList.find((inv) => inv.inviteCode === code);
         if (!invitation) {
           setError('Invalid or expired invitation code.');
-          return null;
+          return { status: 'NOT_FOUND' };
         }
 
-        // Check expiry
-        if (new Date(invitation.expiresAt) < new Date()) {
-          const updatedInvs = invitations.map((inv) =>
-            inv.id === invitation.id
-              ? { ...inv, status: 'EXPIRED' as const, updatedAt: new Date().toISOString() }
-              : inv,
-          );
-          saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, updatedInvs);
-          setInvitations(updatedInvs);
+        if (invitation.status === 'REVOKED' || invitation.deletedAt) {
+          setError('This invitation has been revoked.');
+          return { status: 'REVOKED' };
+        }
+
+        const now = new Date();
+        const nowIso = now.toISOString();
+        const isExpired =
+          invitation.status === 'EXPIRED' ||
+          new Date(invitation.expiresAt).getTime() < now.getTime();
+        if (isExpired) {
+          if (invitation.status !== 'EXPIRED') {
+            const updatedInvs = invitationList.map((inv) =>
+              inv.id === invitation.id
+                ? {
+                    ...inv,
+                    status: 'EXPIRED' as const,
+                    updatedAt: nowIso,
+                    syncVersion: inv.syncVersion + 1,
+                    isSynced: false,
+                  }
+                : inv,
+            );
+            saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, updatedInvs);
+            setInvitations(updatedInvs);
+          }
           setError('This invitation has expired.');
-          return null;
+          return { status: 'EXPIRED' };
         }
 
-        const now = new Date().toISOString();
+        const currentUserId = authUser?.id?.trim() ? authUser.id : null;
 
-        // Privacy-by-default: new member joins with no shared accounts
+        // Idempotency: if this user already belongs to the invitation's
+        // household, don't mint a duplicate membership — just return it.
+        const existingMember = currentUserId
+          ? memberList.find(
+              (member) =>
+                member.householdId === invitation.householdId &&
+                member.userId === currentUserId &&
+                !member.deletedAt,
+            )
+          : undefined;
+
+        if (invitation.status === 'ACCEPTED') {
+          if (existingMember) {
+            return { status: 'ALREADY_MEMBER', member: existingMember };
+          }
+          setError('This invitation has already been accepted.');
+          return { status: 'ALREADY_ACCEPTED' };
+        }
+
+        const acceptedInvitations = invitationList.map((inv) =>
+          inv.id === invitation.id
+            ? {
+                ...inv,
+                status: 'ACCEPTED' as const,
+                updatedAt: nowIso,
+                syncVersion: inv.syncVersion + 1,
+                isSynced: false,
+              }
+            : inv,
+        );
+
+        if (existingMember) {
+          saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, acceptedInvitations);
+          setInvitations(acceptedInvitations);
+          return { status: 'ALREADY_MEMBER', member: existingMember };
+        }
+
+        // Privacy-by-default: new member joins with no shared accounts. Bind the
+        // membership to the *authenticated* invitee so it maps back to their
+        // account (falling back to a random id only for anonymous/demo flows).
         const newMember: HouseholdMember = {
           id: crypto.randomUUID(),
           householdId: invitation.householdId,
-          userId: crypto.randomUUID(),
-          displayName: null,
+          userId: currentUserId ?? crypto.randomUUID(),
+          displayName:
+            (authUser?.name && authUser.name.trim().length > 0 ? authUser.name.trim() : null) ??
+            (authUser?.email && authUser.email.trim().length > 0 ? authUser.email.trim() : null),
           role: invitation.role,
-          joinedAt: now,
-          createdAt: now,
-          updatedAt: now,
+          joinedAt: nowIso,
+          createdAt: nowIso,
+          updatedAt: nowIso,
           deletedAt: null,
           syncVersion: 1,
           isSynced: false,
         };
 
-        // Mark invitation as accepted
-        const updatedInvs = invitations.map((inv) =>
-          inv.id === invitation.id ? { ...inv, status: 'ACCEPTED' as const, updatedAt: now } : inv,
-        );
+        const updatedMembers = [...memberList, newMember];
 
-        const updatedMembers = [...members, newMember];
-
-        saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, updatedInvs);
+        saveToStorage(dbRef.current, STORAGE_KEY_INVITATIONS, acceptedInvitations);
         saveToStorage(dbRef.current, STORAGE_KEY_MEMBERS, updatedMembers);
-        setInvitations(updatedInvs);
+        setInvitations(acceptedInvitations);
         setMembers(updatedMembers);
         appendActivity({
           type: 'MEMBERS',
           action: 'INVITATION_ACCEPTED',
           affectedObjectType: 'member',
           affectedObjectId: newMember.id,
+          householdId: invitation.householdId,
+          actorMemberId: newMember.id,
           summary: 'Invitation accepted',
           detail: 'New member joined without sharing private accounts by default.',
           privacy: 'PUBLIC',
         });
 
-        return newMember;
+        return { status: 'ACCEPTED', member: newMember };
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to accept invitation.');
-        return null;
+        const message = err instanceof Error ? err.message : 'Failed to accept invitation.';
+        setError(message);
+        return { status: 'ERROR', message };
       }
     },
-    [appendActivity, invitations, members],
+    [appendActivity, authUser?.email, authUser?.id, authUser?.name, members, readStoredInvitations],
   );
 
   const revokeInvitation = useCallback(
@@ -2683,6 +2811,7 @@ export function useHousehold(): UseHouseholdResult {
     error,
     createHousehold,
     inviteMember,
+    getInvitationByCode,
     acceptInvitation,
     revokeInvitation,
     addTrustedHelper,

@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/*
+ * Household invite-acceptance screen (#3377).
+ *
+ * Layered on top of auth.css, which provides the centred `.auth-page` /
+ * `.auth-card` shell reused here so the accept screen matches the Login,
+ * Signup, and 404 pages. Only the invitation-specific details block and the
+ * stacked action layout are defined here. All values use design tokens.
+ */
+
+.invite-details {
+  margin: var(--spacing-4) 0;
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  list-style: none;
+}
+
+.invite-details__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-1) 0;
+}
+
+.invite-details__label {
+  color: var(--semantic-text-secondary);
+}
+
+.invite-details__value {
+  font-weight: var(--font-weight-semibold);
+  text-align: right;
+  color: var(--semantic-text-primary);
+}
+
+.invite-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-5);
+}
+
+.invite-secondary-action {
+  margin: 0;
+  text-align: center;
+}
+
+/* The success / terminal cards use a Link styled as the primary button. */
+a.auth-submit {
+  text-decoration: none;
+}

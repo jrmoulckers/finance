@@ -53,6 +53,7 @@ const BetaLanding = lazy(() => import('./pages/BetaLanding'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
 const Watchlists = lazy(() => import('./pages/WatchlistsPage'));
 const Household = lazy(() => import('./pages/HouseholdPage'));
+const AcceptInvite = lazy(() => import('./pages/AcceptInvitePage'));
 const ReportBuilder = lazy(() => import('./pages/ReportBuilderPage'));
 const ClientProfitability = lazy(() => import('./pages/ClientProfitabilityPage'));
 const BusinessPnl = lazy(() => import('./pages/BusinessPnlPage'));
@@ -429,6 +430,32 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Household">
             <Household />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    {/*
+     * Household invite acceptance (#3377). `/invite/:code` opens the shareable
+     * link; `/invite` lets an invitee paste a code by hand. Authenticated because
+     * the invitation only exists in the invitee's encrypted local store once they
+     * have signed in and synced.
+     */}
+    <Route
+      path="/invite"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Accept Invitation">
+            <AcceptInvite />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/invite/:code"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Accept Invitation">
+            <AcceptInvite />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
