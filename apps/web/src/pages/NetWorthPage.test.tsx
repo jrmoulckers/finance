@@ -29,8 +29,28 @@ vi.mock('../components/charts/NetWorthProjectionChart', () => ({
 }));
 
 import { useNetWorth } from '../hooks/useNetWorth';
+import type { UseNetWorthResult } from '../hooks/useNetWorth';
 
 const mockUseNetWorth = vi.mocked(useNetWorth);
+
+/**
+ * Build a complete {@link UseNetWorthResult} for the mocked hook. Tests pass
+ * only the fields they exercise; everything else defaults to an empty/neutral
+ * value so adding a new field to the hook never breaks unrelated cases.
+ */
+function makeNetWorthResult(overrides: Partial<UseNetWorthResult> = {}): UseNetWorthResult {
+  return {
+    currentNetWorth: null,
+    assetClasses: [],
+    milestones: [],
+    history: [],
+    periodComparison: null,
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    ...overrides,
+  };
+}
 
 describe('NetWorthPage', () => {
   beforeEach(() => {
@@ -38,95 +58,69 @@ describe('NetWorthPage', () => {
   });
 
   it('shows loading spinner while loading', () => {
-    mockUseNetWorth.mockReturnValue({
-      currentNetWorth: null,
-      assetClasses: [],
-      milestones: [],
-      history: [],
-      loading: true,
-      error: null,
-      refresh: vi.fn(),
-    });
+    mockUseNetWorth.mockReturnValue(makeNetWorthResult({ loading: true }));
 
     render(<NetWorthPage />);
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it('shows error banner on error', () => {
-    mockUseNetWorth.mockReturnValue({
-      currentNetWorth: null,
-      assetClasses: [],
-      milestones: [],
-      history: [],
-      loading: false,
-      error: 'Failed to load',
-      refresh: vi.fn(),
-    });
+    mockUseNetWorth.mockReturnValue(makeNetWorthResult({ error: 'Failed to load' }));
 
     render(<NetWorthPage />);
     expect(screen.getByText('Failed to load')).toBeInTheDocument();
   });
 
   it('shows empty state when no accounts', () => {
-    mockUseNetWorth.mockReturnValue({
-      currentNetWorth: null,
-      assetClasses: [],
-      milestones: [],
-      history: [],
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
+    mockUseNetWorth.mockReturnValue(makeNetWorthResult());
 
     render(<NetWorthPage />);
     expect(screen.getByText('No accounts found')).toBeInTheDocument();
   });
 
   it('renders net worth data and milestones', () => {
-    mockUseNetWorth.mockReturnValue({
-      currentNetWorth: {
-        label: '2024-03-15',
-        assets: 2000000,
-        liabilities: 500000,
-        netWorth: 1500000,
-      },
-      assetClasses: [
-        {
-          className: 'Savings',
-          accountTypes: ['SAVINGS'],
-          balance: 1500000,
-          isLiability: false,
-          percent: 75,
-          accountCount: 1,
+    mockUseNetWorth.mockReturnValue(
+      makeNetWorthResult({
+        currentNetWorth: {
+          label: '2024-03-15',
+          assets: 2000000,
+          liabilities: 500000,
+          netWorth: 1500000,
         },
-        {
-          className: 'Checking',
-          accountTypes: ['CHECKING'],
-          balance: 500000,
-          isLiability: false,
-          percent: 25,
-          accountCount: 1,
-        },
-      ],
-      milestones: [
-        {
-          id: 'milestone-0',
-          label: 'First $1K',
-          thresholdCents: 100000,
-          reached: true,
-        },
-        {
-          id: 'milestone-1',
-          label: 'First $50K',
-          thresholdCents: 5000000,
-          reached: false,
-        },
-      ],
-      history: [],
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
+        assetClasses: [
+          {
+            className: 'Savings',
+            accountTypes: ['SAVINGS'],
+            balance: 1500000,
+            isLiability: false,
+            percent: 75,
+            accountCount: 1,
+          },
+          {
+            className: 'Checking',
+            accountTypes: ['CHECKING'],
+            balance: 500000,
+            isLiability: false,
+            percent: 25,
+            accountCount: 1,
+          },
+        ],
+        milestones: [
+          {
+            id: 'milestone-0',
+            label: 'First $1K',
+            thresholdCents: 100000,
+            reached: true,
+          },
+          {
+            id: 'milestone-1',
+            label: 'First $50K',
+            thresholdCents: 5000000,
+            reached: false,
+          },
+        ],
+      }),
+    );
 
     render(<NetWorthPage />);
     expect(screen.getByRole('heading', { name: 'Net Worth', level: 1 })).toBeInTheDocument();
@@ -138,24 +132,21 @@ describe('NetWorthPage', () => {
   });
 
   it('renders the net worth projection section when history is available', () => {
-    mockUseNetWorth.mockReturnValue({
-      currentNetWorth: {
-        label: '2024-03-15',
-        assets: 2000000,
-        liabilities: 500000,
-        netWorth: 1500000,
-      },
-      assetClasses: [],
-      milestones: [],
-      history: [
-        { label: 'Jan', netWorthCents: 1000000, dateIso: '2024-01-31' },
-        { label: 'Feb', netWorthCents: 1250000, dateIso: '2024-02-29' },
-        { label: 'Mar', netWorthCents: 1500000, dateIso: '2024-03-15' },
-      ],
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
+    mockUseNetWorth.mockReturnValue(
+      makeNetWorthResult({
+        currentNetWorth: {
+          label: '2024-03-15',
+          assets: 2000000,
+          liabilities: 500000,
+          netWorth: 1500000,
+        },
+        history: [
+          { label: 'Jan', netWorthCents: 1000000, dateIso: '2024-01-31' },
+          { label: 'Feb', netWorthCents: 1250000, dateIso: '2024-02-29' },
+          { label: 'Mar', netWorthCents: 1500000, dateIso: '2024-03-15' },
+        ],
+      }),
+    );
 
     render(<NetWorthPage />);
     expect(
@@ -164,21 +155,63 @@ describe('NetWorthPage', () => {
     expect(screen.getByTestId('net-worth-projection-chart')).toBeInTheDocument();
   });
 
+  it('renders the period-over-period change when a comparison is available', () => {
+    mockUseNetWorth.mockReturnValue(
+      makeNetWorthResult({
+        currentNetWorth: {
+          label: 'Mar',
+          assets: 2000000,
+          liabilities: 500000,
+          netWorth: 1500000,
+        },
+        history: [
+          { label: 'Feb', netWorthCents: 1250000, dateIso: '2024-02-29' },
+          { label: 'Mar', netWorthCents: 1500000, dateIso: '2024-03-15' },
+        ],
+        periodComparison: {
+          currentLabel: 'Mar',
+          previousLabel: 'Feb',
+          currentNetWorth: 1500000,
+          previousNetWorth: 1250000,
+          changeCents: 250000,
+          changePercent: 20,
+        },
+      }),
+    );
+
+    render(<NetWorthPage />);
+    expect(screen.getByText(/vs Feb/)).toBeInTheDocument();
+    expect(screen.getByText(/\(\+20%\)/)).toBeInTheDocument();
+  });
+
+  it('omits the period-over-period change when no comparison exists', () => {
+    mockUseNetWorth.mockReturnValue(
+      makeNetWorthResult({
+        currentNetWorth: {
+          label: 'Mar',
+          assets: 2000000,
+          liabilities: 500000,
+          netWorth: 1500000,
+        },
+        periodComparison: null,
+      }),
+    );
+
+    render(<NetWorthPage />);
+    expect(screen.queryByText(/ vs /)).not.toBeInTheDocument();
+  });
+
   it('renders the workspace purpose filter and defaults to all accounts', () => {
-    mockUseNetWorth.mockReturnValue({
-      currentNetWorth: {
-        label: '2024-03-15',
-        assets: 2000000,
-        liabilities: 500000,
-        netWorth: 1500000,
-      },
-      assetClasses: [],
-      milestones: [],
-      history: [],
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
+    mockUseNetWorth.mockReturnValue(
+      makeNetWorthResult({
+        currentNetWorth: {
+          label: '2024-03-15',
+          assets: 2000000,
+          liabilities: 500000,
+          netWorth: 1500000,
+        },
+      }),
+    );
 
     render(<NetWorthPage />);
     expect(screen.getByRole('group', { name: 'Filter by account purpose' })).toBeInTheDocument();
@@ -186,20 +219,16 @@ describe('NetWorthPage', () => {
   });
 
   it('scopes net worth to the business workspace when selected', () => {
-    mockUseNetWorth.mockReturnValue({
-      currentNetWorth: {
-        label: '2024-03-15',
-        assets: 2000000,
-        liabilities: 500000,
-        netWorth: 1500000,
-      },
-      assetClasses: [],
-      milestones: [],
-      history: [],
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
+    mockUseNetWorth.mockReturnValue(
+      makeNetWorthResult({
+        currentNetWorth: {
+          label: '2024-03-15',
+          assets: 2000000,
+          liabilities: 500000,
+          netWorth: 1500000,
+        },
+      }),
+    );
 
     render(<NetWorthPage />);
     fireEvent.click(screen.getByRole('button', { name: /Business/ }));
@@ -207,15 +236,11 @@ describe('NetWorthPage', () => {
   });
 
   it('keeps the workspace filter visible when the selected workspace has no balances', () => {
-    mockUseNetWorth.mockReturnValue({
-      currentNetWorth: { label: '2024-03-15', assets: 0, liabilities: 0, netWorth: 0 },
-      assetClasses: [],
-      milestones: [],
-      history: [],
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
+    mockUseNetWorth.mockReturnValue(
+      makeNetWorthResult({
+        currentNetWorth: { label: '2024-03-15', assets: 0, liabilities: 0, netWorth: 0 },
+      }),
+    );
 
     render(<NetWorthPage />);
     expect(screen.getByText('No net worth data')).toBeInTheDocument();
