@@ -29,6 +29,12 @@ export const SUPPORTED_LOCALES: readonly SupportedLocale[] = [
   { code: 'es-ES', label: 'Spanish (Spain)', nativeLabel: 'Español', textDirection: 'ltr' },
   { code: 'de-DE', label: 'German (Germany)', nativeLabel: 'Deutsch', textDirection: 'ltr' },
   { code: 'ja-JP', label: 'Japanese (Japan)', nativeLabel: '日本語', textDirection: 'ltr' },
+  {
+    code: 'zh-Hans',
+    label: 'Chinese (Simplified)',
+    nativeLabel: '简体中文',
+    textDirection: 'ltr',
+  },
   { code: 'ar', label: 'Arabic', nativeLabel: 'العربية', textDirection: 'rtl' },
 ] as const;
 

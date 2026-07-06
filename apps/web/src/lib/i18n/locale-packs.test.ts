@@ -26,4 +26,28 @@ describe('locale-packs', () => {
     expect(getLocalePack('ar')).toMatchObject({ status: 'fallback-only', fallbackLocale: 'en-US' });
     expect(LOCALE_PACKS['ar']?.translatorNotes.join(' ')).toContain('RTL');
   });
+
+  it('ships a Simplified Chinese starter pack for immigrant remitters', () => {
+    const translator = createCatalogTranslator({
+      defaultLocale: 'en-US',
+      catalogs: getActiveCatalogs(),
+    });
+
+    expect(getLocalePack('zh-Hans')).toMatchObject({
+      status: 'starter',
+      fallbackLocale: 'en-US',
+    });
+    expect(translator.translate('nav.remittances', {}, 'zh-Hans')).toMatchObject({
+      text: '汇款',
+      translated: true,
+    });
+    expect(translator.translate('remittance.preview.fxMargin', {}, 'zh-Hans')).toMatchObject({
+      text: '汇率差价',
+      translated: true,
+    });
+    // Untranslated keys fall back to the English source catalog.
+    expect(translator.translate('tips.budget-create-first.action', {}, 'zh-Hans')).toMatchObject({
+      translated: false,
+    });
+  });
 });

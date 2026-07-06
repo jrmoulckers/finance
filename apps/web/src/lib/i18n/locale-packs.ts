@@ -3,6 +3,7 @@
 import type { MessageCatalog } from './catalog-loader';
 import { EN_US_CATALOG } from './locales/en-US';
 import { ES_ES_CATALOG } from './locales/es-ES';
+import { ZH_HANS_CATALOG } from './locales/zh-Hans';
 
 export type LocalePackStatus = 'source' | 'starter' | 'fallback-only';
 
@@ -38,6 +39,18 @@ export const LOCALE_PACKS: Readonly<Record<string, LocalePack>> = {
       'Keep ISO currency codes such as USD and EUR unchanged and surrounded by bidi isolation in mixed-direction contexts.',
     ],
     messages: ES_ES_CATALOG,
+  },
+  'zh-Hans': {
+    locale: 'zh-Hans',
+    nativeName: '简体中文',
+    status: 'starter',
+    fallbackLocale: 'en-US',
+    translatorNotes: [
+      'Initial starter pack for immigrant remitters: settings, currency-rate display, remittances, multi-currency transaction entry, navigation, and empty/error states. Untranslated keys fall back to en-US.',
+      'Use mainland Simplified Chinese consumer-finance terms: 汇率 (exchange rate), 汇款 (remittance), 手续费 (fee), 收款人 (recipient), 预算 (budget), 账户 (account).',
+      'Keep amounts, ISO currency codes (USD, CNY), and user-entered names in placeholders; Chinese has no grammatical plural so plural forms share one text.',
+    ],
+    messages: ZH_HANS_CATALOG,
   },
   'fr-CA': {
     locale: 'fr-CA',

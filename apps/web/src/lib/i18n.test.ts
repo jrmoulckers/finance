@@ -47,4 +47,14 @@ describe('i18n locale preferences', () => {
       translated: false,
     });
   });
+
+  it('offers Simplified Chinese and normalizes regional Chinese tags to it', () => {
+    expect(normalizeLocale('zh-Hans')).toBe('zh-Hans');
+    expect(normalizeLocale('zh-CN')).toBe('zh-Hans');
+    expect(normalizeLocale('zh')).toBe('zh-Hans');
+    expect(translate('nav.remittances', {}, 'zh-Hans')).toEqual({
+      text: '汇款',
+      translated: true,
+    });
+  });
 });
