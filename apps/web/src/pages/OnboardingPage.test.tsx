@@ -583,7 +583,9 @@ describe('OnboardingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /preview goal/i }));
 
     expect(screen.getByText(/confirm goal before saving/i)).toBeInTheDocument();
-    expect(screen.getByText(/estimated monthly contribution: \$1000/i)).toBeInTheDocument();
+    // #3408: onboarding money renders with locale thousands separators.
+    expect(screen.getByText(/save \$1,200/i)).toBeInTheDocument();
+    expect(screen.getByText(/estimated monthly contribution: \$1,000/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /save goal/i }));
     // Advance goals -> template, then skip the starter budget to reach the checklist.
@@ -592,6 +594,36 @@ describe('OnboardingPage', () => {
 
     expect(localStorage.getItem('finance-onboarding-goals')).toContain('Move fund');
     expect(screen.getByText(/1 goal saved/i)).toBeInTheDocument();
+  });
+
+  it('blocks previewing a goal until a positive target amount is entered (#3410)', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    goToGoalsStep();
+    fireEvent.change(screen.getByLabelText(/target amount/i), { target: { value: '0' } });
+
+    const previewButton = screen.getByRole('button', { name: /preview goal/i });
+    expect(previewButton).toBeDisabled();
+    expect(screen.getByText(/enter a target amount greater than \$0/i)).toBeInTheDocument();
+
+    // Clicking the disabled control must not open the confirmation.
+    fireEvent.click(previewButton);
+    expect(screen.queryByText(/confirm goal before saving/i)).not.toBeInTheDocument();
+
+    // A positive amount re-enables previewing and clears the hint.
+    fireEvent.change(screen.getByLabelText(/target amount/i), { target: { value: '500' } });
+    expect(screen.getByRole('button', { name: /preview goal/i })).toBeEnabled();
+    expect(screen.queryByText(/enter a target amount greater than \$0/i)).not.toBeInTheDocument();
+  });
+
+  it('strips non-numeric characters from goal amount inputs (#3411)', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    goToGoalsStep();
+    const amountInput = screen.getByLabelText(/target amount/i) as HTMLInputElement;
+    fireEvent.change(amountInput, { target: { value: '1a2b3c' } });
+
+    expect(amountInput.value).toBe('123');
   });
 
   it('lets users hide, restore, dismiss, and reopen post-onboarding setup help', () => {

@@ -34,6 +34,7 @@ import { useLocalOnlyMode } from '../hooks/useLocalOnlyMode';
 import { setReducedMotionPreference } from '../hooks/useReducedMotion';
 import { applyTheme, THEME_STORAGE_KEY } from '../hooks/useTheme';
 import { setSimplifiedModePreference } from '../lib/accessibility-preferences';
+import { formatCurrencyValue } from '../lib/currency';
 import { buildOnboardingProgressAnnouncement } from '../lib/a11y/onboarding-progress';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
 import {
@@ -327,6 +328,22 @@ const INCOME_TYPE_OPTIONS: Array<NewcomerChoiceOption<IncomeType>> = [
   },
 ];
 
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage can be unavailable (private mode / disabled); values simply do not persist.
+  }
+}
+
 function readTaxIdStatus(): TaxIdStatus {
   try {
     const raw = localStorage.getItem(TAX_ID_STATUS_STORAGE_KEY);
@@ -360,6 +377,14 @@ function firstOfCurrentMonthISO(): string {
   return `${year}-${month}-01`;
 }
 
+function todayISO(): string {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function applyComfortPreferences(
   fontScaleValue: number,
   reducedMotion: boolean,
@@ -375,7 +400,7 @@ function applyComfortPreferences(
   setSimplifiedModePreference(simplifiedMode);
 
   const nextTheme = highContrast ? 'high-contrast' : 'system';
-  localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  safeSetItem(THEME_STORAGE_KEY, nextTheme);
   applyTheme(nextTheme);
 }
 
@@ -390,15 +415,15 @@ function readStringArray(key: string): string[] {
 }
 
 function writeStringArray(key: string, values: string[]): void {
-  localStorage.setItem(key, JSON.stringify(values));
+  safeSetItem(key, JSON.stringify(values));
 }
 
 function readBoolean(key: string): boolean {
-  return localStorage.getItem(key) === 'true';
+  return safeGetItem(key) === 'true';
 }
 
 function writeBoolean(key: string, value: boolean): void {
-  localStorage.setItem(key, String(value));
+  safeSetItem(key, String(value));
 }
 
 function readGoals(): StoredGoal[] {
@@ -412,7 +437,7 @@ function readGoals(): StoredGoal[] {
 }
 
 function writeGoals(goals: StoredGoal[]): void {
-  localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals));
+  safeSetItem(GOALS_STORAGE_KEY, JSON.stringify(goals));
 }
 
 const DEFAULT_GOAL_DRAFT: GoalDraft = {
@@ -456,18 +481,16 @@ function trackOnboardingEvent(
     return;
   }
 
+  const existing = safeGetItem(ANALYTICS_EVENTS_STORAGE_KEY);
+  let events: unknown;
   try {
-    const existing = localStorage.getItem(ANALYTICS_EVENTS_STORAGE_KEY);
-    const events = existing ? JSON.parse(existing) : [];
-    const nextEvents = Array.isArray(events) ? events : [];
-    nextEvents.push({ eventName, payload, timestamp: new Date().toISOString() });
-    localStorage.setItem(ANALYTICS_EVENTS_STORAGE_KEY, JSON.stringify(nextEvents));
+    events = existing ? JSON.parse(existing) : [];
   } catch {
-    localStorage.setItem(
-      ANALYTICS_EVENTS_STORAGE_KEY,
-      JSON.stringify([{ eventName, payload, timestamp: new Date().toISOString() }]),
-    );
+    events = [];
   }
+  const nextEvents = Array.isArray(events) ? events : [];
+  nextEvents.push({ eventName, payload, timestamp: new Date().toISOString() });
+  safeSetItem(ANALYTICS_EVENTS_STORAGE_KEY, JSON.stringify(nextEvents));
 }
 
 const FeatureRow: React.FC<{ feature: FeatureAvailability }> = ({ feature }) => (
@@ -573,6 +596,8 @@ const OnboardingPage: React.FC = () => {
   );
   const selectedStageLabels = selectedLifeStageOptions.map((option) => option.label).join(', ');
   const monthlyContribution = calculateMonthlyContribution(goalDraft);
+  const goalTargetAmount = Number(goalDraft.targetAmount) || 0;
+  const isGoalDraftValid = goalTargetAmount > 0;
   const fullySetUp = starterBudgetCreated || savedGoals.length > 0;
   const currentStepIndex = Math.max(ONBOARDING_STEP_ORDER.indexOf(step), 0);
   const totalStepCount = ONBOARDING_STEP_ORDER.length;
@@ -732,11 +757,24 @@ const OnboardingPage: React.FC = () => {
     setGoalSavedName(null);
   }, []);
 
+  const handleAmountDraftChange = useCallback(
+    (field: 'targetAmount' | 'startingBalance', value: string) => {
+      handleGoalDraftChange(field, value.replace(/[^0-9.]/g, ''));
+    },
+    [handleGoalDraftChange],
+  );
+
   const handlePreviewGoal = useCallback(() => {
+    if ((Number(goalDraft.targetAmount) || 0) <= 0) {
+      return;
+    }
     setGoalReviewVisible(true);
-  }, []);
+  }, [goalDraft.targetAmount]);
 
   const handleSaveGoal = useCallback(() => {
+    if ((Number(goalDraft.targetAmount) || 0) <= 0) {
+      return;
+    }
     const nextGoal: StoredGoal = {
       id: `goal-${Date.now()}`,
       name: goalDraft.name.trim() || 'My goal',
@@ -1849,25 +1887,31 @@ const OnboardingPage: React.FC = () => {
               <label className="onboarding__field">
                 <span>Target amount</span>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*\.?[0-9]*"
                   value={goalDraft.targetAmount}
-                  onChange={(event) => handleGoalDraftChange('targetAmount', event.target.value)}
+                  onChange={(event) => handleAmountDraftChange('targetAmount', event.target.value)}
+                  aria-describedby={isGoalDraftValid ? undefined : 'onboarding-goal-amount-hint'}
                 />
               </label>
               <label className="onboarding__field">
                 <span>Starting balance</span>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*\.?[0-9]*"
                   value={goalDraft.startingBalance}
-                  onChange={(event) => handleGoalDraftChange('startingBalance', event.target.value)}
+                  onChange={(event) =>
+                    handleAmountDraftChange('startingBalance', event.target.value)
+                  }
                 />
               </label>
               <label className="onboarding__field">
                 <span>Target date</span>
                 <input
                   type="date"
+                  min={todayISO()}
                   value={goalDraft.targetDate}
                   onChange={(event) => handleGoalDraftChange('targetDate', event.target.value)}
                 />
@@ -1879,6 +1923,8 @@ const OnboardingPage: React.FC = () => {
                 type="button"
                 className="onboarding__path-btn onboarding__path-btn--secondary"
                 onClick={handlePreviewGoal}
+                disabled={!isGoalDraftValid}
+                aria-describedby={isGoalDraftValid ? undefined : 'onboarding-goal-amount-hint'}
               >
                 Preview goal
               </button>
@@ -1892,14 +1938,32 @@ const OnboardingPage: React.FC = () => {
               </button>
             </div>
 
+            {!isGoalDraftValid && (
+              <p
+                id="onboarding-goal-amount-hint"
+                className="onboarding__path-description"
+                role="note"
+              >
+                Enter a target amount greater than $0 to preview and save your goal.
+              </p>
+            )}
+
             {goalReviewVisible && (
               <div className="onboarding__goal-review" role="status">
                 <h3 className="onboarding__section-title">Confirm goal before saving</h3>
                 <p>
-                  {goalDraft.name || 'My goal'}: save $
-                  {Number(goalDraft.targetAmount || 0).toFixed(0)}
+                  {goalDraft.name || 'My goal'}: save{' '}
+                  {formatCurrencyValue(Number(goalDraft.targetAmount) || 0, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
                   {goalDraft.targetDate ? ` by ${goalDraft.targetDate}` : ''}. Estimated monthly
-                  contribution: ${monthlyContribution.toFixed(0)}.
+                  contribution:{' '}
+                  {formatCurrencyValue(monthlyContribution, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
+                  .
                 </p>
                 <button
                   type="button"
@@ -1925,7 +1989,13 @@ const OnboardingPage: React.FC = () => {
                   {savedGoals.map((goal) => (
                     <li key={goal.id} className="onboarding__saved-goals-item" role="listitem">
                       <span>{goal.name}</span>
-                      <strong>${goal.monthlyContribution.toFixed(0)}/mo</strong>
+                      <strong>
+                        {formatCurrencyValue(goal.monthlyContribution, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}
+                        /mo
+                      </strong>
                     </li>
                   ))}
                 </ul>
@@ -2000,7 +2070,12 @@ const OnboardingPage: React.FC = () => {
                   <span>
                     {category.emoji} {category.name}
                   </span>
-                  <strong>${(category.amountCents / 100).toFixed(0)}</strong>
+                  <strong>
+                    {formatCurrencyValue(category.amountCents / 100, {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
+                  </strong>
                 </li>
               ))}
             </ul>
