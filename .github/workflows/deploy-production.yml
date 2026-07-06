@@ -84,8 +84,19 @@ on:
       - '!v[0-9]+.[0-9]+.[0-9]+-windows'
 
 concurrency:
+  # Serialize every production deploy onto ONE lane so two deploys never race on
+  # the same host. Production jobs sit behind the manual `production` environment
+  # gate (wait timer + required reviewer); a run that is never approved/rejected
+  # stays `waiting` indefinitely. With `cancel-in-progress: false` that wedged
+  # run blocked the whole lane, so automated promotions queued behind it hung
+  # `pending` for hours with zero jobs started (#3086, #3186).
+  #
+  # Fix: let a newer automated promotion (workflow_run -> workflow_call) or a
+  # manual `workflow_dispatch` cancel the older, superseded run (newest-wins) so
+  # the lane is freed instead of stranded. Tag pushes are distinct, immutable
+  # releases, so they keep the non-cancelling behaviour.
   group: deploy-production
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions:
   contents: write
@@ -552,7 +563,10 @@ jobs:
             local attempt http_code
             for attempt in 1 2 3 4 5 6; do
               http_code=$(curl -sSL -o "$HEALTH_RESPONSE" -w '%{http_code}' "$BASE_URL/health" || echo '000')
-              if [ "$http_code" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"healthy"|healthy' "$HEALTH_RESPONSE"; then
+              # The edge-runtime liveness endpoint (Caddy rewrites /health ->
+              # /health-check) answers {"status":"ok"}, so accept "ok" or
+              # "healthy" — a healthy deploy must not fail the smoke gate (#3084).
+              if [ "$http_code" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"(ok|healthy)"' "$HEALTH_RESPONSE"; then
                 return 0
               fi
               echo "Health check attempt ${attempt}/6 returned HTTP ${http_code}; retrying in 10s"
@@ -582,7 +596,7 @@ jobs:
           echo '### ✅ Post-deploy Smoke Tests Passed' >> "$GITHUB_STEP_SUMMARY"
           echo '' >> "$GITHUB_STEP_SUMMARY"
           echo '- Homepage returned HTTP 200' >> "$GITHUB_STEP_SUMMARY"
-          echo '- /health returned healthy' >> "$GITHUB_STEP_SUMMARY"
+          echo '- /health returned a passing liveness status (ok/healthy)' >> "$GITHUB_STEP_SUMMARY"
           echo '- Basic page load marker detected' >> "$GITHUB_STEP_SUMMARY"
           echo "- URL: $BASE_URL" >> "$GITHUB_STEP_SUMMARY"
 
@@ -734,7 +748,8 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3 4 5 6; do
             HTTP_CODE=$(curl -sSL -o rollback-health.json -w '%{http_code}' "${BASE_URL%/}/health" || echo '000')
-            if [ "$HTTP_CODE" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"healthy"|healthy' rollback-health.json; then
+            # Liveness returns {"status":"ok"}; accept "ok" or "healthy" (#3084).
+            if [ "$HTTP_CODE" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"(ok|healthy)"' rollback-health.json; then
               echo 'Rollback health check succeeded.'
               exit 0
             fi
