@@ -161,7 +161,7 @@ test.describe('Desktop navigation reachability (#1930)', () => {
       await page.goto('/dashboard');
       await waitForAppShell(page);
 
-      const sidebar = page.locator('aside[aria-label="Main navigation"]');
+      const sidebar = page.locator('aside[aria-label="Sidebar"]');
       await expect(sidebar).toBeVisible();
 
       // Expand all collapsible group sections so every destination is queryable.

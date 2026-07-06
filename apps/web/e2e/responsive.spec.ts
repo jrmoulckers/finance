@@ -83,7 +83,7 @@ test.describe('Mobile viewport (375px)', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
     await expect(sidebar).toBeHidden();
   });
 
@@ -192,7 +192,7 @@ test.describe('Tablet viewport (768px)', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
     await expect(sidebar).toBeVisible();
   });
 
@@ -250,7 +250,7 @@ test.describe('Tablet viewport (768px)', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
 
     for (const label of ['Dashboard', 'Accounts', 'Transactions', 'Budgets', 'Goals']) {
       // exact: true — accessible-name matching is a case-insensitive substring
@@ -275,7 +275,7 @@ test.describe('Desktop viewport (1280px)', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
     await expect(sidebar).toBeVisible();
 
     // The sidebar should show the "Finance" logo text.
@@ -293,7 +293,7 @@ test.describe('Desktop viewport (1280px)', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
     const sidebarWidth = await sidebar.evaluate((el) => {
       return el.getBoundingClientRect().width;
     });
@@ -382,7 +382,7 @@ test.describe('Large desktop viewport (1440px)', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
     await expect(sidebar).toBeVisible();
 
     const sidebarWidth = await sidebar.evaluate((el) => {
@@ -399,7 +399,7 @@ test.describe('Large desktop viewport (1440px)', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
     const footer = sidebar.locator('.app-sidebar__footer');
 
     await expect(footer.getByText('Settings')).toBeVisible();
@@ -440,7 +440,7 @@ test.describe('Cross-viewport navigation', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
 
     // Navigate to Accounts via sidebar.
     await sidebar.getByRole('button', { name: 'Accounts', exact: true }).click();
@@ -497,7 +497,7 @@ test.describe('Cross-viewport navigation', () => {
     await page.goto('/dashboard');
     await waitForPageLoad(page);
 
-    const sidebar = page.locator('aside[aria-label="Main navigation"]');
+    const sidebar = page.locator('aside[aria-label="Sidebar"]');
     const dashboardButton = sidebar.getByRole('button', { name: 'Dashboard' });
 
     await expect(dashboardButton).toHaveAttribute('aria-current', 'page');
@@ -513,7 +513,7 @@ test.describe('Cross-viewport navigation', () => {
 
     // Verify mobile layout.
     await expect(page.locator('nav.bottom-nav')).toBeVisible();
-    await expect(page.locator('aside[aria-label="Main navigation"]')).toBeHidden();
+    await expect(page.locator('aside[aria-label="Sidebar"]')).toBeHidden();
 
     // Resize to desktop.
     await page.setViewportSize(DESKTOP);
@@ -522,7 +522,7 @@ test.describe('Cross-viewport navigation', () => {
     await page.waitForTimeout(100);
 
     // Verify desktop layout.
-    await expect(page.locator('aside[aria-label="Main navigation"]')).toBeVisible();
+    await expect(page.locator('aside[aria-label="Sidebar"]')).toBeVisible();
     await expect(page.locator('nav.bottom-nav')).toBeHidden();
 
     // Resize back to mobile.
@@ -531,6 +531,6 @@ test.describe('Cross-viewport navigation', () => {
 
     // Verify mobile layout is restored.
     await expect(page.locator('nav.bottom-nav')).toBeVisible();
-    await expect(page.locator('aside[aria-label="Main navigation"]')).toBeHidden();
+    await expect(page.locator('aside[aria-label="Sidebar"]')).toBeHidden();
   });
 });
