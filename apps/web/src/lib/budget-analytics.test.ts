@@ -96,8 +96,20 @@ describe('comparePeriods', () => {
     expect(comparePeriods(0, 0)).toEqual({ change: 0, direction: 'flat' });
   });
 
-  it('returns up 100% when previous is zero and current is non-zero', () => {
-    expect(comparePeriods(500, 0)).toEqual({ change: 100, direction: 'up' });
+  it('flags growth from a zero baseline as "new" instead of a fixed 100%', () => {
+    // Previous $0 → any current spend has no percentage baseline (#3364).
+    expect(comparePeriods(500, 0)).toEqual({ change: 0, direction: 'up', isNew: true });
+    // Magnitude no longer collapses to a single 100% value.
+    expect(comparePeriods(5, 0)).toEqual({ change: 0, direction: 'up', isNew: true });
+  });
+
+  it('flags a decrease from a zero baseline as "new" (negative current)', () => {
+    expect(comparePeriods(-500, 0)).toEqual({ change: 0, direction: 'down', isNew: true });
+  });
+
+  it('does not flag isNew when the previous value is non-zero', () => {
+    expect(comparePeriods(600, 500).isNew).toBeUndefined();
+    expect(comparePeriods(0, 500)).toEqual({ change: 100, direction: 'down' });
   });
 
   it('returns down when current is less than previous', () => {
@@ -148,6 +160,9 @@ describe('buildCategoryTrends', () => {
     expect(trends).toHaveLength(1);
     expect(trends[0].previous).toBe(0);
     expect(trends[0].direction).toBe('up');
+    // No prior-period baseline → flagged as new, not a misleading 100% (#3364).
+    expect(trends[0].isNew).toBe(true);
+    expect(trends[0].change).toBe(0);
   });
 
   it('defaults to top 5', () => {

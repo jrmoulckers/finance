@@ -85,6 +85,23 @@ describe('BudgetAnalytics', () => {
     expect(screen.getByText(/higher/)).toBeInTheDocument();
   });
 
+  it('shows a "new spending" state instead of a misleading 100% when previous spend was zero', () => {
+    render(
+      <BudgetAnalytics
+        {...defaultProps}
+        previousPeriodSpent={0}
+        currentCategorySpending={new Map([['Food', 100_000]])}
+        previousCategorySpending={new Map()}
+      />,
+    );
+    // Period comparison card reports the honest "new" copy, never "100%".
+    expect(
+      screen.getByText('New spending this period (nothing spent last period)'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/100%/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/higher than last period/)).not.toBeInTheDocument();
+  });
+
   it('displays empty state for comparison when no previous data', () => {
     render(<BudgetAnalytics {...defaultProps} previousPeriodSpent={null} />);
     expect(screen.getByText('Not enough data for comparison')).toBeInTheDocument();

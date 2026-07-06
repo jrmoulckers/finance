@@ -86,8 +86,17 @@ function HealthIndicator({ status }: { status: BudgetHealthStatus }) {
   );
 }
 
-/** Renders a directional arrow with percentage change. */
-function ComparisonArrow({ change, direction }: { change: number; direction: ChangeDirection }) {
+/** Renders a directional arrow with percentage change, or a "New" badge when
+ * there is no prior-period baseline to compute a percentage from. */
+function ComparisonArrow({
+  change,
+  direction,
+  isNew = false,
+}: {
+  change: number;
+  direction: ChangeDirection;
+  isNew?: boolean;
+}) {
   const arrowMap: Record<ChangeDirection, string> = {
     up: '↑',
     down: '↓',
@@ -96,7 +105,7 @@ function ComparisonArrow({ change, direction }: { change: number; direction: Cha
 
   return (
     <span className={`comparison-arrow comparison-arrow--${direction}`} aria-hidden="true">
-      {arrowMap[direction]} {change}%
+      {arrowMap[direction]} {isNew ? 'New' : `${change}%`}
     </span>
   );
 }
@@ -204,19 +213,30 @@ export const BudgetAnalytics: React.FC<BudgetAnalyticsProps> = ({
               <ComparisonArrow
                 change={periodComparison.change}
                 direction={periodComparison.direction}
+                isNew={periodComparison.isNew}
               />
             </p>
             <p
               className="analytics-card__detail"
-              aria-label={`Spending is ${periodComparison.change}% ${periodComparison.direction === 'down' ? 'lower' : periodComparison.direction === 'up' ? 'higher' : 'the same as'} than last period`}
+              aria-label={
+                periodComparison.isNew
+                  ? 'New spending this period; there was nothing spent last period to compare against'
+                  : `Spending is ${periodComparison.change}% ${periodComparison.direction === 'down' ? 'lower' : periodComparison.direction === 'up' ? 'higher' : 'the same as'} than last period`
+              }
             >
-              Spending is {periodComparison.change}%{' '}
-              {periodComparison.direction === 'down'
-                ? 'lower'
-                : periodComparison.direction === 'up'
-                  ? 'higher'
-                  : 'the same as'}{' '}
-              than last period
+              {periodComparison.isNew ? (
+                'New spending this period (nothing spent last period)'
+              ) : (
+                <>
+                  Spending is {periodComparison.change}%{' '}
+                  {periodComparison.direction === 'down'
+                    ? 'lower'
+                    : periodComparison.direction === 'up'
+                      ? 'higher'
+                      : 'the same as'}{' '}
+                  than last period
+                </>
+              )}
             </p>
           </>
         ) : (
@@ -264,7 +284,7 @@ function CategoryTrendsList({
             key={trend.name}
             className="category-trends__item"
             role="listitem"
-            aria-label={`${trend.name}: ${trend.change}% ${trend.direction}`}
+            aria-label={`${trend.name}: ${trend.isNew ? 'new spending this period' : `${trend.change}% ${trend.direction}`}`}
           >
             <span className="category-trends__name">{trend.name}</span>
             <div
@@ -278,7 +298,11 @@ function CategoryTrendsList({
               <div className="category-trends__bar" style={{ width: `${barPercent}%` }} />
             </div>
             <span className="category-trends__change">
-              <ComparisonArrow change={trend.change} direction={trend.direction} />{' '}
+              <ComparisonArrow
+                change={trend.change}
+                direction={trend.direction}
+                isNew={trend.isNew}
+              />{' '}
               <CurrencyDisplay amount={trend.current} currency={currency} />
             </span>
           </li>
