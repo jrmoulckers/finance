@@ -183,8 +183,10 @@
 
 .category-trends__item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-3);
+  row-gap: var(--spacing-1);
 }
 
 .category-trends__name {
@@ -216,6 +218,15 @@
   flex: 0 0 60px;
   font-size: var(--type-scale-caption-font-size);
   text-align: right;
+}
+
+.category-trends__overspend {
+  flex: 0 0 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-status-warning);
 }
 
 /* ---------------------------------------------------------------------------

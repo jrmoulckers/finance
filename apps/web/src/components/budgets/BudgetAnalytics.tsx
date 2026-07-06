@@ -21,12 +21,15 @@ import {
   calculateSpendingTrajectory,
   comparePeriods,
   getBudgetHealth,
+  projectCategoryOverspend,
   type BudgetHealthStatus,
+  type CategoryProjection,
   type CategoryTrend,
   type ChangeDirection,
 } from '../../lib/budget-analytics';
 import './budget-analytics.css';
 import { AppIcon, type IconName } from '../icons';
+import { formatCurrencyForScreenReader } from '../../lib/a11y';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -50,6 +53,11 @@ export interface BudgetAnalyticsProps {
   currentCategorySpending: ReadonlyMap<string, number>;
   /** Map of category name → spending in previous period (cents). */
   previousCategorySpending: ReadonlyMap<string, number>;
+  /**
+   * Map of category name → budgeted amount for the current period (cents).
+   * Used to project per-category overspend. Omitted maps disable the warning.
+   */
+  categoryBudgets?: ReadonlyMap<string, number>;
   /** ISO 4217 currency code (default: "USD"). */
   currency?: string;
 }
@@ -124,6 +132,7 @@ export const BudgetAnalytics: React.FC<BudgetAnalyticsProps> = ({
   previousPeriodSpent,
   currentCategorySpending,
   previousCategorySpending,
+  categoryBudgets,
   currency = 'USD',
 }) => {
   // Compute analytics
@@ -136,6 +145,19 @@ export const BudgetAnalytics: React.FC<BudgetAnalyticsProps> = ({
     previousPeriodSpent !== null ? comparePeriods(totalSpent, previousPeriodSpent) : null;
 
   const categoryTrends = buildCategoryTrends(currentCategorySpending, previousCategorySpending, 5);
+
+  // Per-category early overspend projection (only when budgets are provided).
+  const categoryOverspend = categoryBudgets
+    ? projectCategoryOverspend(
+        [...currentCategorySpending].map(([name, spentCents]) => ({
+          name,
+          spentCents,
+          budgetCents: categoryBudgets.get(name) ?? 0,
+        })),
+        daysElapsed,
+        totalDays,
+      )
+    : new Map<string, CategoryProjection>();
 
   // Progress bar percentage (capped at 100% visually)
   const progressPercent = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
@@ -251,6 +273,7 @@ export const BudgetAnalytics: React.FC<BudgetAnalyticsProps> = ({
           <CategoryTrendsList
             trends={categoryTrends}
             maxSpending={maxCategorySpending}
+            overspendByName={categoryOverspend}
             currency={currency}
           />
         ) : (
@@ -268,23 +291,32 @@ export const BudgetAnalytics: React.FC<BudgetAnalyticsProps> = ({
 function CategoryTrendsList({
   trends,
   maxSpending,
+  overspendByName,
   currency,
 }: {
   trends: CategoryTrend[];
   maxSpending: number;
+  overspendByName: ReadonlyMap<string, CategoryProjection>;
   currency: string;
 }) {
   return (
     <ul className="category-trends__list" role="list" aria-label="Top spending categories">
       {trends.map((trend) => {
         const barPercent = maxSpending > 0 ? (trend.current / maxSpending) * 100 : 0;
+        const overspend = overspendByName.get(trend.name);
+        const trendSummary = trend.isNew
+          ? 'new spending this period'
+          : `${trend.change}% ${trend.direction}`;
+        const overspendSummary = overspend
+          ? `, on pace to overspend by ${formatCurrencyForScreenReader(overspend.overspendCents, currency)}`
+          : '';
 
         return (
           <li
             key={trend.name}
             className="category-trends__item"
             role="listitem"
-            aria-label={`${trend.name}: ${trend.isNew ? 'new spending this period' : `${trend.change}% ${trend.direction}`}`}
+            aria-label={`${trend.name}: ${trendSummary}${overspendSummary}`}
           >
             <span className="category-trends__name">{trend.name}</span>
             <div
@@ -305,6 +337,12 @@ function CategoryTrendsList({
               />{' '}
               <CurrencyDisplay amount={trend.current} currency={currency} />
             </span>
+            {overspend && (
+              <span className="category-trends__overspend" aria-hidden="true">
+                <AppIcon name="alert-triangle" /> On pace to overspend by{' '}
+                <CurrencyDisplay amount={overspend.overspendCents} currency={currency} />
+              </span>
+            )}
           </li>
         );
       })}

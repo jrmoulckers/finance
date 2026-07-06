@@ -55,6 +55,28 @@ export interface CategoryTrend {
   readonly isNew?: boolean;
 }
 
+/** Per-category end-of-period spend projection used for early overspend warnings. */
+export interface CategoryProjection {
+  /** Display name of the category. */
+  readonly name: string;
+  /** Projected end-of-period spend in cents at the current daily pace. */
+  readonly projectedCents: number;
+  /** The category's budget for the period (cents). */
+  readonly budgetCents: number;
+  /** Amount the projection exceeds the budget by (cents); 0 when within budget. */
+  readonly overspendCents: number;
+}
+
+/** Per-category spent-so-far and budget amounts used to project overspend. */
+export interface CategoryProjectionInput {
+  /** Display name of the category. */
+  readonly name: string;
+  /** Amount already spent this period (cents). */
+  readonly spentCents: number;
+  /** Budgeted amount for this category this period (cents). */
+  readonly budgetCents: number;
+}
+
 // ---------------------------------------------------------------------------
 // Core calculations
 // ---------------------------------------------------------------------------
@@ -209,4 +231,36 @@ export function buildCategoryTrends(
   // Sort by current spending descending, take top N
   trends.sort((a, b) => b.current - a.current);
   return trends.slice(0, topN);
+}
+
+/**
+ * Project each category's end-of-period spend from its current pace and flag the
+ * ones on track to exceed their budget. Only categories with a positive budget
+ * that are projected to overspend are returned, keyed by category name, so the
+ * UI can surface an early "on pace to overspend by $X" warning before the
+ * category is actually blown.
+ *
+ * @param categories - Per-category spent-so-far and budget amounts (cents).
+ * @param daysElapsed - Days elapsed in the current period.
+ * @param totalDays - Total days in the current period.
+ * @returns Map of category name → projection, for projected-over categories only.
+ */
+export function projectCategoryOverspend(
+  categories: readonly CategoryProjectionInput[],
+  daysElapsed: number,
+  totalDays: number,
+): Map<string, CategoryProjection> {
+  const projections = new Map<string, CategoryProjection>();
+  for (const category of categories) {
+    if (category.budgetCents <= 0) continue;
+    const projectedCents = calculateSpendingTrajectory(category.spentCents, daysElapsed, totalDays);
+    if (projectedCents <= category.budgetCents) continue;
+    projections.set(category.name, {
+      name: category.name,
+      projectedCents,
+      budgetCents: category.budgetCents,
+      overspendCents: projectedCents - category.budgetCents,
+    });
+  }
+  return projections;
 }

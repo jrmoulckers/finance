@@ -7,6 +7,7 @@ import {
   calculateSpendingTrajectory,
   comparePeriods,
   getBudgetHealth,
+  projectCategoryOverspend,
 } from './budget-analytics';
 
 describe('calculateSavingsRate', () => {
@@ -184,5 +185,43 @@ describe('buildCategoryTrends', () => {
   it('returns empty array when no categories', () => {
     const trends = buildCategoryTrends(new Map(), new Map());
     expect(trends).toHaveLength(0);
+  });
+});
+
+describe('projectCategoryOverspend', () => {
+  it('flags a category on pace to exceed its budget', () => {
+    // Spent $600 in 10 of 30 days -> projects to $1,800 against a $1,000 budget.
+    const projections = projectCategoryOverspend(
+      [{ name: 'Dining', spentCents: 60_000, budgetCents: 100_000 }],
+      10,
+      30,
+    );
+    const dining = projections.get('Dining');
+    expect(dining).toBeDefined();
+    expect(dining?.projectedCents).toBe(180_000);
+    expect(dining?.overspendCents).toBe(80_000);
+  });
+
+  it('omits categories projected to stay within budget', () => {
+    // Spent $200 in 10 of 30 days -> projects to $600 against a $1,000 budget.
+    const projections = projectCategoryOverspend(
+      [{ name: 'Groceries', spentCents: 20_000, budgetCents: 100_000 }],
+      10,
+      30,
+    );
+    expect(projections.has('Groceries')).toBe(false);
+  });
+
+  it('ignores categories without a positive budget', () => {
+    const projections = projectCategoryOverspend(
+      [{ name: 'Uncategorized', spentCents: 50_000, budgetCents: 0 }],
+      10,
+      30,
+    );
+    expect(projections.size).toBe(0);
+  });
+
+  it('returns an empty map when there are no categories', () => {
+    expect(projectCategoryOverspend([], 10, 30).size).toBe(0);
   });
 });
