@@ -10,7 +10,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { CurrencyDisplay, EmptyState } from '../components/common';
+import { ConfirmDialog, CurrencyDisplay, EmptyState } from '../components/common';
 import { useInvoices } from '../hooks/useInvoices';
 import {
   computeExpectedPayDate,
@@ -54,7 +54,7 @@ const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => (
 const InvoiceCard: React.FC<{
   invoice: Invoice;
   onStatusChange: (invoiceId: string, status: InvoiceStatus) => void;
-  onDelete: (invoiceId: string) => void;
+  onDelete: (invoice: Invoice) => void;
 }> = ({ invoice, onStatusChange, onDelete }) => (
   <article className={`invoice-card invoice-card--${invoice.status.toLowerCase()}`} role="listitem">
     <div className="invoice-card__main">
@@ -84,7 +84,7 @@ const InvoiceCard: React.FC<{
           ))}
         </select>
       </label>
-      <button className="analytics-export-btn" type="button" onClick={() => onDelete(invoice.id)}>
+      <button className="analytics-export-btn" type="button" onClick={() => onDelete(invoice)}>
         Delete
       </button>
     </div>
@@ -107,6 +107,14 @@ export const InvoicesPage: React.FC = () => {
   const [paymentTerm, setPaymentTerm] = useState<InvoicePaymentTerm>('net-30');
   const [status, setStatus] = useState<InvoiceStatus>('Sent');
   const [formError, setFormError] = useState<string | null>(null);
+  const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (deletingInvoice) {
+      deleteInvoice(deletingInvoice.id);
+      setDeletingInvoice(null);
+    }
+  };
 
   const expectedPayDate = useMemo(
     () => (issueDate ? computeExpectedPayDate(issueDate, paymentTerm) : todayIsoDate()),
@@ -297,7 +305,7 @@ export const InvoicesPage: React.FC = () => {
                         key={invoice.id}
                         invoice={invoice}
                         onStatusChange={updateInvoiceStatus}
-                        onDelete={deleteInvoice}
+                        onDelete={setDeletingInvoice}
                       />
                     ))}
                   </div>
@@ -307,6 +315,19 @@ export const InvoicesPage: React.FC = () => {
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+        isOpen={deletingInvoice !== null}
+        title="Delete invoice"
+        message={
+          deletingInvoice
+            ? `Delete the invoice for ${deletingInvoice.clientName}? This permanently removes it from your pipeline and expected-income forecast.`
+            : ''
+        }
+        confirmLabel="Delete invoice"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingInvoice(null)}
+      />
     </div>
   );
 };
