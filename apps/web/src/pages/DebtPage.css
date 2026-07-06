@@ -813,7 +813,8 @@
 
 .debt-import-list__item h3,
 .debt-entry-form button,
-.debt-entry-form__error {
+.debt-entry-form__error,
+.debt-import-list__hint {
   grid-column: 1 / -1;
 }
 

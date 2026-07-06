@@ -26,6 +26,10 @@ export interface Debt {
   readonly originalBalanceCents?: number;
   /** Historical interest already paid, when known or manually entered. */
   readonly interestPaidToDateCents?: number;
+  /** True when the annual rate is an assumed default rather than a confirmed value. */
+  readonly rateEstimated?: boolean;
+  /** True when the minimum payment is an assumed default rather than a confirmed value. */
+  readonly minimumEstimated?: boolean;
   /** Annual interest rate as basis points (e.g., 1999 = 19.99%). */
   readonly annualRateBps: number;
   /** Minimum monthly payment in cents. */

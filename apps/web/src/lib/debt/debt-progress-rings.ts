@@ -42,15 +42,23 @@ export function buildDebtPayoffProgressRingCard(input: {
   readonly activeResult: StrategyResult;
   readonly interestSavedCents: number;
   readonly debtFreeLabel: string;
+  readonly hasTrackedProgress?: boolean;
 }): DebtProgressRingCard {
   const percent = clampPercent(input.milestones.percentPaidOff);
   const nextMilestone = nextMilestoneText(input.milestones);
+  const tracked = input.hasTrackedProgress ?? true;
+  const primaryText = tracked
+    ? `${percent.toFixed(1)}% paid off`
+    : 'Set a starting balance to track progress';
+  const ariaLabel = tracked
+    ? `Debt payoff progress ${percent}% paid off. ${nextMilestone}.`
+    : 'Debt payoff progress not tracked yet. Set a starting balance on your debts to see progress.';
   return {
     id: 'debt-payoff',
     title: 'Debt payoff progress',
     percent,
-    ariaLabel: `Debt payoff progress ${percent}% paid off. ${nextMilestone}.`,
-    primaryText: `${percent.toFixed(1)}% paid off`,
+    ariaLabel,
+    primaryText,
     secondaryText: input.debtFreeLabel,
     detailItems: [
       `Interest saved versus minimum payments: ${input.interestSavedCents} cents`,

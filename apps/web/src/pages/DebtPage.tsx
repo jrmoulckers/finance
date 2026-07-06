@@ -407,8 +407,26 @@ function defaultDebtRateBps(type: Debt['type']): number {
   return 900;
 }
 
+function defaultInstallmentTermMonths(type: Debt['type']): number {
+  if (type === 'auto_loan') return 60;
+  if (type === 'mortgage') return 360;
+  if (type === 'student_loan') return 120;
+  if (type === 'personal_loan') return 60;
+  return 0;
+}
+
 function defaultMinimumPaymentCents(balanceCents: number, type: Debt['type']): number {
   if (balanceCents <= 0) return 0;
+  const termMonths = defaultInstallmentTermMonths(type);
+  if (termMonths > 0) {
+    // Installment loans carry a fixed amortizing payment, not a percent of balance.
+    const monthlyRate = defaultDebtRateBps(type) / 120_000;
+    const payment =
+      monthlyRate > 0
+        ? (balanceCents * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -termMonths))
+        : balanceCents / termMonths;
+    return Math.max(2_500, Math.round(payment));
+  }
   const percent = type === 'credit_card' ? 0.03 : 0.015;
   return Math.max(2_500, Math.round(balanceCents * percent));
 }
@@ -425,6 +443,8 @@ function accountToDebt(account: Account): Debt | null {
     annualRateBps: defaultDebtRateBps(type),
     minimumPaymentCents: defaultMinimumPaymentCents(balanceCents, type),
     type,
+    rateEstimated: true,
+    minimumEstimated: true,
   };
 }
 
@@ -742,6 +762,7 @@ function PayoffPlannerPanel(): React.ReactElement {
             activeResult,
             interestSavedCents,
             debtFreeLabel: formatMonthYear(addMonthsToIsoDate(todayIso, activeResult.totalMonths)),
+            hasTrackedProgress: milestones.paidOffCents > 0,
           })
         : null,
     [activeResult, interestSavedCents, milestones, todayIso],
@@ -939,7 +960,14 @@ function PayoffPlannerPanel(): React.ReactElement {
           <section aria-label="Debt milestones" className="debt-milestones">
             <div className="debt-milestones__summary">
               <h2>Debt Milestones</h2>
-              <p>{milestones.percentPaidOff.toFixed(1)}% paid off. Every payment is progress.</p>
+              {milestones.paidOffCents > 0 ? (
+                <p>{milestones.percentPaidOff.toFixed(1)}% paid off. Every payment is progress.</p>
+              ) : (
+                <p>
+                  Track payoff progress by setting each debt&rsquo;s starting balance. Every payment
+                  is progress.
+                </p>
+              )}
               <label>
                 Historical interest paid ($)
                 <input
@@ -1154,6 +1182,12 @@ function PayoffPlannerPanel(): React.ReactElement {
                     }
                   />
                 </label>
+                {(debt.originalBalanceCents ?? debt.balanceCents) <= debt.balanceCents && (
+                  <p className="form-help debt-import-list__hint">
+                    Defaults to your current balance. Enter your original balance to track payoff
+                    progress.
+                  </p>
+                )}
                 <label>
                   APR (%)
                   <input
@@ -1164,10 +1198,16 @@ function PayoffPlannerPanel(): React.ReactElement {
                     onChange={(event) =>
                       handleAdjustment(debt.id, {
                         annualRateBps: parseRateInput(event.target.value),
+                        rateEstimated: false,
                       })
                     }
                   />
                 </label>
+                {debt.rateEstimated && (
+                  <p className="form-help debt-import-list__hint">
+                    Estimated APR — confirm your real rate for an accurate payoff date.
+                  </p>
+                )}
                 <label>
                   Minimum payment ($)
                   <input
@@ -1178,10 +1218,16 @@ function PayoffPlannerPanel(): React.ReactElement {
                     onChange={(event) =>
                       handleAdjustment(debt.id, {
                         minimumPaymentCents: parseCurrencyInput(event.target.value),
+                        minimumEstimated: false,
                       })
                     }
                   />
                 </label>
+                {debt.minimumEstimated && (
+                  <p className="form-help debt-import-list__hint">
+                    Estimated minimum payment — confirm it to plan accurately.
+                  </p>
+                )}
               </li>
             ))}
           </ul>
