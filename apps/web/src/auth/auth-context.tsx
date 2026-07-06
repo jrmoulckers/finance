@@ -60,6 +60,7 @@ import {
 import { getPasskeyErrorMessage, PASSKEY_UNAVAILABLE_MESSAGE } from './passkey-errors';
 import { appendSecurityAuditEvent } from '../lib/security-audit-log';
 import { getStepUpStatus, markStepUpAuthenticated } from '../lib/session-security';
+import { isUnauthenticatedSafeRoute } from '../lib/auth/pre-auth-routes';
 import '../styles/auth.css';
 
 import {
@@ -414,8 +415,43 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       onSessionExpired: handleSessionExpired,
     });
 
-    // Attempt to restore session via cookie-based refresh
-    void tryRestoreSession();
+    // Attempt to restore an existing session via the cookie-backed refresh
+    // endpoint — but ONLY when a prior session might exist. The refresh token
+    // lives in an HttpOnly cookie the client cannot read, so firing this probe
+    // unconditionally means a guaranteed `POST /api/auth/refresh` → 401 (plus
+    // ERR_ABORTED, a console error, and a wasted request) on every logged-out
+    // page load, e.g. `/login` (#3211). Two client-visible signals let us skip
+    // that doomed probe without breaking cold-load restoration:
+    //
+    //   • a cached user (`finance.lastUser`, written on login / cleared on
+    //     logout + session expiry) means a session probably exists → probe
+    //     regardless of route, so an already-authenticated user who lands on a
+    //     pre-auth page like `/login` is still restored (and redirected onward);
+    //   • otherwise, if we are sitting on a pre-auth-safe route there is nothing
+    //     to restore → skip the probe entirely, removing the 401 exactly where
+    //     logged-out users actually land.
+    //
+    // On any other route with no cached user we STILL probe once: a valid
+    // refresh cookie can outlive a cleared localStorage, and the app redirects
+    // to `/login` if that probe returns 401.
+    const hasCachedSession = readCachedUser() !== null;
+    const currentPathname =
+      typeof window !== 'undefined' && typeof window.location?.pathname === 'string'
+        ? window.location.pathname
+        : null;
+    // When the pathname is indeterminate, err toward probing (preserve
+    // cold-load restoration) rather than skipping.
+    const onUnauthenticatedSafeRoute =
+      currentPathname !== null && isUnauthenticatedSafeRoute(currentPathname);
+
+    if (hasCachedSession || !onUnauthenticatedSafeRoute) {
+      void tryRestoreSession();
+    } else {
+      // No prior session and a logged-out-safe route: resolve to the anonymous
+      // state immediately, without a doomed network round-trip.
+      setIsLoading(false);
+      setIsInitializing(false);
+    }
 
     // Clear in-memory token on tab close (defence-in-depth)
     const handleBeforeUnload = () => {

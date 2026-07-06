@@ -84,12 +84,14 @@ describe('AuthProvider refresh restoration', () => {
     clearTokens();
     localStorage.clear();
     onUnauthenticated.mockReset();
+    window.history.pushState({}, '', '/');
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     clearTokens();
     localStorage.clear();
+    window.history.pushState({}, '', '/');
   });
 
   function renderProvider(configOverrides: Partial<AuthProviderConfig> = {}) {
@@ -211,6 +213,56 @@ describe('AuthProvider refresh restoration', () => {
     expect(screen.getByTestId('offline-state')).toHaveTextContent('online');
     expect(screen.getByTestId('user-email')).toHaveTextContent('none');
     expect(onUnauthenticated).toHaveBeenCalledOnce();
+  });
+
+  it('skips the refresh probe on a pre-auth-safe route when no session is cached (#3211)', async () => {
+    // On a logged-out-safe route (e.g. /login) with no cached user there is no
+    // session to restore, so the bootstrap must NOT fire POST /api/auth/refresh.
+    // That request is a guaranteed 401 and only adds console noise + a wasted
+    // round-trip on every unauthenticated page load.
+    window.history.pushState({}, '', '/login');
+    expect(localStorage.getItem(LAST_USER_STORAGE_KEY)).toBeNull();
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ error: 'expired' }, 401));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId('loading-state')).toHaveTextContent('ready'));
+    expect(screen.getByTestId('auth-state')).toHaveTextContent('anonymous');
+    expect(screen.getByTestId('user-email')).toHaveTextContent('none');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(onUnauthenticated).not.toHaveBeenCalled();
+  });
+
+  it('still restores a cached session on a pre-auth-safe route (#3211)', async () => {
+    // A previously-authenticated user (cached user present) who lands on /login
+    // must still be restored so the app can route them onward — the pre-auth
+    // route skip only applies when there is no cached session.
+    window.history.pushState({}, '', '/login');
+    localStorage.setItem(
+      LAST_USER_STORAGE_KEY,
+      JSON.stringify({ id: 'cached-1', email: 'cached@example.com', hasPasskey: true }),
+    );
+    const token = makeToken({
+      sub: 'cached-1',
+      email: 'cached@example.com',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ access_token: token, expires_in: 3600 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId('loading-state')).toHaveTextContent('ready'));
+    expect(screen.getByTestId('auth-state')).toHaveTextContent('authenticated');
+    expect(screen.getByTestId('user-email')).toHaveTextContent('cached@example.com');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/refresh',
+      expect.objectContaining({ credentials: 'include' }),
+    );
+    expect(onUnauthenticated).not.toHaveBeenCalled();
   });
 
   it('runs session restore exactly once under React StrictMode (#1966 regression)', async () => {
