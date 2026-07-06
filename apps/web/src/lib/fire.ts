@@ -105,9 +105,22 @@ export function monthlyRateFromAnnual(annualRate: number): number {
 // Date helpers (calendar-date math — FI date is a LocalDate, not a timestamp)
 // ---------------------------------------------------------------------------
 
-/** Format a `Date` as a `YYYY-MM-DD` calendar date string. */
+/**
+ * Format a `Date` as a `YYYY-MM-DD` calendar date string using **local** date
+ * components.
+ *
+ * The projected FI date is a wall-clock calendar date, not an instant, so it
+ * must be built ({@link addMonths} uses local `setMonth`), serialized, and
+ * parsed (`FirePlannerPage` parses `${iso}T00:00:00` as local) with a single
+ * consistent local convention. Serializing with UTC (`toISOString`) here would
+ * shift the displayed month by one near midnight in western timezones. See
+ * issue #3310.
+ */
 function toIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /** Add whole months to a date, returning a new `Date` (no mutation). */
@@ -379,11 +392,21 @@ export function calculateFIREPlan(input: FIREPlanInput): FIREPlanResult {
     yearsToTraditionalRetirement,
   });
 
+  // Extend the chart horizon to (at least) the year FI is actually reached so
+  // the portfolio/FI crossover is visible and consistent with the headline.
+  // `yearsToFI` searches up to MAX_FI_SEARCH_YEARS (100) while the projection
+  // defaults to DEFAULT_DISPLAY_HORIZON_YEARS (50); without this the chart and
+  // the "time to FI" headline disagree for 50 < years-to-FI <= 100. See #3286.
+  const projectionMaxYears = ytf.reachedFI
+    ? Math.min(MAX_FI_SEARCH_YEARS, ytf.years + DEFAULT_PROJECTION_BUFFER_YEARS)
+    : DEFAULT_DISPLAY_HORIZON_YEARS;
+
   const projection = buildFIProjection({
     currentInvestedCents: input.currentInvestedCents,
     annualContributionCents: input.annualContributionCents,
     realReturnRate: input.realReturnRate,
     fiNumberCents: fiCents,
+    maxYears: projectionMaxYears,
   });
 
   const fiDateIso = ytf.reachedFI ? toIsoDate(addMonths(now, ytf.totalMonths)) : null;

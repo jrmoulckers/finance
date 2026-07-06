@@ -453,4 +453,57 @@ describe('calculateFIREPlan (integration)', () => {
     });
     expect(plan.yearsToTraditionalRetirement).toBe(30);
   });
+
+  it('extends the projection horizon to the year FI is actually reached (#3286)', () => {
+    // Slow-growth inputs put FI well beyond the default 50-year display horizon
+    // but within the 100-year search horizon.
+    const plan = calculateFIREPlan({
+      currentInvestedCents: $(10_000),
+      annualSpendingCents: $(60_000),
+      annualContributionCents: $(3_000),
+      realReturnRate: 0.03,
+      swrRate: 0.04,
+      now: new Date('2020-06-15T12:00:00Z'),
+    });
+
+    expect(plan.yearsToFI.reachedFI).toBe(true);
+    expect(plan.yearsToFI.years).toBeGreaterThan(50);
+
+    // The chart must run at least to the year FI is reached so the crossover is
+    // visible and consistent with the "time to FI" headline (not capped at 50).
+    const lastPoint = plan.projection[plan.projection.length - 1];
+    expect(lastPoint.year).toBeGreaterThanOrEqual(plan.yearsToFI.years);
+    expect(lastPoint.year).toBeLessThanOrEqual(MAX_FI_SEARCH_YEARS);
+    expect(plan.projection.some((point) => point.reachedFI)).toBe(true);
+  });
+
+  it('keeps the default display horizon when FI is unreachable (#3286)', () => {
+    // Spending dwarfs contributions + growth capacity → FI is never reached.
+    const plan = calculateFIREPlan({
+      currentInvestedCents: $(1_000),
+      annualSpendingCents: $(400_000),
+      annualContributionCents: $(0),
+      realReturnRate: 0.01,
+      swrRate: 0.04,
+      now: new Date('2020-06-15T12:00:00Z'),
+    });
+
+    expect(plan.yearsToFI.reachedFI).toBe(false);
+    const lastPoint = plan.projection[plan.projection.length - 1];
+    expect(lastPoint.year).toBe(50);
+  });
+
+  it('builds the projected FI date from local calendar components (#3310)', () => {
+    const now = new Date('2020-06-15T12:00:00Z');
+    const plan = calculateFIREPlan({ ...baseInput, now });
+
+    // Independently reproduce the local add-months + local-format pipeline; the
+    // serialized FI date must match it (no UTC `toISOString` month drift).
+    const expected = new Date(now.getTime());
+    expected.setMonth(expected.getMonth() + plan.yearsToFI.totalMonths);
+    const year = expected.getFullYear();
+    const month = String(expected.getMonth() + 1).padStart(2, '0');
+    const day = String(expected.getDate()).padStart(2, '0');
+    expect(plan.fiDateIso).toBe(`${year}-${month}-${day}`);
+  });
 });
