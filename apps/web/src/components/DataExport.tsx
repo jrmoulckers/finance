@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
+import { useFocusTrap } from '../accessibility/aria';
 import type { SqliteDb } from '../db/sqlite-wasm';
 import { getAllAccounts } from '../db/repositories/accounts';
 import { getAllTransactions } from '../db/repositories/transactions';
@@ -293,6 +294,7 @@ export const DataExport: React.FC<DataExportProps> = ({
   const [expirationWarning, setExpirationWarning] = useState(false);
   const cancelledRef = useRef(false);
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmDialogRef = useRef<HTMLDivElement>(null);
 
   // Feature-detect Web Share with file support. We can't run the check until
   // a package exists (canShare wants a sample file), but `navigator.share`
@@ -380,6 +382,18 @@ export const DataExport: React.FC<DataExportProps> = ({
     setShowConfirmation(false);
     setStatus('cancelled');
   }, []);
+
+  useFocusTrap(confirmDialogRef, { active: showConfirmation, restoreFocus: true });
+
+  const handleConfirmKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        cancelRequest();
+      }
+    },
+    [cancelRequest],
+  );
 
   const confirmRequest = useCallback(() => {
     if (selectedDomains.length === 0) {
@@ -838,11 +852,13 @@ export const DataExport: React.FC<DataExportProps> = ({
 
       {showConfirmation && (
         <div
+          ref={confirmDialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="data-export-confirm-title"
           aria-describedby="data-export-confirm-body"
           className="data-export__dialog"
+          onKeyDown={handleConfirmKeyDown}
         >
           <h4 id="data-export-confirm-title" className="data-export__dialog-title">
             Request your data package
