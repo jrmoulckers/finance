@@ -11,11 +11,25 @@
 
 import { useCallback } from 'react';
 
+import { useLocalePreferences } from '../../hooks/useLocalePreferences';
 import { useMultiCurrency } from '../../hooks/useMultiCurrency';
 import type { Currency } from '../../kmp/bridge';
-import { getCurrentLocale } from '../../lib/i18n';
+import { translate } from '../../lib/i18n';
 
 import './CurrencyDisplay.css';
+
+/**
+ * Resolve catalog strings against the active locale so the multi-currency
+ * dashboard chrome stays translated and reacts to locale preference changes.
+ */
+function useCurrencyStrings() {
+  const { locale } = useLocalePreferences();
+  const t = useCallback(
+    (id: string, values?: Record<string, string | number>) => translate(id, values, locale).text,
+    [locale],
+  );
+  return { t, locale };
+}
 
 // ---------------------------------------------------------------------------
 // CurrencySelector
@@ -35,10 +49,12 @@ export interface CurrencySelectorProps {
 export function CurrencySelector({
   value,
   onChange,
-  label = 'Currency',
+  label,
   id = 'currency-selector',
 }: CurrencySelectorProps) {
   const { supportedCurrencies } = useMultiCurrency();
+  const { t } = useCurrencyStrings();
+  const resolvedLabel = label ?? t('dashboard.currency.selector.label');
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -53,19 +69,24 @@ export function CurrencySelector({
   return (
     <div className="currency-selector">
       <label htmlFor={id} className="currency-selector__label">
-        {label}
+        {resolvedLabel}
       </label>
       <select
         id={id}
         className="currency-selector__select"
         value={value}
         onChange={handleChange}
-        aria-label={`Select ${label.toLowerCase()}`}
+        aria-label={t('dashboard.currency.selector.selectAria', {
+          label: resolvedLabel.toLowerCase(),
+        })}
       >
         {supportedCurrencies.map((currency) => (
           <option key={currency.code} value={currency.code}>
             {currency.code} (
-            {currency.decimalPlaces === 0 ? 'no decimals' : `${currency.decimalPlaces} decimals`})
+            {currency.decimalPlaces === 0
+              ? t('dashboard.currency.selector.noDecimals')
+              : t('dashboard.currency.selector.decimals', { count: currency.decimalPlaces })}
+            )
           </option>
         ))}
       </select>
@@ -86,6 +107,7 @@ export interface ExchangeRateIndicatorProps {
 
 export function ExchangeRateIndicator({ from, to }: ExchangeRateIndicatorProps) {
   const { getRate, lastUpdated, loading } = useMultiCurrency();
+  const { t, locale } = useCurrencyStrings();
 
   if (from === to) return null;
 
@@ -95,27 +117,31 @@ export function ExchangeRateIndicator({ from, to }: ExchangeRateIndicatorProps) 
     <div
       className="exchange-rate-indicator"
       role="status"
-      aria-label={`Exchange rate from ${from} to ${to}`}
+      aria-label={t('dashboard.currency.rate.regionAria', { from, to })}
     >
       {loading ? (
-        <span className="exchange-rate-indicator__loading">Loading rates…</span>
+        <span className="exchange-rate-indicator__loading">
+          {t('dashboard.currency.rate.loading')}
+        </span>
       ) : rate !== null ? (
         <>
           <span className="exchange-rate-indicator__rate">
             1 {from} = {rate.toFixed(4)} {to}
           </span>
           <span className="exchange-rate-indicator__source">
-            Approximate rate — offline reference, not a live quote
+            {t('dashboard.currency.rate.source')}
           </span>
           {lastUpdated && (
             <span className="exchange-rate-indicator__updated">
-              Snapshot as of {new Date(lastUpdated).toLocaleDateString(getCurrentLocale())}
+              {t('dashboard.currency.rate.snapshot', {
+                date: new Date(lastUpdated).toLocaleDateString(locale),
+              })}
             </span>
           )}
         </>
       ) : (
         <span className="exchange-rate-indicator__unavailable">
-          Rate unavailable for {from}/{to}
+          {t('dashboard.currency.rate.unavailable', { from, to })}
         </span>
       )}
     </div>
@@ -133,27 +159,30 @@ export interface MultiCurrencyTotalsProps {
   title?: string;
 }
 
-export function MultiCurrencyTotals({
-  items,
-  title = 'Multi-Currency Totals',
-}: MultiCurrencyTotalsProps) {
+export function MultiCurrencyTotals({ items, title }: MultiCurrencyTotalsProps) {
   const { calculateMultiCurrencyTotal, formatWithSymbol, defaultCurrency } = useMultiCurrency();
+  const { t } = useCurrencyStrings();
 
   const totals = calculateMultiCurrencyTotal(items);
+  const resolvedTitle = title ?? t('dashboard.currency.totals.title');
 
-  const grandTotalCents = totals.reduce((sum, t) => sum + t.convertedCents, 0);
+  const grandTotalCents = totals.reduce((sum, entry) => sum + entry.convertedCents, 0);
 
   return (
     <section className="multi-currency-totals" aria-labelledby="multi-currency-title">
       <h3 id="multi-currency-title" className="multi-currency-totals__title">
-        {title}
+        {resolvedTitle}
       </h3>
 
       {totals.length === 0 ? (
-        <p className="multi-currency-totals__empty">No items to display.</p>
+        <p className="multi-currency-totals__empty">{t('dashboard.currency.totals.empty')}</p>
       ) : (
         <>
-          <ul className="multi-currency-totals__list" role="list" aria-label="Currency breakdown">
+          <ul
+            className="multi-currency-totals__list"
+            role="list"
+            aria-label={t('dashboard.currency.totals.breakdownAria')}
+          >
             {totals.map((total) => (
               <li key={total.currency.code} className="multi-currency-totals__item">
                 <span className="multi-currency-totals__currency">{total.currency.code}</span>
@@ -163,7 +192,9 @@ export function MultiCurrencyTotals({
                 {total.currency.code !== defaultCurrency.code && (
                   <span
                     className="multi-currency-totals__converted"
-                    aria-label={`Converted to ${defaultCurrency.code}`}
+                    aria-label={t('dashboard.currency.totals.convertedAria', {
+                      code: defaultCurrency.code,
+                    })}
                   >
                     ≈ {formatWithSymbol(total.convertedCents, defaultCurrency)}
                   </span>
@@ -174,9 +205,11 @@ export function MultiCurrencyTotals({
 
           <div
             className="multi-currency-totals__grand"
-            aria-label={`Grand total in ${defaultCurrency.code}`}
+            aria-label={t('dashboard.currency.totals.grandAria', { code: defaultCurrency.code })}
           >
-            <span className="multi-currency-totals__grand-label">Total</span>
+            <span className="multi-currency-totals__grand-label">
+              {t('dashboard.currency.totals.grandLabel')}
+            </span>
             <span className="multi-currency-totals__grand-value">
               {formatWithSymbol(grandTotalCents, defaultCurrency)}
             </span>

@@ -1,17 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useMultiCurrency } from '../../hooks/useMultiCurrency';
 import type { UseMultiCurrencyResult } from '../../hooks/useMultiCurrency';
 import { Currencies } from '../../kmp/bridge';
 import type { Currency } from '../../kmp/bridge';
+import { getCurrentLocale } from '../../lib/i18n';
 import { CurrencySelector, ExchangeRateIndicator, MultiCurrencyTotals } from './CurrencyDisplay';
 
 vi.mock('../../hooks/useMultiCurrency', () => ({
   useMultiCurrency: vi.fn(),
 }));
+
+// Keep the real catalog + translate(); only steer which locale is active so we
+// can assert the dashboard chrome resolves from the i18n catalog per locale.
+vi.mock('../../lib/i18n', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/i18n')>();
+  return { ...actual, getCurrentLocale: vi.fn(() => 'en-US') };
+});
 
 const mockedHook = vi.mocked(useMultiCurrency);
 
@@ -155,5 +163,55 @@ describe('MultiCurrencyTotals', () => {
     expect(screen.getByText('USD')).toBeInTheDocument();
     expect(screen.getByText('EUR')).toBeInTheDocument();
     expect(screen.getByText('Total')).toBeInTheDocument();
+  });
+});
+
+describe('CurrencyDisplay resolves dashboard chrome from the i18n catalog (issue #3306)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Active locale drives which catalog translate() resolves.
+    vi.mocked(getCurrentLocale).mockReturnValue('es-ES');
+  });
+
+  afterEach(() => {
+    vi.mocked(getCurrentLocale).mockReturnValue('en-US');
+  });
+
+  it('translates the currency selector label and select aria-label', () => {
+    mockedHook.mockReturnValue(mockResult());
+
+    render(<CurrencySelector value="USD" onChange={vi.fn()} />);
+
+    expect(screen.getByText('Moneda')).toBeInTheDocument();
+    expect(screen.getByLabelText(/seleccionar moneda/i)).toBeInTheDocument();
+    // The previously-hardcoded English aria-label must no longer appear.
+    expect(screen.queryByLabelText(/select currency/i)).not.toBeInTheDocument();
+  });
+
+  it('translates the exchange-rate loading string', () => {
+    mockedHook.mockReturnValue(mockResult({ loading: true }));
+
+    render(<ExchangeRateIndicator from="USD" to="EUR" />);
+
+    expect(screen.getByText('Cargando tipos…')).toBeInTheDocument();
+    expect(screen.queryByText('Loading rates…')).not.toBeInTheDocument();
+  });
+
+  it('translates the exchange-rate offline-reference disclaimer', () => {
+    mockedHook.mockReturnValue(mockResult());
+
+    render(<ExchangeRateIndicator from="USD" to="EUR" />);
+
+    expect(screen.getByText(/tipo aproximado/i)).toBeInTheDocument();
+  });
+
+  it('translates the multi-currency totals title and empty state', () => {
+    mockedHook.mockReturnValue(mockResult());
+
+    render(<MultiCurrencyTotals items={[]} />);
+
+    expect(screen.getByText('Totales multidivisa')).toBeInTheDocument();
+    expect(screen.getByText('No hay elementos para mostrar.')).toBeInTheDocument();
+    expect(screen.queryByText('No items to display.')).not.toBeInTheDocument();
   });
 });
