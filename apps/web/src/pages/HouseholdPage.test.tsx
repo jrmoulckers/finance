@@ -744,6 +744,33 @@ describe('HouseholdPage', () => {
     expect(recordChildWithdrawal).toHaveBeenCalledWith({ childId: 'child-1', amount: 5 });
   });
 
+  it('gives a new 529 college fund a target date at college age (#3390)', () => {
+    const createGoal = vi.fn().mockReturnValue({ id: 'goal-college-new' });
+    const linkChildCollegeFundGoal = vi.fn().mockReturnValue(makeChild());
+    mockedUseGoals.mockReturnValue(mockGoalsResult({ createGoal }));
+    mockedUseHousehold.mockReturnValue(
+      mockHouseholdResult({
+        household: makeHousehold(),
+        members: [makeOwnerMember()],
+        children: [makeChild({ age: 3 })],
+        linkChildCollegeFundGoal,
+      }),
+    );
+
+    render(<HouseholdPage />);
+
+    fireEvent.change(screen.getByLabelText(/college fund target for/i), {
+      target: { value: '50000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create college fund/i }));
+
+    expect(createGoal).toHaveBeenCalledTimes(1);
+    const goalArg = createGoal.mock.calls[0]![0] as { targetDate?: string };
+    expect(goalArg.targetDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const expectedYear = String(new Date().getFullYear() + (18 - 3));
+    expect(goalArg.targetDate?.startsWith(expectedYear)).toBe(true);
+  });
+
   it('displays error banner when error exists', () => {
     mockedUseHousehold.mockReturnValue(
       mockHouseholdResult({
