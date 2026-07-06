@@ -18,6 +18,8 @@
  * References: issue #2116
  */
 
+import { getCurrentLocale } from '../i18n';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -139,7 +141,7 @@ function addMonthsIso(iso: string, months: number): string {
 
 function monthShortLabel(iso: string): string {
   const date = new Date(`${iso.slice(0, 10)}T00:00:00.000Z`);
-  return date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  return date.toLocaleDateString(getCurrentLocale(), { month: 'short', timeZone: 'UTC' });
 }
 
 function projectedLabel(lastPoint: NetWorthSeriesPoint, monthOffset: number): string {

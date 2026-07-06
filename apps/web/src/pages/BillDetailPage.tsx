@@ -10,6 +10,7 @@
 import React, { useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
+import { getCurrentLocale } from '../lib/i18n';
 import { useBills } from '../hooks';
 import type { BillFrequency, BillStatus } from '../kmp/bridge';
 
@@ -155,7 +156,7 @@ export const BillDetailPage: React.FC = () => {
             <div>
               <p className="card__title">Due Date</p>
               <p className="card__value">
-                {dueDate.toLocaleDateString('en-US', {
+                {dueDate.toLocaleDateString(getCurrentLocale(), {
                   month: 'long',
                   day: 'numeric',
                   year: 'numeric',
@@ -213,18 +214,21 @@ export const BillDetailPage: React.FC = () => {
               <>
                 <dt style={{ color: 'var(--semantic-text-secondary)' }}>Last Paid</dt>
                 <dd style={{ margin: 0 }}>
-                  {new Date(`${bill.lastPaidDate}T00:00:00`).toLocaleDateString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  {new Date(`${bill.lastPaidDate}T00:00:00`).toLocaleDateString(
+                    getCurrentLocale(),
+                    {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    },
+                  )}
                 </dd>
               </>
             )}
 
             <dt style={{ color: 'var(--semantic-text-secondary)' }}>Added</dt>
             <dd style={{ margin: 0 }}>
-              {new Date(bill.createdAt).toLocaleDateString('en-US', {
+              {new Date(bill.createdAt).toLocaleDateString(getCurrentLocale(), {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',

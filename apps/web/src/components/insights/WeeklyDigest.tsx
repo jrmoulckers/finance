@@ -10,6 +10,7 @@ import {
   normalizeValuePreferences,
   type UserValuePreference,
 } from '../../lib/alignment';
+import { getCurrentLocale } from '../../lib/i18n';
 import type { DigestPeriod, GoalProgressUpdate, WealthDigest } from '../../lib/insights';
 import { AlignmentRadar, AlignmentScore, MisalignmentAlerts, ValuesSetup } from '../alignment';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
@@ -44,7 +45,7 @@ function formatPercent(value: number): string {
 }
 
 function formatDigestDate(timestamp: string): string {
-  return new Date(timestamp).toLocaleDateString('en-US', {
+  return new Date(timestamp).toLocaleDateString(getCurrentLocale(), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

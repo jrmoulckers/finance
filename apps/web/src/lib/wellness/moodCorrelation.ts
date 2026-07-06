@@ -3,6 +3,7 @@
 import type { Transaction } from '../../kmp/bridge';
 import { normalizeMoodTag, type MoodTag as EmojiMoodTag } from '../mood-tags';
 import { clamp, roundToOne } from '../insights/helpers';
+import { getCurrentLocale } from '../i18n';
 import type {
   EmotionalSpendingPattern,
   MoodCorrelationSummary,
@@ -75,7 +76,7 @@ function getStressLevel(intensity: number): StressLevel {
 }
 
 function formatShortDate(date: string): string {
-  return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(getCurrentLocale(), {
     month: 'short',
     day: 'numeric',
   });

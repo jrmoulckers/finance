@@ -9,6 +9,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getCurrentLocale } from '../lib/i18n';
 import { pluralize } from '../lib/ui/pluralize';
 import {
   ConfirmDialog,
@@ -96,7 +97,11 @@ function formatDueDate(dueDate: string): string {
   if (diffDays === -1) return '1 day overdue';
   if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
   if (diffDays <= 7) return `Due in ${diffDays} days`;
-  return due.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return due.toLocaleDateString(getCurrentLocale(), {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 /** Bills list page component. */

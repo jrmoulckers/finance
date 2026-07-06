@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useTransactions } from '../../hooks';
 import { useTaxReserve } from '../../hooks/useTaxReserve';
 import type { Account, Transaction } from '../../kmp/bridge';
+import { getCurrentLocale } from '../../lib/i18n';
 import { getNextQuarterlyTaxDueDate } from '../../lib/tax-reserve';
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../common';
 
@@ -15,7 +16,7 @@ export interface DashboardTaxReserveSectionProps {
 }
 
 function formatDueDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getCurrentLocale(), { month: 'short', day: 'numeric' });
 }
 
 function formatDueCountdown(days: number): string {

@@ -2,6 +2,7 @@
 
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { getCurrentLocale } from '../lib/i18n';
 import { AppIcon } from '../components/icons';
 
 import { AccountPurposeFilterControl } from '../components/accounts';
@@ -567,7 +568,7 @@ export const TransactionsPage: React.FC = () => {
 
     return Array.from(groups, ([date, datedTransactions]) => ({
       date,
-      label: new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+      label: new Date(`${date}T00:00:00`).toLocaleDateString(getCurrentLocale(), {
         weekday: 'long',
         month: 'short',
         day: 'numeric',

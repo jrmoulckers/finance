@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { Account, Category, LocalDate, SyncId, Transaction } from '../../kmp/bridge';
+import { getCurrentLocale } from '../i18n';
 
 export interface ReportDataFilters {
   readonly startDate?: LocalDate | null;
@@ -117,7 +118,7 @@ function addMonths(month: string, delta: number): string {
 }
 
 function monthName(monthIndex: number): string {
-  return new Date(2024, monthIndex - 1, 1).toLocaleString('en-US', { month: 'long' });
+  return new Date(2024, monthIndex - 1, 1).toLocaleString(getCurrentLocale(), { month: 'long' });
 }
 
 function endOfMonth(month: string): LocalDate {

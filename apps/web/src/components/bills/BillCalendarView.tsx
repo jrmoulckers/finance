@@ -36,6 +36,7 @@ import {
   type PaydayCadence,
 } from '../../lib/bills/bill-calendar';
 import type { Bill } from '../../kmp/bridge';
+import { getCurrentLocale } from '../../lib/i18n';
 
 /** Props for {@link BillCalendarView}. */
 export interface BillCalendarViewProps {
@@ -65,7 +66,11 @@ function todayIso(): string {
 /** Format an ISO local date as a short, human-readable label. */
 function formatDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getCurrentLocale(), {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 /** Convert a dollars string into integer cents. */

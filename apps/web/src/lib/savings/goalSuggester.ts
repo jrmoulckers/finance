@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { Account, Category, Goal, Transaction } from '../../kmp/bridge';
+import { getCurrentLocale } from '../i18n';
 import { analyzeSpendingByCategory, isLiquidAccountType } from '../insights';
 import { calculateContributionPlan } from './contributionSchedule';
 import type {
@@ -474,7 +475,7 @@ export function suggestSavingsGoals(
           wishlistItem.targetDate
             ? `At your selected pace, aim to finish before ${new Date(
                 `${wishlistItem.targetDate}T00:00:00`,
-              ).toLocaleDateString('en-US', {
+              ).toLocaleDateString(getCurrentLocale(), {
                 month: 'short',
                 year: 'numeric',
               })}.`

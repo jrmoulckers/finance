@@ -2,6 +2,7 @@
 
 import type { DigestPeriod, MetricChange, TrendDirection } from './types';
 import { computeSavingsRatePercent } from '../savings/savings-rate-format';
+import { getCurrentLocale } from '../i18n';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -89,7 +90,7 @@ function makeMonthWindow(baseDate: Date, endDay?: number): PeriodWindow {
   const endDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), endDayOfMonth);
 
   return {
-    label: startDate.toLocaleDateString('en-US', { month: 'short' }),
+    label: startDate.toLocaleDateString(getCurrentLocale(), { month: 'short' }),
     startDate: toLocalDate(startDate),
     endDate: toLocalDate(endDate),
   };
@@ -107,7 +108,7 @@ export function buildPeriodWindows(
       const startDate = addDays(endDate, -6);
 
       return {
-        label: endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        label: endDate.toLocaleDateString(getCurrentLocale(), { month: 'short', day: 'numeric' }),
         startDate: toLocalDate(startDate),
         endDate: toLocalDate(endDate),
       };

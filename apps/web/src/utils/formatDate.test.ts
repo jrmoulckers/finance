@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { getCurrentLocale } from '../lib/i18n';
 import { formatDate, formatTransactionTimestamp, parseTransactionTimestamp } from './formatDate';
+
+vi.mock('../lib/i18n', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/i18n')>();
+  return { ...actual, getCurrentLocale: vi.fn(() => 'en-US') };
+});
 
 describe('formatDate', () => {
   it('formats an ISO date string', () => {
@@ -74,5 +80,65 @@ describe('formatDate', () => {
 
     expect(formatted).toContain('Jan 31, 2024');
     expect(formatted).toContain('PST');
+  });
+});
+
+describe('formatDate honors the active locale preference', () => {
+  const numericOptions = { day: '2-digit', month: '2-digit', year: 'numeric' } as const;
+  // dateFromDateOnly('2024-03-01') anchors the date at UTC noon (see formatDate.ts).
+  const dateOnlyAnchor = new Date(Date.UTC(2024, 2, 1, 12, 0, 0));
+
+  afterEach(() => {
+    vi.mocked(getCurrentLocale).mockReturnValue('en-US');
+  });
+
+  it('formats a date-only value using the active locale, not a hardcoded en-US format', () => {
+    vi.mocked(getCurrentLocale).mockReturnValue('de-DE');
+
+    const result = formatDate('2024-03-01', numericOptions);
+    const reference = new Intl.DateTimeFormat('de-DE', {
+      ...numericOptions,
+      timeZone: 'UTC',
+    }).format(dateOnlyAnchor);
+
+    expect(result).toBe(reference);
+    // German convention is DD.MM.YYYY — distinct from the US MM/DD/YYYY default.
+    expect(result).toBe('01.03.2024');
+  });
+
+  it('produces locale-distinct output when the active locale changes', () => {
+    vi.mocked(getCurrentLocale).mockReturnValue('en-US');
+    const usFormatted = formatDate('2024-03-01', numericOptions);
+
+    vi.mocked(getCurrentLocale).mockReturnValue('es-ES');
+    const esFormatted = formatDate('2024-03-01', numericOptions);
+
+    expect(usFormatted).toBe('03/01/2024');
+    // Spain uses DD/MM/YYYY, so the same instant renders differently.
+    expect(esFormatted).toBe('01/03/2024');
+    expect(esFormatted).not.toBe(usFormatted);
+  });
+
+  it('falls back to the default locale when the active locale is en-US', () => {
+    vi.mocked(getCurrentLocale).mockReturnValue('en-US');
+
+    const result = formatDate('2024-03-01', numericOptions);
+    const reference = new Intl.DateTimeFormat('en-US', {
+      ...numericOptions,
+      timeZone: 'UTC',
+    }).format(dateOnlyAnchor);
+
+    expect(result).toBe(reference);
+  });
+
+  it('formats transaction timestamps with the active locale by default', () => {
+    vi.mocked(getCurrentLocale).mockReturnValue('en-US');
+    const usFormatted = formatTransactionTimestamp('2024-03-01T12:00:00Z', { timeZone: 'UTC' });
+
+    vi.mocked(getCurrentLocale).mockReturnValue('de-DE');
+    const deFormatted = formatTransactionTimestamp('2024-03-01T12:00:00Z', { timeZone: 'UTC' });
+
+    // Same instant + timezone, different active locale → different rendering.
+    expect(deFormatted).not.toBe(usFormatted);
   });
 });

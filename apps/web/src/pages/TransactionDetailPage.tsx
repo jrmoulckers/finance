@@ -19,6 +19,7 @@ import {
   isBnplLiabilityTransaction,
 } from '../lib/bnpl-liability';
 import { isTransactionLockedByReconciliation } from '../lib/reconciliation';
+import { getCurrentLocale } from '../lib/i18n';
 import {
   formatLocalTimestamp,
   isLocalTimestampFieldKey,
@@ -227,12 +228,15 @@ export const TransactionDetailPage: React.FC = () => {
       ? -Math.abs(transaction.amount.amount)
       : transaction.amount.amount;
 
-  const formattedDate = new Date(`${transaction.date}T00:00:00`).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const formattedDate = new Date(`${transaction.date}T00:00:00`).toLocaleDateString(
+    getCurrentLocale(),
+    {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    },
+  );
 
   const localTimestamp = localTimestampFromCustomFields(transaction.customFields);
   const formattedLocalTimestamp = formatLocalTimestamp(localTimestamp);
