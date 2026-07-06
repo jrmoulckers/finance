@@ -105,6 +105,32 @@ describe('TrendLineChart', () => {
     expect(label).toContain('Expenses');
   });
 
+  it('renders a pattern-encoded legend so series are distinguishable without colour (WCAG 1.4.1)', () => {
+    render(<TrendLineChart data={sampleData} series={sampleSeries} />);
+    const legend = screen.getByRole('list', { name: /Trend over time legend/i });
+    expect(legend).toBeInTheDocument();
+    // Each series names its stroke pattern in text, not colour alone.
+    expect(screen.getByText('Income (solid line)')).toBeInTheDocument();
+    expect(screen.getByText('Expenses (dashed line)')).toBeInTheDocument();
+  });
+
+  it('applies a distinct stroke pattern per series line', () => {
+    render(<TrendLineChart data={sampleData} series={sampleSeries} />);
+    // The legend swatch mirrors each line: first series solid (no dasharray),
+    // second dashed.
+    const swatchLines = document.querySelectorAll('.trend-chart__legend-swatch line');
+    expect(swatchLines).toHaveLength(2);
+    expect(swatchLines[0].getAttribute('stroke-dasharray')).toBeNull();
+    expect(swatchLines[1].getAttribute('stroke-dasharray')).toBe('6 5');
+  });
+
+  it('describes each series line pattern in the chart summary', () => {
+    render(<TrendLineChart data={sampleData} series={sampleSeries} />);
+    const label = screen.getByRole('figure').getAttribute('aria-label')!;
+    expect(label).toContain('Income (solid line)');
+    expect(label).toContain('Expenses (dashed line)');
+  });
+
   it('includes a sr-only description paragraph', () => {
     render(<TrendLineChart data={sampleData} series={sampleSeries} />);
     const srOnly = document.querySelector('.sr-only');
