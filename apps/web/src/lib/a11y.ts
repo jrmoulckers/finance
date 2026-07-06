@@ -128,13 +128,14 @@ export function getStatusIndicator(amount: number): {
  * ```ts
  * getGoalStatusIndicator(100); // { icon: 'check', label: 'Goal reached', tone: 'positive' }
  * getGoalStatusIndicator(60);  // { icon: 'target', label: 'In progress', tone: 'positive' }
- * getGoalStatusIndicator(20);  // { icon: 'target', label: 'Getting started', tone: 'warning' }
+ * getGoalStatusIndicator(30);  // { icon: 'target', label: 'Getting started', tone: 'warning' }
+ * getGoalStatusIndicator(10);  // { icon: 'target', label: 'Just started', tone: 'neutral' }
  * ```
  */
 export function getGoalStatusIndicator(percentComplete: number): {
   icon: IconName;
   label: string;
-  tone: 'positive' | 'warning' | 'negative';
+  tone: 'positive' | 'warning' | 'neutral';
 } {
   if (percentComplete >= 100) {
     return { icon: 'check', label: 'Goal reached', tone: 'positive' };
@@ -145,7 +146,9 @@ export function getGoalStatusIndicator(percentComplete: number): {
   if (percentComplete >= 25) {
     return { icon: 'target', label: 'Getting started', tone: 'warning' };
   }
-  return { icon: 'target', label: 'Just started', tone: 'negative' };
+  // A brand-new goal that is barely started is not "bad" — use a calm, neutral
+  // tone rather than an alarming negative/red one (#3392).
+  return { icon: 'target', label: 'Just started', tone: 'neutral' };
 }
 
 /**
