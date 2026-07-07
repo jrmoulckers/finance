@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAuth } from '../auth/auth-context';
 import { useToast } from '../components/common/Toast';
@@ -481,6 +481,19 @@ describe('household kids helpers', () => {
 });
 
 describe('HouseholdPage', () => {
+  // The couples "Money check-in" dialog body is code-split via lazy() in
+  // HouseholdPage.tsx. Warm its dynamic import once, up front, so the module is
+  // transformed and evaluated OUTSIDE the findByRole timeout window. Under
+  // full-suite parallel CPU contention a cold import() can otherwise resolve
+  // slower than the dialog query's timeout, flaking the assertion (#3523).
+  // Pre-resolving it lets React.lazy render from the module cache so the real
+  // dialog settles immediately — assertion intact. The hook gets a generous
+  // explicit timeout so this one-time cold transform is never killed by
+  // Vitest's default 10s hook timeout under pathological parallel load.
+  beforeAll(async () => {
+    await import('../components/household/MoneyCheckInDialog');
+  }, 60_000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: no signed-in user.  Tests that exercise the OAuth-fallback
@@ -604,8 +617,11 @@ describe('HouseholdPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Start a money check-in/i }));
 
-    // Dialog body is lazy-loaded into its own chunk; wait for it to resolve.
-    const dialog = await screen.findByRole('dialog');
+    // Dialog body is lazy-loaded into its own chunk. The chunk is pre-warmed in
+    // `beforeAll` so React.lazy resolves from the module cache; `findByRole`
+    // retries until the post-Suspense re-render commits. The explicit timeout is
+    // a safety net for that settle under full-suite parallel load (#3523).
+    const dialog = await screen.findByRole('dialog', undefined, { timeout: 3000 });
     expect(within(dialog).getByRole('heading', { name: /Opt in together/i })).toBeInTheDocument();
     expect(within(dialog).getAllByRole('checkbox', { name: /opts in/i }).length).toBeGreaterThan(0);
   });
