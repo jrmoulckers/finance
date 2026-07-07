@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -184,6 +184,19 @@ describe('calculateSafeToSpend', () => {
 });
 
 describe('DashboardPage', () => {
+  // The mood-journal section is code-split via React.lazy (DashboardPage.tsx).
+  // Warm its dynamic import once, up front, so the module graph is transformed
+  // and evaluated OUTSIDE the findBy* timeout window. Under full-suite parallel
+  // CPU contention a cold import() can otherwise resolve slower than the
+  // landmark query's timeout, flaking the assertion (#3523). Pre-resolving it
+  // lets React.lazy render from the module cache so the real region landmark
+  // settles immediately — assertion intact. The hook gets a generous explicit
+  // timeout so this one-time cold transform is never killed by Vitest's default
+  // 10s hook timeout under pathological parallel load.
+  beforeAll(async () => {
+    await import('../components/dashboard/DashboardMoodJournalSection');
+  }, 60_000);
+
   beforeEach(() => {
     window.localStorage.clear();
     mockedUseRetirementPlanner.mockReturnValue({
@@ -963,10 +976,11 @@ describe('DashboardPage', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('region', { name: /financial summary/i })).toBeInTheDocument();
-    // The mood journal is a lazily-loaded landmark; `findByRole` re-scans the
-    // dashboard accessibility tree on every poll. Allow extra time so the
-    // dynamic import can resolve and the role query settle, even when the full
-    // test suite runs in parallel and CPU is contended.
+    // The mood journal is a lazily-loaded landmark. Its chunk is pre-warmed in
+    // `beforeAll`, so React.lazy resolves from the module cache and `findByRole`
+    // only has to retry until the post-Suspense re-render commits. The generous
+    // timeout is a safety net for that settle (not the module load), keeping the
+    // assertion deterministic even under full-suite parallel CPU contention.
     expect(
       await screen.findByRole('region', { name: /mood and spending journal/i }, { timeout: 3000 }),
     ).toBeInTheDocument();
