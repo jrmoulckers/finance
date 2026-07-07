@@ -527,8 +527,16 @@ jobs:
       (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment:
-      name: production
+    # NOTE: deliberately NOT scoped to `environment: production`. This job only
+    # curls the already-public production URL to verify the deploy landed; it
+    # performs no deployment and consumes no environment-scoped secrets. When it
+    # declared `environment: production` it was forced through the production
+    # environment's *deploy-gating* protection rules (required reviewers / wait
+    # timer / branch-tag restriction) a second time, after deploy-web/-backend
+    # had already passed the gate. On 2026-06-27 that rejected the smoke job with
+    # "The deployment was rejected or didn't satisfy other protection rules" even
+    # though the deploy itself succeeded, failing the whole run (#3186). A pure
+    # read-only verification step must not sit behind the production deploy gate.
     steps:
       - name: Resolve production target
         id: target
