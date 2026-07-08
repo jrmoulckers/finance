@@ -280,6 +280,12 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 30
           allowed-conclusions: success,skipped
+          # Wait up to 10 min for the gatekeeper check-run to be discovered. When a
+          # deploy is triggered right after a squash-merge, the push-triggered
+          # `ci-security.yml` gatekeeper may not register its check-run within the
+          # action's 60s default, which fails the gate on a commit whose CI actually
+          # passes moments later (#3533). 600s stays well inside this job's 30-min timeout.
+          checks-discovery-timeout: '600'
 
   smoke-tests:
     name: Pre-deploy Smoke Tests
