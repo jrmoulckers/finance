@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import { useFocusTrap } from '../accessibility/aria';
+import { Checkbox } from './common/Checkbox';
 import type { SqliteDb } from '../db/sqlite-wasm';
 import { getAllAccounts } from '../db/repositories/accounts';
 import { getAllTransactions } from '../db/repositories/transactions';
@@ -865,87 +866,48 @@ export const DataExport: React.FC<DataExportProps> = ({
           <fieldset className="data-export__fieldset">
             <legend className="data-export__legend">Data categories</legend>
             {domainSummaries.map((summary) => (
-              <label className="data-export__option" key={summary.domain}>
-                <input
-                  type="checkbox"
-                  className="data-export__checkbox"
-                  checked={selectedDomains.includes(summary.domain)}
-                  onChange={(event) => toggleDomain(summary.domain, event.target.checked)}
-                />
-                <span className="data-export__option-text">
-                  <span className="data-export__option-label">
-                    {summary.label} ({summary.recordCount} record
-                    {summary.recordCount === 1 ? '' : 's'})
-                  </span>
-                  <span className="data-export__option-help">{summary.warning}</span>
-                </span>
-              </label>
+              <Checkbox
+                key={summary.domain}
+                label={`${summary.label} (${summary.recordCount} record${
+                  summary.recordCount === 1 ? '' : 's'
+                })`}
+                hint={summary.warning}
+                checked={selectedDomains.includes(summary.domain)}
+                onChange={(event) => toggleDomain(summary.domain, event.target.checked)}
+              />
             ))}
           </fieldset>
 
           <fieldset className="data-export__fieldset">
             <legend className="data-export__legend">Privacy options</legend>
 
-            <label className="data-export__option">
-              <input
-                type="checkbox"
-                className="data-export__checkbox"
-                checked={includeProtectedCategories}
-                onChange={(event) => setIncludeProtectedCategories(event.target.checked)}
-              />
-              <span className="data-export__option-text">
-                <span className="data-export__option-label">Include protected categories</span>
-                <span className="data-export__option-help">
-                  Sensitive categories like medical or debt. Redacted by default.
-                </span>
-              </span>
-            </label>
+            <Checkbox
+              label="Include protected categories"
+              hint="Sensitive categories like medical or debt. Redacted by default."
+              checked={includeProtectedCategories}
+              onChange={(event) => setIncludeProtectedCategories(event.target.checked)}
+            />
 
-            <label className="data-export__option">
-              <input
-                type="checkbox"
-                className="data-export__checkbox"
-                checked={includeMoodTags}
-                onChange={(event) => setIncludeMoodTags(event.target.checked)}
-              />
-              <span className="data-export__option-text">
-                <span className="data-export__option-label">Include mood tags</span>
-                <span className="data-export__option-help">
-                  Mood tag data can reveal sensitive wellbeing patterns. Off by default.
-                </span>
-              </span>
-            </label>
+            <Checkbox
+              label="Include mood tags"
+              hint="Mood tag data can reveal sensitive wellbeing patterns. Off by default."
+              checked={includeMoodTags}
+              onChange={(event) => setIncludeMoodTags(event.target.checked)}
+            />
 
-            <label className="data-export__option">
-              <input
-                type="checkbox"
-                className="data-export__checkbox"
-                checked={includeNotes}
-                onChange={(event) => setIncludeNotes(event.target.checked)}
-              />
-              <span className="data-export__option-text">
-                <span className="data-export__option-label">Include transaction notes</span>
-                <span className="data-export__option-help">
-                  Notes may contain names, health details, or private context. Off by default.
-                </span>
-              </span>
-            </label>
+            <Checkbox
+              label="Include transaction notes"
+              hint="Notes may contain names, health details, or private context. Off by default."
+              checked={includeNotes}
+              onChange={(event) => setIncludeNotes(event.target.checked)}
+            />
 
-            <label className="data-export__option">
-              <input
-                type="checkbox"
-                className="data-export__checkbox"
-                checked={includeAttachmentBinaries}
-                onChange={(event) => setIncludeAttachmentBinaries(event.target.checked)}
-              />
-              <span className="data-export__option-text">
-                <span className="data-export__option-label">Include attachment binaries</span>
-                <span className="data-export__option-help">
-                  Receipts and files can reveal addresses, card digits, or account numbers. Metadata
-                  only by default.
-                </span>
-              </span>
-            </label>
+            <Checkbox
+              label="Include attachment binaries"
+              hint="Receipts and files can reveal addresses, card digits, or account numbers. Metadata only by default."
+              checked={includeAttachmentBinaries}
+              onChange={(event) => setIncludeAttachmentBinaries(event.target.checked)}
+            />
 
             <label className="data-export__option">
               <span className="data-export__option-text">

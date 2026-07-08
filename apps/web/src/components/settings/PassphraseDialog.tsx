@@ -17,6 +17,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { MIN_PASSPHRASE_LENGTH } from '../../db/data-key-wrapping';
+import { Checkbox } from '../common/Checkbox';
 
 import './encryption-unlock.css';
 
@@ -257,15 +258,13 @@ export const PassphraseDialog: React.FC<PassphraseDialogProps> = ({
             </>
           )}
 
-          <label className="encryption-field__reveal">
-            <input
-              type="checkbox"
-              checked={reveal}
-              onChange={(event) => setReveal(event.target.checked)}
-              disabled={submitting}
-            />
-            Show passphrase
-          </label>
+          <Checkbox
+            className="encryption-field__reveal"
+            label="Show passphrase"
+            checked={reveal}
+            onChange={(event) => setReveal(event.target.checked)}
+            disabled={submitting}
+          />
 
           {error && (
             <p id={errorId} className="encryption-dialog__error" role="alert" aria-live="assertive">

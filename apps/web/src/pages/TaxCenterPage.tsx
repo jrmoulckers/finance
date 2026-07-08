@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { Checkbox } from '../components/common/Checkbox';
 import { useAccounts, useInvestments, useTransactions } from '../hooks';
 import type { Investment, InvestmentLot } from '../kmp/bridge';
 import { dollarsToCents as toCents, formatCurrency, formatGainLoss } from '../lib/currency';
@@ -459,15 +460,17 @@ export const TaxCenterPage: React.FC = () => {
                   <p className="card__title">Select lots to sell, in selection order</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-3)' }}>
                     {activeLots.map((lot) => (
-                      <label key={lot.id} style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedLotIds.includes(lot.id)}
-                          onChange={() => toggleSpecificLot(lot.id)}
-                        />
-                        {lot.acquiredDate} · {lot.shares.toLocaleString()} shares @{' '}
-                        {formatCurrency(lot.costPerShare, { currency: lot.currency })}
-                      </label>
+                      <Checkbox
+                        key={lot.id}
+                        checked={selectedLotIds.includes(lot.id)}
+                        onChange={() => toggleSpecificLot(lot.id)}
+                        label={
+                          <>
+                            {lot.acquiredDate} · {lot.shares.toLocaleString()} shares @{' '}
+                            {formatCurrency(lot.costPerShare, { currency: lot.currency })}
+                          </>
+                        }
+                      />
                     ))}
                   </div>
                 </div>

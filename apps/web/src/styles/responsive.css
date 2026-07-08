@@ -771,6 +771,11 @@
   justify-self: end;
   accent-color: var(--semantic-interactive-default);
 }
+/* Wrapper label for the shared Checkbox component takes the grid slot the bare
+   input used to occupy so the settings row layout is unchanged. */
+.settings-item__checkbox-wrapper {
+  justify-self: end;
+}
 .settings-item__description,
 .settings-item__help {
   grid-column: 2;
@@ -910,13 +915,15 @@
   .settings-item__status,
   .settings-item__select,
   .settings-item__input,
-  .settings-item__checkbox {
+  .settings-item__checkbox,
+  .settings-item__checkbox-wrapper {
     grid-column: 1;
     justify-self: stretch;
     text-align: left;
   }
 
   .settings-item__checkbox,
+  .settings-item__checkbox-wrapper,
   .settings-item__color-input {
     justify-self: start;
   }

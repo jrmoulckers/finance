@@ -26,6 +26,7 @@ import React, { useId, useMemo, useState } from 'react';
 
 import { CHART_COLORS } from '../charts/chart-palette';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
+import { Checkbox } from '../common/Checkbox';
 import { useGigPlatformEarnings } from '../../hooks/useGigPlatformEarnings';
 import { formatCentsDisplay, parseAmountInput } from '../../hooks/useAmountInput';
 import { platformPercent, reconcilePlatformPayouts } from '../../lib/gig/platform-earnings';
@@ -327,15 +328,13 @@ const RuleManager: React.FC<RuleManagerProps> = ({ rules, onAdd, onToggle, onRem
                 {rule.matchField} contains {rule.keywords.join(', ')}
                 {rule.isBuiltIn ? ' (built-in)' : ''}
               </span>
-              <span className="gig-toggle">
-                <input
-                  id={toggleId}
-                  type="checkbox"
-                  checked={rule.enabled}
-                  onChange={() => onToggle(rule.id)}
-                />
-                <label htmlFor={toggleId}>Enabled</label>
-              </span>
+              <Checkbox
+                id={toggleId}
+                className="gig-toggle"
+                label="Enabled"
+                checked={rule.enabled}
+                onChange={() => onToggle(rule.id)}
+              />
               <button
                 type="button"
                 className="gig-btn"

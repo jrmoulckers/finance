@@ -3,6 +3,7 @@
 import React, { useCallback } from 'react';
 
 import { createEmptyAccessContact } from '../../lib/estate/accessInfo';
+import { Checkbox } from '../common/Checkbox';
 import type { AccessContact, EstateAccessInfo } from '../../lib/estate/types';
 
 export interface TrustedContactsProps {
@@ -209,16 +210,14 @@ export const TrustedContacts: React.FC<TrustedContactsProps> = ({ accessInfo, on
               </label>
             </div>
 
-            <label className="estate-checkbox">
-              <input
-                type="checkbox"
-                checked={contact.isPrimary}
-                onChange={(event) =>
-                  handleContactChange(contact.id, 'isPrimary', event.target.checked)
-                }
-              />
-              <span>Primary emergency contact</span>
-            </label>
+            <Checkbox
+              className="estate-checkbox"
+              label="Primary emergency contact"
+              checked={contact.isPrimary}
+              onChange={(event) =>
+                handleContactChange(contact.id, 'isPrimary', event.target.checked)
+              }
+            />
           </article>
         ))}
       </div>

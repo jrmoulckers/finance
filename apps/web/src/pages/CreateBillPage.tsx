@@ -15,6 +15,7 @@ import type { BillFrequency } from '../kmp/bridge';
 import type { CreateBillInput } from '../db/repositories/bills';
 import { DatePicker } from '../components/common/DatePicker';
 import { Button } from '../components/common/Button';
+import { Checkbox } from '../components/common/Checkbox';
 import { dollarsToCents, minorUnitStep, normalizeAmountInputValue } from '../lib/currency';
 
 /** Resolve the first available household ID from the local database. */
@@ -316,22 +317,12 @@ export const CreateBillPage: React.FC = () => {
 
           {/* Auto-Pay */}
           <div className="form-group" style={{ marginBottom: 'var(--spacing-4)' }}>
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-2)',
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={isAutoPay}
-                onChange={(e) => setIsAutoPay(e.target.checked)}
-                disabled={submitting}
-              />
-              Auto-pay enabled
-            </label>
+            <Checkbox
+              label="Auto-pay enabled"
+              checked={isAutoPay}
+              onChange={(e) => setIsAutoPay(e.target.checked)}
+              disabled={submitting}
+            />
           </div>
 
           {/* Reminder Days */}

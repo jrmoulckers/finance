@@ -85,6 +85,7 @@ import { DateInput } from '../common';
 import { Button } from '../common/Button';
 import { CategoryConfirmation } from '../categorization';
 import { AmountInput } from './AmountInput';
+import { Checkbox } from '../common/Checkbox';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
 import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
@@ -1300,14 +1301,11 @@ export function TransactionForm({
 
             <fieldset className="form-group form-fieldset">
               <legend className="form-group__label">Buy-now-pay-later liability</legend>
-              <label className="form-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={isBnplLiability}
-                  onChange={(event) => setIsBnplLiability(event.target.checked)}
-                />
-                Track this purchase as a BNPL liability with installments
-              </label>
+              <Checkbox
+                label="Track this purchase as a BNPL liability with installments"
+                checked={isBnplLiability}
+                onChange={(event) => setIsBnplLiability(event.target.checked)}
+              />
               {isBnplLiability && (
                 <input
                   id="txn-bnpl-installments"
@@ -1554,19 +1552,16 @@ export function TransactionForm({
 
             <fieldset className="form-group form-fieldset">
               <legend className="form-group__label">Retirement contribution</legend>
-              <label className="form-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={isRetirementContribution}
-                  onChange={(event) => {
-                    setIsRetirementContribution(event.target.checked);
-                    if (event.target.checked && retirementContributionYear.trim() === '') {
-                      setRetirementContributionYear(date.slice(0, 4));
-                    }
-                  }}
-                />
-                Count this transaction or transfer toward an annual contribution limit
-              </label>
+              <Checkbox
+                label="Count this transaction or transfer toward an annual contribution limit"
+                checked={isRetirementContribution}
+                onChange={(event) => {
+                  setIsRetirementContribution(event.target.checked);
+                  if (event.target.checked && retirementContributionYear.trim() === '') {
+                    setRetirementContributionYear(date.slice(0, 4));
+                  }
+                }}
+              />
               {isRetirementContribution && (
                 <>
                   <div className="form-group">

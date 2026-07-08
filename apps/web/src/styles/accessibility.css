@@ -204,6 +204,15 @@ input[type='week']::-webkit-calendar-picker-indicator:hover {
   }
 }
 
+/* Checkboxes and radios are small by design; the 44px touch target is provided
+   by their surrounding label/wrapper. Inflating the control itself pushes the
+   :focus-visible ring away from the visible glyph, producing an oversized,
+   offset outline (issue #3545). Exclude them here. */
+input[type='checkbox'],
+input[type='radio'] {
+  min-height: 0;
+}
+
 /* Icon buttons — ensure padding creates adequate touch target */
 .icon-button {
   display: inline-flex;

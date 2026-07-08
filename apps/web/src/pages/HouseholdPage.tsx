@@ -17,6 +17,7 @@ import { AppIcon } from '../components/icons';
 import { useAuth } from '../auth/auth-context';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { CurrencyDisplay } from '../components/common/CurrencyDisplay';
+import { Checkbox } from '../components/common/Checkbox';
 import { useToast } from '../components/common/Toast';
 import {
   ALLOWANCE_DAY_OPTIONS,
@@ -2059,15 +2060,13 @@ export function HouseholdPage() {
               const isSelected = sharedExpenseSelectedMembers[member.id] ?? true;
               return (
                 <div key={member.id} className="household-settle-up-member-row">
-                  <label className="household-settle-up-member-row__check">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={(e) => handleToggleSharedExpenseMember(member.id, e.target.checked)}
-                      aria-label={'Include ' + name + ' in split'}
-                    />
-                    <span>{name}</span>
-                  </label>
+                  <Checkbox
+                    className="household-settle-up-member-row__check"
+                    label={name}
+                    checked={isSelected}
+                    onChange={(e) => handleToggleSharedExpenseMember(member.id, e.target.checked)}
+                    aria-label={'Include ' + name + ' in split'}
+                  />
                   {sharedExpenseSplitMode === 'CUSTOM' && isSelected && (
                     <input
                       className="household-form-input household-settle-up-member-row__amount"
@@ -2563,19 +2562,22 @@ export function HouseholdPage() {
                       <ul className="household-kid-card__chore-list" role="list">
                         {child.chores.map((chore) => (
                           <li key={chore.id} className="household-kid-card__chore-item">
-                            <label className="household-kid-card__chore-toggle">
-                              <input
-                                type="checkbox"
-                                checked={chore.completedThisWeek}
-                                onChange={() => toggleChildChoreCompletion(child.id, chore.id)}
-                              />
-                              <span>
-                                <span className="household-kid-card__chore-name">{chore.name}</span>
-                                <span className="household-kid-card__chore-meta">
-                                  {currencyFormatter.format(chore.value)} bonus • {chore.frequency}
+                            <Checkbox
+                              className="household-kid-card__chore-toggle"
+                              checked={chore.completedThisWeek}
+                              onChange={() => toggleChildChoreCompletion(child.id, chore.id)}
+                              label={
+                                <span>
+                                  <span className="household-kid-card__chore-name">
+                                    {chore.name}
+                                  </span>
+                                  <span className="household-kid-card__chore-meta">
+                                    {currencyFormatter.format(chore.value)} bonus •{' '}
+                                    {chore.frequency}
+                                  </span>
                                 </span>
-                              </span>
-                            </label>
+                              }
+                            />
                           </li>
                         ))}
                       </ul>

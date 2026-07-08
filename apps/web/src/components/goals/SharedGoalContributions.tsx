@@ -18,6 +18,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { FormEvent, ReactElement } from 'react';
 
 import { CurrencyDisplay } from '../common';
+import { Checkbox } from '../common/Checkbox';
 import { AppIcon } from '../icons';
 import {
   monthsUntil,
@@ -400,14 +401,12 @@ export function SharedGoalContributions({
             <CurrencyDisplay amount={plan.householdMonthlyCents} currency={currency} /> / month for{' '}
             {plan.months} month{plan.months === 1 ? '' : 's'}
           </span>
-          <label className="shared-goal__toggle">
-            <input
-              type="checkbox"
-              checked={config.incomeWeighted}
-              onChange={toggleIncomeWeighted}
-            />
-            <span>Split suggestions by income</span>
-          </label>
+          <Checkbox
+            className="shared-goal__toggle"
+            label="Split suggestions by income"
+            checked={config.incomeWeighted}
+            onChange={toggleIncomeWeighted}
+          />
         </p>
       )}
 

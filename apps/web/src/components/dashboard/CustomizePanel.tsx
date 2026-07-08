@@ -13,6 +13,7 @@
 import { useCallback, useRef, useState, type DragEvent, type FC, type KeyboardEvent } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
+import { Checkbox } from '../common/Checkbox';
 import { WIDGET_DEFINITION_MAP, type WidgetConfig, type WidgetId } from './widget-types';
 
 // ---------------------------------------------------------------------------
@@ -173,18 +174,18 @@ export const CustomizePanel: FC<CustomizePanelProps> = ({
                 >
                   ⠿
                 </span>
-                <label className="customize-panel__toggle">
-                  <input
-                    type="checkbox"
-                    checked={widget.visible}
-                    onChange={() => onToggle(widget.id)}
-                    aria-label={`Show ${def.label} widget`}
-                  />
-                  <span className="customize-panel__label">
-                    <span className="customize-panel__name">{def.label}</span>
-                    <span className="customize-panel__desc">{def.description}</span>
-                  </span>
-                </label>
+                <Checkbox
+                  className="customize-panel__toggle"
+                  checked={widget.visible}
+                  onChange={() => onToggle(widget.id)}
+                  aria-label={`Show ${def.label} widget`}
+                  label={
+                    <span className="customize-panel__label">
+                      <span className="customize-panel__name">{def.label}</span>
+                      <span className="customize-panel__desc">{def.description}</span>
+                    </span>
+                  }
+                />
                 <div
                   className="customize-panel__reorder"
                   role="group"

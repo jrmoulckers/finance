@@ -37,6 +37,13 @@
   accent-color: var(--semantic-error);
 }
 
+/* Keep the destructive (red) intent when using the shared Checkbox component. */
+.account-delete-dialog__checkbox-label .checkbox__input:checked,
+.account-delete-dialog__checkbox-label .checkbox__input:indeterminate {
+  background-color: var(--semantic-error);
+  border-color: var(--semantic-error);
+}
+
 .account-delete-dialog__cascade-warning {
   margin: var(--spacing-2) 0 0;
   min-height: 1.5em;

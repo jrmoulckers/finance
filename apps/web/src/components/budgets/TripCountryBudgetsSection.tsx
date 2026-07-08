@@ -27,6 +27,7 @@ import React, { useId, useState } from 'react';
 
 import { AppIcon, type IconName } from '../icons';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
+import { Checkbox } from '../common/Checkbox';
 import {
   getTripBudgetStatus,
   parseTripBudgetAmount,
@@ -514,15 +515,13 @@ export const TripCountryBudgetsSection: React.FC<TripCountryBudgetsSectionProps>
             ))}
           </select>
         </div>
-        <label className="tcb-checkbox" htmlFor={id('show-archived')}>
-          <input
-            id={id('show-archived')}
-            type="checkbox"
-            checked={showArchived}
-            onChange={(event) => onShowArchivedChange(event.target.checked)}
-          />
-          Show archived trips
-        </label>
+        <Checkbox
+          id={id('show-archived')}
+          className="tcb-checkbox"
+          label="Show archived trips"
+          checked={showArchived}
+          onChange={(event) => onShowArchivedChange(event.target.checked)}
+        />
       </div>
 
       <p className="tcb__count" role="status" aria-live="polite">

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { DateInput } from '../components/common';
+import { Checkbox, DateInput } from '../components/common';
 import { AmountInput } from '../components/forms/AmountInput';
 import { AppIcon } from '../components/icons';
 import '../components/forms/forms.css';
@@ -346,8 +346,7 @@ export const ReceiptOcrPage: React.FC = () => {
                     return (
                       <tr key={`${item.description}-${index}`}>
                         <td>
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={item.included}
                             aria-label={`Include ${item.description}`}
                             onChange={() => handleToggleIncluded(index)}

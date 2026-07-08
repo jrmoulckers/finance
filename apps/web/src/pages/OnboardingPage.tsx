@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
 import { AppIcon } from '../components/icons';
+import { Checkbox } from '../components/common/Checkbox';
 import { useDatabase } from '../db/DatabaseProvider';
 import { getPrimaryHouseholdId } from '../db/repositories/household';
 import { useBudgets } from '../hooks/useBudgets';
@@ -1547,17 +1548,18 @@ const OnboardingPage: React.FC = () => {
 
             <div className="onboarding__choice-grid" role="group" aria-label="Life stages">
               {LIFE_STAGE_OPTIONS.map((option) => (
-                <label key={option.id} className="onboarding__choice-card">
-                  <input
-                    type="checkbox"
-                    checked={selectedLifeStages.includes(option.id)}
-                    onChange={() => handleLifeStageToggle(option.id)}
-                  />
-                  <span>
-                    <strong>{option.label}</strong>
-                    <small>{option.setupCopy}</small>
-                  </span>
-                </label>
+                <Checkbox
+                  key={option.id}
+                  className="onboarding__choice-card"
+                  checked={selectedLifeStages.includes(option.id)}
+                  onChange={() => handleLifeStageToggle(option.id)}
+                  label={
+                    <span>
+                      <strong>{option.label}</strong>
+                      <small>{option.setupCopy}</small>
+                    </span>
+                  }
+                />
               ))}
             </div>
 

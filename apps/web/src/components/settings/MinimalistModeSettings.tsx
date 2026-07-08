@@ -3,6 +3,7 @@
 import React, { useCallback } from 'react';
 
 import { useModuleVisibility } from '../../hooks/useModuleVisibility';
+import { Checkbox } from '../common/Checkbox';
 import {
   HIDEABLE_MODULE_CATEGORY_LABELS,
   HIDEABLE_MODULE_CATEGORY_ORDER,
@@ -81,11 +82,9 @@ export const MinimalistModeSettings: React.FC = () => {
                       <span className="minimalist-mode__state" aria-hidden="true">
                         {visible ? 'Shown' : 'Hidden'}
                       </span>
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         role="switch"
                         id={switchId}
-                        className="settings-item__checkbox"
                         checked={visible}
                         onChange={handleToggle(module.id)}
                         aria-describedby={descriptionId}

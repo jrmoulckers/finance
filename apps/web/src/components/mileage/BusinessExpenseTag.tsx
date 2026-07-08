@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { formatCurrency } from '../../lib/currency';
+import { Checkbox } from '../common/Checkbox';
 import {
   buildBusinessExpenseUpdate,
   getBusinessExpenseDefaults,
@@ -114,15 +115,12 @@ export function BusinessExpenseTag({
         {isTagged ? <span className="business-expense-tag__pill">Tagged</span> : null}
       </div>
 
-      <label className="form-checkbox-row">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(event) => setEnabled(event.target.checked)}
-          disabled={disabled}
-        />
-        Count this as a business expense
-      </label>
+      <Checkbox
+        label="Count this as a business expense"
+        checked={enabled}
+        onChange={(event) => setEnabled(event.target.checked)}
+        disabled={disabled}
+      />
 
       {enabled ? (
         <>

@@ -2,6 +2,8 @@
 
 export { Button, buttonClassName } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
+export { Checkbox } from './Checkbox';
+export type { CheckboxProps } from './Checkbox';
 export { ConfirmDialog } from './ConfirmDialog';
 export type { ConfirmDialogProps } from './ConfirmDialog';
 export { ExplainThis } from './ExplainThis';

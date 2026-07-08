@@ -3,7 +3,7 @@
 import type { Category } from '../../kmp/bridge';
 import { useAutoCategorize } from '../../hooks/useAutoCategorize';
 import { RuleManager } from './RuleManager';
-
+import { Checkbox } from '../common/Checkbox';
 import './categorization.css';
 
 export interface CategorizationSettingsProps {
@@ -21,10 +21,10 @@ export function CategorizationSettings({ categories }: CategorizationSettingsPro
         <label className="settings-item__label" htmlFor="settings-auto-categorization-enabled">
           Enable smart categorization
         </label>
-        <input
+        <Checkbox
           id="settings-auto-categorization-enabled"
-          type="checkbox"
-          className="settings-item__checkbox"
+          className="settings-item__checkbox-wrapper"
+          aria-label="Enable smart categorization"
           checked={settings.enabled}
           onChange={(event) => setEnabled(event.target.checked)}
         />

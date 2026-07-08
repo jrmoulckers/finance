@@ -6,6 +6,7 @@ import { AppIcon } from '../components/icons';
 import { pluralize } from '../lib/ui/pluralize';
 
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
+import { Checkbox } from '../components/common/Checkbox';
 import { AccountDeleteDialog, AccountPurposeBadge } from '../components/accounts';
 import { AccountForm } from '../components/forms';
 import { Breadcrumb } from '../components/navigation';
@@ -415,20 +416,20 @@ export const AccountDetailPage: React.FC = () => {
 
                     return (
                       <li key={transaction.id} role="listitem" className="list-item">
-                        <label className="list-item__content">
-                          <input
-                            type="checkbox"
-                            checked={clearedTransactionIds.has(transaction.id)}
-                            onChange={() => handleToggleCleared(transaction.id)}
-                            aria-label={`Cleared ${label}`}
-                          />
-                          <span>
-                            <span className="list-item__primary">{label}</span>
-                            <span className="list-item__secondary">
-                              {formatDate(transaction.date)} · {transaction.status.toLowerCase()}
+                        <Checkbox
+                          className="list-item__content"
+                          checked={clearedTransactionIds.has(transaction.id)}
+                          onChange={() => handleToggleCleared(transaction.id)}
+                          aria-label={`Cleared ${label}`}
+                          label={
+                            <span>
+                              <span className="list-item__primary">{label}</span>
+                              <span className="list-item__secondary">
+                                {formatDate(transaction.date)} · {transaction.status.toLowerCase()}
+                              </span>
                             </span>
-                          </span>
-                        </label>
+                          }
+                        />
                         <div className="list-item__trailing">
                           <CurrencyDisplay
                             amount={signedAmount}

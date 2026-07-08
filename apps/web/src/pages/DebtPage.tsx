@@ -14,6 +14,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
+import { Checkbox } from '../components/common/Checkbox';
 import { getCurrentLocale } from '../lib/i18n';
 import { pluralize } from '../lib/ui/pluralize';
 import { ExplainThis } from '../components/common/ExplainThis';
@@ -1517,16 +1518,12 @@ function PayoffPlannerPanel(): React.ReactElement {
                 Select all debts
               </button>
               {debts.map((debt) => (
-                <label key={debt.id}>
-                  <input
-                    type="checkbox"
-                    checked={effectiveConsolidationDebtIds.includes(debt.id)}
-                    onChange={(event) =>
-                      handleConsolidationDebtToggle(debt.id, event.target.checked)
-                    }
-                  />
-                  {debt.name}
-                </label>
+                <Checkbox
+                  key={debt.id}
+                  label={debt.name}
+                  checked={effectiveConsolidationDebtIds.includes(debt.id)}
+                  onChange={(event) => handleConsolidationDebtToggle(debt.id, event.target.checked)}
+                />
               ))}
             </fieldset>
             {consolidationPanelModel && (
@@ -2633,16 +2630,14 @@ function StudentLoanPanel(): React.ReactElement {
                   }
                 />
               </label>
-              <label className="student-loan-checkbox">
-                <input
-                  type="checkbox"
-                  checked={refinanceForm.feesFinanced}
-                  onChange={(event) =>
-                    handleRefinanceFieldChange('feesFinanced', event.target.checked)
-                  }
-                />
-                Finance fees into principal
-              </label>
+              <Checkbox
+                className="student-loan-checkbox"
+                label="Finance fees into principal"
+                checked={refinanceForm.feesFinanced}
+                onChange={(event) =>
+                  handleRefinanceFieldChange('feesFinanced', event.target.checked)
+                }
+              />
             </div>
             {refinancePanelModel && (
               <>
@@ -2977,22 +2972,18 @@ function StudentLoanPanel(): React.ReactElement {
               ))}
             </select>
           </label>
-          <label className="student-loan-checkbox">
-            <input
-              type="checkbox"
-              checked={formState.isFederal}
-              onChange={(event) => handleFieldChange('isFederal', event.target.checked)}
-            />
-            Federal loan
-          </label>
-          <label className="student-loan-checkbox">
-            <input
-              type="checkbox"
-              checked={formState.isPslfEligible}
-              onChange={(event) => handleFieldChange('isPslfEligible', event.target.checked)}
-            />
-            PSLF eligible
-          </label>
+          <Checkbox
+            className="student-loan-checkbox"
+            label="Federal loan"
+            checked={formState.isFederal}
+            onChange={(event) => handleFieldChange('isFederal', event.target.checked)}
+          />
+          <Checkbox
+            className="student-loan-checkbox"
+            label="PSLF eligible"
+            checked={formState.isPslfEligible}
+            onChange={(event) => handleFieldChange('isPslfEligible', event.target.checked)}
+          />
           <label>
             Qualifying PSLF payments made
             <input

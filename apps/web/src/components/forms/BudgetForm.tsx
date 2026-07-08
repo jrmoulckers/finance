@@ -41,6 +41,7 @@ import type { BudgetStarterTemplate } from '../../lib/budgeting/starter-budget-t
 import { budgetSchema } from '../../lib/validation';
 import { DatePicker } from '../common/DatePicker';
 import { Button } from '../common/Button';
+import { Checkbox } from '../common/Checkbox';
 import { AmountInput } from './AmountInput';
 
 import './forms.css';
@@ -665,25 +666,12 @@ export function BudgetForm({
                 </div>
 
                 <div className="form-group">
-                  <label
-                    style={{
-                      display: 'flex',
-                      gap: 'var(--spacing-2)',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isRollover}
-                      onChange={(e) => setIsRollover(e.target.checked)}
-                    />
-                    <span>
-                      <span className="form-group__label">Envelope / rollover category</span>
-                      <span className="form-group__help" style={{ display: 'block' }}>
-                        Preserve unused money and carry overspending into the next budget period.
-                      </span>
-                    </span>
-                  </label>
+                  <Checkbox
+                    checked={isRollover}
+                    onChange={(e) => setIsRollover(e.target.checked)}
+                    label="Envelope / rollover category"
+                    hint="Preserve unused money and carry overspending into the next budget period."
+                  />
                 </div>
 
                 <div className="form-group">

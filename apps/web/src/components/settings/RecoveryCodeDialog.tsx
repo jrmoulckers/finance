@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
-
+import { Checkbox } from '../common/Checkbox';
 import './encryption-unlock.css';
 
 export interface RecoveryCodeDialogProps {
@@ -118,14 +118,12 @@ export const RecoveryCodeDialog: React.FC<RecoveryCodeDialogProps> = ({ code, on
               : ''}
         </p>
 
-        <label className="encryption-field__reveal">
-          <input
-            type="checkbox"
-            checked={confirmed}
-            onChange={(event) => setConfirmed(event.target.checked)}
-          />
-          I have saved my recovery code somewhere safe.
-        </label>
+        <Checkbox
+          className="encryption-field__reveal"
+          label="I have saved my recovery code somewhere safe."
+          checked={confirmed}
+          onChange={(event) => setConfirmed(event.target.checked)}
+        />
 
         <div className="encryption-dialog__actions">
           <button

@@ -37,7 +37,7 @@ import type {
   DatePreset,
 } from '../hooks/useReportBuilder';
 import type { AnomalyModule, CategoryDrillDown } from '../lib/reports/reporting-beta';
-import { DateInput } from '../components/common';
+import { Checkbox, DateInput } from '../components/common';
 import { CHART_COLORS, formatChartCurrency } from '../components/charts/chart-palette';
 import { DatePicker } from '../components/common/DatePicker';
 
@@ -560,19 +560,18 @@ export function ReportBuilderPage() {
           Schedule
         </h2>
         <div className="report-schedule-row">
-          <label className="report-toggle-label" htmlFor="report-schedule-toggle">
-            <input
-              id="report-schedule-toggle"
-              type="checkbox"
-              checked={config.isScheduled}
-              onChange={(e) => setScheduled(e.target.checked)}
-              className="report-toggle-input"
-              aria-label="Enable scheduled report"
-            />
-            <span className="report-toggle-text">
-              {config.isScheduled ? 'Scheduled' : 'Not Scheduled'}
-            </span>
-          </label>
+          <Checkbox
+            id="report-schedule-toggle"
+            className="report-toggle-label"
+            checked={config.isScheduled}
+            onChange={(e) => setScheduled(e.target.checked)}
+            aria-label="Enable scheduled report"
+            label={
+              <span className="report-toggle-text">
+                {config.isScheduled ? 'Scheduled' : 'Not Scheduled'}
+              </span>
+            }
+          />
           {config.isScheduled && (
             <select
               className="report-select report-schedule-freq"
@@ -600,14 +599,13 @@ export function ReportBuilderPage() {
         </p>
         <div className="report-checkbox-grid">
           {ANOMALY_OPTIONS.map((option) => (
-            <label key={option.value} className="report-checkbox-row">
-              <input
-                type="checkbox"
-                checked={config.anomalyModules.includes(option.value)}
-                onChange={() => toggleAnomalyModule(option.value)}
-              />
-              {option.label}
-            </label>
+            <Checkbox
+              key={option.value}
+              className="report-checkbox-row"
+              label={option.label}
+              checked={config.anomalyModules.includes(option.value)}
+              onChange={() => toggleAnomalyModule(option.value)}
+            />
           ))}
         </div>
       </section>

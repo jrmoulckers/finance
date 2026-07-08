@@ -27,6 +27,7 @@ import {
 
 import { useFocusTrap, announce } from '../../accessibility/aria';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
+import { Checkbox } from '../common/Checkbox';
 import {
   ALL_CHECK_IN_SUMMARY_TYPES,
   buildNeutralSummary,
@@ -342,16 +343,15 @@ export function MoneyCheckInDialog({
               <fieldset className="money-check-in__fieldset">
                 <legend className="money-check-in__legend">Who is opting in?</legend>
                 {partners.map((partner) => (
-                  <label key={partner.id} className="money-check-in__checkbox">
-                    <input
-                      type="checkbox"
-                      checked={consent[partner.id] ?? false}
-                      onChange={(event) =>
-                        setConsent((prev) => ({ ...prev, [partner.id]: event.target.checked }))
-                      }
-                    />
-                    <span>{partner.name} opts in</span>
-                  </label>
+                  <Checkbox
+                    key={partner.id}
+                    className="money-check-in__checkbox"
+                    label={`${partner.name} opts in`}
+                    checked={consent[partner.id] ?? false}
+                    onChange={(event) =>
+                      setConsent((prev) => ({ ...prev, [partner.id]: event.target.checked }))
+                    }
+                  />
                 ))}
               </fieldset>
 
@@ -489,14 +489,12 @@ export function MoneyCheckInDialog({
                       placeholder="Something supportive to remember from this prompt"
                       aria-label="Note for this prompt"
                     />
-                    <label className="money-check-in__checkbox">
-                      <input
-                        type="checkbox"
-                        checked={notePrivate}
-                        onChange={(event) => setNotePrivate(event.target.checked)}
-                      />
-                      <span>Keep this note private (redacted in the shared recap)</span>
-                    </label>
+                    <Checkbox
+                      className="money-check-in__checkbox"
+                      label="Keep this note private (redacted in the shared recap)"
+                      checked={notePrivate}
+                      onChange={(event) => setNotePrivate(event.target.checked)}
+                    />
                     <button
                       type="button"
                       className="money-check-in__link-button"
@@ -538,14 +536,13 @@ export function MoneyCheckInDialog({
                 <fieldset key={partner.id} className="money-check-in__fieldset">
                   <legend className="money-check-in__legend">{partner.name} shares</legend>
                   {ALL_CHECK_IN_SUMMARY_TYPES.map((type) => (
-                    <label key={type} className="money-check-in__checkbox">
-                      <input
-                        type="checkbox"
-                        checked={(sharingPrefs[partner.id] ?? []).includes(type)}
-                        onChange={() => toggleSharing(partner.id, type)}
-                      />
-                      <span>{SUMMARY_TYPE_LABELS[type]}</span>
-                    </label>
+                    <Checkbox
+                      key={type}
+                      className="money-check-in__checkbox"
+                      label={SUMMARY_TYPE_LABELS[type]}
+                      checked={(sharingPrefs[partner.id] ?? []).includes(type)}
+                      onChange={() => toggleSharing(partner.id, type)}
+                    />
                   ))}
                 </fieldset>
               ))}
