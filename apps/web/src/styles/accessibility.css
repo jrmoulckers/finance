@@ -131,6 +131,79 @@ textarea {
   min-height: 44px;
 }
 
+/* -------------------------------------------------------------------
+ * Native form-control chrome normalization (centralized)
+ *
+ * The browser's stock number spinner arrows and native date/time
+ * picker indicators clash with the app's design system (especially in
+ * dark themes). These global rules strip the stock chrome so every
+ * input in the web app is driven by the shared, centrally styled
+ * components/rules — no native styling leaks through. Number inputs
+ * that want a stepper use a custom, design-system-styled control; date
+ * selection uses the shared <DatePicker> component.
+ * ------------------------------------------------------------------- */
+
+/* Remove native number-input spinner buttons app-wide (WebKit/Blink). */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Remove native number-input spinners (Firefox). */
+input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Style the native date/time picker indicator to match the design
+ * system. Give it a consistent hit area and pointer affordance. */
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='datetime-local']::-webkit-calendar-picker-indicator,
+input[type='month']::-webkit-calendar-picker-indicator,
+input[type='week']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: var(--border-radius-sm, 4px);
+  opacity: 0.7;
+  transition: opacity var(--duration-fast, 120ms) ease;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator:hover,
+input[type='time']::-webkit-calendar-picker-indicator:hover,
+input[type='datetime-local']::-webkit-calendar-picker-indicator:hover,
+input[type='month']::-webkit-calendar-picker-indicator:hover,
+input[type='week']::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Invert the stock (dark-on-light) calendar glyph so it reads against
+ * dark surfaces. Applies to the dark and OLED themes, and to users
+ * whose OS prefers dark without an explicit light override. */
+[data-theme='dark'] input[type='date']::-webkit-calendar-picker-indicator,
+[data-theme='dark'] input[type='time']::-webkit-calendar-picker-indicator,
+[data-theme='dark'] input[type='datetime-local']::-webkit-calendar-picker-indicator,
+[data-theme='dark'] input[type='month']::-webkit-calendar-picker-indicator,
+[data-theme='dark'] input[type='week']::-webkit-calendar-picker-indicator,
+[data-theme='dark-oled'] input[type='date']::-webkit-calendar-picker-indicator,
+[data-theme='dark-oled'] input[type='time']::-webkit-calendar-picker-indicator,
+[data-theme='dark-oled'] input[type='datetime-local']::-webkit-calendar-picker-indicator,
+[data-theme='dark-oled'] input[type='month']::-webkit-calendar-picker-indicator,
+[data-theme='dark-oled'] input[type='week']::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) input[type='date']::-webkit-calendar-picker-indicator,
+  html:not([data-theme='light']) input[type='time']::-webkit-calendar-picker-indicator,
+  html:not([data-theme='light']) input[type='datetime-local']::-webkit-calendar-picker-indicator,
+  html:not([data-theme='light']) input[type='month']::-webkit-calendar-picker-indicator,
+  html:not([data-theme='light']) input[type='week']::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.4);
+  }
+}
+
 /* Icon buttons — ensure padding creates adequate touch target */
 .icon-button {
   display: inline-flex;
