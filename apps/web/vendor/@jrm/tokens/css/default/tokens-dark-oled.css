@@ -1,0 +1,30 @@
+/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+[data-theme="dark-oled"] {
+  --shadow-lift: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow-hairline: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  --semantic-background-primary: #000000; /** True black — OLED pixels off (0,0,0). */
+  --semantic-background-secondary: #0a0a0a; /** Near-black secondary surface (#0a0a0a). */
+  --semantic-background-elevated: #111111; /** Elevated surface for cards/modals (#111111). */
+  --semantic-background-raised: #111111; /** JRM extension (deepest chrome) — legacy --color-surface-3 alias. */
+  --semantic-text-primary: #e9e9f4; /** Primary text — high contrast vs #000000. */
+  --semantic-text-secondary: #a3a6cb;
+  --semantic-text-disabled: #313357; /** Disabled text — WCAG-exempt. */
+  --semantic-text-inverse: #000000; /** Text on interactive/brand fills. */
+  --semantic-border-default: #a3a6cb; /** Brightened border for 3:1+ UI-component contrast against true black. */
+  --semantic-border-focus: oklch(0.71 0.16 285);
+  --semantic-border-error: oklch(0.79 0.14 25);
+  --semantic-interactive-default: oklch(0.71 0.16 285); /** Royal Violet lightened for contrast on true black. */
+  --semantic-interactive-hover: oklch(0.83 0.10 285);
+  --semantic-interactive-pressed: oklch(0.94 0.04 285);
+  --semantic-interactive-disabled: #24263f; /** Disabled interactive fill — WCAG-exempt. */
+  --semantic-accent-default: #ffd166;
+  --semantic-accent-ink: #ffd166; /** Gold text on true black keeps pure Crown Gold. */
+  --semantic-status-positive: #34d399;
+  --semantic-status-negative: #f87171;
+  --semantic-status-warning: #fbbf24;
+  --semantic-status-info: oklch(0.80 0.11 230);
+}

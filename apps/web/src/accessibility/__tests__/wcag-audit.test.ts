@@ -132,31 +132,52 @@ describe('Accessibility CSS', () => {
 
 describe('High Contrast Token Integration', () => {
   const tokensCss = readFileSync(resolve(__dirname, '../../../src/theme/tokens.css'), 'utf-8');
+  // Mode auto-switching, high-contrast, and chart-HC behaviour now live in the
+  // shared @jrm/tokens barrel that tokens.css imports (adopted from
+  // jrmoulckers/studio); finance-specific amount tokens live in the overlay.
+  const sharedBarrel = readFileSync(
+    resolve(__dirname, '../../../vendor/@jrm/tokens/css/default/index.css'),
+    'utf-8',
+  );
+  const overlayCss = readFileSync(
+    resolve(__dirname, '../../../src/theme/finance-overlay.css'),
+    'utf-8',
+  );
 
-  it('should import the high-contrast generated CSS', () => {
+  it('should import the high-contrast generated CSS (finance base)', () => {
     expect(tokensCss).toContain('tokens-high-contrast.css');
   });
 
-  it('should apply all semantic tokens in prefers-contrast: more', () => {
-    expect(tokensCss).toContain('prefers-contrast: more');
+  it('should import the shared @jrm/tokens barrel that owns mode auto-switching', () => {
+    expect(tokensCss).toContain('vendor/@jrm/tokens/css/default/index.css');
+  });
+
+  it('should apply all semantic tokens in prefers-contrast: more (shared layer)', () => {
+    expect(sharedBarrel).toContain('prefers-contrast: more');
     // Must override ALL semantic categories, not just borders
-    expect(tokensCss).toContain('--semantic-text-primary');
-    expect(tokensCss).toContain('--semantic-interactive-default');
-    expect(tokensCss).toContain('--semantic-status-positive');
-    expect(tokensCss).toContain('--semantic-amount-positive');
-    expect(tokensCss).toContain('--semantic-background-primary');
+    expect(sharedBarrel).toContain('--semantic-text-primary');
+    expect(sharedBarrel).toContain('--semantic-interactive-default');
+    expect(sharedBarrel).toContain('--semantic-status-positive');
+    expect(sharedBarrel).toContain('--semantic-background-primary');
   });
 
-  it('should override chart colors for high contrast', () => {
-    expect(tokensCss).toContain('--color-chart-1');
-    expect(tokensCss).toContain('--color-chart-hc-1');
+  it('should keep financial amount tokens in lockstep with status (finance overlay)', () => {
+    expect(overlayCss).toContain('--semantic-amount-positive');
+    expect(overlayCss).toContain('--semantic-amount-negative');
   });
 
-  it('should handle dark + high contrast combination', () => {
-    expect(tokensCss).toContain('prefers-color-scheme: dark');
-    expect(tokensCss).toContain('prefers-contrast: more');
+  it('should override chart colors for high contrast (shared layer)', () => {
+    expect(sharedBarrel).toContain('--color-chart-1');
+    expect(sharedBarrel).toContain('--color-chart-hc-1');
+  });
+
+  it('should handle dark + high contrast combination (shared layer)', () => {
+    expect(sharedBarrel).toContain('prefers-color-scheme: dark');
+    expect(sharedBarrel).toContain('prefers-contrast: more');
     // Should have a combined dark+HC media query
-    expect(tokensCss).toMatch(/prefers-color-scheme:\s*dark\)\s*and\s*\(prefers-contrast:\s*more/);
+    expect(sharedBarrel).toMatch(
+      /prefers-color-scheme:\s*dark\)\s*and\s*\(prefers-contrast:\s*more/,
+    );
   });
 });
 

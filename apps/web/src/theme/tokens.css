@@ -1,20 +1,41 @@
 /**
  * Design token CSS imports.
  *
- * Imports the auto-generated CSS custom properties from the design-tokens
- * package. These tokens are the single source of truth for colors, spacing,
- * typography, shadows, and component styles across all platforms.
+ * Finance renders from TWO layered token sources:
  *
- * Light theme tokens are applied to :root by default.
- * Dark theme tokens activate via [data-theme="dark"] attribute on <html>.
+ *   1. @finance/design-tokens (base) — supplies the STRUCTURAL layer finance
+ *      consumes pervasively and that the shared package does not own:
+ *      numeric spacing (--spacing-4), type scale (--type-scale-*),
+ *      radii (--border-radius-*), elevation (--elevation-*), motion
+ *      (--duration-*, --easing-*, --animation-*), component tokens, and the
+ *      primitive color ramps. It also seeds the semantic COLOR layer, which
+ *      the shared layer below overrides.
+ *
+ *   2. @jrm/tokens (shared JRM Studio DNA, vendored under apps/web/vendor/) —
+ *      overrides the shared --semantic-* COLOR layer (background/text/border/
+ *      interactive/status/accent) and OWNS the mode variants
+ *      ([data-theme="dark|dark-oled|high-contrast"]), the prefers-color-scheme
+ *      / prefers-contrast AUTO-SWITCHING, reduced-motion, and the cognitive
+ *      [data-a11y-cognitive="true"] block. Imported AFTER the base so its
+ *      brand colors win by cascade order.
+ *
+ * A thin finance-overlay.css then covers the finance-specific color delta the
+ * shared layer does not own (e.g. --semantic-amount-*).
+ *
+ * Light theme tokens apply to :root by default; explicit themes activate via
+ * the [data-theme] attribute on <html> (see useTheme), and 'system' mode
+ * removes the attribute so the shared auto-switch @media queries take over.
  *
  * Usage in components:
  *   color: var(--semantic-text-primary);
  *   padding: var(--spacing-4);
  *   border-radius: var(--card-border-radius);
  *
+ * @see apps/web/vendor/@jrm/tokens/css/default/index.css
  * @see packages/design-tokens/build/web/tokens.css
  */
+
+/* --- Layer 1: @finance/design-tokens base (structure + primitives) --------- */
 
 /* Light theme (default) */
 @import '../../../../packages/design-tokens/build/web/tokens.css';
@@ -28,40 +49,34 @@
 /* High-contrast theme — explicit toggle via [data-theme="high-contrast"] */
 @import '../../../../packages/design-tokens/build/web/tokens-high-contrast.css';
 
-/* Cognitive accessibility mode — simplified UI, larger targets, no motion */
+/* --- Layer 2: shared JRM Studio @jrm/tokens (semantic color DNA + modes) ----
+ * Vendored, registry-free copy of the shared package. Its barrel emits the
+ * light + [data-theme=*] mode blocks, prefers-color-scheme / prefers-contrast
+ * auto-switching, reduced-motion, and the cognitive block, so finance defers
+ * to it for all mode/auto-switch color behaviour (see below — finance's own
+ * hand-written auto-switch blocks were removed to avoid double-definition). */
+@import '../../vendor/@jrm/tokens/css/default/index.css';
+
+/* Cognitive accessibility mode — finance layout/touch-target overrides
+ * (complements the shared [data-a11y-cognitive] color/type block above). */
 @import '../styles/cognitive.css';
 
+/* Thin finance overlay — finance-specific tokens the shared layer doesn't own. */
+@import './finance-overlay.css';
+
 /*
- * System preference: auto-apply dark theme when the OS prefers dark mode.
- * Users can still override by toggling [data-theme] on <html>.
+ * Auto-switching for prefers-color-scheme / prefers-contrast is intentionally
+ * NOT defined here: the shared @jrm/tokens barrel (imported above) owns it via
+ * `:root:not([data-theme])` @media blocks. Finance's previous hand-written
+ * blocks were removed to avoid double-definition and to let the shared brand
+ * palette drive auto-switching. Finance's `data-theme` toggle mechanism
+ * (useTheme) is unchanged and matches the shared [data-theme=*] selectors.
  */
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme='light']):not([data-theme='dark-oled']) {
-    --semantic-background-primary: var(--color-neutral-950);
-    --semantic-background-secondary: var(--color-neutral-900);
-    --semantic-background-elevated: var(--color-neutral-800);
-    --semantic-text-primary: var(--color-neutral-50);
-    --semantic-text-secondary: var(--color-neutral-400);
-    --semantic-text-disabled: var(--color-neutral-600);
-    --semantic-text-inverse: var(--color-neutral-900);
-    --semantic-border-default: var(--color-neutral-700);
-    --semantic-border-focus: var(--color-blue-400);
-    --semantic-border-error: var(--color-red-400);
-    --semantic-interactive-default: var(--color-blue-400);
-    --semantic-interactive-hover: var(--color-blue-300);
-    --semantic-interactive-pressed: var(--color-blue-200);
-    --semantic-interactive-disabled: var(--color-neutral-700);
-    --semantic-status-positive: var(--color-green-500);
-    --semantic-status-negative: var(--color-red-500);
-    --semantic-status-warning: var(--color-amber-500);
-    --semantic-status-info: var(--color-blue-400);
-    --semantic-amount-positive: var(--color-green-500);
-    --semantic-amount-negative: var(--color-red-500);
-  }
-}
 
 /*
  * Reduced motion: disable transitions / animations for users who prefer it.
+ * Kept as a finance behavioural safety net — the shared layer only resets its
+ * own --motion-* durations; this blanket rule zeroes ALL animations/transitions.
  */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -81,102 +96,6 @@ html[data-reduced-motion='true'] *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
-}
-
-/*
- * High contrast: apply all high-contrast semantic tokens when the user
- * prefers more contrast (WCAG 1.4.3, 1.4.6, 1.4.11).
- *
- * Overrides ALL semantic color tokens — not just borders.
- * Text pairings exceed WCAG AAA (7:1) where possible.
- */
-@media (prefers-contrast: more) {
-  html:not([data-theme='high-contrast']) {
-    /* Backgrounds */
-    --semantic-background-primary: var(--color-neutral-0);
-    --semantic-background-secondary: var(--color-neutral-100);
-    --semantic-background-elevated: var(--color-neutral-0);
-
-    /* Text */
-    --semantic-text-primary: var(--color-neutral-950);
-    --semantic-text-secondary: var(--color-neutral-700);
-    --semantic-text-disabled: var(--color-neutral-500);
-    --semantic-text-inverse: var(--color-neutral-0);
-
-    /* Borders */
-    --semantic-border-default: var(--color-neutral-900);
-    --semantic-border-focus: var(--color-blue-800);
-    --semantic-border-error: var(--color-red-700);
-
-    /* Interactive */
-    --semantic-interactive-default: var(--color-blue-800);
-    --semantic-interactive-hover: var(--color-blue-900);
-    --semantic-interactive-pressed: var(--color-neutral-900);
-    --semantic-interactive-disabled: var(--color-neutral-400);
-
-    /* Status */
-    --semantic-status-positive: var(--color-green-700);
-    --semantic-status-negative: var(--color-red-700);
-    --semantic-status-warning: var(--color-amber-700);
-    --semantic-status-info: var(--color-blue-800);
-
-    /* Financial amounts */
-    --semantic-amount-positive: var(--color-green-700);
-    --semantic-amount-negative: var(--color-red-700);
-
-    /* Component borders — heavier for element definition */
-    --card-border: var(--color-neutral-900);
-    --input-border: var(--color-neutral-900);
-    --navigation-border: var(--color-neutral-900);
-
-    /* Chart colors — darker CVD-safe variants for white background (all AA+) */
-    --color-chart-1: var(--color-chart-hc-1);
-    --color-chart-2: var(--color-chart-hc-2);
-    --color-chart-3: var(--color-chart-hc-3);
-    --color-chart-4: var(--color-chart-hc-4);
-    --color-chart-5: var(--color-chart-hc-5);
-    --color-chart-6: var(--color-chart-hc-6);
-  }
-}
-
-/*
- * Dark + high contrast: for users in dark mode who also prefer more contrast.
- * Uses brighter foreground colors and stronger borders on dark backgrounds.
- */
-@media (prefers-color-scheme: dark) and (prefers-contrast: more) {
-  html:not([data-theme='light']):not([data-theme='high-contrast']):not([data-theme='dark-oled']) {
-    /* Brighter text for maximum contrast on dark backgrounds */
-    --semantic-text-primary: var(--color-neutral-0);
-    --semantic-text-secondary: var(--color-neutral-200);
-    --semantic-text-disabled: var(--color-neutral-400);
-    --semantic-text-inverse: var(--color-neutral-950);
-
-    /* Stronger borders */
-    --semantic-border-default: var(--color-neutral-300);
-    --semantic-border-focus: var(--color-blue-300);
-    --semantic-border-error: var(--color-red-300);
-
-    /* Brighter interactive colors */
-    --semantic-interactive-default: var(--color-blue-300);
-    --semantic-interactive-hover: var(--color-blue-200);
-    --semantic-interactive-pressed: var(--color-blue-100);
-    --semantic-interactive-disabled: var(--color-neutral-600);
-
-    /* Brighter status colors */
-    --semantic-status-positive: var(--color-green-500);
-    --semantic-status-negative: var(--color-red-400);
-    --semantic-status-warning: var(--color-amber-500);
-    --semantic-status-info: var(--color-blue-300);
-
-    /* Financial amounts */
-    --semantic-amount-positive: var(--color-green-500);
-    --semantic-amount-negative: var(--color-red-400);
-
-    /* Component borders */
-    --card-border: var(--color-neutral-300);
-    --input-border: var(--color-neutral-300);
-    --navigation-border: var(--color-neutral-300);
-  }
 }
 
 /*

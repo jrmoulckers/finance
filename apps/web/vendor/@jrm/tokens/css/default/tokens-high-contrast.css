@@ -1,0 +1,30 @@
+/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+[data-theme="high-contrast"] {
+  --shadow-lift: 0 10px 30px rgba(60, 50, 120, 0.12);
+  --shadow-hairline: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  --semantic-background-primary: #ffffff; /** Pure white — maximum-contrast base. */
+  --semantic-background-secondary: #f1f1f9;
+  --semantic-background-elevated: #ffffff; /** White elevated surface with heavy border for definition. */
+  --semantic-background-raised: #e7e7f4; /** JRM extension (deepest chrome) — legacy --color-surface-3 alias. */
+  --semantic-text-primary: #000000;
+  --semantic-text-secondary: #1c1d2e; /** Still near-black — muted by role, not by low contrast. */
+  --semantic-text-disabled: #5b5e7e; /** Disabled text — WCAG-exempt. */
+  --semantic-text-inverse: #ffffff; /** White text on dark interactive surfaces. */
+  --semantic-border-default: #000000; /** Near-max element definition. */
+  --semantic-border-focus: oklch(0.38 0.14 285);
+  --semantic-border-error: oklch(0.50 0.13 25);
+  --semantic-interactive-default: oklch(0.38 0.14 285); /** Deep Royal Violet — clears AA/AAA text contrast on white. */
+  --semantic-interactive-hover: oklch(0.28 0.10 285);
+  --semantic-interactive-pressed: oklch(0.18 0.06 285);
+  --semantic-interactive-disabled: #dcdcea; /** Disabled interactive fill — WCAG-exempt. */
+  --semantic-accent-default: oklch(0.54 0.09 90);
+  --semantic-accent-ink: #806600;
+  --semantic-status-positive: oklch(0.47 0.10 165); /** Pair with icon+text — never color alone. */
+  --semantic-status-negative: oklch(0.50 0.13 25);
+  --semantic-status-warning: oklch(0.53 0.11 80);
+  --semantic-status-info: oklch(0.52 0.12 230);
+}
