@@ -388,9 +388,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           onOpenFeedback={openFeedbackDialog}
           simpleMode={simpleModeEnabled}
         />
+        {/* Notice banners live inside the content column (`.app-shell`) so they
+            render full-width at the bottom of the content on every breakpoint.
+            Rendering them as siblings of `.app-shell` pulled them into the
+            `.app-layout` flex row at >=768px, squishing the main content into
+            the left half of the viewport (#3537). */}
+        <InstallBanner />
+        <SampleDataBanner />
       </div>
-      <InstallBanner />
-      <SampleDataBanner />
       <CommandPalette
         isOpen={showCommandPalette}
         actions={commandPaletteActions}
