@@ -3,8 +3,9 @@
 import { StrictMode } from 'react';
 import type { FC, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { App } from './App';
+import { AppBrowserRouter } from './AppBrowserRouter';
 import { AuthProvider } from './auth/auth-context';
 import { PRE_AUTH_ROUTE_SET, isUnauthenticatedSafeRoute } from './lib/auth/pre-auth-routes';
 import { ErrorBoundary, ToastProvider, UpdateBanner } from './components/common';
@@ -205,7 +206,7 @@ createRoot(rootElement).render(
         <AuthProvider config={authConfig}>
           <MoneyDisplayProvider>
             <AccessibilityProvider>
-              <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
+              <AppBrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
                 <NavigationGuard>
                   <ScrollToTop />
                   <UpdateBanner />
@@ -213,7 +214,7 @@ createRoot(rootElement).render(
                     <App />
                   </DatabaseGate>
                 </NavigationGuard>
-              </BrowserRouter>
+              </AppBrowserRouter>
             </AccessibilityProvider>
           </MoneyDisplayProvider>
         </AuthProvider>
