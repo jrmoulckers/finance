@@ -1,0 +1,82 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/*
+ * Budgets page — planner summary bar.
+ *
+ * Replaces the previous cramped inline-styled grids with token-driven layout
+ * classes so the planning-cadence / expected / projected-income / ready-to-assign
+ * summary aligns cleanly and stays consistent with the rest of the app. All
+ * colours, spacing, and type come from semantic design tokens (#3543).
+ */
+
+.budget-planner__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--spacing-4);
+  align-items: start;
+  margin-bottom: var(--spacing-4);
+}
+
+.budget-planner__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.budget-planner__field .card__title {
+  margin: 0;
+}
+
+.budget-planner__field .card__value {
+  margin: 0;
+}
+
+.budget-planner__hint {
+  margin: 0;
+  font-size: var(--type-scale-caption-font-size);
+  line-height: 1.4;
+  color: var(--semantic-text-secondary);
+}
+
+.budget-planner__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--semantic-border-default);
+}
+
+.budget-planner__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.budget-planner__stat .card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin: 0;
+}
+
+.budget-planner__stat .card__value {
+  margin: 0;
+}
+
+.budget-planner__income {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--spacing-3);
+  align-items: end;
+}
+
+.budget-planner__income-list {
+  margin: var(--spacing-3) 0 0;
+  padding-left: 1.25rem;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  line-height: 1.6;
+}
