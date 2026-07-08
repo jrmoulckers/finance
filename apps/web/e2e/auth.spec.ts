@@ -29,6 +29,7 @@ test('keeps social sign-in outside the collapsible email form (#3178)', async ({
   const oauthSection = page.locator('.auth-oauth-section');
   await expect(oauthSection.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
   await expect(oauthSection.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+  await expect(oauthSection.getByRole('button', { name: 'Sign in with Microsoft' })).toBeVisible();
   await expect(oauthSection.getByRole('button', { name: 'Sign in with Apple' })).toBeVisible();
 
   // None of the social buttons may be nested inside the collapsible email form.

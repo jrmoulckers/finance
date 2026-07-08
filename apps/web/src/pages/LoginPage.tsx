@@ -479,6 +479,23 @@ export const LoginPage: React.FC = () => {
               type="button"
               className="form-button form-button--secondary auth-oauth-button"
               onClick={() => {
+                void loginWithOAuth('azure');
+              }}
+              disabled={isBusy}
+              aria-label="Sign in with Microsoft"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#F25022" d="M2 2h9.5v9.5H2z" />
+                <path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z" />
+                <path fill="#00A4EF" d="M2 12.5h9.5V22H2z" />
+                <path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z" />
+              </svg>
+              Microsoft
+            </button>
+            <button
+              type="button"
+              className="form-button form-button--secondary auth-oauth-button"
+              onClick={() => {
                 void loginWithOAuth('apple');
               }}
               disabled={isBusy}

@@ -9,7 +9,7 @@
  * short-lived HttpOnly cookies, then redirects the browser to Supabase
  * Cloud's `/auth/v1/authorize` with the matching `code_challenge` +
  * `state` query parameters. The user lands on the provider (Google,
- * GitHub, Apple) and is returned to {@link auth-oauth-callback}.
+ * GitHub, Apple, Microsoft) and is returned to {@link auth-oauth-callback}.
  *
  * The `redirect_to` query parameter is validated against a strict
  * allowlist to prevent open-redirect via the post-login navigation.

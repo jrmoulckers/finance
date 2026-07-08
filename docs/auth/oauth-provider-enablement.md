@@ -5,16 +5,20 @@
 > **Related:** [`oauth-setup.md`](./oauth-setup.md) (per-provider credential setup)
 
 This document explains **why** the social sign-in buttons (Continue with
-Google / GitHub / Apple) can fail on a deployed environment and the **exact
-configuration a human must apply** to enable them. Enabling providers requires
-real OAuth credentials, which are secret-gated — **an AI agent cannot perform
-this step.** This doc gives the operator a copy-paste checklist.
+Google / GitHub / Microsoft / Apple) can fail on a deployed environment and the
+**exact configuration a human must apply** to enable them. Enabling providers
+requires real OAuth credentials, which are secret-gated — **an AI agent cannot
+perform this step.** This doc gives the operator a copy-paste checklist.
+
+> **Microsoft = `azure`.** Supabase GoTrue brokers Microsoft sign-in under the
+> `azure` provider slug. Everywhere below where a provider slug appears
+> (env var names, the `/settings.external` map), Microsoft is `azure`.
 
 ## Symptom
 
-On the deployed site, clicking **Continue with Google / GitHub / Apple** on
-`/login` fails. Before the app-side hardening (#3188/#3187) the browser landed
-on a raw JSON page:
+On the deployed site, clicking **Continue with Google / GitHub / Microsoft /
+Apple** on `/login` fails. Before the app-side hardening (#3188/#3187) the
+browser landed on a raw JSON page:
 
 ```
 400 validation_failed — "Unsupported provider: provider is not enabled"
@@ -58,7 +62,8 @@ There are two deployment shapes. Use whichever matches your environment.
 ### Option A — Supabase Cloud (Dashboard)
 
 1. Open the [Supabase Dashboard](https://supabase.com/dashboard) → your project.
-2. **Authentication → Providers →** _Google_ / _GitHub_ / _Apple_.
+2. **Authentication → Providers →** _Google_ / _GitHub_ / _Azure (Microsoft)_ /
+   _Apple_.
 3. Toggle **Enable**, then paste the provider's **Client ID** and **Client
    Secret** (obtain these per [`oauth-setup.md`](./oauth-setup.md)).
 4. **Authentication → URL Configuration → Redirect URLs**: add the app callback
@@ -89,6 +94,16 @@ GOTRUE_EXTERNAL_APPLE_CLIENT_ID=YOUR_APPLE_SERVICES_ID
 GOTRUE_EXTERNAL_APPLE_SECRET=YOUR_APPLE_CLIENT_SECRET_JWT
 GOTRUE_EXTERNAL_APPLE_REDIRECT_URI=https://YOUR_SUPABASE_REF.supabase.co/auth/v1/callback
 
+# ── Microsoft (azure) ────────────────────────────────────────────────────
+# GoTrue brokers Microsoft under the `azure` slug. The default tenant is
+# `common` (personal + work/school accounts); set AZURE_URL to a specific
+# tenant (e.g. https://login.microsoftonline.com/<tenant-id>) to restrict it.
+GOTRUE_EXTERNAL_AZURE_ENABLED=true
+GOTRUE_EXTERNAL_AZURE_CLIENT_ID=YOUR_AZURE_APPLICATION_CLIENT_ID
+GOTRUE_EXTERNAL_AZURE_SECRET=YOUR_AZURE_CLIENT_SECRET
+GOTRUE_EXTERNAL_AZURE_REDIRECT_URI=https://YOUR_SUPABASE_REF.supabase.co/auth/v1/callback
+GOTRUE_EXTERNAL_AZURE_URL=https://login.microsoftonline.com/common
+
 # Allow GoTrue to redirect back to our app callback after the provider hop.
 # Comma-separated allow list — include the app's oauth-callback URL.
 GOTRUE_URI_ALLOW_LIST=https://YOUR_APP_DOMAIN/api/auth/oauth-callback
@@ -115,11 +130,11 @@ match the app's public origin and be present in `GOTRUE_URI_ALLOW_LIST`.
 
 ## Redirect URL summary
 
-| Where                                                      | Value                                                    |
-| ---------------------------------------------------------- | -------------------------------------------------------- |
-| Provider console (Google/GitHub/Apple) authorized redirect | `https://YOUR_SUPABASE_REF.supabase.co/auth/v1/callback` |
-| GoTrue `..._REDIRECT_URI`                                  | `https://YOUR_SUPABASE_REF.supabase.co/auth/v1/callback` |
-| GoTrue `GOTRUE_URI_ALLOW_LIST` / Dashboard Redirect URLs   | `https://YOUR_APP_DOMAIN/api/auth/oauth-callback`        |
+| Where                                                                | Value                                                    |
+| -------------------------------------------------------------------- | -------------------------------------------------------- |
+| Provider console (Google/GitHub/Microsoft/Apple) authorized redirect | `https://YOUR_SUPABASE_REF.supabase.co/auth/v1/callback` |
+| GoTrue `..._REDIRECT_URI`                                            | `https://YOUR_SUPABASE_REF.supabase.co/auth/v1/callback` |
+| GoTrue `GOTRUE_URI_ALLOW_LIST` / Dashboard Redirect URLs             | `https://YOUR_APP_DOMAIN/api/auth/oauth-callback`        |
 
 ## Verification checklist
 
