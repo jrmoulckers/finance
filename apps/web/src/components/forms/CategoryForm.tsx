@@ -16,6 +16,7 @@ import type { CreateCategoryInput } from '../../db/repositories/categories';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Category, SyncId } from '../../kmp/bridge';
+import { Button } from '../common/Button';
 
 import './forms.css';
 
@@ -373,22 +374,12 @@ export function CategoryForm({
           </div>
 
           <div className="form-actions">
-            <button
-              type="button"
-              className="form-button form-button--secondary"
-              onClick={handleCancel}
-              disabled={submitting}
-            >
+            <Button type="button" variant="secondary" onClick={handleCancel} disabled={submitting}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="form-button form-button--primary"
-              disabled={submitting}
-              aria-busy={submitting}
-            >
+            </Button>
+            <Button type="submit" variant="primary" loading={submitting}>
               {submitting ? submittingLabel : submitLabel}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

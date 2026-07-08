@@ -40,6 +40,7 @@ import type { Budget, BudgetPeriod, Category } from '../../kmp/bridge';
 import type { BudgetStarterTemplate } from '../../lib/budgeting/starter-budget-templates';
 import { budgetSchema } from '../../lib/validation';
 import { DatePicker } from '../common/DatePicker';
+import { Button } from '../common/Button';
 import { AmountInput } from './AmountInput';
 
 import './forms.css';
@@ -701,20 +702,10 @@ export function BudgetForm({
           </div>
 
           <div className="form-actions">
-            <button
-              type="button"
-              className="form-button form-button--secondary"
-              onClick={handleCancel}
-              disabled={submitting}
-            >
+            <Button type="button" variant="secondary" onClick={handleCancel} disabled={submitting}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="form-button form-button--primary"
-              disabled={submitting}
-              aria-busy={submitting}
-            >
+            </Button>
+            <Button type="submit" variant="primary" loading={submitting}>
               {submitting
                 ? creationMode === 'template' && !isEditMode
                   ? 'Creating starter budget…'
@@ -726,7 +717,7 @@ export function BudgetForm({
                   : isEditMode
                     ? 'Update Budget'
                     : 'Create Budget'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

@@ -39,6 +39,7 @@ import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Goal, GoalStatus, SyncId } from '../../kmp/bridge';
 import { goalSchema } from '../../lib/validation';
 import { DatePicker } from '../common/DatePicker';
+import { Button } from '../common/Button';
 import { AmountInput } from './AmountInput';
 
 import './forms.css';
@@ -465,22 +466,12 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
           </div>
 
           <div className="form-actions">
-            <button
-              type="button"
-              className="form-button form-button--secondary"
-              onClick={handleCancel}
-              disabled={submitting}
-            >
+            <Button type="button" variant="secondary" onClick={handleCancel} disabled={submitting}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="form-button form-button--primary"
-              disabled={submitting}
-              aria-busy={submitting}
-            >
+            </Button>
+            <Button type="submit" variant="primary" loading={submitting}>
               {submitting ? submittingLabel : submitLabel}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

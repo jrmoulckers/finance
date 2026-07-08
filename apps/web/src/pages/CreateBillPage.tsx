@@ -14,6 +14,7 @@ import { useBills } from '../hooks';
 import type { BillFrequency } from '../kmp/bridge';
 import type { CreateBillInput } from '../db/repositories/bills';
 import { DatePicker } from '../components/common/DatePicker';
+import { Button } from '../components/common/Button';
 
 /** Resolve the first available household ID from the local database. */
 function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): string | null {
@@ -360,22 +361,17 @@ export const CreateBillPage: React.FC = () => {
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 'var(--spacing-3)' }}>
-            <button
-              type="submit"
-              className="form-button form-button--primary"
-              disabled={submitting}
-              aria-busy={submitting}
-            >
+            <Button type="submit" variant="primary" loading={submitting}>
               {submitting ? 'Creating…' : 'Create Bill'}
-            </button>
-            <Link
+            </Button>
+            <Button
+              as={Link}
               to="/bills"
-              className="form-button"
-              style={{ textDecoration: 'none' }}
-              aria-disabled={submitting}
+              variant="secondary"
+              aria-disabled={submitting || undefined}
             >
               Cancel
-            </Link>
+            </Button>
           </div>
         </form>
       </div>

@@ -35,6 +35,7 @@ import { useAmountInput } from '../../hooks/useAmountInput';
 import type { Account, Category, TransactionType } from '../../kmp/bridge';
 import type { CategorySuggestion } from '../../lib/categorization';
 import { AutoCategoryBadge } from '../categorization';
+import { Button } from '../common/Button';
 import { AmountInput } from './AmountInput';
 
 import './forms.css';
@@ -434,9 +435,9 @@ export const QuickEntry: FC<QuickEntryProps> = ({
             </select>
           )}
 
-          <button type="submit" className="form-button form-button--primary quick-entry__submit">
+          <Button type="submit" variant="primary" className="quick-entry__submit">
             Add {transactionType === 'INCOME' ? 'Income' : 'Expense'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>
