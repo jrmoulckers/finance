@@ -9,23 +9,20 @@
  * (including the unread badge). `useNotifications` keeps its state in a
  * component-local `useState`, so calling it in two places would create two
  * diverging stores. This provider owns a single `useNotifications` instance
- * and shares it via context, and also runs the reactive alert-injection
- * effects (scam checks, warranty reminders) that feed the store.
+ * and shares it via context.
+ *
+ * The reactive alert-injection effects (scam checks, warranty reminders) live
+ * in `components/notifications/NotificationInjectors` — deliberately outside
+ * this module so their heavier libraries are not hoisted into the shared,
+ * budget-constrained `vendor-app` chunk (#3478/#2983).
  *
  * @module contexts/NotificationsContext
  * References: #3539
  */
 
-import { createContext, useContext, useEffect, useMemo, type FC, type ReactNode } from 'react';
+import { createContext, useContext, type FC, type ReactNode } from 'react';
 
 import { useNotifications, type UseNotificationsResult } from '../hooks/useNotifications';
-import { useTransactions } from '../hooks';
-import { detectScamAlerts, scamAlertsToNotifications } from '../lib/notifications';
-import {
-  buildWarrantyReminderNotifications,
-  buildWarrantyReminders,
-  useWarrantyEntries,
-} from '../lib/warranty';
 
 const NotificationsContext = createContext<UseNotificationsResult | null>(null);
 
@@ -35,56 +32,12 @@ export interface NotificationsProviderProps {
 }
 
 /**
- * Provides a single shared notification store to the component tree and keeps
- * it fed with reactively-derived alerts (scam checks and warranty reminders).
+ * Provides a single shared notification store to the component tree. Render
+ * `NotificationInjectors` inside this provider to feed the store with
+ * reactively-derived alerts.
  */
 export const NotificationsProvider: FC<NotificationsProviderProps> = ({ children }) => {
   const store = useNotifications();
-  const { notifications, loading, addNotifications } = store;
-
-  const warrantyEntries = useWarrantyEntries();
-  const scamTransactionFilters = useMemo(() => ({ type: 'EXPENSE' as const }), []);
-  const { transactions: scamTransactions } = useTransactions(scamTransactionFilters);
-  const scamNotifications = useMemo(
-    () => scamAlertsToNotifications(detectScamAlerts(scamTransactions)),
-    [scamTransactions],
-  );
-
-  // Inject warranty reminder notifications as warranty data changes.
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    const existingDeduplicationKeys = new Set(
-      notifications
-        .map((notification) => notification.deduplicationKey)
-        .filter((key): key is string => typeof key === 'string' && key.length > 0),
-    );
-    const reminderNotifications = buildWarrantyReminderNotifications(
-      buildWarrantyReminders(warrantyEntries, undefined, existingDeduplicationKeys),
-    );
-
-    if (reminderNotifications.length > 0) {
-      addNotifications(reminderNotifications);
-    }
-  }, [addNotifications, loading, notifications, warrantyEntries]);
-
-  // Inject newly-detected scam-check notifications.
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    const knownNotificationKeys = new Set(
-      notifications.map((notification) => notification.deduplicationKey ?? notification.id),
-    );
-    const newScamNotifications = scamNotifications.filter(
-      (notification) =>
-        !knownNotificationKeys.has(notification.deduplicationKey ?? notification.id),
-    );
-    addNotifications(newScamNotifications);
-  }, [addNotifications, loading, notifications, scamNotifications]);
 
   return <NotificationsContext.Provider value={store}>{children}</NotificationsContext.Provider>;
 };

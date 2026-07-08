@@ -8,6 +8,7 @@ import { AppLayout } from './components/layout';
 import { FocusManager } from './components/layout/FocusManager';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
 import { NotificationsProvider, useNotificationCenter } from './contexts/NotificationsContext';
+import { NotificationInjectors } from './components/notifications/NotificationInjectors';
 import { SessionSecurityBoundary } from './components/SessionSecurityBoundary';
 import { useBudgets, useDocumentTitle } from './hooks';
 import { useHaptics } from './hooks/useHaptics';
@@ -368,6 +369,7 @@ export const App: FC = () => {
       <FocusManager resolveTitle={derivePageTitle} />
       <ConsentDialog />
       <NotificationsProvider>
+        <NotificationInjectors />
         <AuthenticatedShell activePath={activePath} pageTitle={pageTitle} />
       </NotificationsProvider>
       <BudgetHapticNotifier />
