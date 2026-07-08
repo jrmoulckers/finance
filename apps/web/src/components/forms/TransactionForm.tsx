@@ -88,6 +88,7 @@ import { AmountInput } from './AmountInput';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
 import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
+import { dollarsToCents } from '../../lib/currency';
 import './forms.css';
 
 /**
@@ -178,7 +179,7 @@ function parseSplitAmountInput(value: string): number {
   }
 
   const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  return Number.isFinite(parsed) ? dollarsToCents(parsed) : 0;
 }
 
 function formatSplitRemainder(remainingCents: number): string {

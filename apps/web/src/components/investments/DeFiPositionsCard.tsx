@@ -31,7 +31,7 @@
 import React, { useCallback, useId, useMemo, useState } from 'react';
 import { CurrencyDisplay, EmptyState } from '../common';
 import { AppIcon, type IconName } from '../icons';
-import { formatCurrency } from '../../lib/currency';
+import { dollarsToCents as toCents, formatCurrency } from '../../lib/currency';
 import {
   combinePortfolioLiquidity,
   DEFI_KIND_LABELS,
@@ -83,7 +83,7 @@ function lockIcon(state: DefiLockState): IconName {
 function dollarsToCents(value: string): number {
   const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return Math.round(parsed * 100);
+  return toCents(parsed);
 }
 
 /** Read persisted positions, falling back to a default on any failure. */

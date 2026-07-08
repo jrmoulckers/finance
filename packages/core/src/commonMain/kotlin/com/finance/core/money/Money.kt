@@ -164,6 +164,28 @@ data class Money(
         fun ofWholeMajor(whole: Long, currency: Currency): Money =
             ofMajor(whole, 0, currency)
 
+        /**
+         * Construct from a **major-unit decimal** amount, rounding to the
+         * currency's minor unit with the shared banker's-rounding rule
+         * ([MoneyOperations.bankersRound]).
+         *
+         * This is the canonical way to turn a user-entered major-unit value
+         * (which may carry sub-minor-unit precision) into a [Money]. It guards
+         * against fractional-cent input rather than silently storing it:
+         *  - `fromMajor(123213.00002, USD)` → `$123213.00`
+         *  - `fromMajor(12.344, USD)`       → `$12.34`
+         *  - `fromMajor(500.6, JPY)`        → `¥501` (0 decimal places)
+         *  - `fromMajor(1.2344, BHD)`       → `1.234 BD` (3 decimal places)
+         *
+         * @throws IllegalArgumentException when [major] is not finite.
+         */
+        fun fromMajor(major: Double, currency: Currency): Money {
+            require(major.isFinite()) { "Amount must be a finite number, got: $major" }
+            val scale = pow10(currency.decimalPlaces)
+            val minor = MoneyOperations.bankersRound(major * scale)
+            return Money(Cents(minor), currency)
+        }
+
         internal fun pow10(n: Int): Long {
             var result = 1L
             repeat(n) { result *= 10 }

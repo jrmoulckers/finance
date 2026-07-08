@@ -30,7 +30,7 @@
 import React, { useId, useMemo, useState } from 'react';
 
 import { AppIcon, type IconName } from '../components/icons';
-import { formatCurrency } from '../lib/currency';
+import { dollarsToCents, formatCurrency } from '../lib/currency';
 import {
   archiveTripBudget,
   summarizeTripBudget,
@@ -52,7 +52,7 @@ import './TripBudgetsPage.css';
 function parseMajorToMinor(value: string): number {
   const major = Number.parseFloat(value);
   if (!Number.isFinite(major) || major < 0) return 0;
-  return Math.round(major * 100);
+  return dollarsToCents(major);
 }
 
 /** Parse a positive FX rate string; returns 0 when blank/invalid. */

@@ -31,6 +31,7 @@ import {
   type SuggestedMonthlyContribution,
 } from '../../lib/goals';
 import type { Goal } from '../../kmp/bridge';
+import { dollarsToCents } from '../../lib/currency';
 import './shared-goal-contributions.css';
 
 // ---------------------------------------------------------------------------
@@ -144,7 +145,7 @@ function parseDollarsToCents(value: string): number {
   if (!Number.isFinite(dollars) || dollars < 0) {
     return 0;
   }
-  return Math.round(dollars * 100);
+  return dollarsToCents(dollars);
 }
 
 function todayIso(): string {

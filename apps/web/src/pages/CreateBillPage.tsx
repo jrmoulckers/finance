@@ -15,6 +15,7 @@ import type { BillFrequency } from '../kmp/bridge';
 import type { CreateBillInput } from '../db/repositories/bills';
 import { DatePicker } from '../components/common/DatePicker';
 import { Button } from '../components/common/Button';
+import { dollarsToCents, minorUnitStep, normalizeAmountInputValue } from '../lib/currency';
 
 /** Resolve the first available household ID from the local database. */
 function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): string | null {
@@ -92,6 +93,11 @@ export const CreateBillPage: React.FC = () => {
     });
   }, []);
 
+  const handleAmountBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    const normalized = normalizeAmountInputValue(e.target.value);
+    setAmount(normalized);
+  }, []);
+
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
@@ -118,7 +124,7 @@ export const CreateBillPage: React.FC = () => {
           householdId,
           name: name.trim(),
           payee: payee.trim(),
-          amount: { amount: Math.round(parseFloat(amount) * 100) },
+          amount: { amount: dollarsToCents(parseFloat(amount)) },
           dueDate,
           frequency,
           isAutoPay,
@@ -233,12 +239,14 @@ export const CreateBillPage: React.FC = () => {
               className="form-input"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onBlur={handleAmountBlur}
               aria-required="true"
               aria-invalid={!!errors.amount}
               aria-describedby={errors.amount ? 'bill-amount-error' : undefined}
               disabled={submitting}
+              inputMode="decimal"
               min="0.01"
-              step="0.01"
+              step={minorUnitStep()}
               placeholder="0.00"
             />
             {errors.amount && (

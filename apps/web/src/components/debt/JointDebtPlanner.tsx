@@ -41,6 +41,7 @@ import {
   type JointDebtInput,
   type PartnerId,
 } from '../../lib/debt/joint-debt-planner';
+import { dollarsToCents } from '../../lib/currency';
 import './JointDebtPlanner.css';
 
 export interface JointDebtPlannerProps {
@@ -79,12 +80,12 @@ const DEFAULT_GOALS: readonly GoalFormState[] = [
 
 function parseCurrencyToCents(value: string): number {
   const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
+  return Number.isFinite(parsed) && parsed > 0 ? dollarsToCents(parsed) : 0;
 }
 
 function parseExtraCents(value: string): number {
   const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
+  return Number.isFinite(parsed) && parsed > 0 ? dollarsToCents(parsed) : 0;
 }
 
 function formatMonths(months: number): string {

@@ -18,6 +18,7 @@ import { VoiceConfirmation } from './VoiceConfirmation';
 import { VoiceTranscript } from './VoiceTranscript';
 
 import '../forms/forms.css';
+import { dollarsToCents } from '../../lib/currency';
 import './voice-entry.css';
 
 const LAST_ACCOUNT_KEY = 'finance:voice-entry-last-account';
@@ -167,7 +168,7 @@ function normalizeAmountCents(amountText: string, type: TransactionType): number
     return null;
   }
 
-  const cents = Math.round(parsed * 100);
+  const cents = dollarsToCents(parsed);
   if (type === 'EXPENSE') {
     return -Math.abs(cents);
   }

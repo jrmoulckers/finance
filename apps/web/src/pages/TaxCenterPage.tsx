@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useAccounts, useInvestments, useTransactions } from '../hooks';
 import type { Investment, InvestmentLot } from '../kmp/bridge';
-import { formatCurrency, formatGainLoss } from '../lib/currency';
+import { dollarsToCents as toCents, formatCurrency, formatGainLoss } from '../lib/currency';
 import { summarizeTaggedRetirementContributions } from '../lib/tax/retirement-contribution-metadata';
 import {
   computeTaxSummary,
@@ -29,8 +29,7 @@ function toIsoDate(date: Date): string {
 }
 
 function dollarsToCents(value: string): number {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  return toCents(Number.parseFloat(value));
 }
 
 function parseShares(value: string): number {
