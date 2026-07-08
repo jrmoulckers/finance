@@ -112,4 +112,16 @@ describe('DashboardThingsToCheckSection', () => {
 
     expect(screen.getAllByRole('link', { name: /^Review/ })).toHaveLength(2);
   });
+
+  it('renders the review action as the shared secondary Button for legible, consistent styling', () => {
+    mockedDetectScamAlerts.mockReturnValue([singleTransactionAlert]);
+
+    renderSection();
+
+    const reviewLink = screen.getByRole('link', {
+      name: 'Review the flagged charge from Unknown Merchant',
+    });
+    expect(reviewLink).toHaveClass('form-button');
+    expect(reviewLink).toHaveClass('form-button--secondary');
+  });
 });

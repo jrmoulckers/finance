@@ -14,7 +14,7 @@ import {
   type ScamSpendingAlert,
   type UnusualSpendRouteTarget,
 } from '../../lib/notifications';
-import { ErrorBanner, LoadingSpinner } from '../common';
+import { ErrorBanner, LoadingSpinner, Button } from '../common';
 
 export interface DashboardThingsToCheckSectionProps {
   readonly accounts: readonly Pick<Account, 'id' | 'purpose'>[];
@@ -87,9 +87,16 @@ const DashboardThingsToCheckSection: FC<DashboardThingsToCheckSectionProps> = ({
                     <strong>NEXT STEP:</strong> {alert.nextStep}
                   </p>
                 </div>
-                <Link to={to} className="list-item__action" aria-label={actionLabel}>
+                <Button
+                  as={Link}
+                  to={to}
+                  variant="secondary"
+                  size="sm"
+                  className="list-item__action"
+                  aria-label={actionLabel}
+                >
                   Review
-                </Link>
+                </Button>
               </li>
             ))}
           </ul>
