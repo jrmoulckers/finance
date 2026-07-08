@@ -26,6 +26,7 @@
 
 import React, { useCallback, useId, useMemo, useState } from 'react';
 import { EmptyState } from '../common';
+import { Checkbox } from '../common/Checkbox';
 import type { Debt } from '../../lib/debt-types';
 import { formatUsdCents } from '../../lib/debt/payoff';
 import {
@@ -255,15 +256,12 @@ export function JointDebtPlanner({ debts, todayIso }: JointDebtPlannerProps): Re
           />
         </div>
         <div className="joint-debt__field joint-debt__mode">
-          <label htmlFor={`${baseId}-mode`}>
-            <input
-              id={`${baseId}-mode`}
-              type="checkbox"
-              checked={simpleMode}
-              onChange={(event) => setSimpleMode(event.target.checked)}
-            />
-            Recommendation mode (just tell us what to do)
-          </label>
+          <Checkbox
+            id={`${baseId}-mode`}
+            label="Recommendation mode (just tell us what to do)"
+            checked={simpleMode}
+            onChange={(event) => setSimpleMode(event.target.checked)}
+          />
         </div>
       </div>
 

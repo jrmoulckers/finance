@@ -14,6 +14,7 @@
 import { useCallback, useId, useRef, useState } from 'react';
 import type { DragEvent, ChangeEvent } from 'react';
 import { AppIcon } from '../components/icons';
+import { Checkbox } from '../components/common/Checkbox';
 import { useDatabase } from '../db/DatabaseProvider';
 
 import { useAccounts } from '../hooks/useAccounts';
@@ -641,14 +642,12 @@ export function DataImportWizardPage() {
                 Review what will be imported. Existing records with the same id are skipped unless
                 you choose a clean restore.
               </p>
-              <label className="import-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={backupWipeFirst}
-                  onChange={(event) => handleBackupWipeChange(event.target.checked)}
-                />
-                <span>Wipe local data first</span>
-              </label>
+              <Checkbox
+                className="import-checkbox-row"
+                label="Wipe local data first"
+                checked={backupWipeFirst}
+                onChange={(event) => handleBackupWipeChange(event.target.checked)}
+              />
               <div
                 className="import-mapping-table-wrapper"
                 role="region"

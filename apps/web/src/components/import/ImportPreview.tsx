@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-
+import { Checkbox } from '../common/Checkbox';
 import type { UseImportResult } from '../../hooks/useImport';
 
 export interface ImportPreviewProps {
@@ -110,9 +110,8 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                   return (
                     <tr key={dup.importRow.rowIndex}>
                       <td>
-                        <input
+                        <Checkbox
                           id={checkboxId}
-                          type="checkbox"
                           checked={skippedDuplicates.has(dup.importRow.rowIndex)}
                           onChange={() => onToggleSkipDuplicate(dup.importRow.rowIndex)}
                           aria-label={`Skip row ${dup.importRow.rowIndex + 1}`}

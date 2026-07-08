@@ -55,6 +55,7 @@ import {
   getDefaultRetirementTaxTreatment,
 } from '../../lib/tax/retirement-contribution-metadata';
 import { AmountInput } from './AmountInput';
+import { Checkbox } from '../common/Checkbox';
 import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
@@ -489,24 +490,21 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
 
             <fieldset className="form-group form-fieldset">
               <legend className="form-group__label">Retirement classification</legend>
-              <label className="form-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={isRetirementAccount}
-                  onChange={(event) => {
-                    if (event.target.checked) {
-                      const defaultType = 'TRADITIONAL_IRA' as RetirementAccountType;
-                      setRetirementAccountType(defaultType);
-                      setRetirementTaxTreatment(getDefaultRetirementTaxTreatment(defaultType));
-                    } else {
-                      setRetirementAccountType('');
-                      setRetirementTaxTreatment('PRE_TAX');
-                      setHsaCoverageLevel('SELF_ONLY');
-                    }
-                  }}
-                />
-                Mark this as a retirement or tax-advantaged account
-              </label>
+              <Checkbox
+                label="Mark this as a retirement or tax-advantaged account"
+                checked={isRetirementAccount}
+                onChange={(event) => {
+                  if (event.target.checked) {
+                    const defaultType = 'TRADITIONAL_IRA' as RetirementAccountType;
+                    setRetirementAccountType(defaultType);
+                    setRetirementTaxTreatment(getDefaultRetirementTaxTreatment(defaultType));
+                  } else {
+                    setRetirementAccountType('');
+                    setRetirementTaxTreatment('PRE_TAX');
+                    setHsaCoverageLevel('SELF_ONLY');
+                  }
+                }}
+              />
               {isRetirementAccount && (
                 <>
                   <div className="form-group">

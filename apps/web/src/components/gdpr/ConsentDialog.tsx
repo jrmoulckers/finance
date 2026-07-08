@@ -23,6 +23,7 @@ import {
   type ConsentCategory,
 } from '../../lib/consent-storage';
 import { useConsent } from '../../hooks/useConsent';
+import { Checkbox } from '../common/Checkbox';
 import './consent-dialog.css';
 
 // ---------------------------------------------------------------------------
@@ -198,13 +199,7 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({ onComplete }) => {
 
               {/* Essential — always on */}
               <div className="consent-dialog__category consent-dialog__category--disabled">
-                <input
-                  type="checkbox"
-                  checked
-                  disabled
-                  aria-label={`${CONSENT_LABELS.essential} (required)`}
-                  className="consent-dialog__category-checkbox"
-                />
+                <Checkbox checked disabled aria-label={`${CONSENT_LABELS.essential} (required)`} />
                 <div>
                   <span className="consent-dialog__category-label">
                     {CONSENT_LABELS.essential}{' '}
@@ -219,12 +214,10 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({ onComplete }) => {
               {/* Toggleable categories */}
               {TOGGLEABLE_CATEGORIES.map((category) => (
                 <div key={category} className="consent-dialog__category">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={localPreferences[category]}
                     onChange={() => handleToggle(category)}
                     aria-label={CONSENT_LABELS[category]}
-                    className="consent-dialog__category-checkbox"
                   />
                   <div>
                     <span className="consent-dialog__category-label">

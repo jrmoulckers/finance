@@ -1,0 +1,182 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the shared Checkbox component.
+ *
+ * The native checkbox is rendered with `appearance: none` and a CSS-drawn
+ * checkmark so that size, colors, checked/indeterminate/disabled states, and
+ * the focus ring are identical across the whole app. All colors come from the
+ * design-token custom properties so themes and high-contrast mode adapt
+ * automatically.
+ *
+ * References: issue #3545
+ */
+
+.checkbox {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spacing-2, 8px);
+  /* Touch target lives on the label wrapper, not on the tiny control, so the
+     focus ring can wrap the control cleanly (fixes the misaligned outline). */
+  min-height: 44px;
+  padding-block: var(--spacing-1, 4px);
+  color: var(--semantic-text-primary, #111827);
+  font-size: var(--type-scale-body-font-size, 1rem);
+  line-height: var(--line-height-normal, 1.5);
+  cursor: pointer;
+}
+
+.checkbox--label-start {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+.checkbox--disabled {
+  cursor: not-allowed;
+  color: var(--semantic-text-disabled, #9ca3af);
+}
+
+/* ---------------------------------------------------------------------------
+ * The control
+ * ------------------------------------------------------------------------- */
+
+.checkbox__input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  /* Nudge down so a single line of label text aligns with the box centre. */
+  margin: 0.1875rem 0 0;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  /* Override the global `input { min-height: 44px }` touch-target rule so the
+     control is its true size and the focus ring wraps it cleanly. */
+  min-inline-size: 0;
+  min-block-size: 0;
+  display: inline-grid;
+  place-content: center;
+  border: 2px solid var(--semantic-border-default, #6b7280);
+  border-radius: var(--border-radius-sm, 4px);
+  background-color: var(--semantic-background-primary, #ffffff);
+  cursor: inherit;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+/* CSS-drawn checkmark, hidden until checked/indeterminate. */
+.checkbox__input::before {
+  content: '';
+  inline-size: 0.7rem;
+  block-size: 0.7rem;
+  transform: scale(0);
+  transform-origin: center;
+  transition: transform 120ms ease-in-out;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  background-color: var(--semantic-text-inverse, #ffffff);
+}
+
+.checkbox__input:checked,
+.checkbox__input:indeterminate {
+  background-color: var(--semantic-interactive-default, #3b82f6);
+  border-color: var(--semantic-interactive-default, #3b82f6);
+}
+
+.checkbox__input:checked::before {
+  transform: scale(1);
+}
+
+/* Indeterminate renders a horizontal dash instead of the checkmark. */
+.checkbox__input:indeterminate::before {
+  transform: scale(1);
+  clip-path: none;
+  inline-size: 0.7rem;
+  block-size: 2px;
+  border-radius: 1px;
+}
+
+.checkbox__input:hover:not(:disabled):not(:checked):not(:indeterminate) {
+  border-color: var(--semantic-interactive-default, #3b82f6);
+}
+
+/* Clean, correctly-sized focus ring (WCAG 2.2 AA — 2.4.7 / 2.4.11). */
+.checkbox__input:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: 2px;
+}
+
+.checkbox__input:disabled {
+  border-color: var(--semantic-interactive-disabled, #d1d5db);
+  background-color: var(--semantic-background-secondary, #f3f4f6);
+  cursor: not-allowed;
+}
+
+.checkbox__input:disabled:checked,
+.checkbox__input:disabled:indeterminate {
+  background-color: var(--semantic-interactive-disabled, #d1d5db);
+  border-color: var(--semantic-interactive-disabled, #d1d5db);
+}
+
+.checkbox--error .checkbox__input {
+  border-color: var(--semantic-border-error, #ef4444);
+}
+
+/* ---------------------------------------------------------------------------
+ * Label / hint / error
+ * ------------------------------------------------------------------------- */
+
+.checkbox__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+  min-inline-size: 0;
+}
+
+.checkbox__label {
+  align-self: center;
+}
+
+.checkbox--label-start .checkbox__label {
+  align-self: center;
+}
+
+.checkbox__hint {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.checkbox__error {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-border-error, #ef4444);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .checkbox__input,
+  .checkbox__input::before {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .checkbox__input {
+    border-width: 2px;
+    border-color: CanvasText;
+  }
+
+  .checkbox__input:checked,
+  .checkbox__input:indeterminate {
+    background-color: Highlight;
+    border-color: Highlight;
+  }
+
+  .checkbox__input::before {
+    background-color: HighlightText;
+  }
+}

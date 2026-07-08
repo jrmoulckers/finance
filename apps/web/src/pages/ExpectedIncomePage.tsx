@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { ConfirmDialog, EmptyState, Icon } from '../components/common';
+import { Checkbox } from '../components/common/Checkbox';
 import { IconToken } from '../icons/tokens';
 import { formatCurrency } from '../lib/currency';
 import { useInvoices } from '../hooks/useInvoices';
@@ -303,16 +304,12 @@ export function ExpectedIncomePage() {
           </div>
 
           <div className="expected-income__field expected-income__field--checkbox">
-            <input
+            <Checkbox
               id="expected-income-cleared"
-              className="expected-income__checkbox"
-              type="checkbox"
+              label="Already received (counts as spendable now)"
               checked={cleared}
               onChange={(event) => setCleared(event.target.checked)}
             />
-            <label className="expected-income__checkbox-label" htmlFor="expected-income-cleared">
-              Already received (counts as spendable now)
-            </label>
           </div>
 
           {formError ? (

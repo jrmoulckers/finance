@@ -25,6 +25,7 @@ import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 
 
 import { announce, useFocusTrap } from '../../accessibility/aria';
 import { AppIcon } from '../icons';
+import { Checkbox } from '../common/Checkbox';
 import {
   buildShareCelebration,
   toShareData,
@@ -265,16 +266,14 @@ export const ShareCelebrationButton: React.FC<ShareCelebrationButtonProps> = ({
             </div>
 
             {hasAmount && (
-              <label className="share-celebration__option">
-                <input
-                  type="checkbox"
-                  checked={revealAmount}
-                  onChange={(e) => setRevealAmount(e.target.checked)}
-                />
-                <span>
-                  Include the amount I&rsquo;ve saved (off by default to keep balances private)
-                </span>
-              </label>
+              <Checkbox
+                className="share-celebration__option"
+                label={
+                  <>Include the amount I&rsquo;ve saved (off by default to keep balances private)</>
+                }
+                checked={revealAmount}
+                onChange={(e) => setRevealAmount(e.target.checked)}
+              />
             )}
 
             <p

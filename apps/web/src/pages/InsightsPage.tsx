@@ -17,6 +17,7 @@ import { WeeklyDigest } from '../components/insights';
 import { RecommendationsFeed } from '../components/recommendations';
 import { WellnessOverview } from '../components/wellness';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { Checkbox } from '../components/common/Checkbox';
 import { AppIcon, type IconName } from '../components/icons';
 import { useInsights } from '../hooks/useInsights';
 import { useRecommendations } from '../hooks/useRecommendations';
@@ -650,14 +651,11 @@ export const InsightsPage: React.FC = () => {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={privateMode}
-                      onChange={(event) => setPrivateMode(event.target.checked)}
-                    />{' '}
-                    Privacy mode
-                  </label>
+                  <Checkbox
+                    label="Privacy mode"
+                    checked={privateMode}
+                    onChange={(event) => setPrivateMode(event.target.checked)}
+                  />
                 </div>
               </div>
               <YearInReviewCard summary={activeAnnualSummary} privateMode={privateMode} />

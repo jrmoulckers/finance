@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import packageJson from '../../package.json';
 import { buildFeedbackDiagnostics, submitFeedback } from '../lib/feedback';
 import { useFocusTrap } from '../accessibility/aria';
+import { Checkbox } from './common/Checkbox';
 import './forms/forms.css';
 
 const BUILD_SHA =
@@ -183,15 +184,12 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
                 />
               </div>
 
-              <label htmlFor="feedback-diagnostics" className="form-checkbox-row">
-                <input
-                  id="feedback-diagnostics"
-                  type="checkbox"
-                  checked={includeDiagnostics}
-                  onChange={(e) => setIncludeDiagnostics(e.target.checked)}
-                />
-                <span>Include diagnostic info</span>
-              </label>
+              <Checkbox
+                id="feedback-diagnostics"
+                label="Include diagnostic info"
+                checked={includeDiagnostics}
+                onChange={(e) => setIncludeDiagnostics(e.target.checked)}
+              />
             </div>
 
             <div className="form-actions">

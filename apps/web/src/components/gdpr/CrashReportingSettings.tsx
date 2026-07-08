@@ -20,6 +20,7 @@ import {
   generateExamplePayload,
 } from '../../lib/crash-report-scrubber';
 import { initMonitoring } from '../../lib/monitoring';
+import { Checkbox } from '../common/Checkbox';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -85,13 +86,12 @@ export const CrashReportingSettings: React.FC<CrashReportingSettingsProps> = ({
             Helps us identify and fix bugs. You can turn this off at any time.
           </p>
         </div>
-        <input
+        <Checkbox
           id="crash-reporting-toggle"
-          type="checkbox"
+          className="settings-item__checkbox-wrapper"
           checked={enabled}
           onChange={handleToggle}
           aria-label="Send anonymous crash reports to help improve the app"
-          className="settings-item__checkbox"
         />
       </div>
 

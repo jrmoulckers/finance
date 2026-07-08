@@ -19,6 +19,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBanner, LoadingSpinner } from '../components/common';
+import { Checkbox } from '../components/common/Checkbox';
 import { useScenarioModeler } from '../hooks/useScenarioModeler';
 import { useRetirementPlanner } from '../hooks/useRetirementPlanner';
 import { useRmdTracking } from '../hooks/useRmdTracking';
@@ -1709,9 +1710,8 @@ const SweepPanel: React.FC = () => {
                 key={rule.id}
                 className={`sweep-rule ${!rule.enabled ? 'sweep-rule--disabled' : ''}`}
               >
-                <input
+                <Checkbox
                   className="sweep-rule__toggle"
-                  type="checkbox"
                   checked={rule.enabled}
                   onChange={() => toggleRule(rule.id)}
                   aria-label={`${rule.enabled ? 'Disable' : 'Enable'} ${rule.name}`}

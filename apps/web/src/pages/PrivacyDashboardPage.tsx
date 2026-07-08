@@ -22,6 +22,7 @@ import { useConsentHistory } from '../hooks/useConsentHistory';
 import { usePrivacyDashboard } from '../hooks/usePrivacyDashboard';
 import { ConsentHistoryViewer } from '../components/gdpr/ConsentHistoryViewer';
 import { SecurityAuditLogViewer, ThirdPartyPermissionReview } from '../components/gdpr';
+import { Checkbox } from '../components/common/Checkbox';
 import {
   CONSENT_LABELS,
   CONSENT_DESCRIPTIONS,
@@ -208,13 +209,7 @@ const PrivacyDashboardPage: React.FC = () => {
               {CONSENT_DESCRIPTIONS.essential}
             </p>
           </div>
-          <input
-            type="checkbox"
-            checked
-            disabled
-            aria-label={`${CONSENT_LABELS.essential}, always required`}
-            className="privacy-dashboard__consent-toggle"
-          />
+          <Checkbox checked disabled aria-label={`${CONSENT_LABELS.essential}, always required`} />
         </div>
 
         {/* Toggleable categories */}
@@ -228,13 +223,11 @@ const PrivacyDashboardPage: React.FC = () => {
                 {CONSENT_DESCRIPTIONS[category]}
               </p>
             </div>
-            <input
+            <Checkbox
               id={`consent-${category}`}
-              type="checkbox"
               checked={consent.categories[category]}
               onChange={() => handleToggleConsent(category)}
               aria-label={`${consent.categories[category] ? 'Withdraw' : 'Grant'} consent for ${CONSENT_LABELS[category]}`}
-              className="privacy-dashboard__consent-toggle"
             />
           </div>
         ))}

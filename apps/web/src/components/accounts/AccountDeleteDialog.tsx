@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
+import { Checkbox } from '../common/Checkbox';
 
 import '../forms/forms.css';
 import './account-delete-dialog.css';
@@ -151,18 +152,15 @@ export function AccountDeleteDialog({
         {/* Section 3: Optional cascade delete */}
         {transactionCount > 0 && (
           <div className="account-delete-dialog__section">
-            <label className="account-delete-dialog__checkbox-label">
-              <input
-                type="checkbox"
-                checked={deleteTransactions}
-                onChange={handleCheckboxChange}
-                aria-describedby={cascadeWarningId}
-              />
-              <span>
-                Also delete all {transactionCount} transaction
-                {transactionCount === 1 ? '' : 's'}
-              </span>
-            </label>
+            <Checkbox
+              className="account-delete-dialog__checkbox-label"
+              label={`Also delete all ${transactionCount} transaction${
+                transactionCount === 1 ? '' : 's'
+              }`}
+              checked={deleteTransactions}
+              onChange={handleCheckboxChange}
+              aria-describedby={cascadeWarningId}
+            />
             <p
               id={cascadeWarningId}
               className="account-delete-dialog__cascade-warning"

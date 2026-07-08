@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 
 import { useFocusTrap } from '../../accessibility/aria';
 import { useTaggingRules } from '../../hooks/useTaggingRules';
+import { Checkbox } from '../common/Checkbox';
 import type { Transaction } from '../../kmp/bridge';
 import { matchCondition } from '../../lib/tagging/rule-engine';
 import type {
@@ -276,15 +277,13 @@ export function RuleManager({ recentTransactions = [] }: RuleManagerProps) {
           {rules.map((rule) => (
             <li key={rule.id} className="tagging-rule-item" role="listitem">
               <div className="tagging-rule-item__header">
-                <label className="tagging-rule-item__toggle">
-                  <input
-                    type="checkbox"
-                    checked={rule.enabled}
-                    onChange={() => toggleRule(rule.id)}
-                    aria-label={`${rule.enabled ? 'Disable' : 'Enable'} rule: ${rule.name}`}
-                  />
-                  <span className="tagging-rule-item__name">{rule.name}</span>
-                </label>
+                <Checkbox
+                  className="tagging-rule-item__toggle"
+                  checked={rule.enabled}
+                  onChange={() => toggleRule(rule.id)}
+                  aria-label={`${rule.enabled ? 'Disable' : 'Enable'} rule: ${rule.name}`}
+                  label={<span className="tagging-rule-item__name">{rule.name}</span>}
+                />
                 <span className="tagging-rule-item__meta">
                   Priority: {rule.priority} · Matched: {rule.matchCount}
                 </span>

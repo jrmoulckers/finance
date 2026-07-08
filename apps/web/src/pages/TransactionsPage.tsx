@@ -22,6 +22,7 @@ import {
 } from '../components/common';
 import { SkipLink } from '../components/common/SkipLink';
 import { SwipeableRow } from '../components/common/SwipeableRow';
+import { Checkbox } from '../components/common/Checkbox';
 import { CategoryConfirmation } from '../components/categorization';
 import { TransactionForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
@@ -312,7 +313,6 @@ export const TransactionsPage: React.FC = () => {
     typeof window === 'undefined' ? 1024 : window.innerWidth,
   );
   const addMenuRef = useRef<HTMLDivElement>(null);
-  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const transactionRowRefs = useRef(new Map<string, HTMLElement>());
 
   // Get filters/sort from URL params
@@ -472,12 +472,6 @@ export const TransactionsPage: React.FC = () => {
   const allVisibleSelected =
     transactions.length > 0 && bulkTransactions.selectionCount === transactions.length;
   const someVisibleSelected = bulkTransactions.selectionCount > 0 && !allVisibleSelected;
-
-  useEffect(() => {
-    if (selectAllCheckboxRef.current) {
-      selectAllCheckboxRef.current.indeterminate = someVisibleSelected;
-    }
-  }, [someVisibleSelected]);
 
   const transactionLookup = useMemo(
     () => new Map(transactions.map((transaction) => [transaction.id, transaction])),
@@ -1176,9 +1170,7 @@ export const TransactionsPage: React.FC = () => {
           }}
         >
           <div className="transaction-register__checkbox-cell">
-            <input
-              type="checkbox"
-              className="bulk-select-checkbox"
+            <Checkbox
               checked={isSelected}
               readOnly
               aria-label={`Select ${transactionLabel}`}
@@ -1569,23 +1561,20 @@ export const TransactionsPage: React.FC = () => {
                       bulkTransactions.selectionCount === 1 ? '' : 's'
                     } selected`}
               </p>
-              <label className="transaction-register__select-all">
-                <input
-                  ref={selectAllCheckboxRef}
-                  type="checkbox"
-                  className="bulk-select-checkbox"
-                  checked={allVisibleSelected}
-                  onChange={(event) => {
-                    if (event.currentTarget.checked) {
-                      bulkTransactions.selectAll();
-                    } else {
-                      bulkTransactions.clearSelection();
-                    }
-                  }}
-                  aria-label="Select all visible transactions"
-                />
-                Select all visible transactions
-              </label>
+              <Checkbox
+                className="transaction-register__select-all"
+                checked={allVisibleSelected}
+                indeterminate={someVisibleSelected}
+                onChange={(event) => {
+                  if (event.currentTarget.checked) {
+                    bulkTransactions.selectAll();
+                  } else {
+                    bulkTransactions.clearSelection();
+                  }
+                }}
+                aria-label="Select all visible transactions"
+                label="Select all visible transactions"
+              />
               {groupedTransactions.map((group) => (
                 <section key={group.date} className="page-section" aria-label={group.label}>
                   <h3 className="list-group__header">{group.label}</h3>
@@ -1674,9 +1663,7 @@ export const TransactionsPage: React.FC = () => {
                           >
                             {!isSimplified ? (
                               <div className="transaction-list-item__selection">
-                                <input
-                                  type="checkbox"
-                                  className="bulk-select-checkbox"
+                                <Checkbox
                                   checked={isSelected(transaction.id)}
                                   onChange={(event) =>
                                     handleTransactionSelection(

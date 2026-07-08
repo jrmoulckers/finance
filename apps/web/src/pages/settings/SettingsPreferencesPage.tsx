@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react';
 
 import { CurrencyDisplay } from '../../components/common/CurrencyDisplay';
 import { ReadAloudButton } from '../../components/common/ReadAloudButton';
+import { Checkbox } from '../../components/common/Checkbox';
 import { CategorizationSettings } from '../../components/categorization';
 import {
   HapticSettings,
@@ -369,13 +370,12 @@ export const SettingsPreferencesPage: React.FC = () => {
               <label className="settings-item__label" htmlFor="s-notif">
                 {settingsCopy.text('notificationsLabel')}
               </label>
-              <input
-                type="checkbox"
+              <Checkbox
                 id="s-notif"
+                className="settings-item__checkbox-wrapper"
                 checked={notificationsEnabled}
                 onChange={handleNotificationsChange}
                 aria-label={settingsCopy.text('notificationsAria')}
-                className="settings-item__checkbox"
               />
             </div>
           </SettingInfoWidget>
@@ -383,13 +383,12 @@ export const SettingsPreferencesPage: React.FC = () => {
             <label className="settings-item__label" htmlFor="settings-single-key-shortcuts">
               Single-key shortcuts
             </label>
-            <input
-              type="checkbox"
+            <Checkbox
               id="settings-single-key-shortcuts"
+              className="settings-item__checkbox-wrapper"
               checked={singleKeyShortcutsEnabled}
               onChange={handleSingleKeyShortcutsChange}
               aria-describedby="settings-single-key-shortcuts-help"
-              className="settings-item__checkbox"
             />
             <p id="settings-single-key-shortcuts-help" className="settings-item__description">
               Turn off character-key shortcuts like N, /, ?, and G then D if they conflict with
@@ -416,13 +415,12 @@ export const SettingsPreferencesPage: React.FC = () => {
             <label className="settings-item__label" htmlFor="settings-accessibility-simplified">
               Simplified mode
             </label>
-            <input
-              type="checkbox"
+            <Checkbox
               id="settings-accessibility-simplified"
+              className="settings-item__checkbox-wrapper"
               checked={accessibilityMode === 'simplified'}
               onChange={handleAccessibilityModeChange}
               aria-label="Simplified mode"
-              className="settings-item__checkbox"
             />
             <p className="settings-item__description">
               Uses larger text, 56px touch targets, calmer motion, and simplified navigation.
@@ -454,13 +452,12 @@ export const SettingsPreferencesPage: React.FC = () => {
             <label className="settings-item__label" htmlFor="settings-accessibility-contrast">
               High contrast
             </label>
-            <input
-              type="checkbox"
+            <Checkbox
               id="settings-accessibility-contrast"
+              className="settings-item__checkbox-wrapper"
               checked={highContrast}
               onChange={(event) => setHighContrast(event.target.checked)}
               aria-label="High contrast"
-              className="settings-item__checkbox"
             />
           </div>
 
@@ -468,13 +465,12 @@ export const SettingsPreferencesPage: React.FC = () => {
             <label className="settings-item__label" htmlFor="settings-accessibility-motion">
               Reduce motion
             </label>
-            <input
-              type="checkbox"
+            <Checkbox
               id="settings-accessibility-motion"
+              className="settings-item__checkbox-wrapper"
               checked={reduceMotion}
               onChange={(event) => setReduceMotion(event.target.checked)}
               aria-label="Reduce motion"
-              className="settings-item__checkbox"
             />
             <p className="settings-item__description">
               {effectiveReduceMotion && !reduceMotion
@@ -487,13 +483,12 @@ export const SettingsPreferencesPage: React.FC = () => {
             <label className="settings-item__label" htmlFor="settings-accessibility-speech">
               Read amounts aloud
             </label>
-            <input
-              type="checkbox"
+            <Checkbox
               id="settings-accessibility-speech"
+              className="settings-item__checkbox-wrapper"
               checked={speakAmounts}
               onChange={(event) => setSpeakAmounts(event.target.checked)}
               aria-label="Read amounts aloud"
-              className="settings-item__checkbox"
             />
             <p className="settings-item__description">
               Adds a read-aloud control for key amounts using the Web Speech API in supported
@@ -647,13 +642,12 @@ export const SettingsPreferencesPage: React.FC = () => {
             <label className="settings-item__label" htmlFor="s-show-decimals">
               Show cents
             </label>
-            <input
-              type="checkbox"
+            <Checkbox
               id="s-show-decimals"
+              className="settings-item__checkbox-wrapper"
               checked={displaySettings.showDecimals}
               onChange={(e) => displaySettings.updateSettings({ showDecimals: e.target.checked })}
               aria-label="Show cents (decimal places)"
-              className="settings-item__checkbox"
             />
           </div>
 

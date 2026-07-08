@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { Checkbox } from '../common/Checkbox';
 import type { Investment, InvestmentLot, SyncId } from '../../kmp/bridge';
 import {
   analyzeCostBasis,
@@ -404,14 +405,11 @@ const RebalancingSection: React.FC<{
           style={{ marginLeft: 'var(--spacing-2)', width: 120 }}
         />
       </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={features.allowSellRebalancing}
-          onChange={(event) => features.setAllowSellRebalancing(event.target.checked)}
-        />{' '}
-        Enable sell-based rebalancing
-      </label>
+      <Checkbox
+        label="Enable sell-based rebalancing"
+        checked={features.allowSellRebalancing}
+        onChange={(event) => features.setAllowSellRebalancing(event.target.checked)}
+      />
     </div>
     <p style={{ color: 'var(--semantic-text-secondary)' }}>
       Buy-only mode allocates new cash toward underweight classes. Sell suggestions are hidden
@@ -768,9 +766,8 @@ const FeeSection: React.FC<{
                 <tr key={investment.id}>
                   <TableCell>{investment.symbol}</TableCell>
                   <TableCell>
-                    <input
+                    <Checkbox
                       aria-label={`Fees apply to ${investment.symbol}`}
-                      type="checkbox"
                       checked={setting.applies}
                       onChange={(event) =>
                         features.updateExpenseRatioSetting(investment.id, {

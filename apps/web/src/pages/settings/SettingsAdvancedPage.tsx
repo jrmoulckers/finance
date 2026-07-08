@@ -3,6 +3,7 @@
 import React, { useCallback, useState } from 'react';
 
 import { SettingInfoWidget } from '../../components/settings';
+import { Checkbox } from '../../components/common/Checkbox';
 import { useDatabase } from '../../db/DatabaseProvider';
 import { eraseAllMoodTags } from '../../db/repositories/transactions';
 import { clearMoodJournalEntries } from '../../lib/mood';
@@ -72,13 +73,12 @@ export const SettingsAdvancedPage: React.FC = () => {
               <label className="settings-item__label" htmlFor="settings-mood-tags">
                 Allow mood tags on transactions
               </label>
-              <input
-                type="checkbox"
+              <Checkbox
                 id="settings-mood-tags"
+                className="settings-item__checkbox-wrapper"
                 checked={moodTagsEnabled}
                 onChange={handleMoodTagsEnabledChange}
                 aria-label="Allow mood tags on transactions"
-                className="settings-item__checkbox"
               />
             </div>
           </SettingInfoWidget>
@@ -88,13 +88,12 @@ export const SettingsAdvancedPage: React.FC = () => {
                 <label className="settings-item__label" htmlFor="settings-mood-tags-sync">
                   Sync mood tags across my devices
                 </label>
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="settings-mood-tags-sync"
+                  className="settings-item__checkbox-wrapper"
                   checked={moodTagsSyncEnabled}
                   onChange={handleMoodTagsSyncChange}
                   aria-label="Sync mood tags across my devices"
-                  className="settings-item__checkbox"
                 />
               </div>
             </SettingInfoWidget>

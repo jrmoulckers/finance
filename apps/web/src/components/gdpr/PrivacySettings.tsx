@@ -16,6 +16,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useConsent } from '../../hooks/useConsent';
+import { Checkbox } from '../common/Checkbox';
 import {
   CONSENT_DESCRIPTIONS,
   CONSENT_LABELS,
@@ -122,12 +123,11 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
               {CONSENT_DESCRIPTIONS.essential}
             </p>
           </div>
-          <input
-            type="checkbox"
+          <Checkbox
+            className="settings-item__checkbox-wrapper"
             checked
             disabled
             aria-label={`${CONSENT_LABELS.essential} (always required)`}
-            className="settings-item__checkbox"
           />
         </div>
 
@@ -142,13 +142,12 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
                 {CONSENT_DESCRIPTIONS[category]}
               </p>
             </div>
-            <input
+            <Checkbox
               id={`privacy-${category}`}
-              type="checkbox"
+              className="settings-item__checkbox-wrapper"
               checked={consent.categories[category]}
               onChange={() => handleToggle(category)}
               aria-label={CONSENT_LABELS[category]}
-              className="settings-item__checkbox"
             />
           </div>
         ))}

@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LearningDashboard } from '../components/learning';
 import { ErrorBanner } from '../components/common/ErrorBanner';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { Checkbox } from '../components/common/Checkbox';
 import { useAccounts, useDashboardData, useGoals, useTransactions } from '../hooks';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import {
@@ -191,25 +192,24 @@ export function CreditBuildingSection(): React.ReactElement {
                     : 'credit-building__checklist-item'
                 }
               >
-                <label className="credit-building__checkbox-label">
-                  <input
-                    type="checkbox"
-                    className="credit-building__checkbox"
-                    checked={checked}
-                    onChange={() => toggleItem(item.id)}
-                  />
-                  <span className="credit-building__checkbox-text">
-                    <span className="credit-building__checkbox-title">
-                      {item.label}
-                      {checked && (
-                        <span className="credit-building__checkbox-badge">
-                          {content.checklistDoneBadge}
-                        </span>
-                      )}
+                <Checkbox
+                  className="credit-building__checkbox-label"
+                  checked={checked}
+                  onChange={() => toggleItem(item.id)}
+                  label={
+                    <span className="credit-building__checkbox-text">
+                      <span className="credit-building__checkbox-title">
+                        {item.label}
+                        {checked && (
+                          <span className="credit-building__checkbox-badge">
+                            {content.checklistDoneBadge}
+                          </span>
+                        )}
+                      </span>
+                      <span className="credit-building__checkbox-detail">{item.detail}</span>
                     </span>
-                    <span className="credit-building__checkbox-detail">{item.detail}</span>
-                  </span>
-                </label>
+                  }
+                />
               </li>
             );
           })}

@@ -9,6 +9,7 @@ import {
   ThirdPartyPermissionReview,
 } from '../../components/gdpr';
 import { useAccountDeletion } from '../../components/settings/AccountDeletionModal';
+import { Checkbox } from '../../components/common/Checkbox';
 import { PrivacyPersistenceOption, usePrivacyMode } from '../../contexts/PrivacyModeContext';
 import { useAuth } from '../../auth/auth-context';
 import { initMonitoring } from '../../lib/monitoring';
@@ -91,13 +92,11 @@ export const SettingsPrivacyPage: React.FC = () => {
               Privacy Mode
             </label>
             <div className="settings-item__control">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="s-privacy-mode"
                 checked={isPrivacyMode}
                 onChange={() => togglePrivacyMode()}
                 aria-label="Hide all financial amounts and balances"
-                className="settings-item__checkbox"
               />
             </div>
           </div>
@@ -134,13 +133,12 @@ export const SettingsPrivacyPage: React.FC = () => {
             <label className="settings-item__label" htmlFor="s-app-lock">
               App lock
             </label>
-            <input
-              type="checkbox"
+            <Checkbox
               id="s-app-lock"
+              className="settings-item__checkbox-wrapper"
               checked={appLockEnabled}
               onChange={handleAppLockChange}
               aria-label="Require passkey app lock before showing finance data"
-              className="settings-item__checkbox"
             />
           </div>
           <p className="settings-item__description">
@@ -179,13 +177,12 @@ export const SettingsPrivacyPage: React.FC = () => {
             <label className="settings-item__label" htmlFor="s-monitoring">
               Error Reporting
             </label>
-            <input
-              type="checkbox"
+            <Checkbox
               id="s-monitoring"
+              className="settings-item__checkbox-wrapper"
               checked={monitoringEnabled}
               onChange={handleMonitoringChange}
               aria-label="Send anonymous error reports to help improve the app"
-              className="settings-item__checkbox"
             />
           </div>
         </div>

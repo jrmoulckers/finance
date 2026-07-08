@@ -184,7 +184,9 @@ html {
 [data-font-scale='huge'] .settings-item__status,
 [data-font-scale='huge'] .settings-item__select,
 [data-font-scale='huge'] .settings-item__input,
-[data-font-scale='huge'] .settings-item__checkbox {
+[data-font-scale='huge'] .settings-item__checkbox,
+[data-font-scale='extra-large'] .settings-item__checkbox-wrapper,
+[data-font-scale='huge'] .settings-item__checkbox-wrapper {
   grid-column: 1;
   justify-self: stretch;
   max-width: 100%;
