@@ -977,6 +977,27 @@
   .app-sidebar__nav {
     flex: 1;
     overflow-y: auto;
+    /* Themed scrollbar — Firefox / standards. Track blends into the navy
+       sidebar; thumb uses the theme-aware border token so it follows
+       light/dark automatically (#3536). */
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--semantic-border-default) 70%, transparent) transparent;
+  }
+  /* Themed scrollbar — Chromium / WebKit, scoped to the sidebar nav. */
+  .app-sidebar__nav::-webkit-scrollbar {
+    width: 8px;
+  }
+  .app-sidebar__nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .app-sidebar__nav::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--semantic-border-default) 70%, transparent);
+    border: 2px solid transparent;
+    border-radius: var(--border-radius-md);
+    background-clip: padding-box;
+  }
+  .app-sidebar__nav::-webkit-scrollbar-thumb:hover {
+    background-color: var(--semantic-interactive-default);
   }
   .app-sidebar__footer {
     display: grid;
