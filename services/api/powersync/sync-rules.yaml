@@ -53,27 +53,36 @@ bucket_definitions:
       # CHANGED (#1326): Added `tags` (needed by clients for tag display/filtering).
       # CHANGED (#1326): Removed legacy `recurring_rule` column — `recurring_rule_id`
       #   (the proper FK) is already present and is what clients use.
+      # CHANGED (#3528): Reverted the biometric-protection filter. A PowerSync data
+      #   query may not JOIN another table or reference token_parameters, so the
+      #   `LEFT JOIN categories` + `token_parameters.user_id` clause was a fatal
+      #   sync-rules error that crash-looped the replicator (production 502).
+      #   Hiding protected-category transactions from non-owners requires a
+      #   denormalized `is_biometric_protected` column on `transactions` — tracked
+      #   as a follow-up; see #3528.
       - >
-        SELECT t.id, t.household_id, t.account_id, t.category_id, t.amount_cents,
-               t.currency_code, t.type, t.payee, t.note, t.date, t.is_recurring,
-               t.transfer_account_id, t.status,
-               t.transfer_transaction_id, t.recurring_rule_id, t.tags, t.owner_id,
-               t.created_at, t.updated_at, t.deleted_at
-        FROM transactions t
-        LEFT JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
-        WHERE t.household_id = bucket.household_id AND t.deleted_at IS NULL
-          AND (COALESCE(c.is_biometric_protected, false) = false OR t.owner_id = token_parameters.user_id)
+        SELECT id, household_id, account_id, category_id, amount_cents,
+               currency_code, type, payee, note, date, is_recurring,
+               transfer_account_id, status,
+               transfer_transaction_id, recurring_rule_id, tags, owner_id,
+               created_at, updated_at, deleted_at
+        FROM transactions
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
       # Spending / income categories
       # CHANGED (#1326): Added `is_system` (clients need to distinguish
       #   system-provided categories from user-created ones).
+      # CHANGED (#3528): Reverted the biometric-protection filter — a PowerSync data
+      #   query may not reference token_parameters (fatal sync-rules error). The
+      #   `is_biometric_protected` flag is still synced so clients can gate display
+      #   locally; server-side owner-only filtering (owner_id = bucket.user_id via a
+      #   user-scoped bucket) is a follow-up. See #3528.
       - >
         SELECT id, household_id, name, icon, color, parent_id, is_income,
                is_system, sort_order, is_biometric_protected, owner_id,
                created_at, updated_at, deleted_at
         FROM categories
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
-          AND (is_biometric_protected = false OR owner_id = token_parameters.user_id)
 
       # Budget allocations per category/period
       # CHANGED (#1326): Added `name` (Budget model has a name field that
