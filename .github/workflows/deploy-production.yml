@@ -414,13 +414,15 @@ jobs:
             export VITE_ENVIRONMENT=production
             export VITE_APP_VERSION="$SHA_SHORT"
             export NODE_ENV=production
+            export HUSKY=0  # husky is a devDep; skip its git-hook install on the production VM
             cd "$DEPLOY_PATH"
             echo "→ git fetch --force --prune origin main"
             git fetch --force --prune origin main
             echo "→ git reset --hard $TARGET_SHA"
             git reset --hard "$TARGET_SHA"
             echo "→ npm ci (this can take a few minutes on first run)"
-            npm ci --no-audit --no-fund --silent
+            # Build from source needs devDependencies (vite, style-dictionary); NODE_ENV=production alone would omit them
+            npm ci --include=dev --no-audit --no-fund --silent
             echo "→ build design tokens"
             npm run build -w packages/design-tokens --silent
             echo "→ build apps/web"
@@ -730,8 +732,10 @@ jobs:
               export VITE_ENVIRONMENT=production
               export VITE_APP_VERSION="$ROLLBACK_TAG"
               export NODE_ENV=production
+              export HUSKY=0  # husky is a devDep; skip its git-hook install on the production VM
               echo "→ npm ci"
-              npm ci --no-audit --no-fund --silent
+              # Build from source needs devDependencies (vite, style-dictionary); NODE_ENV=production alone would omit them
+              npm ci --include=dev --no-audit --no-fund --silent
               echo "→ build design tokens"
               npm run build -w packages/design-tokens --silent
               echo "→ build apps/web"
