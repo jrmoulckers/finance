@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../accessibility/aria', () => ({
@@ -42,14 +42,17 @@ describe('KeyboardShortcutsModal', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders a shortcuts table with header columns', () => {
+  it('renders a shortcuts table for each category with a caption', () => {
     render(<KeyboardShortcutsModal isOpen={true} onClose={vi.fn()} />);
 
-    const table = screen.getByRole('table');
-    expect(table).toBeInTheDocument();
+    // One table per category (previously a single combined table).
+    const tables = screen.getAllByRole('table');
+    expect(tables.length).toBeGreaterThanOrEqual(4);
 
-    expect(within(table).getByRole('columnheader', { name: 'Shortcut' })).toBeInTheDocument();
-    expect(within(table).getByRole('columnheader', { name: 'Action' })).toBeInTheDocument();
+    // Category titles are rendered as table captions.
+    expect(screen.getByText('Navigation')).toBeInTheDocument();
+    expect(screen.getByText('Transaction List')).toBeInTheDocument();
+    expect(tables.every((table) => table.querySelector('caption') !== null)).toBe(true);
   });
 
   it('renders kbd elements for keyboard shortcut keys', () => {
