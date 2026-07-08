@@ -51,6 +51,8 @@ import {
 } from '../lib/budgeting-beta';
 import { AppIcon, type IconName } from '../components/icons';
 
+import './BudgetsPage.css';
+
 function getBudgetIcon(iconName: string | null | undefined): IconName {
   switch (iconName) {
     case 'utensils':
@@ -510,15 +512,8 @@ export const BudgetsPage: React.FC = () => {
       {!isLoading && !resolvedError && (
         <section aria-label="Budget beta planner" style={{ marginBottom: 'var(--spacing-6)' }}>
           <div className="card">
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))',
-                gap: 'var(--spacing-4)',
-                marginBottom: 'var(--spacing-4)',
-              }}
-            >
-              <div>
+            <div className="budget-planner__grid">
+              <div className="budget-planner__field">
                 <label htmlFor="budget-planning-cadence" className="card__title">
                   Planning cadence
                 </label>
@@ -532,12 +527,12 @@ export const BudgetsPage: React.FC = () => {
                   <option value="BIWEEKLY">Biweekly</option>
                   <option value="MONTHLY">Monthly</option>
                 </select>
-                <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                <p className="budget-planner__hint">
                   {CADENCE_LABELS[planningCadence]} plan: {cadenceRange.startDate} –{' '}
                   {cadenceRange.endDate}
                 </p>
               </div>
-              <div>
+              <div className="budget-planner__field">
                 <label htmlFor="budget-expected-income" className="card__title">
                   Expected income
                 </label>
@@ -552,43 +547,36 @@ export const BudgetsPage: React.FC = () => {
                   onChange={(event) => setExpectedIncomeInput(event.target.value)}
                   placeholder={(totalBudgeted / 100).toFixed(2)}
                 />
-                <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                <p className="budget-planner__hint">
                   Used for zero-based ready-to-assign warnings.
                 </p>
               </div>
-              <div>
+              <div className="budget-planner__field">
                 <p className="card__title">Projected monthly income</p>
                 <p className="card__value">
                   <CurrencyDisplay amount={cadenceIncome.projectedMonthlyIncomeCents} />
                 </p>
-                <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                <p className="budget-planner__hint">
                   From {cadenceIncome.eventCount} expected income event
                   {cadenceIncome.eventCount === 1 ? '' : 's'} in this cadence.
                 </p>
               </div>
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))',
-                gap: 'var(--spacing-3)',
-                marginBottom: 'var(--spacing-4)',
-              }}
-            >
-              <div>
+            <div className="budget-planner__stats">
+              <div className="budget-planner__stat">
                 <p className="card__title">Expected</p>
                 <p className="card__value">
                   <CurrencyDisplay amount={envelopeSummary.totalIncomeCents} />
                 </p>
               </div>
-              <div>
+              <div className="budget-planner__stat">
                 <p className="card__title">Total assigned</p>
                 <p className="card__value">
                   <CurrencyDisplay amount={envelopeSummary.totalAssignedCents} />
                 </p>
               </div>
-              <div>
+              <div className="budget-planner__stat">
                 <p className="card__title">
                   {envelopeSummary.readyToAssignCents < 0 ? 'Over-assigned' : 'Ready to assign'}
                   <ExplainThis
@@ -602,13 +590,7 @@ export const BudgetsPage: React.FC = () => {
               </div>
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))',
-                gap: 'var(--spacing-3)',
-              }}
-            >
+            <div className="budget-planner__income">
               <input
                 className="form-input"
                 aria-label="Income source"
@@ -643,7 +625,7 @@ export const BudgetsPage: React.FC = () => {
               </button>
             </div>
             {incomeEvents.length > 0 && (
-              <ul style={{ marginTop: 'var(--spacing-3)', paddingLeft: '1.25rem' }}>
+              <ul className="budget-planner__income-list">
                 {incomeEvents.map((event) => (
                   <li key={event.id}>
                     {event.source} on {event.date}: <CurrencyDisplay amount={event.amountCents} />
