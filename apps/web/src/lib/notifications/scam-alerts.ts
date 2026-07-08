@@ -337,7 +337,11 @@ export function scamAlertsToNotifications(alerts: readonly ScamSpendingAlert[]):
     type: 'scam_check',
     severity: alert.severity,
     title: alert.title,
-    message: `${alert.message} NEXT STEP: ${alert.nextStep}`,
+    // Keep the card scannable: the plain-language message is the headline and
+    // the next step is carried separately as a concise hint (rendered on its
+    // own de-emphasized line) rather than concatenated into one long sentence.
+    message: alert.message,
+    actionHint: alert.nextStep,
     createdAt: alert.createdAt,
     status: 'unread',
     entityId: alert.transactionIds.length === 1 ? alert.transactionIds[0] : undefined,

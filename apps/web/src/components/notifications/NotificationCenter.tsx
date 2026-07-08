@@ -34,6 +34,8 @@ export interface NotificationCenterProps {
   onDismiss: (id: string) => void;
   /** Callback when a notification action is clicked (e.g. "View budget"). */
   onAction?: (notification: AppNotification) => void;
+  /** Callback to open the full notifications page (e.g. navigate to `/notifications`). */
+  onViewAll?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +79,7 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
   onMarkAllAsRead,
   onDismiss,
   onAction,
+  onViewAll,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,6 +163,11 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
     [onMarkAsRead, onAction],
   );
 
+  const handleViewAll = useCallback(() => {
+    closePanel();
+    onViewAll?.();
+  }, [closePanel, onViewAll]);
+
   const visibleNotifications = notifications.filter((n) => n.status !== 'dismissed');
 
   const bellLabel = unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications';
@@ -168,7 +176,7 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
     <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
       <button
         ref={buttonRef}
-        className="notification-bell"
+        className="icon-button notification-bell"
         onClick={togglePanel}
         aria-label={bellLabel}
         aria-expanded={isOpen}
@@ -179,11 +187,6 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
         <svg
           className="notification-bell__icon"
           viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
           aria-hidden="true"
           focusable="false"
         >
@@ -257,6 +260,9 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
                     <span className="notification-item__content">
                       <span className="notification-item__title">{notification.title}</span>
                       <span className="notification-item__message">{notification.message}</span>
+                      {notification.actionHint ? (
+                        <span className="notification-item__hint">{notification.actionHint}</span>
+                      ) : null}
                       <span className="notification-item__time">
                         {formatRelativeTime(notification.createdAt)}
                       </span>
@@ -276,6 +282,17 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
               ))}
             </ul>
           )}
+          {onViewAll ? (
+            <div className="notification-panel__footer">
+              <button
+                type="button"
+                className="notification-panel__view-all"
+                onClick={handleViewAll}
+              >
+                See all notifications
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
 

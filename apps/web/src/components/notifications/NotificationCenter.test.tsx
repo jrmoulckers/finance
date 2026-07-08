@@ -259,4 +259,69 @@ describe('NotificationCenter', () => {
     const liveRegion = document.querySelector('[aria-live="polite"]');
     expect(liveRegion?.textContent).toContain('1 unread notification');
   });
+
+  it('renders the "See all notifications" footer and calls onViewAll', () => {
+    const onViewAll = vi.fn();
+    render(
+      <NotificationCenter
+        notifications={mockNotifications}
+        unreadCount={1}
+        onMarkAsRead={vi.fn()}
+        onMarkAllAsRead={vi.fn()}
+        onDismiss={vi.fn()}
+        onViewAll={onViewAll}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(screen.getByRole('button', { name: 'See all notifications' }));
+
+    expect(onViewAll).toHaveBeenCalledOnce();
+  });
+
+  it('omits the "See all notifications" footer when onViewAll is not provided', () => {
+    render(
+      <NotificationCenter
+        notifications={mockNotifications}
+        unreadCount={1}
+        onMarkAsRead={vi.fn()}
+        onMarkAllAsRead={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 unread' }));
+
+    expect(screen.queryByRole('button', { name: 'See all notifications' })).toBeNull();
+  });
+
+  it('renders the action hint as a separate de-emphasized line', () => {
+    const withHint: AppNotification[] = [
+      {
+        id: 'h1',
+        type: 'balance_low',
+        severity: 'warning',
+        title: 'New merchant to review',
+        message: 'We noticed a $42.00 charge from "Pixel Arcade" which is new to you.',
+        actionHint: 'If you do not recognize it, call the number on your card.',
+        createdAt: new Date().toISOString(),
+        status: 'unread',
+      },
+    ];
+    render(
+      <NotificationCenter
+        notifications={withHint}
+        unreadCount={1}
+        onMarkAsRead={vi.fn()}
+        onMarkAllAsRead={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 unread' }));
+
+    expect(
+      screen.getByText('If you do not recognize it, call the number on your card.'),
+    ).toBeDefined();
+  });
 });

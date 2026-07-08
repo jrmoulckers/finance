@@ -63,8 +63,10 @@ export interface AppNotification {
   readonly severity: NotificationSeverity;
   /** Short human-readable title (non-shaming language). */
   readonly title: string;
-  /** Longer description with context. */
+  /** Short, scannable description. Keep to a single sentence where possible. */
   readonly message: string;
+  /** Optional concise follow-up guidance, shown as a de-emphasized hint line. */
+  readonly actionHint?: string;
   /** ISO-8601 timestamp when the notification was created. */
   readonly createdAt: string;
   /** Current status (read/unread/dismissed). */

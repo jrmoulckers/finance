@@ -412,6 +412,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
                 onMarkAllAsRead={onMarkAllNotificationsAsRead}
                 onDismiss={onDismissNotification}
                 onAction={onNotificationAction}
+                onViewAll={() => onNavigate('/notifications')}
               />
             </div>
             <button
