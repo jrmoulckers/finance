@@ -1,0 +1,30 @@
+/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+[data-theme="dark"] {
+  --shadow-lift: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow-hairline: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  --semantic-background-primary: #0f1020; /** Midnight Court — app background. */
+  --semantic-background-secondary: #24263f;
+  --semantic-background-elevated: #1a1b2e; /** Elevated surface — cards, popovers, inputs. */
+  --semantic-background-raised: #2c2e4d; /** JRM extension (deepest chrome) — legacy --color-surface-3 alias. */
+  --semantic-text-primary: #e9e9f4;
+  --semantic-text-secondary: #a3a6cb;
+  --semantic-text-disabled: #313357; /** Disabled text — WCAG-exempt. */
+  --semantic-text-inverse: #0f1020; /** Text on interactive/brand fills. */
+  --semantic-border-default: #313357;
+  --semantic-border-focus: oklch(0.71 0.16 285);
+  --semantic-border-error: oklch(0.79 0.14 25);
+  --semantic-interactive-default: oklch(0.71 0.16 285); /** Royal Violet lightened for contrast on dark surfaces. */
+  --semantic-interactive-hover: oklch(0.83 0.10 285);
+  --semantic-interactive-pressed: oklch(0.94 0.04 285);
+  --semantic-interactive-disabled: #2c2e4d; /** Disabled interactive fill — WCAG-exempt. */
+  --semantic-accent-default: #ffd166; /** Crown Gold fills/washes. */
+  --semantic-accent-ink: #ffd166; /** Gold text on dark surfaces keeps pure Crown Gold. */
+  --semantic-status-positive: #34d399;
+  --semantic-status-negative: #f87171;
+  --semantic-status-warning: #fbbf24;
+  --semantic-status-info: oklch(0.80 0.11 230);
+}

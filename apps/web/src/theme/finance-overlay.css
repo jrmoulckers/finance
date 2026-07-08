@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Finance token overlay.
+ *
+ * A deliberately THIN layer that sits on top of the shared @jrm/tokens DNA
+ * (imported just above this file in theme/tokens.css) and covers only the
+ * finance-specific token delta the shared layer does not own.
+ *
+ * The shared layer already provides everything else finance's color layer
+ * needs: the full --semantic-* palette, --color-primary / --color-primary-strong,
+ * the --color-chart-1..6 (+ -hc-) ramp (identical CVD-safe hexes finance already
+ * used), --color-success/danger/warning/info aliases, the Crown Gold
+ * --semantic-accent-*, and all mode / auto-switch / a11y behaviour. The
+ * @finance/design-tokens base (imported before the shared layer) still provides
+ * finance's structural tokens (spacing, type scale, radii, elevation, motion,
+ * component tokens) and primitive color ramps.
+ *
+ * Brand: FULL shared-brand adoption (option a) — finance renders in the shared
+ * Royal Violet (interactive) + Crown Gold (accent) palette, inherited straight
+ * from @jrm/tokens with no override here. (To keep finance's legacy blue
+ * instead, re-map the shared brand primitives to finance's blue ramp here, e.g.
+ * `--color-royal-violet-500: var(--color-blue-600);` — a self-contained ~10-line
+ * change that would resolve across every mode via the shared layer's var
+ * indirection.)
+ */
+
+:root {
+  /*
+   * Financial amounts are a finance-only extension of the shared status
+   * semantics: a positive amount reads as "gain" and a negative as "loss".
+   * Alias them to the shared status tokens so they automatically track the
+   * shared palette across light / dark / dark-oled / high-contrast and the
+   * prefers-color-scheme / prefers-contrast auto-switch modes — no per-mode
+   * duplication needed. (The base layer defines these too; this alias, imported
+   * last, wins and keeps amounts and status in lockstep.)
+   */
+  --semantic-amount-positive: var(--semantic-status-positive);
+  --semantic-amount-negative: var(--semantic-status-negative);
+}

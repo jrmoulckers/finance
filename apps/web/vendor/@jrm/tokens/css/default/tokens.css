@@ -1,0 +1,302 @@
+/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+:root {
+  --breakpoint-content-max: 760px; /** Max content column width */
+  --breakpoint-tile-min: 150px; /** Min game-tile width in the auto-fit grid */
+  --cognitive-touch-target-min: 48px; /** Minimum interactive touch/click target — WCAG 2.2 SC 2.5.5 Target Size (Enhanced, AAA). */
+  --cognitive-focus-ring-width: 3px; /** Enhanced focus-ring width for improved visibility (default is 2px). */
+  --cognitive-focus-ring-offset: 3px; /** Enhanced focus-ring offset for improved visibility (default is 2px). */
+  --cognitive-border-width: 2px; /** Enhanced border width for clearer element-boundary definition. */
+  --cognitive-max-choices-per-group: 5; /** Maximum options presented in a single group/menu — Miller's Law (7±2) with a conservative bound for cognitive-load reduction. */
+  --duration-instant: 0ms;
+  --duration-press: 50ms; /** Button :active press-down */
+  --duration-state: 150ms; /** Hover / state color transitions */
+  --duration-tile: 120ms; /** Game-tile hover lift */
+  --duration-reduced: 0ms; /** Reduced-motion alternative — collapse motion to instant (prefers-reduced-motion). */
+  --easing-standard: ease; /** Default functional easing */
+  --easing-linear: linear; /** Reduced-motion / crossfade easing */
+  --radius-sm: 9px; /** Controls: buttons, inputs, steppers */
+  --radius-md: 14px; /** Containers: cards, tiles */
+  --radius-chip: 10px; /** Icon buttons and small chips */
+  --radius-pill: 999px; /** Fully-rounded pills and avatars */
+  --shadow-soft-lift-dark: 0 10px 30px rgba(0, 0, 0, 0.45); /** The single dark-theme shadow — floats cards, tiles, toast. */
+  --shadow-soft-lift-light: 0 10px 30px rgba(60, 50, 120, 0.12); /** Light-theme equivalent of Soft Lift. */
+  --shadow-inset-hairline: inset 0 0 0 1px rgba(0, 0, 0, 0.18); /** 1px inner ring on avatars so light player colors keep their edge. */
+  --shadow-none: none; /** No shadow — the flattened surface used by cognitive-accessibility mode. */
+  --spacing-xs: 6px;
+  --spacing-sm: 10px;
+  --spacing-md: 14px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px; /** Roomier block padding — cognitive-accessibility mode. */
+  --spacing-2xl: 24px; /** Card gap / inline padding — cognitive-accessibility mode. */
+  --spacing-3xl: 32px; /** Section gap — cognitive-accessibility mode. */
+  --font-family-sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; /** One native sans for everything — the Quiet-Type Rule. */
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-size-display: 1.6rem;
+  --font-size-title: 1.25rem;
+  --font-size-body: 1rem;
+  --font-size-label: 0.9rem;
+  --font-size-overline: 0.8rem;
+  --font-line-height-tight: 1.2;
+  --font-line-height-snug: 1.4;
+  --font-line-height-normal: 1.5;
+  --font-line-height-relaxed: 1.75; /** Roomy leading — used by cognitive-accessibility mode for improved reading flow. */
+  --font-letter-spacing-normal: 0;
+  --font-letter-spacing-wide: 0.08em; /** Overline tracking */
+  --color-royal-violet-200: oklch(0.94 0.04 285);
+  --color-royal-violet-300: oklch(0.83 0.10 285);
+  --color-royal-violet-400: oklch(0.71 0.16 285);
+  --color-royal-violet-500: #7c5cff; /** Royal Violet — canonical brand action color */
+  --color-royal-violet-600: #6b46f0; /** Deep Violet — pressed/hover echo of the primary action */
+  --color-royal-violet-700: oklch(0.38 0.14 285);
+  --color-royal-violet-800: oklch(0.28 0.10 285);
+  --color-royal-violet-900: oklch(0.18 0.06 285);
+  --color-crown-gold-200: oklch(0.96 0.05 90);
+  --color-crown-gold-300: oklch(0.90 0.10 90);
+  --color-crown-gold-400: oklch(0.84 0.14 90);
+  --color-crown-gold-500: #ffd166; /** Crown Gold — canonical */
+  --color-crown-gold-600: oklch(0.65 0.11 90);
+  --color-crown-gold-700: oklch(0.54 0.09 90);
+  --color-crown-gold-800: oklch(0.42 0.07 90);
+  --color-crown-gold-900: oklch(0.30 0.05 90);
+  --color-crown-gold-ink-light: #806600; /** Gold text on light surfaces — darkened to clear WCAG >=4.5:1 on white while keeping the gold identity. */
+  --color-win-200: oklch(0.95 0.05 165);
+  --color-win-300: oklch(0.87 0.10 165);
+  --color-win-400: oklch(0.78 0.15 165);
+  --color-win-500: #34d399; /** Win Green — canonical */
+  --color-win-600: oklch(0.58 0.12 165);
+  --color-win-700: oklch(0.47 0.10 165);
+  --color-win-800: oklch(0.36 0.07 165);
+  --color-win-900: oklch(0.25 0.05 165);
+  --color-loss-200: oklch(0.95 0.04 25);
+  --color-loss-300: oklch(0.88 0.09 25);
+  --color-loss-400: oklch(0.79 0.14 25);
+  --color-loss-500: #f87171; /** Loss Coral — canonical */
+  --color-loss-600: oklch(0.60 0.16 25);
+  --color-loss-700: oklch(0.50 0.13 25);
+  --color-loss-800: oklch(0.39 0.10 25);
+  --color-loss-900: oklch(0.28 0.06 25);
+  --color-caution-200: oklch(0.96 0.05 80);
+  --color-caution-300: oklch(0.90 0.11 80);
+  --color-caution-400: oklch(0.83 0.16 80);
+  --color-caution-500: #fbbf24; /** Caution Amber — canonical */
+  --color-caution-600: oklch(0.64 0.13 80);
+  --color-caution-700: oklch(0.53 0.11 80);
+  --color-caution-800: oklch(0.41 0.08 80);
+  --color-caution-900: oklch(0.29 0.05 80);
+  --color-info-200: oklch(0.95 0.03 230);
+  --color-info-300: oklch(0.88 0.07 230);
+  --color-info-400: oklch(0.80 0.11 230);
+  --color-info-500: #38bdf8; /** Info Sky — canonical (seeded from score-king player-5). */
+  --color-info-600: oklch(0.62 0.13 230);
+  --color-info-700: oklch(0.52 0.12 230);
+  --color-info-800: oklch(0.42 0.10 230);
+  --color-info-900: oklch(0.30 0.07 230);
+  --color-ink-midnight: #0f1020; /** Midnight Court — app background */
+  --color-ink-indigo-slate: #1a1b2e; /** Indigo Slate — surface */
+  --color-ink-raised-slate: #24263f; /** Raised Slate — surface-2 */
+  --color-ink-lifted-slate: #2c2e4d; /** Lifted Slate — surface-3 */
+  --color-ink-court-line: #313357; /** Court Line — borders, dividers */
+  --color-ink-moonlight: #e9e9f4; /** Moonlight — primary text */
+  --color-ink-lavender-gray: #a3a6cb; /** Lavender Gray — muted text */
+  --color-paper-lilac-mist: #f4f4fb; /** Lilac Mist — app background */
+  --color-paper-white: #ffffff; /** White — surface */
+  --color-paper-frost: #f1f1f9; /** Frost — surface-2 */
+  --color-paper-haze: #e7e7f4; /** Haze — surface-3 */
+  --color-paper-cloud-line: #dcdcea; /** Cloud Line — borders */
+  --color-paper-ink: #1c1d2e; /** Ink — primary text */
+  --color-paper-slate-gray: #5b5e7e; /** Slate Gray — muted text */
+  --color-base-white: #ffffff;
+  --color-base-black: #000000;
+  --color-oled-black: #000000; /** True black — OLED pixels off (0,0,0), the app background. */
+  --color-oled-surface: #0a0a0a; /** Near-black secondary surface. */
+  --color-oled-elevated: #111111; /** Elevated surface for cards, modals, panels. */
+  --color-chart-1: #648fff; /** CVD-safe blue */
+  --color-chart-2: #785ef0; /** CVD-safe purple */
+  --color-chart-3: #dc267f; /** CVD-safe magenta */
+  --color-chart-4: #fe6100; /** CVD-safe orange */
+  --color-chart-5: #ffb000; /** CVD-safe gold */
+  --color-chart-6: #009e73; /** CVD-safe teal */
+  --color-chart-hc-1: #0043ce; /** HC blue — 7.8:1 vs white (AAA) */
+  --color-chart-hc-2: #6929c4; /** HC purple — 6.0:1 vs white (AA) */
+  --color-chart-hc-3: #9f1853; /** HC magenta — 8.0:1 vs white (AAA) */
+  --color-chart-hc-4: #ba4e00; /** HC orange — 5.0:1 vs white (AA) */
+  --color-chart-hc-5: #8e6a00; /** HC gold — 5.0:1 vs white (AA) */
+  --color-chart-hc-6: #005d5d; /** HC teal — 6.5:1 vs white (AA) */
+  --color-player-1: #7c5cff;
+  --color-player-2: #34d399;
+  --color-player-3: #f87171;
+  --color-player-4: #fbbf24;
+  --color-player-5: #38bdf8;
+  --color-player-6: #fb7185;
+  --color-player-7: #a78bfa;
+  --color-player-8: #4ade80;
+  --color-player-9: #f59e0b;
+  --color-player-10: #22d3ee;
+  --color-player-11: #e879f9;
+  --color-player-12: #facc15;
+  --avatar-size: 28px;
+  --button-primary-min-height: 46px;
+  --button-primary-padding-x: 18px;
+  --button-primary-padding-y: 12px;
+  --button-default-min-height: 46px;
+  --button-default-padding-x: 18px;
+  --button-default-padding-y: 12px;
+  --button-ghost-bg: transparent;
+  --button-danger-bg: transparent;
+  --input-min-height: 46px;
+  --input-padding-y: 11px;
+  --nav-iconbtn-size: 46px;
+  --pill-padding-y: 3px;
+  --shadow-lift: var(--shadow-soft-lift-light);
+  --shadow-hairline: var(--shadow-inset-hairline);
+  --semantic-background-primary: var(--color-paper-lilac-mist); /** App background. */
+  --semantic-background-secondary: var(--color-paper-frost); /** Secondary chrome surface. */
+  --semantic-background-elevated: var(--color-paper-white); /** Elevated surface — cards, popovers, inputs. */
+  --semantic-background-raised: var(--color-paper-haze); /** JRM extension (deepest chrome surface) — preserves the legacy --color-surface-3 back-compat alias. */
+  --semantic-text-primary: var(--color-paper-ink);
+  --semantic-text-secondary: var(--color-paper-slate-gray);
+  --semantic-text-disabled: var(--color-paper-cloud-line); /** Disabled text — WCAG-exempt. */
+  --semantic-text-inverse: var(--color-base-white); /** Text on interactive/brand fills. */
+  --semantic-border-default: var(--color-paper-cloud-line);
+  --semantic-border-focus: var(--color-royal-violet-500); /** Shared Royal Violet focus ring. */
+  --semantic-border-error: var(--color-loss-500);
+  --semantic-interactive-default: var(--color-royal-violet-500); /** Royal Violet — the one brand action color. */
+  --semantic-interactive-hover: var(--color-royal-violet-600); /** Deep Violet hover echo. */
+  --semantic-interactive-pressed: var(--color-royal-violet-700);
+  --semantic-interactive-disabled: var(--color-paper-haze); /** Disabled interactive fill — WCAG-exempt. */
+  --semantic-accent-default: var(--color-crown-gold-500); /** Crown Gold — leader & winner fills/washes (the Crown Gold Rule). */
+  --semantic-accent-ink: var(--color-crown-gold-ink-light); /** Pure Crown Gold fails WCAG on light surfaces — darken gold TEXT to #806600 while keeping gold fills as accent.default. */
+  --semantic-status-positive: var(--color-win-500);
+  --semantic-status-negative: var(--color-loss-500);
+  --semantic-status-warning: var(--color-caution-500);
+  --semantic-status-info: var(--color-info-500);
+  --text-display-family: var(--font-family-sans);
+  --text-display-size: var(--font-size-display);
+  --text-display-weight: var(--font-weight-bold);
+  --text-display-line-height: var(--font-line-height-tight);
+  --text-title-family: var(--font-family-sans);
+  --text-title-size: var(--font-size-title);
+  --text-title-weight: var(--font-weight-bold);
+  --text-title-line-height: var(--font-line-height-tight);
+  --text-body-family: var(--font-family-sans);
+  --text-body-size: var(--font-size-body);
+  --text-body-weight: var(--font-weight-regular);
+  --text-body-line-height: var(--font-line-height-normal);
+  --text-label-family: var(--font-family-sans);
+  --text-label-size: var(--font-size-label);
+  --text-label-weight: var(--font-weight-regular);
+  --text-label-line-height: var(--font-line-height-snug);
+  --text-overline-family: var(--font-family-sans);
+  --text-overline-size: var(--font-size-overline);
+  --text-overline-weight: var(--font-weight-semibold);
+  --text-overline-line-height: var(--font-line-height-tight);
+  --text-overline-letter-spacing: var(--font-letter-spacing-wide);
+  --motion-press-duration: var(--duration-press);
+  --motion-press-easing: var(--easing-standard);
+  --motion-state-duration: var(--duration-state);
+  --motion-state-easing: var(--easing-standard);
+  --motion-tile-duration: var(--duration-tile);
+  --motion-tile-easing: var(--easing-standard);
+  --motion-reduced-duration: var(--duration-reduced);
+  --motion-reduced-easing: var(--easing-linear);
+  --cognitive-type-display-size: var(--font-size-display);
+  --cognitive-type-display-weight: var(--font-weight-bold);
+  --cognitive-type-display-line-height: var(--font-line-height-normal); /** Relaxed from tight (1.2) to normal (1.5). */
+  --cognitive-type-title-size: var(--font-size-title);
+  --cognitive-type-title-weight: var(--font-weight-bold);
+  --cognitive-type-title-line-height: var(--font-line-height-normal); /** Relaxed from tight (1.2) to normal (1.5). */
+  --cognitive-type-body-size: var(--font-size-title); /** Stepped up from body (1rem) to title (1.25rem) for readability. */
+  --cognitive-type-body-weight: var(--font-weight-regular);
+  --cognitive-type-body-line-height: var(--font-line-height-relaxed); /** Relaxed from normal (1.5) to relaxed (1.75). */
+  --cognitive-type-label-size: var(--font-size-body); /** Stepped up from label (0.9rem) to body (1rem). */
+  --cognitive-type-label-weight: var(--font-weight-regular);
+  --cognitive-type-label-line-height: var(--font-line-height-relaxed);
+  --cognitive-type-overline-size: var(--font-size-label); /** Stepped up from overline (0.8rem) to label (0.9rem) — 0.8rem is too small for cognitive needs. */
+  --cognitive-type-overline-weight: var(--font-weight-semibold);
+  --cognitive-type-overline-line-height: var(--font-line-height-snug);
+  --cognitive-spacing-section-gap: var(--spacing-3xl); /** Gap between major sections — 32px. */
+  --cognitive-spacing-card-gap: var(--spacing-2xl); /** Gap between cards — 24px. */
+  --cognitive-spacing-element-gap: var(--spacing-lg); /** Gap between elements within a section — 16px. */
+  --cognitive-spacing-inline-padding: var(--spacing-2xl); /** Horizontal padding inside containers — 24px. */
+  --cognitive-spacing-block-padding: var(--spacing-xl); /** Vertical padding inside containers — 20px. */
+  --cognitive-focus-width: var(--cognitive-focus-ring-width);
+  --cognitive-focus-offset: var(--cognitive-focus-ring-offset);
+  --cognitive-elevation-none: var(--shadow-none);
+  --cognitive-elevation-low: var(--shadow-inset-hairline); /** Minimal hairline instead of a drop shadow. */
+  --cognitive-elevation-raised: var(--shadow-soft-lift-light); /** The single soft lift, used sparingly. */
+  --avatar-bg: var(--color-player-1); /** Default fill; runtime assigns #7c5cff–#facc15 in order. */
+  --avatar-weight: var(--font-weight-bold);
+  --avatar-radius: var(--radius-pill);
+  --button-primary-radius: var(--radius-sm);
+  --button-default-radius: var(--radius-sm);
+  --card-radius: var(--radius-md);
+  --card-padding: var(--spacing-lg);
+  --tile-radius: var(--radius-md);
+  --tile-padding: var(--spacing-lg);
+  --input-radius: var(--radius-sm);
+  --input-padding-x: var(--spacing-md);
+  --nav-tabbar-radius: var(--radius-md);
+  --nav-tab-radius: var(--radius-chip);
+  --nav-iconbtn-radius: var(--radius-chip);
+  --pill-radius: var(--radius-pill);
+  --pill-padding-x: var(--spacing-sm);
+  --color-bg: var(--semantic-background-primary); /** Back-compat alias → --semantic-background-primary. Re-flows across every mode via the semantic var. */
+  --color-surface: var(--semantic-background-elevated);
+  --color-surface-2: var(--semantic-background-secondary);
+  --color-surface-3: var(--semantic-background-raised);
+  --color-border: var(--semantic-border-default);
+  --color-text: var(--semantic-text-primary);
+  --color-text-muted: var(--semantic-text-secondary);
+  --color-primary: var(--semantic-interactive-default);
+  --color-primary-strong: var(--semantic-interactive-hover);
+  --color-on-primary: var(--semantic-text-inverse);
+  --color-accent: var(--semantic-accent-default);
+  --color-accent-ink: var(--semantic-accent-ink);
+  --color-success: var(--semantic-status-positive);
+  --color-danger: var(--semantic-status-negative);
+  --color-warning: var(--semantic-status-warning);
+  --color-focus-ring: var(--semantic-border-focus);
+  --avatar-text: var(--semantic-text-inverse);
+  --avatar-ring: var(--shadow-hairline);
+  --button-primary-bg: var(--semantic-interactive-default);
+  --button-primary-text: var(--semantic-text-inverse);
+  --button-primary-border: var(--semantic-interactive-hover);
+  --button-primary-hover-bg: var(--semantic-interactive-hover);
+  --button-default-bg: var(--semantic-background-secondary);
+  --button-default-text: var(--semantic-text-primary);
+  --button-default-border: var(--semantic-border-default);
+  --button-default-hover-bg: var(--semantic-background-raised);
+  --button-ghost-text: var(--semantic-text-primary);
+  --button-danger-text: var(--semantic-status-negative);
+  --button-danger-border: var(--semantic-status-negative);
+  --card-bg: var(--semantic-background-elevated);
+  --card-text: var(--semantic-text-primary);
+  --card-border: var(--semantic-border-default);
+  --card-shadow: var(--shadow-lift);
+  --tile-bg: var(--semantic-background-elevated);
+  --tile-text: var(--semantic-text-primary);
+  --tile-border: var(--semantic-border-default);
+  --tile-hover-border: var(--semantic-interactive-default);
+  --tile-shadow: var(--shadow-lift);
+  --input-bg: var(--semantic-background-elevated);
+  --input-text: var(--semantic-text-primary);
+  --input-border: var(--semantic-border-default);
+  --input-placeholder: var(--semantic-text-secondary);
+  --input-focus-ring: var(--semantic-border-focus);
+  --nav-tabbar-bg: var(--semantic-background-elevated); /** Consumers may layer glass (backdrop-filter: blur(12px)) + alpha per the Glass-Chrome Rule. */
+  --nav-tabbar-border: var(--semantic-border-default);
+  --nav-tab-text: var(--semantic-text-secondary);
+  --nav-tab-active-text: var(--semantic-text-primary);
+  --nav-tab-active-bg: var(--semantic-background-secondary);
+  --nav-iconbtn-bg: var(--semantic-background-secondary);
+  --nav-iconbtn-text: var(--semantic-text-primary);
+  --pill-bg: var(--semantic-background-secondary);
+  --pill-text: var(--semantic-text-secondary);
+  --pill-border: var(--semantic-border-default);
+}

@@ -102,7 +102,7 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ['**/build/**', '**/dist/**', '**/node_modules/**', '**/.gradle/**'],
+    ignores: ['**/build/**', '**/dist/**', '**/node_modules/**', '**/.gradle/**', '**/vendor/**'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.mjs', '**/*.js'],

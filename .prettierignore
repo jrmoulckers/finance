@@ -13,6 +13,10 @@ packages/design-tokens/build/
 kotlin-js-store/
 .github/workflow-templates/
 
+# Vendored third-party design tokens (@jrm/tokens) — synced verbatim from
+# jrmoulckers/studio; must stay byte-identical, never reformatted.
+**/vendor/@jrm/
+
 # Kotlin — Prettier has no parser for .kt/.kts files
 *.kt
 *.kts
