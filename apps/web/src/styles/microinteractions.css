@@ -160,19 +160,21 @@ textarea:focus {
 }
 
 /* --------------------------------------------------------------------------
-   6. Card hover — subtle lift + shadow increase
+   6. Card hover — subtle shadow elevation (no positional lift)
+
+   Intentionally does NOT translate/scale the card. A `translateY` lift on
+   hover shifts the card's box and causes distracting jitter on the dashboard's
+   large panels (#3553). We emphasise with a gentle box-shadow only, which
+   keeps the card's geometry fixed so neighbouring content never reflows.
    -------------------------------------------------------------------------- */
 
 .card,
 [class*='card'] {
-  transition:
-    transform 80ms var(--easing-out),
-    box-shadow 80ms var(--easing-out);
+  transition: box-shadow 120ms var(--easing-out);
 }
 
 .card:hover,
 [class*='card']:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
