@@ -166,25 +166,39 @@ services:
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
 
+      # OAuth — provider callback URL.
+      #
+      # Self-hosted GoTrue's ValidateOAuth() rejects any enabled provider with an
+      # empty redirect URI ("missing redirect URI"), so each provider below sets
+      # its REDIRECT_URI explicitly. All providers share the single GoTrue
+      # callback: Caddy's `handle_path /auth/v1/*` strips the prefix and proxies
+      # to auth:9999, so https://<domain>/auth/v1/callback reaches GoTrue's
+      # /callback handler. This exact URL must also be registered in each
+      # provider's console (Entra redirect URI, Google authorized redirect, etc).
+
       # OAuth — Apple (optional)
       GOTRUE_EXTERNAL_APPLE_ENABLED: ${APPLE_AUTH_ENABLED:-false}
       GOTRUE_EXTERNAL_APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
       GOTRUE_EXTERNAL_APPLE_SECRET: ${APPLE_SECRET:-}
+      GOTRUE_EXTERNAL_APPLE_REDIRECT_URI: https://${DOMAIN}/auth/v1/callback
 
       # OAuth — Google (optional)
       GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_AUTH_ENABLED:-false}
       GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: https://${DOMAIN}/auth/v1/callback
 
       # OAuth — GitHub (optional)
       GOTRUE_EXTERNAL_GITHUB_ENABLED: ${GITHUB_AUTH_ENABLED:-false}
       GOTRUE_EXTERNAL_GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GOTRUE_EXTERNAL_GITHUB_SECRET: ${GITHUB_SECRET:-}
+      GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI: https://${DOMAIN}/auth/v1/callback
 
       # OAuth — Microsoft (optional; GoTrue brokers Microsoft as "azure")
       GOTRUE_EXTERNAL_AZURE_ENABLED: ${AZURE_AUTH_ENABLED:-false}
       GOTRUE_EXTERNAL_AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
       GOTRUE_EXTERNAL_AZURE_SECRET: ${AZURE_SECRET:-}
+      GOTRUE_EXTERNAL_AZURE_REDIRECT_URI: https://${DOMAIN}/auth/v1/callback
       # Tenant authority URL. Default allows multi-tenant + personal Microsoft
       # accounts; set to https://login.microsoftonline.com/<tenant-id> to
       # restrict sign-in to a single Entra tenant.
