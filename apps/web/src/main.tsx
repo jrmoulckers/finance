@@ -34,6 +34,7 @@ import './styles/font-scaling.css';
 import './styles/error-boundaries.css';
 import './styles/density.css';
 import './styles/microinteractions.css';
+import './styles/tables.css';
 
 const rootElement = document.getElementById('root');
 

@@ -70,11 +70,15 @@
 }
 
 /* Scrollable window: keeps the card condensed while many rows remain reachable
- * via keyboard (each row is a focusable link) and pointer/touch scrolling. */
+ * via keyboard (each row is a focusable link) and pointer/touch scrolling. The
+ * `.themed-scrollbar` utility (styles/tables.css) supplies the centralized
+ * themed scrollbar; `scrollbar-gutter: stable` avoids a layout shift when the
+ * scrollbar appears. */
 .recent-transactions-card__list {
   max-height: 22rem;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 @media (prefers-contrast: more) {
