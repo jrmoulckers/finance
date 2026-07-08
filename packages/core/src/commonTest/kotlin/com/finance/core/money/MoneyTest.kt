@@ -67,6 +67,39 @@ class MoneyTest {
     }
 
     @Test
+    fun fromMajor_roundsSubMinorPrecisionToNearestMinorUnit() {
+        // The reported bug: sub-cent precision must not survive entry.
+        assertEquals(Cents(12321300L), Money.fromMajor(123213.00002, usd).cents)
+        assertEquals(Cents(1234L), Money.fromMajor(12.344, usd).cents)
+        assertEquals(Cents(1235L), Money.fromMajor(12.346, usd).cents)
+    }
+
+    @Test
+    fun fromMajor_handlesZeroAndNegative() {
+        assertTrue(Money.fromMajor(0.0, usd).isZero())
+        assertEquals(Cents(-525L), Money.fromMajor(-5.25, usd).cents)
+        assertEquals(Cents(0L), Money.fromMajor(-0.001, usd).cents)
+    }
+
+    @Test
+    fun fromMajor_respectsPerCurrencyPrecision() {
+        assertEquals(Cents(501L), Money.fromMajor(500.6, jpy).cents) // 0 decimals
+        assertEquals(Cents(500L), Money.fromMajor(500.0, jpy).cents)
+        assertEquals(Cents(1234L), Money.fromMajor(1.2344, bhd).cents) // 3 decimals
+    }
+
+    @Test
+    fun fromMajor_handlesLargeValues() {
+        assertEquals(Cents(100_000_000_000L), Money.fromMajor(1_000_000_000.0, usd).cents)
+    }
+
+    @Test
+    fun fromMajor_rejectsNonFinite() {
+        assertFailsWith<IllegalArgumentException> { Money.fromMajor(Double.NaN, usd) }
+        assertFailsWith<IllegalArgumentException> { Money.fromMajor(Double.POSITIVE_INFINITY, usd) }
+    }
+
+    @Test
     fun zero_isZeroInCurrency() {
         val z = Money.zero(eur)
         assertTrue(z.isZero())

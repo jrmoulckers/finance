@@ -33,6 +33,7 @@ import {
 } from '../lib/analytics/invoices';
 import { buildDatedExportFileName } from '../lib/export/simple-export';
 import { formatDate } from '../utils/formatDate';
+import { dollarsToCents } from '../lib/currency';
 import './analytics.css';
 
 function todayIsoDate(): string {
@@ -46,7 +47,7 @@ function todayIsoDate(): string {
 function parseAmountToCents(value: string): number | null {
   const amount = Number(value.replace(/[$,]/g, '').trim());
   if (!Number.isFinite(amount) || amount <= 0) return null;
-  return Math.round(amount * 100);
+  return dollarsToCents(amount);
 }
 
 const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => (

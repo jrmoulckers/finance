@@ -24,7 +24,7 @@
 import React, { useId, useMemo, useState } from 'react';
 import { TrendLineChart } from '../charts';
 import { CurrencyDisplay } from '../common';
-import { formatCurrency } from '../../lib/currency';
+import { dollarsToCents as toCents, formatCurrency } from '../../lib/currency';
 import {
   buildProjectionChartData,
   deriveProjectionScenarios,
@@ -50,7 +50,7 @@ const SCENARIO_SPREAD = 0.03;
 function dollarsToCents(value: string): number {
   const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return Math.round(parsed * 100);
+  return toCents(parsed);
 }
 
 /** Clamp a numeric input to a sensible inclusive range. */

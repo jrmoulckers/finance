@@ -37,6 +37,7 @@ import {
 } from '../../lib/bills/bill-calendar';
 import type { Bill } from '../../kmp/bridge';
 import { getCurrentLocale } from '../../lib/i18n';
+import { dollarsToCents as toCents } from '../../lib/currency';
 
 /** Props for {@link BillCalendarView}. */
 export interface BillCalendarViewProps {
@@ -77,7 +78,7 @@ function formatDate(iso: string): string {
 function dollarsToCents(value: string): number {
   const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return Math.round(parsed * 100);
+  return toCents(parsed);
 }
 
 function loadSchedule(): StoredSchedule {

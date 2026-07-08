@@ -50,6 +50,7 @@ import {
   type PlanningCadence,
 } from '../lib/budgeting-beta';
 import { AppIcon, type IconName } from '../components/icons';
+import { dollarsToCents } from '../lib/currency';
 
 import './BudgetsPage.css';
 
@@ -86,7 +87,7 @@ function renderBudgetIcon(iconName: string | null | undefined): React.ReactNode 
 
 function centsFromInput(value: string): number {
   const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
+  return Number.isFinite(parsed) && parsed > 0 ? dollarsToCents(parsed) : 0;
 }
 
 function todayIso(): string {

@@ -25,7 +25,7 @@
 import React, { useCallback, useId, useMemo, useState } from 'react';
 
 import { AppIcon, type IconName } from '../icons';
-import { formatCurrency } from '../../lib/currency';
+import { dollarsToCents as toCents, formatCurrency } from '../../lib/currency';
 import {
   useCryptoConnections,
   type ConnectedCryptoSource,
@@ -100,9 +100,7 @@ function formatTimestamp(iso: string | null): string {
 }
 
 function dollarsToCents(value: string): number {
-  const parsed = Number.parseFloat(value);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.round(parsed * 100);
+  return toCents(Number.parseFloat(value));
 }
 
 const money = (cents: number): string => formatCurrency(cents, { currency: 'USD' });

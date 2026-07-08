@@ -18,7 +18,7 @@
  */
 
 import { getCurrentLocale, translate } from './i18n';
-import { minorUnitFactor } from './currency-metadata';
+import { getCurrencyFractionDigits, minorUnitFactor } from './currency-metadata';
 import { formatAmount, MaskingMode } from './ui/privacy';
 
 // ---------------------------------------------------------------------------
@@ -204,4 +204,132 @@ export function formatChartCurrency(
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Parsing & rounding (major units → integer minor units)
+// ---------------------------------------------------------------------------
+//
+// These are the canonical helpers for turning user-entered *major-unit* amounts
+// (e.g. "123213.00002") into the integer **cents** the data layer stores. All
+// monetary inputs MUST route through these instead of sprinkling ad-hoc
+// `Math.round(parseFloat(x) * 100)`, which hardcodes a 2-decimal minor unit and
+// silently keeps sub-cent precision on screen.
+//
+// Rounding uses `Math.round` (round-half-up), matching the established web
+// convention already used by `formatCurrencyValue` / `formatChartCurrency`, so
+// no new rounding rule is introduced. Precision is derived per-currency from
+// `currency-metadata`, so JPY (0 decimals) and BHD (3 decimals) are handled
+// correctly rather than assuming pennies.
+
+/** Strip currency symbols, grouping separators, and whitespace from a raw input. */
+function stripAmountFormatting(input: string): string {
+  return input.replace(/[$£€¥]/g, '').replace(/[,\s]/g, '');
+}
+
+/**
+ * Round a **major-unit** amount to the currency's minor unit and return the
+ * result as **integer minor units** (cents).
+ *
+ * @example
+ * ```ts
+ * dollarsToCents(123213.00002);          // 12321300
+ * dollarsToCents(12.345);                // 1235  (rounds half up)
+ * dollarsToCents(-1.5);                  // -150
+ * dollarsToCents(500, 'JPY');            // 500   (0-decimal currency)
+ * dollarsToCents(1.234, 'BHD');          // 1234  (3-decimal currency)
+ * ```
+ */
+export function dollarsToCents(amountInMajorUnits: number, currency = 'USD'): number {
+  if (!Number.isFinite(amountInMajorUnits)) return 0;
+  const cents = Math.round(amountInMajorUnits * minorUnitFactor(currency));
+  // Normalize `-0` (e.g. Math.round(-0.4)) to `0` so stored cents are canonical.
+  return cents === 0 ? 0 : cents;
+}
+
+/**
+ * Parse a user-entered **major-unit** value into **integer minor units** (cents),
+ * rounded to the currency's precision.
+ *
+ * Accepts either a number or a string that may contain a currency symbol,
+ * grouping separators, and surrounding whitespace. Returns `null` when the
+ * input is empty or not a valid number, so callers can distinguish "no value"
+ * from a genuine zero.
+ *
+ * @example
+ * ```ts
+ * parseAmountToCents('123213.00002'); // 12321300
+ * parseAmountToCents('$1,234.56');    // 123456
+ * parseAmountToCents('');             // null
+ * parseAmountToCents('abc');          // null
+ * ```
+ */
+export function parseAmountToCents(input: string | number, currency = 'USD'): number | null {
+  if (typeof input === 'number') {
+    return Number.isFinite(input) ? dollarsToCents(input, currency) : null;
+  }
+
+  const normalized = stripAmountFormatting(input).replace(/−/g, '-');
+  if (normalized === '' || normalized === '.' || normalized === '-' || normalized === '+') {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? dollarsToCents(parsed, currency) : null;
+}
+
+/**
+ * Round a **major-unit** amount to the currency's minor-unit precision, keeping
+ * the result in **major units**. Useful for constraining values that must stay
+ * in dollars (e.g. chart inputs) rather than being stored as cents.
+ *
+ * @example
+ * ```ts
+ * roundToCurrencyPrecision(123213.00002); // 123213
+ * roundToCurrencyPrecision(1.005);        // 1.01
+ * roundToCurrencyPrecision(500.6, 'JPY'); // 501
+ * ```
+ */
+export function roundToCurrencyPrecision(amountInMajorUnits: number, currency = 'USD'): number {
+  if (!Number.isFinite(amountInMajorUnits)) return 0;
+  const factor = minorUnitFactor(currency);
+  const rounded = Math.round(amountInMajorUnits * factor) / factor;
+  return rounded === 0 ? 0 : rounded;
+}
+
+/**
+ * Normalize a raw amount-input string to a fixed-decimal **major-unit** string
+ * suitable for writing back into a text/number field on blur.
+ *
+ * Returns `''` for empty or invalid input so the field can simply be cleared.
+ *
+ * @example
+ * ```ts
+ * normalizeAmountInputValue('123213.00002'); // "123213.00"
+ * normalizeAmountInputValue('5');            // "5.00"
+ * normalizeAmountInputValue('500.9', 'JPY'); // "501"
+ * normalizeAmountInputValue('');             // ""
+ * ```
+ */
+export function normalizeAmountInputValue(input: string, currency = 'USD'): string {
+  const cents = parseAmountToCents(input, currency);
+  if (cents === null) return '';
+  const digits = getCurrencyFractionDigits(currency);
+  return (cents / minorUnitFactor(currency)).toFixed(digits);
+}
+
+/**
+ * The HTML `step` attribute value representing one minor unit of the currency,
+ * so native number inputs constrain entry to whole cents.
+ *
+ * @example
+ * ```ts
+ * minorUnitStep();      // "0.01" (USD)
+ * minorUnitStep('JPY'); // "1"
+ * minorUnitStep('BHD'); // "0.001"
+ * ```
+ */
+export function minorUnitStep(currency = 'USD'): string {
+  const digits = getCurrencyFractionDigits(currency);
+  return digits === 0 ? '1' : `0.${'0'.repeat(digits - 1)}1`;
 }

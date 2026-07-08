@@ -25,6 +25,7 @@ import {
   getTransactionReconciliationAmount,
 } from '../lib/reconciliation';
 import { formatDate } from '../utils/formatDate';
+import { dollarsToCents } from '../lib/currency';
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   CHECKING: 'Checking',
@@ -47,7 +48,7 @@ function parseMoneyInput(value: string): number | null {
   }
 
   const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
+  return Number.isFinite(parsed) ? dollarsToCents(parsed) : null;
 }
 
 function transactionLabel(transaction: {

@@ -29,6 +29,7 @@ import {
   type LoanPayoffInput,
 } from '../../lib/debt/payoff';
 import type { Debt } from '../../lib/debt-types';
+import { dollarsToCents } from '../../lib/currency';
 import './DebtPayoffRings.css';
 
 export interface DebtPayoffRingsProps {
@@ -57,7 +58,7 @@ function toLoanInput(debt: Debt): LoanPayoffInput {
 
 function parseExtraPaymentCents(value: string): number {
   const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
+  return Number.isFinite(parsed) && parsed > 0 ? dollarsToCents(parsed) : 0;
 }
 
 export function DebtPayoffRings({ debts, todayIso }: DebtPayoffRingsProps): React.ReactElement {

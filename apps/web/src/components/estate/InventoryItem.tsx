@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CurrencyDisplay } from '../common';
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
 import { createEmptyBeneficiary } from '../../lib/estate/inventory';
+import { dollarsToCents } from '../../lib/currency';
 import type {
   Beneficiary,
   EstateCategoryDefinition,
@@ -33,7 +34,7 @@ function parseCurrencyValue(value: string): number | null {
     return null;
   }
 
-  return Math.round(parsed * 100);
+  return dollarsToCents(parsed);
 }
 
 function formatDate(value: string): string {

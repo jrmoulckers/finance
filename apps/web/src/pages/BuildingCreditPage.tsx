@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../components/common';
 import { IconToken } from '../icons/tokens';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-import { formatCurrency } from '../lib/currency';
+import { dollarsToCents as toCents, formatCurrency } from '../lib/currency';
 import {
   CREDIT_BUILDING_LESSONS,
   CREDIT_BUILDING_TIPS,
@@ -63,7 +63,7 @@ function dollarsToCents(value: string): number {
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return 0;
   }
-  return Math.round(parsed * 100);
+  return toCents(parsed);
 }
 
 export function BuildingCreditPage() {
