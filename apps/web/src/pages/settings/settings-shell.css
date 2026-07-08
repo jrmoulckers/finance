@@ -26,7 +26,7 @@
   flex-direction: column;
   gap: var(--spacing-1, 0.25rem);
   padding: var(--spacing-2, 0.5rem) 0;
-  border-bottom: 1px solid var(--semantic-border-primary, #e5e7eb);
+  border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
 }
 
 @media (min-width: 768px) {
@@ -34,37 +34,101 @@
     border-bottom: none;
     position: sticky;
     top: var(--spacing-4, 1rem);
+    /*
+     * Keep the sticky rail within the viewport so a long section list scrolls
+     * internally instead of running off-screen. The inner overflow lets the
+     * centralized themed scrollbar (below) take over.
+     */
+    max-height: calc(100dvh - var(--spacing-8, 2rem));
+    overflow-y: auto;
+    /*
+     * Themed scrollbar — Firefox / standards. Mirrors the centralized pattern
+     * used on `.app-sidebar__nav` (responsive.css) so the settings rail scrolls
+     * with the same theme-aware chrome as the main navigation (#3554).
+     */
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--semantic-border-default) 70%, transparent) transparent;
+  }
+
+  /* Themed scrollbar — Chromium / WebKit, scoped to the settings rail. */
+  .settings-nav::-webkit-scrollbar {
+    width: 8px;
+  }
+  .settings-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .settings-nav::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--semantic-border-default) 70%, transparent);
+    border: 2px solid transparent;
+    border-radius: var(--border-radius-md, 0.5rem);
+    background-clip: padding-box;
+  }
+  .settings-nav::-webkit-scrollbar-thumb:hover {
+    background-color: var(--semantic-interactive-default);
   }
 }
 
+/*
+ * Section links mirror the main app navigation rows (`.sidebar-nav__item` in
+ * responsive.css / navigation-chrome.css): shared spacing, radius, typography,
+ * hover, focus, and active-accent conventions driven by design-system tokens.
+ */
 .settings-nav__link {
-  display: block;
-  padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
-  border-radius: var(--radius-md, 0.5rem);
-  color: var(--semantic-text-primary, #1f2937);
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border-radius: var(--border-radius-md, 0.5rem);
+  color: var(--semantic-text-secondary, var(--navigation-text, #1f2937));
   text-decoration: none;
-  font-weight: 500;
-  font-size: 0.95rem;
+  font-weight: var(--font-weight-medium, 500);
+  font-size: var(--type-scale-body-font-size, 0.95rem);
   line-height: 1.4;
   transition:
     background-color 120ms ease,
     color 120ms ease;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .settings-nav__link {
+    transition: none;
+  }
+}
+
 .settings-nav__link:hover {
-  background: var(--semantic-surface-hover, rgba(15, 23, 42, 0.05));
+  background: var(--semantic-background-secondary, rgba(15, 23, 42, 0.05));
+  color: var(--semantic-text-primary, var(--navigation-text-active, #1f2937));
 }
 
 .settings-nav__link:focus-visible {
-  outline: 2px solid var(--semantic-focus-ring, #2563eb);
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
   outline-offset: 2px;
 }
 
 .settings-nav__link--active,
 .settings-nav__link[aria-current='page'] {
-  background: var(--semantic-surface-selected, rgba(37, 99, 235, 0.12));
-  color: var(--semantic-text-link, #1d4ed8);
-  font-weight: 600;
+  background: var(--semantic-background-secondary, rgba(37, 99, 235, 0.12));
+  color: var(--semantic-text-primary, var(--navigation-text-active, #1d4ed8));
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+/*
+ * Left-rail accent on the active row — matches `.sidebar-nav__item--active`
+ * so the current settings section is indicated identically to the main nav.
+ */
+.settings-nav__link--active::before,
+.settings-nav__link[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(
+    --semantic-interactive-default,
+    var(--navigation-indicator, var(--color-blue-700, currentColor))
+  );
 }
 
 .settings-subpage__title {
