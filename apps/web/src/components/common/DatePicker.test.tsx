@@ -65,13 +65,23 @@ describe('DatePicker', () => {
     expect(input).toHaveValue('01/20/2025');
   });
 
-  it('validates manual MM/DD/YYYY entry and commits valid dates', () => {
+  it('reports invalid calendar dates distinctly from malformed input', () => {
     const { input, onValueChange } = renderDatePicker();
 
-    fireEvent.change(input, { target: { value: '13/40/2025' } });
+    // Well-formed MM/DD/YYYY shape, but not a real calendar date.
+    fireEvent.change(input, { target: { value: '12/33/2000' } });
     fireEvent.blur(input);
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Enter a date in MM/DD/YYYY.');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Not a valid calendar date — check the month and day.',
+    );
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Genuinely malformed shape gets the format message instead.
+    fireEvent.change(input, { target: { value: '6/18/25' } });
+    fireEvent.blur(input);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a date in MM/DD/YYYY format.');
     expect(onValueChange).not.toHaveBeenCalled();
 
     fireEvent.change(input, { target: { value: '06/18/2025' } });

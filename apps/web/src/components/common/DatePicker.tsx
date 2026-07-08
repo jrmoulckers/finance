@@ -12,11 +12,18 @@ import {
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 import { formatDate } from '../../utils/formatDate';
+import {
+  formatDisplayDate as formatInputDate,
+  formatIsoDate,
+  getRangeValidationMessage,
+  ISO_DATE_PATTERN,
+  parseDateInput,
+  parseDisplayDate,
+  parseIsoDate,
+} from '../../utils/dateValidation';
 
 import './date-picker.css';
 
-const DISPLAY_DATE_PATTERN = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const;
 const MONTH_LABELS = [
   'January',
@@ -32,7 +39,6 @@ const MONTH_LABELS = [
   'November',
   'December',
 ] as const;
-const INVALID_DATE_MESSAGE = 'Enter a date in MM/DD/YYYY.';
 
 export interface DatePickerProps extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -40,52 +46,6 @@ export interface DatePickerProps extends Omit<
 > {
   value?: string | null;
   onChange: (value: string) => void;
-}
-
-function createDate(year: number, monthIndex: number, day: number): Date | null {
-  const nextDate = new Date(year, monthIndex, day);
-
-  if (
-    nextDate.getFullYear() !== year ||
-    nextDate.getMonth() !== monthIndex ||
-    nextDate.getDate() !== day
-  ) {
-    return null;
-  }
-
-  nextDate.setHours(0, 0, 0, 0);
-  return nextDate;
-}
-
-function parseIsoDate(value: string | null | undefined): Date | null {
-  if (!value) return null;
-
-  const match = ISO_DATE_PATTERN.exec(value);
-  if (!match) return null;
-
-  const [, yearText, monthText, dayText] = match;
-  return createDate(Number(yearText), Number(monthText) - 1, Number(dayText));
-}
-
-function parseDisplayDate(value: string): Date | null {
-  const match = DISPLAY_DATE_PATTERN.exec(value.trim());
-  if (!match) return null;
-
-  const [, monthText, dayText, yearText] = match;
-  return createDate(Number(yearText), Number(monthText) - 1, Number(dayText));
-}
-
-function formatIsoDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatInputDate(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${month}/${day}/${date.getFullYear()}`;
 }
 
 function getToday(): Date {
@@ -143,20 +103,6 @@ function isDateSelectable(isoDate: string, min?: string, max?: string): boolean 
   if (min && isoDate < min) return false;
   if (max && isoDate > max) return false;
   return true;
-}
-
-function getRangeValidationMessage(isoDate: string, min?: string, max?: string): string | null {
-  if (min && isoDate < min) {
-    const minDate = parseIsoDate(min);
-    return minDate ? `Date must be on or after ${formatInputDate(minDate)}.` : 'Date is too early.';
-  }
-
-  if (max && isoDate > max) {
-    const maxDate = parseIsoDate(max);
-    return maxDate ? `Date must be on or before ${formatInputDate(maxDate)}.` : 'Date is too late.';
-  }
-
-  return null;
 }
 
 function clampDateToRange(date: Date, minDate: Date | null, maxDate: Date | null): Date {
@@ -323,16 +269,14 @@ export function DatePicker({
       return true;
     }
 
-    const parsedDate = ISO_DATE_PATTERN.test(trimmedValue)
-      ? parseIsoDate(trimmedValue)
-      : parseDisplayDate(trimmedValue);
+    const parseResult = parseDateInput(trimmedValue);
 
-    if (parsedDate === null) {
-      setValidationMessage(INVALID_DATE_MESSAGE);
+    if (!parseResult.ok) {
+      setValidationMessage(parseResult.message);
       return false;
     }
 
-    const isoDate = formatIsoDate(parsedDate);
+    const { date: parsedDate, iso: isoDate } = parseResult;
     const rangeMessage = getRangeValidationMessage(isoDate, minValue, maxValue);
     if (rangeMessage) {
       setValidationMessage(rangeMessage);
