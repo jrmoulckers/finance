@@ -41,6 +41,7 @@ import {
   ChevronDownIcon,
   EyeIcon,
   EyeOffIcon,
+  FeedbackIcon,
   KeyboardIcon,
   MoreIcon,
   SignOutIcon,
@@ -449,7 +450,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
             onClick={onOpenFeedback}
           >
             <span className="sidebar-nav__item-icon" aria-hidden="true">
-              <KeyboardIcon />
+              <FeedbackIcon />
             </span>
             <span>Feedback</span>
           </button>

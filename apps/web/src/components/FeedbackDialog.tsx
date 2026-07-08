@@ -7,7 +7,7 @@
  * GitHub issue for beta triage using a server-side token.
  *
  * @module components/FeedbackDialog
- * References: issues #1476, #2031
+ * References: issues #1476, #2031, #3552
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import packageJson from '../../package.json';
 import { buildFeedbackDiagnostics, submitFeedback } from '../lib/feedback';
 import { useFocusTrap } from '../accessibility/aria';
+import './forms/forms.css';
 
 const BUILD_SHA =
   import.meta.env.VITE_BUILD_SHA ??
@@ -105,30 +106,34 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
 
   if (!isOpen) return null;
 
+  const subjectInvalid = Boolean(error) && !subject.trim();
+  const bodyInvalid = Boolean(error) && !body.trim();
+
   return (
-    <div className="form-backdrop" onClick={onClose}>
+    <div className="form-dialog" role="presentation" onKeyDown={handlePanelKeyDown}>
+      <div className="form-dialog__backdrop" aria-hidden="true" onClick={onClose} />
       <div
         ref={panelRef}
-        className="form-dialog"
+        className="form-dialog__panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby="feedback-dialog-title"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handlePanelKeyDown}
       >
         <h2 id="feedback-dialog-title" className="form-dialog__title">
           Send feedback
         </h2>
 
         {submitted ? (
-          <div className="feedback-dialog__success" role="status" aria-live="polite">
-            <p className="feedback-dialog__success-text">
+          <>
+            <p className="form-group__help" role="status" aria-live="polite">
               Thank you! Your feedback has been sent to GitHub triage.
             </p>
-            <button type="button" className="form-button form-button--primary" onClick={onClose}>
-              Close
-            </button>
-          </div>
+            <div className="form-actions">
+              <button type="button" className="form-button form-button--primary" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
         ) : (
           <form onSubmit={handleSubmit} noValidate>
             {error && (
@@ -137,59 +142,59 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
               </div>
             )}
 
-            <div className="form-group">
-              <label
-                htmlFor="feedback-subject"
-                className="form-group__label form-group__label--required"
-              >
-                Subject
-              </label>
-              <input
-                id="feedback-subject"
-                ref={firstInputRef}
-                className="form-group__input"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                maxLength={160}
-                placeholder="Briefly summarize your feedback"
-                aria-required="true"
-                aria-invalid={error && !subject.trim() ? 'true' : undefined}
-              />
-            </div>
+            <div className="form-fields">
+              <div className="form-group">
+                <label
+                  htmlFor="feedback-subject"
+                  className="form-group__label form-group__label--required"
+                >
+                  Subject
+                </label>
+                <input
+                  id="feedback-subject"
+                  ref={firstInputRef}
+                  className={`form-input${subjectInvalid ? ' form-input--error' : ''}`}
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  maxLength={160}
+                  placeholder="Briefly summarize your feedback"
+                  aria-required="true"
+                  aria-invalid={subjectInvalid ? 'true' : undefined}
+                />
+              </div>
 
-            <div className="form-group">
-              <label
-                htmlFor="feedback-body"
-                className="form-group__label form-group__label--required"
-              >
-                Details
-              </label>
-              <textarea
-                id="feedback-body"
-                className="form-group__input form-group__textarea"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={5}
-                maxLength={12000}
-                placeholder="Tell us what happened, what you expected, or what would help..."
-                aria-required="true"
-                aria-invalid={error && !body.trim() ? 'true' : undefined}
-              />
-            </div>
+              <div className="form-group">
+                <label
+                  htmlFor="feedback-body"
+                  className="form-group__label form-group__label--required"
+                >
+                  Details
+                </label>
+                <textarea
+                  id="feedback-body"
+                  className={`form-textarea${bodyInvalid ? ' form-textarea--error' : ''}`}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={5}
+                  maxLength={12000}
+                  placeholder="Tell us what happened, what you expected, or what would help..."
+                  aria-required="true"
+                  aria-invalid={bodyInvalid ? 'true' : undefined}
+                />
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="feedback-diagnostics" className="form-group__label">
+              <label htmlFor="feedback-diagnostics" className="form-checkbox-row">
                 <input
                   id="feedback-diagnostics"
                   type="checkbox"
                   checked={includeDiagnostics}
                   onChange={(e) => setIncludeDiagnostics(e.target.checked)}
-                />{' '}
-                Include diagnostic info
+                />
+                <span>Include diagnostic info</span>
               </label>
             </div>
 
-            <div className="form-dialog__actions">
+            <div className="form-actions">
               <button
                 type="button"
                 className="form-button form-button--secondary"
@@ -202,6 +207,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
                 type="submit"
                 className="form-button form-button--primary"
                 disabled={isSubmitting}
+                aria-busy={isSubmitting}
               >
                 {isSubmitting ? 'Sending…' : 'Submit'}
               </button>
