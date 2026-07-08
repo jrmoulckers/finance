@@ -28,7 +28,7 @@ import {
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
-import { CloseIcon, KeyboardIcon, SignOutIcon } from './navIcons';
+import { CloseIcon, FeedbackIcon, KeyboardIcon, SignOutIcon } from './navIcons';
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -315,7 +315,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                     }}
                   >
                     <span className="more-sheet__item-icon" aria-hidden="true">
-                      <KeyboardIcon />
+                      <FeedbackIcon />
                     </span>
                     <span className="more-sheet__item-text">
                       <span className="more-sheet__item-label">Send feedback</span>
