@@ -290,6 +290,20 @@ describe('AppLayout', () => {
     expect(screen.getByTestId('install-banner')).toBeInTheDocument();
   });
 
+  it('nests notice banners inside the content column (.app-shell) so they do not break the desktop layout row (#3537)', () => {
+    const { container } = renderLayout();
+
+    const shell = container.querySelector('.app-shell');
+    const installBanner = screen.getByTestId('install-banner');
+
+    expect(shell).not.toBeNull();
+    // The banners must live inside `.app-shell`, not as siblings of it. When
+    // they were direct children of `.app-layout` (a flex row at >=768px), they
+    // were pulled into the row and squished the main content into the left half
+    // of the viewport. Keeping them inside the column guarantees full width.
+    expect(shell?.contains(installBanner)).toBe(true);
+  });
+
   it('applies the simple-mode route plan to core route content', () => {
     localStorage.setItem('finance-simplified-mode', 'true');
 
