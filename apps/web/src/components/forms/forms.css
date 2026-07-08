@@ -501,12 +501,22 @@
  * Keyboard shortcuts dialog
  * ------------------------------------------------------------------------- */
 
+/*
+ * Normal, comfortably-proportioned centered modal (#3555). A fixed header
+ * (title + description) and footer (Close) anchor a scrollable body; the many
+ * shortcut categories flow into balanced columns so the dialog reads as a
+ * wide rectangle instead of a tall, skinny strip.
+ */
 .keyboard-shortcuts__panel {
-  max-width: 560px;
+  max-width: min(880px, 92vw);
+  max-height: min(720px, calc(100dvh - var(--spacing-8)));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .keyboard-shortcuts__title {
-  margin-bottom: var(--spacing-3);
+  margin-bottom: var(--spacing-2);
 }
 
 .keyboard-shortcuts__description {
@@ -515,32 +525,62 @@
   line-height: var(--line-height-relaxed, 1.5);
 }
 
+.keyboard-shortcuts__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.keyboard-shortcuts__grid {
+  columns: 300px;
+  column-gap: var(--spacing-6);
+}
+
+.keyboard-shortcuts__group {
+  break-inside: avoid;
+  margin: 0 0 var(--spacing-5);
+}
+
 .keyboard-shortcuts__table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.keyboard-shortcuts__table th,
-.keyboard-shortcuts__table td {
-  padding: var(--spacing-3);
-  border-top: 1px solid var(--semantic-border-default);
+.keyboard-shortcuts__table caption {
+  caption-side: top;
   text-align: left;
-  vertical-align: top;
-}
-
-.keyboard-shortcuts__table thead th {
-  color: var(--semantic-text-secondary);
-  font-size: var(--type-scale-caption-font-size);
-  font-weight: var(--font-weight-semibold);
-}
-
-.keyboard-shortcuts__category-row th {
-  background: var(--semantic-background-secondary);
+  margin-bottom: var(--spacing-1);
+  padding-bottom: var(--spacing-1);
   color: var(--semantic-text-secondary);
   font-size: var(--type-scale-caption-font-size);
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.keyboard-shortcuts__table th,
+.keyboard-shortcuts__table td {
+  padding: var(--spacing-2) 0;
+  border-top: 1px solid var(--semantic-border-default);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.keyboard-shortcuts__table tbody tr:first-child th,
+.keyboard-shortcuts__table tbody tr:first-child td {
+  border-top: none;
+}
+
+.keyboard-shortcuts__table th[scope='row'] {
+  width: 1%;
+  white-space: nowrap;
+  padding-right: var(--spacing-4);
+}
+
+.keyboard-shortcuts__action {
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-normal);
 }
 
 .keyboard-shortcuts__key {
@@ -559,7 +599,15 @@
 }
 
 .keyboard-shortcuts__actions {
+  flex: 0 0 auto;
   justify-content: flex-end;
+  margin-top: var(--spacing-4);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--semantic-border-default);
+}
+
+.keyboard-shortcuts__close {
+  min-width: 7rem;
 }
 
 /* ---------------------------------------------------------------------------

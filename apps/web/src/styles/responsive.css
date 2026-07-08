@@ -35,6 +35,43 @@
   min-width: 0;
   min-height: 100dvh;
 }
+
+/* ---------------------------------------------------------------------------
+ * Themed scrollbar — shared utility (#3555)
+ *
+ * Central, token-driven scrollbar styling reused across scroll containers
+ * (sidebar nav, dashboard customize panel, keyboard-shortcuts modal, ...).
+ * Track blends into the surface; the thumb uses theme-aware tokens so it
+ * follows light/dark automatically. Apply by adding the `themed-scrollbar`
+ * class to any element that scrolls. Existing one-off scrollbar rules
+ * (`.app-sidebar__nav`, `.customize-panel__list`) can migrate to this class.
+ * ------------------------------------------------------------------------- */
+.themed-scrollbar {
+  /* Firefox / standards */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--semantic-border-default) 70%, transparent) transparent;
+}
+
+/* Chromium / WebKit */
+.themed-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.themed-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--semantic-border-default) 70%, transparent);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius-md);
+  background-clip: padding-box;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--semantic-interactive-default);
+}
 .update-banner {
   display: flex;
   flex-wrap: wrap;

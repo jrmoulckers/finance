@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useEffect, useId, useRef, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, type KeyboardEvent } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
 import { SHORTCUT_CATEGORIES, type ShortcutCategory } from '../../hooks/useKeyboardShortcuts';
@@ -94,39 +94,33 @@ export function KeyboardShortcutsModal({
             : ' Character-key shortcuts are currently disabled; use visible controls or Ctrl/Cmd+K.'}
         </p>
 
-        <table className="keyboard-shortcuts__table">
-          <thead>
-            <tr>
-              <th scope="col">Shortcut</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div className="keyboard-shortcuts__body themed-scrollbar">
+          <div className="keyboard-shortcuts__grid">
             {categories.map((category) => (
-              <React.Fragment key={category.title}>
-                <tr className="keyboard-shortcuts__category-row">
-                  <th scope="rowgroup" colSpan={2}>
-                    {category.title}
-                  </th>
-                </tr>
-                {category.shortcuts.map((shortcut) => (
-                  <tr key={`${category.title}-${shortcut.keys}`}>
-                    <th scope="row">
-                      <kbd className="keyboard-shortcuts__key">{shortcut.keys}</kbd>
-                    </th>
-                    <td>{shortcut.description}</td>
-                  </tr>
-                ))}
-              </React.Fragment>
+              <section className="keyboard-shortcuts__group" key={category.title}>
+                <table className="keyboard-shortcuts__table">
+                  <caption>{category.title}</caption>
+                  <tbody>
+                    {category.shortcuts.map((shortcut) => (
+                      <tr key={`${category.title}-${shortcut.keys}`}>
+                        <th scope="row">
+                          <kbd className="keyboard-shortcuts__key">{shortcut.keys}</kbd>
+                        </th>
+                        <td className="keyboard-shortcuts__action">{shortcut.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
 
         <div className="form-actions keyboard-shortcuts__actions">
           <button
             ref={closeButtonRef}
             type="button"
-            className="form-button form-button--secondary"
+            className="form-button form-button--primary keyboard-shortcuts__close"
             onClick={handleClose}
           >
             Close
