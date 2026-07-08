@@ -205,7 +205,7 @@ describe('detectScamAlerts', () => {
     expect(detectScamAlerts(transactions)).toEqual([]);
   });
 
-  it('converts alerts to notification-center messages with clear next steps', () => {
+  it('converts alerts to scannable notification messages with a concise hint', () => {
     const [alert] = detectScamAlerts([
       makeTransaction({
         id: 'history-1',
@@ -218,6 +218,10 @@ describe('detectScamAlerts', () => {
     const [notification] = scamAlertsToNotifications(alert === undefined ? [] : [alert]);
 
     expect(notification?.type).toBe('scam_check');
-    expect(notification?.message).toContain('NEXT STEP:');
+    // The message stays a single, scannable sentence...
+    expect(notification?.message).toContain('which is new to you');
+    expect(notification?.message).not.toContain('NEXT STEP');
+    // ...and the guidance is carried concisely as a separate hint.
+    expect(notification?.actionHint).toContain('number on your card');
   });
 });

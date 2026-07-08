@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { useCallback, useEffect, useMemo, useRef, type FC } from 'react';
+import { useCallback, useEffect, useRef, type FC } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { MilestoneToast } from './components/celebrations';
 import { ConsentDialog } from './components/gdpr';
 import { AppLayout } from './components/layout';
 import { FocusManager } from './components/layout/FocusManager';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
+import { NotificationsProvider, useNotificationCenter } from './contexts/NotificationsContext';
 import { SessionSecurityBoundary } from './components/SessionSecurityBoundary';
-import { useBudgets, useDocumentTitle, useNotifications, useTransactions } from './hooks';
+import { useBudgets, useDocumentTitle } from './hooks';
 import { useHaptics } from './hooks/useHaptics';
 import { useMilestoneCheck } from './hooks/useMilestoneCheck';
 import { useSpendingPace } from './hooks/useSpendingPace';
@@ -16,16 +17,7 @@ import type { HapticEventType } from './lib/haptics/types';
 import { isOnboardingComplete } from './lib/local-only-mode';
 import { isLighthouseAudit } from './lib/perf/lighthouse-audit';
 import type { DetectedMilestone } from './lib/milestones';
-import {
-  detectScamAlerts,
-  scamAlertsToNotifications,
-  type AppNotification,
-} from './lib/notifications';
-import {
-  buildWarrantyReminderNotifications,
-  buildWarrantyReminders,
-  useWarrantyEntries,
-} from './lib/warranty';
+import type { AppNotification } from './lib/notifications';
 import { AppRoutes } from './routes';
 
 /**
@@ -37,6 +29,7 @@ import { AppRoutes } from './routes';
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/dashboard': 'Dashboard',
+  '/notifications': 'Notifications',
   '/safety': 'Safety',
   '/accounts': 'Accounts',
   '/transactions': 'Transactions',
@@ -295,61 +288,8 @@ const AuthenticatedShell: FC<{
   pageTitle: string;
 }> = ({ activePath, pageTitle }) => {
   const navigate = useNavigate();
-  const warrantyEntries = useWarrantyEntries();
-  const {
-    notifications,
-    unreadCount,
-    loading,
-    markAsRead,
-    markAllAsRead,
-    dismiss,
-    addNotifications,
-  } = useNotifications();
-  const scamTransactionFilters = useMemo(
-    () => ({
-      type: 'EXPENSE' as const,
-    }),
-    [],
-  );
-  const { transactions: scamNotificationTransactions } = useTransactions(scamTransactionFilters);
-  const scamNotifications = useMemo(
-    () => scamAlertsToNotifications(detectScamAlerts(scamNotificationTransactions)),
-    [scamNotificationTransactions],
-  );
-
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    const existingDeduplicationKeys = new Set(
-      notifications
-        .map((notification) => notification.deduplicationKey)
-        .filter((key): key is string => typeof key === 'string' && key.length > 0),
-    );
-    const reminderNotifications = buildWarrantyReminderNotifications(
-      buildWarrantyReminders(warrantyEntries, undefined, existingDeduplicationKeys),
-    );
-
-    if (reminderNotifications.length > 0) {
-      addNotifications(reminderNotifications);
-    }
-  }, [addNotifications, loading, notifications, warrantyEntries]);
-
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    const knownNotificationKeys = new Set(
-      notifications.map((notification) => notification.deduplicationKey ?? notification.id),
-    );
-    const newScamNotifications = scamNotifications.filter(
-      (notification) =>
-        !knownNotificationKeys.has(notification.deduplicationKey ?? notification.id),
-    );
-    addNotifications(newScamNotifications);
-  }, [addNotifications, loading, notifications, scamNotifications]);
+  const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss } =
+    useNotificationCenter();
 
   const handleNotificationAction = useCallback(
     (notification: AppNotification) => {
@@ -427,7 +367,9 @@ export const App: FC = () => {
       {/* Announces route changes and moves focus to #main-content (#1684, #3330, #3342) */}
       <FocusManager resolveTitle={derivePageTitle} />
       <ConsentDialog />
-      <AuthenticatedShell activePath={activePath} pageTitle={pageTitle} />
+      <NotificationsProvider>
+        <AuthenticatedShell activePath={activePath} pageTitle={pageTitle} />
+      </NotificationsProvider>
       <BudgetHapticNotifier />
     </PrivacyModeProvider>
   );

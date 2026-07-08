@@ -310,6 +310,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                   onMarkAllAsRead={onMarkAllNotificationsAsRead}
                   onDismiss={onDismissNotification}
                   onAction={onNotificationAction}
+                  onViewAll={() => onNavigate('/notifications')}
                 />
               </>
             ) : null}

@@ -13,6 +13,7 @@ import './styles/route-loader.css';
  * These mirror the mobile app navigation structure.
  */
 const Dashboard = lazy(() => import('./pages/DashboardPage'));
+const Notifications = lazy(() => import('./pages/NotificationsPage'));
 const Safety = lazy(() => import('./pages/SafetyPage'));
 const Accounts = lazy(() => import('./pages/AccountsPage'));
 const AccountDetail = lazy(() => import('./pages/AccountDetailPage'));
@@ -262,6 +263,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Dashboard">
             <Dashboard />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/notifications"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Notifications">
+            <Notifications />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

@@ -202,6 +202,9 @@ export const NotificationHistory: FC<NotificationHistoryProps> = ({
               <div className="notification-item__content">
                 <p className="notification-item__title">{notification.title}</p>
                 <p className="notification-item__message">{notification.message}</p>
+                {notification.actionHint ? (
+                  <p className="notification-item__hint">{notification.actionHint}</p>
+                ) : null}
                 <span className="notification-item__time">
                   {formatTimestamp(notification.createdAt)}
                 </span>

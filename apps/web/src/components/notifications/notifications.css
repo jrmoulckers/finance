@@ -13,29 +13,11 @@
    Notification bell button
    --------------------------------------------------------------------------- */
 
+/* The bell composes the shared `.icon-button` (see responsive.css) for sizing,
+   color, hover, and focus so it matches every other header/sidebar control.
+   Only the badge anchor is bespoke here. */
 .notification-bell {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-full, 50%);
-  background: transparent;
-  color: var(--semantic-text-secondary);
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.notification-bell:hover {
-  background: var(--semantic-background-secondary);
-}
-
-.notification-bell:focus-visible {
-  outline: 2px solid var(--semantic-border-focus);
-  outline-offset: 2px;
 }
 
 .notification-bell__icon {
@@ -45,20 +27,21 @@
 
 .notification-bell__badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 2px;
+  right: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 18px;
   height: 18px;
   padding: 0 var(--spacing-1, 4px);
-  border-radius: var(--radius-full, 50%);
-  background: var(--semantic-status-negative);
+  border-radius: var(--radius-full, 999px);
+  background: var(--semantic-status-negative, #dc2626);
   color: var(--semantic-text-inverse, #fff);
   font-size: var(--font-size-xs, 0.75rem);
   font-weight: var(--font-weight-bold, 700);
   line-height: 1;
+  pointer-events: none;
 }
 
 /* ---------------------------------------------------------------------------
@@ -71,13 +54,17 @@
   right: 0;
   z-index: 1000;
   width: 380px;
-  max-height: 480px;
+  max-width: min(380px, calc(100vw - var(--spacing-4, 16px) * 2));
+  max-height: min(480px, calc(100vh - 5rem));
   margin-top: var(--spacing-2, 8px);
-  border: 1px solid var(--semantic-border-default);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
   border-radius: var(--radius-lg, 12px);
-  background: var(--semantic-background-primary);
-  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 10%));
+  /* Elevated, fully opaque surface with a hard fallback so the panel can never
+     render transparent (which caused list items to bleed into the page). */
+  background-color: var(--semantic-background-elevated, #ffffff);
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 25%));
   overflow: hidden;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
 }
@@ -87,7 +74,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-4, 16px);
-  border-bottom: 1px solid var(--semantic-border-default);
+  border-bottom: 1px solid var(--semantic-border-default, #d1d5db);
 }
 
 .notification-panel__title {
@@ -124,9 +111,41 @@
 .notification-panel__list {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.notification-panel__footer {
+  flex-shrink: 0;
+  padding: var(--spacing-2, 8px);
+  border-top: 1px solid var(--semantic-border-default, #d1d5db);
+  background-color: var(--semantic-background-elevated, #ffffff);
+}
+
+.notification-panel__view-all {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-2, 8px);
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  color: var(--semantic-interactive-default, #2563eb);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-semibold, 600);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.notification-panel__view-all:hover {
+  background: var(--semantic-background-secondary, #f3f4f6);
+}
+
+.notification-panel__view-all:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: -2px;
 }
 
 .notification-panel__empty {
@@ -167,8 +186,8 @@
 .notification-item--unread {
   background: color-mix(
     in srgb,
-    var(--semantic-interactive-default) 5%,
-    var(--semantic-background-primary)
+    var(--semantic-interactive-default, #2563eb) 8%,
+    var(--semantic-background-elevated, #ffffff)
   );
 }
 
@@ -242,6 +261,14 @@
   font-size: var(--font-size-sm, 0.875rem);
   color: var(--semantic-text-secondary);
   line-height: 1.4;
+}
+
+.notification-item__hint {
+  margin: 0 0 var(--spacing-1, 4px);
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--semantic-text-secondary);
+  line-height: 1.4;
+  opacity: 0.85;
 }
 
 .notification-item__time {

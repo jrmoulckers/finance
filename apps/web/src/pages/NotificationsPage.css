@@ -1,0 +1,71 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the full-page notifications view (#3539).
+ *
+ * Layout mirrors other content pages (Safety, Achievements) for design-system
+ * consistency: a page header with eyebrow/title/intro, then the shared
+ * notification-history list. Tokens carry literal fallbacks so the surface
+ * stays legible even before design-token CSS is generated.
+ */
+
+.notifications-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--spacing-4, 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 1rem);
+}
+
+.notifications-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3, 0.75rem);
+  flex-wrap: wrap;
+}
+
+.notifications-page__eyebrow {
+  margin: 0 0 var(--spacing-1, 4px);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--semantic-text-secondary);
+}
+
+.notifications-page__title {
+  margin: 0;
+  font-size: var(--font-size-2xl, 1.5rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary);
+}
+
+.notifications-page__intro {
+  margin: var(--spacing-1, 4px) 0 0;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary);
+}
+
+.notifications-page__mark-all {
+  flex-shrink: 0;
+  padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-interactive-default, #2563eb);
+  background: transparent;
+  border: 1px solid var(--semantic-border-default, #d1d5db);
+  border-radius: var(--border-radius-md, 8px);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.notifications-page__mark-all:hover {
+  background: var(--semantic-background-secondary, #f3f4f6);
+}
+
+.notifications-page__mark-all:focus-visible {
+  outline: 2px solid var(--semantic-interactive-default, #2563eb);
+  outline-offset: 2px;
+}
