@@ -52,8 +52,14 @@ export interface PkceMaterial {
   codeChallenge: string;
 }
 
-/** Identity providers supported by these endpoints. */
-export const SUPPORTED_PROVIDERS = ['google', 'github', 'apple'] as const;
+/**
+ * Identity providers supported by these endpoints.
+ *
+ * These map 1:1 to Supabase GoTrue provider slugs. Note that Microsoft
+ * sign-in is brokered through GoTrue's `azure` provider — the slug the
+ * `/authorize` endpoint and the `/settings.external` map both use.
+ */
+export const SUPPORTED_PROVIDERS = ['google', 'github', 'apple', 'azure'] as const;
 export type AuthProvider = (typeof SUPPORTED_PROVIDERS)[number];
 
 /** Type guard for {@link AuthProvider}. */
@@ -220,8 +226,8 @@ export async function revokeRefreshToken(accessToken: string): Promise<void> {
 /**
  * Build the Supabase OAuth authorize URL with PKCE.
  *
- * Supabase Cloud handles the provider hop (Google, GitHub, Apple) and
- * redirects back to {@link redirectTo} with a `?code=` query parameter
+ * Supabase Cloud handles the provider hop (Google, GitHub, Apple, Microsoft)
+ * and redirects back to {@link redirectTo} with a `?code=` query parameter
  * that the callback function consumes. We deliberately do NOT pass our
  * own `state` parameter: Supabase Cloud uses its own internal signed
  * state token and rejects arbitrary nonces with `bad_oauth_state`. PKCE
@@ -265,8 +271,8 @@ export type ProviderEnabledResult = 'enabled' | 'disabled' | 'unknown';
  * Query GoTrue's public settings document to determine whether `provider` is
  * actually enabled on the backend.
  *
- * A provider can be statically supported (google/github/apple) yet not enabled
- * in GoTrue. Without this check, `auth-oauth-start` would 302 the browser to
+ * A provider can be statically supported (google/github/apple/azure) yet not
+ * enabled in GoTrue. Without this check, `auth-oauth-start` would 302 the browser to
  * `/authorize` and the user would land on a raw
  * `validation_failed: provider is not enabled` JSON page (#3188). Reading
  * `/auth/v1/settings` auto-tracks whatever gets enabled later with no manual env

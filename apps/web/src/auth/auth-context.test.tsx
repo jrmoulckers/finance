@@ -529,16 +529,17 @@ describe('oauthProviderUnavailableMessage (#3187)', () => {
     expect(oauthProviderUnavailableMessage('google')).toContain('Google sign-in');
     expect(oauthProviderUnavailableMessage('github')).toContain('GitHub sign-in');
     expect(oauthProviderUnavailableMessage('apple')).toContain('Apple sign-in');
+    expect(oauthProviderUnavailableMessage('azure')).toContain('Microsoft sign-in');
   });
 
   it('always points the user at the email & password fallback', () => {
-    for (const provider of ['google', 'github', 'apple'] as const) {
+    for (const provider of ['google', 'github', 'apple', 'azure'] as const) {
       expect(oauthProviderUnavailableMessage(provider)).toContain('email & password');
     }
   });
 
   it('never leaks the raw GoTrue "provider is not enabled" string', () => {
-    for (const provider of ['google', 'github', 'apple'] as const) {
+    for (const provider of ['google', 'github', 'apple', 'azure'] as const) {
       expect(oauthProviderUnavailableMessage(provider)).not.toContain('provider is not enabled');
       expect(oauthProviderUnavailableMessage(provider)).not.toContain('validation_failed');
     }

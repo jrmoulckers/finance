@@ -118,8 +118,13 @@ export interface AuthActions {
   signupWithEmail: (email: string, password: string) => Promise<SignupResult>;
 }
 
-/** Supported OAuth providers. */
-export type OAuthProvider = 'google' | 'github' | 'apple';
+/**
+ * Supported OAuth providers.
+ *
+ * `azure` is Supabase GoTrue's slug for Microsoft sign-in — the value we
+ * forward to the auth broker and show to users as "Microsoft".
+ */
+export type OAuthProvider = 'google' | 'github' | 'apple' | 'azure';
 
 /** The shape of the auth context value. */
 export interface AuthContextValue extends AuthActions {
@@ -216,6 +221,7 @@ const OAUTH_PROVIDER_LABELS: Record<OAuthProvider, string> = {
   google: 'Google',
   github: 'GitHub',
   apple: 'Apple',
+  azure: 'Microsoft',
 };
 
 /**

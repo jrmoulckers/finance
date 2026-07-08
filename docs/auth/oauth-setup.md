@@ -3,9 +3,10 @@
 > **Issue:** #1241
 > **Branch:** `feat/oauth-scaffolding-1241`
 
-This document describes how to configure Google Sign-In and Apple Sign-In
-for the Finance app across all platforms, using **Supabase Auth** as the
-identity broker.
+This document describes how to configure Google, Microsoft (Azure), and Apple
+Sign-In for the Finance app across all platforms, using **Supabase Auth** as the
+identity broker. (GitHub is enabled the same way — see
+[`oauth-provider-enablement.md`](./oauth-provider-enablement.md).)
 
 > **Deploying?** For the exact environment configuration required to
 > **enable** providers in a live Supabase deployment (including the
@@ -43,6 +44,8 @@ never see or handle authorization codes directly — they call
 | -------------------------------- | ---------------------------------------- |
 | `SUPABASE_AUTH_GOOGLE_CLIENT_ID` | Same as `VITE_GOOGLE_CLIENT_ID`          |
 | `SUPABASE_AUTH_GOOGLE_SECRET`    | Google OAuth 2.0 Client Secret           |
+| `SUPABASE_AUTH_AZURE_CLIENT_ID`  | Microsoft Entra Application (client) ID  |
+| `SUPABASE_AUTH_AZURE_SECRET`     | Microsoft Entra client secret value      |
 | `SUPABASE_AUTH_APPLE_CLIENT_ID`  | Apple Services ID                        |
 | `SUPABASE_AUTH_APPLE_SECRET`     | Apple client secret (generated from key) |
 
@@ -87,6 +90,42 @@ never see or handle authorization codes directly — they call
    - `com.finance.android://auth/callback`
    - `com.finance.ios://auth/callback`
    - `finance://auth/callback`
+
+## Step-by-Step: Microsoft Sign-In (Azure)
+
+> Supabase brokers Microsoft under the **`azure`** provider. The web app
+> forwards `provider=azure` and labels the button **"Sign in with Microsoft"**.
+
+### 1. Register an App in Microsoft Entra ID
+
+1. Go to the [Microsoft Entra admin center](https://entra.microsoft.com/) →
+   **Identity → Applications → App registrations → New registration**.
+2. Name: `Finance App`.
+3. **Supported account types**: choose **Accounts in any organizational
+   directory and personal Microsoft accounts** (multi-tenant + personal) for the
+   widest reach, or a single tenant to restrict access.
+4. **Redirect URI**: platform **Web** →
+   `https://<your-supabase-ref>.supabase.co/auth/v1/callback`.
+5. Click **Register** and copy the **Application (client) ID**.
+
+### 2. Create a Client Secret
+
+1. In the app registration → **Certificates & secrets → New client secret**.
+2. Add a description and expiry, then **Add**.
+3. Copy the secret **Value** immediately (it is shown only once).
+
+### 3. Configure Supabase
+
+1. Go to **Authentication → Providers → Azure**.
+2. Toggle **Enable Azure provider**.
+3. Paste the **Application (client) ID** and the **client secret Value**.
+4. **Azure Tenant URL**: `https://login.microsoftonline.com/common` for
+   multi-tenant + personal accounts, or
+   `https://login.microsoftonline.com/<tenant-id>` to restrict to one tenant.
+5. Save.
+
+Redirect URLs are shared with the other providers — see
+[Configure Redirect URLs in Supabase](#3-configure-redirect-urls-in-supabase).
 
 ## Step-by-Step: Apple Sign-In
 
@@ -148,6 +187,7 @@ Apple's client secret is a JWT signed with a private key:
 After completing the setup, verify:
 
 - [ ] Google Sign-In works on web (dev + production)
+- [ ] Microsoft (Azure) Sign-In works on web (dev + production)
 - [ ] Apple Sign-In works on web (production only — Apple requires HTTPS)
 - [ ] Redirect URIs are registered in both provider consoles AND Supabase
 - [ ] User profile data (name, email, avatar) is populated after first sign-in

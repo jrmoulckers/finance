@@ -226,6 +226,7 @@ describe('LoginPage', () => {
       // live inside the hidden form (the bug this fixes).
       expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
       expect(screen.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sign in with Microsoft' })).toBeVisible();
       expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeVisible();
     });
 

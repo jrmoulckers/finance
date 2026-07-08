@@ -28,20 +28,22 @@ import {
 // isSupportedProvider
 // ---------------------------------------------------------------------------
 
-Deno.test('isSupportedProvider — accepts google, github, apple', () => {
+Deno.test('isSupportedProvider — accepts google, github, apple, azure', () => {
   assertEquals(isSupportedProvider('google'), true);
   assertEquals(isSupportedProvider('github'), true);
   assertEquals(isSupportedProvider('apple'), true);
+  assertEquals(isSupportedProvider('azure'), true); // Microsoft is brokered via azure
 });
 
 Deno.test('isSupportedProvider — rejects unknown provider', () => {
   assertEquals(isSupportedProvider('facebook'), false);
+  assertEquals(isSupportedProvider('microsoft'), false); // GoTrue slug is `azure`, not `microsoft`
   assertEquals(isSupportedProvider(''), false);
   assertEquals(isSupportedProvider('GOOGLE'), false); // case-sensitive
 });
 
-Deno.test('SUPPORTED_PROVIDERS — exposes exactly google/github/apple', () => {
-  assertEquals([...SUPPORTED_PROVIDERS], ['google', 'github', 'apple']);
+Deno.test('SUPPORTED_PROVIDERS — exposes exactly google/github/apple/azure', () => {
+  assertEquals([...SUPPORTED_PROVIDERS], ['google', 'github', 'apple', 'azure']);
 });
 
 // ---------------------------------------------------------------------------
