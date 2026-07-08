@@ -1,0 +1,165 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Centralized Button component styling.
+ *
+ * Extends the shared `.form-button` design language (base, `--primary`, and
+ * `--secondary` live in `forms.css`) with the additional variants, sizes,
+ * states, and internal layout used by the `Button` React component so that
+ * every button across the app can be resourced from one place.
+ *
+ * References: issue #3550
+ */
+
+/* Internal layout: icon + label alignment and loading spinner. */
+.form-button__label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.form-button__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-button__spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  animation: form-button-spinner-rotate 1s linear infinite;
+  flex: none;
+}
+
+@keyframes form-button-spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Variants (extend the base + primary/secondary defined in forms.css)
+ * ------------------------------------------------------------------------- */
+
+/* Tertiary: quiet, bordered, low-emphasis action. */
+.form-button.form-button--tertiary {
+  background: transparent;
+  color: var(--semantic-interactive-default);
+  border-color: transparent;
+}
+
+.form-button.form-button--tertiary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--semantic-interactive-default) 12%, transparent);
+}
+
+.form-button.form-button--tertiary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--semantic-interactive-default) 20%, transparent);
+}
+
+/* Ghost: no chrome until interacted with; neutral text. */
+.form-button.form-button--ghost {
+  background: transparent;
+  color: var(--semantic-text-primary);
+  border-color: transparent;
+}
+
+.form-button.form-button--ghost:hover:not(:disabled) {
+  background: var(--semantic-background-secondary);
+}
+
+.form-button.form-button--ghost:active:not(:disabled) {
+  background: color-mix(in srgb, var(--semantic-text-primary) 12%, transparent);
+}
+
+/* Destructive: irreversible / dangerous actions. */
+.form-button.form-button--destructive {
+  background: var(--semantic-status-negative);
+  color: var(--color-neutral-50, #ffffff);
+  border-color: var(--semantic-status-negative);
+}
+
+.form-button.form-button--destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--semantic-status-negative) 85%, #000000);
+  border-color: color-mix(in srgb, var(--semantic-status-negative) 85%, #000000);
+}
+
+.form-button.form-button--destructive:active:not(:disabled) {
+  background: color-mix(in srgb, var(--semantic-status-negative) 75%, #000000);
+  border-color: color-mix(in srgb, var(--semantic-status-negative) 75%, #000000);
+}
+
+/* ---------------------------------------------------------------------------
+ * Sizes (md is the default defined in forms.css)
+ * ------------------------------------------------------------------------- */
+
+.form-button.form-button--sm {
+  min-height: 32px;
+  padding: var(--spacing-1) var(--spacing-3);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+}
+
+.form-button.form-button--lg {
+  min-height: 48px;
+  padding: var(--spacing-3) var(--spacing-6);
+  font-size: var(--type-scale-title-font-size, 1.0625rem);
+}
+
+/* ---------------------------------------------------------------------------
+ * Modifiers
+ * ------------------------------------------------------------------------- */
+
+.form-button.form-button--full {
+  width: 100%;
+}
+
+/* Loading buttons keep the cursor busy and prevent double activation. */
+.form-button.form-button--loading {
+  cursor: progress;
+}
+
+/* ---------------------------------------------------------------------------
+ * Link-rendered buttons (as={Link}) — normalize anchor defaults so a button
+ * rendered as an <a> never leaks the browser's default link color/underline.
+ * This is the root cause of the "purple Cancel" bug.
+ * ------------------------------------------------------------------------- */
+
+a.form-button,
+a.form-button:hover,
+a.form-button:visited,
+a.form-button:active {
+  text-decoration: none;
+}
+
+a.form-button--secondary,
+a.form-button--secondary:visited {
+  color: var(--semantic-text-primary);
+}
+
+a.form-button--tertiary,
+a.form-button--tertiary:visited {
+  color: var(--semantic-interactive-default);
+}
+
+a.form-button--ghost,
+a.form-button--ghost:visited {
+  color: var(--semantic-text-primary);
+}
+
+/* Anchors have no :disabled — support aria-disabled for link-styled buttons. */
+.form-button[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-button__spinner {
+    animation-duration: 2s;
+  }
+}

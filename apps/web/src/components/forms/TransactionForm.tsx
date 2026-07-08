@@ -82,6 +82,7 @@ import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { getCurrencyDecimals, isFxFieldKey, readFxMetadata } from '../../lib/currency/minor-units';
 import { transactionSchema } from '../../lib/validation';
 import { DateInput } from '../common';
+import { Button } from '../common/Button';
 import { CategoryConfirmation } from '../categorization';
 import { AmountInput } from './AmountInput';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
@@ -1995,22 +1996,12 @@ export function TransactionForm({
 
           {/* Actions */}
           <div className="form-actions">
-            <button
-              type="button"
-              className="form-button form-button--secondary"
-              onClick={handleCancel}
-              disabled={submitting}
-            >
+            <Button type="button" variant="secondary" onClick={handleCancel} disabled={submitting}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="form-button form-button--primary"
-              disabled={submitting}
-              aria-busy={submitting}
-            >
+            </Button>
+            <Button type="submit" variant="primary" loading={submitting}>
               {submitting ? submittingLabel : submitButtonLabel}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

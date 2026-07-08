@@ -34,6 +34,7 @@ import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
 import { useAmountInput } from '../../hooks/useAmountInput';
 import { useNavigationGuard } from '../../hooks/useNavigationGuard';
+import { Button } from '../common/Button';
 import type {
   Account,
   AccountPurpose,
@@ -619,20 +620,10 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
 
           {/* Actions */}
           <div className="form-actions">
-            <button
-              type="button"
-              className="form-button form-button--secondary"
-              onClick={handleCancel}
-              disabled={submitting}
-            >
+            <Button type="button" variant="secondary" onClick={handleCancel} disabled={submitting}>
               {getFormCopy('accountCancel')}
-            </button>
-            <button
-              type="submit"
-              className="form-button form-button--primary"
-              disabled={submitting}
-              aria-busy={submitting}
-            >
+            </Button>
+            <Button type="submit" variant="primary" loading={submitting}>
               {submitting
                 ? initialData
                   ? getFormCopy('accountUpdating')
@@ -640,7 +631,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
                 : initialData
                   ? getFormCopy('accountUpdate')
                   : getFormCopy('accountCreate')}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
