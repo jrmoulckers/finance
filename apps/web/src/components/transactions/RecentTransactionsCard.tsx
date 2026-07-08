@@ -185,7 +185,7 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
               />
             ) : (
               <ul
-                className="list-group recent-transactions-card__list recent-transactions__list"
+                className="list-group recent-transactions-card__list recent-transactions__list themed-scrollbar"
                 role="list"
               >
                 {protectedRollup !== null ? (

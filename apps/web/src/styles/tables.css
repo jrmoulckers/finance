@@ -1,0 +1,201 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Shared table & list formatting — the central place for consistent tabular
+ * display across the web app.
+ *
+ * Loaded last (after responsive.css / font-scaling.css / density.css) so its
+ * refinements to the shared `.list-*` primitives win without editing those hot,
+ * multi-owner files. Layout/visual only — every value comes from design tokens.
+ *
+ * Contents:
+ *   1. `.themed-scrollbar`     — reusable themed scrollbar utility.
+ *   2. Shared list refinements — comfortable row rhythm + primary/secondary gap
+ *                                so merchant names and category labels never
+ *                                collide (transactions, accounts, warranties,
+ *                                watchlists, dashboard all inherit this).
+ *   3. `.data-table`           — shared component for real <table> displays:
+ *                                header, right-aligned numeric columns, hover,
+ *                                optional zebra, dividers, and empty state.
+ *
+ * References: issue #3557
+ */
+
+/* -------------------------------------------------------------------------
+ * 1. Themed scrollbar utility
+ *
+ * Add `themed-scrollbar` to any scroll container (`overflow: auto/scroll`) to
+ * replace the stock browser scrollbar with the app's token-driven one. The
+ * track stays transparent (blends into the surface); the thumb uses the
+ * theme-aware border token and brightens to the interactive token on hover, so
+ * it follows light / dark / high-contrast automatically.
+ * ------------------------------------------------------------------------- */
+.themed-scrollbar {
+  /* Firefox / standards */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--semantic-border-default) 75%, transparent) transparent;
+}
+
+/* Chromium / WebKit */
+.themed-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.themed-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--semantic-border-default) 75%, transparent);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius-md, 8px);
+  background-clip: padding-box;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--semantic-interactive-default);
+}
+
+.themed-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* -------------------------------------------------------------------------
+ * 2. Shared list refinements
+ *
+ * These target the shared `.list-item` primitives defined in responsive.css.
+ * The primary fix: `.list-item__content` had no gap, so a row's secondary line
+ * (e.g. "Entertainment") sat flush against its primary line and read as if it
+ * belonged to the next row. Stacking content as a flex column with a small gap
+ * gives every list a consistent, readable rhythm.
+ * ------------------------------------------------------------------------- */
+.list-item__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  justify-content: center;
+}
+
+/* Keep the two text lines tight to each other but clearly separated from the
+ * next row; primaries stay single-line with ellipsis, secondaries may wrap. */
+.list-item__primary {
+  line-height: 1.35;
+}
+
+.list-item__secondary {
+  line-height: 1.35;
+}
+
+/* Trailing column (amounts): right-aligned, vertically centered against the
+ * two-line content, with tabular figures so currency columns align cleanly. */
+.list-item__trailing {
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------------
+ * 3. Shared data-table component
+ *
+ * Standard styling for real <table> displays so tabular data looks consistent
+ * everywhere. Wrap in `.data-table-scroll` for a horizontally scrollable,
+ * themed-scrollbar container on narrow viewports.
+ *
+ *   <div class="data-table-scroll themed-scrollbar">
+ *     <table class="data-table data-table--zebra">
+ *       <thead><tr><th>Name</th><th class="data-table__cell--numeric">Amount</th></tr></thead>
+ *       <tbody>...</tbody>
+ *     </table>
+ *   </div>
+ * ------------------------------------------------------------------------- */
+.data-table-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+}
+
+.data-table caption {
+  text-align: left;
+  padding-block-end: var(--spacing-2);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--spacing-3) var(--spacing-4);
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--semantic-border-default);
+}
+
+.data-table thead th {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-label-font-size);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--semantic-border-default);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.data-table tbody tr:hover {
+  background-color: var(--semantic-surface-secondary, #f3f4f6);
+}
+
+[data-theme='dark'] .data-table tbody tr:hover {
+  background-color: var(--semantic-surface-secondary, #374151);
+}
+
+/* Optional zebra striping for dense, scan-heavy tables. */
+.data-table--zebra tbody tr:nth-child(even) td {
+  background-color: color-mix(in srgb, var(--semantic-border-default) 18%, transparent);
+}
+
+/* Right-align numeric / currency columns with tabular figures so digits line
+ * up column-wise. Apply to both the header cell and its body cells. */
+.data-table__cell--numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Full-width empty state row. */
+.data-table__empty {
+  text-align: center;
+  color: var(--semantic-text-secondary);
+  padding: var(--spacing-6) var(--spacing-4);
+}
+
+/* High-contrast: strengthen dividers so rows/columns separate clearly. */
+@media (prefers-contrast: more) {
+  .data-table th,
+  .data-table td {
+    border-bottom-width: 2px;
+  }
+
+  .data-table thead th {
+    border-bottom-width: 3px;
+  }
+}
+
+/* Reduced motion: drop the hover transition. */
+@media (prefers-reduced-motion: reduce) {
+  .data-table tbody tr {
+    transition: none;
+  }
+}
