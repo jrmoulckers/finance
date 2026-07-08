@@ -276,7 +276,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
           running-workflow-name: 'Verify CI green on SHA'
-          check-regexp: '^(CI — Web|CI — Android|CI — iOS|CI — Windows|CI — Lint|CI — Shared|CI — Security|CI — Feature Flags)$'
+          check-regexp: '^Required Checks Gatekeeper$'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 30
           allowed-conclusions: success,skipped
