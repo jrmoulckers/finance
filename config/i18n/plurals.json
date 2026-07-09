@@ -1,0 +1,65 @@
+{
+  "description": "Canonical pluralization contract. The i18n stack has no runtime plural handling yet (StringProvider does naive {0} substitution and Android has zero <plurals>). This file declares, per locale, the CLDR plural categories a translation MUST supply, plus the set of count-bearing message concepts. Platform projection: Android <plurals>, iOS .stringsdict, ICU MessageFormat {count, plural, ...} for web/KMP. Counts must NEVER be built by string concatenation.",
+  "sourceLocale": "en-US",
+  "cldrReference": "https://cldr.unicode.org/index/cldr-spec/plural-rules",
+  "localeCategories": {
+    "en-US": ["one", "other"],
+    "es-ES": ["one", "many", "other"],
+    "fr-FR": ["one", "many", "other"],
+    "ar": ["zero", "one", "two", "few", "many", "other"],
+    "ja-JP": ["other"],
+    "zh-CN": ["other"],
+    "de-DE": ["one", "other"],
+    "pt-BR": ["one", "many", "other"]
+  },
+  "concepts": [
+    {
+      "key": "transactions_count",
+      "description": "N transactions (lists, summaries, widgets).",
+      "sourceCategories": {
+        "one": "%d transaction",
+        "other": "%d transactions"
+      }
+    },
+    {
+      "key": "accounts_count",
+      "description": "N accounts.",
+      "sourceCategories": {
+        "one": "%d account",
+        "other": "%d accounts"
+      }
+    },
+    {
+      "key": "days_ago",
+      "description": "Relative recency for a transaction/sync timestamp.",
+      "sourceCategories": {
+        "one": "%d day ago",
+        "other": "%d days ago"
+      }
+    },
+    {
+      "key": "budgets_over_count",
+      "description": "N budgets over limit (dashboard alert).",
+      "sourceCategories": {
+        "one": "%d budget over limit",
+        "other": "%d budgets over limit"
+      }
+    },
+    {
+      "key": "goals_count",
+      "description": "N savings goals.",
+      "sourceCategories": {
+        "one": "%d goal",
+        "other": "%d goals"
+      }
+    },
+    {
+      "key": "months_remaining",
+      "description": "Months left to reach a savings goal.",
+      "sourceCategories": {
+        "one": "%d month left",
+        "other": "%d months left"
+      }
+    }
+  ]
+}

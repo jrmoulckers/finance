@@ -1,5 +1,5 @@
 {
-  "description": "Locale catalog metadata: supported locales, fallback chain, and CLDR-aligned formatting expectations. The Android string resources under apps/android/src/main/res/values[-<locale>]/strings.xml are the platform projection of these locales; the 'enforced' locales below must reach 100% key coverage against the default catalog (checked by scripts/i18n/validate-locale-catalogs.js).",
+  "description": "Locale catalog metadata: supported locales, fallback chain, and CLDR-aligned formatting expectations (currency, negative/accounting, number grouping, percent, date/time). The Android string resources under apps/android/src/main/res/values[-<locale>]/strings.xml are the platform projection of these locales; the 'enforced' locales below must reach 100% key coverage against the default catalog (checked by scripts/i18n/validate-locale-catalogs.js). Currency is resolved from the account's ISO 4217 code (see currencyResolution) — never hardcode a symbol per language.",
   "sourceLocale": "en-US",
   "defaultPlatformResource": "apps/android/src/main/res/values/strings.xml",
   "locales": [
@@ -16,10 +16,34 @@
           "pattern": "$1,234.56",
           "decimalSeparator": ".",
           "groupSeparator": ",",
-          "symbolPosition": "before"
+          "symbolPosition": "before",
+          "negative": {
+            "defaultStyle": "minusPrefix",
+            "accountingStyle": "parentheses",
+            "example": "-$1,234.56",
+            "accountingExample": "($1,234.56)"
+          }
         },
-        "number": { "decimalSeparator": ".", "groupSeparator": "," },
-        "date": { "shortPattern": "M/d/yy", "firstDayOfWeek": "sunday" }
+        "number": {
+          "decimalSeparator": ".",
+          "groupSeparator": ",",
+          "groupingPattern": "3"
+        },
+        "date": {
+          "shortPattern": "M/d/yy",
+          "firstDayOfWeek": "sunday",
+          "mediumPattern": "MMM d, yyyy",
+          "longPattern": "MMMM d, yyyy",
+          "timePattern": "h:mm a",
+          "hour12": true
+        },
+        "conventionId": "us_uk",
+        "percent": {
+          "decimalSeparator": ".",
+          "spaceBeforeSymbol": false,
+          "symbolPosition": "after",
+          "example": "75.5%"
+        }
       }
     },
     {
@@ -35,11 +59,34 @@
           "pattern": "1.234,56 €",
           "decimalSeparator": ",",
           "groupSeparator": ".",
-          "symbolPosition": "after"
+          "symbolPosition": "after",
+          "negative": {
+            "defaultStyle": "minusPrefix",
+            "accountingStyle": "minusPrefix",
+            "example": "-1.234,56 €"
+          }
         },
-        "number": { "decimalSeparator": ",", "groupSeparator": "." },
-        "date": { "shortPattern": "d/M/yy", "firstDayOfWeek": "monday" },
-        "notes": "es-US / es-MX users see USD with es number conventions ($1,234.56 grouping varies by region). Format via CLDR with the account's ISO 4217 currency — never hardcode the symbol or separators."
+        "number": {
+          "decimalSeparator": ",",
+          "groupSeparator": ".",
+          "groupingPattern": "3"
+        },
+        "date": {
+          "shortPattern": "d/M/yy",
+          "firstDayOfWeek": "monday",
+          "mediumPattern": "d MMM yyyy",
+          "longPattern": "d 'de' MMMM 'de' yyyy",
+          "timePattern": "H:mm",
+          "hour12": false
+        },
+        "notes": "es-US / es-MX users see USD with es number conventions ($1,234.56 grouping varies by region). Format via CLDR with the account's ISO 4217 currency — never hardcode the symbol or separators.",
+        "conventionId": "european",
+        "percent": {
+          "decimalSeparator": ",",
+          "spaceBeforeSymbol": true,
+          "symbolPosition": "after",
+          "example": "75,5 %"
+        }
       }
     },
     {
@@ -55,11 +102,165 @@
           "pattern": "1 234,56 €",
           "decimalSeparator": ",",
           "groupSeparator": " ",
-          "symbolPosition": "after"
+          "symbolPosition": "after",
+          "negative": {
+            "defaultStyle": "minusPrefix",
+            "accountingStyle": "minusPrefix",
+            "example": "-1 234,56 €"
+          }
         },
-        "number": { "decimalSeparator": ",", "groupSeparator": " " },
-        "date": { "shortPattern": "dd/MM/yyyy", "firstDayOfWeek": "monday" }
+        "number": {
+          "decimalSeparator": ",",
+          "groupSeparator": " ",
+          "groupingPattern": "3"
+        },
+        "date": {
+          "shortPattern": "dd/MM/yyyy",
+          "firstDayOfWeek": "monday",
+          "mediumPattern": "d MMM yyyy",
+          "longPattern": "d MMMM yyyy",
+          "timePattern": "HH:mm",
+          "hour12": false
+        },
+        "conventionId": "french",
+        "percent": {
+          "decimalSeparator": ",",
+          "spaceBeforeSymbol": true,
+          "symbolPosition": "after",
+          "example": "75,5 %"
+        }
       }
+    },
+    {
+      "id": "ar",
+      "name": "Arabic",
+      "androidQualifier": "values-ar",
+      "fallback": "en-US",
+      "enforced": false,
+      "rtl": true,
+      "formatting": {
+        "conventionId": "us_uk",
+        "currency": {
+          "iso4217Example": "AED",
+          "pattern": "1,234.56 د.إ",
+          "decimalSeparator": ".",
+          "groupSeparator": ",",
+          "symbolPosition": "after",
+          "negative": {
+            "defaultStyle": "minusPrefix",
+            "accountingStyle": "minusPrefix",
+            "example": "-1,234.56 د.إ"
+          }
+        },
+        "number": {
+          "decimalSeparator": ".",
+          "groupSeparator": ",",
+          "groupingPattern": "3"
+        },
+        "percent": {
+          "decimalSeparator": ".",
+          "spaceBeforeSymbol": false,
+          "symbolPosition": "after",
+          "example": "75.5%"
+        },
+        "date": {
+          "shortPattern": "d/M/yy",
+          "mediumPattern": "d MMM yyyy",
+          "longPattern": "d MMMM yyyy",
+          "timePattern": "h:mm a",
+          "hour12": true,
+          "firstDayOfWeek": "saturday"
+        },
+        "notes": "RTL locale. Amounts, account numbers and any LTR run MUST be wrapped in Unicode bidi isolates (FSI U+2068 ... PDI U+2069) so signs/parentheses render on the correct side. Western digits assumed; Arabic-Indic digits are an optional per-region display choice. Currency still resolved from ISO 4217 (see currencyResolution)."
+      }
+    }
+  ],
+  "currencyResolution": "The displayed currency is ALWAYS driven by the account/transaction ISO 4217 code, NOT by the locale. The locale only selects separators, symbol position, grouping, and negative style. A Spanish speaker in the US (es + USD) sees '$1,234.56' with es text; a Spanish speaker in Spain (es + EUR) sees '1.234,56 €'. The iso4217Example fields below are illustrative defaults only.",
+  "conventions": {
+    "us_uk": "Symbol before, '.' decimal, ',' grouping (groups of 3). e.g. $1,234.56",
+    "european": "Symbol after, ',' decimal, '.' grouping (groups of 3). e.g. 1.234,56 €",
+    "french": "Symbol after, ',' decimal, narrow no-break space grouping. e.g. 1 234,56 €",
+    "swiss": "Symbol/code before, '.' decimal, apostrophe grouping. e.g. CHF 1'234.56",
+    "south_asian": "Symbol before, '.' decimal, '3;2' lakh/crore grouping. e.g. ₹1,23,456.78"
+  },
+  "plannedLocales": [
+    {
+      "id": "en-GB",
+      "name": "English (United Kingdom)",
+      "conventionId": "us_uk",
+      "iso4217Example": "GBP",
+      "rtl": false,
+      "status": "planned"
+    },
+    {
+      "id": "es-MX",
+      "name": "Spanish (Mexico)",
+      "conventionId": "us_uk",
+      "iso4217Example": "MXN",
+      "rtl": false,
+      "status": "planned",
+      "notes": "LatAm/US Spanish: dot decimal, comma grouping; currency per ISO 4217."
+    },
+    {
+      "id": "es-419",
+      "name": "Spanish (Latin America)",
+      "conventionId": "us_uk",
+      "iso4217Example": "USD",
+      "rtl": false,
+      "status": "planned",
+      "notes": "Neutral LatAm Spanish; resolves the es-ES(EUR) vs es-US(USD) split."
+    },
+    {
+      "id": "fr-CA",
+      "name": "French (Canada)",
+      "conventionId": "us_uk",
+      "iso4217Example": "CAD",
+      "rtl": false,
+      "status": "planned"
+    },
+    {
+      "id": "de-DE",
+      "name": "German (Germany)",
+      "conventionId": "european",
+      "iso4217Example": "EUR",
+      "rtl": false,
+      "status": "planned",
+      "notes": "High text-expansion locale (~35%)."
+    },
+    {
+      "id": "pt-BR",
+      "name": "Portuguese (Brazil)",
+      "conventionId": "european",
+      "iso4217Example": "BRL",
+      "rtl": false,
+      "status": "planned"
+    },
+    {
+      "id": "hi-IN",
+      "name": "Hindi (India)",
+      "conventionId": "south_asian",
+      "iso4217Example": "INR",
+      "rtl": false,
+      "status": "planned",
+      "notes": "South-Asian lakh grouping (groupingPattern 3;2), e.g. INR 1,23,456.78."
+    },
+    {
+      "id": "ja-JP",
+      "name": "Japanese (Japan)",
+      "conventionId": "us_uk",
+      "iso4217Example": "JPY",
+      "rtl": false,
+      "status": "planned",
+      "notes": "Zero-decimal currency; plural category: other only."
+    },
+    {
+      "id": "zh-CN",
+      "name": "Chinese (Simplified)",
+      "conventionId": "us_uk",
+      "iso4217Example": "CNY",
+      "rtl": false,
+      "status": "planned",
+      "notes": "Plural category: other only."
     }
   ]
 }
