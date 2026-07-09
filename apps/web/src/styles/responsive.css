@@ -443,11 +443,24 @@
   list-style: none;
 }
 .list-group__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-2);
   font-size: var(--type-scale-label-font-size);
   color: var(--semantic-text-secondary);
   padding: var(--spacing-2) 0;
   text-transform: uppercase;
   border-bottom: 1px solid var(--semantic-border-default);
+}
+.list-group__header-subtotal {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold, 600);
 }
 .list-item {
   display: flex;

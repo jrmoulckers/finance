@@ -1,0 +1,47 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for TransactionsSummaryBar — the at-a-glance count + net total shown
+ * above the transactions ledger. Uses design tokens for consistent theming.
+ * References: issue #3772
+ */
+
+.transactions-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-2) var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+}
+
+.transactions-summary-bar__count {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-secondary);
+}
+
+.transactions-summary-bar__net {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacing-2);
+}
+
+.transactions-summary-bar__net-label {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--semantic-text-tertiary, var(--semantic-text-secondary));
+}
+
+.transactions-summary-bar__amount {
+  font-size: var(--type-scale-body-large-font-size, 1.0625rem);
+  font-weight: var(--font-weight-semibold, 600);
+  font-variant-numeric: tabular-nums;
+}

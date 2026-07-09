@@ -13,3 +13,4 @@ export * from './rules-engine';
 export * from './merchant-insights';
 export * from './daily-spending';
 export * from './inflation-comparison';
+export * from './summary';
