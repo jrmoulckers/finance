@@ -377,20 +377,21 @@ object ReportGenerator {
             }
         }
 
-        // Scale liabilities proportionally to the net worth change,
-        // using the current asset/liability ratio as a baseline.
-        val liabilityRatio = currentLiabilities.amount.toDouble() / currentTotal
-        val estimatedLiabilities = Cents(
-            (liabilityRatio * (currentTotal.toDouble() *
-                netWorth.amount / (currentAssets.amount - currentLiabilities.amount)))
-                .toLong()
-                .coerceAtLeast(0L),
-        )
-        val estimatedAssets = Cents(
-            (netWorth.amount + estimatedLiabilities.amount).coerceAtLeast(0L),
-        )
-
-        return estimatedAssets to estimatedLiabilities
+        // Approximation: hold liabilities at their current level and let assets
+        // absorb the historical net-worth delta. This reconstructs `netWorth`
+        // exactly (assets - liabilities == netWorth) with both parts kept
+        // non-negative, and — unlike the previous ratio formula, which divided
+        // by (currentAssets - currentLiabilities) and blew up to Infinity when
+        // assets equalled liabilities — it never divides by zero (#3710).
+        val liabilities = currentLiabilities.amount.coerceAtLeast(0L)
+        val assets = netWorth.amount + liabilities
+        return if (assets >= 0L) {
+            Cents(assets) to Cents(liabilities)
+        } else {
+            // Net worth is more negative than current liabilities: zero the
+            // assets and attribute the whole shortfall to liabilities.
+            Cents.ZERO to Cents(-netWorth.amount)
+        }
     }
 
     /**
