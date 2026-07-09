@@ -25,4 +25,14 @@ describe('EmptyState', () => {
     expect(screen.getByTestId('empty-state-icon')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument();
   });
+
+  it('renders the title as an h2 by default', () => {
+    render(<EmptyState title="No accounts" />);
+    expect(screen.getByRole('heading', { name: 'No accounts' }).tagName).toBe('H2');
+  });
+
+  it('honours a custom heading level', () => {
+    render(<EmptyState title="No accounts" headingLevel={3} />);
+    expect(screen.getByRole('heading', { name: 'No accounts' }).tagName).toBe('H3');
+  });
 });

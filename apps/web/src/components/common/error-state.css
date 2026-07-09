@@ -1,0 +1,85 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * ErrorState component styles
+ *
+ * Section-level failure-with-recovery layout. Mirrors EmptyState's
+ * centered composition and uses design-token CSS custom properties
+ * throughout so it adapts to light, dark, OLED, and high-contrast modes.
+ * ------------------------------------------------------------------- */
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-10) var(--spacing-4);
+  gap: var(--spacing-4);
+}
+
+.error-state__icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--semantic-status-negative);
+}
+
+.error-state__title {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.error-state__description {
+  margin: 0;
+  font-size: var(--type-scale-body-font-size);
+  line-height: var(--type-scale-body-line-height);
+  color: var(--semantic-text-secondary);
+  max-width: 360px;
+}
+
+.error-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.error-state__retry {
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--semantic-status-negative);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-status-negative);
+  color: var(--semantic-text-inverse);
+  cursor: pointer;
+  font-size: var(--type-scale-label-font-size);
+  font-weight: var(--type-scale-label-font-weight);
+}
+
+.error-state__retry:hover:not(:disabled) {
+  background: none;
+  color: var(--semantic-status-negative);
+}
+
+.error-state__retry:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.error-state__retry:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+/* High contrast — thicker border for visibility. */
+@media (prefers-contrast: more), (forced-colors: active) {
+  .error-state__retry {
+    border-width: 2px;
+  }
+}

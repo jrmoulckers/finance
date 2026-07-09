@@ -118,3 +118,9 @@ export type {
 
 export { ConvertedTotalIndicator } from './ConvertedTotalIndicator';
 export type { ConvertedTotalIndicatorProps } from './ConvertedTotalIndicator';
+
+// Feedback UX: section-level error state & additional entity skeletons
+export { ErrorState } from './ErrorState';
+export type { ErrorStateProps, ErrorStateHeadingLevel } from './ErrorState';
+export { BudgetsSkeleton, GoalsSkeleton, ListSkeleton } from './EntitySkeletons';
+export type { ListSkeletonProps } from './EntitySkeletons';

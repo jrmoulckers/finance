@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * Entity skeleton composite styles
+ *
+ * Layout-only additions for the Budgets, Goals, and generic List
+ * skeleton composites. Reuses `.skeleton-page*` primitives from
+ * skeleton.css and adds a responsive card grid for Goals. Uses design
+ * tokens throughout.
+ * ------------------------------------------------------------------- */
+
+.skeleton-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-4, 16px);
+}
+
+.skeleton-page__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-4, 16px);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md, 8px);
+  background: var(--semantic-background-elevated);
+}
+
+@media (max-width: 480px) {
+  .skeleton-page__grid {
+    grid-template-columns: 1fr;
+  }
+}
