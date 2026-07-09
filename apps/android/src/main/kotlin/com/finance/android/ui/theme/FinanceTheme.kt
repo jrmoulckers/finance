@@ -169,7 +169,10 @@ fun FinanceTheme(
         else -> LightColorScheme
     }
 
-    CompositionLocalProvider(LocalSpacing provides Spacing()) {
+    CompositionLocalProvider(
+        LocalSpacing provides Spacing(),
+        LocalFinanceColors provides financeSemanticColors(darkTheme),
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = FinanceTypography,
@@ -189,4 +192,12 @@ object FinanceTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalSpacing.current
+
+    /**
+     * The current [FinanceSemanticColors] provided by [FinanceTheme].
+     */
+    val financeColors: FinanceSemanticColors
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalFinanceColors.current
 }

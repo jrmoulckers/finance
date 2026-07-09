@@ -207,7 +207,7 @@ private fun SwipeableTxnItem(txn: Transaction, onDelete: () -> Unit, onEdit: () 
 private fun TxnListItem(txn: Transaction, onClick: () -> Unit) {
     val amt = CurrencyFormatter.format(txn.amount, txn.currency, showSign = true)
     val color = when (txn.type) { TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
-        TransactionType.INCOME -> Color(0xFF2E7D32); TransactionType.TRANSFER -> MaterialTheme.colorScheme.tertiary }
+        TransactionType.INCOME -> FinanceTheme.financeColors.income; TransactionType.TRANSFER -> MaterialTheme.colorScheme.tertiary }
     val payee = txn.payee ?: "Unknown"
     val cat = SampleData.categoryMap[txn.categoryId]?.name ?: "Uncategorized"
     val acct = SampleData.accountMap[txn.accountId]?.name ?: "Unknown"

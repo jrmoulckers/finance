@@ -45,7 +45,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -198,7 +197,7 @@ private fun BudgetHealthRow(budgets: List<BudgetStatusUi>) {
 private fun BudgetHealthCard(budget: BudgetStatusUi) {
     val healthColor = when (budget.health) {
         BudgetHealth.HEALTHY -> MaterialTheme.colorScheme.primary
-        BudgetHealth.WARNING -> Color(0xFFFF9800)
+        BudgetHealth.WARNING -> FinanceTheme.financeColors.warning
         BudgetHealth.OVER -> MaterialTheme.colorScheme.error
     }
     val healthLabel = when (budget.health) {
@@ -234,7 +233,7 @@ private fun BudgetHealthCard(budget: BudgetStatusUi) {
 private fun RecentTransactionItem(transaction: Transaction, currency: Currency) {
     val isExpense = transaction.type == TransactionType.EXPENSE
     val amtFmt = CurrencyFormatter.format(transaction.amount, currency, showSign = true)
-    val color = if (isExpense) MaterialTheme.colorScheme.error else Color(0xFF2E7D32)
+    val color = if (isExpense) MaterialTheme.colorScheme.error else FinanceTheme.financeColors.income
     val cat = SampleData.categoryMap[transaction.categoryId]?.name ?: "Uncategorized"
     val payee = transaction.payee ?: "Unknown"
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Transaction: $amtFmt at $payee, $cat" }) {

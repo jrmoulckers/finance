@@ -151,7 +151,12 @@ fun TransactionCreateScreen(
             StepIndicator(state.currentStep, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             if (state.errors.isNotEmpty()) ErrorMessages(state.errors, Modifier.padding(horizontal = 16.dp))
             AnimatedContent(state.currentStep, transitionSpec = {
-                slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
+                val forward = targetState.index > initialState.index
+                if (forward) {
+                    slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
+                } else {
+                    slideInHorizontally { -it } togetherWith slideOutHorizontally { it }
+                }
             }, label = "step", modifier = Modifier.weight(1f).fillMaxWidth()) { step ->
                 when (step) {
                     CreateStep.AMOUNT -> AmountStep(state, viewModel::updateAmount, viewModel::updatePayee,
