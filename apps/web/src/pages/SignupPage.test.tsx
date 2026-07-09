@@ -80,6 +80,27 @@ describe('SignupPage', () => {
     expect(screen.getByRole('button', { name: 'Sign up' })).toBeInTheDocument();
   });
 
+  it('reveals the password via the show-password toggle', () => {
+    renderSignupPage();
+
+    const password = screen.getByLabelText('Password');
+    expect(password).toHaveAttribute('type', 'password');
+
+    // Password + confirm each render their own toggle; the first controls the
+    // password field.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Show password' })[0]);
+    expect(password).toHaveAttribute('type', 'text');
+  });
+
+  it('marks the email field as mobile-friendly (no auto-capitalize/correct)', () => {
+    renderSignupPage();
+
+    const email = screen.getByLabelText('Email');
+    expect(email).toHaveAttribute('autocapitalize', 'none');
+    expect(email).toHaveAttribute('autocorrect', 'off');
+    expect(email).toHaveAttribute('inputmode', 'email');
+  });
+
   it('shows link to login page', () => {
     renderSignupPage();
 

@@ -6,11 +6,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { getPreferredAuthMethod, setPreferredAuthMethod } from '../auth/preferred-auth-method';
 import { PasskeySetupPrompt } from '../components/auth/PasskeySetupPrompt';
+import { PasswordInput } from '../components/auth/PasswordInput';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { LegalLinks } from '../components/legal/LegalLinks';
 import { hasRegisteredPasskey } from '../lib/passkey-preferences';
 import { loginSchema } from '../lib/validation';
 
+import '../components/auth/password-input.css';
 import '../components/forms/forms.css';
 import '../styles/auth.css';
 
@@ -316,6 +318,10 @@ export const LoginPage: React.FC = () => {
                 type="email"
                 required
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
                 className={`form-input${fieldErrors.email ? ' form-input--error' : ''}`}
                 value={email}
                 onChange={(event) => {
@@ -340,11 +346,10 @@ export const LoginPage: React.FC = () => {
               <label htmlFor={passwordId} className="form-group__label form-group__label--required">
                 Password
               </label>
-              <input
+              <PasswordInput
                 ref={passwordInputRef}
                 id={passwordId}
                 name="password"
-                type="password"
                 required
                 autoComplete="current-password"
                 className={`form-input${fieldErrors.password ? ' form-input--error' : ''}`}

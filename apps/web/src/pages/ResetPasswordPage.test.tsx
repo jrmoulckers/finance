@@ -116,4 +116,27 @@ describe('ResetPasswordPage', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Reset link is invalid or expired.');
     });
   });
+
+  it('shows a password strength meter once the user types a new password', () => {
+    renderResetPasswordPage();
+
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('New password'), {
+      target: { value: 'newStrongPass123' },
+    });
+
+    const meter = screen.getByRole('progressbar');
+    expect(meter).toHaveAttribute('aria-label', expect.stringContaining('Password strength:'));
+  });
+
+  it('reveals the new password via the show-password toggle', () => {
+    renderResetPasswordPage();
+
+    const password = screen.getByLabelText('New password');
+    expect(password).toHaveAttribute('type', 'password');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Show password' })[0]);
+    expect(password).toHaveAttribute('type', 'text');
+  });
 });

@@ -81,6 +81,10 @@ export const ForgotPasswordPage: React.FC = () => {
               className="auth-field__input"
               type="email"
               autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="email"
               required
               value={email}
               onChange={(event) => {
