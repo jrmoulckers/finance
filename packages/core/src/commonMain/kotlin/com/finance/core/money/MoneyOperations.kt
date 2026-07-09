@@ -14,6 +14,10 @@ object MoneyOperations {
     /**
      * Multiply cents by a decimal factor with banker's rounding.
      * Used for tax calculations, percentage-based budgets, etc.
+     *
+     * NOTE: this convenience overload routes through [Double] and therefore
+     * loses precision for magnitudes above 2^53 minor units. For exact money
+     * math prefer an integer basis — see [percentageExact] and [divide].
      */
     fun multiply(amount: Cents, factor: Double): Cents {
         val result = amount.amount.toDouble() * factor
@@ -21,22 +25,45 @@ object MoneyOperations {
     }
 
     /**
-     * Divide cents with banker's rounding.
-     * Used for splitting bills, averaging, etc.
+     * Divide cents by an integer divisor with round-half-to-even.
+     *
+     * Uses exact `Long` arithmetic — never floating point — so there is no
+     * precision loss regardless of magnitude. Used for splitting bills,
+     * averaging, and run-rate projections.
      */
     fun divide(amount: Cents, divisor: Int): Cents {
         require(divisor != 0) { "Cannot divide by zero" }
-        val result = amount.amount.toDouble() / divisor
-        return Cents(bankersRound(result))
+        return Cents(roundedDiv(amount.amount, divisor.toLong()))
     }
 
     /**
      * Calculate percentage of an amount.
      * @param amount The base amount
      * @param percentage The percentage (e.g., 15.5 for 15.5%)
+     *
+     * NOTE: convenience overload — routes through [Double]. For exact results
+     * (e.g. tax or budget splits at extreme magnitudes) use [percentageExact].
      */
     fun percentage(amount: Cents, percentage: Double): Cents {
         return multiply(amount, percentage / 100.0)
+    }
+
+    /**
+     * Calculate a percentage of [amount] using an exact integer basis, with
+     * round-half-to-even. No floating point is involved, so the result is exact
+     * for every representable magnitude.
+     *
+     * Express the percentage as [numerator] / [denominator], e.g. 8.25% is
+     * `percentageExact(amount, 825, 10000)` and 50% is
+     * `percentageExact(amount, 50, 100)`.
+     *
+     * @throws IllegalArgumentException if [denominator] is zero.
+     * @throws ArithmeticException if the intermediate product overflows `Long`.
+     */
+    fun percentageExact(amount: Cents, numerator: Long, denominator: Long): Cents {
+        require(denominator != 0L) { "Percentage denominator cannot be zero" }
+        val product = checkedMultiply(amount.amount, numerator)
+        return Cents(roundedDiv(product, denominator))
     }
 
     /**
@@ -44,6 +71,46 @@ object MoneyOperations {
      */
     fun sum(amounts: List<Cents>): Cents {
         return Cents(amounts.sumOf { it.amount })
+    }
+
+    /**
+     * Divide two [Long] values with round-half-to-even ("banker's rounding"),
+     * using only integer arithmetic. Symmetric about zero: `roundedDiv(-n, d)`
+     * equals `-roundedDiv(n, d)`.
+     *
+     * @throws IllegalArgumentException if [denominator] is zero.
+     */
+    internal fun roundedDiv(numerator: Long, denominator: Long): Long {
+        require(denominator != 0L) { "Cannot divide by zero" }
+        require(numerator != Long.MIN_VALUE && denominator != Long.MIN_VALUE) {
+            "Value out of representable range for exact division"
+        }
+        val negative = (numerator < 0) != (denominator < 0)
+        val n = abs(numerator)
+        val d = abs(denominator)
+        val quotient = n / d
+        val remainder = n % d
+        // Compare remainder against half of the divisor without overflow.
+        val magnitude = when {
+            remainder < d - remainder -> quotient
+            remainder > d - remainder -> quotient + 1
+            quotient % 2 == 0L -> quotient // exact half: round to even
+            else -> quotient + 1
+        }
+        return if (negative) -magnitude else magnitude
+    }
+
+    /**
+     * Multiply two [Long] values, throwing on overflow rather than silently
+     * wrapping. Keeps exact-money helpers honest about their limits.
+     */
+    private fun checkedMultiply(a: Long, b: Long): Long {
+        if (b == 0L) return 0L
+        val result = a * b
+        if (result / b != a) {
+            throw ArithmeticException("Long overflow in multiplication")
+        }
+        return result
     }
 
     /**
