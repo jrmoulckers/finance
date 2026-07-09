@@ -168,8 +168,9 @@ export const BudgetDetailPage: React.FC = () => {
     budget.amount.amount > 0
       ? Math.round((budget.spentAmount.amount / budget.amount.amount) * 100)
       : 0;
-  const statusTone = percentUsed > 90 ? 'negative' : percentUsed > 75 ? 'warning' : 'positive';
   const budgetStatus = getBudgetStatusIndicator(percentUsed);
+  const statusTone = budgetStatus.tone;
+  const percentValueText = `${percentUsed}% used — ${budgetStatus.label}`;
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.min(percentUsed, 100) / 100) * circumference;
@@ -308,7 +309,8 @@ export const BudgetDetailPage: React.FC = () => {
             aria-valuenow={Math.min(percentUsed, 100)}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`${budget.name} budget: ${percentUsed} percent used, ${budgetStatus.label}`}
+            aria-valuetext={percentValueText}
+            aria-label={`${budget.name} budget: ${percentValueText}`}
           >
             <svg
               className="progress-ring__svg"

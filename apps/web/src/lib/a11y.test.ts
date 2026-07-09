@@ -93,8 +93,16 @@ describe('getGoalStatusIndicator', () => {
 });
 
 describe('getBudgetStatusIndicator', () => {
-  it('returns over limit for >90%', () => {
-    expect(getBudgetStatusIndicator(95).tone).toBe('negative');
+  it('returns over budget only once spending reaches the limit (>=100%)', () => {
+    const status = getBudgetStatusIndicator(130);
+    expect(status.tone).toBe('negative');
+    expect(status.label).toBe('Over budget');
+  });
+
+  it('labels the 90-99% band "Almost at limit" rather than over budget (#3774)', () => {
+    const status = getBudgetStatusIndicator(95);
+    expect(status.tone).toBe('negative');
+    expect(status.label).toBe('Almost at limit');
   });
 
   it('returns near limit for 76-90%', () => {

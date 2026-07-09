@@ -80,3 +80,17 @@
   font-size: var(--type-scale-caption-font-size);
   line-height: 1.6;
 }
+
+.budget-planner__income-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.budget-planner__error {
+  margin: var(--spacing-2) 0 0;
+  font-size: var(--type-scale-caption-font-size);
+  line-height: 1.4;
+  color: var(--semantic-status-negative);
+}

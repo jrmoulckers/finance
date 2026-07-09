@@ -26,6 +26,7 @@ import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
 import { computePreviousPeriodSpending } from '../lib/budget-previous-period';
+import { computeCurrentPeriodIncome } from '../lib/budget-current-income';
 import type { DisplayExchangeRate } from '../lib/budgeting/display-currency-rollups';
 import type { TripBudgetTransaction } from '../lib/budgeting/trip-country-budget-scope';
 import {
@@ -167,6 +168,7 @@ export const BudgetsPage: React.FC = () => {
   const [incomeAmountInput, setIncomeAmountInput] = useState('');
   const [incomeDateInput, setIncomeDateInput] = useState(todayIso);
   const [incomeEvents, setIncomeEvents] = useState<IncomeEventInput[]>([]);
+  const [incomeError, setIncomeError] = useState<string | null>(null);
   const [tripBudgets, setTripBudgets] = useState<readonly TripCountryBudget[]>(() =>
     loadTripCountryBudgets(resolveTripBudgetStorage()),
   );
@@ -286,20 +288,27 @@ export const BudgetsPage: React.FC = () => {
   const handleAddIncomeEvent = useCallback(() => {
     const amountCents = centsFromInput(incomeAmountInput);
     if (amountCents <= 0) {
+      setIncomeError('Enter an income amount greater than zero.');
       return;
     }
 
+    const source = incomeSourceInput.trim() || 'Income';
     setIncomeEvents((events) => [
       ...events,
       {
         id: `income-${Date.now()}-${events.length}`,
-        source: incomeSourceInput.trim() || 'Income',
+        source,
         amountCents,
         date: incomeDateInput || todayIso(),
       },
     ]);
+    setIncomeError(null);
     setIncomeAmountInput('');
   }, [incomeAmountInput, incomeDateInput, incomeSourceInput]);
+
+  const handleRemoveIncomeEvent = useCallback((id: string) => {
+    setIncomeEvents((events) => events.filter((event) => event.id !== id));
+  }, []);
 
   /** Close the budget form dialog without saving. */
   const handleFormCancel = useCallback(() => {
@@ -466,6 +475,24 @@ export const BudgetsPage: React.FC = () => {
     [transactions, categoryNameById, currentYear, currentMonth],
   );
 
+  // Real income for the current period drives the savings-rate analytics.
+  // Fall back to the budgeted total only when no income has been recorded yet,
+  // so the widget never regresses to a misleading "-100%" on a fresh ledger.
+  const currentPeriodIncome = useMemo(
+    () =>
+      computeCurrentPeriodIncome(
+        transactions.map((transaction) => ({
+          type: transaction.type,
+          amountCents: transaction.amount.amount,
+          date: transaction.date,
+          deleted: transaction.deletedAt != null,
+        })),
+        new Date(currentYear, currentMonth, 1),
+      ),
+    [transactions, currentYear, currentMonth],
+  );
+  const analyticsIncome = currentPeriodIncome > 0 ? currentPeriodIncome : totalBudgeted;
+
   return (
     <>
       <OfflineBanner />
@@ -625,11 +652,30 @@ export const BudgetsPage: React.FC = () => {
                 Add income event
               </button>
             </div>
+            <p
+              className="budget-planner__error"
+              role="alert"
+              aria-live="assertive"
+              hidden={incomeError === null}
+            >
+              {incomeError}
+            </p>
             {incomeEvents.length > 0 && (
               <ul className="budget-planner__income-list">
                 {incomeEvents.map((event) => (
-                  <li key={event.id}>
-                    {event.source} on {event.date}: <CurrencyDisplay amount={event.amountCents} />
+                  <li key={event.id} className="budget-planner__income-item">
+                    <span>
+                      {event.source} on {event.date}: <CurrencyDisplay amount={event.amountCents} />
+                    </span>
+                    <button
+                      type="button"
+                      className="icon-button icon-button--delete"
+                      onClick={() => handleRemoveIncomeEvent(event.id)}
+                      aria-label={`Remove income event: ${event.source} on ${event.date}`}
+                      title="Remove income event"
+                    >
+                      <AppIcon name="trash" />
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -799,7 +845,7 @@ export const BudgetsPage: React.FC = () => {
             </div>
           </section>
           <BudgetAnalytics
-            totalIncome={totalBudgeted}
+            totalIncome={analyticsIncome}
             totalSpent={totalSpent}
             totalBudget={totalBudgeted}
             daysElapsed={daysElapsed}
@@ -860,9 +906,9 @@ export const BudgetsPage: React.FC = () => {
                     ? Math.round((budget.spentAmount.amount / budget.amount.amount) * 100)
                     : 0;
                 const remainingAmount = budget.remainingAmount.amount;
-                const statusTone =
-                  percentUsed > 90 ? 'negative' : percentUsed > 75 ? 'warning' : 'positive';
                 const budgetStatus = getBudgetStatusIndicator(percentUsed);
+                const statusTone = budgetStatus.tone;
+                const valueText = `${percentUsed}% used — ${budgetStatus.label}`;
                 const radius = 36;
                 const circumference = 2 * Math.PI * radius;
                 const offset = circumference - (Math.min(percentUsed, 100) / 100) * circumference;
@@ -886,7 +932,8 @@ export const BudgetsPage: React.FC = () => {
                       aria-valuenow={Math.min(percentUsed, 100)}
                       aria-valuemin={0}
                       aria-valuemax={100}
-                      aria-label={`${budget.name} budget: ${percentUsed} percent used, ${budgetStatus.label}`}
+                      aria-valuetext={valueText}
+                      aria-label={`${budget.name} budget: ${valueText}`}
                     >
                       <svg
                         className="progress-ring__svg"

@@ -159,11 +159,18 @@ export function getGoalStatusIndicator(percentComplete: number): {
 /**
  * Return a text indicator for budget usage percentage.
  *
+ * The bands are deliberately ordered most-severe first so the label always
+ * matches reality: a budget is only described as "Over budget" once spending
+ * has actually reached or exceeded the limit (>= 100%). The 90–99% band is the
+ * high-pressure "Almost at limit" warning — previously this was mislabelled as
+ * "Over limit" even though money still remained (#3774).
+ *
  * @param percentUsed - Budget usage percentage (0–100+).
  *
  * @example
  * ```ts
- * getBudgetStatusIndicator(95);  // { icon: 'alert-triangle', label: 'Over limit', tone: 'negative' }
+ * getBudgetStatusIndicator(130); // { icon: 'alert-triangle', label: 'Over budget', tone: 'negative' }
+ * getBudgetStatusIndicator(95);  // { icon: 'alert-triangle', label: 'Almost at limit', tone: 'negative' }
  * getBudgetStatusIndicator(80);  // { icon: 'target', label: 'Near limit', tone: 'warning' }
  * getBudgetStatusIndicator(50);  // { icon: 'check', label: 'On track', tone: 'positive' }
  * ```
@@ -173,8 +180,11 @@ export function getBudgetStatusIndicator(percentUsed: number): {
   label: string;
   tone: 'positive' | 'warning' | 'negative';
 } {
+  if (percentUsed >= 100) {
+    return { icon: 'alert-triangle', label: 'Over budget', tone: 'negative' };
+  }
   if (percentUsed > 90) {
-    return { icon: 'alert-triangle', label: 'Over limit', tone: 'negative' };
+    return { icon: 'alert-triangle', label: 'Almost at limit', tone: 'negative' };
   }
   if (percentUsed > 75) {
     return { icon: 'target', label: 'Near limit', tone: 'warning' };
