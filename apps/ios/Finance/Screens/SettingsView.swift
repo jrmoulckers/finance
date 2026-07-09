@@ -157,11 +157,11 @@ struct SettingsView: View {
             } label: {
                 HStack {
                     IconView(.settings, size: 20)
-                    Text(String(localized: "Icon Style"))
+                    Text(String(localized: "Theme & Icons"))
                 }
             }
-            .accessibilityLabel(String(localized: "Icon Style"))
-            .accessibilityHint(String(localized: "Choose between Standard Lucide icons and SF Symbols"))
+            .accessibilityLabel(String(localized: "Theme and icons"))
+            .accessibilityHint(String(localized: "Choose appearance and icon style"))
         }
     }
 

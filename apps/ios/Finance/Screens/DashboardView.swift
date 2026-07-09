@@ -13,6 +13,7 @@ import SwiftUI
 struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
     @State private var showingAskFinance = false
+    @State private var showingSettings = false
     @Environment(NetworkMonitor.self) private var networkMonitor: NetworkMonitor?
 
     init(viewModel: DashboardViewModel = DashboardViewModel(
@@ -27,12 +28,10 @@ struct DashboardView: View {
         NavigationStack {
             Group {
                 if viewModel.isLoading && viewModel.accounts.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .accessibilityLabel(String(localized: "Loading"))
+                    DashboardSkeletonView()
                 } else {
                     ScrollView {
-                        VStack(spacing: 20) {
+                        VStack(spacing: FinanceSpacing.lg) {
                             if let monitor = networkMonitor, !monitor.isConnected {
                                 OfflineBanner()
                             }
@@ -44,7 +43,7 @@ struct DashboardView: View {
                             recentTransactionsSection
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, 20)
+                        .padding(.bottom, FinanceSpacing.lg)
                     }
                 }
             }
@@ -58,9 +57,20 @@ struct DashboardView: View {
                     .accessibilityLabel(String(localized: "Ask Finance"))
                     .accessibilityHint(String(localized: "Ask a natural-language question about your money"))
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showingSettings = true } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityIdentifier("settings_button")
+                    .accessibilityLabel(String(localized: "Settings"))
+                    .accessibilityHint(String(localized: "Opens app settings"))
+                }
             }
             .sheet(isPresented: $showingAskFinance) {
                 FinanceQueryView()
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
             }
             .refreshable { await viewModel.loadDashboard() }
             .task { await viewModel.loadDashboard() }
@@ -79,7 +89,7 @@ struct DashboardView: View {
     // MARK: - Net Worth Card
 
     private var netWorthCard: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: FinanceSpacing.xs) {
             Text(String(localized: "Net Worth"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -89,13 +99,37 @@ struct DashboardView: View {
                 showSign: false,
                 font: .largeTitle.bold()
             )
+            .foregroundStyle(netWorthColor)
+            .accessibilityLabel(netWorthAccessibilityLabel)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
+        .padding(.vertical, FinanceSpacing.xl)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.xl))
         .accessibilityIdentifier("net_worth_card")
-        .accessibilityLabel(String(localized: "Net Worth"))
+    }
+
+    /// Net worth < 0 is emphasized with the negative semantic token so it is
+    /// not visually identical to a positive balance. (#3593)
+    private var netWorthColor: Color {
+        viewModel.netWorth < 0 ? FinanceColors.amountNegative : .primary
+    }
+
+    /// Spoken label for the net-worth amount so VoiceOver conveys the figure
+    /// and, when negative, an explicit qualifier. The "Net Worth" caption
+    /// remains a discrete element for context. (#3578, #3593)
+    private var netWorthAccessibilityLabel: String {
+        if viewModel.netWorth < 0 {
+            let amount = CurrencyLabel.formatted(
+                minorUnits: abs(viewModel.netWorth),
+                currencyCode: viewModel.currencyCode
+            )
+            return String(localized: "Net worth, negative \(amount)")
+        }
+        let amount = CurrencyLabel.formatted(
+            minorUnits: viewModel.netWorth,
+            currencyCode: viewModel.currencyCode
+        )
+        return String(localized: "Net worth, \(amount)")
     }
 
     // MARK: - Savings Rate (#2162)
@@ -171,23 +205,32 @@ struct DashboardView: View {
     // MARK: - Spending Summary
 
     private var spendingSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: FinanceSpacing.sm) {
             Text(String(localized: "This Month"))
                 .font(.headline)
-            HStack(spacing: 16) {
+            HStack(spacing: FinanceSpacing.md) {
                 summaryColumn(title: String(localized: "Income"), amount: viewModel.monthlyIncome)
-                Divider().frame(height: 44)
+                Divider().frame(height: FinanceSpacing.minTapTarget)
                 summaryColumn(title: String(localized: "Expenses"), amount: viewModel.monthlyExpenses)
-                Divider().frame(height: 44)
+                Divider().frame(height: FinanceSpacing.minTapTarget)
                 summaryColumn(title: String(localized: "Net"), amount: viewModel.monthlyIncome - viewModel.monthlyExpenses)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.xl))
+        .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("spending_summary_card")
-        .accessibilityLabel(String(localized: "Monthly spending summary"))
+        .accessibilityLabel(spendingSummaryAccessibilityLabel)
+    }
+
+    /// Composes the three amounts into one spoken label so VoiceOver conveys
+    /// the actual figures rather than just "Monthly spending summary". (#3578)
+    private var spendingSummaryAccessibilityLabel: String {
+        let income = CurrencyLabel.formatted(minorUnits: viewModel.monthlyIncome, currencyCode: viewModel.currencyCode)
+        let expenses = CurrencyLabel.formatted(minorUnits: viewModel.monthlyExpenses, currencyCode: viewModel.currencyCode)
+        let net = CurrencyLabel.formatted(minorUnits: viewModel.monthlyIncome - viewModel.monthlyExpenses, currencyCode: viewModel.currencyCode)
+        return String(localized: "This month. Income \(income). Expenses \(expenses). Net \(net).")
     }
 
     private func summaryColumn(title: String, amount: Int64) -> some View {
@@ -201,12 +244,22 @@ struct DashboardView: View {
     // MARK: - Budget Health
 
     private var budgetHealthSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: FinanceSpacing.sm) {
             Text(String(localized: "Budget Health")).font(.headline)
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 16) {
+                LazyHStack(spacing: FinanceSpacing.md) {
                     ForEach(viewModel.budgets) { budget in
-                        budgetHealthCard(budget)
+                        NavigationLink {
+                            BudgetsView()
+                        } label: {
+                            budgetHealthCard(budget)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(budget.name)
+                        .accessibilityValue(String(localized: "\(Int(budget.progress * 100)) percent of budget used"))
+                        .accessibilityHint(String(localized: "Opens your budgets"))
+                        .accessibilityAddTraits(.isButton)
                     }
                 }
                 .padding(.horizontal, 1)
@@ -215,22 +268,20 @@ struct DashboardView: View {
     }
 
     private func budgetHealthCard(_ budget: BudgetItem) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: FinanceSpacing.xs) {
             ProgressRing(progress: budget.progress, lineWidth: 6, progressColor: budget.progressColor, size: 60)
             Text(budget.name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
         .frame(width: 80)
-        .padding(.vertical, 12).padding(.horizontal, 8)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(budget.name)
-        .accessibilityValue(String(localized: "\(Int(budget.progress * 100)) percent of budget used"))
+        .padding(.vertical, FinanceSpacing.sm).padding(.horizontal, FinanceSpacing.xs)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.lg))
+        .accessibilityElement(children: .ignore)
     }
 
     // MARK: - Quick Access
 
     private var quickAccessSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: FinanceSpacing.sm) {
             Text(String(localized: "More"))
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
@@ -239,7 +290,7 @@ struct DashboardView: View {
                 GridItem(.flexible()),
                 GridItem(.flexible()),
                 GridItem(.flexible()),
-            ], spacing: 12) {
+            ], spacing: FinanceSpacing.sm) {
                 NavigationLink {
                     InvestmentPortfolioView()
                 } label: {
@@ -280,25 +331,25 @@ struct DashboardView: View {
     }
 
     private func quickAccessCard(title: String, iconToken: IconToken, color: Color) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: FinanceSpacing.xs) {
             IconView(iconToken, size: 22)
                 .foregroundStyle(color)
-                .frame(width: 44, height: 44)
-                .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                .frame(width: FinanceSpacing.minTapTarget, height: FinanceSpacing.minTapTarget)
+                .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.lg))
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, FinanceSpacing.sm)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.lg))
     }
 
     // MARK: - Recent Transactions
 
     private var recentTransactionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: FinanceSpacing.sm) {
             HStack {
                 Text(String(localized: "Recent Transactions")).font(.headline)
                 Spacer()
@@ -321,32 +372,74 @@ struct DashboardView: View {
                     ForEach(viewModel.recentTransactions) { transaction in
                         transactionRow(transaction)
                         if transaction.id != viewModel.recentTransactions.last?.id {
-                            Divider().padding(.leading, 44)
+                            Divider().padding(.leading, FinanceSpacing.minTapTarget)
                         }
                     }
                 }
                 .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.xl))
             }
         }
     }
 
     private func transactionRow(_ transaction: TransactionItem) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: FinanceSpacing.sm) {
             IconView(transaction.isExpense ? .expense : .income, size: 16)
-                .foregroundStyle(transaction.isExpense ? .red : .green)
+                .foregroundStyle(transaction.isExpense ? FinanceColors.amountNegative : FinanceColors.amountPositive)
                 .frame(width: 32, height: 32)
-                .background((transaction.isExpense ? Color.red : Color.green).opacity(0.1), in: Circle())
-            VStack(alignment: .leading, spacing: 2) {
+                .background((transaction.isExpense ? FinanceColors.amountNegative : FinanceColors.amountPositive).opacity(0.1), in: Circle())
+            VStack(alignment: .leading, spacing: FinanceSpacing.xxs) {
                 Text(transaction.payee).font(.body).lineLimit(1)
                 Text(transaction.category).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             CurrencyLabel(amountInMinorUnits: transaction.amountMinorUnits, currencyCode: transaction.currencyCode, font: .callout.bold())
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, FinanceSpacing.xxs)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(transaction.accessibilityRowLabel(includeAccount: false))
+    }
+}
+
+// MARK: - Loading Skeleton
+
+/// A content-shaped placeholder shown during the dashboard's initial load.
+///
+/// Mirrors the real card stack and uses `.redacted(reason: .placeholder)` so
+/// the layout doesn't shift when data arrives, reducing perceived latency.
+/// The skeleton is hidden from VoiceOver and announces a single "Loading"
+/// status instead. (#3582)
+private struct DashboardSkeletonView: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: FinanceSpacing.lg) {
+                card(height: 96)
+                card(height: 120)
+                card(height: 110)
+                HStack(spacing: FinanceSpacing.md) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: FinanceSpacing.Radius.lg)
+                            .fill(.regularMaterial)
+                            .frame(width: 80, height: 96)
+                    }
+                    Spacer(minLength: 0)
+                }
+                card(height: 160)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, FinanceSpacing.lg)
+        }
+        .redacted(reason: .placeholder)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Loading"))
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+
+    private func card(height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: FinanceSpacing.Radius.xl)
+            .fill(.regularMaterial)
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
     }
 }
 

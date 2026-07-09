@@ -119,4 +119,27 @@ final class CurrencyFormattingTests: XCTestCase {
         let result = format(1_000_000_000, currencyCode: "USD")
         XCTAssertNotNil(result, "Formatter should handle large amounts")
     }
+
+    // MARK: - Reusable Static Formatter (#3578, #3579)
+
+    func testStaticDecimalPlacesMatchesReference() {
+        XCTAssertEqual(CurrencyLabel.decimalPlaces(for: "USD"), 2)
+        XCTAssertEqual(CurrencyLabel.decimalPlaces(for: "JPY"), 0)
+        XCTAssertEqual(CurrencyLabel.decimalPlaces(for: "BHD"), 3)
+    }
+
+    func testStaticFormattedProducesCurrencyString() {
+        let result = CurrencyLabel.formatted(minorUnits: 125_050, currencyCode: "USD")
+        XCTAssertTrue(result.contains("1,250.50"),
+                      "USD 125050 minor units should format to 1,250.50, got \(result)")
+    }
+
+    func testStaticFormattedHandlesNegativeAndZeroDecimalCurrencies() {
+        let negative = CurrencyLabel.formatted(minorUnits: -42_99, currencyCode: "USD")
+        XCTAssertTrue(negative.contains("42.99"),
+                      "Negative amount should still contain the magnitude, got \(negative)")
+        let jpy = CurrencyLabel.formatted(minorUnits: 15_000, currencyCode: "JPY")
+        XCTAssertFalse(jpy.contains(".0"),
+                       "JPY should format without decimal places, got \(jpy)")
+    }
 }

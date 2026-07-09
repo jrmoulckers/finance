@@ -27,6 +27,7 @@ struct FinanceApp: App {
         forKey: OnboardingView.hasCompletedOnboardingKey
     )
     @State private var showConsent = !ConsentManager.shared.hasShownConsentDialog
+    @AppStorage(AppThemePreference.key) private var themePreferenceRaw = AppThemePreference.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
 
     private static let logger = Logger(
@@ -77,6 +78,9 @@ struct FinanceApp: App {
                 )
                 deepLinkHandler.handle(url)
             }
+            .preferredColorScheme(
+                AppThemePreference.resolved(from: themePreferenceRaw).colorScheme
+            )
             .onChange(of: scenePhase) { _, newPhase in
                 handleScenePhaseChange(newPhase)
             }

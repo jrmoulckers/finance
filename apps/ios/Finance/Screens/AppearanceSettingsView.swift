@@ -4,11 +4,26 @@ import SwiftUI
 
 struct AppearanceSettingsView: View {
     @AppStorage(IconPackPreference.key) private var selectedIconPackId = IconPackID.defaultIOS.rawValue
+    @AppStorage(AppThemePreference.key) private var themePreferenceRaw = AppThemePreference.system.rawValue
 
     private let previewTokens: [IconToken] = [.home, .transactions, .budget, .settings]
 
     var body: some View {
         Form {
+            Section(String(localized: "Theme")) {
+                Picker(String(localized: "Theme"), selection: $themePreferenceRaw) {
+                    ForEach(AppThemePreference.allCases) { theme in
+                        Text(theme.displayName).tag(theme.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("theme_picker")
+                .accessibilityLabel(String(localized: "App theme"))
+                .accessibilityHint(String(localized: "Choose System, Light, or Dark appearance"))
+            } footer: {
+                Text(String(localized: "System follows your device's appearance. Light and Dark override it everywhere in Finance."))
+            }
+
             Section(String(localized: "Icon Style")) {
                 Picker(String(localized: "Icon Style"), selection: $selectedIconPackId) {
                     ForEach(IconPackID.allCases) { pack in

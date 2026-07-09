@@ -49,7 +49,48 @@ struct CurrencyLabel: View {
 
     // MARK: - Private
 
-    private var decimalPlaces: Int {
+    private var formattedAmount: String {
+        let base = Self.formatted(
+            minorUnits: amountInMinorUnits,
+            currencyCode: currencyCode
+        )
+        // Reinforce sign with a non-color cue (WCAG 1.4.1): negatives already
+        // carry a leading "-" from the formatter, so add an explicit "+" for
+        // positive signed amounts. (#3594)
+        if showSign, amountInMinorUnits > 0 {
+            return "+\(base)"
+        }
+        return base
+    }
+
+    private var amountColor: Color {
+        guard showSign else { return .primary }
+        // Use WCAG-tuned semantic tokens rather than raw system colors so
+        // amounts keep sufficient contrast on light/dark surfaces. (#3579)
+        if amountInMinorUnits > 0 { return FinanceColors.amountPositive }
+        if amountInMinorUnits < 0 { return FinanceColors.amountNegative }
+        return .primary
+    }
+
+    private var accessibilityDescription: String {
+        let formatted = Self.formatted(
+            minorUnits: amountInMinorUnits,
+            currencyCode: currencyCode
+        )
+        if showSign && amountInMinorUnits > 0 {
+            return String(localized: "Income of \(formatted)")
+        } else if showSign && amountInMinorUnits < 0 {
+            return String(localized: "Expense of \(formatted)")
+        }
+        return formatted
+    }
+}
+
+// MARK: - Reusable Formatting
+
+extension CurrencyLabel {
+    /// Minor-unit decimal places for a given ISO currency code.
+    static func decimalPlaces(for currencyCode: String) -> Int {
         switch currencyCode {
         case "JPY", "KRW", "VND": 0
         case "BHD", "KWD", "OMR": 3
@@ -57,35 +98,18 @@ struct CurrencyLabel: View {
         }
     }
 
-    private var currencyFormatter: NumberFormatter {
-        Self.formatterCache.formatter(currencyCode: currencyCode, decimalPlaces: decimalPlaces)
-    }
-
-    private var formattedAmount: String {
-        let divisor = NSDecimalNumber(decimal: pow(10, decimalPlaces))
-        let amount = NSDecimalNumber(value: amountInMinorUnits)
+    /// Formats a minor-unit amount as a localized currency string.
+    ///
+    /// Exposed so other views (e.g. accessibility labels that combine an
+    /// amount with surrounding context) can reuse the exact same formatting
+    /// and cached formatters as `CurrencyLabel` itself.
+    static func formatted(minorUnits: Int64, currencyCode: String) -> String {
+        let places = decimalPlaces(for: currencyCode)
+        let formatter = formatterCache.formatter(currencyCode: currencyCode, decimalPlaces: places)
+        let divisor = NSDecimalNumber(decimal: pow(10, places))
+        let amount = NSDecimalNumber(value: minorUnits)
         let majorUnits = amount.dividing(by: divisor)
-        return currencyFormatter.string(from: majorUnits) ?? "\(currencyCode) \(amountInMinorUnits)"
-    }
-
-    private var amountColor: Color {
-        guard showSign else { return .primary }
-        if amountInMinorUnits > 0 { return .green }
-        if amountInMinorUnits < 0 { return .red }
-        return .primary
-    }
-
-    private var accessibilityDescription: String {
-        let divisor = NSDecimalNumber(decimal: pow(10, decimalPlaces))
-        let amount = NSDecimalNumber(value: amountInMinorUnits)
-        let majorUnits = amount.dividing(by: divisor)
-        let formatted = currencyFormatter.string(from: majorUnits) ?? "\(amountInMinorUnits) \(currencyCode)"
-        if showSign && amountInMinorUnits > 0 {
-            return String(localized: "Income of \(formatted)")
-        } else if showSign && amountInMinorUnits < 0 {
-            return String(localized: "Expense of \(formatted)")
-        }
-        return formatted
+        return formatter.string(from: majorUnits) ?? "\(currencyCode) \(minorUnits)"
     }
 }
 
