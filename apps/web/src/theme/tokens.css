@@ -133,9 +133,28 @@ body {
 }
 
 /*
+ * Focus ring tokens — single source of truth for the keyboard focus
+ * indicator (WCAG 2.4.7 Focus Visible, 2.4.11 Focus Not Obscured,
+ * 2.4.13 Focus Appearance). Consumed by styles/accessibility.css and
+ * component stylesheets so width, offset, and color stay consistent and
+ * can be tuned per theme in one place.
+ *
+ * A 2px solid outline satisfies the 2.4.13 minimum-area requirement (an
+ * indicator at least as thick as a 2 CSS-px perimeter). --focus-ring-color
+ * resolves to --semantic-border-focus, which is themed to keep >=3:1
+ * contrast against adjacent surfaces.
+ */
+:root {
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: var(--semantic-border-focus);
+  --focus-ring: var(--focus-ring-width) solid var(--focus-ring-color);
+}
+
+/*
  * Focus styles - visible outline for keyboard navigation (WCAG 2.4.7).
  */
 :focus-visible {
-  outline: 2px solid var(--semantic-border-focus);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }

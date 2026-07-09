@@ -52,7 +52,7 @@ describe('ToastProvider + useToast', () => {
     expect(screen.getByText('Account created!')).toBeInTheDocument();
   });
 
-  it('uses role="alert" for error toasts', async () => {
+  it('announces error toasts via the assertive live region', async () => {
     const user = userEvent.setup();
     render(
       <ToastProvider>
@@ -61,10 +61,12 @@ describe('ToastProvider + useToast', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Show Toast' }));
-    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Error: Failed to save');
+    // The visible toast itself is presentational (no competing live region).
+    expect(screen.getByText('Failed to save')).toBeInTheDocument();
   });
 
-  it('uses role="status" for success toasts', async () => {
+  it('announces success toasts via the polite live region', async () => {
     const user = userEvent.setup();
     render(
       <ToastProvider>
@@ -73,11 +75,13 @@ describe('ToastProvider + useToast', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Show Toast' }));
-    expect(screen.getByRole('status', { name: 'Success: Saved' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Success: Saved');
+    // Visible message and severity label are still rendered.
+    expect(screen.getByText('Saved')).toBeInTheDocument();
     expect(screen.getByText('Success')).toBeInTheDocument();
   });
 
-  it('uses role="status" for info toasts', async () => {
+  it('announces info toasts via the polite live region', async () => {
     const user = userEvent.setup();
     render(
       <ToastProvider>
@@ -86,7 +90,19 @@ describe('ToastProvider + useToast', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Show Toast' }));
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Info: FYI');
+  });
+
+  it('mounts the live regions empty before any toast is shown', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>,
+    );
+
+    // Regions must pre-exist (and be empty) so later text changes are announced.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement();
   });
 
   it('auto-dismisses after the specified duration', () => {
