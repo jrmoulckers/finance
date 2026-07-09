@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoginPage } from './LoginPage';
@@ -118,6 +119,26 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/signup');
+  });
+
+  it('reveals the password via the show-password toggle', async () => {
+    const user = userEvent.setup();
+    renderLoginPage();
+
+    const password = screen.getByLabelText('Password');
+    expect(password).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(password).toHaveAttribute('type', 'text');
+  });
+
+  it('marks the email field as mobile-friendly (no auto-capitalize/correct)', () => {
+    renderLoginPage();
+
+    const email = screen.getByLabelText('Email');
+    expect(email).toHaveAttribute('autocapitalize', 'none');
+    expect(email).toHaveAttribute('autocorrect', 'off');
+    expect(email).toHaveAttribute('inputmode', 'email');
   });
 
   it('shows hosted legal links in the login footer', () => {

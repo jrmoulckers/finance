@@ -14,10 +14,12 @@ import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
+import { PasswordInput } from '../components/auth/PasswordInput';
+import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { calculatePasswordStrength } from '../lib/password-strength';
 import { signupSchema } from '../lib/validation';
 
+import '../components/auth/password-input.css';
 import '../styles/auth.css';
 
 /** Minimum password length enforced by client-side validation. */
@@ -251,6 +253,10 @@ export const SignupPage: React.FC = () => {
                 className="auth-field__input"
                 type="email"
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
                 required
                 value={email}
                 onChange={(event) => {
@@ -272,10 +278,9 @@ export const SignupPage: React.FC = () => {
               <label className="auth-field__label" htmlFor={passwordId}>
                 Password
               </label>
-              <input
+              <PasswordInput
                 id={passwordId}
                 className="auth-field__input"
-                type="password"
                 autoComplete="new-password"
                 required
                 minLength={MIN_PASSWORD_LENGTH}
@@ -312,10 +317,9 @@ export const SignupPage: React.FC = () => {
               <label className="auth-field__label" htmlFor={confirmPasswordId}>
                 Confirm Password
               </label>
-              <input
+              <PasswordInput
                 id={confirmPasswordId}
                 className="auth-field__input"
-                type="password"
                 autoComplete="new-password"
                 required
                 value={confirmPassword}
@@ -361,45 +365,6 @@ export const SignupPage: React.FC = () => {
         </p>
       </div>
     </main>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Password Strength Meter Sub-Component
-// ---------------------------------------------------------------------------
-
-interface PasswordStrengthMeterProps {
-  password: string;
-}
-
-/** Visual password strength indicator with colored bar and feedback. */
-const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ password }) => {
-  const strength = calculatePasswordStrength(password);
-  const widthPercent = ((strength.score + 1) / 5) * 100;
-
-  return (
-    <div className="auth-password-strength" aria-live="polite">
-      <div
-        className="auth-password-strength__bar"
-        role="progressbar"
-        aria-valuenow={strength.score}
-        aria-valuemin={0}
-        aria-valuemax={4}
-        aria-label={`Password strength: ${strength.label}`}
-      >
-        <div
-          className="auth-password-strength__fill"
-          style={{
-            width: `${widthPercent}%`,
-            backgroundColor: strength.color,
-          }}
-        />
-      </div>
-      <span className="auth-password-strength__label">{strength.label}</span>
-      {strength.feedback && (
-        <span className="auth-password-strength__feedback">{strength.feedback}</span>
-      )}
-    </div>
   );
 };
 

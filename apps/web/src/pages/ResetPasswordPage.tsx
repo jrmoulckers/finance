@@ -3,10 +3,13 @@
 import React, { useId, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
+import { PasswordInput } from '../components/auth/PasswordInput';
+import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { resetPassword } from '../lib/auth/password-reset';
 import { passwordSchema } from '../lib/validation';
 
+import '../components/auth/password-input.css';
 import '../styles/auth.css';
 
 interface ResetFieldErrors {
@@ -115,10 +118,9 @@ export const ResetPasswordPage: React.FC = () => {
             <label className="auth-field__label" htmlFor={passwordId}>
               New password
             </label>
-            <input
+            <PasswordInput
               id={passwordId}
               className="auth-field__input"
-              type="password"
               autoComplete="new-password"
               required
               minLength={12}
@@ -132,6 +134,7 @@ export const ResetPasswordPage: React.FC = () => {
               aria-describedby={fieldErrors.password ? passwordErrorId : undefined}
             />
             <p className="auth-field__hint">Must be at least 12 characters</p>
+            {password.length > 0 && <PasswordStrengthMeter password={password} />}
             {fieldErrors.password && (
               <p id={passwordErrorId} className="auth-field__error" role="alert">
                 {fieldErrors.password}
@@ -143,10 +146,9 @@ export const ResetPasswordPage: React.FC = () => {
             <label className="auth-field__label" htmlFor={confirmPasswordId}>
               Confirm new password
             </label>
-            <input
+            <PasswordInput
               id={confirmPasswordId}
               className="auth-field__input"
-              type="password"
               autoComplete="new-password"
               required
               value={confirmPassword}
