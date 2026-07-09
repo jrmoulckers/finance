@@ -211,4 +211,36 @@ describe('SignupPage', () => {
 
     authState.signupWithEmail = original;
   });
+
+  // ── Transparency + password hardening ───────────────────────────────────────
+
+  it('surfaces Terms and Privacy links at account creation', () => {
+    renderSignupPage();
+
+    const termsLinks = screen.getAllByRole('link', { name: 'Terms' });
+    expect(termsLinks.some((link) => link.getAttribute('href') === '/legal/terms')).toBe(true);
+    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
+      'href',
+      '/legal/privacy',
+    );
+  });
+
+  it('blocks submission for a weak, low-entropy password', () => {
+    renderSignupPage();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'alex@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'abcdefghijkl' } });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), {
+      target: { value: 'abcdefghijkl' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+
+    expect(screen.getByText('Choose a stronger, less common password.')).toBeInTheDocument();
+    expect(authState.signupWithEmail).not.toHaveBeenCalled();
+  });
+
+  it('exposes a reveal toggle on the password field', () => {
+    renderSignupPage();
+    expect(screen.getAllByRole('button', { name: 'Show password' }).length).toBeGreaterThan(0);
+  });
 });

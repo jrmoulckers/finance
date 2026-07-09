@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { PasswordInput } from '../components/auth/PasswordInput';
+import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter';
 import { resetPassword } from '../lib/auth/password-reset';
 import { passwordSchema } from '../lib/validation';
 
@@ -23,7 +25,10 @@ export const ResetPasswordPage: React.FC = () => {
   const passwordId = `${uid}-password`;
   const confirmPasswordId = `${uid}-confirm-password`;
   const passwordErrorId = `${uid}-password-error`;
+  const passwordHintId = `${uid}-password-hint`;
   const confirmPasswordErrorId = `${uid}-confirm-password-error`;
+
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const recoveryParams = useMemo(
     () => readRecoveryParams(location.search, location.hash),
@@ -37,6 +42,16 @@ export const ResetPasswordPage: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<ResetFieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Focus the new-password field on mount, but only when the recovery link is
+  // usable — an invalid/expired link disables the field (#3656).
+  useEffect(() => {
+    if (recoveryError || !accessToken) {
+      return;
+    }
+    const handle = requestAnimationFrame(() => passwordInputRef.current?.focus());
+    return () => cancelAnimationFrame(handle);
+  }, [accessToken, recoveryError]);
 
   const validate = (): boolean => {
     const errors: ResetFieldErrors = {};
@@ -115,13 +130,14 @@ export const ResetPasswordPage: React.FC = () => {
             <label className="auth-field__label" htmlFor={passwordId}>
               New password
             </label>
-            <input
+            <PasswordInput
               id={passwordId}
+              ref={passwordInputRef}
               className="auth-field__input"
-              type="password"
               autoComplete="new-password"
               required
               minLength={12}
+              showCapsLockWarning
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
@@ -129,9 +145,14 @@ export const ResetPasswordPage: React.FC = () => {
               }}
               disabled={isSubmitting || Boolean(linkError)}
               aria-invalid={fieldErrors.password ? 'true' : undefined}
-              aria-describedby={fieldErrors.password ? passwordErrorId : undefined}
+              aria-describedby={[passwordHintId, fieldErrors.password ? passwordErrorId : null]
+                .filter(Boolean)
+                .join(' ')}
             />
-            <p className="auth-field__hint">Must be at least 12 characters</p>
+            <p id={passwordHintId} className="auth-field__hint">
+              Must be at least 12 characters
+            </p>
+            {password.length > 0 && <PasswordStrengthMeter password={password} />}
             {fieldErrors.password && (
               <p id={passwordErrorId} className="auth-field__error" role="alert">
                 {fieldErrors.password}
@@ -143,12 +164,12 @@ export const ResetPasswordPage: React.FC = () => {
             <label className="auth-field__label" htmlFor={confirmPasswordId}>
               Confirm new password
             </label>
-            <input
+            <PasswordInput
               id={confirmPasswordId}
               className="auth-field__input"
-              type="password"
               autoComplete="new-password"
               required
+              showCapsLockWarning
               value={confirmPassword}
               onChange={(event) => {
                 setConfirmPassword(event.target.value);

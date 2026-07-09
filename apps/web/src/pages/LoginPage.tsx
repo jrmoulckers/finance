@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { getPreferredAuthMethod, setPreferredAuthMethod } from '../auth/preferred-auth-method';
 import { PasskeySetupPrompt } from '../components/auth/PasskeySetupPrompt';
+import { PasswordInput } from '../components/auth/PasswordInput';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { LegalLinks } from '../components/legal/LegalLinks';
 import { hasRegisteredPasskey } from '../lib/passkey-preferences';
@@ -95,12 +96,25 @@ export const LoginPage: React.FC = () => {
 
   const emailInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
+  const hasAutofocusedRef = useRef(false);
 
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  // Move focus to the email field on first paint so keyboard users can type
+  // immediately (#3656). Skipped when biometric sign-in is the primary CTA,
+  // since the email form is collapsed in that layout.
+  useEffect(() => {
+    if (hasAutofocusedRef.current || isAuthenticated || !emailFormVisible) {
+      return;
+    }
+    hasAutofocusedRef.current = true;
+    const handle = requestAnimationFrame(() => emailInputRef.current?.focus());
+    return () => cancelAnimationFrame(handle);
+  }, [emailFormVisible, isAuthenticated]);
 
   /**
    * Confirm a platform authenticator is actually available on this device
@@ -316,6 +330,10 @@ export const LoginPage: React.FC = () => {
                 type="email"
                 required
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
                 className={`form-input${fieldErrors.email ? ' form-input--error' : ''}`}
                 value={email}
                 onChange={(event) => {
@@ -340,13 +358,13 @@ export const LoginPage: React.FC = () => {
               <label htmlFor={passwordId} className="form-group__label form-group__label--required">
                 Password
               </label>
-              <input
+              <PasswordInput
                 ref={passwordInputRef}
                 id={passwordId}
                 name="password"
-                type="password"
                 required
                 autoComplete="current-password"
+                showCapsLockWarning
                 className={`form-input${fieldErrors.password ? ' form-input--error' : ''}`}
                 value={password}
                 onChange={(event) => {

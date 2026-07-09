@@ -296,6 +296,18 @@
   border-radius: var(--border-radius-sm, 2px);
 }
 
+.auth-legal-consent {
+  margin-top: var(--spacing-3, 0.75rem);
+  text-align: center;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  line-height: 1.4;
+  color: var(--semantic-text-secondary);
+}
+
+.auth-footer--legal {
+  margin-top: var(--spacing-3, 0.75rem);
+}
+
 /* ─── Reduced-motion ─────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {

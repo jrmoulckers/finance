@@ -10,11 +10,14 @@
  * redirected to the dashboard.
  */
 
-import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { LegalLinks } from '../components/legal/LegalLinks';
+import { PasswordInput } from '../components/auth/PasswordInput';
+import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter';
 import { calculatePasswordStrength } from '../lib/password-strength';
 import { signupSchema } from '../lib/validation';
 
@@ -61,12 +64,32 @@ export const SignupPage: React.FC = () => {
   const passwordErrorId = `${uid}-password-error`;
   const confirmPasswordErrorId = `${uid}-confirm-password-error`;
 
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const confirmationHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  // Focus the first field on mount so keyboard users can start typing without
+  // an extra Tab/click (#3656).
+  useEffect(() => {
+    const handle = requestAnimationFrame(() => emailInputRef.current?.focus());
+    return () => cancelAnimationFrame(handle);
+  }, []);
+
   // Redirect to dashboard once the user is authenticated (auto-login after signup)
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
+
+  // When the form is replaced by the "Check your email" panel, move focus to
+  // its heading so keyboard/screen-reader users aren't stranded (#3702).
+  useEffect(() => {
+    if (confirmationEmail) {
+      const handle = requestAnimationFrame(() => confirmationHeadingRef.current?.focus());
+      return () => cancelAnimationFrame(handle);
+    }
+  }, [confirmationEmail]);
 
   const confirmPasswordError = useMemo(() => {
     if (fieldErrors.confirmPassword) {
@@ -113,7 +136,18 @@ export const SignupPage: React.FC = () => {
       }
     }
 
+    // Soft-gate the weakest reachable tier. The length rule above governs short
+    // passwords; a length-valid password can still score as low as 1 ("Weak",
+    // e.g. a single character class), which we block here so obviously weak
+    // credentials don't slip through on a financial account (#3679).
+    if (!errors.password && calculatePasswordStrength(password).score < 2) {
+      errors.password = 'Choose a stronger, less common password.';
+    }
+
     setFieldErrors(errors);
+    if (errors.password) {
+      passwordInputRef.current?.focus();
+    }
     return Object.keys(errors).length === 0;
   }, [confirmPassword, email, password]);
 
@@ -208,7 +242,9 @@ export const SignupPage: React.FC = () => {
 
         {confirmationEmail ? (
           <section className="auth-confirmation" aria-live="polite">
-            <h2>Check your email</h2>
+            <h2 ref={confirmationHeadingRef} tabIndex={-1}>
+              Check your email
+            </h2>
             <p>
               We sent a confirmation link to <strong>{confirmationEmail}</strong>. Click the link to
               activate your account, then return here to sign in.
@@ -248,9 +284,14 @@ export const SignupPage: React.FC = () => {
               </label>
               <input
                 id={emailId}
+                ref={emailInputRef}
                 className="auth-field__input"
                 type="email"
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
                 required
                 value={email}
                 onChange={(event) => {
@@ -272,13 +313,14 @@ export const SignupPage: React.FC = () => {
               <label className="auth-field__label" htmlFor={passwordId}>
                 Password
               </label>
-              <input
+              <PasswordInput
                 id={passwordId}
+                ref={passwordInputRef}
                 className="auth-field__input"
-                type="password"
                 autoComplete="new-password"
                 required
                 minLength={MIN_PASSWORD_LENGTH}
+                showCapsLockWarning
                 value={password}
                 onChange={(event) => {
                   const nextPassword = event.target.value;
@@ -312,12 +354,12 @@ export const SignupPage: React.FC = () => {
               <label className="auth-field__label" htmlFor={confirmPasswordId}>
                 Confirm Password
               </label>
-              <input
+              <PasswordInput
                 id={confirmPasswordId}
                 className="auth-field__input"
-                type="password"
                 autoComplete="new-password"
                 required
+                showCapsLockWarning
                 value={confirmPassword}
                 onChange={(event) => {
                   const nextConfirmPassword = event.target.value;
@@ -359,47 +401,22 @@ export const SignupPage: React.FC = () => {
             Sign in
           </Link>
         </p>
+        <p className="auth-legal-consent">
+          By creating an account you agree to our{' '}
+          <a href="/legal/terms" className="auth-footer__link">
+            Terms
+          </a>{' '}
+          and{' '}
+          <a href="/legal/privacy" className="auth-footer__link">
+            Privacy Policy
+          </a>
+          .
+        </p>
+        <footer className="auth-footer auth-footer--legal">
+          <LegalLinks />
+        </footer>
       </div>
     </main>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Password Strength Meter Sub-Component
-// ---------------------------------------------------------------------------
-
-interface PasswordStrengthMeterProps {
-  password: string;
-}
-
-/** Visual password strength indicator with colored bar and feedback. */
-const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ password }) => {
-  const strength = calculatePasswordStrength(password);
-  const widthPercent = ((strength.score + 1) / 5) * 100;
-
-  return (
-    <div className="auth-password-strength" aria-live="polite">
-      <div
-        className="auth-password-strength__bar"
-        role="progressbar"
-        aria-valuenow={strength.score}
-        aria-valuemin={0}
-        aria-valuemax={4}
-        aria-label={`Password strength: ${strength.label}`}
-      >
-        <div
-          className="auth-password-strength__fill"
-          style={{
-            width: `${widthPercent}%`,
-            backgroundColor: strength.color,
-          }}
-        />
-      </div>
-      <span className="auth-password-strength__label">{strength.label}</span>
-      {strength.feedback && (
-        <span className="auth-password-strength__feedback">{strength.feedback}</span>
-      )}
-    </div>
   );
 };
 
