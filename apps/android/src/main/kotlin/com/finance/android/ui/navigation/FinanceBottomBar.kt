@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -72,7 +73,7 @@ fun FinanceBottomBar(
 
     NavigationBar(modifier = modifier) {
         TopLevelDestination.entries.forEach { destination ->
-            val selected = currentDestination?.route == destination.route
+            val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
 
             NavigationBarItem(
                 selected = selected,

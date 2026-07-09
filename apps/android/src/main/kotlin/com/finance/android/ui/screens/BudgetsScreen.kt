@@ -40,7 +40,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -188,8 +187,8 @@ private fun BudgetSummaryCard(
         BudgetHealth.OVER -> "Over budget"
     }
     val healthColor = when (overallHealth) {
-        BudgetHealth.HEALTHY -> Color(0xFF2E7D32)
-        BudgetHealth.WARNING -> Color(0xFFFF9800)
+        BudgetHealth.HEALTHY -> FinanceTheme.financeColors.income
+        BudgetHealth.WARNING -> FinanceTheme.financeColors.warning
         BudgetHealth.OVER -> MaterialTheme.colorScheme.error
     }
 
@@ -266,7 +265,7 @@ private fun BudgetSummaryCard(
 private fun BudgetItemCard(budget: BudgetItemUi, onClick: () -> Unit = {}) {
     val healthColor = when (budget.health) {
         BudgetHealth.HEALTHY -> MaterialTheme.colorScheme.primary
-        BudgetHealth.WARNING -> Color(0xFFFF9800)
+        BudgetHealth.WARNING -> FinanceTheme.financeColors.warning
         BudgetHealth.OVER -> MaterialTheme.colorScheme.error
     }
     val healthLabel = when (budget.health) {

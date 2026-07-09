@@ -64,7 +64,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -204,7 +203,7 @@ private fun TransactionDetailContent(
 ) {
     val amountColor = when (state.type) {
         TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
-        TransactionType.INCOME -> Color(0xFF2E7D32)
+        TransactionType.INCOME -> FinanceTheme.financeColors.income
         TransactionType.TRANSFER -> MaterialTheme.colorScheme.tertiary
     }
     val typeIcon: ImageVector = when (state.type) {

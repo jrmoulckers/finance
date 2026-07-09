@@ -38,7 +38,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import com.finance.android.ui.components.IconView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -259,7 +258,7 @@ private fun DetailItem(label: String, value: String) {
 private fun AccountTxnItem(txn: Transaction, currency: Currency) {
     val isExp = txn.type == TransactionType.EXPENSE
     val amt = CurrencyFormatter.format(txn.amount, currency, showSign = true)
-    val color = if (isExp) MaterialTheme.colorScheme.error else Color(0xFF2E7D32)
+    val color = if (isExp) MaterialTheme.colorScheme.error else FinanceTheme.financeColors.income
     val payee = txn.payee ?: "Unknown"
     val cat = SampleData.categoryMap[txn.categoryId]?.name ?: "Uncategorized"
     Card(Modifier.fillMaxWidth().semantics { contentDescription = "Transaction: $amt at $payee, ${txn.date}" }) {
