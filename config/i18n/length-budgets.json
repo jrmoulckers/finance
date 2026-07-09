@@ -1,0 +1,27 @@
+{
+  "description": "Text-expansion budgeting for localized UI. Translated strings routinely grow vs. English (German/French especially); constrained surfaces (widgets, tiles, notifications, chart legends) truncate without a length contract. 'expansionFactors' give the multiplier to design headroom for by source length; 'constrainedKeyPrefixes' marks Android string-key prefixes whose surfaces are space-limited; 'maxLengthHints' sets soft caps (in en-US characters) for specific keys. Consumers/translators SHOULD keep translations within source_length * factor and honor maxLengthHints on constrained keys.",
+  "sourceLocale": "en-US",
+  "expansionFactors": [
+    { "upToSourceChars": 10, "factor": 2.0, "note": "Very short labels expand the most." },
+    { "upToSourceChars": 20, "factor": 1.8 },
+    { "upToSourceChars": 30, "factor": 1.6 },
+    { "upToSourceChars": 50, "factor": 1.4 },
+    { "upToSourceChars": 70, "factor": 1.3 },
+    { "upToSourceChars": 1000, "factor": 1.3 }
+  ],
+  "highExpansionLocales": ["de-DE", "fr-FR", "es-ES", "pt-BR"],
+  "constrainedKeyPrefixes": ["widget_", "tile_", "notification_", "parity_", "a11y_"],
+  "maxLengthHints": {
+    "widget_balance_summary_label": 24,
+    "widget_quick_transaction_label": 24,
+    "widget_budget_summary_label": 24,
+    "widget_goal_progress_label": 24,
+    "tile_quick_transaction_label": 20,
+    "widget_quick_entry_label": 20
+  },
+  "rules": [
+    "Never rely on hard truncation for constrained surfaces; prefer flexible/wrapping layouts and min/max width constraints.",
+    "Design widget/tile/notification surfaces against the localized worst case (source_length * factor), not the English length.",
+    "When a translation cannot fit, request a shorter source string rather than truncating the translation."
+  ]
+}
