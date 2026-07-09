@@ -17,60 +17,10 @@ import { useSpendingPace } from './hooks/useSpendingPace';
 import type { HapticEventType } from './lib/haptics/types';
 import { isOnboardingComplete } from './lib/local-only-mode';
 import { isLighthouseAudit } from './lib/perf/lighthouse-audit';
+import { resolvePageLabel } from './lib/i18n/page-title';
 import type { DetectedMilestone } from './lib/milestones';
 import type { AppNotification } from './lib/notifications';
 import { AppRoutes } from './routes';
-
-/**
- * Map path segments to human-readable page titles.
- *
- * Used by the AppLayout header. Dynamic / detail routes fall back to a
- * sensible default derived from the path's first segment.
- */
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'Dashboard',
-  '/dashboard': 'Dashboard',
-  '/notifications': 'Notifications',
-  '/safety': 'Safety',
-  '/accounts': 'Accounts',
-  '/transactions': 'Transactions',
-  '/budgets': 'Budgets',
-  '/debt': 'Debt',
-  '/goals': 'Goals',
-  '/insights': 'Insights',
-  '/household': 'Household',
-  '/investments': 'Investments',
-  '/investments/tax': 'Tax Center',
-  '/bills': 'Bills',
-  '/invoices': 'Invoices',
-  '/report-builder': 'Report Builder',
-  '/achievements': 'Achievements',
-  '/watchlists': 'Watchlists',
-  '/settings': 'Settings',
-  '/settings/account': 'Settings · Account',
-  '/settings/preferences': 'Settings · Preferences',
-  '/settings/privacy': 'Settings · Privacy & Data',
-  '/settings/security': 'Settings · Security & Encryption',
-  '/settings/sync': 'Settings · Sync & Devices',
-  '/settings/advanced': 'Settings · Advanced',
-  '/import': 'Import',
-  '/import/wizard': 'Import Wizard',
-  '/import/receipt-ocr': 'Receipt OCR',
-  '/privacy-dashboard': 'Privacy Dashboard',
-  '/categories': 'Categories',
-  '/planning': 'Financial Planning',
-  '/learning': 'Learning',
-  '/estate': 'Estate Inventory',
-  '/cash-flow': 'Cash Flow',
-  '/net-worth': 'Net Worth',
-  '/client-profitability': 'Client Profitability',
-  '/subscriptions': 'Subscriptions',
-  '/bank-connections': 'Bank Connections',
-  '/legal': 'Legal',
-  '/legal/privacy': 'Privacy Policy',
-  '/legal/terms': 'Terms of Service',
-  '/legal/ccpa': 'California Privacy Notice',
-};
 
 /**
  * Routes that render WITHOUT the AppLayout shell (pre-auth + full-screen flows).
@@ -140,13 +90,17 @@ export function shouldAutoLaunchOnboarding(pathname: string, onboardingComplete:
   return !onboardingComplete && !isFirstRunAllowedPath(pathname);
 }
 
+/**
+ * Resolve the human-readable page label for the AppLayout header and breadcrumb.
+ *
+ * Delegates to the single, localized source of truth in `lib/i18n/page-title.ts`
+ * (the same resolver that drives `document.title`) so the in-app header can
+ * never drift from the browser-tab title. Dynamic / detail routes inherit their
+ * parent segment's label via `resolvePageLabel`; unknown routes fall back to the
+ * brand name.
+ */
 function derivePageTitle(pathname: string): string {
-  if (PAGE_TITLES[pathname]) {
-    return PAGE_TITLES[pathname];
-  }
-  // /accounts/<id> -> "Accounts"; /transactions/<id>/edit -> "Transactions"
-  const firstSegment = `/${pathname.split('/').filter(Boolean)[0] ?? ''}`;
-  return PAGE_TITLES[firstSegment] ?? 'Finance';
+  return resolvePageLabel(pathname) ?? 'Finance';
 }
 
 function getBudgetThresholdHapticEvent(

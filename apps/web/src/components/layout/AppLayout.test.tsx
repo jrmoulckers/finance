@@ -162,6 +162,17 @@ describe('AppLayout', () => {
     expect(skipLink).toHaveAttribute('href', '#main-content');
   });
 
+  it('renders a skip-to-navigation link targeting the primary nav landmark', () => {
+    renderLayout();
+
+    const skipNav = screen.getByText('Skip to navigation');
+    expect(skipNav).toBeInTheDocument();
+    expect(skipNav).toHaveAttribute('href', '#primary-navigation');
+
+    const primaryNav = screen.getByRole('navigation', { name: 'Primary' });
+    expect(primaryNav).toHaveAttribute('id', 'primary-navigation');
+  });
+
   it('renders a main landmark with the page title as aria-label', () => {
     renderLayout({ pageTitle: 'Budgets' });
 

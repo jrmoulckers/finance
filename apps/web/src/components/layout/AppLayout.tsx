@@ -235,6 +235,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   return (
     <div className="app-layout">
       <SkipToContent />
+      <SkipToContent targetId="primary-navigation" label="Skip to navigation" />
       <SidebarNavigation
         activePath={activePath}
         onNavigate={onNavigate}
