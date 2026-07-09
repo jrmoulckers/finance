@@ -44,6 +44,8 @@ export { SyncStatusPanel } from './SyncStatusPanel';
 export { UpdateBanner } from './UpdateBanner';
 export { SkipLink } from './SkipLink';
 export type { SkipLinkProps } from './SkipLink';
+export { VisuallyHidden } from './VisuallyHidden';
+export type { VisuallyHiddenProps } from './VisuallyHidden';
 export { SortableList } from './SortableList';
 export type {
   SortableListProps,

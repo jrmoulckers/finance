@@ -32,10 +32,10 @@
  * Uses :focus-visible to avoid showing focus on mouse clicks.
  * ------------------------------------------------------------------- */
 
-/* Base focus-visible ring */
+/* Base focus-visible ring — driven by focus-ring tokens (theme/tokens.css) */
 :focus-visible {
-  outline: 2px solid var(--semantic-border-focus, #3b82f6);
-  outline-offset: 2px;
+  outline: var(--focus-ring, 2px solid var(--semantic-border-focus, #3b82f6));
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 /* Enhanced focus for buttons and links */
@@ -48,8 +48,8 @@ a:focus-visible,
 select:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--semantic-border-focus, #3b82f6);
-  outline-offset: 2px;
+  outline: var(--focus-ring, 2px solid var(--semantic-border-focus, #3b82f6));
+  outline-offset: var(--focus-ring-offset, 2px);
   border-radius: inherit;
 }
 
@@ -57,8 +57,8 @@ textarea:focus-visible {
 [role='listbox']:focus-within,
 [role='menu']:focus-within,
 [role='tablist']:focus-within {
-  outline: 2px solid var(--semantic-border-focus, #3b82f6);
-  outline-offset: 2px;
+  outline: var(--focus-ring, 2px solid var(--semantic-border-focus, #3b82f6));
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 /* High contrast mode: stronger focus indicators */
@@ -321,6 +321,23 @@ html[data-reduced-motion='true'] *::after {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/*
+ * Focusable variant: visually hidden until the element (or a descendant)
+ * receives focus, then rendered on-screen. Used by the VisuallyHidden
+ * primitive for skip-link-style "hidden unless focused" content.
+ */
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: revert;
+  margin: revert;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
 }
 
 /* -------------------------------------------------------------------

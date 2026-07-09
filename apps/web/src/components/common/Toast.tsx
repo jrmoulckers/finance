@@ -7,6 +7,7 @@ import {
   getToastDismissLabel,
   getToastTypeLabel,
 } from '../../lib/i18n/forms-catalog';
+import { VisuallyHidden } from './VisuallyHidden';
 
 /* --------------------------------------------------------------------------
  * Types
@@ -84,13 +85,18 @@ let toastIdCounter = 0;
 /**
  * Provides a toast notification system to the component tree.
  *
- * Renders a fixed toast container with `aria-live` announcements.
+ * Renders a fixed toast container plus two persistent, visually-hidden live
+ * regions (one polite, one assertive). Announcements are written into those
+ * pre-existing regions so screen readers reliably narrate them — a live region
+ * must exist in the DOM *before* its text changes (WCAG 4.1.3 Status Messages).
+ * The visible toasts themselves are not live regions, so the message is
+ * announced exactly once, from its localized announcement text.
  * Toasts auto-dismiss after the configured duration (default 5 s).
- * Error toasts use `role="alert"` for immediate screen-reader announcement;
- * other types use `role="status"`.
  */
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [politeAnnouncement, setPoliteAnnouncement] = useState('');
+  const [assertiveAnnouncement, setAssertiveAnnouncement] = useState('');
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   /** Clean up all auto-dismiss timers on unmount. */
@@ -115,14 +121,24 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     (options: ToastOptions) => {
       const id = `toast-${++toastIdCounter}`;
       const duration = options.duration ?? 5000;
+      const type = options.type ?? 'info';
       const toast: Toast = {
         id,
-        type: options.type ?? 'info',
+        type,
         message: options.message,
         duration,
       };
 
       setToasts((prev) => [...prev, toast]);
+
+      // Route the announcement through the appropriate persistent live region.
+      // Errors are assertive (interrupt); everything else is polite.
+      const announcement = getToastAriaLabel(type, options.message);
+      if (type === 'error') {
+        setAssertiveAnnouncement(announcement);
+      } else {
+        setPoliteAnnouncement(announcement);
+      }
 
       if (duration > 0) {
         const timer = setTimeout(() => {
@@ -137,6 +153,14 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   return (
     <ToastContext.Provider value={{ showToast, dismissToast }}>
       {children}
+      {/* Persistent live regions — mounted empty so later text changes are
+          announced by assistive technology (WCAG 4.1.3). */}
+      <VisuallyHidden as="div" role="status" aria-live="polite" aria-atomic="true">
+        {politeAnnouncement}
+      </VisuallyHidden>
+      <VisuallyHidden as="div" role="alert" aria-live="assertive" aria-atomic="true">
+        {assertiveAnnouncement}
+      </VisuallyHidden>
       <div className="toast-container" aria-label="Notifications" role="region" tabIndex={-1}>
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={dismissToast} />
@@ -252,13 +276,14 @@ const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
 /**
  * Individual toast notification element.
  *
- * Uses `role="alert"` for errors (immediate announcement) and
- * `role="status"` for other types (polite announcement).
+ * This element is presentational only — announcements are handled by the
+ * dedicated live regions in {@link ToastProvider}, so the toast itself carries
+ * neither a live-region role nor an `aria-label` (which would suppress or
+ * duplicate the announced message). The visible type label keeps the severity
+ * readable for everyone.
  */
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
-  const role = toast.type === 'error' ? 'alert' : 'status';
   const typeLabel = getToastTypeLabel(toast.type);
-  const ariaLabel = getToastAriaLabel(toast.type, toast.message);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const handleDismiss = useCallback(() => {
@@ -284,7 +309,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   }, [onDismiss, toast.id]);
 
   return (
-    <div ref={rootRef} className={`toast toast--${toast.type}`} role={role} aria-label={ariaLabel}>
+    <div ref={rootRef} className={`toast toast--${toast.type}`}>
       <span className="toast__icon">{TOAST_ICONS[toast.type]}</span>
       <span className="toast__type-label">{typeLabel}</span>
       <p className="toast__message">{toast.message}</p>
