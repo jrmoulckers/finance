@@ -72,7 +72,11 @@ vi.mock('../common/InstallBanner', () => ({
 }));
 
 vi.mock('./Navigation', () => ({
-  SidebarNavigation: () => <nav aria-label="Primary">Sidebar</nav>,
+  SidebarNavigation: () => (
+    <nav id="primary-navigation" aria-label="Primary">
+      Sidebar
+    </nav>
+  ),
   BottomNavigation: () => <nav aria-label="Main navigation">Bottom</nav>,
 }));
 
