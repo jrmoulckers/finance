@@ -27,8 +27,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -76,6 +80,14 @@ fun LockScreen(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
+        // Focus the primary action so keyboard/Narrator users can authenticate
+        // immediately and Enter/Space triggers it, without tabbing first (#3709).
+        val primaryActionFocus = remember { FocusRequester() }
+        LaunchedEffect(isAuthenticating, isWindowsHelloAvailable) {
+            if (!isAuthenticating) {
+                runCatching { primaryActionFocus.requestFocus() }
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -168,6 +180,7 @@ fun LockScreen(
                         modifier = Modifier
                             .width(280.dp)
                             .height(48.dp)
+                            .focusRequester(primaryActionFocus)
                             .semantics {
                                 contentDescription =
                                     "Unlock with Windows Hello. Uses fingerprint, face recognition, or PIN."
@@ -204,6 +217,7 @@ fun LockScreen(
                                 modifier = Modifier
                                     .width(280.dp)
                                     .height(48.dp)
+                                    .focusRequester(primaryActionFocus)
                                     .semantics {
                                         contentDescription =
                                             "Continue without authentication. Windows Hello is not configured."

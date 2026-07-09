@@ -23,7 +23,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
@@ -55,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -136,6 +139,7 @@ private val SIDEBAR_COLLAPSED_WIDTH = 64.dp
 fun SidebarNavigation(
     shortcutHandler: ShortcutHandler,
     onAccountSelected: () -> Unit = {},
+    onScreenChanged: (Screen) -> Unit = {},
     content: @Composable (Screen) -> Unit,
 ) {
     var currentScreen by rememberSaveable { mutableStateOf(Screen.Dashboard) }
@@ -143,6 +147,11 @@ fun SidebarNavigation(
     val authRepository = koinGet<AuthRepository>()
     val account by authRepository.currentAccount.collectAsState()
     val isSignedIn by authRepository.isAuthenticated.collectAsState()
+
+    // Report the active screen so the window title can reflect it (#3693).
+    LaunchedEffect(currentScreen) {
+        onScreenChanged(currentScreen)
+    }
 
     // Register keyboard shortcuts (Ctrl+1 … Ctrl+6)
     KeyboardShortcutEffect(shortcutHandler) {
@@ -239,19 +248,24 @@ private fun SidebarPanel(
             )
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
 
-            // Navigation items — all except Settings
-            Screen.entries
-                .filter { it != Screen.Settings }
-                .forEach { screen ->
-                    SidebarItem(
-                        screen = screen,
-                        isSelected = currentScreen == screen,
-                        isExpanded = isExpanded,
-                        onClick = { onScreenSelected(screen) },
-                    )
-                }
-
-            Spacer(Modifier.weight(1f))
+            // Navigation items — all except Settings.
+            // Scrollable + weighted so lower items never clip on short windows (#3592).
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Screen.entries
+                    .filter { it != Screen.Settings }
+                    .forEach { screen ->
+                        SidebarItem(
+                            screen = screen,
+                            isSelected = currentScreen == screen,
+                            isExpanded = isExpanded,
+                            onClick = { onScreenSelected(screen) },
+                        )
+                    }
+            }
 
             // Account status and settings at bottom
             AccountStatusItem(

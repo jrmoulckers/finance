@@ -34,6 +34,7 @@ import com.finance.desktop.navigation.SidebarNavigation
 import com.finance.desktop.screens.AccountsScreen
 import com.finance.desktop.screens.BudgetNegotiationScreen
 import com.finance.desktop.screens.BudgetsScreen
+import com.finance.desktop.screens.ComingSoonScreen
 import com.finance.desktop.screens.CurrencyConversionScreen
 import com.finance.desktop.screens.DashboardScreen
 import com.finance.desktop.screens.DiagnosticsScreen
@@ -107,6 +108,7 @@ fun FinanceApp(
     shortcutHandler: ShortcutHandler,
     quickAddManager: QuickAddTransactionManager,
     systemTray: FinanceSystemTray,
+    onWindowTitleChange: (String) -> Unit = {},
 ) {
     val authViewModel = koinGet<AuthViewModel>()
     val authState by authViewModel.uiState.collectAsState()
@@ -173,12 +175,14 @@ fun FinanceApp(
                 val isFullyAuthenticated = authState.isAuthenticated || sessionAuthenticated
 
                 if (!isFullyAuthenticated && authState.requiresAuth) {
+                    LaunchedEffect(Unit) { onWindowTitleChange("Finance") }
                     AuthGateContent(authState = authState, authViewModel = authViewModel)
                 } else {
                     MainAppContent(
                         shortcutHandler = shortcutHandler,
                         quickAddManager = quickAddManager,
                         systemTray = systemTray,
+                        onWindowTitleChange = onWindowTitleChange,
                     )
                 }
 
@@ -261,10 +265,12 @@ private fun AuthGateContent(
  * Main app content — shown when user IS authenticated.
  */
 @Composable
+@Suppress("CyclomaticComplexMethod") // Navigation routing when() over all screens
 private fun MainAppContent(
     shortcutHandler: ShortcutHandler,
     quickAddManager: QuickAddTransactionManager,
     systemTray: FinanceSystemTray,
+    onWindowTitleChange: (String) -> Unit = {},
 ) {
     val loginViewModel = koinGet<LoginViewModel>()
     var showSignInScreen by remember { mutableStateOf(false) }
@@ -277,6 +283,7 @@ private fun MainAppContent(
         SidebarNavigation(
             shortcutHandler = shortcutHandler,
             onAccountSelected = { /* Settings shows the Account section. */ },
+            onScreenChanged = { screen -> onWindowTitleChange("${screen.label} - Finance") },
         ) { screen ->
             when (screen) {
                 Screen.Dashboard -> DashboardScreen()
@@ -287,15 +294,15 @@ private fun MainAppContent(
                 Screen.Widgets -> WidgetBoardScreen()
                 Screen.Upgrade -> UpgradeScreen()
                 Screen.Tips -> TipsScreen()
-                Screen.Investments -> {} // placeholder
-                Screen.Household -> {} // placeholder
+                Screen.Investments -> ComingSoonScreen(Screen.Investments)
+                Screen.Household -> ComingSoonScreen(Screen.Household)
                 Screen.Achievements -> GamificationScreen()
                 Screen.Diagnostics -> DiagnosticsScreen()
                 Screen.HealthScore -> HealthScoreScreen()
                 Screen.Reports -> ReportBuilderScreen()
                 Screen.QuickAdd -> {} // handled by dialog
                 Screen.Import -> ReceiptOcrScreen()
-                Screen.Referral -> {} // placeholder
+                Screen.Referral -> ComingSoonScreen(Screen.Referral)
                 Screen.Negotiate -> BudgetNegotiationScreen()
                 Screen.Currency -> CurrencyConversionScreen()
                 Screen.Settings -> SettingsScreen(onSignInRequested = openSignIn)
