@@ -274,7 +274,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
         currentAmount: { amount: currentAmountInput.cents },
         targetDate: targetDate || null,
         accountId: accountId || null,
-        status: isEditing ? status : (initialData?.status ?? DEFAULT_GOAL_STATUS),
+        status: isEditing ? status : DEFAULT_GOAL_STATUS,
       };
 
       setSubmitting(true);
