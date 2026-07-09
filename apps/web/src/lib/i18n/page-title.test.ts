@@ -88,6 +88,28 @@ describe('resolvePageTitleId / resolvePageLabel', () => {
     expect(resolvePageTitleId('/')).toBe('pageTitle.dashboard');
     expect(resolvePageLabel('/', 'en-US')).toBe('Dashboard');
   });
+
+  // #3616: the AppLayout header/breadcrumb label is derived from resolvePageLabel.
+  // These routes previously rendered a generic "Finance" header because the old
+  // App.tsx PAGE_TITLES map had drifted from this resolver.
+  it('gives the shell header a descriptive label for previously-drifted routes', () => {
+    const headerRoutes: ReadonlyArray<readonly [string, string]> = [
+      ['/remittances', 'Remittances'],
+      ['/expected-income', 'Expected Income'],
+      ['/live-pnl', 'Live P&L'],
+      ['/estimated-tax', 'Estimated Taxes'],
+      ['/trip-budgets', 'Trip & Country Budgets'],
+      ['/building-credit', 'Building Credit'],
+      ['/fire', 'FIRE Planner'],
+      ['/cash-runway', 'Cash Runway'],
+      ['/business-pnl', 'Profit & Loss'],
+      ['/notifications', 'Notifications'],
+    ];
+    for (const [pathname, expected] of headerRoutes) {
+      expect(resolvePageLabel(pathname, 'en-US')).toBe(expected);
+      expect(resolvePageLabel(pathname, 'en-US')).not.toBe('Finance');
+    }
+  });
 });
 
 describe('page title catalogs', () => {

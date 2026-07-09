@@ -27,6 +27,10 @@ import { NotificationCenter } from '../notifications';
 
 import { MoreNavSheet } from './MoreNavSheet';
 import {
+  getStoredGroupExpanded,
+  setStoredGroupExpanded,
+} from '../../lib/navigation/sidebar-groups';
+import {
   NAV_CONFIG,
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
@@ -240,10 +244,24 @@ const SidebarGroup: React.FC<SidebarGroupProps> = ({
   defaultExpanded,
 }) => {
   const containsActive = items.some((item) => isActive(activePath, item.href));
-  // Initialise from the static default, OR force-open if the active route is
-  // already inside this group at mount (so the user always lands on a visible
-  // active item even when the group would otherwise start collapsed, #2005).
-  const [userExpanded, setUserExpanded] = useState(defaultExpanded || containsActive);
+  // Initialise from the user's persisted choice when present (#3640), else the
+  // static default. Either way, force-open if the active route is already
+  // inside this group at mount so the user always lands on a visible active
+  // item even when the group would otherwise start collapsed (#2005).
+  const [userExpanded, setUserExpanded] = useState(() => {
+    const stored = getStoredGroupExpanded(group);
+    return (stored ?? defaultExpanded) || containsActive;
+  });
+
+  const toggleExpanded = useCallback(() => {
+    setUserExpanded((prev) => {
+      const next = !prev;
+      // Persist only explicit user toggles so the choice survives navigation
+      // and reload (#3640).
+      setStoredGroupExpanded(group, next);
+      return next;
+    });
+  }, [group]);
 
   // Auto-expand only on the *rising edge* of containsActive — i.e. when the
   // user navigates INTO this group from another. This keeps the helpful
@@ -272,7 +290,7 @@ const SidebarGroup: React.FC<SidebarGroupProps> = ({
           aria-expanded={expanded}
           aria-controls={sectionId}
           aria-label={`${label} section`}
-          onClick={() => setUserExpanded((prev) => !prev)}
+          onClick={toggleExpanded}
         >
           <span className="app-sidebar__group-label">{label}</span>
           <span
@@ -349,7 +367,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
         <span className="app-sidebar__logo">Finance</span>
       </div>
 
-      <nav className="app-sidebar__nav" aria-label="Primary">
+      <nav id="primary-navigation" className="app-sidebar__nav" aria-label="Primary">
         {/* Pinned destinations (Dashboard) */}
         <ul className="sidebar-nav__list" role="list">
           {pinnedItems.map((item) => {

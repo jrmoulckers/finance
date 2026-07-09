@@ -14,10 +14,10 @@ function renderNotFoundPage() {
 }
 
 describe('NotFoundPage', () => {
-  it('renders the 404 heading', () => {
+  it('renders the not-found heading', () => {
     renderNotFoundPage();
 
-    expect(screen.getByRole('heading', { level: 1, name: /404/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /page not found/i })).toBeInTheDocument();
   });
 
   it('renders the descriptive message', () => {
@@ -34,17 +34,17 @@ describe('NotFoundPage', () => {
     expect(link).toHaveAttribute('href', '/dashboard');
   });
 
-  it('renders a link to the login page', () => {
+  it('renders a Go back control', () => {
     renderNotFoundPage();
 
-    const link = screen.getByRole('link', { name: /go to login/i });
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
   });
 
-  it('uses a semantic <main> landmark', () => {
+  it('does not add a nested main landmark (renders inside the app shell)', () => {
     renderNotFoundPage();
 
-    expect(screen.getByRole('main')).toBeInTheDocument();
+    // The 404 is rendered within AppLayout's <main>, so it must not introduce
+    // its own <main> — that would create duplicate top-level landmarks (#3626).
+    expect(screen.queryByRole('main')).not.toBeInTheDocument();
   });
 });

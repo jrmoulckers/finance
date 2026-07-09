@@ -72,7 +72,11 @@ vi.mock('../common/InstallBanner', () => ({
 }));
 
 vi.mock('./Navigation', () => ({
-  SidebarNavigation: () => <nav aria-label="Primary">Sidebar</nav>,
+  SidebarNavigation: () => (
+    <nav id="primary-navigation" aria-label="Primary">
+      Sidebar
+    </nav>
+  ),
   BottomNavigation: () => <nav aria-label="Main navigation">Bottom</nav>,
 }));
 
@@ -160,6 +164,17 @@ describe('AppLayout', () => {
     const skipLink = screen.getByText('Skip to main content');
     expect(skipLink).toBeInTheDocument();
     expect(skipLink).toHaveAttribute('href', '#main-content');
+  });
+
+  it('renders a skip-to-navigation link targeting the primary nav landmark', () => {
+    renderLayout();
+
+    const skipNav = screen.getByText('Skip to navigation');
+    expect(skipNav).toBeInTheDocument();
+    expect(skipNav).toHaveAttribute('href', '#primary-navigation');
+
+    const primaryNav = screen.getByRole('navigation', { name: 'Primary' });
+    expect(primaryNav).toHaveAttribute('id', 'primary-navigation');
   });
 
   it('renders a main landmark with the page title as aria-label', () => {

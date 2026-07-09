@@ -402,3 +402,82 @@
   color: var(--semantic-text-secondary);
   font-size: var(--type-scale-caption-font-size);
 }
+
+/* -------------------------------------------------------------------
+ * Route not-found (404) empty state (#3626)
+ *
+ * Rendered inside the app shell's <main>, so it is a plain content
+ * block (no nested landmark, no pre-auth auth-card chrome).
+ * ------------------------------------------------------------------- */
+.route-not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--spacing-3);
+  min-height: 50vh;
+  padding: var(--spacing-6) var(--spacing-4);
+}
+
+.route-not-found__code {
+  margin: 0;
+  font-size: var(--type-scale-display-font-size, 3rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--semantic-text-secondary, #666);
+}
+
+.route-not-found__title {
+  margin: 0;
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.route-not-found__message {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--semantic-text-secondary, #666);
+}
+
+.route-not-found__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  justify-content: center;
+  margin-top: var(--spacing-2);
+}
+
+.route-not-found__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--semantic-border-strong, var(--semantic-text-secondary, #666));
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-text-primary);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.route-not-found__action--primary {
+  border-color: var(--semantic-action-primary, var(--semantic-border-focus));
+  background: var(--semantic-action-primary, var(--semantic-border-focus));
+  color: var(--semantic-text-on-action, #fff);
+}
+
+.route-not-found__action:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.route-not-found__action--primary:hover {
+  filter: brightness(0.95);
+}
+
+.route-not-found__action:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
