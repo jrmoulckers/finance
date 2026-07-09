@@ -1,5 +1,5 @@
 {
-  "description": "Canonical financial-terminology glossary. Source of truth for translated financial terms across every localized surface (Android, iOS, web, shared KMP Strings). A mistranslated financial term is a correctness bug, not polish — keep these consistent across all locales.",
+  "description": "Canonical financial-terminology glossary. Source of truth for translated financial terms across every localized surface (Android, iOS, web, shared KMP Strings). A mistranslated financial term is a correctness bug, not polish — keep these consistent across all locales. Invariants (see docs/i18n/localization-guide.md): every concept supplies all locales listed in 'locales'; no blank values; a term MUST NOT appear in its own locale's doNotUse; concepts are unique.",
   "sourceLocale": "en-US",
   "locales": ["en-US", "es-ES", "fr-FR"],
   "terms": [
@@ -9,7 +9,9 @@
       "es-ES": "Saldo",
       "fr-FR": "Solde",
       "notes": "Account balance (money available), not 'equilibrio'.",
-      "doNotUse": { "es-ES": ["Equilibrio", "Balance"] }
+      "doNotUse": {
+        "es-ES": ["Equilibrio", "Balance"]
+      }
     },
     {
       "concept": "Credit",
@@ -17,7 +19,9 @@
       "es-ES": "Abono",
       "fr-FR": "Crédit",
       "notes": "Inflow to an account. Disambiguate from lending (línea de crédito).",
-      "doNotUse": { "es-ES": ["Crédito (cuando significa entrada de dinero)"] }
+      "doNotUse": {
+        "es-ES": ["Crédito (cuando significa entrada de dinero)"]
+      }
     },
     {
       "concept": "Debit",
@@ -100,6 +104,157 @@
       "en-US": "Currency conversion",
       "es-ES": "Conversión de divisa",
       "fr-FR": "Conversion de devise"
+    },
+    {
+      "concept": "Transfer",
+      "en-US": "Transfer",
+      "es-ES": "Transferencia",
+      "fr-FR": "Virement",
+      "notes": "Movement of money between the user’s own accounts (distinct from an expense/income).",
+      "doNotUse": {
+        "es-ES": ["Traspaso (ambiguo)"]
+      }
+    },
+    {
+      "concept": "Deposit",
+      "en-US": "Deposit",
+      "es-ES": "Depósito",
+      "fr-FR": "Dépôt"
+    },
+    {
+      "concept": "Withdrawal",
+      "en-US": "Withdrawal",
+      "es-ES": "Retiro",
+      "fr-FR": "Retrait",
+      "notes": "Funds taken out of an account. \"Retirada\" is acceptable in Spain; prefer \"Retiro\" for a neutral catalog."
+    },
+    {
+      "concept": "Payee",
+      "en-US": "Payee",
+      "es-ES": "Beneficiario",
+      "fr-FR": "Bénéficiaire",
+      "notes": "Recipient of a payment."
+    },
+    {
+      "concept": "Merchant",
+      "en-US": "Merchant",
+      "es-ES": "Comercio",
+      "fr-FR": "Commerçant",
+      "notes": "Store/vendor where a transaction occurred.",
+      "doNotUse": {
+        "es-ES": ["Mercader"]
+      }
+    },
+    {
+      "concept": "Fee",
+      "en-US": "Fee",
+      "es-ES": "Comisión",
+      "fr-FR": "Frais",
+      "notes": "Bank/service charge. Not a price/rate.",
+      "doNotUse": {
+        "es-ES": ["Tarifa", "Cuota"]
+      }
+    },
+    {
+      "concept": "Interest",
+      "en-US": "Interest",
+      "es-ES": "Interés",
+      "fr-FR": "Intérêts"
+    },
+    {
+      "concept": "Interest rate",
+      "en-US": "Interest rate",
+      "es-ES": "Tasa de interés",
+      "fr-FR": "Taux d'intérêt",
+      "notes": "APR/APY expressed as a rate."
+    },
+    {
+      "concept": "Statement",
+      "en-US": "Statement",
+      "es-ES": "Estado de cuenta",
+      "fr-FR": "Relevé",
+      "notes": "Periodic account statement. \"Extracto\" is common in Spain; prefer \"Estado de cuenta\" for a neutral catalog.",
+      "doNotUse": {
+        "es-ES": ["Declaración"]
+      }
+    },
+    {
+      "concept": "Recurring",
+      "en-US": "Recurring",
+      "es-ES": "Recurrente",
+      "fr-FR": "Récurrent",
+      "notes": "Repeating transaction/rule."
+    },
+    {
+      "concept": "Subscription",
+      "en-US": "Subscription",
+      "es-ES": "Suscripción",
+      "fr-FR": "Abonnement"
+    },
+    {
+      "concept": "Reconcile",
+      "en-US": "Reconcile",
+      "es-ES": "Conciliar",
+      "fr-FR": "Rapprocher",
+      "notes": "Match app records against the bank statement.",
+      "doNotUse": {
+        "es-ES": ["Reconciliar"]
+      }
+    },
+    {
+      "concept": "Cleared",
+      "en-US": "Cleared",
+      "es-ES": "Compensado",
+      "fr-FR": "Compensé",
+      "notes": "Bank-cleared transaction. Distinct from \"reconciled\" (Conciliado)."
+    },
+    {
+      "concept": "Pending",
+      "en-US": "Pending",
+      "es-ES": "Pendiente",
+      "fr-FR": "En attente"
+    },
+    {
+      "concept": "Overdraft",
+      "en-US": "Overdraft",
+      "es-ES": "Sobregiro",
+      "fr-FR": "Découvert",
+      "notes": "Negative balance. \"Descubierto\" is used in Spain; prefer \"Sobregiro\" for LatAm-neutral."
+    },
+    {
+      "concept": "Tag",
+      "en-US": "Tag",
+      "es-ES": "Etiqueta",
+      "fr-FR": "Étiquette",
+      "notes": "User label on a transaction (distinct from Category)."
+    },
+    {
+      "concept": "Available balance",
+      "en-US": "Available balance",
+      "es-ES": "Saldo disponible",
+      "fr-FR": "Solde disponible"
+    },
+    {
+      "concept": "Due date",
+      "en-US": "Due date",
+      "es-ES": "Fecha de vencimiento",
+      "fr-FR": "Date d'échéance"
+    },
+    {
+      "concept": "Minimum payment",
+      "en-US": "Minimum payment",
+      "es-ES": "Pago mínimo",
+      "fr-FR": "Paiement minimum"
+    },
+    {
+      "concept": "Exchange rate",
+      "en-US": "Exchange rate",
+      "es-ES": "Tipo de cambio",
+      "fr-FR": "Taux de change",
+      "notes": "FX rate. Distinct from \"Currency conversion\".",
+      "doNotUse": {
+        "es-ES": ["Tasa de cambio (aceptable en LatAm; preferir Tipo de cambio)"]
+      }
     }
   ]
 }
