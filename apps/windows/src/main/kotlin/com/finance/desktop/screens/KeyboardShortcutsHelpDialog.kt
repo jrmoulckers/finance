@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.navigation.Screen
 import com.finance.desktop.theme.FinanceDesktopTheme
 
 /**
@@ -46,8 +47,11 @@ data class ShortcutHelpEntry(
 /**
  * Keyboard shortcuts reference dialog.
  *
- * Shows all available keyboard shortcuts grouped by category.
- * Accessible via F1 or Ctrl+? (Ctrl+Shift+/).
+ * Shows all available keyboard shortcuts grouped by category. The Navigation
+ * section is derived directly from [Screen.entries] so it can never drift out
+ * of sync with the actually-registered navigation shortcuts (#3660).
+ *
+ * Accessible via F1.
  *
  * Narrator: each shortcut entry reads as "keys: description".
  * Section headings are marked as headings. The dialog itself
@@ -59,25 +63,16 @@ data class ShortcutHelpEntry(
 fun KeyboardShortcutsHelpDialog(onDismiss: () -> Unit) {
     val sections = remember {
         listOf(
-            "Navigation" to listOf(
-                ShortcutHelpEntry("Ctrl+1", "Go to Dashboard"),
-                ShortcutHelpEntry("Ctrl+2", "Go to Accounts"),
-                ShortcutHelpEntry("Ctrl+3", "Go to Transactions"),
-                ShortcutHelpEntry("Ctrl+4", "Go to Budgets"),
-                ShortcutHelpEntry("Ctrl+5", "Go to Goals"),
-            ),
+            "Navigation" to Screen.entries.map { screen ->
+                ShortcutHelpEntry(screen.shortcutLabel, "Go to ${screen.label}")
+            },
             "Actions" to listOf(
                 ShortcutHelpEntry("Ctrl+Shift+N", "New transaction"),
-                ShortcutHelpEntry("Ctrl+F", "Focus search"),
-                ShortcutHelpEntry("/", "Focus search (alternative)"),
-                ShortcutHelpEntry("Delete", "Delete selected item"),
-                ShortcutHelpEntry("Enter", "Open selected item"),
-                ShortcutHelpEntry("Escape", "Close dialog / go back"),
             ),
             "App" to listOf(
                 ShortcutHelpEntry("F1", "Show keyboard shortcuts"),
                 ShortcutHelpEntry("Ctrl+Shift+F", "Report bug / send feedback"),
-                ShortcutHelpEntry("Ctrl+Shift+V", "Voice transaction entry"),
+                ShortcutHelpEntry("Escape", "Close dialog"),
             ),
         )
     }

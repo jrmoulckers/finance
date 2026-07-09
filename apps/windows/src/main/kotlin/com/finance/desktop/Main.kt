@@ -2,11 +2,13 @@
 
 package com.finance.desktop
 
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.finance.desktop.components.rememberShortcutHandler
@@ -24,6 +26,7 @@ import com.finance.desktop.widgets.WidgetRegistrationManager
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import java.awt.Dimension
 import java.awt.GraphicsEnvironment
 import javax.swing.JOptionPane
 import kotlin.system.exitProcess
@@ -67,9 +70,17 @@ fun main() {
 
     application {
         val windowState = rememberWindowState(
-            size = DpSize(width = 1280.dp, height = 800.dp),
-            position = WindowPosition(Alignment.Center),
+            size = WindowStatePersistence.loadSize(),
+            position = WindowStatePersistence.loadPosition(),
         )
+
+        // Persist window size/position so the next launch restores them (#3589).
+        LaunchedEffect(windowState) {
+            snapshotFlow { windowState.size to windowState.position }
+                .collect { WindowStatePersistence.save(windowState) }
+        }
+
+        var windowTitle by remember { mutableStateOf("Finance") }
 
         val shortcutHandler = rememberShortcutHandler()
 
@@ -103,6 +114,7 @@ fun main() {
 
         Window(
             onCloseRequest = {
+                WindowStatePersistence.save(windowState)
                 PerformanceMonitor.stop()
                 systemTray.dispose()
                 widgetManager.dispose()
@@ -110,11 +122,23 @@ fun main() {
                 stopKoin()
                 exitApplication()
             },
-            title = "Finance",
+            title = windowTitle,
             state = windowState,
-            onPreviewKeyEvent = { shortcutHandler.onKeyEvent(it) },
+            onKeyEvent = { shortcutHandler.onKeyEvent(it) },
         ) {
-            FinanceApp(shortcutHandler, quickAddManager, systemTray)
+            // Enforce a minimum window size so the sidebar + content stay usable (#3589).
+            LaunchedEffect(window) {
+                window.minimumSize = Dimension(
+                    WindowStatePersistence.MIN_WIDTH_DP,
+                    WindowStatePersistence.MIN_HEIGHT_DP,
+                )
+            }
+            FinanceApp(
+                shortcutHandler = shortcutHandler,
+                quickAddManager = quickAddManager,
+                systemTray = systemTray,
+                onWindowTitleChange = { windowTitle = it },
+            )
         }
     }
 }
