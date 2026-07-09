@@ -167,6 +167,44 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
 }
 
+.goal-status-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-4);
+  padding: var(--spacing-1);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: 999px;
+  background: var(--semantic-background-secondary, #f5f5f5);
+}
+
+.goal-status-filter__button {
+  border: 0;
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  border-radius: 999px;
+  padding: var(--spacing-2) var(--spacing-3);
+  font: inherit;
+  font-weight: var(--font-weight-medium, 500);
+  cursor: pointer;
+}
+
+.goal-status-filter__button:hover {
+  color: var(--semantic-text-primary);
+}
+
+.goal-status-filter__button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.goal-status-filter__button--selected {
+  background: var(--semantic-background-primary, #ffffff);
+  color: var(--semantic-text-primary);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
 .account-purpose-badge {
   display: inline-flex;
   align-items: center;

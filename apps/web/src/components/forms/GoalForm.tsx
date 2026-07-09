@@ -163,6 +163,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
   });
   const [targetDate, setTargetDate] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [status, setStatus] = useState<GoalStatus>(DEFAULT_GOAL_STATUS);
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -177,6 +178,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       currentAmount: initialData?.currentAmount.amount ?? 0,
       targetDate: initialData?.targetDate ?? '',
       accountId: initialData?.accountId ?? '',
+      status: initialData?.status ?? DEFAULT_GOAL_STATUS,
       description: initialData?.description ?? '',
     }),
     [initialData],
@@ -188,6 +190,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       currentAmountInput.cents !== initialValues.currentAmount ||
       targetDate !== initialValues.targetDate ||
       accountId !== initialValues.accountId ||
+      status !== initialValues.status ||
       description !== initialValues.description);
   const { confirmNavigation } = useNavigationGuard({
     when: isDirty,
@@ -215,6 +218,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
     currentAmountInput.setCents(initialValues.currentAmount);
     setTargetDate(initialValues.targetDate);
     setAccountId(initialValues.accountId);
+    setStatus(initialValues.status);
     setDescription(initialValues.description);
     setErrors({});
     setSubmitting(false);
@@ -270,7 +274,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
         currentAmount: { amount: currentAmountInput.cents },
         targetDate: targetDate || null,
         accountId: accountId || null,
-        status: initialData?.status ?? DEFAULT_GOAL_STATUS,
+        status: isEditing ? status : DEFAULT_GOAL_STATUS,
       };
 
       setSubmitting(true);
@@ -300,6 +304,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       isEditing,
       name,
       onSubmit,
+      status,
       targetAmountInput.cents,
       targetDate,
     ],
@@ -449,6 +454,25 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
                   ))}
               </select>
             </div>
+
+            {isEditing && (
+              <div className="form-group">
+                <label htmlFor="goal-status" className="form-group__label">
+                  Status
+                </label>
+                <select
+                  id="goal-status"
+                  className="form-select"
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value as GoalStatus)}
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="PAUSED">Paused</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+            )}
 
             <div className="form-group">
               <label htmlFor="goal-description" className="form-group__label">

@@ -20,6 +20,10 @@ export {
   totalContributedCents,
 } from './shared-goal';
 
+export { formatGoalStatusLabel, getGoalDueStatus, getGoalProgress } from './progress';
+
+export type { GoalDueStatus, GoalProgress } from './progress';
+
 export type {
   ContributorProgress,
   GoalContributionPrivacy,

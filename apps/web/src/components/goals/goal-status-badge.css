@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* Goal status chip (#3776, items 3 & 4). Colour is always paired with a text
+   label so status is never conveyed by colour alone (WCAG 2.2 — 1.4.1). */
+
+.goal-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: var(--font-weight-medium, 500);
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--semantic-text-secondary);
+}
+
+.goal-status-badge--active {
+  color: var(--semantic-status-info, #1e40af);
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+.goal-status-badge--completed {
+  color: var(--semantic-status-positive, #14532d);
+  background: rgba(5, 150, 105, 0.12);
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+.goal-status-badge--paused {
+  color: var(--semantic-status-warning, #78350f);
+  background: rgba(217, 119, 6, 0.12);
+  border-color: rgba(217, 119, 6, 0.3);
+}
+
+.goal-status-badge--cancelled {
+  color: var(--semantic-text-secondary);
+  background: var(--semantic-background-secondary);
+  border-color: var(--semantic-border-default);
+  text-decoration: line-through;
+}

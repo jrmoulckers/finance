@@ -14,10 +14,12 @@ import {
 } from '../components/common';
 import { GoalForm } from '../components/forms';
 import type { CreateGoalInput, GoalContributionInput } from '../db/repositories/goals';
-import { useGoals } from '../hooks';
+import { useAccounts, useGoals } from '../hooks';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
 import { getCurrentLocale } from '../lib/i18n';
+import { getGoalDueStatus, getGoalProgress } from '../lib/goals';
+import { GoalStatusBadge } from '../components/goals/GoalStatusBadge';
 import { ShareCelebrationButton } from '../components/social/ShareCelebrationButton';
 import { SharedGoalContributions } from '../components/goals/SharedGoalContributions';
 import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
@@ -39,6 +41,14 @@ function getGoalIcon(iconName: string | null | undefined): IconName {
   }
 }
 
+/** Format a whole-cent amount as localized currency for use in text/aria. */
+function formatMoney(cents: number, currency: string): string {
+  return new Intl.NumberFormat(getCurrentLocale(), {
+    style: 'currency',
+    currency,
+  }).format(cents / 100);
+}
+
 /** Detail view for a single goal route. */
 export const GoalDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +59,7 @@ export const GoalDetailPage: React.FC = () => {
   const [isContributeOpen, setIsContributeOpen] = useState(false);
 
   const { goals, loading, error, refresh, updateGoal, deleteGoal, contributeToGoal } = useGoals();
+  const { accounts } = useAccounts();
 
   const goal = id ? (goals.find((g) => g.id === id) ?? null) : null;
 
@@ -126,12 +137,10 @@ export const GoalDetailPage: React.FC = () => {
     );
   }
 
-  const percentComplete =
-    goal.targetAmount.amount > 0
-      ? Math.round((goal.currentAmount.amount / goal.targetAmount.amount) * 100)
-      : 0;
+  const progress = getGoalProgress(goal);
+  const percentComplete = progress.displayPercent;
 
-  const goalStatus = getGoalStatusIndicator(percentComplete);
+  const goalStatus = getGoalStatusIndicator(progress.rawPercent);
 
   const shareEvent = goalCelebrationEvent({
     goalName: goal.name,
@@ -140,13 +149,18 @@ export const GoalDetailPage: React.FC = () => {
     currency: goal.currency.code,
   });
 
-  const remainingAmount = Math.max(goal.targetAmount.amount - goal.currentAmount.amount, 0);
+  const remainingAmount = progress.remainingCents;
+
+  const dueStatus = getGoalDueStatus(goal.targetDate);
+  const dueCountdownLabel = !dueStatus.hasDate
+    ? null
+    : dueStatus.isPastDue
+      ? 'Past due'
+      : dueStatus.isDueToday
+        ? 'Due today'
+        : `${dueStatus.daysDelta} ${pluralize(dueStatus.daysDelta ?? 0, 'day')} left`;
 
   const targetDate = goal.targetDate ? new Date(`${goal.targetDate}T00:00:00`) : null;
-  const daysLeft =
-    targetDate === null
-      ? null
-      : Math.max(0, Math.ceil((targetDate.getTime() - Date.now()) / 86400000));
 
   const formattedTargetDate =
     targetDate !== null
@@ -156,6 +170,15 @@ export const GoalDetailPage: React.FC = () => {
           day: 'numeric',
         })
       : null;
+
+  const fundingAccount = goal.accountId
+    ? (accounts.find((account) => account.id === goal.accountId) ?? null)
+    : null;
+
+  const progressValueText = `${formatMoney(goal.currentAmount.amount, goal.currency.code)} of ${formatMoney(
+    goal.targetAmount.amount,
+    goal.currency.code,
+  )} saved, ${percentComplete}%`;
 
   const goalDescription = goal.description?.trim() || null;
 
@@ -237,24 +260,30 @@ export const GoalDetailPage: React.FC = () => {
           </div>
           <div>
             <dt className="card__title">Status</dt>
-            <dd>{goal.status.charAt(0) + goal.status.slice(1).toLowerCase()}</dd>
+            <dd>
+              <GoalStatusBadge status={goal.status} />
+            </dd>
           </div>
           <div>
             <dt className="card__title">Target Date</dt>
             <dd>{formattedTargetDate ?? 'No target date'}</dd>
           </div>
-          {daysLeft !== null && (
+          {dueCountdownLabel !== null && (
             <div>
               <dt className="card__title">Time Remaining</dt>
-              <dd>
-                {daysLeft > 0
-                  ? `${daysLeft} ${pluralize(daysLeft, 'day')} left`
-                  : daysLeft === 0
-                    ? 'Due today'
-                    : 'Past due'}
-              </dd>
+              <dd>{dueCountdownLabel}</dd>
             </div>
           )}
+          <div>
+            <dt className="card__title">Funding Account</dt>
+            <dd>
+              {fundingAccount ? (
+                <Link to={`/accounts/${fundingAccount.id}`}>{fundingAccount.name}</Link>
+              ) : (
+                'No linked account'
+              )}
+            </dd>
+          </div>
         </dl>
       </article>
 
@@ -305,14 +334,15 @@ export const GoalDetailPage: React.FC = () => {
           <div
             className="progress-bar"
             role="progressbar"
-            aria-valuenow={Math.min(percentComplete, 100)}
+            aria-valuenow={percentComplete}
             aria-valuemin={0}
             aria-valuemax={100}
+            aria-valuetext={progressValueText}
             aria-label={`${goal.name}: ${percentComplete} percent of goal reached, ${goalStatus.label}`}
           >
             <div
               className={`progress-bar__fill progress-bar__fill--${goalStatus.tone}`}
-              style={{ width: `${Math.min(percentComplete, 100)}%` }}
+              style={{ width: `${percentComplete}%` }}
             />
           </div>
           <div
@@ -326,7 +356,7 @@ export const GoalDetailPage: React.FC = () => {
           >
             <span>
               <AppIcon name={goalStatus.icon} />{' '}
-              {percentComplete >= 100 ? (
+              {progress.isComplete ? (
                 'Goal reached!'
               ) : (
                 <>
@@ -339,14 +369,26 @@ export const GoalDetailPage: React.FC = () => {
                 </>
               )}
             </span>
-            <span>
-              {daysLeft === null
-                ? 'No due date'
-                : daysLeft > 0
-                  ? `${daysLeft} ${pluralize(daysLeft, 'day')} left`
-                  : 'Past due'}
-            </span>
+            <span>{dueCountdownLabel ?? 'No due date'}</span>
           </div>
+          {progress.overageCents > 0 && (
+            <p
+              style={{
+                marginTop: 'var(--spacing-2)',
+                marginBottom: 0,
+                fontSize: 'var(--type-scale-caption-font-size)',
+                color: 'var(--semantic-status-positive)',
+              }}
+            >
+              <AppIcon name="check" />{' '}
+              <CurrencyDisplay
+                amount={progress.overageCents}
+                currency={goal.currency.code}
+                context={`saved over target for ${goal.name}`}
+              />{' '}
+              over target
+            </p>
+          )}
         </div>
       </section>
 

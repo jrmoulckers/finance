@@ -340,6 +340,35 @@ describe('goals repository', () => {
       expect(params[8]).toBe('ACTIVE');
     });
 
+    it('marks an already-funded new goal as COMPLETED (#3776, item 8)', () => {
+      const input: CreateGoalInput = {
+        householdId: 'hh-1',
+        name: 'Already saved',
+        targetAmount: { amount: 100000 },
+        currentAmount: { amount: 100000 },
+      };
+
+      createGoal(mockDb, input);
+
+      const params = mockExecute.mock.calls[0][2] as unknown[];
+      expect(params[8]).toBe('COMPLETED');
+    });
+
+    it('keeps an explicit status even when already funded', () => {
+      const input: CreateGoalInput = {
+        householdId: 'hh-1',
+        name: 'Explicit active',
+        targetAmount: { amount: 100000 },
+        currentAmount: { amount: 120000 },
+        status: 'ACTIVE',
+      };
+
+      createGoal(mockDb, input);
+
+      const params = mockExecute.mock.calls[0][2] as unknown[];
+      expect(params[8]).toBe('ACTIVE');
+    });
+
     it('should handle optional fields', () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
