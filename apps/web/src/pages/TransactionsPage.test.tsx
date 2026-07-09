@@ -90,6 +90,11 @@ vi.mock('../components/common', () => ({
       </div>
     ) : null,
   CurrencyDisplay: ({ amount }: { amount: number }) => <span>{amount}</span>,
+  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
   ReadAloudButton: () => null,
   DragDropProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   DraggableTransaction: ({
@@ -115,7 +120,12 @@ vi.mock('../components/common', () => ({
       {children}
     </div>
   ),
-  EmptyState: ({ title }: { title: string }) => <div>{title}</div>,
+  EmptyState: ({ title, action }: { title: string; action?: ReactNode }) => (
+    <div>
+      {title}
+      {action}
+    </div>
+  ),
   ErrorBanner: ({ message }: { message: string }) => <div>{message}</div>,
   ExplainThis: () => null,
   LoadingSpinner: ({ label }: { label: string }) => <div>{label}</div>,
@@ -165,6 +175,20 @@ vi.mock('../components/transactions', () => ({
       </div>
     ) : null,
   LazyReceiptImage: () => null,
+  TransactionsSummaryBar: ({
+    summary,
+  }: {
+    summary: { count: number; totalsByCurrency: { currency: string; net: number }[] };
+  }) => (
+    <div data-testid="transactions-summary">
+      <span>{summary.count} transactions</span>
+      {summary.totalsByCurrency.map((total) => (
+        <span key={total.currency} data-testid="summary-net">
+          {total.currency} {total.net}
+        </span>
+      ))}
+    </div>
+  ),
   EMPTY_FILTERS: {
     startDate: '',
     endDate: '',
@@ -452,6 +476,61 @@ describe('TransactionsPage', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText('Transactions')).toBeInTheDocument();
+  });
+
+  it('shows a results summary with count and net total for the visible ledger', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    const summary = screen.getByTestId('transactions-summary');
+    // 3 transactions: +450000 income, -6742 and -12400 expenses = net 430858.
+    expect(within(summary).getByText('3 transactions')).toBeInTheDocument();
+    expect(within(summary).getByText('USD 430858')).toBeInTheDocument();
+  });
+
+  it('offers a Clear filters action when a search yields no results', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Search transactions'), {
+      target: { value: 'zzz-no-such-transaction' },
+    });
+    expect(screen.getByText('No transactions found')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    // Results return and the summary reflects the full set again.
+    expect(
+      within(screen.getByTestId('transactions-summary')).getByText('3 transactions'),
+    ).toBeInTheDocument();
+  });
+
+  it('offers an Add transaction action from the empty state when there are no transactions', () => {
+    mockedUseTransactions.mockReturnValue({
+      transactions: [],
+      loading: false,
+      error: null,
+      refresh: refreshTransactionsMock,
+      createTransaction: createTransactionMock,
+      updateTransaction: updateTransactionMock,
+      deleteTransaction: deleteTransactionMock,
+    });
+
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('No transactions yet')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
+    expect(screen.getByRole('dialog', { name: 'Transaction form' })).toBeInTheDocument();
   });
 
   it('opens the default add transaction action from the split button primary action', () => {

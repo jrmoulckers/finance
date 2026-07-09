@@ -19,6 +19,7 @@ import {
   ReadAloudButton,
   SyncIndicator,
   useToast,
+  Button,
 } from '../components/common';
 import { SkipLink } from '../components/common/SkipLink';
 import { SwipeableRow } from '../components/common/SwipeableRow';
@@ -41,6 +42,7 @@ import {
   TransactionFilters,
   TransactionSort,
   TransactionEditPanel,
+  TransactionsSummaryBar,
   LazyReceiptImage,
   DEFAULT_SORT,
 } from '../components/transactions';
@@ -86,6 +88,7 @@ import {
   matchesTransactionQuery,
   sortTransactions,
 } from '../lib/transactions/filter-sort';
+import { summarizeTransactions, type TransactionSummary } from '../lib/transactions/summary';
 
 // Lazy-loaded so the quick-add affordance (dialog, presets, persistence helper)
 // lands in its own async chunk and stays out of the saturated ledger route chunk.
@@ -199,6 +202,33 @@ function getTransactionLabel(transaction: Transaction): string {
   );
 }
 
+/**
+ * Renders the net subtotal for a group of transactions (e.g. a single day),
+ * shown to the right of the date header. Currency-aware: each currency is
+ * listed separately so unlike currencies are never summed. Renders nothing
+ * when the group has no net-contributing transactions (transfers only).
+ */
+function DaySubtotal({ summary }: { summary: TransactionSummary }): React.ReactElement | null {
+  if (summary.totalsByCurrency.length === 0) {
+    return null;
+  }
+  return (
+    <span className="list-group__header-subtotal">
+      {summary.totalsByCurrency.map((total) => (
+        <CurrencyDisplay
+          key={total.currency}
+          className="list-group__header-amount"
+          amount={total.net}
+          currency={total.currency}
+          colorize
+          showSign
+          context="daily net total"
+        />
+      ))}
+    </span>
+  );
+}
+
 const VIRTUAL_REGISTER_THRESHOLD = 200;
 const VIRTUAL_REGISTER_ROW_HEIGHT = 76;
 const VIRTUAL_REGISTER_OVERSCAN = 16;
@@ -207,6 +237,7 @@ interface TransactionRegisterHeaderRow {
   readonly kind: 'header';
   readonly id: string;
   readonly label: string;
+  readonly summary: TransactionSummary;
 }
 
 interface TransactionRegisterTransactionRow {
@@ -224,11 +255,21 @@ function getRegisterViewportHeight(): number {
 }
 
 function flattenTransactionGroups(
-  groups: Array<{ date: string; label: string; transactions: Transaction[] }>,
+  groups: Array<{
+    date: string;
+    label: string;
+    transactions: Transaction[];
+    summary: TransactionSummary;
+  }>,
 ): TransactionRegisterRow[] {
   let transactionPosition = 0;
   return groups.flatMap((group) => [
-    { kind: 'header' as const, id: `header-${group.date}`, label: group.label },
+    {
+      kind: 'header' as const,
+      id: `header-${group.date}`,
+      label: group.label,
+      summary: group.summary,
+    },
     ...group.transactions.map((transaction) => ({
       kind: 'transaction' as const,
       id: transaction.id,
@@ -569,8 +610,13 @@ export const TransactionsPage: React.FC = () => {
         day: 'numeric',
       }),
       transactions: datedTransactions,
+      summary: summarizeTransactions(datedTransactions),
     }));
   }, [transactions]);
+
+  // Overall summary (count + net total) for the visible/filtered set, shown in
+  // the summary bar above the ledger (#3772).
+  const transactionsSummary = useMemo(() => summarizeTransactions(transactions), [transactions]);
 
   const transactionRegisterRows = useMemo(
     () => flattenTransactionGroups(groupedTransactions),
@@ -639,6 +685,18 @@ export const TransactionsPage: React.FC = () => {
     },
     [advancedFilters, setSearchParams],
   );
+
+  // Reset all narrowing controls (search, purpose, advanced filters) while
+  // preserving the current sort. Used by the empty-state "Clear filters" CTA
+  // (#3772).
+  const handleClearAllFilters = useCallback(() => {
+    setQuery('');
+    setSelectedPurposeFilter('all');
+    const params: Record<string, string> = {};
+    if (sortConfig.field !== DEFAULT_SORT.field) params.sortField = sortConfig.field;
+    if (sortConfig.direction !== DEFAULT_SORT.direction) params.sortDir = sortConfig.direction;
+    setSearchParams(params, { replace: true });
+  }, [sortConfig, setSearchParams]);
 
   // Form handlers
   const handleOpenCreateForm = useCallback(() => {
@@ -1451,6 +1509,10 @@ export const TransactionsPage: React.FC = () => {
             Transaction results
           </h2>
 
+          {!isLoading && !resolvedError && transactions.length > 0 && (
+            <TransactionsSummaryBar summary={transactionsSummary} />
+          )}
+
           {isLoading ? (
             <div
               style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}
@@ -1467,6 +1529,17 @@ export const TransactionsPage: React.FC = () => {
                   ? 'Try adjusting your search or filters.'
                   : 'Transactions you add will appear here.'
               }
+              action={
+                hasActiveFilters ? (
+                  <Button variant="secondary" onClick={handleClearAllFilters}>
+                    Clear filters
+                  </Button>
+                ) : (
+                  <Button variant="primary" onClick={handleOpenCreateForm}>
+                    Add transaction
+                  </Button>
+                )
+              }
             />
           ) : useCardRegister ? (
             <div className="card transaction-card-list-fallback">
@@ -1480,7 +1553,10 @@ export const TransactionsPage: React.FC = () => {
                   className="page-section"
                   aria-label={`${group.label} transaction cards`}
                 >
-                  <h3 className="list-group__header">{group.label}</h3>
+                  <h3 className="list-group__header">
+                    <span>{group.label}</span>
+                    <DaySubtotal summary={group.summary} />
+                  </h3>
                   <ul
                     className="list-group transaction-card-list"
                     role="list"
@@ -1538,7 +1614,8 @@ export const TransactionsPage: React.FC = () => {
                           role="presentation"
                           style={rowStyle}
                         >
-                          {item.label}
+                          <span>{item.label}</span>
+                          <DaySubtotal summary={item.summary} />
                         </li>
                       );
                     }
@@ -1577,7 +1654,10 @@ export const TransactionsPage: React.FC = () => {
               />
               {groupedTransactions.map((group) => (
                 <section key={group.date} className="page-section" aria-label={group.label}>
-                  <h3 className="list-group__header">{group.label}</h3>
+                  <h3 className="list-group__header">
+                    <span>{group.label}</span>
+                    <DaySubtotal summary={group.summary} />
+                  </h3>
                   <div className="card">
                     <ul className="list-group" role="list">
                       {group.transactions.map((transaction) => {

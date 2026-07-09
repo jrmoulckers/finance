@@ -54,6 +54,23 @@ const SORT_FIELD_LABELS: Record<SortField, string> = {
   category: 'Category',
 };
 
+/**
+ * Human-meaningful description of what the current direction means for the
+ * selected field (e.g. "Newest first" rather than a bare "ascending"), so the
+ * control is understandable to screen-reader and sighted users alike (#3772).
+ */
+function describeSortDirection(field: SortField, direction: SortDirection): string {
+  switch (field) {
+    case 'date':
+      return direction === 'desc' ? 'Newest first' : 'Oldest first';
+    case 'amount':
+      return direction === 'desc' ? 'Largest first' : 'Smallest first';
+    case 'payee':
+    case 'category':
+      return direction === 'asc' ? 'A to Z' : 'Z to A';
+  }
+}
+
 export const TransactionSort: React.FC<TransactionSortProps> = ({ sort, onChange }) => {
   const idPrefix = useId();
 
@@ -67,6 +84,8 @@ export const TransactionSort: React.FC<TransactionSortProps> = ({ sort, onChange
   const handleDirectionToggle = useCallback(() => {
     onChange({ ...sort, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
   }, [sort, onChange]);
+
+  const directionLabel = describeSortDirection(sort.field, sort.direction);
 
   return (
     <div className="transaction-sort" role="group" aria-label="Sort transactions">
@@ -90,8 +109,8 @@ export const TransactionSort: React.FC<TransactionSortProps> = ({ sort, onChange
         type="button"
         className="transaction-sort__direction"
         onClick={handleDirectionToggle}
-        aria-label={`Sort direction: ${sort.direction === 'asc' ? 'ascending' : 'descending'}. Click to toggle.`}
-        title={sort.direction === 'asc' ? 'Ascending' : 'Descending'}
+        aria-label={`Sort order: ${directionLabel}. Activate to reverse.`}
+        title={directionLabel}
       >
         <span aria-hidden="true">{sort.direction === 'asc' ? '↑' : '↓'}</span>
       </button>
