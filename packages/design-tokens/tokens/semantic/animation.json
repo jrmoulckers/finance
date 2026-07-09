@@ -41,5 +41,48 @@
       "duration": { "$value": "{duration.slower}", "$type": "duration" },
       "easing": { "$value": "{easing.inOut}", "$type": "cubicBezier" }
     }
+  },
+  "animationReduced": {
+    "$description": "Reduced-motion equivalents of the animation.* semantic tokens. Consumers MUST switch to these when prefers-reduced-motion / OS Reduce Motion is enabled. Every purpose collapses to a near-instant, linear (no spring/overshoot) transition so animation-driven state changes still complete without vestibular-triggering motion. Mirrors every key in `animation`.",
+    "pageTransition": {
+      "$description": "Reduced-motion page transition — near-instant crossfade",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.linear}", "$type": "cubicBezier" }
+    },
+    "listItem": {
+      "$description": "Reduced-motion list/grid item — no stagger, near-instant",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.linear}", "$type": "cubicBezier" }
+    },
+    "progress": {
+      "$description": "Reduced-motion progress — snap to value without animated sweep",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.linear}", "$type": "cubicBezier" }
+    },
+    "celebrate": {
+      "$description": "Reduced-motion celebration — spring/overshoot removed; show end state near-instantly",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.linear}", "$type": "cubicBezier" }
+    },
+    "fadeIn": {
+      "$description": "Reduced-motion fade-in — near-instant reveal",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.linear}", "$type": "cubicBezier" }
+    },
+    "fadeOut": {
+      "$description": "Reduced-motion fade-out — near-instant dismiss",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.linear}", "$type": "cubicBezier" }
+    },
+    "microInteraction": {
+      "$description": "Reduced-motion micro-interaction — instant feedback, no easing curve",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.linear}", "$type": "cubicBezier" }
+    },
+    "loading": {
+      "$description": "Reduced-motion loading — prefer a static/opacity-pulse indicator over sweeping shimmer",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.linear}", "$type": "cubicBezier" }
+    }
   }
 }

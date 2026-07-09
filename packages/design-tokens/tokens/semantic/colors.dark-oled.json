@@ -99,6 +99,46 @@
         "$value": "{color.blue.400}",
         "$type": "color",
         "$description": "Info status — 8.3:1 vs #000000"
+      },
+      "pending": {
+        "$value": "{color.teal.400}",
+        "$type": "color",
+        "$description": "Pending/in-progress status — 11.3:1 vs #000000. Distinct from info; pair with icon/label."
+      },
+      "neutral": {
+        "$value": "{color.neutral.400}",
+        "$type": "color",
+        "$description": "Neutral/uncategorized status — 8.3:1 vs #000000. Pair with icon/label."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.900}",
+        "$type": "color",
+        "$description": "Low-emphasis positive background for OLED theme. text.primary reads 8.7:1 on this fill."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.900}",
+        "$type": "color",
+        "$description": "Low-emphasis negative background for OLED theme. text.primary reads 9.6:1 on this fill."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.900}",
+        "$type": "color",
+        "$description": "Low-emphasis warning background for OLED theme. text.primary reads 8.7:1 on this fill."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.900}",
+        "$type": "color",
+        "$description": "Low-emphasis info background for OLED theme. text.primary reads 9.9:1 on this fill."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.900}",
+        "$type": "color",
+        "$description": "Low-emphasis pending background for OLED theme. text.primary reads 9.1:1 on this fill."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.900}",
+        "$type": "color",
+        "$description": "Low-emphasis neutral background for OLED theme (near true-black elevated tint)."
       }
     },
     "amount": {

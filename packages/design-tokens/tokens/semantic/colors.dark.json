@@ -26,7 +26,47 @@
       "positive": { "$value": "{color.green.500}", "$type": "color" },
       "negative": { "$value": "{color.red.500}", "$type": "color" },
       "warning": { "$value": "{color.amber.500}", "$type": "color" },
-      "info": { "$value": "{color.blue.400}", "$type": "color" }
+      "info": { "$value": "{color.blue.400}", "$type": "color" },
+      "pending": {
+        "$value": "{color.teal.400}",
+        "$type": "color",
+        "$description": "Pending/in-progress status — 10.8:1 vs background.primary. Distinct from info; pair with icon/label."
+      },
+      "neutral": {
+        "$value": "{color.neutral.400}",
+        "$type": "color",
+        "$description": "Neutral/uncategorized status — 7.9:1 vs background.primary. Pair with icon/label."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.900}",
+        "$type": "color",
+        "$description": "Low-emphasis positive background for dark theme. text.primary reads 8.7:1 on this fill."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.900}",
+        "$type": "color",
+        "$description": "Low-emphasis negative background for dark theme. text.primary reads 9.6:1 on this fill."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.900}",
+        "$type": "color",
+        "$description": "Low-emphasis warning background for dark theme. text.primary reads 8.7:1 on this fill."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.900}",
+        "$type": "color",
+        "$description": "Low-emphasis info background for dark theme. text.primary reads 9.9:1 on this fill."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.900}",
+        "$type": "color",
+        "$description": "Low-emphasis pending background for dark theme. text.primary reads 9.1:1 on this fill."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.800}",
+        "$type": "color",
+        "$description": "Low-emphasis neutral background for dark theme. text.primary reads 14.1:1 on this fill."
+      }
     },
     "amount": {
       "positive": { "$value": "{color.green.500}", "$type": "color" },

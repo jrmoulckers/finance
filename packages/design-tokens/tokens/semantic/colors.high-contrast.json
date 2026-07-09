@@ -99,6 +99,46 @@
         "$value": "{color.blue.800}",
         "$type": "color",
         "$description": "Dark blue info — 8.6:1 vs white (AAA)"
+      },
+      "pending": {
+        "$value": "{color.teal.800}",
+        "$type": "color",
+        "$description": "Dark teal pending — 7.58:1 vs white (AAA). Distinct from info; pair with icon/label."
+      },
+      "neutral": {
+        "$value": "{color.neutral.700}",
+        "$type": "color",
+        "$description": "Dark gray neutral — 10.31:1 vs white (AAA). Pair with icon/label."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.100}",
+        "$type": "color",
+        "$description": "High-contrast positive background. text.primary reads 18.3:1 on this fill."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.100}",
+        "$type": "color",
+        "$description": "High-contrast negative background. text.primary reads 16.5:1 on this fill."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.100}",
+        "$type": "color",
+        "$description": "High-contrast warning background. text.primary reads 18.1:1 on this fill."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.100}",
+        "$type": "color",
+        "$description": "High-contrast info background. text.primary reads 16.5:1 on this fill."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.100}",
+        "$type": "color",
+        "$description": "High-contrast pending background. text.primary reads 17.9:1 on this fill."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.100}",
+        "$type": "color",
+        "$description": "High-contrast neutral background. text.primary reads 18.3:1 on this fill."
       }
     },
     "amount": {

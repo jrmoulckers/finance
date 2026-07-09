@@ -8,6 +8,11 @@
       "$value": "800ms",
       "$type": "duration",
       "$description": "Extended animations: celebrations, complex transitions"
+    },
+    "reduced": {
+      "$value": "1ms",
+      "$type": "duration",
+      "$description": "Reduced-motion duration — near-instant. Use for every animation when prefers-reduced-motion / Reduce Motion is enabled. 1ms (not 0ms) keeps transitionend/animationend events firing so state logic still completes."
     }
   },
   "easing": {
@@ -15,6 +20,11 @@
     "in": { "$value": "cubic-bezier(0.4, 0, 1, 1)", "$type": "cubicBezier" },
     "out": { "$value": "cubic-bezier(0, 0, 0.2, 1)", "$type": "cubicBezier" },
     "inOut": { "$value": "cubic-bezier(0.4, 0, 0.2, 1)", "$type": "cubicBezier" },
+    "linear": {
+      "$value": "cubic-bezier(0, 0, 1, 1)",
+      "$type": "cubicBezier",
+      "$description": "Linear (no acceleration, no overshoot) — used by reduced-motion equivalents to neutralize spring/bounce."
+    },
     "standard": {
       "$value": "cubic-bezier(0.2, 0, 0, 1)",
       "$type": "cubicBezier",
