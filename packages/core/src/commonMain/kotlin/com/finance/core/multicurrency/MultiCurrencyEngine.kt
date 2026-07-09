@@ -52,6 +52,33 @@ object MultiCurrencyEngine {
             return null
         }
 
+        /**
+         * Look up a rate **including stale entries**, reporting the rate's
+         * observation time and whether it is stale relative to [maxAgeSeconds].
+         *
+         * Unlike [get] — which returns `null` once a cached rate exceeds
+         * [maxAgeSeconds] — this returns the cached rate regardless of age so
+         * callers can degrade gracefully offline (use a possibly out-of-date
+         * rate while disclosing that it is stale). Returns `null` only when
+         * neither the direct nor the inverse pair is cached at all.
+         *
+         * @param from Source currency.
+         * @param to Target currency.
+         * @param now Reference time used to evaluate staleness.
+         * @return A [RateLookup], or `null` when no rate (fresh or stale) exists.
+         */
+        @Suppress("ReturnCount")
+        fun lookup(from: Currency, to: Currency, now: Instant = Clock.System.now()): RateLookup? {
+            if (from == to) return RateLookup(1.0, now, isStale = false)
+            cache[cacheKey(from, to)]?.let {
+                return RateLookup(it.rate, it.timestamp, isStale(it, now))
+            }
+            cache[cacheKey(to, from)]?.let {
+                return RateLookup(1.0 / it.rate, it.timestamp, isStale(it, now))
+            }
+            return null
+        }
+
         fun putAll(rates: Map<Pair<Currency, Currency>, Double>, timestamp: Instant) { for ((pair, rate) in rates) put(pair.first, pair.second, rate, timestamp) }
         fun clear() { cache.clear() }
         val size: Int get() = cache.size
@@ -90,6 +117,16 @@ object MultiCurrencyEngine {
 
 @Serializable data class CurrencyInfo(val code: String, val displayName: String, val symbol: String, val decimalPlaces: Int)
 data class CachedRate(val rate: Double, val timestamp: Instant)
+
+/**
+ * Result of a staleness-aware [MultiCurrencyEngine.ExchangeRateCache.lookup].
+ *
+ * @property rate The exchange rate (direct, or inverted from a reverse entry).
+ * @property asOf When the underlying rate was observed/cached.
+ * @property isStale `true` when the cached rate is older than the cache TTL.
+ */
+data class RateLookup(val rate: Double, val asOf: Instant, val isStale: Boolean)
+
 data class CurrencyAmount(val amount: Cents, val currency: Currency)
 data class ConversionResult(val originalAmount: Cents, val convertedAmount: Cents, val fromCurrency: Currency, val toCurrency: Currency, val rateUsed: Double)
 data class AggregationResult(val totalAmount: Cents, val targetCurrency: Currency, val conversions: List<ConversionResult>) { val currencyCount: Int get() = conversions.map { it.fromCurrency }.distinct().size }

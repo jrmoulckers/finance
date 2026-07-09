@@ -61,14 +61,14 @@ object MultiCurrencyService {
             )
         }
 
-        val rate = rateCache.get(fromCurrency, toCurrency, now) ?: return null
-        val converted = MoneyOperations.multiply(amount, rate)
+        val lookup = rateCache.lookup(fromCurrency, toCurrency, now) ?: return null
+        val converted = MoneyOperations.multiply(amount, lookup.rate)
 
         return ConversionAtEntryResult(
             convertedAmount = converted,
-            rateUsed = rate,
-            rateTimestamp = now,
-            isOfflineRate = false,
+            rateUsed = lookup.rate,
+            rateTimestamp = lookup.asOf,
+            isOfflineRate = lookup.isStale,
         )
     }
 
@@ -127,6 +127,7 @@ object MultiCurrencyService {
     ): MultiCurrencyReportResult? {
         val lineItems = mutableListOf<ReportLineItem>()
         var total = Cents.ZERO
+        var anyStale = false
 
         for (ca in amounts) {
             if (ca.currency == displayCurrency) {
@@ -141,16 +142,17 @@ object MultiCurrencyService {
                     ),
                 )
             } else {
-                val rate = rateCache.get(ca.currency, displayCurrency, now) ?: return null
-                val converted = MoneyOperations.multiply(ca.amount, rate)
+                val lookup = rateCache.lookup(ca.currency, displayCurrency, now) ?: return null
+                val converted = MoneyOperations.multiply(ca.amount, lookup.rate)
                 total = total + converted
+                if (lookup.isStale) anyStale = true
                 lineItems.add(
                     ReportLineItem(
                         sourceAmount = ca.amount,
                         sourceCurrency = ca.currency,
                         convertedAmount = converted,
-                        rateUsed = rate,
-                        isStale = false,
+                        rateUsed = lookup.rate,
+                        isStale = lookup.isStale,
                     ),
                 )
             }
@@ -160,19 +162,24 @@ object MultiCurrencyService {
             totalInDisplayCurrency = total,
             displayCurrency = displayCurrency,
             lineItems = lineItems,
-            hasStaleRates = false,
+            hasStaleRates = anyStale,
         )
     }
 
     /**
-     * Aggregate with offline fallback — uses the cache regardless of staleness,
-     * but flags stale rates in the result.
+     * Aggregate with offline fallback — uses cached rates regardless of age,
+     * flagging any rate observed before [staleCutoff] as stale.
+     *
+     * Unlike [aggregateForReport] (which judges staleness by the cache TTL),
+     * this variant judges staleness by comparing each rate's observation time
+     * against an explicit [staleCutoff]. A rate is always used when present;
+     * `null` is returned only when a required pair has no cached rate at all.
      *
      * @param amounts List of (amount, currency) pairs.
      * @param displayCurrency Target display currency.
      * @param rateCache Exchange rate cache (may contain stale entries).
-     * @param staleCutoff Rates older than this instant are considered stale.
-     * @return [MultiCurrencyReportResult] or `null` if no rate exists at all.
+     * @param staleCutoff Rates observed before this instant are flagged stale.
+     * @return [MultiCurrencyReportResult] or `null` if a rate is entirely absent.
      */
     fun aggregateOffline(
         amounts: List<CurrencyAmount>,
@@ -180,8 +187,49 @@ object MultiCurrencyService {
         rateCache: MultiCurrencyEngine.ExchangeRateCache,
         staleCutoff: Instant,
     ): MultiCurrencyReportResult? {
-        // In practice, the caller should pass a cache that doesn't expire for offline use
-        // For now, delegate to the standard aggregation
-        return aggregateForReport(amounts, displayCurrency, rateCache, staleCutoff)
+        val lineItems = mutableListOf<ReportLineItem>()
+        var total = Cents.ZERO
+        var anyStale = false
+
+        for (ca in amounts) {
+            if (ca.currency == displayCurrency) {
+                total = total + ca.amount
+                lineItems.add(
+                    ReportLineItem(
+                        sourceAmount = ca.amount,
+                        sourceCurrency = ca.currency,
+                        convertedAmount = ca.amount,
+                        rateUsed = 1.0,
+                        isStale = false,
+                    ),
+                )
+            } else {
+                // Pass staleCutoff as `now` only to satisfy the signature; the
+                // returned rate is used regardless of the cache's own TTL and we
+                // judge staleness ourselves from the rate's observation time.
+                val lookup = rateCache.lookup(ca.currency, displayCurrency, staleCutoff)
+                    ?: return null
+                val stale = lookup.asOf < staleCutoff
+                val converted = MoneyOperations.multiply(ca.amount, lookup.rate)
+                total = total + converted
+                if (stale) anyStale = true
+                lineItems.add(
+                    ReportLineItem(
+                        sourceAmount = ca.amount,
+                        sourceCurrency = ca.currency,
+                        convertedAmount = converted,
+                        rateUsed = lookup.rate,
+                        isStale = stale,
+                    ),
+                )
+            }
+        }
+
+        return MultiCurrencyReportResult(
+            totalInDisplayCurrency = total,
+            displayCurrency = displayCurrency,
+            lineItems = lineItems,
+            hasStaleRates = anyStale,
+        )
     }
 }

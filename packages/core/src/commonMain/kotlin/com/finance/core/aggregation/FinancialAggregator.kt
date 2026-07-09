@@ -208,6 +208,32 @@ object FinancialAggregator {
     }
 
     /**
+     * Income grouped by category for a date range.
+     * Returns map of categoryId -> total income (always non-negative cents).
+     *
+     * Mirrors [spendingByCategory] for the income side so income-vs-expense
+     * reporting can be broken down symmetrically. Applies the same filters:
+     * only [TransactionType.INCOME] transactions that are not deleted and not
+     * [TransactionStatus.VOID] are counted. Uncategorised income is grouped
+     * under the `null` key, consistent with [spendingByCategory].
+     */
+    fun incomeByCategory(
+        transactions: List<Transaction>,
+        from: LocalDate,
+        to: LocalDate,
+    ): Map<SyncId?, Cents> {
+        return transactions
+            .filter {
+                it.type == TransactionType.INCOME &&
+                    it.date >= from && it.date <= to &&
+                    it.deletedAt == null &&
+                    it.status != TransactionStatus.VOID
+            }
+            .groupBy { it.categoryId }
+            .mapValues { (_, txns) -> Cents(txns.sumOf { it.amount.abs().amount }) }
+    }
+
+    /**
      * Spending grouped by day for trend analysis.
      */
     fun dailySpending(
