@@ -32,6 +32,8 @@ import { useTaxReserve } from '../hooks/useTaxReserve';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
 import { getCurrentLocale } from '../lib/i18n';
+import { getGoalDueStatus, getGoalProgress } from '../lib/goals';
+import { GoalStatusBadge } from '../components/goals/GoalStatusBadge';
 import {
   buildSavingsAnalysisSnapshot,
   generateSavingsNudges,
@@ -46,6 +48,15 @@ import { getCurrentMonthBounds, getNextQuarterlyTaxDueDate } from '../lib/tax-re
 
 const PLANNER_STORAGE_KEY = 'finance:savings-planner-overrides';
 const DISMISSED_NUDGES_STORAGE_KEY = 'finance:savings-dismissed-nudges';
+
+/** Status segments available on the goal list filter (#3776, item 5). */
+type GoalStatusFilter = 'all' | 'active' | 'completed';
+
+const GOAL_STATUS_FILTERS: ReadonlyArray<{ id: GoalStatusFilter; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'active', label: 'Active' },
+  { id: 'completed', label: 'Completed' },
+];
 
 type PlannerSelection = {
   monthlyContributionCents: number;
@@ -177,6 +188,8 @@ export const GoalsPage: React.FC = () => {
   const [plannerSelections, setPlannerSelections] =
     useState<Record<string, PlannerSelection>>(loadPlannerSelections);
   const [dismissedNudges, setDismissedNudges] = useState<string[]>(loadDismissedNudges);
+  const [statusFilter, setStatusFilter] = useState<GoalStatusFilter>('all');
+  const [celebration, setCelebration] = useState('');
   const {
     goals,
     loading,
@@ -234,6 +247,17 @@ export const GoalsPage: React.FC = () => {
   const toast = useOptionalToast();
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount.amount, 0);
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount.amount, 0);
+
+  const hasNonActiveGoals = useMemo(() => goals.some((goal) => goal.status !== 'ACTIVE'), [goals]);
+  const visibleGoals = useMemo(() => {
+    if (statusFilter === 'active') {
+      return goals.filter((goal) => goal.status === 'ACTIVE');
+    }
+    if (statusFilter === 'completed') {
+      return goals.filter((goal) => goal.status === 'COMPLETED');
+    }
+    return goals;
+  }, [goals, statusFilter]);
 
   const aiLoading = accountsState.loading || categoriesState.loading || transactionsState.loading;
   const aiError = accountsState.error || categoriesState.error || transactionsState.error;
@@ -491,18 +515,36 @@ export const GoalsPage: React.FC = () => {
 
   const handleSubmitContribution = useCallback(
     async (input: GoalContributionInput) => {
+      const previousGoal = goals.find((goal) => goal.id === input.goalId) ?? null;
+      const wasComplete = previousGoal ? getGoalProgress(previousGoal).isComplete : false;
+
       const updatedGoal = contributeToGoal(input.goalId, input);
       if (updatedGoal === null) {
         throw new Error('Failed to contribute to goal.');
       }
 
-      toast?.showToast({
-        type: 'success',
-        message: `Contribution added to ${updatedGoal.name}`,
-        duration: 3000,
-      });
+      const justCompleted = !wasComplete && getGoalProgress(updatedGoal).isComplete;
+
+      if (justCompleted) {
+        // Reaching a goal is the emotional payoff of the whole feature, so make
+        // the moment felt — a celebratory toast plus an assertive screen-reader
+        // announcement (#3776, item 7). No new animation is introduced, so the
+        // reduced-motion experience is unaffected.
+        setCelebration(`Goal reached! You fully funded ${updatedGoal.name}.`);
+        toast?.showToast({
+          type: 'success',
+          message: `🎉 Goal reached! You fully funded ${updatedGoal.name}.`,
+          duration: 5000,
+        });
+      } else {
+        toast?.showToast({
+          type: 'success',
+          message: `Contribution added to ${updatedGoal.name}`,
+          duration: 3000,
+        });
+      }
     },
-    [contributeToGoal, toast],
+    [contributeToGoal, goals, toast],
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -524,9 +566,31 @@ export const GoalsPage: React.FC = () => {
     }
   }, [deleteGoal, deletingGoal]);
 
+  const handleVisibleReorder = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      // The list may be filtered, so translate positions within the visible
+      // subset back to their indices in the full goal list before persisting.
+      const fromGoal = visibleGoals[fromIndex];
+      const toGoal = visibleGoals[toIndex];
+      if (!fromGoal || !toGoal) {
+        return;
+      }
+      const globalFrom = goals.findIndex((goal) => goal.id === fromGoal.id);
+      const globalTo = goals.findIndex((goal) => goal.id === toGoal.id);
+      if (globalFrom < 0 || globalTo < 0) {
+        return;
+      }
+      reorderGoals(globalFrom, globalTo);
+    },
+    [goals, reorderGoals, visibleGoals],
+  );
+
   return (
     <>
       <OfflineBanner />
+      <div className="sr-only" role="status" aria-live="assertive">
+        {celebration}
+      </div>
       <div className="page-section__header" style={{ marginBottom: 'var(--spacing-6)' }}>
         <h2
           style={{
@@ -783,215 +847,251 @@ export const GoalsPage: React.FC = () => {
             />
           ) : (
             <section aria-label="Goal list">
-              <SortableList
-                items={goals}
-                getItemId={(goal) => goal.id}
-                getItemLabel={(goal) => goal.name}
-                onReorder={reorderGoals}
-                className="card-grid"
-                ariaLabel="Goal list"
-                renderItem={(goal, { itemProps, dragHandleProps }) => {
-                  const percentComplete =
-                    goal.targetAmount.amount > 0
-                      ? Math.round((goal.currentAmount.amount / goal.targetAmount.amount) * 100)
-                      : 0;
-                  const remainingAmount = Math.max(
-                    goal.targetAmount.amount - goal.currentAmount.amount,
-                    0,
-                  );
-                  const goalStatus = getGoalStatusIndicator(percentComplete);
-                  const targetDate = goal.targetDate
-                    ? new Date(`${goal.targetDate}T00:00:00`)
-                    : null;
-                  const daysLeft =
-                    targetDate === null
-                      ? null
-                      : Math.max(0, Math.ceil((targetDate.getTime() - Date.now()) / 86400000));
-                  const shareEvent = goalCelebrationEvent({
-                    goalName: goal.name,
-                    percentComplete,
-                    amountCents: goal.currentAmount.amount,
-                    currency: goal.currency.code,
-                  });
-
-                  return (
-                    <article
-                      {...itemProps}
-                      key={goal.id}
-                      className={`${itemProps.className} card`}
-                      role="listitem"
-                      aria-label={`${goal.name}: ${percentComplete}%, ${goalStatus.label}`}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          gap: 'var(--spacing-3)',
-                          marginBottom: 'var(--spacing-3)',
-                        }}
+              {hasNonActiveGoals && (
+                <div
+                  className="goal-status-filter"
+                  role="group"
+                  aria-label="Filter goals by status"
+                >
+                  {GOAL_STATUS_FILTERS.map((option) => {
+                    const isSelected = statusFilter === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={`goal-status-filter__button${
+                          isSelected ? ' goal-status-filter__button--selected' : ''
+                        }`}
+                        aria-pressed={isSelected}
+                        onClick={() => setStatusFilter(option.id)}
                       >
-                        <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                          <Link
-                            to={`/goals/${goal.id}`}
-                            style={{ textDecoration: 'none', color: 'inherit' }}
-                            aria-label={`View details for ${goal.name}`}
-                          >
-                            <AppIcon name={getGoalIcon(goal.icon)} /> {goal.name}
-                          </Link>
-                        </h3>
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {visibleGoals.length === 0 ? (
+                <p role="status" style={{ color: 'var(--semantic-text-secondary)' }}>
+                  No goals match this filter.
+                </p>
+              ) : (
+                <SortableList
+                  items={visibleGoals}
+                  getItemId={(goal) => goal.id}
+                  getItemLabel={(goal) => goal.name}
+                  onReorder={handleVisibleReorder}
+                  className="card-grid"
+                  ariaLabel="Goal list"
+                  renderItem={(goal, { itemProps, dragHandleProps }) => {
+                    const progress = getGoalProgress(goal);
+                    const percentComplete = progress.displayPercent;
+                    const remainingAmount = progress.remainingCents;
+                    const goalStatus = getGoalStatusIndicator(progress.rawPercent);
+                    const targetDate = goal.targetDate
+                      ? new Date(`${goal.targetDate}T00:00:00`)
+                      : null;
+                    const dueStatus = getGoalDueStatus(goal.targetDate);
+                    const dueLabel = !dueStatus.hasDate
+                      ? 'No due date'
+                      : dueStatus.isPastDue
+                        ? 'Past due'
+                        : dueStatus.isDueToday
+                          ? 'Due today'
+                          : `${dueStatus.daysDelta} ${pluralize(dueStatus.daysDelta ?? 0, 'day')} left`;
+                    const progressValueText = `${formatCurrencyAmount(
+                      goal.currentAmount.amount,
+                      goal.currency.code,
+                    )} of ${formatCurrencyAmount(
+                      goal.targetAmount.amount,
+                      goal.currency.code,
+                    )} saved, ${percentComplete}%`;
+                    const shareEvent = goalCelebrationEvent({
+                      goalName: goal.name,
+                      percentComplete,
+                      amountCents: goal.currentAmount.amount,
+                      currency: goal.currency.code,
+                    });
+
+                    return (
+                      <article
+                        {...itemProps}
+                        key={goal.id}
+                        className={`${itemProps.className} card`}
+                        role="listitem"
+                        aria-label={`${goal.name}: ${percentComplete}%, ${goalStatus.label}`}
+                      >
                         <div
                           style={{
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 'var(--spacing-2)',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            gap: 'var(--spacing-3)',
+                            marginBottom: 'var(--spacing-3)',
                           }}
                         >
-                          <button
-                            {...dragHandleProps}
-                            className={`${dragHandleProps.className ?? ''} icon-button`.trim()}
-                            aria-label={`Reorder ${goal.name}`}
-                            title="Reorder goal"
-                          >
-                            <span aria-hidden="true">⋮⋮</span>
-                          </button>
-                          <span
-                            style={{
-                              fontSize: 'var(--type-scale-caption-font-size)',
-                              color: 'var(--semantic-text-secondary)',
-                            }}
-                          >
-                            {targetDate !== null
-                              ? targetDate.toLocaleDateString(getCurrentLocale(), {
-                                  month: 'short',
-                                  year: 'numeric',
-                                })
-                              : 'No target date'}
-                          </span>
+                          <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
+                            <Link
+                              to={`/goals/${goal.id}`}
+                              style={{ textDecoration: 'none', color: 'inherit' }}
+                              aria-label={`View details for ${goal.name}`}
+                            >
+                              <AppIcon name={getGoalIcon(goal.icon)} /> {goal.name}
+                            </Link>
+                          </h3>
                           <div
                             style={{
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 'var(--spacing-1)',
+                              gap: 'var(--spacing-2)',
                             }}
                           >
                             <button
-                              type="button"
-                              className="icon-button"
-                              onClick={() => handleEditGoal(goal)}
-                              aria-label={`Edit ${goal.name}`}
+                              {...dragHandleProps}
+                              className={`${dragHandleProps.className ?? ''} icon-button`.trim()}
+                              aria-label={`Reorder ${goal.name}`}
+                              title="Reorder goal"
                             >
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 20h9" />
-                                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-                              </svg>
+                              <span aria-hidden="true">⋮⋮</span>
                             </button>
-                            <button
-                              type="button"
-                              className="icon-button icon-button--delete"
-                              onClick={() => handleRequestDelete(goal)}
-                              aria-label={`Delete ${goal.name}`}
+                            <span
+                              style={{
+                                fontSize: 'var(--type-scale-caption-font-size)',
+                                color: 'var(--semantic-text-secondary)',
+                              }}
                             >
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M3 6h18" />
-                                <path d="M8 6V4h8v2" />
-                                <path d="M19 6l-1 14H6L5 6" />
-                                <path d="M10 11v6" />
-                                <path d="M14 11v6" />
-                              </svg>
-                            </button>
+                              {targetDate !== null
+                                ? targetDate.toLocaleDateString(getCurrentLocale(), {
+                                    month: 'short',
+                                    year: 'numeric',
+                                  })
+                                : 'No target date'}
+                            </span>
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--spacing-1)',
+                              }}
+                            >
+                              <button
+                                type="button"
+                                className="icon-button"
+                                onClick={() => handleEditGoal(goal)}
+                                aria-label={`Edit ${goal.name}`}
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M12 20h9" />
+                                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                className="icon-button icon-button--delete"
+                                onClick={() => handleRequestDelete(goal)}
+                                aria-label={`Delete ${goal.name}`}
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M3 6h18" />
+                                  <path d="M8 6V4h8v2" />
+                                  <path d="M19 6l-1 14H6L5 6" />
+                                  <path d="M10 11v6" />
+                                  <path d="M14 11v6" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          marginBottom: 'var(--spacing-2)',
-                        }}
-                      >
-                        <CurrencyDisplay
-                          amount={goal.currentAmount.amount}
-                          currency={goal.currency.code}
-                        />
-                        <CurrencyDisplay
-                          amount={goal.targetAmount.amount}
-                          currency={goal.currency.code}
-                        />
-                      </div>
-                      <div
-                        className="progress-bar"
-                        role="progressbar"
-                        aria-valuenow={Math.min(percentComplete, 100)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-label={`${goal.name}: ${percentComplete} percent of goal reached, ${goalStatus.label}`}
-                      >
                         <div
-                          className={`progress-bar__fill progress-bar__fill--${goalStatus.tone}`}
-                          style={{ width: `${Math.min(percentComplete, 100)}%` }}
-                        />
-                      </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          marginTop: 'var(--spacing-2)',
-                          fontSize: 'var(--type-scale-caption-font-size)',
-                          color: 'var(--semantic-text-secondary)',
-                        }}
-                      >
-                        <span>
-                          <AppIcon name={goalStatus.icon} />{' '}
-                          {percentComplete >= 100 ? (
-                            'Goal reached!'
-                          ) : (
-                            <>
-                              <CurrencyDisplay
-                                amount={remainingAmount}
-                                currency={goal.currency.code}
-                                context={`remaining for ${goal.name} goal`}
-                              />{' '}
-                              to go
-                            </>
-                          )}
-                        </span>
-                        <span>
-                          {daysLeft === null
-                            ? 'No due date'
-                            : daysLeft > 0
-                              ? `${daysLeft} ${pluralize(daysLeft, 'day')} left`
-                              : 'Past due'}
-                        </span>
-                      </div>
-                      <SharedGoalBadge goalId={goal.id} goalName={goal.name} />
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'flex-end',
-                          gap: 'var(--spacing-2)',
-                          marginTop: 'var(--spacing-4)',
-                        }}
-                      >
-                        {shareEvent && (
-                          <ShareCelebrationButton
-                            event={shareEvent}
-                            label={`Share ${goal.name} progress`}
-                          />
-                        )}
-                        <button
-                          type="button"
-                          className="form-button form-button--secondary"
-                          onClick={() => handleContributeGoal(goal)}
-                          aria-label={`Contribute to ${goal.name}`}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            marginBottom: 'var(--spacing-2)',
+                          }}
                         >
-                          Contribute
-                        </button>
-                      </div>
-                    </article>
-                  );
-                }}
-              />
+                          <CurrencyDisplay
+                            amount={goal.currentAmount.amount}
+                            currency={goal.currency.code}
+                          />
+                          <CurrencyDisplay
+                            amount={goal.targetAmount.amount}
+                            currency={goal.currency.code}
+                          />
+                        </div>
+                        {goal.status !== 'ACTIVE' && (
+                          <div style={{ marginBottom: 'var(--spacing-2)' }}>
+                            <GoalStatusBadge status={goal.status} />
+                          </div>
+                        )}
+                        <div
+                          className="progress-bar"
+                          role="progressbar"
+                          aria-valuenow={percentComplete}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuetext={progressValueText}
+                          aria-label={`${goal.name}: ${percentComplete} percent of goal reached, ${goalStatus.label}`}
+                        >
+                          <div
+                            className={`progress-bar__fill progress-bar__fill--${goalStatus.tone}`}
+                            style={{ width: `${percentComplete}%` }}
+                          />
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            marginTop: 'var(--spacing-2)',
+                            fontSize: 'var(--type-scale-caption-font-size)',
+                            color: 'var(--semantic-text-secondary)',
+                          }}
+                        >
+                          <span>
+                            <AppIcon name={goalStatus.icon} />{' '}
+                            {progress.isComplete ? (
+                              'Goal reached!'
+                            ) : (
+                              <>
+                                <CurrencyDisplay
+                                  amount={remainingAmount}
+                                  currency={goal.currency.code}
+                                  context={`remaining for ${goal.name} goal`}
+                                />{' '}
+                                to go
+                              </>
+                            )}
+                          </span>
+                          <span>{dueLabel}</span>
+                        </div>
+                        <SharedGoalBadge goalId={goal.id} goalName={goal.name} />
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: 'var(--spacing-2)',
+                            marginTop: 'var(--spacing-4)',
+                          }}
+                        >
+                          {shareEvent && (
+                            <ShareCelebrationButton
+                              event={shareEvent}
+                              label={`Share ${goal.name} progress`}
+                            />
+                          )}
+                          <button
+                            type="button"
+                            className="form-button form-button--secondary"
+                            onClick={() => handleContributeGoal(goal)}
+                            aria-label={`Contribute to ${goal.name}`}
+                          >
+                            Contribute
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  }}
+                />
+              )}
             </section>
           )}
         </>

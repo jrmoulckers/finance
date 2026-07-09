@@ -115,6 +115,14 @@ export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
   const currency = input.currency ?? Currencies.USD;
   const sortOrder = input.sortOrder ?? 0;
 
+  const targetAmount = input.targetAmount.amount;
+  const currentAmount = input.currentAmount?.amount ?? 0;
+  // A goal created already at or above its target is complete on arrival, so it
+  // is never left in a self-contradictory "Active but reached" state (#3776,
+  // item 8). An explicitly supplied status always wins.
+  const status =
+    input.status ?? (targetAmount > 0 && currentAmount >= targetAmount ? 'COMPLETED' : 'ACTIVE');
+
   execute(
     db,
     `INSERT INTO goal (
@@ -153,7 +161,7 @@ export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
       input.currentAmount?.amount ?? 0,
       currency.code,
       input.targetDate ?? null,
-      input.status ?? 'ACTIVE',
+      status,
       input.icon ?? null,
       input.color ?? null,
       input.accountId ?? null,

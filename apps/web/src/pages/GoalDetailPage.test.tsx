@@ -4,11 +4,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-import { useGoals } from '../hooks';
+import { useGoals, useAccounts } from '../hooks';
 import { GoalDetailPage } from './GoalDetailPage';
 
 vi.mock('../hooks', () => ({
   useGoals: vi.fn(),
+  useAccounts: vi.fn(),
 }));
 
 vi.mock('../components/forms', () => ({
@@ -16,6 +17,7 @@ vi.mock('../components/forms', () => ({
 }));
 
 const mockedUseGoals = vi.mocked(useGoals);
+const mockedUseAccounts = vi.mocked(useAccounts);
 
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -41,6 +43,30 @@ function renderWithRoute(goalId: string = 'goal-1') {
 describe('GoalDetailPage', () => {
   beforeEach(() => {
     refreshMock.mockReset();
+
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        {
+          id: 'account-2',
+          householdId: 'household-1',
+          name: 'Brokerage',
+          type: 'INVESTMENT',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 250000 },
+          isArchived: false,
+          sortOrder: 1,
+          icon: null,
+          color: null,
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
 
     mockedUseGoals.mockReturnValue({
       goals: [
