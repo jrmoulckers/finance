@@ -423,6 +423,43 @@ describe('BudgetsPage', () => {
     expect(progressBars.length).toBe(9);
   });
 
+  it('exposes the true usage percentage and status via aria-valuetext (#3774)', () => {
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
+    // Housing is spent 120000 of 120000 = 100% → genuinely over budget.
+    const ring = screen.getByRole('progressbar', { name: /Housing budget/i });
+    expect(ring.getAttribute('aria-valuetext')).toContain('100% used');
+    expect(ring.getAttribute('aria-valuetext')).toContain('Over budget');
+  });
+
+  it('validates, adds, and removes planner income events (#3774)', () => {
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
+
+    const addButton = screen.getByRole('button', { name: /add income event/i });
+
+    // Submitting without an amount surfaces an accessible error instead of failing silently.
+    fireEvent.click(addButton);
+    expect(screen.getByText(/greater than zero/i)).toBeInTheDocument();
+
+    // A valid amount adds a removable income row and clears the error.
+    fireEvent.change(screen.getByLabelText('Income amount'), { target: { value: '2000' } });
+    fireEvent.click(addButton);
+    expect(screen.queryByText(/greater than zero/i)).not.toBeInTheDocument();
+
+    const removeButton = screen.getByRole('button', { name: /remove income event/i });
+    expect(removeButton).toBeInTheDocument();
+
+    fireEvent.click(removeButton);
+    expect(screen.queryByRole('button', { name: /remove income event/i })).not.toBeInTheDocument();
+  });
+
   it('shows the Food & Meals quick-start template card', () => {
     render(
       <MemoryRouter>
