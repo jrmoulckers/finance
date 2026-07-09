@@ -23,10 +23,66 @@
       "disabled": { "$value": "{color.neutral.300}", "$type": "color" }
     },
     "status": {
-      "positive": { "$value": "{color.green.600}", "$type": "color" },
-      "negative": { "$value": "{color.red.600}", "$type": "color" },
-      "warning": { "$value": "{color.amber.600}", "$type": "color" },
-      "info": { "$value": "{color.blue.600}", "$type": "color" }
+      "positive": {
+        "$value": "{color.green.700}",
+        "$type": "color",
+        "$description": "Positive/on-track status — 5.02:1 vs background.primary (WCAG AA); retargeted from green.600 (3.30:1, failed AA). Pair with icon/label, never color alone."
+      },
+      "negative": {
+        "$value": "{color.red.600}",
+        "$type": "color",
+        "$description": "Negative/error status — 4.83:1 vs background.primary (WCAG AA). Pair with icon/label."
+      },
+      "warning": {
+        "$value": "{color.amber.700}",
+        "$type": "color",
+        "$description": "Warning status — 5.02:1 vs background.primary (WCAG AA); retargeted from amber.600 (3.19:1, failed AA). Pair with icon/label."
+      },
+      "info": {
+        "$value": "{color.blue.600}",
+        "$type": "color",
+        "$description": "Informational status — 5.17:1 vs background.primary (WCAG AA)."
+      },
+      "pending": {
+        "$value": "{color.teal.700}",
+        "$type": "color",
+        "$description": "Pending/in-progress status (processing, syncing, unsettled) — 5.47:1 vs background.primary (WCAG AA). Distinct from info; pair with icon/label."
+      },
+      "neutral": {
+        "$value": "{color.neutral.600}",
+        "$type": "color",
+        "$description": "Neutral/uncategorized status — 7.56:1 vs background.primary (WCAG AAA). Pair with icon/label."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.50}",
+        "$type": "color",
+        "$description": "Low-emphasis positive background (badges/banners). text.primary reads 16.9:1 on this fill."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.50}",
+        "$type": "color",
+        "$description": "Low-emphasis negative background. text.primary reads 16.2:1 on this fill."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.50}",
+        "$type": "color",
+        "$description": "Low-emphasis warning background. text.primary reads 17.1:1 on this fill."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.50}",
+        "$type": "color",
+        "$description": "Low-emphasis info background. text.primary reads 16.3:1 on this fill."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.50}",
+        "$type": "color",
+        "$description": "Low-emphasis pending background. text.primary reads 17.0:1 on this fill."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.100}",
+        "$type": "color",
+        "$description": "Low-emphasis neutral background. text.primary reads 16.1:1 on this fill."
+      }
     },
     "amount": {
       "positive": { "$value": "{color.green.700}", "$type": "color" },
