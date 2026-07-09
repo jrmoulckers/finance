@@ -29,7 +29,17 @@ enum class RecurrenceFrequency {
  * @property endDate Optional end boundary; no occurrences generated after this date.
  * @property dayOfMonth Optional day-of-month override for MONTHLY/YEARLY (1–31).
  *   Clamped to the last day of shorter months (e.g., 31 → 28 for Feb in non-leap years).
+ *   When `null`, the day-of-month of [startDate] is used as the recurrence anchor and is
+ *   preserved across short months (e.g., a Jan-31 anchor still lands on Mar 31, not Mar 28).
  * @property dayOfWeek Optional day-of-week for WEEKLY/BIWEEKLY recurrences.
+ * @property count Optional RRULE-style occurrence cap: generate at most this many occurrences
+ *   counting from [startDate] (inclusive). `null` means unbounded (subject to [endDate]).
+ *   When both [count] and [endDate] are set, whichever limit is reached first wins.
+ * @property skipDates Occurrence dates to omit from generation (RRULE `EXDATE` semantics).
+ *   A skipped occurrence still consumes its slot for [count] purposes and does not shift the
+ *   cadence of later occurrences.
+ * @property isPaused When `true`, the rule is temporarily suspended and generates no
+ *   occurrences until re-enabled. The underlying schedule definition is preserved.
  */
 @Serializable
 data class RecurrenceRule(
@@ -40,6 +50,9 @@ data class RecurrenceRule(
     val endDate: LocalDate? = null,
     val dayOfMonth: Int? = null,
     val dayOfWeek: DayOfWeek? = null,
+    val count: Int? = null,
+    val skipDates: Set<LocalDate> = emptySet(),
+    val isPaused: Boolean = false,
 ) {
     init {
         require(interval >= 1) { "Interval must be at least 1, was $interval" }
@@ -48,6 +61,9 @@ data class RecurrenceRule(
         }
         if (endDate != null) {
             require(endDate >= startDate) { "endDate ($endDate) must be on or after startDate ($startDate)" }
+        }
+        if (count != null) {
+            require(count >= 1) { "count must be at least 1 when set, was $count" }
         }
     }
 }

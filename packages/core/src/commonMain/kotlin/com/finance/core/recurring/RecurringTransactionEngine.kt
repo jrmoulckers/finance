@@ -34,12 +34,15 @@ object RecurringTransactionEngine {
      *
      * @return Sorted list of [LocalDate]s in ascending order.
      */
+    @Suppress("LoopWithTooManyJumpStatements")
     fun generateUpcoming(
         rule: RecurrenceRule,
         from: LocalDate,
         to: LocalDate,
     ): List<LocalDate> {
         require(from <= to) { "from ($from) must be <= to ($to)" }
+
+        if (rule.isPaused) return emptyList()
 
         val effectiveEnd = when {
             rule.endDate != null && rule.endDate < to -> rule.endDate
@@ -48,9 +51,14 @@ object RecurringTransactionEngine {
 
         val dates = mutableListOf<LocalDate>()
         var current = rule.startDate
+        var occurrenceCount = 0
 
         while (current <= effectiveEnd) {
-            if (current >= from) {
+            // Respect the RRULE-style COUNT cap (counts every slot from startDate).
+            if (rule.count != null && occurrenceCount >= rule.count) break
+            occurrenceCount++
+
+            if (current >= from && current !in rule.skipDates) {
                 dates.add(current)
             }
             val previous = current
@@ -60,6 +68,41 @@ object RecurringTransactionEngine {
         }
 
         return dates
+    }
+
+    /**
+     * Find the first occurrence of [rule] on or after [from].
+     *
+     * Unlike [generateUpcoming] this is a single-shot accessor that never materializes an
+     * entire window. It respects [RecurrenceRule.endDate], [RecurrenceRule.count],
+     * [RecurrenceRule.skipDates], and [RecurrenceRule.isPaused].
+     *
+     * @return The next occurrence date `>= from`, or `null` if the schedule has ended,
+     *   is paused, or has no occurrence on/after [from].
+     */
+    @Suppress("LoopWithTooManyJumpStatements", "ReturnCount")
+    fun nextOccurrenceOnOrAfter(
+        rule: RecurrenceRule,
+        from: LocalDate,
+    ): LocalDate? {
+        if (rule.isPaused) return null
+
+        var current = rule.startDate
+        var occurrenceCount = 0
+
+        while (true) {
+            if (rule.endDate != null && current > rule.endDate) return null
+            if (rule.count != null && occurrenceCount >= rule.count) return null
+            occurrenceCount++
+
+            if (current >= from && current !in rule.skipDates) {
+                return current
+            }
+            val previous = current
+            current = nextOccurrence(current, rule)
+            // Safety: if nextOccurrence didn't advance, no further occurrences exist.
+            if (current <= previous) return null
+        }
     }
 
     // ── Transaction stamping ─────────────────────────────────────────
@@ -137,6 +180,10 @@ object RecurringTransactionEngine {
      * Compute the next occurrence date after [current] according to [rule].
      */
     internal fun nextOccurrence(current: LocalDate, rule: RecurrenceRule): LocalDate {
+        // Anchor month/year recurrences on the rule's intended day-of-month so that
+        // clamping in a short month never permanently shifts later occurrences
+        // (e.g. a Jan-31 anchor must still land on Mar 31, not Mar 28).
+        val anchorDay = rule.dayOfMonth ?: rule.startDate.dayOfMonth
         return when (rule.frequency) {
             RecurrenceFrequency.DAILY ->
                 current.plus(rule.interval, DateTimeUnit.DAY)
@@ -148,10 +195,10 @@ object RecurringTransactionEngine {
                 advanceWeekly(current, rule.interval * 2, rule.dayOfWeek)
 
             RecurrenceFrequency.MONTHLY ->
-                advanceMonthly(current, rule.interval, rule.dayOfMonth)
+                advanceMonthly(current, rule.interval, anchorDay)
 
             RecurrenceFrequency.YEARLY ->
-                advanceYearly(current, rule.interval, rule.dayOfMonth)
+                advanceYearly(current, rule.interval, anchorDay)
         }
     }
 
@@ -167,24 +214,30 @@ object RecurringTransactionEngine {
         return advanced.plus(diff, DateTimeUnit.DAY)
     }
 
+    /**
+     * Advance [current] by [months] months, re-anchoring on [anchorDay] (the rule's intended
+     * day-of-month) and clamping to the last valid day of the resulting month.
+     */
     private fun advanceMonthly(
         current: LocalDate,
         months: Int,
-        dayOfMonth: Int?,
+        anchorDay: Int,
     ): LocalDate {
         val nextMonth = current.plus(months, DateTimeUnit.MONTH)
-        val targetDay = dayOfMonth ?: current.dayOfMonth
-        return clampDay(nextMonth.year, nextMonth.month.number, targetDay)
+        return clampDay(nextMonth.year, nextMonth.month.number, anchorDay)
     }
 
+    /**
+     * Advance [current] by [years] years, re-anchoring on [anchorDay] and clamping to the
+     * last valid day of the resulting month (e.g. a Feb-29 anchor is restored on leap years).
+     */
     private fun advanceYearly(
         current: LocalDate,
         years: Int,
-        dayOfMonth: Int?,
+        anchorDay: Int,
     ): LocalDate {
         val nextYear = current.plus(years, DateTimeUnit.YEAR)
-        val targetDay = dayOfMonth ?: current.dayOfMonth
-        return clampDay(nextYear.year, nextYear.month.number, targetDay)
+        return clampDay(nextYear.year, nextYear.month.number, anchorDay)
     }
 
     /**

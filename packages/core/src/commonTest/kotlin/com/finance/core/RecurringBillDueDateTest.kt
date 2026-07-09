@@ -337,14 +337,14 @@ class RecurringBillDueDateTest {
             to = LocalDate(2029, 12, 31),
         )
 
-        // 2024 (leap), then all subsequent years clamp to Feb 28
-        // because advanceYearly uses current.dayOfMonth (28 after first clamp)
+        // 2024 (leap) → Feb 29; non-leap years clamp to Feb 28; the Feb-29 anchor is
+        // preserved and restored on the next leap year (2028).
         assertTrue(dates.size >= 5)
         assertEquals(29, dates[0].dayOfMonth) // 2024 leap (start date)
         assertEquals(28, dates[1].dayOfMonth) // 2025 non-leap → clamp
         assertEquals(28, dates[2].dayOfMonth) // 2026 stays 28
         assertEquals(28, dates[3].dayOfMonth) // 2027 stays 28
-        assertEquals(28, dates[4].dayOfMonth) // 2028 stays 28 (dayOfMonth not preserved)
+        assertEquals(29, dates[4].dayOfMonth) // 2028 leap → Feb 29 restored (anchor preserved)
     }
 
     @Test
