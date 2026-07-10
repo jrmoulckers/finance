@@ -9,6 +9,7 @@ import { CategorizationSettings } from '../../components/categorization';
 import {
   HapticSettings,
   MinimalistModeSettings,
+  NotificationSettings,
   SettingInfoWidget,
 } from '../../components/settings';
 import { CurrencyRatesSettings } from '../../components/settings/CurrencyRatesSettings';
@@ -38,8 +39,6 @@ import { translate } from '../../lib/i18n';
 import { getLocalePack } from '../../lib/i18n/locale-packs';
 import { createSettingsCopy } from '../../lib/i18n/settings-catalog';
 import { setOnboardingComplete } from '../../lib/local-only-mode';
-
-const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
 
 const currencyOptions: Array<{ value: string; label: string }> = SUPPORTED_CURRENCY_METADATA.map(
   ({ code, label }) => ({ value: code, label }),
@@ -119,9 +118,6 @@ export const SettingsPreferencesPage: React.FC = () => {
   // truth) that drives dashboard, analytics, and budget rollup totals — not a
   // value isolated to this page. See `useDisplayCurrency` / issue #2203.
   const { displayCurrency: currency, setDisplayCurrency } = useDisplayCurrency();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(
-    () => localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) !== 'false',
-  );
   const [singleKeyShortcutsEnabled, setSingleKeyShortcutsEnabled] = useState(
     getStoredSingleKeyShortcutsPreference,
   );
@@ -171,12 +167,6 @@ export const SettingsPreferencesPage: React.FC = () => {
     },
     [fontScale],
   );
-
-  const handleNotificationsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const nextNotificationsEnabled = event.target.checked;
-    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, String(nextNotificationsEnabled));
-    setNotificationsEnabled(nextNotificationsEnabled);
-  }, []);
 
   const handleSingleKeyShortcutsChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -365,20 +355,6 @@ export const SettingsPreferencesPage: React.FC = () => {
               </div>
             </div>
           </SettingInfoWidget>
-          <SettingInfoWidget settingKey="notifications">
-            <div className="settings-item settings-item--static">
-              <label className="settings-item__label" htmlFor="s-notif">
-                {settingsCopy.text('notificationsLabel')}
-              </label>
-              <Checkbox
-                id="s-notif"
-                className="settings-item__checkbox-wrapper"
-                checked={notificationsEnabled}
-                onChange={handleNotificationsChange}
-                aria-label={settingsCopy.text('notificationsAria')}
-              />
-            </div>
-          </SettingInfoWidget>
           <div className="settings-item settings-item--static">
             <label className="settings-item__label" htmlFor="settings-single-key-shortcuts">
               Single-key shortcuts
@@ -398,6 +374,8 @@ export const SettingsPreferencesPage: React.FC = () => {
           <HapticSettings />
         </div>
       </section>
+
+      <NotificationSettings />
 
       <section aria-label="Auto-categorization" className="page-section">
         <CategorizationSettings categories={categories} />

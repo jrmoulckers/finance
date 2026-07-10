@@ -21,17 +21,19 @@
   }
 }
 
-.settings-nav {
+/*
+ * Sidebar wrapper holds the settings search field and the section rail. On
+ * desktop it becomes the sticky first column so the search + section index stay
+ * in view while the sub-page content scrolls.
+ */
+.settings-shell__sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-1, 0.25rem);
-  padding: var(--spacing-2, 0.5rem) 0;
-  border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
+  gap: var(--spacing-2, 0.5rem);
 }
 
 @media (min-width: 768px) {
-  .settings-nav {
-    border-bottom: none;
+  .settings-shell__sidebar {
     position: sticky;
     top: var(--spacing-4, 1rem);
     /*
@@ -51,21 +53,51 @@
   }
 
   /* Themed scrollbar — Chromium / WebKit, scoped to the settings rail. */
-  .settings-nav::-webkit-scrollbar {
+  .settings-shell__sidebar::-webkit-scrollbar {
     width: 8px;
   }
-  .settings-nav::-webkit-scrollbar-track {
+  .settings-shell__sidebar::-webkit-scrollbar-track {
     background: transparent;
   }
-  .settings-nav::-webkit-scrollbar-thumb {
+  .settings-shell__sidebar::-webkit-scrollbar-thumb {
     background-color: color-mix(in srgb, var(--semantic-border-default) 70%, transparent);
     border: 2px solid transparent;
     border-radius: var(--border-radius-md, 0.5rem);
     background-clip: padding-box;
   }
-  .settings-nav::-webkit-scrollbar-thumb:hover {
+  .settings-shell__sidebar::-webkit-scrollbar-thumb:hover {
     background-color: var(--semantic-interactive-default);
   }
+}
+
+/* Settings search field — filters the section rail below it. */
+.settings-nav-search {
+  padding: var(--spacing-1, 0.25rem) 0;
+}
+
+.settings-nav-search__input {
+  width: 100%;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 0.25rem);
+  padding: var(--spacing-2, 0.5rem) 0;
+  border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
+}
+
+@media (min-width: 768px) {
+  .settings-nav {
+    border-bottom: none;
+  }
+}
+
+/* Empty state shown when a search query matches no sections. */
+.settings-nav__empty {
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--type-scale-body-font-size, 0.95rem);
 }
 
 /*
@@ -76,7 +108,9 @@
 .settings-nav__link {
   position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
   padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
   border-radius: var(--border-radius-md, 0.5rem);
   color: var(--semantic-text-secondary, var(--navigation-text, #1f2937));
@@ -87,6 +121,21 @@
   transition:
     background-color 120ms ease,
     color 120ms ease;
+}
+
+.settings-nav__link-label {
+  font-weight: inherit;
+}
+
+.settings-nav__link-description {
+  font-weight: var(--font-weight-regular, 400);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.settings-nav__link--active .settings-nav__link-description,
+.settings-nav__link[aria-current='page'] .settings-nav__link-description {
+  color: var(--semantic-text-primary, #1f2937);
 }
 
 @media (prefers-reduced-motion: reduce) {

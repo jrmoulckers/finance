@@ -11,6 +11,12 @@ import { eraseAllMoodTags } from '../../db/repositories/transactions';
 
 vi.mock('../../components/settings', () => ({
   SettingInfoWidget: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DangerZone: ({ children, description }: { children: ReactNode; description: ReactNode }) => (
+    <section aria-label="Danger Zone">
+      <p>{description}</p>
+      {children}
+    </section>
+  ),
 }));
 
 vi.mock('../../db/DatabaseProvider', () => ({
