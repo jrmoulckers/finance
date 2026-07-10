@@ -25,6 +25,7 @@ import {
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
   getMoreSheetItems,
+  isNavItemActive,
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
@@ -227,7 +228,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                 </h3>
                 <ul className="more-sheet__list" role="list">
                   {items.map((item) => {
-                    const isActive = activePath === item.href;
+                    const isActive = isNavItemActive(activePath, item.href);
                     return (
                       <li key={item.id}>
                         <button

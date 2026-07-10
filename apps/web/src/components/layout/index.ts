@@ -8,10 +8,12 @@ export {
   NAV_CONFIG,
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
+  NAV_ROUTE_TITLES,
   BOTTOM_NAV_PRIORITY_ITEMS,
   PINNED_NAV_ITEMS,
   MORE_SHEET_ITEMS,
   getItemsByGroup,
+  isNavItemActive,
 } from './navConfig';
 export type { NavConfigItem, NavGroup } from './navConfig';
 export { MoreNavSheet } from './MoreNavSheet';

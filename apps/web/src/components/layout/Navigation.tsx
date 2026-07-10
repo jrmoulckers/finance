@@ -34,6 +34,7 @@ import {
   getItemsByGroup,
   getPinnedNavItems,
   getVisibleNavItems,
+  isNavItemActive,
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
@@ -113,9 +114,7 @@ export interface SidebarNavigationProps extends NavigationProps {
 }
 
 function isActive(activePath: string, href: string): boolean {
-  if (activePath === href) return true;
-  if (!activePath.startsWith(href + '/')) return false;
-  return !NAV_CONFIG.some((item) => item.href === activePath);
+  return isNavItemActive(activePath, href);
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +183,6 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
               type="button"
               className={`nav-item${active ? ' nav-item--active' : ''}`}
               aria-current={active ? 'page' : undefined}
-              aria-label={item.label}
               onClick={() => onNavigate(item.href)}
             >
               <span className="nav-item__icon">{item.icon}</span>
@@ -232,6 +230,41 @@ interface SidebarGroupProps {
   defaultExpanded: boolean;
 }
 
+/** localStorage key for a group's persisted expand/collapse state (#3780). */
+function groupExpandedStorageKey(group: NavGroup): string {
+  return `finance:sidebar-group-expanded:${group}`;
+}
+
+/**
+ * Read a group's persisted expand/collapse preference. Returns `null` when the
+ * user has never toggled it (so callers fall back to the static default).
+ */
+function readStoredGroupExpanded(group: NavGroup): boolean | null {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return null;
+  }
+  try {
+    const raw = window.localStorage.getItem(groupExpandedStorageKey(group));
+    if (raw === 'true') return true;
+    if (raw === 'false') return false;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredGroupExpanded(group: NavGroup, expanded: boolean): void {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(groupExpandedStorageKey(group), String(expanded));
+  } catch {
+    // Storage may be unavailable (private mode / quota); expand state is
+    // non-critical, so silently ignore.
+  }
+}
+
 const SidebarGroup: React.FC<SidebarGroupProps> = ({
   group,
   items,
@@ -240,10 +273,15 @@ const SidebarGroup: React.FC<SidebarGroupProps> = ({
   defaultExpanded,
 }) => {
   const containsActive = items.some((item) => isActive(activePath, item.href));
-  // Initialise from the static default, OR force-open if the active route is
-  // already inside this group at mount (so the user always lands on a visible
-  // active item even when the group would otherwise start collapsed, #2005).
-  const [userExpanded, setUserExpanded] = useState(defaultExpanded || containsActive);
+  // Initialise from the user's persisted choice when present, otherwise the
+  // static default, OR force-open if the active route is already inside this
+  // group at mount (so the user always lands on a visible active item even when
+  // the group would otherwise start collapsed, #2005). Persisting the toggle
+  // means a user's collapse/expand choice survives reloads and remounts (#3780).
+  const [userExpanded, setUserExpanded] = useState(() => {
+    const stored = readStoredGroupExpanded(group);
+    return (stored ?? defaultExpanded) || containsActive;
+  });
 
   // Auto-expand only on the *rising edge* of containsActive — i.e. when the
   // user navigates INTO this group from another. This keeps the helpful
@@ -257,24 +295,47 @@ const SidebarGroup: React.FC<SidebarGroupProps> = ({
     prevContainsActive.current = containsActive;
   }, [containsActive]);
 
+  const toggleExpanded = useCallback(() => {
+    setUserExpanded((prev) => {
+      const next = !prev;
+      writeStoredGroupExpanded(group, next);
+      return next;
+    });
+  }, [group]);
+
   const expanded = userExpanded;
 
   const sectionId = `sidebar-group-${group}`;
   const headingId = `sidebar-group-${group}-heading`;
   const label = NAV_GROUP_LABELS[group];
+  // Surface a cue when a collapsed group still contains the active route, so a
+  // returning user who collapsed it can tell their current page is inside
+  // (#3780). The visible dot is decorative; the accessible name carries the
+  // meaning for AT users.
+  const showsCollapsedActiveCue = containsActive && !expanded;
 
   return (
-    <section className="app-sidebar__group" aria-labelledby={headingId} data-expanded={expanded}>
+    <section
+      className="app-sidebar__group"
+      aria-labelledby={headingId}
+      data-expanded={expanded}
+      data-contains-active={containsActive || undefined}
+    >
       <h2 id={headingId} className="app-sidebar__group-heading">
         <button
           type="button"
           className="app-sidebar__group-toggle"
           aria-expanded={expanded}
           aria-controls={sectionId}
-          aria-label={`${label} section`}
-          onClick={() => setUserExpanded((prev) => !prev)}
+          aria-label={
+            showsCollapsedActiveCue ? `${label} section, contains current page` : `${label} section`
+          }
+          onClick={toggleExpanded}
         >
           <span className="app-sidebar__group-label">{label}</span>
+          {showsCollapsedActiveCue ? (
+            <span className="app-sidebar__group-active-dot" aria-hidden="true" />
+          ) : null}
           <span
             className={`app-sidebar__group-chevron${expanded ? ' app-sidebar__group-chevron--expanded' : ''}`}
             aria-hidden="true"

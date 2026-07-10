@@ -122,6 +122,21 @@ describe('BottomNavigation', () => {
     );
   });
 
+  it('highlights the parent destination in the More sheet on a nested route (#3780)', () => {
+    // Net Worth lives in the More sheet. On a sub-route the sheet should still
+    // mark it active — previously it used strict equality and highlighted
+    // nothing.
+    render(<BottomNavigation {...defaultProps} activePath="/net-worth/2024-06" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'More destinations' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'Net Worth' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
   it('does not set aria-current on inactive items', () => {
     render(<BottomNavigation {...defaultProps} activePath="/accounts" />);
 
@@ -465,6 +480,61 @@ describe('SidebarNavigation', () => {
 
     // Money still contains the active route; no rising edge → stays collapsed.
     expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('persists a group collapse across remounts (#3780)', () => {
+    const { unmount } = render(<SidebarNavigation {...defaultProps} activePath="/dashboard" />);
+
+    const moneyToggle = screen.getByRole('button', { name: 'Money section' });
+    // Money is expanded by default; collapse it.
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(moneyToggle);
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
+
+    unmount();
+    render(<SidebarNavigation {...defaultProps} activePath="/dashboard" />);
+
+    // The persisted collapse survives the remount instead of resetting to the
+    // static default.
+    expect(screen.getByRole('button', { name: 'Money section' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('persists a group expansion across remounts (#3780)', () => {
+    const { unmount } = render(<SidebarNavigation {...defaultProps} activePath="/dashboard" />);
+
+    // Insights starts collapsed by default; expand it.
+    const insightsToggle = screen.getByRole('button', { name: 'Insights section' });
+    expect(insightsToggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(insightsToggle);
+    expect(insightsToggle).toHaveAttribute('aria-expanded', 'true');
+
+    unmount();
+    render(<SidebarNavigation {...defaultProps} activePath="/dashboard" />);
+
+    expect(screen.getByRole('button', { name: 'Insights section' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('marks a collapsed group that contains the active route (#3780)', () => {
+    // Insights starts collapsed and contains /net-worth. The toggle should
+    // advertise that the current page lives inside it.
+    render(<SidebarNavigation {...defaultProps} activePath="/net-worth" />);
+
+    // On mount the group force-opens so the active item is visible, so the
+    // cue is not shown yet.
+    const expandedToggle = screen.getByRole('button', { name: 'Insights section' });
+    expect(expandedToggle).toHaveAttribute('aria-expanded', 'true');
+
+    // Collapsing it while it still owns the active route surfaces the cue.
+    fireEvent.click(expandedToggle);
+    expect(
+      screen.getByRole('button', { name: 'Insights section, contains current page' }),
+    ).toHaveAttribute('aria-expanded', 'false');
   });
 
   // ─── Relocated header quick actions (#3197) ────────────────────────────────

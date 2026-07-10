@@ -482,6 +482,35 @@ export function getMoreSheetItems(
 }
 
 /**
+ * Page/browser titles for every primary destination, derived from
+ * `NAV_CONFIG` so the header `<h1>`, the document title and the sidebar can
+ * never disagree about a route's name (#3780, item 1).
+ *
+ * Keyed by `href`. Consumers (e.g. `App.tsx`) spread this first and then layer
+ * bespoke, non-nav titles (Settings sub-pages, legal docs, detail routes) on
+ * top so those overrides win.
+ */
+export const NAV_ROUTE_TITLES: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(NAV_CONFIG.map((item) => [item.href, item.label])),
+);
+
+/**
+ * Prefix-aware "is this destination active" test, shared by the sidebar,
+ * bottom-nav and the mobile "More" sheet so every surface highlights the same
+ * item for a given route (#3780, item 3).
+ *
+ * A destination is active when the path matches exactly, or when the path is a
+ * sub-route of it (`/transactions/123` → Transactions) *unless* a more specific
+ * destination in `NAV_CONFIG` owns that exact path (so `/investments/tax` marks
+ * Tax Center, not Investments).
+ */
+export function isNavItemActive(activePath: string, href: string): boolean {
+  if (activePath === href) return true;
+  if (!activePath.startsWith(href + '/')) return false;
+  return !NAV_CONFIG.some((item) => item.href === activePath);
+}
+
+/**
  * Items shown inside the mobile "More" sheet — everything that is not a
  * bottom-nav priority item, grouped for scanning.
  */
