@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppNotification, NotificationId, NotificationStatus } from '../lib/notifications';
 import { rateLimitNotifications, shouldDeliverNotification } from '../lib/notifications';
 import { loadNotificationPreferences } from '../lib/notifications/preferences';
+import { wakeExpiredSnoozes } from '../lib/notifications/snooze';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -29,6 +30,8 @@ import { loadNotificationPreferences } from '../lib/notifications/preferences';
 
 const STORAGE_KEY = 'finance-notifications';
 const MAX_STORED_NOTIFICATIONS = 200;
+/** How often to re-check for snoozed notifications whose wake time has passed. */
+const SNOOZE_WAKE_INTERVAL_MS = 60_000;
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -48,6 +51,11 @@ export interface UseNotificationsResult {
   markAllAsRead: () => void;
   /** Dismiss (hide) a notification. */
   dismiss: (id: NotificationId) => void;
+  /**
+   * Snooze a notification until the given ISO-8601 timestamp. The notification
+   * is hidden from active views until then, when it is restored to `unread`.
+   */
+  snooze: (id: NotificationId, until: string) => void;
   /** Clear all dismissed notifications from history. */
   clearDismissed: () => void;
   /** Add a new notification (used by alert evaluators and transaction confirmations). */
@@ -96,11 +104,24 @@ export function useNotifications(): UseNotificationsResult {
   const [loading, setLoading] = useState(true);
   const firedTimestampsRef = useRef<Map<string, number>>(new Map());
 
-  // Load persisted notifications on mount
+  // Load persisted notifications on mount, waking any snoozes that have already
+  // elapsed while the app was closed.
   useEffect(() => {
     const stored = loadNotifications();
-    setNotifications(stored);
+    setNotifications([...wakeExpiredSnoozes(stored)]);
     setLoading(false);
+  }, []);
+
+  // Periodically restore snoozed notifications whose wake time has passed.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNotifications((prev) => {
+        const woken = wakeExpiredSnoozes(prev);
+        return woken === prev ? prev : [...woken];
+      });
+    }, SNOOZE_WAKE_INTERVAL_MS);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Persist whenever notifications change (skip initial load)
@@ -178,6 +199,12 @@ export function useNotifications(): UseNotificationsResult {
     [updateStatus],
   );
 
+  const snooze = useCallback((id: NotificationId, until: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, status: 'snoozed', snoozedUntil: until } : n)),
+    );
+  }, []);
+
   const clearDismissed = useCallback(() => {
     setNotifications((prev) => prev.filter((n) => n.status !== 'dismissed'));
   }, []);
@@ -191,6 +218,7 @@ export function useNotifications(): UseNotificationsResult {
     markAsRead,
     markAllAsRead,
     dismiss,
+    snooze,
     clearDismissed,
     addNotification,
     addNotifications,

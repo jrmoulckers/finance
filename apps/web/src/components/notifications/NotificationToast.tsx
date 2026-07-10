@@ -47,33 +47,59 @@ export const NotificationToast: FC<NotificationToastProps> = ({
   autoDismissMs = 5000,
 }) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remainingRef = useRef<number>(autoDismissMs);
+  const startedAtRef = useRef<number>(0);
 
-  useEffect(() => {
-    timerRef.current = setTimeout(() => {
-      onDismiss(notification.id);
-    }, autoDismissMs);
+  const isCritical = notification.severity === 'critical';
 
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, [notification.id, onDismiss, autoDismissMs]);
-
-  const handleDismiss = useCallback(() => {
+  const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
-    onDismiss(notification.id);
-  }, [notification.id, onDismiss]);
+  }, []);
 
-  const role = notification.severity === 'critical' ? 'alert' : 'status';
+  const startTimer = useCallback(() => {
+    // Critical alerts (fraud, overdraft) must be dismissed manually so they are
+    // never lost to a timeout (WCAG 2.2.1 Timing Adjustable).
+    if (isCritical) return;
+    clearTimer();
+    startedAtRef.current = Date.now();
+    timerRef.current = setTimeout(() => {
+      onDismiss(notification.id);
+    }, remainingRef.current);
+  }, [clearTimer, isCritical, notification.id, onDismiss]);
+
+  // Pause the countdown, preserving the time remaining so hover/focus can be
+  // released without losing already-elapsed time.
+  const pauseTimer = useCallback(() => {
+    if (isCritical || timerRef.current === null) return;
+    clearTimer();
+    remainingRef.current = Math.max(0, remainingRef.current - (Date.now() - startedAtRef.current));
+  }, [clearTimer, isCritical]);
+
+  useEffect(() => {
+    remainingRef.current = autoDismissMs;
+    startTimer();
+    return clearTimer;
+  }, [autoDismissMs, clearTimer, startTimer]);
+
+  const handleDismiss = useCallback(() => {
+    clearTimer();
+    onDismiss(notification.id);
+  }, [clearTimer, notification.id, onDismiss]);
+
+  const role = isCritical ? 'alert' : 'status';
 
   return (
     <div
       className={`notification-toast notification-toast--${notification.severity}`}
       role={role}
-      aria-live={notification.severity === 'critical' ? 'assertive' : 'polite'}
+      aria-live={isCritical ? 'assertive' : 'polite'}
+      onMouseEnter={pauseTimer}
+      onMouseLeave={startTimer}
+      onFocus={pauseTimer}
+      onBlur={startTimer}
     >
       <div className="notification-toast__content">
         <p className="notification-toast__title">{notification.title}</p>

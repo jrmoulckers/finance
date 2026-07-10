@@ -24,7 +24,7 @@ import './NotificationsPage.css';
 /** Dedicated notifications screen for browsing the full notification history. */
 export const NotificationsPage: FC = () => {
   const navigate = useNavigate();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss, clearDismissed } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss, snooze, clearDismissed } =
     useNotificationCenter();
 
   const handleAction = (notification: AppNotification): void => {
@@ -58,6 +58,7 @@ export const NotificationsPage: FC = () => {
         notifications={notifications}
         onMarkAsRead={markAsRead}
         onDismiss={dismiss}
+        onSnooze={snooze}
         onClearDismissed={clearDismissed}
         onAction={handleAction}
       />

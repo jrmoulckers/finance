@@ -168,7 +168,9 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
     onViewAll?.();
   }, [closePanel, onViewAll]);
 
-  const visibleNotifications = notifications.filter((n) => n.status !== 'dismissed');
+  const visibleNotifications = notifications.filter(
+    (n) => n.status !== 'dismissed' && n.status !== 'snoozed',
+  );
 
   const bellLabel = unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications';
 
