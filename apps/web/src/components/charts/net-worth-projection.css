@@ -59,6 +59,85 @@
   color: var(--semantic-text-primary, #1d4ed8);
 }
 
+/* Method controls (pace vs compound) --------------------------------- */
+
+.nw-projection__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--spacing-3, 0.75rem);
+  margin-bottom: var(--spacing-3, 0.75rem);
+}
+
+.nw-projection__mode {
+  display: inline-flex;
+  gap: var(--spacing-1, 0.25rem);
+}
+
+.nw-projection__mode-btn {
+  padding: var(--spacing-1, 0.25rem) var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: 0.375rem;
+  background: var(--semantic-background-elevated, #ffffff);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nw-projection__mode-btn--active {
+  background: var(--semantic-background-secondary, #eef2ff);
+  border-color: var(--semantic-border-strong, #c7d2fe);
+  color: var(--semantic-text-primary, #1d4ed8);
+}
+
+.nw-projection__mode-btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.nw-projection__compound-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3, 0.75rem);
+}
+
+.nw-projection__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 0.25rem);
+}
+
+.nw-projection__field-label {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 600;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.nw-projection__field-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1, 0.25rem);
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: 0.375rem;
+  background: var(--semantic-background-elevated, #ffffff);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.nw-projection__field-control input {
+  width: 5rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.nw-projection__field-control input:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
 /* Legend ------------------------------------------------------------ */
 
 .nw-projection__legend {

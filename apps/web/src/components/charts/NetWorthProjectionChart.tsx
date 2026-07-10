@@ -38,6 +38,7 @@ import {
 } from './chart-accessibility';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 import {
+  DEFAULT_PROJECTION_ANNUAL_RETURN,
   PROJECTION_RANGES,
   projectNetWorth,
   rangeToHorizonMonths,
@@ -162,6 +163,22 @@ const ProjectionLegend: FC = () => (
 // Main component
 // ---------------------------------------------------------------------------
 
+type ProjectionMode = 'pace' | 'compound';
+
+const DEFAULT_RETURN_PERCENT = String(Math.round(DEFAULT_PROJECTION_ANNUAL_RETURN * 100));
+
+function parsePercentToRate(value: string): number {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_PROJECTION_ANNUAL_RETURN;
+  return parsed / 100;
+}
+
+function parseDollarsToCents(value: string): number {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.round(parsed * 100);
+}
+
 export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
   history,
   currency = 'USD',
@@ -173,13 +190,24 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
   const disableAnimation = prefersReducedMotion();
   const maskingMode = useEffectiveMaskingMode();
   const [range, setRange] = useState<ProjectionRange>(defaultRange);
+  const [mode, setMode] = useState<ProjectionMode>('pace');
+  const [annualReturnPercent, setAnnualReturnPercent] = useState<string>(DEFAULT_RETURN_PERCENT);
+  const [monthlyContribution, setMonthlyContribution] = useState<string>('0');
 
   const visible = useMemo(() => sliceSeriesToRange(history, range), [history, range]);
 
   const projection = useMemo(() => {
     const horizonMonths = rangeToHorizonMonths(range, visible.length);
+    if (mode === 'compound') {
+      return projectNetWorth(visible, {
+        horizonMonths,
+        method: 'compound',
+        annualReturnRate: parsePercentToRate(annualReturnPercent),
+        monthlyContributionCents: parseDollarsToCents(monthlyContribution),
+      });
+    }
     return projectNetWorth(visible, { horizonMonths, method: 'regression' });
-  }, [visible, range]);
+  }, [visible, range, mode, annualReturnPercent, monthlyContribution]);
 
   const boundaryLabel = visible.length > 0 ? visible[visible.length - 1]!.label : null;
 
@@ -257,7 +285,9 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
   }, [projection, currency, maskingMode]);
 
   const assumptionsText = projection.hasProjection
-    ? `Forecast assumes a steady ${paceText} (${projection.methodSummary}), projected ${projection.horizonMonths} months ahead. Estimate only. Not financial advice.`
+    ? mode === 'compound'
+      ? `Forecast assumes ${projection.methodSummary}, projected ${projection.horizonMonths} months ahead. Estimate only. Not financial advice.`
+      : `Forecast assumes a steady ${paceText} (${projection.methodSummary}), projected ${projection.horizonMonths} months ahead. Estimate only. Not financial advice.`
     : projection.reason;
 
   const dataPointRows = useMemo(() => {
@@ -306,6 +336,72 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
           {title}
         </h3>
         <RangeSelector selected={range} onChange={setRange} />
+      </div>
+
+      <div className="nw-projection__controls">
+        <div
+          className="nw-projection__mode"
+          role="radiogroup"
+          aria-label="Projection method"
+        >
+          <button
+            type="button"
+            role="radio"
+            aria-checked={mode === 'pace'}
+            className={`nw-projection__mode-btn${
+              mode === 'pace' ? ' nw-projection__mode-btn--active' : ''
+            }`}
+            onClick={() => setMode('pace')}
+          >
+            Recent pace
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={mode === 'compound'}
+            className={`nw-projection__mode-btn${
+              mode === 'compound' ? ' nw-projection__mode-btn--active' : ''
+            }`}
+            onClick={() => setMode('compound')}
+          >
+            Compound growth
+          </button>
+        </div>
+
+        {mode === 'compound' && (
+          <div className="nw-projection__compound-inputs">
+            <label className="nw-projection__field">
+              <span className="nw-projection__field-label">Expected annual return</span>
+              <span className="nw-projection__field-control">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step={0.1}
+                  min={-100}
+                  value={annualReturnPercent}
+                  onChange={(event) => setAnnualReturnPercent(event.target.value)}
+                  aria-label="Expected annual return percent"
+                />
+                <span aria-hidden="true">%</span>
+              </span>
+            </label>
+            <label className="nw-projection__field">
+              <span className="nw-projection__field-label">Monthly contribution</span>
+              <span className="nw-projection__field-control">
+                <span aria-hidden="true">$</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step={50}
+                  min={0}
+                  value={monthlyContribution}
+                  onChange={(event) => setMonthlyContribution(event.target.value)}
+                  aria-label="Monthly contribution in dollars"
+                />
+              </span>
+            </label>
+          </div>
+        )}
       </div>
 
       <p id={`${chartId}-desc`} className="sr-only">

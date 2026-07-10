@@ -19,13 +19,21 @@
  */
 
 import { getCurrentLocale } from '../i18n';
+import { monthlyRateFromAnnual } from '../fire';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-/** Pace-estimation strategy used to derive the monthly trend. */
-export type ProjectionMethod = 'average' | 'regression';
+/**
+ * Pace-estimation strategy used to derive the monthly trend.
+ *
+ * - `average`    — mean of consecutive month-over-month deltas (linear).
+ * - `regression` — ordinary least-squares slope over the series (linear).
+ * - `compound`   — geometric growth from an expected annual return plus an
+ *   optional recurring monthly contribution (issue #3323).
+ */
+export type ProjectionMethod = 'average' | 'regression' | 'compound';
 
 /** Selectable time range that drives both the visible window and the horizon. */
 export type ProjectionRange = '3M' | '6M' | '1Y' | 'All';
@@ -81,6 +89,9 @@ export interface NetWorthProjectionResult {
   readonly reason: string | null;
 }
 
+/** Default expected annual return for compound projections (7%, real-ish). */
+export const DEFAULT_PROJECTION_ANNUAL_RETURN = 0.07;
+
 /** Options for {@link projectNetWorth}. */
 export interface ProjectNetWorthOptions {
   /** Pace estimator. Defaults to `regression`. */
@@ -89,6 +100,17 @@ export interface ProjectNetWorthOptions {
   readonly horizonMonths?: number;
   /** Range used to derive the horizon when `horizonMonths` is omitted. */
   readonly range?: ProjectionRange;
+  /**
+   * Expected annual return (decimal, e.g. 0.07) for the `compound` method.
+   * Ignored by the linear methods. Defaults to
+   * {@link DEFAULT_PROJECTION_ANNUAL_RETURN}.
+   */
+  readonly annualReturnRate?: number;
+  /**
+   * Recurring monthly contribution in integer cents applied at the end of each
+   * projected month for the `compound` method. Ignored by linear methods.
+   */
+  readonly monthlyContributionCents?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,9 +150,16 @@ function paceDirectionOf(paceCents: number): PaceDirection {
 
 function methodSummaryOf(method: ProjectionMethod, basisPoints: number): string {
   const window = `the last ${basisPoints} ${basisPoints === 1 ? 'month' : 'months'}`;
-  return method === 'regression'
-    ? `linear trend across ${window}`
-    : `average monthly change across ${window}`;
+  if (method === 'regression') return `linear trend across ${window}`;
+  if (method === 'average') return `average monthly change across ${window}`;
+  return `compound growth from your expected return`;
+}
+
+function compoundSummary(annualReturnRate: number, monthlyContributionCents: number): string {
+  const percent = annualReturnRate * 100;
+  const rateText = `${Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(1)}%`;
+  const base = `compound growth at ${rateText} annual return`;
+  return monthlyContributionCents > 0 ? `${base} plus monthly contributions` : base;
 }
 
 function addMonthsIso(iso: string, months: number): string {
@@ -225,15 +254,47 @@ export function deriveMonthlyPaceCents(
 }
 
 /**
+ * Compounds a starting balance forward month-by-month at a monthly rate with an
+ * optional end-of-month contribution.
+ *
+ * balance(m) = start * (1+i)^m + C * (((1+i)^m - 1) / i)   [i != 0]
+ * balance(m) = start + C * m                               [i == 0]
+ *
+ * Every returned value is an exact integer cent (rounded once per point so
+ * rounding error never accumulates across the horizon).
+ *
+ * @param startCents - Starting balance in integer cents.
+ * @param monthlyRate - Monthly growth rate (decimal).
+ * @param monthlyContributionCents - End-of-month contribution in integer cents.
+ * @param monthOffset - 1-based month to evaluate.
+ * @returns Projected balance in integer cents.
+ */
+function compoundBalanceCents(
+  startCents: number,
+  monthlyRate: number,
+  monthlyContributionCents: number,
+  monthOffset: number,
+): number {
+  const growth = Math.pow(1 + monthlyRate, monthOffset);
+  const grownStart = startCents * growth;
+  const annuityFactor =
+    Math.abs(monthlyRate) < 1e-12 ? monthOffset : (growth - 1) / monthlyRate;
+  return roundCents(grownStart + monthlyContributionCents * annuityFactor);
+}
+
+/**
  * Projects net worth forward from a historical series.
  *
- * The pace is derived from the supplied series (treat the caller's window as
- * "recent"). Each projected point is `start + pace * monthOffset`, keeping every
- * value an exact integer cent. Series shorter than two points return a result
- * flagged `hasProjection: false` with a friendly {@link NetWorthProjectionResult.reason}.
+ * The linear methods derive a monthly pace from the supplied series (treat the
+ * caller's window as "recent"); each projected point is
+ * `start + pace * monthOffset`. The `compound` method instead grows the last
+ * actual balance geometrically at the supplied annual return with an optional
+ * recurring monthly contribution. Every value stays an exact integer cent.
+ * Series shorter than two points return a result flagged `hasProjection: false`
+ * with a friendly {@link NetWorthProjectionResult.reason}.
  *
  * @param series - Net-worth history, oldest first.
- * @param options - Method and horizon controls.
+ * @param options - Method, horizon and (for compound) return/contribution controls.
  * @returns A deterministic {@link NetWorthProjectionResult}.
  */
 export function projectNetWorth(
@@ -243,6 +304,12 @@ export function projectNetWorth(
   const method = options.method ?? 'regression';
   const lastPoint = series.length > 0 ? series[series.length - 1]! : null;
   const startNetWorthCents = lastPoint?.netWorthCents ?? 0;
+  const isCompound = method === 'compound';
+  const annualReturnRate = options.annualReturnRate ?? DEFAULT_PROJECTION_ANNUAL_RETURN;
+  const monthlyContributionCents = Math.max(0, Math.round(options.monthlyContributionCents ?? 0));
+  const summary = isCompound
+    ? compoundSummary(annualReturnRate, monthlyContributionCents)
+    : methodSummaryOf(method, series.length);
 
   if (series.length < 2) {
     return {
@@ -255,7 +322,7 @@ export function projectNetWorth(
       endNetWorthCents: startNetWorthCents,
       horizonMonths: 0,
       points: [],
-      methodSummary: methodSummaryOf(method, series.length),
+      methodSummary: summary,
       reason: 'At least two months of net-worth history are needed to project forward.',
     };
   }
@@ -263,9 +330,15 @@ export function projectNetWorth(
   const requestedHorizon =
     options.horizonMonths ?? rangeToHorizonMonths(options.range ?? 'All', series.length);
   const horizonMonths = clamp(Math.floor(requestedHorizon), 0, MAX_PROJECTION_MONTHS);
-  const monthlyPaceCents = deriveMonthlyPaceCents(series, method);
+
+  const monthlyRate = isCompound ? monthlyRateFromAnnual(annualReturnRate) : 0;
+  // For compound mode the "pace" reported is the first-month increment so the
+  // UI can still surface a direction; linear modes use the derived pace.
+  const monthlyPaceCents = isCompound
+    ? compoundBalanceCents(startNetWorthCents, monthlyRate, monthlyContributionCents, 1) -
+      startNetWorthCents
+    : deriveMonthlyPaceCents(series, method);
   const paceDirection = paceDirectionOf(monthlyPaceCents);
-  const methodSummary = methodSummaryOf(method, series.length);
 
   if (horizonMonths <= 0) {
     return {
@@ -278,16 +351,19 @@ export function projectNetWorth(
       endNetWorthCents: startNetWorthCents,
       horizonMonths: 0,
       points: [],
-      methodSummary,
+      methodSummary: summary,
       reason: 'The selected horizon is zero months, so there is nothing to project.',
     };
   }
 
   const points: NetWorthProjectionPoint[] = [];
   for (let monthOffset = 1; monthOffset <= horizonMonths; monthOffset += 1) {
+    const netWorthCents = isCompound
+      ? compoundBalanceCents(startNetWorthCents, monthlyRate, monthlyContributionCents, monthOffset)
+      : startNetWorthCents + monthlyPaceCents * monthOffset;
     const point: NetWorthProjectionPoint = {
       label: projectedLabel(lastPoint!, monthOffset),
-      netWorthCents: startNetWorthCents + monthlyPaceCents * monthOffset,
+      netWorthCents,
       monthOffset,
       ...(lastPoint!.dateIso ? { dateIso: addMonthsIso(lastPoint!.dateIso, monthOffset) } : {}),
     };
@@ -304,7 +380,7 @@ export function projectNetWorth(
     endNetWorthCents: points[points.length - 1]!.netWorthCents,
     horizonMonths,
     points,
-    methodSummary,
+    methodSummary: summary,
     reason: null,
   };
 }
