@@ -179,3 +179,77 @@ describe('range helpers', () => {
     expect(rangeToHorizonMonths('All', 1000)).toBe(MAX_PROJECTION_MONTHS);
   });
 });
+
+describe('projectNetWorth — compound method (#3323)', () => {
+  it('grows geometrically at the expected annual return (no contributions)', () => {
+    const series = makeSeries([100_000, 120_000]);
+    const result = projectNetWorth(series, {
+      method: 'compound',
+      annualReturnRate: 0.12,
+      horizonMonths: 12,
+    });
+    expect(result.hasProjection).toBe(true);
+    expect(result.method).toBe('compound');
+    // After 12 months at 12% annual, $1,200.00 → $1,344.00 (integer cents).
+    const last = result.points[result.points.length - 1]!;
+    expect(last.monthOffset).toBe(12);
+    expect(last.netWorthCents).toBe(134_400);
+  });
+
+  it('adds an end-of-month contribution as an ordinary annuity', () => {
+    const series = makeSeries([0, 0]);
+    const result = projectNetWorth(series, {
+      method: 'compound',
+      annualReturnRate: 0,
+      monthlyContributionCents: 10_000,
+      horizonMonths: 6,
+    });
+    // Zero return: pure sum of contributions after 6 months = 6 * $100 = $600.
+    const last = result.points[result.points.length - 1]!;
+    expect(last.netWorthCents).toBe(60_000);
+  });
+
+  it('compounds contributions with growth and keeps every point an integer cent', () => {
+    const series = makeSeries([500_000, 520_000]);
+    const result = projectNetWorth(series, {
+      method: 'compound',
+      annualReturnRate: 0.06,
+      monthlyContributionCents: 25_000,
+      horizonMonths: 12,
+    });
+    expect(result.hasProjection).toBe(true);
+    for (const point of result.points) {
+      expect(Number.isInteger(point.netWorthCents)).toBe(true);
+    }
+    // Growth on the base alone must be below the base-plus-contributions total.
+    const startOnly = projectNetWorth(series, {
+      method: 'compound',
+      annualReturnRate: 0.06,
+      horizonMonths: 12,
+    });
+    const withContrib = result.points[result.points.length - 1]!.netWorthCents;
+    const withoutContrib = startOnly.points[startOnly.points.length - 1]!.netWorthCents;
+    expect(withContrib).toBeGreaterThan(withoutContrib);
+  });
+
+  it('reports a compound method summary and a positive first-month pace', () => {
+    const series = makeSeries([200_000, 210_000]);
+    const result = projectNetWorth(series, {
+      method: 'compound',
+      annualReturnRate: 0.08,
+      horizonMonths: 6,
+    });
+    expect(result.methodSummary).toMatch(/compound growth at 8% annual return/i);
+    expect(result.paceDirection).toBe('up');
+    expect(result.monthlyPaceCents).toBeGreaterThan(0);
+  });
+
+  it('still needs at least two points to project', () => {
+    const result = projectNetWorth(makeSeries([100_000]), {
+      method: 'compound',
+      annualReturnRate: 0.07,
+    });
+    expect(result.hasProjection).toBe(false);
+    expect(result.reason).toMatch(/two months/i);
+  });
+});

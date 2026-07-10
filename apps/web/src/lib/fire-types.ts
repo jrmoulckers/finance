@@ -108,6 +108,16 @@ export interface FIREPlanInput {
   readonly now?: Date;
 }
 
+/** A single row of the safe-withdrawal-rate sensitivity table. */
+export interface SwrSensitivityRow {
+  /** The safe withdrawal rate this row was computed at, as a decimal. */
+  readonly swrRate: number;
+  /** The FI number (annual spending ÷ SWR) at this rate, in integer cents. */
+  readonly fiNumberCents: number;
+  /** Years/months-to-FI detail at this rate. */
+  readonly yearsToFI: YearsToFIResult;
+}
+
 /** Full FIRE plan result returned by `calculateFIREPlan`. */
 export interface FIREPlanResult {
   /** Annual spending ÷ SWR, in integer cents. */
@@ -116,6 +126,23 @@ export interface FIREPlanResult {
   readonly swrRate: number;
   /** Years/months-to-FI detail. */
   readonly yearsToFI: YearsToFIResult;
+  /**
+   * Progress toward the FI number as a percentage (`current ÷ FI × 100`),
+   * clamped to `[0, 100]`. `100` when already FI; `0` when the FI number is
+   * unreachable (non-positive SWR).
+   */
+  readonly fiProgressPercent: number;
+  /**
+   * Annual passive income the current portfolio already generates at the SWR
+   * (`currentInvested × SWR`), in integer cents.
+   */
+  readonly currentPassiveIncomeCents: number;
+  /**
+   * Share of annual spending the current portfolio already covers at the SWR
+   * (`currentPassiveIncome ÷ annualSpending × 100`). `0` when spending is
+   * non-positive (not meaningful).
+   */
+  readonly incomeReplacementPercent: number;
   /** Calendar date (YYYY-MM-DD) FI is projected to be reached, or null. */
   readonly fiDateIso: string | null;
   /** Lump sum needed today to "coast" to the FI number, in integer cents. */
@@ -137,6 +164,19 @@ export const DEFAULT_SWR = 0.04;
 
 /** Default expected annual real return (≈ historical equity-heavy portfolio). */
 export const DEFAULT_REAL_RETURN = 0.05;
+
+/** Default expected annual nominal return (before inflation). */
+export const DEFAULT_NOMINAL_RETURN = 0.08;
+
+/** Default expected annual inflation rate, as a decimal. */
+export const DEFAULT_INFLATION = 0.03;
+
+/**
+ * Safe-withdrawal rates surfaced by the SWR sensitivity table: a cautious
+ * 3.5% (sequence-of-returns hedge), the classic 4% rule, and a more
+ * aggressive 4.5%.
+ */
+export const DEFAULT_SWR_SENSITIVITY_RATES: readonly number[] = [0.035, 0.04, 0.045];
 
 /** Default traditional retirement age. */
 export const DEFAULT_RETIREMENT_AGE = 65;

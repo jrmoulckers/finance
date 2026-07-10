@@ -9,6 +9,7 @@ import {
   createEmptyInventoryItem,
   deleteInventoryItem,
   listInventoryItems,
+  parseEstateCurrencyToCents,
   saveInventoryItem,
   summarizeInventory,
 } from './inventory';
@@ -82,5 +83,55 @@ describe('estate inventory storage', () => {
     expect(summary.missingCategories).toHaveLength(ESTATE_CATEGORIES.length - 2);
     expect(summary.itemsMissingDocuments).toBe(1);
     expect(summary.itemsMissingVerification).toBe(1);
+  });
+
+  it('parses free-text currency fields to integer cents (#3288)', () => {
+    expect(parseEstateCurrencyToCents('25000')).toBe(2_500_000);
+    expect(parseEstateCurrencyToCents('$1,250.50')).toBe(125_050);
+    expect(parseEstateCurrencyToCents('19.99')).toBe(1_999);
+    expect(parseEstateCurrencyToCents('')).toBe(0);
+    expect(parseEstateCurrencyToCents('n/a')).toBe(0);
+    expect(parseEstateCurrencyToCents('-500')).toBe(50_000);
+  });
+
+  it('totals estimated estate value with assets minus liabilities (#3288)', () => {
+    saveInventoryItem({
+      ...createEmptyInventoryItem('bank-accounts'),
+      details: { institution: 'Bank', accountType: 'Checking', approximateBalance: '25000' },
+    });
+    saveInventoryItem({
+      ...createEmptyInventoryItem('investments'),
+      details: { brokerage: 'Vanguard', investmentType: 'IRA', approximateValue: '175000' },
+    });
+    saveInventoryItem({
+      ...createEmptyInventoryItem('debts'),
+      details: { creditor: 'Chase', debtType: 'Mortgage', approximateBalance: '120000' },
+    });
+    // Insurance coverage is "other" — summarised but excluded from the net total.
+    saveInventoryItem({
+      ...createEmptyInventoryItem('insurance'),
+      details: { provider: 'NWM', policyType: 'Life', coverageAmount: '500000' },
+    });
+
+    const summary = summarizeInventory();
+
+    expect(summary.hasEstimatedValue).toBe(true);
+    expect(summary.totalAssetsCents).toBe(20_000_000); // 25k + 175k
+    expect(summary.totalLiabilitiesCents).toBe(12_000_000); // 120k
+    expect(summary.netEstimatedValueCents).toBe(8_000_000); // 200k - 120k
+    const insurance = summary.categoryValueSubtotals.find((s) => s.categoryId === 'insurance');
+    expect(insurance?.kind).toBe('other');
+    expect(insurance?.totalCents).toBe(50_000_000);
+  });
+
+  it('reports no estimated value when no currency fields are filled (#3288)', () => {
+    saveInventoryItem({
+      ...createEmptyInventoryItem('important-contacts'),
+      details: { contactName: 'Morgan Lee', role: 'Attorney', phone: '555-1212' },
+    });
+    const summary = summarizeInventory();
+    expect(summary.hasEstimatedValue).toBe(false);
+    expect(summary.netEstimatedValueCents).toBe(0);
+    expect(summary.categoryValueSubtotals).toEqual([]);
   });
 });

@@ -78,10 +78,31 @@ export interface EstateAccessInfo {
   readonly updatedAt: string;
 }
 
+/** How a category's currency values roll up into the estimated estate total. */
+export type EstateValueKind = 'asset' | 'liability' | 'other';
+
+/** Per-category rollup of parsed currency fields (integer cents). */
+export interface EstateCategoryValueSubtotal {
+  readonly categoryId: EstateCategoryId;
+  readonly kind: EstateValueKind;
+  /** Sum of the category's currency fields, in integer cents. */
+  readonly totalCents: number;
+}
+
 export interface EstateInventorySummary {
   readonly totalItems: number;
   readonly documentedCategories: readonly EstateCategoryId[];
   readonly missingCategories: readonly EstateCategoryId[];
   readonly itemsMissingDocuments: number;
   readonly itemsMissingVerification: number;
+  /** Sum of asset-category currency fields, in integer cents. */
+  readonly totalAssetsCents: number;
+  /** Sum of liability-category currency fields, in integer cents. */
+  readonly totalLiabilitiesCents: number;
+  /** Estimated net estate value (assets − liabilities), in integer cents. */
+  readonly netEstimatedValueCents: number;
+  /** Per-category subtotals for categories that carry currency fields. */
+  readonly categoryValueSubtotals: readonly EstateCategoryValueSubtotal[];
+  /** True when at least one currency value was recorded across all entries. */
+  readonly hasEstimatedValue: boolean;
 }

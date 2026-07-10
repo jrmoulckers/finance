@@ -135,4 +135,43 @@ describe('buildSavingsRateCardModel', () => {
     expect(model.deltaPercentagePoints).toBeNull();
     expect(model.trend).toBe('flat');
   });
+
+  it('classifies against a configurable target instead of a fixed 20% (#3327)', () => {
+    // 50% saver with a 60% FIRE goal: below target, not "strong".
+    const model = buildSavingsRateCardModel(
+      buildSavingsRateDashboardSummary(
+        [{ month: '2026-03', incomeCents: 6000_00, expenseCents: 3000_00 }],
+        '2026-03',
+      ),
+      60,
+    );
+    expect(model.targetPercent).toBe(60);
+    expect(model.meetsTarget).toBe(false);
+    expect(model.statusLabel).toContain('60%');
+    expect(model.statusLabel).toContain('Solid progress');
+  });
+
+  it('marks the target met when the rate reaches the goal (#3327)', () => {
+    const model = buildSavingsRateCardModel(
+      buildSavingsRateDashboardSummary(
+        [{ month: '2026-03', incomeCents: 6000_00, expenseCents: 3000_00 }],
+        '2026-03',
+      ),
+      40,
+    );
+    expect(model.meetsTarget).toBe(true);
+    expect(model.statusLabel).toContain('at or above the 40% target');
+  });
+
+  it('defaults the target to 20% when none is supplied (#3327)', () => {
+    const model = buildSavingsRateCardModel(
+      buildSavingsRateDashboardSummary(
+        [{ month: '2026-03', incomeCents: 5000_00, expenseCents: 4000_00 }],
+        '2026-03',
+      ),
+    );
+    expect(model.targetPercent).toBe(20);
+    expect(model.meetsTarget).toBe(true);
+    expect(model.statusLabel).toContain('20%');
+  });
 });

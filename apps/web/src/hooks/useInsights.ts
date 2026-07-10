@@ -27,6 +27,7 @@ import {
   type SpendingTrendInsight,
 } from '../lib/reports/reporting-beta';
 import { computeSavingsRatePercent } from '../lib/savings/savings-rate-format';
+import { getStoredSavingsTargetPercent } from '../lib/savings-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -342,6 +343,7 @@ function generateRecommendations(
   spendingComparison: MonthComparison,
   savingsRate: number,
   netCashFlow: number,
+  targetPercent: number,
 ): Recommendation[] {
   const recs: Recommendation[] = [];
 
@@ -363,12 +365,12 @@ function generateRecommendations(
     });
   }
 
-  if (savingsRate >= 0 && savingsRate < 10) {
+  const lowSavingsThreshold = Math.max(1, Math.round(targetPercent / 2));
+  if (savingsRate >= 0 && savingsRate < lowSavingsThreshold) {
     recs.push({
       id: 'low-savings-rate',
-      title: 'Savings rate below 10%',
-      description:
-        'Financial experts recommend saving at least 20% of your income. Look for discretionary expenses you can reduce.',
+      title: `Savings rate below ${lowSavingsThreshold}%`,
+      description: `You're aiming to save at least ${targetPercent}% of your income. Look for discretionary expenses you can reduce.`,
       severity: 'warning',
     });
   }
@@ -383,11 +385,11 @@ function generateRecommendations(
     });
   }
 
-  if (savingsRate >= 30) {
+  if (savingsRate >= targetPercent && savingsRate > 0) {
     recs.push({
       id: 'high-savings-rate',
       title: 'Excellent savings rate!',
-      description: `You're saving ${savingsRate}% of your income, well above the recommended 20%.`,
+      description: `You're saving ${savingsRate}% of your income, at or above your ${targetPercent}% goal.`,
       severity: 'success',
     });
   }
@@ -668,11 +670,13 @@ export function useInsights(): UseInsightsResult {
       const savingsRate = computeSavingsRatePercent(totalIncomeThisMonth, totalSpentThisMonth);
 
       const topCategories = categorySpending.slice(0, 5);
+      const savingsTargetPercent = getStoredSavingsTargetPercent();
       const recommendations = generateRecommendations(
         categorySpending,
         spendingComparison,
         savingsRate,
         netCashFlow,
+        savingsTargetPercent,
       );
       const { spendingBenchmarks, financialHealthScore, budgetRuleOverview } =
         calculateSpendingBenchmarks(categorySpending, totalIncomeThisMonth, savingsRate);

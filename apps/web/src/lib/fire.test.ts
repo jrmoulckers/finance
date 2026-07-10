@@ -17,9 +17,14 @@ import {
   buildFIProjection,
   calculateFIREPlan,
   coastFINumber,
+  computeSwrSensitivity,
+  currentPassiveIncomeCents,
   fiNumber,
+  fiProgressPercent,
+  incomeReplacementPercent,
   isCoastFI,
   monthlyRateFromAnnual,
+  realReturnFromNominal,
   yearsToFI,
   MAX_FI_SEARCH_YEARS,
 } from './fire';
@@ -557,5 +562,126 @@ describe('compounding math — single source of truth (#3305)', () => {
     expect(positiveReal.totalGrowthToFICents).toBeGreaterThan(0);
     // A larger real return never reaches FI later than none.
     expect(positiveReal.yearsToFI.totalMonths).toBeLessThanOrEqual(zeroReal.yearsToFI.totalMonths);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// realReturnFromNominal (#3315)
+// ---------------------------------------------------------------------------
+
+describe('realReturnFromNominal (Fisher equation)', () => {
+  it('derives the real return from nominal and inflation', () => {
+    // (1.07 / 1.03) - 1 = 0.038834...
+    expect(realReturnFromNominal(0.07, 0.03)).toBeCloseTo(0.0388349, 6);
+  });
+
+  it('returns the nominal rate unchanged when inflation is zero', () => {
+    expect(realReturnFromNominal(0.06, 0)).toBeCloseTo(0.06, 10);
+  });
+
+  it('is negative when inflation exceeds the nominal return', () => {
+    expect(realReturnFromNominal(0.02, 0.05)).toBeLessThan(0);
+  });
+
+  it('guards a pathological <= -100% inflation by returning the nominal rate', () => {
+    expect(realReturnFromNominal(0.05, -1)).toBe(0.05);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FI progress, passive income, income replacement (#3320)
+// ---------------------------------------------------------------------------
+
+describe('fiProgressPercent', () => {
+  it('is 50% when current is half the FI number', () => {
+    expect(fiProgressPercent($(500_000), $(1_000_000))).toBe(50);
+  });
+
+  it('clamps to 100 when current exceeds the FI number', () => {
+    expect(fiProgressPercent($(2_000_000), $(1_000_000))).toBe(100);
+  });
+
+  it('is 100 for a zero FI number and 0 for an unreachable one', () => {
+    expect(fiProgressPercent($(10_000), 0)).toBe(100);
+    expect(fiProgressPercent($(10_000), Number.POSITIVE_INFINITY)).toBe(0);
+  });
+
+  it('never returns a negative percentage', () => {
+    expect(fiProgressPercent(-5000, $(1_000_000))).toBe(0);
+  });
+});
+
+describe('currentPassiveIncomeCents', () => {
+  it('multiplies current assets by the SWR', () => {
+    expect(currentPassiveIncomeCents($(1_000_000), 0.04)).toBe($(40_000));
+  });
+
+  it('is 0 when the SWR is non-positive', () => {
+    expect(currentPassiveIncomeCents($(1_000_000), 0)).toBe(0);
+  });
+});
+
+describe('incomeReplacementPercent', () => {
+  it('is the passive income share of spending', () => {
+    // 1,000,000 * 4% = 40,000 passive; spending 40,000 -> 100%.
+    expect(incomeReplacementPercent($(1_000_000), $(40_000), 0.04)).toBe(100);
+    // Half the spending covered.
+    expect(incomeReplacementPercent($(500_000), $(40_000), 0.04)).toBe(50);
+  });
+
+  it('is 0 when spending is non-positive', () => {
+    expect(incomeReplacementPercent($(1_000_000), 0, 0.04)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeSwrSensitivity (#3319)
+// ---------------------------------------------------------------------------
+
+describe('computeSwrSensitivity', () => {
+  const input = {
+    currentInvestedCents: $(100_000),
+    annualSpendingCents: $(40_000),
+    annualContributionCents: $(24_000),
+    realReturnRate: 0.05,
+  } as const;
+
+  it('defaults to 3.5% / 4% / 4.5% ascending', () => {
+    const rows = computeSwrSensitivity(input);
+    expect(rows.map((row) => row.swrRate)).toEqual([0.035, 0.04, 0.045]);
+  });
+
+  it('computes the FI number as annual spending / SWR for each rate', () => {
+    const rows = computeSwrSensitivity(input);
+    // 40,000 / 0.035, / 0.04, / 0.045
+    expect(rows[0]!.fiNumberCents).toBe(fiNumber($(40_000), 0.035));
+    expect(rows[1]!.fiNumberCents).toBe($(1_000_000));
+    expect(rows[2]!.fiNumberCents).toBe(fiNumber($(40_000), 0.045));
+  });
+
+  it('a lower SWR (higher FI number) never reaches FI sooner than a higher one', () => {
+    const rows = computeSwrSensitivity(input);
+    expect(rows[0]!.yearsToFI.totalMonths).toBeGreaterThanOrEqual(rows[2]!.yearsToFI.totalMonths);
+  });
+
+  it('sorts arbitrary input rates ascending', () => {
+    const rows = computeSwrSensitivity(input, [0.05, 0.03, 0.04]);
+    expect(rows.map((row) => row.swrRate)).toEqual([0.03, 0.04, 0.05]);
+  });
+});
+
+describe('calculateFIREPlan progress fields (#3320)', () => {
+  it('exposes progress, passive income, and income replacement', () => {
+    const plan = calculateFIREPlan({
+      currentInvestedCents: $(500_000),
+      annualSpendingCents: $(40_000),
+      annualContributionCents: $(24_000),
+      realReturnRate: 0.05,
+      swrRate: 0.04,
+    });
+    expect(plan.fiNumberCents).toBe($(1_000_000));
+    expect(plan.fiProgressPercent).toBe(50);
+    expect(plan.currentPassiveIncomeCents).toBe($(20_000));
+    expect(plan.incomeReplacementPercent).toBe(50);
   });
 });

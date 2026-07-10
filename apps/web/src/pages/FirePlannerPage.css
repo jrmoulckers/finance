@@ -246,11 +246,177 @@
   padding: var(--spacing-4);
 }
 
+/* Return-mode fieldset (#3315). */
+.fire-field--return {
+  gap: var(--spacing-2);
+}
+
+.fire-return-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.fire-return-mode__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-body-small-font-size);
+  color: var(--semantic-text-primary);
+  cursor: pointer;
+}
+
+/* Scenario toggles (#3317). */
+.fire-scenarios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.fire-scenario-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-1);
+  flex: 1 1 8rem;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.fire-scenario-btn--active {
+  border-color: var(--semantic-status-warning);
+  background: var(--semantic-background-secondary);
+  box-shadow: inset 0 0 0 1px var(--semantic-status-warning);
+}
+
+.fire-scenario-btn__label {
+  font-weight: var(--type-scale-body-strong-font-weight, 600);
+}
+
+.fire-scenario-btn__mult {
+  font-size: var(--type-scale-body-small-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.fire-results__scenario-note {
+  margin: 0 0 var(--spacing-4) 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-small-font-size);
+}
+
+/* FI progress bar + income replacement (#3320). */
+.fire-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-6);
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+}
+
+.fire-progress__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.fire-progress__label {
+  font-weight: var(--type-scale-body-strong-font-weight, 600);
+  color: var(--semantic-text-primary);
+}
+
+.fire-progress__value {
+  color: var(--semantic-text-secondary);
+}
+
+.fire-progress__track {
+  height: 0.75rem;
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-secondary);
+  overflow: hidden;
+}
+
+.fire-progress__fill {
+  height: 100%;
+  background: var(--semantic-status-positive);
+}
+
+.fire-progress__replacement {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-small-font-size);
+}
+
+/* Comparison / sensitivity tables (#3317, #3319). */
+.fire-table-wrap {
+  margin-top: var(--spacing-6);
+  overflow-x: auto;
+}
+
+.fire-table__title {
+  font-size: var(--type-scale-title-font-size, 1rem);
+  font-weight: var(--type-scale-title-font-weight, 600);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-2) 0;
+}
+
+.fire-table__note {
+  margin: 0 0 var(--spacing-2) 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-small-font-size);
+}
+
+.fire-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-scale-body-small-font-size);
+}
+
+.fire-table th,
+.fire-table td {
+  padding: var(--spacing-2) var(--spacing-3);
+  text-align: left;
+  border-bottom: 1px solid var(--semantic-border-default);
+  color: var(--semantic-text-primary);
+}
+
+.fire-table thead th {
+  color: var(--semantic-text-secondary);
+  font-weight: var(--type-scale-body-strong-font-weight, 600);
+}
+
+.fire-table__row--active {
+  background: var(--semantic-background-secondary);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (prefers-contrast: more) {
   .fire-form,
   .fire-result-card,
   .fire-field__control,
-  .fire-results__chart {
+  .fire-results__chart,
+  .fire-progress,
+  .fire-scenario-btn {
     border-width: 2px;
   }
 }

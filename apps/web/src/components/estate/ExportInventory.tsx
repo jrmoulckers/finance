@@ -116,13 +116,51 @@ function buildPrintableHtml(
         <meta charset="utf-8" />
         <title>Estate Inventory</title>
         <style>
-          body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #111827; margin: 32px; line-height: 1.5; }
-          h1, h2, h3, h4 { margin-bottom: 8px; }
-          h2 { border-bottom: 1px solid #d1d5db; padding-bottom: 6px; margin-top: 28px; }
-          .meta { color: #4b5563; margin-bottom: 24px; }
-          .entry { border: 1px solid #d1d5db; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-          ul { margin: 8px 0 0 20px; }
-          .instructions { background: #f3f4f6; border-radius: 12px; padding: 16px; }
+          :root { color-scheme: light; }
+          html { font-size: 13pt; }
+          body {
+            font-family: Georgia, 'Times New Roman', 'Segoe UI', system-ui, serif;
+            color: #000000;
+            background: #ffffff;
+            margin: 0;
+            padding: 1.5cm;
+            line-height: 1.6;
+            font-size: 1rem;
+          }
+          h1 { font-size: 2rem; margin: 0 0 0.5rem; color: #000000; }
+          h2 {
+            font-size: 1.4rem;
+            border-bottom: 2px solid #000000;
+            padding-bottom: 6px;
+            margin: 1.75rem 0 0.75rem;
+            color: #000000;
+          }
+          h3 { font-size: 1.2rem; margin: 0 0 0.4rem; color: #000000; }
+          h4 { font-size: 1.05rem; margin: 0.75rem 0 0.35rem; color: #000000; }
+          p { margin: 0.4rem 0; }
+          .meta { color: #1a1a1a; margin-bottom: 1.5rem; font-size: 1rem; }
+          .entry {
+            border: 1.5px solid #000000;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            page-break-inside: avoid;
+          }
+          ul { margin: 0.5rem 0 0 1.5rem; padding: 0; }
+          li { margin: 0.25rem 0; }
+          strong { color: #000000; }
+          .instructions {
+            border: 1.5px solid #000000;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            page-break-inside: avoid;
+          }
+          section { page-break-inside: auto; }
+          @media print {
+            body { padding: 0; }
+            h2 { page-break-after: avoid; }
+            a { color: #000000; text-decoration: none; }
+          }
         </style>
       </head>
       <body>
