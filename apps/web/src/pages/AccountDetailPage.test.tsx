@@ -547,13 +547,12 @@ describe('AccountDetailPage', () => {
   // Navigation
   // ---------------------------------------------------------------------------
 
-  it('has back to accounts link', () => {
+  // Breadcrumbs are consolidated into the shell header (#3667); the detail
+  // page no longer renders its own in-page breadcrumb trail.
+  it('does not render a duplicate in-page breadcrumb', () => {
     renderWithRoute();
 
-    const breadcrumbNav = screen.getByRole('navigation', { name: /breadcrumb/i });
-    const accountsLink = within(breadcrumbNav).getByRole('link', { name: 'Accounts' });
-    expect(accountsLink).toBeInTheDocument();
-    expect(accountsLink).toHaveAttribute('href', '/accounts');
+    expect(screen.queryByRole('navigation', { name: /breadcrumb/i })).toBeNull();
   });
 
   // ---------------------------------------------------------------------------

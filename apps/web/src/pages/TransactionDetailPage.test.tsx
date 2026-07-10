@@ -434,13 +434,12 @@ describe('TransactionDetailPage', () => {
   // Navigation
   // ---------------------------------------------------------------------------
 
-  it('has back to transactions link', () => {
+  // Breadcrumbs are consolidated into the shell header (#3667); the detail
+  // page no longer renders its own in-page breadcrumb trail.
+  it('does not render a duplicate in-page breadcrumb', () => {
     renderWithRoute();
 
-    const breadcrumbNav = screen.getByRole('navigation', { name: /breadcrumb/i });
-    const transactionsLink = within(breadcrumbNav).getByRole('link', { name: 'Transactions' });
-    expect(transactionsLink).toBeInTheDocument();
-    expect(transactionsLink).toHaveAttribute('href', '/transactions');
+    expect(screen.queryByRole('navigation', { name: /breadcrumb/i })).toBeNull();
   });
 
   // ---------------------------------------------------------------------------

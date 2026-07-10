@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
+import { getRecentRoutes } from '../../lib/navigation/history';
 
 import '../forms/forms.css';
 
@@ -13,12 +14,32 @@ export interface CommandPaletteAction {
   shortcut?: string;
   keywords?: string;
   perform: () => void;
+  /**
+   * Target route for navigation actions. Used to surface recently visited
+   * destinations in the "Recent" section (#3676) and to prefetch the route's
+   * chunk on hover/focus (#3672).
+   */
+  href?: string;
+  /** Optional: warm the destination's lazy chunk on hover/focus (#3672). */
+  prefetch?: () => void;
 }
 
 export interface CommandPaletteProps {
   isOpen: boolean;
   actions: readonly CommandPaletteAction[];
   onClose: () => void;
+  /** The current route path, excluded from the "Recent" section (#3676). */
+  currentPath?: string;
+}
+
+/** How many recent destinations to surface when the search box is empty. */
+const RECENTS_LIMIT = 5;
+
+interface PaletteRow {
+  /** Stable React key + DOM id (prefixed for recents so ids stay unique). */
+  domId: string;
+  action: CommandPaletteAction;
+  recent: boolean;
 }
 
 function matchesAction(action: CommandPaletteAction, query: string): boolean {
@@ -34,12 +55,14 @@ function matchesAction(action: CommandPaletteAction, query: string): boolean {
 }
 
 /** Keyboard-first command palette for navigation and common actions. */
-export function CommandPalette({ isOpen, actions, onClose }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, actions, onClose, currentPath }: CommandPaletteProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
   const descriptionId = useId();
   const listboxId = useId();
+  const recentLabelId = useId();
+  const allLabelId = useId();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -49,10 +72,49 @@ export function CommandPalette({ isOpen, actions, onClose }: CommandPaletteProps
     initialFocusRef: searchRef,
   });
 
+  const isEmptyQuery = query.trim() === '';
+
   const filteredActions = useMemo(
     () => actions.filter((action) => matchesAction(action, query)),
     [actions, query],
   );
+
+  // Recently visited destinations, newest first, only when the user has not
+  // started typing. Matched back to their nav actions by `href` (#3676).
+  const recentActions = useMemo<CommandPaletteAction[]>(() => {
+    if (!isEmptyQuery) return [];
+    const byHref = new Map<string, CommandPaletteAction>();
+    for (const action of actions) {
+      if (action.href && !byHref.has(action.href)) {
+        byHref.set(action.href, action);
+      }
+    }
+    const seen = new Set<string>();
+    const result: CommandPaletteAction[] = [];
+    for (const entry of getRecentRoutes(RECENTS_LIMIT, currentPath)) {
+      const action = byHref.get(entry.path);
+      if (action && !seen.has(action.id)) {
+        seen.add(action.id);
+        result.push(action);
+      }
+    }
+    return result;
+  }, [actions, isEmptyQuery, currentPath]);
+
+  // Flatten recents + the main list into a single ordered set of rows so
+  // keyboard navigation (Arrow/Enter) traverses both sections seamlessly.
+  const rows = useMemo<PaletteRow[]>(() => {
+    const list: PaletteRow[] = [];
+    for (const action of recentActions) {
+      list.push({ domId: `recent-${action.id}`, action, recent: true });
+    }
+    for (const action of filteredActions) {
+      list.push({ domId: action.id, action, recent: false });
+    }
+    return list;
+  }, [recentActions, filteredActions]);
+
+  const recentCount = recentActions.length;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -67,8 +129,8 @@ export function CommandPalette({ isOpen, actions, onClose }: CommandPaletteProps
   }, [isOpen]);
 
   useEffect(() => {
-    setActiveIndex((current) => Math.min(current, Math.max(filteredActions.length - 1, 0)));
-  }, [filteredActions.length]);
+    setActiveIndex((current) => Math.min(current, Math.max(rows.length - 1, 0)));
+  }, [rows.length]);
 
   const runAction = useCallback(
     (action: CommandPaletteAction) => {
@@ -88,34 +150,60 @@ export function CommandPalette({ isOpen, actions, onClose }: CommandPaletteProps
 
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        setActiveIndex((current) =>
-          filteredActions.length === 0 ? 0 : (current + 1) % filteredActions.length,
-        );
+        setActiveIndex((current) => (rows.length === 0 ? 0 : (current + 1) % rows.length));
         return;
       }
 
       if (event.key === 'ArrowUp') {
         event.preventDefault();
         setActiveIndex((current) =>
-          filteredActions.length === 0
-            ? 0
-            : (current - 1 + filteredActions.length) % filteredActions.length,
+          rows.length === 0 ? 0 : (current - 1 + rows.length) % rows.length,
         );
         return;
       }
 
       if (event.key === 'Enter') {
-        const selectedAction = filteredActions[activeIndex];
-        if (selectedAction) {
+        const selected = rows[activeIndex];
+        if (selected) {
           event.preventDefault();
-          runAction(selectedAction);
+          runAction(selected.action);
         }
       }
     },
-    [activeIndex, filteredActions, onClose, runAction],
+    [activeIndex, rows, onClose, runAction],
   );
 
   if (!isOpen) return null;
+
+  const renderRow = (row: PaletteRow, index: number) => {
+    const { action } = row;
+    return (
+      <button
+        key={row.domId}
+        id={row.domId}
+        type="button"
+        role="option"
+        aria-selected={index === activeIndex}
+        className={`command-palette__item${index === activeIndex ? ' command-palette__item--active' : ''}`}
+        onMouseEnter={() => {
+          setActiveIndex(index);
+          action.prefetch?.();
+        }}
+        onFocus={() => action.prefetch?.()}
+        onClick={() => runAction(action)}
+      >
+        <span className="command-palette__item-text">
+          <span className="command-palette__item-label">{action.label}</span>
+          {action.description ? (
+            <span className="command-palette__item-description">{action.description}</span>
+          ) : null}
+        </span>
+        {action.shortcut ? (
+          <kbd className="command-palette__shortcut">{action.shortcut}</kbd>
+        ) : null}
+      </button>
+    );
+  };
 
   return (
     <div className="form-dialog command-palette" role="presentation">
@@ -143,35 +231,43 @@ export function CommandPalette({ isOpen, actions, onClose }: CommandPaletteProps
           onChange={(event) => setQuery(event.target.value)}
           aria-label="Search commands"
           aria-controls={listboxId}
-          aria-activedescendant={filteredActions[activeIndex]?.id}
+          aria-activedescendant={rows[activeIndex]?.domId}
           placeholder="Type a command or destination…"
         />
         <div id={listboxId} className="command-palette__list" role="listbox" aria-label="Commands">
-          {filteredActions.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="command-palette__empty">No matching commands.</p>
           ) : (
-            filteredActions.map((action, index) => (
-              <button
-                key={action.id}
-                id={action.id}
-                type="button"
-                role="option"
-                aria-selected={index === activeIndex}
-                className={`command-palette__item${index === activeIndex ? ' command-palette__item--active' : ''}`}
-                onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => runAction(action)}
-              >
-                <span className="command-palette__item-text">
-                  <span className="command-palette__item-label">{action.label}</span>
-                  {action.description ? (
-                    <span className="command-palette__item-description">{action.description}</span>
+            <>
+              {recentCount > 0 ? (
+                <div
+                  className="command-palette__group"
+                  role="group"
+                  aria-labelledby={recentLabelId}
+                >
+                  <p id={recentLabelId} className="command-palette__group-label">
+                    Recent
+                  </p>
+                  {rows.slice(0, recentCount).map((row, index) => renderRow(row, index))}
+                </div>
+              ) : null}
+              {rows.length > recentCount ? (
+                <div
+                  className="command-palette__group"
+                  role="group"
+                  aria-labelledby={recentCount > 0 ? allLabelId : undefined}
+                >
+                  {recentCount > 0 ? (
+                    <p id={allLabelId} className="command-palette__group-label">
+                      All commands
+                    </p>
                   ) : null}
-                </span>
-                {action.shortcut ? (
-                  <kbd className="command-palette__shortcut">{action.shortcut}</kbd>
-                ) : null}
-              </button>
-            ))
+                  {rows
+                    .slice(recentCount)
+                    .map((row, offset) => renderRow(row, recentCount + offset))}
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       </div>

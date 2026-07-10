@@ -321,7 +321,7 @@ describe('AppLayout', () => {
   it('applies the simple-mode route plan to core route content', () => {
     localStorage.setItem('finance-simplified-mode', 'true');
 
-    render(<AppLayout {...defaultProps} activePath="/transactions" pageTitle="Transactions" />);
+    renderLayout({ activePath: '/transactions', pageTitle: 'Transactions' });
 
     const main = screen.getByRole('main', { name: 'Transactions' });
     expect(main).toHaveAttribute('data-simple-mode', 'true');
@@ -329,5 +329,24 @@ describe('AppLayout', () => {
     expect(
       screen.getByRole('region', { name: /transactions simple mode plan/i }),
     ).toHaveTextContent('Primary action: Add transaction.');
+  });
+
+  it('does not render a header Back control on a top-level route (#3674)', () => {
+    renderLayout({ activePath: '/accounts', pageTitle: 'Accounts' });
+
+    const header = screen.getByRole('banner', { name: 'App header' });
+    expect(within(header).queryByRole('button', { name: /back to/i })).not.toBeInTheDocument();
+  });
+
+  it('renders a header Back control on a detail route that returns to the parent list (#3674)', () => {
+    const onNavigate = vi.fn();
+    renderLayout({ activePath: '/accounts/abc123', pageTitle: 'Accounts', onNavigate });
+
+    const header = screen.getByRole('banner', { name: 'App header' });
+    const back = within(header).getByRole('button', { name: 'Back to Accounts' });
+    expect(back).toBeInTheDocument();
+
+    fireEvent.click(back);
+    expect(onNavigate).toHaveBeenCalledWith('/accounts');
   });
 });

@@ -2,9 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-let mockLocation = { key: 'route-1' };
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-router-dom', () => ({
   Link: ({ to, children, ...props }: { to: string; children?: ReactNode }) => (
@@ -12,31 +10,36 @@ vi.mock('react-router-dom', () => ({
       {children}
     </a>
   ),
-  useLocation: () => mockLocation,
 }));
 
 import { Breadcrumbs } from './Breadcrumbs';
 
-describe('Breadcrumbs', () => {
-  beforeEach(() => {
-    sessionStorage.clear();
-    mockLocation = { key: 'route-1' };
-  });
-
-  it('does not render a trail on the first recorded visit', () => {
+describe('Breadcrumbs (hierarchical)', () => {
+  it('renders no trail on a top-level route', () => {
     render(<Breadcrumbs currentPath="/dashboard" currentTitle="Dashboard" />);
 
-    expect(screen.queryByRole('navigation', { name: 'Recent navigation' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument();
   });
 
-  it('renders recent navigation links after moving to a new route', () => {
-    const { rerender } = render(<Breadcrumbs currentPath="/dashboard" currentTitle="Dashboard" />);
+  it('renders a hierarchical trail for a nested route', () => {
+    render(<Breadcrumbs currentPath="/settings/preferences" currentTitle="Preferences" />);
 
-    mockLocation = { key: 'route-2' };
-    rerender(<Breadcrumbs currentPath="/accounts" currentTitle="Accounts" />);
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+    const current = screen.getByText('Preferences');
+    expect(current.closest('[aria-current="page"]')).not.toBeNull();
+  });
 
-    expect(screen.getByRole('navigation', { name: 'Recent navigation' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard');
-    expect(screen.getByText('Accounts')).toBeInTheDocument();
+  it('renders parent list + record type for a detail route', () => {
+    render(<Breadcrumbs currentPath="/accounts/abc123" currentTitle="Accounts" />);
+
+    expect(screen.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/accounts');
+    expect(screen.getByText('Account')).toBeInTheDocument();
+  });
+
+  it('does not use the legacy history "Recent navigation" label', () => {
+    render(<Breadcrumbs currentPath="/accounts/abc123" currentTitle="Accounts" />);
+
+    expect(screen.queryByRole('navigation', { name: 'Recent navigation' })).not.toBeInTheDocument();
   });
 });
