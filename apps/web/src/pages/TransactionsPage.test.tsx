@@ -216,6 +216,7 @@ vi.mock('../components/transactions', () => ({
     statuses: [],
   },
   DEFAULT_SORT: { field: 'date', direction: 'desc' },
+  TransactionShortcutsLegend: () => <div data-testid="transaction-shortcuts-legend" />,
 }));
 
 const mockedUseTransactions = vi.mocked(useTransactions);

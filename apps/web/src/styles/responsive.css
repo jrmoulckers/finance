@@ -1200,6 +1200,22 @@
 .transaction-list-item__amount {
   text-align: right;
 }
+.transaction-list-item__running-balance {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 5.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--semantic-text-secondary);
+}
+.transaction-list-item__running-balance-label {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--semantic-text-tertiary, var(--semantic-text-secondary));
+}
 .transaction-item__actions {
   display: inline-flex;
   align-items: center;

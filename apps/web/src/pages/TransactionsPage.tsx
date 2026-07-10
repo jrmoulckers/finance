@@ -44,6 +44,7 @@ import {
   TransactionSort,
   TransactionEditPanel,
   TransactionsSummaryBar,
+  TransactionShortcutsLegend,
   LazyReceiptImage,
   DEFAULT_SORT,
 } from '../components/transactions';
@@ -676,7 +677,47 @@ export const TransactionsPage: React.FC = () => {
     [transactions],
   );
 
-  // Filter/Sort handlers
+  // Running balance (#3659): a register/ledger balance after each transaction
+  // only makes sense when the visible set is scoped to a single account and
+  // ordered by date. It is accumulated from that account's full loaded history
+  // (rawTransactions) in chronological order so each row reflects the true
+  // balance even when a date/amount filter hides earlier rows. When the view
+  // mixes accounts the balance is meaningless, so it is hidden entirely.
+  const runningBalanceAccountId = useMemo(() => {
+    if (transactions.length === 0) return null;
+    let accountId: string | null = null;
+    for (const transaction of transactions) {
+      if (accountId === null) {
+        accountId = transaction.accountId;
+      } else if (accountId !== transaction.accountId) {
+        return null;
+      }
+    }
+    return accountId;
+  }, [transactions]);
+
+  const showRunningBalance = sortConfig.field === 'date' && runningBalanceAccountId !== null;
+
+  const runningBalanceById = useMemo(() => {
+    const balances = new Map<string, number>();
+    if (runningBalanceAccountId === null) return balances;
+
+    const accountHistory = rawTransactions
+      .filter((transaction) => transaction.accountId === runningBalanceAccountId)
+      .sort((a, b) => {
+        const byDate = a.date.localeCompare(b.date);
+        if (byDate !== 0) return byDate;
+        return a.createdAt.localeCompare(b.createdAt);
+      });
+
+    let runningTotal = 0;
+    for (const transaction of accountHistory) {
+      runningTotal += getTransactionDisplayAmount(transaction);
+      balances.set(transaction.id, runningTotal);
+    }
+    return balances;
+  }, [rawTransactions, runningBalanceAccountId]);
+
   const handleFiltersChange = useCallback(
     (newFilters: AdvancedFilters) => {
       const params = { ...filtersToParams(newFilters) };
@@ -762,7 +803,7 @@ export const TransactionsPage: React.FC = () => {
   }, []);
 
   const handleTransactionSubmit = useCallback(
-    async (data: CreateTransactionInput): Promise<void> => {
+    async (data: CreateTransactionInput, options?: { addAnother?: boolean }): Promise<void> => {
       if (editingTransaction !== null) {
         const result = updateTransaction(editingTransaction.id, data);
         if (result === null) {
@@ -779,7 +820,11 @@ export const TransactionsPage: React.FC = () => {
       }
 
       recordPwaMeaningfulAction();
-      handleFormCancel();
+      // "Save and add another" keeps the dialog open for the next entry (#3650);
+      // a regular save closes it as before.
+      if (!options?.addAnother) {
+        handleFormCancel();
+      }
       refreshTransactions();
     },
     [
@@ -1274,6 +1319,18 @@ export const TransactionsPage: React.FC = () => {
                 showSign
               />
             </div>
+            {showRunningBalance && runningBalanceById.has(transaction.id) ? (
+              <div className="transaction-list-item__running-balance">
+                <span className="transaction-list-item__running-balance-label" aria-hidden="true">
+                  Balance
+                </span>
+                <CurrencyDisplay
+                  amount={runningBalanceById.get(transaction.id)!}
+                  currency={transaction.currency.code}
+                  context={`running balance after ${transactionLabel}`}
+                />
+              </div>
+            ) : null}
             <div className="transaction-item__actions" aria-label="Transaction actions">
               <button
                 type="button"
@@ -1304,6 +1361,8 @@ export const TransactionsPage: React.FC = () => {
       handleEditTransaction,
       handleTransactionSelection,
       transactions.length,
+      showRunningBalance,
+      runningBalanceById,
     ],
   );
 
@@ -1428,7 +1487,7 @@ export const TransactionsPage: React.FC = () => {
             <input
               type="search"
               className="search-bar__input"
-              placeholder="Search..."
+              placeholder="Search payee, category, amount, tag…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               aria-label="Search transactions"
@@ -1538,6 +1597,7 @@ export const TransactionsPage: React.FC = () => {
                 {hasActiveFilters ? ' match your filters' : ''}
               </p>
             ) : null}
+            {!isSimplified && <TransactionShortcutsLegend />}
           </div>
 
           {!isLoading && !resolvedError && transactions.length > 0 && (
