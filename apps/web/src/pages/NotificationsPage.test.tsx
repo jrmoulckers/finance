@@ -47,6 +47,7 @@ function buildStore(overrides: Partial<UseNotificationsResult> = {}): UseNotific
     markAsRead: vi.fn(),
     markAllAsRead: vi.fn(),
     dismiss: vi.fn(),
+    snooze: vi.fn(),
     clearDismissed: vi.fn(),
     addNotification: vi.fn(),
     addNotifications: vi.fn(),

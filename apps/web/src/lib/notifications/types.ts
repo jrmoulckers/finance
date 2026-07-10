@@ -47,7 +47,7 @@ export type AlertType =
 export type NotificationChannel = 'in_app' | 'browser_push' | 'email';
 
 /** Possible states for a notification. */
-export type NotificationStatus = 'unread' | 'read' | 'dismissed';
+export type NotificationStatus = 'unread' | 'read' | 'dismissed' | 'snoozed';
 
 // ---------------------------------------------------------------------------
 // Notification model
@@ -69,8 +69,14 @@ export interface AppNotification {
   readonly actionHint?: string;
   /** ISO-8601 timestamp when the notification was created. */
   readonly createdAt: string;
-  /** Current status (read/unread/dismissed). */
+  /** Current status (read/unread/dismissed/snoozed). */
   readonly status: NotificationStatus;
+  /**
+   * ISO-8601 timestamp until which the notification is snoozed. Only set when
+   * {@link status} is `'snoozed'`; once this time passes the notification is
+   * automatically restored to `'unread'`.
+   */
+  readonly snoozedUntil?: string;
   /** Optional entity ID for quick navigation (budget, goal, account). */
   readonly entityId?: SyncId;
   /** Optional entity type for building navigation links. */
