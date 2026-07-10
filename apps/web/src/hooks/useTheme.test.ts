@@ -3,7 +3,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useTheme } from './useTheme';
+import { useTheme, applyThemeColorMeta, applyStoredThemePreference } from './useTheme';
+
+/** Read the JS-managed theme-color meta content, if present. */
+function getThemeColor(): string | null {
+  return document.getElementById('theme-color-dynamic')?.getAttribute('content') ?? null;
+}
 
 // ---------------------------------------------------------------------------
 // Mock localStorage and matchMedia
@@ -50,6 +55,7 @@ afterEach(() => {
   // Clean up root attributes
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.removeAttribute('data-density');
+  document.getElementById('theme-color-dynamic')?.remove();
   vi.restoreAllMocks();
 });
 
@@ -206,5 +212,80 @@ describe('useTheme', () => {
     });
 
     expect(result.current.resolvedTheme).toBe('dark');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// theme-color meta synchronization
+// ---------------------------------------------------------------------------
+
+describe('theme-color meta', () => {
+  it('creates a single dynamic meta as the first head child', () => {
+    applyThemeColorMeta('light');
+
+    const meta = document.getElementById('theme-color-dynamic');
+    expect(meta).not.toBeNull();
+    expect(meta?.getAttribute('name')).toBe('theme-color');
+    expect(document.head.firstChild).toBe(meta);
+  });
+
+  it('reuses the same meta on repeated calls (no duplicates)', () => {
+    applyThemeColorMeta('light');
+    applyThemeColorMeta('dark');
+
+    expect(document.querySelectorAll('#theme-color-dynamic')).toHaveLength(1);
+    expect(getThemeColor()).toBe('#0f1020');
+  });
+
+  it('maps each resolved theme to its background-primary color', () => {
+    applyThemeColorMeta('light');
+    expect(getThemeColor()).toBe('#ffffff');
+    applyThemeColorMeta('dark');
+    expect(getThemeColor()).toBe('#0f1020');
+    applyThemeColorMeta('dark-oled');
+    expect(getThemeColor()).toBe('#000000');
+    applyThemeColorMeta('high-contrast');
+    expect(getThemeColor()).toBe('#ffffff');
+  });
+
+  it('sets the meta from the hook on mount using the resolved theme', () => {
+    mockStorage['finance-theme-preference'] = 'dark-oled';
+
+    renderHook(() => useTheme());
+
+    expect(getThemeColor()).toBe('#000000');
+  });
+
+  it('updates the meta when the theme changes via setTheme', () => {
+    const { result } = renderHook(() => useTheme());
+
+    act(() => {
+      result.current.setTheme('dark');
+    });
+
+    expect(getThemeColor()).toBe('#0f1020');
+  });
+
+  it('follows the OS scheme for system mode and reacts to changes', () => {
+    isDarkMode = false;
+
+    renderHook(() => useTheme());
+    expect(getThemeColor()).toBe('#ffffff');
+
+    act(() => {
+      for (const listener of darkModeListeners) {
+        listener({ matches: true });
+      }
+    });
+
+    expect(getThemeColor()).toBe('#0f1020');
+  });
+
+  it('applyStoredThemePreference seeds the meta at boot', () => {
+    mockStorage['finance-theme-preference'] = 'dark';
+
+    applyStoredThemePreference();
+
+    expect(getThemeColor()).toBe('#0f1020');
   });
 });
