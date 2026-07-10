@@ -5,8 +5,8 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { MilestoneToast } from './components/celebrations';
 import { ConsentDialog } from './components/gdpr';
 import { AppLayout } from './components/layout';
-import { NAV_ROUTE_TITLES } from './components/layout/navConfig';
 import { FocusManager } from './components/layout/FocusManager';
+import { resolvePageLabel } from './lib/i18n/page-title';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
 import { NotificationsProvider, useNotificationCenter } from './contexts/NotificationsContext';
 import { NotificationInjectors } from './components/notifications/NotificationInjectors';
@@ -23,61 +23,9 @@ import type { AppNotification } from './lib/notifications';
 import { AppRoutes } from './routes';
 
 /**
- * Map path segments to human-readable page titles.
- *
- * Nav destinations are seeded from `NAV_ROUTE_TITLES` (derived from the single
- * `NAV_CONFIG` source of truth) so every sidebar route has a real title and the
- * two can never drift (#3780). Bespoke, non-nav titles below — Settings
- * sub-pages, legal docs, import sub-flows — are layered on top and win.
- *
- * Used by the AppLayout header. Dynamic / detail routes fall back to a
- * sensible default derived from the path's first segment.
+ * Brand fallback shown when a route has no entry in the page-title resolver.
  */
-const PAGE_TITLES: Record<string, string> = {
-  ...NAV_ROUTE_TITLES,
-  '/': 'Dashboard',
-  '/dashboard': 'Dashboard',
-  '/notifications': 'Notifications',
-  '/safety': 'Safety',
-  '/accounts': 'Accounts',
-  '/transactions': 'Transactions',
-  '/budgets': 'Budgets',
-  '/debt': 'Debt',
-  '/goals': 'Goals',
-  '/insights': 'Insights',
-  '/household': 'Household',
-  '/investments': 'Investments',
-  '/investments/tax': 'Tax Center',
-  '/bills': 'Bills',
-  '/invoices': 'Invoices',
-  '/report-builder': 'Report Builder',
-  '/achievements': 'Achievements',
-  '/watchlists': 'Watchlists',
-  '/settings': 'Settings',
-  '/settings/account': 'Settings · Account',
-  '/settings/preferences': 'Settings · Preferences',
-  '/settings/privacy': 'Settings · Privacy & Data',
-  '/settings/security': 'Settings · Security & Encryption',
-  '/settings/sync': 'Settings · Sync & Devices',
-  '/settings/advanced': 'Settings · Advanced',
-  '/import': 'Import',
-  '/import/wizard': 'Import Wizard',
-  '/import/receipt-ocr': 'Receipt OCR',
-  '/privacy-dashboard': 'Privacy Dashboard',
-  '/categories': 'Categories',
-  '/planning': 'Financial Planning',
-  '/learning': 'Learning',
-  '/estate': 'Estate Inventory',
-  '/cash-flow': 'Cash Flow',
-  '/net-worth': 'Net Worth',
-  '/client-profitability': 'Client Profitability',
-  '/subscriptions': 'Subscriptions',
-  '/bank-connections': 'Bank Connections',
-  '/legal': 'Legal',
-  '/legal/privacy': 'Privacy Policy',
-  '/legal/terms': 'Terms of Service',
-  '/legal/ccpa': 'California Privacy Notice',
-};
+const BRAND_FALLBACK_TITLE = 'Finance';
 
 /**
  * Routes that render WITHOUT the AppLayout shell (pre-auth + full-screen flows).
@@ -147,13 +95,18 @@ export function shouldAutoLaunchOnboarding(pathname: string, onboardingComplete:
   return !onboardingComplete && !isFirstRunAllowedPath(pathname);
 }
 
+/**
+ * Resolve the shell header `<h1>` / breadcrumb label for a route.
+ *
+ * Derives the label from the single localized page-title source of truth
+ * (`resolvePageLabel`, backed by `ROUTE_TITLE_IDS`) so the header title, the
+ * breadcrumb, and the browser tab title can never drift apart and are all
+ * localized consistently (#3616). Detail routes (`/accounts/:id`) inherit their
+ * parent segment's label via the resolver; genuinely unknown routes fall back
+ * to the product brand name.
+ */
 export function derivePageTitle(pathname: string): string {
-  if (PAGE_TITLES[pathname]) {
-    return PAGE_TITLES[pathname];
-  }
-  // /accounts/<id> -> "Accounts"; /transactions/<id>/edit -> "Transactions"
-  const firstSegment = `/${pathname.split('/').filter(Boolean)[0] ?? ''}`;
-  return PAGE_TITLES[firstSegment] ?? 'Finance';
+  return resolvePageLabel(pathname) ?? BRAND_FALLBACK_TITLE;
 }
 
 function getBudgetThresholdHapticEvent(

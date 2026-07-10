@@ -1,16 +1,27 @@
 /* SPDX-License-Identifier: BUSL-1.1 */
 
 /*
- * Styles specific to the standalone 404 page. Layered on top of `auth.css`
- * so the 404 shares the centred auth-card shell while adding an illustrative
- * icon and a secondary "Go back" action.
+ * Styles for the in-shell 404 empty state (#3626). Self-contained (no auth.css
+ * dependency) so the 404 renders as a centred empty state within the
+ * authenticated content column rather than a floating pre-auth card.
  */
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3, 0.75rem);
+  max-width: 32rem;
+  margin: var(--spacing-8, 3rem) auto;
+  padding: var(--spacing-6, 1.5rem);
+  text-align: center;
+}
 
 .not-found__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--spacing-4, 1rem);
   color: var(--semantic-text-secondary, currentColor);
 }
 
@@ -19,15 +30,63 @@
   height: 72px;
 }
 
-/* Secondary action: outlined button that echoes `.auth-submit` sizing. */
+.not-found__title {
+  margin: 0;
+  font-size: var(--font-size-2xl, 1.5rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary, currentColor);
+}
+
+.not-found__message {
+  margin: 0;
+  color: var(--semantic-text-secondary, currentColor);
+}
+
+.not-found__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3, 0.75rem);
+  margin-top: var(--spacing-4, 1rem);
+}
+
+/* Primary action: filled button that links to the dashboard. */
+.not-found__primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  min-height: 44px;
+  padding: var(--spacing-2) var(--spacing-5, 1.25rem);
+  border: 1px solid var(--semantic-interactive-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-on-interactive, #fff);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.not-found__primary:hover {
+  background: var(--semantic-interactive-hover, var(--semantic-interactive-default));
+}
+
+.not-found__primary:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* Secondary action: outlined button that mirrors the primary sizing. */
 .not-found__back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: auto;
   gap: var(--spacing-2);
   min-height: 44px;
-  padding: var(--spacing-2) var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-5, 1.25rem);
   border: 1px solid var(--semantic-interactive-default);
   border-radius: var(--border-radius-md);
   background: transparent;
@@ -47,4 +106,10 @@
 .not-found__back:focus-visible {
   outline: 2px solid var(--semantic-border-focus);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .not-found__back {
+    transition: none;
+  }
 }

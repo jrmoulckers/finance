@@ -42,18 +42,19 @@ describe('NotFoundPage', () => {
     expect(link).toHaveAttribute('href', '/dashboard');
   });
 
-  it('renders a link to the login page', () => {
+  it('does not render a nested <main> landmark (renders inside AppLayout main)', () => {
     renderNotFoundPage();
 
-    const link = screen.getByRole('link', { name: /go to login/i });
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/login');
+    // The 404 now renders inside AppLayout's <main>, so it must not introduce a
+    // second top-level main landmark (#3626).
+    expect(screen.queryByRole('main')).not.toBeInTheDocument();
   });
 
-  it('uses a semantic <main> landmark', () => {
+  it('exposes a single labelled region for the empty state', () => {
     renderNotFoundPage();
 
-    expect(screen.getByRole('main')).toBeInTheDocument();
+    const region = screen.getByRole('region', { name: /404/i });
+    expect(region).toBeInTheDocument();
   });
 
   it('renders a history-aware "Go back" button that navigates back', async () => {

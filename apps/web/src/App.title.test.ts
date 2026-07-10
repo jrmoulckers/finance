@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Regression tests for page-title derivation (#3780).
+ * Regression tests for page-title derivation (#3616).
  *
  * Nine primary destinations used to fall back to the generic "Finance" title
- * because `PAGE_TITLES` in App.tsx drifted from `NAV_CONFIG`. Titles are now
- * seeded from the nav config, so every sidebar route resolves to its real name
- * for both the header `<h1>` and the browser tab title.
+ * because a second, hand-maintained `PAGE_TITLES` map in App.tsx had drifted
+ * from the localized `resolvePageLabel` resolver (`lib/i18n/page-title.ts`).
+ * `derivePageTitle` now reads exclusively from that single source of truth, so
+ * every route resolves to its real, localized name for the header `<h1>` and
+ * breadcrumb — and can never drift from the browser tab title again.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -23,13 +25,13 @@ describe('derivePageTitle', () => {
     }
   });
 
-  it('titles the routes that previously fell back to "Finance"', () => {
+  it('titles the 9 routes that previously fell back to "Finance"', () => {
     const previouslyBroken: Record<string, string> = {
       '/remittances': 'Remittances',
       '/expected-income': 'Expected Income',
       '/live-pnl': 'Live P&L',
       '/estimated-tax': 'Estimated Taxes',
-      '/trip-budgets': 'Trip Budgets',
+      '/trip-budgets': 'Trip & Country Budgets',
       '/building-credit': 'Building Credit',
       '/fire': 'FIRE Planner',
       '/cash-runway': 'Cash Runway',
@@ -41,9 +43,9 @@ describe('derivePageTitle', () => {
     }
   });
 
-  it('keeps bespoke non-nav titles that override the nav defaults', () => {
+  it('resolves nested routes from the shared localized resolver', () => {
     expect(derivePageTitle('/report-builder')).toBe('Report Builder');
-    expect(derivePageTitle('/settings/security')).toBe('Settings · Security & Encryption');
+    expect(derivePageTitle('/settings/security')).toBe('Security & Encryption');
     expect(derivePageTitle('/legal/privacy')).toBe('Privacy Policy');
   });
 
