@@ -8,6 +8,7 @@ import com.finance.models.types.SyncId
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
 
@@ -19,6 +20,14 @@ import kotlinx.datetime.plus
  * tested trivially and run on any KMP target.
  */
 object RecurringTransactionEngine {
+
+    private const val DAYS_PER_WEEK = 7
+
+    /** Default number of days before `today` that [getOverdueReminders] scans for overdue bills. */
+    const val DEFAULT_OVERDUE_LOOKBACK_DAYS: Int = 90
+
+    /** Default cap on overdue occurrences emitted per rule by [getOverdueReminders]. */
+    const val DEFAULT_OVERDUE_MAX_PER_RULE: Int = 50
 
     // ── Occurrence generation ────────────────────────────────────────
 
@@ -50,7 +59,7 @@ object RecurringTransactionEngine {
         }
 
         val dates = mutableListOf<LocalDate>()
-        var current = rule.startDate
+        var current = effectiveStart(rule)
         var occurrenceCount = 0
 
         while (current <= effectiveEnd) {
@@ -87,7 +96,7 @@ object RecurringTransactionEngine {
     ): LocalDate? {
         if (rule.isPaused) return null
 
-        var current = rule.startDate
+        var current = effectiveStart(rule)
         var occurrenceCount = 0
 
         while (true) {
@@ -141,26 +150,49 @@ object RecurringTransactionEngine {
     // ── Overdue detection ────────────────────────────────────────────
 
     /**
-     * For each rule + template pair, find every occurrence on or before [today]
+     * For each rule + template pair, find overdue occurrences on or before [today]
      * and emit a [Reminder] marked as overdue.
      *
-     * A reminder is overdue when the occurrence date ≤ [today].
+     * A reminder is overdue when the occurrence date ≤ [today]. To keep the result bounded for
+     * long-running rules (e.g. a DAILY rule started years ago), overdue detection only reaches back
+     * [lookbackDays] days from [today] and caps the number of overdue occurrences emitted per rule
+     * at [maxPerRule] (keeping the most recent ones). Occurrences already recorded/paid — identified
+     * by a `(ruleId, dueDate)` pair in [paidOccurrences] — are excluded.
+     *
      * This intentionally only returns *overdue* reminders; upcoming-but-not-yet-due
      * reminders should be built by combining [generateUpcoming] with a future window.
      *
      * @param rules Pairs of (recurrence rule, transaction template).
      * @param today The reference date (typically `Clock.System.todayIn(tz)`).
+     * @param lookbackDays How many days before [today] overdue detection reaches (default 90).
+     *   Must be non-negative.
+     * @param maxPerRule Maximum overdue occurrences emitted per rule (default 50), keeping the most
+     *   recent. Must be positive.
+     * @param paidOccurrences `(ruleId, dueDate)` pairs already recorded/paid; excluded from output.
      * @return List of [Reminder]s sorted by due date ascending.
      */
     fun getOverdueReminders(
         rules: List<Pair<RecurrenceRule, Transaction>>,
         today: LocalDate,
+        lookbackDays: Int = DEFAULT_OVERDUE_LOOKBACK_DAYS,
+        maxPerRule: Int = DEFAULT_OVERDUE_MAX_PER_RULE,
+        paidOccurrences: Set<Pair<SyncId, LocalDate>> = emptySet(),
     ): List<Reminder> {
+        require(lookbackDays >= 0) { "lookbackDays must be non-negative, was $lookbackDays" }
+        require(maxPerRule >= 1) { "maxPerRule must be at least 1, was $maxPerRule" }
+
+        val windowStart = today.minus(lookbackDays, DateTimeUnit.DAY)
+
         return rules.flatMap { (rule, template) ->
             // Rule hasn't started yet — no overdue occurrences possible.
             if (rule.startDate > today) return@flatMap emptyList()
 
-            generateUpcoming(rule, from = rule.startDate, to = today)
+            val from = if (rule.startDate > windowStart) rule.startDate else windowStart
+
+            generateUpcoming(rule, from = from, to = today)
+                .filter { dueDate -> Pair(rule.id, dueDate) !in paidOccurrences }
+                // Keep the most recent overdue occurrences when the window is dense.
+                .takeLast(maxPerRule)
                 .map { dueDate ->
                     val daysOverdue = daysBetween(dueDate, today)
                     Reminder(
@@ -195,11 +227,55 @@ object RecurringTransactionEngine {
                 advanceWeekly(current, rule.interval * 2, rule.dayOfWeek)
 
             RecurrenceFrequency.MONTHLY ->
-                advanceMonthly(current, rule.interval, anchorDay)
+                if (rule.nthWeekday != null && rule.dayOfWeek != null) {
+                    advanceMonthlyPositional(current, rule.interval, rule.dayOfWeek, rule.nthWeekday)
+                } else {
+                    advanceMonthly(current, rule.interval, anchorDay)
+                }
 
             RecurrenceFrequency.YEARLY ->
                 advanceYearly(current, rule.interval, anchorDay)
         }
+    }
+
+    /**
+     * Resolve the first concrete occurrence of [rule] (the date the series starts emitting from).
+     *
+     * For WEEKLY/BIWEEKLY rules with a [RecurrenceRule.dayOfWeek] the start is aligned forward to
+     * that weekday on/after [RecurrenceRule.startDate] so the first entry lands on the preferred
+     * weekday and every interval is a whole number of weeks. For positional MONTHLY rules
+     * (see [RecurrenceRule.nthWeekday]) the start is the nth weekday of the start month, advanced to
+     * the next eligible month when that date already precedes [RecurrenceRule.startDate]. All other
+     * rules start exactly on [RecurrenceRule.startDate].
+     */
+    internal fun effectiveStart(rule: RecurrenceRule): LocalDate {
+        val start = rule.startDate
+        return when (rule.frequency) {
+            RecurrenceFrequency.WEEKLY, RecurrenceFrequency.BIWEEKLY -> {
+                val dow = rule.dayOfWeek ?: return start
+                alignToWeekday(start, dow)
+            }
+
+            RecurrenceFrequency.MONTHLY -> {
+                val dow = rule.dayOfWeek
+                val nth = rule.nthWeekday
+                if (dow == null || nth == null) return start
+                val firstInMonth = nthWeekdayOfMonth(start.year, start.month.number, dow, nth)
+                if (firstInMonth >= start) {
+                    firstInMonth
+                } else {
+                    advanceMonthlyPositional(firstInMonth, rule.interval, dow, nth)
+                }
+            }
+
+            else -> start
+        }
+    }
+
+    /** Advance [date] forward (never backward) to the next occurrence of [target] weekday. */
+    private fun alignToWeekday(date: LocalDate, target: DayOfWeek): LocalDate {
+        val diff = ((target.ordinal - date.dayOfWeek.ordinal) + DAYS_PER_WEEK) % DAYS_PER_WEEK
+        return date.plus(diff, DateTimeUnit.DAY)
     }
 
     private fun advanceWeekly(
@@ -209,9 +285,52 @@ object RecurringTransactionEngine {
     ): LocalDate {
         val advanced = current.plus(weeks, DateTimeUnit.WEEK)
         if (preferredDay == null) return advanced
-        // Snap to the preferred day within the same ISO week.
-        val diff = preferredDay.ordinal - advanced.dayOfWeek.ordinal
-        return advanced.plus(diff, DateTimeUnit.DAY)
+        // Snap forward-only to the preferred day so an occurrence is never earlier than the
+        // previous one. When [current] is already aligned (the normal case) this is a no-op.
+        return alignToWeekday(advanced, preferredDay)
+    }
+
+    /**
+     * Advance a positional MONTHLY recurrence by [months] months and resolve the [nth] occurrence
+     * of [weekday] in the resulting month (see [RecurrenceRule.nthWeekday]).
+     */
+    private fun advanceMonthlyPositional(
+        current: LocalDate,
+        months: Int,
+        weekday: DayOfWeek,
+        nth: Int,
+    ): LocalDate {
+        val firstOfMonth = LocalDate(current.year, current.month.number, 1)
+        val nextMonth = firstOfMonth.plus(months, DateTimeUnit.MONTH)
+        return nthWeekdayOfMonth(nextMonth.year, nextMonth.month.number, weekday, nth)
+    }
+
+    /**
+     * Resolve the [nth] occurrence of [weekday] within [year]/[month].
+     *
+     * `nth` in `1..4` selects the 1st–4th occurrence; `-1` (or `5`) selects the last occurrence.
+     * A requested ordinal that does not exist in the month clamps to the last occurrence of
+     * [weekday] (e.g. a 5th Friday in a month with only four resolves to the 4th).
+     */
+    internal fun nthWeekdayOfMonth(
+        year: Int,
+        month: Int,
+        weekday: DayOfWeek,
+        nth: Int,
+    ): LocalDate {
+        val lastDay = lastDayOfMonth(year, month)
+        if (nth <= 0) {
+            // Last occurrence: walk back from month end to the target weekday.
+            val monthEnd = LocalDate(year, month, lastDay)
+            val back = ((monthEnd.dayOfWeek.ordinal - weekday.ordinal) + DAYS_PER_WEEK) % DAYS_PER_WEEK
+            return monthEnd.minus(back, DateTimeUnit.DAY)
+        }
+        val firstOfMonth = LocalDate(year, month, 1)
+        val offset = ((weekday.ordinal - firstOfMonth.dayOfWeek.ordinal) + DAYS_PER_WEEK) % DAYS_PER_WEEK
+        var day = 1 + offset + (nth - 1) * DAYS_PER_WEEK
+        // Clamp a non-existent ordinal (e.g. 5th weekday) back to the last real occurrence.
+        while (day > lastDay) day -= DAYS_PER_WEEK
+        return LocalDate(year, month, day)
     }
 
     /**

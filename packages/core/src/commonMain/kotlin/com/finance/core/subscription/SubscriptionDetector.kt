@@ -116,7 +116,7 @@ object SubscriptionDetector {
 
         // Check amount consistency
         val amounts = sorted.map { it.amount.abs().amount }
-        val avgAmount = amounts.sum() / amounts.size
+        val avgAmount = roundHalfUp(amounts.sum(), amounts.size.toLong())
         val allSimilar = amounts.all { amount ->
             val diff = kotlin.math.abs(amount - avgAmount).toDouble()
             avgAmount == 0L || (diff / avgAmount) * 100.0 <= AMOUNT_TOLERANCE_PERCENT
@@ -170,35 +170,65 @@ object SubscriptionDetector {
             .trim()
     }
 
+    /**
+     * Classify the dominant cadence from an average inter-transaction interval in days.
+     *
+     * Ranges are contiguous across the common billing cadences so genuine subscriptions with
+     * ~21-day (every-three-weeks), semi-monthly (twice-a-month, ~15 days), and every-other-month
+     * (~35–80 day) cycles are no longer dropped as `null`. Semi-monthly is disambiguated from a true
+     * 14-day biweekly cycle by its slightly longer average interval. Returns `null` only for
+     * intervals outside every supported cadence band (e.g. sub-weekly noise or 100–350 day gaps).
+     */
     internal fun classifyFrequency(avgIntervalDays: Double): SubscriptionFrequency? {
         return when {
             avgIntervalDays in 5.0..9.0 -> SubscriptionFrequency.WEEKLY
-            avgIntervalDays in 12.0..17.0 -> SubscriptionFrequency.BIWEEKLY
+            avgIntervalDays in 12.0..14.0 -> SubscriptionFrequency.BIWEEKLY
+            avgIntervalDays > 14.0 && avgIntervalDays <= 17.0 -> SubscriptionFrequency.SEMI_MONTHLY
+            avgIntervalDays in 18.0..26.0 -> SubscriptionFrequency.EVERY_THREE_WEEKS
             avgIntervalDays in 27.0..34.0 -> SubscriptionFrequency.MONTHLY
-            avgIntervalDays in 85.0..100.0 -> SubscriptionFrequency.QUARTERLY
+            avgIntervalDays in 35.0..80.0 -> SubscriptionFrequency.BIMONTHLY
+            avgIntervalDays in 81.0..100.0 -> SubscriptionFrequency.QUARTERLY
             avgIntervalDays in 350.0..380.0 -> SubscriptionFrequency.YEARLY
             else -> null
         }
     }
 
     internal fun toMonthlyCost(amount: Cents, frequency: SubscriptionFrequency): Cents {
+        val cents = amount.amount
         return when (frequency) {
-            SubscriptionFrequency.WEEKLY -> Cents(amount.amount * 52 / 12)
-            SubscriptionFrequency.BIWEEKLY -> Cents(amount.amount * 26 / 12)
+            SubscriptionFrequency.WEEKLY -> Cents(roundHalfUp(cents * 52, 12))
+            SubscriptionFrequency.BIWEEKLY -> Cents(roundHalfUp(cents * 26, 12))
+            SubscriptionFrequency.SEMI_MONTHLY -> Cents(cents * 2)
+            SubscriptionFrequency.EVERY_THREE_WEEKS -> Cents(roundHalfUp(cents * 365, 21 * 12))
             SubscriptionFrequency.MONTHLY -> amount
-            SubscriptionFrequency.QUARTERLY -> Cents(amount.amount / 3)
-            SubscriptionFrequency.YEARLY -> Cents(amount.amount / 12)
+            SubscriptionFrequency.BIMONTHLY -> Cents(roundHalfUp(cents, 2))
+            SubscriptionFrequency.QUARTERLY -> Cents(roundHalfUp(cents, 3))
+            SubscriptionFrequency.YEARLY -> Cents(roundHalfUp(cents, 12))
         }
     }
 
     internal fun toAnnualCost(amount: Cents, frequency: SubscriptionFrequency): Cents {
+        val cents = amount.amount
         return when (frequency) {
-            SubscriptionFrequency.WEEKLY -> Cents(amount.amount * 52)
-            SubscriptionFrequency.BIWEEKLY -> Cents(amount.amount * 26)
-            SubscriptionFrequency.MONTHLY -> Cents(amount.amount * 12)
-            SubscriptionFrequency.QUARTERLY -> Cents(amount.amount * 4)
+            SubscriptionFrequency.WEEKLY -> Cents(cents * 52)
+            SubscriptionFrequency.BIWEEKLY -> Cents(cents * 26)
+            SubscriptionFrequency.SEMI_MONTHLY -> Cents(cents * 24)
+            SubscriptionFrequency.EVERY_THREE_WEEKS -> Cents(roundHalfUp(cents * 365, 21))
+            SubscriptionFrequency.MONTHLY -> Cents(cents * 12)
+            SubscriptionFrequency.BIMONTHLY -> Cents(cents * 6)
+            SubscriptionFrequency.QUARTERLY -> Cents(cents * 4)
             SubscriptionFrequency.YEARLY -> amount
         }
+    }
+
+    /**
+     * Round `numerator / denominator` to the nearest integer using round-half-up, staying in integer
+     * [Cents] math. [numerator] and [denominator] are expected to be non-negative (amounts are taken
+     * as absolute values before averaging/annualization).
+     */
+    internal fun roundHalfUp(numerator: Long, denominator: Long): Long {
+        require(denominator > 0) { "denominator must be positive, was $denominator" }
+        return (numerator + denominator / 2) / denominator
     }
 
     private fun computeConfidence(
@@ -217,7 +247,7 @@ object SubscriptionDetector {
 
 @Serializable
 enum class SubscriptionFrequency {
-    WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, YEARLY,
+    WEEKLY, BIWEEKLY, SEMI_MONTHLY, EVERY_THREE_WEEKS, MONTHLY, BIMONTHLY, QUARTERLY, YEARLY,
 }
 
 @Serializable

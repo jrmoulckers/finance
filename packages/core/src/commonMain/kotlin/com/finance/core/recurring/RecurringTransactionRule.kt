@@ -21,7 +21,14 @@ import kotlinx.serialization.Serializable
  * @property ownerId Authenticated user who owns this rule.
  * @property householdId Household this rule belongs to.
  * @property merchant The payee/merchant name for this recurring bill.
- * @property amount Expected bill amount in cents.
+ * @property amount Expected bill amount in cents. For [isVariable] rules this is the *estimate*
+ *   used by forecasts when no per-occurrence override is known.
+ * @property isVariable `true` if the bill amount varies each cycle (e.g. utilities, credit-card
+ *   minimums). Forecasts fall back to [amount] as the estimate; a concrete [amountOverrides] entry
+ *   is used for an occurrence when known.
+ * @property amountOverrides Optional per-occurrence amount overrides keyed by the occurrence
+ *   [LocalDate]. Applied when stamping/forecasting that specific occurrence. Ignored unless
+ *   [isVariable] is `true`.
  * @property currency Currency for the bill amount.
  * @property accountId Account to charge/credit.
  * @property categoryId Category for generated transactions.
@@ -43,6 +50,8 @@ data class RecurringTransactionRule(
     val householdId: SyncId,
     val merchant: String,
     val amount: Cents,
+    val isVariable: Boolean = false,
+    val amountOverrides: Map<LocalDate, Cents> = emptyMap(),
     val currency: Currency,
     val accountId: SyncId,
     val categoryId: SyncId? = null,
@@ -61,4 +70,14 @@ data class RecurringTransactionRule(
         require(merchant.isNotBlank()) { "Merchant name cannot be blank" }
         require(amount.amount != 0L) { "Bill amount cannot be zero" }
     }
+
+    /**
+     * Resolve the amount to use for the occurrence on [date].
+     *
+     * Returns the per-occurrence override from [amountOverrides] when this rule [isVariable] and an
+     * override exists for that date; otherwise returns the estimate [amount]. Fixed (non-variable)
+     * rules always return [amount].
+     */
+    fun amountFor(date: LocalDate): Cents =
+        if (isVariable) amountOverrides[date] ?: amount else amount
 }
