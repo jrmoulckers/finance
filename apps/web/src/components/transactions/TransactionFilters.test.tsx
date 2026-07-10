@@ -9,7 +9,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-import { TransactionFilters, EMPTY_FILTERS, countActiveFilters } from './TransactionFilters';
+import {
+  TransactionFilters,
+  EMPTY_FILTERS,
+  countActiveFilters,
+  getActiveFilterChips,
+  isAmountRangeInverted,
+} from './TransactionFilters';
 import type { AdvancedFilters } from './TransactionFilters';
 import type { Account, Category } from '../../kmp/bridge';
 
@@ -184,7 +190,7 @@ describe('TransactionFilters', () => {
       />,
     );
 
-    expect(screen.getByText(/from: 2024-01-01/i)).toBeInTheDocument();
+    expect(screen.getByText(/from: jan 1, 2024/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText(/remove filter/i));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ startDate: '' }));
@@ -222,5 +228,69 @@ describe('countActiveFilters', () => {
       amountMin: '10',
     };
     expect(countActiveFilters(filters)).toBe(3);
+  });
+});
+
+describe('isAmountRangeInverted', () => {
+  it('is false when either bound is missing', () => {
+    expect(isAmountRangeInverted({ ...EMPTY_FILTERS, amountMin: '50' })).toBe(false);
+    expect(isAmountRangeInverted({ ...EMPTY_FILTERS, amountMax: '50' })).toBe(false);
+  });
+
+  it('is true when min is greater than max', () => {
+    expect(isAmountRangeInverted({ ...EMPTY_FILTERS, amountMin: '500', amountMax: '10' })).toBe(
+      true,
+    );
+  });
+
+  it('is false for a valid range', () => {
+    expect(isAmountRangeInverted({ ...EMPTY_FILTERS, amountMin: '10', amountMax: '500' })).toBe(
+      false,
+    );
+  });
+});
+
+describe('getActiveFilterChips', () => {
+  it('formats amount chips as localized currency', () => {
+    const chips = getActiveFilterChips(
+      { ...EMPTY_FILTERS, amountMin: '1000', amountMax: '2500.5' },
+      mockCategories,
+      mockAccounts,
+    );
+    const min = chips.find((c) => c.key === 'amountMin');
+    const max = chips.find((c) => c.key === 'amountMax');
+    expect(min?.label).toContain('$1,000');
+    expect(max?.label).toContain('$2,500.5');
+  });
+
+  it('collapses many selected categories into a count', () => {
+    const chips = getActiveFilterChips(
+      { ...EMPTY_FILTERS, categoryIds: ['cat-1', 'cat-2', 'cat-3'] },
+      mockCategories,
+      mockAccounts,
+    );
+    const categoryChip = chips.find((c) => c.key === 'categories');
+    expect(categoryChip?.label).toBe('Categories: 3 categories selected');
+  });
+
+  it('lists names inline when few categories are selected', () => {
+    const chips = getActiveFilterChips(
+      { ...EMPTY_FILTERS, categoryIds: ['cat-1', 'cat-2'] },
+      mockCategories,
+      mockAccounts,
+    );
+    const categoryChip = chips.find((c) => c.key === 'categories');
+    expect(categoryChip?.label).toBe('Categories: Food, Transport');
+  });
+
+  it('renders start-date chips using a formatted date rather than the raw ISO string', () => {
+    const chips = getActiveFilterChips(
+      { ...EMPTY_FILTERS, startDate: '2024-01-05' },
+      mockCategories,
+      mockAccounts,
+    );
+    const dateChip = chips.find((c) => c.key === 'startDate');
+    expect(dateChip?.label).toContain('From:');
+    expect(dateChip?.label).not.toBe('From: 2024-01-05');
   });
 });

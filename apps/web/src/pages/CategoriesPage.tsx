@@ -3,11 +3,22 @@
 import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { AppIcon, type IconName } from '../components/icons';
 
-import { ConfirmDialog, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  ConfirmDialog,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+  NoResultsEmptyState,
+} from '../components/common';
 import { CategoryForm } from '../components/forms';
 import type { CreateCategoryInput } from '../db/repositories/categories';
 import { useCategories, useTransactions } from '../hooks';
 import type { Category } from '../kmp/bridge';
+import {
+  filterAndSortCategories,
+  type CategorySortField,
+  type CategoryTypeFilter,
+} from '../lib/categories/filter-sort';
 import '../styles/pages.css';
 
 const FamilyKidsCategoryCard = lazy(
@@ -77,6 +88,9 @@ export const CategoriesPage: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<CategoryTypeFilter>('all');
+  const [sortField, setSortField] = useState<CategorySortField>('name');
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -105,6 +119,23 @@ export const CategoriesPage: React.FC = () => {
 
   const isLoading = loading || transactionsLoading;
   const resolvedError = error ?? transactionsError;
+
+  const visibleCategories = useMemo(
+    () =>
+      filterAndSortCategories(
+        categories,
+        { query: searchQuery, typeFilter, sortField },
+        transactionCountsByCategory,
+      ),
+    [categories, searchQuery, typeFilter, sortField, transactionCountsByCategory],
+  );
+
+  const isFiltering = searchQuery.trim() !== '' || typeFilter !== 'all';
+
+  const handleClearCategoryFilters = useCallback(() => {
+    setSearchQuery('');
+    setTypeFilter('all');
+  }, []);
 
   const handleRetry = useCallback(() => {
     refresh();
@@ -313,84 +344,151 @@ export const CategoriesPage: React.FC = () => {
               onError={setDeleteError}
             />
           </Suspense>
+          <section className="category-toolbar" aria-label="Search and filter categories">
+            <div className="search-bar" role="search">
+              <input
+                type="search"
+                className="search-bar__input"
+                placeholder="Search categories..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Search categories by name"
+              />
+              {searchQuery.trim() !== '' && (
+                <button
+                  type="button"
+                  className="search-bar__clear"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear category search"
+                >
+                  <span aria-hidden="true">✕</span>
+                </button>
+              )}
+            </div>
+            <div className="category-toolbar__controls">
+              <div className="category-toolbar__field">
+                <label className="category-toolbar__label" htmlFor="category-type-filter">
+                  Type
+                </label>
+                <select
+                  id="category-type-filter"
+                  className="category-toolbar__select"
+                  value={typeFilter}
+                  onChange={(event) => setTypeFilter(event.target.value as CategoryTypeFilter)}
+                >
+                  <option value="all">All</option>
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                </select>
+              </div>
+              <div className="category-toolbar__field">
+                <label className="category-toolbar__label" htmlFor="category-sort">
+                  Sort by
+                </label>
+                <select
+                  id="category-sort"
+                  className="category-toolbar__select"
+                  value={sortField}
+                  onChange={(event) => setSortField(event.target.value as CategorySortField)}
+                >
+                  <option value="name">Name</option>
+                  <option value="usage">Most used</option>
+                  <option value="sortOrder">Sort order</option>
+                </select>
+              </div>
+            </div>
+          </section>
           <p className="page-summary" aria-live="polite">
-            {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} available for
-            transaction organization.
+            {isFiltering
+              ? `Showing ${visibleCategories.length} of ${categories.length} categor${
+                  categories.length === 1 ? 'y' : 'ies'
+                }.`
+              : `${categories.length} categor${
+                  categories.length === 1 ? 'y' : 'ies'
+                } available for transaction organization.`}
           </p>
           <section aria-label="Categories list">
-            <div className="card-grid card-grid--2">
-              {categories.map((category) => {
-                const transactionCount = transactionCountsByCategory.get(category.id) ?? 0;
-                const parentCategory = category.parentId
-                  ? categoriesById.get(category.parentId)
-                  : undefined;
+            {visibleCategories.length === 0 ? (
+              <NoResultsEmptyState
+                title="No categories match"
+                description="Try a different search term or type filter."
+                onClearFilters={handleClearCategoryFilters}
+              />
+            ) : (
+              <div className="card-grid card-grid--2">
+                {visibleCategories.map((category) => {
+                  const transactionCount = transactionCountsByCategory.get(category.id) ?? 0;
+                  const parentCategory = category.parentId
+                    ? categoriesById.get(category.parentId)
+                    : undefined;
 
-                return (
-                  <article
-                    key={category.id}
-                    className="card category-card"
-                    aria-label={`${category.name} category`}
-                  >
-                    <header className="category-card__header">
-                      <div className="category-card__title-row">
-                        <span
-                          aria-hidden="true"
-                          className="category-card__icon"
-                          style={{
-                            background: category.color ?? 'var(--semantic-background-secondary)',
-                          }}
-                        >
-                          {isCustomCategoryIcon(category.icon) ? (
-                            category.icon
-                          ) : (
-                            <AppIcon name={getCategoryIcon(category.icon)} />
-                          )}
-                        </span>
-                        <h3 className="category-card__name">{category.name}</h3>
-                      </div>
-                      <p className="category-card__meta">
-                        {category.isIncome ? 'Income' : 'Expense'} ·{' '}
-                        {getUsageLabel(transactionCount)}
-                        {parentCategory ? ` · Child of ${parentCategory.name}` : ''}
-                        {category.isSystem ? ' · System' : ''}
-                      </p>
-                      <div className="category-card__actions">
-                        <button
-                          type="button"
-                          className="form-button form-button--secondary"
-                          onClick={() => handleEditCategory(category)}
-                          aria-label={`Edit ${category.name} category`}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="form-button form-button--secondary"
-                          onClick={() => handleRequestDelete(category)}
-                          aria-label={`Delete ${category.name} category`}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </header>
-                    <dl className="category-card__details">
-                      <div>
-                        <dt className="card__title">Icon</dt>
-                        <dd className="card__value">{category.icon ?? 'Default'}</dd>
-                      </div>
-                      <div>
-                        <dt className="card__title">Color</dt>
-                        <dd className="card__value">{category.color ?? 'Default'}</dd>
-                      </div>
-                      <div>
-                        <dt className="card__title">Sort order</dt>
-                        <dd className="card__value">{category.sortOrder}</dd>
-                      </div>
-                    </dl>
-                  </article>
-                );
-              })}
-            </div>
+                  return (
+                    <article
+                      key={category.id}
+                      className="card category-card"
+                      aria-label={`${category.name} category`}
+                    >
+                      <header className="category-card__header">
+                        <div className="category-card__title-row">
+                          <span
+                            aria-hidden="true"
+                            className="category-card__icon"
+                            style={{
+                              background: category.color ?? 'var(--semantic-background-secondary)',
+                            }}
+                          >
+                            {isCustomCategoryIcon(category.icon) ? (
+                              category.icon
+                            ) : (
+                              <AppIcon name={getCategoryIcon(category.icon)} />
+                            )}
+                          </span>
+                          <h3 className="category-card__name">{category.name}</h3>
+                        </div>
+                        <p className="category-card__meta">
+                          {category.isIncome ? 'Income' : 'Expense'} ·{' '}
+                          {getUsageLabel(transactionCount)}
+                          {parentCategory ? ` · Child of ${parentCategory.name}` : ''}
+                          {category.isSystem ? ' · System' : ''}
+                        </p>
+                        <div className="category-card__actions">
+                          <button
+                            type="button"
+                            className="form-button form-button--secondary"
+                            onClick={() => handleEditCategory(category)}
+                            aria-label={`Edit ${category.name} category`}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="form-button form-button--secondary"
+                            onClick={() => handleRequestDelete(category)}
+                            aria-label={`Delete ${category.name} category`}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </header>
+                      <dl className="category-card__details">
+                        <div>
+                          <dt className="card__title">Icon</dt>
+                          <dd className="card__value">{category.icon ?? 'Default'}</dd>
+                        </div>
+                        <div>
+                          <dt className="card__title">Color</dt>
+                          <dd className="card__value">{category.color ?? 'Default'}</dd>
+                        </div>
+                        <div>
+                          <dt className="card__title">Sort order</dt>
+                          <dd className="card__value">{category.sortOrder}</dd>
+                        </div>
+                      </dl>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </>
       )}

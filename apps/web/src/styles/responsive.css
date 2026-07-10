@@ -538,6 +538,28 @@
   border-color: var(--input-border-focus);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
+.search-bar__clear {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: var(--spacing-2);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-border-radius);
+  background: var(--input-background);
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+}
+.search-bar__clear:hover {
+  color: var(--semantic-text-primary);
+}
+.search-bar__clear:focus-visible {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
 .filter-chips {
   display: flex;
   gap: var(--spacing-2);

@@ -304,6 +304,55 @@
  * overlapping or crowding the title. Actions are right-aligned and
  * wrap on small viewports.
  * ------------------------------------------------------------------- */
+.category-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.category-toolbar .search-bar {
+  flex: 1 1 16rem;
+  margin-bottom: 0;
+}
+
+.category-toolbar__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.category-toolbar__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.category-toolbar__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.category-toolbar__select {
+  min-height: 2.75rem;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-border-radius);
+  background: var(--input-background);
+  color: var(--input-text);
+  font-size: inherit;
+}
+
+.category-toolbar__select:focus-visible {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
 .category-card__header {
   display: flex;
   flex-direction: column;

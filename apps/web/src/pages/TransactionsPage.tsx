@@ -1423,7 +1423,26 @@ export const TransactionsPage: React.FC = () => {
               onChange={(event) => setQuery(event.target.value)}
               aria-label="Search transactions"
             />
+            {query.trim() !== '' && (
+              <button
+                type="button"
+                className="search-bar__clear"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+              >
+                <span aria-hidden="true">✕</span>
+              </button>
+            )}
           </div>
+          {hasActiveFilters && !isLoading && !resolvedError && (
+            <p className="sr-only" role="status" aria-live="polite">
+              {transactions.length === 0
+                ? 'No transactions match the current search and filters'
+                : `${transactions.length} transaction${
+                    transactions.length === 1 ? '' : 's'
+                  } match the current search and filters`}
+            </p>
+          )}
 
           {/* Filter/Sort controls */}
           {!isSimplified ? (

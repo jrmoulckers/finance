@@ -118,6 +118,20 @@ export interface TransactionSearchContext {
 }
 
 /**
+ * Lower-case and strip diacritics so `cafe` matches `Café` (and vice versa).
+ *
+ * Uses Unicode NFD decomposition to split accented characters into a base
+ * letter plus a combining mark, then removes the combining marks. Keeps search
+ * relevance consistent for international merchant and payee names (#3790).
+ */
+export function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+/**
  * Test whether a transaction matches a free-text query.
  *
  * Mirrors the repository's SQL search fields (payee, note, tags, status,
@@ -130,7 +144,7 @@ export function matchesTransactionQuery(
   query: string,
   context: TransactionSearchContext = {},
 ): boolean {
-  const term = query.trim().toLowerCase();
+  const term = normalizeSearchText(query.trim());
   if (term === '') return true;
 
   const haystacks: string[] = [
@@ -146,7 +160,7 @@ export function matchesTransactionQuery(
   }
   haystacks.push(context.accountNames?.get(transaction.accountId) ?? '');
 
-  if (haystacks.some((value) => value.toLowerCase().includes(term))) {
+  if (haystacks.some((value) => normalizeSearchText(value).includes(term))) {
     return true;
   }
 

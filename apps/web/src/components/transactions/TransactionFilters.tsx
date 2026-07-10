@@ -15,6 +15,8 @@ import React, { useCallback, useId } from 'react';
 
 import { DatePicker } from '../common/DatePicker';
 import type { Account, Category, TransactionStatus, TransactionType } from '../../kmp/bridge';
+import { formatDate } from '../../utils/formatDate';
+import { formatCurrencyValue } from '../../lib/currency';
 import './transaction-filters.css';
 
 // ---------------------------------------------------------------------------
@@ -78,6 +80,38 @@ export function countActiveFilters(filters: AdvancedFilters): number {
   return count;
 }
 
+/**
+ * Whether the amount range is inverted (min greater than max).
+ *
+ * Both bounds must be present and numeric; an inverted range would silently
+ * filter out every transaction, so the UI surfaces it as a validation error
+ * instead (#3790).
+ */
+export function isAmountRangeInverted(filters: AdvancedFilters): boolean {
+  if (!filters.amountMin || !filters.amountMax) return false;
+  const min = parseFloat(filters.amountMin);
+  const max = parseFloat(filters.amountMax);
+  if (Number.isNaN(min) || Number.isNaN(max)) return false;
+  return min > max;
+}
+
+/** Collapse a list of names into a chip-friendly summary. */
+function summarizeNames(names: string[], noun: string): string {
+  if (names.length <= 2) {
+    return names.join(', ');
+  }
+  return `${names.length} ${noun} selected`;
+}
+
+/** Format a raw amount filter string (major units) as localized currency. */
+function formatAmountChip(rawAmount: string): string {
+  const parsed = parseFloat(rawAmount);
+  if (Number.isNaN(parsed)) {
+    return rawAmount;
+  }
+  return formatCurrencyValue(parsed);
+}
+
 /** Get human-readable chip descriptions for active filters. */
 export function getActiveFilterChips(
   filters: AdvancedFilters,
@@ -87,28 +121,24 @@ export function getActiveFilterChips(
   const chips: { key: string; label: string }[] = [];
 
   if (filters.startDate) {
-    chips.push({ key: 'startDate', label: `From: ${filters.startDate}` });
+    chips.push({ key: 'startDate', label: `From: ${formatDate(filters.startDate)}` });
   }
   if (filters.endDate) {
-    chips.push({ key: 'endDate', label: `To: ${filters.endDate}` });
+    chips.push({ key: 'endDate', label: `To: ${formatDate(filters.endDate)}` });
   }
   if (filters.categoryIds.length > 0) {
-    const names = filters.categoryIds
-      .map((id) => categories.find((c) => c.id === id)?.name ?? id)
-      .join(', ');
-    chips.push({ key: 'categories', label: `Categories: ${names}` });
+    const names = filters.categoryIds.map((id) => categories.find((c) => c.id === id)?.name ?? id);
+    chips.push({ key: 'categories', label: `Categories: ${summarizeNames(names, 'categories')}` });
   }
   if (filters.accountIds.length > 0) {
-    const names = filters.accountIds
-      .map((id) => accounts.find((a) => a.id === id)?.name ?? id)
-      .join(', ');
-    chips.push({ key: 'accounts', label: `Accounts: ${names}` });
+    const names = filters.accountIds.map((id) => accounts.find((a) => a.id === id)?.name ?? id);
+    chips.push({ key: 'accounts', label: `Accounts: ${summarizeNames(names, 'accounts')}` });
   }
   if (filters.amountMin) {
-    chips.push({ key: 'amountMin', label: `Min: $${filters.amountMin}` });
+    chips.push({ key: 'amountMin', label: `Min: ${formatAmountChip(filters.amountMin)}` });
   }
   if (filters.amountMax) {
-    chips.push({ key: 'amountMax', label: `Max: $${filters.amountMax}` });
+    chips.push({ key: 'amountMax', label: `Max: ${formatAmountChip(filters.amountMax)}` });
   }
   if (filters.types.length > 0) {
     chips.push({ key: 'types', label: `Type: ${filters.types.join(', ')}` });
@@ -137,6 +167,8 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
 }) => {
   const idPrefix = useId();
   const activeCount = countActiveFilters(filters);
+  const amountRangeInverted = isAmountRangeInverted(filters);
+  const amountErrorId = `${idPrefix}-amount-error`;
 
   const handleFieldChange = useCallback(
     (field: keyof AdvancedFilters, value: AdvancedFilters[keyof AdvancedFilters]) => {
@@ -330,6 +362,8 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
               placeholder="0.00"
               min="0"
               step="0.01"
+              aria-invalid={amountRangeInverted}
+              aria-describedby={amountRangeInverted ? amountErrorId : undefined}
             />
           </div>
 
@@ -346,8 +380,17 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
               placeholder="0.00"
               min="0"
               step="0.01"
+              aria-invalid={amountRangeInverted}
+              aria-describedby={amountRangeInverted ? amountErrorId : undefined}
             />
           </div>
+
+          {amountRangeInverted && (
+            <p id={amountErrorId} className="transaction-filters-panel__error" role="alert">
+              Minimum amount is greater than the maximum, so no transactions can match. Adjust the
+              range.
+            </p>
+          )}
 
           {/* Type toggles */}
           <div className="transaction-filters-panel__group">
