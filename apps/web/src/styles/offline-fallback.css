@@ -116,6 +116,40 @@
   font-size: var(--type-scale-caption-font-size, 0.75rem);
 }
 
+/* Secondary escape hatch to an already-cached route. */
+.offline-fallback__secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px; /* WCAG 2.2 AA touch target */
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  color: var(--semantic-interactive-default, #3b82f6);
+  font: inherit;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  border-radius: var(--border-radius-md, 8px);
+}
+
+.offline-fallback__secondary:hover {
+  text-decoration: underline;
+}
+
+.offline-fallback__secondary:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: 2px;
+}
+
+.offline-fallback__still-offline {
+  margin: 0;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  background: var(--color-amber-50, #fffbeb);
+  color: var(--color-amber-800, #92400e);
+  border: 1px solid var(--color-amber-200, #fde68a);
+  border-radius: var(--border-radius-md, 8px);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  max-width: 320px;
+}
+
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme='light']) .offline-fallback {

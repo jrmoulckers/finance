@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/*
+ * Styles specific to the standalone 404 page. Layered on top of `auth.css`
+ * so the 404 shares the centred auth-card shell while adding an illustrative
+ * icon and a secondary "Go back" action.
+ */
+
+.not-found__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing-4, 1rem);
+  color: var(--semantic-text-secondary, currentColor);
+}
+
+.not-found__icon svg {
+  width: 72px;
+  height: 72px;
+}
+
+/* Secondary action: outlined button that echoes `.auth-submit` sizing. */
+.not-found__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: var(--spacing-2);
+  min-height: 44px;
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--semantic-interactive-default);
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-interactive-default);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    border-color var(--duration-fast, 100ms) ease;
+}
+
+.not-found__back:hover {
+  background: var(--semantic-interactive-subtle, rgba(59, 130, 246, 0.08));
+}
+
+.not-found__back:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}

@@ -31,9 +31,13 @@ export interface OfflineFallbackPageProps {
 export const OfflineFallbackPage: React.FC<OfflineFallbackPageProps> = ({ pendingCount = 0 }) => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [stillOfflineNotice, setStillOfflineNotice] = useState(false);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = () => {
+      setIsOnline(true);
+      setStillOfflineNotice(false);
+    };
     const handleOffline = () => setIsOnline(false);
 
     window.addEventListener('online', handleOnline);
@@ -46,12 +50,29 @@ export const OfflineFallbackPage: React.FC<OfflineFallbackPageProps> = ({ pendin
   }, []);
 
   const handleRetry = useCallback(() => {
+    // Guard against a pointless reload that would just re-render this same
+    // fallback: if the browser still reports offline, tell the user rather
+    // than silently reloading to nowhere.
+    if (!navigator.onLine) {
+      setIsOnline(false);
+      setStillOfflineNotice(true);
+      return;
+    }
+
+    setStillOfflineNotice(false);
     setIsRetrying(true);
     // Reload with a small delay to show the loading state
     setTimeout(() => {
       window.location.reload();
     }, 500);
   }, []);
+
+  const retryLabel = isRetrying ? 'Reloading…' : isOnline ? 'Reload page' : 'Try again';
+  const retryAriaLabel = isRetrying
+    ? 'Reloading page'
+    : isOnline
+      ? 'Reload the page'
+      : 'Try loading the page again';
 
   return (
     <main className="offline-fallback" aria-label="Offline">
@@ -101,14 +122,25 @@ export const OfflineFallbackPage: React.FC<OfflineFallbackPageProps> = ({ pendin
             className="offline-fallback__retry"
             onClick={handleRetry}
             disabled={isRetrying}
-            aria-label={isRetrying ? 'Retrying connection' : 'Retry loading page'}
+            aria-label={retryAriaLabel}
           >
-            {isRetrying ? 'Retrying…' : 'Try Again'}
+            {retryLabel}
           </button>
+
+          <a className="offline-fallback__secondary" href="/dashboard">
+            Go to Dashboard
+          </a>
 
           {isOnline && (
             <p className="offline-fallback__online-notice" role="status" aria-live="assertive">
-              Connection restored! Click &quot;Try Again&quot; to reload.
+              Connection restored! Select &quot;Reload page&quot; to load the latest data.
+            </p>
+          )}
+
+          {stillOfflineNotice && !isOnline && (
+            <p className="offline-fallback__still-offline" role="status" aria-live="polite">
+              Still offline. We&apos;ll reconnect automatically the moment your connection returns —
+              your changes are safe.
             </p>
           )}
         </div>

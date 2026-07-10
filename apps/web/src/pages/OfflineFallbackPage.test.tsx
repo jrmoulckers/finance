@@ -40,7 +40,13 @@ describe('OfflineFallbackPage', () => {
 
   it('should show retry button', () => {
     render(<OfflineFallbackPage />);
-    expect(screen.getByRole('button', { name: 'Retry loading page' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try loading the page again' })).toBeInTheDocument();
+  });
+
+  it('should render a secondary link to the dashboard', () => {
+    render(<OfflineFallbackPage />);
+    const link = screen.getByRole('link', { name: /go to dashboard/i });
+    expect(link).toHaveAttribute('href', '/dashboard');
   });
 
   it('should display pending count when provided', () => {
@@ -59,13 +65,29 @@ describe('OfflineFallbackPage', () => {
     expect(screen.queryByText(/pending/)).not.toBeInTheDocument();
   });
 
-  it('should disable retry button while retrying', () => {
+  it('should surface a "still offline" notice instead of reloading while offline', () => {
     render(<OfflineFallbackPage />);
-    const button = screen.getByRole('button', { name: 'Retry loading page' });
+    const button = screen.getByRole('button', { name: 'Try loading the page again' });
+
+    fireEvent.click(button);
+
+    // Still offline: the button must not enter the reloading state.
+    expect(button).not.toBeDisabled();
+    expect(screen.getByText(/Still offline/)).toBeInTheDocument();
+  });
+
+  it('should enter the reloading state when retried while online', () => {
+    Object.defineProperty(navigator, 'onLine', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+    render(<OfflineFallbackPage />);
+    const button = screen.getByRole('button', { name: 'Reload the page' });
 
     fireEvent.click(button);
     expect(button).toBeDisabled();
-    expect(screen.getByText('Retrying…')).toBeInTheDocument();
+    expect(screen.getByText('Reloading…')).toBeInTheDocument();
   });
 
   it('should have proper aria-live region for status', () => {

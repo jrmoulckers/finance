@@ -16,6 +16,7 @@ import {
   ErrorBanner,
   ExplainThis,
   LoadingSpinner,
+  NoResultsEmptyState,
   ReadAloudButton,
   SyncIndicator,
   useToast,
@@ -1522,25 +1523,22 @@ export const TransactionsPage: React.FC = () => {
           ) : resolvedError ? (
             <ErrorBanner message={resolvedError} onRetry={handleRetry} />
           ) : transactions.length === 0 ? (
-            <EmptyState
-              title={hasActiveFilters ? 'No transactions found' : 'No transactions yet'}
-              description={
-                hasActiveFilters
-                  ? 'Try adjusting your search or filters.'
-                  : 'Transactions you add will appear here.'
-              }
-              action={
-                hasActiveFilters ? (
-                  <Button variant="secondary" onClick={handleClearAllFilters}>
-                    Clear filters
-                  </Button>
-                ) : (
+            hasActiveFilters ? (
+              <NoResultsEmptyState
+                title="No transactions found"
+                onClearFilters={handleClearAllFilters}
+              />
+            ) : (
+              <EmptyState
+                title="No transactions yet"
+                description="Transactions you add will appear here."
+                action={
                   <Button variant="primary" onClick={handleOpenCreateForm}>
                     Add transaction
                   </Button>
-                )
-              }
-            />
+                }
+              />
+            )
           ) : useCardRegister ? (
             <div className="card transaction-card-list-fallback">
               <p className="sr-only" role="status">
