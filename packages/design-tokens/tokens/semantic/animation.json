@@ -41,5 +41,48 @@
       "duration": { "$value": "{duration.slower}", "$type": "duration" },
       "easing": { "$value": "{easing.inOut}", "$type": "cubicBezier" }
     }
+  },
+  "animationReduced": {
+    "$description": "Reduced-motion equivalents of every animation.* purpose (WCAG 2.2 SC 2.3.3 Animation from Interactions). Consumers honoring prefers-reduced-motion / html[data-reduced-motion='true'] / UIAccessibility.isReduceMotionEnabled select this set instead of animation.*. Every variant uses duration.reduced (~1ms) and a non-overshoot easing.default so spring/overshoot and long celebrate/loading motion are neutralized.",
+    "pageTransition": {
+      "$description": "Reduced-motion page-level enter/exit transitions",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "listItem": {
+      "$description": "Reduced-motion list/grid item enter",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "progress": {
+      "$description": "Reduced-motion progress rings, bars, and loading indicators",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "celebrate": {
+      "$description": "Reduced-motion success/celebration moments — spring overshoot removed",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "fadeIn": {
+      "$description": "Reduced-motion content fade-in reveals",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "fadeOut": {
+      "$description": "Reduced-motion content fade-out dismissals",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "microInteraction": {
+      "$description": "Reduced-motion small UI feedback",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "loading": {
+      "$description": "Reduced-motion skeleton shimmer and continuous loading states",
+      "duration": { "$value": "{duration.reduced}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    }
   }
 }

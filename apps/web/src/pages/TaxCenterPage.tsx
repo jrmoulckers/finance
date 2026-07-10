@@ -337,7 +337,7 @@ export const TaxCenterPage: React.FC = () => {
                         style={{
                           textAlign: heading === 'Limit group' ? 'left' : 'right',
                           padding: 'var(--spacing-3)',
-                          borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                         }}
                       >
                         {heading}
@@ -657,7 +657,7 @@ export const TaxCenterPage: React.FC = () => {
                             style={{
                               textAlign: heading === 'Lot' ? 'left' : 'right',
                               padding: 'var(--spacing-3)',
-                              borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                              borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                             }}
                           >
                             {heading}
@@ -728,7 +728,7 @@ export const TaxCenterPage: React.FC = () => {
                           style={{
                             textAlign: heading === 'Symbol' ? 'left' : 'right',
                             padding: 'var(--spacing-3)',
-                            borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                            borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                           }}
                         >
                           {heading}

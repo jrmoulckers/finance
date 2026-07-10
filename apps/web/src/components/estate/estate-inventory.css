@@ -149,7 +149,7 @@
   border-radius: var(--border-radius-md);
   padding: var(--spacing-3) var(--spacing-4);
   background: var(--semantic-interactive-default);
-  color: var(--semantic-text-on-interactive);
+  color: var(--semantic-text-inverse);
   font: inherit;
   cursor: pointer;
 }
@@ -193,7 +193,7 @@
 .estate-category-tab--active {
   background: var(--semantic-interactive-default);
   border-color: var(--semantic-interactive-default);
-  color: var(--semantic-text-on-interactive);
+  color: var(--semantic-text-inverse);
 }
 
 .estate-category-tab__count,

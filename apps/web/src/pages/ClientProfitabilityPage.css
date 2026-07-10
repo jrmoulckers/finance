@@ -55,9 +55,9 @@
 }
 
 .client-profitability__card {
-  background: var(--semantic-surface-primary);
+  background: var(--semantic-background-primary);
   border: 1px solid var(--semantic-border-default);
-  border-radius: var(--radius-lg);
+  border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-sm);
   padding: var(--spacing-4);
 }

@@ -40,8 +40,8 @@
 }
 
 .household-header__title {
-  font-size: var(--type-scale-heading-font-size);
-  font-weight: var(--type-scale-heading-font-weight);
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
   color: var(--semantic-text-primary);
 }
 
@@ -1359,7 +1359,7 @@
   padding: var(--spacing-1) var(--spacing-2);
   font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-text-primary);
-  background: var(--semantic-surface-subtle, var(--semantic-surface-secondary));
+  background: var(--semantic-surface-subtle, var(--semantic-background-secondary));
   border: 1px solid var(--semantic-border-default);
   border-radius: var(--radius-sm, 4px);
   cursor: pointer;
@@ -1372,12 +1372,12 @@
 
 .household-invitation-item__code:hover,
 .household-invitation-item__code:focus-visible {
-  background: var(--semantic-surface-hover, var(--semantic-surface-tertiary));
+  background: var(--semantic-surface-hover, var(--semantic-background-elevated));
   border-color: var(--semantic-border-emphasis, var(--semantic-border-default));
 }
 
 .household-invitation-item__code:focus-visible {
-  outline: 2px solid var(--semantic-focus-ring, var(--semantic-action-primary));
+  outline: 2px solid var(--semantic-focus-ring, var(--semantic-interactive-default));
   outline-offset: 2px;
 }
 

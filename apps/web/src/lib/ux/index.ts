@@ -11,7 +11,6 @@ export * from './types';
 export * from './spending-digests';
 export * from './quiet-hours';
 export * from './cognitive-simplification';
-export * from './a11y-preferences';
 export * from './tooltips';
 export * from './starter-templates';
 export * from './undo-engine';

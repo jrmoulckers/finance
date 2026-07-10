@@ -167,37 +167,6 @@ export interface SimplificationStyles {
 }
 
 // ---------------------------------------------------------------------------
-// Accessibility preferences types
-// ---------------------------------------------------------------------------
-
-/** Font size preference for the UI. */
-export type FontSizePreference = 'small' | 'medium' | 'large' | 'x-large';
-
-/** User accessibility preferences. */
-export interface A11yPreferences {
-  /** Font size preference. */
-  readonly fontSize: FontSizePreference;
-  /** Whether high contrast mode is enabled. */
-  readonly highContrast: boolean;
-  /** Whether reduced motion is enabled. */
-  readonly reducedMotion: boolean;
-  /** Whether screen reader optimisations are enabled. */
-  readonly screenReaderOptimised: boolean;
-  /** Whether to show focus indicators more prominently. */
-  readonly enhancedFocus: boolean;
-  /** Cognitive simplification level. */
-  readonly simplificationLevel: SimplificationLevel;
-}
-
-/** Mapping from preference key to CSS custom property changes. */
-export interface A11yCssMapping {
-  /** CSS custom property name. */
-  readonly property: string;
-  /** Value to set. */
-  readonly value: string;
-}
-
-// ---------------------------------------------------------------------------
 // Contextual tooltip types
 // ---------------------------------------------------------------------------
 

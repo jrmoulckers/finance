@@ -136,7 +136,7 @@ const cardStyle: React.CSSProperties = { marginBottom: 'var(--spacing-6)' };
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: 'var(--spacing-2) var(--spacing-3)',
-  border: '1px solid var(--semantic-border, #e5e7eb)',
+  border: '1px solid var(--semantic-border-default, #e5e7eb)',
   borderRadius: 'var(--radius-md, 0.375rem)',
   background: 'var(--semantic-background-primary, #fff)',
   color: 'var(--semantic-text-primary, #111)',
@@ -151,7 +151,7 @@ const labelStyle: React.CSSProperties = {
 
 const cellStyle: React.CSSProperties = {
   padding: 'var(--spacing-3)',
-  borderBottom: '1px solid var(--semantic-border, #e5e7eb)',
+  borderBottom: '1px solid var(--semantic-border-default, #e5e7eb)',
   textAlign: 'left',
 };
 
@@ -159,7 +159,7 @@ const numericCellStyle: React.CSSProperties = { ...cellStyle, textAlign: 'right'
 
 const headerCellStyle: React.CSSProperties = {
   padding: 'var(--spacing-3)',
-  borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+  borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
   textAlign: 'left',
 };
 
@@ -345,7 +345,7 @@ export const DeFiPositionsCard: React.FC<DeFiPositionsCardProps> = ({
               borderRadius: 'var(--radius-sm, 0.25rem)',
               overflow: 'hidden',
               marginBottom: 'var(--spacing-4)',
-              border: '1px solid var(--semantic-border, #e5e7eb)',
+              border: '1px solid var(--semantic-border-default, #e5e7eb)',
             }}
           >
             <span
@@ -466,7 +466,7 @@ export const DeFiPositionsCard: React.FC<DeFiPositionsCardProps> = ({
                         aria-label={`Remove ${view.label} on ${view.protocol}`}
                         style={{
                           background: 'none',
-                          border: '1px solid var(--semantic-border, #e5e7eb)',
+                          border: '1px solid var(--semantic-border-default, #e5e7eb)',
                           borderRadius: 'var(--radius-md, 0.375rem)',
                           cursor: 'pointer',
                           font: 'inherit',
@@ -769,7 +769,7 @@ export const DeFiPositionsCard: React.FC<DeFiPositionsCardProps> = ({
               padding: 'var(--spacing-2) var(--spacing-4)',
               border: 'none',
               borderRadius: 'var(--radius-md, 0.375rem)',
-              background: 'var(--semantic-action-primary, #2563eb)',
+              background: 'var(--semantic-interactive-default, #2563eb)',
               color: 'var(--semantic-text-on-action, #fff)',
               font: 'inherit',
               fontWeight: 'var(--font-weight-medium)',

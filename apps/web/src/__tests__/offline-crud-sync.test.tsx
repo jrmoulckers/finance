@@ -174,7 +174,7 @@ describe('OfflineBanner (#1333)', () => {
     expect(screen.getByRole('status')).not.toHaveClass('offline-banner--hidden');
   });
 
-  it('transitions from offline to online state', () => {
+  it('shows a transient reconnection confirmation when returning online', () => {
     offlineStatusMock.isOffline = true;
     offlineStatusMock.isOnline = false;
     offlineStatusMock.isDegraded = true;
@@ -189,7 +189,11 @@ describe('OfflineBanner (#1333)', () => {
     offlineStatusMock.degradedMessage = 'Online';
     rerender(<OfflineBanner />);
 
-    expect(screen.getByRole('status')).toHaveClass('offline-banner--hidden');
+    // #3661: instead of hiding immediately, the banner confirms the
+    // reconnection before auto-dismissing.
+    const banner = screen.getByRole('status');
+    expect(banner).not.toHaveClass('offline-banner--hidden');
+    expect(banner).toHaveClass('offline-banner--reconnected');
   });
 });
 

@@ -26,8 +26,8 @@
 }
 
 .report-builder__title {
-  font-size: var(--type-scale-heading-font-size);
-  font-weight: var(--type-scale-heading-font-weight);
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
   color: var(--semantic-text-primary);
 }
 

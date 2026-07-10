@@ -27,7 +27,7 @@
   padding: var(--spacing-3) var(--spacing-4);
   border: 1px solid var(--semantic-border-default, var(--semantic-interactive-default));
   border-radius: var(--border-radius-md);
-  background: var(--semantic-surface-secondary, transparent);
+  background: var(--semantic-background-secondary, transparent);
 }
 
 .data-export__group-title {
@@ -73,7 +73,7 @@
 
 .data-export__button--primary {
   background: var(--semantic-interactive-default);
-  color: var(--semantic-text-on-interactive, #fff);
+  color: var(--semantic-text-inverse, #fff);
 }
 
 .data-export__button:disabled {
@@ -97,7 +97,7 @@
   padding: var(--spacing-4);
   border-radius: var(--border-radius-md);
   border: 1px solid var(--semantic-border-default, var(--semantic-interactive-default));
-  background: var(--semantic-surface-primary, transparent);
+  background: var(--semantic-background-primary, transparent);
 }
 
 .data-export__dialog-title {

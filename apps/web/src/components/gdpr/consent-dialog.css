@@ -21,7 +21,7 @@
 
 /* Dialog panel */
 .consent-dialog {
-  background-color: var(--semantic-surface-primary, var(--semantic-background-primary));
+  background-color: var(--semantic-background-primary, var(--semantic-background-primary));
   border-radius: var(--border-radius-lg, 0.75rem);
   max-width: 32rem;
   width: 100%;

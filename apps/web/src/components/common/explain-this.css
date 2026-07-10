@@ -8,7 +8,7 @@
  * popover adapts to light, dark, OLED, and high-contrast modes automatically.
  *
  * Historic bug (see #3158 for the same class on the dashboard): earlier
- * revisions painted the surface with the *undefined* --semantic-surface-primary
+ * revisions painted the surface with the *undefined* --semantic-background-primary
  * token, which silently fell back to hardcoded #ffffff. In dark mode that
  * produced a white card under near-white --semantic-text-primary text — the
  * title and intro paragraph were effectively invisible while the
@@ -73,7 +73,7 @@
   z-index: 20;
   width: min(22rem, calc(100vw - 2rem));
   padding: var(--spacing-4, 1rem);
-  border-radius: var(--radius-lg, 0.875rem);
+  border-radius: var(--border-radius-lg, 0.875rem);
   border: 1px solid var(--semantic-border-default, #d1d5db);
   background: var(--semantic-background-elevated, #ffffff);
   color: var(--semantic-text-primary, #111827);

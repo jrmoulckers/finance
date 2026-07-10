@@ -191,7 +191,7 @@
 
 .date-picker__day--selected {
   background: var(--semantic-interactive-default, #2563eb);
-  color: var(--semantic-text-onbrand, #ffffff);
+  color: var(--semantic-text-inverse, #ffffff);
 }
 
 .date-picker__day--selected:hover:not(:disabled),

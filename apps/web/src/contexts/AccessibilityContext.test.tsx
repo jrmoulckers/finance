@@ -120,9 +120,10 @@ describe('AccessibilityContext', () => {
     expect(document.body).toHaveClass('accessibility-high-contrast');
     expect(document.body).toHaveClass('accessibility-reduced-motion');
     expect(document.body.dataset.accessibilityFontSize).toBe('large');
-    expect(document.documentElement.style.getPropertyValue('--accessibility-root-font-size')).toBe(
-      '18px',
-    );
+    // The accessibility font size is applied through the inline root font-size
+    // channel (the dead `--accessibility-root-font-size` var was removed, #3280).
+    expect(document.documentElement.dataset.accessibilityFontSize).toBe('large');
+    expect(document.documentElement.style.fontSize).toBe('18px');
   });
 
   it('respects prefers-reduced-motion even when the explicit toggle is off', () => {

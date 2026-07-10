@@ -127,7 +127,7 @@ export function ContributionPlanner({
         style={{
           marginTop: 'var(--spacing-4)',
           padding: 'var(--spacing-4)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--border-radius-lg)',
           background: 'rgba(15, 23, 42, 0.04)',
         }}
       >

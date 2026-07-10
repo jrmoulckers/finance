@@ -41,7 +41,7 @@
 }
 
 .negative-format-preview__amount--error {
-  color: var(--semantic-error, var(--semantic-amount-negative, #ef4444));
+  color: var(--semantic-status-negative, var(--semantic-amount-negative, #ef4444));
 }
 
 .currency-rates-disclosure {

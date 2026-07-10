@@ -11,7 +11,7 @@
 .progress-badge {
   border: 1px solid var(--semantic-border-default, #d0d7de);
   border-radius: 1rem;
-  background: var(--semantic-surface-primary, #ffffff);
+  background: var(--semantic-background-primary, #ffffff);
   box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
 }
 
@@ -61,7 +61,7 @@
 .learning-dashboard__metric {
   padding: 1rem;
   border-radius: 0.85rem;
-  background: var(--semantic-surface-secondary, #f8fafc);
+  background: var(--semantic-background-secondary, #f8fafc);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -91,7 +91,7 @@
 .learning-dashboard__recommendation {
   border: 1px solid var(--semantic-border-default, #d0d7de);
   border-radius: 0.85rem;
-  background: var(--semantic-surface-secondary, #f8fafc);
+  background: var(--semantic-background-secondary, #f8fafc);
   padding: 1rem;
   text-align: left;
   display: flex;
@@ -126,7 +126,7 @@
   padding: 1rem;
   border: 1px solid var(--semantic-border-subtle, #e2e8f0);
   border-radius: 0.85rem;
-  background: var(--semantic-surface-secondary, #f8fafc);
+  background: var(--semantic-background-secondary, #f8fafc);
 }
 
 .learning-path__module-header {
@@ -142,7 +142,7 @@
   border-radius: 999px;
   padding: 0.15rem 0.55rem;
   font-size: 0.75rem;
-  background: var(--semantic-surface-tertiary, #e2e8f0);
+  background: var(--semantic-background-elevated, #e2e8f0);
   color: var(--semantic-text-primary, #0f172a);
 }
 
@@ -150,7 +150,7 @@
   margin: 0.85rem 0 0.35rem;
   height: 0.65rem;
   border-radius: 999px;
-  background: var(--semantic-surface-tertiary, #e2e8f0);
+  background: var(--semantic-background-elevated, #e2e8f0);
   overflow: hidden;
 }
 
@@ -213,7 +213,7 @@
 }
 
 .lesson-card__example {
-  background: var(--semantic-surface-secondary, #f8fafc);
+  background: var(--semantic-background-secondary, #f8fafc);
   border-radius: 0.85rem;
 }
 
@@ -234,7 +234,7 @@
   border: 1px solid var(--semantic-border-default, #d0d7de);
   border-radius: 999px;
   padding: 0.35rem 0.75rem;
-  background: var(--semantic-surface-secondary, #f8fafc);
+  background: var(--semantic-background-secondary, #f8fafc);
 }
 
 .lesson-card__complete-btn,
@@ -274,7 +274,7 @@
   align-items: start;
   padding: 0.75rem;
   border-radius: 0.7rem;
-  background: var(--semantic-surface-secondary, #f8fafc);
+  background: var(--semantic-background-secondary, #f8fafc);
 }
 
 .quiz-question__option--selected {

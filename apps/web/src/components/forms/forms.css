@@ -595,7 +595,7 @@
 
 .keyboard-shortcuts__action {
   color: var(--semantic-text-primary);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-regular);
 }
 
 .keyboard-shortcuts__key {
@@ -972,14 +972,14 @@
   align-items: center;
   padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
   font-size: var(--font-size-sm, 0.75rem);
-  background-color: var(--semantic-surface-secondary, #e5e7eb);
+  background-color: var(--semantic-background-secondary, #e5e7eb);
   color: var(--semantic-text-primary, #111827);
   border-radius: var(--radius-full, 9999px);
   line-height: 1.4;
 }
 
 [data-theme='dark'] .form-tag-chip {
-  background-color: var(--semantic-surface-secondary, #374151);
+  background-color: var(--semantic-background-secondary, #374151);
   color: var(--semantic-text-primary, #f3f4f6);
 }
 

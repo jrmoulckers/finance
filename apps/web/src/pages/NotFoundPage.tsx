@@ -17,8 +17,9 @@
  */
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
+import { trackNotFound } from '../lib/monitoring';
 import '../styles/not-found.css';
 
 /** Decorative "lost page" glyph: a signpost/compass mark. */
@@ -46,6 +47,14 @@ const NotFoundIcon: React.FC = () => (
  */
 export const NotFoundPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  React.useEffect(() => {
+    // Surface broken deep links in monitoring. Only the sanitized pathname is
+    // sent (never query/hash/PII); repeated hits of the same path are deduped.
+    const referrer = typeof document !== 'undefined' ? document.referrer : undefined;
+    trackNotFound(location.pathname, referrer);
+  }, [location.pathname]);
 
   return (
     <section className="not-found" aria-labelledby="not-found-title">

@@ -74,9 +74,9 @@ describe('CurrencyDisplay', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders legacy color-only negative format with a visible text cue', () => {
+  it('renders the text-label negative format with a visible text cue', () => {
     renderWithSettings(createElement(CurrencyDisplay, { amount: -1234 }), {
-      negativeFormat: 'color-only',
+      negativeFormat: 'text-label',
     });
 
     const amount = screen.getByText('Negative $12.34');

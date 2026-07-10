@@ -61,7 +61,7 @@
   border: 1px solid var(--semantic-border-default, #d0d7de);
   border-radius: 1rem;
   padding: 1.5rem;
-  background: var(--semantic-background-elevated, var(--semantic-surface-primary, #ffffff));
+  background: var(--semantic-background-elevated, var(--semantic-background-primary, #ffffff));
 }
 
 .credit-building__header {

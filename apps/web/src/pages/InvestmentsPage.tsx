@@ -434,7 +434,7 @@ export const InvestmentsPage: React.FC = () => {
                           textAlign: 'left',
                           padding: 'var(--spacing-3)',
                           cursor: 'pointer',
-                          borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                           userSelect: 'none',
                         }}
                       >
@@ -459,7 +459,7 @@ export const InvestmentsPage: React.FC = () => {
                         style={{
                           textAlign: 'left',
                           padding: 'var(--spacing-3)',
-                          borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                         }}
                       >
                         Type
@@ -469,7 +469,7 @@ export const InvestmentsPage: React.FC = () => {
                         style={{
                           textAlign: 'right',
                           padding: 'var(--spacing-3)',
-                          borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                         }}
                       >
                         Shares
@@ -479,7 +479,7 @@ export const InvestmentsPage: React.FC = () => {
                         style={{
                           textAlign: 'right',
                           padding: 'var(--spacing-3)',
-                          borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                         }}
                       >
                         Price
@@ -490,7 +490,7 @@ export const InvestmentsPage: React.FC = () => {
                           textAlign: 'right',
                           padding: 'var(--spacing-3)',
                           cursor: 'pointer',
-                          borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                           userSelect: 'none',
                         }}
                       >
@@ -516,7 +516,7 @@ export const InvestmentsPage: React.FC = () => {
                           textAlign: 'right',
                           padding: 'var(--spacing-3)',
                           cursor: 'pointer',
-                          borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
                           userSelect: 'none',
                         }}
                       >
@@ -550,7 +550,7 @@ export const InvestmentsPage: React.FC = () => {
                         <tr
                           key={inv.id}
                           style={{
-                            borderBottom: '1px solid var(--semantic-border, #e5e7eb)',
+                            borderBottom: '1px solid var(--semantic-border-default, #e5e7eb)',
                           }}
                         >
                           <td style={{ padding: 'var(--spacing-3)' }}>

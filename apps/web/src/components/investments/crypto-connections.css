@@ -12,8 +12,8 @@
 }
 
 .crypto-panel__card {
-  border: 1px solid var(--semantic-border, #e5e7eb);
-  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-lg, 12px);
   padding: var(--spacing-5, 20px);
   background: var(--semantic-surface, #fff);
 }
@@ -49,7 +49,7 @@
 .crypto-section {
   margin-top: var(--spacing-5, 20px);
   padding-top: var(--spacing-4, 16px);
-  border-top: 1px solid var(--semantic-border, #e5e7eb);
+  border-top: 1px solid var(--semantic-border-default, #e5e7eb);
 }
 
 .crypto-section__title {
@@ -128,7 +128,7 @@
 .crypto-field__input,
 .crypto-field__select {
   padding: var(--spacing-2, 8px);
-  border: 1px solid var(--semantic-border, #d1d5db);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
   border-radius: var(--radius-md, 8px);
   font: inherit;
   color: inherit;
@@ -145,7 +145,7 @@
 
 .crypto-segmented {
   display: inline-flex;
-  border: 1px solid var(--semantic-border, #d1d5db);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
   border-radius: var(--radius-md, 8px);
   overflow: hidden;
 }
@@ -171,7 +171,7 @@
   gap: var(--spacing-1, 4px);
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
   border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--semantic-border, #d1d5db);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
   background: var(--semantic-surface, #fff);
   color: inherit;
   font: inherit;
@@ -221,7 +221,7 @@
   gap: var(--spacing-3, 12px);
   flex-wrap: wrap;
   padding: var(--spacing-3, 12px);
-  border: 1px solid var(--semantic-border, #e5e7eb);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
   border-radius: var(--radius-md, 8px);
 }
 
@@ -250,7 +250,7 @@
 .crypto-table td {
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
   text-align: left;
-  border-bottom: 1px solid var(--semantic-border, #e5e7eb);
+  border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
 }
 
 .crypto-table th[data-numeric='true'],

@@ -62,7 +62,7 @@
   border: 1px solid var(--semantic-interactive-default);
   border-radius: var(--border-radius-md);
   background: var(--semantic-interactive-default);
-  color: var(--semantic-text-on-interactive, #fff);
+  color: var(--semantic-text-inverse, #fff);
   font: inherit;
   font-weight: var(--font-weight-semibold);
   text-decoration: none;

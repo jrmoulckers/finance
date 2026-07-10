@@ -46,9 +46,10 @@ export interface CurrencyDisplayProps {
  * placeholder (e.g., `$•••.••`) and the accessible label indicates
  * "Amount hidden".
  *
- * Accessibility: legacy `negativeFormat` value `'color-only'` is rendered
- * with a visible "Negative" text cue so information is never conveyed by
- * color alone. Negative amounts always retain a textual sign cue (a leading
+ * Accessibility: the `negativeFormat` value `'text-label'` (formerly the
+ * misnamed `'color-only'`, #3283) is rendered with a visible "Negative" text
+ * cue so information is never conveyed by color alone. Negative amounts always
+ * retain a textual sign cue (a leading
  * `-`, wrapping parentheses, or a "Negative" label) alongside any colour, so
  * the green/red colour is never the *only* means of distinguishing positive
  * from negative amounts (WCAG SC 1.4.1 Use of Color). The optional `context`
@@ -91,7 +92,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
     maskingMode === MaskingMode.Visible && amount < 0
       ? displaySettings.negativeFormat === 'parentheses'
         ? `(${formattedAbsolute})`
-        : displaySettings.negativeFormat === 'color-only'
+        : displaySettings.negativeFormat === 'text-label'
           ? translate('currency.display.negativeCue', { amount: formattedAbsolute }, resolvedLocale)
               .text
           : formattedBase

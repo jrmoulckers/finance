@@ -37,7 +37,7 @@
 }
 
 .counterparty-input__field:focus {
-  border-color: var(--semantic-border-focus, var(--color-primary-500));
+  border-color: var(--semantic-border-focus, var(--color-blue-500));
   box-shadow: 0 0 0 2px var(--semantic-focus-ring, rgba(59, 130, 246, 0.3));
 }
 

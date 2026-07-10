@@ -111,7 +111,7 @@ export const InvestmentProjections: React.FC<InvestmentProjectionsProps> = ({
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: 'var(--spacing-2) var(--spacing-3)',
-    border: '1px solid var(--semantic-border, #e5e7eb)',
+    border: '1px solid var(--semantic-border-default, #e5e7eb)',
     borderRadius: 'var(--radius-md, 0.375rem)',
     background: 'var(--semantic-background-primary, #fff)',
     color: 'var(--semantic-text-primary, #111)',
@@ -127,13 +127,13 @@ export const InvestmentProjections: React.FC<InvestmentProjectionsProps> = ({
 
   const cellStyle: React.CSSProperties = {
     padding: 'var(--spacing-3)',
-    borderBottom: '1px solid var(--semantic-border, #e5e7eb)',
+    borderBottom: '1px solid var(--semantic-border-default, #e5e7eb)',
     textAlign: 'right',
   };
 
   const headerCellStyle: React.CSSProperties = {
     padding: 'var(--spacing-3)',
-    borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+    borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
     textAlign: 'right',
   };
 

@@ -2,7 +2,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { scrubSentryEvent, scrubSensitiveMonitoringPayload } from './monitoring';
+import {
+  sanitizeNotFoundPath,
+  scrubSentryEvent,
+  scrubSensitiveMonitoringPayload,
+  trackNotFound,
+} from './monitoring';
 
 describe('scrubSensitiveMonitoringPayload', () => {
   it('scrubs sensitive keys in nested objects and arrays', () => {
@@ -91,5 +96,39 @@ describe('scrubSentryEvent', () => {
         },
       ],
     });
+  });
+});
+
+describe('sanitizeNotFoundPath', () => {
+  it('drops the query string and hash fragment', () => {
+    expect(sanitizeNotFoundPath('/settings?token=abc123#section')).toBe('/settings');
+  });
+
+  it('reduces an absolute URL to its pathname only', () => {
+    expect(sanitizeNotFoundPath('https://app.example.com/reports?x=1')).toBe('/reports');
+  });
+
+  it('redacts digit runs that could be account numbers or identifiers', () => {
+    expect(sanitizeNotFoundPath('/accounts/1234567')).toBe('/accounts/[REDACTED_NUMBER]');
+  });
+
+  it('falls back to root for an empty path', () => {
+    expect(sanitizeNotFoundPath('')).toBe('/');
+  });
+});
+
+describe('trackNotFound', () => {
+  it('emits for a new path and dedupes repeated hits of the same sanitized path', () => {
+    const path = '/unique/deep-link-a';
+
+    expect(trackNotFound(path)).toBe(true);
+    expect(trackNotFound(path)).toBe(false);
+    // Query/hash differences collapse to the same sanitized path and dedupe too.
+    expect(trackNotFound(`${path}?ref=email`)).toBe(false);
+  });
+
+  it('treats distinct paths independently', () => {
+    expect(trackNotFound('/unique/deep-link-b')).toBe(true);
+    expect(trackNotFound('/unique/deep-link-c')).toBe(true);
   });
 });

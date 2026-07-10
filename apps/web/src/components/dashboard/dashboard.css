@@ -842,7 +842,7 @@
  * Recent Transactions list — accessible row hover (#3158)
  *
  * The shared `.list-item__link` hover painted the row with
- * `var(--semantic-surface-secondary, #f3f4f6)`. That token is undefined at
+ * `var(--semantic-background-secondary, #f3f4f6)`. That token is undefined at
  * runtime, so the near-white fallback was always used, and the dark override
  * keyed off `[data-theme='dark']` never matched OS-driven dark mode
  * (`prefers-color-scheme`). The result was a near-white block under near-white

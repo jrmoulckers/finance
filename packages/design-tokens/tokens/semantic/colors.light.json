@@ -23,9 +23,17 @@
       "disabled": { "$value": "{color.neutral.300}", "$type": "color" }
     },
     "status": {
-      "positive": { "$value": "{color.green.600}", "$type": "color" },
+      "positive": {
+        "$value": "{color.green.700}",
+        "$type": "color",
+        "$description": "Positive/on-track status foreground — green.700 (#15803D), 5.02:1 on background.primary (#FFFFFF), WCAG 2.2 AA (retargeted from green.600 #16A34A which was 3.30:1, FAIL). Hue preserved. Never color alone — pair with icon/label."
+      },
       "negative": { "$value": "{color.red.600}", "$type": "color" },
-      "warning": { "$value": "{color.amber.600}", "$type": "color" },
+      "warning": {
+        "$value": "{color.amber.700}",
+        "$type": "color",
+        "$description": "Warning/at-risk status foreground — amber.700 (#B45309), 5.02:1 on background.primary (#FFFFFF), WCAG 2.2 AA (retargeted from amber.600 #D97706 which was 3.19:1, FAIL). Hue preserved. Never color alone — pair with icon/label."
+      },
       "info": { "$value": "{color.blue.600}", "$type": "color" },
       "pending": {
         "$value": "{color.teal.700}",

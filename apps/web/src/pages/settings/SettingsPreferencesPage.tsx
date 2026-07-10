@@ -75,7 +75,7 @@ function resolveColorForPicker(color: string, fallback: string): string {
 const NEGATIVE_FORMAT_OPTIONS: Array<{ value: NegativeFormat; label: string }> = [
   { value: 'minus', label: 'Standard' },
   { value: 'parentheses', label: 'Accounting' },
-  { value: 'color-only', label: 'Text label' },
+  { value: 'text-label', label: 'Text label' },
 ];
 
 /** Labels for currency display mode options. */
@@ -668,13 +668,13 @@ export const SettingsPreferencesPage: React.FC = () => {
                   { ...displaySettings, negativeFormat: opt.value },
                   { currency },
                 );
-                const isColorOnly = opt.value === 'color-only';
+                const isTextLabel = opt.value === 'text-label';
                 return (
                   <div className="negative-format-preview__row" key={opt.value}>
                     <span className="negative-format-preview__label">{opt.label}</span>
                     <span
                       className={
-                        isColorOnly
+                        isTextLabel
                           ? 'negative-format-preview__amount negative-format-preview__amount--error'
                           : 'negative-format-preview__amount'
                       }

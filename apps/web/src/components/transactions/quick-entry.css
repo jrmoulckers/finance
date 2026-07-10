@@ -23,7 +23,7 @@
   height: 56px;
   border: none;
   border-radius: var(--radius-full, 9999px);
-  background: var(--semantic-action-primary, #6366f1);
+  background: var(--semantic-interactive-default, #6366f1);
   color: var(--semantic-text-on-primary, #fff);
   font-size: 1.5rem;
   cursor: pointer;
@@ -71,7 +71,7 @@
   width: 340px;
   max-width: calc(100vw - var(--spacing-8, 32px));
   background: var(--semantic-background-primary, #fff);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: var(--border-radius-lg, 12px);
   box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
   padding: var(--spacing-5, 20px);
   animation: slideInUp var(--duration-normal, 250ms) var(--easing-decelerate, ease-out);
@@ -129,7 +129,7 @@
 .quick-entry-field input:focus,
 .quick-entry-field select:focus {
   outline: none;
-  border-color: var(--semantic-action-primary, #6366f1);
+  border-color: var(--semantic-interactive-default, #6366f1);
   box-shadow: 0 0 0 2px var(--semantic-focus-ring, rgba(99, 102, 241, 0.3));
 }
 
@@ -140,12 +140,12 @@
 
 .quick-entry-field input[aria-invalid='true'],
 .quick-entry-field select[aria-invalid='true'] {
-  border-color: var(--semantic-error, #ef4444);
+  border-color: var(--semantic-status-negative, #ef4444);
 }
 
 .quick-entry-field__error {
   font-size: var(--font-size-xs, 0.75rem);
-  color: var(--semantic-error, #ef4444);
+  color: var(--semantic-status-negative, #ef4444);
 }
 
 /* ==========================================================================
@@ -184,7 +184,7 @@
 }
 
 .quick-entry-btn--save {
-  background: var(--semantic-action-primary, #6366f1);
+  background: var(--semantic-interactive-default, #6366f1);
   color: var(--semantic-text-on-primary, #fff);
 }
 

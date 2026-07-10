@@ -173,7 +173,7 @@
 
 .privacy-dashboard__consent-required {
   font-size: var(--type-scale-caption-font-size);
-  font-weight: var(--font-weight-normal, 400);
+  font-weight: var(--font-weight-regular, 400);
   color: var(--semantic-text-secondary);
 }
 

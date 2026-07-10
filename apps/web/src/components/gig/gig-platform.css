@@ -226,9 +226,9 @@
 }
 
 .gig-btn--primary {
-  background: var(--semantic-action-primary, var(--semantic-text-primary));
+  background: var(--semantic-interactive-default, var(--semantic-text-primary));
   border-color: transparent;
-  color: var(--semantic-on-action-primary, var(--semantic-background-default));
+  color: var(--semantic-on-action-primary, var(--semantic-background-primary));
 }
 
 .gig-toggle {

@@ -101,7 +101,7 @@
 
 .undo-bar__countdown-fill {
   fill: none;
-  stroke: var(--semantic-action-primary, #818cf8);
+  stroke: var(--semantic-interactive-default, #818cf8);
   stroke-width: 3;
   stroke-linecap: round;
   transition: stroke-dashoffset 1s linear;

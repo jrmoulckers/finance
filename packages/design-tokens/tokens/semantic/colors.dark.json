@@ -23,10 +23,26 @@
       "disabled": { "$value": "{color.neutral.700}", "$type": "color" }
     },
     "status": {
-      "positive": { "$value": "{color.green.500}", "$type": "color" },
-      "negative": { "$value": "{color.red.500}", "$type": "color" },
-      "warning": { "$value": "{color.amber.500}", "$type": "color" },
-      "info": { "$value": "{color.blue.400}", "$type": "color" },
+      "positive": {
+        "$value": "{color.green.500}",
+        "$type": "color",
+        "$description": "Positive status foreground — green.500 (#22C55E), 8.84:1 on background.primary (neutral.950 #030712), WCAG 2.2 AA. Re-verified. Pair with icon/label."
+      },
+      "negative": {
+        "$value": "{color.red.500}",
+        "$type": "color",
+        "$description": "Negative status foreground — red.500 (#EF4444), 5.35:1 on background.primary (neutral.950 #030712), WCAG 2.2 AA. Re-verified. Pair with icon/label."
+      },
+      "warning": {
+        "$value": "{color.amber.500}",
+        "$type": "color",
+        "$description": "Warning status foreground — amber.500 (#F59E0B), 9.37:1 on background.primary (neutral.950 #030712), WCAG 2.2 AA. Re-verified. Pair with icon/label."
+      },
+      "info": {
+        "$value": "{color.blue.400}",
+        "$type": "color",
+        "$description": "Info status foreground — blue.400 (#60A5FA), 7.92:1 on background.primary (neutral.950 #030712), WCAG 2.2 AA. Re-verified. Pair with icon/label."
+      },
       "pending": {
         "$value": "{color.teal.400}",
         "$type": "color",
