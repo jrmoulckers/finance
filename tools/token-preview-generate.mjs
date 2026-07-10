@@ -110,8 +110,17 @@ const PRIM = [
   'breakpoints.json',
   'motion.json',
   'shadows.json',
+  'opacity.json',
+  'z-index.json',
 ];
-const SEM_SHARED = ['typography.json', 'elevation.json', 'breakpoints.json', 'animation.json'];
+const SEM_SHARED = [
+  'typography.json',
+  'elevation.json',
+  'breakpoints.json',
+  'animation.json',
+  'state.json',
+  'layer.json',
+];
 const COMP = ['button.json', 'card.json', 'input.json', 'navigation.json', 'animation.json'];
 
 function loadDir(dir, files) {

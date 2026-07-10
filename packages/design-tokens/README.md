@@ -6,17 +6,23 @@ Design tokens for the Finance app, defined in [DTCG](https://design-tokens.githu
 
 ```
 tokens/
-├── primitive/     # Raw values (colors, spacing, typography, shadows, motion, cognitive)
+├── primitive/     # Raw values (colors, spacing, radius, typography, shadows, motion, opacity, z-index, cognitive)
 ├── semantic/      # Purpose-mapped tokens with theme variants + accessibility modes
-│   ├── colors.light.json          # Light theme colors
-│   ├── colors.dark.json           # Dark theme colors
-│   ├── colors.dark-oled.json      # OLED dark theme (true black)
-│   ├── colors.high-contrast.json  # High-contrast theme (WCAG AAA)
-│   ├── typography.json            # Type scale (display → caption)
-│   ├── elevation.json             # Shadow elevation mapping
+│   ├── colors.light.json               # Light theme colors
+│   ├── colors.dark.json                # Dark theme colors
+│   ├── colors.dark-oled.json           # OLED dark theme (true black)
+│   ├── colors.high-contrast.json       # Light high-contrast theme (WCAG AAA)
+│   ├── colors.high-contrast-dark.json  # Dark high-contrast theme (WCAG AAA, near-black)
+│   ├── typography.json            # Type scale (display → caption → amount)
+│   ├── elevation.json             # Shadow elevation mapping (light default)
 │   ├── animation.json             # Motion purpose mapping
 │   ├── breakpoints.json           # Responsive layout breakpoints
+│   ├── state.json                 # Opacity states (disabled, scrim, hover)
+│   ├── layer.json                 # Stacking layers (modal, toast, tooltip…)
 │   └── cognitive.json             # Cognitive accessibility overrides
+├── override/      # Theme-scoped overrides layered after semantic + component (not auto-globbed)
+│   ├── elevation.dark.json        # Visible dark/OLED elevation (shadow.dark.*)
+│   └── chart.dark.json            # Dark/OLED CVD-safe chart series routing
 └── component/     # Component-specific tokens
     ├── button.json                # Button variants (primary, secondary, destructive)
     ├── card.json                  # Card container styling
@@ -28,6 +34,16 @@ tokens/
     └── cognitive.json             # Cognitive mode component overrides
 ```
 
+## Naming Conventions
+
+Token authors should follow these conventions so names stay predictable across the three tiers:
+
+- **Tiers**: `primitive` → `semantic` → `component`. Reference up the chain with `{group.subgroup.key}`; never hardcode a raw value in a semantic/component token.
+- **Casing**: token group and key names are `camelCase` (`borderRadius`, `fontSize`, `zIndex`, `positiveSubtle`, `typeScale`). Numeric scale steps use bare numbers as keys (`spacing.4`, `color.blue.500`, `opacity.40`).
+- **Scales**: color ramps run `50,100,…,900` (`950` where a deeper step is needed); `spacing` keys equal the multiplier of the 4px base (`spacing.6` = 24px); `borderRadius` uses t-shirt sizes (`sm`…`3xl`, plus `none`/`full`); `zIndex`/`opacity` use ordered numeric steps with gaps.
+- **Semantic status**: each status hue exposes a solid foreground (`status.positive`) and a low-emphasis background (`status.positiveSubtle`). Never convey financial state through color alone — always pair with an icon/label.
+- **Types**: use DTCG `$type` (`color`, `dimension`, `number`, `shadow`, `fontFamily`, `fontVariantNumeric`, `fontWeight`). Keep names stable — renames/removals are breaking changes.
+
 ## Build
 
 ```bash
@@ -37,22 +53,23 @@ npm run clean    # Remove build artifacts
 
 ### Output Platforms
 
-| Platform       | Path             | Files                                                                                                              |
-| -------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Web (CSS)      | `build/web/`     | `tokens.css`, `tokens-dark.css`, `tokens-dark-oled.css`, `tokens-high-contrast.css`                                |
-| iOS (Swift)    | `build/ios/`     | `FinanceTokens.swift`, `FinanceTokensDark.swift`, `FinanceTokensDarkOLED.swift`, `FinanceTokensHighContrast.swift` |
-| Android (XML)  | `build/android/` | `colors.xml`, `dimens.xml`, `colors-night.xml`, `colors-night-oled.xml`, `colors-high-contrast.xml`                |
-| Windows (XAML) | `build/windows/` | `FinanceTokens.xaml`, `FinanceTokensBrushes.xaml` + dark/OLED/HC variants                                          |
-| Kotlin (KMP)   | `build/kotlin/`  | `FinanceBreakpoints.kt`                                                                                            |
+| Platform       | Path             | Files                                                                                                                                                     |
+| -------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web (CSS)      | `build/web/`     | `tokens.css`, `tokens-dark.css`, `tokens-dark-oled.css`, `tokens-high-contrast.css`, `tokens-high-contrast-dark.css`                                      |
+| iOS (Swift)    | `build/ios/`     | `FinanceTokens.swift`, `FinanceTokensDark.swift`, `FinanceTokensDarkOLED.swift`, `FinanceTokensHighContrast.swift`, `FinanceTokensHighContrastDark.swift` |
+| Android (XML)  | `build/android/` | `colors.xml`, `dimens.xml`, `colors-night.xml`, `colors-night-oled.xml`, `colors-high-contrast.xml`, `colors-high-contrast-dark.xml`                      |
+| Windows (XAML) | `build/windows/` | `FinanceTokens.xaml`, `FinanceTokensBrushes.xaml` + dark/OLED/HC/HC-dark variants                                                                         |
+| Kotlin (KMP)   | `build/kotlin/`  | `FinanceBreakpoints.kt`                                                                                                                                   |
 
 ### Theme Coverage
 
-| Theme         | CSS Selector                   | Use Case                              |
-| ------------- | ------------------------------ | ------------------------------------- |
-| Light         | `:root`                        | Default theme                         |
-| Dark          | `[data-theme="dark"]`          | Standard dark mode                    |
-| Dark OLED     | `[data-theme="dark-oled"]`     | True black for AMOLED battery savings |
-| High Contrast | `[data-theme="high-contrast"]` | Low vision / `prefers-contrast: more` |
+| Theme              | CSS Selector                        | Use Case                                                                    |
+| ------------------ | ----------------------------------- | --------------------------------------------------------------------------- |
+| Light              | `:root`                             | Default theme                                                               |
+| Dark               | `[data-theme="dark"]`               | Standard dark mode                                                          |
+| Dark OLED          | `[data-theme="dark-oled"]`          | True black for AMOLED battery savings                                       |
+| High Contrast      | `[data-theme="high-contrast"]`      | Low vision / `prefers-contrast: more`                                       |
+| High Contrast Dark | `[data-theme="high-contrast-dark"]` | Low vision + dark (`prefers-contrast: more` + `prefers-color-scheme: dark`) |
 
 ## Usage
 
