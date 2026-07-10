@@ -25,11 +25,13 @@ import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { getVisibleNavItems } from './navConfig';
 import { InstallBanner } from '../common/InstallBanner';
 import { SampleDataBanner } from '../common/SampleDataBanner';
+import { Icon } from '../common/Icon';
+import { IconToken } from '../../icons/tokens';
 import { LegalLinks } from '../legal/LegalLinks';
 import { Breadcrumbs, NavShortcuts, buildNavShortcutCategory } from '../navigation';
 
-import { SkipToContent } from './SkipToContent';
-import { EyeIcon, EyeOffIcon } from './navIcons';
+import { SkipLinks } from './SkipLinks';
+import { EyeIcon, EyeOffIcon, KeyboardIcon } from './navIcons';
 
 export interface AppLayoutProps {
   activePath: string;
@@ -234,7 +236,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
   return (
     <div className="app-layout">
-      <SkipToContent />
+      <SkipLinks />
       <SidebarNavigation
         activePath={activePath}
         onNavigate={onNavigate}
@@ -322,9 +324,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 aria-keyshortcuts="Shift+/"
                 onClick={openKeyboardShortcuts}
               >
-                <span className="icon-button__glyph" aria-hidden="true">
-                  ?
-                </span>
+                <KeyboardIcon />
               </button>
             ) : null}
             <button
@@ -334,9 +334,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               aria-keyshortcuts="Control+K Meta+K /"
               onClick={openCommandPalette}
             >
-              <span className="icon-button__glyph" aria-hidden="true">
-                ⌘K
-              </span>
+              <Icon name={IconToken.SEARCH} size={20} />
             </button>
             <button
               type="button"
