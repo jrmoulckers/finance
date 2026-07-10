@@ -113,9 +113,7 @@ export function loadDisplaySettings(): MoneyDisplaySettings {
         typeof obj.showDecimals === 'boolean'
           ? obj.showDecimals
           : DEFAULT_DISPLAY_SETTINGS.showDecimals,
-      negativeFormat: isNegativeFormat(normalizeNegativeFormat(obj.negativeFormat))
-        ? normalizeNegativeFormat(obj.negativeFormat)
-        : DEFAULT_DISPLAY_SETTINGS.negativeFormat,
+      negativeFormat: normalizeNegativeFormat(obj.negativeFormat),
       currencyDisplay: isCurrencyDisplayMode(obj.currencyDisplay)
         ? obj.currencyDisplay
         : DEFAULT_DISPLAY_SETTINGS.currencyDisplay,
@@ -149,8 +147,9 @@ function isNegativeFormat(value: unknown): value is NegativeFormat {
  * alone), so `'color-only'` was a misnomer (#3283). Persisted preferences are
  * mapped forward transparently.
  */
-function normalizeNegativeFormat(value: unknown): unknown {
-  return value === 'color-only' ? 'text-label' : value;
+function normalizeNegativeFormat(value: unknown): NegativeFormat {
+  const migrated = value === 'color-only' ? 'text-label' : value;
+  return isNegativeFormat(migrated) ? migrated : DEFAULT_DISPLAY_SETTINGS.negativeFormat;
 }
 
 /** Type guard for `CurrencyDisplayMode`. */
