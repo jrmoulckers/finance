@@ -8,6 +8,11 @@
       "$value": "800ms",
       "$type": "duration",
       "$description": "Extended animations: celebrations, complex transitions"
+    },
+    "reduced": {
+      "$value": "1ms",
+      "$type": "duration",
+      "$description": "Reduced-motion duration for users who prefer reduced motion (WCAG 2.2 SC 2.3.3). Near-zero (1ms, not 0ms) so transitionend/animationend still fire and JS lifecycle hooks resolve."
     }
   },
   "easing": {
