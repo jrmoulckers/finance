@@ -5,9 +5,15 @@
   align-items: center;
   gap: var(--spacing-2);
   padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--color-amber-50, #fffbeb);
-  color: var(--color-amber-900, #78350f);
-  border-bottom: 1px solid var(--color-amber-400, #fbbf24);
+  /* Semantic warning tint over the current surface — one rule that adapts to
+     light, dark, dark-oled, and high-contrast without per-theme overrides. */
+  background-color: color-mix(
+    in srgb,
+    var(--semantic-status-warning) 14%,
+    var(--semantic-background-primary)
+  );
+  color: var(--semantic-text-primary);
+  border-bottom: 1px solid color-mix(in srgb, var(--semantic-status-warning) 55%, transparent);
   transition:
     transform var(--duration-normal, 200ms) ease,
     opacity var(--duration-normal, 200ms) ease;
@@ -23,26 +29,13 @@
 
 .offline-banner__icon {
   flex-shrink: 0;
+  color: var(--semantic-status-warning);
 }
 
 .offline-banner__text {
   flex: 1;
   font-size: var(--type-scale-caption-font-size);
   line-height: var(--line-height-normal);
-}
-
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme='light']) .offline-banner {
-    background-color: rgba(245, 158, 11, 0.16);
-    color: var(--color-amber-200, #fde68a);
-    border-bottom-color: rgba(252, 211, 77, 0.6);
-  }
-}
-
-[data-theme='dark'] .offline-banner {
-  background-color: rgba(245, 158, 11, 0.16);
-  color: var(--color-amber-200, #fde68a);
-  border-bottom-color: rgba(252, 211, 77, 0.6);
 }
 
 @media (prefers-reduced-motion: reduce) {

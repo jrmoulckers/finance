@@ -80,6 +80,20 @@ const AVAILABLE_THEMES: readonly ThemeValue[] = [
 const AVAILABLE_DENSITIES: readonly DisplayDensity[] = ['comfortable', 'compact'] as const;
 
 /**
+ * Browser/PWA chrome color per resolved theme.
+ *
+ * Mirrors `--semantic-background-primary` for each theme so the mobile browser
+ * address bar and PWA status bar (`<meta name="theme-color">`) stay in sync
+ * with the rendered app background instead of a single static value.
+ */
+const THEME_COLOR_BY_RESOLVED: Record<ResolvedTheme, string> = {
+  light: '#ffffff',
+  dark: '#0f1020',
+  'dark-oled': '#000000',
+  'high-contrast': '#ffffff',
+};
+
+/**
  * Read the persisted theme preference from localStorage.
  * Falls back to 'system' if nothing stored or value is invalid.
  */
@@ -127,6 +141,33 @@ function getSystemPreference(): 'light' | 'dark' {
   return 'light';
 }
 
+/** Resolve a theme preference (which may be 'system') to an effective theme. */
+function resolveTheme(value: ThemeValue): ResolvedTheme {
+  return value === 'system' ? getSystemPreference() : value;
+}
+
+/**
+ * Keep the browser/PWA chrome color in sync with the resolved theme.
+ *
+ * `index.html` ships two `prefers-color-scheme` fallbacks for the pre-JS boot.
+ * Once JS runs we own a dedicated, media-less tag inserted as the FIRST
+ * `theme-color` meta so it always wins (per the HTML spec the first matching
+ * tag is used) and stays correct across explicit themes and OS changes.
+ */
+export function applyThemeColorMeta(resolved: ResolvedTheme): void {
+  if (typeof document === 'undefined' || !document.head) return;
+
+  const DYNAMIC_ID = 'theme-color-dynamic';
+  let meta = document.getElementById(DYNAMIC_ID) as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.id = DYNAMIC_ID;
+    meta.setAttribute('name', 'theme-color');
+    document.head.insertBefore(meta, document.head.firstChild);
+  }
+  meta.setAttribute('content', THEME_COLOR_BY_RESOLVED[resolved]);
+}
+
 /**
  * Apply the resolved theme to the document element.
  * - For explicit themes: sets `data-theme="<value>"` on `<html>`.
@@ -156,7 +197,9 @@ export function applyDisplayDensity(value: DisplayDensity): void {
 }
 
 export function applyStoredThemePreference(): void {
-  applyTheme(getStoredTheme());
+  const stored = getStoredTheme();
+  applyTheme(stored);
+  applyThemeColorMeta(resolveTheme(stored));
 }
 
 export function applyStoredDisplayDensityPreference(): void {
@@ -215,6 +258,11 @@ export function useTheme(): UseThemeResult {
     }
     return theme;
   }, [theme, systemPref]);
+
+  // Keep the browser/PWA chrome color in sync with the effective theme.
+  useEffect(() => {
+    applyThemeColorMeta(resolvedTheme);
+  }, [resolvedTheme]);
 
   return {
     theme,

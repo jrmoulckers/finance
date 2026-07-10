@@ -37,4 +37,24 @@
    */
   --semantic-amount-positive: var(--semantic-status-positive);
   --semantic-amount-negative: var(--semantic-status-negative);
+
+  /*
+   * Modal / drawer scrim. Previously hardcoded as slate rgba() literals in
+   * every overlay (more-sheet, dialogs), identical across themes and too weak
+   * over a true-black OLED background. Tokenized here so every overlay shares
+   * one value and dark / OLED can strengthen it (see overrides below).
+   */
+  --semantic-overlay-scrim: color-mix(in srgb, #0f172a 55%, transparent);
+}
+
+/* Stronger scrim on dark surfaces so modals read clearly over near-black. */
+[data-theme='dark'],
+[data-theme='dark-oled'] {
+  --semantic-overlay-scrim: color-mix(in srgb, #000000 72%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --semantic-overlay-scrim: color-mix(in srgb, #000000 72%, transparent);
+  }
 }

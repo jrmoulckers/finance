@@ -187,7 +187,7 @@
   border: none;
   padding: 0;
   margin: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--semantic-overlay-scrim, rgba(15, 23, 42, 0.55));
   cursor: pointer;
   /* Don't show a focus ring on the scrim — the close button is the
    * focusable affordance. */
