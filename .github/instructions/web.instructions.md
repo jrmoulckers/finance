@@ -290,6 +290,31 @@ Use native HTML elements for their built-in accessibility:
   `aria-valuemax` for progress indicators.
 - All SVG icons must have `aria-hidden="true"` and `focusable="false"`.
 
+### Live Regions & Announcements (single canonical announcer)
+
+There is exactly **one** canonical announcer for dynamic, transient status
+messages: `announce(message, politeness)` in `accessibility/aria.ts`. It owns a
+persistent pair of visually-hidden live regions (`polite` + `assertive`) created
+once and reused, which is what makes announcements reliable (WCAG SC 4.1.3).
+
+- **Prefer routing through the canonical announcer** rather than mounting a new
+  ad-hoc `aria-live` / `role="status"` node for every transient message:
+  - Use the `useAnnouncer` hook for debounced component announcements
+    (rapid balance/sync updates). It delegates to `announce()`.
+  - The `Toast` system announces automatically via `announce()` — error toasts
+    assertively, everything else politely. Do **not** add your own live region
+    around toasts.
+- **Do not** put `role="status"`/`role="alert"` _and_ an `aria-label` on the
+  same pre-filled node: an accessible name on a live-region element can suppress
+  or duplicate the announcement (SC 4.1.2). Let the visible text be the
+  announced content.
+- **Persistent, structural** status text tied to a specific region of the page
+  (e.g. `SyncStatusBar`, a loading spinner's `role="status"`, chart empty
+  states) may keep its own scoped `aria-live` node — these describe a fixed
+  place in the UI rather than firing one-off, ordered announcements.
+- Use `VisuallyHidden` (from `components/common`) for screen-reader-only text
+  instead of hand-written `className="sr-only"` strings.
+
 ### Keyboard Navigation
 
 - All interactive elements must be reachable via Tab.

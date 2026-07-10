@@ -28,6 +28,8 @@ export { NoResultsEmptyState } from './NoResultsEmptyState';
 export type { NoResultsEmptyStateProps } from './NoResultsEmptyState';
 export { ErrorBanner } from './ErrorBanner';
 export type { ErrorBannerProps } from './ErrorBanner';
+export { VisuallyHidden } from './VisuallyHidden';
+export type { VisuallyHiddenProps } from './VisuallyHidden';
 export { ErrorBoundary } from './ErrorBoundary';
 export { RouteErrorBoundary } from './RouteErrorBoundary';
 export type { RouteErrorBoundaryProps } from './RouteErrorBoundary';

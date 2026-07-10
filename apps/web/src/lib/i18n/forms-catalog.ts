@@ -27,6 +27,9 @@ export const FORM_COPY_IDS = {
   toastInfo: 'toast.type.info',
   toastDismiss: 'toast.dismiss',
   toastAria: 'toast.aria',
+  errorBannerRetry: 'errorBanner.action.retry',
+  errorBannerRetrying: 'errorBanner.action.retrying',
+  errorBannerDismiss: 'errorBanner.action.dismiss',
 } as const;
 
 export type FormCopyKey = keyof typeof FORM_COPY_IDS;
@@ -66,4 +69,19 @@ export function getToastAriaLabel(
   locale?: string,
 ): string {
   return getFormCopy('toastAria', locale, { type: getToastTypeLabel(type, locale), message });
+}
+
+/** Localized label for the ErrorBanner retry action in its idle state. */
+export function getErrorBannerRetryLabel(locale?: string): string {
+  return getFormCopy('errorBannerRetry', locale);
+}
+
+/** Localized label for the ErrorBanner retry action while a retry is in flight. */
+export function getErrorBannerRetryingLabel(locale?: string): string {
+  return getFormCopy('errorBannerRetrying', locale);
+}
+
+/** Localized accessible label for the ErrorBanner dismiss control. */
+export function getErrorBannerDismissLabel(locale?: string): string {
+  return getFormCopy('errorBannerDismiss', locale);
 }

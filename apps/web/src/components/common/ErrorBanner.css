@@ -55,6 +55,18 @@
   outline-offset: 2px;
 }
 
+/* Busy/pending retry: prevent double-submits and keep the control stable. */
+.error-banner__retry[aria-busy='true'],
+.error-banner__retry:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+.error-banner__retry:disabled:hover {
+  background: none;
+  color: var(--semantic-status-negative);
+}
+
 .error-banner__dismiss {
   display: flex;
   align-items: center;
