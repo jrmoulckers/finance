@@ -7,6 +7,7 @@ import { AccountPurposeFilterControl } from '../components/accounts';
 import { RecentTransactionsCard } from '../components/transactions';
 import {
   CurrencyDisplay,
+  DashboardSkeleton,
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
@@ -822,9 +823,7 @@ export const DashboardPage: React.FC = () => {
         label="Filter dashboard by account purpose"
       />
       {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
-          <LoadingSpinner label="Loading dashboard" />
-        </div>
+        <DashboardSkeleton />
       ) : resolvedError ? (
         <ErrorBanner message={resolvedError} onRetry={handleRetry} />
       ) : (

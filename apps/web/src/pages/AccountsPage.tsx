@@ -4,10 +4,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AccountPurposeBadge } from '../components/accounts';
 import {
+  AccountsSkeleton,
   CurrencyDisplay,
   EmptyState,
   ErrorBanner,
-  LoadingSpinner,
   ReadAloudButton,
 } from '../components/common';
 import { AccountForm } from '../components/forms';
@@ -216,9 +216,7 @@ export const AccountsPage: React.FC = () => {
       <>
         {offlineBanner}
         <h2 className="page-heading">Accounts</h2>
-        <div className="page-loading">
-          <LoadingSpinner label="Loading accounts" />
-        </div>
+        <AccountsSkeleton />
       </>
     );
   }

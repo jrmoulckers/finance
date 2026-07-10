@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -507,7 +507,7 @@ describe('TransactionsPage', () => {
     expect(within(summary).getByText('USD 430858')).toBeInTheDocument();
   });
 
-  it('offers a Clear filters action when a search yields no results', () => {
+  it('offers a Clear filters action when a search yields no results', async () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
@@ -517,7 +517,9 @@ describe('TransactionsPage', () => {
     fireEvent.change(screen.getByLabelText('Search transactions'), {
       target: { value: 'zzz-no-such-transaction' },
     });
-    expect(screen.getByText('No transactions found')).toBeInTheDocument();
+    // The free-text filter is debounced (#3798), so wait for the register to
+    // reflect the search before asserting the empty state.
+    await waitFor(() => expect(screen.getByText('No transactions found')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
 
@@ -651,7 +653,7 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
   });
 
-  it('filters the register live by free-text search and restores on clear (#3200)', () => {
+  it('filters the register by debounced free-text search and restores on clear (#3200, #3798)', async () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
@@ -665,23 +667,24 @@ describe('TransactionsPage', () => {
 
     const searchBox = screen.getByRole('searchbox', { name: /search transactions/i });
 
-    // Typing a payee substring narrows the rendered register immediately, even
-    // though the mocked data hook returns every row regardless of its filters.
+    // Typing a payee substring narrows the rendered register after the search
+    // debounce settles (#3798), even though the mocked data hook returns every
+    // row regardless of its filters.
     fireEvent.change(searchBox, { target: { value: 'Grocery' } });
 
+    await waitFor(() => expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument());
     expect(screen.getByText('Grocery Store')).toBeInTheDocument();
-    expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument();
     expect(screen.queryByText('Electric Bill')).not.toBeInTheDocument();
 
     // Clearing the search restores the full list.
     fireEvent.change(searchBox, { target: { value: '' } });
 
+    await waitFor(() => expect(screen.getByText('Monthly Salary')).toBeInTheDocument());
     expect(screen.getByText('Grocery Store')).toBeInTheDocument();
-    expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
     expect(screen.getByText('Electric Bill')).toBeInTheDocument();
   });
 
-  it('matches free-text search against transaction tags (#3200)', () => {
+  it('matches free-text search against transaction tags (#3200)', async () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
@@ -693,12 +696,12 @@ describe('TransactionsPage', () => {
       target: { value: 'groceries' },
     });
 
+    await waitFor(() => expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument());
     expect(screen.getByText('Grocery Store')).toBeInTheDocument();
-    expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument();
     expect(screen.queryByText('Electric Bill')).not.toBeInTheDocument();
   });
 
-  it('composes free-text search with the account-purpose filter (#3200)', () => {
+  it('composes free-text search with the account-purpose filter (#3200)', async () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
@@ -715,12 +718,12 @@ describe('TransactionsPage', () => {
     // A search matching only a personal-account transaction yields no rows,
     // proving purpose + search compose with AND semantics.
     fireEvent.change(searchBox, { target: { value: 'Grocery' } });
-    expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Monthly Salary')).not.toBeInTheDocument());
     expect(screen.queryByText('Grocery Store')).not.toBeInTheDocument();
 
     // A search matching the in-scope transaction keeps it visible.
     fireEvent.change(searchBox, { target: { value: 'Salary' } });
-    expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Monthly Salary')).toBeInTheDocument());
   });
 
   it('displays edit and delete actions for each transaction', () => {

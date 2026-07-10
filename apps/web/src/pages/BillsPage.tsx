@@ -16,7 +16,7 @@ import {
   CurrencyDisplay,
   EmptyState,
   ErrorBanner,
-  LoadingSpinner,
+  ListSkeleton,
 } from '../components/common';
 import { useBills } from '../hooks';
 import type { Bill, BillFrequency, BillStatus } from '../kmp/bridge';
@@ -180,9 +180,7 @@ export const BillsPage: React.FC = () => {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
-          <LoadingSpinner label="Loading bills" />
-        </div>
+        <ListSkeleton rows={6} aria-label="Loading bills" />
       ) : error ? (
         <ErrorBanner message={error} onRetry={refresh} />
       ) : bills.length === 0 ? (
