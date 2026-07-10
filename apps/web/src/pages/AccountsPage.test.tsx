@@ -165,6 +165,28 @@ describe('AccountsPage', () => {
     expect(screen.getByText('Accounts')).toBeInTheDocument();
   });
 
+  it('shows a content-shaped skeleton while accounts load (#3798)', () => {
+    mockedUseAccounts.mockReturnValue({
+      accounts: [],
+      loading: true,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <AccountsPage />
+      </MemoryRouter>,
+    );
+
+    const skeleton = container.querySelector('.skeleton-page--accounts');
+    expect(skeleton).toBeInTheDocument();
+    expect(skeleton).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('groups accounts by purpose', () => {
     render(
       <MemoryRouter>

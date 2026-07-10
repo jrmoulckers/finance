@@ -16,7 +16,7 @@
  */
 
 import React from 'react';
-import { CurrencyDisplay, EmptyState, ErrorState, LoadingSpinner } from '../components/common';
+import { CurrencyDisplay, EmptyState, ErrorState, ListSkeleton } from '../components/common';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import type {
   DetectedSubscription,
@@ -133,7 +133,7 @@ export const SubscriptionsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="analytics-page__loading">
-        <LoadingSpinner label="Analyzing subscriptions" />
+        <ListSkeleton rows={6} aria-label="Analyzing subscriptions" />
       </div>
     );
   }

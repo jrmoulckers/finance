@@ -9,7 +9,7 @@ import { ReadAloudButton } from '../components/common/ReadAloudButton';
 import { EmptyState } from '../components/common/EmptyState';
 import { ErrorBanner } from '../components/common/ErrorBanner';
 import { ExplainThis } from '../components/common/ExplainThis';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { BudgetsSkeleton } from '../components/common/EntitySkeletons';
 import { SortableList } from '../components/common/SortableList';
 import { SyncIndicator } from '../components/common/SyncIndicator';
 import { BudgetForm } from '../components/forms';
@@ -788,9 +788,7 @@ export const BudgetsPage: React.FC = () => {
         onCancel={handleDeleteCancel}
       />
       {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
-          <LoadingSpinner label="Loading budgets" />
-        </div>
+        <BudgetsSkeleton />
       ) : resolvedError ? (
         <ErrorBanner message={resolvedError} onRetry={handleRetry} />
       ) : budgets.length === 0 ? (

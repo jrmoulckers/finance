@@ -34,6 +34,7 @@ export const ListSkeleton: React.FC<ListSkeletonProps> = ({
 }) => (
   <div
     className={`skeleton-page skeleton-page--list ${className}`.trim()}
+    role="status"
     aria-busy="true"
     aria-label={ariaLabel}
   >

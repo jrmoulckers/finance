@@ -31,7 +31,7 @@ describe('SubscriptionsPage', () => {
     vi.clearAllMocks();
   });
 
-  it('shows loading spinner while loading', () => {
+  it('shows a loading skeleton while loading', () => {
     mockUseSubscriptions.mockReturnValue({
       subscriptions: [],
       summary: {
@@ -52,7 +52,7 @@ describe('SubscriptionsPage', () => {
     });
 
     render(<SubscriptionsPage />);
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Analyzing subscriptions' })).toBeInTheDocument();
   });
 
   it('shows an error state with retry on error', () => {

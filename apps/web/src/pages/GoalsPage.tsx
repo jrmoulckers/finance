@@ -7,6 +7,7 @@ import {
   CurrencyDisplay,
   EmptyState,
   ErrorBanner,
+  GoalsSkeleton,
   LoadingSpinner,
   ReadAloudButton,
   SortableList,
@@ -713,9 +714,7 @@ export const GoalsPage: React.FC = () => {
         </article>
       </section>
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
-          <LoadingSpinner label="Loading goals" />
-        </div>
+        <GoalsSkeleton />
       ) : error ? (
         <ErrorBanner message={error} onRetry={refresh} />
       ) : (

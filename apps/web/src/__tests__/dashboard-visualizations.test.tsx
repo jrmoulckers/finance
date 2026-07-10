@@ -661,7 +661,7 @@ describe('Dashboard accessible landmarks (#1334)', () => {
 // ---------------------------------------------------------------------------
 
 describe('DashboardPage loading state (#1334)', () => {
-  it('shows loading spinner when data is loading', () => {
+  it('shows a content-shaped loading skeleton when data is loading', () => {
     mockedUseDashboardData.mockReturnValue({
       data: null,
       loading: true,
@@ -669,13 +669,15 @@ describe('DashboardPage loading state (#1334)', () => {
       refresh: vi.fn(),
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('status', { name: /loading/i })).toBeInTheDocument();
+    const skeleton = container.querySelector('.skeleton-page--dashboard');
+    expect(skeleton).toBeInTheDocument();
+    expect(skeleton).toHaveAttribute('aria-busy', 'true');
   });
 
   it('does not show summary cards while loading', () => {

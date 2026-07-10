@@ -57,6 +57,7 @@ import { useAccessibility } from '../hooks/useAccessibility';
 import { useAutoCategorize } from '../hooks/useAutoCategorize';
 import { useBulkTransactions } from '../hooks/useBulkTransactions';
 import { useCategories } from '../hooks/useCategories';
+import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { prefersCoarsePointer } from '../hooks/useCoarsePointer';
 import { useFontScale } from '../hooks/useFontScale';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -334,7 +335,16 @@ export const TransactionsPage: React.FC = () => {
   const navigate = useNavigate();
   const { isSimplified } = useAccessibility();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [query, setQuery] = useState('');
+  // Free-text search: the raw `query` drives the input (updates immediately),
+  // while `debouncedQuery` (300ms) drives the client-side filter/sort in the
+  // `transactions` memo below so large registers are not re-filtered and
+  // re-sorted on every keystroke (#3798).
+  const {
+    searchTerm: query,
+    debouncedTerm: debouncedQuery,
+    setSearchTerm: setQuery,
+    clearSearch,
+  } = useDebouncedSearch();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editPanelTransaction, setEditPanelTransaction] = useState<Transaction | null>(null);
@@ -483,7 +493,7 @@ export const TransactionsPage: React.FC = () => {
       selectedPurposeFilter,
     );
     const searched = purposeFiltered.filter((transaction) =>
-      matchesTransactionQuery(transaction, query, searchContext),
+      matchesTransactionQuery(transaction, debouncedQuery, searchContext),
     );
     const filtered = applyAdvancedFilters(searched, advancedFilters);
     return sortTransactions(filtered, sortConfig, categoryNames);
@@ -491,7 +501,7 @@ export const TransactionsPage: React.FC = () => {
     rawTransactions,
     accounts,
     selectedPurposeFilter,
-    query,
+    debouncedQuery,
     searchContext,
     advancedFilters,
     sortConfig,
@@ -691,13 +701,13 @@ export const TransactionsPage: React.FC = () => {
   // preserving the current sort. Used by the empty-state "Clear filters" CTA
   // (#3772).
   const handleClearAllFilters = useCallback(() => {
-    setQuery('');
+    clearSearch();
     setSelectedPurposeFilter('all');
     const params: Record<string, string> = {};
     if (sortConfig.field !== DEFAULT_SORT.field) params.sortField = sortConfig.field;
     if (sortConfig.direction !== DEFAULT_SORT.direction) params.sortDir = sortConfig.direction;
     setSearchParams(params, { replace: true });
-  }, [sortConfig, setSearchParams]);
+  }, [clearSearch, sortConfig, setSearchParams]);
 
   // Form handlers
   const handleOpenCreateForm = useCallback(() => {
@@ -1427,7 +1437,7 @@ export const TransactionsPage: React.FC = () => {
               <button
                 type="button"
                 className="search-bar__clear"
-                onClick={() => setQuery('')}
+                onClick={() => clearSearch()}
                 aria-label="Clear search"
               >
                 <span aria-hidden="true">✕</span>
