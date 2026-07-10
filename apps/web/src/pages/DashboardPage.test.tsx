@@ -758,6 +758,39 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Client Retainer')).toBeInTheDocument();
   });
 
+  it('shows a time-aware greeting header while keeping the Dashboard label', () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    // The route identity is preserved as an eyebrow above the greeting heading.
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Good (morning|afternoon|evening)/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the income-vs-expense, account-summary, and goals-progress widgets (#3778)', async () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    const incomeExpense = await screen.findByRole('article', {
+      name: 'Income versus expenses this month',
+    });
+    expect(within(incomeExpense).getByText('Money in')).toBeInTheDocument();
+
+    const accountSummary = await screen.findByRole('article', { name: 'Account summary by type' });
+    expect(within(accountSummary).getByText('Checking')).toBeInTheDocument();
+
+    const goalsProgress = await screen.findByRole('article', { name: 'Savings goals progress' });
+    expect(within(goalsProgress).getByText('Emergency fund')).toBeInTheDocument();
+  });
+
   it('aggregates the All workspace net worth as the sum of every workspace (#3160)', () => {
     // Personal $20,000 + Business $10,000 + shared "Both" $5,000.
     mockedUseAccounts.mockReturnValue({

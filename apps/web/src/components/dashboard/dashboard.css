@@ -869,3 +869,120 @@
   background-color: var(--semantic-background-secondary);
   background-color: color-mix(in srgb, var(--semantic-text-primary) 6%, transparent);
 }
+
+/* ---------------------------------------------------------------------------
+ * Financial-overview widgets: Income vs Expense, Account Summary, Goals
+ * Progress (#3778). These three widgets are configured in the customize panel
+ * and default layout; the styles below give them a scannable, tokenised layout
+ * that matches the rest of the dashboard grid.
+ * ------------------------------------------------------------------------- */
+
+.dashboard-overview-grid > .card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Income vs Expense --------------------------------------------------------- */
+
+.income-expense-card__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin: 0;
+}
+
+.income-expense-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.income-expense-card__label {
+  color: var(--semantic-text-secondary);
+}
+
+.income-expense-card__amount {
+  font-weight: 600;
+}
+
+.income-expense-card__net {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin: var(--spacing-3) 0 0;
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--semantic-border-default);
+  font-weight: 700;
+}
+
+.income-expense-card__net-icon {
+  font-size: 0.85em;
+}
+
+/* Account Summary ----------------------------------------------------------- */
+
+.account-summary-card__list {
+  list-style: none;
+  margin: 0 0 var(--spacing-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.account-summary-card__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.account-summary-card__count {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.85em);
+}
+
+.account-summary-card__amount {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Goals Progress ------------------------------------------------------------ */
+
+.goals-progress-card__list {
+  list-style: none;
+  margin: 0 0 var(--spacing-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.goals-progress-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-2);
+}
+
+.goals-progress-card__name {
+  font-weight: 600;
+}
+
+.goals-progress-card__percent {
+  font-variant-numeric: tabular-nums;
+  color: var(--semantic-text-secondary);
+}
+
+.goals-progress-card__amounts {
+  margin: var(--spacing-2) 0 0;
+}
+
+@media (prefers-contrast: more) {
+  .income-expense-card__net {
+    border-top-width: 2px;
+  }
+}
