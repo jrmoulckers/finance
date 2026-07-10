@@ -60,6 +60,67 @@ export function patternId(index: number): string {
   return `chart-pattern-${index}`;
 }
 
+/**
+ * Default number of individual categories to surface in a categorical chart
+ * before the remainder is rolled into a single "Other" slice. Chosen to match
+ * the six-entry CVD-safe palette so every visible slice gets a unique color.
+ */
+export const DEFAULT_TOP_N_CATEGORIES = 6;
+
+/** Label applied to the aggregated remainder slice. */
+export const OTHER_CATEGORY_LABEL = 'Other';
+
+/** A named, numeric-valued slice used by the categorical charts. */
+export interface NamedValue {
+  name: string;
+  value: number;
+}
+
+/**
+ * Cap a categorical dataset at the largest `topN` entries and aggregate the
+ * remainder into a single "Other" entry that preserves the grand total.
+ *
+ * The result is deterministic: sorted by value descending, with the "Other"
+ * entry (when present) always last. When there are `topN` or fewer categories
+ * the data is returned sorted but otherwise unchanged (no "Other" entry).
+ */
+export function groupTopNCategories<T extends NamedValue>(
+  data: readonly T[],
+  topN: number = DEFAULT_TOP_N_CATEGORIES,
+  otherLabel: string = OTHER_CATEGORY_LABEL,
+): NamedValue[] {
+  const sorted = [...data]
+    .map(({ name, value }) => ({ name, value }))
+    .sort((left, right) => right.value - left.value);
+
+  if (topN <= 0 || sorted.length <= topN) {
+    return sorted;
+  }
+
+  const top = sorted.slice(0, topN);
+  const otherTotal = sorted.slice(topN).reduce((sum, entry) => sum + entry.value, 0);
+  return [...top, { name: otherLabel, value: otherTotal }];
+}
+
+/**
+ * Build a short, human-readable caption for a categorical chart, e.g.
+ * "$2,340 across 6 categories; Groceries is largest at 28%." Intended for a
+ * compact visible summary line; returns an empty string when there is no data.
+ */
+export function buildCategoryCaption(
+  dataPoints: readonly NamedValue[],
+  currency = 'USD',
+  maskingMode: MaskingMode = MaskingMode.Visible,
+): string {
+  if (dataPoints.length === 0) return '';
+  const total = dataPoints.reduce((sum, d) => sum + d.value, 0);
+  const largest = dataPoints.reduce((max, d) => (d.value > max.value ? d : max), dataPoints[0]);
+  const share = total > 0 ? Math.round((largest.value / total) * 100) : 0;
+  const noun = dataPoints.length === 1 ? 'category' : 'categories';
+  const totalText = formatChartCurrency(total, currency, 'en-US', maskingMode);
+  return `${totalText} across ${dataPoints.length} ${noun}; ${largest.name} is largest at ${share}%.`;
+}
+
 export function buildChartDescription(
   chartType: string,
   dataPoints: Array<{ label: string; value: number }>,

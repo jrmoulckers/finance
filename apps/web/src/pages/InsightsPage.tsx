@@ -17,6 +17,7 @@ import { WeeklyDigest } from '../components/insights';
 import { RecommendationsFeed } from '../components/recommendations';
 import { WellnessOverview } from '../components/wellness';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { CHART_COLORS } from '../components/charts';
 import { Checkbox } from '../components/common/Checkbox';
 import { AppIcon, type IconName } from '../components/icons';
 import { useInsights } from '../hooks/useInsights';
@@ -84,14 +85,11 @@ interface CategoryBarProps {
 }
 
 const CategoryBar: React.FC<CategoryBarProps> = ({ name, amount, percent, index, onDrillDown }) => {
-  const colors = [
-    'var(--semantic-status-info)',
-    'var(--semantic-status-positive)',
-    'var(--semantic-status-warning)',
-    'var(--semantic-status-negative)',
-    'var(--semantic-interactive-default)',
-  ];
-  const color = colors[index % colors.length];
+  // Use the shared CVD-safe categorical palette rather than semantic status
+  // tokens (info/positive/warning/negative). Status colors carry meaning
+  // (good/bad/warning) in this app, so cycling them by category index falsely
+  // implies a category is "good" or "bad". References: issue #3752.
+  const color = CHART_COLORS[index % CHART_COLORS.length];
 
   return (
     <div className="insights-category-bar" role="listitem">

@@ -10,6 +10,9 @@ import {
   patternId,
   formatChartCurrency,
   buildChartDescription,
+  buildCategoryCaption,
+  groupTopNCategories,
+  DEFAULT_TOP_N_CATEGORIES,
 } from './chart-palette';
 
 // ---------------------------------------------------------------------------
@@ -177,5 +180,86 @@ describe('buildChartDescription', () => {
     expect(desc).toContain('1 categories');
     expect(desc).toContain('$3,000');
     expect(desc).toContain('Savings: $3,000');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groupTopNCategories (#3757 — Top N + Other)
+// ---------------------------------------------------------------------------
+
+describe('groupTopNCategories', () => {
+  const many = [
+    { name: 'A', value: 10 },
+    { name: 'B', value: 90 },
+    { name: 'C', value: 30 },
+    { name: 'D', value: 80 },
+    { name: 'E', value: 20 },
+    { name: 'F', value: 70 },
+    { name: 'G', value: 40 },
+    { name: 'H', value: 60 },
+  ];
+
+  it('returns data sorted by value descending', () => {
+    const result = groupTopNCategories(many, 8);
+    expect(result.map((d) => d.value)).toEqual([90, 80, 70, 60, 40, 30, 20, 10]);
+  });
+
+  it('caps at topN and aggregates the remainder into a single "Other" entry', () => {
+    const result = groupTopNCategories(many, 3);
+    expect(result).toHaveLength(4);
+    expect(result.slice(0, 3).map((d) => d.name)).toEqual(['B', 'D', 'F']);
+    const other = result[result.length - 1];
+    expect(other.name).toBe('Other');
+    // Remaining values: 40 + 30 + 20 + 10 = 100.
+    expect(other.value).toBe(160);
+  });
+
+  it('preserves the grand total', () => {
+    const grandTotal = many.reduce((sum, d) => sum + d.value, 0);
+    const result = groupTopNCategories(many, 4);
+    const rolledTotal = result.reduce((sum, d) => sum + d.value, 0);
+    expect(rolledTotal).toBe(grandTotal);
+  });
+
+  it('does not add an "Other" entry when there are topN or fewer categories', () => {
+    const few = [
+      { name: 'A', value: 10 },
+      { name: 'B', value: 20 },
+    ];
+    const result = groupTopNCategories(few, 6);
+    expect(result).toHaveLength(2);
+    expect(result.some((d) => d.name === 'Other')).toBe(false);
+  });
+
+  it('defaults to a six-category cap', () => {
+    expect(DEFAULT_TOP_N_CATEGORIES).toBe(6);
+    const result = groupTopNCategories(many);
+    expect(result).toHaveLength(7); // 6 top + Other
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildCategoryCaption (#3755 — visible captions)
+// ---------------------------------------------------------------------------
+
+describe('buildCategoryCaption', () => {
+  it('returns an empty string for no data', () => {
+    expect(buildCategoryCaption([])).toBe('');
+  });
+
+  it('summarises total, count, and largest category with its share', () => {
+    const caption = buildCategoryCaption([
+      { name: 'Groceries', value: 280 },
+      { name: 'Rent', value: 720 },
+    ]);
+    expect(caption).toContain('$1,000');
+    expect(caption).toContain('2 categories');
+    expect(caption).toContain('Rent is largest at 72%');
+  });
+
+  it('uses the singular noun for a single category', () => {
+    const caption = buildCategoryCaption([{ name: 'Rent', value: 500 }]);
+    expect(caption).toContain('1 category');
+    expect(caption).toContain('Rent is largest at 100%');
   });
 });

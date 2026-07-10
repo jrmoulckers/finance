@@ -17,7 +17,12 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
+import {
+  CHART_COLORS,
+  buildCategoryCaption,
+  buildChartDescription,
+  formatChartCurrency,
+} from './chart-palette';
 import { AccessibleChartDataTable } from './chart-accessibility';
 import { ChartEmptyState } from './ChartEmptyState';
 import { useArrowKeyNavigation } from '../../accessibility/aria';
@@ -56,6 +61,16 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
       buildChartDescription(
         'Bar chart',
         data.map((d) => ({ label: d.name, value: d.amount })),
+        currency,
+        maskingMode,
+      ),
+    [data, currency, maskingMode],
+  );
+
+  const caption = useMemo(
+    () =>
+      buildCategoryCaption(
+        data.map((d) => ({ name: d.name, value: d.amount })),
         currency,
         maskingMode,
       ),
@@ -112,6 +127,11 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
       <h3 id={`${chartId}-title`} className="chart-title">
         {title}
       </h3>
+      {caption && (
+        <p className="chart-caption" aria-hidden="true">
+          {caption}
+        </p>
+      )}
       <p id={`${chartId}-desc`} className="sr-only">
         {description}
       </p>
