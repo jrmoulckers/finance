@@ -160,7 +160,15 @@
 .app-main {
   flex: 1;
   padding: var(--layout-content-padding);
-  padding-bottom: calc(var(--layout-bottom-nav-height) + var(--spacing-4));
+  /* Clear the fixed bottom nav *and* the device home-indicator safe area so the
+     last row / primary CTA is never hidden on notched phones (needs
+     viewport-fit=cover on the viewport meta to resolve to a non-zero value). */
+  padding-bottom: calc(
+    var(--layout-bottom-nav-height) + var(--spacing-4) + env(safe-area-inset-bottom, 0px)
+  );
+  /* Respect the notch in landscape so content isn't clipped behind it. */
+  padding-left: max(var(--layout-content-padding), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--layout-content-padding), env(safe-area-inset-right, 0px));
   max-width: var(--layout-content-max-width);
   width: 100%;
   margin: 0 auto;

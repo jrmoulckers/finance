@@ -31,6 +31,8 @@ export type { ErrorBannerProps } from './ErrorBanner';
 export { ErrorBoundary } from './ErrorBoundary';
 export { RouteErrorBoundary } from './RouteErrorBoundary';
 export type { RouteErrorBoundaryProps } from './RouteErrorBoundary';
+export { ScrollableRegion } from './ScrollableRegion';
+export type { ScrollableRegionProps } from './ScrollableRegion';
 export { WidgetErrorBoundary } from './WidgetErrorBoundary';
 export type { WidgetErrorBoundaryProps } from './WidgetErrorBoundary';
 export { InstallBanner } from './InstallBanner';
