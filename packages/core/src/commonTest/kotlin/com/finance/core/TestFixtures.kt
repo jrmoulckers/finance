@@ -99,6 +99,8 @@ object TestFixtures {
         date: LocalDate = fixedDate,
         categoryId: SyncId? = SyncId("category-1"),
         accountId: SyncId = SyncId("account-1"),
+        ownerId: SyncId = SyncId("owner-1"),
+        currency: Currency = Currency.USD,
         status: TransactionStatus = TransactionStatus.CLEARED,
         deletedAt: Instant? = null,
     ): Transaction = createTransaction(
@@ -107,6 +109,8 @@ object TestFixtures {
         date = date,
         categoryId = categoryId,
         accountId = accountId,
+        ownerId = ownerId,
+        currency = currency,
         status = status,
         deletedAt = deletedAt,
     )
@@ -141,6 +145,7 @@ object TestFixtures {
         currency: Currency = Currency.USD,
         period: BudgetPeriod = BudgetPeriod.MONTHLY,
         startDate: LocalDate = LocalDate(2024, 6, 1),
+        endDate: LocalDate? = null,
         isRollover: Boolean = false,
         createdAt: Instant = fixedInstant,
         updatedAt: Instant = fixedInstant,
@@ -154,9 +159,35 @@ object TestFixtures {
         currency = currency,
         period = period,
         startDate = startDate,
+        endDate = endDate,
         isRollover = isRollover,
         createdAt = createdAt,
         updatedAt = updatedAt,
+    )
+
+    // ── Category Factory ─────────────────────────────────────────────
+
+    @Suppress("LongParameterList")
+    fun createCategory(
+        id: SyncId = nextId(),
+        householdId: SyncId = SyncId("household-1"),
+        ownerId: SyncId = SyncId("owner-1"),
+        name: String = "Test Category",
+        parentId: SyncId? = null,
+        isIncome: Boolean = false,
+        createdAt: Instant = fixedInstant,
+        updatedAt: Instant = fixedInstant,
+        deletedAt: Instant? = null,
+    ): Category = Category(
+        id = id,
+        householdId = householdId,
+        ownerId = ownerId,
+        name = name,
+        parentId = parentId,
+        isIncome = isIncome,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        deletedAt = deletedAt,
     )
 
     // ── Goal Factory ─────────────────────────────────────────────────

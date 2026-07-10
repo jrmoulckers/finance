@@ -5,9 +5,6 @@ package com.finance.core.budget
 import com.finance.models.*
 import com.finance.models.types.*
 import com.finance.core.money.MoneyOperations
-import com.finance.models.util.DateTimeUtil.endOfMonth
-import com.finance.models.util.DateTimeUtil.startOfMonth
-import com.finance.models.util.DateTimeUtil.startOfWeek
 import kotlinx.datetime.*
 import kotlinx.serialization.Serializable
 
@@ -18,6 +15,11 @@ object BudgetCalculator {
 
     /**
      * Calculate budget status for a given budget and its transactions.
+     *
+     * The reported [BudgetStatus.isWithinBudgetDates] reflects whether
+     * [referenceDate] falls inside the budget's active window
+     * `[startDate, endDate]` (see [isActiveOn]); an ended budget still reports
+     * its last period's numbers but is flagged as inactive (#3632).
      */
     fun calculateStatus(
         budget: Budget,
@@ -25,13 +27,7 @@ object BudgetCalculator {
         referenceDate: LocalDate,
     ): BudgetStatus {
         val period = getCurrentPeriod(budget.period, budget.startDate, referenceDate)
-        val periodTransactions = transactions.filter { txn ->
-            txn.categoryId == budget.categoryId &&
-                txn.currency == budget.currency &&
-                txn.date >= period.start && txn.date <= period.end &&
-                txn.deletedAt == null &&
-                txn.type == TransactionType.EXPENSE
-        }
+        val periodTransactions = periodExpenses(budget, transactions, period)
 
         val spent = Cents(periodTransactions.sumOf { it.amount.abs().amount })
         val remaining = budget.amount - spent
@@ -46,11 +42,87 @@ object BudgetCalculator {
             remaining = remaining,
             utilization = utilization,
             isOverBudget = spent.amount > budget.amount.amount,
+            isWithinBudgetDates = isActiveOn(budget, referenceDate),
         )
     }
 
     /**
+     * Break a shared/household budget's spend down by member (`ownerId`) for the
+     * period containing [referenceDate] (#3690).
+     *
+     * The same category / currency / date-window / soft-delete / expense-only
+     * filters as [calculateStatus] are applied, so [BudgetMemberBreakdown.totalSpent]
+     * reconciles exactly with [BudgetStatus.spent]. Members with no qualifying
+     * spend in the period do not appear in [BudgetMemberBreakdown.byMember]; use
+     * [BudgetMemberBreakdown.spendFor] to read a zero for absent members.
+     */
+    fun calculateMemberBreakdown(
+        budget: Budget,
+        transactions: List<Transaction>,
+        referenceDate: LocalDate,
+    ): BudgetMemberBreakdown {
+        val period = getCurrentPeriod(budget.period, budget.startDate, referenceDate)
+        val periodTransactions = periodExpenses(budget, transactions, period)
+
+        val byMember = LinkedHashMap<SyncId, Cents>()
+        for (txn in periodTransactions) {
+            val current = byMember[txn.ownerId] ?: Cents.ZERO
+            byMember[txn.ownerId] = current + txn.amount.abs()
+        }
+        val total = Cents(periodTransactions.sumOf { it.amount.abs().amount })
+
+        return BudgetMemberBreakdown(
+            budget = budget,
+            period = period,
+            totalSpent = total,
+            byMember = byMember,
+        )
+    }
+
+    /**
+     * Whether [referenceDate] falls inside the budget's active window (#3632).
+     *
+     * A budget is active on any date in `[startDate, endDate]`. When
+     * [Budget.endDate] is `null` the budget is open-ended and active on every
+     * date on or after [Budget.startDate].
+     */
+    fun isActiveOn(budget: Budget, referenceDate: LocalDate): Boolean {
+        val endDate = budget.endDate
+        return referenceDate >= budget.startDate &&
+            (endDate == null || referenceDate <= endDate)
+    }
+
+    /**
+     * Expenses that count against [budget] within [period]: matching category and
+     * currency, inside the date window, not soft-deleted, and of expense type.
+     */
+    private fun periodExpenses(
+        budget: Budget,
+        transactions: List<Transaction>,
+        period: DatePeriod,
+    ): List<Transaction> = transactions.filter { txn ->
+        txn.categoryId == budget.categoryId &&
+            txn.currency == budget.currency &&
+            txn.date >= period.start && txn.date <= period.end &&
+            txn.deletedAt == null &&
+            txn.type == TransactionType.EXPENSE
+    }
+
+    /**
      * Get the current period boundaries for a budget.
+     *
+     * ## Anchoring rule (#3595)
+     * Every period type is anchored to the budget's [startDate] rather than to
+     * calendar boundaries, so a cycle that begins on the 15th (or a Thursday)
+     * stays on that cadence:
+     *  - **WEEKLY / BIWEEKLY** — fixed 7- / 14-day windows counted from [startDate].
+     *  - **MONTHLY / QUARTERLY / YEARLY** — 1- / 3- / 12-month windows counted
+     *    from [startDate], preserving its day-of-month (clamped for short months
+     *    by `kotlinx-datetime`).
+     *
+     * Because a `startDate` on the 1st of a month that is also an ISO Monday
+     * coincides with the calendar grid, calendar-aligned budgets are unaffected.
+     * Reference dates before [startDate] resolve to the correct earlier period.
      */
     fun getCurrentPeriod(
         period: BudgetPeriod,
@@ -58,37 +130,58 @@ object BudgetCalculator {
         referenceDate: LocalDate,
     ): DatePeriod {
         return when (period) {
-            BudgetPeriod.WEEKLY -> {
-                val start = referenceDate.startOfWeek()
-                DatePeriod(start, start.plus(6, DateTimeUnit.DAY))
-            }
-            BudgetPeriod.BIWEEKLY -> {
-                val daysSinceStart = startDate.daysUntil(referenceDate)
-                // Floor division so dates before startDate bucket into the
-                // correct (earlier) period rather than truncating toward zero.
-                val periodIndex = floorDiv(daysSinceStart, BIWEEKLY_DAYS)
-                val periodStart = startDate.plus(periodIndex * BIWEEKLY_DAYS, DateTimeUnit.DAY)
-                DatePeriod(periodStart, periodStart.plus(BIWEEKLY_DAYS - 1, DateTimeUnit.DAY))
-            }
-            BudgetPeriod.MONTHLY -> {
-                val start = referenceDate.startOfMonth()
-                DatePeriod(start, referenceDate.endOfMonth())
-            }
-            BudgetPeriod.QUARTERLY -> {
-                val quarterMonth = ((referenceDate.monthNumber - 1) / 3) * 3 + 1
-                val start = LocalDate(referenceDate.year, quarterMonth, 1)
-                val endMonth = quarterMonth + 2
-                val end = LocalDate(referenceDate.year, endMonth, 1)
-                    .plus(1, DateTimeUnit.MONTH)
-                    .minus(1, DateTimeUnit.DAY)
-                DatePeriod(start, end)
-            }
-            BudgetPeriod.YEARLY -> {
-                val start = LocalDate(referenceDate.year, 1, 1)
-                val end = LocalDate(referenceDate.year, 12, 31)
-                DatePeriod(start, end)
-            }
+            BudgetPeriod.WEEKLY -> alignedDayPeriod(startDate, referenceDate, DAYS_PER_WEEK)
+            BudgetPeriod.BIWEEKLY -> alignedDayPeriod(startDate, referenceDate, BIWEEKLY_DAYS)
+            BudgetPeriod.MONTHLY -> alignedMonthPeriod(startDate, referenceDate, MONTHS_PER_MONTH)
+            BudgetPeriod.QUARTERLY -> alignedMonthPeriod(startDate, referenceDate, MONTHS_PER_QUARTER)
+            BudgetPeriod.YEARLY -> alignedMonthPeriod(startDate, referenceDate, MONTHS_PER_YEAR)
         }
+    }
+
+    /**
+     * A fixed-length day window (7 or 14 days) anchored at [startDate]. Uses
+     * floor division so reference dates before [startDate] bucket into the
+     * correct earlier period rather than truncating toward zero.
+     */
+    private fun alignedDayPeriod(
+        startDate: LocalDate,
+        referenceDate: LocalDate,
+        lengthDays: Int,
+    ): DatePeriod {
+        val daysSinceStart = startDate.daysUntil(referenceDate)
+        val periodIndex = floorDiv(daysSinceStart, lengthDays)
+        val periodStart = startDate.plus(periodIndex * lengthDays, DateTimeUnit.DAY)
+        return DatePeriod(periodStart, periodStart.plus(lengthDays - 1, DateTimeUnit.DAY))
+    }
+
+    /**
+     * A month-based window anchored at [startDate], where [monthsPerPeriod] is 1
+     * (monthly), 3 (quarterly) or 12 (yearly). The window preserves the
+     * [startDate] day-of-month; each period boundary is computed by adding whole
+     * months to [startDate] (never by compounding) to avoid drift across short
+     * months.
+     */
+    private fun alignedMonthPeriod(
+        startDate: LocalDate,
+        referenceDate: LocalDate,
+        monthsPerPeriod: Int,
+    ): DatePeriod {
+        val totalMonths = startDate.monthsUntil(referenceDate)
+        var index = floorDiv(totalMonths, monthsPerPeriod)
+        var start = startDate.plus(index * monthsPerPeriod, DateTimeUnit.MONTH)
+        // monthsUntil truncates by day-of-month, so correct the bucket until
+        // referenceDate lies within [start, nextStart).
+        while (referenceDate < start) {
+            index -= 1
+            start = startDate.plus(index * monthsPerPeriod, DateTimeUnit.MONTH)
+        }
+        var nextStart = startDate.plus((index + 1) * monthsPerPeriod, DateTimeUnit.MONTH)
+        while (referenceDate >= nextStart) {
+            index += 1
+            start = nextStart
+            nextStart = startDate.plus((index + 1) * monthsPerPeriod, DateTimeUnit.MONTH)
+        }
+        return DatePeriod(start, nextStart.minus(1, DateTimeUnit.DAY))
     }
 
     /**
@@ -156,6 +249,14 @@ object BudgetCalculator {
     /** Number of days in a biweekly budget period. */
     private const val BIWEEKLY_DAYS = 14
 
+    /** Number of days in a weekly budget period. */
+    private const val DAYS_PER_WEEK = 7
+
+    /** Months per monthly / quarterly / yearly period, used to anchor on startDate. */
+    private const val MONTHS_PER_MONTH = 1
+    private const val MONTHS_PER_QUARTER = 3
+    private const val MONTHS_PER_YEAR = 12
+
     /**
      * Integer floor division (rounds toward negative infinity), unlike Kotlin's
      * `/` which truncates toward zero. Ensures negative day offsets bucket into
@@ -185,6 +286,11 @@ data class DatePeriod(
 
 /**
  * Current status of a budget for its active period.
+ *
+ * @property isWithinBudgetDates Whether the evaluated reference date fell inside
+ *   the budget's `[startDate, endDate]` window. `false` means the status is for
+ *   a date outside the budget's life (e.g. after its `endDate`) and is reported
+ *   for reference only (#3632).
  */
 data class BudgetStatus(
     val budget: Budget,
@@ -194,13 +300,19 @@ data class BudgetStatus(
     /** Fraction of budget spent (0.0 to unbounded). >1.0 means over budget. */
     val utilization: Double,
     val isOverBudget: Boolean,
+    val isWithinBudgetDates: Boolean = true,
 ) {
-    /** Health level: HEALTHY (< 75%), WARNING (75-100%), OVER (> 100%) */
-    val healthLevel: BudgetHealth get() = when {
-        utilization > 1.0 -> BudgetHealth.OVER
-        utilization > 0.75 -> BudgetHealth.WARNING
-        else -> BudgetHealth.HEALTHY
-    }
+    /**
+     * Health level using the default thresholds (WARNING > 75%, OVER > 100%).
+     * For custom sensitivity use [healthLevel] with explicit [BudgetThresholds].
+     */
+    val healthLevel: BudgetHealth get() = BudgetThresholds.DEFAULT.classify(utilization)
+
+    /**
+     * Health level classified against caller-supplied [thresholds] (#3678).
+     * Passing [BudgetThresholds.DEFAULT] is identical to the [healthLevel] property.
+     */
+    fun healthLevel(thresholds: BudgetThresholds): BudgetHealth = thresholds.classify(utilization)
 }
 
 enum class BudgetHealth { HEALTHY, WARNING, OVER }
