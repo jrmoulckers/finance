@@ -473,7 +473,7 @@ describe('SettingsPage', () => {
 
       expect(screen.getByLabelText('Currency')).toHaveValue('USD');
       expect(screen.getByLabelText('Theme')).toHaveValue('system');
-      expect(screen.getByRole('checkbox', { name: 'Notifications' })).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Enable notifications' })).toBeChecked();
       expect(screen.getByRole('region', { name: /preferences/i })).toBeInTheDocument();
       expect(screen.getByRole('region', { name: /display/i })).toBeInTheDocument();
     });
@@ -628,7 +628,7 @@ describe('SettingsPage', () => {
       expect(screen.getByRole('region', { name: /danger zone/i })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Danger Zone' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^erase all mood data$/i })).toHaveClass(
-        'danger-zone-card__action',
+        'danger-zone__action',
       );
       expect(
         screen.getByRole('button', {

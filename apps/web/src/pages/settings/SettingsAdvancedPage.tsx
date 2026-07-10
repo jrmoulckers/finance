@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 
-import { SettingInfoWidget } from '../../components/settings';
+import { DangerZone, SettingInfoWidget } from '../../components/settings';
 import { Checkbox } from '../../components/common/Checkbox';
 import { useDatabase } from '../../db/DatabaseProvider';
 import { eraseAllMoodTags } from '../../db/repositories/transactions';
@@ -101,31 +101,21 @@ export const SettingsAdvancedPage: React.FC = () => {
         </div>
       </section>
 
-      <section aria-label="Danger Zone" className="page-section">
-        {/* TODO(#2010): Replace this inline card with the shared <DangerZone> once fix/settings-arrows-danger-zone-2010 is merged. */}
-        <div className="danger-zone-card">
-          <div className="danger-zone-card__header">
-            <h3 className="danger-zone-card__title">Danger Zone</h3>
-            <p className="danger-zone-card__description">
-              Destructive Advanced actions live here so they are visually separated from safe
-              preferences.
-            </p>
-          </div>
-          <div className="danger-zone-card__content">
-            <SettingInfoWidget settingKey="eraseMoodData">
-              <button
-                type="button"
-                className="danger-zone-card__action"
-                onClick={handleEraseMoodData}
-                aria-label="Erase all mood data"
-              >
-                <span>Erase all mood data</span>
-                <span aria-hidden="true">⌫</span>
-              </button>
-            </SettingInfoWidget>
-          </div>
-        </div>
-      </section>
+      <DangerZone description="Destructive Advanced actions live here so they are visually separated from safe preferences.">
+        <SettingInfoWidget settingKey="eraseMoodData">
+          <button
+            type="button"
+            className="danger-zone__action"
+            onClick={handleEraseMoodData}
+            aria-label="Erase all mood data"
+          >
+            <span className="danger-zone__action-label">Erase all mood data</span>
+            <span className="danger-zone__action-icon" aria-hidden="true">
+              ⌫
+            </span>
+          </button>
+        </SettingInfoWidget>
+      </DangerZone>
     </>
   );
 };
