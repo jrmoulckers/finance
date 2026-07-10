@@ -19,6 +19,7 @@ import {
 } from 'recharts';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
 import { AccessibleChartDataTable } from './chart-accessibility';
+import { ChartEmptyState } from './ChartEmptyState';
 import { useArrowKeyNavigation } from '../../accessibility/aria';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 
@@ -94,6 +95,10 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
       }),
     [chartId, currency, data, maskingMode, total],
   );
+
+  if (data.length === 0) {
+    return <ChartEmptyState title={title} titleId={`${chartId}-title`} />;
+  }
 
   return (
     <div

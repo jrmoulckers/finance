@@ -23,6 +23,7 @@ import {
   useChartKeyboardNavigation,
 } from './chart-accessibility';
 import { buildChartTextSummary } from '../../lib/a11y/chart-table-audit';
+import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 import './trend-line-chart.css';
 
 /**
@@ -84,6 +85,7 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
 }) => {
   const chartId = useId();
   const disableAnimation = prefersReducedMotion();
+  const maskingMode = useEffectiveMaskingMode();
 
   const description = useMemo(() => {
     if (data.length === 0) return 'Line chart with no data.';
@@ -94,11 +96,11 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
         );
         const min = Math.min(...values);
         const max = Math.max(...values);
-        return `${s.name} (${seriesPattern(index).name} line): range ${formatChartCurrency(min, currency)} to ${formatChartCurrency(max, currency)}`;
+        return `${s.name} (${seriesPattern(index).name} line): range ${formatChartCurrency(min, currency, 'en-US', maskingMode)} to ${formatChartCurrency(max, currency, 'en-US', maskingMode)}`;
       })
       .join('. ');
     return `Line chart "${title}" with ${data.length} data points and ${series.length} series. ${seriesDesc}.`;
-  }, [data, series, currency, title]);
+  }, [data, series, currency, title, maskingMode]);
 
   const dataPointRows = useMemo(
     () =>
@@ -108,7 +110,7 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
             typeof point[trendSeries.dataKey] === 'number' ? Number(point[trendSeries.dataKey]) : 0;
           return {
             name: trendSeries.name,
-            formattedValue: formatChartCurrency(rawValue, currency),
+            formattedValue: formatChartCurrency(rawValue, currency, 'en-US', maskingMode),
           };
         });
 
@@ -130,7 +132,7 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
           }),
         };
       }),
-    [chartId, currency, data, series, title],
+    [chartId, currency, data, series, title, maskingMode],
   );
 
   const { announcement, handleFocus, handleKeyDown } = useChartKeyboardNavigation(dataPointRows);
@@ -173,12 +175,16 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
                 tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
               />
               <YAxis
-                tickFormatter={(v: number) => formatChartCurrency(v, currency)}
+                tickFormatter={(v: number) =>
+                  formatChartCurrency(v, currency, 'en-US', maskingMode)
+                }
                 tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
                 width={80}
               />
               <Tooltip
-                formatter={(value) => formatChartCurrency(Number(value ?? 0), currency)}
+                formatter={(value) =>
+                  formatChartCurrency(Number(value ?? 0), currency, 'en-US', maskingMode)
+                }
                 contentStyle={{
                   background: 'var(--semantic-background-elevated, #FFFFFF)',
                   border: '1px solid var(--semantic-border-default, #E5E7EB)',

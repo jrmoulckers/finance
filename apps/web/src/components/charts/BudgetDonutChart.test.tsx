@@ -4,6 +4,7 @@ import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { BudgetDonutChart, type BudgetSlice } from './BudgetDonutChart';
+import { PrivacyModeProvider } from '../../contexts/PrivacyModeContext';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -76,7 +77,8 @@ describe('BudgetDonutChart', () => {
   it('handles empty data', () => {
     render(<BudgetDonutChart data={[]} />);
     const container = screen.getByRole('figure');
-    expect(container).toHaveAttribute('aria-label', 'Donut chart with no data.');
+    expect(container).toHaveAttribute('aria-label', 'Budget breakdown: No data to display yet.');
+    expect(screen.getByRole('status')).toHaveTextContent('No data to display yet.');
   });
 
   // -- Accessibility ----------------------------------------------------------
@@ -127,5 +129,36 @@ describe('BudgetDonutChart', () => {
   it('omits the data table when there is no data', () => {
     render(<BudgetDonutChart data={[]} />);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  // -- Zero-total robustness --------------------------------------------------
+
+  it('renders 0.0% shares instead of NaN when every slice is zero', () => {
+    const { container } = render(
+      <BudgetDonutChart
+        data={[
+          { name: 'Housing', value: 0 },
+          { name: 'Groceries', value: 0 },
+        ]}
+      />,
+    );
+    expect(container).not.toHaveTextContent('NaN');
+    const table = screen.getByRole('table', { name: /budget breakdown data table/i });
+    expect(within(table).getAllByText('0.0%').length).toBeGreaterThan(0);
+  });
+
+  // -- Privacy masking --------------------------------------------------------
+
+  it('masks amounts in the description and data table when privacy mode is active', () => {
+    render(
+      <PrivacyModeProvider initialValue>
+        <BudgetDonutChart data={sampleData} />
+      </PrivacyModeProvider>,
+    );
+    const figure = screen.getByRole('figure');
+    expect(figure.getAttribute('aria-label')).toContain('•••');
+    expect(figure.getAttribute('aria-label')).not.toContain('$2,200');
+    const table = screen.getByRole('table', { name: /budget breakdown data table/i });
+    expect(within(table).queryByText('$1,200')).not.toBeInTheDocument();
   });
 });

@@ -12,6 +12,7 @@ import { type FC, useCallback, useEffect, useId, useRef, useState } from 'react'
 import * as d3 from 'd3';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
 import { AccessibleChartDataTable } from './chart-accessibility';
+import { ChartEmptyState } from './ChartEmptyState';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 
 export interface CategorySlice {
@@ -75,7 +76,7 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
       .attr(
         'aria-label',
         (d) =>
-          `${d.data.name}: ${formatChartCurrency(d.data.value, currency, 'en-US', maskingMode)} (${((d.data.value / total) * 100).toFixed(1)}%)`,
+          `${d.data.name}: ${formatChartCurrency(d.data.value, currency, 'en-US', maskingMode)} (${total > 0 ? ((d.data.value / total) * 100).toFixed(1) : '0.0'}%)`,
       )
       .attr('fill', (_d, i) => CHART_COLORS[i % CHART_COLORS.length])
       .attr('stroke', 'var(--semantic-background-primary, #FFFFFF)')
@@ -142,6 +143,10 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
       ariaLabel: `${slice.name}: ${formattedValue} (${percent}%)`,
     };
   });
+
+  if (data.length === 0) {
+    return <ChartEmptyState title={title} titleId={`${chartId}-title`} />;
+  }
 
   return (
     <div ref={containerRef} role="figure" aria-label={description} aria-roledescription="pie chart">

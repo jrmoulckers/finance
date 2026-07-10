@@ -16,6 +16,8 @@ export { BudgetDonutChart } from './BudgetDonutChart';
 export type { BudgetDonutChartProps, BudgetSlice } from './BudgetDonutChart';
 export { CategoryPieChart } from './CategoryPieChart';
 export type { CategoryPieChartProps, CategorySlice } from './CategoryPieChart';
+export { ChartEmptyState, DEFAULT_CHART_EMPTY_MESSAGE } from './ChartEmptyState';
+export type { ChartEmptyStateProps } from './ChartEmptyState';
 export {
   CHART_COLORS,
   CHART_COLORS_HEX,

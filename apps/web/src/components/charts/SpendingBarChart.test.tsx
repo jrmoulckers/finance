@@ -78,7 +78,11 @@ describe('SpendingBarChart', () => {
   it('handles empty data', () => {
     render(<SpendingBarChart data={[]} />);
     const container = screen.getByRole('figure');
-    expect(container).toHaveAttribute('aria-label', 'Bar chart with no data.');
+    expect(container).toHaveAttribute(
+      'aria-label',
+      'Spending by category: No data to display yet.',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('No data to display yet.');
   });
 
   // -- Accessibility ----------------------------------------------------------

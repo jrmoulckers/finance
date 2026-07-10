@@ -1,0 +1,27 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Shared chart empty state. Mirrors the dashed, centered treatment used by
+ * SpendingTrendChart / NetWorthProjectionChart so every chart's "no data"
+ * affordance is visually and semantically consistent (issue #3784).
+ */
+
+.chart-empty-state__message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+  margin: var(--spacing-2, 0.5rem) 0 0;
+  padding: var(--spacing-4, 1rem);
+  border: 1px dashed var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-md, 0.375rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  text-align: center;
+}
+
+@media (prefers-contrast: more) {
+  .chart-empty-state__message {
+    border-width: 2px;
+  }
+}

@@ -839,7 +839,11 @@ describe('SpendingBarChart (#1334)', () => {
   it('handles empty data with descriptive aria-label', () => {
     render(<SpendingBarChart data={[]} />);
     const container = screen.getByRole('figure');
-    expect(container).toHaveAttribute('aria-label', 'Bar chart with no data.');
+    expect(container).toHaveAttribute(
+      'aria-label',
+      'Spending by category: No data to display yet.',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('No data to display yet.');
   });
 
   it('includes sr-only description for screen readers', () => {
@@ -942,7 +946,11 @@ describe('CategoryPieChart (#1334)', () => {
   it('handles empty data', () => {
     render(<CategoryPieChart data={[]} />);
     const container = screen.getByRole('figure');
-    expect(container).toHaveAttribute('aria-label', 'Pie chart with no data.');
+    expect(container).toHaveAttribute(
+      'aria-label',
+      'Spending by category: No data to display yet.',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('No data to display yet.');
   });
 
   it('renders no path elements when data is empty', () => {
