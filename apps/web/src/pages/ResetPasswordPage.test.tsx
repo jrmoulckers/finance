@@ -40,6 +40,34 @@ describe('ResetPasswordPage', () => {
     );
   });
 
+  it('autofocuses the new-password field on mount for a valid recovery link', async () => {
+    renderResetPasswordPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('New password')).toHaveFocus();
+    });
+  });
+
+  it('associates the length hint with the new-password field via aria-describedby', () => {
+    renderResetPasswordPage();
+
+    const field = screen.getByLabelText('New password');
+    const describedBy = field.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+
+    const hint = screen.getByText('Must be at least 12 characters');
+    expect(describedBy?.split(' ')).toContain(hint.id);
+  });
+
+  it('does not autofocus when the recovery link is invalid', async () => {
+    renderResetPasswordPage('/reset-password');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Reset link is invalid or expired/)).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('New password')).not.toHaveFocus();
+  });
+
   it('updates the password using the recovery access token and redirects to login', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));

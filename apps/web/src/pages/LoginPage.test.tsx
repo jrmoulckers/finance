@@ -101,6 +101,14 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
+  it('autofocuses the email field on mount', async () => {
+    renderLoginPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveFocus();
+    });
+  });
+
   it('renders the privacy-first brand tagline', () => {
     renderLoginPage();
 

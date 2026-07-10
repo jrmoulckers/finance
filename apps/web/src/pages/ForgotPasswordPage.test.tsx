@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForgotPasswordPage } from './ForgotPasswordPage';
@@ -25,6 +25,14 @@ describe('ForgotPasswordPage', () => {
     expect(screen.getByText('Reset your password')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+  });
+
+  it('autofocuses the email field on mount', async () => {
+    renderForgotPasswordPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveFocus();
+    });
   });
 
   it('requests a reset email with an absolute reset redirect URL', async () => {

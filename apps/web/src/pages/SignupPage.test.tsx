@@ -9,6 +9,7 @@ const navigateMock = vi.hoisted(() => vi.fn());
 const authState = vi.hoisted(() => ({
   loginWithEmail: vi.fn(),
   loginWithPasskey: vi.fn(),
+  loginWithOAuth: vi.fn(),
   signupWithEmail: vi.fn(),
   isAuthenticated: false,
   isLoading: false,
@@ -54,6 +55,7 @@ describe('SignupPage', () => {
   beforeEach(() => {
     authState.loginWithEmail.mockReset();
     authState.loginWithPasskey.mockReset();
+    authState.loginWithOAuth.mockReset();
     authState.signupWithEmail.mockReset();
     authState.isAuthenticated = false;
     authState.isLoading = false;
@@ -61,6 +63,7 @@ describe('SignupPage', () => {
     authState.user = null;
     authState.webAuthnSupported = true;
     authState.webAuthnReady = true;
+    authState.isDemoMode = false;
     navigateMock.mockReset();
   });
 
@@ -231,5 +234,91 @@ describe('SignupPage', () => {
     expect(screen.getByRole('button', { name: 'Sign up' })).toBeEnabled();
 
     authState.signupWithEmail = original;
+  });
+
+  // ── OAuth parity (#3707) ────────────────────────────────────────────────────
+
+  it('renders social sign-up buttons at parity with login', () => {
+    renderSignupPage();
+
+    expect(screen.getByRole('button', { name: 'Sign up with Google' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign up with GitHub' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign up with Microsoft' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign up with Apple' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Social signup options' })).toBeInTheDocument();
+  });
+
+  it('calls loginWithOAuth with the chosen provider', () => {
+    renderSignupPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up with Google' }));
+
+    expect(authState.loginWithOAuth).toHaveBeenCalledWith('google');
+  });
+
+  // ── Legal transparency (#3643) ──────────────────────────────────────────────
+
+  it('surfaces Terms and Privacy links on the signup form', () => {
+    renderSignupPage();
+
+    // Agreement line near the submit button links to the existing legal routes.
+    const termsLinks = screen.getAllByRole('link', { name: 'Terms' });
+    expect(termsLinks.some((link) => link.getAttribute('href') === '/legal/terms')).toBe(true);
+    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
+      'href',
+      '/legal/privacy',
+    );
+    // LegalLinks footer parity with Login.
+    expect(screen.getByRole('navigation', { name: 'Legal links' })).toBeInTheDocument();
+  });
+
+  // ── Autofocus (#3656) ───────────────────────────────────────────────────────
+
+  it('autofocuses the email field on mount', async () => {
+    renderSignupPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveFocus();
+    });
+  });
+
+  // ── Weak-password soft-gate (#3679) ─────────────────────────────────────────
+
+  it('blocks submission of a common password and focuses the password field', async () => {
+    renderSignupPage();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'alex@example.com' } });
+    // A recognizably common password from the shared blocklist (score 0).
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password' } });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), {
+      target: { value: 'password' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    });
+
+    expect(authState.signupWithEmail).not.toHaveBeenCalled();
+    const error = screen.getByRole('alert');
+    expect(error).toHaveTextContent('too common');
+    expect(screen.getByLabelText('Password')).toHaveFocus();
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  // ── Confirmation panel focus management (#3702) ─────────────────────────────
+
+  it('moves focus to the confirmation heading after a confirmation-required signup', async () => {
+    authState.signupWithEmail.mockResolvedValue({ kind: 'confirmation_required' });
+    renderSignupPage();
+    fillValidForm();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    });
+
+    const heading = await screen.findByRole('heading', { name: 'Check your email' });
+    await waitFor(() => {
+      expect(heading).toHaveFocus();
+    });
   });
 });

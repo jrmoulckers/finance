@@ -116,6 +116,14 @@
   color: var(--semantic-status-negative);
 }
 
+/* Consent / legal agreement line shown near the signup submit button (#3643). */
+.auth-legal-notice {
+  margin: 0 0 var(--spacing-3, 0.75rem);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  text-align: center;
+}
+
 /* ─── Primary submit button ──────────────────────────────────────────────── */
 
 .auth-submit {

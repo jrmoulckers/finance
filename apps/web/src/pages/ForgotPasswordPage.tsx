@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { z } from 'zod';
 
@@ -24,7 +24,21 @@ export const ForgotPasswordPage: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const emailInputRef = useRef<HTMLInputElement>(null);
+
   const redirectTo = useMemo(() => `${window.location.origin}/reset-password`, []);
+
+  /**
+   * Autofocus the email field on mount so keyboard users can start typing
+   * immediately (#3656). Deferred via rAF so it runs after the initial paint.
+   */
+  useEffect(() => {
+    const handle = requestAnimationFrame(() => {
+      emailInputRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(handle);
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -77,6 +91,7 @@ export const ForgotPasswordPage: React.FC = () => {
               Email
             </label>
             <input
+              ref={emailInputRef}
               id={emailId}
               className="auth-field__input"
               type="email"
