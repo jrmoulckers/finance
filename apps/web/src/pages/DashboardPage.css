@@ -29,6 +29,72 @@
   overflow-wrap: anywhere;
 }
 
+/* ---------------------------------------------------------------------------
+ * Dashboard header (greeting + date + RMD badge). Moved off inline styles onto
+ * tokenised classes so the header themes correctly (dark mode / high contrast)
+ * and can be adjusted responsively. References: issue #3778.
+ * ------------------------------------------------------------------------- */
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-6);
+}
+
+.dashboard-header__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.dashboard-header__eyebrow {
+  margin: 0;
+  font-size: var(--type-scale-label-font-size);
+  font-weight: var(--type-scale-label-font-weight);
+  color: var(--semantic-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dashboard-header__title {
+  margin: 0;
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+}
+
+.dashboard-header__date {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+}
+
+.dashboard-rmd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: 999px;
+  border: 1px solid var(--semantic-border-default);
+  text-decoration: none;
+  font-weight: 700;
+  color: var(--semantic-interactive-default);
+}
+
+.dashboard-rmd-badge--negative {
+  color: var(--semantic-status-negative);
+}
+
+.dashboard-rmd-badge--warning {
+  color: var(--semantic-status-warning);
+}
+
+@media (prefers-contrast: more) {
+  .dashboard-rmd-badge {
+    border-width: 2px;
+  }
+}
+
 /* Larger phones / portrait tablets: two readable columns instead of one. */
 @media (min-width: 376px) and (max-width: 767px) {
   .card-grid.dashboard-summary-grid {

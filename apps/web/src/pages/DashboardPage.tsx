@@ -99,6 +99,21 @@ const SavingsRateCard = React.lazy(() =>
   })),
 );
 const GroceryModeSection = React.lazy(() => import('../components/dashboard/GroceryModeSection'));
+const IncomeVsExpenseCard = React.lazy(() =>
+  import('../components/dashboard/IncomeVsExpenseCard').then((module) => ({
+    default: module.IncomeVsExpenseCard,
+  })),
+);
+const AccountSummaryCard = React.lazy(() =>
+  import('../components/dashboard/AccountSummaryCard').then((module) => ({
+    default: module.AccountSummaryCard,
+  })),
+);
+const GoalsProgressCard = React.lazy(() =>
+  import('../components/dashboard/GoalsProgressCard').then((module) => ({
+    default: module.GoalsProgressCard,
+  })),
+);
 
 const ChartFallback = () => <LoadingSpinner size={24} label="Loading chart" />;
 const SectionFallback = ({ label }: { readonly label: string }) => (
@@ -120,6 +135,27 @@ function formatLocalDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+/** Time-of-day greeting used in the dashboard header for a personal, oriented feel. */
+function getTimeOfDayGreeting(date: Date): string {
+  const hour = date.getHours();
+  if (hour < 12) {
+    return 'Good morning';
+  }
+  if (hour < 18) {
+    return 'Good afternoon';
+  }
+  return 'Good evening';
+}
+
+/** Localized long-form date (e.g. "Wednesday, July 9") for the dashboard header. */
+function formatHeaderDate(date: Date): string {
+  return date.toLocaleDateString(getCurrentLocale(), {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 function getLastNDaysBounds(days: number): { startDate: string; endDate: string } {
@@ -755,51 +791,23 @@ export const DashboardPage: React.FC = () => {
   return (
     <>
       <OfflineBanner />
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 'var(--spacing-4)',
-          flexWrap: 'wrap',
-          marginBottom: 'var(--spacing-6)',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: 'var(--type-scale-headline-font-size)',
-            fontWeight: 'var(--type-scale-headline-font-weight)',
-            margin: 0,
-          }}
-        >
-          Dashboard
-        </h2>
+      <header className="dashboard-header">
+        <div className="dashboard-header__heading">
+          <p className="dashboard-header__eyebrow">Dashboard</p>
+          <h2 className="dashboard-header__title">{getTimeOfDayGreeting(dashboardAsOf)}</h2>
+          <p className="dashboard-header__date">{formatHeaderDate(dashboardAsOf)}</p>
+        </div>
         {!rmdLoading && rmdDueCount > 0 && (
           <Link
             to="/planning"
+            className={`dashboard-rmd-badge dashboard-rmd-badge--${rmdBadgeTone}`}
             aria-label={`${rmdDueCount} required minimum distribution ${rmdDueCount === 1 ? 'reminder' : 'reminders'} due`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 'var(--spacing-2)',
-              padding: 'var(--spacing-2) var(--spacing-3)',
-              borderRadius: '999px',
-              border: '1px solid var(--semantic-border-default)',
-              color:
-                rmdBadgeTone === 'negative'
-                  ? 'var(--semantic-status-negative)'
-                  : rmdBadgeTone === 'warning'
-                    ? 'var(--semantic-status-warning)'
-                    : 'var(--semantic-interactive-default)',
-              textDecoration: 'none',
-              fontWeight: 700,
-            }}
           >
             RMD due
             <span aria-hidden="true">{rmdDueCount}</span>
           </Link>
         )}
-      </div>
+      </header>
       <button
         type="button"
         className="dashboard-customize-btn"
@@ -991,6 +999,38 @@ export const DashboardPage: React.FC = () => {
                   ) : null}
                 </div>
               </section>
+              {visibleWidgetIds.has('income-vs-expense') ||
+              visibleWidgetIds.has('account-summary') ||
+              visibleWidgetIds.has('goals-progress') ? (
+                <section className="page-section" aria-label="Financial overview">
+                  <div className="card-grid card-grid--3 dashboard-overview-grid">
+                    {visibleWidgetIds.has('income-vs-expense') ? (
+                      <Suspense
+                        fallback={<SectionFallback label="Loading income versus expense" />}
+                      >
+                        <IncomeVsExpenseCard
+                          incomeCents={incomeThisMonth}
+                          expenseCents={spentThisMonth}
+                          currency={safeToSpendCurrency}
+                        />
+                      </Suspense>
+                    ) : null}
+                    {visibleWidgetIds.has('account-summary') ? (
+                      <Suspense fallback={<SectionFallback label="Loading account summary" />}>
+                        <AccountSummaryCard
+                          accounts={filteredAccounts}
+                          currency={safeToSpendCurrency}
+                        />
+                      </Suspense>
+                    ) : null}
+                    {visibleWidgetIds.has('goals-progress') && !hiddenModules.has('goals') ? (
+                      <Suspense fallback={<SectionFallback label="Loading goals progress" />}>
+                        <GoalsProgressCard goals={filteredGoals} currency={safeToSpendCurrency} />
+                      </Suspense>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
               <Suspense fallback={<SectionFallback label="Loading things to check" />}>
                 <DashboardThingsToCheckSection
                   accounts={accounts}

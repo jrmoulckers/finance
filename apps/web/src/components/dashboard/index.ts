@@ -12,6 +12,12 @@ export { CustomizePanel } from './CustomizePanel';
 export type { CustomizePanelProps } from './CustomizePanel';
 export { SafeToSpendCard } from './SafeToSpendCard';
 export type { SafeToSpendCardProps } from './SafeToSpendCard';
+export { IncomeVsExpenseCard } from './IncomeVsExpenseCard';
+export type { IncomeVsExpenseCardProps } from './IncomeVsExpenseCard';
+export { AccountSummaryCard } from './AccountSummaryCard';
+export type { AccountSummaryCardProps } from './AccountSummaryCard';
+export { GoalsProgressCard } from './GoalsProgressCard';
+export type { GoalsProgressCardProps } from './GoalsProgressCard';
 export {
   WIDGET_DEFINITIONS,
   WIDGET_DEFINITION_MAP,
