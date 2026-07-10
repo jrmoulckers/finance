@@ -108,7 +108,7 @@
 
 .rule-manager__empty {
   color: var(--semantic-text-secondary);
-  font-size: var(--type-scale-body-sm-font-size, var(--type-scale-body-font-size));
+  font-size: var(--type-scale-caption-font-size, var(--type-scale-body-font-size));
 }
 
 .categorization-settings__help {

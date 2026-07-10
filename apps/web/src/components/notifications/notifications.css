@@ -58,7 +58,7 @@
   max-height: min(480px, calc(100vh - 5rem));
   margin-top: var(--spacing-2, 8px);
   border: 1px solid var(--semantic-border-default, #d1d5db);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: var(--border-radius-lg, 12px);
   /* Elevated, fully opaque surface with a hard fallback so the panel can never
      render transparent (which caused list items to bleed into the page). */
   background-color: var(--semantic-background-elevated, #ffffff);
@@ -356,7 +356,7 @@
   align-items: flex-start;
   gap: var(--spacing-3, 12px);
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: var(--border-radius-lg, 12px);
   background: var(--semantic-background-elevated);
   border: 1px solid var(--semantic-border-default);
   box-shadow: var(--shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 10%));

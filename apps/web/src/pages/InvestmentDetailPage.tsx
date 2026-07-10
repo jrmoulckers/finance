@@ -88,7 +88,7 @@ export const InvestmentDetailPage: React.FC = () => {
             fontSize: 'var(--type-scale-caption-font-size)',
             color: 'var(--semantic-text-secondary)',
             padding: 'var(--spacing-1) var(--spacing-2)',
-            backgroundColor: 'var(--semantic-surface-secondary, #f3f4f6)',
+            backgroundColor: 'var(--semantic-background-secondary, #f3f4f6)',
             borderRadius: 'var(--radius-sm, 4px)',
           }}
         >

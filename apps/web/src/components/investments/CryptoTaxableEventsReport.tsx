@@ -183,7 +183,7 @@ const tableStyle: React.CSSProperties = {
 
 const cellStyle: React.CSSProperties = {
   padding: 'var(--spacing-2)',
-  borderBottom: '1px solid var(--semantic-border, #e5e7eb)',
+  borderBottom: '1px solid var(--semantic-border-default, #e5e7eb)',
 };
 
 const taxableBadgeStyle: React.CSSProperties = {

@@ -111,7 +111,7 @@
 
 .safety-page__review-link {
   padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
-  color: var(--semantic-action-primary, #1d4ed8);
+  color: var(--semantic-interactive-default, #1d4ed8);
 }
 
 .safety-page__check-button:focus-visible,

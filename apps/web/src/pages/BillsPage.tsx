@@ -66,7 +66,7 @@ function getStatusStyle(status: BillStatus): React.CSSProperties {
     case 'CANCELLED':
       return {
         color: 'var(--semantic-text-secondary)',
-        backgroundColor: 'var(--semantic-surface-secondary, #f3f4f6)',
+        backgroundColor: 'var(--semantic-background-secondary, #f3f4f6)',
       };
   }
 }
@@ -315,7 +315,7 @@ export const BillsPage: React.FC = () => {
                   style={{
                     padding: 'var(--spacing-2) var(--spacing-3)',
                     borderRadius: 'var(--radius-sm, 4px)',
-                    border: '1px solid var(--semantic-border, #d1d5db)',
+                    border: '1px solid var(--semantic-border-default, #d1d5db)',
                     backgroundColor: 'var(--semantic-background-primary)',
                     color: 'var(--semantic-text-primary)',
                     fontSize: 'var(--type-scale-body-font-size)',

@@ -287,9 +287,9 @@ export function useAccountDeletion(): {
       <div
         style={{
           width: 'min(100%, 36rem)',
-          borderRadius: 'var(--radius-lg, 1rem)',
+          borderRadius: 'var(--border-radius-lg, 1rem)',
           padding: 'var(--spacing-6, 1.5rem)',
-          background: 'var(--semantic-surface-primary, var(--color-surface))',
+          background: 'var(--semantic-background-primary, var(--color-surface))',
           boxShadow: 'var(--shadow-xl, 0 24px 64px rgba(0, 0, 0, 0.28))',
         }}
       >

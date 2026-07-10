@@ -34,9 +34,9 @@
 }
 
 .gig-driver__controls {
-  background: var(--semantic-surface-primary, var(--semantic-background-primary));
+  background: var(--semantic-background-primary, var(--semantic-background-primary));
   border: 1px solid var(--semantic-border-default);
-  border-radius: var(--radius-lg, var(--border-radius-lg, var(--border-radius-md)));
+  border-radius: var(--border-radius-lg, var(--border-radius-lg, var(--border-radius-md)));
   box-shadow: var(--shadow-sm);
   padding: var(--spacing-4);
 }

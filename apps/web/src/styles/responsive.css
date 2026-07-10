@@ -512,14 +512,14 @@
   transition: background-color 120ms ease;
 }
 .list-item__link:hover {
-  background-color: var(--semantic-surface-secondary, #f3f4f6);
+  background-color: var(--semantic-background-secondary, #f3f4f6);
 }
 .list-item__link:focus-visible {
   outline: 2px solid var(--semantic-focus-ring, #3b82f6);
   outline-offset: 2px;
 }
 [data-theme='dark'] .list-item__link:hover {
-  background-color: var(--semantic-surface-secondary, #374151);
+  background-color: var(--semantic-background-secondary, #374151);
 }
 .search-bar {
   display: flex;
@@ -1002,7 +1002,7 @@
   min-width: 0;
   min-height: 300px;
   padding: var(--spacing-4, 1rem);
-  background: var(--semantic-surface-primary, var(--card-background));
+  background: var(--semantic-background-primary, var(--card-background));
   border: 1px solid var(--card-border);
   border-radius: var(--border-radius-lg, 12px);
   box-shadow: var(--card-shadow);

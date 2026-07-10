@@ -23,7 +23,7 @@
   gap: var(--spacing-3, 12px);
   padding: var(--spacing-5, 20px) var(--spacing-6, 24px);
   background: var(--semantic-background-primary, #fff);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: var(--border-radius-lg, 12px);
   box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
   animation: celebrationSlideIn var(--duration-normal, 250ms) var(--easing-decelerate, ease-out);
   max-width: 400px;
@@ -165,7 +165,7 @@
   padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
   border: none;
   border-radius: var(--radius-md, 8px);
-  background: var(--semantic-action-primary, #6366f1);
+  background: var(--semantic-interactive-default, #6366f1);
   color: var(--semantic-text-on-primary, #fff);
   font-size: var(--font-size-sm, 0.875rem);
   font-weight: var(--font-weight-medium, 500);

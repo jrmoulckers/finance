@@ -262,7 +262,7 @@ function PayPeriodCard({
                 alignItems: 'baseline',
                 gap: 'var(--spacing-3)',
                 padding: 'var(--spacing-2) 0',
-                borderTop: '1px solid var(--semantic-border, #e5e7eb)',
+                borderTop: '1px solid var(--semantic-border-default, #e5e7eb)',
               }}
             >
               <span style={{ minWidth: 0 }}>
@@ -370,7 +370,7 @@ export const BillCalendarView: React.FC<BillCalendarViewProps> = ({ bills }) => 
                 style={{
                   padding: 'var(--spacing-2) var(--spacing-3)',
                   borderRadius: 'var(--radius-sm, 4px)',
-                  border: '1px solid var(--semantic-border, #d1d5db)',
+                  border: '1px solid var(--semantic-border-default, #d1d5db)',
                   backgroundColor: 'var(--semantic-background-primary)',
                   color: 'var(--semantic-text-primary)',
                   fontSize: 'var(--type-scale-body-font-size)',
@@ -398,7 +398,7 @@ export const BillCalendarView: React.FC<BillCalendarViewProps> = ({ bills }) => 
                 style={{
                   padding: 'var(--spacing-2) var(--spacing-3)',
                   borderRadius: 'var(--radius-sm, 4px)',
-                  border: '1px solid var(--semantic-border, #d1d5db)',
+                  border: '1px solid var(--semantic-border-default, #d1d5db)',
                   backgroundColor: 'var(--semantic-background-primary)',
                   color: 'var(--semantic-text-primary)',
                   fontSize: 'var(--type-scale-body-font-size)',
@@ -425,7 +425,7 @@ export const BillCalendarView: React.FC<BillCalendarViewProps> = ({ bills }) => 
                 style={{
                   padding: 'var(--spacing-2) var(--spacing-3)',
                   borderRadius: 'var(--radius-sm, 4px)',
-                  border: '1px solid var(--semantic-border, #d1d5db)',
+                  border: '1px solid var(--semantic-border-default, #d1d5db)',
                   backgroundColor: 'var(--semantic-background-primary)',
                   color: 'var(--semantic-text-primary)',
                   fontSize: 'var(--type-scale-body-font-size)',

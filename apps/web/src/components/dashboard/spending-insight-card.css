@@ -13,7 +13,7 @@
   gap: var(--spacing-3);
   padding: var(--spacing-3) var(--spacing-4);
   margin-bottom: var(--spacing-4);
-  background: var(--semantic-surface-primary, var(--card-background));
+  background: var(--semantic-background-primary, var(--card-background));
   border: 1px solid var(--semantic-border-default, var(--card-border));
   border-radius: var(--border-radius-lg, 12px);
 }

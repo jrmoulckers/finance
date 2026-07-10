@@ -980,7 +980,7 @@ const Metric: React.FC<{ readonly label: string; readonly value: React.ReactNode
 }) => (
   <div
     style={{
-      border: '1px solid var(--semantic-border, #e5e7eb)',
+      border: '1px solid var(--semantic-border-default, #e5e7eb)',
       borderRadius: 8,
       padding: 'var(--spacing-3)',
     }}
@@ -1015,7 +1015,7 @@ const TableCell: React.FC<{
   </td>
 );
 
-const tableBorder = '1px solid var(--semantic-border, #e5e7eb)';
+const tableBorder = '1px solid var(--semantic-border-default, #e5e7eb)';
 const tableStyle = { width: '100%', borderCollapse: 'collapse' } as const;
 const responsiveGridStyle = {
   display: 'grid',

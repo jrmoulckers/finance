@@ -32,9 +32,9 @@
 }
 
 .cash-runway__card {
-  background: var(--semantic-surface-primary, var(--card-background));
+  background: var(--semantic-background-primary, var(--card-background));
   border: 1px solid var(--semantic-border-default);
-  border-radius: var(--radius-lg);
+  border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-sm);
   padding: var(--spacing-4);
 }
@@ -70,7 +70,7 @@
 .cash-runway__status {
   border: 1px solid var(--semantic-border-default);
   border-left-width: 4px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--border-radius-lg);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2);
@@ -211,7 +211,7 @@
 }
 
 .cash-runway__bar-track {
-  background: var(--semantic-surface-secondary, #f3f4f6);
+  background: var(--semantic-background-secondary, #f3f4f6);
   border-radius: var(--radius-sm, 4px);
   height: 8px;
   overflow: hidden;

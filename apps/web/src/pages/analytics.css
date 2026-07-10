@@ -519,7 +519,7 @@
 .invoice-followup__subtitle {
   margin: 0 0 var(--spacing-3);
   color: var(--semantic-text-secondary);
-  font-size: var(--type-scale-body-sm-font-size);
+  font-size: var(--type-scale-caption-font-size);
 }
 
 .invoice-followup-list {

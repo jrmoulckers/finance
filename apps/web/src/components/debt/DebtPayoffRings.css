@@ -41,7 +41,7 @@
 .debt-payoff-rings__selector select,
 .debt-payoff-rings__whatif-input input {
   padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
-  border: 1px solid var(--semantic-border, #d1d5db);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
   border-radius: var(--radius-md, 0.375rem);
   background: var(--semantic-background-primary, #ffffff);
   color: var(--semantic-text-primary, #111827);
@@ -62,8 +62,8 @@
   align-items: center;
   gap: var(--spacing-6, 1.5rem);
   padding: var(--spacing-6, 1.5rem);
-  border: 1px solid var(--semantic-border, #e5e7eb);
-  border-radius: var(--radius-lg, 0.5rem);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-lg, 0.5rem);
   background: var(--semantic-background-primary, #ffffff);
 }
 
@@ -87,7 +87,7 @@
 }
 
 .debt-payoff-ring__track {
-  stroke: var(--semantic-border, #e5e7eb);
+  stroke: var(--semantic-border-default, #e5e7eb);
 }
 
 .debt-payoff-ring__value {
@@ -165,7 +165,7 @@
   align-items: center;
   gap: var(--spacing-3, 0.75rem);
   padding: var(--spacing-3, 0.75rem);
-  border: 1px solid var(--semantic-border, #e5e7eb);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
   border-radius: var(--radius-md, 0.375rem);
   background: var(--semantic-background-secondary, #f9fafb);
 }
@@ -178,7 +178,7 @@
   height: 1.75rem;
   border-radius: var(--radius-full, 9999px);
   font-weight: var(--font-weight-bold, 700);
-  border: 2px solid var(--semantic-border, #d1d5db);
+  border: 2px solid var(--semantic-border-default, #d1d5db);
   color: var(--semantic-text-secondary, #6b7280);
 }
 
@@ -214,8 +214,8 @@
 
 .debt-payoff-rings__whatif {
   padding: var(--spacing-6, 1.5rem);
-  border: 1px solid var(--semantic-border, #e5e7eb);
-  border-radius: var(--radius-lg, 0.5rem);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-lg, 0.5rem);
   background: var(--semantic-background-primary, #ffffff);
 }
 
@@ -246,22 +246,22 @@
   .debt-payoff-rings__card,
   .debt-payoff-rings__whatif {
     background: var(--semantic-background-primary, #1f2937);
-    border-color: var(--semantic-border, #374151);
+    border-color: var(--semantic-border-default, #374151);
   }
 
   .debt-milestone {
     background: var(--semantic-background-secondary, #111827);
-    border-color: var(--semantic-border, #374151);
+    border-color: var(--semantic-border-default, #374151);
   }
 }
 
 [data-theme='dark'] .debt-payoff-rings__card,
 [data-theme='dark'] .debt-payoff-rings__whatif {
   background: var(--semantic-background-primary, #1f2937);
-  border-color: var(--semantic-border, #374151);
+  border-color: var(--semantic-border-default, #374151);
 }
 
 [data-theme='dark'] .debt-milestone {
   background: var(--semantic-background-secondary, #111827);
-  border-color: var(--semantic-border, #374151);
+  border-color: var(--semantic-border-default, #374151);
 }

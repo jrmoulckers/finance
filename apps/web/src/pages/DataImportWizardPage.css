@@ -15,8 +15,8 @@
 }
 
 .import-wizard__title {
-  font-size: var(--type-scale-heading-font-size);
-  font-weight: var(--type-scale-heading-font-weight);
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
   color: var(--semantic-text-primary);
 }
 
@@ -346,7 +346,7 @@
 
 .import-result-stat__value {
   display: block;
-  font-size: var(--type-scale-heading-font-size);
+  font-size: var(--type-scale-title-font-size);
   font-weight: var(--font-weight-bold, 700);
   color: var(--semantic-interactive-default);
 }

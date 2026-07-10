@@ -34,21 +34,21 @@
 .account-delete-dialog__checkbox-label input[type='checkbox'] {
   width: 18px;
   height: 18px;
-  accent-color: var(--semantic-error);
+  accent-color: var(--semantic-status-negative);
 }
 
 /* Keep the destructive (red) intent when using the shared Checkbox component. */
 .account-delete-dialog__checkbox-label .checkbox__input:checked,
 .account-delete-dialog__checkbox-label .checkbox__input:indeterminate {
-  background-color: var(--semantic-error);
-  border-color: var(--semantic-error);
+  background-color: var(--semantic-status-negative);
+  border-color: var(--semantic-status-negative);
 }
 
 .account-delete-dialog__cascade-warning {
   margin: var(--spacing-2) 0 0;
   min-height: 1.5em;
   font-size: var(--type-scale-caption-font-size);
-  color: var(--semantic-error);
+  color: var(--semantic-status-negative);
 }
 
 .account-delete-dialog__confirm-label {
@@ -61,13 +61,13 @@
 .account-delete-dialog__confirm-input {
   width: 100%;
   padding: var(--spacing-2) var(--spacing-3);
-  border: 1px solid var(--semantic-border);
+  border: 1px solid var(--semantic-border-default);
   border-radius: var(--radius-sm);
   font-size: var(--type-scale-body-font-size);
 }
 
 .account-delete-dialog__confirm-input[aria-invalid='true'] {
-  border-color: var(--semantic-error);
+  border-color: var(--semantic-status-negative);
 }
 
 .account-delete-dialog__actions {

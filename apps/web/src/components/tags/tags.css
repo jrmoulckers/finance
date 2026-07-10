@@ -31,7 +31,7 @@
 
 .tag--md {
   padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
-  font-size: var(--type-scale-body-sm-font-size, 0.8125rem);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
 }
 
 .tag__label {
@@ -193,7 +193,7 @@
   padding: var(--spacing-2) var(--spacing-3);
   border-radius: var(--border-radius-sm, 4px);
   cursor: pointer;
-  font-size: var(--type-scale-body-sm-font-size, 0.8125rem);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
   color: var(--semantic-text-primary);
 }
 

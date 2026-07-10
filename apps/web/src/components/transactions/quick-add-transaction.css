@@ -71,8 +71,8 @@
   margin: 0 auto;
   padding: var(--spacing-4, 16px);
   padding-bottom: calc(var(--spacing-4, 16px) + env(safe-area-inset-bottom, 0px));
-  border-top-left-radius: var(--radius-lg, 16px);
-  border-top-right-radius: var(--radius-lg, 16px);
+  border-top-left-radius: var(--border-radius-lg, 16px);
+  border-top-right-radius: var(--border-radius-lg, 16px);
   background: var(--semantic-background-elevated, #fff);
   color: var(--semantic-text-primary, #111);
   box-shadow: var(--shadow-xl, 0 -10px 30px -5px rgba(0, 0, 0, 0.3));

@@ -37,7 +37,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-4, 1rem);
-  border: 1px solid var(--semantic-border, #e5e7eb);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
   border-radius: var(--radius-md, 0.5rem);
   padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
 }
@@ -80,7 +80,7 @@
 .joint-debt__field select,
 .joint-debt__ownership select {
   padding: var(--spacing-2, 0.5rem);
-  border: 1px solid var(--semantic-border, #e5e7eb);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
   border-radius: var(--radius-md, 0.5rem);
   background: var(--semantic-background-primary, #fff);
   color: var(--semantic-text-primary, #111);
@@ -100,9 +100,9 @@
  * ------------------------------------------------------------------------ */
 
 .joint-debt__recommendation {
-  border: 1px solid var(--semantic-border, #e5e7eb);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
   border-left: 4px solid var(--semantic-info, #2563eb);
-  border-radius: var(--radius-lg, 0.75rem);
+  border-radius: var(--border-radius-lg, 0.75rem);
   background: var(--semantic-info-bg, #eff6ff);
   padding: var(--spacing-4, 1rem);
 }
@@ -169,14 +169,14 @@
 .joint-debt__table td {
   text-align: left;
   padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
-  border-bottom: 1px solid var(--semantic-border, #e5e7eb);
+  border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
   vertical-align: middle;
 }
 
 .joint-debt__table thead th {
   color: var(--semantic-text-secondary, #666);
   font-weight: var(--font-weight-medium, 500);
-  border-bottom: 2px solid var(--semantic-border, #e5e7eb);
+  border-bottom: 2px solid var(--semantic-border-default, #e5e7eb);
 }
 
 .joint-debt__table tbody th[scope='row'] {
@@ -219,7 +219,7 @@
 }
 
 .joint-debt__summary div {
-  border: 1px solid var(--semantic-border, #e5e7eb);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
   border-radius: var(--radius-md, 0.5rem);
   padding: var(--spacing-3, 0.75rem);
   background: var(--semantic-background-secondary, #f9fafb);
@@ -262,7 +262,7 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--spacing-3, 0.75rem);
-  border: 1px solid var(--semantic-border, #e5e7eb);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
   border-radius: var(--radius-md, 0.5rem);
   padding: var(--spacing-3, 0.75rem);
 }
@@ -271,7 +271,7 @@
 .joint-debt__remove {
   align-self: flex-end;
   padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
-  border: 1px solid var(--semantic-border, #e5e7eb);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
   border-radius: var(--radius-md, 0.5rem);
   background: var(--semantic-background-primary, #fff);
   color: var(--semantic-text-primary, #111);

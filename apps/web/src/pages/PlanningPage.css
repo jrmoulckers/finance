@@ -294,7 +294,7 @@
 
 .retirement-income-answer__depletion {
   padding: var(--spacing-3);
-  background: var(--semantic-background-default);
+  background: var(--semantic-background-primary);
   border: 1px solid var(--semantic-status-warning);
   border-radius: var(--border-radius-md);
   color: var(--semantic-text-primary);
@@ -850,7 +850,7 @@
 
 .healthcare-projection__gap {
   padding: var(--spacing-3);
-  background: var(--semantic-background-subtle, var(--semantic-background-default));
+  background: var(--semantic-background-subtle, var(--semantic-background-primary));
   border-left: 3px solid var(--semantic-status-warning);
   border-radius: var(--border-radius-sm);
   color: var(--semantic-text-primary);
