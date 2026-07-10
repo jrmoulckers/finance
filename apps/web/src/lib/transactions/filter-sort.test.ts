@@ -179,6 +179,50 @@ describe('applyAdvancedFilters', () => {
 
     expect(result.map((t) => t.id)).toEqual(['mid']);
   });
+
+  it('ignores non-numeric amount bounds instead of hiding every row (#3639)', () => {
+    const small = makeTransaction({ id: 'small', amount: { amount: 500 } });
+    const large = makeTransaction({ id: 'large', amount: { amount: 9000 } });
+
+    const nanMin = applyAdvancedFilters([small, large], {
+      ...EMPTY_FILTERS,
+      amountMin: 'abc',
+    });
+    expect(nanMin.map((t) => t.id)).toEqual(['small', 'large']);
+
+    const nanMax = applyAdvancedFilters([small, large], {
+      ...EMPTY_FILTERS,
+      amountMax: 'not-a-number',
+    });
+    expect(nanMax.map((t) => t.id)).toEqual(['small', 'large']);
+  });
+
+  it('treats an empty amount range as no bound', () => {
+    const small = makeTransaction({ id: 'small', amount: { amount: 500 } });
+    const large = makeTransaction({ id: 'large', amount: { amount: 9000 } });
+
+    const result = applyAdvancedFilters([small, large], {
+      ...EMPTY_FILTERS,
+      amountMin: '   ',
+      amountMax: '',
+    });
+
+    expect(result.map((t) => t.id)).toEqual(['small', 'large']);
+  });
+
+  it('swaps an inverted amount range instead of returning an empty list (#3639)', () => {
+    const small = makeTransaction({ id: 'small', amount: { amount: 500 } }); // $5
+    const mid = makeTransaction({ id: 'mid', amount: { amount: -2500 } }); // $25
+    const large = makeTransaction({ id: 'large', amount: { amount: 9000 } }); // $90
+
+    const result = applyAdvancedFilters([small, mid, large], {
+      ...EMPTY_FILTERS,
+      amountMin: '50',
+      amountMax: '10',
+    });
+
+    expect(result.map((t) => t.id)).toEqual(['mid']);
+  });
 });
 
 describe('matchesTransactionQuery', () => {

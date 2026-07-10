@@ -69,6 +69,21 @@ export function sortTransactions(
 // Advanced filters (category / account / amount range / type / status)
 // ---------------------------------------------------------------------------
 
+/**
+ * Parse an amount-range bound (major units) into integer cents.
+ *
+ * Returns `null` for empty, whitespace-only, or non-numeric input so a
+ * malformed bound is treated as "no bound" instead of producing a `NaN`
+ * comparison that hides every row (#3639).
+ */
+function parseAmountBoundCents(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  const value = Number(trimmed);
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 100);
+}
+
 /** Apply the advanced filter set (AND semantics) on top of an existing list. */
 export function applyAdvancedFilters(
   transactions: readonly Transaction[],
@@ -86,14 +101,21 @@ export function applyAdvancedFilters(
     result = result.filter((t) => filters.accountIds.includes(t.accountId));
   }
 
-  if (filters.amountMin) {
-    const minCents = Math.round(parseFloat(filters.amountMin) * 100);
-    result = result.filter((t) => Math.abs(t.amount.amount) >= minCents);
+  // Amount range: parse both bounds up front, ignore non-numeric input, and
+  // swap an inverted (min > max) range so malformed or shareable URL params
+  // never silently hide every row (#3639).
+  let minCents = parseAmountBoundCents(filters.amountMin);
+  let maxCents = parseAmountBoundCents(filters.amountMax);
+  if (minCents !== null && maxCents !== null && minCents > maxCents) {
+    [minCents, maxCents] = [maxCents, minCents];
   }
 
-  if (filters.amountMax) {
-    const maxCents = Math.round(parseFloat(filters.amountMax) * 100);
-    result = result.filter((t) => Math.abs(t.amount.amount) <= maxCents);
+  if (minCents !== null) {
+    result = result.filter((t) => Math.abs(t.amount.amount) >= minCents!);
+  }
+
+  if (maxCents !== null) {
+    result = result.filter((t) => Math.abs(t.amount.amount) <= maxCents!);
   }
 
   if (filters.types.length > 0) {
