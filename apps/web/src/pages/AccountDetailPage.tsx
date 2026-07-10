@@ -9,10 +9,8 @@ import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/comm
 import { Checkbox } from '../components/common/Checkbox';
 import { AccountDeleteDialog, AccountPurposeBadge } from '../components/accounts';
 import { AccountForm } from '../components/forms';
-import { Breadcrumb } from '../components/navigation';
 import { useAccountReconciliation, useAccounts, useTransactions } from '../hooks';
 import type { Account } from '../kmp/bridge';
-import '../components/navigation/breadcrumb.css';
 import '../styles/pages.css';
 import { getAccountPurposeLabel } from '../lib/accountPurpose';
 import {
@@ -233,8 +231,6 @@ export const AccountDetailPage: React.FC = () => {
 
   return (
     <>
-      <Breadcrumb segments={[{ label: 'Accounts', href: '/accounts' }, { label: account.name }]} />
-
       <div className="page-header">
         <div className="page-heading-row">
           <h2 className="page-heading">{account.name}</h2>

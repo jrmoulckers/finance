@@ -671,6 +671,22 @@
   overflow-y: auto;
 }
 
+.command-palette__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.command-palette__group-label {
+  margin: var(--spacing-2) 0 var(--spacing-1);
+  padding: 0 var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--type-scale-caption-font-weight);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--semantic-text-secondary);
+}
+
 .command-palette__item {
   display: flex;
   align-items: center;

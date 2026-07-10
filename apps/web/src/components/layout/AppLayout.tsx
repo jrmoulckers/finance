@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import type { AppNotification } from '../../lib/notifications';
 import FeedbackDialog from '../FeedbackDialog';
@@ -23,6 +24,9 @@ import { getSimpleModePlan, type SimpleModeSurface } from '../../lib/a11y/simple
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { getVisibleNavItems } from './navConfig';
+import { getDetailRoute } from '../../lib/navigation/detail-routes';
+import { recordNavigationEntry } from '../../lib/navigation/history';
+import { prefetchRoute } from '../../lib/navigation/prefetch';
 import { InstallBanner } from '../common/InstallBanner';
 import { SampleDataBanner } from '../common/SampleDataBanner';
 import { Icon } from '../common/Icon';
@@ -63,6 +67,19 @@ function getSimpleModeSurface(pathname: string): SimpleModeSurface | null {
     )?.surface ?? null
   );
 }
+
+/** Left-pointing chevron for the header Back affordance (#3674). */
+const HeaderBackIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none">
+    <path
+      d="M15 18l-6-6 6-6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const NAV_SHORTCUT_BY_ID: Record<string, string> = {
   dashboard: 'G D',
@@ -141,6 +158,30 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   // Navigate back on Escape key for detail pages (#1523)
   useEscapeBack();
 
+  // Record every navigation into the local history store so the command
+  // palette recents (#3676) and muscle-memory hints keep working. This lived in
+  // the old history-based Breadcrumbs; it now lives in the shell so recording is
+  // independent of the (now hierarchical) breadcrumb (#3667).
+  const location = useLocation();
+  useEffect(() => {
+    recordNavigationEntry({
+      path: activePath,
+      title: pageTitle,
+      key: location.key,
+      visitedAt: Date.now(),
+    });
+  }, [activePath, pageTitle, location.key]);
+
+  // Detail/nested routes get a visible Back affordance in the header so pointer
+  // and touch users have a discoverable equivalent to Escape / browser Back
+  // (#3674). Top-level destinations render no Back control.
+  const detailRoute = getDetailRoute(activePath);
+  const handleBack = useCallback(() => {
+    if (detailRoute) {
+      onNavigate(detailRoute.parentPath);
+    }
+  }, [detailRoute, onNavigate]);
+
   const openKeyboardShortcuts = useCallback(() => {
     setShowHelp(true);
   }, [setShowHelp]);
@@ -181,6 +222,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         description: item.description,
         keywords: `${item.group ?? 'primary'} ${item.href}`,
         shortcut: NAV_SHORTCUT_BY_ID[item.id],
+        href: item.href,
+        prefetch: () => prefetchRoute(item.href),
         perform: () => onNavigate(item.href),
       })),
       {
@@ -256,9 +299,22 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <div className={`app-shell${isSimplified ? ' app-shell--simplified' : ''}`}>
         <SyncStatusBar />
         <header className="app-header" aria-label="App header">
-          <div>
-            <h1 className="app-header__title">{pageTitle}</h1>
-            <Breadcrumbs currentPath={activePath} currentTitle={pageTitle} />
+          <div className="app-header__lead">
+            {detailRoute ? (
+              <button
+                type="button"
+                className="icon-button app-header__back"
+                aria-label={`Back to ${detailRoute.parentLabel}`}
+                title={`Back to ${detailRoute.parentLabel}`}
+                onClick={handleBack}
+              >
+                <HeaderBackIcon />
+              </button>
+            ) : null}
+            <div>
+              <h1 className="app-header__title">{pageTitle}</h1>
+              <Breadcrumbs currentPath={activePath} currentTitle={pageTitle} />
+            </div>
           </div>
           <div className="app-header__actions">
             {conflictCount > 0 && (
@@ -399,6 +455,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         isOpen={showCommandPalette}
         actions={commandPaletteActions}
         onClose={closeCommandPalette}
+        currentPath={activePath}
       />
       <KeyboardShortcutsModal
         isOpen={showHelp}

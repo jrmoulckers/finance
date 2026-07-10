@@ -1,68 +1,71 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { useEffect, useMemo, useState, type FC } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+/**
+ * Breadcrumbs — the shell's single, hierarchical breadcrumb trail (#3667).
+ *
+ * Historically this component rendered a navigation *history* trail ("Recent
+ * navigation"), while detail pages rendered a separate *hierarchical* trail —
+ * two `.breadcrumb` landmarks with conflicting semantics on the same page.
+ * Breadcrumbs conventionally communicate structural hierarchy, not history, so
+ * this component now derives a hierarchical trail from the route table via
+ * {@link buildBreadcrumbTrail}; the in-page hierarchical `Breadcrumb` has been
+ * removed from detail pages. Recent-navigation recording lives in the shell
+ * (`AppLayout`) so palette recents and muscle-memory hints keep working without
+ * masquerading as breadcrumbs.
+ *
+ * Top-level routes yield a single crumb, for which no trail is rendered (the
+ * header `<h1>` already names the page).
+ */
 
-import {
-  getBreadcrumbTrail,
-  isMuscleMemoryRoute,
-  recordNavigationEntry,
-} from '../../lib/navigation/history';
+import { useMemo, type FC } from 'react';
+import { Link } from 'react-router-dom';
+
+import { buildBreadcrumbTrail } from '../../lib/navigation/breadcrumb-trail';
 import './breadcrumb.css';
 
 export interface BreadcrumbsProps {
   currentPath: string;
-  currentTitle: string;
+  /** Retained for API compatibility; the label now comes from the route table. */
+  currentTitle?: string;
   maxItems?: number;
 }
 
-export const Breadcrumbs: FC<BreadcrumbsProps> = ({ currentPath, currentTitle, maxItems }) => {
-  const location = useLocation();
-  const [segments, setSegments] = useState(() =>
-    getBreadcrumbTrail(currentPath, currentTitle, location.key, maxItems),
-  );
+export const Breadcrumbs: FC<BreadcrumbsProps> = ({ currentPath, maxItems }) => {
+  const crumbs = useMemo(() => {
+    const trail = buildBreadcrumbTrail(currentPath);
+    if (maxItems && maxItems > 0 && trail.length > maxItems) {
+      return trail.slice(trail.length - maxItems);
+    }
+    return trail;
+  }, [currentPath, maxItems]);
 
-  useEffect(() => {
-    recordNavigationEntry({
-      path: currentPath,
-      title: currentTitle,
-      key: location.key,
-      visitedAt: Date.now(),
-    });
-    setSegments(getBreadcrumbTrail(currentPath, currentTitle, location.key, maxItems));
-  }, [currentPath, currentTitle, location.key, maxItems]);
-
-  const breadcrumbSegments = useMemo(
-    () => segments.slice(-Math.max(maxItems ?? 4, 1)),
-    [maxItems, segments],
-  );
-
-  if (breadcrumbSegments.length <= 1) {
+  // A single crumb (a top-level route) needs no trail; the header <h1> names it.
+  if (crumbs.length <= 1) {
     return null;
   }
 
-  const parentSegments = breadcrumbSegments.slice(0, -1);
-  const currentSegment = breadcrumbSegments[breadcrumbSegments.length - 1];
+  const parentCrumbs = crumbs.slice(0, -1);
+  const currentCrumb = crumbs[crumbs.length - 1];
 
   return (
-    <nav className="breadcrumb breadcrumb--history" aria-label="Recent navigation">
+    <nav className="breadcrumb breadcrumb--hierarchy" aria-label="Breadcrumb">
       <ol className="breadcrumb__list">
-        {parentSegments.map((segment) => {
-          const isFrequent = isMuscleMemoryRoute(segment.path);
-          return (
-            <li key={segment.key} className="breadcrumb__item">
-              <Link to={segment.path} className="breadcrumb__link">
-                {segment.title}
-                {isFrequent ? <span className="breadcrumb__badge">•</span> : null}
+        {parentCrumbs.map((crumb) => (
+          <li key={crumb.href ?? crumb.label} className="breadcrumb__item">
+            {crumb.href ? (
+              <Link to={crumb.href} className="breadcrumb__link">
+                {crumb.label}
               </Link>
-              <span className="breadcrumb__separator" aria-hidden="true">
-                ›
-              </span>
-            </li>
-          );
-        })}
+            ) : (
+              <span>{crumb.label}</span>
+            )}
+            <span className="breadcrumb__separator" aria-hidden="true">
+              ›
+            </span>
+          </li>
+        ))}
         <li className="breadcrumb__item breadcrumb__item--current" aria-current="page">
-          <span className="breadcrumb__current">{currentSegment.title}</span>
+          <span className="breadcrumb__current">{currentCrumb.label}</span>
         </li>
       </ol>
     </nav>

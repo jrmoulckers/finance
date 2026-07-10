@@ -7,7 +7,6 @@ import { AppIcon } from '../components/icons';
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { TransactionForm } from '../components/forms';
 import { LazyReceiptImage } from '../components/transactions';
-import { Breadcrumb } from '../components/navigation';
 import { TagList } from '../components/tags';
 import { ReturnWindowBadge, WarrantyForm } from '../components/warranty';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
@@ -27,7 +26,6 @@ import {
 } from '../lib/transactions/local-timestamp';
 import { getContributionDesignationLabel } from '../lib/tax/retirement-contribution-metadata';
 import type { Transaction } from '../kmp/bridge';
-import '../components/navigation/breadcrumb.css';
 
 const TYPE_LABELS: Record<string, string> = {
   EXPENSE: 'Expense',
@@ -249,8 +247,6 @@ export const TransactionDetailPage: React.FC = () => {
 
   return (
     <>
-      <Breadcrumb segments={[{ label: 'Transactions', href: '/transactions' }, { label }]} />
-
       <div
         style={{
           display: 'flex',

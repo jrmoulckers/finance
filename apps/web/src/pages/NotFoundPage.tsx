@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * NotFoundPage — standalone 404 page for the Finance PWA.
+ * NotFoundPage — in-shell 404 empty state for unknown authenticated routes.
  *
- * Rendered outside of `AppLayout` by the catch-all route (`path="*"`).
- * Reuses the shared auth-card centred layout from `auth.css` so the
- * visual style is consistent with the Login and Signup pages.
+ * Rendered by the `path="*"` catch-all INSIDE `AppLayout` (the sidebar + header
+ * chrome stays visible). An unknown path is not in `STANDALONE_ROUTES`, so
+ * `App` mounts the authenticated branch and this component lands inside
+ * `AppLayout`'s `<main id="main-content">`.
+ *
+ * It therefore must NOT render its own `<main>` landmark or the pre-auth
+ * `auth-card` chrome — doing so produced nested `<main>` landmarks (a WCAG
+ * landmark violation) and a centred login-style card floating in the middle of
+ * the authenticated shell (#3626). Instead it is a shell-native empty state: a
+ * single labelled region with a heading, explanation, a primary "Go to
+ * Dashboard" link and a history-aware "Go back" action.
  */
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import '../styles/auth.css';
 import '../styles/not-found.css';
 
 /** Decorative "lost page" glyph: a signpost/compass mark. */
@@ -29,47 +36,39 @@ const NotFoundIcon: React.FC = () => (
 );
 
 /**
- * Standalone 404 Not Found page.
+ * In-shell 404 Not Found empty state.
  *
  * Provides accessible recovery options so keyboard and screen-reader users are
- * never stranded on an unknown URL: a history-aware "Go back" action, a link to
- * the dashboard, and a link to sign in.
+ * never stranded on an unknown URL: a history-aware "Go back" action and a link
+ * to the dashboard. It renders a single `<section>` region (labelled by its
+ * heading) rather than a `<main>`, so the only top-level landmark on the page
+ * remains `AppLayout`'s main content region.
  */
 export const NotFoundPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <main className="auth-page">
-      <section className="auth-card not-found" aria-labelledby="not-found-title">
-        <div className="not-found__icon">
-          <NotFoundIcon />
-        </div>
+    <section className="not-found" aria-labelledby="not-found-title">
+      <div className="not-found__icon">
+        <NotFoundIcon />
+      </div>
 
-        <header className="auth-brand">
-          <h1 id="not-found-title" className="auth-brand__name">
-            404: Page Not Found
-          </h1>
-          <p className="auth-brand__tagline">
-            The page you&apos;re looking for doesn&apos;t exist or has been moved.
-          </p>
-        </header>
+      <h1 id="not-found-title" className="not-found__title">
+        404: Page Not Found
+      </h1>
+      <p className="not-found__message">
+        The page you&apos;re looking for doesn&apos;t exist or has been moved.
+      </p>
 
-        <nav aria-label="Return navigation" className="auth-actions">
-          <button type="button" className="not-found__back" onClick={() => navigate(-1)}>
-            Go back
-          </button>
-          <Link to="/dashboard" className="auth-submit">
-            Go to Dashboard
-          </Link>
-        </nav>
-
-        <p className="auth-footer">
-          <Link to="/login" className="auth-footer__link">
-            Go to Login
-          </Link>
-        </p>
-      </section>
-    </main>
+      <nav aria-label="Return navigation" className="not-found__actions">
+        <Link to="/dashboard" className="not-found__primary">
+          Go to Dashboard
+        </Link>
+        <button type="button" className="not-found__back" onClick={() => navigate(-1)}>
+          Go back
+        </button>
+      </nav>
+    </section>
   );
 };
 

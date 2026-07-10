@@ -1,5 +1,6 @@
 :root {
   --layout-sidebar-width: 240px;
+  --layout-sidebar-rail-width: 72px;
   --layout-bottom-nav-height: 56px;
   --layout-header-height: 56px;
   --layout-content-max-width: 1200px;
@@ -138,6 +139,15 @@
   font-size: var(--type-scale-title-font-size);
   font-weight: var(--type-scale-title-font-weight);
   color: var(--semantic-text-primary);
+}
+.app-header__lead {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+.app-header__back {
+  flex: 0 0 auto;
 }
 .app-header__actions {
   display: flex;
@@ -1090,10 +1100,14 @@
     background: var(--navigation-background);
     border-right: 1px solid var(--navigation-border);
     flex-shrink: 0;
+    /* Rail collapse animation (#3668). Width is the property the design calls
+       for here; disabled under prefers-reduced-motion below. */
+    transition: width 200ms ease;
   }
   .app-sidebar__header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--spacing-3);
     padding: var(--spacing-4);
     border-bottom: 1px solid var(--navigation-border);
@@ -1154,6 +1168,38 @@
     right: auto;
     left: 0;
     margin-top: 0;
+  }
+  /* ── Rail (collapsed) mode (#3668) ──────────────────────────────────────
+     Icons-only sidebar. Labels are visually hidden but remain in the DOM with
+     their accessible names intact, so keyboard and screen-reader users still
+     reach every destination. The narrower width lets `.app-shell` reflow to
+     reclaim the space. */
+  .app-sidebar[data-collapsed] {
+    width: var(--layout-sidebar-rail-width);
+  }
+  .app-sidebar[data-collapsed] .app-sidebar__header {
+    justify-content: center;
+  }
+  .app-sidebar[data-collapsed] .app-sidebar__logo,
+  .app-sidebar[data-collapsed] .sidebar-nav__item > span:not(.sidebar-nav__item-icon),
+  .app-sidebar[data-collapsed] .app-sidebar__group-label,
+  .app-sidebar[data-collapsed] .icon-button__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .app-sidebar[data-collapsed] .sidebar-nav__item,
+  .app-sidebar[data-collapsed] .app-sidebar__group-toggle {
+    justify-content: center;
+  }
+  .app-sidebar[data-collapsed] .app-sidebar__quick-actions {
+    flex-direction: column;
   }
   .bottom-nav {
     display: none;
@@ -1313,6 +1359,7 @@
   .transaction-item__actions,
   .transaction-item__action,
   .icon-button,
+  .app-sidebar,
   .progress-bar__fill,
   .progress-ring__fill {
     transition: none;
