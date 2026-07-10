@@ -235,6 +235,17 @@
   padding: var(--spacing-4, 16px);
 }
 
+.watchlist-form-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  cursor: default;
+}
+
+.watchlist-form-overlay .watchlist-form {
+  position: relative;
+  z-index: 1;
+}
+
 .watchlist-form {
   width: 100%;
   max-width: 400px;

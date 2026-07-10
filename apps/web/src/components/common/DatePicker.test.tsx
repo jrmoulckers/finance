@@ -115,6 +115,25 @@ describe('DatePicker', () => {
     expect(input).toHaveFocus();
   });
 
+  it('exposes the calendar as an ARIA grid with rows, cells, and selection', () => {
+    const { input } = renderDatePicker({ initialValue: '2025-01-15' });
+
+    input.focus();
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    const grid = screen.getByRole('grid');
+    expect(grid).toBeInTheDocument();
+    // Calendar weeks are exposed as rows of gridcells.
+    expect(screen.getAllByRole('row').length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByRole('gridcell').length).toBeGreaterThan(27);
+
+    // The selected day's cell is marked aria-selected.
+    const selectedDay = grid.querySelector('.date-picker__day--selected');
+    expect(selectedDay).not.toBeNull();
+    const selectedCell = selectedDay!.closest('[role="gridcell"]');
+    expect(selectedCell).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('supports Today and Clear actions', () => {
     const { input, onValueChange } = renderDatePicker();
 

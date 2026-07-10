@@ -16,7 +16,8 @@
  * References: issue #316
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useFocusTrap } from '../accessibility/aria';
 import {
   ConfirmDialog,
   CurrencyDisplay,
@@ -205,6 +206,8 @@ export const WatchlistsPage: React.FC = () => {
 
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const addDialogRef = useRef<HTMLDivElement>(null);
+  const addCategoryRef = useRef<HTMLSelectElement>(null);
   const thresholdInput = useAmountInput({
     currencySymbol: '$',
     decimalPlaces: 2,
@@ -253,6 +256,28 @@ export const WatchlistsPage: React.FC = () => {
       thresholdInput.reset(0);
     },
     [addWatchlist, categories, periodInput, selectedCategoryId, thresholdInput],
+  );
+
+  const closeAddForm = useCallback(() => {
+    setIsAddFormOpen(false);
+    setSelectedCategoryId('');
+    thresholdInput.reset(0);
+  }, [thresholdInput]);
+
+  useFocusTrap(addDialogRef, {
+    active: isAddFormOpen,
+    restoreFocus: true,
+    initialFocusRef: addCategoryRef,
+  });
+
+  const handleAddDialogKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeAddForm();
+      }
+    },
+    [closeAddForm],
   );
 
   const handleConfirmRemove = useCallback(() => {
@@ -339,17 +364,27 @@ export const WatchlistsPage: React.FC = () => {
       {/* Add watchlist form (inline) */}
       {isAddFormOpen && (
         <div
+          ref={addDialogRef}
           className="watchlist-form-overlay"
           role="dialog"
-          aria-label="Add spending watchlist"
+          aria-labelledby="watchlist-add-title"
           aria-modal="true"
+          onKeyDown={handleAddDialogKeyDown}
         >
+          <div
+            className="watchlist-form-overlay__backdrop"
+            aria-hidden="true"
+            onClick={closeAddForm}
+          />
           <form className="watchlist-form card" onSubmit={handleAddSubmit}>
-            <h2 className="watchlist-form__title">Add Watchlist</h2>
+            <h2 id="watchlist-add-title" className="watchlist-form__title">
+              Add Watchlist
+            </h2>
             <div className="watchlist-form__field">
               <label htmlFor="wl-category">Category</label>
               <select
                 id="wl-category"
+                ref={addCategoryRef}
                 value={selectedCategoryId}
                 onChange={(e) => setSelectedCategoryId(e.target.value)}
                 required
@@ -390,11 +425,7 @@ export const WatchlistsPage: React.FC = () => {
               <button type="submit" className="watchlist-form__submit">
                 Add
               </button>
-              <button
-                type="button"
-                className="watchlist-form__cancel"
-                onClick={() => setIsAddFormOpen(false)}
-              >
+              <button type="button" className="watchlist-form__cancel" onClick={closeAddForm}>
                 Cancel
               </button>
             </div>
