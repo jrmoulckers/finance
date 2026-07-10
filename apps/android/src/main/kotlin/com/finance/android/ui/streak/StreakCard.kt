@@ -181,7 +181,7 @@ fun StreakCardContent(
                     Text(
                         text = "Longest: ${state.longestStreak} days",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.semantics {
                             contentDescription = "Your longest streak is ${state.longestStreak} days"
                         },

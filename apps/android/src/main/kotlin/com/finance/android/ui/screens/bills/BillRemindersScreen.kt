@@ -31,8 +31,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,7 +53,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -313,6 +314,13 @@ private fun BillCard(
         bill.daysUntilDue <= 3 -> Color(0xFFFF9800)
         else -> MaterialTheme.colorScheme.primary
     }
+    // Pair each status hue with a distinct icon shape so the state is never
+    // conveyed by colour alone (WCAG 2.2 AA / 1.4.1 Use of Color).
+    val statusIcon = when {
+        bill.isOverdue -> Icons.Filled.Warning
+        bill.daysUntilDue <= 3 -> Icons.Filled.Schedule
+        else -> Icons.Filled.EventAvailable
+    }
 
     Card(
         modifier = Modifier
@@ -326,12 +334,14 @@ private fun BillCard(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Status indicator
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(statusColor),
+            // Status indicator — icon shape differs per state so status is
+            // not conveyed by colour alone. Decorative for TalkBack because
+            // the card's merged description already states the due status.
+            Icon(
+                imageVector = statusIcon,
+                contentDescription = null,
+                tint = statusColor,
+                modifier = Modifier.size(20.dp),
             )
             Spacer(Modifier.width(12.dp))
 
