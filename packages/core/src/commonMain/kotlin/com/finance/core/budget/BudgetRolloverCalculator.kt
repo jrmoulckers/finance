@@ -90,8 +90,18 @@ object BudgetRolloverCalculator {
     }
 
     /**
-     * Compute the effective budget for [referenceDate], incorporating any rollover
-     * from the immediately preceding period.
+     * Compute the effective budget for [referenceDate] from **only the
+     * immediately preceding period** (#3653).
+     *
+     * ## Scope — single-period only
+     * This function looks back exactly one period and recomputes that period's
+     * rollover as `base - previousSpent`; it deliberately assumes the previous
+     * period itself carried **no** inherited rollover. It is therefore correct
+     * only for a budget that is at most one period old, or for callers that only
+     * track a single prior period. For a budget that has been rolling over for
+     * several periods, rollover compounds — use [effectiveBudgetCumulative] (or
+     * [calculateCumulativeRollover]) instead, which chains carry across every
+     * prior period. For a budget exactly one period old the two agree.
      *
      * If [Budget.isRollover] is `false`, the effective amount equals the base amount.
      *
@@ -99,6 +109,8 @@ object BudgetRolloverCalculator {
      * @param currentPeriodTransactions Transactions in the *current* period (used for status only, not rollover).
      * @param previousPeriodTransactions Transactions in the *previous* period (used to compute rollover).
      * @param referenceDate The date for which the effective budget is evaluated.
+     * @param policy How to bound the carry-forward (#3649). Defaults to
+     *   [RolloverPolicy.UNLIMITED], preserving the historical behaviour.
      * @return An [EffectiveBudget] with the base, rollover, and effective amounts.
      */
     fun calculateEffectiveBudget(
@@ -106,6 +118,7 @@ object BudgetRolloverCalculator {
         @Suppress("unused") currentPeriodTransactions: List<Transaction>,
         previousPeriodTransactions: List<Transaction>,
         referenceDate: LocalDate,
+        policy: RolloverPolicy = RolloverPolicy.UNLIMITED,
     ): EffectiveBudget {
         val currentPeriod = BudgetCalculator.getCurrentPeriod(budget.period, budget.startDate, referenceDate)
 
@@ -122,7 +135,7 @@ object BudgetRolloverCalculator {
         val previousPeriodDate = currentPeriod.start.minus(1, DateTimeUnit.DAY)
         val previousPeriod = BudgetCalculator.getCurrentPeriod(budget.period, budget.startDate, previousPeriodDate)
         val previousSpent = sumExpenses(previousPeriodTransactions, previousPeriod)
-        val rolloverCarry = budget.amount - previousSpent
+        val rolloverCarry = policy.apply(budget.amount - previousSpent, budget.amount)
         val effectiveAmount = budget.amount + rolloverCarry
 
         return EffectiveBudget(
@@ -135,20 +148,58 @@ object BudgetRolloverCalculator {
     }
 
     /**
+     * Compute the effective budget for [referenceDate] by **chaining** rollover
+     * across every prior period (#3653) — the correct entry point for budgets
+     * older than one period.
+     *
+     * This is the cumulative counterpart to [calculateEffectiveBudget]; its
+     * [EffectiveBudget.rolloverCarry] equals [calculateCumulativeRollover] for
+     * the same inputs. For a budget exactly one period old, it agrees with
+     * [calculateEffectiveBudget].
+     *
+     * @param budget The budget definition.
+     * @param transactionsByPeriod Map of period start dates to that period's transactions.
+     * @param referenceDate The date for which the effective budget is evaluated.
+     * @param policy How to bound each period's carry (#3649). Defaults to [RolloverPolicy.UNLIMITED].
+     */
+    fun effectiveBudgetCumulative(
+        budget: Budget,
+        transactionsByPeriod: Map<LocalDate, List<Transaction>>,
+        referenceDate: LocalDate,
+        policy: RolloverPolicy = RolloverPolicy.UNLIMITED,
+    ): EffectiveBudget {
+        val currentPeriod = BudgetCalculator.getCurrentPeriod(budget.period, budget.startDate, referenceDate)
+        val carry = calculateCumulativeRollover(budget, transactionsByPeriod, referenceDate, policy)
+        return EffectiveBudget(
+            budget = budget,
+            period = currentPeriod,
+            baseAmount = budget.amount,
+            rolloverCarry = carry,
+            effectiveAmount = budget.amount + carry,
+        )
+    }
+
+    /**
      * Calculate the effective budget by chaining rollover across multiple consecutive periods.
      *
      * This is useful when an audit trail is needed for several periods. The rollover
      * accumulates: period 1 surplus -> period 2 effective, period 2 surplus -> period 3 effective, etc.
      *
+     * Rollover chaining never extends past [Budget.endDate]: periods that begin
+     * after the budget has ended contribute no carry (#3632).
+     *
      * @param budget The budget definition.
      * @param transactionsByPeriod Map of period start dates to the transactions in that period.
      * @param referenceDate The target date whose effective budget is returned.
+     * @param policy How to bound each period's carry before it compounds into the
+     *   next (#3649). Defaults to [RolloverPolicy.UNLIMITED].
      * @return The cumulative rollover amount to apply to the period containing [referenceDate].
      */
     fun calculateCumulativeRollover(
         budget: Budget,
         transactionsByPeriod: Map<LocalDate, List<Transaction>>,
         referenceDate: LocalDate,
+        policy: RolloverPolicy = RolloverPolicy.UNLIMITED,
     ): Cents {
         if (!budget.isRollover) return Cents.ZERO
 
@@ -162,7 +213,7 @@ object BudgetRolloverCalculator {
             val txns = transactionsByPeriod[period.start] ?: emptyList()
             val spent = sumExpenses(txns, period)
             val effectiveForPeriod = budget.amount + cumulativeRollover
-            cumulativeRollover = effectiveForPeriod - spent
+            cumulativeRollover = policy.apply(effectiveForPeriod - spent, budget.amount)
         }
         return cumulativeRollover
     }
@@ -199,6 +250,10 @@ object BudgetRolloverCalculator {
     /**
      * Build a chain of consecutive periods from the budget start up to (but not including)
      * [currentPeriod]. Used for cumulative rollover computation.
+     *
+     * The walk stops at [Budget.endDate]: a period whose start falls after the
+     * budget has ended does not contribute rollover (#3632). An open-ended budget
+     * ([Budget.endDate] == `null`) is unaffected.
      */
     @Suppress("LoopWithTooManyJumpStatements")
     private fun buildPeriodChain(budget: Budget, currentPeriod: DatePeriod): List<DatePeriod> {
@@ -208,8 +263,10 @@ object BudgetRolloverCalculator {
         // Safety limit to prevent runaway iteration.
         val maxIterations = 1_000
         var iterations = 0
+        val endDate = budget.endDate
 
         while (period.start < currentPeriod.start && iterations < maxIterations) {
+            if (endDate != null && period.start > endDate) break
             chain.add(period)
             val nextStart = period.end.plus(1, DateTimeUnit.DAY)
             period = BudgetCalculator.getCurrentPeriod(budget.period, budget.startDate, nextStart)

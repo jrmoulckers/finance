@@ -295,14 +295,16 @@ class BudgetUtilizationTrackingTest {
 
     @Test
     fun weeklyPeriodBoundaries() {
-        // June 15, 2024 is a Saturday; week starts Monday June 10
+        // #3595: weekly periods anchor on the budget startDate (Sat June 1, 2024),
+        // not the calendar Monday. June 15 is exactly two 7-day periods later,
+        // so the active week is June 15-21.
         val period = BudgetCalculator.getCurrentPeriod(
             BudgetPeriod.WEEKLY,
             LocalDate(2024, 6, 1),
             LocalDate(2024, 6, 15),
         )
-        assertEquals(LocalDate(2024, 6, 10), period.start)
-        assertEquals(LocalDate(2024, 6, 16), period.end)
+        assertEquals(LocalDate(2024, 6, 15), period.start)
+        assertEquals(LocalDate(2024, 6, 21), period.end)
         assertEquals(7, period.daysTotal)
     }
 

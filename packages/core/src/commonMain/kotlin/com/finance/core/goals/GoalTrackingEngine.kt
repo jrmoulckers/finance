@@ -330,12 +330,51 @@ object GoalTrackingEngine {
         }
     }
 
-    // ── private helpers ──────────────────────────────────────────────
+    // ── #3689: required per-period contribution to hit a goal on time ─
+
+    /**
+     * The amount that must be contributed every [period], starting from [from],
+     * to reach the goal's `targetAmount` by its `targetDate` (#3689).
+     *
+     * Uses **ceiling** division in integer [Cents] so that applying the returned
+     * amount each whole period always reaches or exceeds the remaining amount by
+     * the deadline — the schedule never falls short. When fewer than one whole
+     * period remains before the (future) deadline, the entire remaining amount is
+     * required in a single contribution.
+     *
+     * @param goal The goal to fund.
+     * @param period The contribution cadence.
+     * @param from The date the contribution schedule starts.
+     * @return The per-period amount, or [Cents.ZERO] when the goal is already met.
+     * @throws IllegalArgumentException if the goal has no `targetDate`, or the
+     *   `targetDate` is on or before [from] (i.e. not in the future).
+     */
+    fun requiredContribution(goal: Goal, period: ContributionPeriod, from: LocalDate): Cents {
+        val remaining = remainingAmount(goal)
+        if (remaining.isZero()) return Cents.ZERO
+
+        val deadline = goal.targetDate
+        requireNotNull(deadline) { "Goal ${goal.id.value} has no target date" }
+        require(deadline > from) {
+            "Goal target date $deadline is not in the future relative to $from"
+        }
+
+        // A future deadline with < 1 whole period left still needs the full amount now.
+        val periods = wholePeriodsBetween(from, deadline, period).coerceAtLeast(1)
+        return Cents(ceilDiv(remaining.amount, periods.toLong()))
+    }
 
     private fun permilleForAmount(current: Long, target: Long): Int {
         if (target <= 0L) return 0
         val clamped = current.coerceAtLeast(0L)
         return if (clamped >= target) MAX_PERMILLE else ((clamped * PERMILLE_BASIS) / target).toInt()
+    }
+
+    /** Ceiling division for non-negative integers: the smallest `q` with `q * divisor >= numerator`. */
+    private fun ceilDiv(numerator: Long, divisor: Long): Long {
+        require(divisor > 0L) { "divisor must be positive" }
+        if (numerator <= 0L) return 0L
+        return (numerator + divisor - 1L) / divisor
     }
 
     private fun reachedMilestones(amount: Long, target: Long): Set<GoalMilestone> {
