@@ -288,6 +288,9 @@ export function analyzeEducationFund(params: EducationFundParams): EducationFund
   );
 
   const fundingGapCents = Math.max(0, totalProjectedCostCents - projectedBalanceCents);
+  // Mirror of the funding gap: how far the projected balance exceeds the cost
+  // when the plan is overfunded. At most one of the two is ever non-zero (#3484).
+  const surplusCents = Math.max(0, projectedBalanceCents - totalProjectedCostCents);
 
   const coverageRatioBps =
     totalProjectedCostCents > 0
@@ -320,6 +323,7 @@ export function analyzeEducationFund(params: EducationFundParams): EducationFund
     totalProjectedCostCents,
     projectedBalanceCents,
     fundingGapCents,
+    surplusCents,
     coverageRatioBps,
     requiredMonthlyContributionCents,
     projectionPoints,

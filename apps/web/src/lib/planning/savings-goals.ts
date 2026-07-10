@@ -138,6 +138,14 @@ export function projectCompletionDate(
 }
 
 /**
+ * Minimum number of dated contributions required to compute a trustworthy
+ * pace/projection. A single data point cannot establish a rate over time —
+ * projecting from it (as the old lump-sum shim did) produces a meaningless
+ * completion date (#3381).
+ */
+const MIN_CONTRIBUTIONS_FOR_PACE = 2;
+
+/**
  * Build a complete LinkedGoal from raw goal and account data.
  *
  * @param goal - Goal metadata
@@ -161,7 +169,12 @@ export function buildLinkedGoal(
   // Use account balance as current progress if linked
   const currentCents = accountBalance ?? goal.currentCents;
   const progressPercent = calculateProgress(currentCents, goal.targetCents);
-  const monthlyPaceCents = calculateMonthlyPace(contributions);
+  // A pace/projection is only meaningful with at least two real, dated
+  // contributions. With fewer, we report zero pace and let the projection fall
+  // through to null (unless the goal is already complete) rather than inventing
+  // an optimistic completion date from a single point (#3381).
+  const hasSufficientHistory = contributions.length >= MIN_CONTRIBUTIONS_FOR_PACE;
+  const monthlyPaceCents = hasSufficientHistory ? calculateMonthlyPace(contributions) : 0;
   const projectedCompletionDate = projectCompletionDate(
     currentCents,
     goal.targetCents,
@@ -179,6 +192,7 @@ export function buildLinkedGoal(
     progressPercent,
     projectedCompletionDate,
     monthlyPaceCents,
+    hasSufficientHistory,
     contributions: [...contributions],
     milestones,
   };

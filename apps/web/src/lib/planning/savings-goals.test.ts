@@ -188,4 +188,72 @@ describe('buildLinkedGoal', () => {
     expect(result.accountId).toBeNull();
     expect(result.progressPercent).toBe(50);
   });
+
+  // #3381 — projections must be based on real, multi-point contribution history
+  // rather than a single lump sum fabricated from the current balance.
+
+  it('does not project from a single contribution (#3381)', () => {
+    const result = buildLinkedGoal(
+      {
+        id: 'g3',
+        name: 'New Car',
+        targetCents: 2000000,
+        currentCents: 500000,
+        accountId: null,
+      },
+      null,
+      null,
+      // Only one dated contribution — insufficient to establish a pace.
+      [{ date: '2024-01-01', amountCents: 500000, runningTotalCents: 500000 }],
+    );
+
+    expect(result.hasSufficientHistory).toBe(false);
+    expect(result.monthlyPaceCents).toBe(0);
+    expect(result.projectedCompletionDate).toBeNull();
+  });
+
+  it('projects from two or more real contributions (#3381)', () => {
+    const contributions: GoalContribution[] = [
+      { date: '2024-01-01', amountCents: 100000, runningTotalCents: 100000 },
+      { date: '2024-02-01', amountCents: 100000, runningTotalCents: 200000 },
+      { date: '2024-03-01', amountCents: 100000, runningTotalCents: 300000 },
+    ];
+
+    const result = buildLinkedGoal(
+      {
+        id: 'g4',
+        name: 'House Deposit',
+        targetCents: 1000000,
+        currentCents: 300000,
+        accountId: null,
+      },
+      null,
+      null,
+      contributions,
+    );
+
+    expect(result.hasSufficientHistory).toBe(true);
+    // ~$100k/month over the two-month span.
+    expect(result.monthlyPaceCents).toBeGreaterThan(0);
+    expect(result.projectedCompletionDate).toBeTruthy();
+  });
+
+  it('still reports completion for a finished goal with sparse history (#3381)', () => {
+    const result = buildLinkedGoal(
+      {
+        id: 'g5',
+        name: 'Done Goal',
+        targetCents: 100000,
+        currentCents: 100000,
+        accountId: null,
+      },
+      null,
+      null,
+      // Even with a single contribution, an already-complete goal has a date.
+      [{ date: '2024-01-01', amountCents: 100000, runningTotalCents: 100000 }],
+    );
+
+    expect(result.progressPercent).toBe(100);
+    expect(result.projectedCompletionDate).toBeTruthy();
+  });
 });

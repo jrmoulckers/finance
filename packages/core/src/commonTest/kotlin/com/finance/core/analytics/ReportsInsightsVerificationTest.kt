@@ -280,8 +280,61 @@ class ReportsInsightsVerificationTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // Net worth calculation across accounts
+    // #3744 — brand-new spending categories rank at the top, not the bottom
     // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    fun spendingInsights_newCategory_rankedFirst() {
+        val existing = SyncId("cat-existing")
+        val brandNew = SyncId("cat-new")
+        val transactions = listOf(
+            // Existing category with a modest +10% change.
+            TestFixtures.createExpense(amount = Cents(10000), categoryId = existing, date = LocalDate(2024, 5, 15)),
+            TestFixtures.createExpense(amount = Cents(11000), categoryId = existing, date = LocalDate(2024, 6, 15)),
+            // Brand-new category: nothing last month, $50 this month.
+            TestFixtures.createExpense(amount = Cents(5000), categoryId = brandNew, date = LocalDate(2024, 6, 20)),
+        )
+
+        val insights = ReportGenerator.spendingInsights(transactions, referenceDate = LocalDate(2024, 6, 15))
+
+        assertEquals(brandNew, insights.first().categoryId, "Brand-new spending should rank first")
+        assertTrue(insights.first().isNew)
+        assertNull(insights.first().percentChange, "New category has undefined percent change")
+    }
+
+    @Test
+    fun spendingInsights_multipleNewCategories_orderedByCurrentSpendDesc() {
+        val small = SyncId("cat-new-small")
+        val big = SyncId("cat-new-big")
+        val transactions = listOf(
+            TestFixtures.createExpense(amount = Cents(3000), categoryId = small, date = LocalDate(2024, 6, 10)),
+            TestFixtures.createExpense(amount = Cents(8000), categoryId = big, date = LocalDate(2024, 6, 12)),
+        )
+
+        val insights = ReportGenerator.spendingInsights(transactions, referenceDate = LocalDate(2024, 6, 15))
+
+        assertTrue(insights[0].isNew && insights[1].isNew)
+        assertEquals(big, insights[0].categoryId, "Larger new spend ranks ahead of smaller new spend")
+        assertEquals(small, insights[1].categoryId)
+    }
+
+    @Test
+    fun spendingInsights_vanishedCategory_outranksMinorChange() {
+        val minor = SyncId("cat-minor")
+        val vanished = SyncId("cat-vanished")
+        val transactions = listOf(
+            // Minor +1% wiggle.
+            TestFixtures.createExpense(amount = Cents(10000), categoryId = minor, date = LocalDate(2024, 5, 15)),
+            TestFixtures.createExpense(amount = Cents(10100), categoryId = minor, date = LocalDate(2024, 6, 15)),
+            // Category that vanished (X → 0) — a 100% decrease.
+            TestFixtures.createExpense(amount = Cents(10000), categoryId = vanished, date = LocalDate(2024, 5, 15)),
+        )
+
+        val insights = ReportGenerator.spendingInsights(transactions, referenceDate = LocalDate(2024, 6, 15))
+
+        assertEquals(vanished, insights.first().categoryId, "A 100% drop should outrank a 1% wiggle")
+        assertFalse(insights.first().isNew, "A vanished category is not new")
+    }
 
     @Test
     fun netWorth_checkingAndSavings_sumsPositive() {

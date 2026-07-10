@@ -66,12 +66,18 @@ const MultiCurrencyTotal: React.FC<{
     type: AccountType;
     currentBalance: { amount: number };
     currency: { code: string };
+    isArchived?: boolean;
   }>;
   colorize?: boolean;
   readAloud?: boolean;
 }> = ({ accounts, colorize = false, readAloud = false }) => {
   const maskingMode = useEffectiveMaskingMode();
-  const currencyItems = accounts.map((acc) => ({
+  // Archived accounts are excluded from every total so the Accounts page agrees
+  // with the dedicated Net Worth page (`computeCurrentNetWorth`), which also
+  // skips archived accounts. They are still rendered in the account list, just
+  // not counted toward the net-worth figure (#3469).
+  const activeAccounts = accounts.filter((acc) => !acc.isArchived);
+  const currencyItems = activeAccounts.map((acc) => ({
     currency: acc.currency.code,
   }));
 
@@ -79,7 +85,7 @@ const MultiCurrencyTotal: React.FC<{
 
   if (!isMixed) {
     const singleCurrency = getSingleCurrency(currencyItems);
-    const total = accounts.reduce((sum, acc) => sum + netWorthContribution(acc), 0);
+    const total = activeAccounts.reduce((sum, acc) => sum + netWorthContribution(acc), 0);
     return (
       <>
         <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />
@@ -94,7 +100,7 @@ const MultiCurrencyTotal: React.FC<{
     );
   }
 
-  const amounts = accounts.map((acc) => ({
+  const amounts = activeAccounts.map((acc) => ({
     amount: netWorthContribution(acc),
     currency: acc.currency.code,
   }));
@@ -142,22 +148,24 @@ export const AccountsPage: React.FC = () => {
     [accounts],
   );
 
-  // Check if accounts use multiple currencies
+  // Check if accounts use multiple currencies (archived accounts are excluded
+  // from net-worth totals, so they should not drive the converted-total UI — #3469).
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts]);
   const currencyCodes = useMemo(
-    () => [...new Set(accounts.map((a) => a.currency.code))],
-    [accounts],
+    () => [...new Set(activeAccounts.map((a) => a.currency.code))],
+    [activeAccounts],
   );
   const isMultiCurrency = currencyCodes.length > 1;
 
   // Compute converted total when multi-currency
   const computeConvertedTotal = useCallback(async () => {
-    if (!isMultiCurrency || accounts.length === 0) {
+    if (!isMultiCurrency || activeAccounts.length === 0) {
       setConvertedTotal(null);
       return;
     }
     try {
       let total = 0;
-      for (const account of accounts) {
+      for (const account of activeAccounts) {
         // Liabilities subtract from the converted net-worth total, matching
         // the single-currency path and the Net Worth page.
         const contribution = netWorthContribution(account);
@@ -172,7 +180,7 @@ export const AccountsPage: React.FC = () => {
     } catch {
       setConvertedTotal(null);
     }
-  }, [accounts, convert, isMultiCurrency]);
+  }, [activeAccounts, convert, isMultiCurrency]);
 
   useEffect(() => {
     void computeConvertedTotal();

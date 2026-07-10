@@ -17,9 +17,16 @@ value class Currency(val code: String) {
         }
     }
 
-    /** Number of decimal places for this currency's minor unit. */
+    /**
+     * Number of decimal places for this currency's minor unit.
+     *
+     * This is the **single canonical source of truth** for money precision
+     * (#3736). Every other catalog ([CurrencyCatalog], the multi-currency
+     * engine catalog, and the formatter) must agree with the values here — a
+     * consistency test enforces it.
+     */
     val decimalPlaces: Int get() = when (code) {
-        "JPY", "KRW", "VND" -> 0
+        "JPY", "KRW", "VND", "CLP" -> 0
         "BHD", "KWD", "OMR" -> 3
         else -> 2
     }

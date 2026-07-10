@@ -38,4 +38,90 @@ class MultiCurrencyEngineTest {
 
     @Test fun breakdown() { val c = MultiCurrencyEngine.ExchangeRateCache(); c.put(Currency.EUR, Currency.USD, 1.0, now); val b = MultiCurrencyEngine.currencyBreakdown(listOf(CurrencyAmount(Cents(75000), Currency.USD), CurrencyAmount(Cents(25000), Currency.EUR)), Currency.USD, c, now)!!; assertEquals(75.0, b[Currency.USD]!!, 0.01); assertEquals(25.0, b[Currency.EUR]!!, 0.01) }
     @Test fun breakdown_missingRate() { assertNull(MultiCurrencyEngine.currencyBreakdown(listOf(CurrencyAmount(Cents(50000), Currency.USD), CurrencyAmount(Cents(50000), Currency.EUR)), Currency.USD, MultiCurrencyEngine.ExchangeRateCache(), now)) }
+
+    // ── #3745: percentages over absolute magnitudes for mixed-sign totals ──
+    @Test
+    fun breakdown_mixedSign_usesAbsoluteMagnitudes() {
+        // Currency A +1000, Currency B -900 → signed net = 100. The old code
+        // divided by the signed net, so A showed 1000%. Now shares are computed
+        // over |1000| + |900| = 1900 and must sum to ~100%.
+        val cache = MultiCurrencyEngine.ExchangeRateCache()
+        cache.put(Currency.EUR, Currency.USD, 1.0, now)
+        val b = MultiCurrencyEngine.currencyBreakdown(
+            listOf(
+                CurrencyAmount(Cents(100_000), Currency.USD),
+                CurrencyAmount(Cents(-90_000), Currency.EUR),
+            ),
+            Currency.USD, cache, now,
+        )!!
+        assertEquals(100_000.0 / 190_000.0 * 100.0, b[Currency.USD]!!, 0.01)
+        assertEquals(90_000.0 / 190_000.0 * 100.0, b[Currency.EUR]!!, 0.01)
+        assertEquals(100.0, b.values.sum(), 0.01)
+    }
+
+    @Test
+    fun breakdown_signedNetZero_stillProducesValidShares() {
+        // +500 and -500 → signed net 0 (would divide-by-zero before #3745).
+        val cache = MultiCurrencyEngine.ExchangeRateCache()
+        cache.put(Currency.EUR, Currency.USD, 1.0, now)
+        val b = MultiCurrencyEngine.currencyBreakdown(
+            listOf(
+                CurrencyAmount(Cents(50_000), Currency.USD),
+                CurrencyAmount(Cents(-50_000), Currency.EUR),
+            ),
+            Currency.USD, cache, now,
+        )!!
+        assertEquals(50.0, b[Currency.USD]!!, 0.01)
+        assertEquals(50.0, b[Currency.EUR]!!, 0.01)
+        assertEquals(100.0, b.values.sum(), 0.01)
+    }
+
+    @Test
+    fun breakdown_zeroMagnitude_returnsEmptyMap() {
+        val b = MultiCurrencyEngine.currencyBreakdown(
+            listOf(CurrencyAmount(Cents.ZERO, Currency.USD)),
+            Currency.USD, MultiCurrencyEngine.ExchangeRateCache(), now,
+        )!!
+        assertTrue(b.isEmpty())
+    }
+
+    // ── #3733: cross-currency triangulation via a pivot currency ──────────
+    @Test
+    fun triangulate_directRateTakesPrecedence() {
+        val cache = MultiCurrencyEngine.ExchangeRateCache()
+        cache.put(Currency.EUR, Currency.JPY, 160.0, now) // direct
+        cache.put(Currency.USD, Currency.EUR, 0.9, now)
+        cache.put(Currency.USD, Currency.JPY, 150.0, now)
+        // Direct EUR→JPY (160) must win over triangulated (150/0.9 ≈ 166.7).
+        assertEquals(160.0, cache.getTriangulated(Currency.EUR, Currency.JPY, Currency.USD, now)!!, 0.0001)
+    }
+
+    @Test
+    fun triangulate_derivesViaPivotWhenNoDirect() {
+        val cache = MultiCurrencyEngine.ExchangeRateCache()
+        cache.put(Currency.USD, Currency.EUR, 0.90, now) // USD→EUR
+        cache.put(Currency.USD, Currency.JPY, 150.0, now) // USD→JPY
+        // EUR→JPY = EUR→USD * USD→JPY = (1/0.9) * 150 = 166.666...
+        val rate = cache.getTriangulated(Currency.EUR, Currency.JPY, Currency.USD, now)!!
+        assertEquals((1.0 / 0.90) * 150.0, rate, 0.0001)
+    }
+
+    @Test
+    fun triangulate_oneLegMissing_returnsNull() {
+        val cache = MultiCurrencyEngine.ExchangeRateCache()
+        cache.put(Currency.USD, Currency.EUR, 0.90, now) // only one leg
+        assertNull(cache.getTriangulated(Currency.EUR, Currency.JPY, Currency.USD, now))
+    }
+
+    @Test
+    fun triangulate_convertUsesIntegerCents() {
+        val cache = MultiCurrencyEngine.ExchangeRateCache()
+        cache.put(Currency.USD, Currency.EUR, 0.90, now)
+        cache.put(Currency.USD, Currency.GBP, 0.80, now)
+        // EUR→GBP = (1/0.9) * 0.8 = 0.8888...; €100.00 (10000 cents) → 8889 (banker's rounding)
+        val result = MultiCurrencyEngine.convertWithTriangulation(
+            Cents(10_000), Currency.EUR, Currency.GBP, cache, Currency.USD, now,
+        )!!
+        assertEquals(Cents(8889), result.convertedAmount)
+    }
 }

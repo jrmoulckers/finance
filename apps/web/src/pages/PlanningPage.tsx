@@ -705,6 +705,11 @@ const GoalProgressCard: React.FC<{ goal: LinkedGoal }> = ({ goal }) => (
         Projected completion: {new Date(goal.projectedCompletionDate).toLocaleDateString()}
       </p>
     )}
+    {!goal.projectedCompletionDate && !goal.hasSufficientHistory && goal.progressPercent < 100 && (
+      <p className="goal-progress__meta" aria-live="polite">
+        Not enough contribution history yet to project a completion date.
+      </p>
+    )}
     <div className="milestone-list" role="list" aria-label="Milestones">
       {goal.milestones.map((m) => (
         <div
@@ -2377,7 +2382,9 @@ const EducationPanel: React.FC = () => {
           </article>
           <article className="planning-metric" aria-label={fullyFunded ? 'Surplus' : 'Shortfall'}>
             <p className="planning-metric__label">{fullyFunded ? 'Surplus' : 'Shortfall'}</p>
-            <p className="planning-metric__value">{formatCurrency(result.fundingGapCents)}</p>
+            <p className="planning-metric__value">
+              {formatCurrency(fullyFunded ? result.surplusCents : result.fundingGapCents)}
+            </p>
           </article>
           <article
             className="planning-metric"

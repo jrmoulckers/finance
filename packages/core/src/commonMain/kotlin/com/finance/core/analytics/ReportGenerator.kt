@@ -308,10 +308,31 @@ object ReportGenerator {
                 previousMonth = previous,
                 percentChange = percentChange,
                 trend = trend,
+                isNew = previous.isZero() && current.amount > 0,
             )
-        }.sortedByDescending { insight ->
-            insight.percentChange?.let { kotlin.math.abs(it) } ?: 0.0
-        }
+        }.sortedWith(
+            // Brand-new spending (0 → X) has an undefined percent change but is the
+            // most important thing to surface, so it ranks at the very top; among
+            // new categories the larger current spend comes first. Everything else
+            // is ranked by magnitude of change — a vanished category (X → 0) is a
+            // 100% decrease and thus outranks minor wiggles (#3744). Ties break by
+            // category id for deterministic ordering.
+            compareByDescending<SpendingInsight> { insightSortMagnitude(it) }
+                .thenByDescending { it.currentMonth.amount }
+                .thenBy { it.categoryId.value },
+        )
+    }
+
+    /**
+     * Ranking magnitude for [spendingInsights]. New spending is treated as a
+     * maximal change so it sorts above every finite percentage change; otherwise
+     * the absolute percent change is used, with an undefined (`null`) change
+     * ranked lowest.
+     */
+    private fun insightSortMagnitude(insight: SpendingInsight): Double = when {
+        insight.isNew -> Double.MAX_VALUE
+        insight.percentChange != null -> kotlin.math.abs(insight.percentChange)
+        else -> 0.0
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
