@@ -50,6 +50,8 @@ export { SyncStatusPanel } from './SyncStatusPanel';
 export { UpdateBanner } from './UpdateBanner';
 export { SkipLink } from './SkipLink';
 export type { SkipLinkProps } from './SkipLink';
+export { ModalBackdrop } from './ModalBackdrop';
+export type { ModalBackdropProps } from './ModalBackdrop';
 export { SortableList } from './SortableList';
 export type {
   SortableListProps,
