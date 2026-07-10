@@ -123,8 +123,13 @@ const TRANSACTION_STATUSES: readonly { value: TransactionStatus; label: string }
 
 /** Props for {@link TransactionForm}. */
 export interface TransactionFormProps {
-  /** Callback invoked with validated form data when the user submits. */
-  onSubmit: (data: CreateTransactionInput) => Promise<void>;
+  /**
+   * Callback invoked with validated form data when the user submits. The
+   * optional `options.addAnother` flag is set when the user chose "Save and add
+   * another" so the caller can keep the dialog open for fast batch entry
+   * (#3650).
+   */
+  onSubmit: (data: CreateTransactionInput, options?: { addAnother?: boolean }) => Promise<void>;
   /** Callback invoked when the user cancels or presses Escape. */
   onCancel: () => void;
   /** Available accounts to choose from. */
@@ -416,6 +421,10 @@ export function TransactionForm({
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
+  // Tracks which submit button was used so a successful create can either close
+  // the dialog ("Save") or keep it open for the next entry ("Save and add
+  // another", #3650).
+  const submitModeRef = useRef<'close' | 'add-another'>('close');
 
   // -- state ---------------------------------------------------------------
   const [transactionType, setTransactionType] = useState<TransactionType>('EXPENSE');
@@ -470,6 +479,9 @@ export function TransactionForm({
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Polite confirmation announced after "Save and add another" so assistive
+  // tech users know the entry saved and the form is ready for the next (#3650).
+  const [addAnotherStatus, setAddAnotherStatus] = useState('');
   const [suggestion, setSuggestion] = useState<CategorySuggestion | null>(null);
   const [counterpartyName, setCounterpartyName] = useState('');
   const [merchantMatch, setMerchantMatch] = useState<MerchantMatchResult | null>(null);
@@ -585,6 +597,7 @@ export function TransactionForm({
   // -- autofocus first field ------------------------------------------------
   useEffect(() => {
     if (isOpen) {
+      setAddAnotherStatus('');
       const id = requestAnimationFrame(() => {
         firstInputRef.current?.focus();
       });
@@ -817,6 +830,11 @@ export function TransactionForm({
     async (e: FormEvent) => {
       e.preventDefault();
 
+      // Capture and reset the requested submit mode immediately so it cannot
+      // leak into a later submission if this one bails out on validation.
+      const addAnother = !isEditMode && submitModeRef.current === 'add-another';
+      submitModeRef.current = 'close';
+
       const normalizedAmountCents = normalizeTransactionAmount(amountInput.cents, transactionType);
       const fieldErrors = validate(
         normalizedAmountCents,
@@ -963,7 +981,11 @@ export function TransactionForm({
       setSubmitError(null);
 
       try {
-        await onSubmit(input);
+        if (addAnother) {
+          await onSubmit(input, { addAnother: true });
+        } else {
+          await onSubmit(input);
+        }
 
         if (categoryId && description.trim()) {
           learnFromFeedback({
@@ -974,20 +996,14 @@ export function TransactionForm({
           });
         }
 
-        // Reset form on success
+        // Reset form on success. "Save and add another" keeps sensible context
+        // (account, date, type, status, currency) for the next entry (#3650);
+        // "Save" resets everything before the dialog closes.
         amountInput.reset(0);
         amountInput.setSign('negative');
         setDescription('');
-        setTransactionType('EXPENSE');
-        setStatus('PENDING');
         setCategoryId('');
         setSplitRows([]);
-        setAccountId('');
-        setCurrencyCode('');
-        setCurrencyTouched(false);
-        setExchangeRateInput('');
-        setRateCapturedAt(null);
-        setDate(todayISO());
         setNotes('');
         setTagsInput('');
         setIsRetirementContribution(false);
@@ -1011,6 +1027,22 @@ export function TransactionForm({
         setLocalTime(captureNow(getBrowserTimeZone()).localDateTime);
         setLocalTimeZone(getBrowserTimeZone());
         setAdditionalOpen(false);
+
+        if (!addAnother) {
+          setTransactionType('EXPENSE');
+          setStatus('PENDING');
+          setAccountId('');
+          setCurrencyCode('');
+          setCurrencyTouched(false);
+          setExchangeRateInput('');
+          setRateCapturedAt(null);
+          setDate(todayISO());
+        } else {
+          // Keep the dialog open, return focus to the first field, and confirm
+          // the save to assistive tech for the next fast entry.
+          setAddAnotherStatus('Transaction saved. Ready to add another.');
+          requestAnimationFrame(() => firstInputRef.current?.focus());
+        }
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : submitFailureMessage);
       } finally {
@@ -1021,6 +1053,7 @@ export function TransactionForm({
       amountInput,
       description,
       accountId,
+      isEditMode,
       baseCurrency,
       entryCurrency,
       isForeignEntry,
@@ -1990,12 +2023,35 @@ export function TransactionForm({
             </div>
           )}
 
+          <div className="sr-only" aria-live="polite">
+            {addAnotherStatus}
+          </div>
+
           {/* Actions */}
           <div className="form-actions">
             <Button type="button" variant="secondary" onClick={handleCancel} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" loading={submitting}>
+            {!isEditMode && (
+              <Button
+                type="submit"
+                variant="secondary"
+                loading={submitting}
+                onClick={() => {
+                  submitModeRef.current = 'add-another';
+                }}
+              >
+                Save and add another
+              </Button>
+            )}
+            <Button
+              type="submit"
+              variant="primary"
+              loading={submitting}
+              onClick={() => {
+                submitModeRef.current = 'close';
+              }}
+            >
               {submitting ? submittingLabel : submitButtonLabel}
             </Button>
           </div>

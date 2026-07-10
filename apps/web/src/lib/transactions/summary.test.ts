@@ -66,7 +66,12 @@ describe('summarizeTransactions', () => {
       makeTransaction({ type: 'EXPENSE', amount: 2000 }),
       makeTransaction({ type: 'EXPENSE', amount: 500 }),
     ]);
-    expect(summary.singleCurrencyNet).toEqual({ currency: 'USD', net: 2500 });
+    expect(summary.singleCurrencyNet).toEqual({
+      currency: 'USD',
+      income: 5000,
+      expenses: 2500,
+      net: 2500,
+    });
     expect(summary.isMixedCurrency).toBe(false);
   });
 
@@ -75,7 +80,12 @@ describe('summarizeTransactions', () => {
       makeTransaction({ type: 'EXPENSE', amount: -3000 }),
       makeTransaction({ type: 'INCOME', amount: 1000 }),
     ]);
-    expect(summary.singleCurrencyNet).toEqual({ currency: 'USD', net: -2000 });
+    expect(summary.singleCurrencyNet).toEqual({
+      currency: 'USD',
+      income: 1000,
+      expenses: 3000,
+      net: -2000,
+    });
   });
 
   it('excludes transfers from the net total', () => {
@@ -83,7 +93,12 @@ describe('summarizeTransactions', () => {
       makeTransaction({ type: 'INCOME', amount: 1000 }),
       makeTransaction({ type: 'TRANSFER', amount: 50000 }),
     ]);
-    expect(summary.singleCurrencyNet).toEqual({ currency: 'USD', net: 1000 });
+    expect(summary.singleCurrencyNet).toEqual({
+      currency: 'USD',
+      income: 1000,
+      expenses: 0,
+      net: 1000,
+    });
   });
 
   it('reports per-currency totals and flags mixed currencies', () => {
@@ -95,8 +110,8 @@ describe('summarizeTransactions', () => {
     expect(summary.isMixedCurrency).toBe(true);
     expect(summary.singleCurrencyNet).toBeNull();
     expect(summary.totalsByCurrency).toEqual([
-      { currency: 'EUR', net: -700 },
-      { currency: 'USD', net: 600 },
+      { currency: 'EUR', income: 0, expenses: 700, net: -700 },
+      { currency: 'USD', income: 1000, expenses: 400, net: 600 },
     ]);
   });
 

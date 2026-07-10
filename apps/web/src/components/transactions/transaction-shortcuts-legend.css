@@ -1,0 +1,119 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for TransactionShortcutsLegend — a discoverable "?" trigger and its
+ * small pop-over legend of transaction-list keyboard shortcuts (#3654). Uses
+ * design tokens and respects reduced-motion.
+ */
+
+.transaction-shortcuts-legend {
+  position: relative;
+  display: inline-flex;
+}
+
+.transaction-shortcuts-legend__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-full, 999px);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-secondary);
+  font-weight: var(--font-weight-semibold, 600);
+  font-size: var(--type-scale-body-font-size, 0.9375rem);
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 120ms) ease;
+}
+
+.transaction-shortcuts-legend__trigger:hover {
+  background: var(--semantic-background-tertiary, var(--semantic-background-secondary));
+  color: var(--semantic-text-primary);
+}
+
+.transaction-shortcuts-legend__trigger:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, var(--color-primary, currentColor));
+  outline-offset: 2px;
+}
+
+.transaction-shortcuts-legend__panel {
+  position: absolute;
+  top: calc(100% + var(--spacing-2));
+  right: 0;
+  z-index: var(--z-index-popover, 60);
+  min-width: 16rem;
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary, var(--semantic-background-secondary));
+  box-shadow: var(--shadow-md, 0 4px 12px rgb(0 0 0 / 15%));
+  animation: transaction-shortcuts-legend-in var(--duration-fast, 120ms) ease;
+}
+
+.transaction-shortcuts-legend__title {
+  margin: 0 0 var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--semantic-text-tertiary, var(--semantic-text-secondary));
+}
+
+.transaction-shortcuts-legend__list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-1) var(--spacing-3);
+}
+
+.transaction-shortcuts-legend__row {
+  display: contents;
+}
+
+.transaction-shortcuts-legend__keys {
+  margin: 0;
+}
+
+.transaction-shortcuts-legend__keys kbd,
+.transaction-shortcuts-legend__hint kbd {
+  display: inline-block;
+  padding: 0 var(--spacing-1);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm, 4px);
+  background: var(--semantic-background-secondary);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-primary);
+}
+
+.transaction-shortcuts-legend__action {
+  margin: 0;
+  font-size: var(--type-scale-body-font-size, 0.9375rem);
+  color: var(--semantic-text-secondary);
+}
+
+.transaction-shortcuts-legend__hint {
+  margin: var(--spacing-3) 0 0;
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-tertiary, var(--semantic-text-secondary));
+}
+
+@keyframes transaction-shortcuts-legend-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transaction-shortcuts-legend__panel {
+    animation: none;
+  }
+}

@@ -2,7 +2,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Account, Category } from '../../kmp/bridge';
+import type { Account, Category, Transaction } from '../../kmp/bridge';
 import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { TransactionForm, type TransactionFormProps } from './TransactionForm';
 
@@ -74,6 +74,43 @@ const categories: Category[] = [
     ...syncMetadata,
   },
 ];
+
+function makeEditTransaction(): Transaction {
+  return {
+    id: 'txn-edit-1',
+    householdId: 'household-1',
+    accountId: 'account-1',
+    categoryId: null,
+    type: 'EXPENSE',
+    status: 'CLEARED',
+    amount: { amount: -1234 },
+    currency: { code: 'USD', decimalPlaces: 2 },
+    payee: 'Coffee Shop',
+    note: null,
+    date: '2025-06-10',
+    transferAccountId: null,
+    transferTransactionId: null,
+    isRecurring: false,
+    recurringRuleId: null,
+    tags: [],
+    merchantAddress: null,
+    merchantCity: null,
+    merchantState: null,
+    merchantZip: null,
+    merchantCountry: null,
+    externalReferenceId: null,
+    statementDescription: null,
+    customFields: null,
+    extraNotes: null,
+    counterpartyName: null,
+    counterpartyAccountId: null,
+    createdAt: '2025-06-10T00:00:00.000Z',
+    updatedAt: '2025-06-10T00:00:00.000Z',
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: true,
+  } as Transaction;
+}
 
 function renderTransactionForm(overrides: Partial<TransactionFormProps> = {}) {
   const onSubmit = overrides.onSubmit ?? vi.fn().mockResolvedValue(undefined);
@@ -220,6 +257,41 @@ describe('TransactionForm', () => {
         }),
       }),
     );
+  });
+
+  it('keeps the dialog open and preserves account context on "Save and add another" (#3650)', async () => {
+    const { onSubmit, onCancel } = renderTransactionForm();
+
+    const amountInput = screen.getByLabelText('Amount');
+    fireEvent.keyDown(amountInput, { key: '1' });
+    fireEvent.keyDown(amountInput, { key: '2' });
+    fireEvent.keyDown(amountInput, { key: '3' });
+    fireEvent.keyDown(amountInput, { key: '4' });
+
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'Coffee Shop' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save and add another' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ accountId: 'account-1', payee: 'Coffee Shop' }),
+      { addAnother: true },
+    );
+    // Dialog stays open (parent close callback not invoked) and the account is
+    // preserved while amount/payee reset for the next entry.
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'New Transaction' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Account')).toHaveValue('account-1');
+    expect(screen.getByLabelText('Payee')).toHaveValue('');
+    expect(screen.getByText(/ready to add another/i)).toBeInTheDocument();
+  });
+
+  it('does not render "Save and add another" in edit mode (#3650)', () => {
+    renderTransactionForm({ initialData: makeEditTransaction() });
+    expect(screen.queryByRole('button', { name: 'Save and add another' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update Transaction' })).toBeInTheDocument();
   });
 
   it('submits retirement contribution tagging fields', async () => {

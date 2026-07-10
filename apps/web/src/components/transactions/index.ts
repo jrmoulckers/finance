@@ -18,3 +18,4 @@ export { CounterpartyInput } from './CounterpartyInput';
 export type { CounterpartyInputProps } from './CounterpartyInput';
 export { TransactionsSummaryBar } from './TransactionsSummaryBar';
 export type { TransactionsSummaryBarProps } from './TransactionsSummaryBar';
+export { TransactionShortcutsLegend } from './TransactionShortcutsLegend';
