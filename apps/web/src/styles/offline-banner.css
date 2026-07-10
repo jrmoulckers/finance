@@ -38,6 +38,19 @@
   line-height: var(--line-height-normal);
 }
 
+.offline-banner--reconnected {
+  background-color: color-mix(
+    in srgb,
+    var(--semantic-status-positive) 14%,
+    var(--semantic-background-primary)
+  );
+  border-bottom-color: color-mix(in srgb, var(--semantic-status-positive) 55%, transparent);
+}
+
+.offline-banner--reconnected .offline-banner__icon {
+  color: var(--semantic-status-positive);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .offline-banner {
     transition: none;
