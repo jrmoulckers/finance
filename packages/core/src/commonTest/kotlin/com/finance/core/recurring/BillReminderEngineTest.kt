@@ -136,8 +136,10 @@ class BillReminderEngineTest {
     }
 
     @Test
-    fun scheduleNotifications_skipsPastNotifications() {
-        val rule = createRule(nextDueDate = LocalDate(2024, 6, 10)) // past due
+    fun scheduleNotifications_staleNextDueDate_advancesToNextOccurrence() {
+        // Stale stored nextDueDate in the past must not silently drop the reminder (#3714):
+        // the engine advances the recurrence to the next occurrence on/after today.
+        val rule = createRule(nextDueDate = LocalDate(2024, 6, 10)) // stale, in the past
         val reminder = createReminder(offsetDays = 3)
 
         val notifications = BillReminderEngine.scheduleNotifications(
@@ -146,7 +148,11 @@ class BillReminderEngineTest {
             today = today,
         )
 
-        assertEquals(0, notifications.size)
+        // Monthly rule anchored on the 15th → next occurrence on/after 2024-06-15 is 2024-06-15.
+        assertEquals(1, notifications.size)
+        assertEquals(LocalDate(2024, 6, 15), notifications[0].dueDate)
+        // Offset would land the notification in the past, so it is clamped to today (fire now).
+        assertEquals(today, notifications[0].notificationDate)
     }
 
     @Test

@@ -324,7 +324,10 @@ class SubscriptionDetectorTest {
     fun classifyFrequency_correctRanges() {
         assertEquals(SubscriptionFrequency.WEEKLY, SubscriptionDetector.classifyFrequency(7.0))
         assertEquals(SubscriptionFrequency.BIWEEKLY, SubscriptionDetector.classifyFrequency(14.0))
+        assertEquals(SubscriptionFrequency.SEMI_MONTHLY, SubscriptionDetector.classifyFrequency(15.0))
+        assertEquals(SubscriptionFrequency.EVERY_THREE_WEEKS, SubscriptionDetector.classifyFrequency(21.0))
         assertEquals(SubscriptionFrequency.MONTHLY, SubscriptionDetector.classifyFrequency(30.0))
+        assertEquals(SubscriptionFrequency.BIMONTHLY, SubscriptionDetector.classifyFrequency(45.0))
         assertEquals(SubscriptionFrequency.QUARTERLY, SubscriptionDetector.classifyFrequency(91.0))
         assertEquals(SubscriptionFrequency.YEARLY, SubscriptionDetector.classifyFrequency(365.0))
     }
@@ -332,7 +335,7 @@ class SubscriptionDetectorTest {
     @Test
     fun classifyFrequency_outOfRange_returnsNull() {
         assertNull(SubscriptionDetector.classifyFrequency(3.0))
-        assertNull(SubscriptionDetector.classifyFrequency(45.0))
+        assertNull(SubscriptionDetector.classifyFrequency(10.5))
         assertNull(SubscriptionDetector.classifyFrequency(200.0))
     }
 

@@ -26,8 +26,12 @@ object BillReminderEngine {
     /**
      * Calculate the next notification times for a set of bill reminders.
      *
-     * For each rule+reminder pair, computes when the notification should fire
-     * based on the rule's next due date and the reminder's offset.
+     * For each rule+reminder pair, computes when the notification should fire based on the rule's
+     * next due date and the reminder's offset. When the stored [RecurringTransactionRule.nextDueDate]
+     * is stale (in the past), the next due date on/after [today] is recomputed from the recurrence
+     * rule so an active, confirmed, enabled rule always produces a reminder. The notification date is
+     * clamped to [today] when the offset would otherwise place it in the past, so a fire-now reminder
+     * is still emitted for an imminent bill.
      *
      * @param rules Active recurring transaction rules.
      * @param reminders Bill reminder configurations keyed by rule ID.
@@ -47,21 +51,29 @@ object BillReminderEngine {
             val reminder = reminders[rule.id] ?: continue
             if (!reminder.isEnabled) continue
 
-            val notificationDate = rule.nextDueDate.minus(reminder.offsetDays, DateTimeUnit.DAY)
-
-            // Only include future or today's notifications
-            if (notificationDate >= today) {
-                notifications.add(
-                    ScheduledNotification(
-                        ruleId = rule.id,
-                        reminderId = reminder.id,
-                        dueDate = rule.nextDueDate,
-                        notificationDate = notificationDate,
-                        notificationTime = reminder.reminderTime,
-                        merchant = rule.merchant,
-                    ),
-                )
+            // Use the stored due date when it is still current; otherwise advance the recurrence to
+            // the next occurrence on/after today so a stale nextDueDate never drops the reminder.
+            val dueDate = if (rule.nextDueDate >= today) {
+                rule.nextDueDate
+            } else {
+                RecurringTransactionEngine.nextOccurrenceOnOrAfter(rule.recurrenceRule, today)
+                    ?: continue
             }
+
+            val rawNotificationDate = dueDate.minus(reminder.offsetDays, DateTimeUnit.DAY)
+            // Fire now (today) rather than dropping a reminder whose offset falls in the past.
+            val notificationDate = if (rawNotificationDate < today) today else rawNotificationDate
+
+            notifications.add(
+                ScheduledNotification(
+                    ruleId = rule.id,
+                    reminderId = reminder.id,
+                    dueDate = dueDate,
+                    notificationDate = notificationDate,
+                    notificationTime = reminder.reminderTime,
+                    merchant = rule.merchant,
+                ),
+            )
         }
 
         return notifications.sortedBy { it.notificationDate }
@@ -145,7 +157,7 @@ object BillReminderEngine {
                 val entry = BillCalendarEntry(
                     ruleId = rule.id,
                     merchant = rule.merchant,
-                    amount = rule.amount,
+                    amount = rule.amountFor(dueDate),
                     dueDate = dueDate,
                     isPaid = isPaid,
                     isOverdue = isOverdue,
