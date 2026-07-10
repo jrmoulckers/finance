@@ -10,13 +10,16 @@
  * redirected to the dashboard.
  */
 
-import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
+import { OAuthButtons } from '../components/auth/OAuthButtons';
 import { PasswordInput } from '../components/auth/PasswordInput';
 import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { LegalLinks } from '../components/legal/LegalLinks';
+import { calculatePasswordStrength } from '../lib/password-strength';
 import { signupSchema } from '../lib/validation';
 
 import '../components/auth/password-input.css';
@@ -44,7 +47,13 @@ interface SubmitMessage {
  */
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signupWithEmail, isLoading, isDemoMode: demoMode, isAuthenticated } = useAuth();
+  const {
+    signupWithEmail,
+    loginWithOAuth,
+    isLoading,
+    isDemoMode: demoMode,
+    isAuthenticated,
+  } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,6 +63,10 @@ export const SignupPage: React.FC = () => {
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const confirmationHeadingRef = useRef<HTMLHeadingElement>(null);
+
   const uid = useId();
   const emailId = `${uid}-email`;
   const passwordId = `${uid}-password`;
@@ -62,6 +75,7 @@ export const SignupPage: React.FC = () => {
   const passwordHintId = `${uid}-password-hint`;
   const passwordErrorId = `${uid}-password-error`;
   const confirmPasswordErrorId = `${uid}-confirm-password-error`;
+  const legalNoticeId = `${uid}-legal-notice`;
 
   // Redirect to dashboard once the user is authenticated (auto-login after signup)
   useEffect(() => {
@@ -69,6 +83,41 @@ export const SignupPage: React.FC = () => {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
+
+  /**
+   * Autofocus the email field on mount so keyboard users can start typing
+   * immediately (#3656). Deferred via rAF so it runs after the initial paint.
+   * Only applies while the form is shown — once the confirmation panel takes
+   * over, that panel owns focus (#3702).
+   */
+  useEffect(() => {
+    if (confirmationEmail) {
+      return;
+    }
+
+    const handle = requestAnimationFrame(() => {
+      emailInputRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(handle);
+  }, [confirmationEmail]);
+
+  /**
+   * Move focus to the confirmation panel heading when the "Check your email"
+   * view replaces the form (#3702), so keyboard and screen-reader users are
+   * not stranded on the now-removed submit button.
+   */
+  useEffect(() => {
+    if (!confirmationEmail) {
+      return;
+    }
+
+    const handle = requestAnimationFrame(() => {
+      confirmationHeadingRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(handle);
+  }, [confirmationEmail]);
 
   const confirmPasswordError = useMemo(() => {
     if (fieldErrors.confirmPassword) {
@@ -91,7 +140,7 @@ export const SignupPage: React.FC = () => {
     return submitMessage;
   }, [submitMessage]);
 
-  const validate = useCallback((): boolean => {
+  const validate = useCallback((): SignupFieldErrors => {
     const errors: SignupFieldErrors = {};
     const result = signupSchema.safeParse({
       email: email.trim(),
@@ -115,8 +164,17 @@ export const SignupPage: React.FC = () => {
       }
     }
 
+    // Soft-gate the very-weakest tier (score 0 — common/breached passwords).
+    // Runs independently of the length rule so a recognizably common password
+    // gets the actionable "too common" message rather than a bare length hint
+    // (#3679). Reuses the shared strength scorer / blocklist — no new rules.
+    if (password.length > 0 && calculatePasswordStrength(password).score === 0) {
+      errors.password =
+        'This password is too common. Add length or unrelated words to make it harder to guess.';
+    }
+
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return errors;
   }, [confirmPassword, email, password]);
 
   const handleSubmit = useCallback(
@@ -125,7 +183,16 @@ export const SignupPage: React.FC = () => {
       setSubmitMessage(null);
       setConfirmationEmail(null);
 
-      if (!validate()) {
+      const errors = validate();
+      if (Object.keys(errors).length > 0) {
+        // Move focus to the first field with an error so the accessible error
+        // (aria-invalid + role="alert") is announced and the user lands where
+        // the fix is needed — including the very-weak password soft-gate (#3679).
+        if (errors.email) {
+          emailInputRef.current?.focus();
+        } else if (errors.password) {
+          passwordInputRef.current?.focus();
+        }
         return;
       }
 
@@ -210,7 +277,9 @@ export const SignupPage: React.FC = () => {
 
         {confirmationEmail ? (
           <section className="auth-confirmation" aria-live="polite">
-            <h2>Check your email</h2>
+            <h2 ref={confirmationHeadingRef} tabIndex={-1}>
+              Check your email
+            </h2>
             <p>
               We sent a confirmation link to <strong>{confirmationEmail}</strong>. Click the link to
               activate your account, then return here to sign in.
@@ -249,6 +318,7 @@ export const SignupPage: React.FC = () => {
                 Email
               </label>
               <input
+                ref={emailInputRef}
                 id={emailId}
                 className="auth-field__input"
                 type="email"
@@ -279,6 +349,7 @@ export const SignupPage: React.FC = () => {
                 Password
               </label>
               <PasswordInput
+                ref={passwordInputRef}
                 id={passwordId}
                 className="auth-field__input"
                 autoComplete="new-password"
@@ -344,7 +415,25 @@ export const SignupPage: React.FC = () => {
               )}
             </div>
 
-            <button type="submit" className="auth-submit" disabled={isBusy} aria-busy={isBusy}>
+            <p className="auth-legal-notice" id={legalNoticeId}>
+              By creating an account you agree to our{' '}
+              <a href="/legal/terms" className="auth-footer__link">
+                Terms
+              </a>{' '}
+              and{' '}
+              <a href="/legal/privacy" className="auth-footer__link">
+                Privacy Policy
+              </a>
+              .
+            </p>
+
+            <button
+              type="submit"
+              className="auth-submit"
+              disabled={isBusy}
+              aria-busy={isBusy}
+              aria-describedby={legalNoticeId}
+            >
               {isBusy ? (
                 <>
                   <LoadingSpinner size={20} label="Creating account" />
@@ -357,12 +446,30 @@ export const SignupPage: React.FC = () => {
           </form>
         )}
 
+        {/* OAuth sign-up parity with Login (#3707) — rendered the same way
+            Login renders its social section, and hidden once the confirmation
+            panel takes over. */}
+        {!confirmationEmail && (
+          <OAuthButtons
+            onSelect={(provider) => {
+              void loginWithOAuth(provider);
+            }}
+            disabled={isBusy}
+            verb="Sign up"
+            groupLabel="Social signup options"
+            dividerText="or sign up with"
+          />
+        )}
+
         <p className="auth-footer">
           Already have an account?{' '}
           <Link to="/login" className="auth-footer__link">
             Sign in
           </Link>
         </p>
+        <footer className="auth-footer auth-footer--legal">
+          <LegalLinks />
+        </footer>
       </div>
     </main>
   );

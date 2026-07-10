@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { PasswordInput } from '../components/auth/PasswordInput';
@@ -25,6 +25,7 @@ export const ResetPasswordPage: React.FC = () => {
 
   const passwordId = `${uid}-password`;
   const confirmPasswordId = `${uid}-confirm-password`;
+  const passwordHintId = `${uid}-password-hint`;
   const passwordErrorId = `${uid}-password-error`;
   const confirmPasswordErrorId = `${uid}-confirm-password-error`;
 
@@ -40,6 +41,33 @@ export const ResetPasswordPage: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<ResetFieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  const linkError = recoveryError
+    ? recoveryError
+    : !accessToken
+      ? 'Reset link is invalid or expired. Request a new password reset link.'
+      : null;
+
+  /**
+   * Autofocus the new-password field on mount so keyboard users can start
+   * typing immediately (#3656). Deferred via rAF so it runs after the initial
+   * paint. Skipped when the recovery link is invalid — the field is disabled
+   * in that state, so focusing it would be a no-op and the error should own
+   * attention instead.
+   */
+  useEffect(() => {
+    if (linkError) {
+      return;
+    }
+
+    const handle = requestAnimationFrame(() => {
+      passwordInputRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(handle);
+  }, [linkError]);
 
   const validate = (): boolean => {
     const errors: ResetFieldErrors = {};
@@ -85,12 +113,6 @@ export const ResetPasswordPage: React.FC = () => {
     }
   };
 
-  const linkError = recoveryError
-    ? recoveryError
-    : !accessToken
-      ? 'Reset link is invalid or expired. Request a new password reset link.'
-      : null;
-
   return (
     <main className="auth-page">
       <section className="auth-card" aria-labelledby={`${uid}-title`}>
@@ -119,6 +141,7 @@ export const ResetPasswordPage: React.FC = () => {
               New password
             </label>
             <PasswordInput
+              ref={passwordInputRef}
               id={passwordId}
               className="auth-field__input"
               autoComplete="new-password"
@@ -131,9 +154,13 @@ export const ResetPasswordPage: React.FC = () => {
               }}
               disabled={isSubmitting || Boolean(linkError)}
               aria-invalid={fieldErrors.password ? 'true' : undefined}
-              aria-describedby={fieldErrors.password ? passwordErrorId : undefined}
+              aria-describedby={[passwordHintId, fieldErrors.password ? passwordErrorId : null]
+                .filter(Boolean)
+                .join(' ')}
             />
-            <p className="auth-field__hint">Must be at least 12 characters</p>
+            <p id={passwordHintId} className="auth-field__hint">
+              Must be at least 12 characters
+            </p>
             {password.length > 0 && <PasswordStrengthMeter password={password} />}
             {fieldErrors.password && (
               <p id={passwordErrorId} className="auth-field__error" role="alert">
