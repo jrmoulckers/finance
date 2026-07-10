@@ -34,7 +34,7 @@ struct AnomalyCard: View {
                     Text(formatCurrency(anomaly.actualMinorUnits))
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                        .foregroundStyle(anomaly.isOverspend ? .red : .green)
+                        .foregroundStyle(anomaly.isOverspend ? FinanceColors.statusNegative : FinanceColors.statusPositive)
                 }
 
                 HStack(spacing: 4) {

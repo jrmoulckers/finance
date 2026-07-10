@@ -33,6 +33,8 @@ struct CategoryBreakdownChart: View {
 
     @State private var selectedCategory: String?
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var totalSpending: Double {
         data.reduce(0) { $0 + $1.amount }
     }
@@ -68,7 +70,7 @@ struct CategoryBreakdownChart: View {
         }
         .padding()
         .onChange(of: selectedAngle) { _, newValue in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) {
                 selectedCategory = categoryForAngle(newValue)
             }
         }

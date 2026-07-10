@@ -40,9 +40,9 @@ enum TransactionTypeUI: String, CaseIterable, Hashable, Sendable {
 
     var color: Color {
         switch self {
-        case .expense: .red
-        case .income: .green
-        case .transfer: .blue
+        case .expense: FinanceColors.statusNegative
+        case .income: FinanceColors.statusPositive
+        case .transfer: FinanceColors.statusInfo
         }
     }
 }

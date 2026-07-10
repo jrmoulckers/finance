@@ -76,13 +76,7 @@ struct SubscriptionView: View {
         VStack(spacing: 16) {
             Image(systemName: "crown.fill")
                 .font(.system(size: 48))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.yellow, .orange],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .foregroundStyle(FinanceColors.statusWarning)
                 .accessibilityHidden(true)
 
             Text(String(localized: "Finance Premium"))

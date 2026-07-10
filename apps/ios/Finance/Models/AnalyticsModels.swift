@@ -65,9 +65,9 @@ enum AnomalySeverity: String, Sendable {
 
     var color: Color {
         switch self {
-        case .low: .yellow
+        case .low: FinanceColors.statusWarning
         case .medium: .orange
-        case .high: .red
+        case .high: FinanceColors.statusNegative
         }
     }
 
