@@ -139,4 +139,16 @@ describe('SpendingBarChart', () => {
     render(<SpendingBarChart data={[]} />);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
+
+  // -- Visible caption (#3755) -----------------------------------------------
+
+  it('renders a compact visible caption beneath the title', () => {
+    const { container } = render(<SpendingBarChart data={sampleData} />);
+    const caption = container.querySelector('.chart-caption');
+    expect(caption).not.toBeNull();
+    expect(caption).toHaveTextContent('$800 across 3 categories');
+    expect(caption).toHaveTextContent('Food is largest at 56%');
+    // Marked aria-hidden so screen readers do not double-announce it.
+    expect(caption).toHaveAttribute('aria-hidden', 'true');
+  });
 });

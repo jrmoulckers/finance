@@ -3,6 +3,9 @@
 import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { TimePeriod, ViewType } from '../components/charts';
+import { ChartEmptyState } from '../components/charts/ChartEmptyState';
+import { groupTopNCategories } from '../components/charts/chart-palette';
+import { SpendingInsightCard } from '../components/dashboard/SpendingInsightCard';
 import { AccountPurposeFilterControl } from '../components/accounts';
 import { RecentTransactionsCard } from '../components/transactions';
 import {
@@ -633,9 +636,12 @@ export const DashboardPage: React.FC = () => {
   );
 
   const { trendData, barData, categoryData, hasChartData } = useMemo(() => {
-    const transformedCategoryData = buildCategoryData(
-      chartPrivacyRollup.visibleTransactions,
-      categoryNames,
+    // Cap the category charts at a readable Top N, rolling the remainder into a
+    // single "Other" entry that preserves the grand total (#3757). Beyond ~6-8
+    // categories a pie/bar becomes unreadable and the 6-color CVD-safe palette
+    // starts to repeat.
+    const transformedCategoryData = groupTopNCategories(
+      buildCategoryData(chartPrivacyRollup.visibleTransactions, categoryNames),
     );
 
     if (chartPrivacyRollup.protectedRollup !== null) {
@@ -726,6 +732,32 @@ export const DashboardPage: React.FC = () => {
   const visibleWidgetIds = useMemo(
     () => new Set(widgetLayout.visibleWidgets.map((widget) => widget.id)),
     [widgetLayout.visibleWidgets],
+  );
+  // Whether the user has any chart widget enabled via Customize. When true but
+  // there is no chart data we show a compact empty state instead of collapsing
+  // the section to nothing; when false the section stays absent (#3751).
+  const anyChartWidgetVisible = useMemo(
+    () =>
+      visibleWidgetIds.has('spending-trend') ||
+      visibleWidgetIds.has('spending-by-category') ||
+      visibleWidgetIds.has('category-pie'),
+    [visibleWidgetIds],
+  );
+  const chartsEmptyMessage = useMemo(() => {
+    const periodText: Record<TimePeriod, string> = {
+      '7d': 'last 7 days',
+      '30d': 'last 30 days',
+      '90d': 'last 90 days',
+      '1y': 'last year',
+      custom: 'selected period',
+    };
+    const filterClause =
+      selectedPurposeFilter !== 'all' ? ' under the current account-purpose filter' : '';
+    return `No spending in expense categories for the ${periodText[selectedPeriod]}${filterClause}. Add a transaction, widen the time period, or change the filter to see charts.`;
+  }, [selectedPeriod, selectedPurposeFilter]);
+  const topSpendingCategory = useMemo(
+    () => categoryData.find((slice) => slice.value > 0) ?? null,
+    [categoryData],
   );
   // Minimalist mode (#2122): hide a quick-access card when the user has hidden
   // the corresponding module. Sourced from layout-level context so the rich
@@ -1043,52 +1075,63 @@ export const DashboardPage: React.FC = () => {
                   fallbackCurrency={chartCurrency}
                 />
               </Suspense>
-              {hasChartData &&
-              (visibleWidgetIds.has('spending-trend') ||
-                visibleWidgetIds.has('spending-by-category') ||
-                visibleWidgetIds.has('category-pie')) ? (
+              {anyChartWidgetVisible ? (
                 <section className="page-section dashboard-charts" aria-label="Financial charts">
-                  {visibleWidgetIds.has('spending-trend') ? (
-                    <div className="chart-container" aria-label="Spending trend chart">
-                      <Suspense fallback={<ChartFallback />}>
-                        <SpendingTrendChart
-                          data={trendData}
-                          currency={chartCurrency}
-                          title="Spending Trend"
-                          selectedPeriod={selectedPeriod}
-                          onPeriodChange={handlePeriodChange}
-                          viewType={viewType}
-                          onViewTypeChange={handleViewTypeChange}
-                          averageDailySpending={averageDaily}
-                          comparison={comparison}
-                        />
-                      </Suspense>
+                  {hasChartData ? (
+                    <>
+                      <SpendingInsightCard
+                        topCategory={topSpendingCategory}
+                        totalSpending={totalSpending}
+                        comparison={comparison}
+                        currency={chartCurrency}
+                      />
+                      {visibleWidgetIds.has('spending-trend') ? (
+                        <div className="chart-container" aria-label="Spending trend chart">
+                          <Suspense fallback={<ChartFallback />}>
+                            <SpendingTrendChart
+                              data={trendData}
+                              currency={chartCurrency}
+                              title="Spending Trend"
+                              selectedPeriod={selectedPeriod}
+                              onPeriodChange={handlePeriodChange}
+                              viewType={viewType}
+                              onViewTypeChange={handleViewTypeChange}
+                              averageDailySpending={averageDaily}
+                              comparison={comparison}
+                            />
+                          </Suspense>
+                        </div>
+                      ) : null}
+                      {visibleWidgetIds.has('spending-by-category') ? (
+                        <div className="chart-container" aria-label="Category spending bar chart">
+                          <Suspense fallback={<ChartFallback />}>
+                            <SpendingBarChart
+                              data={barData}
+                              currency={chartCurrency}
+                              title="Spending by Category"
+                            />
+                          </Suspense>
+                        </div>
+                      ) : null}
+                      {visibleWidgetIds.has('category-pie') ? (
+                        <div className="chart-container" aria-label="Category share pie chart">
+                          <Suspense fallback={<ChartFallback />}>
+                            <CategoryPieChart
+                              data={categoryData}
+                              currency={chartCurrency}
+                              width={280}
+                              height={280}
+                              title="Category Share"
+                            />
+                          </Suspense>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="chart-container" aria-label="Financial charts empty state">
+                      <ChartEmptyState title="Financial charts" message={chartsEmptyMessage} />
                     </div>
-                  ) : null}
-                  {visibleWidgetIds.has('spending-by-category') ? (
-                    <div className="chart-container" aria-label="Category spending bar chart">
-                      <Suspense fallback={<ChartFallback />}>
-                        <SpendingBarChart
-                          data={barData}
-                          currency={chartCurrency}
-                          title="Spending by Category"
-                        />
-                      </Suspense>
-                    </div>
-                  ) : null}
-                  {visibleWidgetIds.has('category-pie') ? (
-                    <div className="chart-container" aria-label="Category share pie chart">
-                      <Suspense fallback={<ChartFallback />}>
-                        <CategoryPieChart
-                          data={categoryData}
-                          currency={chartCurrency}
-                          width={280}
-                          height={280}
-                          title="Category Share"
-                        />
-                      </Suspense>
-                    </div>
-                  ) : null}
+                  )}
                 </section>
               ) : null}
               <Suspense fallback={<SectionFallback label="Loading financial coach" />}>

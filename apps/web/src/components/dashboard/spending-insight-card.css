@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * SpendingInsightCard styles.
+ *
+ * A compact, single-line "what stands out" summary. Uses design tokens so it
+ * themes correctly in light/dark/high-contrast. References: issue #3756.
+ */
+
+.spending-insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+  background: var(--semantic-surface-primary, var(--card-background));
+  border: 1px solid var(--semantic-border-default, var(--card-border));
+  border-radius: var(--border-radius-lg, 12px);
+}
+
+.spending-insight-card__icon {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.spending-insight-card__text {
+  margin: 0;
+  font-size: var(--type-scale-body-font-size, 0.9375rem);
+  line-height: 1.5;
+  color: var(--semantic-text-primary);
+}
+
+.spending-insight-card__change {
+  color: var(--semantic-text-secondary);
+}
+
+@media (prefers-contrast: more) {
+  .spending-insight-card {
+    border-width: 2px;
+  }
+}

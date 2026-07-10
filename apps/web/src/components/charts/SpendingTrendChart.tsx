@@ -283,6 +283,16 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
 
   const { announcement, handleFocus, handleKeyDown } = useChartKeyboardNavigation(dataPointRows);
 
+  const caption = useMemo(() => {
+    if (data.length === 0) return '';
+    const total = data.reduce((sum, d) => sum + d.spending, 0);
+    const peak = data.reduce((max, d) => (d.spending > max.spending ? d : max), data[0]);
+    const noun = data.length === 1 ? 'point' : 'points';
+    // The period-over-period comparison is already shown visibly in the
+    // annotations row, so it is intentionally omitted here to avoid duplication.
+    return `${formatChartCurrency(total, currency, 'en-US', maskingMode)} over ${data.length} ${noun}; peak ${formatChartCurrency(peak.spending, currency, 'en-US', maskingMode)} on ${peak.label}.`;
+  }, [data, currency, maskingMode]);
+
   const chartColor = CHART_COLORS[0];
   const chartProps = {
     data,
@@ -400,6 +410,12 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
           <ViewToggle selected={viewType} onChange={onViewTypeChange} />
         </div>
       </div>
+
+      {caption && (
+        <p className="chart-caption" aria-hidden="true">
+          {caption}
+        </p>
+      )}
 
       <div className="spending-trend__annotations" aria-live="polite">
         {averageDailySpending != null && (

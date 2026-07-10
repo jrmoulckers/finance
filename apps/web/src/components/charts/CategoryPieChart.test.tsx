@@ -146,4 +146,57 @@ describe('CategoryPieChart', () => {
     render(<CategoryPieChart data={[]} />);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
+
+  // -- Donut center total (#3754) --------------------------------------------
+
+  it('renders the formatted total in the donut center', () => {
+    const { container } = render(<CategoryPieChart data={sampleData} />);
+    const center = container.querySelector('.pie-chart-center__value');
+    expect(center).not.toBeNull();
+    expect(center).toHaveTextContent('$800');
+    expect(container.querySelector('.pie-chart-center__label')).toHaveTextContent('Total');
+  });
+
+  it('uses a non-zero inner radius (donut, not full pie)', () => {
+    const { container } = render(<CategoryPieChart data={sampleData} />);
+    const path = container.querySelector<SVGPathElement>('path[data-chart-point]');
+    // A donut arc path contains two arc commands (outer + inner); a full pie
+    // collapses to the centre so its path has a single arc. Assert the inner
+    // arc is present.
+    const d = path?.getAttribute('d') ?? '';
+    const arcCount = (d.match(/A/g) ?? []).length;
+    expect(arcCount).toBeGreaterThanOrEqual(2);
+  });
+
+  // -- Texture patterns (#3749) ----------------------------------------------
+
+  it('defines an SVG texture pattern per slice and fills slices with them', () => {
+    const { container } = render(<CategoryPieChart data={sampleData} />);
+    const patterns = container.querySelectorAll('pattern');
+    expect(patterns).toHaveLength(sampleData.length);
+    const paths = container.querySelectorAll<SVGPathElement>('path[data-chart-point]');
+    for (const path of Array.from(paths)) {
+      expect(path.getAttribute('fill')).toMatch(/^url\(#.*chart-pattern-\d+\)$/);
+    }
+  });
+
+  it('gives legend swatches the same pattern fill as the slices', () => {
+    const { container } = render(<CategoryPieChart data={sampleData} />);
+    const swatchRects = container.querySelectorAll<SVGRectElement>(
+      '.pie-chart-legend__swatch rect',
+    );
+    expect(swatchRects).toHaveLength(sampleData.length);
+    expect(swatchRects[0].getAttribute('fill')).toMatch(/^url\(#.*chart-pattern-0\)$/);
+  });
+
+  // -- Visible caption (#3755) -----------------------------------------------
+
+  it('renders a compact visible caption beneath the title', () => {
+    const { container } = render(<CategoryPieChart data={sampleData} />);
+    const caption = container.querySelector('.chart-caption');
+    expect(caption).not.toBeNull();
+    expect(caption).toHaveTextContent('Food is largest at 56%');
+    // Marked aria-hidden so screen readers do not double-announce it.
+    expect(caption).toHaveAttribute('aria-hidden', 'true');
+  });
 });
