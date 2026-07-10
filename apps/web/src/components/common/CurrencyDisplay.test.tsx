@@ -48,6 +48,8 @@ describe('CurrencyDisplay', () => {
       ),
     );
 
+    // Negative colorized amounts keep a non-color sign cue (leading "-") so
+    // sign is never conveyed by color alone (#3623 / SC 1.4.1).
     expect(screen.getByText('-$25.00')).toHaveClass('amount--negative');
   });
 
