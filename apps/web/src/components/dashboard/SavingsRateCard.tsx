@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import { CurrencyDisplay } from '../common';
 import type { Transaction } from '../../kmp/bridge';
+import { useSavingsTarget } from '../../hooks/useSavingsTarget';
 import {
   buildSavingsRateCardModel,
   buildSavingsRateDashboardSummary,
@@ -82,14 +83,27 @@ export const SavingsRateCard: React.FC<SavingsRateCardProps> = ({
   previousMonthTransactions,
   currency = 'USD',
 }) => {
+  const { savingsTargetPercent, setSavingsTargetPercent, minPercent, maxPercent } =
+    useSavingsTarget();
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+
   const model = useMemo(() => {
     const cashFlows: MonthlyCashFlow[] = [
       toMonthlyCashFlow(previousMonthKey, previousMonthTransactions),
       toMonthlyCashFlow(currentMonthKey, currentMonthTransactions),
     ];
 
-    return buildSavingsRateCardModel(buildSavingsRateDashboardSummary(cashFlows, currentMonthKey));
-  }, [currentMonthKey, previousMonthKey, currentMonthTransactions, previousMonthTransactions]);
+    return buildSavingsRateCardModel(
+      buildSavingsRateDashboardSummary(cashFlows, currentMonthKey),
+      savingsTargetPercent,
+    );
+  }, [
+    currentMonthKey,
+    previousMonthKey,
+    currentMonthTransactions,
+    previousMonthTransactions,
+    savingsTargetPercent,
+  ]);
 
   return (
     <article
@@ -135,6 +149,43 @@ export const SavingsRateCard: React.FC<SavingsRateCardProps> = ({
         </p>
       ) : null}
       <p className="savings-rate-card__status">{model.statusLabel}</p>
+      <div className="savings-rate-card__goal">
+        {isEditingGoal ? (
+          <label className="savings-rate-card__goal-edit">
+            <span>Savings goal</span>
+            <span className="savings-rate-card__goal-control">
+              <input
+                type="number"
+                min={minPercent}
+                max={maxPercent}
+                step={1}
+                defaultValue={savingsTargetPercent}
+                aria-label="Savings-rate goal percent"
+                onChange={(event) => {
+                  const next = Number.parseInt(event.target.value, 10);
+                  if (Number.isFinite(next)) setSavingsTargetPercent(next);
+                }}
+              />
+              <span aria-hidden="true">%</span>
+            </span>
+            <button
+              type="button"
+              className="savings-rate-card__goal-done"
+              onClick={() => setIsEditingGoal(false)}
+            >
+              Done
+            </button>
+          </label>
+        ) : (
+          <button
+            type="button"
+            className="savings-rate-card__goal-toggle"
+            onClick={() => setIsEditingGoal(true)}
+          >
+            Goal: {savingsTargetPercent}% · Edit
+          </button>
+        )}
+      </div>
     </article>
   );
 };

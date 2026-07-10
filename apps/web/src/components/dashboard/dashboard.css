@@ -794,6 +794,59 @@
   line-height: var(--type-scale-body-line-height);
 }
 
+.savings-rate-card__goal {
+  margin-top: var(--spacing-2);
+}
+
+.savings-rate-card__goal-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--semantic-text-link, var(--semantic-text-secondary));
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.savings-rate-card__goal-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.savings-rate-card__goal-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-elevated);
+}
+
+.savings-rate-card__goal-control input {
+  width: 3.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--semantic-text-primary);
+  font: inherit;
+}
+
+.savings-rate-card__goal-done {
+  padding: var(--spacing-1) var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 @media (prefers-contrast: more) {
   .savings-rate-card {
     border-width: 2px;

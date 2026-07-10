@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { computeSavingsRatePercent } from '../savings/savings-rate-format';
+import { DEFAULT_SAVINGS_TARGET_PERCENT } from '../savings-target';
 
 export interface MonthlyCashFlow {
   readonly month: string;
@@ -95,11 +96,16 @@ export interface SavingsRateCardModel {
   readonly tone: SavingsRateTone;
   /** Short plain-language status describing the current savings rate. */
   readonly statusLabel: string;
+  /** The savings-rate target (%) this model was classified against. */
+  readonly targetPercent: number;
+  /** True when the current rate meets or exceeds the target. */
+  readonly meetsTarget: boolean;
 }
 
 function classifySavingsRate(
   hasIncome: boolean,
   savingsRatePercent: number,
+  targetPercent: number,
 ): { tone: SavingsRateTone; statusLabel: string } {
   if (!hasIncome) {
     return { tone: 'neutral', statusLabel: 'Add income to see your savings rate' };
@@ -107,13 +113,16 @@ function classifySavingsRate(
   if (savingsRatePercent < 0) {
     return { tone: 'caution', statusLabel: 'Spending more than you earn this period' };
   }
-  if (savingsRatePercent < 10) {
-    return { tone: 'neutral', statusLabel: 'Saving a little, aim for 20%' };
+  const goalLabel = `${targetPercent}%`;
+  // "A little" band scales with the goal so a modest fraction still reads as low.
+  const lowThreshold = Math.max(1, targetPercent / 2);
+  if (savingsRatePercent < lowThreshold) {
+    return { tone: 'neutral', statusLabel: `Saving a little, aim for ${goalLabel}` };
   }
-  if (savingsRatePercent < 20) {
-    return { tone: 'positive', statusLabel: 'Solid progress toward a 20% goal' };
+  if (savingsRatePercent < targetPercent) {
+    return { tone: 'positive', statusLabel: `Solid progress toward a ${goalLabel} goal` };
   }
-  return { tone: 'positive', statusLabel: 'Strong, at or above the 20% target' };
+  return { tone: 'positive', statusLabel: `Strong, at or above the ${goalLabel} target` };
 }
 
 /**
@@ -126,10 +135,12 @@ function classifySavingsRate(
  * surfaces `hasIncome` so callers can render "N/A" instead of a misleading 0%.
  *
  * @param summary - Output of {@link buildSavingsRateDashboardSummary}.
+ * @param targetPercent - The savings-rate goal to classify against (default 20).
  * @returns A presentation-ready, side-effect-free card model.
  */
 export function buildSavingsRateCardModel(
   summary: SavingsRateDashboardSummary,
+  targetPercent: number = DEFAULT_SAVINGS_TARGET_PERCENT,
 ): SavingsRateCardModel {
   const current = summary.current;
   const prior = summary.prior;
@@ -155,7 +166,7 @@ export function buildSavingsRateCardModel(
         ? 'up'
         : 'down';
 
-  const { tone, statusLabel } = classifySavingsRate(hasIncome, savingsRatePercent);
+  const { tone, statusLabel } = classifySavingsRate(hasIncome, savingsRatePercent, targetPercent);
 
   return {
     hasIncome,
@@ -168,5 +179,7 @@ export function buildSavingsRateCardModel(
     trend,
     tone,
     statusLabel,
+    targetPercent,
+    meetsTarget: hasIncome && savingsRatePercent >= targetPercent,
   };
 }
