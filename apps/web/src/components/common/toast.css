@@ -37,6 +37,24 @@
   animation: slideInRight var(--duration-normal, 250ms) var(--easing-decelerate, ease-out) both;
 }
 
+/* --- Exit animation (reduced-motion-safe; see media queries below) --- */
+
+@keyframes toastExit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+.toast--exiting {
+  animation: toastExit 200ms var(--easing-accelerate, ease-in) both;
+  pointer-events: none;
+}
+
 .toast__icon {
   flex-shrink: 0;
   display: flex;
@@ -72,6 +90,30 @@
   cursor: pointer;
   font-size: var(--font-size-lg, 1.125rem);
   line-height: 1;
+}
+
+/* --- Inline action button ------------------------------------------- */
+
+.toast__action {
+  flex-shrink: 0;
+  align-self: center;
+  padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm, 4px);
+  background: none;
+  color: var(--semantic-text-primary);
+  cursor: pointer;
+  font-size: var(--type-scale-label-font-size, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.toast__action:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.toast__action:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
 }
 
 .toast__dismiss:hover {
@@ -121,12 +163,14 @@
 /* --- Reduced motion -------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .toast {
+  .toast,
+  .toast--exiting {
     animation: none;
   }
 }
 
-html[data-reduced-motion='true'] .toast {
+html[data-reduced-motion='true'] .toast,
+html[data-reduced-motion='true'] .toast--exiting {
   animation: none;
   transition: none;
 }

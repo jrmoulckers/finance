@@ -283,32 +283,68 @@ export function getFirstFocusable(container: HTMLElement): HTMLElement | null {
 /**
  * Announce a message to screen readers via a visually-hidden live region.
  *
+ * This is the **canonical announcer** for the web app. All dynamic status
+ * announcements (sync status, balance updates, toasts, retry progress, …)
+ * should route through `announce()` — directly, via the `useAnnouncer`
+ * hook, or via the Toast system — rather than mounting their own ad-hoc
+ * `aria-live` / `role="status"` nodes. Using a single pair of persistent
+ * regions keeps announcement ordering predictable and prevents multiple
+ * live regions from talking over each other (WCAG SC 4.1.3).
+ *
  * Uses two dedicated live regions (one polite, one assertive) to avoid
  * screen reader caching issues when toggling aria-live on a single element.
  */
 const liveRegions: Record<string, HTMLElement> = {};
 
+/** Visually-hidden styling shared with the `.sr-only` / `VisuallyHidden` technique. */
+const VISUALLY_HIDDEN_STYLE: Partial<CSSStyleDeclaration> = {
+  position: 'absolute',
+  width: '1px',
+  height: '1px',
+  padding: '0',
+  margin: '-1px',
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  border: '0',
+};
+
+/**
+ * Ensure the canonical polite + assertive live regions exist in the DOM.
+ *
+ * Idempotent: safe to call on every mount. Creating the (empty) regions
+ * ahead of time is what lets assistive technology reliably announce text
+ * that is written into them later — a live region must generally exist
+ * before content is injected.
+ *
+ * @returns The live region element for the requested politeness.
+ */
+export function ensureLiveRegion(
+  politeness: 'polite' | 'assertive' = 'polite',
+): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  const existing = liveRegions[politeness];
+  if (existing && existing.isConnected) return existing;
+
+  const el = document.createElement('div');
+  el.setAttribute('aria-live', politeness);
+  el.setAttribute('aria-atomic', 'true');
+  el.setAttribute('data-announcer', politeness);
+  Object.assign(el.style, VISUALLY_HIDDEN_STYLE);
+  document.body.appendChild(el);
+  liveRegions[politeness] = el;
+  return el;
+}
+
+/** Ensure both canonical live regions exist. Call once when a provider mounts. */
+export function ensureLiveRegions(): void {
+  ensureLiveRegion('polite');
+  ensureLiveRegion('assertive');
+}
+
 export function announce(message: string, politeness: 'polite' | 'assertive' = 'polite'): void {
-  if (!liveRegions[politeness]) {
-    const el = document.createElement('div');
-    el.setAttribute('aria-live', politeness);
-    el.setAttribute('aria-atomic', 'true');
-    el.setAttribute('role', politeness === 'assertive' ? 'alert' : 'status');
-    Object.assign(el.style, {
-      position: 'absolute',
-      width: '1px',
-      height: '1px',
-      padding: '0',
-      margin: '-1px',
-      overflow: 'hidden',
-      clip: 'rect(0, 0, 0, 0)',
-      whiteSpace: 'nowrap',
-      border: '0',
-    });
-    document.body.appendChild(el);
-    liveRegions[politeness] = el;
-  }
-  const region = liveRegions[politeness];
+  const region = ensureLiveRegion(politeness);
+  if (!region) return;
   region.textContent = '';
   requestAnimationFrame(() => {
     region.textContent = message;

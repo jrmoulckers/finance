@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ErrorBanner } from './ErrorBanner';
@@ -100,5 +100,67 @@ describe('ErrorBanner', () => {
 
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Dismiss error' })).toBeInTheDocument();
+  });
+
+  it('shows a busy state and disables the control while an async retry is in flight', async () => {
+    let resolveRetry: (() => void) | undefined;
+    const onRetry = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRetry = resolve;
+        }),
+    );
+
+    render(<ErrorBanner message="Network error" onRetry={onRetry} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    const busyButton = await screen.findByRole('button', { name: 'Retrying…' });
+    expect(busyButton).toBeDisabled();
+    expect(busyButton).toHaveAttribute('aria-busy', 'true');
+
+    resolveRetry?.();
+
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: 'Retry' });
+      expect(button).not.toBeDisabled();
+      expect(button).toHaveAttribute('aria-busy', 'false');
+    });
+  });
+
+  it('does not fire onRetry again while a retry is already pending', async () => {
+    let resolveRetry: (() => void) | undefined;
+    const onRetry = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRetry = resolve;
+        }),
+    );
+
+    render(<ErrorBanner message="Network error" onRetry={onRetry} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await screen.findByRole('button', { name: 'Retrying…' });
+    // A disabled button won't dispatch clicks, but guard the handler regardless.
+    fireEvent.click(screen.getByRole('button', { name: 'Retrying…' }));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    resolveRetry?.();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled());
+  });
+
+  it('recovers the retry control when a retry rejects', async () => {
+    const onRetry = vi.fn(() => Promise.reject(new Error('still failing')));
+
+    render(<ErrorBanner message="Network error" onRetry={onRetry} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: 'Retry' });
+      expect(button).toBeEnabled();
+    });
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });
