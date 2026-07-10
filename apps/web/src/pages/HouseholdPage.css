@@ -1268,7 +1268,7 @@
   margin-top: var(--spacing-4);
   padding: var(--spacing-3);
   background: var(--color-blue-50, #eff6ff);
-  border-left: 3px solid var(--semantic-interactive-default);
+  border: 1px solid var(--semantic-interactive-default);
   border-radius: var(--border-radius-md);
   font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-text-secondary);

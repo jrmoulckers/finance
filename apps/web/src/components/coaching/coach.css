@@ -48,17 +48,32 @@
 
 .coach-pill--critical,
 .coach-alert--critical {
-  border-left: 3px solid var(--semantic-status-negative);
+  border: 1px solid var(--semantic-status-negative);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-negative) 8%,
+    var(--semantic-background-secondary)
+  );
 }
 
 .coach-pill--warning,
 .coach-alert--warning {
-  border-left: 3px solid var(--semantic-status-warning);
+  border: 1px solid var(--semantic-status-warning);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-warning) 8%,
+    var(--semantic-background-secondary)
+  );
 }
 
 .coach-pill--info,
 .coach-alert--info {
-  border-left: 3px solid var(--semantic-status-info);
+  border: 1px solid var(--semantic-status-info);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-info) 8%,
+    var(--semantic-background-secondary)
+  );
 }
 
 .coach-alert-list,

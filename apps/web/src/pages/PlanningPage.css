@@ -274,15 +274,15 @@
 
 /* Retirement income projection */
 .retirement-income-answer {
-  border-left: 4px solid var(--semantic-interactive-default);
+  border-color: var(--semantic-interactive-default);
 }
 
 .retirement-income-answer--success {
-  border-left-color: var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
 }
 
 .retirement-income-answer--warning {
-  border-left-color: var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
 }
 
 .retirement-income-answer__text {
@@ -851,7 +851,7 @@
 .healthcare-projection__gap {
   padding: var(--spacing-3);
   background: var(--semantic-background-subtle, var(--semantic-background-primary));
-  border-left: 3px solid var(--semantic-status-warning);
+  border: 1px solid var(--semantic-status-warning);
   border-radius: var(--border-radius-sm);
   color: var(--semantic-text-primary);
   margin-bottom: var(--spacing-4);

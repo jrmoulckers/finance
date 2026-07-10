@@ -227,17 +227,17 @@
 
 .bnpl-alert--warning {
   background: var(--semantic-warning-bg, #fef3c7);
-  border-left: 3px solid var(--semantic-warning, #d97706);
+  border: 1px solid var(--semantic-warning, #d97706);
 }
 
 .bnpl-alert--critical {
   background: var(--semantic-negative-bg, #fee2e2);
-  border-left: 3px solid var(--semantic-negative, #dc2626);
+  border: 1px solid var(--semantic-negative, #dc2626);
 }
 
 .bnpl-alert--info {
   background: var(--semantic-info-bg, #dbeafe);
-  border-left: 3px solid var(--semantic-info, #2563eb);
+  border: 1px solid var(--semantic-info, #2563eb);
 }
 
 .bnpl-summary {
@@ -471,17 +471,17 @@
 
 .payment-alert--overdue {
   background: var(--semantic-negative-bg, #fee2e2);
-  border-left: 3px solid var(--semantic-negative, #dc2626);
+  border: 1px solid var(--semantic-negative, #dc2626);
 }
 
 .payment-alert--due_today {
   background: var(--semantic-warning-bg, #fef3c7);
-  border-left: 3px solid var(--semantic-warning, #d97706);
+  border: 1px solid var(--semantic-warning, #d97706);
 }
 
 .payment-alert--due_soon {
   background: var(--semantic-info-bg, #dbeafe);
-  border-left: 3px solid var(--semantic-info, #2563eb);
+  border: 1px solid var(--semantic-info, #2563eb);
 }
 
 .reservation-list {
@@ -612,7 +612,7 @@
 
   .bnpl-alert,
   .payment-alert {
-    border-left-width: 4px;
+    border-width: 2px;
   }
 }
 
@@ -1047,7 +1047,7 @@
   padding: var(--spacing-3, 0.75rem);
   border-radius: var(--radius-md, 0.5rem);
   background: var(--semantic-negative-bg, #fee2e2);
-  border-left: 3px solid var(--semantic-negative, #dc2626);
+  border: 1px solid var(--semantic-negative, #dc2626);
   color: var(--semantic-negative, #b91c1c);
   font-size: var(--font-size-sm, 0.875rem);
   font-weight: var(--font-weight-medium, 500);

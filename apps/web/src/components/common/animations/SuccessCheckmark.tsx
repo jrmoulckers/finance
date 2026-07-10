@@ -36,7 +36,7 @@ export function SuccessCheckmark({
       return;
     }
 
-    // Total animation: circle (600ms) + check (300ms) + scale bounce (400ms)
+    // Total animation: circle (600ms) + check (300ms) + scale settle (400ms)
     const timeout = setTimeout(() => {
       onComplete?.();
     }, 1300);

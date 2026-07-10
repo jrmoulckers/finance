@@ -360,15 +360,30 @@
 }
 
 .insight-card--warning {
-  border-left: 4px solid var(--semantic-status-warning);
+  border: 1px solid var(--semantic-status-warning);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-warning) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .insight-card--success {
-  border-left: 4px solid var(--semantic-status-positive);
+  border: 1px solid var(--semantic-status-positive);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-positive) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .insight-card--info {
-  border-left: 4px solid var(--semantic-status-info);
+  border: 1px solid var(--semantic-status-info);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-info) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .wealth-digest__empty-copy {

@@ -72,7 +72,7 @@ export interface ReceiptAttachmentRef {
   readonly sizeBytes: number;
   /** Deterministic storage key (built from template literals). */
   readonly storageKey: string;
-  /** Accessible description for the `<img alt>` / control label. */
+  /** Accessible description used as the image alt text or control label. */
   readonly altText: string;
 }
 

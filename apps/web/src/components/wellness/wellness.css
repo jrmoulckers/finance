@@ -240,19 +240,35 @@
 }
 
 .wellness-alert--positive {
-  border-left: 4px solid var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-positive) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .wellness-alert--moderate {
-  border-left: 4px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-warning) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .wellness-alert--high {
-  border-left: 4px solid #f97316;
+  border-color: #f97316;
+  background: color-mix(in oklab, #f97316 7%, var(--semantic-background-elevated));
 }
 
 .wellness-alert--severe {
-  border-left: 4px solid var(--semantic-status-negative);
+  border-color: var(--semantic-status-negative);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-negative) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .wellness-pattern {

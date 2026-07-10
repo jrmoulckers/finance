@@ -522,15 +522,15 @@
 }
 
 .insights-recommendation--warning {
-  border-left: 3px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
 }
 
 .insights-recommendation--success {
-  border-left: 3px solid var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
 }
 
 .insights-recommendation--info {
-  border-left: 3px solid var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
 }
 
 .insights-recommendation__icon {

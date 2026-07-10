@@ -275,12 +275,22 @@
 }
 
 .alignment-alert--warning {
-  border-left: 4px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-warning) 8%,
+    var(--semantic-background-secondary)
+  );
 }
 
 .alignment-alert--gentle,
 .alignment-alert--positive {
-  border-left: 4px solid var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-info) 8%,
+    var(--semantic-background-secondary)
+  );
 }
 
 .alignment-alert__body {

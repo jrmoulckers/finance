@@ -95,20 +95,40 @@
 }
 
 .recommendation-card--critical {
-  border-left: 4px solid var(--semantic-status-negative);
+  border: 1px solid var(--semantic-status-negative);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-negative) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .recommendation-card--high {
-  border-left: 4px solid
+  border: 1px solid
     color-mix(in srgb, var(--semantic-status-negative) 55%, var(--semantic-status-warning) 45%);
+  background: color-mix(
+    in oklab,
+    color-mix(in srgb, var(--semantic-status-negative) 55%, var(--semantic-status-warning) 45%) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .recommendation-card--medium {
-  border-left: 4px solid var(--semantic-status-warning);
+  border: 1px solid var(--semantic-status-warning);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-warning) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .recommendation-card--low {
-  border-left: 4px solid var(--semantic-status-positive);
+  border: 1px solid var(--semantic-status-positive);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-positive) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .recommendation-card__priority-group,

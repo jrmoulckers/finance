@@ -129,8 +129,10 @@
 .credit-building__disclaimer {
   font-size: 0.85rem;
   color: var(--semantic-text-secondary, #475569);
-  border-inline-start: 3px solid var(--semantic-border-default, #d0d7de);
-  padding-inline-start: 0.75rem;
+  border: 1px solid var(--semantic-border-default, #d0d7de);
+  border-radius: var(--border-radius-md, 0.5rem);
+  background: var(--semantic-background-subtle, transparent);
+  padding: 0.5rem 0.75rem;
   margin: 0;
 }
 
