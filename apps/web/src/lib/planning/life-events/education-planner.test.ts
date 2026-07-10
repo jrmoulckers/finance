@@ -265,4 +265,37 @@ describe('analyzeEducationFund', () => {
     expect(result.fundingGapCents).toBeGreaterThanOrEqual(0);
     expect(result.requiredMonthlyContributionCents).toBeGreaterThan(0);
   });
+
+  it('reports a non-zero surplus for an overfunded plan (#3484)', () => {
+    // Massively overfund: a huge balance and contribution guarantee the
+    // projected balance exceeds the projected cost.
+    const result = analyzeEducationFund({
+      ...baseParams,
+      currentBalanceCents: 50_000_000, // $500,000
+      monthlyContributionCents: 200_000, // $2,000/mo
+    });
+
+    expect(result.fundingGapCents).toBe(0);
+    // Surplus must reflect the actual overage, not $0.00.
+    expect(result.surplusCents).toBeGreaterThan(0);
+    expect(result.surplusCents).toBe(result.projectedBalanceCents - result.totalProjectedCostCents);
+  });
+
+  it('reports zero surplus and a positive gap when underfunded (#3484)', () => {
+    const result = analyzeEducationFund({
+      ...baseParams,
+      currentBalanceCents: 0,
+      monthlyContributionCents: 0,
+    });
+
+    expect(result.fundingGapCents).toBeGreaterThan(0);
+    expect(result.surplusCents).toBe(0);
+  });
+
+  it('never reports both a surplus and a gap simultaneously (#3484)', () => {
+    for (const currentBalanceCents of [0, 2_000_000, 50_000_000]) {
+      const result = analyzeEducationFund({ ...baseParams, currentBalanceCents });
+      expect(Math.min(result.surplusCents, result.fundingGapCents)).toBe(0);
+    }
+  });
 });

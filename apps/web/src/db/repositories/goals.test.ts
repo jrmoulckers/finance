@@ -11,6 +11,7 @@ import {
   getActiveGoals,
   getAllGoals,
   getGoalById,
+  getGoalProgressContributions,
   reorderGoals,
   updateGoal,
   type CreateGoalInput,
@@ -894,6 +895,59 @@ describe('goals repository', () => {
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).not.toContain("id = 'goal-1'");
+    });
+  });
+
+  describe('getGoalProgressContributions', () => {
+    it('maps rows and computes a cumulative running total (#3381)', () => {
+      mockQuery.mockReturnValue({
+        columns: [],
+        rows: [
+          { amount: 10000, contributed_at: '2024-01-01T00:00:00Z' },
+          { amount: 25000, contributed_at: '2024-02-01T00:00:00Z' },
+          { amount: 15000, contributed_at: '2024-03-01T00:00:00Z' },
+        ],
+      });
+
+      const contributions = getGoalProgressContributions(mockDb, 'goal-1');
+
+      expect(contributions).toEqual([
+        { date: '2024-01-01T00:00:00Z', amountCents: 10000, runningTotalCents: 10000 },
+        { date: '2024-02-01T00:00:00Z', amountCents: 25000, runningTotalCents: 35000 },
+        { date: '2024-03-01T00:00:00Z', amountCents: 15000, runningTotalCents: 50000 },
+      ]);
+    });
+
+    it('queries oldest-first, scoped to the goal and non-deleted rows', () => {
+      mockQuery.mockReturnValue({ columns: [], rows: [] });
+
+      getGoalProgressContributions(mockDb, 'goal-42');
+
+      const [, sql, params] = mockQuery.mock.calls[0];
+      expect(sql).toContain('FROM goal_progress_contribution');
+      expect(sql).toContain('goal_id = ?');
+      expect(sql).toContain('deleted_at IS NULL');
+      expect(sql).toContain('ORDER BY contributed_at ASC');
+      expect(params).toEqual(['goal-42']);
+    });
+
+    it('handles a withdrawal (negative amount) in the running total', () => {
+      mockQuery.mockReturnValue({
+        columns: [],
+        rows: [
+          { amount: 50000, contributed_at: '2024-01-01T00:00:00Z' },
+          { amount: -20000, contributed_at: '2024-02-01T00:00:00Z' },
+        ],
+      });
+
+      const contributions = getGoalProgressContributions(mockDb, 'goal-1');
+
+      expect(contributions[1].runningTotalCents).toBe(30000);
+    });
+
+    it('returns an empty array when there is no history', () => {
+      mockQuery.mockReturnValue({ columns: [], rows: [] });
+      expect(getGoalProgressContributions(mockDb, 'goal-1')).toEqual([]);
     });
   });
 });

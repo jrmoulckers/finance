@@ -76,6 +76,16 @@ export interface GoalContributionInput {
   note?: string | null;
 }
 
+/** A single recorded goal-progress contribution, oldest-first friendly. */
+export interface GoalContributionRecord {
+  /** ISO-8601 timestamp the contribution was recorded. */
+  readonly date: string;
+  /** Signed contribution amount in cents (negative for withdrawals). */
+  readonly amountCents: number;
+  /** Cumulative saved amount in cents after this contribution. */
+  readonly runningTotalCents: number;
+}
+
 function mapGoal(row: Row): Goal {
   return {
     id: requireString(row.id, 'goal.id'),
@@ -391,4 +401,40 @@ export function getCompletedGoals(db: SqliteDb): Goal[] {
     `${GOAL_BASE_QUERY} AND status = ? ORDER BY sort_order ASC, updated_at DESC, name ASC`,
     ['COMPLETED'],
   ).rows.map(mapGoal);
+}
+
+/**
+ * Return a goal's real contribution history, oldest first, with a cumulative
+ * running total.
+ *
+ * These are the actual rows written by {@link contributeToGoal} into
+ * `goal_progress_contribution`. Consumers use the timestamps and per-entry
+ * amounts to compute a genuine monthly pace and projected completion date,
+ * rather than fabricating a single lump-sum contribution from the goal's
+ * current balance (#3381).
+ */
+export function getGoalProgressContributions(
+  db: SqliteDb,
+  goalId: SyncId,
+): GoalContributionRecord[] {
+  const rows = query<Row>(
+    db,
+    `SELECT amount, contributed_at
+       FROM goal_progress_contribution
+      WHERE goal_id = ?
+        AND deleted_at IS NULL
+      ORDER BY contributed_at ASC, created_at ASC`,
+    [goalId],
+  ).rows;
+
+  let runningTotalCents = 0;
+  return rows.map((row) => {
+    const amountCents = requireNumber(row.amount, 'goal_progress_contribution.amount');
+    runningTotalCents += amountCents;
+    return {
+      date: requireString(row.contributed_at, 'goal_progress_contribution.contributed_at'),
+      amountCents,
+      runningTotalCents,
+    };
+  });
 }

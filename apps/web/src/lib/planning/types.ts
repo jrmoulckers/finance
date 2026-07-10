@@ -181,6 +181,15 @@ export interface LinkedGoal {
   readonly projectedCompletionDate: string | null;
   /** Monthly contribution pace in cents (based on recent history). */
   readonly monthlyPaceCents: number;
+  /**
+   * Whether there is enough real contribution history (at least two dated
+   * contributions) to compute a trustworthy pace and projection. When `false`,
+   * {@link monthlyPaceCents} is 0 and {@link projectedCompletionDate} is `null`
+   * (unless the goal is already complete), so the UI can say "not enough
+   * history" instead of showing a projection fabricated from a single lump
+   * sum (#3381).
+   */
+  readonly hasSufficientHistory: boolean;
   /** Contribution history entries. */
   readonly contributions: readonly GoalContribution[];
   /** Milestones with completion status. */

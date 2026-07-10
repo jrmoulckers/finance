@@ -116,6 +116,9 @@ jobs:
       - name: Prettier
         run: npx prettier --check .
 
+      - name: Validate financial-terminology glossary
+        run: node scripts/i18n/validate-glossary.js
+
   pr-title:
     name: Semantic PR Title
     needs: changes

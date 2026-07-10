@@ -111,6 +111,13 @@ export interface EducationFundResult {
   readonly projectedBalanceCents: number;
   /** Funding gap (cost - projected balance), 0 if fully funded. */
   readonly fundingGapCents: number;
+  /**
+   * Surplus (projected balance - cost) in cents when the plan is *overfunded*,
+   * 0 otherwise. This is the mirror of {@link fundingGapCents}: at most one of
+   * the two is non-zero. Surfaced so an overfunded 529 shows how much it is
+   * ahead instead of a misleading $0.00 (#3484).
+   */
+  readonly surplusCents: number;
   /** Funding coverage ratio in basis points (balance / cost × 10000). */
   readonly coverageRatioBps: number;
   /** Monthly contribution needed to fully fund, in cents. */

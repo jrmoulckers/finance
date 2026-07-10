@@ -17,6 +17,8 @@
 import { useMemo } from 'react';
 import { useGoals } from './useGoals';
 import { useAccounts } from './useAccounts';
+import { useDatabase } from '../db/DatabaseProvider';
+import { getGoalProgressContributions } from '../db/repositories/goals';
 import { buildLinkedGoal, type LinkedGoal, type GoalContribution } from '../lib/planning';
 
 // ---------------------------------------------------------------------------
@@ -41,6 +43,7 @@ export interface UseLinkedGoalsResult {
 
 /** Load savings goals with linked-account progress tracking. */
 export function useLinkedGoals(): UseLinkedGoalsResult {
+  const db = useDatabase();
   const { goals, loading: goalsLoading, error: goalsError, refresh: refreshGoals } = useGoals();
   const { accounts, loading: accountsLoading, refresh: refreshAccounts } = useAccounts();
 
@@ -51,15 +54,16 @@ export function useLinkedGoals(): UseLinkedGoalsResult {
         ? (accounts.find((a) => a.id === goal.accountId) ?? null)
         : null;
 
-      // Derive contribution history from goal progress (simplified)
-      // In production, this would come from transaction history
-      const contributions: GoalContribution[] = [];
-      if (goal.currentAmount.amount > 0) {
-        contributions.push({
-          date: goal.createdAt,
-          amountCents: goal.currentAmount.amount,
-          runningTotalCents: goal.currentAmount.amount,
-        });
+      // Use the goal's real, dated contribution history from
+      // `goal_progress_contribution` so pace and projection reflect how the
+      // balance actually accumulated over time — not a single lump sum synthesised
+      // from the current balance (#3381). buildLinkedGoal treats fewer than two
+      // contributions as insufficient history.
+      let contributions: GoalContribution[];
+      try {
+        contributions = getGoalProgressContributions(db, goal.id);
+      } catch {
+        contributions = [];
       }
 
       return buildLinkedGoal(
@@ -75,7 +79,7 @@ export function useLinkedGoals(): UseLinkedGoalsResult {
         contributions,
       );
     });
-  }, [goals, accounts]);
+  }, [db, goals, accounts]);
 
   const refresh = () => {
     refreshGoals();

@@ -320,6 +320,48 @@ describe('AccountsPage', () => {
     expect(screen.queryByText('$22,310.79')).not.toBeInTheDocument();
   });
 
+  it('excludes archived accounts from the net-worth total but still lists them (#3469)', () => {
+    // Same active accounts as the $20,964.81 scenario, plus a large archived
+    // savings account. The /net-worth page skips archived accounts, so the
+    // Accounts total must too — otherwise the two pages disagree.
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        makeMockAccount({ id: 'a-checking', name: 'Checking', type: 'CHECKING', balance: 956405 }),
+        makeMockAccount({ id: 'a-savings', name: 'Savings', type: 'SAVINGS', balance: 1200000 }),
+        makeMockAccount({ id: 'a-cash', name: 'Cash', type: 'CASH', balance: 7375 }),
+        makeMockAccount({ id: 'a-card', name: 'Credit Card', type: 'CREDIT_CARD', balance: 67299 }),
+        makeMockAccount({
+          id: 'a-archived',
+          name: 'Old Savings',
+          type: 'SAVINGS',
+          balance: 5000000,
+          isArchived: true,
+        }),
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+
+    render(
+      <PrivacyModeProvider initialValue={false}>
+        <MemoryRouter>
+          <AccountsPage />
+        </MemoryRouter>
+      </PrivacyModeProvider>,
+    );
+
+    // Total still nets to $20,964.81 — the $50,000 archived account is excluded.
+    expect(screen.getAllByText('$20,964.81').length).toBeGreaterThanOrEqual(1);
+    // The figure that would include the archived account must never appear.
+    expect(screen.queryByText('$70,964.81')).not.toBeInTheDocument();
+    // ...but the archived account is still shown in the list.
+    expect(screen.getByText('Old Savings')).toBeInTheDocument();
+  });
+
   it('shows multi-currency indicator when accounts have different currencies', async () => {
     mockedUseAccounts.mockReturnValue({
       accounts: [
