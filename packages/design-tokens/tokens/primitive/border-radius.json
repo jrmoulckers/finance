@@ -1,10 +1,13 @@
 {
   "borderRadius": {
+    "$description": "Corner-radius scale from square (none) to pill (full). 2xl/3xl support larger card and bottom-sheet surfaces.",
     "none": { "$value": "0px", "$type": "dimension" },
     "sm": { "$value": "4px", "$type": "dimension" },
     "md": { "$value": "8px", "$type": "dimension" },
     "lg": { "$value": "12px", "$type": "dimension" },
     "xl": { "$value": "16px", "$type": "dimension" },
+    "2xl": { "$value": "24px", "$type": "dimension" },
+    "3xl": { "$value": "32px", "$type": "dimension" },
     "full": { "$value": "9999px", "$type": "dimension" }
   }
 }

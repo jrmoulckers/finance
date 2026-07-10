@@ -1,0 +1,22 @@
+{
+  "$description": "Purpose-mapped interaction/state tokens shared across themes. Opacity levels for disabled controls and scrims map to the primitive opacity scale.",
+  "state": {
+    "disabled": {
+      "$value": "{opacity.40}",
+      "$type": "number",
+      "$description": "Opacity applied to disabled controls"
+    }
+  },
+  "overlay": {
+    "scrim": {
+      "$value": "{opacity.60}",
+      "$type": "number",
+      "$description": "Backdrop darkness behind modals/drawers"
+    },
+    "hover": {
+      "$value": "{opacity.5}",
+      "$type": "number",
+      "$description": "Hover wash applied over interactive surfaces"
+    }
+  }
+}

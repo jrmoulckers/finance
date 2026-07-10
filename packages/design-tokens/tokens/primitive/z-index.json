@@ -1,0 +1,50 @@
+{
+  "zIndex": {
+    "$description": "Stacking-order layering scale. Ordered integers with generous gaps so new layers can be inserted between existing ones without renumbering. Consumers should reference these instead of hardcoding z-index per platform to avoid overlap bugs (e.g. a toast under a modal, a tooltip clipped by a sticky header).",
+    "hide": {
+      "$value": -1,
+      "$type": "number",
+      "$description": "Send an element behind the base layer"
+    },
+    "base": {
+      "$value": 0,
+      "$type": "number",
+      "$description": "Default in-flow content"
+    },
+    "dropdown": {
+      "$value": 1000,
+      "$type": "number",
+      "$description": "Dropdown/select menus and comboboxes"
+    },
+    "sticky": {
+      "$value": 1100,
+      "$type": "number",
+      "$description": "Sticky headers, toolbars, and pinned rows"
+    },
+    "overlay": {
+      "$value": 1300,
+      "$type": "number",
+      "$description": "Full-screen scrim/backdrop behind modal surfaces"
+    },
+    "modal": {
+      "$value": 1400,
+      "$type": "number",
+      "$description": "Modal dialogs and drawers/sheets"
+    },
+    "popover": {
+      "$value": 1500,
+      "$type": "number",
+      "$description": "Popovers and context menus above modals"
+    },
+    "toast": {
+      "$value": 1600,
+      "$type": "number",
+      "$description": "Toast/snackbar notifications"
+    },
+    "tooltip": {
+      "$value": 1700,
+      "$type": "number",
+      "$description": "Tooltips — always on top"
+    }
+  }
+}

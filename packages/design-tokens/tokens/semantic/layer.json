@@ -1,0 +1,45 @@
+{
+  "$description": "Purpose-mapped stacking layers shared across themes. Each maps to a step in the primitive zIndex scale so consumers reference intent (layer.modal) rather than raw numbers.",
+  "layer": {
+    "base": {
+      "$value": "{zIndex.base}",
+      "$type": "number",
+      "$description": "Default in-flow content"
+    },
+    "dropdown": {
+      "$value": "{zIndex.dropdown}",
+      "$type": "number",
+      "$description": "Dropdown/select menus"
+    },
+    "sticky": {
+      "$value": "{zIndex.sticky}",
+      "$type": "number",
+      "$description": "Sticky headers and pinned rows"
+    },
+    "overlay": {
+      "$value": "{zIndex.overlay}",
+      "$type": "number",
+      "$description": "Modal scrim/backdrop"
+    },
+    "modal": {
+      "$value": "{zIndex.modal}",
+      "$type": "number",
+      "$description": "Modal dialogs and drawers"
+    },
+    "popover": {
+      "$value": "{zIndex.popover}",
+      "$type": "number",
+      "$description": "Popovers and context menus"
+    },
+    "toast": {
+      "$value": "{zIndex.toast}",
+      "$type": "number",
+      "$description": "Toast/snackbar notifications"
+    },
+    "tooltip": {
+      "$value": "{zIndex.tooltip}",
+      "$type": "number",
+      "$description": "Tooltips — topmost layer"
+    }
+  }
+}
