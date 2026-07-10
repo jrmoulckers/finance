@@ -6,6 +6,7 @@ import type { TimePeriod, ViewType } from '../components/charts';
 import { ChartEmptyState } from '../components/charts/ChartEmptyState';
 import { groupTopNCategories } from '../components/charts/chart-palette';
 import { SpendingInsightCard } from '../components/dashboard/SpendingInsightCard';
+import { MultiCurrencyTotals } from '../components/dashboard/CurrencyDisplay';
 import { AccountPurposeFilterControl } from '../components/accounts';
 import { RecentTransactionsCard } from '../components/transactions';
 import {
@@ -712,6 +713,39 @@ export const DashboardPage: React.FC = () => {
   );
   const netWorthRollup = useDisplayCurrencyRollup(netWorthDisplayAmounts);
   const displayNetWorth = netWorthRollup.rollup.totalCents;
+  // #3324: feed the multi-currency breakdown real per-account balances (in
+  // their own currency) instead of sample props. Only surface it for users who
+  // actually hold more than one currency so single-currency dashboards stay
+  // uncluttered.
+  const multiCurrencyItems = useMemo(
+    () =>
+      filteredAccounts.map((account) => ({
+        amountCents: account.currentBalance.amount,
+        currency: account.currency,
+      })),
+    [filteredAccounts],
+  );
+  const heldCurrencyCodes = useMemo(
+    () => new Set(filteredAccounts.map((account) => account.currency.code)),
+    [filteredAccounts],
+  );
+  const hasMultipleCurrencies = heldCurrencyCodes.size > 1;
+  // #3287: disclose when the converted net-worth total leans on stale rates or
+  // omits currencies we could not convert, so the headline figure stays honest.
+  const netWorthDisclosure = useMemo(() => {
+    const notes: string[] = [];
+    if (netWorthRollup.unconvertedCurrencies.length > 0) {
+      notes.push(
+        'Excludes ' +
+          netWorthRollup.unconvertedCurrencies.join(', ') +
+          ' (no exchange rate available).',
+      );
+    }
+    if (netWorthRollup.hasStaleRates) {
+      notes.push('Converted using exchange rates that may be out of date.');
+    }
+    return notes;
+  }, [netWorthRollup.unconvertedCurrencies, netWorthRollup.hasStaleRates]);
   const debtSummary = useMemo(
     () =>
       filteredAccounts.reduce(
@@ -954,6 +988,18 @@ export const DashboardPage: React.FC = () => {
                           you pay them down and build savings.
                         </p>
                       ) : null}
+                      {netWorthDisclosure.length > 0 ? (
+                        <p
+                          className="dashboard-card-disclosure"
+                          role="note"
+                          style={{
+                            marginTop: 'var(--spacing-1)',
+                            color: 'var(--semantic-text-secondary)',
+                          }}
+                        >
+                          {netWorthDisclosure.join(' ')}
+                        </p>
+                      ) : null}
                     </article>
                   ) : null}
                   {visibleWidgetIds.has('monthly-spending') ? (
@@ -1030,6 +1076,11 @@ export const DashboardPage: React.FC = () => {
                   ) : null}
                 </div>
               </section>
+              {hasMultipleCurrencies ? (
+                <section className="page-section" aria-label="Money by currency">
+                  <MultiCurrencyTotals items={multiCurrencyItems} />
+                </section>
+              ) : null}
               {visibleWidgetIds.has('income-vs-expense') ||
               visibleWidgetIds.has('account-summary') ||
               visibleWidgetIds.has('goals-progress') ? (
