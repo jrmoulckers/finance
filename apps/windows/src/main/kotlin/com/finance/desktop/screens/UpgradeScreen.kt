@@ -41,7 +41,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -210,7 +209,7 @@ private fun PlanCard(
             Icon(
                 imageVector = if (isPremium) Icons.Filled.Diamond else Icons.Filled.Star,
                 contentDescription = null,
-                tint = if (isPremium) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (isPremium) FinanceDesktopTheme.status.premium else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(36.dp),
             )
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
@@ -288,7 +287,7 @@ private fun FeatureRow(
                 imageVector = if (status.isGranted) Icons.Filled.CheckCircle
                 else Icons.Filled.Lock,
                 contentDescription = null,
-                tint = if (status.isGranted) Color(0xFF22C55E)
+                tint = if (status.isGranted) FinanceDesktopTheme.status.positive
                 else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp),
             )
@@ -333,7 +332,7 @@ private fun UpgradeDialog(
             Icon(
                 imageVector = Icons.Filled.Diamond,
                 contentDescription = null,
-                tint = Color(0xFFFFD700),
+                tint = FinanceDesktopTheme.status.premium,
                 modifier = Modifier.size(48.dp),
             )
         },

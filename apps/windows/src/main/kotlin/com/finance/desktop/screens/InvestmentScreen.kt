@@ -240,7 +240,7 @@ private fun ChangeIndicator(
     changePercent: String,
     isPositive: Boolean,
 ) {
-    val color = if (isPositive) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+    val color = if (isPositive) FinanceDesktopTheme.status.positive else MaterialTheme.colorScheme.error
     Column {
         Text(
             text = label,
@@ -308,7 +308,7 @@ private fun PerformanceChartCard(
             }
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
             // Canvas chart
-            val lineColor = if (isPositive) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+            val lineColor = if (isPositive) FinanceDesktopTheme.status.positive else MaterialTheme.colorScheme.error
             val fillColor = lineColor.copy(alpha = 0.1f)
 
             val narration = remember(data, selectedRange) {
@@ -502,8 +502,8 @@ private fun HoldingsTableHeader() {
 
 @Composable
 private fun HoldingRow(holding: HoldingUi) {
-    val dayColor = if (holding.isPositive) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
-    val totalColor = if (holding.totalReturn.startsWith("+")) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+    val dayColor = if (holding.isPositive) FinanceDesktopTheme.status.positive else MaterialTheme.colorScheme.error
+    val totalColor = if (holding.totalReturn.startsWith("+")) FinanceDesktopTheme.status.positive else MaterialTheme.colorScheme.error
 
     Card(
         modifier = Modifier

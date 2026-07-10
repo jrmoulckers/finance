@@ -877,7 +877,7 @@ private fun ReportChartSection(chartData: List<ReportChartPoint>) {
                     BarDataPoint(
                         label = point.label,
                         value = point.value,
-                        color = if (point.isIncome) Color(0xFF2E7D32)
+                        color = if (point.isIncome) FinanceDesktopTheme.status.positive
                         else MaterialTheme.colorScheme.error,
                         formattedValue = point.formattedValue,
                     )
@@ -899,7 +899,7 @@ private fun ReportSummaryCards(summary: ReportSummary) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
     ) {
-        SummaryCard("Income", summary.totalIncome, Color(0xFF2E7D32), Modifier.weight(1f))
+        SummaryCard("Income", summary.totalIncome, FinanceDesktopTheme.status.positive, Modifier.weight(1f))
         SummaryCard("Expenses", summary.totalExpenses, MaterialTheme.colorScheme.error, Modifier.weight(1f))
         SummaryCard("Net", summary.netAmount, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
         SummaryCard("Transactions", "${summary.transactionCount}", MaterialTheme.colorScheme.tertiary, Modifier.weight(1f))
@@ -939,7 +939,7 @@ private fun SummaryCard(
 
 @Composable
 private fun ReportDataRow(row: ReportPreviewRow) {
-    val color = if (row.isIncome) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+    val color = if (row.isIncome) FinanceDesktopTheme.status.positive else MaterialTheme.colorScheme.error
     val pct = (row.percentage * 100).toInt()
 
     Card(

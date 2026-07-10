@@ -25,7 +25,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -92,7 +91,7 @@ private fun RecurringItemCard(
     onEdit: (String) -> Unit,
     onToggleNotify: (String, Boolean) -> Unit,
 ) {
-    val amountColor = if (item.isExpense) MaterialTheme.colorScheme.error else Color(0xFF2E7D32)
+    val amountColor = if (item.isExpense) MaterialTheme.colorScheme.error else FinanceDesktopTheme.status.positive
     var notifyEnabled by remember { mutableStateOf(item.notifyDaysBefore > 0) }
 
     Card(modifier = Modifier.fillMaxWidth().semantics { contentDescription = "${item.name}, ${item.amountFormatted}, next on ${item.nextDate}, ${item.frequency}" }) {

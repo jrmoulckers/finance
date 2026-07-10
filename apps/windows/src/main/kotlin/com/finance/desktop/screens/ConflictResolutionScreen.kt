@@ -108,7 +108,7 @@ private fun ConflictListPanel(conflicts: List<SyncConflict>, selectedId: String?
                         colors = CardDefaults.cardColors(containerColor = bg)) {
                         Row(Modifier.fillMaxWidth().padding(FinanceDesktopTheme.spacing.md), verticalAlignment = Alignment.CenterVertically) {
                             Icon(if (conflict.resolution != null) Icons.Filled.CheckCircle else Icons.Filled.Warning, null,
-                                tint = if (conflict.resolution != null) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                                tint = if (conflict.resolution != null) FinanceDesktopTheme.status.positive else MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(FinanceDesktopTheme.spacing.md))
                             Column(Modifier.weight(1f)) {
                                 Text(conflict.entityName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)

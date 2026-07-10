@@ -42,7 +42,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -420,7 +419,7 @@ private fun DetailChip(label: String, value: String) {
 @Composable
 private fun AccountTransactionRow(txn: Transaction) {
     val isExpense = txn.type == TransactionType.EXPENSE
-    val amountColor = if (isExpense) MaterialTheme.colorScheme.error else Color(0xFF2E7D32)
+    val amountColor = if (isExpense) MaterialTheme.colorScheme.error else FinanceDesktopTheme.status.positive
     val formattedAmount = CurrencyFormatter.format(txn.amount, txn.currency, showSign = true)
     val payee = txn.payee ?: "Unknown"
 

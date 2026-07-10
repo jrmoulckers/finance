@@ -300,7 +300,7 @@ private fun TransactionTypeToggle(
                     Icons.AutoMirrored.Filled.TrendingUp,
                     contentDescription = null,
                     tint = if (selectedType == TransactionType.INCOME)
-                        Color(0xFF2E7D32) else Color.Unspecified,
+                        FinanceDesktopTheme.status.positive else Color.Unspecified,
                     modifier = Modifier.size(16.dp),
                 )
             },

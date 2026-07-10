@@ -102,7 +102,7 @@ fun QuickAddTransactionDialog(
                             Icon(
                                 Icons.AutoMirrored.Filled.TrendingUp,
                                 contentDescription = null,
-                                tint = if (!state.isExpense) Color(0xFF22C55E) else Color.Unspecified,
+                                tint = if (!state.isExpense) FinanceDesktopTheme.status.positive else Color.Unspecified,
                             )
                         },
                         modifier = Modifier.semantics {

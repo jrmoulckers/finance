@@ -48,7 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
@@ -335,7 +334,7 @@ private fun StreakCard(streak: StreakInfo) {
             Icon(
                 imageVector = Icons.Filled.LocalFireDepartment,
                 contentDescription = null,
-                tint = if (streak.isActiveToday) Color(0xFFFF6B35) else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (streak.isActiveToday) FinanceDesktopTheme.status.streak else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(28.dp),
             )
             Spacer(Modifier.width(FinanceDesktopTheme.spacing.md))
@@ -356,7 +355,7 @@ private fun StreakCard(streak: StreakInfo) {
                     text = "${streak.currentStreak}",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (streak.isActiveToday) Color(0xFFFF6B35) else MaterialTheme.colorScheme.onSurface,
+                    color = if (streak.isActiveToday) FinanceDesktopTheme.status.streak else MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = "days",
@@ -500,7 +499,7 @@ private fun RecentUnlockCard(achievement: Achievement) {
             Icon(
                 imageVector = Icons.Filled.Star,
                 contentDescription = null,
-                tint = Color(0xFFFFD700),
+                tint = FinanceDesktopTheme.status.premium,
                 modifier = Modifier.size(20.dp),
             )
         }

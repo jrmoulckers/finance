@@ -314,7 +314,7 @@ private fun BudgetCard(
 ) {
     val healthColor = when (budget.health) {
         BudgetHealth.OVER -> MaterialTheme.colorScheme.error
-        BudgetHealth.WARNING -> Color(0xFFFF9800)
+        BudgetHealth.WARNING -> FinanceDesktopTheme.status.warning
         BudgetHealth.HEALTHY -> MaterialTheme.colorScheme.primary
     }
     val healthLabel = when (budget.health) {

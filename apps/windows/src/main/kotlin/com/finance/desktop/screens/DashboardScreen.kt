@@ -42,7 +42,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -309,7 +308,7 @@ private fun TransactionRow(transaction: Transaction) {
     val amountColor = if (isExpense) {
         MaterialTheme.colorScheme.error
     } else {
-        Color(0xFF2E7D32)
+        FinanceDesktopTheme.status.positive
     }
     val formattedAmount = CurrencyFormatter.format(
         transaction.amount,
@@ -419,7 +418,7 @@ private fun BudgetHealthSection(budgets: List<BudgetStatusUi>) {
 private fun DashboardBudgetCard(budget: BudgetStatusUi, modifier: Modifier = Modifier) {
     val healthColor = when (budget.health) {
         BudgetHealth.OVER -> MaterialTheme.colorScheme.error
-        BudgetHealth.WARNING -> Color(0xFFFF9800)
+        BudgetHealth.WARNING -> FinanceDesktopTheme.status.warning
         BudgetHealth.HEALTHY -> MaterialTheme.colorScheme.primary
     }
     val healthLabel = when (budget.health) {

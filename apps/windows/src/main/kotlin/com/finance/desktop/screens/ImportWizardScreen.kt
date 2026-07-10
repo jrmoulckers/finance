@@ -188,7 +188,7 @@ private fun StepIndicator(currentStep: ImportStep) {
             val isCompleted = index < currentIndex
             val isCurrent = index == currentIndex
             val color = when {
-                isCompleted -> Color(0xFF2E7D32)
+                isCompleted -> FinanceDesktopTheme.status.positive
                 isCurrent -> MaterialTheme.colorScheme.primary
                 else -> MaterialTheme.colorScheme.outlineVariant
             }
@@ -246,7 +246,7 @@ private fun StepIndicator(currentStep: ImportStep) {
                         .height(2.dp)
                         .padding(horizontal = FinanceDesktopTheme.spacing.sm)
                         .background(
-                            if (index < currentIndex) Color(0xFF2E7D32)
+                            if (index < currentIndex) FinanceDesktopTheme.status.positive
                             else MaterialTheme.colorScheme.outlineVariant,
                         ),
                 )
@@ -552,7 +552,7 @@ private fun DuplicateDetectionStep(
                         Icons.Filled.CheckCircle,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = Color(0xFF2E7D32),
+                        tint = FinanceDesktopTheme.status.positive,
                     )
                     Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
                     Text(
@@ -656,14 +656,14 @@ private fun DuplicateRow(
                 shape = RoundedCornerShape(12.dp),
                 color = if (duplicate.shouldSkip)
                     MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
-                else Color(0xFF2E7D32).copy(alpha = 0.12f),
+                else FinanceDesktopTheme.status.positive.copy(alpha = 0.12f),
             ) {
                 Text(
                     text = if (duplicate.shouldSkip) "Skip" else "Import",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = if (duplicate.shouldSkip)
-                        MaterialTheme.colorScheme.error else Color(0xFF2E7D32),
+                        MaterialTheme.colorScheme.error else FinanceDesktopTheme.status.positive,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
@@ -724,7 +724,7 @@ private fun ImportingStep(state: ImportWizardUiState) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    ImportStatChip("Imported", "${progress.importedRows}", Color(0xFF2E7D32))
+                    ImportStatChip("Imported", "${progress.importedRows}", FinanceDesktopTheme.status.positive)
                     ImportStatChip("Skipped", "${progress.skippedRows}", MaterialTheme.colorScheme.tertiary)
                     ImportStatChip("Errors", "${progress.errorRows}", MaterialTheme.colorScheme.error)
                 }
@@ -773,7 +773,7 @@ private fun CompleteStep(
                     imageVector = Icons.Filled.CheckCircle,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = Color(0xFF2E7D32),
+                    tint = FinanceDesktopTheme.status.positive,
                 )
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
                 Text(
@@ -805,7 +805,7 @@ private fun CompleteStep(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
                         ImportStatChip("Total", "${progress.totalRows}", MaterialTheme.colorScheme.onSurface)
-                        ImportStatChip("Imported", "${progress.importedRows}", Color(0xFF2E7D32))
+                        ImportStatChip("Imported", "${progress.importedRows}", FinanceDesktopTheme.status.positive)
                         ImportStatChip("Skipped", "${progress.skippedRows}", MaterialTheme.colorScheme.tertiary)
                     }
                 }

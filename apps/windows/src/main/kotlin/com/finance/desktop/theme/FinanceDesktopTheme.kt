@@ -41,6 +41,8 @@ private val Teal900 = Color(0xFF134E4A)
 // endregion
 
 // region Green
+private val Green400 = Color(0xFF4ADE80)
+private val Green700 = Color(0xFF15803D)
 // endregion
 
 // region Amber
@@ -48,6 +50,16 @@ private val Amber50 = Color(0xFFFFFBEB)
 private val Amber500 = Color(0xFFF59E0B)
 private val Amber600 = Color(0xFFD97706)
 private val Amber700 = Color(0xFFB45309)
+// endregion
+
+// region Orange
+private val Orange400 = Color(0xFFFB923C)
+private val Orange700 = Color(0xFFC2410B)
+// endregion
+
+// region Gold — premium/achievement accent
+private val Gold400 = Color(0xFFFBBF24)
+private val Gold700 = Color(0xFFA16207)
 // endregion
 
 // region Red
@@ -129,6 +141,49 @@ private val DarkColorScheme = darkColorScheme(
     outline = Neutral700,
     outlineVariant = Neutral700,
 )
+
+// =============================================================================
+// Semantic status colors — financial domain (positive/warning/streak/premium)
+//
+// These carry meaning that Material's role palette doesn't express directly
+// (income vs. expense, budget health, streaks, premium). Each has a light and
+// dark variant so the hue adapts the same way the Material roles do — a fixed
+// mid-tone green/amber fails the WCAG 4.5:1 body-text ratio on the near-black
+// dark surface, and amber-as-text fails it on white.
+// =============================================================================
+
+/**
+ * Semantic status colors for the finance domain, paired with the active theme
+ * so each hue stays legible on its background. Access via
+ * [FinanceDesktopTheme.status].
+ */
+@Immutable
+data class FinanceStatusColors(
+    /** Positive amounts, income, "on track" / success states. */
+    val positive: Color,
+    /** Cautionary states — approaching a budget limit, medium confidence. */
+    val warning: Color,
+    /** Active streak / momentum accent (e.g. the streak flame). */
+    val streak: Color,
+    /** Premium / achievement accent (crowns, trophies, upgrade stars). */
+    val premium: Color,
+)
+
+private val LightStatusColors = FinanceStatusColors(
+    positive = Green700,
+    warning = Amber700,
+    streak = Orange700,
+    premium = Gold700,
+)
+
+private val DarkStatusColors = FinanceStatusColors(
+    positive = Green400,
+    warning = Amber500,
+    streak = Orange400,
+    premium = Gold400,
+)
+
+val LocalStatusColors = staticCompositionLocalOf { LightStatusColors }
 
 // =============================================================================
 // Typography — Fluent Design uses Segoe UI (platform default on Windows)
@@ -227,8 +282,12 @@ fun FinanceDesktopTheme(
         standardLight = LightColorScheme,
         standardDark = DarkColorScheme,
     )
+    val statusColors = if (darkTheme) DarkStatusColors else LightStatusColors
 
-    CompositionLocalProvider(LocalSpacing provides Spacing()) {
+    CompositionLocalProvider(
+        LocalSpacing provides Spacing(),
+        LocalStatusColors provides statusColors,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = FinanceTypography,
@@ -245,4 +304,10 @@ object FinanceDesktopTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalSpacing.current
+
+    /** Semantic finance status colors for the active theme. */
+    val status: FinanceStatusColors
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalStatusColors.current
 }
