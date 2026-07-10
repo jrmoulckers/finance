@@ -9,21 +9,10 @@
  */
 
 export type OnboardingStep =
-  | 'comfort'
-  | 'choose'
-  | 'privacy'
-  | 'newcomer'
-  | 'goals'
-  | 'template'
-  | 'complete';
+  'comfort' | 'choose' | 'privacy' | 'newcomer' | 'goals' | 'template' | 'complete';
 
 export type LifeStageId =
-  | 'student'
-  | 'first-job'
-  | 'household'
-  | 'caregiver'
-  | 'freelancer'
-  | 'retiree';
+  'student' | 'first-job' | 'household' | 'caregiver' | 'freelancer' | 'retiree';
 
 export type GlossaryTermId = 'cashFlow' | 'recurringExpense' | 'savingsGoal' | 'budgetVariance';
 

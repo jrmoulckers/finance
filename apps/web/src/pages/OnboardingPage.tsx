@@ -45,11 +45,7 @@ import {
   DEFAULT_FONT_SCALE_INDEX,
   SIMPLE_MODE_FONT_SCALE_INDEX,
 } from './onboarding/comfort';
-import {
-  DEFAULT_GOAL_DRAFT,
-  GLOSSARY_TERMS,
-  LIFE_STAGE_OPTIONS,
-} from './onboarding/content';
+import { DEFAULT_GOAL_DRAFT, GLOSSARY_TERMS, LIFE_STAGE_OPTIONS } from './onboarding/content';
 import {
   calculateMonthlyContribution,
   firstOfCurrentMonthISO,

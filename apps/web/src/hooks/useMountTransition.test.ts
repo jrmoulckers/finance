@@ -8,13 +8,10 @@ import { useMountTransition } from './useMountTransition';
 // Run the double-rAF enter scheduling synchronously so `entering -> entered`
 // is deterministic in tests (the hook's scheduleFrame nests two rAF calls).
 beforeEach(() => {
-  vi.stubGlobal(
-    'requestAnimationFrame',
-    ((callback: FrameRequestCallback) => {
-      callback(0);
-      return 0;
-    }) as typeof requestAnimationFrame,
-  );
+  vi.stubGlobal('requestAnimationFrame', ((callback: FrameRequestCallback) => {
+    callback(0);
+    return 0;
+  }) as typeof requestAnimationFrame);
   vi.stubGlobal('cancelAnimationFrame', (() => {}) as typeof cancelAnimationFrame);
 });
 
@@ -72,13 +69,10 @@ describe('useMountTransition', () => {
   it('keeps content mounted through the exit animation, then unmounts', () => {
     vi.useFakeTimers();
     // Re-stub rAF after enabling fake timers so enter scheduling stays sync.
-    vi.stubGlobal(
-      'requestAnimationFrame',
-      ((callback: FrameRequestCallback) => {
-        callback(0);
-        return 0;
-      }) as typeof requestAnimationFrame,
-    );
+    vi.stubGlobal('requestAnimationFrame', ((callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    }) as typeof requestAnimationFrame);
 
     const { result, rerender } = renderHook(
       ({ isVisible }) => useMountTransition({ isVisible, exitDuration: 200, reducedMotion: false }),

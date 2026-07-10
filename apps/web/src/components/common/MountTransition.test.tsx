@@ -6,13 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MountTransition } from './MountTransition';
 
 beforeEach(() => {
-  vi.stubGlobal(
-    'requestAnimationFrame',
-    ((callback: FrameRequestCallback) => {
-      callback(0);
-      return 0;
-    }) as typeof requestAnimationFrame,
-  );
+  vi.stubGlobal('requestAnimationFrame', ((callback: FrameRequestCallback) => {
+    callback(0);
+    return 0;
+  }) as typeof requestAnimationFrame);
   vi.stubGlobal('cancelAnimationFrame', (() => {}) as typeof cancelAnimationFrame);
 });
 

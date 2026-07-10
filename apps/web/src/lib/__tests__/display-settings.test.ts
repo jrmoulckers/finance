@@ -64,10 +64,7 @@ describe('display-settings', () => {
     });
 
     it('migrates the legacy negativeFormat "color-only" value to "text-label"', () => {
-      localStorage.setItem(
-        DISPLAY_SETTINGS_KEY,
-        JSON.stringify({ negativeFormat: 'color-only' }),
-      );
+      localStorage.setItem(DISPLAY_SETTINGS_KEY, JSON.stringify({ negativeFormat: 'color-only' }));
 
       expect(loadDisplaySettings().negativeFormat).toBe('text-label');
     });

@@ -17,7 +17,12 @@ import type {
   TaxIdStatus,
 } from '../../../lib/onboarding/newcomer-tax-profile';
 
-import { FINANCIAL_LESSONS, INCOME_TYPE_OPTIONS, LIFE_STAGE_OPTIONS, TAX_ID_STATUS_OPTIONS } from '../content';
+import {
+  FINANCIAL_LESSONS,
+  INCOME_TYPE_OPTIONS,
+  LIFE_STAGE_OPTIONS,
+  TAX_ID_STATUS_OPTIONS,
+} from '../content';
 import { TEMPLATE_GUIDANCE_ANCHOR, TEMPLATE_LESSONS_ANCHOR } from '../steps';
 import type { GlossaryTermId, Lesson, LessonChoice, LifeStageId, LifeStageOption } from '../types';
 
@@ -40,7 +45,10 @@ export type NewcomerStepProps = {
   handleIncomeTypeChange: (value: IncomeType) => void;
   newcomerGuidance: ReturnType<typeof getNewcomerGuidance>;
   newcomerExplainerList: Array<(typeof newcomerExplainers)[NewcomerExplainerKey]>;
-  handleOpenExplainer: (key: NewcomerExplainerKey, event: React.MouseEvent<HTMLButtonElement>) => void;
+  handleOpenExplainer: (
+    key: NewcomerExplainerKey,
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
   handleClearNewcomerProfile: () => void;
   completedLessonIds: string[];
   lessonsOptedIn: boolean;
@@ -93,11 +101,7 @@ export const NewcomerStep: React.FC<NewcomerStepProps> = ({
         {stepProgressIndicator}
         {!isAuthenticated && (
           <div className="onboarding__wizard-back-row">
-            <button
-              type="button"
-              className="onboarding__back-button"
-              onClick={handleNewcomerBack}
-            >
+            <button type="button" className="onboarding__back-button" onClick={handleNewcomerBack}>
               <span aria-hidden="true">←</span> Back
             </button>
           </div>
@@ -217,8 +221,8 @@ export const NewcomerStep: React.FC<NewcomerStepProps> = ({
             <fieldset className="onboarding__fieldset">
               <legend className="onboarding__legend">Tax ID status</legend>
               <p className="onboarding__path-description" id="onboarding-tax-id-help">
-                An ITIN is the number some people use to file taxes when they do not have an SSN.
-                We never collect the number itself.
+                An ITIN is the number some people use to file taxes when they do not have an SSN. We
+                never collect the number itself.
               </p>
               <div
                 className="onboarding__choice-grid"
@@ -290,8 +294,8 @@ export const NewcomerStep: React.FC<NewcomerStepProps> = ({
           <div className="onboarding__newcomer-explainers">
             <h3 className="onboarding__section-title">Learn the basics</h3>
             <p className="onboarding__path-description">
-              Open any topic for a short, plain-language explanation. These are educational and
-              not tax advice.
+              Open any topic for a short, plain-language explanation. These are educational and not
+              tax advice.
             </p>
             <div className="onboarding__inline-actions">
               {newcomerExplainerList.map((explainer) => (
@@ -424,8 +428,8 @@ export const NewcomerStep: React.FC<NewcomerStepProps> = ({
           ) : (
             <div className="onboarding__lesson-optin">
               <p className="onboarding__path-description">
-                Lessons are optional. Opt in for three quick checks now, or take them anytime
-                later from the Learn area in the app.
+                Lessons are optional. Opt in for three quick checks now, or take them anytime later
+                from the Learn area in the app.
               </p>
               <div className="onboarding__inline-actions">
                 <button

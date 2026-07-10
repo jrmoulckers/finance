@@ -124,9 +124,7 @@ export const GoalsStep: React.FC<GoalsStepProps> = ({
                 inputMode="decimal"
                 pattern="[0-9]*\.?[0-9]*"
                 value={goalDraft.startingBalance}
-                onChange={(event) =>
-                  handleAmountDraftChange('startingBalance', event.target.value)
-                }
+                onChange={(event) => handleAmountDraftChange('startingBalance', event.target.value)}
               />
             </label>
             <label className="onboarding__field">
