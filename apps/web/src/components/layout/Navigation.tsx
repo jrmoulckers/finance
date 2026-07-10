@@ -410,7 +410,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
         <span className="app-sidebar__logo">Finance</span>
       </div>
 
-      <nav className="app-sidebar__nav" aria-label="Primary">
+      <nav className="app-sidebar__nav" aria-label="Primary" id="primary-navigation" tabIndex={-1}>
         {/* Pinned destinations (Dashboard) */}
         <ul className="sidebar-nav__list" role="list">
           {pinnedItems.map((item) => {

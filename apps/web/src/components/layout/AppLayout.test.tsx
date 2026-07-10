@@ -263,6 +263,19 @@ describe('AppLayout', () => {
     const shortcutsButton = screen.getByRole('button', { name: 'Keyboard shortcuts' });
     expect(shortcutsButton).toBeInTheDocument();
     expect(shortcutsButton).toHaveAttribute('aria-keyshortcuts', 'Shift+/');
+    // The "?" text glyph was replaced with a real keyboard SVG icon (#3619).
+    expect(shortcutsButton.querySelector('svg')).not.toBeNull();
+    expect(shortcutsButton.textContent).not.toContain('?');
+  });
+
+  it('renders a Command palette button with a real icon in the header (#3619)', () => {
+    renderLayout();
+
+    const commandButton = screen.getByRole('button', { name: 'Command palette' });
+    expect(commandButton).toBeInTheDocument();
+    // The "⌘K" text glyph was replaced with a real SVG icon.
+    expect(commandButton.querySelector('svg')).not.toBeNull();
+    expect(commandButton.textContent).not.toContain('⌘K');
   });
 
   it('opens keyboard shortcuts modal when the header button is clicked', () => {

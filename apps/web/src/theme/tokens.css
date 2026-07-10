@@ -65,6 +65,57 @@
 @import './finance-overlay.css';
 
 /*
+ * Focus-ring design tokens (SC 2.4.7 Focus Visible, 2.4.11 Focus Not Obscured,
+ * 2.4.13 Focus Appearance).
+ *
+ * Single source of truth for the keyboard focus indicator so its width, offset,
+ * and color can be tuned per-theme in ONE place instead of being hardcoded
+ * across tokens.css / accessibility.css / component rules (#3609). The default
+ * 2px width + 2px offset satisfy the SC 2.4.13 minimum-area requirement
+ * (a >=2 CSS-px perimeter), and each theme overrides --focus-ring-color to keep
+ * >=3:1 contrast against adjacent surface tokens (#3610). High-contrast bumps
+ * the width to 3px for extra emphasis.
+ *
+ * Consume via the individual parts (recommended, so outline-offset can be set)
+ * or the composed `--focus-ring` shorthand:
+ *   outline: var(--focus-ring-width) solid var(--focus-ring-color);
+ *   outline-offset: var(--focus-ring-offset);
+ */
+:root {
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: var(--semantic-border-focus, #2563eb);
+  --focus-ring: var(--focus-ring-width) solid var(--focus-ring-color);
+}
+
+/* Dark themes: brighten the ring so it clears 3:1 against dark surfaces. */
+[data-theme='dark'],
+[data-theme='dark-oled'] {
+  --focus-ring-color: var(--color-blue-400, #60a5fa);
+}
+
+/* High-contrast: thicker ring + deep-blue color for maximum separation. */
+[data-theme='high-contrast'] {
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 3px;
+  --focus-ring-color: var(--color-blue-800, #1e40af);
+}
+
+/* Auto dark mode (no explicit [data-theme]) mirrors the dark override. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --focus-ring-color: var(--color-blue-400, #60a5fa);
+  }
+}
+
+/* Users requesting more contrast get a thicker ring across all themes. */
+@media (prefers-contrast: more) {
+  :root {
+    --focus-ring-width: 3px;
+  }
+}
+
+/*
  * Auto-switching for prefers-color-scheme / prefers-contrast is intentionally
  * NOT defined here: the shared @jrm/tokens barrel (imported above) owns it via
  * `:root:not([data-theme])` @media blocks. Finance's previous hand-written
@@ -133,9 +184,11 @@ body {
 }
 
 /*
- * Focus styles - visible outline for keyboard navigation (WCAG 2.4.7).
+ * Focus styles - visible outline for keyboard navigation (WCAG 2.4.7, 2.4.13).
+ * Consumes the shared focus-ring tokens defined above so width/offset/color
+ * stay tunable per-theme in one place.
  */
 :focus-visible {
-  outline: 2px solid var(--semantic-border-focus);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }

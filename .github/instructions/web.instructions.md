@@ -323,6 +323,32 @@ once and reused, which is what makes announcements reliable (WCAG SC 4.1.3).
 - Route transitions manage focus via `FocusManager`.
 - Escape closes dialogs and modals.
 
+### Focus Management Contract (SC 2.4.3 Focus Order)
+
+Focus placement is centralized so focus order never regresses. All focus moves
+go through one of three primitives — never ad-hoc `element.focus()` in feature
+code. The contract is:
+
+| Event                    | Focus destination                                                                                                                                                                                                      | Owned by                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| **Route change**         | The main content region (`#main-content`), which receives a programmatic `tabindex="-1"` and is announced ("Navigated to …"). Pages may expose a more specific landmark/heading via `FocusManager`'s `targetSelector`. | `FocusManager` + `moveFocusTo`              |
+| **Dialog / modal open**  | The first meaningful field, or an explicit `initialFocusRef` (e.g. the Cancel button on a destructive `ConfirmDialog`). Focus is trapped inside the panel while open.                                                  | `useFocusTrap({ active, initialFocusRef })` |
+| **Dialog / modal close** | The control that invoked the dialog (the element focused immediately before the trap activated).                                                                                                                       | `useFocusTrap({ restoreFocus: true })`      |
+| **Skip link activation** | The targeted landmark (`#main-content` or `#primary-navigation`), which receives `tabindex="-1"` and focus.                                                                                                            | `SkipToContent` / `SkipLinks`               |
+
+Rules:
+
+- Dialogs/modals **must** use `useFocusTrap` with `restoreFocus: true` so
+  closing returns focus to the invoking control. Do not implement bespoke
+  autofocus/restore logic.
+- Landmarks that receive focus programmatically must tolerate `tabindex="-1"`
+  (added automatically by `moveFocusTo` / `SkipToContent` when absent).
+- New route-level focus targets should be wired through `FocusManager` rather
+  than focusing inside page components on mount.
+- Coverage: `FocusManager.test.tsx` asserts route-change focus targets;
+  `useFocusTrap.test.ts` and `focus-management-contract.test.tsx` assert
+  dialog-open trap and dialog-close focus restoration for a representative flow.
+
 ### Labels
 
 - Every form control must have an associated `<label>` with `htmlFor`.

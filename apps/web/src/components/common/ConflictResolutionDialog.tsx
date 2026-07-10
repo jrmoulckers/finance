@@ -20,6 +20,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getUnresolvedConflicts, resolveConflict, type SyncConflict } from '../../db/sync';
 import { useFocusTrap } from '../../accessibility/aria';
+import { ModalBackdrop } from './ModalBackdrop';
 
 import '../../styles/conflict-resolution.css';
 
@@ -107,7 +108,7 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
   if (!current) return null;
 
   return (
-    <div className="conflict-dialog-overlay" onClick={onClose}>
+    <ModalBackdrop className="conflict-dialog-overlay" onClick={onClose}>
       <div
         ref={dialogRef}
         className="conflict-dialog"
@@ -116,7 +117,6 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
         aria-label={`Resolve sync conflict ${currentIndex + 1} of ${conflicts.length}`}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="conflict-dialog__header">
           <h2 className="conflict-dialog__title">Sync Conflict</h2>
@@ -184,7 +184,7 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
           </button>
         </footer>
       </div>
-    </div>
+    </ModalBackdrop>
   );
 };
 

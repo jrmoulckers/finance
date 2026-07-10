@@ -1444,15 +1444,6 @@ export const TransactionsPage: React.FC = () => {
               </button>
             )}
           </div>
-          {hasActiveFilters && !isLoading && !resolvedError && (
-            <p className="sr-only" role="status" aria-live="polite">
-              {transactions.length === 0
-                ? 'No transactions match the current search and filters'
-                : `${transactions.length} transaction${
-                    transactions.length === 1 ? '' : 's'
-                  } match the current search and filters`}
-            </p>
-          )}
 
           {/* Filter/Sort controls */}
           {!isSimplified ? (
@@ -1535,9 +1526,19 @@ export const TransactionsPage: React.FC = () => {
             </div>
           </section>
 
-          <h2 id="transaction-results" className="sr-only">
-            Transaction results
-          </h2>
+          <div className="transaction-results-header">
+            <h2 id="transaction-results" className="transaction-results-header__title">
+              Transaction results
+            </h2>
+            {!isLoading && !resolvedError && (transactions.length > 0 || hasActiveFilters) ? (
+              <p className="transaction-results-header__count" role="status" aria-live="polite">
+                {transactions.length === 1
+                  ? '1 transaction'
+                  : `${transactions.length.toLocaleString()} transactions`}
+                {hasActiveFilters ? ' match your filters' : ''}
+              </p>
+            ) : null}
+          </div>
 
           {!isLoading && !resolvedError && transactions.length > 0 && (
             <TransactionsSummaryBar summary={transactionsSummary} />

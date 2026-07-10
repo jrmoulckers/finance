@@ -3,6 +3,7 @@
 import React, { useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
+import { ModalBackdrop } from '../common/ModalBackdrop';
 import { AppIcon } from '../icons';
 import { useFocusTrap } from '../../accessibility/aria';
 import type { PersonalizedRecommendation } from '../../lib/recommendations';
@@ -74,14 +75,13 @@ export const RecommendationDetail: React.FC<RecommendationDetailProps> = ({
   }
 
   return (
-    <div className="recommendation-detail__backdrop" role="presentation" onClick={onClose}>
+    <ModalBackdrop className="recommendation-detail__backdrop" onClick={onClose}>
       <section
         ref={dialogRef}
         className="recommendation-detail"
         role="dialog"
         aria-modal="true"
         aria-labelledby="recommendation-detail-title"
-        onClick={(event) => event.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         <div className="recommendation-detail__header">
@@ -174,6 +174,6 @@ export const RecommendationDetail: React.FC<RecommendationDetailProps> = ({
           </button>
         </div>
       </section>
-    </div>
+    </ModalBackdrop>
   );
 };

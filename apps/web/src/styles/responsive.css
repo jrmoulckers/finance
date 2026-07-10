@@ -7,21 +7,8 @@
   --layout-card-gap: var(--spacing-4);
   --layout-grid-min-col: 280px;
 }
-.skip-link {
-  position: absolute;
-  top: -100%;
-  left: var(--spacing-4);
-  z-index: 1000;
-  padding: var(--spacing-2) var(--spacing-4);
-  background: var(--semantic-interactive-default);
-  color: var(--semantic-text-inverse);
-  border-radius: var(--border-radius-md);
-  font-weight: var(--font-weight-semibold);
-  text-decoration: none;
-}
-.skip-link:focus {
-  top: var(--spacing-2);
-}
+/* NOTE: `.skip-link` styling lives solely in styles/accessibility.css — the
+   single source of truth (#3600). Do not redefine it here. */
 .app-layout {
   display: flex;
   flex-direction: column;
@@ -672,8 +659,8 @@
   color: var(--semantic-status-negative);
 }
 .icon-button:focus-visible {
-  outline: 2px solid var(--semantic-border-focus);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 .icon-button svg {
   width: 20px;
@@ -685,16 +672,35 @@
   stroke-linejoin: round;
 }
 
-.icon-button__glyph {
-  font-size: 1rem;
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-}
 .amount--positive {
   color: var(--semantic-amount-positive);
 }
 .amount--negative {
   color: var(--semantic-amount-negative);
+}
+
+/* Visible transaction result count (#3634). Shares one aria-live source of
+   truth with assistive tech instead of a screen-reader-only status line. */
+.transaction-results-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+  margin-block: var(--spacing-4) var(--spacing-2);
+}
+.transaction-results-header__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+.transaction-results-header__count {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 .settings-group {
   --settings-card-gutter: var(--card-padding);

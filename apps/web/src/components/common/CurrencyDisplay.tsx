@@ -48,8 +48,12 @@ export interface CurrencyDisplayProps {
  *
  * Accessibility: legacy `negativeFormat` value `'color-only'` is rendered
  * with a visible "Negative" text cue so information is never conveyed by
- * color alone. The optional `context` prop appends a description
- * (e.g., "Dining category") so amounts announce their meaning.
+ * color alone. Negative amounts always retain a textual sign cue (a leading
+ * `-`, wrapping parentheses, or a "Negative" label) alongside any colour, so
+ * the green/red colour is never the *only* means of distinguishing positive
+ * from negative amounts (WCAG SC 1.4.1 Use of Color). The optional `context`
+ * prop appends a description (e.g., "Dining category") so amounts announce
+ * their meaning.
  */
 export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   amount,
