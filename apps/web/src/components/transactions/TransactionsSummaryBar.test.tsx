@@ -39,16 +39,18 @@ describe('TransactionsSummaryBar', () => {
     expect(screen.getAllByText(/4 transactions/).length).toBeGreaterThan(0);
   });
 
-  it('renders a single net total', () => {
+  it('renders income, expense, and net totals', () => {
     render(
       <TransactionsSummaryBar
         summary={summary({
           count: 3,
-          totalsByCurrency: [{ currency: 'USD', net: 2500 }],
-          singleCurrencyNet: { currency: 'USD', net: 2500 },
+          totalsByCurrency: [{ currency: 'USD', income: 5000, expenses: 2500, net: 2500 }],
+          singleCurrencyNet: { currency: 'USD', income: 5000, expenses: 2500, net: 2500 },
         })}
       />,
     );
+    expect(screen.getByText('USD 5000')).toBeInTheDocument();
+    expect(screen.getByText('USD -2500')).toBeInTheDocument();
     expect(screen.getByText('USD 2500')).toBeInTheDocument();
   });
 
@@ -59,32 +61,32 @@ describe('TransactionsSummaryBar', () => {
           count: 2,
           isMixedCurrency: true,
           totalsByCurrency: [
-            { currency: 'EUR', net: -700 },
-            { currency: 'USD', net: 600 },
+            { currency: 'EUR', income: 0, expenses: 700, net: -700 },
+            { currency: 'USD', income: 600, expenses: 0, net: 600 },
           ],
         })}
       />,
     );
-    expect(screen.getByText('EUR -700')).toBeInTheDocument();
-    expect(screen.getByText('USD 600')).toBeInTheDocument();
+    expect(screen.getAllByText('EUR -700').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('USD 600').length).toBeGreaterThan(0);
   });
 
-  it('announces the net total in a live region for screen readers', () => {
+  it('announces income, expense, and net totals in a live region for screen readers', () => {
     render(
       <TransactionsSummaryBar
         summary={summary({
           count: 3,
-          totalsByCurrency: [{ currency: 'USD', net: -1500 }],
-          singleCurrencyNet: { currency: 'USD', net: -1500 },
+          totalsByCurrency: [{ currency: 'USD', income: 500, expenses: 2000, net: -1500 }],
+          singleCurrencyNet: { currency: 'USD', income: 500, expenses: 2000, net: -1500 },
         })}
       />,
     );
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent('3 transactions');
-    expect(status).toHaveTextContent(/net total negative 15\.00 USD/i);
+    expect(status).toHaveTextContent(/net negative 15\.00 USD/i);
   });
 
-  it('omits the net when there are no net-contributing transactions', () => {
+  it('omits the totals when there are no net-contributing transactions', () => {
     render(<TransactionsSummaryBar summary={summary({ count: 2 })} />);
     expect(screen.queryByTestId('currency')).not.toBeInTheDocument();
   });

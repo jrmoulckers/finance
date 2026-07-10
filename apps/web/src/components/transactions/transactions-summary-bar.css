@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BUSL-1.1 */
 
 /**
- * Styles for TransactionsSummaryBar — the at-a-glance count + net total shown
- * above the transactions ledger. Uses design tokens for consistent theming.
- * References: issue #3772
+ * Styles for TransactionsSummaryBar — the at-a-glance count + income / expense
+ * / net totals shown above the transactions ledger. Uses design tokens for
+ * consistent theming. References: issues #3772, #3605
  */
 
 .transactions-summary-bar {
@@ -25,14 +25,27 @@
   color: var(--semantic-text-secondary);
 }
 
-.transactions-summary-bar__net {
+.transactions-summary-bar__totals {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--spacing-2);
+  gap: var(--spacing-2) var(--spacing-4);
 }
 
-.transactions-summary-bar__net-label {
+.transactions-summary-bar__currency {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacing-2) var(--spacing-4);
+}
+
+.transactions-summary-bar__metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--spacing-1);
+}
+
+.transactions-summary-bar__metric-label {
   font-size: var(--type-scale-caption-font-size, 0.8125rem);
   font-weight: var(--font-weight-medium);
   text-transform: uppercase;
