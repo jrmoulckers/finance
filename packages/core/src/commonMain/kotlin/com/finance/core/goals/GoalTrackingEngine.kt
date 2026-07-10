@@ -85,7 +85,7 @@ object GoalTrackingEngine {
         from: LocalDate,
     ): GoalFeasibility {
         val target = goal.targetAmount
-        val completionDate = projectedCompletionDate(goal, contributionPerPeriod, period, from)
+        val completionDate = feasibilityCompletionDate(goal, contributionPerPeriod, period, from)
         val deadline = goal.targetDate
 
         if (deadline == null) {
@@ -385,7 +385,7 @@ object GoalTrackingEngine {
             .toSet()
     }
 
-    private fun projectedCompletionDate(
+    private fun feasibilityCompletionDate(
         goal: Goal,
         contribution: Cents,
         period: ContributionPeriod,
@@ -402,6 +402,35 @@ object GoalTrackingEngine {
                 addPeriods(from, periodsNeeded, period)
             }
         }
+    }
+
+    // ── #3681: projected completion date from a contribution rate ─────
+
+    /**
+     * Project the date a goal will be fully funded if [contributionPerPeriod] is
+     * contributed every [period], starting from [from] (#3681).
+     *
+     * Uses **ceiling** division on the remaining cents so the returned date is
+     * the first date the target is met or exceeded — the projection never
+     * underestimates. All arithmetic stays in integer [Cents]; day/period
+     * arithmetic uses `kotlinx-datetime`.
+     *
+     * @return the projected completion date, or `null` when the goal is already
+     *   complete (nothing to project) or the contribution is zero/negative
+     *   (never completes — no divide-by-zero).
+     */
+    fun projectedCompletionDate(
+        goal: Goal,
+        contributionPerPeriod: Cents,
+        period: ContributionPeriod,
+        from: LocalDate,
+    ): LocalDate? {
+        val remaining = remainingAmount(goal).amount
+        if (remaining <= 0L || !contributionPerPeriod.isPositive()) return null
+        val periodsNeeded = ceilDiv(remaining, contributionPerPeriod.amount)
+            .coerceAtMost(Int.MAX_VALUE.toLong())
+            .toInt()
+        return addPeriods(from, periodsNeeded, period)
     }
 
     private fun wholePeriodsBetween(from: LocalDate, to: LocalDate, period: ContributionPeriod): Int {

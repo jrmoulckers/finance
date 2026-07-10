@@ -158,9 +158,44 @@ class CurrencyFormatterTest {
 
     @Test
     fun format_unknownCurrency_usesCodeAsPrefix() {
-        val nzd = Currency("NZD")
-        // Unknown symbol fallback: "NZD " prefix
-        assertEquals("NZD 10.00", CurrencyFormatter.format(Cents(1000), nzd))
+        // XAF is intentionally absent from the canonical CurrencyCatalog, so the
+        // formatter falls back to the "<CODE> " prefix. (NZD and friends now
+        // resolve their real symbol via the canonical catalog — #3736.)
+        val unknown = Currency("XAF")
+        assertEquals("XAF 10.00", CurrencyFormatter.format(Cents(1000), unknown))
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Consolidated currency metadata (#3736) — symbols + decimal places for
+    // currencies previously missing from the formatter's own symbol map.
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    fun format_bhd_threeDecimals_withSymbol() {
+        // Bahraini Dinar: 3 decimal places, "BD" symbol from the canonical catalog.
+        assertEquals("BD1.234", CurrencyFormatter.format(Cents(1234), Currency("BHD")))
+    }
+
+    @Test
+    fun format_kwd_threeDecimals_withSymbol() {
+        assertEquals("KD1.500", CurrencyFormatter.format(Cents(1500), Currency("KWD")))
+    }
+
+    @Test
+    fun format_omr_threeDecimals_withSymbol() {
+        assertEquals("OMR1.005", CurrencyFormatter.format(Cents(1005), Currency("OMR")))
+    }
+
+    @Test
+    fun format_vnd_zeroDecimals_withSymbol() {
+        // Vietnamese Dong: 0 decimal places, "₫" symbol.
+        assertEquals("₫1,000", CurrencyFormatter.format(Cents(1000), Currency("VND")))
+    }
+
+    @Test
+    fun format_clp_zeroDecimals() {
+        // Chilean Peso: 0 decimal places (canonical), "CL$" symbol.
+        assertEquals("CL$5,000", CurrencyFormatter.format(Cents(5000), Currency("CLP")))
     }
 
     // ═══════════════════════════════════════════════════════════════════

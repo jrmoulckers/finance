@@ -11,19 +11,30 @@ import kotlin.math.abs
  * Respects currency-specific decimal places and symbols.
  */
 object CurrencyFormatter {
-    private val symbols = mapOf(
-        "USD" to "$", "EUR" to "€", "GBP" to "£", "JPY" to "¥",
-        "CAD" to "CA$", "AUD" to "A$", "CHF" to "CHF ",
-        "CNY" to "¥", "KRW" to "₩", "INR" to "₹",
-        "BRL" to "R$", "MXN" to "MX$", "SEK" to "kr",
+    // Extra display symbols for a few currencies whose glyphs differ from the
+    // canonical catalog's compact symbol, plus a trailing space where the code
+    // is used as a symbol (e.g. "CHF "). Anything not overridden here falls back
+    // to the single canonical source of truth ([CurrencyCatalog]) so symbols and
+    // decimal places never diverge (#3736).
+    private val symbolOverrides = mapOf(
+        "CHF" to "CHF ",
     )
+
+    /**
+     * Resolve the display symbol for [code], preferring an override, then the
+     * canonical [CurrencyCatalog], then the raw code with a trailing space.
+     */
+    private fun symbolFor(code: String): String =
+        symbolOverrides[code]
+            ?: com.finance.core.multicurrency.CurrencyCatalog.get(code)?.symbol
+            ?: "$code "
 
     /**
      * Format cents as a human-readable currency string.
      * Examples: "$12.50", "€1,234.56", "¥1,235" (no decimals for JPY)
      */
     fun format(amount: Cents, currency: Currency, showSign: Boolean = false): String {
-        val symbol = symbols[currency.code] ?: "${currency.code} "
+        val symbol = symbolFor(currency.code)
         val decimals = currency.decimalPlaces
         val isNegative = amount.isNegative()
         val absAmount = amount.abs().amount
@@ -51,7 +62,7 @@ object CurrencyFormatter {
      * Uses multiplatform-safe string formatting (no String.format).
      */
     fun formatCompact(amount: Cents, currency: Currency): String {
-        val symbol = symbols[currency.code] ?: "${currency.code} "
+        val symbol = symbolFor(currency.code)
         val dollars = amount.amount.toDouble() / pow10(currency.decimalPlaces)
         val isNeg = dollars < 0
         val absDollars = abs(dollars)

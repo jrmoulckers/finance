@@ -349,4 +349,90 @@ class CurrencyConverterTest {
         val gbpResult = converter.convert(Cents(10000), Currency.USD, Currency.GBP)
         assertEquals(Cents(7900), gbpResult.convertedAmount)
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // #3728 — date-aware historical conversion. A past-dated transaction must
+    // be valued at the rate in effect on its date, not today's rate.
+    // ═══════════════════════════════════════════════════════════════════
+
+    /** Rate provider that returns a different rate depending on the [at] date. */
+    private class DatedFakeRateProvider(
+        private val byDate: Map<Instant, ExchangeRate>,
+        private val current: ExchangeRate? = null,
+    ) : ExchangeRateProvider {
+        override suspend fun getRate(from: Currency, to: Currency): ExchangeRate? = current
+        override suspend fun getRate(from: Currency, to: Currency, at: Instant): ExchangeRate? = byDate[at]
+        override suspend fun getAvailableCurrencies(): Set<Currency> =
+            (byDate.values + listOfNotNull(current)).flatMap { listOf(it.from, it.to) }.toSet()
+    }
+
+    @Test
+    fun convertWithDate_usesRateInEffectOnThatDate() = runTest {
+        val jan = Instant.parse("2024-01-15T00:00:00Z")
+        val jun = Instant.parse("2024-06-15T00:00:00Z")
+        val janRate = ExchangeRate(Currency.USD, Currency.EUR, 0.90, jan)
+        val junRate = ExchangeRate(Currency.USD, Currency.EUR, 0.95, jun)
+        val converter = CurrencyConverter(
+            DatedFakeRateProvider(
+                byDate = mapOf(jan to janRate, jun to junRate),
+                current = ExchangeRate(Currency.USD, Currency.EUR, 0.99, timestamp),
+            ),
+        )
+
+        // $100.00 valued on Jan 15 uses 0.90 → €90.00, not today's 0.99.
+        val janResult = converter.convert(Cents(10000), Currency.USD, Currency.EUR, jan)
+        assertEquals(Cents(9000), janResult.convertedAmount)
+        assertEquals(janRate, janResult.rateUsed)
+
+        // The same amount valued on Jun 15 uses 0.95 → €95.00.
+        val junResult = converter.convert(Cents(10000), Currency.USD, Currency.EUR, jun)
+        assertEquals(Cents(9500), junResult.convertedAmount)
+        assertEquals(junRate, junResult.rateUsed)
+    }
+
+    @Test
+    fun convertWithDate_differsFromCurrentRate() = runTest {
+        val jan = Instant.parse("2024-01-15T00:00:00Z")
+        val janRate = ExchangeRate(Currency.USD, Currency.EUR, 0.90, jan)
+        val currentRate = ExchangeRate(Currency.USD, Currency.EUR, 0.99, timestamp)
+        val converter = CurrencyConverter(
+            DatedFakeRateProvider(byDate = mapOf(jan to janRate), current = currentRate),
+        )
+
+        val historical = converter.convert(Cents(10000), Currency.USD, Currency.EUR, jan)
+        val today = converter.convert(Cents(10000), Currency.USD, Currency.EUR)
+        assertEquals(Cents(9000), historical.convertedAmount)
+        assertEquals(Cents(9900), today.convertedAmount)
+        assertTrue(historical.convertedAmount.amount != today.convertedAmount.amount)
+    }
+
+    @Test
+    fun convertWithDate_sameCurrency_noRateLookup() = runTest {
+        val converter = CurrencyConverter(DatedFakeRateProvider(emptyMap()))
+        val result = converter.convert(Cents(10000), Currency.USD, Currency.USD, timestamp)
+        assertEquals(Cents(10000), result.convertedAmount)
+        assertNull(result.rateUsed)
+    }
+
+    @Test
+    fun convertWithDate_rescalesMinorUnits() = runTest {
+        val jan = Instant.parse("2024-01-15T00:00:00Z")
+        val rate = ExchangeRate(Currency.USD, Currency.JPY, 149.50, jan)
+        val converter = CurrencyConverter(DatedFakeRateProvider(mapOf(jan to rate)))
+
+        // $100.00 (10000 US cents) at 149.50 → ¥14,950 (JPY 0 decimals).
+        val result = converter.convert(Cents(10000), Currency.USD, Currency.JPY, jan)
+        assertEquals(Cents(14950), result.convertedAmount)
+    }
+
+    @Test
+    fun convertWithDate_missingRate_throwsWithDate() = runTest {
+        val jan = Instant.parse("2024-01-15T00:00:00Z")
+        val converter = CurrencyConverter(DatedFakeRateProvider(emptyMap()))
+        val exception = assertFailsWith<CurrencyConversionException> {
+            converter.convert(Cents(10000), Currency.USD, Currency.EUR, jan)
+        }
+        assertTrue(exception.message!!.contains("USD"))
+        assertTrue(exception.message!!.contains("EUR"))
+    }
 }

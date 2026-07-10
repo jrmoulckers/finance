@@ -5,6 +5,7 @@ package com.finance.core.multicurrency
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
 import com.finance.core.money.MoneyOperations
+import kotlin.math.abs
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
@@ -15,24 +16,18 @@ import kotlinx.serialization.Serializable
  */
 object MultiCurrencyEngine {
 
-    val currencyCatalog: Map<String, CurrencyInfo> = mapOf(
-        "USD" to CurrencyInfo("USD", "US Dollar", "$", 2),
-        "EUR" to CurrencyInfo("EUR", "Euro", "\u20AC", 2),
-        "GBP" to CurrencyInfo("GBP", "British Pound", "\u00A3", 2),
-        "JPY" to CurrencyInfo("JPY", "Japanese Yen", "\u00A5", 0),
-        "CAD" to CurrencyInfo("CAD", "Canadian Dollar", "CA$", 2),
-        "AUD" to CurrencyInfo("AUD", "Australian Dollar", "A$", 2),
-        "CHF" to CurrencyInfo("CHF", "Swiss Franc", "CHF", 2),
-        "CNY" to CurrencyInfo("CNY", "Chinese Yuan", "\u00A5", 2),
-        "INR" to CurrencyInfo("INR", "Indian Rupee", "\u20B9", 2),
-        "MXN" to CurrencyInfo("MXN", "Mexican Peso", "MX$", 2),
-        "BRL" to CurrencyInfo("BRL", "Brazilian Real", "R$", 2),
-        "KRW" to CurrencyInfo("KRW", "South Korean Won", "\u20A9", 0),
-        "SEK" to CurrencyInfo("SEK", "Swedish Krona", "kr", 2),
-        "BHD" to CurrencyInfo("BHD", "Bahraini Dinar", "BD", 3),
-        "KWD" to CurrencyInfo("KWD", "Kuwaiti Dinar", "KD", 3),
-        "OMR" to CurrencyInfo("OMR", "Omani Rial", "OMR", 3),
-    )
+    /**
+     * ISO 4217 catalog with display metadata.
+     *
+     * Derived from the single canonical [CurrencyCatalog] so decimal places,
+     * symbols, and names never diverge from the rest of the app (#3736). The
+     * per-currency `decimalPlaces` therefore always agrees with
+     * [Currency.decimalPlaces] (asserted by a consistency test).
+     */
+    val currencyCatalog: Map<String, CurrencyInfo> =
+        CurrencyCatalog.all.mapValues { (_, def) ->
+            CurrencyInfo(def.code, def.name, def.symbol, def.decimalPlaces)
+        }
 
     fun currencyInfo(currency: Currency): CurrencyInfo? = currencyCatalog[currency.code]
 
@@ -50,6 +45,40 @@ object MultiCurrencyEngine {
             cache[cacheKey(from, to)]?.let { if (!isStale(it, now)) return it.rate }
             cache[cacheKey(to, from)]?.let { if (!isStale(it, now)) return 1.0 / it.rate }
             return null
+        }
+
+        /**
+         * Resolve a `from → to` rate, falling back to **triangulation** through a
+         * [pivot] currency (default USD) when no direct or inverse rate is cached
+         * (#3733).
+         *
+         * Rate feeds commonly quote everything against a single base (e.g. USD),
+         * so a user holding EUR and JPY may have `USD→EUR` and `USD→JPY` but no
+         * direct `EUR→JPY`. This derives the missing cross rate as
+         * `rate(from→pivot) * rate(pivot→to)`.
+         *
+         * Resolution order:
+         * 1. A direct or inverse rate (via [get]) always takes precedence.
+         * 2. Otherwise both legs `from→pivot` and `pivot→to` are looked up (each
+         *    may itself be a direct or inverse cache hit) and multiplied.
+         *
+         * @return the resolved rate, or `null` when neither a direct/inverse rate
+         *   nor both triangulation legs are available (fresh) at [now].
+         */
+        @Suppress("ReturnCount")
+        fun getTriangulated(
+            from: Currency,
+            to: Currency,
+            pivot: Currency = Currency.USD,
+            now: Instant = Clock.System.now(),
+        ): Double? {
+            get(from, to, now)?.let { return it }
+            // If either endpoint *is* the pivot, the missing leg equals the
+            // direct lookup already attempted above — triangulation adds nothing.
+            if (from == pivot || to == pivot) return null
+            val firstLeg = get(from, pivot, now) ?: return null
+            val secondLeg = get(pivot, to, now) ?: return null
+            return firstLeg * secondLeg
         }
 
         /**
@@ -98,6 +127,29 @@ object MultiCurrencyEngine {
         return ConversionResult(amount, convert(amount, rate), from, to, rate)
     }
 
+    /**
+     * Convert [amount] from [from] to [to], deriving the rate via
+     * [ExchangeRateCache.getTriangulated] through [pivot] when no direct/inverse
+     * rate is cached (#3733). The converted amount is computed in integer
+     * [Cents] with banker's rounding (via [convert]).
+     *
+     * @return a [ConversionResult] whose `rateUsed` is the (possibly
+     *   triangulated) rate, or `null` when the rate cannot be resolved.
+     */
+    @Suppress("ReturnCount")
+    fun convertWithTriangulation(
+        amount: Cents,
+        from: Currency,
+        to: Currency,
+        cache: ExchangeRateCache,
+        pivot: Currency = Currency.USD,
+        now: Instant = Clock.System.now(),
+    ): ConversionResult? {
+        if (from == to) return ConversionResult(amount, amount, from, to, 1.0)
+        val rate = cache.getTriangulated(from, to, pivot, now) ?: return null
+        return ConversionResult(amount, convert(amount, rate), from, to, rate)
+    }
+
     fun aggregate(amounts: List<CurrencyAmount>, targetCurrency: Currency, cache: ExchangeRateCache, now: Instant = Clock.System.now()): AggregationResult? {
         val conversions = mutableListOf<ConversionResult>(); var total = Cents.ZERO
         for (ca in amounts) {
@@ -110,8 +162,17 @@ object MultiCurrencyEngine {
     @Suppress("ReturnCount")
     fun currencyBreakdown(amounts: List<CurrencyAmount>, targetCurrency: Currency, cache: ExchangeRateCache, now: Instant = Clock.System.now()): Map<Currency, Double>? {
         val result = aggregate(amounts, targetCurrency, cache, now) ?: return null
-        if (result.totalAmount.isZero()) return emptyMap()
-        return result.conversions.groupBy { it.fromCurrency }.mapValues { (_, convs) -> (convs.sumOf { it.convertedAmount.amount }.toDouble() / result.totalAmount.amount) * 100.0 }
+        // Base the breakdown on the sum of **absolute** converted magnitudes, not
+        // the signed net total. A signed denominator is meaningless for mixed-sign
+        // data (income + expense): it can be small, zero, or negative, producing
+        // percentages that explode, go negative, or fail to sum to 100% (#3745).
+        val totalMagnitude = result.conversions.sumOf { abs(it.convertedAmount.amount) }
+        if (totalMagnitude == 0L) return emptyMap()
+        return result.conversions
+            .groupBy { it.fromCurrency }
+            .mapValues { (_, convs) ->
+                (convs.sumOf { abs(it.convertedAmount.amount) }.toDouble() / totalMagnitude) * 100.0
+            }
     }
 }
 
