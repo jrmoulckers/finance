@@ -211,7 +211,7 @@ internal fun TipCard(
             Text(
                 text = tipCategoryLabel(tip.category),
                 style = MaterialTheme.typography.labelSmall,
-                color = contentColor.copy(alpha = 0.5f),
+                color = contentColor,
             )
         }
     }
