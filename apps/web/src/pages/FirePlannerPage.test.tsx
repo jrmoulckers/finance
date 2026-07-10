@@ -83,4 +83,35 @@ describe('FirePlannerPage', () => {
     expect(within(fiCard).getByText('—')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(/withdrawal rate above 0%/i);
   });
+
+  it('shows progress toward FI and income replacement (#3320)', () => {
+    render(<FirePlannerPage />);
+    // $100k invested toward a $1M FI number → 10% progress.
+    const progress = screen.getByRole('progressbar', { name: /FI progress/i });
+    expect(progress).toHaveAttribute('aria-valuenow', '10');
+    expect(screen.getByText(/covering/i)).toBeInTheDocument();
+  });
+
+  it('renders a withdrawal-rate sensitivity table with 3.5/4/4.5% rows (#3319)', () => {
+    render(<FirePlannerPage />);
+    const table = screen.getByRole('table', { name: /Withdrawal-rate sensitivity/i });
+    expect(within(table).getByRole('rowheader', { name: /3\.5%/ })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: /4%/ })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: /4\.5%/ })).toBeInTheDocument();
+  });
+
+  it('switches spending target when a FIRE scenario is selected (#3317)', () => {
+    render(<FirePlannerPage />);
+    // Regular default: $40k / 4% = $1M. Fat (1.5x) → $60k / 4% = $1.5M.
+    fireEvent.click(screen.getByRole('radio', { name: /Fat FIRE/i }));
+    const fiCard = screen.getByRole('article', { name: 'Financial independence number' });
+    expect(within(fiCard).getByText(/1,500,000/)).toBeInTheDocument();
+  });
+
+  it('derives the real return from nominal return + inflation (#3315)', () => {
+    render(<FirePlannerPage />);
+    fireEvent.click(screen.getByRole('radio', { name: /Nominal return \+ inflation/i }));
+    expect(screen.getByLabelText('Expected nominal return')).toBeInTheDocument();
+    expect(screen.getByLabelText('Expected inflation')).toBeInTheDocument();
+  });
 });

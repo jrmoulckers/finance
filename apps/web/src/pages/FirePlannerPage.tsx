@@ -32,12 +32,51 @@ import type { TrendDataPoint, TrendSeries } from '../components/charts/TrendLine
 import { formatCurrency } from '../lib/currency';
 import {
   calculateFIREPlan,
+  computeSwrSensitivity,
+  DEFAULT_INFLATION,
+  DEFAULT_NOMINAL_RETURN,
   DEFAULT_RETIREMENT_AGE,
+  DEFAULT_SWR_SENSITIVITY_RATES,
   MAX_FI_SEARCH_YEARS,
+  realReturnFromNominal,
   type FIREPlanResult,
+  type SwrSensitivityRow,
 } from '../lib/fire';
 
 import './FirePlannerPage.css';
+
+// ---------------------------------------------------------------------------
+// FIRE scenario definitions (#3317) — Lean / Regular / Fat spending multipliers.
+// Coast-FI already sits alongside these in the results grid.
+// ---------------------------------------------------------------------------
+
+interface FireScenario {
+  readonly key: 'lean' | 'regular' | 'fat';
+  readonly label: string;
+  readonly spendingMultiplier: number;
+  readonly description: string;
+}
+
+const FIRE_SCENARIOS: readonly FireScenario[] = [
+  {
+    key: 'lean',
+    label: 'Lean FIRE',
+    spendingMultiplier: 0.7,
+    description: 'A leaner retirement at 70% of your spending.',
+  },
+  {
+    key: 'regular',
+    label: 'Regular FIRE',
+    spendingMultiplier: 1,
+    description: 'Your baseline spending.',
+  },
+  {
+    key: 'fat',
+    label: 'Fat FIRE',
+    spendingMultiplier: 1.5,
+    description: 'A more comfortable retirement at 150% of your spending.',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Parsing helpers (string inputs → cents / rates), defensive against junk input
@@ -79,6 +118,20 @@ function formatFiDate(iso: string): string {
     month: 'long',
     year: 'numeric',
   });
+}
+
+/** Compact "time to FI" label for a plan result (used in comparison tables). */
+function describeTimeToFI(result: FIREPlanResult): string {
+  if (!Number.isFinite(result.fiNumberCents)) return 'Not reachable';
+  if (result.yearsToFI.alreadyFI) return 'Reached';
+  if (!result.yearsToFI.reachedFI) return 'Not reachable';
+  return formatDuration(result.yearsToFI.years, result.yearsToFI.months);
+}
+
+/** Format a decimal rate (0.04) as a percent string (e.g. "4%", "3.5%"). */
+function formatRatePercent(rate: number): string {
+  const percent = rate * 100;
+  return `${Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(1)}%`;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,31 +222,91 @@ export const FirePlannerPage: React.FC = () => {
   const [currentInvested, setCurrentInvested] = useState('100000');
   const [annualSpending, setAnnualSpending] = useState('40000');
   const [annualContribution, setAnnualContribution] = useState('24000');
+  const [returnMode, setReturnMode] = useState<'real' | 'nominal'>('real');
   const [realReturnPercent, setRealReturnPercent] = useState('5');
+  const [nominalReturnPercent, setNominalReturnPercent] = useState(
+    String(DEFAULT_NOMINAL_RETURN * 100),
+  );
+  const [inflationPercent, setInflationPercent] = useState(String(DEFAULT_INFLATION * 100));
   const [swrPercent, setSwrPercent] = useState('4');
   const [currentAge, setCurrentAge] = useState('35');
   const [retirementAge, setRetirementAge] = useState('65');
+  const [selectedScenario, setSelectedScenario] = useState<FireScenario['key']>('regular');
 
-  const plan: FIREPlanResult = useMemo(
+  // Resolve the real return that actually drives the projection. Advanced users
+  // enter it directly; everyone else enters a nominal return + inflation and we
+  // derive the real rate via the Fisher equation so the FI number (from today's
+  // spending) stays in real terms (#3315).
+  const realReturnRate = useMemo(() => {
+    if (returnMode === 'nominal') {
+      return realReturnFromNominal(
+        parsePercentToRate(nominalReturnPercent),
+        parsePercentToRate(inflationPercent),
+      );
+    }
+    return parsePercentToRate(realReturnPercent);
+  }, [returnMode, nominalReturnPercent, inflationPercent, realReturnPercent]);
+
+  const swrRate = useMemo(() => parsePercentToRate(swrPercent), [swrPercent]);
+  const baseSpendingCents = useMemo(() => parseDollarsToCents(annualSpending), [annualSpending]);
+  const currentInvestedCents = useMemo(
+    () => parseDollarsToCents(currentInvested),
+    [currentInvested],
+  );
+  const annualContributionCents = useMemo(
+    () => parseDollarsToCents(annualContribution),
+    [annualContribution],
+  );
+
+  // One plan per Lean / Regular / Fat scenario (#3317). Each scales retirement
+  // spending by the scenario multiplier and recomputes the whole plan.
+  const scenarioPlans = useMemo(
     () =>
-      calculateFIREPlan({
-        currentInvestedCents: parseDollarsToCents(currentInvested),
-        annualSpendingCents: parseDollarsToCents(annualSpending),
-        annualContributionCents: parseDollarsToCents(annualContribution),
-        realReturnRate: parsePercentToRate(realReturnPercent),
-        swrRate: parsePercentToRate(swrPercent),
-        currentAge: parseAge(currentAge),
-        traditionalRetirementAge: parseAge(retirementAge) ?? DEFAULT_RETIREMENT_AGE,
-      }),
+      FIRE_SCENARIOS.map((scenario) => ({
+        scenario,
+        plan: calculateFIREPlan({
+          currentInvestedCents,
+          annualSpendingCents: Math.round(baseSpendingCents * scenario.spendingMultiplier),
+          annualContributionCents,
+          realReturnRate,
+          swrRate,
+          currentAge: parseAge(currentAge),
+          traditionalRetirementAge: parseAge(retirementAge) ?? DEFAULT_RETIREMENT_AGE,
+        }),
+      })),
     [
-      currentInvested,
-      annualSpending,
-      annualContribution,
-      realReturnPercent,
-      swrPercent,
+      currentInvestedCents,
+      baseSpendingCents,
+      annualContributionCents,
+      realReturnRate,
+      swrRate,
       currentAge,
       retirementAge,
     ],
+  );
+
+  const plan: FIREPlanResult =
+    scenarioPlans.find((entry) => entry.scenario.key === selectedScenario)?.plan ??
+    scenarioPlans[1]!.plan;
+
+  const activeScenario =
+    FIRE_SCENARIOS.find((scenario) => scenario.key === selectedScenario) ?? FIRE_SCENARIOS[1]!;
+  const activeSpendingCents = Math.round(baseSpendingCents * activeScenario.spendingMultiplier);
+
+  // SWR sensitivity for the selected scenario (#3319): FI number + time-to-FI at
+  // 3.5% / 4% / 4.5% so users can gauge withdrawal-rate risk.
+  const swrSensitivity: SwrSensitivityRow[] = useMemo(
+    () =>
+      computeSwrSensitivity(
+        {
+          currentInvestedCents,
+          annualSpendingCents: activeSpendingCents,
+          annualContributionCents,
+          realReturnRate,
+        },
+        DEFAULT_SWR_SENSITIVITY_RATES,
+      ),
+    [currentInvestedCents, activeSpendingCents, annualContributionCents, realReturnRate],
   );
 
   const fiReachable = Number.isFinite(plan.fiNumberCents);
@@ -311,15 +424,72 @@ export const FirePlannerPage: React.FC = () => {
               min={0}
               step={1000}
             />
-            <NumberField
-              id={fid('return')}
-              label="Expected real return"
-              value={realReturnPercent}
-              onChange={setRealReturnPercent}
-              hint="Annual return after inflation. A diversified portfolio is often modelled at 4–7%."
-              suffix="%"
-              step={0.1}
-            />
+            <fieldset className="fire-field fire-field--return" aria-describedby={`${fid('return-mode')}-hint`}>
+              <legend className="fire-field__label">Return assumption</legend>
+              <div
+                className="fire-return-mode"
+                role="radiogroup"
+                aria-label="How to enter your expected return"
+              >
+                <label className="fire-return-mode__option">
+                  <input
+                    type="radio"
+                    name={fid('return-mode')}
+                    value="real"
+                    checked={returnMode === 'real'}
+                    onChange={() => setReturnMode('real')}
+                  />
+                  <span>Real return directly</span>
+                </label>
+                <label className="fire-return-mode__option">
+                  <input
+                    type="radio"
+                    name={fid('return-mode')}
+                    value="nominal"
+                    checked={returnMode === 'nominal'}
+                    onChange={() => setReturnMode('nominal')}
+                  />
+                  <span>Nominal return + inflation</span>
+                </label>
+              </div>
+              <p id={`${fid('return-mode')}-hint`} className="fire-field__hint">
+                {returnMode === 'real'
+                  ? 'Advanced: enter an inflation-adjusted return directly.'
+                  : `Enter a nominal return and inflation; we use the real return (${(realReturnRate * 100).toFixed(1)}%) that drives the projection.`}
+              </p>
+              {returnMode === 'real' ? (
+                <NumberField
+                  id={fid('return')}
+                  label="Expected real return"
+                  value={realReturnPercent}
+                  onChange={setRealReturnPercent}
+                  hint="Annual return after inflation. A diversified portfolio is often modelled at 4–7%."
+                  suffix="%"
+                  step={0.1}
+                />
+              ) : (
+                <>
+                  <NumberField
+                    id={fid('nominal-return')}
+                    label="Expected nominal return"
+                    value={nominalReturnPercent}
+                    onChange={setNominalReturnPercent}
+                    hint="Annual return before inflation. Historically ≈ 7–10% for an equity-heavy portfolio."
+                    suffix="%"
+                    step={0.1}
+                  />
+                  <NumberField
+                    id={fid('inflation')}
+                    label="Expected inflation"
+                    value={inflationPercent}
+                    onChange={setInflationPercent}
+                    hint="Long-run inflation assumption. Often modelled at 2–3%."
+                    suffix="%"
+                    step={0.1}
+                  />
+                </>
+              )}
+            </fieldset>
             <NumberField
               id={fid('swr')}
               label="Safe withdrawal rate (SWR)"
@@ -356,6 +526,70 @@ export const FirePlannerPage: React.FC = () => {
           <p className="fire-results__summary" role="status" aria-live="polite">
             {summary}
           </p>
+
+          {/* Lean / Regular / Fat scenario toggles (#3317). */}
+          <div
+            className="fire-scenarios"
+            role="radiogroup"
+            aria-label="FIRE scenario (spending target)"
+          >
+            {FIRE_SCENARIOS.map((scenario) => {
+              const active = scenario.key === selectedScenario;
+              return (
+                <button
+                  key={scenario.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  className={`fire-scenario-btn${active ? ' fire-scenario-btn--active' : ''}`}
+                  onClick={() => setSelectedScenario(scenario.key)}
+                >
+                  <span className="fire-scenario-btn__label">{scenario.label}</span>
+                  <span className="fire-scenario-btn__mult">
+                    {Math.round(scenario.spendingMultiplier * 100)}% of spending
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="fire-results__scenario-note">
+            Showing <strong>{activeScenario.label}</strong> — {activeScenario.description} Retirement
+            spending {formatCurrency(activeSpendingCents)}/yr.
+          </p>
+
+          {/* Progress toward FI + income replacement (#3320). */}
+          {fiReachable ? (
+            <div className="fire-progress" aria-label="Progress toward financial independence">
+              <div className="fire-progress__header">
+                <span className="fire-progress__label">
+                  You&apos;re {plan.fiProgressPercent}% of the way to FI
+                </span>
+                <span className="fire-progress__value">
+                  {formatCurrency(currentInvestedCents)} of {fiNumberDisplay}
+                </span>
+              </div>
+              <div
+                className="fire-progress__track"
+                role="progressbar"
+                aria-valuenow={plan.fiProgressPercent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`FI progress: ${plan.fiProgressPercent} percent`}
+              >
+                <div
+                  className="fire-progress__fill"
+                  style={{ width: `${plan.fiProgressPercent}%` }}
+                />
+              </div>
+              <p className="fire-progress__replacement">
+                Your portfolio currently generates{' '}
+                <strong>{formatCurrency(plan.currentPassiveIncomeCents)}</strong>/yr at a{' '}
+                {formatRatePercent(swrRate)} withdrawal rate — covering{' '}
+                <strong>{plan.incomeReplacementPercent}%</strong> of your{' '}
+                {formatCurrency(activeSpendingCents)} annual spending.
+              </p>
+            </div>
+          ) : null}
 
           <div className="fire-results__grid">
             <ResultCard
@@ -443,6 +677,99 @@ export const FirePlannerPage: React.FC = () => {
               />
             </div>
           ) : null}
+
+          {/* Scenario comparison table (#3317). */}
+          <div className="fire-table-wrap">
+            <h3 className="fire-table__title" id={fid('scenario-caption')}>
+              Lean / Regular / Fat comparison
+            </h3>
+            <table className="fire-table" aria-labelledby={fid('scenario-caption')}>
+              <thead>
+                <tr>
+                  <th scope="col">Scenario</th>
+                  <th scope="col">Retirement spending</th>
+                  <th scope="col">FI number</th>
+                  <th scope="col">Time to FI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scenarioPlans.map(({ scenario, plan: scenarioPlan }) => {
+                  const spendingCents = Math.round(baseSpendingCents * scenario.spendingMultiplier);
+                  return (
+                    <tr
+                      key={scenario.key}
+                      className={
+                        scenario.key === selectedScenario ? 'fire-table__row--active' : undefined
+                      }
+                    >
+                      <th scope="row">
+                        {scenario.label}
+                        {scenario.key === selectedScenario ? (
+                          <span className="sr-only"> (selected)</span>
+                        ) : null}
+                      </th>
+                      <td>{formatCurrency(spendingCents)}/yr</td>
+                      <td>
+                        {Number.isFinite(scenarioPlan.fiNumberCents)
+                          ? formatCurrency(scenarioPlan.fiNumberCents)
+                          : '—'}
+                      </td>
+                      <td>{describeTimeToFI(scenarioPlan)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* SWR sensitivity table (#3319). */}
+          <div className="fire-table-wrap">
+            <h3 className="fire-table__title" id={fid('swr-caption')}>
+              Withdrawal-rate sensitivity ({activeScenario.label})
+            </h3>
+            <p className="fire-table__note">
+              A lower withdrawal rate is more cautious against sequence-of-returns risk but needs a
+              larger portfolio. Estimate only. Not financial advice.
+            </p>
+            <table className="fire-table" aria-labelledby={fid('swr-caption')}>
+              <thead>
+                <tr>
+                  <th scope="col">Withdrawal rate</th>
+                  <th scope="col">FI number</th>
+                  <th scope="col">Time to FI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {swrSensitivity.map((row) => (
+                  <tr
+                    key={row.swrRate}
+                    className={
+                      Math.abs(row.swrRate - swrRate) < 1e-9 ? 'fire-table__row--active' : undefined
+                    }
+                  >
+                    <th scope="row">
+                      {formatRatePercent(row.swrRate)}
+                      {Math.abs(row.swrRate - swrRate) < 1e-9 ? (
+                        <span className="sr-only"> (your rate)</span>
+                      ) : null}
+                    </th>
+                    <td>
+                      {Number.isFinite(row.fiNumberCents)
+                        ? formatCurrency(row.fiNumberCents)
+                        : '—'}
+                    </td>
+                    <td>
+                      {row.yearsToFI.alreadyFI
+                        ? 'Reached'
+                        : row.yearsToFI.reachedFI
+                          ? formatDuration(row.yearsToFI.years, row.yearsToFI.months)
+                          : 'Not reachable'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </div>

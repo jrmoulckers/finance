@@ -41,6 +41,7 @@ import type {
   FIProjectionPoint,
   FIREPlanInput,
   FIREPlanResult,
+  SwrSensitivityRow,
   YearsToFIInput,
   YearsToFIResult,
 } from './fire-types';
@@ -49,6 +50,7 @@ import {
   DEFAULT_DISPLAY_HORIZON_YEARS,
   DEFAULT_PROJECTION_BUFFER_YEARS,
   DEFAULT_RETIREMENT_AGE,
+  DEFAULT_SWR_SENSITIVITY_RATES,
   DEFAULT_YEARS_TO_RETIREMENT,
   MAX_FI_SEARCH_YEARS,
 } from './fire-types';
@@ -99,6 +101,28 @@ function nonNegative(value: number): number {
 export function monthlyRateFromAnnual(annualRate: number): number {
   if (annualRate <= -1) return -1;
   return Math.pow(1 + annualRate, 1 / 12) - 1;
+}
+
+/**
+ * Convert a **nominal** annual return and an **inflation** assumption into the
+ * equivalent **real** (inflation-adjusted) return using the Fisher equation:
+ * `(1 + nominal) / (1 + inflation) − 1`.
+ *
+ * FIRE savers typically reason in nominal terms (e.g. a 7% expected return) and
+ * a separate inflation figure (e.g. 3%); the engine models growth in real terms
+ * because the FI number derives from *today's* spending. This helper keeps the
+ * two conventions consistent so users don't have to pre-compute the real rate by
+ * hand. When `1 + inflation ≤ 0` (a pathological ≤ −100% inflation) the nominal
+ * rate is returned unchanged rather than dividing by a non-positive base.
+ *
+ * @param nominalRate - Expected annual nominal return, as a decimal (e.g. 0.07).
+ * @param inflationRate - Expected annual inflation, as a decimal (e.g. 0.03).
+ * @returns The equivalent annual real return, as a decimal.
+ */
+export function realReturnFromNominal(nominalRate: number, inflationRate: number): number {
+  const denominator = 1 + inflationRate;
+  if (denominator <= 0) return nominalRate;
+  return (1 + nominalRate) / denominator - 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +300,112 @@ export function isCoastFI(currentInvestedCents: number, coastFINumberCents: numb
 }
 
 // ---------------------------------------------------------------------------
+// Progress toward FI (#3320)
+// ---------------------------------------------------------------------------
+
+/**
+ * Progress toward the FI number as a percentage (`current ÷ FI × 100`), clamped
+ * to `[0, 100]`.
+ *
+ * Edge cases:
+ *   • `fiNumberCents ≤ 0` → `100` (a zero target is already met).
+ *   • `fiNumberCents` infinite (unreachable SWR) → `0`.
+ *
+ * @param currentInvestedCents - Current invested assets in integer cents.
+ * @param fiNumberCents - The FI target in integer cents (or `Infinity`).
+ * @returns Progress percentage in `[0, 100]`, rounded to one decimal place.
+ */
+export function fiProgressPercent(currentInvestedCents: number, fiNumberCents: number): number {
+  const current = nonNegative(currentInvestedCents);
+  if (!Number.isFinite(fiNumberCents)) return 0;
+  if (fiNumberCents <= 0) return 100;
+  const percent = (current / fiNumberCents) * 100;
+  const clamped = Math.min(100, Math.max(0, percent));
+  return Math.round(clamped * 10) / 10;
+}
+
+/**
+ * Annual passive income the current portfolio already generates at the safe
+ * withdrawal rate: `currentInvested × SWR`.
+ *
+ * @param currentInvestedCents - Current invested assets in integer cents.
+ * @param swrRate - Safe withdrawal rate as a decimal (e.g. 0.04).
+ * @returns Annual passive income in integer cents (0 when SWR ≤ 0).
+ */
+export function currentPassiveIncomeCents(currentInvestedCents: number, swrRate: number): number {
+  const current = nonNegative(currentInvestedCents);
+  if (swrRate <= 0) return 0;
+  return bankersRound(current * swrRate);
+}
+
+/**
+ * Share of annual spending the current portfolio already covers at the SWR
+ * (`currentPassiveIncome ÷ annualSpending × 100`).
+ *
+ * Edge cases:
+ *   • `annualSpendingCents ≤ 0` → `0` (income replacement is not meaningful when
+ *     there is nothing to replace).
+ *
+ * @param currentInvestedCents - Current invested assets in integer cents.
+ * @param annualSpendingCents - Annual spending in integer cents.
+ * @param swrRate - Safe withdrawal rate as a decimal.
+ * @returns Income-replacement percentage (≥ 0), rounded to one decimal place.
+ */
+export function incomeReplacementPercent(
+  currentInvestedCents: number,
+  annualSpendingCents: number,
+  swrRate: number,
+): number {
+  const spending = nonNegative(annualSpendingCents);
+  if (spending === 0) return 0;
+  const passive = currentPassiveIncomeCents(currentInvestedCents, swrRate);
+  return Math.round(((passive / spending) * 100) * 10) / 10;
+}
+
+// ---------------------------------------------------------------------------
+// SWR sensitivity (#3319)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute how sensitive the FI number and time-to-FI are to the safe-withdrawal
+ * rate, across a set of rates (defaults to 3.5% / 4% / 4.5%).
+ *
+ * For each rate this recomputes the FI number (annual spending ÷ SWR) and the
+ * years/months-to-FI from the same current assets, contributions, and real
+ * return — letting a FIRE saver weigh a cautious 3.5% against a more aggressive
+ * 4.5%. Rows are returned in ascending SWR order.
+ *
+ * @param input - Current assets, contributions, real return, and annual spending.
+ * @param swrRates - Rates to evaluate (defaults to {@link DEFAULT_SWR_SENSITIVITY_RATES}).
+ * @returns One {@link SwrSensitivityRow} per rate, ascending by SWR.
+ */
+export function computeSwrSensitivity(
+  input: {
+    readonly currentInvestedCents: number;
+    readonly annualSpendingCents: number;
+    readonly annualContributionCents: number;
+    readonly realReturnRate: number;
+  },
+  swrRates: readonly number[] = DEFAULT_SWR_SENSITIVITY_RATES,
+): SwrSensitivityRow[] {
+  return [...swrRates]
+    .sort((a, b) => a - b)
+    .map((swrRate) => {
+      const fiCents = fiNumber(input.annualSpendingCents, swrRate);
+      return {
+        swrRate,
+        fiNumberCents: fiCents,
+        yearsToFI: yearsToFI({
+          currentInvestedCents: input.currentInvestedCents,
+          annualContributionCents: input.annualContributionCents,
+          realReturnRate: input.realReturnRate,
+          fiNumberCents: fiCents,
+        }),
+      };
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Year-by-year projection (for charting)
 // ---------------------------------------------------------------------------
 
@@ -421,6 +551,13 @@ export function calculateFIREPlan(input: FIREPlanInput): FIREPlanResult {
     fiNumberCents: fiCents,
     swrRate: input.swrRate,
     yearsToFI: ytf,
+    fiProgressPercent: fiProgressPercent(input.currentInvestedCents, fiCents),
+    currentPassiveIncomeCents: currentPassiveIncomeCents(input.currentInvestedCents, input.swrRate),
+    incomeReplacementPercent: incomeReplacementPercent(
+      input.currentInvestedCents,
+      input.annualSpendingCents,
+      input.swrRate,
+    ),
     fiDateIso,
     coastFINumberCents: coastCents,
     isCoastFI: isCoastFI(nonNegative(input.currentInvestedCents), coastCents),
