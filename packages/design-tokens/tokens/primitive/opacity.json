@@ -1,0 +1,45 @@
+{
+  "opacity": {
+    "$description": "Alpha opacity scale (0–1) for disabled states, scrims, overlays, hover washes, skeletons, and press ripples. Centralizing these keeps every disabled control and every scrim at the same level and lets dark/high-contrast themes tune them from one place.",
+    "0": {
+      "$value": 0,
+      "$type": "number",
+      "$description": "Fully transparent"
+    },
+    "5": {
+      "$value": 0.05,
+      "$type": "number",
+      "$description": "Hover/skeleton wash — barely-there tint"
+    },
+    "10": {
+      "$value": 0.1,
+      "$type": "number",
+      "$description": "Subtle overlay / pressed ripple"
+    },
+    "20": {
+      "$value": 0.2,
+      "$type": "number",
+      "$description": "Light overlay / hover fill"
+    },
+    "40": {
+      "$value": 0.4,
+      "$type": "number",
+      "$description": "Disabled control dim level"
+    },
+    "60": {
+      "$value": 0.6,
+      "$type": "number",
+      "$description": "Modal scrim / backdrop darkness"
+    },
+    "80": {
+      "$value": 0.8,
+      "$type": "number",
+      "$description": "Heavy overlay / strong scrim"
+    },
+    "100": {
+      "$value": 1,
+      "$type": "number",
+      "$description": "Fully opaque"
+    }
+  }
+}

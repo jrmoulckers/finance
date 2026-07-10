@@ -1,0 +1,9 @@
+{
+  "$description": "Dark/OLED elevation override. Layered after the shared elevation.json so dark themes map to the stronger shadow.dark.* primitives instead of the faint black shadows that are invisible on near-black surfaces. Light and high-contrast (light) elevation are unchanged. Token names are stable — only the resolved shadow values differ per theme.",
+  "elevation": {
+    "none": { "$value": "{shadow.none}", "$type": "shadow" },
+    "low": { "$value": "{shadow.dark.sm}", "$type": "shadow" },
+    "medium": { "$value": "{shadow.dark.md}", "$type": "shadow" },
+    "high": { "$value": "{shadow.dark.lg}", "$type": "shadow" }
+  }
+}

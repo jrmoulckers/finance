@@ -1,0 +1,37 @@
+{
+  "$description": "Dark/OLED chart series override. Layered after component/chart.json so the dark and OLED themes route chart.series.1–6 to the lightened CVD-safe color.chart.dark.* palette (each ≥8:1 on near-black), while light and high-contrast (light) chart output is unchanged. Existing chart token names are stable. Charts MUST still pair color with labels/patterns.",
+  "chart": {
+    "series": {
+      "1": {
+        "$value": "{color.chart.dark.1}",
+        "$type": "color",
+        "$description": "Series 1 — dark-theme CVD-safe blue (#8CB4FF)"
+      },
+      "2": {
+        "$value": "{color.chart.dark.2}",
+        "$type": "color",
+        "$description": "Series 2 — dark-theme CVD-safe purple (#B99BFF)"
+      },
+      "3": {
+        "$value": "{color.chart.dark.3}",
+        "$type": "color",
+        "$description": "Series 3 — dark-theme CVD-safe magenta (#FF7EB6)"
+      },
+      "4": {
+        "$value": "{color.chart.dark.4}",
+        "$type": "color",
+        "$description": "Series 4 — dark-theme CVD-safe orange (#FF8D3F)"
+      },
+      "5": {
+        "$value": "{color.chart.dark.5}",
+        "$type": "color",
+        "$description": "Series 5 — dark-theme CVD-safe gold (#FFC933)"
+      },
+      "6": {
+        "$value": "{color.chart.dark.6}",
+        "$type": "color",
+        "$description": "Series 6 — dark-theme CVD-safe teal (#3DD6B0)"
+      }
+    }
+  }
+}

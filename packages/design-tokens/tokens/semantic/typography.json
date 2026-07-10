@@ -29,6 +29,17 @@
       "fontSize": { "$value": "{fontSize.xs}", "$type": "dimension" },
       "fontWeight": { "$value": "{fontWeight.regular}", "$type": "fontWeight" },
       "lineHeight": { "$value": "{lineHeight.normal}", "$type": "number" }
+    },
+    "amount": {
+      "$description": "Numeric/currency style for transaction lists, ledgers, and budgets. Uses tabular figures so digits align vertically for easy scanning and comparison. Always render with fontVariantNumeric = tabular-nums.",
+      "fontFamily": { "$value": "{fontFamily.numeric}", "$type": "fontFamily" },
+      "fontSize": { "$value": "{fontSize.base}", "$type": "dimension" },
+      "fontWeight": { "$value": "{fontWeight.medium}", "$type": "fontWeight" },
+      "lineHeight": { "$value": "{lineHeight.normal}", "$type": "number" },
+      "fontVariantNumeric": {
+        "$value": "{fontVariantNumeric.tabular}",
+        "$type": "fontVariantNumeric"
+      }
     }
   }
 }

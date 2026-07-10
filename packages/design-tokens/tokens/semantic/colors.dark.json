@@ -26,7 +26,47 @@
       "positive": { "$value": "{color.green.500}", "$type": "color" },
       "negative": { "$value": "{color.red.500}", "$type": "color" },
       "warning": { "$value": "{color.amber.500}", "$type": "color" },
-      "info": { "$value": "{color.blue.400}", "$type": "color" }
+      "info": { "$value": "{color.blue.400}", "$type": "color" },
+      "pending": {
+        "$value": "{color.teal.400}",
+        "$type": "color",
+        "$description": "Pending/in-progress — teal.400, ~10:1 on dark base. Distinct from info/warning; pair with icon + label."
+      },
+      "neutral": {
+        "$value": "{color.neutral.400}",
+        "$type": "color",
+        "$description": "Neutral/uncategorized — neutral.400, ~8:1 on dark base. Pair with label."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.900}",
+        "$type": "color",
+        "$description": "Dark positive tint panel. Pair with text.primary (≥12:1, AA text) or status.positive (≥3:1, graphical)."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.900}",
+        "$type": "color",
+        "$description": "Dark negative tint panel. Pair with text.primary or status.negative (≥3:1)."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.900}",
+        "$type": "color",
+        "$description": "Dark warning tint panel. Pair with text.primary or status.warning (≥3:1)."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.900}",
+        "$type": "color",
+        "$description": "Dark info tint panel. Pair with text.primary or status.info (≥3:1)."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.900}",
+        "$type": "color",
+        "$description": "Dark pending pill panel. Pair with text.primary or status.pending (≥3:1)."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.800}",
+        "$type": "color",
+        "$description": "Dark neutral tint panel. Pair with text.primary (≥12:1, AA text)."
+      }
     },
     "amount": {
       "positive": { "$value": "{color.green.500}", "$type": "color" },

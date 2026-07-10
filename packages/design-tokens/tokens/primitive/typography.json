@@ -1,4 +1,35 @@
 {
+  "fontFamily": {
+    "$description": "Font-family stacks. Platform-native system fonts by default; numeric maps to the same sans face but is the intent hook for currency/amount styles that also apply tabular figures.",
+    "sans": {
+      "$value": "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      "$type": "fontFamily",
+      "$description": "Default UI sans-serif stack"
+    },
+    "mono": {
+      "$value": "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace",
+      "$type": "fontFamily",
+      "$description": "Monospace stack for code and fixed-width data"
+    },
+    "numeric": {
+      "$value": "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      "$type": "fontFamily",
+      "$description": "Face used for currency/amount figures; pair with fontVariantNumeric.tabular so digits align in columns"
+    }
+  },
+  "fontVariantNumeric": {
+    "$description": "font-variant-numeric intent tokens. Consumers map tabular to CSS `font-variant-numeric: tabular-nums` (and the equivalent OpenType feature on native platforms).",
+    "normal": {
+      "$value": "normal",
+      "$type": "fontVariantNumeric",
+      "$description": "Default proportional figures"
+    },
+    "tabular": {
+      "$value": "tabular-nums",
+      "$type": "fontVariantNumeric",
+      "$description": "Fixed-width figures so monetary columns align vertically"
+    }
+  },
   "fontSize": {
     "xs": { "$value": "12px", "$type": "dimension" },
     "sm": { "$value": "14px", "$type": "dimension" },

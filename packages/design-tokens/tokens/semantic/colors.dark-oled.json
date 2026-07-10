@@ -99,6 +99,46 @@
         "$value": "{color.blue.400}",
         "$type": "color",
         "$description": "Info status — 8.3:1 vs #000000"
+      },
+      "pending": {
+        "$value": "{color.teal.400}",
+        "$type": "color",
+        "$description": "Pending/in-progress — teal.400, ~10:1 vs #000000. Pair with icon + label."
+      },
+      "neutral": {
+        "$value": "{color.neutral.400}",
+        "$type": "color",
+        "$description": "Neutral/uncategorized — neutral.400, 8.3:1 vs #000000. Pair with label."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.900}",
+        "$type": "color",
+        "$description": "Dark positive tint panel on true black. Pair with text.primary (AA text) or status.positive (≥3:1)."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.900}",
+        "$type": "color",
+        "$description": "Dark negative tint panel. Pair with text.primary or status.negative (≥3:1)."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.900}",
+        "$type": "color",
+        "$description": "Dark warning tint panel. Pair with text.primary or status.warning (≥3:1)."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.900}",
+        "$type": "color",
+        "$description": "Dark info tint panel. Pair with text.primary or status.info (≥3:1)."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.900}",
+        "$type": "color",
+        "$description": "Dark pending pill panel. Pair with text.primary or status.pending (≥3:1)."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.800}",
+        "$type": "color",
+        "$description": "Dark neutral tint panel. Pair with text.primary (AA text)."
       }
     },
     "amount": {

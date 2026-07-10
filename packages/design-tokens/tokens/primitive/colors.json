@@ -26,22 +26,39 @@
     },
     "green": {
       "50": { "$value": "#F0FDF4", "$type": "color" },
+      "100": { "$value": "#DCFCE7", "$type": "color" },
+      "200": { "$value": "#BBF7D0", "$type": "color" },
+      "300": { "$value": "#86EFAC", "$type": "color" },
+      "400": { "$value": "#4ADE80", "$type": "color" },
       "500": { "$value": "#22C55E", "$type": "color" },
       "600": { "$value": "#16A34A", "$type": "color" },
-      "700": { "$value": "#15803D", "$type": "color" }
+      "700": { "$value": "#15803D", "$type": "color" },
+      "800": { "$value": "#166534", "$type": "color" },
+      "900": { "$value": "#14532D", "$type": "color" }
     },
     "amber": {
       "50": { "$value": "#FFFBEB", "$type": "color" },
+      "100": { "$value": "#FEF3C7", "$type": "color" },
+      "200": { "$value": "#FDE68A", "$type": "color" },
+      "300": { "$value": "#FCD34D", "$type": "color" },
+      "400": { "$value": "#FBBF24", "$type": "color" },
       "500": { "$value": "#F59E0B", "$type": "color" },
       "600": { "$value": "#D97706", "$type": "color" },
-      "700": { "$value": "#B45309", "$type": "color" }
+      "700": { "$value": "#B45309", "$type": "color" },
+      "800": { "$value": "#92400E", "$type": "color" },
+      "900": { "$value": "#78350F", "$type": "color" }
     },
     "red": {
       "50": { "$value": "#FEF2F2", "$type": "color" },
+      "100": { "$value": "#FEE2E2", "$type": "color" },
+      "200": { "$value": "#FECACA", "$type": "color" },
+      "300": { "$value": "#FCA5A5", "$type": "color" },
       "400": { "$value": "#F87171", "$type": "color" },
       "500": { "$value": "#EF4444", "$type": "color" },
       "600": { "$value": "#DC2626", "$type": "color" },
-      "700": { "$value": "#B91C1C", "$type": "color" }
+      "700": { "$value": "#B91C1C", "$type": "color" },
+      "800": { "$value": "#991B1B", "$type": "color" },
+      "900": { "$value": "#7F1D1D", "$type": "color" }
     },
     "neutral": {
       "0": { "$value": "#FFFFFF", "$type": "color" },
@@ -112,6 +129,39 @@
           "$value": "#005D5D",
           "$type": "color",
           "$description": "HC teal — 6.5:1 vs white (AA)"
+        }
+      },
+      "dark": {
+        "$description": "Dark-theme chart palette — lightened CVD-safe variants tuned for near-black surfaces. Each is ≥8:1 against #000000 (and the dark theme's #030712 base), preserving the IBM CVD-safe hue families so series stay distinguishable for deuteranopia/protanopia/tritanopia. Charts still MUST pair color with labels/patterns.",
+        "1": {
+          "$value": "#8CB4FF",
+          "$type": "color",
+          "$description": "Dark blue series — 10.1:1 vs #000000"
+        },
+        "2": {
+          "$value": "#B99BFF",
+          "$type": "color",
+          "$description": "Dark purple series — 9.2:1 vs #000000 (lightened from #785EF0)"
+        },
+        "3": {
+          "$value": "#FF7EB6",
+          "$type": "color",
+          "$description": "Dark magenta series — 8.9:1 vs #000000"
+        },
+        "4": {
+          "$value": "#FF8D3F",
+          "$type": "color",
+          "$description": "Dark orange series — 9.1:1 vs #000000"
+        },
+        "5": {
+          "$value": "#FFC933",
+          "$type": "color",
+          "$description": "Dark gold series — 13.6:1 vs #000000"
+        },
+        "6": {
+          "$value": "#3DD6B0",
+          "$type": "color",
+          "$description": "Dark teal series — 11.4:1 vs #000000"
         }
       }
     }
