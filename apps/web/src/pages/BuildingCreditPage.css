@@ -110,7 +110,6 @@
 
 .building-credit__result {
   border: 1px solid var(--semantic-border-default);
-  border-left-width: 4px;
   border-radius: var(--border-radius-lg);
   display: flex;
   flex-direction: column;
@@ -120,19 +119,19 @@
 }
 
 .building-credit__result--good {
-  border-left-color: var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
 }
 
 .building-credit__result--caution {
-  border-left-color: var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
 }
 
 .building-credit__result--high {
-  border-left-color: var(--semantic-status-negative);
+  border-color: var(--semantic-status-negative);
 }
 
 .building-credit__result--unknown {
-  border-left-color: var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
 }
 
 .building-credit__result-heading {

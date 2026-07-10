@@ -116,7 +116,7 @@ function buildPrintableHtml(
         <meta charset="utf-8" />
         <title>Estate Inventory</title>
         <style>
-          body { font-family: Arial, sans-serif; color: #111827; margin: 32px; line-height: 1.5; }
+          body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #111827; margin: 32px; line-height: 1.5; }
           h1, h2, h3, h4 { margin-bottom: 8px; }
           h2 { border-bottom: 1px solid #d1d5db; padding-bottom: 6px; margin-top: 28px; }
           .meta { color: #4b5563; margin-bottom: 24px; }

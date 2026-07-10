@@ -355,12 +355,12 @@
 }
 
 .analytics-subscription-card--flagged {
-  border-left: 3px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
 }
 
 .analytics-subscription-card--cancelled {
   opacity: 0.5;
-  border-left: 3px solid var(--semantic-text-secondary);
+  border-color: var(--semantic-text-secondary);
 }
 
 .analytics-subscription-card__info {
@@ -657,7 +657,7 @@
 }
 
 .invoice-card--overdue {
-  border-left: 3px solid var(--semantic-status-negative);
+  border-color: var(--semantic-status-negative);
 }
 
 .invoice-card--paid {

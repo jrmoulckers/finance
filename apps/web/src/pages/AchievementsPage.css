@@ -386,20 +386,19 @@
   padding: var(--spacing-3) var(--spacing-4);
   background: var(--semantic-background-elevated);
   border: 1px solid var(--semantic-border-default);
-  border-left: 4px solid var(--semantic-interactive-default);
   border-radius: var(--border-radius-md);
 }
 
 .nearwin-card--streak {
-  border-left-color: var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
 }
 
 .nearwin-card--goal {
-  border-left-color: var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
 }
 
 .nearwin-card--badge {
-  border-left-color: var(--semantic-interactive-default);
+  border-color: var(--semantic-interactive-default);
 }
 
 .nearwin-card__icon {
@@ -449,7 +448,6 @@
   margin-bottom: var(--spacing-6);
   background: var(--semantic-background-elevated);
   border: 1px solid var(--semantic-status-positive);
-  border-left-width: 4px;
   border-radius: var(--border-radius-md);
   overflow: hidden;
 }

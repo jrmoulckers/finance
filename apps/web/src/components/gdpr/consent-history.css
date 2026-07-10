@@ -71,21 +71,13 @@
   display: flex;
   gap: var(--spacing-3);
   padding: var(--spacing-3);
-  border-left: 3px solid var(--semantic-border-default);
+  border-bottom: 1px solid var(--semantic-border-default);
   margin-bottom: var(--spacing-1);
   transition: background-color 0.1s ease;
 }
 
 .consent-history__event:hover {
   background-color: var(--semantic-background-secondary);
-}
-
-.consent-history__event--granted {
-  border-left-color: var(--semantic-status-positive);
-}
-
-.consent-history__event--withdrawn {
-  border-left-color: var(--semantic-status-negative);
 }
 
 .consent-history__event-indicator {

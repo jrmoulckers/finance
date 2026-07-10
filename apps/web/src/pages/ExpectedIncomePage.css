@@ -198,19 +198,19 @@
 }
 
 .expected-income__card--realized {
-  border-inline-start: 4px solid var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
 }
 
 .expected-income__card--expected {
-  border-inline-start: 4px solid var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
 }
 
 .expected-income__card--planned {
-  border-inline-start: 4px solid var(--semantic-border-default);
+  border-color: var(--semantic-border-default);
 }
 
 .expected-income__card--overdue {
-  border-inline-start: 4px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
 }
 
 .expected-income__card-icon {
@@ -241,15 +241,15 @@
 }
 
 .expected-income__item.is-overdue {
-  border-inline-start: 4px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
 }
 
 .expected-income__item.is-cleared {
-  border-inline-start: 4px solid var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
 }
 
 .expected-income__item.is-pending {
-  border-inline-start: 4px solid var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
 }
 
 .expected-income__item-main {

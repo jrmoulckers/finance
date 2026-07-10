@@ -31,22 +31,37 @@
 
 /* Severity variants */
 .contextual-tip--info {
-  border-left: 3px solid var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-info) 6%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .contextual-tip--warning {
-  border-left: 3px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-warning) 6%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .contextual-tip--success {
-  border-left: 3px solid var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-positive) 6%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .contextual-tip--critical {
-  border-left: 3px solid var(--semantic-status-negative);
+  border-color: var(--semantic-status-negative);
   background: color-mix(
-    in srgb,
-    var(--semantic-status-negative) 5%,
+    in oklab,
+    var(--semantic-status-negative) 8%,
     var(--semantic-background-elevated)
   );
 }
@@ -149,22 +164,6 @@
 @media (prefers-contrast: more) {
   .contextual-tip {
     border-width: 2px;
-  }
-
-  .contextual-tip--info {
-    border-left-width: 4px;
-  }
-
-  .contextual-tip--warning {
-    border-left-width: 4px;
-  }
-
-  .contextual-tip--success {
-    border-left-width: 4px;
-  }
-
-  .contextual-tip--critical {
-    border-left-width: 4px;
   }
 }
 

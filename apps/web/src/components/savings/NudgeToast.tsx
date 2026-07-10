@@ -46,7 +46,7 @@ export function NudgeToast({ nudge, onDismiss, onAction }: NudgeToastProps) {
         display: 'flex',
         alignItems: 'flex-start',
         gap: 'var(--spacing-3)',
-        borderLeft: `4px solid ${toneStyles.borderColor}`,
+        borderColor: toneStyles.borderColor,
         background: toneStyles.background,
       }}
     >

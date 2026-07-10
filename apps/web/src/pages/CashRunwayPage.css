@@ -69,7 +69,6 @@
 
 .cash-runway__status {
   border: 1px solid var(--semantic-border-default);
-  border-left-width: 4px;
   border-radius: var(--border-radius-lg);
   display: flex;
   flex-direction: column;
@@ -78,11 +77,11 @@
 }
 
 .cash-runway__status--healthy {
-  border-left-color: var(--semantic-success-text, #047857);
+  border-color: var(--semantic-success-text, #047857);
 }
 
 .cash-runway__status--shortfall {
-  border-left-color: var(--semantic-danger-text, #b91c1c);
+  border-color: var(--semantic-danger-text, #b91c1c);
 }
 
 .cash-runway__status-heading {

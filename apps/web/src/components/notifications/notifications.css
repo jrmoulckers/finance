@@ -365,19 +365,39 @@
 }
 
 .notification-toast--info {
-  border-left: 4px solid var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-info) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .notification-toast--success {
-  border-left: 4px solid var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-positive) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .notification-toast--warning {
-  border-left: 4px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-warning) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .notification-toast--critical {
-  border-left: 4px solid var(--semantic-status-negative);
+  border-color: var(--semantic-status-negative);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-negative) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .notification-toast__content {
@@ -725,7 +745,6 @@
 
   .notification-toast {
     border-width: 2px;
-    border-left-width: 4px;
   }
 
   .notification-panel {

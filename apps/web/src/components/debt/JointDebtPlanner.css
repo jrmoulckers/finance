@@ -100,15 +100,14 @@
  * ------------------------------------------------------------------------ */
 
 .joint-debt__recommendation {
-  border: 1px solid var(--semantic-border-default, #e5e7eb);
-  border-left: 4px solid var(--semantic-info, #2563eb);
+  border: 1px solid var(--semantic-info, #2563eb);
   border-radius: var(--border-radius-lg, 0.75rem);
   background: var(--semantic-info-bg, #eff6ff);
   padding: var(--spacing-4, 1rem);
 }
 
 .joint-debt__recommendation--balanced {
-  border-left-color: var(--semantic-warning, #d97706);
+  border-color: var(--semantic-warning, #d97706);
   background: var(--semantic-warning-bg, #fef3c7);
 }
 

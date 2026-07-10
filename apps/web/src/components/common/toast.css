@@ -129,7 +129,12 @@
 /* --- Type-specific colours ------------------------------------------- */
 
 .toast--success {
-  border-left: 4px solid var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-positive) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .toast--success .toast__icon {
@@ -137,7 +142,12 @@
 }
 
 .toast--error {
-  border-left: 4px solid var(--semantic-status-negative);
+  border-color: var(--semantic-status-negative);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-negative) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .toast--error .toast__icon {
@@ -145,7 +155,12 @@
 }
 
 .toast--warning {
-  border-left: 4px solid var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-warning) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .toast--warning .toast__icon {
@@ -153,7 +168,12 @@
 }
 
 .toast--info {
-  border-left: 4px solid var(--semantic-status-info);
+  border-color: var(--semantic-status-info);
+  background: color-mix(
+    in oklab,
+    var(--semantic-status-info) 7%,
+    var(--semantic-background-elevated)
+  );
 }
 
 .toast--info .toast__icon {
@@ -191,21 +211,5 @@ html[data-reduced-motion='true'] .toast--exiting {
 @media (prefers-contrast: more), (forced-colors: active) {
   .toast {
     border-width: 2px;
-  }
-
-  .toast--success {
-    border-left-width: 4px;
-  }
-
-  .toast--error {
-    border-left-width: 4px;
-  }
-
-  .toast--warning {
-    border-left-width: 4px;
-  }
-
-  .toast--info {
-    border-left-width: 4px;
   }
 }
