@@ -5,6 +5,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { MilestoneToast } from './components/celebrations';
 import { ConsentDialog } from './components/gdpr';
 import { AppLayout } from './components/layout';
+import { NAV_ROUTE_TITLES } from './components/layout/navConfig';
 import { FocusManager } from './components/layout/FocusManager';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
 import { NotificationsProvider, useNotificationCenter } from './contexts/NotificationsContext';
@@ -24,10 +25,16 @@ import { AppRoutes } from './routes';
 /**
  * Map path segments to human-readable page titles.
  *
+ * Nav destinations are seeded from `NAV_ROUTE_TITLES` (derived from the single
+ * `NAV_CONFIG` source of truth) so every sidebar route has a real title and the
+ * two can never drift (#3780). Bespoke, non-nav titles below — Settings
+ * sub-pages, legal docs, import sub-flows — are layered on top and win.
+ *
  * Used by the AppLayout header. Dynamic / detail routes fall back to a
  * sensible default derived from the path's first segment.
  */
 const PAGE_TITLES: Record<string, string> = {
+  ...NAV_ROUTE_TITLES,
   '/': 'Dashboard',
   '/dashboard': 'Dashboard',
   '/notifications': 'Notifications',
@@ -140,7 +147,7 @@ export function shouldAutoLaunchOnboarding(pathname: string, onboardingComplete:
   return !onboardingComplete && !isFirstRunAllowedPath(pathname);
 }
 
-function derivePageTitle(pathname: string): string {
+export function derivePageTitle(pathname: string): string {
   if (PAGE_TITLES[pathname]) {
     return PAGE_TITLES[pathname];
   }

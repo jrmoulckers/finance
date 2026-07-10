@@ -97,6 +97,21 @@
   }
 }
 
+/* Cue shown when a collapsed group still contains the active route (#3780).
+   Decorative dot; the button's accessible name carries the meaning for AT. */
+.app-sidebar__group-active-dot {
+  display: inline-flex;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: var(--spacing-1, 4px);
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(
+    --navigation-indicator,
+    var(--semantic-interactive-default, var(--color-blue-700, currentColor))
+  );
+}
+
 .sidebar-nav__list--nested {
   padding-top: 0;
   padding-bottom: var(--spacing-1);
