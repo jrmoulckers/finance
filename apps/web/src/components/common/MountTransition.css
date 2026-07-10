@@ -1,0 +1,43 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * MountTransition — default enter/exit styles for the shared mount transition
+ * primitive (see useMountTransition / MountTransition, issue #3651).
+ *
+ * Durations are token-driven: the component sets `--mount-enter-duration` and
+ * `--mount-exit-duration` from the motion tokens (`--duration-normal` /
+ * `--duration-fast`). Easing uses the shared `--easing-*` custom properties.
+ *
+ * Reduced motion: the hook collapses the lifecycle to an instant show/hide, and
+ * the global `prefers-reduced-motion` / `html[data-reduced-motion='true']`
+ * safety nets zero out any residual transition, so no additional guard is
+ * required here.
+ */
+
+.mount-transition {
+  transition:
+    opacity var(--mount-enter-duration, var(--duration-normal, 250ms))
+      var(--easing-decelerate, ease-out),
+    transform var(--mount-enter-duration, var(--duration-normal, 250ms))
+      var(--easing-decelerate, ease-out);
+}
+
+.mount-transition--entering {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.mount-transition--entered {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mount-transition--exiting {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--mount-exit-duration, var(--duration-fast, 150ms))
+      var(--easing-accelerate, ease-in),
+    transform var(--mount-exit-duration, var(--duration-fast, 150ms))
+      var(--easing-accelerate, ease-in);
+}
