@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NotFoundPage } from './NotFoundPage';
+
+const mockNavigate = vi.fn();
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate };
+});
 
 function renderNotFoundPage() {
   return render(
@@ -46,5 +54,17 @@ describe('NotFoundPage', () => {
     renderNotFoundPage();
 
     expect(screen.getByRole('main')).toBeInTheDocument();
+  });
+
+  it('renders a history-aware "Go back" button that navigates back', async () => {
+    const user = userEvent.setup();
+    mockNavigate.mockClear();
+    renderNotFoundPage();
+
+    const backButton = screen.getByRole('button', { name: /go back/i });
+    expect(backButton).toBeInTheDocument();
+
+    await user.click(backButton);
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 });

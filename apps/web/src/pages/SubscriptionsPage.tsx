@@ -16,7 +16,7 @@
  */
 
 import React from 'react';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { CurrencyDisplay, EmptyState, ErrorState, LoadingSpinner } from '../components/common';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import type {
   DetectedSubscription,
@@ -139,7 +139,7 @@ export const SubscriptionsPage: React.FC = () => {
   }
 
   if (error) {
-    return <ErrorBanner message={error} onRetry={refresh} />;
+    return <ErrorState title="Couldn't load subscriptions" description={error} onRetry={refresh} />;
   }
 
   if (subscriptions.length === 0) {

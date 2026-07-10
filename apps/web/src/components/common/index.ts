@@ -24,6 +24,8 @@ export { AmountDisplay } from './AmountDisplay';
 export type { AmountDisplayProps } from './AmountDisplay';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
+export { NoResultsEmptyState } from './NoResultsEmptyState';
+export type { NoResultsEmptyStateProps } from './NoResultsEmptyState';
 export { ErrorBanner } from './ErrorBanner';
 export type { ErrorBannerProps } from './ErrorBanner';
 export { ErrorBoundary } from './ErrorBoundary';

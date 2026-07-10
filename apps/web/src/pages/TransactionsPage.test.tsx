@@ -126,6 +126,22 @@ vi.mock('../components/common', () => ({
       {action}
     </div>
   ),
+  NoResultsEmptyState: ({
+    title,
+    onClearFilters,
+  }: {
+    title?: string;
+    onClearFilters?: () => void;
+  }) => (
+    <div>
+      {title ?? 'No matches found'}
+      {onClearFilters && (
+        <button type="button" onClick={onClearFilters}>
+          Clear filters
+        </button>
+      )}
+    </div>
+  ),
   ErrorBanner: ({ message }: { message: string }) => <div>{message}</div>,
   ExplainThis: () => null,
   LoadingSpinner: ({ label }: { label: string }) => <div>{label}</div>,

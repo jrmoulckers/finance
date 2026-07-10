@@ -55,7 +55,7 @@ describe('SubscriptionsPage', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('shows error banner on error', () => {
+  it('shows an error state with retry on error', () => {
     mockUseSubscriptions.mockReturnValue({
       subscriptions: [],
       summary: {
@@ -76,7 +76,11 @@ describe('SubscriptionsPage', () => {
     });
 
     render(<SubscriptionsPage />);
+    expect(
+      screen.getByRole('heading', { name: /couldn't load subscriptions/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Detection failed')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
 
   it('shows empty state when no subscriptions', () => {
