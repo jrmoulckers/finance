@@ -314,3 +314,74 @@ export function addBreadcrumb(
     data: data ? scrubSensitiveMonitoringPayload(data) : undefined,
   });
 }
+
+/** Unknown-route paths already reported this session, to dedupe repeated 404s. */
+const reportedNotFoundPaths = new Set<string>();
+
+/**
+ * Sanitize an unmatched route path (or referrer URL) for monitoring.
+ *
+ * - Reduces any absolute URL or path to its `pathname` only, so query strings
+ *   and hash fragments — which may carry sensitive financial identifiers — are
+ *   never reported (per the privacy rules).
+ * - Redacts long digit runs and currency amounts that could be account numbers
+ *   or balances embedded in the path (e.g. `/accounts/12345`).
+ *
+ * @param rawPath - A path (`/foo?x=1`) or full URL (`https://host/foo#h`).
+ * @returns The sanitized, PII-scrubbed path portion.
+ */
+export function sanitizeNotFoundPath(rawPath: string): string {
+  let pathname: string;
+  try {
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    pathname = new URL(rawPath, base).pathname;
+  } catch {
+    pathname = rawPath.split(/[?#]/u)[0] ?? '';
+  }
+
+  if (!pathname) {
+    pathname = '/';
+  }
+
+  return scrubString(pathname);
+}
+
+/**
+ * Report an unknown-route (404) hit so broken deep links, stale bookmarks, and
+ * bad internal links surface in monitoring (#3682).
+ *
+ * Only the sanitized `pathname` is sent — never the query string, hash, or any
+ * PII. Repeated hits of the same sanitized path within a browser session are
+ * deduped so a single broken link does not flood monitoring.
+ *
+ * @param rawPath - The unmatched location path.
+ * @param referrer - Optional referrer path/URL; sanitized to its pathname only.
+ * @returns True when an event was emitted, false when suppressed as a duplicate.
+ */
+export function trackNotFound(rawPath: string, referrer?: string): boolean {
+  const path = sanitizeNotFoundPath(rawPath);
+
+  if (reportedNotFoundPaths.has(path)) {
+    return false;
+  }
+  reportedNotFoundPaths.add(path);
+
+  const sanitizedReferrer =
+    referrer && referrer.trim().length > 0 ? sanitizeNotFoundPath(referrer) : undefined;
+
+  addBreadcrumb(
+    `404: ${path}`,
+    'navigation',
+    sanitizedReferrer ? { referrer: sanitizedReferrer } : undefined,
+  );
+
+  if (isInitialized && hasMonitoringConsent()) {
+    Sentry.captureMessage(`Unknown route (404): ${path}`, {
+      level: 'warning',
+      tags: { kind: 'not-found', path },
+      ...(sanitizedReferrer ? { extra: { referrer: sanitizedReferrer } } : {}),
+    });
+  }
+
+  return true;
+}

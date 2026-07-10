@@ -30,7 +30,7 @@ import { formatAmount, MaskingMode } from './ui/privacy';
 // ---------------------------------------------------------------------------
 
 /** How negative amounts are visually indicated (besides color). */
-export type NegativeFormat = 'minus' | 'parentheses' | 'color-only';
+export type NegativeFormat = 'minus' | 'parentheses' | 'text-label';
 
 /** How the currency identifier is displayed. */
 export type CurrencyDisplayMode = 'symbol' | 'code' | 'name';
@@ -113,8 +113,8 @@ export function loadDisplaySettings(): MoneyDisplaySettings {
         typeof obj.showDecimals === 'boolean'
           ? obj.showDecimals
           : DEFAULT_DISPLAY_SETTINGS.showDecimals,
-      negativeFormat: isNegativeFormat(obj.negativeFormat)
-        ? obj.negativeFormat
+      negativeFormat: isNegativeFormat(normalizeNegativeFormat(obj.negativeFormat))
+        ? normalizeNegativeFormat(obj.negativeFormat)
         : DEFAULT_DISPLAY_SETTINGS.negativeFormat,
       currencyDisplay: isCurrencyDisplayMode(obj.currencyDisplay)
         ? obj.currencyDisplay
@@ -140,7 +140,17 @@ export function saveDisplaySettings(settings: MoneyDisplaySettings): void {
 
 /** Type guard for `NegativeFormat`. */
 function isNegativeFormat(value: unknown): value is NegativeFormat {
-  return value === 'minus' || value === 'parentheses' || value === 'color-only';
+  return value === 'minus' || value === 'parentheses' || value === 'text-label';
+}
+
+/**
+ * Migrate the legacy `'color-only'` enum value to its accurate `'text-label'`
+ * name. The option always rendered a `Negative …` text prefix (never color
+ * alone), so `'color-only'` was a misnomer (#3283). Persisted preferences are
+ * mapped forward transparently.
+ */
+function normalizeNegativeFormat(value: unknown): unknown {
+  return value === 'color-only' ? 'text-label' : value;
 }
 
 /** Type guard for `CurrencyDisplayMode`. */
@@ -194,7 +204,7 @@ export function formatAmountWithSettings(
   switch (settings.negativeFormat) {
     case 'parentheses':
       return `(${formatted})`;
-    case 'color-only':
+    case 'text-label':
       return `Negative ${formatted}`;
     case 'minus':
     default:

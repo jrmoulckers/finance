@@ -130,7 +130,7 @@ export const BetaLanding: FC = () => {
           Secure household budgeting, goals, and insights are ready for early testers. Help shape
           Finance before the public launch.
         </p>
-        <Link className="beta-landing__primary-cta" to="/login">
+        <Link className="beta-landing__primary-cta" to="/signup">
           Sign up for the beta
         </Link>
       </section>

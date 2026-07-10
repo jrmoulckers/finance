@@ -62,6 +62,15 @@ describe('display-settings', () => {
       expect(loaded.positiveColor).toBe('#00ff00');
       expect(loaded.negativeColor).toBe(DEFAULT_DISPLAY_SETTINGS.negativeColor);
     });
+
+    it('migrates the legacy negativeFormat "color-only" value to "text-label"', () => {
+      localStorage.setItem(
+        DISPLAY_SETTINGS_KEY,
+        JSON.stringify({ negativeFormat: 'color-only' }),
+      );
+
+      expect(loadDisplaySettings().negativeFormat).toBe('text-label');
+    });
   });
 
   describe('saveDisplaySettings', () => {
@@ -109,7 +118,7 @@ describe('display-settings', () => {
     });
 
     it('uses color-independent text label format', () => {
-      const settings: MoneyDisplaySettings = { ...defaults, negativeFormat: 'color-only' };
+      const settings: MoneyDisplaySettings = { ...defaults, negativeFormat: 'text-label' };
       expect(formatAmountWithSettings(-123456, settings)).toBe('Negative $1,234.56');
     });
 

@@ -166,7 +166,7 @@ vi.mock('../lib/display-settings', () => ({
       settings.currencyDisplay === 'code' ? `USD ${formattedNumber}` : `$${formattedNumber}`;
     if (amount >= 0) return formatted;
     if (settings.negativeFormat === 'parentheses') return `(${formatted})`;
-    if (settings.negativeFormat === 'color-only') return `Negative ${formatted}`;
+    if (settings.negativeFormat === 'text-label') return `Negative ${formatted}`;
     return `-${formatted}`;
   },
   getAmountColor: (amount: number) => {

@@ -54,18 +54,12 @@ export interface AccessibilityProviderProps {
 }
 
 const STORAGE_KEY = 'finance-accessibility-settings-v1';
-const ROOT_FONT_SIZES: Record<AccessibilityFontSize, string> = {
-  normal: '16px',
-  large: '18px',
-  'extra-large': '20px',
-};
 
 /**
  * Accessibility "Font size" root sizes in CSS pixels.
  *
- * Mirrors {@link ROOT_FONT_SIZES} numerically so the effective root font size
- * can be reconciled with the Display "Text size" scale (see useFontScale),
- * which applies an inline root font-size that outranks the
+ * Reconciled with the Display "Text size" scale (see useFontScale), which
+ * applies an inline root font-size that outranks the
  * `html[data-accessibility-font-size]` rules in accessibility.css.
  */
 const ACCESSIBILITY_ROOT_FONT_PIXELS: Record<AccessibilityFontSize, number> = {
@@ -137,17 +131,10 @@ function applyDomSettings(
 
   const root = document.documentElement;
   const body = document.body;
-  const fontSizeClassNames = [
-    'accessibility-font-size--normal',
-    'accessibility-font-size--large',
-    'accessibility-font-size--extra-large',
-  ];
 
   body.classList.toggle('accessibility-simplified', settings.accessibilityMode === 'simplified');
   body.classList.toggle('accessibility-high-contrast', settings.highContrast);
   body.classList.toggle('accessibility-reduced-motion', effectiveReduceMotion);
-  body.classList.remove(...fontSizeClassNames);
-  body.classList.add(`accessibility-font-size--${settings.fontSize}`);
   body.dataset.accessibilityMode = settings.accessibilityMode;
   body.dataset.accessibilityFontSize = settings.fontSize;
   body.dataset.accessibilityContrast = String(settings.highContrast);
@@ -156,7 +143,6 @@ function applyDomSettings(
 
   root.dataset.accessibilityMode = settings.accessibilityMode;
   root.dataset.accessibilityFontSize = settings.fontSize;
-  root.style.setProperty('--accessibility-root-font-size', ROOT_FONT_SIZES[settings.fontSize]);
   root.style.setProperty(
     '--accessibility-touch-target-size',
     settings.accessibilityMode === 'simplified' ? '56px' : '48px',
@@ -176,7 +162,6 @@ function applyDomSettings(
       'accessibility-simplified',
       'accessibility-high-contrast',
       'accessibility-reduced-motion',
-      ...fontSizeClassNames,
     );
     delete body.dataset.accessibilityMode;
     delete body.dataset.accessibilityFontSize;
@@ -185,7 +170,6 @@ function applyDomSettings(
     delete body.dataset.accessibilitySpeech;
     delete root.dataset.accessibilityMode;
     delete root.dataset.accessibilityFontSize;
-    root.style.removeProperty('--accessibility-root-font-size');
     root.style.removeProperty('--accessibility-touch-target-size');
     // Hand the inline root font-size back to the Display "Text size" preference
     // so removing the provider does not strand the accessibility size.

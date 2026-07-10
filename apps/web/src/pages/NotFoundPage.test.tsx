@@ -2,9 +2,10 @@
 
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { NotFoundPage } from './NotFoundPage';
+import { trackNotFound } from '../lib/monitoring';
 
 const mockNavigate = vi.fn();
 
@@ -12,6 +13,10 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return { ...actual, useNavigate: () => mockNavigate };
 });
+
+vi.mock('../lib/monitoring', () => ({
+  trackNotFound: vi.fn(),
+}));
 
 function renderNotFoundPage() {
   return render(
@@ -67,5 +72,20 @@ describe('NotFoundPage', () => {
 
     await user.click(backButton);
     expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+
+  it('reports the unknown route to monitoring exactly once with the unmatched path', () => {
+    vi.mocked(trackNotFound).mockClear();
+
+    render(
+      <MemoryRouter initialEntries={['/totally/unknown/deep-link']}>
+        <Routes>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(trackNotFound).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(trackNotFound).mock.calls[0][0]).toBe('/totally/unknown/deep-link');
   });
 });

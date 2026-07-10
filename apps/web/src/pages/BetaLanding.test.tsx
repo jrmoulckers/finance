@@ -44,7 +44,7 @@ describe('BetaLanding', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Sign up for the beta' })).toHaveAttribute(
       'href',
-      '/login',
+      '/signup',
     );
   });
 
