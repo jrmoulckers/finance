@@ -424,7 +424,10 @@ export const FirePlannerPage: React.FC = () => {
               min={0}
               step={1000}
             />
-            <fieldset className="fire-field fire-field--return" aria-describedby={`${fid('return-mode')}-hint`}>
+            <fieldset
+              className="fire-field fire-field--return"
+              aria-describedby={`${fid('return-mode')}-hint`}
+            >
               <legend className="fire-field__label">Return assumption</legend>
               <div
                 className="fire-return-mode"
@@ -553,8 +556,8 @@ export const FirePlannerPage: React.FC = () => {
             })}
           </div>
           <p className="fire-results__scenario-note">
-            Showing <strong>{activeScenario.label}</strong> — {activeScenario.description} Retirement
-            spending {formatCurrency(activeSpendingCents)}/yr.
+            Showing <strong>{activeScenario.label}</strong> — {activeScenario.description}{' '}
+            Retirement spending {formatCurrency(activeSpendingCents)}/yr.
           </p>
 
           {/* Progress toward FI + income replacement (#3320). */}
@@ -754,9 +757,7 @@ export const FirePlannerPage: React.FC = () => {
                       ) : null}
                     </th>
                     <td>
-                      {Number.isFinite(row.fiNumberCents)
-                        ? formatCurrency(row.fiNumberCents)
-                        : '—'}
+                      {Number.isFinite(row.fiNumberCents) ? formatCurrency(row.fiNumberCents) : '—'}
                     </td>
                     <td>
                       {row.yearsToFI.alreadyFI

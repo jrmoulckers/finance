@@ -339,11 +339,7 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
       </div>
 
       <div className="nw-projection__controls">
-        <div
-          className="nw-projection__mode"
-          role="radiogroup"
-          aria-label="Projection method"
-        >
+        <div className="nw-projection__mode" role="radiogroup" aria-label="Projection method">
           <button
             type="button"
             role="radio"

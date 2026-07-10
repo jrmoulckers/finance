@@ -133,10 +133,7 @@ export const EstateInventory: React.FC = () => {
       </section>
 
       {summary.hasEstimatedValue ? (
-        <section
-          className="estate-value-summary"
-          aria-label="Estimated estate value breakdown"
-        >
+        <section className="estate-value-summary" aria-label="Estimated estate value breakdown">
           <div className="estate-value-summary__totals">
             <div className="estate-value-summary__total">
               <span className="estate-value-summary__total-label">Assets</span>

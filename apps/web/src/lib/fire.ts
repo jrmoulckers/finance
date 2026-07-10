@@ -359,7 +359,7 @@ export function incomeReplacementPercent(
   const spending = nonNegative(annualSpendingCents);
   if (spending === 0) return 0;
   const passive = currentPassiveIncomeCents(currentInvestedCents, swrRate);
-  return Math.round(((passive / spending) * 100) * 10) / 10;
+  return Math.round((passive / spending) * 100 * 10) / 10;
 }
 
 // ---------------------------------------------------------------------------

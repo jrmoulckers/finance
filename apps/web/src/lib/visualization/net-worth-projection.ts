@@ -277,8 +277,7 @@ function compoundBalanceCents(
 ): number {
   const growth = Math.pow(1 + monthlyRate, monthOffset);
   const grownStart = startCents * growth;
-  const annuityFactor =
-    Math.abs(monthlyRate) < 1e-12 ? monthOffset : (growth - 1) / monthlyRate;
+  const annuityFactor = Math.abs(monthlyRate) < 1e-12 ? monthOffset : (growth - 1) / monthlyRate;
   return roundCents(grownStart + monthlyContributionCents * annuityFactor);
 }
 
