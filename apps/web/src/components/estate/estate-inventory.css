@@ -58,7 +58,7 @@
 
 .estate-hero__stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   gap: var(--spacing-3);
 }
 
@@ -446,4 +446,75 @@
   .estate-card__detail-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Estimated estate value summary (#3288) --------------------------------- */
+
+.estate-value-summary {
+  margin: var(--spacing-4) 0;
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+}
+
+.estate-value-summary__totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--spacing-3);
+}
+
+.estate-value-summary__total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.estate-value-summary__total-label {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary);
+}
+
+.estate-value-summary__total-value {
+  font-size: var(--type-scale-title-font-size, 1.25rem);
+  font-weight: 600;
+  color: var(--semantic-text-primary);
+}
+
+.estate-value-summary__total--net .estate-value-summary__total-value {
+  color: var(--semantic-text-primary);
+}
+
+.estate-value-summary__details {
+  margin-top: var(--spacing-3);
+}
+
+.estate-value-summary__details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--semantic-text-primary);
+}
+
+.estate-value-summary__list {
+  list-style: none;
+  margin: var(--spacing-2) 0 0;
+  padding: 0;
+}
+
+.estate-value-summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-1) 0;
+  border-bottom: 1px solid var(--semantic-border-subtle, var(--semantic-border-default));
+}
+
+.estate-value-summary__row-label {
+  color: var(--semantic-text-secondary);
+}
+
+.estate-value-summary__note {
+  margin: var(--spacing-3) 0 0;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary);
 }

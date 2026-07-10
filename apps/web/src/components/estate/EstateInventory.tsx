@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '../common';
+import { CurrencyDisplay } from '../common';
 import { getAccessInfo, saveAccessInfo } from '../../lib/estate/accessInfo';
 import { ESTATE_CATEGORIES, getEstateCategory } from '../../lib/estate/categories';
 import {
@@ -118,8 +119,69 @@ export const EstateInventory: React.FC = () => {
             <span className="estate-hero__stat-value">{accessInfo.trustedContacts.length}</span>
             <span className="estate-hero__stat-label">trusted contacts</span>
           </div>
+          <div className="estate-hero__stat estate-hero__stat--value">
+            <span className="estate-hero__stat-value">
+              {summary.hasEstimatedValue ? (
+                <CurrencyDisplay amount={summary.netEstimatedValueCents} />
+              ) : (
+                '—'
+              )}
+            </span>
+            <span className="estate-hero__stat-label">est. net value</span>
+          </div>
         </div>
       </section>
+
+      {summary.hasEstimatedValue ? (
+        <section
+          className="estate-value-summary"
+          aria-label="Estimated estate value breakdown"
+        >
+          <div className="estate-value-summary__totals">
+            <div className="estate-value-summary__total">
+              <span className="estate-value-summary__total-label">Assets</span>
+              <span className="estate-value-summary__total-value">
+                <CurrencyDisplay amount={summary.totalAssetsCents} />
+              </span>
+            </div>
+            <div className="estate-value-summary__total">
+              <span className="estate-value-summary__total-label">Liabilities</span>
+              <span className="estate-value-summary__total-value">
+                <CurrencyDisplay amount={summary.totalLiabilitiesCents} />
+              </span>
+            </div>
+            <div className="estate-value-summary__total estate-value-summary__total--net">
+              <span className="estate-value-summary__total-label">Estimated net value</span>
+              <span className="estate-value-summary__total-value">
+                <CurrencyDisplay amount={summary.netEstimatedValueCents} />
+              </span>
+            </div>
+          </div>
+          {summary.categoryValueSubtotals.length > 0 ? (
+            <details className="estate-value-summary__details">
+              <summary>Per-category subtotals</summary>
+              <ul className="estate-value-summary__list">
+                {summary.categoryValueSubtotals.map((subtotal) => (
+                  <li key={subtotal.categoryId} className="estate-value-summary__row">
+                    <span className="estate-value-summary__row-label">
+                      {getEstateCategory(subtotal.categoryId).label}
+                      {subtotal.kind === 'liability' ? ' (liability)' : ''}
+                      {subtotal.kind === 'other' ? ' (not counted in net)' : ''}
+                    </span>
+                    <span className="estate-value-summary__row-value">
+                      <CurrencyDisplay amount={subtotal.totalCents} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+          <p className="estate-value-summary__note">
+            Estimate only, based on the approximate values you entered. Blank or mixed-currency
+            entries are treated as zero.
+          </p>
+        </section>
+      ) : null}
 
       {savedMessage ? (
         <p className="estate-page-status" role="status" aria-live="polite">

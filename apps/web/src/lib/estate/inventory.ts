@@ -4,11 +4,61 @@ import { ESTATE_CATEGORIES } from './categories';
 import type {
   Beneficiary,
   EstateCategoryId,
+  EstateCategoryValueSubtotal,
   EstateInventoryItem,
   EstateInventorySummary,
+  EstateValueKind,
 } from './types';
 
 const ESTATE_INVENTORY_STORAGE_KEY = 'finance-estate-inventory-v1';
+
+/**
+ * How each estate category's recorded currency values contribute to the
+ * estimated total. Assets add to the estate, liabilities subtract, and "other"
+ * (e.g. insurance payouts, recurring subscription costs) is summarised but kept
+ * out of the net figure so the headline number is not double-counted.
+ */
+const CATEGORY_VALUE_KIND: Record<EstateCategoryId, EstateValueKind> = {
+  'bank-accounts': 'asset',
+  investments: 'asset',
+  'real-estate': 'asset',
+  'digital-assets': 'asset',
+  debts: 'liability',
+  insurance: 'other',
+  subscriptions: 'other',
+  'important-contacts': 'other',
+};
+
+/** Currency-field keys per category, derived once from the category schema. */
+const CURRENCY_FIELDS_BY_CATEGORY: Record<EstateCategoryId, readonly string[]> =
+  ESTATE_CATEGORIES.reduce(
+    (acc, category) => {
+      acc[category.id] = category.fields
+        .filter((field) => field.inputType === 'currency')
+        .map((field) => field.key);
+      return acc;
+    },
+    {} as Record<EstateCategoryId, string[]>,
+  );
+
+/**
+ * Parses a free-text currency field to integer cents.
+ *
+ * Tolerates thousands separators, currency symbols and surrounding whitespace
+ * (e.g. "$1,250.50" → 125050). Blank, non-numeric or negative inputs yield 0 so
+ * mixed/partial data never corrupts the rollup.
+ *
+ * @param raw - Raw stored currency string.
+ * @returns Non-negative integer cents.
+ */
+export function parseEstateCurrencyToCents(raw: string | undefined): number {
+  if (typeof raw !== 'string') return 0;
+  const cleaned = raw.replace(/[^0-9.]/g, '');
+  if (!cleaned) return 0;
+  const parsed = Number.parseFloat(cleaned);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.round(parsed * 100);
+}
 
 function getNowIso(): string {
   return new Date().toISOString();
@@ -163,6 +213,36 @@ export function summarizeInventory(
     items.some((item) => item.categoryId === category.id),
   ).map((category) => category.id);
 
+  // Roll up parsed currency fields per category (integer cents).
+  const subtotalByCategory = new Map<EstateCategoryId, number>();
+  let hasEstimatedValue = false;
+  for (const item of items) {
+    const currencyKeys = CURRENCY_FIELDS_BY_CATEGORY[item.categoryId] ?? [];
+    if (currencyKeys.length === 0) continue;
+    let itemCents = 0;
+    for (const key of currencyKeys) {
+      const cents = parseEstateCurrencyToCents(item.details[key]);
+      if (cents > 0) hasEstimatedValue = true;
+      itemCents += cents;
+    }
+    subtotalByCategory.set(
+      item.categoryId,
+      (subtotalByCategory.get(item.categoryId) ?? 0) + itemCents,
+    );
+  }
+
+  const categoryValueSubtotals: EstateCategoryValueSubtotal[] = [];
+  let totalAssetsCents = 0;
+  let totalLiabilitiesCents = 0;
+  for (const category of ESTATE_CATEGORIES) {
+    const totalCents = subtotalByCategory.get(category.id) ?? 0;
+    if (totalCents === 0) continue;
+    const kind = CATEGORY_VALUE_KIND[category.id];
+    categoryValueSubtotals.push({ categoryId: category.id, kind, totalCents });
+    if (kind === 'asset') totalAssetsCents += totalCents;
+    else if (kind === 'liability') totalLiabilitiesCents += totalCents;
+  }
+
   return {
     totalItems: items.length,
     documentedCategories,
@@ -171,6 +251,11 @@ export function summarizeInventory(
     ),
     itemsMissingDocuments: items.filter((item) => !item.documentLocation.trim()).length,
     itemsMissingVerification: items.filter((item) => !item.lastVerifiedAt.trim()).length,
+    totalAssetsCents,
+    totalLiabilitiesCents,
+    netEstimatedValueCents: totalAssetsCents - totalLiabilitiesCents,
+    categoryValueSubtotals,
+    hasEstimatedValue,
   };
 }
 
