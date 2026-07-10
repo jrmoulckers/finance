@@ -13,12 +13,26 @@ const toGlob = (p) => p.replace(/\\/g, '/');
 const primitives = toGlob(join(root, 'tokens', 'primitive', '*.json'));
 const components = toGlob(join(root, 'tokens', 'component', '*.json'));
 
-/** Shared non-color semantic tokens (typography, elevation, breakpoints, animation) */
+/** Shared non-color semantic tokens (typography, elevation, breakpoints, animation, state, layer) */
 const semanticShared = [
   toGlob(join(root, 'tokens', 'semantic', 'typography.json')),
   toGlob(join(root, 'tokens', 'semantic', 'elevation.json')),
   toGlob(join(root, 'tokens', 'semantic', 'breakpoints.json')),
   toGlob(join(root, 'tokens', 'semantic', 'animation.json')),
+  toGlob(join(root, 'tokens', 'semantic', 'state.json')),
+  toGlob(join(root, 'tokens', 'semantic', 'layer.json')),
+];
+
+/**
+ * Dark-theme overrides layered AFTER shared semantic + components so dark/OLED
+ * builds get visible (theme-aware) elevation and the dark CVD-safe chart palette
+ * without affecting the light or light-high-contrast output. Kept in
+ * tokens/override/ (outside the primitive/component globs) so they only apply to
+ * the themes that explicitly include them.
+ */
+const darkOverrides = [
+  toGlob(join(root, 'tokens', 'override', 'elevation.dark.json')),
+  toGlob(join(root, 'tokens', 'override', 'chart.dark.json')),
 ];
 
 // ---------------------------------------------------------------------------
@@ -271,6 +285,7 @@ const darkSd = new StyleDictionary({
     toGlob(join(root, 'tokens', 'semantic', 'colors.dark.json')),
     ...semanticShared,
     components,
+    ...darkOverrides,
   ],
   usesDtcg: true,
   platforms: buildPlatforms({
@@ -297,6 +312,7 @@ const oledDarkSd = new StyleDictionary({
     toGlob(join(root, 'tokens', 'semantic', 'colors.dark-oled.json')),
     ...semanticShared,
     components,
+    ...darkOverrides,
   ],
   usesDtcg: true,
   platforms: buildPlatforms({
@@ -337,6 +353,36 @@ const highContrastSd = new StyleDictionary({
   }),
 });
 
+/**
+ * Build dark high-contrast theme — primitives + dark high-contrast semantic +
+ * shared semantic + components + dark overrides.
+ *
+ * Completes the accessibility matrix for users who need both high contrast AND a
+ * dark surface (Windows High Contrast dark, macOS Increase Contrast + Dark Mode,
+ * prefers-contrast: more + prefers-color-scheme: dark). Near-black base with
+ * near-white AAA text pairings and brightened borders (≥3:1 UI contrast). Reuses
+ * the dark elevation + dark CVD-safe chart overrides since it is a dark theme.
+ */
+const highContrastDarkSd = new StyleDictionary({
+  source: [
+    primitives,
+    toGlob(join(root, 'tokens', 'semantic', 'colors.high-contrast-dark.json')),
+    ...semanticShared,
+    components,
+    ...darkOverrides,
+  ],
+  usesDtcg: true,
+  platforms: buildPlatforms({
+    cssFile: 'tokens-high-contrast-dark.css',
+    cssSelector: '[data-theme="high-contrast-dark"]',
+    swiftFile: 'FinanceTokensHighContrastDark.swift',
+    swiftClass: 'FinanceTokensHighContrastDark',
+    androidColorsFile: 'colors-high-contrast-dark.xml',
+    xamlFile: 'FinanceTokensHighContrastDark.xaml',
+    xamlBrushFile: 'FinanceTokensHighContrastDarkBrushes.xaml',
+  }),
+});
+
 // ---------------------------------------------------------------------------
 // Build all themes
 // ---------------------------------------------------------------------------
@@ -346,7 +392,10 @@ try {
   await darkSd.buildAllPlatforms();
   await oledDarkSd.buildAllPlatforms();
   await highContrastSd.buildAllPlatforms();
-  console.log('✅ Design tokens built successfully (light + dark + dark-oled + high-contrast)!');
+  await highContrastDarkSd.buildAllPlatforms();
+  console.log(
+    '✅ Design tokens built successfully (light + dark + dark-oled + high-contrast + high-contrast-dark)!',
+  );
 } catch (err) {
   console.error('Build failed:', err.message);
   process.exit(1);

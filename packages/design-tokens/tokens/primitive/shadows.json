@@ -40,6 +40,49 @@
         "color": "rgba(0,0,0,0.1)"
       },
       "$type": "shadow"
+    },
+    "dark": {
+      "$description": "Stronger, deeper shadows for dark/OLED themes. Faint black shadows (0.05–0.1 alpha) are invisible on near-black surfaces, so dark elevation uses higher-opacity black with larger blur/spread — combined with the lighter elevated surface tints already defined per dark theme — to restore depth cues between cards, modals, and popovers.",
+      "sm": {
+        "$value": {
+          "offsetX": "0px",
+          "offsetY": "1px",
+          "blur": "3px",
+          "spread": "0px",
+          "color": "rgba(0,0,0,0.5)"
+        },
+        "$type": "shadow"
+      },
+      "md": {
+        "$value": {
+          "offsetX": "0px",
+          "offsetY": "4px",
+          "blur": "8px",
+          "spread": "-1px",
+          "color": "rgba(0,0,0,0.55)"
+        },
+        "$type": "shadow"
+      },
+      "lg": {
+        "$value": {
+          "offsetX": "0px",
+          "offsetY": "10px",
+          "blur": "20px",
+          "spread": "-3px",
+          "color": "rgba(0,0,0,0.6)"
+        },
+        "$type": "shadow"
+      },
+      "xl": {
+        "$value": {
+          "offsetX": "0px",
+          "offsetY": "20px",
+          "blur": "30px",
+          "spread": "-5px",
+          "color": "rgba(0,0,0,0.65)"
+        },
+        "$type": "shadow"
+      }
     }
   }
 }

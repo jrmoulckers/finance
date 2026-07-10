@@ -99,6 +99,46 @@
         "$value": "{color.blue.800}",
         "$type": "color",
         "$description": "Dark blue info — 8.6:1 vs white (AAA)"
+      },
+      "pending": {
+        "$value": "{color.teal.800}",
+        "$type": "color",
+        "$description": "Dark teal pending — ~7:1 vs white (AAA). Always paired with clock/spinner icon + label."
+      },
+      "neutral": {
+        "$value": "{color.neutral.700}",
+        "$type": "color",
+        "$description": "Dark gray neutral — 9.3:1 vs white (AAA). Paired with label."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.50}",
+        "$type": "color",
+        "$description": "Very light positive tint. Pair with status.positive (green.700) — ≥10:1 (AAA)."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.50}",
+        "$type": "color",
+        "$description": "Very light negative tint. Pair with status.negative (red.700) — ≥10:1 (AAA)."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.50}",
+        "$type": "color",
+        "$description": "Very light warning tint. Pair with status.warning (amber.700) — ≥8:1 (AAA)."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.50}",
+        "$type": "color",
+        "$description": "Very light info tint. Pair with status.info (blue.800) — ≥8:1 (AAA)."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.50}",
+        "$type": "color",
+        "$description": "Very light pending tint. Pair with status.pending (teal.800) — ≥7:1 (AAA)."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.100}",
+        "$type": "color",
+        "$description": "Very light neutral tint. Pair with text.primary or status.neutral — ≥9:1 (AAA)."
       }
     },
     "amount": {

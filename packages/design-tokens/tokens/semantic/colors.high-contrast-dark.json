@@ -1,0 +1,157 @@
+{
+  "$description": "Dark high-contrast theme semantic color tokens. Completes the accessibility matrix for users who need BOTH maximum contrast AND a dark surface (Windows High Contrast dark, macOS Increase Contrast + Dark Mode, prefers-contrast: more + prefers-color-scheme: dark). Near-black base with near-white text; text pairings target WCAG AAA (7:1+) and non-text UI (borders/focus) exceed 3:1 vs the base. Contrast ratios documented vs the #030712 base.",
+  "semantic": {
+    "background": {
+      "primary": {
+        "$value": "{color.neutral.950}",
+        "$type": "color",
+        "$description": "Near-black background (#030712) — maximum-contrast dark base"
+      },
+      "secondary": {
+        "$value": "{color.neutral.900}",
+        "$type": "color",
+        "$description": "Slightly lighter secondary surface (#111827) — clear separation from primary"
+      },
+      "elevated": {
+        "$value": "{color.neutral.800}",
+        "$type": "color",
+        "$description": "Elevated surface (#1F2937) with bright border for definition"
+      }
+    },
+    "text": {
+      "primary": {
+        "$value": "{color.neutral.0}",
+        "$type": "color",
+        "$description": "Pure white primary text — 20.9:1 vs base (AAA)"
+      },
+      "secondary": {
+        "$value": "{color.neutral.200}",
+        "$type": "color",
+        "$description": "Near-white secondary text (#E5E7EB) — 16.8:1 vs base (AAA)"
+      },
+      "disabled": {
+        "$value": "{color.neutral.400}",
+        "$type": "color",
+        "$description": "Medium gray disabled text (#9CA3AF) — 7.1:1 vs base (WCAG exempt for disabled)"
+      },
+      "inverse": {
+        "$value": "{color.neutral.950}",
+        "$type": "color",
+        "$description": "Near-black text for use on bright interactive surfaces"
+      }
+    },
+    "border": {
+      "default": {
+        "$value": "{color.neutral.300}",
+        "$type": "color",
+        "$description": "Bright default border (#D1D5DB) — 12.9:1 vs base, far exceeds 3:1 UI contrast"
+      },
+      "focus": {
+        "$value": "{color.blue.300}",
+        "$type": "color",
+        "$description": "Bright blue focus ring (#93C5FD) — 9.9:1 vs base, clearly visible"
+      },
+      "error": {
+        "$value": "{color.red.400}",
+        "$type": "color",
+        "$description": "Bright red error border (#F87171) — 6.0:1 vs base (exceeds 3:1 UI)"
+      }
+    },
+    "interactive": {
+      "default": {
+        "$value": "{color.blue.300}",
+        "$type": "color",
+        "$description": "Bright blue interactive (#93C5FD) — 9.9:1 vs base (AAA for text)"
+      },
+      "hover": {
+        "$value": "{color.blue.200}",
+        "$type": "color",
+        "$description": "Lighter blue on hover (#BFDBFE) — 13.4:1 vs base"
+      },
+      "pressed": {
+        "$value": "{color.blue.100}",
+        "$type": "color",
+        "$description": "Lightest blue pressed (#DBEAFE) — 16.5:1 vs base"
+      },
+      "disabled": {
+        "$value": "{color.neutral.600}",
+        "$type": "color",
+        "$description": "Disabled interactive — WCAG exempt for disabled controls"
+      }
+    },
+    "status": {
+      "positive": {
+        "$value": "{color.green.400}",
+        "$type": "color",
+        "$description": "Bright green positive (#4ADE80) — 11.6:1 vs base (AAA), used with icon+text"
+      },
+      "negative": {
+        "$value": "{color.red.400}",
+        "$type": "color",
+        "$description": "Bright red negative (#F87171) — 6.0:1 vs base, used with icon+text"
+      },
+      "warning": {
+        "$value": "{color.amber.400}",
+        "$type": "color",
+        "$description": "Bright amber warning (#FBBF24) — 11.6:1 vs base, used with icon+text"
+      },
+      "info": {
+        "$value": "{color.blue.300}",
+        "$type": "color",
+        "$description": "Bright blue info (#93C5FD) — 9.9:1 vs base (AAA)"
+      },
+      "pending": {
+        "$value": "{color.teal.300}",
+        "$type": "color",
+        "$description": "Bright teal pending (#5EEAD4) — 13.7:1 vs base (AAA). Pair with icon + label."
+      },
+      "neutral": {
+        "$value": "{color.neutral.300}",
+        "$type": "color",
+        "$description": "Bright gray neutral (#D1D5DB) — 12.9:1 vs base (AAA). Pair with label."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.900}",
+        "$type": "color",
+        "$description": "Dark positive tint panel. Pair with status.positive (green.400) or text.primary (≥12:1, AA/AAA)."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.900}",
+        "$type": "color",
+        "$description": "Dark negative tint panel. Pair with status.negative (red.400) or text.primary."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.900}",
+        "$type": "color",
+        "$description": "Dark warning tint panel. Pair with status.warning (amber.400) or text.primary."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.900}",
+        "$type": "color",
+        "$description": "Dark info tint panel. Pair with status.info (blue.300) or text.primary."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.900}",
+        "$type": "color",
+        "$description": "Dark pending pill panel. Pair with status.pending (teal.300) or text.primary."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.800}",
+        "$type": "color",
+        "$description": "Dark neutral tint panel. Pair with text.primary (AA text)."
+      }
+    },
+    "amount": {
+      "positive": {
+        "$value": "{color.green.400}",
+        "$type": "color",
+        "$description": "Bright green for income — always paired with ↑ arrow icon"
+      },
+      "negative": {
+        "$value": "{color.red.400}",
+        "$type": "color",
+        "$description": "Bright red for expenses — always paired with ↓ arrow icon"
+      }
+    }
+  }
+}

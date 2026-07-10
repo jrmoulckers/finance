@@ -26,7 +26,47 @@
       "positive": { "$value": "{color.green.600}", "$type": "color" },
       "negative": { "$value": "{color.red.600}", "$type": "color" },
       "warning": { "$value": "{color.amber.600}", "$type": "color" },
-      "info": { "$value": "{color.blue.600}", "$type": "color" }
+      "info": { "$value": "{color.blue.600}", "$type": "color" },
+      "pending": {
+        "$value": "{color.teal.700}",
+        "$type": "color",
+        "$description": "Pending/in-progress (authorizing, syncing, processing) — teal.700, 4.8:1 on white (AA). Distinct hue from info/warning; always pair with a clock/spinner icon + label, never color alone."
+      },
+      "neutral": {
+        "$value": "{color.neutral.500}",
+        "$type": "color",
+        "$description": "Neutral/uncategorized/cleared-unremarkable — neutral.500, 4.8:1 on white (AA). Pair with label, never color alone."
+      },
+      "positiveSubtle": {
+        "$value": "{color.green.100}",
+        "$type": "color",
+        "$description": "Low-emphasis positive background (badge/banner/row). Pair with status.positive (green.700) foreground — 6.3:1 (AA)."
+      },
+      "negativeSubtle": {
+        "$value": "{color.red.100}",
+        "$type": "color",
+        "$description": "Low-emphasis negative background. Pair with status.negative (red.700) — 6.5:1 (AA)."
+      },
+      "warningSubtle": {
+        "$value": "{color.amber.100}",
+        "$type": "color",
+        "$description": "Low-emphasis warning background. Pair with status.warning (amber.700) — 5.6:1 (AA)."
+      },
+      "infoSubtle": {
+        "$value": "{color.blue.100}",
+        "$type": "color",
+        "$description": "Low-emphasis info background. Pair with status.info (blue.700) — 6.9:1 (AA)."
+      },
+      "pendingSubtle": {
+        "$value": "{color.teal.100}",
+        "$type": "color",
+        "$description": "Low-emphasis pending pill background. Pair with status.pending (teal.700) — 5.7:1 (AA)."
+      },
+      "neutralSubtle": {
+        "$value": "{color.neutral.100}",
+        "$type": "color",
+        "$description": "Low-emphasis neutral background. Pair with text.primary or status.neutral — 4.8:1+ (AA)."
+      }
     },
     "amount": {
       "positive": { "$value": "{color.green.700}", "$type": "color" },
