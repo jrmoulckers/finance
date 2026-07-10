@@ -88,6 +88,13 @@
   letter-spacing: 0.05em;
 }
 
+.transaction-filters-panel__error {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-status-negative, #b91c1c);
+}
+
 .transaction-filters-panel__row {
   display: flex;
   gap: var(--spacing-2);

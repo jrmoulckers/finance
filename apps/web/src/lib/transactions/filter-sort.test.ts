@@ -223,4 +223,21 @@ describe('matchesTransactionQuery', () => {
       false,
     );
   });
+
+  it('matches ignoring diacritics in either direction', () => {
+    const accented = makeTransaction({ payee: 'Café Rico' });
+    expect(matchesTransactionQuery(accented, 'cafe')).toBe(true);
+    expect(matchesTransactionQuery(accented, 'café')).toBe(true);
+
+    const plain = makeTransaction({ payee: 'Cafe Rico' });
+    expect(matchesTransactionQuery(plain, 'café')).toBe(true);
+
+    const resolvedCategory = makeTransaction({ categoryId: 'category-accented' });
+    const accentedCategoryNames = new Map<string, string>([['category-accented', 'Épicerie']]);
+    expect(
+      matchesTransactionQuery(resolvedCategory, 'epicerie', {
+        categoryNames: accentedCategoryNames,
+      }),
+    ).toBe(true);
+  });
 });

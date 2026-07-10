@@ -227,9 +227,9 @@ describe('CategoriesPage', () => {
     render(<CategoriesPage />);
 
     expect(screen.getByRole('heading', { name: 'Categories', level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('Food')).toBeInTheDocument();
-    expect(screen.getByText('Income')).toBeInTheDocument();
-    expect(screen.getByText('Utilities')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Food', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Income', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Utilities', level: 3 })).toBeInTheDocument();
     expect(screen.getByText('#16A34A')).toBeInTheDocument();
     expect(screen.getByText('utensils')).toBeInTheDocument();
   });
@@ -340,5 +340,41 @@ describe('CategoriesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Category' }));
 
     expect(deleteCategoryMock).toHaveBeenCalledWith('category-food');
+  });
+
+  it('filters categories by search query', () => {
+    render(<CategoriesPage />);
+
+    fireEvent.change(screen.getByLabelText('Search categories by name'), {
+      target: { value: 'util' },
+    });
+
+    expect(screen.getByRole('heading', { name: 'Utilities', level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Food', level: 3 })).not.toBeInTheDocument();
+    expect(screen.getByText(/Showing 1 of 3 categories/i)).toBeInTheDocument();
+  });
+
+  it('filters categories by income type', () => {
+    render(<CategoriesPage />);
+
+    fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'income' } });
+
+    expect(screen.getByRole('heading', { name: 'Income', level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Food', level: 3 })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Utilities', level: 3 })).not.toBeInTheDocument();
+  });
+
+  it('shows a no-results state and clears filters', () => {
+    render(<CategoriesPage />);
+
+    fireEvent.change(screen.getByLabelText('Search categories by name'), {
+      target: { value: 'zzz-nope' },
+    });
+
+    expect(screen.getByRole('heading', { name: /no categories match/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+
+    expect(screen.getByRole('heading', { name: 'Food', level: 3 })).toBeInTheDocument();
   });
 });
