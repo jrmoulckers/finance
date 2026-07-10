@@ -618,6 +618,44 @@ describe('TransactionsPage', () => {
     expect(resultsTarget).toHaveAttribute('id', 'transaction-results');
   });
 
+  it('shows a visible, live result count near the results region (#3634)', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    // Default fixture renders 3 transactions; the count is visible (not sr-only)
+    // and exposed to assistive tech via role="status" + aria-live.
+    const count = container.querySelector('.transaction-results-header__count');
+    expect(count).not.toBeNull();
+    expect(count?.textContent).toBe('3 transactions');
+    expect(count).not.toHaveClass('sr-only');
+    expect(count).toHaveAttribute('role', 'status');
+    expect(count).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('uses singular wording for a single matching transaction (#3634)', () => {
+    mockedUseTransactions.mockReturnValue({
+      transactions: [makeTransaction(1)],
+      loading: false,
+      error: null,
+      refresh: refreshTransactionsMock,
+      createTransaction: createTransactionMock,
+      updateTransaction: updateTransactionMock,
+      deleteTransaction: deleteTransactionMock,
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    const count = container.querySelector('.transaction-results-header__count');
+    expect(count?.textContent).toBe('1 transaction');
+  });
+
   it('displays filter and sort controls', () => {
     render(
       <MemoryRouter>
