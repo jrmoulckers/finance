@@ -587,4 +587,59 @@ describe('SidebarNavigation', () => {
 
     expect(onTogglePrivacyMode).toHaveBeenCalledTimes(1);
   });
+
+  describe('collapsible rail (#3668)', () => {
+    it('renders an expanded sidebar by default with a collapse control', () => {
+      render(<SidebarNavigation {...defaultProps} />);
+
+      const sidebar = screen.getByRole('complementary', { name: 'Sidebar' });
+      expect(sidebar).not.toHaveAttribute('data-collapsed');
+
+      const toggle = screen.getByRole('button', { name: 'Collapse sidebar' });
+      expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('toggles to rail mode while keeping destinations accessible', () => {
+      render(<SidebarNavigation {...defaultProps} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+
+      const sidebar = screen.getByRole('complementary', { name: 'Sidebar' });
+      expect(sidebar).toHaveAttribute('data-collapsed', 'true');
+      // Accessible names are preserved in rail mode.
+      expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Expand sidebar' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
+    it('persists the collapsed choice to localStorage', () => {
+      render(<SidebarNavigation {...defaultProps} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+      expect(localStorage.getItem('finance:sidebar-collapsed')).toBe('true');
+    });
+
+    it('restores the collapsed choice on mount', () => {
+      localStorage.setItem('finance:sidebar-collapsed', 'true');
+      render(<SidebarNavigation {...defaultProps} />);
+
+      expect(screen.getByRole('complementary', { name: 'Sidebar' })).toHaveAttribute(
+        'data-collapsed',
+        'true',
+      );
+    });
+
+    it('toggles with the Ctrl+\\ keyboard shortcut', () => {
+      render(<SidebarNavigation {...defaultProps} />);
+
+      fireEvent.keyDown(window, { key: '\\', ctrlKey: true });
+
+      expect(screen.getByRole('complementary', { name: 'Sidebar' })).toHaveAttribute(
+        'data-collapsed',
+        'true',
+      );
+    });
+  });
 });

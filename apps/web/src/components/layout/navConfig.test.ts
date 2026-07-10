@@ -6,6 +6,8 @@ import {
   BOTTOM_NAV_PRIORITY_ITEMS,
   NAV_CONFIG,
   NAV_ROUTE_TITLES,
+  computeAdaptiveBottomNavItems,
+  getMoreSheetItems,
   isNavItemActive,
 } from './navConfig';
 
@@ -75,5 +77,56 @@ describe('isNavItemActive', () => {
     // also light up Investments.
     expect(isNavItemActive('/investments/tax', '/investments')).toBe(false);
     expect(isNavItemActive('/investments/tax', '/investments/tax')).toBe(true);
+  });
+});
+
+describe('computeAdaptiveBottomNavItems (#3687)', () => {
+  it('falls back to the static priority order for new users (no visits)', () => {
+    const items = computeAdaptiveBottomNavItems({});
+    expect(items.map((item) => item.id)).toEqual(BOTTOM_NAV_PRIORITY_ITEMS.map((item) => item.id));
+  });
+
+  it('always pins Dashboard in the first slot', () => {
+    const items = computeAdaptiveBottomNavItems({ '/goals': 50, '/budgets': 40 });
+    expect(items[0]?.id).toBe('dashboard');
+  });
+
+  it('promotes the most-visited destinations after Dashboard', () => {
+    const items = computeAdaptiveBottomNavItems({
+      '/goals': 20,
+      '/budgets': 10,
+      '/subscriptions': 5,
+    });
+    // Dashboard pinned, then goals > budgets > subscriptions by visit count.
+    expect(items.map((item) => item.id)).toEqual([
+      'dashboard',
+      'goals',
+      'budgets',
+      'subscriptions',
+    ]);
+  });
+
+  it('breaks visit-count ties by static mobilePriority for determinism', () => {
+    // accounts (priority 1) and transactions (priority 2) both visited once.
+    const items = computeAdaptiveBottomNavItems({ '/accounts': 1, '/transactions': 1 });
+    const ids = items.map((item) => item.id);
+    expect(ids[0]).toBe('dashboard');
+    expect(ids.indexOf('accounts')).toBeLessThan(ids.indexOf('transactions'));
+  });
+
+  it('returns exactly the number of static priority slots', () => {
+    const items = computeAdaptiveBottomNavItems({ '/goals': 3 });
+    expect(items).toHaveLength(BOTTOM_NAV_PRIORITY_ITEMS.length);
+  });
+});
+
+describe('getMoreSheetItems priority exclusion (#3687)', () => {
+  it('excludes explicitly supplied priority items from the sheet', () => {
+    const priority = computeAdaptiveBottomNavItems({ '/goals': 9, '/budgets': 8 });
+    const sheet = getMoreSheetItems(false, undefined, priority);
+    const sheetIds = new Set(sheet.map((item) => item.id));
+    for (const item of priority) {
+      expect(sheetIds.has(item.id)).toBe(false);
+    }
   });
 });

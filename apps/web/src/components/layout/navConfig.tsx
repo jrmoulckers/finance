@@ -452,6 +452,57 @@ export function getBottomNavPriorityItems(
  */
 export const BOTTOM_NAV_PRIORITY_ITEMS: readonly NavConfigItem[] = getBottomNavPriorityItems();
 
+/**
+ * Adaptive bottom-nav ranking (#3687).
+ *
+ * Ranks visible destinations by how often the user has visited them, so the
+ * tab bar surfaces the routes that person actually uses instead of a fixed
+ * editorial order. Rules:
+ *   - Dashboard is always pinned in the first slot (the app's home base).
+ *   - Remaining slots are filled by descending visit count, breaking ties by
+ *     the static `mobilePriority` so the ordering is deterministic.
+ *   - New users (no recorded visits) fall back to the static
+ *     `getBottomNavPriorityItems` order so the first-run experience is stable
+ *     and predictable.
+ *
+ * This is a pure function: callers snapshot its result at mount so the tab bar
+ * never reshuffles under the user mid-session.
+ */
+export function computeAdaptiveBottomNavItems(
+  visitCounts: Readonly<Record<string, number>> = {},
+  simplified = false,
+  hiddenModuleIds: ReadonlySet<string> = NO_HIDDEN_MODULES,
+): readonly NavConfigItem[] {
+  const visible = getVisibleNavItems(simplified, hiddenModuleIds);
+  const hasAnyVisits = visible.some((item) => (visitCounts[item.href] ?? 0) > 0);
+  if (!hasAnyVisits) {
+    return getBottomNavPriorityItems(simplified, hiddenModuleIds);
+  }
+
+  const dashboard = visible.find((item) => item.id === 'dashboard');
+  const rest = visible.filter((item) => item.id !== 'dashboard');
+  const ranked = [...rest].sort((a, b) => {
+    const countA = visitCounts[a.href] ?? 0;
+    const countB = visitCounts[b.href] ?? 0;
+    if (countB !== countA) {
+      return countB - countA;
+    }
+    return a.mobilePriority - b.mobilePriority;
+  });
+
+  const slots: NavConfigItem[] = [];
+  if (dashboard) {
+    slots.push(dashboard);
+  }
+  for (const item of ranked) {
+    if (slots.length >= BOTTOM_NAV_PRIORITY_COUNT) {
+      break;
+    }
+    slots.push(item);
+  }
+  return slots;
+}
+
 export function getPinnedNavItems(
   simplified = false,
   hiddenModuleIds: ReadonlySet<string> = NO_HIDDEN_MODULES,
@@ -474,10 +525,11 @@ export function getItemsByGroup(
 export function getMoreSheetItems(
   simplified = false,
   hiddenModuleIds: ReadonlySet<string> = NO_HIDDEN_MODULES,
+  priorityItems?: readonly NavConfigItem[],
 ): readonly NavConfigItem[] {
-  const priorityItems = getBottomNavPriorityItems(simplified, hiddenModuleIds);
+  const excluded = priorityItems ?? getBottomNavPriorityItems(simplified, hiddenModuleIds);
   return getVisibleNavItems(simplified, hiddenModuleIds).filter(
-    (item) => !priorityItems.some((priorityItem) => priorityItem.id === item.id),
+    (item) => !excluded.some((priorityItem) => priorityItem.id === item.id),
   );
 }
 

@@ -52,6 +52,13 @@ export interface MoreNavSheetProps {
   onOpenFeedback?: () => void;
   /** Optional: sign-out handler. */
   onSignOut?: () => void | Promise<void>;
+  /**
+   * The destinations currently shown on the bottom-nav tab bar. When provided,
+   * the sheet excludes exactly these (so the adaptive bottom-nav (#3687) and
+   * the sheet never show the same item twice). When omitted, the sheet falls
+   * back to the static priority set.
+   */
+  priorityItems?: readonly NavConfigItem[];
 }
 
 /** Bucket items into their groups, preserving config order. */
@@ -75,6 +82,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
   onOpenShortcuts,
   onOpenFeedback,
   onSignOut,
+  priorityItems,
 }) => {
   const { isSimplified } = useAccessibility();
   const hiddenModules = useHiddenModules();
@@ -180,7 +188,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
 
   if (!open) return null;
 
-  const buckets = bucketByGroup(getMoreSheetItems(isSimplified, hiddenModules));
+  const buckets = bucketByGroup(getMoreSheetItems(isSimplified, hiddenModules, priorityItems));
 
   return (
     <div className="more-sheet">

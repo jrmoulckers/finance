@@ -26,11 +26,13 @@ import { IconToken } from '../../icons/tokens';
 import { NotificationCenter } from '../notifications';
 
 import { MoreNavSheet } from './MoreNavSheet';
+import { prefetchRoute } from '../../lib/navigation/prefetch';
+import { getAllVisitCounts } from '../../lib/navigation/history';
 import {
   NAV_CONFIG,
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
-  getBottomNavPriorityItems,
+  computeAdaptiveBottomNavItems,
   getItemsByGroup,
   getPinnedNavItems,
   getVisibleNavItems,
@@ -138,9 +140,12 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
   const { isSimplified } = useAccessibility();
   const hiddenModules = useHiddenModules();
   const [moreOpen, setMoreOpen] = useState(false);
+  // Snapshot the visit counts once at mount so the adaptive tab bar (#3687)
+  // ranks by real usage but never reshuffles under the user mid-session.
+  const [visitCountsSnapshot] = useState(() => getAllVisitCounts());
   const priorityItems = useMemo(
-    () => getBottomNavPriorityItems(isSimplified, hiddenModules),
-    [isSimplified, hiddenModules],
+    () => computeAdaptiveBottomNavItems(visitCountsSnapshot, isSimplified, hiddenModules),
+    [visitCountsSnapshot, isSimplified, hiddenModules],
   );
   const visibleItems = useMemo(
     () => getVisibleNavItems(isSimplified, hiddenModules),
@@ -184,6 +189,8 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
               className={`nav-item${active ? ' nav-item--active' : ''}`}
               aria-current={active ? 'page' : undefined}
               onClick={() => onNavigate(item.href)}
+              onMouseEnter={() => prefetchRoute(item.href)}
+              onFocus={() => prefetchRoute(item.href)}
             >
               <span className="nav-item__icon">{item.icon}</span>
               <span className="nav-item__label">{item.label}</span>
@@ -213,6 +220,7 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
         onOpenShortcuts={onOpenShortcuts}
         onOpenFeedback={onOpenFeedback}
         onSignOut={handleSignOut}
+        priorityItems={bottomNavItems}
       />
     </>
   );
@@ -360,6 +368,8 @@ const SidebarGroup: React.FC<SidebarGroupProps> = ({
                 className={`sidebar-nav__item${active ? ' sidebar-nav__item--active' : ''}`}
                 aria-current={active ? 'page' : undefined}
                 onClick={() => onNavigate(item.href)}
+                onMouseEnter={() => prefetchRoute(item.href)}
+                onFocus={() => prefetchRoute(item.href)}
               >
                 <span className="sidebar-nav__item-icon" aria-hidden="true">
                   {item.icon}
@@ -373,6 +383,46 @@ const SidebarGroup: React.FC<SidebarGroupProps> = ({
     </section>
   );
 };
+
+/**
+ * localStorage key for the desktop sidebar rail (collapsed) preference (#3668).
+ */
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'finance:sidebar-collapsed';
+
+function readStoredSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeStoredSidebarCollapsed(collapsed: boolean): void {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
+  } catch {
+    // Non-critical preference; ignore storage failures (private mode / quota).
+  }
+}
+
+/** Double-chevron icon for the sidebar collapse/expand toggle (#3668). */
+const SidebarCollapseIcon: React.FC<{ collapsed: boolean }> = ({ collapsed }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none">
+    <path
+      d={collapsed ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 /** Sidebar navigation for wide viewports. */
 export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
@@ -400,14 +450,61 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
     [isSimplified, hiddenModules],
   );
 
+  // Desktop rail (icons-only) collapse state, persisted so the choice survives
+  // reloads (#3668). Mobile/bottom-nav layouts are unaffected (the rail styling
+  // is scoped to the ≥768px sidebar).
+  const [collapsed, setCollapsed] = useState(readStoredSidebarCollapsed);
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      writeStoredSidebarCollapsed(next);
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcut: Ctrl/Cmd + \ toggles the rail. Ignored while typing in a
+  // field so it never eats input.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '\\' || !(event.ctrlKey || event.metaKey)) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+      event.preventDefault();
+      toggleCollapsed();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleCollapsed]);
+
   const handleSignOut = useCallback(async () => {
     await logout();
   }, [logout]);
 
   return (
-    <aside className="app-sidebar" aria-label="Sidebar" data-simple-mode={simpleMode || undefined}>
+    <aside
+      className="app-sidebar"
+      aria-label="Sidebar"
+      data-simple-mode={simpleMode || undefined}
+      data-collapsed={collapsed || undefined}
+    >
       <div className="app-sidebar__header">
         <span className="app-sidebar__logo">Finance</span>
+        <button
+          type="button"
+          className="icon-button app-sidebar__collapse-toggle"
+          aria-pressed={collapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-keyshortcuts="Control+\\"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          onClick={toggleCollapsed}
+        >
+          <SidebarCollapseIcon collapsed={collapsed} />
+        </button>
       </div>
 
       <nav className="app-sidebar__nav" aria-label="Primary" id="primary-navigation" tabIndex={-1}>
@@ -422,6 +519,8 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
                   className={`sidebar-nav__item${active ? ' sidebar-nav__item--active' : ''}`}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => onNavigate(item.href)}
+                  onMouseEnter={() => prefetchRoute(item.href)}
+                  onFocus={() => prefetchRoute(item.href)}
                 >
                   <span className="sidebar-nav__item-icon" aria-hidden="true">
                     {item.icon}
