@@ -14,6 +14,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { NetWorthProjectionChart } from './NetWorthProjectionChart';
 import type { NetWorthSeriesPoint } from '../../lib/visualization/net-worth-projection';
+import { PrivacyModeProvider } from '../../contexts/PrivacyModeContext';
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -141,5 +142,18 @@ describe('NetWorthProjectionChart', () => {
     // A purely-positive series keeps full vertical resolution — no zero line.
     rerender(<NetWorthProjectionChart history={GROWING} />);
     expect(container.querySelector('[data-label="Break-even ($0)"]')).toBeNull();
+  });
+
+  it('masks net worth values everywhere when privacy mode is active', () => {
+    render(
+      <PrivacyModeProvider initialValue>
+        <NetWorthProjectionChart history={GROWING} />
+      </PrivacyModeProvider>,
+    );
+    const figure = screen.getByRole('figure');
+    expect(figure.getAttribute('aria-label')).toContain('•••');
+    expect(figure.getAttribute('aria-label')).not.toMatch(/\$\d/);
+    const table = screen.getByRole('table', { name: /data table/ });
+    expect(within(table).queryByText(/\$\d/)).not.toBeInTheDocument();
   });
 });

@@ -4,6 +4,7 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { TrendLineChart, type TrendDataPoint, type TrendSeries } from './TrendLineChart';
+import { PrivacyModeProvider } from '../../contexts/PrivacyModeContext';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -163,5 +164,19 @@ describe('TrendLineChart', () => {
     fireEvent.keyDown(navigator, { key: 'ArrowRight' });
     expect(screen.getByRole('status')).toHaveTextContent('Focused point 2 of 3.');
     expect(screen.getByRole('status')).toHaveTextContent('Expenses Feb: $1,398');
+  });
+
+  // -- Privacy masking --------------------------------------------------------
+
+  it('masks currency values in the data table when privacy mode is active', () => {
+    render(
+      <PrivacyModeProvider initialValue>
+        <TrendLineChart data={sampleData} series={sampleSeries} />
+      </PrivacyModeProvider>,
+    );
+
+    const janRow = screen.getByText('Jan').closest('tr')!;
+    expect(janRow).toHaveTextContent('•••');
+    expect(janRow.getAttribute('aria-label')).not.toContain('$4,000');
   });
 });

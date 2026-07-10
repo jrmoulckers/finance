@@ -36,6 +36,7 @@ import {
   CHART_KEYBOARD_INSTRUCTIONS,
   useChartKeyboardNavigation,
 } from './chart-accessibility';
+import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 import {
   PROJECTION_RANGES,
   projectNetWorth,
@@ -170,6 +171,7 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
 }) => {
   const chartId = useId();
   const disableAnimation = prefersReducedMotion();
+  const maskingMode = useEffectiveMaskingMode();
   const [range, setRange] = useState<ProjectionRange>(defaultRange);
 
   const visible = useMemo(() => sliceSeriesToRange(history, range), [history, range]);
@@ -215,21 +217,35 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
   const description = useMemo(() => {
     if (visible.length === 0) return `${title}: no net worth history yet.`;
     const values = visible.map((point) => point.netWorthCents);
-    const min = formatChartCurrency(centsToMajor(Math.min(...values)), currency);
-    const max = formatChartCurrency(centsToMajor(Math.max(...values)), currency);
+    const min = formatChartCurrency(
+      centsToMajor(Math.min(...values)),
+      currency,
+      'en-US',
+      maskingMode,
+    );
+    const max = formatChartCurrency(
+      centsToMajor(Math.max(...values)),
+      currency,
+      'en-US',
+      maskingMode,
+    );
     const projectedNote = projection.hasProjection
       ? ` Projected ${projection.horizonMonths} months forward to ${formatChartCurrency(
           centsToMajor(projection.endNetWorthCents),
           currency,
+          'en-US',
+          maskingMode,
         )}.`
       : ' No projection is shown for this range yet.';
     return `${title}: ${visible.length} actual points ranging ${min} to ${max}.${projectedNote}`;
-  }, [visible, projection, currency, title]);
+  }, [visible, projection, currency, title, maskingMode]);
 
   const paceText = useMemo(() => {
     const magnitude = formatChartCurrency(
       centsToMajor(Math.abs(projection.monthlyPaceCents)),
       currency,
+      'en-US',
+      maskingMode,
     );
     const direction =
       projection.paceDirection === 'up'
@@ -238,7 +254,7 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
           ? 'decline'
           : 'change';
     return `${magnitude}/month ${direction}`;
-  }, [projection, currency]);
+  }, [projection, currency, maskingMode]);
 
   const assumptionsText = projection.hasProjection
     ? `Forecast assumes a steady ${paceText} (${projection.methodSummary}), projected ${projection.horizonMonths} months ahead. Estimate only. Not financial advice.`
@@ -246,7 +262,12 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
 
   const dataPointRows = useMemo(() => {
     const actualRows = visible.map((point, index) => {
-      const formattedValue = formatChartCurrency(centsToMajor(point.netWorthCents), currency);
+      const formattedValue = formatChartCurrency(
+        centsToMajor(point.netWorthCents),
+        currency,
+        'en-US',
+        maskingMode,
+      );
       return {
         id: `${chartId}-actual-${index}`,
         rowHeader: point.label,
@@ -255,7 +276,12 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
       };
     });
     const projectedRows = projection.points.map((point, index) => {
-      const formattedValue = formatChartCurrency(centsToMajor(point.netWorthCents), currency);
+      const formattedValue = formatChartCurrency(
+        centsToMajor(point.netWorthCents),
+        currency,
+        'en-US',
+        maskingMode,
+      );
       return {
         id: `${chartId}-projected-${index}`,
         rowHeader: point.label,
@@ -264,7 +290,7 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
       };
     });
     return [...actualRows, ...projectedRows];
-  }, [visible, projection, currency, chartId]);
+  }, [visible, projection, currency, chartId, maskingMode]);
 
   const { announcement, handleFocus, handleKeyDown } = useChartKeyboardNavigation(dataPointRows);
 
@@ -323,7 +349,9 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
                   tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
                 />
                 <YAxis
-                  tickFormatter={(value: number) => formatChartCurrency(value, currency)}
+                  tickFormatter={(value: number) =>
+                    formatChartCurrency(value, currency, 'en-US', maskingMode)
+                  }
                   tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
                   width={80}
                   domain={
@@ -333,7 +361,9 @@ export const NetWorthProjectionChart: FC<NetWorthProjectionChartProps> = ({
                   }
                 />
                 <Tooltip
-                  formatter={(value) => formatChartCurrency(Number(value ?? 0), currency)}
+                  formatter={(value) =>
+                    formatChartCurrency(Number(value ?? 0), currency, 'en-US', maskingMode)
+                  }
                   contentStyle={{
                     background: 'var(--semantic-background-elevated, #FFFFFF)',
                     border: '1px solid var(--semantic-border-default, #E5E7EB)',

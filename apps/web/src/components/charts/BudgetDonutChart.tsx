@@ -8,7 +8,9 @@ import { type FC, useCallback, useId, useMemo, useRef, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
 import { AccessibleChartDataTable } from './chart-accessibility';
+import { ChartEmptyState } from './ChartEmptyState';
 import { useArrowKeyNavigation } from '../../accessibility/aria';
+import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 
 export interface BudgetSlice {
   name: string;
@@ -38,23 +40,29 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [announcement, setAnnouncement] = useState('');
   const disableAnimation = prefersReducedMotion();
+  const maskingMode = useEffectiveMaskingMode();
   const total = useMemo(() => data.reduce((sum, d) => sum + d.value, 0), [data]);
+  const percentFor = useCallback(
+    (value: number) => (total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'),
+    [total],
+  );
   const description = useMemo(
     () =>
       buildChartDescription(
         'Donut chart',
         data.map((d) => ({ label: d.name, value: d.value })),
         currency,
+        maskingMode,
       ),
-    [data, currency],
+    [data, currency, maskingMode],
   );
   const pointAnnouncements = useMemo(
     () =>
       data.map(
         (entry, index) =>
-          `${title}. Focused slice ${index + 1} of ${data.length}. ${entry.name}: ${formatChartCurrency(entry.value, currency)} (${total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0'}%).`,
+          `${title}. Focused slice ${index + 1} of ${data.length}. ${entry.name}: ${formatChartCurrency(entry.value, currency, 'en-US', maskingMode)} (${percentFor(entry.value)}%).`,
       ),
-    [currency, data, title, total],
+    [currency, data, maskingMode, percentFor, title],
   );
   const { handleKeyDown } = useArrowKeyNavigation(containerRef, {
     orientation: 'both',
@@ -67,8 +75,8 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
   const tableRows = useMemo(
     () =>
       data.map((entry, index) => {
-        const percent = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
-        const formattedValue = formatChartCurrency(entry.value, currency);
+        const percent = percentFor(entry.value);
+        const formattedValue = formatChartCurrency(entry.value, currency, 'en-US', maskingMode);
         return {
           id: `${chartId}-row-${index}`,
           rowHeader: entry.name,
@@ -76,8 +84,12 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
           ariaLabel: `${entry.name}: ${formattedValue} (${percent}%)`,
         };
       }),
-    [chartId, currency, data, total],
+    [chartId, currency, data, maskingMode, percentFor],
   );
+
+  if (data.length === 0) {
+    return <ChartEmptyState title={title} titleId={`${chartId}-title`} />;
+  }
 
   return (
     <div
@@ -127,11 +139,11 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
                 data-chart-point=""
                 tabIndex={-1}
                 role="listitem"
-                aria-label={`${entry.name}: ${formatChartCurrency(entry.value, currency)} (${((entry.value / total) * 100).toFixed(1)}%)`}
+                aria-label={`${entry.name}: ${formatChartCurrency(entry.value, currency, 'en-US', maskingMode)} (${percentFor(entry.value)}%)`}
               />
             ))}
             <Label
-              value={centerLabel ?? formatChartCurrency(total, currency)}
+              value={centerLabel ?? formatChartCurrency(total, currency, 'en-US', maskingMode)}
               position="center"
               style={{
                 fontSize: '1.25rem',
@@ -142,7 +154,7 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
           </Pie>
           <Tooltip
             formatter={(value, name) => [
-              formatChartCurrency(Number(value ?? 0), currency),
+              formatChartCurrency(Number(value ?? 0), currency, 'en-US', maskingMode),
               String(name),
             ]}
             contentStyle={{
