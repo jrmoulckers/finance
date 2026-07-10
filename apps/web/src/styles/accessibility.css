@@ -32,10 +32,10 @@
  * Uses :focus-visible to avoid showing focus on mouse clicks.
  * ------------------------------------------------------------------- */
 
-/* Base focus-visible ring */
+/* Base focus-visible ring — consumes the shared focus-ring tokens (#3609). */
 :focus-visible {
-  outline: 2px solid var(--semantic-border-focus, #3b82f6);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* Enhanced focus for buttons and links */
@@ -48,8 +48,8 @@ a:focus-visible,
 select:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--semantic-border-focus, #3b82f6);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
   border-radius: inherit;
 }
 
@@ -57,15 +57,23 @@ textarea:focus-visible {
 [role='listbox']:focus-within,
 [role='menu']:focus-within,
 [role='tablist']:focus-within {
-  outline: 2px solid var(--semantic-border-focus, #3b82f6);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* High contrast mode: stronger focus indicators */
 @media (prefers-contrast: more) {
+  :root {
+    /* Width bump is centralised in tokens.css; override color to the system
+       Highlight so the ring tracks the user's high-contrast palette. */
+    --focus-ring-color: Highlight;
+  }
+
+  /* Guarantee the SC 2.4.13 focus area (>=3px perimeter, >=2px offset) under
+     increased-contrast preferences, independent of token propagation. */
   :focus-visible {
     outline-width: 3px;
-    outline-color: Highlight;
+    outline-offset: 3px;
   }
 
   /* Secondary buttons need visible borders (transparent bg otherwise invisible) */
@@ -233,8 +241,8 @@ input[type='radio'] {
 }
 
 .icon-button:focus-visible {
-  outline: 2px solid var(--semantic-border-focus, #3b82f6);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* Warning variant for conflict badge */
@@ -262,7 +270,12 @@ input[type='radio'] {
 }
 
 /* -------------------------------------------------------------------
- * 3. Skip Navigation Link Enhancement
+ * 3. Skip Navigation Links (SC 2.4.1 Bypass Blocks)
+ *
+ * Canonical, single-source-of-truth styling for skip links. A single skip
+ * link is visually hidden until focused. When grouped inside a `.skip-links`
+ * container (Skip to content + Skip to navigation), the first Tab reveals the
+ * whole group together so users can pick either bypass target (#3600, #3647).
  * ------------------------------------------------------------------- */
 
 .skip-link {
@@ -281,6 +294,32 @@ input[type='radio'] {
 
 .skip-link:focus {
   top: var(--spacing-2, 8px);
+}
+
+/* Grouped skip links: absolutely positioned container at the top-left. Its
+   children stay off-screen until any one is focused, at which point the whole
+   group slides on-screen as a horizontal row (both links visible together). */
+.skip-links {
+  position: absolute;
+  top: var(--spacing-2, 8px);
+  left: var(--spacing-4, 16px);
+  z-index: 10000;
+}
+
+.skip-links .skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+}
+
+.skip-links:focus-within {
+  display: flex;
+  gap: var(--spacing-2, 8px);
+}
+
+.skip-links:focus-within .skip-link {
+  position: static;
+  top: auto;
 }
 
 /* -------------------------------------------------------------------
@@ -325,29 +364,27 @@ html[data-reduced-motion='true'] *::after {
 
 /* -------------------------------------------------------------------
  * 6. Dark mode focus adjustments
+ *
+ * Per-theme focus color is now centralised on the --focus-ring-color token
+ * in tokens.css (dark / dark-oled / prefers-color-scheme). These rules are
+ * intentionally left as token consumers only — no direct outline overrides.
  * ------------------------------------------------------------------- */
-
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme='light']) :focus-visible {
-    outline-color: var(--color-blue-400, #60a5fa);
-  }
-}
-
-[data-theme='dark'] :focus-visible {
-  outline-color: var(--color-blue-400, #60a5fa);
-}
 
 /* -------------------------------------------------------------------
  * 7. High-contrast theme focus and component adjustments
  *
  * When [data-theme="high-contrast"] is explicitly set (via toggle),
  * apply component-level enhancements beyond what the semantic token
- * overrides provide.
+ * overrides provide. Focus ring color for high-contrast is owned by
+ * tokens.css; the explicit rule below guarantees the SC 2.4.13 focus area
+ * (>=3px) for the toggled theme and keeps the guarantee co-located with the
+ * other high-contrast component rules.
  * ------------------------------------------------------------------- */
 
 [data-theme='high-contrast'] :focus-visible {
   outline-width: 3px;
-  outline-color: var(--color-blue-800, #1e40af);
+  outline-offset: 3px;
+  outline-color: var(--focus-ring-color);
 }
 
 [data-theme='high-contrast'] button,
@@ -472,10 +509,10 @@ body.accessibility-simplified .more-sheet__panel {
   box-shadow: none;
 }
 
-body.accessibility-simplified :focus-visible,
-body.accessibility-high-contrast :focus-visible {
-  outline-width: 3px;
-  outline-offset: 3px;
+body.accessibility-simplified,
+body.accessibility-high-contrast {
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 3px;
 }
 
 body.accessibility-simplified button,
