@@ -38,6 +38,8 @@ struct AuthGateView: View {
     /// showing login UI before we know the definitive auth state.
     @State private var hasCompletedInitialCheck = false
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
         category: "AuthGateView"
@@ -72,7 +74,7 @@ struct AuthGateView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: resolvedState)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: resolvedState)
         .task {
             await authService.checkExistingSession()
             hasCompletedInitialCheck = true

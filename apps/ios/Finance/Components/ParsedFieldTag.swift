@@ -39,7 +39,7 @@ struct ParsedFieldTag: View {
             if field.isUncertain {
                 Image(systemName: "questionmark.circle.fill")
                     .font(.caption2)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(FinanceColors.statusWarning)
             }
         }
         .padding(.horizontal, 10)
@@ -48,7 +48,7 @@ struct ParsedFieldTag: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(
-                    field.isUncertain ? Color.orange : tagColor.opacity(0.3),
+                    field.isUncertain ? FinanceColors.statusWarning : tagColor.opacity(0.3),
                     style: field.isUncertain
                         ? StrokeStyle(lineWidth: 1, dash: [4, 2])
                         : StrokeStyle(lineWidth: 1)

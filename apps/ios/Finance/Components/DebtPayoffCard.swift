@@ -57,9 +57,9 @@ struct DebtPayoffCard: View {
         HStack(spacing: 12) {
             Image(systemName: "percent")
                 .font(.title3)
-                .foregroundStyle(.green)
+                .foregroundStyle(FinanceColors.statusPositive)
                 .frame(width: 40, height: 40)
-                .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                .background(FinanceColors.statusPositive.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(progress.name)
@@ -119,10 +119,10 @@ struct DebtPayoffCard: View {
         if progress.isPaidOff {
             Label(String(localized: "Paid off — ring closed!"), systemImage: "checkmark.seal.fill")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.green)
+                .foregroundStyle(FinanceColors.statusPositive)
         } else if let interestSaved, interestSaved > 0 {
             HStack(spacing: 4) {
-                Image(systemName: "bolt.fill").font(.caption2).foregroundStyle(.orange)
+                Image(systemName: "bolt.fill").font(.caption2).foregroundStyle(FinanceColors.statusWarning)
                     .accessibilityHidden(true)
                 Text(String(localized: "Pay")).font(.caption).foregroundStyle(.secondary)
                 CurrencyLabel(

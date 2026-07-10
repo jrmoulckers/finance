@@ -135,7 +135,7 @@ struct CategorySuggestionCard: View {
     private var resolvedBody: some View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(FinanceColors.statusPositive)
                 .accessibilityHidden(true)
             Text(resolvedLabel)
                 .font(.subheadline)

@@ -14,10 +14,10 @@ import SwiftUI
 /// Displays the confidence level of an NLP parse result as a progress bar
 /// with an icon and text label.
 ///
-/// Colours follow CVD-safe palette conventions:
-/// - High: system green
-/// - Medium: system orange
-/// - Low/VeryLow: system red
+/// Colours follow the semantic status tokens (``FinanceColors``):
+/// - High: positive (green)
+/// - Medium: warning (amber)
+/// - Low/VeryLow: negative (red)
 struct ConfidenceIndicatorView: View {
     let confidence: NlpConfidence
 
@@ -50,10 +50,10 @@ struct ConfidenceIndicatorView: View {
 
     private var confidenceColor: Color {
         switch confidence {
-        case .high: .green
-        case .medium: .orange
-        case .low: .red
-        case .veryLow: .red
+        case .high: FinanceColors.statusPositive
+        case .medium: FinanceColors.statusWarning
+        case .low: FinanceColors.statusNegative
+        case .veryLow: FinanceColors.statusNegative
         }
     }
 }

@@ -20,7 +20,7 @@ struct TransactionRowView: View, Equatable {
                 HStack(spacing: 4) {
                     Text(transaction.payee).font(.body).lineLimit(1)
                     if transaction.isRecurring { IconView(.recurring, size: 12).foregroundStyle(.secondary).accessibilityLabel(String(localized: "Recurring")) }
-                    if transaction.status == .pending { Text(transaction.status.displayName).font(.caption2).foregroundStyle(.orange).padding(.horizontal, 6).padding(.vertical, 2).background(.orange.opacity(0.1), in: Capsule()) }
+                    if transaction.status == .pending { Text(transaction.status.displayName).font(.caption2).foregroundStyle(FinanceColors.statusWarning).padding(.horizontal, 6).padding(.vertical, 2).background(FinanceColors.statusWarning.opacity(0.1), in: Capsule()) }
                 }
                 HStack(spacing: 4) { Text(transaction.category); Text("·"); Text(transaction.accountName) }.font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 // Show up to 2 tags inline

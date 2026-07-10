@@ -52,9 +52,9 @@ enum BillStatus: String, CaseIterable, Hashable, Sendable {
 
     var color: Color {
         switch self {
-        case .upcoming: .blue
-        case .overdue: .red
-        case .paid: .green
+        case .upcoming: FinanceColors.statusInfo
+        case .overdue: FinanceColors.statusNegative
+        case .paid: FinanceColors.statusPositive
         }
     }
 

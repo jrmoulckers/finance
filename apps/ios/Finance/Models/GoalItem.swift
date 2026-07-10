@@ -25,10 +25,10 @@ enum GoalStatusUI: String, CaseIterable, Hashable, Sendable {
 
     var color: Color {
         switch self {
-        case .active: .blue
-        case .paused: .orange
-        case .completed: .green
-        case .cancelled: .gray
+        case .active: FinanceColors.statusInfo
+        case .paused: FinanceColors.statusWarning
+        case .completed: FinanceColors.statusPositive
+        case .cancelled: .secondary
         }
     }
 

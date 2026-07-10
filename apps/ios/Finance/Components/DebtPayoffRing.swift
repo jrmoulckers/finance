@@ -47,7 +47,7 @@ struct DebtPayoffRing: View {
                     .lineLimit(1)
                 if progress.isPaidOff {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(FinanceColors.statusPositive)
                         .font(.caption)
                 } else {
                     Text(String(localized: "paid off"))

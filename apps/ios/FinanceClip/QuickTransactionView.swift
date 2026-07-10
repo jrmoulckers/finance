@@ -14,6 +14,7 @@ struct QuickTransactionView: View {
     @State private var showAppStoreOverlay = false
     @State private var store = ClipTransactionStore()
     @FocusState private var isAmountFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let categoryColumns = [GridItem(.adaptive(minimum: 80, maximum: 120), spacing: 12)]
     var body: some View {
         if isSaved { confirmationView } else { transactionFormView }
@@ -51,7 +52,7 @@ struct QuickTransactionView: View {
     }
     private func categoryButton(for category: TransactionCategory) -> some View {
         let isSelected = selectedCategory == category
-        return Button { withAnimation(.easeInOut(duration: 0.2)) { selectedCategory = category } } label: {
+        return Button { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { selectedCategory = category } } label: {
             VStack(spacing: 6) {
                 Image(systemName: category.systemImage).font(.title3).frame(width: 32, height: 32).accessibilityHidden(true)
                 Text(category.displayName).font(.caption).lineLimit(1)
@@ -112,9 +113,9 @@ struct QuickTransactionView: View {
         let saved = store.save(transaction)
         if saved { playSuccessHaptic(); View.announceForAccessibility(String(localized: "Expense saved")) }
         else { playErrorHaptic() }
-        withAnimation(.easeInOut(duration: 0.3)) { isSaved = true }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) { isSaved = true }
     }
-    private func resetForm() { withAnimation(.easeInOut(duration: 0.3)) { amountText = ""; selectedCategory = nil; payeeText = ""; isSaved = false }; isAmountFocused = true }
+    private func resetForm() { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) { amountText = ""; selectedCategory = nil; payeeText = ""; isSaved = false }; isAmountFocused = true }
     private func prefillFromURL() {
         if let m = initialAmountMinorUnits, m > 0 { amountText = NSDecimalNumber(decimal: Decimal(m) / 100).stringValue }
         if let c = initialCategoryId { selectedCategory = TransactionCategory.quickCategories.first { $0.id == c } }

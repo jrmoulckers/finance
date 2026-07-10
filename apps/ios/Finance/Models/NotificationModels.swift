@@ -164,9 +164,9 @@ enum AlertPriority: String, Sendable, Comparable {
     var color: Color {
         switch self {
         case .low: .secondary
-        case .normal: .blue
-        case .high: .orange
-        case .urgent: .red
+        case .normal: FinanceColors.statusInfo
+        case .high: FinanceColors.statusWarning
+        case .urgent: FinanceColors.statusNegative
         }
     }
 

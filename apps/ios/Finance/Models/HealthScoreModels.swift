@@ -48,10 +48,10 @@ struct HealthScoreComponent: Identifiable, Sendable {
     /// Color indicating component health.
     var color: Color {
         let pct = percentage
-        if pct >= 80 { return .green }
-        if pct >= 60 { return .yellow }
+        if pct >= 80 { return FinanceColors.statusPositive }
+        if pct >= 60 { return FinanceColors.statusWarning }
         if pct >= 40 { return .orange }
-        return .red
+        return FinanceColors.statusNegative
     }
 }
 
@@ -70,11 +70,11 @@ enum HealthGrade: String, Sendable {
 
     var color: Color {
         switch self {
-        case .aPlus, .a: .green
-        case .bPlus, .b: .blue
-        case .cPlus, .c: .yellow
+        case .aPlus, .a: FinanceColors.statusPositive
+        case .bPlus, .b: FinanceColors.statusInfo
+        case .cPlus, .c: FinanceColors.statusWarning
         case .d: .orange
-        case .f: .red
+        case .f: FinanceColors.statusNegative
         }
     }
 
@@ -131,8 +131,8 @@ enum TipImpact: String, Sendable {
     var color: Color {
         switch self {
         case .low: .secondary
-        case .medium: .blue
-        case .high: .green
+        case .medium: FinanceColors.statusInfo
+        case .high: FinanceColors.statusPositive
         }
     }
 }
