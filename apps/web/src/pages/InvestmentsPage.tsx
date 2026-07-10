@@ -17,6 +17,7 @@ import {
   ExplainThis,
   LoadingSpinner,
   ReadAloudButton,
+  ScrollableRegion,
 } from '../components/common';
 import { DataExport } from '../components/DataExport';
 import {
@@ -420,7 +421,7 @@ export const InvestmentsPage: React.FC = () => {
 
           <section aria-label="Investment holdings">
             <div className="card">
-              <div style={{ overflowX: 'auto' }}>
+              <ScrollableRegion label="Investment holdings">
                 <table
                   style={{ width: '100%', borderCollapse: 'collapse' }}
                   aria-label="Investment holdings table"
@@ -603,7 +604,7 @@ export const InvestmentsPage: React.FC = () => {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ScrollableRegion>
             </div>
           </section>
         </>

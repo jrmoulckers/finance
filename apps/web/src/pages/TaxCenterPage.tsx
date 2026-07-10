@@ -4,7 +4,13 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+  ScrollableRegion,
+} from '../components/common';
 import { Checkbox } from '../components/common/Checkbox';
 import { useAccounts, useInvestments, useTransactions } from '../hooks';
 import type { Investment, InvestmentLot } from '../kmp/bridge';
@@ -319,7 +325,7 @@ export const TaxCenterPage: React.FC = () => {
             </div>
           )}
 
-          <div style={{ overflowX: 'auto' }}>
+          <ScrollableRegion label="Retirement contribution limits">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -365,7 +371,7 @@ export const TaxCenterPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollableRegion>
         </div>
       </section>
 
@@ -631,7 +637,7 @@ export const TaxCenterPage: React.FC = () => {
                   Enter a sale above to preview realized gains and holding-period classification.
                 </p>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
+                <ScrollableRegion label="Realized gains by lot">
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -688,7 +694,7 @@ export const TaxCenterPage: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableRegion>
               )}
             </div>
           </section>
@@ -703,7 +709,7 @@ export const TaxCenterPage: React.FC = () => {
               >
                 Open lots · unrealized gains
               </h2>
-              <div style={{ overflowX: 'auto' }}>
+              <ScrollableRegion label="Open lots and unrealized gains">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -778,7 +784,7 @@ export const TaxCenterPage: React.FC = () => {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ScrollableRegion>
             </div>
           </section>
         </>
