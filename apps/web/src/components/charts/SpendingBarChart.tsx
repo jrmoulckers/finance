@@ -18,6 +18,7 @@ import {
   Cell,
 } from 'recharts';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
+import { AccessibleChartDataTable } from './chart-accessibility';
 import { useArrowKeyNavigation } from '../../accessibility/aria';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 
@@ -77,6 +78,22 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
   });
 
   const disableAnimation = prefersReducedMotion();
+
+  const total = useMemo(() => data.reduce((sum, entry) => sum + entry.amount, 0), [data]);
+  const tableRows = useMemo(
+    () =>
+      data.map((entry, index) => {
+        const percent = total > 0 ? ((entry.amount / total) * 100).toFixed(1) : '0.0';
+        const formattedValue = formatChartCurrency(entry.amount, currency, 'en-US', maskingMode);
+        return {
+          id: `${chartId}-row-${index}`,
+          rowHeader: entry.name,
+          cells: [formattedValue, `${percent}%`],
+          ariaLabel: `${entry.name}: ${formattedValue} (${percent}%)`,
+        };
+      }),
+    [chartId, currency, data, maskingMode, total],
+  );
 
   return (
     <div
@@ -146,6 +163,18 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {data.length > 0 && (
+        <AccessibleChartDataTable
+          captionId={`${chartId}-table-caption`}
+          title={title}
+          rowHeaderLabel="Category"
+          columns={[
+            { key: 'amount', header: 'Amount' },
+            { key: 'share', header: 'Share' },
+          ]}
+          rows={tableRows}
+        />
+      )}
     </div>
   );
 };

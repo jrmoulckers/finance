@@ -116,4 +116,23 @@ describe('SpendingBarChart', () => {
       'polite',
     );
   });
+
+  it('exposes a visually-hidden data table with a row per category', () => {
+    render(<SpendingBarChart data={sampleData} title="March Spending" />);
+
+    const table = screen.getByRole('table', { name: /march spending data table/i });
+    expect(table).toBeInTheDocument();
+    // One row header cell per category (plus the column header row).
+    expect(screen.getByRole('rowheader', { name: 'Food' })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: 'Transport' })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: 'Entertainment' })).toBeInTheDocument();
+    // Amount and share are rendered so screen-reader users can read every value.
+    expect(screen.getByRole('row', { name: /Food/ })).toHaveTextContent('$450');
+    expect(screen.getByRole('row', { name: /Food/ })).toHaveTextContent('56.3%');
+  });
+
+  it('omits the data table when there is no data', () => {
+    render(<SpendingBarChart data={[]} />);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
 });

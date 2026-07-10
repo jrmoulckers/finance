@@ -534,6 +534,31 @@ describe('OnboardingPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('traps focus within the glossary dialog while it is open', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    goToNewcomerStep();
+    fireEvent.click(screen.getByRole('button', { name: /what is cash flow/i }));
+
+    const dialog = screen.getByRole('dialog', { name: /cash flow/i });
+    // Focus is moved into the dialog on open.
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    const focusable = within(dialog).getAllByRole('button');
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    // Tab from the last focusable wraps to the first (forward trap).
+    last.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+
+    // Shift+Tab from the first focusable wraps to the last (backward trap).
+    first.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
   it('completes financial-literacy lessons and reflects progress in the checklist', () => {
     renderWithRouter(<OnboardingPage />);
 

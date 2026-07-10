@@ -141,6 +141,13 @@
   gap: var(--spacing-1, 0.25rem);
 }
 
+/* Semantic grid rows/cells (role="row"/"gridcell") are layout-transparent so the
+   day buttons remain the direct grid items of .date-picker__grid (#3782). */
+.date-picker__week,
+.date-picker__cell {
+  display: contents;
+}
+
 .date-picker__weekdays {
   margin-bottom: var(--spacing-2, 0.5rem);
 }

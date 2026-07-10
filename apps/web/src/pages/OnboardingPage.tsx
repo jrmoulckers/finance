@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
+import { useFocusTrap } from '../accessibility/aria';
 import { AppIcon } from '../components/icons';
 import { Checkbox } from '../components/common/Checkbox';
 import { useDatabase } from '../db/DatabaseProvider';
@@ -582,8 +583,10 @@ const OnboardingPage: React.FC = () => {
   const [activeExplainer, setActiveExplainer] = useState<NewcomerExplainerKey | null>(null);
   const explainerCloseRef = useRef<HTMLButtonElement>(null);
   const explainerTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const explainerPanelRef = useRef<HTMLDivElement>(null);
   const glossaryCloseRef = useRef<HTMLButtonElement>(null);
   const glossaryTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const glossaryPanelRef = useRef<HTMLDivElement>(null);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousStepRef = useRef<OnboardingStep>(step);
 
@@ -1085,6 +1088,22 @@ const OnboardingPage: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [activeGlossaryTerm, handleCloseGlossary]);
 
+  // Constrain Tab focus within the open glossary / explainer modals. Escape,
+  // initial focus, and focus restoration are handled by the effects above and
+  // the close handlers, so the trap only needs to cycle focus (restoreFocus
+  // false avoids double-restoring to the trigger).
+  useFocusTrap(glossaryPanelRef, {
+    active: activeGlossaryTerm !== null,
+    restoreFocus: false,
+    initialFocusRef: glossaryCloseRef,
+  });
+
+  useFocusTrap(explainerPanelRef, {
+    active: activeExplainer !== null,
+    restoreFocus: false,
+    initialFocusRef: explainerCloseRef,
+  });
+
   const handleOptIntoLessons = useCallback(() => {
     setLessonsOptedIn(true);
     trackOnboardingEvent(analyticsEnabled, 'onboarding_lessons_opted_in');
@@ -1135,6 +1154,7 @@ const OnboardingPage: React.FC = () => {
   // exposes their triggers; only one of each can be open at a time.
   const glossaryModal = activeGlossaryTerm ? (
     <div
+      ref={glossaryPanelRef}
       className="onboarding__glossary"
       role="dialog"
       aria-modal="true"
@@ -1167,6 +1187,7 @@ const OnboardingPage: React.FC = () => {
 
   const explainerModal = activeExplainer ? (
     <div
+      ref={explainerPanelRef}
       className="onboarding__glossary"
       role="dialog"
       aria-modal="true"

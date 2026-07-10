@@ -104,9 +104,38 @@ describe('WatchlistsPage', () => {
   it('opens add form when button is clicked', () => {
     render(<WatchlistsPage />);
     fireEvent.click(screen.getByRole('button', { name: /add new spending watchlist/i }));
-    expect(screen.getByRole('dialog', { name: /add spending watchlist/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /add watchlist/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Category')).toBeInTheDocument();
     expect(screen.getByLabelText('Spending Limit ($)')).toBeInTheDocument();
+  });
+
+  it('moves focus into the add dialog and closes it on Escape', () => {
+    render(<WatchlistsPage />);
+    const trigger = screen.getByRole('button', { name: /add new spending watchlist/i });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole('dialog', { name: /add watchlist/i });
+    // Initial focus is moved into the dialog (the category select).
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog', { name: /add watchlist/i })).not.toBeInTheDocument();
+    // Focus is restored to the trigger that opened the dialog.
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('closes the add dialog when the backdrop is clicked', () => {
+    render(<WatchlistsPage />);
+    fireEvent.click(screen.getByRole('button', { name: /add new spending watchlist/i }));
+
+    const dialog = screen.getByRole('dialog', { name: /add watchlist/i });
+    const backdrop = dialog.querySelector('.watchlist-form-overlay__backdrop');
+    expect(backdrop).not.toBeNull();
+    fireEvent.click(backdrop as Element);
+
+    expect(screen.queryByRole('dialog', { name: /add watchlist/i })).not.toBeInTheDocument();
   });
 
   it('displays watchlist items when they exist', () => {

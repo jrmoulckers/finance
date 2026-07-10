@@ -167,6 +167,13 @@ export function DatePicker({
     .join(' ');
   const effectiveAriaInvalid = Boolean(externalAriaInvalid) || Boolean(validationMessage);
   const calendarDays = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth]);
+  const calendarWeeks = useMemo(() => {
+    const weeks: Date[][] = [];
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      weeks.push(calendarDays.slice(i, i + 7));
+    }
+    return weeks;
+  }, [calendarDays]);
   const monthTitle = formatDate(visibleMonth, { month: 'long', year: 'numeric' });
   const canClear = !disabled && Boolean(normalizedValue || inputText);
   const canSelectToday = isDateSelectable(todayIso, minValue, maxValue);
@@ -560,7 +567,7 @@ export function DatePicker({
             </div>
           </div>
 
-          <div className="date-picker__weekdays" aria-hidden="true">
+          <div className="date-picker__weekdays" role="presentation" aria-hidden="true">
             {WEEKDAY_LABELS.map((weekday) => (
               <span key={weekday} className="date-picker__weekday">
                 {weekday}
@@ -568,41 +575,54 @@ export function DatePicker({
             ))}
           </div>
 
-          <div className="date-picker__grid" aria-labelledby={monthLabelId}>
-            {calendarDays.map((calendarDate) => {
-              const isoDate = formatIsoDate(calendarDate);
-              const isSelected = isSameDate(calendarDate, selectedDate);
-              const isTodayDate = isSameDate(calendarDate, today);
-              const isOutsideMonth = calendarDate.getMonth() !== visibleMonth.getMonth();
-              const isHighlighted = highlightedIsoDate === isoDate;
-              const isDisabled = !isDateSelectable(isoDate, minValue, maxValue);
+          <div className="date-picker__grid" role="grid" aria-labelledby={monthLabelId}>
+            {calendarWeeks.map((week, weekIndex) => (
+              <div
+                key={`week-${formatIsoDate(week[0])}-${weekIndex}`}
+                className="date-picker__week"
+                role="row"
+              >
+                {week.map((calendarDate) => {
+                  const isoDate = formatIsoDate(calendarDate);
+                  const isSelected = isSameDate(calendarDate, selectedDate);
+                  const isTodayDate = isSameDate(calendarDate, today);
+                  const isOutsideMonth = calendarDate.getMonth() !== visibleMonth.getMonth();
+                  const isHighlighted = highlightedIsoDate === isoDate;
+                  const isDisabled = !isDateSelectable(isoDate, minValue, maxValue);
 
-              return (
-                <button
-                  key={isoDate}
-                  ref={(node) => {
-                    dayButtonRefs.current[isoDate] = node;
-                  }}
-                  type="button"
-                  className={joinClassNames(
-                    'date-picker__day',
-                    isSelected && 'date-picker__day--selected',
-                    isTodayDate && 'date-picker__day--today',
-                    isOutsideMonth && 'date-picker__day--outside-month',
-                    isHighlighted && 'date-picker__day--highlighted',
-                  )}
-                  aria-pressed={isSelected}
-                  aria-current={isTodayDate ? 'date' : undefined}
-                  aria-label={formatDate(calendarDate)}
-                  disabled={isDisabled}
-                  tabIndex={isHighlighted && !isDisabled ? 0 : -1}
-                  onFocus={() => setHighlightedIsoDate(isoDate)}
-                  onClick={() => handleSelectDate(calendarDate)}
-                >
-                  {calendarDate.getDate()}
-                </button>
-              );
-            })}
+                  return (
+                    <div
+                      key={isoDate}
+                      role="gridcell"
+                      aria-selected={isSelected}
+                      className="date-picker__cell"
+                    >
+                      <button
+                        ref={(node) => {
+                          dayButtonRefs.current[isoDate] = node;
+                        }}
+                        type="button"
+                        className={joinClassNames(
+                          'date-picker__day',
+                          isSelected && 'date-picker__day--selected',
+                          isTodayDate && 'date-picker__day--today',
+                          isOutsideMonth && 'date-picker__day--outside-month',
+                          isHighlighted && 'date-picker__day--highlighted',
+                        )}
+                        aria-current={isTodayDate ? 'date' : undefined}
+                        aria-label={formatDate(calendarDate)}
+                        disabled={isDisabled}
+                        tabIndex={isHighlighted && !isDisabled ? 0 : -1}
+                        onFocus={() => setHighlightedIsoDate(isoDate)}
+                        onClick={() => handleSelectDate(calendarDate)}
+                      >
+                        {calendarDate.getDate()}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
 
           <div className="date-picker__footer">
