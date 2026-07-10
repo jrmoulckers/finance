@@ -48,7 +48,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -447,7 +446,7 @@ private fun SortableColumnHeader(
 private fun TransactionTableRow(txn: Transaction) {
     val amountColor = when (txn.type) {
         TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
-        TransactionType.INCOME -> Color(0xFF2E7D32)
+        TransactionType.INCOME -> FinanceDesktopTheme.status.positive
         TransactionType.TRANSFER -> MaterialTheme.colorScheme.tertiary
     }
     val typeIcon = when (txn.type) {

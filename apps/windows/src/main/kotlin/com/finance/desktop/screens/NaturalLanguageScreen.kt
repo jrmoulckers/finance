@@ -199,7 +199,7 @@ fun NaturalLanguageScreen(modifier: Modifier = Modifier) {
             ) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF2E7D32).copy(alpha = 0.12f),
+                    color = FinanceDesktopTheme.status.positive.copy(alpha = 0.12f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = state.successMessage ?: "" },
@@ -208,12 +208,12 @@ fun NaturalLanguageScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier.padding(FinanceDesktopTheme.spacing.lg),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = null, tint = Color(0xFF2E7D32))
+                        Icon(Icons.Filled.Check, contentDescription = null, tint = FinanceDesktopTheme.status.positive)
                         Spacer(Modifier.width(FinanceDesktopTheme.spacing.md))
                         Text(
                             text = state.successMessage ?: "",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF2E7D32),
+                            color = FinanceDesktopTheme.status.positive,
                         )
                     }
                 }
@@ -460,7 +460,7 @@ private fun ParsedPreviewCard(
     onEditCancel: () -> Unit,
 ) {
     val confidenceColor = when {
-        parsed.confidence >= 0.7f -> Color(0xFF2E7D32)
+        parsed.confidence >= 0.7f -> FinanceDesktopTheme.status.positive
         parsed.confidence >= 0.4f -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.error
     }
@@ -609,7 +609,7 @@ private fun ParsedPreviewCard(
                         shape = RoundedCornerShape(12.dp),
                         color = if (parsed.type == TransactionType.EXPENSE)
                             MaterialTheme.colorScheme.errorContainer
-                        else Color(0xFF2E7D32).copy(alpha = 0.12f),
+                        else FinanceDesktopTheme.status.positive.copy(alpha = 0.12f),
                         modifier = Modifier.clickable { onFieldClick(EditingField.TYPE) }
                             .semantics {
                                 contentDescription = "Transaction type: ${parsed.type.name}. Click to change."
@@ -627,7 +627,7 @@ private fun ParsedPreviewCard(
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (parsed.type == TransactionType.EXPENSE)
                                     MaterialTheme.colorScheme.onErrorContainer
-                                else Color(0xFF2E7D32),
+                                else FinanceDesktopTheme.status.positive,
                             )
                             Spacer(Modifier.width(4.dp))
                             Icon(
@@ -636,7 +636,7 @@ private fun ParsedPreviewCard(
                                 modifier = Modifier.size(14.dp),
                                 tint = if (parsed.type == TransactionType.EXPENSE)
                                     MaterialTheme.colorScheme.onErrorContainer
-                                else Color(0xFF2E7D32),
+                                else FinanceDesktopTheme.status.positive,
                             )
                         }
                     }
@@ -764,7 +764,7 @@ private fun EditableParsedField(
                         Icons.Filled.Check,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = Color(0xFF2E7D32),
+                        tint = FinanceDesktopTheme.status.positive,
                     )
                 }
                 IconButton(
@@ -816,8 +816,8 @@ private fun EditableParsedField(
 @Composable
 private fun ConfidenceDot(confidence: FieldConfidence) {
     val color = when (confidence) {
-        FieldConfidence.HIGH -> Color(0xFF2E7D32)
-        FieldConfidence.MEDIUM -> Color(0xFFF9A825)
+        FieldConfidence.HIGH -> FinanceDesktopTheme.status.positive
+        FieldConfidence.MEDIUM -> FinanceDesktopTheme.status.warning
         FieldConfidence.LOW -> MaterialTheme.colorScheme.error
         FieldConfidence.NONE -> MaterialTheme.colorScheme.outlineVariant
     }

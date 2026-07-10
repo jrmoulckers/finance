@@ -41,7 +41,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -278,9 +277,9 @@ private fun GoalCard(
     onDelete: () -> Unit,
 ) {
     val progressColor = when {
-        goal.progress >= 0.75f -> Color(0xFF2E7D32)
+        goal.progress >= 0.75f -> FinanceDesktopTheme.status.positive
         goal.progress >= 0.40f -> MaterialTheme.colorScheme.primary
-        else -> Color(0xFFFF9800)
+        else -> FinanceDesktopTheme.status.warning
     }
     val progressPercent = (goal.progress * 100).toInt()
 

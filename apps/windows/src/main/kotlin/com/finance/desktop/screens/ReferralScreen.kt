@@ -48,7 +48,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.Role
@@ -446,7 +445,7 @@ private fun RewardTierCard(
 @Composable
 private fun ReferralHistoryRow(referral: ReferralItemUi) {
     val statusColor = when (referral.status) {
-        ReferralStatus.ACTIVATED -> Color(0xFF2E7D32)
+        ReferralStatus.ACTIVATED -> FinanceDesktopTheme.status.positive
         ReferralStatus.SIGNED_UP -> MaterialTheme.colorScheme.primary
         ReferralStatus.PENDING -> MaterialTheme.colorScheme.tertiary
         ReferralStatus.EXPIRED -> MaterialTheme.colorScheme.outline
@@ -526,7 +525,7 @@ private fun ReferralHistoryRow(referral: ReferralItemUi) {
                     text = referral.rewardEarned,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2E7D32),
+                    color = FinanceDesktopTheme.status.positive,
                 )
             }
         }

@@ -474,7 +474,7 @@ private fun DimensionCard(dimension: HealthDimension) {
                     text = compLabel,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (comparison >= 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
+                    color = if (comparison >= 0) FinanceDesktopTheme.status.positive else MaterialTheme.colorScheme.error,
                 )
             }
 
@@ -504,8 +504,8 @@ private fun DimensionCard(dimension: HealthDimension) {
  */
 @Composable
 private fun scoreToColor(score: Int): Color = when {
-    score >= 80 -> Color(0xFF2E7D32) // Green
+    score >= 80 -> FinanceDesktopTheme.status.positive // Green
     score >= 60 -> MaterialTheme.colorScheme.primary // Blue
-    score >= 40 -> Color(0xFFFF9800) // Amber
+    score >= 40 -> FinanceDesktopTheme.status.warning // Amber
     else -> MaterialTheme.colorScheme.error // Red
 }

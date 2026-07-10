@@ -220,7 +220,7 @@ private fun ProposalList(
                 horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.md),
             ) {
                 StatusBadge("Pending", pendingCount, MaterialTheme.colorScheme.tertiary)
-                StatusBadge("Approved", approvedCount, Color(0xFF2E7D32))
+                StatusBadge("Approved", approvedCount, FinanceDesktopTheme.status.positive)
                 StatusBadge(
                     "Rejected",
                     proposals.count { it.status == ProposalStatus.REJECTED },
@@ -304,7 +304,7 @@ private fun ProposalListItem(
 ) {
     val statusColor = when (proposal.status) {
         ProposalStatus.PENDING -> MaterialTheme.colorScheme.tertiary
-        ProposalStatus.APPROVED -> Color(0xFF2E7D32)
+        ProposalStatus.APPROVED -> FinanceDesktopTheme.status.positive
         ProposalStatus.REJECTED -> MaterialTheme.colorScheme.error
         ProposalStatus.WITHDRAWN -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -374,7 +374,7 @@ private fun ProposalListItem(
                         text = " ($sign${proposal.changePercent}%)",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (proposal.changePercent > 0) Color(0xFF2E7D32)
+                        color = if (proposal.changePercent > 0) FinanceDesktopTheme.status.positive
                         else MaterialTheme.colorScheme.error,
                     )
                 }
@@ -535,7 +535,7 @@ private fun ProposalDetail(
 
 @Composable
 private fun ProposalDetailHeader(proposal: BudgetProposal) {
-    val changeColor = if (proposal.changePercent >= 0) Color(0xFF2E7D32)
+    val changeColor = if (proposal.changePercent >= 0) FinanceDesktopTheme.status.positive
     else MaterialTheme.colorScheme.error
     val sign = if (proposal.changePercent >= 0) "+" else ""
 
