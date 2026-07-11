@@ -19,6 +19,7 @@ struct PredictionChart: View {
     let currencyCode: String
 
     @State private var selectedDate: Date?
+    @State private var selectedIndex: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -121,8 +122,13 @@ struct PredictionChart: View {
             }
             .frame(minHeight: 220)
             .drawingGroup()
-            .accessibilityElement(children: .contain)
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(String(localized: "Spending forecast chart with predictions"))
+            .accessibilityValue(accessibilityValueText)
+            .accessibilityHint(String(localized: "Swipe up or down with one finger to move through history and forecast points"))
+            .accessibilityAdjustableAction { direction in
+                stepSelection(direction)
+            }
 
             ChartDataTable(
                 summary: forecastSummary,
@@ -131,6 +137,64 @@ struct PredictionChart: View {
             )
         }
         .padding()
+    }
+
+    // MARK: - VoiceOver Point Navigation (#2115)
+    //
+    // VoiceOver users step through the combined history + forecast series with
+    // the adjustable rotor (swipe up/down) rather than the sighted drag gesture.
+
+    /// A navigable point: history and forecast values flattened in chart order.
+    private struct AccessiblePoint {
+        let date: Date
+        let label: String
+        let value: String
+    }
+
+    private var accessiblePoints: [AccessiblePoint] {
+        var points = historicalData.map {
+            AccessiblePoint(
+                date: $0.date,
+                label: formattedDate($0.date),
+                value: formattedCurrency($0.value)
+            )
+        }
+        points += predictions.map { prediction in
+            let predicted = formattedCurrency(Double(prediction.predictedMinorUnits) / 100.0)
+            let lower = formattedCurrency(Double(prediction.lowerBoundMinorUnits) / 100.0)
+            let upper = formattedCurrency(Double(prediction.upperBoundMinorUnits) / 100.0)
+            return AccessiblePoint(
+                date: prediction.date,
+                label: String(localized: "\(formattedDate(prediction.date)) predicted"),
+                value: String(localized: "\(predicted), range \(lower) to \(upper)")
+            )
+        }
+        return points
+    }
+
+    private var accessibilityValueText: String {
+        let points = accessiblePoints
+        guard let index = selectedIndex, points.indices.contains(index) else {
+            return forecastSummary
+        }
+        let point = points[index]
+        return "\(point.label), \(point.value)"
+    }
+
+    private func stepSelection(_ direction: AccessibilityAdjustmentDirection) {
+        let points = accessiblePoints
+        guard !points.isEmpty else { return }
+        switch direction {
+        case .increment:
+            selectedIndex = min((selectedIndex ?? -1) + 1, points.count - 1)
+        case .decrement:
+            selectedIndex = max((selectedIndex ?? 0) - 1, 0)
+        @unknown default:
+            break
+        }
+        if let index = selectedIndex, points.indices.contains(index) {
+            selectedDate = points[index].date
+        }
     }
 
     // MARK: - Text Alternative (#2113)
