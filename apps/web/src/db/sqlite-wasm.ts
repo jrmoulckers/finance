@@ -716,6 +716,22 @@ export const MIGRATIONS: Migration[] = [
       ]),
     ],
   },
+  {
+    version: 16,
+    label: 'add-invoice-currency-and-remittance-recurrence',
+    up: [
+      // Invoices were implicitly always-USD (#3263). Add an explicit ISO-4217
+      // currency so a freelancer billing EUR/GBP clients records the true
+      // denomination instead of mislabelling every invoice as dollars. Existing
+      // rows backfill to 'USD', matching prior behaviour.
+      `ALTER TABLE invoice ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD';`,
+      // Recurring/scheduled supplier remittances (#3265): a nullable recurrence
+      // frequency and the next scheduled send date. NULL frequency means the
+      // remittance is a one-off, preserving the behaviour of every existing row.
+      `ALTER TABLE remittance ADD COLUMN recurrence_frequency TEXT;`,
+      `ALTER TABLE remittance ADD COLUMN recurrence_next_date TEXT;`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection

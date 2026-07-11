@@ -12,6 +12,8 @@ import {
   buildInvoiceCashInflow,
   computeExpectedPayDate,
   computeInvoiceForecast,
+  createInvoice,
+  DEFAULT_INVOICE_CURRENCY,
   exportInvoicesCsv,
   FOLLOW_UP_STALE_DAYS,
   getEffectiveInvoiceStatus,
@@ -21,6 +23,7 @@ import {
   invoiceIsFullyPaid,
   invoiceNeedsFollowUp,
   invoiceOutstandingCents,
+  normalizeInvoiceCurrency,
   recordInvoiceContact,
   recordInvoicePayment,
   type Invoice,
@@ -32,6 +35,7 @@ function makeInvoice(overrides: Partial<Invoice>): Invoice {
     id: overrides.id ?? 'inv-1',
     clientName: overrides.clientName ?? 'Acme Studio',
     amountCents: overrides.amountCents ?? 100000,
+    currency: overrides.currency ?? 'USD',
     issueDate: overrides.issueDate ?? '2024-01-01',
     paymentTerm: overrides.paymentTerm ?? 'net-30',
     status: overrides.status ?? 'Sent',
@@ -171,10 +175,10 @@ describe('exportInvoicesCsv', () => {
 
     expect(lines[0]).toBe(INVOICE_CSV_HEADER);
     // Sorted by expected pay date: Ceta (paid, no bucket), Beta (overdue), Acme.
-    expect(lines[1]).toBe('Ceta LLC,300.00,2024-01-01,Net-30,Paid,2024-01-05,');
-    expect(lines[2]).toBe('Beta Co,500.00,2024-01-01,Net-30,Overdue,2024-01-10,Past due');
-    expect(lines[3]).toBe('Acme Studio,1000.00,2024-01-01,Net-30,Sent,2024-01-31,Next 30 days');
-    expect(lines[lines.length - 1]).toBe('Total,1800.00,,,,,');
+    expect(lines[1]).toBe('Ceta LLC,300.00,USD,2024-01-01,Net-30,Paid,2024-01-05,');
+    expect(lines[2]).toBe('Beta Co,500.00,USD,2024-01-01,Net-30,Overdue,2024-01-10,Past due');
+    expect(lines[3]).toBe('Acme Studio,1000.00,USD,2024-01-01,Net-30,Sent,2024-01-31,Next 30 days');
+    expect(lines[lines.length - 1]).toBe('Total,1800.00,,,,,,');
   });
 
   it('quotes client names that contain commas', () => {
@@ -189,8 +193,72 @@ describe('exportInvoicesCsv', () => {
   it('returns the header and a zero totals row for an empty pipeline', () => {
     expect(exportInvoicesCsv([], '2024-01-15').split('\n')).toEqual([
       INVOICE_CSV_HEADER,
-      'Total,0.00,,,,,',
+      'Total,0.00,,,,,,',
     ]);
+  });
+});
+
+describe('invoice currency (#3263)', () => {
+  it('defaults a created invoice to USD when no currency is given', () => {
+    const invoice = createInvoice(
+      { clientName: 'Acme', amountCents: 10000, issueDate: '2024-01-01', paymentTerm: 'net-30' },
+      '2024-01-01T00:00:00Z',
+      'inv-1',
+    );
+    expect(invoice.currency).toBe(DEFAULT_INVOICE_CURRENCY);
+  });
+
+  it('normalizes and preserves an explicit currency on create', () => {
+    const invoice = createInvoice(
+      {
+        clientName: 'Acme',
+        amountCents: 10000,
+        issueDate: '2024-01-01',
+        paymentTerm: 'net-30',
+        currency: 'eur',
+      },
+      '2024-01-01T00:00:00Z',
+      'inv-1',
+    );
+    expect(invoice.currency).toBe('EUR');
+  });
+
+  it('keeps the existing currency when an edit omits it', () => {
+    const invoice = makeInvoice({ currency: 'GBP' });
+    const edited = applyInvoiceEdit(
+      invoice,
+      {
+        clientName: invoice.clientName,
+        amountCents: invoice.amountCents,
+        issueDate: invoice.issueDate,
+        paymentTerm: invoice.paymentTerm,
+        status: invoice.status,
+      },
+      '2024-02-01T00:00:00Z',
+    );
+    expect(edited.currency).toBe('GBP');
+  });
+
+  it('updates the currency when an edit supplies one', () => {
+    const invoice = makeInvoice({ currency: 'USD' });
+    const edited = applyInvoiceEdit(
+      invoice,
+      {
+        clientName: invoice.clientName,
+        amountCents: invoice.amountCents,
+        issueDate: invoice.issueDate,
+        paymentTerm: invoice.paymentTerm,
+        status: invoice.status,
+        currency: 'jpy',
+      },
+      '2024-02-01T00:00:00Z',
+    );
+    expect(edited.currency).toBe('JPY');
+  });
+
+  it('falls back to USD for a blank currency code', () => {
+    expect(normalizeInvoiceCurrency('  ')).toBe('USD');
+    expect(normalizeInvoiceCurrency(undefined)).toBe('USD');
   });
 });
 
