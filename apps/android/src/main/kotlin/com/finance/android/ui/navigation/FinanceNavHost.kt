@@ -14,6 +14,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -25,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import com.finance.android.ui.accessibility.CognitiveAccessibilityManager
 import com.finance.android.ui.screens.AccountCreateScreen
 import com.finance.android.ui.screens.AccountEditScreen
 import com.finance.android.ui.screens.AccountsScreen
@@ -56,6 +59,7 @@ import com.finance.android.ui.screens.referral.ReferralScreen
 import com.finance.android.ui.screens.report.ReportBuilderScreen
 import com.finance.android.ui.screens.currency.CurrencyConversionScreen
 import com.finance.android.ui.screens.currency.CurrencyPickerScreen
+import org.koin.compose.koinInject
 import timber.log.Timber
 
 /** Base URI for all deep link patterns declared in AndroidManifest.xml. */
@@ -227,14 +231,16 @@ fun FinanceNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
 ) {
+    val cognitiveManager: CognitiveAccessibilityManager = koinInject()
+    val reducedAnimations by cognitiveManager.reducedAnimations.collectAsState()
     NavHost(
         navController = navController,
         startDestination = Route.Dashboard.route,
         modifier = modifier,
-        enterTransition = NavTransitions.enterTransition,
-        exitTransition = NavTransitions.exitTransition,
-        popEnterTransition = NavTransitions.popEnterTransition,
-        popExitTransition = NavTransitions.popExitTransition,
+        enterTransition = if (reducedAnimations) NavTransitions.reducedEnterTransition else NavTransitions.enterTransition,
+        exitTransition = if (reducedAnimations) NavTransitions.reducedExitTransition else NavTransitions.exitTransition,
+        popEnterTransition = if (reducedAnimations) NavTransitions.reducedEnterTransition else NavTransitions.popEnterTransition,
+        popExitTransition = if (reducedAnimations) NavTransitions.reducedExitTransition else NavTransitions.popExitTransition,
     ) {
         // ── Top-level tabs ──────────────────────────────────────────
         composable(
