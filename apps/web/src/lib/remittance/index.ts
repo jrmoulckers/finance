@@ -38,3 +38,6 @@ export type { UpcomingRemittance } from './remittance-schedule';
 
 export { summarizeRemittances, summarizeByRecipient } from './remittance-summary';
 export type { RemittanceSummary, RemittanceRecipientBreakdown } from './remittance-summary';
+
+export { deriveSavedRecipients } from './remittance-recipients';
+export type { SavedRemittanceRecipient } from './remittance-recipients';

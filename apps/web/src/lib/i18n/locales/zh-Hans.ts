@@ -117,6 +117,11 @@ export const ZH_HANS_CATALOG: MessageCatalog = {
   'remittance.empty.title': '还没有汇款记录',
   'remittance.empty.body': '记录一笔汇款，即可查看损失的手续费、你获得的汇率以及实际到账金额。',
   'remittance.form.title': '记录一笔汇款',
+  'remittance.form.savedRecipient.label': '选择已保存的收款人',
+  'remittance.form.savedRecipient.new': '新收款人…',
+  'remittance.form.savedRecipient.help': '选择以前汇过款的人，自动填入其姓名、国家和货币。',
+  'remittance.form.savedRecipient.option':
+    '{name} · {country}（{sourceCurrency} → {destCurrency}）',
   'remittance.form.recipientName.label': '收款人姓名',
   'remittance.form.recipientName.required': '收款人姓名为必填项。',
   'remittance.form.recipientCountry.label': '收款国家/地区',

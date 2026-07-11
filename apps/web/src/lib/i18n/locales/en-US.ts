@@ -159,6 +159,11 @@ export const EN_US_CATALOG: MessageCatalog = {
   'remittance.empty.body':
     'Record a transfer to see the fees lost, the exchange rate you received, and how much arrived.',
   'remittance.form.title': 'Record a remittance',
+  'remittance.form.savedRecipient.label': 'Reuse a saved recipient',
+  'remittance.form.savedRecipient.new': 'New recipient…',
+  'remittance.form.savedRecipient.help':
+    'Pick someone you sent to before to prefill their name, country, and currencies.',
+  'remittance.form.savedRecipient.option': '{name} · {country} ({sourceCurrency} → {destCurrency})',
   'remittance.form.recipientName.label': 'Recipient name',
   'remittance.form.recipientName.required': 'Recipient name is required.',
   'remittance.form.recipientCountry.label': 'Recipient country',
