@@ -27,6 +27,17 @@ import { getBudgetStatusIndicator } from '../lib/a11y';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
 import { computePreviousPeriodSpending } from '../lib/budget-previous-period';
 import { computeCurrentPeriodIncome } from '../lib/budget-current-income';
+import {
+  DEFAULT_ESSENTIAL_THRESHOLD_PERCENT,
+  loadBudgetClassification,
+  saveBudgetClassification,
+  loadFixedIncomeCents,
+  saveFixedIncomeCents,
+  loadEssentialThresholdPercent,
+  saveEssentialThresholdPercent,
+  summarizeEssentialsBudget,
+  type BudgetClass,
+} from '../lib/budgeting/essentials-budgeting';
 import type { DisplayExchangeRate } from '../lib/budgeting/display-currency-rollups';
 import type { TripBudgetTransaction } from '../lib/budgeting/trip-country-budget-scope';
 import {
@@ -174,6 +185,44 @@ export const BudgetsPage: React.FC = () => {
   );
   const [tripCountryFilter, setTripCountryFilter] = useState('');
   const [showArchivedTrips, setShowArchivedTrips] = useState(false);
+
+  // --- Essentials vs discretionary (fixed-income) view (#3297) ---
+  // Local UI grouping persisted client-side; no budget-schema/sync change.
+  const [budgetClassification, setBudgetClassification] = useState<Record<string, BudgetClass>>(
+    () => loadBudgetClassification(),
+  );
+  const [fixedIncomeCents, setFixedIncomeCents] = useState<number>(() => loadFixedIncomeCents());
+  const [fixedIncomeInput, setFixedIncomeInput] = useState<string>(() => {
+    const cents = loadFixedIncomeCents();
+    return cents > 0 ? (cents / 100).toFixed(2) : '';
+  });
+  const [essentialThreshold, setEssentialThreshold] = useState<number>(() =>
+    loadEssentialThresholdPercent(),
+  );
+
+  const handleSetBudgetClass = useCallback((budgetId: string, nextClass: BudgetClass) => {
+    setBudgetClassification((current) => {
+      const next = { ...current, [budgetId]: nextClass };
+      saveBudgetClassification(next);
+      return next;
+    });
+  }, []);
+
+  const handleCommitFixedIncome = useCallback(() => {
+    const dollars = Number.parseFloat(fixedIncomeInput);
+    const cents = Number.isFinite(dollars) && dollars > 0 ? dollarsToCents(dollars) : 0;
+    setFixedIncomeCents(cents);
+    saveFixedIncomeCents(cents);
+    setFixedIncomeInput(cents > 0 ? (cents / 100).toFixed(2) : '');
+  }, [fixedIncomeInput]);
+
+  const handleSetEssentialThreshold = useCallback((value: number) => {
+    const clamped = Number.isFinite(value)
+      ? Math.min(100, Math.max(0, Math.round(value)))
+      : DEFAULT_ESSENTIAL_THRESHOLD_PERCENT;
+    setEssentialThreshold(clamped);
+    saveEssentialThresholdPercent(clamped);
+  }, []);
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -373,6 +422,16 @@ export const BudgetsPage: React.FC = () => {
   const totalBudgeted = budgets.reduce((sum, budget) => sum + budget.amount.amount, 0);
   const totalSpent = budgets.reduce((sum, budget) => sum + budget.spentAmount.amount, 0);
   const totalRemaining = budgets.reduce((sum, budget) => sum + budget.remainingAmount.amount, 0);
+  const essentialsSummary = useMemo(
+    () =>
+      summarizeEssentialsBudget({
+        budgets: budgets.map((budget) => ({ id: budget.id, amountCents: budget.amount.amount })),
+        classification: budgetClassification,
+        monthlyIncomeCents: fixedIncomeCents,
+        essentialThresholdPercent: essentialThreshold,
+      }),
+    [budgets, budgetClassification, fixedIncomeCents, essentialThreshold],
+  );
   const cadenceRange = useMemo(
     () => calculateActiveCadenceRange(planningCadence),
     [planningCadence],
@@ -841,6 +900,222 @@ export const BudgetsPage: React.FC = () => {
                 </div>
               </div>
             </div>
+          </section>
+          <section className="page-section" aria-labelledby="essentials-budget-title">
+            <details className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  fontWeight: 'var(--font-weight-semibold)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-2)',
+                }}
+              >
+                <span id="essentials-budget-title">Essentials vs discretionary</span>
+                <ExplainThis
+                  tipKey="budgetSinkingFund"
+                  buttonLabel="Explain essentials versus discretionary budgeting"
+                />
+              </summary>
+              <p
+                style={{
+                  color: 'var(--semantic-text-secondary)',
+                  marginTop: 'var(--spacing-3)',
+                }}
+              >
+                Anchor your budgets to a fixed monthly income and see how much is committed to
+                essentials (housing, medications, utilities, groceries) versus discretionary
+                spending.
+              </p>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 'var(--spacing-4)',
+                  alignItems: 'flex-end',
+                  marginTop: 'var(--spacing-4)',
+                }}
+              >
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="essentials-fixed-income" className="form-group__label">
+                    Fixed monthly income ({displayCurrency})
+                  </label>
+                  <input
+                    id="essentials-fixed-income"
+                    className="form-input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={fixedIncomeInput}
+                    onChange={(event) => setFixedIncomeInput(event.target.value)}
+                    onBlur={handleCommitFixedIncome}
+                    placeholder="0.00"
+                    aria-describedby="essentials-fixed-income-help"
+                  />
+                  <p
+                    id="essentials-fixed-income-help"
+                    style={{
+                      fontSize: 'var(--type-scale-caption-font-size)',
+                      color: 'var(--semantic-text-secondary)',
+                    }}
+                  >
+                    Pension, Social Security, and any other fixed income.
+                  </p>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="essentials-threshold" className="form-group__label">
+                    Warn when essentials exceed
+                  </label>
+                  <input
+                    id="essentials-threshold"
+                    className="form-input"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={essentialThreshold}
+                    onChange={(event) =>
+                      handleSetEssentialThreshold(Number.parseInt(event.target.value, 10))
+                    }
+                    aria-describedby="essentials-threshold-help"
+                    style={{ maxWidth: '8rem' }}
+                  />
+                  <p
+                    id="essentials-threshold-help"
+                    style={{
+                      fontSize: 'var(--type-scale-caption-font-size)',
+                      color: 'var(--semantic-text-secondary)',
+                    }}
+                  >
+                    Percent of income (0–100).
+                  </p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 'var(--spacing-4)',
+                  marginTop: 'var(--spacing-4)',
+                }}
+                aria-live="polite"
+              >
+                <div>
+                  <p className="card__title">Essentials committed</p>
+                  <p className="card__value">
+                    <CurrencyDisplay amount={essentialsSummary.essentialCents} />
+                    {essentialsSummary.hasIncome && (
+                      <span
+                        style={{
+                          marginLeft: 'var(--spacing-2)',
+                          fontSize: 'var(--type-scale-caption-font-size)',
+                          color: 'var(--semantic-text-secondary)',
+                        }}
+                      >
+                        {essentialsSummary.essentialSharePercent}% of income
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="card__title">Discretionary budgeted</p>
+                  <p className="card__value">
+                    <CurrencyDisplay amount={essentialsSummary.discretionaryCents} />
+                  </p>
+                </div>
+                {essentialsSummary.hasIncome && (
+                  <div>
+                    <p className="card__title">Discretionary remainder</p>
+                    <p className="card__value">
+                      <CurrencyDisplay
+                        amount={essentialsSummary.discretionaryRemainderCents}
+                        colorize
+                      />
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {essentialsSummary.hasIncome &&
+                (essentialsSummary.essentialsExceedIncome ? (
+                  <p role="alert" className="form-error" style={{ marginTop: 'var(--spacing-3)' }}>
+                    Essentials exceed your fixed income. Committed essentials are more than you take
+                    in each month.
+                  </p>
+                ) : essentialsSummary.overThreshold ? (
+                  <p role="alert" className="form-error" style={{ marginTop: 'var(--spacing-3)' }}>
+                    Essentials use {essentialsSummary.essentialSharePercent}% of income — above your{' '}
+                    {essentialsSummary.essentialThresholdPercent}% warning threshold.
+                  </p>
+                ) : (
+                  <p
+                    role="status"
+                    style={{
+                      marginTop: 'var(--spacing-3)',
+                      color: 'var(--semantic-text-secondary)',
+                    }}
+                  >
+                    Essentials are within your {essentialsSummary.essentialThresholdPercent}% of
+                    income target.
+                  </p>
+                ))}
+
+              {budgets.length > 0 && (
+                <fieldset
+                  style={{
+                    marginTop: 'var(--spacing-4)',
+                    border: 'none',
+                    padding: 0,
+                  }}
+                >
+                  <legend className="form-group__label">Classify each budget</legend>
+                  <ul
+                    role="list"
+                    style={{
+                      listStyle: 'none',
+                      margin: 0,
+                      padding: 0,
+                      display: 'grid',
+                      gap: 'var(--spacing-2)',
+                    }}
+                  >
+                    {budgets.map((budget) => {
+                      const selectId = `essentials-class-${budget.id}`;
+                      return (
+                        <li
+                          key={budget.id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 'var(--spacing-3)',
+                          }}
+                        >
+                          <label htmlFor={selectId}>{budget.name}</label>
+                          <select
+                            id={selectId}
+                            className="form-input"
+                            style={{ maxWidth: '12rem' }}
+                            value={budgetClassification[budget.id] ?? 'discretionary'}
+                            onChange={(event) =>
+                              handleSetBudgetClass(budget.id, event.target.value as BudgetClass)
+                            }
+                          >
+                            <option value="essential">Essential</option>
+                            <option value="discretionary">Discretionary</option>
+                          </select>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </fieldset>
+              )}
+            </details>
           </section>
           <BudgetAnalytics
             totalIncome={analyticsIncome}
