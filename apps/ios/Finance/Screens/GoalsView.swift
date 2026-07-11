@@ -41,6 +41,7 @@ struct GoalsView: View {
                     }
                 }
             }
+            .offlineAware()
             .navigationTitle(String(localized: "Goals"))
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -151,7 +152,7 @@ struct GoalsView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
         .contentShape(RoundedRectangle(cornerRadius: 16))
         .onTapGesture { viewModel.editingGoal = goal }
         .accessibilityElement(children: .combine)
