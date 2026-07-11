@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finance.desktop.components.ListEmptyState
 import com.finance.desktop.components.ListErrorState
+import com.finance.desktop.components.trackTextInputFocus
 import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.GoalItemUi
@@ -252,7 +253,7 @@ private fun GoalEditDialog(
                     onValueChange = onNameChange,
                     label = { Text("Goal Name") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().trackTextInputFocus(),
                 )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
@@ -260,7 +261,7 @@ private fun GoalEditDialog(
                     onValueChange = onTargetAmountChange,
                     label = { Text("Target Amount ($)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().trackTextInputFocus(),
                 )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
@@ -268,7 +269,7 @@ private fun GoalEditDialog(
                     onValueChange = onCurrentAmountChange,
                     label = { Text("Current Amount ($)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().trackTextInputFocus(),
                 )
             }
         },

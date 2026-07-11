@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -13,6 +15,70 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import java.util.concurrent.atomic.AtomicInteger
+
+/**
+ * Classifies a [KeyboardShortcut] so the dispatcher can decide whether it may
+ * fire while a text input is focused (#3585).
+ */
+enum class ShortcutCategory {
+    /**
+     * Sidebar/global navigation (e.g. Ctrl+A → Achievements). These MUST NOT
+     * fire while a text field is focused, otherwise they hijack standard
+     * editing combos like Ctrl+A (Select All).
+     */
+    NAVIGATION,
+
+    /**
+     * Discrete actions (new transaction, help, close dialog). These are safe to
+     * fire regardless of focus because they don't collide with text editing.
+     */
+    ACTION,
+}
+
+/**
+ * Tracks how many text inputs currently hold focus so the global
+ * [ShortcutHandler] can suppress navigation shortcuts while the user is typing
+ * (#3585). Backed by an [AtomicInteger] because focus callbacks and key-event
+ * dispatch can interleave.
+ */
+object TextInputFocusTracker {
+    private val focusedCount = AtomicInteger(0)
+
+    /** True when at least one text input is focused. */
+    val isTextInputFocused: Boolean get() = focusedCount.get() > 0
+
+    /** Called by [trackTextInputFocus] when a field gains focus. */
+    fun onFocusGained() {
+        focusedCount.incrementAndGet()
+    }
+
+    /** Called by [trackTextInputFocus] when a field loses focus. */
+    fun onFocusLost() {
+        focusedCount.updateAndGet { if (it > 0) it - 1 else 0 }
+    }
+
+    /** Test hook to reset state between cases. */
+    fun reset() {
+        focusedCount.set(0)
+    }
+}
+
+/**
+ * Marks a text-input composable so global navigation shortcuts are suppressed
+ * while it is focused (#3585). Apply to every editable field:
+ *
+ * ```
+ * OutlinedTextField(..., modifier = Modifier.trackTextInputFocus())
+ * ```
+ */
+fun Modifier.trackTextInputFocus(): Modifier = this.onFocusChanged { focusState ->
+    if (focusState.isFocused) {
+        TextInputFocusTracker.onFocusGained()
+    } else {
+        TextInputFocusTracker.onFocusLost()
+    }
+}
 
 /**
  * Represents a keyboard shortcut binding.
@@ -21,6 +87,9 @@ import androidx.compose.ui.input.key.type
  * @param ctrl Whether Ctrl must be held. Defaults to `true` (most desktop shortcuts use Ctrl).
  * @param shift Whether Shift must be held. Defaults to `false`.
  * @param description Human-readable label for accessibility and tooltip display.
+ * @param category Whether this is a [ShortcutCategory.NAVIGATION] or
+ *   [ShortcutCategory.ACTION] binding; navigation bindings are suppressed while
+ *   a text field is focused (#3585).
  * @param action The callback to invoke when the shortcut is triggered.
  */
 @Stable
@@ -29,6 +98,7 @@ data class KeyboardShortcut(
     val ctrl: Boolean = true,
     val shift: Boolean = false,
     val description: String,
+    val category: ShortcutCategory = ShortcutCategory.ACTION,
     val action: () -> Unit,
 )
 
@@ -68,20 +138,45 @@ class ShortcutHandler {
      *
      * Call this from `onPreviewKeyEvent` on the application [Window] so that
      * shortcuts fire before any child composable consumes the event.
+     *
+     * While a text input is focused (see [TextInputFocusTracker]),
+     * [ShortcutCategory.NAVIGATION] bindings are NOT consumed so standard editing
+     * combos like Ctrl+A (Select All) reach the focused field (#3585).
      */
     @Suppress("ReturnCount") // Keyboard shortcut dispatch logic
     fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.type != KeyEventType.KeyDown) return false
+        return dispatch(event.key, event.isCtrlPressed, event.isShiftPressed)
+    }
+
+    /**
+     * Pure dispatch decision, split out from [onKeyEvent] so the focus-aware
+     * suppression can be unit-tested without constructing platform [KeyEvent]s
+     * (whose backing native type is not test-constructible). Returns `true` when
+     * a shortcut consumed the combination.
+     *
+     * While a text input is focused (see [TextInputFocusTracker]),
+     * [ShortcutCategory.NAVIGATION] bindings are NOT consumed so standard editing
+     * combos like Ctrl+A (Select All) reach the focused field (#3585).
+     */
+    @Suppress("ReturnCount") // Keyboard shortcut dispatch logic
+    fun dispatch(key: Key, ctrl: Boolean, shift: Boolean): Boolean {
         val match = shortcuts.firstOrNull { shortcut ->
-            event.key == shortcut.key &&
-                event.isCtrlPressed == shortcut.ctrl &&
-                event.isShiftPressed == shortcut.shift
+            key == shortcut.key &&
+                ctrl == shortcut.ctrl &&
+                shift == shortcut.shift
+        } ?: return false
+
+        // Let editing combos through to a focused text field instead of
+        // hijacking them for navigation (#3585).
+        if (match.category == ShortcutCategory.NAVIGATION &&
+            TextInputFocusTracker.isTextInputFocused
+        ) {
+            return false
         }
-        if (match != null) {
-            match.action()
-            return true
-        }
-        return false
+
+        match.action()
+        return true
     }
 }
 
