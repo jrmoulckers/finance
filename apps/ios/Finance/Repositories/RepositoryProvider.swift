@@ -83,7 +83,7 @@ final class RepositoryProvider: @unchecked Sendable {
     ///   - budgets:      Budget repository (defaults to Swift Export bridged).
     ///   - goals:        Goal repository (defaults to Swift Export bridged).
     ///   - categories:   Category repository (defaults to Swift Export bridged).
-    ///   - investments:  Investment repository (defaults to mock — KMP bridge pending).
+    ///   - investments:  Investment repository (defaults to persisted store — #2118).
     ///   - bills:        Bill repository (defaults to mock — KMP bridge pending).
     ///
     /// Since Sprint 7, the default implementations delegate through the
@@ -97,7 +97,7 @@ final class RepositoryProvider: @unchecked Sendable {
         budgets: any BudgetRepository = BridgedBudgetRepository(),
         goals: any GoalRepository = BridgedGoalRepository(),
         categories: any CategoryRepository = BridgedCategoryRepository(),
-        investments: any InvestmentRepository = MockInvestmentRepository(),
+        investments: any InvestmentRepository = PersistedInvestmentRepository(),
         bills: any BillRepository = MockBillRepository()
     ) {
         self.accounts = accounts

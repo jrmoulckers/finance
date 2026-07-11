@@ -34,6 +34,44 @@ final class InvestmentViewModel {
     var isLoading = false
     var errorMessage: String?
 
+    // MARK: - Contributions & Projection (#2118)
+
+    /// Recurring monthly contribution for the selected portfolio, in minor units.
+    var monthlyContributionMinorUnits: Int64 = 0
+
+    /// Recorded contribution history for the selected portfolio, newest first.
+    var contributions: [ContributionRecord] = []
+
+    /// Projection horizon in whole years (adjustable by the investor).
+    var projectionYears: Int = 20
+
+    /// Expected nominal annual return, as a percentage (adjustable).
+    var projectionAnnualReturnPercent: Double = 7
+
+    /// Total money the investor has put in (cost basis) for the selected portfolio.
+    var totalContributionsMinorUnits: Int64 { selectedPortfolio?.totalContributionsMinorUnits ?? 0 }
+
+    /// Market growth (value minus contributed principal) for the selected portfolio.
+    var marketReturnMinorUnits: Int64 { selectedPortfolio?.marketReturnMinorUnits ?? 0 }
+
+    /// Compound-growth projection curve for the selected portfolio using the
+    /// current balance, recurring monthly contribution, and adjustable
+    /// return/horizon inputs.
+    var projectionPoints: [ProjectionPoint] {
+        guard let portfolio = selectedPortfolio else { return [] }
+        return CompoundGrowthProjector.project(
+            currentMinorUnits: portfolio.totalValueMinorUnits,
+            monthlyContributionMinorUnits: monthlyContributionMinorUnits,
+            annualReturnRate: projectionAnnualReturnPercent / 100.0,
+            years: projectionYears
+        )
+    }
+
+    /// The projected balance at the end of the projection horizon, in minor units.
+    var projectedValueMinorUnits: Int64 {
+        projectionPoints.last?.valueMinorUnits ?? (selectedPortfolio?.totalValueMinorUnits ?? 0)
+    }
+
     /// Whether an error alert should be presented.
     var showError: Bool { errorMessage != nil }
 
@@ -68,11 +106,49 @@ final class InvestmentViewModel {
                 selectedPortfolio = first
                 computeAllocation(for: first)
                 await loadPerformanceHistory(for: first.id)
+                await loadContributionData(for: first.id)
             }
         } catch {
             errorMessage = String(localized: "Failed to load investment data. Please try again.")
             Self.logger.error("Investment load failed: \(error.localizedDescription, privacy: .public)")
             portfolios = []
+        }
+    }
+
+    /// Loads the recurring monthly contribution and contribution history for a
+    /// portfolio. Failures are non-fatal — projections simply fall back to a
+    /// zero contribution. (#2118)
+    func loadContributionData(for portfolioId: String) async {
+        do {
+            monthlyContributionMinorUnits = try await repository.getMonthlyContributionMinorUnits(portfolioId: portfolioId)
+            contributions = try await repository.getContributions(portfolioId: portfolioId)
+        } catch {
+            Self.logger.error("Contribution load failed: \(error.localizedDescription, privacy: .public)")
+            monthlyContributionMinorUnits = 0
+            contributions = []
+        }
+    }
+
+    /// Persists a new recurring monthly contribution and refreshes projections.
+    func updateMonthlyContribution(_ amountMinorUnits: Int64) async {
+        guard let portfolioId = selectedPortfolio?.id else { return }
+        let sanitised = max(0, amountMinorUnits)
+        monthlyContributionMinorUnits = sanitised
+        do {
+            try await repository.setMonthlyContributionMinorUnits(sanitised, portfolioId: portfolioId)
+        } catch {
+            Self.logger.error("Failed to save monthly contribution: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Records a one-off contribution and reloads the contribution history.
+    func recordContribution(_ amountMinorUnits: Int64, date: Date = .now) async {
+        guard amountMinorUnits > 0, let portfolioId = selectedPortfolio?.id else { return }
+        do {
+            try await repository.recordContribution(amountMinorUnits, portfolioId: portfolioId, date: date)
+            contributions = try await repository.getContributions(portfolioId: portfolioId)
+        } catch {
+            Self.logger.error("Failed to record contribution: \(error.localizedDescription, privacy: .public)")
         }
     }
 

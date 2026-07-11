@@ -243,6 +243,79 @@ final class StubBiometricAuthManager: BiometricAuthManaging, @unchecked Sendable
     }
 }
 
+// MARK: - Stub Investment Repository
+
+/// Configurable stub for `InvestmentRepository`. Returns pre-set portfolios /
+/// performance history and tracks contribution mutations for verification.
+final class StubInvestmentRepository: InvestmentRepository, @unchecked Sendable {
+    var portfoliosToReturn: [PortfolioItem] = []
+    var performanceToReturn: [PerformanceDataPoint] = []
+    var errorToThrow: Error?
+
+    var monthlyContributionByPortfolio: [String: Int64] = [:]
+    var contributionsByPortfolio: [String: [ContributionRecord]] = [:]
+
+    private(set) var recordedContributions: [(amount: Int64, portfolioId: String, date: Date)] = []
+    private(set) var setContributionCalls: [(amount: Int64, portfolioId: String)] = []
+    private(set) var deleteAllCalled = false
+
+    func getPortfolios() async throws -> [PortfolioItem] {
+        if let error = errorToThrow { throw error }
+        return portfoliosToReturn
+    }
+
+    func getPortfolio(id: String) async throws -> PortfolioItem? {
+        if let error = errorToThrow { throw error }
+        return portfoliosToReturn.first { $0.id == id }
+    }
+
+    func getHoldings(portfolioId: String) async throws -> [HoldingItem] {
+        if let error = errorToThrow { throw error }
+        return portfoliosToReturn.first { $0.id == portfolioId }?.holdings ?? []
+    }
+
+    func getHolding(id: String) async throws -> HoldingItem? {
+        if let error = errorToThrow { throw error }
+        return portfoliosToReturn.flatMap(\.holdings).first { $0.id == id }
+    }
+
+    func getPerformanceHistory(portfolioId: String, months: Int) async throws -> [PerformanceDataPoint] {
+        if let error = errorToThrow { throw error }
+        return performanceToReturn
+    }
+
+    func getMonthlyContributionMinorUnits(portfolioId: String) async throws -> Int64 {
+        if let error = errorToThrow { throw error }
+        return monthlyContributionByPortfolio[portfolioId] ?? 0
+    }
+
+    func setMonthlyContributionMinorUnits(_ amountMinorUnits: Int64, portfolioId: String) async throws {
+        if let error = errorToThrow { throw error }
+        setContributionCalls.append((amount: amountMinorUnits, portfolioId: portfolioId))
+        monthlyContributionByPortfolio[portfolioId] = amountMinorUnits
+    }
+
+    func recordContribution(_ amountMinorUnits: Int64, portfolioId: String, date: Date) async throws {
+        if let error = errorToThrow { throw error }
+        recordedContributions.append((amount: amountMinorUnits, portfolioId: portfolioId, date: date))
+        let record = ContributionRecord(date: date, amountMinorUnits: amountMinorUnits)
+        contributionsByPortfolio[portfolioId, default: []].insert(record, at: 0)
+    }
+
+    func getContributions(portfolioId: String) async throws -> [ContributionRecord] {
+        if let error = errorToThrow { throw error }
+        return contributionsByPortfolio[portfolioId] ?? []
+    }
+
+    func deleteAllInvestments() async throws {
+        if let error = errorToThrow { throw error }
+        deleteAllCalled = true
+        portfoliosToReturn = []
+        monthlyContributionByPortfolio = [:]
+        contributionsByPortfolio = [:]
+    }
+}
+
 // MARK: - Sample Data Factory
 
 /// Deterministic sample data for use across all test files.
@@ -404,4 +477,36 @@ enum SampleData {
     static let allCategories: [CategoryItem] = [
         groceriesCategory, diningCategory, transportCategory,
     ]
+
+    // MARK: Investments
+
+    static let vtiHolding = HoldingItem(
+        id: "h1", portfolioId: "p1", symbol: "VTI",
+        name: "Vanguard Total Stock Market ETF",
+        assetClass: .stocks, quantity: 100,
+        costBasisMinorUnits: 20_000_00,
+        currentValueMinorUnits: 24_000_00,
+        previousCloseMinorUnits: 23_800_00,
+        currencyCode: "USD",
+        lastUpdated: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+
+    static let bndHolding = HoldingItem(
+        id: "h2", portfolioId: "p1", symbol: "BND",
+        name: "Vanguard Total Bond Market ETF",
+        assetClass: .bonds, quantity: 50,
+        costBasisMinorUnits: 5_000_00,
+        currentValueMinorUnits: 5_100_00,
+        previousCloseMinorUnits: 5_090_00,
+        currencyCode: "USD",
+        lastUpdated: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+
+    static let samplePortfolio = PortfolioItem(
+        id: "p1", name: "Index Portfolio",
+        holdings: [vtiHolding, bndHolding],
+        currencyCode: "USD",
+        createdAt: Date(timeIntervalSince1970: 1_650_000_000),
+        monthlyContributionMinorUnits: 1_000_00
+    )
 }

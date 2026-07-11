@@ -158,11 +158,24 @@ struct PortfolioItem: Identifiable, Sendable {
     let currencyCode: String
     let createdAt: Date
 
+    /// Recurring monthly contribution the investor adds to this portfolio, in
+    /// minor units. Powers compound-growth projections for passive investors.
+    /// (#2118)
+    var monthlyContributionMinorUnits: Int64 = 0
+
     /// Total portfolio value in minor units.
     var totalValueMinorUnits: Int64 { holdings.reduce(0) { $0 + $1.currentValueMinorUnits } }
 
     /// Total cost basis in minor units.
     var totalCostBasisMinorUnits: Int64 { holdings.reduce(0) { $0 + $1.costBasisMinorUnits } }
+
+    /// Money the investor has actually put in (cost basis). Contribution-aware
+    /// metric distinguishing invested principal from market growth. (#2118)
+    var totalContributionsMinorUnits: Int64 { totalCostBasisMinorUnits }
+
+    /// Growth attributable to the market (value minus contributed principal).
+    /// (#2118)
+    var marketReturnMinorUnits: Int64 { totalGainLossMinorUnits }
 
     /// Total unrealised gain/loss in minor units.
     var totalGainLossMinorUnits: Int64 { totalValueMinorUnits - totalCostBasisMinorUnits }
@@ -200,4 +213,21 @@ struct PerformanceDataPoint: Identifiable, Sendable {
     let id = UUID()
     let date: Date
     let valueMinorUnits: Int64
+}
+
+// MARK: - Contribution Record
+
+/// A single recorded contribution (deposit) into a portfolio. Persisted so the
+/// investor can see and trust the money they have actually added over time.
+/// (#2118)
+struct ContributionRecord: Identifiable, Codable, Sendable, Hashable {
+    let id: String
+    let date: Date
+    let amountMinorUnits: Int64
+
+    init(id: String = UUID().uuidString, date: Date, amountMinorUnits: Int64) {
+        self.id = id
+        self.date = date
+        self.amountMinorUnits = amountMinorUnits
+    }
 }
