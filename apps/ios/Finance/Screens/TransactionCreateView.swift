@@ -251,9 +251,33 @@ struct TransactionCreateView: View {
                     }
                 }
             }
-            Section(String(localized: "Date")) {
-                DatePicker(String(localized: "Date"), selection: $viewModel.date, displayedComponents: .date)
-                    .accessibilityLabel(String(localized: "Transaction date"))
+            Section(String(localized: "Date & time")) {
+                DatePicker(
+                    String(localized: "Date & time"),
+                    selection: $viewModel.date,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .accessibilityLabel(String(localized: "Transaction date and time"))
+
+                LabeledContent(String(localized: "Timezone")) {
+                    Text(viewModel.capturedTimeZoneLabel)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityLabel(String(localized: "Captured timezone"))
+                .accessibilityValue(viewModel.capturedTimeZone.identifier)
+
+                if viewModel.isForeignTimeZone {
+                    Button(String(localized: "Use current timezone")) {
+                        viewModel.useCurrentTimeZone()
+                    }
+                    .accessibilityHint(
+                        String(localized: "Recapture this transaction in your device's current timezone")
+                    )
+                }
+            } footer: {
+                Text(
+                    String(localized: "Saved as \(viewModel.localTimestampDescription). The local time and timezone are preserved so daily totals stay correct when you cross borders.")
+                )
             }
             Section(String(localized: "Note (optional)")) {
                 TextField(String(localized: "Add a note..."), text: $viewModel.note, axis: .vertical)
@@ -287,7 +311,7 @@ struct TransactionCreateView: View {
                 if viewModel.isBnplLiability {
                     LabeledContent(String(localized: "BNPL installments")) { Text(viewModel.bnplInstallmentCount) }
                 }
-                LabeledContent(String(localized: "Date")) { Text(viewModel.date, style: .date) }
+                LabeledContent(String(localized: "Date")) { Text(viewModel.localTimestampDescription) }
                 if let moodTag = viewModel.moodTag {
                     LabeledContent(String(localized: "Mood tag")) { Text(moodTag) }
                 }

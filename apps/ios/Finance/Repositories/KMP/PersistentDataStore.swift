@@ -308,7 +308,9 @@ actor PersistentDataStore {
                 moodTag: nil,
                 isRecurring: transaction.isRecurring,
                 receiptData: transaction.receiptData,
-                tags: transaction.tags
+                tags: transaction.tags,
+                timestamp: transaction.timestamp,
+                timeZoneIdentifier: transaction.timeZoneIdentifier
             )
         }
         transactions = updated
@@ -615,6 +617,7 @@ extension TransactionItem: Codable {
     enum CodingKeys: String, CodingKey {
         case id, payee, category, accountName, amountMinorUnits
         case currencyCode, date, type, status, notes, isRecurring
+        case timestamp, timeZoneIdentifier
     }
 
     init(from decoder: Decoder) throws {
@@ -630,6 +633,8 @@ extension TransactionItem: Codable {
         self.status = try container.decodeIfPresent(TransactionStatusUI.self, forKey: .status) ?? .cleared
         self.notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         self.isRecurring = try container.decodeIfPresent(Bool.self, forKey: .isRecurring) ?? false
+        self.timestamp = try container.decodeIfPresent(Date.self, forKey: .timestamp)
+        self.timeZoneIdentifier = try container.decodeIfPresent(String.self, forKey: .timeZoneIdentifier)
         self.receiptData = nil // Receipt data is stored separately
     }
 
@@ -646,6 +651,8 @@ extension TransactionItem: Codable {
         try container.encode(status, forKey: .status)
         try container.encode(notes, forKey: .notes)
         try container.encode(isRecurring, forKey: .isRecurring)
+        try container.encodeIfPresent(timestamp, forKey: .timestamp)
+        try container.encodeIfPresent(timeZoneIdentifier, forKey: .timeZoneIdentifier)
     }
 }
 

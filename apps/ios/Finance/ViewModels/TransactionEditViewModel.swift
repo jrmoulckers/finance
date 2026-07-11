@@ -111,7 +111,8 @@ final class TransactionEditViewModel {
             id: original.id, payee: payee, category: resolvedCategoryName,
             accountName: resolvedAccountName,
             amountMinorUnits: transactionType == .income ? amountMinorUnits : -amountMinorUnits,
-            currencyCode: currencyCode, date: date, type: transactionType, status: original.status
+            currencyCode: currencyCode, date: date, type: transactionType, status: original.status,
+            timestamp: original.timestamp, timeZoneIdentifier: original.timeZoneIdentifier
         )
         do {
             try await transactionRepository.updateTransaction(updated)
