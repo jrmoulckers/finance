@@ -186,6 +186,18 @@ export const EN_US_CATALOG: MessageCatalog = {
     'Add the real market rate to estimate the FX margin you paid.',
   'remittance.form.referenceRate.invalid': 'Enter a valid rate greater than zero.',
   'remittance.form.note.label': 'Note (optional)',
+  'remittance.form.recurrence.label': 'Repeat',
+  'remittance.form.recurrence.help':
+    'Schedule this remittance to repeat. Recurring remittances are counted as upcoming outflows in Cash Runway.',
+  'remittance.form.recurrence.none': 'One-time (no repeat)',
+  'remittance.form.recurrence.freq.weekly': 'Weekly',
+  'remittance.form.recurrence.freq.biweekly': 'Every 2 weeks',
+  'remittance.form.recurrence.freq.monthly': 'Monthly',
+  'remittance.form.recurrence.freq.quarterly': 'Quarterly',
+  'remittance.form.recurrence.freq.yearly': 'Yearly',
+  'remittance.form.recurrence.nextDate.label': 'Next scheduled date',
+  'remittance.form.fxRate.prefill': 'Use mid-market rate',
+  'remittance.form.fxRate.prefillHint': 'Prefilled {rate} from the exchange-rate service.',
   'remittance.form.submit': 'Record remittance',
   'remittance.form.submitting': 'Saving…',
   'remittance.form.saveError': 'Could not save the remittance. Please try again.',
@@ -233,6 +245,11 @@ export const EN_US_CATALOG: MessageCatalog = {
     'Delete the remittance to {recipient} on {date}? This permanently removes it from your payment history and FX/fee totals.',
   'remittance.history.confirmDelete.confirm': 'Delete remittance',
   'remittance.history.confirmDelete.cancel': 'Cancel',
+  'remittance.upcoming.title': 'Upcoming scheduled remittances',
+  'remittance.upcoming.empty': 'No upcoming scheduled remittances.',
+  'remittance.upcoming.itemAria':
+    '{amount} scheduled to {recipient} on {date}, repeats {frequency}',
+  'remittance.upcoming.badge': 'Repeats {frequency}',
 
   // ── Multi-currency dashboard (issue #3306) ───────────────────────────────
   'dashboard.currency.selector.label': 'Currency',

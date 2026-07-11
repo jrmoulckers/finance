@@ -60,6 +60,7 @@ function input(overrides: Partial<CreateRemittanceInput> = {}): CreateRemittance
     referenceRate: 17.5,
     recipient: { name: 'Familia', country: 'MX' },
     note: null,
+    recurrence: null,
     ...overrides,
   };
 }

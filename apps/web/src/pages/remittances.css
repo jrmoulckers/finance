@@ -388,3 +388,81 @@
     border-width: 2px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Scheduled/recurring remittances (issue #3265) and FX prefill (issue #3296)
+ * ------------------------------------------------------------------------- */
+
+.remittance-field__prefill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.remittance-field__prefill-button {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-interactive-default);
+  background: transparent;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-1) var(--spacing-3);
+  cursor: pointer;
+}
+
+.remittance-field__prefill-button:focus-visible {
+  outline: 2px solid var(--semantic-interactive-default);
+  outline-offset: 2px;
+}
+
+.remittance-upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.remittance-upcoming__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-3) var(--spacing-4);
+}
+
+.remittance-upcoming__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.remittance-upcoming__recipient {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+
+.remittance-upcoming__date {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.remittance-upcoming__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.remittance-upcoming__badge {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  background: var(--semantic-background-tertiary, var(--semantic-background-primary));
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-1) var(--spacing-2);
+}
