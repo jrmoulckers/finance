@@ -14,6 +14,7 @@ struct TransactionsView: View {
     @Environment(DeepLinkHandler.self) private var deepLinkHandler
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel: TransactionsViewModel
+    @State private var showingQuickAdd = false
 
     init(viewModel: TransactionsViewModel = TransactionsViewModel(
         repository: RepositoryProvider.shared.transactions
@@ -43,6 +44,12 @@ struct TransactionsView: View {
                 } else {
                     transactionsList
                 }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                // One-thumb quick expense capture (#2167).
+                QuickAddExpenseButton { showingQuickAdd = true }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
             }
             .offlineAware()
             .navigationTitle(String(localized: "Transactions"))
@@ -109,6 +116,13 @@ struct TransactionsView: View {
                 Task { await viewModel.loadTransactions() }
             }) {
                 NlpInputView()
+            }
+            .sheet(isPresented: $showingQuickAdd, onDismiss: {
+                Task { await viewModel.loadTransactions() }
+            }) {
+                QuickAddExpenseSheet(onSaved: {
+                    Task { await viewModel.loadTransactions() }
+                })
             }
             .sheet(isPresented: $viewModel.showingFilterSheet) {
                 TransactionFilterSheet(
