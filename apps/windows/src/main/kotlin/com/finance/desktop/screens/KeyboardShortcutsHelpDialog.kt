@@ -24,12 +24,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.components.KeyboardShortcut
+import com.finance.desktop.components.ShortcutHandler
 import com.finance.desktop.theme.FinanceDesktopTheme
 
 /**
@@ -44,42 +47,109 @@ data class ShortcutHelpEntry(
 )
 
 /**
+ * Prefix used by navigation shortcut descriptions registered in
+ * `SidebarNavigation` — used to categorise entries in the help dialog.
+ */
+private const val NAV_PREFIX = "Navigate to "
+
+/**
+ * Formats a [KeyboardShortcut]'s key combination into a readable label such as
+ * "Ctrl+Shift+N" or "Escape".
+ */
+fun formatShortcutKeys(shortcut: KeyboardShortcut): String {
+    val parts = buildList {
+        if (shortcut.ctrl) add("Ctrl")
+        if (shortcut.shift) add("Shift")
+        add(keyDisplayName(shortcut.key))
+    }
+    return parts.joinToString("+")
+}
+
+/**
+ * Maps a Compose [Key] to a short, user-facing display name. Falls back to a
+ * cleaned-up form of the key's default string for anything not explicitly
+ * handled, so the list never renders raw internal identifiers.
+ */
+@Suppress("CyclomaticComplexMethod") // Exhaustive key-to-label mapping
+fun keyDisplayName(key: Key): String = when (key) {
+    Key.Zero -> "0"
+    Key.One -> "1"
+    Key.Two -> "2"
+    Key.Three -> "3"
+    Key.Four -> "4"
+    Key.Five -> "5"
+    Key.Six -> "6"
+    Key.Seven -> "7"
+    Key.Eight -> "8"
+    Key.Nine -> "9"
+    Key.A -> "A"
+    Key.D -> "D"
+    Key.F -> "F"
+    Key.H -> "H"
+    Key.I -> "I"
+    Key.N -> "N"
+    Key.Q -> "Q"
+    Key.R -> "R"
+    Key.T -> "T"
+    Key.Escape -> "Escape"
+    Key.Enter -> "Enter"
+    Key.Spacebar -> "Space"
+    Key.F1 -> "F1"
+    Key.F2 -> "F2"
+    else -> key.toString().substringAfterLast(' ').trimEnd(')')
+}
+
+/**
+ * Builds the grouped help sections purely from the currently-registered
+ * [shortcuts], so the dialog can never advertise a shortcut that isn't real and
+ * automatically stays correct as bindings change (#3660).
+ *
+ * Navigation shortcuts (description prefixed with "Navigate to ") are grouped
+ * separately from action/app shortcuts. Each section is sorted for stable,
+ * scannable output.
+ */
+fun buildShortcutHelpSections(
+    shortcuts: List<KeyboardShortcut>,
+): List<Pair<String, List<ShortcutHelpEntry>>> {
+    val (navigation, actions) = shortcuts
+        .distinctBy { formatShortcutKeys(it) }
+        .partition { it.description.startsWith(NAV_PREFIX) }
+
+    val navEntries = navigation
+        .map { ShortcutHelpEntry(formatShortcutKeys(it), "Go to " + it.description.removePrefix(NAV_PREFIX)) }
+        .sortedBy { it.description }
+
+    val actionEntries = actions
+        .map { ShortcutHelpEntry(formatShortcutKeys(it), it.description) }
+        .sortedBy { it.description }
+
+    return buildList {
+        if (navEntries.isNotEmpty()) add("Navigation" to navEntries)
+        if (actionEntries.isNotEmpty()) add("Actions" to actionEntries)
+    }
+}
+
+/**
  * Keyboard shortcuts reference dialog.
  *
- * Shows all available keyboard shortcuts grouped by category.
- * Accessible via F1 or Ctrl+? (Ctrl+Shift+/).
+ * The content is derived from [ShortcutHandler.allShortcuts] — the exact set of
+ * shortcuts registered at runtime — rather than a hand-maintained list. This
+ * guarantees every listed shortcut is real (no phantom entries) and that the
+ * list stays accurate as navigation/global bindings change (#3660).
  *
- * Narrator: each shortcut entry reads as "keys: description".
- * Section headings are marked as headings. The dialog itself
- * is announced with its purpose.
+ * Narrator: each shortcut entry reads as "keys: description". Section headings
+ * are marked as headings. The dialog itself is announced with its purpose.
  *
+ * @param shortcutHandler The active handler whose registered shortcuts drive the list.
  * @param onDismiss Callback to close the dialog.
  */
 @Composable
-fun KeyboardShortcutsHelpDialog(onDismiss: () -> Unit) {
-    val sections = remember {
-        listOf(
-            "Navigation" to listOf(
-                ShortcutHelpEntry("Ctrl+1", "Go to Dashboard"),
-                ShortcutHelpEntry("Ctrl+2", "Go to Accounts"),
-                ShortcutHelpEntry("Ctrl+3", "Go to Transactions"),
-                ShortcutHelpEntry("Ctrl+4", "Go to Budgets"),
-                ShortcutHelpEntry("Ctrl+5", "Go to Goals"),
-            ),
-            "Actions" to listOf(
-                ShortcutHelpEntry("Ctrl+Shift+N", "New transaction"),
-                ShortcutHelpEntry("Ctrl+F", "Focus search"),
-                ShortcutHelpEntry("/", "Focus search (alternative)"),
-                ShortcutHelpEntry("Delete", "Delete selected item"),
-                ShortcutHelpEntry("Enter", "Open selected item"),
-                ShortcutHelpEntry("Escape", "Close dialog / go back"),
-            ),
-            "App" to listOf(
-                ShortcutHelpEntry("F1", "Show keyboard shortcuts"),
-                ShortcutHelpEntry("Ctrl+Shift+F", "Report bug / send feedback"),
-                ShortcutHelpEntry("Ctrl+Shift+V", "Voice transaction entry"),
-            ),
-        )
+fun KeyboardShortcutsHelpDialog(
+    shortcutHandler: ShortcutHandler,
+    onDismiss: () -> Unit,
+) {
+    val sections = remember(shortcutHandler.allShortcuts()) {
+        buildShortcutHelpSections(shortcutHandler.allShortcuts())
     }
 
     AlertDialog(

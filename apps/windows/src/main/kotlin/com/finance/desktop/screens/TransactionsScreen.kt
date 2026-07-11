@@ -59,6 +59,7 @@ import com.finance.desktop.components.filter.FilterBar
 import com.finance.desktop.components.tags.TagChip
 import com.finance.desktop.components.tags.TagList
 import com.finance.desktop.components.tags.TagSize
+import com.finance.desktop.components.ListErrorState
 import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.TransactionsViewModel
@@ -117,6 +118,16 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
                 },
             )
         }
+        return
+    }
+
+    if (state.errorMessage != null) {
+        ListErrorState(
+            message = state.errorMessage!!,
+            onRetry = { viewModel.retry() },
+            title = "Couldn't load transactions",
+            modifier = modifier,
+        )
         return
     }
 

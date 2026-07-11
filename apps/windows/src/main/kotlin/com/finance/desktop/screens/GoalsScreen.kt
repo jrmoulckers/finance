@@ -21,11 +21,13 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,6 +50,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.components.ListEmptyState
+import com.finance.desktop.components.ListErrorState
 import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.GoalItemUi
@@ -93,9 +97,21 @@ fun GoalsScreen(modifier: Modifier = Modifier) {
         return
     }
 
-    // ── Edit Dialog ──
-    if (state.editingGoalId != null) {
+    if (state.errorMessage != null) {
+        ListErrorState(
+            message = state.errorMessage!!,
+            onRetry = { viewModel.retry() },
+            title = "Couldn't load goals",
+            modifier = modifier,
+        )
+        return
+    }
+
+    // ── Edit / Create Dialog ──
+    if (state.editingGoalId != null || state.isCreating) {
         GoalEditDialog(
+            title = if (state.isCreating) "New Goal" else "Edit Goal",
+            confirmLabel = if (state.isCreating) "Create" else "Save",
             name = state.editName,
             targetAmount = state.editTargetAmount,
             currentAmount = state.editCurrentAmount,
@@ -140,52 +156,50 @@ fun GoalsScreen(modifier: Modifier = Modifier) {
             .padding(FinanceDesktopTheme.spacing.xxl)
             .semantics { contentDescription = "Goals screen" },
     ) {
-        Text(
-            text = "Savings Goals",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.semantics {
-                heading()
-                contentDescription = "Savings Goals heading"
-            },
-        )
-        Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
-        Text(
-            text = "Track progress toward your financial goals",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Savings Goals",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.semantics {
+                        heading()
+                        contentDescription = "Savings Goals heading"
+                    },
+                )
+                Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
+                Text(
+                    text = "Track progress toward your financial goals",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Button(
+                onClick = { viewModel.startCreate() },
+                modifier = Modifier.semantics { contentDescription = "New goal" },
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(
+                    text = "New Goal",
+                    modifier = Modifier.padding(start = FinanceDesktopTheme.spacing.sm),
+                )
+            }
+        }
 
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
 
         if (state.goals.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Filled.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
-                    Text(
-                        text = "No savings goals yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.semantics {
-                            contentDescription = "No savings goals yet"
-                        },
-                    )
-                    Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
-                    Text(
-                        text = "Create a goal to start saving toward something",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            ListEmptyState(
+                icon = Icons.Filled.Star,
+                title = "No savings goals yet",
+                message = "Create a goal to start saving toward something",
+                ctaLabel = "Create goal",
+                onCta = { viewModel.startCreate() },
+            )
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 320.dp),
@@ -221,10 +235,12 @@ private fun GoalEditDialog(
     onCurrentAmountChange: (String) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
+    title: String = "Edit Goal",
+    confirmLabel: String = "Save",
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Goal") },
+        title = { Text(title) },
         text = {
             Column(
                 modifier = Modifier.semantics {
@@ -257,7 +273,7 @@ private fun GoalEditDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave) { Text("Save") }
+            TextButton(onClick = onSave) { Text(confirmLabel) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

@@ -180,6 +180,10 @@ fun SettingsScreen(
                 AppearanceSettingsScreen(
                     selectedIconPackId = state.iconPackId,
                     onIconPackSelected = viewModel::setIconPack,
+                    highContrastMode = state.highContrastMode,
+                    onHighContrastModeSelected = viewModel::setHighContrastMode,
+                    compactDensity = state.compactDensity,
+                    onCompactDensityChange = viewModel::setCompactDensity,
                 )
             }
 

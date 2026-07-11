@@ -29,6 +29,8 @@ data class SettingsUiState(
     val darkMode: Boolean = false,
     val language: String = "English",
     val accentColor: String = "Blue",
+    val highContrastMode: String = "Auto",
+    val compactDensity: Boolean = false,
     val iconPackId: String = FLUENT_REGULAR,
 
     // ── Security ──
@@ -91,6 +93,12 @@ class SettingsViewModel(
     fun setLanguage(language: String) = updateAndSave { it.copy(language = language) }
 
     fun setAccentColor(color: String) = updateAndSave { it.copy(accentColor = color) }
+
+    /** Sets the high-contrast preference ("Auto", "On", or "Off") (#3665). */
+    fun setHighContrastMode(mode: String) = updateAndSave { it.copy(highContrastMode = mode) }
+
+    /** Toggles the compact information-density mode (#3722). */
+    fun setCompactDensity(enabled: Boolean) = updateAndSave { it.copy(compactDensity = enabled) }
 
     fun setIconPack(iconPackId: String) = updateAndSave { state ->
         val supportedPack = IconPacks.forPlatform(Platform.WINDOWS).firstOrNull { it.id == iconPackId }
@@ -270,6 +278,8 @@ private fun AppSettings.toUiState(): SettingsUiState = SettingsUiState(
     darkMode = darkMode,
     language = language,
     accentColor = accentColor,
+    highContrastMode = highContrastMode,
+    compactDensity = compactDensity,
     iconPackId = iconPackId,
     windowsHelloEnabled = windowsHelloEnabled,
     autoLockEnabled = autoLockEnabled,
@@ -286,6 +296,8 @@ private fun SettingsUiState.toAppSettings(): AppSettings = AppSettings(
     darkMode = darkMode,
     language = language,
     accentColor = accentColor,
+    highContrastMode = highContrastMode,
+    compactDensity = compactDensity,
     iconPackId = iconPackId,
     windowsHelloEnabled = windowsHelloEnabled,
     autoLockEnabled = autoLockEnabled,

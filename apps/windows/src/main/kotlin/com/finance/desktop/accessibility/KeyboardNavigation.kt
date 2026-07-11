@@ -2,14 +2,23 @@
 
 package com.finance.desktop.accessibility
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -19,6 +28,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 
 // =============================================================================
 // Keyboard Navigation Utilities for Windows Desktop Accessibility
@@ -33,6 +43,48 @@ import androidx.compose.ui.semantics.semantics
 //
 // Every screen should use these utilities to manage focus order and provide
 // consistent keyboard interaction patterns.
+
+/**
+ * Width of the keyboard focus ring drawn by [focusVisible].
+ */
+private val FocusRingWidth = 2.dp
+
+/**
+ * Reusable focus-visible modifier that draws a clearly visible outline when the
+ * element receives keyboard focus (WCAG 2.4.7 Focus Visible, #3715).
+ *
+ * Custom interactive composables built with `clickable { }` only expose ripple
+ * and hover indication, so sighted keyboard users cannot tell what is focused
+ * when tabbing. Apply this modifier *before* the `clickable`/`focusable` in the
+ * chain so it observes the downstream focus target:
+ *
+ * ```
+ * Modifier
+ *     .background(bg, shape)
+ *     .focusVisible(shape)
+ *     .clickable { onClick() }
+ * ```
+ *
+ * The ring uses [MaterialTheme.colorScheme.primary] by default, which is chosen
+ * per-theme to meet contrast requirements in light, dark, and high-contrast
+ * schemes (bright yellow / dark blue in the high-contrast palettes).
+ *
+ * @param shape Shape of the focus ring; should match the element's background.
+ * @param color Ring color; defaults to the theme primary.
+ * @return A [Modifier] that renders a focus outline while keyboard-focused.
+ */
+@Composable
+fun Modifier.focusVisible(
+    shape: Shape = RoundedCornerShape(8.dp),
+    color: Color = MaterialTheme.colorScheme.primary,
+): Modifier {
+    var isFocused by remember { mutableStateOf(false) }
+    return this
+        .onFocusChanged { isFocused = it.isFocused }
+        .then(
+            if (isFocused) Modifier.border(FocusRingWidth, color, shape) else Modifier,
+        )
+}
 
 /**
  * Creates and remembers a [FocusRequester] that automatically requests

@@ -142,6 +142,48 @@ fun isHighContrastEnabled(): Boolean {
 }
 
 /**
+ * User-facing high-contrast preference (#3665).
+ *
+ * System detection via [isHighContrastEnabled] is best-effort and frequently
+ * returns nothing under Compose Desktop, so users can force the behaviour:
+ * - [AUTO] preserves the current system-detection behaviour.
+ * - [ON] always uses a high-contrast scheme.
+ * - [OFF] never uses a high-contrast scheme.
+ */
+enum class HighContrastMode {
+    AUTO,
+    ON,
+    OFF,
+    ;
+
+    companion object {
+        /**
+         * Parses a persisted string value, falling back to [AUTO] for unknown
+         * or null input so a corrupt setting never breaks theming.
+         */
+        fun fromStorage(value: String?): HighContrastMode =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: AUTO
+    }
+}
+
+/**
+ * Resolves whether high contrast should be active given the user's [mode] and
+ * the best-effort [systemDetected] flag from [isHighContrastEnabled].
+ *
+ * @param mode The user's explicit preference.
+ * @param systemDetected Whether the OS appears to have high contrast enabled.
+ * @return true if a high-contrast color scheme should be applied.
+ */
+fun resolveHighContrast(
+    mode: HighContrastMode,
+    systemDetected: Boolean = isHighContrastEnabled(),
+): Boolean = when (mode) {
+    HighContrastMode.ON -> true
+    HighContrastMode.OFF -> false
+    HighContrastMode.AUTO -> systemDetected
+}
+
+/**
  * Returns the appropriate color scheme based on system accessibility settings.
  *
  * Priority:

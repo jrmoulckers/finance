@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finance.core.currency.CurrencyFormatter
+import com.finance.desktop.components.ListErrorState
 import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.AccountsViewModel
@@ -120,6 +121,16 @@ fun AccountsScreen(modifier: Modifier = Modifier) {
                 },
             )
         }
+        return
+    }
+
+    if (state.errorMessage != null) {
+        ListErrorState(
+            message = state.errorMessage!!,
+            onRetry = { viewModel.retry() },
+            title = "Couldn't load accounts",
+            modifier = modifier,
+        )
         return
     }
 

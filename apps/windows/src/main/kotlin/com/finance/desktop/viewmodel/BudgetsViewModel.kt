@@ -42,6 +42,7 @@ data class BudgetItemUi(
 data class BudgetsUiState(
     val isLoading: Boolean = true,
     val budgets: List<BudgetItemUi> = emptyList(),
+    val errorMessage: String? = null,
     val editingBudgetId: String? = null,
     val deletingBudgetId: String? = null,
     val editName: String = "",
@@ -78,55 +79,69 @@ class BudgetsViewModel(
 
     private fun loadBudgets() {
         viewModelScope.launch {
-            val budgets = budgetRepository.observeAll(hid).first()
-            rawBudgets = budgets
-            val transactions = transactionRepository.observeAll(hid).first()
-            val today = Clock.System.now()
-                .toLocalDateTime(TimeZone.currentSystemDefault()).date
-            val currency = Currency.USD
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                val budgets = budgetRepository.observeAll(hid).first()
+                rawBudgets = budgets
+                val transactions = transactionRepository.observeAll(hid).first()
+                val today = Clock.System.now()
+                    .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                val currency = Currency.USD
 
-            val items = budgets.map { budget ->
-                val categoryTransactions = transactions.filter {
-                    it.categoryId == budget.categoryId
+                val items = budgets.map { budget ->
+                    val categoryTransactions = transactions.filter {
+                        it.categoryId == budget.categoryId
+                    }
+                    val status = BudgetCalculator.calculateStatus(
+                        budget, categoryTransactions, today,
+                    )
+                    val spentFormatted = CurrencyFormatter.format(status.spent, currency)
+                    val limitFormatted = CurrencyFormatter.format(budget.amount, currency)
+                    val utilization = status.utilization.toFloat().coerceIn(0f, 1.5f)
+                    val isOver = status.healthLevel == BudgetHealth.OVER
+                    val remainingCents = budget.amount.amount - status.spent.amount
+                    val remainingFormatted = if (remainingCents >= 0) {
+                        "${CurrencyFormatter.format(
+                            com.finance.models.types.Cents(remainingCents),
+                            currency,
+                        )} left"
+                    } else {
+                        "${CurrencyFormatter.format(
+                            com.finance.models.types.Cents(-remainingCents),
+                            currency,
+                        )} over"
+                    }
+
+                    BudgetItemUi(
+                        id = budget.id.value,
+                        name = budget.name,
+                        spent = spentFormatted,
+                        limit = limitFormatted,
+                        remaining = remainingFormatted,
+                        utilization = utilization,
+                        isOver = isOver,
+                        period = budget.period.displayName(),
+                        health = status.healthLevel,
+                    )
                 }
-                val status = BudgetCalculator.calculateStatus(
-                    budget, categoryTransactions, today,
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    budgets = items,
+                    errorMessage = null,
                 )
-                val spentFormatted = CurrencyFormatter.format(status.spent, currency)
-                val limitFormatted = CurrencyFormatter.format(budget.amount, currency)
-                val utilization = status.utilization.toFloat().coerceIn(0f, 1.5f)
-                val isOver = status.healthLevel == BudgetHealth.OVER
-                val remainingCents = budget.amount.amount - status.spent.amount
-                val remainingFormatted = if (remainingCents >= 0) {
-                    "${CurrencyFormatter.format(
-                        com.finance.models.types.Cents(remainingCents),
-                        currency,
-                    )} left"
-                } else {
-                    "${CurrencyFormatter.format(
-                        com.finance.models.types.Cents(-remainingCents),
-                        currency,
-                    )} over"
-                }
-
-                BudgetItemUi(
-                    id = budget.id.value,
-                    name = budget.name,
-                    spent = spentFormatted,
-                    limit = limitFormatted,
-                    remaining = remainingFormatted,
-                    utilization = utilization,
-                    isOver = isOver,
-                    period = budget.period.displayName(),
-                    health = status.healthLevel,
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Unable to load budgets. Please try again.",
                 )
             }
-
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                budgets = items,
-            )
         }
+    }
+
+    /** Retries loading after an error (#3685). */
+    fun retry() {
+        loadBudgets()
     }
 
     /**

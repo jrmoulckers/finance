@@ -37,6 +37,7 @@ data class TransactionFilter(
 data class TransactionsUiState(
     val isLoading: Boolean = true,
     val transactions: List<Transaction> = emptyList(),
+    val errorMessage: String? = null,
     val filter: TransactionFilter = TransactionFilter(),
     val advancedFilter: AdvancedFilter = AdvancedFilter(),
     val sortConfig: SortConfig = SortConfig(),
@@ -140,13 +141,32 @@ class TransactionsViewModel(
         }
     }
 
+    /** Retries loading after an error (#3685). */
+    fun retry() {
+        loadTransactions()
+    }
+
     /**
      * Loads transactions from the repository, applies all advanced filters,
      * and sorts the result according to the current sort configuration.
      */
-    @Suppress("CyclomaticComplexity") // Multi-field search predicate
     private fun loadTransactions() {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(errorMessage = null)
+            try {
+                loadTransactionsInternal()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Unable to load transactions. Please try again.",
+                )
+            }
+        }
+    }
+
+    @Suppress("CyclomaticComplexity") // Multi-field search predicate
+    private suspend fun loadTransactionsInternal() {
+        run {
             val all = transactionRepository.observeAll(hid).first()
             val filter = _uiState.value.advancedFilter
             val sortConfig = _uiState.value.sortConfig

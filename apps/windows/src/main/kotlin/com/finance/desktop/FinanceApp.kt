@@ -56,6 +56,8 @@ import com.finance.desktop.screens.WidgetBoardScreen
 import com.finance.desktop.data.repository.AppSettings
 import com.finance.desktop.data.repository.SettingsRepository
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.theme.HighContrastMode
+import com.finance.desktop.theme.resolveHighContrast
 import com.finance.desktop.tray.FinanceSystemTray
 import com.finance.desktop.ui.components.IconPackProvider
 import com.finance.desktop.tray.QuickAddTransactionManager
@@ -100,6 +102,8 @@ import com.finance.desktop.viewmodel.LoginViewModel
  *   window's [onPreviewKeyEvent], enabling Ctrl+1 through Ctrl+8 shortcuts.
  * @param quickAddManager Manager for system tray quick-add transaction.
  * @param systemTray The system tray integration for notifications.
+ * @param onTitleChange Callback to update the OS window title for the active
+ *   screen (#3693). Receives the full title string, e.g. "Transactions - Finance".
  */
 @Composable
 @Suppress("CyclomaticComplexMethod") // Top-level navigation routing composable
@@ -107,6 +111,7 @@ fun FinanceApp(
     shortcutHandler: ShortcutHandler,
     quickAddManager: QuickAddTransactionManager,
     systemTray: FinanceSystemTray,
+    onTitleChange: (String) -> Unit = {},
 ) {
     val authViewModel = koinGet<AuthViewModel>()
     val authState by authViewModel.uiState.collectAsState()
@@ -141,7 +146,10 @@ fun FinanceApp(
         },
     )
 
-    FinanceDesktopTheme {
+    FinanceDesktopTheme(
+        highContrast = resolveHighContrast(HighContrastMode.fromStorage(appSettings.highContrastMode)),
+        compact = appSettings.compactDensity,
+    ) {
         IconPackProvider(iconPackId = appSettings.iconPackId) {
             Surface(
                 modifier = Modifier
@@ -152,12 +160,14 @@ fun FinanceApp(
                 // ── Layer 0: Splash screen while auth state resolves ──
                 // Prevents flash of login screen during startup
                 if (authState.isAuthenticating && !authState.isAuthenticated && !sessionAuthenticated) {
+                    LaunchedEffect(Unit) { onTitleChange("Finance") }
                     SplashLoadingScreen()
                     return@Surface
                 }
 
                 // ── Layer 1: GDPR consent dialog (first run) ──
                 if (gdprState.showConsentDialog) {
+                    LaunchedEffect(Unit) { onTitleChange("Finance") }
                     GdprConsentDialog(
                         onAcceptAll = { gdprViewModel.acceptAll() },
                         onAcceptRequired = { gdprViewModel.acceptRequiredOnly() },
@@ -173,17 +183,20 @@ fun FinanceApp(
                 val isFullyAuthenticated = authState.isAuthenticated || sessionAuthenticated
 
                 if (!isFullyAuthenticated && authState.requiresAuth) {
+                    LaunchedEffect(Unit) { onTitleChange("Finance") }
                     AuthGateContent(authState = authState, authViewModel = authViewModel)
                 } else {
                     MainAppContent(
                         shortcutHandler = shortcutHandler,
                         quickAddManager = quickAddManager,
                         systemTray = systemTray,
+                        onTitleChange = onTitleChange,
                     )
                 }
 
                 // ── Global dialogs (rendered above everything) ──
                 GlobalDialogs(
+                    shortcutHandler = shortcutHandler,
                     showNewTransactionDialog = showNewTransactionDialog,
                     showFeedbackDialog = showFeedbackDialog,
                     showShortcutsHelp = showShortcutsHelp,
@@ -265,6 +278,7 @@ private fun MainAppContent(
     shortcutHandler: ShortcutHandler,
     quickAddManager: QuickAddTransactionManager,
     systemTray: FinanceSystemTray,
+    onTitleChange: (String) -> Unit = {},
 ) {
     val loginViewModel = koinGet<LoginViewModel>()
     var showSignInScreen by remember { mutableStateOf(false) }
@@ -277,6 +291,7 @@ private fun MainAppContent(
         SidebarNavigation(
             shortcutHandler = shortcutHandler,
             onAccountSelected = { /* Settings shows the Account section. */ },
+            onScreenChange = { screen -> onTitleChange("${screen.label} - Finance") },
         ) { screen ->
             when (screen) {
                 Screen.Dashboard -> DashboardScreen()
@@ -325,6 +340,7 @@ private fun MainAppContent(
  */
 @Composable
 private fun GlobalDialogs(
+    shortcutHandler: ShortcutHandler,
     showNewTransactionDialog: Boolean,
     showFeedbackDialog: Boolean,
     showShortcutsHelp: Boolean,
@@ -354,6 +370,7 @@ private fun GlobalDialogs(
 
     if (showShortcutsHelp) {
         KeyboardShortcutsHelpDialog(
+            shortcutHandler = shortcutHandler,
             onDismiss = onDismissShortcutsHelp,
         )
     }

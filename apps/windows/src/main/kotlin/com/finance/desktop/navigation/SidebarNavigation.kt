@@ -19,12 +19,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.AccountBalance
@@ -55,6 +58,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,12 +71,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.accessibility.focusVisible
 import com.finance.desktop.components.KeyboardShortcut
 import com.finance.desktop.data.repository.AuthAccount
 import com.finance.desktop.data.repository.AuthRepository
@@ -82,36 +88,55 @@ import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 
 /**
+ * Logical grouping for sidebar destinations (#3655).
+ *
+ * Grouping a flat 19+ item list into a small set of labelled sections reduces
+ * cognitive load and surfaces the primary tasks. [PRIMARY] has no visible
+ * header (it is the default landing set); the others render a group header with
+ * proper Narrator heading semantics.
+ *
+ * @param header Visible/Narrator section label, or empty for [PRIMARY].
+ */
+enum class NavGroup(val header: String) {
+    PRIMARY(""),
+    INSIGHTS("Insights"),
+    TOOLS("Tools"),
+    MORE("More"),
+}
+
+/**
  * Desktop navigation destinations.
  *
- * Each entry carries its icon, label, and keyboard shortcut key (Ctrl+1 … Ctrl+6).
+ * Each entry carries its icon, label, keyboard shortcut key, and the
+ * [NavGroup] it belongs to in the grouped sidebar information architecture.
  */
 enum class Screen(
     val label: String,
     val icon: ImageVector,
     val shortcutKey: Key,
     val shortcutLabel: String,
+    val group: NavGroup,
 ) {
-    Dashboard("Dashboard", Icons.Filled.Dashboard, Key.One, "Ctrl+1"),
-    Accounts("Accounts", Icons.Filled.AccountBalance, Key.Two, "Ctrl+2"),
-    Transactions("Transactions", Icons.Filled.Receipt, Key.Three, "Ctrl+3"),
-    Budgets("Budgets", Icons.Filled.PieChart, Key.Four, "Ctrl+4"),
-    Goals("Goals", Icons.Filled.Star, Key.Five, "Ctrl+5"),
-    Upgrade("Upgrade", Icons.Filled.WorkspacePremium, Key.Six, "Ctrl+6"),
-    Tips("Tips", Icons.Filled.Lightbulb, Key.T, "Ctrl+T"),
-    Investments("Investments", Icons.AutoMirrored.Filled.ShowChart, Key.F1, "Ctrl+F1"),
-    Household("Household", Icons.Filled.Group, Key.H, "Ctrl+H"),
-    Widgets("Widgets", Icons.Filled.Widgets, Key.Seven, "Ctrl+7"),
-    HealthScore("Health Score", Icons.Filled.Favorite, Key.Eight, "Ctrl+8"),
-    Reports("Reports", Icons.Filled.Assessment, Key.Nine, "Ctrl+9"),
-    QuickAdd("Quick Add", Icons.Filled.AutoAwesome, Key.Q, "Ctrl+Q"),
-    Import("Import", Icons.Filled.FileUpload, Key.I, "Ctrl+I"),
-    Referral("Referral", Icons.Filled.Share, Key.R, "Ctrl+R"),
-    Negotiate("Negotiate", Icons.Filled.Groups, Key.N, "Ctrl+N"),
-    Currency("Currency", Icons.Filled.CurrencyExchange, Key.F2, "Ctrl+F2"),
-    Diagnostics("Diagnostics", Icons.Filled.Speed, Key.D, "Ctrl+D"),
-    Achievements("Achievements", Icons.Filled.EmojiEvents, Key.A, "Ctrl+A"),
-    Settings("Settings", Icons.Filled.Settings, Key.Zero, "Ctrl+0"),
+    Dashboard("Dashboard", Icons.Filled.Dashboard, Key.One, "Ctrl+1", NavGroup.PRIMARY),
+    Accounts("Accounts", Icons.Filled.AccountBalance, Key.Two, "Ctrl+2", NavGroup.PRIMARY),
+    Transactions("Transactions", Icons.Filled.Receipt, Key.Three, "Ctrl+3", NavGroup.PRIMARY),
+    Budgets("Budgets", Icons.Filled.PieChart, Key.Four, "Ctrl+4", NavGroup.PRIMARY),
+    Goals("Goals", Icons.Filled.Star, Key.Five, "Ctrl+5", NavGroup.PRIMARY),
+    Reports("Reports", Icons.Filled.Assessment, Key.Nine, "Ctrl+9", NavGroup.PRIMARY),
+    HealthScore("Health Score", Icons.Filled.Favorite, Key.Eight, "Ctrl+8", NavGroup.INSIGHTS),
+    Investments("Investments", Icons.AutoMirrored.Filled.ShowChart, Key.F1, "Ctrl+F1", NavGroup.INSIGHTS),
+    Achievements("Achievements", Icons.Filled.EmojiEvents, Key.A, "Ctrl+A", NavGroup.INSIGHTS),
+    Tips("Tips", Icons.Filled.Lightbulb, Key.T, "Ctrl+T", NavGroup.INSIGHTS),
+    Household("Household", Icons.Filled.Group, Key.H, "Ctrl+H", NavGroup.TOOLS),
+    Import("Import", Icons.Filled.FileUpload, Key.I, "Ctrl+I", NavGroup.TOOLS),
+    Widgets("Widgets", Icons.Filled.Widgets, Key.Seven, "Ctrl+7", NavGroup.TOOLS),
+    Currency("Currency", Icons.Filled.CurrencyExchange, Key.F2, "Ctrl+F2", NavGroup.TOOLS),
+    Negotiate("Negotiate", Icons.Filled.Groups, Key.N, "Ctrl+N", NavGroup.TOOLS),
+    QuickAdd("Quick Add", Icons.Filled.AutoAwesome, Key.Q, "Ctrl+Q", NavGroup.TOOLS),
+    Upgrade("Upgrade", Icons.Filled.WorkspacePremium, Key.Six, "Ctrl+6", NavGroup.MORE),
+    Referral("Referral", Icons.Filled.Share, Key.R, "Ctrl+R", NavGroup.MORE),
+    Diagnostics("Diagnostics", Icons.Filled.Speed, Key.D, "Ctrl+D", NavGroup.MORE),
+    Settings("Settings", Icons.Filled.Settings, Key.Zero, "Ctrl+0", NavGroup.MORE),
 }
 
 /** Width of the sidebar when expanded. */
@@ -136,6 +161,7 @@ private val SIDEBAR_COLLAPSED_WIDTH = 64.dp
 fun SidebarNavigation(
     shortcutHandler: ShortcutHandler,
     onAccountSelected: () -> Unit = {},
+    onScreenChange: (Screen) -> Unit = {},
     content: @Composable (Screen) -> Unit,
 ) {
     var currentScreen by rememberSaveable { mutableStateOf(Screen.Dashboard) }
@@ -144,7 +170,10 @@ fun SidebarNavigation(
     val account by authRepository.currentAccount.collectAsState()
     val isSignedIn by authRepository.isAuthenticated.collectAsState()
 
-    // Register keyboard shortcuts (Ctrl+1 … Ctrl+6)
+    // Notify the host (window title, etc.) of the active screen (#3693).
+    LaunchedEffect(currentScreen) { onScreenChange(currentScreen) }
+
+    // Register keyboard shortcuts (one per destination)
     KeyboardShortcutEffect(shortcutHandler) {
         Screen.entries.map { screen ->
             KeyboardShortcut(
@@ -239,31 +268,49 @@ private fun SidebarPanel(
             )
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
 
-            // Navigation items — all except Settings
-            Screen.entries
-                .filter { it != Screen.Settings }
-                .forEach { screen ->
-                    SidebarItem(
-                        screen = screen,
-                        isSelected = currentScreen == screen,
-                        isExpanded = isExpanded,
-                        onClick = { onScreenSelected(screen) },
-                    )
+            // Scrollable navigation list (#3592) — takes remaining height so the
+            // account row + Settings stay pinned and reachable on short windows /
+            // high DPI. Destinations are grouped by NavGroup (#3655) with
+            // Narrator heading semantics on each section label.
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .semantics { contentDescription = "Primary navigation" },
+            ) {
+                val grouped = Screen.entries
+                    .filter { it != Screen.Settings }
+                    .groupBy { it.group }
+                NavGroup.entries.forEach { group ->
+                    val screens = grouped[group].orEmpty()
+                    if (screens.isEmpty()) return@forEach
+                    if (group != NavGroup.PRIMARY) {
+                        SidebarGroupHeader(title = group.header, isExpanded = isExpanded)
+                    }
+                    screens.forEach { screen ->
+                        SidebarItem(
+                            screen = screen,
+                            isSelected = currentScreen == screen,
+                            isExpanded = isExpanded,
+                            onClick = { onScreenSelected(screen) },
+                        )
+                    }
                 }
+            }
 
-            Spacer(Modifier.weight(1f))
-
-            // Account status and settings at bottom
+            // Account status and settings pinned at bottom
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = FinanceDesktopTheme.spacing.sm),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
             AccountStatusItem(
                 account = account,
                 isSignedIn = isSignedIn,
                 isExpanded = isExpanded,
                 onClick = onAccountSelected,
-            )
-            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = FinanceDesktopTheme.spacing.sm),
-                color = MaterialTheme.colorScheme.outlineVariant,
             )
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
             SidebarItem(
@@ -274,6 +321,46 @@ private fun SidebarPanel(
             )
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
         }
+    }
+}
+
+/**
+ * Section header for a [NavGroup] in the sidebar (#3655).
+ *
+ * When expanded it shows the group label with a Narrator heading role. When
+ * collapsed to the icon rail it renders a thin divider so the grouping is still
+ * visually communicated without labels.
+ */
+@Composable
+private fun SidebarGroupHeader(title: String, isExpanded: Boolean) {
+    if (isExpanded) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .padding(
+                    start = FinanceDesktopTheme.spacing.lg,
+                    end = FinanceDesktopTheme.spacing.sm,
+                    top = FinanceDesktopTheme.spacing.md,
+                    bottom = FinanceDesktopTheme.spacing.xs,
+                )
+                .semantics {
+                    heading()
+                    contentDescription = "$title section"
+                },
+        )
+    } else {
+        HorizontalDivider(
+            modifier = Modifier.padding(
+                horizontal = FinanceDesktopTheme.spacing.md,
+                vertical = FinanceDesktopTheme.spacing.xs,
+            ),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+        )
     }
 }
 
@@ -302,6 +389,7 @@ private fun AccountStatusItem(
                 else Modifier.width(SIDEBAR_COLLAPSED_WIDTH - FinanceDesktopTheme.spacing.lg),
             )
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+            .focusVisible(shape = RoundedCornerShape(8.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(),
@@ -398,6 +486,7 @@ private fun SidebarItem(
                 else Modifier.width(SIDEBAR_COLLAPSED_WIDTH - FinanceDesktopTheme.spacing.lg),
             )
             .background(backgroundColor, RoundedCornerShape(8.dp))
+            .focusVisible(shape = RoundedCornerShape(8.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(),

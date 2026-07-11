@@ -23,6 +23,10 @@ data class AppSettings(
     val darkMode: Boolean = false,
     val language: String = "English",
     val accentColor: String = "Blue",
+    /** High-contrast preference: "Auto", "On", or "Off" (#3665). */
+    val highContrastMode: String = "Auto",
+    /** Compact information-density mode for list-heavy screens (#3722). */
+    val compactDensity: Boolean = false,
     @SerialName(ICON_PACK_PREFERENCE_KEY)
     val iconPackId: String = FLUENT_REGULAR,
 

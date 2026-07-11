@@ -2,6 +2,10 @@
 
 package com.finance.desktop
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -73,6 +77,10 @@ fun main() {
 
         val shortcutHandler = rememberShortcutHandler()
 
+        // Window title reflects the active screen (#3693); defaults to "Finance"
+        // for auth/splash and updates to "<Screen> - Finance" once navigating.
+        var windowTitle by remember { mutableStateOf("Finance") }
+
         // Initialise tray with action handler
         timed("tray_init") {
             systemTray.initialise(
@@ -110,11 +118,16 @@ fun main() {
                 stopKoin()
                 exitApplication()
             },
-            title = "Finance",
+            title = windowTitle,
             state = windowState,
             onPreviewKeyEvent = { shortcutHandler.onKeyEvent(it) },
         ) {
-            FinanceApp(shortcutHandler, quickAddManager, systemTray)
+            FinanceApp(
+                shortcutHandler,
+                quickAddManager,
+                systemTray,
+                onTitleChange = { windowTitle = it },
+            )
         }
     }
 }

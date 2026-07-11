@@ -27,8 +27,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -37,6 +41,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.accessibility.activateOnEnterOrSpace
 import com.finance.desktop.theme.FinanceDesktopTheme
 
 /**
@@ -72,6 +77,20 @@ fun LockScreen(
     onContinueWithoutAuthentication: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    // Default keyboard focus lands on the primary action so keyboard/Narrator
+    // users can authenticate with Enter/Space immediately (#3709).
+    val unlockFocus = remember { FocusRequester() }
+    val fallbackFocus = remember { FocusRequester() }
+    LaunchedEffect(isAuthenticating, isWindowsHelloAvailable) {
+        if (isAuthenticating) return@LaunchedEffect
+        runCatching {
+            if (isWindowsHelloAvailable) {
+                unlockFocus.requestFocus()
+            } else if (onContinueWithoutAuthentication != null) {
+                fallbackFocus.requestFocus()
+            }
+        }
+    }
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
@@ -168,6 +187,8 @@ fun LockScreen(
                         modifier = Modifier
                             .width(280.dp)
                             .height(48.dp)
+                            .focusRequester(unlockFocus)
+                            .activateOnEnterOrSpace(onAuthenticate)
                             .semantics {
                                 contentDescription =
                                     "Unlock with Windows Hello. Uses fingerprint, face recognition, or PIN."
@@ -204,6 +225,8 @@ fun LockScreen(
                                 modifier = Modifier
                                     .width(280.dp)
                                     .height(48.dp)
+                                    .focusRequester(fallbackFocus)
+                                    .activateOnEnterOrSpace(onContinueWithoutAuthentication)
                                     .semantics {
                                         contentDescription =
                                             "Continue without authentication. Windows Hello is not configured."
