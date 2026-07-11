@@ -195,6 +195,10 @@ fun OnboardingScreen(
                         onStartingBalanceChange = { viewModel.setStartingBalance(it) },
                         currencySymbol = state.selectedCurrency.symbol,
                         onNext = { viewModel.nextStep() },
+                        taxIdentity = state.taxIdentity,
+                        onTaxIdentityChange = { viewModel.setTaxIdentity(it) },
+                        incomeType = state.incomeType,
+                        onIncomeTypeChange = { viewModel.setIncomeType(it) },
                     )
                     5 -> FirstBudgetStep(
                         budgetCategory = state.budgetCategory,
@@ -564,6 +568,7 @@ private fun CurrencyChip(
 /**
  * First account creation step: name, type, starting balance.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FirstAccountStep(
     accountName: String,
@@ -575,6 +580,10 @@ fun FirstAccountStep(
     currencySymbol: String,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
+    taxIdentity: TaxIdentity = TaxIdentity.PREFER_NOT_TO_SAY,
+    onTaxIdentityChange: (TaxIdentity) -> Unit = {},
+    incomeType: IncomeType = IncomeType.NOT_SPECIFIED,
+    onIncomeTypeChange: (IncomeType) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -673,6 +682,16 @@ fun FirstAccountStep(
                 },
         )
 
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Optional newcomer profile (#2178) — ITIN-aware, never required.
+        NewcomerProfileSection(
+            taxIdentity = taxIdentity,
+            onTaxIdentityChange = onTaxIdentityChange,
+            incomeType = incomeType,
+            onIncomeTypeChange = onIncomeTypeChange,
+        )
+
         Spacer(modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -688,7 +707,88 @@ fun FirstAccountStep(
     }
 }
 
-// ── Step 4: First Budget ─────────────────────────────────────────────────────
+/**
+ * Optional, ITIN-aware newcomer profile shown within the account step (#2178).
+ *
+ * Lets a user without an SSN say so and pick their income type, so the app can
+ * later surface plain-language US finance basics tailored to them. Everything
+ * here is optional and defaults to "prefer not to say" — it never blocks
+ * onboarding.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NewcomerProfileSection(
+    taxIdentity: TaxIdentity,
+    onTaxIdentityChange: (TaxIdentity) -> Unit,
+    incomeType: IncomeType,
+    onIncomeTypeChange: (IncomeType) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "New to the US? (optional)",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.semantics { heading() },
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "No SSN yet is fine — an ITIN works too. This just helps us " +
+                "explain US money basics in plain language. You can skip it.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Tax ID",
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.semantics { contentDescription = "Tax ID selection" },
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.selectableGroup(),
+        ) {
+            TaxIdentity.entries.forEach { identity ->
+                FilterChip(
+                    selected = identity == taxIdentity,
+                    onClick = { onTaxIdentityChange(identity) },
+                    label = { Text(identity.label) },
+                    modifier = Modifier.semantics {
+                        contentDescription = identity.label
+                        stateDescription = if (identity == taxIdentity) "Selected" else "Not selected"
+                    },
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "How are you paid?",
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.semantics { contentDescription = "Income type selection" },
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.selectableGroup(),
+        ) {
+            IncomeType.entries.forEach { type ->
+                FilterChip(
+                    selected = type == incomeType,
+                    onClick = { onIncomeTypeChange(type) },
+                    label = { Text(type.label) },
+                    modifier = Modifier.semantics {
+                        contentDescription = type.label
+                        stateDescription = if (type == incomeType) "Selected" else "Not selected"
+                    },
+                )
+            }
+        }
+    }
+}
 
 /**
  * First budget step: "How much do you want to spend on groceries this month?"

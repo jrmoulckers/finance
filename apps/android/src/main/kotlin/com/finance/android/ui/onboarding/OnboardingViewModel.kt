@@ -24,6 +24,50 @@ enum class OnboardingAccountType(val label: String) {
 }
 
 /**
+ * How the user is identified for US tax purposes (#2178).
+ *
+ * ITIN-aware onboarding: newcomers who don't have an SSN yet can still set up
+ * the app and receive plain-language guidance. This is optional and never
+ * blocks onboarding.
+ */
+enum class TaxIdentity(val label: String) {
+    /** Has a Social Security Number. */
+    SSN("I have an SSN"),
+
+    /** Uses an Individual Taxpayer Identification Number. */
+    ITIN("I use an ITIN"),
+
+    /** No SSN or ITIN yet (e.g. newly arrived). */
+    NONE_YET("I don't have one yet"),
+
+    /** Declines to say — the default. */
+    PREFER_NOT_TO_SAY("Prefer not to say"),
+}
+
+/**
+ * The kind of income a user primarily earns (#2178).
+ *
+ * Used to tailor plain-language finance basics (e.g. withholding vs. setting
+ * aside taxes on 1099 income). Optional and non-blocking.
+ */
+enum class IncomeType(val label: String) {
+    /** Employee wages reported on a W-2. */
+    W2("Employee (W-2)"),
+
+    /** Contract or gig income reported on a 1099. */
+    FORM_1099("Contractor (1099)"),
+
+    /** A mix of W-2 and 1099 income. */
+    MIXED("A mix of both"),
+
+    /** Hourly or seasonal work with variable income. */
+    HOURLY_SEASONAL("Hourly or seasonal"),
+
+    /** Not specified — the default. */
+    NOT_SPECIFIED("Prefer not to say"),
+}
+
+/**
  * The two onboarding paths a user can choose from after the welcome step.
  *
  * - [QUICK_START] — "Just let me in": applies sensible defaults and skips
@@ -91,6 +135,11 @@ data class OnboardingUiState(
     val accountName: String = "",
     val accountType: OnboardingAccountType = OnboardingAccountType.CHECKING,
     val startingBalance: String = "",
+
+    // Step 4 — Optional newcomer profile (#2178). Surfaced within the account
+    // step; never adds a step or blocks progress.
+    val taxIdentity: TaxIdentity = TaxIdentity.PREFER_NOT_TO_SAY,
+    val incomeType: IncomeType = IncomeType.NOT_SPECIFIED,
 
     // Step 5 — First Budget (personalized path)
     val budgetCategory: String = "Groceries",
@@ -176,6 +225,8 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
                 .putString(KEY_STARTING_BALANCE, "0")
                 .putString(KEY_BUDGET_CATEGORY, "Groceries")
                 .putString(KEY_BUDGET_AMOUNT, "0")
+                .putString(KEY_TAX_IDENTITY, TaxIdentity.PREFER_NOT_TO_SAY.name)
+                .putString(KEY_INCOME_TYPE, IncomeType.NOT_SPECIFIED.name)
                 .putString(KEY_ONBOARDING_PATH, OnboardingPath.QUICK_START.name)
                 .apply()
 
@@ -234,6 +285,16 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
         _uiState.update { it.copy(accountType = type) }
     }
 
+    /** Records the user's optional tax identity (SSN/ITIN/none) — #2178. */
+    fun setTaxIdentity(identity: TaxIdentity) {
+        _uiState.update { it.copy(taxIdentity = identity) }
+    }
+
+    /** Records the user's optional income type for tailored basics — #2178. */
+    fun setIncomeType(type: IncomeType) {
+        _uiState.update { it.copy(incomeType = type) }
+    }
+
     fun setStartingBalance(balance: String) {
         // Only allow valid numeric input (digits + optional single decimal point)
         if (balance.isEmpty() || balance.matches(Regex("""^\d*\.?\d{0,2}$"""))) {
@@ -270,6 +331,8 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
                 .putString(KEY_STARTING_BALANCE, state.startingBalance.ifBlank { "0" })
                 .putString(KEY_BUDGET_CATEGORY, state.budgetCategory)
                 .putString(KEY_BUDGET_AMOUNT, state.budgetAmount.ifBlank { "0" })
+                .putString(KEY_TAX_IDENTITY, state.taxIdentity.name)
+                .putString(KEY_INCOME_TYPE, state.incomeType.name)
                 .putString(KEY_ONBOARDING_PATH, OnboardingPath.PERSONALIZED.name)
                 .apply()
 
@@ -293,6 +356,8 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
         internal const val KEY_STARTING_BALANCE = "onboarding_starting_balance"
         internal const val KEY_BUDGET_CATEGORY = "onboarding_budget_category"
         internal const val KEY_BUDGET_AMOUNT = "onboarding_budget_amount"
+        internal const val KEY_TAX_IDENTITY = "onboarding_tax_identity"
+        internal const val KEY_INCOME_TYPE = "onboarding_income_type"
         internal const val KEY_ONBOARDING_PATH = "onboarding_path"
 
         /**
