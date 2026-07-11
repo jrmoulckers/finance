@@ -14,7 +14,12 @@ test('login page renders', async ({ page }) => {
   // Privacy-first brand tagline (#3087)
   await expect(page.getByText(/secure, private financial tracking/i)).toBeVisible();
   await expect(page.getByLabel(/email/i)).toBeVisible();
-  await expect(page.getByLabel(/password/i)).toBeVisible();
+  // Anchor the match to the start of the accessible name so it resolves to the
+  // "Password" field only. The PasswordInput reveal toggle (#3770) exposes a
+  // button whose accessible name ends in "password" ("Show password" /
+  // "Hide password"); an unanchored /password/i matched both and tripped a
+  // strict-mode violation.
+  await expect(page.getByLabel(/^password/i)).toBeVisible();
 });
 
 test('keeps social sign-in outside the collapsible email form (#3178)', async ({ page }) => {
