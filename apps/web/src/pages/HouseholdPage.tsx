@@ -176,6 +176,8 @@ export function HouseholdPage() {
     recordSharedSettlement,
     createRecurringSharedBill,
     setRecurringBillPaused,
+    updateRecurringBill,
+    removeRecurringBill,
     updateRecurringBillCycle,
     markRecurringBillCyclePaid,
     setGoalContributionPledge,
@@ -276,6 +278,21 @@ export function HouseholdPage() {
   const [recurringBillPayer, setRecurringBillPayer] = useState('');
   const [recurringBillRotation, setRecurringBillRotation] =
     useState<PayerRotationMode>('ROUND_ROBIN');
+  // Split configuration for new recurring bills (#3384).
+  const [recurringBillSplitMode, setRecurringBillSplitMode] =
+    useState<SharedExpenseSplitMode>('EQUAL');
+  const [recurringBillCustomSplits, setRecurringBillCustomSplits] = useState<
+    Record<string, string>
+  >({});
+  // Inline edit state for existing recurring bills (#3385).
+  const [editingBillId, setEditingBillId] = useState<string | null>(null);
+  const [editBillName, setEditBillName] = useState('');
+  const [editBillAmount, setEditBillAmount] = useState('');
+  const [editBillDueDay, setEditBillDueDay] = useState('1');
+  const [editBillCadence, setEditBillCadence] = useState<RecurringBillCadence>('MONTHLY');
+  const [editBillSplitMode, setEditBillSplitMode] = useState<SharedExpenseSplitMode>('EQUAL');
+  const [editBillCustomSplits, setEditBillCustomSplits] = useState<Record<string, string>>({});
+  const [pendingDeleteBillId, setPendingDeleteBillId] = useState<string | null>(null);
   const [goalPledgeGoalId, setGoalPledgeGoalId] = useState('');
   const [goalPledgeMemberId, setGoalPledgeMemberId] = useState('');
   const [goalPledgeAmount, setGoalPledgeAmount] = useState('');
@@ -501,15 +518,37 @@ export function HouseholdPage() {
         setHouseholdBetaError('Recurring bill needs a name, amount, and payer.');
         return;
       }
+      const memberIds = members.map((member) => member.id);
+      let customSplits: SharedExpenseSplit[] | undefined;
+      if (recurringBillSplitMode === 'CUSTOM') {
+        customSplits = memberIds.map((memberId) => ({
+          memberId,
+          amount: Number(recurringBillCustomSplits[memberId] ?? '0'),
+        }));
+        if (customSplits.some((split) => !Number.isFinite(split.amount) || split.amount < 0)) {
+          setHouseholdBetaError('Custom split amounts must be zero or more.');
+          return;
+        }
+        const customTotalCents = customSplits.reduce(
+          (sum, split) => sum + Math.round(split.amount * 100),
+          0,
+        );
+        if (customTotalCents !== Math.round(amount * 100)) {
+          setHouseholdBetaError('Custom split amounts must add up to the estimated amount.');
+          return;
+        }
+      }
       const bill = createRecurringSharedBill({
         name: recurringBillName,
         estimatedAmount: amount,
         dueDay,
         cadence: recurringBillCadence,
-        splitMemberIds: members.map((member) => member.id),
+        splitMode: recurringBillSplitMode,
+        splitMemberIds: memberIds,
+        ...(customSplits ? { customSplits } : {}),
         defaultPayerMemberId: payer,
         rotationMode: recurringBillRotation,
-        payerRotationMemberIds: members.map((member) => member.id),
+        payerRotationMemberIds: memberIds,
       });
       if (!bill) {
         setHouseholdBetaError('Failed to create recurring bill.');
@@ -518,17 +557,123 @@ export function HouseholdPage() {
       setRecurringBillName('');
       setRecurringBillAmount('');
       setRecurringBillDueDay('1');
+      setRecurringBillSplitMode('EQUAL');
+      setRecurringBillCustomSplits({});
     },
     [
       createRecurringSharedBill,
       members,
       recurringBillAmount,
       recurringBillCadence,
+      recurringBillCustomSplits,
       recurringBillDueDay,
       recurringBillName,
       recurringBillPayer,
       recurringBillRotation,
+      recurringBillSplitMode,
     ],
+  );
+
+  const beginEditRecurringBill = useCallback(
+    (billId: string) => {
+      const bill = recurringBills.find((entry) => entry.id === billId);
+      if (!bill) return;
+      setEditingBillId(billId);
+      setEditBillName(bill.name);
+      setEditBillAmount(String(bill.estimatedAmount));
+      setEditBillDueDay(String(bill.dueDay));
+      setEditBillCadence(bill.cadence);
+      setEditBillSplitMode(bill.splitMode);
+      setEditBillCustomSplits(
+        Object.fromEntries(
+          (bill.customSplits ?? []).map((split) => [split.memberId, String(split.amount)]),
+        ),
+      );
+      setPendingDeleteBillId(null);
+      setHouseholdBetaError(null);
+    },
+    [recurringBills],
+  );
+
+  const cancelEditRecurringBill = useCallback(() => {
+    setEditingBillId(null);
+    setEditBillCustomSplits({});
+  }, []);
+
+  const handleSaveRecurringBillEdit = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      if (!editingBillId) return;
+      setHouseholdBetaError(null);
+      const amount = Number(editBillAmount);
+      const dueDay = Number(editBillDueDay);
+      if (!editBillName.trim() || !Number.isFinite(amount) || amount <= 0) {
+        setHouseholdBetaError('Recurring bill needs a name and a positive amount.');
+        return;
+      }
+      const memberIds = members.map((member) => member.id);
+      let customSplits: SharedExpenseSplit[] | undefined;
+      if (editBillSplitMode === 'CUSTOM') {
+        customSplits = memberIds.map((memberId) => ({
+          memberId,
+          amount: Number(editBillCustomSplits[memberId] ?? '0'),
+        }));
+        if (customSplits.some((split) => !Number.isFinite(split.amount) || split.amount < 0)) {
+          setHouseholdBetaError('Custom split amounts must be zero or more.');
+          return;
+        }
+        const customTotalCents = customSplits.reduce(
+          (sum, split) => sum + Math.round(split.amount * 100),
+          0,
+        );
+        if (customTotalCents !== Math.round(amount * 100)) {
+          setHouseholdBetaError('Custom split amounts must add up to the estimated amount.');
+          return;
+        }
+      }
+      const updated = updateRecurringBill({
+        billId: editingBillId,
+        name: editBillName,
+        estimatedAmount: amount,
+        dueDay,
+        cadence: editBillCadence,
+        splitMode: editBillSplitMode,
+        splitMemberIds: memberIds,
+        customSplits: editBillSplitMode === 'CUSTOM' ? customSplits : [],
+      });
+      if (!updated) {
+        setHouseholdBetaError('Failed to update recurring bill.');
+        return;
+      }
+      setEditingBillId(null);
+      setEditBillCustomSplits({});
+    },
+    [
+      editBillAmount,
+      editBillCadence,
+      editBillCustomSplits,
+      editBillDueDay,
+      editBillName,
+      editBillSplitMode,
+      editingBillId,
+      members,
+      updateRecurringBill,
+    ],
+  );
+
+  const handleDeleteRecurringBill = useCallback(
+    (billId: string) => {
+      const removed = removeRecurringBill(billId);
+      if (!removed) {
+        setHouseholdBetaError('Failed to delete recurring bill.');
+        return;
+      }
+      setPendingDeleteBillId(null);
+      if (editingBillId === billId) {
+        setEditingBillId(null);
+      }
+    },
+    [editingBillId, removeRecurringBill],
   );
 
   const handleSaveGoalPledge = useCallback(
@@ -1472,6 +1617,42 @@ export function HouseholdPage() {
               <option value="FIXED">Fixed payer</option>
               <option value="WEIGHTED">Weighted rotation</option>
             </select>
+            <select
+              className="household-form-select"
+              value={recurringBillSplitMode}
+              onChange={(e) => setRecurringBillSplitMode(e.target.value as SharedExpenseSplitMode)}
+              aria-label="Recurring bill split mode"
+            >
+              <option value="EQUAL">Split equally</option>
+              <option value="CUSTOM">Custom split</option>
+            </select>
+            {recurringBillSplitMode === 'CUSTOM' && (
+              <fieldset className="household-custom-split" style={{ gridColumn: '1 / -1' }}>
+                <legend>Custom split amounts (must total the estimated amount)</legend>
+                {members.map((member) => {
+                  const inputId = `recurring-bill-split-${member.id}`;
+                  return (
+                    <div key={member.id} className="household-custom-split__row">
+                      <label htmlFor={inputId}>{resolveMemberName(member)}</label>
+                      <input
+                        id={inputId}
+                        className="household-form-input"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={recurringBillCustomSplits[member.id] ?? ''}
+                        onChange={(e) =>
+                          setRecurringBillCustomSplits((current) => ({
+                            ...current,
+                            [member.id]: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </fieldset>
+            )}
             <button type="submit" className="household-button household-button--primary">
               Add recurring bill
             </button>
@@ -1485,51 +1666,189 @@ export function HouseholdPage() {
                 const payer = members.find((member) => member.id === reminder.payerMemberId);
                 return (
                   <li key={reminder.billId} className="household-beta-list__item">
-                    <span>
-                      <strong>{reminder.name}</strong> due {reminder.dueDate} · payer{' '}
-                      {payer ? resolveMemberName(payer) : 'Unknown'} ·{' '}
-                      <CurrencyDisplay amount={dollarsToCents(reminder.amount)} />
-                      {reminder.paused ? ' · paused' : ''}
-                    </span>
-                    <span className="household-beta-list__actions">
-                      <button
-                        type="button"
-                        className="household-button household-button--secondary household-button--small"
-                        onClick={() => bill && setRecurringBillPaused(bill.id, !bill.paused)}
+                    {editingBillId === reminder.billId ? (
+                      <form
+                        onSubmit={handleSaveRecurringBillEdit}
+                        className="household-beta-form"
+                        aria-label={`Edit ${reminder.name}`}
+                        noValidate
                       >
-                        {bill?.paused ? 'Resume' : 'Pause'}
-                      </button>
-                      {reminder.cycleId && (
-                        <>
+                        <input
+                          className="household-form-input"
+                          value={editBillName}
+                          onChange={(e) => setEditBillName(e.target.value)}
+                          aria-label="Bill name"
+                        />
+                        <input
+                          className="household-form-input"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={editBillAmount}
+                          onChange={(e) => setEditBillAmount(e.target.value)}
+                          aria-label="Bill estimated amount"
+                        />
+                        <input
+                          className="household-form-input"
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={editBillDueDay}
+                          onChange={(e) => setEditBillDueDay(e.target.value)}
+                          aria-label="Bill due day"
+                        />
+                        <select
+                          className="household-form-select"
+                          value={editBillCadence}
+                          onChange={(e) =>
+                            setEditBillCadence(e.target.value as RecurringBillCadence)
+                          }
+                          aria-label="Bill cadence"
+                        >
+                          <option value="MONTHLY">Monthly</option>
+                          <option value="BIWEEKLY">Biweekly</option>
+                          <option value="WEEKLY">Weekly</option>
+                        </select>
+                        <select
+                          className="household-form-select"
+                          value={editBillSplitMode}
+                          onChange={(e) =>
+                            setEditBillSplitMode(e.target.value as SharedExpenseSplitMode)
+                          }
+                          aria-label="Bill split mode"
+                        >
+                          <option value="EQUAL">Split equally</option>
+                          <option value="CUSTOM">Custom split</option>
+                        </select>
+                        {editBillSplitMode === 'CUSTOM' && (
+                          <fieldset
+                            className="household-custom-split"
+                            style={{ gridColumn: '1 / -1' }}
+                          >
+                            <legend>Custom split amounts (must total the estimated amount)</legend>
+                            {members.map((member) => {
+                              const inputId = `edit-bill-split-${member.id}`;
+                              return (
+                                <div key={member.id} className="household-custom-split__row">
+                                  <label htmlFor={inputId}>{resolveMemberName(member)}</label>
+                                  <input
+                                    id={inputId}
+                                    className="household-form-input"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={editBillCustomSplits[member.id] ?? ''}
+                                    onChange={(e) =>
+                                      setEditBillCustomSplits((current) => ({
+                                        ...current,
+                                        [member.id]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                </div>
+                              );
+                            })}
+                          </fieldset>
+                        )}
+                        <span className="household-beta-list__actions">
+                          <button
+                            type="submit"
+                            className="household-button household-button--primary household-button--small"
+                          >
+                            Save changes
+                          </button>
                           <button
                             type="button"
                             className="household-button household-button--secondary household-button--small"
-                            onClick={() =>
-                              updateRecurringBillCycle({
-                                billId: reminder.billId,
-                                cycleId: reminder.cycleId!,
-                                status: 'SKIPPED',
-                                skippedReason: 'Skipped from household page',
-                              })
-                            }
+                            onClick={cancelEditRecurringBill}
                           >
-                            Skip
+                            Cancel
+                          </button>
+                        </span>
+                      </form>
+                    ) : (
+                      <>
+                        <span>
+                          <strong>{reminder.name}</strong> due {reminder.dueDate} · payer{' '}
+                          {payer ? resolveMemberName(payer) : 'Unknown'} ·{' '}
+                          <CurrencyDisplay amount={dollarsToCents(reminder.amount)} />
+                          {bill?.splitMode === 'CUSTOM' ? ' · custom split' : ''}
+                          {reminder.paused ? ' · paused' : ''}
+                        </span>
+                        <span className="household-beta-list__actions">
+                          <button
+                            type="button"
+                            className="household-button household-button--secondary household-button--small"
+                            onClick={() => bill && setRecurringBillPaused(bill.id, !bill.paused)}
+                          >
+                            {bill?.paused ? 'Resume' : 'Pause'}
                           </button>
                           <button
                             type="button"
-                            className="household-button household-button--primary household-button--small"
-                            onClick={() =>
-                              markRecurringBillCyclePaid({
-                                billId: reminder.billId,
-                                cycleId: reminder.cycleId!,
-                              })
-                            }
+                            className="household-button household-button--secondary household-button--small"
+                            onClick={() => beginEditRecurringBill(reminder.billId)}
                           >
-                            Mark paid
+                            Edit
                           </button>
-                        </>
-                      )}
-                    </span>
+                          {pendingDeleteBillId === reminder.billId ? (
+                            <>
+                              <button
+                                type="button"
+                                className="household-button household-button--danger household-button--small"
+                                onClick={() => handleDeleteRecurringBill(reminder.billId)}
+                              >
+                                Confirm delete
+                              </button>
+                              <button
+                                type="button"
+                                className="household-button household-button--secondary household-button--small"
+                                onClick={() => setPendingDeleteBillId(null)}
+                              >
+                                Keep
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="household-button household-button--danger household-button--small"
+                              onClick={() => setPendingDeleteBillId(reminder.billId)}
+                            >
+                              Delete
+                            </button>
+                          )}
+                          {reminder.cycleId && (
+                            <>
+                              <button
+                                type="button"
+                                className="household-button household-button--secondary household-button--small"
+                                onClick={() =>
+                                  updateRecurringBillCycle({
+                                    billId: reminder.billId,
+                                    cycleId: reminder.cycleId!,
+                                    status: 'SKIPPED',
+                                    skippedReason: 'Skipped from household page',
+                                  })
+                                }
+                              >
+                                Skip
+                              </button>
+                              <button
+                                type="button"
+                                className="household-button household-button--primary household-button--small"
+                                onClick={() =>
+                                  markRecurringBillCyclePaid({
+                                    billId: reminder.billId,
+                                    cycleId: reminder.cycleId!,
+                                  })
+                                }
+                              >
+                                Mark paid
+                              </button>
+                            </>
+                          )}
+                        </span>
+                      </>
+                    )}
                   </li>
                 );
               })}

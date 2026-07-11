@@ -272,6 +272,8 @@ function mockHouseholdResult(overrides: Partial<UseHouseholdResult> = {}): UseHo
     recordSharedSettlement: vi.fn(),
     createRecurringSharedBill: vi.fn(),
     setRecurringBillPaused: vi.fn(),
+    updateRecurringBill: vi.fn(),
+    removeRecurringBill: vi.fn(),
     updateRecurringBillCycle: vi.fn(),
     markRecurringBillCyclePaid: vi.fn(),
     setGoalContributionPledge: vi.fn(),

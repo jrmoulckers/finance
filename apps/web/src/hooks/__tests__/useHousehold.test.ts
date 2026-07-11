@@ -9,11 +9,13 @@ import type { SqliteDb } from '../../db/sqlite-wasm';
 
 import {
   buildRecurringBillReminders,
+  buildRecurringBillSplits,
   calculateGoalPledgeProgress,
   calculateReconciliationSummary,
   calculateSharedExpenseBalances,
   calculateShoppingBudgetSummary,
   createEqualSharedExpenseSplits,
+  scaleCustomSharedExpenseSplits,
   simplifySettleUpBalances,
   useHousehold,
 } from '../useHousehold';
@@ -298,6 +300,61 @@ describe('useHousehold', () => {
     expect(result.current.checkPermission('VIEWER', 'MANAGE_MEMBERS')).toBe(false);
     expect(result.current.checkPermission('MEMBER', 'ADD_TRANSACTIONS')).toBe(true);
     expect(result.current.checkPermission('VIEWER', 'ADD_TRANSACTIONS')).toBe(false);
+  });
+});
+
+describe('recurring bill custom splits (#3384)', () => {
+  it('scales stored custom splits to a cycle amount without losing pennies', () => {
+    const scaled = scaleCustomSharedExpenseSplits(
+      [
+        { memberId: 'alex', amount: 70 },
+        { memberId: 'sam', amount: 30 },
+      ],
+      200,
+    );
+    expect(scaled).toEqual([
+      { memberId: 'alex', amount: 140 },
+      { memberId: 'sam', amount: 60 },
+    ]);
+  });
+
+  it('honors CUSTOM split percentages instead of splitting equally', () => {
+    const splits = buildRecurringBillSplits(
+      {
+        splitMode: 'CUSTOM',
+        splitMemberIds: ['alex', 'sam'],
+        customSplits: [
+          { memberId: 'alex', amount: 80 },
+          { memberId: 'sam', amount: 20 },
+        ],
+      },
+      100,
+    );
+    expect(splits).toEqual([
+      { memberId: 'alex', amount: 80 },
+      { memberId: 'sam', amount: 20 },
+    ]);
+  });
+
+  it('falls back to an equal split when custom data is missing', () => {
+    const splits = buildRecurringBillSplits(
+      { splitMode: 'CUSTOM', splitMemberIds: ['alex', 'sam'], customSplits: [] },
+      100,
+    );
+    expect(splits).toEqual(createEqualSharedExpenseSplits(100, ['alex', 'sam']));
+  });
+
+  it('assigns rounding remainder so member shares sum to the cycle amount', () => {
+    const scaled = scaleCustomSharedExpenseSplits(
+      [
+        { memberId: 'alex', amount: 1 },
+        { memberId: 'sam', amount: 1 },
+        { memberId: 'jordan', amount: 1 },
+      ],
+      100,
+    );
+    const total = scaled.reduce((sum, entry) => sum + Math.round(entry.amount * 100), 0);
+    expect(total).toBe(10000);
   });
 });
 

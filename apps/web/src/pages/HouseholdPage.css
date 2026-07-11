@@ -200,6 +200,29 @@
   min-height: 32px;
 }
 
+/* Custom split editor for recurring shared bills (#3384). */
+.household-custom-split {
+  display: grid;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  margin: 0;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md, 8px);
+}
+
+.household-custom-split > legend {
+  padding: 0 var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.household-custom-split__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
 /* ---------------------------------------------------------------------------
  * Trusted helper
  * ------------------------------------------------------------------------- */

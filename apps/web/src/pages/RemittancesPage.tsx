@@ -25,7 +25,7 @@
  * References: issue #2170
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
@@ -44,6 +44,7 @@ import {
   quoteRemittance,
   projectUpcomingRemittances,
   advanceRemittanceDate,
+  deriveSavedRecipients,
   REMITTANCE_FREQUENCIES,
 } from '../lib/remittance';
 import type {
@@ -51,6 +52,7 @@ import type {
   RemittanceFrequency,
   RemittanceQuote,
   RemittanceRecord,
+  SavedRemittanceRecipient,
 } from '../lib/remittance';
 import { formatDate } from '../utils/formatDate';
 import './remittances.css';
@@ -355,6 +357,46 @@ export const RemittancesPage: React.FC = () => {
   const [recurrenceNextDate, setRecurrenceNextDate] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [selectedRecipientKey, setSelectedRecipientKey] = useState('');
+
+  // Address book derived from saved records so repeat recipients can be reused
+  // without re-typing name/country/currencies (#3322).
+  const savedRecipients = useMemo(() => deriveSavedRecipients(remittances), [remittances]);
+
+  const applySavedRecipient = useCallback((recipient: SavedRemittanceRecipient) => {
+    setRecipientName(recipient.name);
+    setRecipientCountry(recipient.country);
+    setSourceCurrency(recipient.sourceCurrency);
+    setDestCurrency(recipient.destCurrency);
+  }, []);
+
+  const handleSelectRecipient = useCallback(
+    (key: string) => {
+      setSelectedRecipientKey(key);
+      const recipient = savedRecipients.find((entry) => entry.key === key);
+      if (recipient) {
+        applySavedRecipient(recipient);
+      }
+    },
+    [applySavedRecipient, savedRecipients],
+  );
+
+  // Seed the form from the most recent recipient once history loads, instead of
+  // the fixed MX/MXN defaults — but only while the form is still pristine so we
+  // never clobber a value the user has started entering (#3322).
+  const defaultsAppliedRef = useRef(false);
+  useEffect(() => {
+    if (defaultsAppliedRef.current) return;
+    if (savedRecipients.length === 0) return;
+    if (recipientName.trim()) {
+      defaultsAppliedRef.current = true;
+      return;
+    }
+    defaultsAppliedRef.current = true;
+    const mostRecent = savedRecipients[0];
+    setSelectedRecipientKey(mostRecent.key);
+    applySavedRecipient(mostRecent);
+  }, [savedRecipients, recipientName, applySavedRecipient]);
 
   // Mid-market reference rate from the exchange-rate service (base = source
   // currency), used to prefill the FX/reference rate fields (#3296).
@@ -479,6 +521,7 @@ export const RemittancesPage: React.FC = () => {
 
   const resetForm = useCallback(() => {
     setRecipientName('');
+    setSelectedRecipientKey('');
     setSendAmount('');
     setFee('');
     setFxRate('');
@@ -577,6 +620,35 @@ export const RemittancesPage: React.FC = () => {
             </p>
           )}
 
+          {savedRecipients.length > 0 && (
+            <div className="remittance-field">
+              <label htmlFor="remit-saved-recipient" className="remittance-field__label">
+                {t('remittance.form.savedRecipient.label')}
+              </label>
+              <select
+                id="remit-saved-recipient"
+                className="remittance-field__input"
+                value={selectedRecipientKey}
+                onChange={(e) => handleSelectRecipient(e.target.value)}
+              >
+                <option value="">{t('remittance.form.savedRecipient.new')}</option>
+                {savedRecipients.map((recipient) => (
+                  <option key={recipient.key} value={recipient.key}>
+                    {t('remittance.form.savedRecipient.option', {
+                      name: recipient.name,
+                      country: recipient.country || '—',
+                      sourceCurrency: recipient.sourceCurrency,
+                      destCurrency: recipient.destCurrency,
+                    })}
+                  </option>
+                ))}
+              </select>
+              <p id="remit-saved-recipient-help" className="remittance-field__help">
+                {t('remittance.form.savedRecipient.help')}
+              </p>
+            </div>
+          )}
+
           <div className="remittance-field">
             <label htmlFor="remit-recipient-name" className="remittance-field__label">
               {t('remittance.form.recipientName.label')}
@@ -587,7 +659,10 @@ export const RemittancesPage: React.FC = () => {
               className="remittance-field__input"
               type="text"
               value={recipientName}
-              onChange={(e) => setRecipientName(e.target.value)}
+              onChange={(e) => {
+                setRecipientName(e.target.value);
+                setSelectedRecipientKey('');
+              }}
               aria-required="true"
               aria-invalid={Boolean(errors.recipientName)}
               aria-describedby={describedBy(
@@ -614,7 +689,10 @@ export const RemittancesPage: React.FC = () => {
               className="remittance-field__input"
               type="text"
               value={recipientCountry}
-              onChange={(e) => setRecipientCountry(e.target.value)}
+              onChange={(e) => {
+                setRecipientCountry(e.target.value);
+                setSelectedRecipientKey('');
+              }}
               aria-required="true"
               aria-invalid={Boolean(errors.recipientCountry)}
               aria-describedby={describedBy(

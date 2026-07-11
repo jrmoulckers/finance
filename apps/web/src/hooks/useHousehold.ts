@@ -250,6 +250,12 @@ export interface RecurringSharedBill {
   cadence: RecurringBillCadence;
   splitMode: SharedExpenseSplitMode;
   splitMemberIds: SyncId[];
+  /**
+   * Per-member custom split amounts (dollars) used when `splitMode` is `CUSTOM`
+   * (#3384). Amounts are relative to `estimatedAmount` and scaled to each cycle's
+   * actual amount when a payment is recorded. Absent for EQUAL bills.
+   */
+  customSplits?: SharedExpenseSplit[];
   defaultPayerMemberId: SyncId;
   rotationMode: PayerRotationMode;
   payerRotationMemberIds: SyncId[];
@@ -270,10 +276,28 @@ export interface CreateRecurringSharedBillInput {
   cadence: RecurringBillCadence;
   splitMode?: SharedExpenseSplitMode;
   splitMemberIds: SyncId[];
+  /** Per-member custom split amounts (dollars) when `splitMode` is `CUSTOM` (#3384). */
+  customSplits?: SharedExpenseSplit[];
   defaultPayerMemberId: SyncId;
   rotationMode: PayerRotationMode;
   payerRotationMemberIds?: SyncId[];
   rotationWeights?: Record<SyncId, number>;
+}
+
+/**
+ * Fields that can be edited on an existing recurring shared bill (#3385). Every
+ * field is optional; only provided fields are changed.
+ */
+export interface UpdateRecurringBillInput {
+  billId: SyncId;
+  name?: string;
+  estimatedAmount?: number;
+  dueDay?: number;
+  cadence?: RecurringBillCadence;
+  splitMode?: SharedExpenseSplitMode;
+  splitMemberIds?: SyncId[];
+  customSplits?: SharedExpenseSplit[];
+  defaultPayerMemberId?: SyncId;
 }
 
 export interface UpdateRecurringBillCycleInput {
@@ -622,6 +646,10 @@ export interface UseHouseholdResult {
   createRecurringSharedBill: (input: CreateRecurringSharedBillInput) => RecurringSharedBill | null;
   /** Pause or resume a recurring bill without deleting it. */
   setRecurringBillPaused: (billId: SyncId, paused: boolean) => boolean;
+  /** Edit a recurring bill's name, amount, cadence, due day, or split settings (#3385). */
+  updateRecurringBill: (input: UpdateRecurringBillInput) => RecurringSharedBill | null;
+  /** Permanently delete a recurring bill (#3385). */
+  removeRecurringBill: (billId: SyncId) => boolean;
   /** Override, skip, or settle a single recurring bill cycle. */
   updateRecurringBillCycle: (
     input: UpdateRecurringBillCycleInput,
@@ -962,6 +990,73 @@ export function createEqualSharedExpenseSplits(
     memberId,
     amount: fromCents(baseCents + (index < remainderCents ? 1 : 0)),
   }));
+}
+
+/**
+ * Scale a recurring bill's stored custom split amounts to a specific cycle
+ * amount (#3384). Custom amounts are defined relative to the bill's estimated
+ * amount, so when a cycle's actual amount differs we distribute proportionally
+ * and assign any rounding remainder to the largest share, guaranteeing the
+ * member shares sum exactly to the target amount.
+ */
+export function scaleCustomSharedExpenseSplits(
+  customSplits: readonly SharedExpenseSplit[],
+  targetAmount: number,
+): SharedExpenseSplit[] {
+  const targetCents = toCents(targetAmount);
+  if (targetCents <= 0) {
+    throw new RangeError('Shared expense amount must be greater than zero.');
+  }
+
+  const entries = customSplits
+    .filter((split) => Boolean(split.memberId) && toCents(split.amount) > 0)
+    .map((split) => ({ memberId: split.memberId, cents: toCents(split.amount) }));
+
+  if (entries.length === 0) {
+    throw new RangeError('Custom split needs at least one member with a positive amount.');
+  }
+
+  const totalCustomCents = entries.reduce((sum, entry) => sum + entry.cents, 0);
+  const scaled = entries.map((entry) => ({
+    memberId: entry.memberId,
+    cents: Math.floor((entry.cents * targetCents) / totalCustomCents),
+  }));
+
+  const assigned = scaled.reduce((sum, entry) => sum + entry.cents, 0);
+  let remainder = targetCents - assigned;
+  // Hand out the remaining cents one at a time, starting with the largest
+  // shares so the distribution stays proportional and deterministic.
+  const order = scaled
+    .map((entry, index) => ({ index, cents: entry.cents }))
+    .sort((a, b) => b.cents - a.cents);
+  let cursor = 0;
+  while (remainder > 0 && order.length > 0) {
+    const target = scaled[order[cursor % order.length].index];
+    target.cents += 1;
+    remainder -= 1;
+    cursor += 1;
+  }
+
+  return scaled.map((entry) => ({ memberId: entry.memberId, amount: fromCents(entry.cents) }));
+}
+
+/**
+ * Build the member splits for a recurring-bill payment, honoring a CUSTOM split
+ * when one is configured (#3384). Falls back to an equal split for EQUAL bills or
+ * when custom data is missing/invalid.
+ */
+export function buildRecurringBillSplits(
+  bill: Pick<RecurringSharedBill, 'splitMode' | 'splitMemberIds' | 'customSplits'>,
+  amount: number,
+): SharedExpenseSplit[] {
+  if (bill.splitMode === 'CUSTOM' && bill.customSplits && bill.customSplits.length > 0) {
+    try {
+      return scaleCustomSharedExpenseSplits(bill.customSplits, amount);
+    } catch {
+      // Fall through to an equal split if custom data is unusable.
+    }
+  }
+  return createEqualSharedExpenseSplits(amount, bill.splitMemberIds);
 }
 
 export function calculateSharedExpenseBalances(
@@ -2131,6 +2226,9 @@ export function useHousehold(): UseHouseholdResult {
         cadence: input.cadence,
         splitMode: input.splitMode ?? 'EQUAL',
         splitMemberIds,
+        ...(input.splitMode === 'CUSTOM' && input.customSplits?.length
+          ? { customSplits: input.customSplits }
+          : {}),
         defaultPayerMemberId: input.defaultPayerMemberId,
         rotationMode: input.rotationMode,
         payerRotationMemberIds: rotationIds.length ? rotationIds : [input.defaultPayerMemberId],
@@ -2182,6 +2280,123 @@ export function useHousehold(): UseHouseholdResult {
         detail: null,
         privacy: 'PUBLIC',
       });
+      return true;
+    },
+    [appendActivity, recurringBills],
+  );
+
+  const updateRecurringBill = useCallback(
+    (input: UpdateRecurringBillInput): RecurringSharedBill | null => {
+      const existing = recurringBills.find((bill) => bill.id === input.billId);
+      if (!existing) {
+        setError('Recurring bill not found.');
+        return null;
+      }
+
+      const nextName = input.name === undefined ? existing.name : input.name.trim();
+      if (!nextName) {
+        setError('Recurring bill needs a name.');
+        return null;
+      }
+
+      const nextAmountCents =
+        input.estimatedAmount === undefined
+          ? toCents(existing.estimatedAmount)
+          : toCents(input.estimatedAmount);
+      if (nextAmountCents <= 0) {
+        setError('Recurring bill amount must be greater than zero.');
+        return null;
+      }
+
+      const nextSplitMemberIds =
+        input.splitMemberIds === undefined
+          ? existing.splitMemberIds
+          : Array.from(new Set(input.splitMemberIds.filter(Boolean)));
+      if (nextSplitMemberIds.length === 0) {
+        setError('Recurring bill needs at least one split member.');
+        return null;
+      }
+
+      const nextSplitMode = input.splitMode ?? existing.splitMode;
+      const nextCustomSplits =
+        input.customSplits === undefined ? existing.customSplits : input.customSplits;
+      if (nextSplitMode === 'CUSTOM' && !(nextCustomSplits && nextCustomSplits.length > 0)) {
+        setError('A custom split needs per-member amounts.');
+        return null;
+      }
+
+      const now = new Date().toISOString();
+      let updatedBill: RecurringSharedBill | null = null;
+      const updatedBills = recurringBills.map((bill) => {
+        if (bill.id !== input.billId) return bill;
+        const next: RecurringSharedBill = {
+          ...bill,
+          name: nextName,
+          estimatedAmount: fromCents(nextAmountCents),
+          dueDay:
+            input.dueDay === undefined
+              ? bill.dueDay
+              : Math.min(Math.max(1, Math.round(input.dueDay)), 31),
+          cadence: input.cadence ?? bill.cadence,
+          splitMode: nextSplitMode,
+          splitMemberIds: nextSplitMemberIds,
+          defaultPayerMemberId: input.defaultPayerMemberId ?? bill.defaultPayerMemberId,
+          updatedAt: now,
+          syncVersion: bill.syncVersion + 1,
+          isSynced: false,
+        };
+        if (nextSplitMode === 'CUSTOM' && nextCustomSplits && nextCustomSplits.length > 0) {
+          next.customSplits = nextCustomSplits;
+        } else {
+          delete next.customSplits;
+        }
+        updatedBill = next;
+        return next;
+      });
+
+      if (!updatedBill) {
+        setError('Recurring bill not found.');
+        return null;
+      }
+
+      saveToStorage(dbRef.current, STORAGE_KEY_RECURRING_BILLS, updatedBills);
+      setRecurringBills(updatedBills);
+      appendActivity({
+        type: 'BILLS',
+        action: 'RECURRING_BILL_UPDATED',
+        affectedObjectType: 'recurringBill',
+        affectedObjectId: input.billId,
+        summary: nextName + ' recurring bill was updated',
+        detail: 'Name, amount, cadence, or split settings changed.',
+        privacy: 'PUBLIC',
+      });
+      setError(null);
+      return updatedBill;
+    },
+    [appendActivity, recurringBills],
+  );
+
+  const removeRecurringBill = useCallback(
+    (billId: SyncId): boolean => {
+      const existing = recurringBills.find((bill) => bill.id === billId);
+      if (!existing) {
+        setError('Recurring bill not found.');
+        return false;
+      }
+
+      const updatedBills = recurringBills.filter((bill) => bill.id !== billId);
+      saveToStorage(dbRef.current, STORAGE_KEY_RECURRING_BILLS, updatedBills);
+      setRecurringBills(updatedBills);
+      appendActivity({
+        type: 'BILLS',
+        action: 'RECURRING_BILL_DELETED',
+        affectedObjectType: 'recurringBill',
+        affectedObjectId: billId,
+        summary: existing.name + ' recurring bill was deleted',
+        detail: null,
+        privacy: 'PUBLIC',
+      });
+      setError(null);
       return true;
     },
     [appendActivity, recurringBills],
@@ -2254,10 +2469,7 @@ export function useHousehold(): UseHouseholdResult {
       }
 
       const amount = normalizeMoney(input.amount ?? cycle.amount);
-      const splits =
-        bill.splitMode === 'EQUAL'
-          ? createEqualSharedExpenseSplits(amount, bill.splitMemberIds)
-          : createEqualSharedExpenseSplits(amount, bill.splitMemberIds);
+      const splits = buildRecurringBillSplits(bill, amount);
       const now = new Date().toISOString();
       const expense: SharedExpense = {
         id: crypto.randomUUID(),
@@ -2827,6 +3039,8 @@ export function useHousehold(): UseHouseholdResult {
     recordSharedSettlement,
     createRecurringSharedBill,
     setRecurringBillPaused,
+    updateRecurringBill,
+    removeRecurringBill,
     updateRecurringBillCycle,
     markRecurringBillCyclePaid,
     setGoalContributionPledge,
