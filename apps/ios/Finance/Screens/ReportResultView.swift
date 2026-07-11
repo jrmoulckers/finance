@@ -56,7 +56,7 @@ struct ReportResultView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "\(result.configuration.reportType.displayName) report"))
         .accessibilityValue(String(localized: "Period: \(result.configuration.dateRange.displayName)"))
@@ -117,7 +117,7 @@ struct ReportResultView: View {
                                 .frame(width: 10, height: 10)
                             Text(entry.categoryName)
                                 .font(.caption)
-                                .lineLimit(1)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(entry.categoryName)
@@ -127,7 +127,7 @@ struct ReportResultView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     private var incomeVsExpenseChart: some View {
@@ -178,7 +178,7 @@ struct ReportResultView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     private var netWorthChart: some View {
@@ -234,7 +234,7 @@ struct ReportResultView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     private var emptyChartPlaceholder: some View {
@@ -304,7 +304,7 @@ struct ReportResultView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     private var monthlyDataTable: some View {
@@ -373,7 +373,7 @@ struct ReportResultView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     private var netWorthDataTable: some View {
@@ -410,7 +410,7 @@ struct ReportResultView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 }
 
