@@ -21,6 +21,7 @@
 import { useMemo, useState } from 'react';
 
 import { EmptyState, Icon, ReadAloudButton } from '../components/common';
+import { AccountPurposeFilterControl } from '../components/accounts';
 import { IconToken } from '../icons/tokens';
 import { useAccounts } from '../hooks/useAccounts';
 import { useBills } from '../hooks/useBills';
@@ -28,7 +29,13 @@ import { useDisplayCurrencyRollup } from '../hooks/useDisplayCurrencyRollup';
 import { useInvoices } from '../hooks/useInvoices';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useRemittances } from '../hooks/useRemittances';
 import { formatCurrency } from '../lib/currency';
+import {
+  matchesWorkspaceSelection,
+  type AccountPurposeFilter,
+} from '../lib/accountPurpose';
+import { projectUpcomingRemittances } from '../lib/remittance';
 import type { DisplayCurrencyAmount } from '../lib/budgeting/display-currency-rollups';
 import {
   forecastCashRunway,
@@ -66,6 +73,7 @@ function notBefore(isoDate: string, today: string): string {
 
 export function CashRunwayPage() {
   const [horizonWeeks, setHorizonWeeks] = useState(12);
+  const [workspaceFilter, setWorkspaceFilter] = useState<AccountPurposeFilter>('all');
 
   const today = useMemo(() => todayIsoDate(), []);
   const reducedMotion = useReducedMotion();
@@ -74,15 +82,61 @@ export function CashRunwayPage() {
   const { accounts, loading: accountsLoading } = useAccounts();
   const { bills } = useBills();
   const { invoices } = useInvoices();
+  const { remittances } = useRemittances();
 
-  const cashAccounts = useMemo(
-    () => accounts.filter((account) => !account.isArchived && CASH_ACCOUNT_TYPES.has(account.type)),
+  // Resolve each account's workspace (personal/business/both) so bills and
+  // remittances can be attributed to the selected workspace (#3242).
+  const accountPurposeById = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account.purpose])),
     [accounts],
   );
 
+  const cashAccounts = useMemo(
+    () =>
+      accounts.filter(
+        (account) =>
+          !account.isArchived &&
+          CASH_ACCOUNT_TYPES.has(account.type) &&
+          matchesWorkspaceSelection(account.purpose, workspaceFilter),
+      ),
+    [accounts, workspaceFilter],
+  );
+
   const upcomingBills = useMemo(
-    () => bills.filter((bill) => bill.status === 'UPCOMING' || bill.status === 'OVERDUE'),
-    [bills],
+    () =>
+      bills.filter(
+        (bill) =>
+          (bill.status === 'UPCOMING' || bill.status === 'OVERDUE') &&
+          matchesWorkspaceSelection(
+            bill.accountId ? accountPurposeById.get(bill.accountId) : undefined,
+            workspaceFilter,
+          ),
+      ),
+    [bills, accountPurposeById, workspaceFilter],
+  );
+
+  // Invoices are business receivables, so they only belong to the business and
+  // combined workspaces — never the personal one (#3242).
+  const scopedInvoices = useMemo(
+    () => (workspaceFilter === 'personal' ? [] : invoices),
+    [invoices, workspaceFilter],
+  );
+
+  // Recurring supplier remittances are scheduled business outflows. Project each
+  // occurrence within the forecast horizon so the runway reflects them (#3244);
+  // like invoices they are excluded from the personal workspace (#3242).
+  const horizonEndIso = useMemo(() => {
+    const end = new Date(`${today}T00:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + horizonWeeks * 7);
+    return end.toISOString().slice(0, 10);
+  }, [today, horizonWeeks]);
+
+  const upcomingRemittances = useMemo(
+    () =>
+      workspaceFilter === 'personal'
+        ? []
+        : projectUpcomingRemittances(remittances, today, horizonEndIso),
+    [remittances, today, horizonEndIso, workspaceFilter],
   );
 
   // Convert every currency-bearing forecast input into the user's display
@@ -109,8 +163,18 @@ export function CashRunwayPage() {
         currency: bill.currency.code,
       });
     }
+    // Recurring remittances carry their own source currency and minor units, so
+    // they must be converted into the display currency before being summed into
+    // the forecast — exactly like account balances and bills (#3244).
+    for (const occurrence of upcomingRemittances) {
+      amounts.push({
+        id: `remit:${occurrence.record.id}:${occurrence.date}`,
+        amountCents: occurrence.totalPaidMinor,
+        currency: occurrence.record.sourceCurrency,
+      });
+    }
     return amounts;
-  }, [cashAccounts, upcomingBills]);
+  }, [cashAccounts, upcomingBills, upcomingRemittances]);
 
   const {
     rollup,
@@ -156,7 +220,7 @@ export function CashRunwayPage() {
       ];
     });
 
-    const invoiceEvents = invoices
+    const invoiceEvents = scopedInvoices
       .filter((invoice) => invoice.status === 'Sent' || invoice.status === 'Overdue')
       .map<ScheduledCashEvent>((invoice) => ({
         id: `invoice:${invoice.id}`,
@@ -168,8 +232,29 @@ export function CashRunwayPage() {
         category: 'Expected payment',
       }));
 
-    return [...billEvents, ...invoiceEvents];
-  }, [upcomingBills, invoices, today, convertedById]);
+    // Each projected remittance occurrence is already a concrete dated outflow,
+    // so it is emitted as a one-off event (the recurrence was expanded during
+    // projection) to avoid double-counting inside the forecaster (#3244).
+    const remittanceEvents = upcomingRemittances.flatMap<ScheduledCashEvent>((occurrence) => {
+      const amountCents = convertedById.get(
+        `remit:${occurrence.record.id}:${occurrence.date}`,
+      );
+      if (amountCents === undefined) return [];
+      return [
+        {
+          id: `remit:${occurrence.record.id}:${occurrence.date}`,
+          label: occurrence.record.recipient.name,
+          direction: 'outflow',
+          amountCents,
+          date: notBefore(occurrence.date, today),
+          frequency: 'once',
+          category: 'Supplier remittance',
+        },
+      ];
+    });
+
+    return [...billEvents, ...invoiceEvents, ...remittanceEvents];
+  }, [upcomingBills, scopedInvoices, upcomingRemittances, today, convertedById]);
 
   const forecast = useMemo(
     () => forecastCashRunway({ startingCashCents, events, horizonWeeks, today }),
@@ -247,6 +332,16 @@ export function CashRunwayPage() {
               </option>
             ))}
           </select>
+        </div>
+        <div className="cash-runway__field">
+          <span className="cash-runway__label" id="cash-runway-workspace-label">
+            Workspace
+          </span>
+          <AccountPurposeFilterControl
+            value={workspaceFilter}
+            onChange={setWorkspaceFilter}
+            label="Filter cash runway by workspace"
+          />
         </div>
       </section>
 

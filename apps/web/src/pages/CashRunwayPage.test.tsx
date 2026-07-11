@@ -15,18 +15,21 @@
  * conversion math is exercised end-to-end, matching the #3514 net-worth pattern.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CashRunwayPage } from './CashRunwayPage';
 import { useAccounts } from '../hooks/useAccounts';
 import { useExchangeRates, type UseExchangeRatesResult } from '../hooks/useExchangeRates';
+import { useRemittances } from '../hooks/useRemittances';
 import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 import type { Account } from '../kmp/bridge';
+import type { RemittanceRecord } from '../lib/remittance';
 
 vi.mock('../hooks/useAccounts', () => ({ useAccounts: vi.fn() }));
 vi.mock('../hooks/useBills', () => ({ useBills: () => ({ bills: [] }) }));
 vi.mock('../hooks/useInvoices', () => ({ useInvoices: () => ({ invoices: [] }) }));
+vi.mock('../hooks/useRemittances', () => ({ useRemittances: vi.fn(() => ({ remittances: [] })) }));
 vi.mock('../hooks/useLocalePreferences', () => ({
   useLocalePreferences: () => ({ locale: 'en-US' }),
 }));
@@ -45,6 +48,7 @@ vi.mock('../hooks/useExchangeRates', () => ({ useExchangeRates: vi.fn() }));
 
 const mockedUseAccounts = vi.mocked(useAccounts);
 const mockedUseExchangeRates = vi.mocked(useExchangeRates);
+const mockedUseRemittances = vi.mocked(useRemittances);
 
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -169,5 +173,78 @@ describe('CashRunwayPage multi-currency starting cash (#3240)', () => {
 
     const note = screen.getByRole('note');
     expect(note).toHaveTextContent(/Excluded JPY — no exchange rate available\./);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Scheduled supplier remittances (#3244) and workspace filter (#3242)
+// ---------------------------------------------------------------------------
+
+/** ISO date `days` from today, matching the page's `todayIsoDate` anchor. */
+function isoOffset(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+}
+
+function businessAccount(id: string, amountCents: number): Account {
+  return { ...cashAccount(id, 'USD', 2, amountCents), purpose: 'business' };
+}
+
+function recurringRemittance(
+  overrides: Partial<RemittanceRecord> = {},
+): RemittanceRecord {
+  return {
+    id: 'rem-1',
+    date: isoOffset(0),
+    sourceCurrency: 'USD',
+    destCurrency: 'MXN',
+    sendAmountMinor: 50_000,
+    feeMinor: 0,
+    fxRate: 17,
+    feeModel: 'INCLUSIVE',
+    referenceRate: null,
+    recipient: { name: 'Fabrica Supplier', country: 'MX' },
+    note: null,
+    createdAt: '2025-01-01T00:00:00Z',
+    recurrence: { frequency: 'monthly', nextDate: isoOffset(3) },
+    ...overrides,
+  };
+}
+
+describe('CashRunwayPage scheduled remittances and workspace filter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedUseExchangeRates.mockReturnValue({ ...baseRatesResult, rates: {} });
+    mockedUseRemittances.mockReturnValue({ remittances: [] } as ReturnType<typeof useRemittances>);
+  });
+
+  it('includes recurring supplier remittances as scheduled outflows (#3244)', () => {
+    mockAccounts([cashAccount('usd', 'USD', 2, 500000)]);
+    mockedUseRemittances.mockReturnValue({
+      remittances: [recurringRemittance()],
+    } as ReturnType<typeof useRemittances>);
+
+    render(<CashRunwayPage />);
+
+    expect(screen.getAllByText('Fabrica Supplier').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Supplier remittance').length).toBeGreaterThan(0);
+  });
+
+  it('excludes remittances and business accounts from the personal workspace (#3242)', () => {
+    mockAccounts([businessAccount('biz', 500000)]);
+    mockedUseRemittances.mockReturnValue({
+      remittances: [recurringRemittance()],
+    } as ReturnType<typeof useRemittances>);
+
+    render(<CashRunwayPage />);
+    // Default "All" workspace shows the scheduled supplier remittance.
+    expect(screen.getAllByText('Fabrica Supplier').length).toBeGreaterThan(0);
+
+    // Switching to the personal workspace drops the business remittance.
+    fireEvent.click(screen.getByRole('button', { name: /Personal/ }));
+    expect(screen.queryByText('Fabrica Supplier')).not.toBeInTheDocument();
   });
 });
