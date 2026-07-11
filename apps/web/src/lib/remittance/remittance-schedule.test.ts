@@ -84,9 +84,7 @@ describe('projectUpcomingRemittances', () => {
   });
 
   it('skips occurrences before the from date', () => {
-    const records = [
-      makeRecord({ recurrence: { frequency: 'weekly', nextDate: '2024-01-01' } }),
-    ];
+    const records = [makeRecord({ recurrence: { frequency: 'weekly', nextDate: '2024-01-01' } })];
     const upcoming = projectUpcomingRemittances(records, '2024-01-15', '2024-01-31');
     expect(upcoming.map((u) => u.date)).toEqual(['2024-01-15', '2024-01-22', '2024-01-29']);
   });

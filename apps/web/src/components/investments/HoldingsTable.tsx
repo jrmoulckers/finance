@@ -167,9 +167,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     overscan: 6,
   });
 
-  const renderedRows = shouldVirtualize
-    ? virtual.visibleItems.map((v) => v.item)
-    : rows;
+  const renderedRows = shouldVirtualize ? virtual.visibleItems.map((v) => v.item) : rows;
   const topSpacer = shouldVirtualize ? virtual.startIndex * ROW_HEIGHT : 0;
   const bottomSpacer = shouldVirtualize
     ? Math.max(0, (rows.length - virtual.endIndex) * ROW_HEIGHT)

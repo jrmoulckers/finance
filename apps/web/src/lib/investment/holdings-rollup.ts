@@ -99,9 +99,7 @@ interface RollupAccumulator {
  * separate (their cents are not comparable). Results are sorted by market value
  * descending so the largest exposures surface first.
  */
-export function rollUpHoldingsBySymbol(
-  positions: readonly HoldingPosition[],
-): RolledUpHolding[] {
+export function rollUpHoldingsBySymbol(positions: readonly HoldingPosition[]): RolledUpHolding[] {
   const groups = new Map<string, RollupAccumulator>();
 
   for (const position of positions) {

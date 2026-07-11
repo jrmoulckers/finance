@@ -1005,17 +1005,12 @@ export const RemittancesPage: React.FC = () => {
           )}
 
           {upcomingRemittances.length > 0 && (
-            <section
-              className="remittance-section"
-              aria-label={t('remittance.upcoming.title')}
-            >
+            <section className="remittance-section" aria-label={t('remittance.upcoming.title')}>
               <h2 className="remittance-section__title">{t('remittance.upcoming.title')}</h2>
               <ul className="remittance-upcoming" role="list">
                 {upcomingRemittances.map((item) => {
                   const freq = item.record.recurrence?.frequency;
-                  const frequencyLabel = freq
-                    ? t(`remittance.form.recurrence.freq.${freq}`)
-                    : '';
+                  const frequencyLabel = freq ? t(`remittance.form.recurrence.freq.${freq}`) : '';
                   return (
                     <li
                       key={item.record.id}

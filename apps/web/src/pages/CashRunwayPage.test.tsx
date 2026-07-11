@@ -193,9 +193,7 @@ function businessAccount(id: string, amountCents: number): Account {
   return { ...cashAccount(id, 'USD', 2, amountCents), purpose: 'business' };
 }
 
-function recurringRemittance(
-  overrides: Partial<RemittanceRecord> = {},
-): RemittanceRecord {
+function recurringRemittance(overrides: Partial<RemittanceRecord> = {}): RemittanceRecord {
   return {
     id: 'rem-1',
     date: isoOffset(0),

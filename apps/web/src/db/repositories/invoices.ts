@@ -150,7 +150,7 @@ export function insertInvoice(db: SqliteDb, invoice: Invoice): Invoice {
       householdId,
       invoice.clientName,
       invoice.amountCents,
-      invoice.currency,
+      normalizeInvoiceCurrency(invoice.currency),
       invoice.issueDate,
       invoice.paymentTerm,
       invoice.status,
@@ -208,7 +208,7 @@ export function updateInvoiceRecord(db: SqliteDb, invoice: Invoice): Invoice | n
     [
       invoice.clientName,
       invoice.amountCents,
-      invoice.currency,
+      normalizeInvoiceCurrency(invoice.currency),
       invoice.issueDate,
       invoice.paymentTerm,
       invoice.status,

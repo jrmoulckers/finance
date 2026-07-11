@@ -31,10 +31,7 @@ import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useRemittances } from '../hooks/useRemittances';
 import { formatCurrency } from '../lib/currency';
-import {
-  matchesWorkspaceSelection,
-  type AccountPurposeFilter,
-} from '../lib/accountPurpose';
+import { matchesWorkspaceSelection, type AccountPurposeFilter } from '../lib/accountPurpose';
 import { projectUpcomingRemittances } from '../lib/remittance';
 import type { DisplayCurrencyAmount } from '../lib/budgeting/display-currency-rollups';
 import {
@@ -236,9 +233,7 @@ export function CashRunwayPage() {
     // so it is emitted as a one-off event (the recurrence was expanded during
     // projection) to avoid double-counting inside the forecaster (#3244).
     const remittanceEvents = upcomingRemittances.flatMap<ScheduledCashEvent>((occurrence) => {
-      const amountCents = convertedById.get(
-        `remit:${occurrence.record.id}:${occurrence.date}`,
-      );
+      const amountCents = convertedById.get(`remit:${occurrence.record.id}:${occurrence.date}`);
       if (amountCents === undefined) return [];
       return [
         {

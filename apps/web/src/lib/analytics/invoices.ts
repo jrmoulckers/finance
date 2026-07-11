@@ -329,7 +329,8 @@ export function applyInvoiceEdit(
     ...invoice,
     clientName: input.clientName.trim(),
     amountCents: input.amountCents,
-    currency: input.currency !== undefined ? normalizeInvoiceCurrency(input.currency) : invoice.currency,
+    currency:
+      input.currency !== undefined ? normalizeInvoiceCurrency(input.currency) : invoice.currency,
     issueDate: input.issueDate,
     paymentTerm: input.paymentTerm,
     status: input.status,

@@ -252,8 +252,7 @@ export const InvestmentsPage: React.FC = () => {
             name: inv.name,
             iconName: getInvestmentIcon(inv.type),
             typeLabel: TYPE_LABELS[inv.type],
-            accountLabel:
-              (inv.accountId && accountNameById.get(inv.accountId)) || 'Unassigned',
+            accountLabel: (inv.accountId && accountNameById.get(inv.accountId)) || 'Unassigned',
             shares: inv.shares,
             pricePerShareCents: inv.currentPricePerShare.amount,
             currencyCode: inv.currency.code,

@@ -223,8 +223,8 @@ export const InvestmentDetailPage: React.FC = () => {
               color: 'var(--semantic-text-secondary)',
             }}
           >
-            Per-lot cost basis and holding period. Lots held longer than one year
-            qualify for long-term capital-gains treatment.
+            Per-lot cost basis and holding period. Lots held longer than one year qualify for
+            long-term capital-gains treatment.
           </p>
           {hasLots ? (
             <div style={{ overflowX: 'auto' }}>
@@ -307,80 +307,89 @@ export const InvestmentDetailPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {lotGainLoss.map(({ lot, marketValue: lotValue, unrealizedGainLoss, unrealizedGainLossPercent, isLongTerm, daysHeld }) => (
-                    <tr
-                      key={lot.id}
-                      style={{
-                        borderBottom: '1px solid var(--semantic-border-default, #e5e7eb)',
-                      }}
-                    >
-                      <td style={{ padding: 'var(--spacing-3)' }}>
-                        {new Date(`${lot.purchaseDate}T00:00:00Z`).toLocaleDateString(locale, {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          timeZone: 'UTC',
-                        })}
-                      </td>
-                      <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                        {lot.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                      </td>
-                      <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                        <CurrencyDisplay
-                          amount={lot.costPerShare.amount}
-                          currency={investment.currency.code}
-                        />
-                      </td>
-                      <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                        <CurrencyDisplay
-                          amount={lot.totalCost.amount}
-                          currency={investment.currency.code}
-                        />
-                      </td>
-                      <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                        <CurrencyDisplay amount={lotValue} currency={investment.currency.code} />
-                      </td>
-                      <td
+                  {lotGainLoss.map(
+                    ({
+                      lot,
+                      marketValue: lotValue,
+                      unrealizedGainLoss,
+                      unrealizedGainLossPercent,
+                      isLongTerm,
+                      daysHeld,
+                    }) => (
+                      <tr
+                        key={lot.id}
                         style={{
-                          padding: 'var(--spacing-3)',
-                          textAlign: 'right',
-                          color:
-                            unrealizedGainLoss >= 0
-                              ? 'var(--semantic-positive, #059669)'
-                              : 'var(--semantic-negative, #dc2626)',
+                          borderBottom: '1px solid var(--semantic-border-default, #e5e7eb)',
                         }}
                       >
-                        {formatGainLoss(unrealizedGainLoss)} ({unrealizedGainLossPercent}%)
-                      </td>
-                      <td style={{ padding: 'var(--spacing-3)' }}>
-                        <span
+                        <td style={{ padding: 'var(--spacing-3)' }}>
+                          {new Date(`${lot.purchaseDate}T00:00:00Z`).toLocaleDateString(locale, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            timeZone: 'UTC',
+                          })}
+                        </td>
+                        <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                          {lot.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                        </td>
+                        <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                          <CurrencyDisplay
+                            amount={lot.costPerShare.amount}
+                            currency={investment.currency.code}
+                          />
+                        </td>
+                        <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                          <CurrencyDisplay
+                            amount={lot.totalCost.amount}
+                            currency={investment.currency.code}
+                          />
+                        </td>
+                        <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                          <CurrencyDisplay amount={lotValue} currency={investment.currency.code} />
+                        </td>
+                        <td
                           style={{
-                            fontSize: 'var(--type-scale-caption-font-size)',
-                            padding: 'var(--spacing-1) var(--spacing-2)',
-                            borderRadius: 'var(--radius-sm, 4px)',
-                            backgroundColor: 'var(--semantic-background-secondary, #f3f4f6)',
+                            padding: 'var(--spacing-3)',
+                            textAlign: 'right',
+                            color:
+                              unrealizedGainLoss >= 0
+                                ? 'var(--semantic-positive, #059669)'
+                                : 'var(--semantic-negative, #dc2626)',
                           }}
                         >
-                          {isLongTerm ? 'Long-term' : 'Short-term'}
-                        </span>{' '}
-                        <span
-                          style={{
-                            fontSize: 'var(--type-scale-caption-font-size)',
-                            color: 'var(--semantic-text-secondary)',
-                          }}
-                        >
-                          {daysHeld.toLocaleString()} days
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                          {formatGainLoss(unrealizedGainLoss)} ({unrealizedGainLossPercent}%)
+                        </td>
+                        <td style={{ padding: 'var(--spacing-3)' }}>
+                          <span
+                            style={{
+                              fontSize: 'var(--type-scale-caption-font-size)',
+                              padding: 'var(--spacing-1) var(--spacing-2)',
+                              borderRadius: 'var(--radius-sm, 4px)',
+                              backgroundColor: 'var(--semantic-background-secondary, #f3f4f6)',
+                            }}
+                          >
+                            {isLongTerm ? 'Long-term' : 'Short-term'}
+                          </span>{' '}
+                          <span
+                            style={{
+                              fontSize: 'var(--type-scale-caption-font-size)',
+                              color: 'var(--semantic-text-secondary)',
+                            }}
+                          >
+                            {daysHeld.toLocaleString()} days
+                          </span>
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
             </div>
           ) : (
             <p style={{ margin: 0, color: 'var(--semantic-text-secondary)' }}>
-              No individual tax lots are recorded for this holding. The position-level
-              cost basis above is used for gain/loss.
+              No individual tax lots are recorded for this holding. The position-level cost basis
+              above is used for gain/loss.
             </p>
           )}
         </div>

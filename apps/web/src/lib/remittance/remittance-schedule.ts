@@ -13,10 +13,7 @@
  * that are never time-zone shifted.
  */
 
-import type {
-  RemittanceFrequency,
-  RemittanceRecord,
-} from './remittance-types';
+import type { RemittanceFrequency, RemittanceRecord } from './remittance-types';
 
 /** Every supported recurrence cadence, in ascending period length. */
 export const REMITTANCE_FREQUENCIES: readonly RemittanceFrequency[] = [

@@ -287,8 +287,8 @@ export function BusinessPnlPage() {
             {totals.untaggedExpenseCount === 1 ? 'expense' : 'expenses'} fell into{' '}
             <strong>overhead</strong> only because it carried no P&amp;L tag and matched no
             cost-of-goods supplier rule. If any of these are inventory or materials, tag them{' '}
-            <code>cogs</code> (or designate the supplier as a cost of goods) so gross margin isn&apos;t
-            overstated.
+            <code>cogs</code> (or designate the supplier as a cost of goods) so gross margin
+            isn&apos;t overstated.
           </p>
         </section>
       ) : null}

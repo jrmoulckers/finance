@@ -26,7 +26,11 @@ function position(overrides: Partial<HoldingPosition> = {}): HoldingPosition {
 
 describe('holdings-rollup', () => {
   it('computes per-position market value and cost basis in cents', () => {
-    const pos = position({ shares: 3, currentPricePerShareCents: 12345, costBasisPerShareCents: 10000 });
+    const pos = position({
+      shares: 3,
+      currentPricePerShareCents: 12345,
+      costBasisPerShareCents: 10000,
+    });
     expect(computePositionMarketValueCents(pos)).toBe(37035);
     expect(computePositionCostBasisCents(pos)).toBe(30000);
   });

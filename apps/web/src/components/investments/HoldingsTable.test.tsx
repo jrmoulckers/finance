@@ -4,11 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
-import {
-  HoldingsTable,
-  VIRTUALIZE_THRESHOLD,
-  type HoldingRow,
-} from './HoldingsTable';
+import { HoldingsTable, VIRTUALIZE_THRESHOLD, type HoldingRow } from './HoldingsTable';
 
 function makeRow(index: number): HoldingRow {
   return {
@@ -28,7 +24,10 @@ function makeRow(index: number): HoldingRow {
   };
 }
 
-function renderTable(rowCount: number, extra: Partial<React.ComponentProps<typeof HoldingsTable>> = {}) {
+function renderTable(
+  rowCount: number,
+  extra: Partial<React.ComponentProps<typeof HoldingsTable>> = {},
+) {
   const rows = Array.from({ length: rowCount }, (_, i) => makeRow(i));
   const onSort = vi.fn();
   render(

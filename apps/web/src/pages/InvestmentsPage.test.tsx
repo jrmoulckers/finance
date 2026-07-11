@@ -116,7 +116,9 @@ describe('InvestmentsPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
     mockedUseInvestments.mockReturnValue(baseMockReturn);
-    mockedUseAccounts.mockReturnValue({ accounts: [] } as unknown as ReturnType<typeof useAccounts>);
+    mockedUseAccounts.mockReturnValue({ accounts: [] } as unknown as ReturnType<
+      typeof useAccounts
+    >);
   });
 
   it('exposes a labelled read-aloud control for total portfolio value when "Read amounts aloud" is enabled (#3278)', () => {
@@ -311,9 +313,7 @@ describe('InvestmentsPage', () => {
 
   it('attributes holdings to their owning account/brokerage (#3262)', () => {
     mockedUseAccounts.mockReturnValue({
-      accounts: [
-        { id: 'account-1', name: 'Fidelity Brokerage' },
-      ],
+      accounts: [{ id: 'account-1', name: 'Fidelity Brokerage' }],
     } as unknown as ReturnType<typeof useAccounts>);
 
     render(
