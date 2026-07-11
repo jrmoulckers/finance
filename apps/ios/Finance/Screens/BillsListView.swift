@@ -148,7 +148,7 @@ struct BillsListView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Bills summary"))
         .accessibilityValue(String(localized: "\(viewModel.bills.count) bills, \(viewModel.overdueBills.count) overdue"))
@@ -221,7 +221,7 @@ struct BillsListView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .cardBackground(cornerRadius: 12)
         .contextMenu {
             if bill.status != .paid {
                 Button {

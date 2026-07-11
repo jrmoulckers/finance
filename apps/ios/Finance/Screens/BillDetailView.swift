@@ -64,7 +64,7 @@ struct BillDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(bill.name), \(bill.payee)")
         .accessibilityValue(String(localized: "\(bill.frequency.displayName), \(bill.dueDateText)"))
@@ -114,7 +114,7 @@ struct BillDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .cardBackground(cornerRadius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
         .accessibilityValue(value)
@@ -143,7 +143,7 @@ struct BillDetailView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     private func detailRow(label: String, value: String) -> some View {
@@ -207,7 +207,7 @@ struct BillDetailView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     // MARK: - Actions

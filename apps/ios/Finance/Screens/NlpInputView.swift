@@ -188,7 +188,7 @@ struct NlpInputView: View {
                 ConfidenceIndicatorView(confidence: result.confidence)
             }
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .cardBackground(cornerRadius: 12)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "Parsed transaction preview"))
             .accessibilityIdentifier("parsed_preview_section")
