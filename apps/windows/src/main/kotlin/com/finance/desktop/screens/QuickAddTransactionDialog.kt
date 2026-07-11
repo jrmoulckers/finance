@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.components.trackTextInputFocus
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.tray.FinanceSystemTray
 import com.finance.desktop.tray.QuickAddTransactionManager
@@ -122,6 +123,7 @@ fun QuickAddTransactionDialog(
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .trackTextInputFocus()
                         .semantics {
                             contentDescription = "Payee name"
                         },
@@ -138,6 +140,7 @@ fun QuickAddTransactionDialog(
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .trackTextInputFocus()
                         .semantics {
                             contentDescription = "Transaction amount in dollars"
                         },

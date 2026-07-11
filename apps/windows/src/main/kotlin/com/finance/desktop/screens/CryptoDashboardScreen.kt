@@ -36,10 +36,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,10 +55,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finance.desktop.crypto.DashboardLayout
+import com.finance.desktop.crypto.LotMethod
+import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.viewmodel.CompositionUi
 import com.finance.desktop.viewmodel.CryptoDashboardUiState
 import com.finance.desktop.viewmodel.CryptoDashboardViewModel
 import com.finance.desktop.viewmodel.CryptoPositionUi
+import com.finance.desktop.viewmodel.DeFiPositionUi
+import com.finance.desktop.viewmodel.TaxSummaryUi
 
 // =============================================================================
 // Crypto Portfolio Dashboard — Issue #2176
@@ -82,11 +89,9 @@ private val AllocationPalette = listOf(
 
 @Composable
 fun CryptoDashboardScreen(modifier: Modifier = Modifier) {
-    // Self-contained construction: the offline mock source ships today; the live
-    // adapter is injected here once #2702 (market-data credentials) lands.
-    // TODO(human): Replace with the live CryptoPriceSource + real holdings source
-    // (DI-provided) when the #2702 refresh pipeline and credentials are available.
-    val viewModel = remember { CryptoDashboardViewModel() }
+    // DI-provided so the offline sources / env-gated live feed and the refresh
+    // scheduler are shared and survive recomposition (#2702).
+    val viewModel = koinGet<CryptoDashboardViewModel>()
     val state by viewModel.uiState.collectAsState()
 
     if (state.isLoading) {
@@ -108,13 +113,18 @@ fun CryptoDashboardScreen(modifier: Modifier = Modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(FinanceDesktopTheme.spacing.xxl)
                 .semantics { contentDescription = "Crypto portfolio dashboard" },
             verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xxl),
         ) {
             DashboardHeader(state, onRefresh = viewModel::refresh)
 
+            LiveFeedBanner(state)
+
             SummaryStatsGrid(state, columns = summaryColumns)
+
+            state.composition?.let { CompositionPanel(it) }
 
             if (multiPanel) {
                 Row(
@@ -135,7 +145,325 @@ fun CryptoDashboardScreen(modifier: Modifier = Modifier) {
                 HoldingsPanel(state = state, columns = holdingsColumns)
                 AllocationPanel(state = state)
             }
+
+            DeFiPositionsPanel(state)
+
+            state.taxSummary?.let { tax ->
+                TaxSummaryPanel(
+                    tax = tax,
+                    selectedMethod = state.selectedLotMethod,
+                    onMethodSelected = viewModel::setLotMethod,
+                )
+            }
         }
+    }
+}
+
+// ─── Live feed status (#2702) ────────────────────────────────────────────────
+
+@Composable
+private fun LiveFeedBanner(state: CryptoDashboardUiState) {
+    if (state.liveFeedStatus.isBlank()) return
+    val label = buildString {
+        append(state.liveFeedStatus)
+        if (state.autoRefreshEnabled) append(" · auto-refresh on")
+    }
+    AssistChip(
+        onClick = {},
+        enabled = false,
+        label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp)) },
+        modifier = Modifier.semantics {
+            contentDescription = "Market data feed: $label"
+            liveRegion = LiveRegionMode.Polite
+        },
+    )
+}
+
+// ─── Composition: spot vs locked vs rewards (#2172) ──────────────────────────
+
+@Composable
+private fun CompositionPanel(composition: CompositionUi) {
+    Column {
+        Text(
+            text = "Portfolio composition",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.semantics {
+                heading()
+                contentDescription = "Portfolio composition: spot versus DeFi"
+            },
+        )
+        Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(FinanceDesktopTheme.spacing.lg)) {
+                CompositionRow(
+                    label = "Spot holdings",
+                    value = composition.spotValue,
+                    percent = composition.spotPercent,
+                    swatch = AllocationPalette[0],
+                )
+                Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+                CompositionRow(
+                    label = "DeFi (locked / staked)",
+                    value = composition.lockedValue,
+                    percent = composition.lockedPercent,
+                    swatch = AllocationPalette[3],
+                )
+                Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+                CompositionRow(
+                    label = "Pending rewards",
+                    value = composition.pendingRewards,
+                    percent = composition.rewardsPercent,
+                    swatch = AllocationPalette[1],
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompositionRow(label: String, value: String, percent: Float, swatch: Color) {
+    val pctLabel = "${(percent * 100).toInt()}%"
+    Column(
+        modifier = Modifier.semantics {
+            contentDescription = "$label: $value, $pctLabel of portfolio"
+        },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(swatch),
+            )
+            Spacer(Modifier.width(FinanceDesktopTheme.spacing.sm))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(text = value, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(FinanceDesktopTheme.spacing.sm))
+            Text(
+                text = pctLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
+        LinearProgressIndicator(
+            progress = { percent },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp)),
+            color = swatch,
+        )
+    }
+}
+
+// ─── DeFi positions (#2172) ──────────────────────────────────────────────────
+
+@Composable
+private fun DeFiPositionsPanel(state: CryptoDashboardUiState) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "DeFi positions",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics {
+                        heading()
+                        contentDescription = "DeFi positions, tracked separately from spot holdings"
+                    },
+            )
+            if (state.defiPositions.isNotEmpty()) {
+                AssistChip(
+                    onClick = {},
+                    enabled = false,
+                    label = { Text("APY ${state.defiWeightedApy}%") },
+                )
+            }
+        }
+        Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+        if (state.defiPositions.isEmpty()) {
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "No DeFi positions. Staking, LP, and lending positions appear here separately from spot holdings.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(FinanceDesktopTheme.spacing.lg),
+                )
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.md)) {
+                state.defiPositions.forEach { DeFiPositionCard(it) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeFiPositionCard(position: DeFiPositionUi) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = position.accessibilityLabel },
+    ) {
+        Column(modifier = Modifier.padding(FinanceDesktopTheme.spacing.lg)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = position.protocol,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.width(FinanceDesktopTheme.spacing.sm))
+                AssistChip(onClick = {}, enabled = false, label = { Text(position.chain) })
+                Spacer(Modifier.width(FinanceDesktopTheme.spacing.xs))
+                AssistChip(onClick = {}, enabled = false, label = { Text(position.type) })
+                Spacer(Modifier.weight(1f))
+                if (position.isLocked) {
+                    AssistChip(
+                        onClick = {},
+                        enabled = false,
+                        label = { Text(position.lockState) },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Warning, contentDescription = null, Modifier.size(16.dp))
+                        },
+                    )
+                }
+            }
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
+            Text(
+                text = "${position.value} · ${position.quantity} ${position.asset}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "APY ${position.apy}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.width(FinanceDesktopTheme.spacing.md))
+                Text(
+                    text = "Rewards ${position.pendingRewards} ${position.rewardSymbol}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(FinanceDesktopTheme.spacing.md))
+                DirectionIcon(position.isPnlPositive)
+                Spacer(Modifier.width(FinanceDesktopTheme.spacing.xs))
+                Text(
+                    text = "P/L ${position.pnl}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = position.isPnlPositive.toAmountColor(),
+                )
+            }
+        }
+    }
+}
+
+// ─── Tax summary (#2168) ─────────────────────────────────────────────────────
+
+@Composable
+private fun TaxSummaryPanel(
+    tax: TaxSummaryUi,
+    selectedMethod: LotMethod,
+    onMethodSelected: (LotMethod) -> Unit,
+) {
+    Column {
+        Text(
+            text = "Cost basis & taxable events",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.semantics {
+                heading()
+                contentDescription = "Chain-aware cost basis and taxable events"
+            },
+        )
+        Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(FinanceDesktopTheme.spacing.lg)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
+                    modifier = Modifier.semantics {
+                        contentDescription = "Lot relief method"
+                    },
+                ) {
+                    Text(
+                        text = "Method",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    LotMethod.entries.forEach { method ->
+                        FilterChip(
+                            selected = method == selectedMethod,
+                            onClick = { onMethodSelected(method) },
+                            label = { Text(method.displayName) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+                TaxRow("Realized gain / loss", tax.realizedGain, tax.isGainPositive)
+                TaxRow("Short-term", tax.shortTermGain, null)
+                TaxRow("Long-term", tax.longTermGain, null)
+                TaxRow("Income (airdrops / staking)", tax.totalIncome, null)
+                TaxRow("Fees", tax.totalFees, null)
+                Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
+                Text(
+                    text = "${tax.eventCount} taxable events · ${tax.openLotCount} open lots",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                tax.warnings.forEach { warning ->
+                    Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Warning,
+                            contentDescription = "Warning",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                        Spacer(Modifier.width(FinanceDesktopTheme.spacing.xs))
+                        Text(
+                            text = warning,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaxRow(label: String, value: String, positive: Boolean?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = FinanceDesktopTheme.spacing.xs)
+            .semantics { contentDescription = "$label: $value" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = positive.toAmountColor(),
+        )
     }
 }
 

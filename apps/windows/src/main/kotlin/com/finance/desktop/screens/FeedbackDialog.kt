@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.components.trackTextInputFocus
 import com.finance.desktop.theme.FinanceDesktopTheme
 
 /**
@@ -154,6 +155,7 @@ fun FeedbackDialog(
                     maxLines = 8,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .trackTextInputFocus()
                         .semantics {
                             contentDescription = "Feedback description. " +
                                 "Describe the bug, feedback, or suggestion in detail."

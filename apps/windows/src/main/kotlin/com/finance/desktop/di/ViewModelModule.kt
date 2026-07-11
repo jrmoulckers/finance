@@ -41,4 +41,11 @@ val viewModelModule = module {
     single { GamificationViewModel(get(), get()) }
     single { CurrencyViewModel(get(), get()) }
     single { NaturalLanguageViewModel(get(), get()) }
+    // Previously-blank sidebar destinations (#3587) — now wired to real screens.
+    single { InvestmentViewModel(get()) }
+    single { HouseholdViewModel(get()) }
+    single { ReferralViewModel() }
+    // Crypto / DeFi dashboard (#2172, #2168, #2702) — offline sources + env-gated
+    // live feed are resolved via constructor defaults.
+    single { CryptoDashboardViewModel() }
 }

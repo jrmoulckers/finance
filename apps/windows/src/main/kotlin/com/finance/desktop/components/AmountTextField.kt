@@ -105,7 +105,7 @@ fun AmountTextField(
             val filtered = newValue.filter { it.isDigit() }.take(12)
             onRawDigitsChange(filtered)
         },
-        modifier = modifier.semantics {
+        modifier = modifier.trackTextInputFocus().semantics {
             contentDescription = "Amount field. " +
                 "Type digits to enter amount. Currently ${formatForAccessibility(rawDigits, currencySymbol)}"
         },
