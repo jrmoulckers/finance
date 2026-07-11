@@ -46,6 +46,7 @@ import type {
   Currency,
   Transaction,
   TransactionSplit,
+  TransactionSplitSharing,
   TransactionStatus,
   TransactionType,
 } from '../../kmp/bridge';
@@ -78,7 +79,7 @@ import {
   normalizeMoodTag,
 } from '../../lib/mood-tags';
 import { buildDictationControlProps } from '../../lib/a11y/dictation-entry';
-import { validateTransactionSplits } from '../../lib/transactions/splits';
+import { summarizeSplitSharing, validateTransactionSplits } from '../../lib/transactions/splits';
 import { getCurrencyDecimals, isFxFieldKey, readFxMetadata } from '../../lib/currency/minor-units';
 import { transactionSchema } from '../../lib/validation';
 import { DateInput } from '../common';
@@ -203,6 +204,7 @@ function splitRowsToTransactionSplits(rows: readonly SplitFormRow[]): Transactio
     categoryId: row.categoryId || null,
     amount: { amount: parseSplitAmountInput(row.amountInput) },
     note: row.note.trim() || null,
+    sharing: row.sharing,
   }));
 }
 
@@ -296,6 +298,7 @@ function buildTransactionSnapshot(initialData?: Transaction) {
         categoryId: split.categoryId ?? '',
         amountInput: formatSplitAmountInput(split.amount.amount),
         note: split.note ?? '',
+        sharing: split.sharing ?? 'SHARED',
       })) ?? [],
     accountId: initialData?.accountId ?? '',
     date: initialData?.date ?? todayISO(),
@@ -355,6 +358,7 @@ interface SplitFormRow {
   categoryId: string;
   amountInput: string;
   note: string;
+  sharing: TransactionSplitSharing;
 }
 
 function validate(
@@ -783,6 +787,7 @@ export function TransactionForm({
   );
   const hasSplitRows = splitRows.length > 0;
   const splitRemainderText = formatSplitRemainder(splitValidation.remainingCents);
+  const splitSharing = useMemo(() => summarizeSplitSharing(transactionSplits), [transactionSplits]);
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === accountId) ?? null,
     [accounts, accountId],
@@ -817,6 +822,7 @@ export function TransactionForm({
           categoryId: '',
           amountInput: defaultAmountCents > 0 ? formatSplitAmountInput(defaultAmountCents) : '',
           note: '',
+          sharing: 'SHARED',
         },
       ];
     });
@@ -1456,7 +1462,7 @@ export function TransactionForm({
                   key={split.id}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 9rem 1fr auto',
+                    gridTemplateColumns: '1fr 9rem 1fr 9rem auto',
                     gap: 'var(--spacing-2)',
                     alignItems: 'end',
                     marginBottom: 'var(--spacing-2)',
@@ -1512,6 +1518,24 @@ export function TransactionForm({
                       autoComplete="off"
                     />
                   </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor={`txn-split-${split.id}-sharing`} className="form-group__label">
+                      Split {index + 1} sharing
+                    </label>
+                    <select
+                      id={`txn-split-${split.id}-sharing`}
+                      className="form-select"
+                      value={split.sharing}
+                      onChange={(event) =>
+                        updateSplitRow(split.id, {
+                          sharing: event.target.value as TransactionSplitSharing,
+                        })
+                      }
+                    >
+                      <option value="SHARED">Shared / joint</option>
+                      <option value="PERSONAL">Personal</option>
+                    </select>
+                  </div>
                   <button
                     type="button"
                     className="icon-button"
@@ -1535,6 +1559,17 @@ export function TransactionForm({
               >
                 {hasSplitRows ? splitRemainderText : 'Unassigned: no split lines'}
               </div>
+              {hasSplitRows && splitSharing.hasPersonal && (
+                <p
+                  aria-live="polite"
+                  style={{
+                    color: 'var(--semantic-text-secondary)',
+                    marginBottom: 'var(--spacing-2)',
+                  }}
+                >
+                  {`Shared: ${formatCentsDisplay(splitSharing.sharedCents)} · Personal: ${formatCentsDisplay(splitSharing.personalCents)}`}
+                </p>
+              )}
               {hasSplitError && (
                 <span id="txn-splits-error" className="form-error" role="alert">
                   {errors.splits}

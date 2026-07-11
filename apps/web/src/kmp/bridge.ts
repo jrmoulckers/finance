@@ -108,12 +108,22 @@ export type TransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 /** Maps to KMP `com.finance.models.TransactionStatus`. */
 export type TransactionStatus = 'PENDING' | 'CLEARED' | 'RECONCILED' | 'VOID';
 
+/** Whether a transaction split is a shared/joint expense or a personal one (#3389). */
+export type TransactionSplitSharing = 'SHARED' | 'PERSONAL';
+
 /** Multi-line category allocation for a transaction split. */
 export interface TransactionSplit {
   readonly id?: SyncId;
   readonly categoryId: SyncId | null;
   readonly amount: Cents;
   readonly note: string | null;
+  /**
+   * Shared/joint vs personal designation for the split line (#3389). Optional so
+   * legacy category-only splits keep parsing; treated as `SHARED` when absent.
+   */
+  readonly sharing?: TransactionSplitSharing;
+  /** Optional household member this split line is attributed to (#3389). */
+  readonly memberId?: SyncId | null;
 }
 
 /** Maps to KMP `com.finance.models.Transaction`. */

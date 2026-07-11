@@ -165,6 +165,8 @@ export function serializeTransactionSplits(
       categoryId: split.categoryId ?? null,
       amount: Math.trunc(split.amount.amount),
       note: split.note?.trim() ? split.note.trim() : null,
+      ...(split.sharing === 'PERSONAL' ? { sharing: 'PERSONAL' as const } : {}),
+      ...(split.memberId ? { memberId: split.memberId } : {}),
     })),
   );
 }
@@ -197,6 +199,8 @@ export function parseTransactionSplits(value: unknown): readonly TransactionSpli
         const rawCategoryId = record.categoryId ?? record.category_id;
         const rawNote = record.note;
         const rawId = record.id;
+        const rawSharing = record.sharing;
+        const rawMemberId = record.memberId ?? record.member_id;
 
         return {
           ...(typeof rawId === 'string' && rawId.length > 0 ? { id: rawId } : {}),
@@ -204,6 +208,10 @@ export function parseTransactionSplits(value: unknown): readonly TransactionSpli
             typeof rawCategoryId === 'string' && rawCategoryId.length > 0 ? rawCategoryId : null,
           amount: cents(amount),
           note: typeof rawNote === 'string' && rawNote.trim().length > 0 ? rawNote : null,
+          ...(rawSharing === 'PERSONAL' ? { sharing: 'PERSONAL' as const } : {}),
+          ...(typeof rawMemberId === 'string' && rawMemberId.length > 0
+            ? { memberId: rawMemberId }
+            : {}),
         };
       })
       .filter((split): split is TransactionSplit => split !== null);
