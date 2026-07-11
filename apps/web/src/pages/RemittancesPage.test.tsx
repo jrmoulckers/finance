@@ -56,6 +56,7 @@ const SAMPLE_RECORD: RemittanceRecord = {
   recipient: { name: 'Familia García', country: 'MX' },
   note: null,
   createdAt: '2026-06-01T12:00:00.000Z',
+  recurrence: null,
 };
 
 describe('RemittancesPage', () => {
@@ -172,6 +173,7 @@ describe('RemittancesPage', () => {
       referenceRate: 17.5,
       recipient: { name: 'Familia García', country: 'MX' },
       note: null,
+      recurrence: null,
     });
   });
 

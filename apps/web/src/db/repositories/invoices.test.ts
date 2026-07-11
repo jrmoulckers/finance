@@ -46,6 +46,7 @@ function invoiceRow(overrides: Partial<Row> = {}): Row {
     household_id: 'hh-1',
     client_name: 'Studio Delacroix',
     amount_cents: 120000,
+    currency: 'USD',
     issue_date: '2026-01-01',
     payment_term: 'net-30',
     status: 'Sent',
@@ -69,6 +70,7 @@ function baseInvoice(overrides: Partial<Invoice> = {}): Invoice {
     id: 'inv-1',
     clientName: 'Studio Delacroix',
     amountCents: 120000,
+    currency: 'USD',
     issueDate: '2026-01-01',
     paymentTerm: 'net-30',
     status: 'Sent',
@@ -133,6 +135,7 @@ describe('invoices repository', () => {
       id: 'inv-1',
       clientName: 'Studio Delacroix',
       amountCents: 120000,
+      currency: 'USD',
       issueDate: '2026-01-01',
       paymentTerm: 'net-30',
       status: 'Paid',
@@ -172,6 +175,7 @@ describe('invoices repository', () => {
       'hh-1',
       'Studio Delacroix',
       120000,
+      'USD',
       '2026-01-01',
       'net-30',
       'Sent',
@@ -211,10 +215,10 @@ describe('invoices repository', () => {
     );
 
     const params = mockExecute.mock.calls[0][2] as unknown[];
-    expect(params[9]).toBe(120000); // amount_paid_cents
-    expect(params[10]).toBe('2026-02-10'); // paid_date
-    expect(params[11]).toBe('acc-9'); // payment_account_id
-    expect(params[12]).toBe('txn-9'); // payment_transaction_id
+    expect(params[10]).toBe(120000); // amount_paid_cents
+    expect(params[11]).toBe('2026-02-10'); // paid_date
+    expect(params[12]).toBe('acc-9'); // payment_account_id
+    expect(params[13]).toBe('txn-9'); // payment_transaction_id
   });
 
   it('returns null when updating an invoice that does not exist', () => {

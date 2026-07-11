@@ -13,6 +13,8 @@ export type {
   RemittanceQuoteInput,
   RemittanceQuote,
   RemittanceRecord,
+  RemittanceFrequency,
+  RemittanceRecurrence,
   CreateRemittanceInput,
 } from './remittance-types';
 
@@ -24,6 +26,15 @@ export {
   effectiveFxRate,
   totalCostMinor,
 } from './remittance-math';
+
+export {
+  REMITTANCE_FREQUENCIES,
+  REMITTANCE_FREQUENCY_LABELS,
+  remittanceTotalPaidMinor,
+  advanceRemittanceDate,
+  projectUpcomingRemittances,
+} from './remittance-schedule';
+export type { UpcomingRemittance } from './remittance-schedule';
 
 export { summarizeRemittances, summarizeByRecipient } from './remittance-summary';
 export type { RemittanceSummary, RemittanceRecipientBreakdown } from './remittance-summary';

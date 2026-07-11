@@ -8,7 +8,6 @@
  */
 
 import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
   CurrencyDisplay,
@@ -17,7 +16,6 @@ import {
   ExplainThis,
   LoadingSpinner,
   ReadAloudButton,
-  ScrollableRegion,
 } from '../components/common';
 import { DataExport } from '../components/DataExport';
 import {
@@ -26,10 +24,16 @@ import {
 } from '../components/investments/InvestingBetaFeatures';
 import { InvestmentProjections } from '../components/investments/InvestmentProjections';
 import { DeFiPositionsCard } from '../components/investments/DeFiPositionsCard';
-import { useInvestments } from '../hooks';
+import { useAccounts, useInvestments } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
-import { AppIcon, type IconName } from '../components/icons';
+import type { IconName } from '../components/icons';
+import {
+  HoldingsTable,
+  type HoldingRow,
+  type HoldingsSortField,
+} from '../components/investments/HoldingsTable';
+import { rollUpHoldingsBySymbol } from '../lib/investment/holdings-rollup';
 import type {
   InvestmentIncomeExportInput,
   InvestmentRealizedGainExportInput,
@@ -140,8 +144,18 @@ export const InvestmentsPage: React.FC = () => {
     dividends?: readonly InvestmentIncomeExportInput[];
     income?: readonly InvestmentIncomeExportInput[];
   };
-  const [sortField, setSortField] = useState<'symbol' | 'value' | 'gainLoss'>('symbol');
+  const { accounts } = useAccounts();
+  const [sortField, setSortField] = useState<HoldingsSortField>('symbol');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [groupBySymbol, setGroupBySymbol] = useState(false);
+
+  const accountNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const account of accounts) {
+      map.set(account.id, account.name);
+    }
+    return map;
+  }, [accounts]);
 
   const allocation = computeAllocation(investments);
   const investmentLots = useMemo(
@@ -175,7 +189,7 @@ export const InvestmentsPage: React.FC = () => {
   );
 
   const handleSort = useCallback(
-    (field: 'symbol' | 'value' | 'gainLoss') => {
+    (field: HoldingsSortField) => {
       if (sortField === field) {
         setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
       } else {
@@ -186,27 +200,81 @@ export const InvestmentsPage: React.FC = () => {
     [sortField],
   );
 
-  const sortedInvestments = [...investments].sort((a, b) => {
+  // Build normalized, render-ready holdings rows — either per-account detail
+  // rows (#3262 attribution) or symbol roll-up lines (#3262 cross-account
+  // roll-up) — then sort them by the active column.
+  const holdingRows = useMemo<HoldingRow[]>(() => {
     const dir = sortDirection === 'asc' ? 1 : -1;
-    switch (sortField) {
-      case 'symbol':
-        return a.symbol.localeCompare(b.symbol) * dir;
-      case 'value': {
-        const aVal = a.shares * a.currentPricePerShare.amount;
-        const bVal = b.shares * b.currentPricePerShare.amount;
-        return (aVal - bVal) * dir;
-      }
-      case 'gainLoss': {
-        const aGain = a.shares * (a.currentPricePerShare.amount - a.costBasisPerShare.amount);
-        const bGain = b.shares * (b.currentPricePerShare.amount - b.costBasisPerShare.amount);
-        return (aGain - bGain) * dir;
-      }
-      default:
-        return 0;
-    }
-  });
 
-  const sortArrow = sortDirection === 'asc' ? ' ↑' : ' ↓';
+    const rows: HoldingRow[] = groupBySymbol
+      ? rollUpHoldingsBySymbol(
+          investments.map((inv) => ({
+            id: inv.id,
+            symbol: inv.symbol,
+            name: inv.name,
+            shares: inv.shares,
+            currentPricePerShareCents: inv.currentPricePerShare.amount,
+            costBasisPerShareCents: inv.costBasisPerShare.amount,
+            currencyCode: inv.currency.code,
+            accountId: inv.accountId,
+          })),
+        ).map((line): HoldingRow => {
+          const firstMatch = investments.find(
+            (inv) => inv.symbol.trim().toUpperCase() === line.symbol,
+          );
+          const accountLabel =
+            line.accountCount === 1 ? '1 account' : `${line.accountCount} accounts`;
+          return {
+            key: `${line.symbol}|${line.currencyCode}`,
+            symbol: line.symbol,
+            name: line.name,
+            iconName: firstMatch ? getInvestmentIcon(firstMatch.type) : 'wallet',
+            typeLabel: firstMatch ? TYPE_LABELS[firstMatch.type] : '—',
+            accountLabel,
+            shares: line.totalShares,
+            pricePerShareCents: null,
+            currencyCode: line.currencyCode,
+            marketValueCents: line.marketValueCents,
+            gainLossCents: line.gainLossCents,
+            gainLossPercent: line.gainLossPercent,
+          };
+        })
+      : investments.map((inv): HoldingRow => {
+          const marketValue = Math.round(inv.shares * inv.currentPricePerShare.amount);
+          const costBasis = Math.round(inv.shares * inv.costBasisPerShare.amount);
+          const gainLoss = marketValue - costBasis;
+          const gainLossPercent =
+            costBasis > 0 ? Math.round((gainLoss / costBasis) * 10000) / 100 : 0;
+          return {
+            key: inv.id,
+            to: `/investments/${inv.id}`,
+            symbol: inv.symbol,
+            name: inv.name,
+            iconName: getInvestmentIcon(inv.type),
+            typeLabel: TYPE_LABELS[inv.type],
+            accountLabel: (inv.accountId && accountNameById.get(inv.accountId)) || 'Unassigned',
+            shares: inv.shares,
+            pricePerShareCents: inv.currentPricePerShare.amount,
+            currencyCode: inv.currency.code,
+            marketValueCents: marketValue,
+            gainLossCents: gainLoss,
+            gainLossPercent,
+          };
+        });
+
+    return rows.sort((a, b) => {
+      switch (sortField) {
+        case 'symbol':
+          return a.symbol.localeCompare(b.symbol) * dir;
+        case 'value':
+          return (a.marketValueCents - b.marketValueCents) * dir;
+        case 'gainLoss':
+          return (a.gainLossCents - b.gainLossCents) * dir;
+        default:
+          return 0;
+      }
+    });
+  }, [investments, groupBySymbol, sortField, sortDirection, accountNameById]);
 
   return (
     <>
@@ -421,190 +489,37 @@ export const InvestmentsPage: React.FC = () => {
 
           <section aria-label="Investment holdings">
             <div className="card">
-              <ScrollableRegion label="Investment holdings">
-                <table
-                  style={{ width: '100%', borderCollapse: 'collapse' }}
-                  aria-label="Investment holdings table"
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  marginBottom: 'var(--spacing-3)',
+                }}
+              >
+                <label
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-2)',
+                    cursor: 'pointer',
+                    fontSize: 'var(--type-scale-body-font-size)',
+                  }}
                 >
-                  <thead>
-                    <tr>
-                      <th
-                        scope="col"
-                        style={{
-                          textAlign: 'left',
-                          padding: 'var(--spacing-3)',
-                          cursor: 'pointer',
-                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
-                          userSelect: 'none',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleSort('symbol')}
-                          aria-label={`Sort by symbol${sortField === 'symbol' ? sortArrow : ''}`}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            font: 'inherit',
-                            color: 'inherit',
-                            padding: 0,
-                          }}
-                        >
-                          Symbol{sortField === 'symbol' ? sortArrow : ''}
-                        </button>
-                      </th>
-                      <th
-                        scope="col"
-                        style={{
-                          textAlign: 'left',
-                          padding: 'var(--spacing-3)',
-                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
-                        }}
-                      >
-                        Type
-                      </th>
-                      <th
-                        scope="col"
-                        style={{
-                          textAlign: 'right',
-                          padding: 'var(--spacing-3)',
-                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
-                        }}
-                      >
-                        Shares
-                      </th>
-                      <th
-                        scope="col"
-                        style={{
-                          textAlign: 'right',
-                          padding: 'var(--spacing-3)',
-                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
-                        }}
-                      >
-                        Price
-                      </th>
-                      <th
-                        scope="col"
-                        style={{
-                          textAlign: 'right',
-                          padding: 'var(--spacing-3)',
-                          cursor: 'pointer',
-                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
-                          userSelect: 'none',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleSort('value')}
-                          aria-label={`Sort by market value${sortField === 'value' ? sortArrow : ''}`}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            font: 'inherit',
-                            color: 'inherit',
-                            padding: 0,
-                          }}
-                        >
-                          Market Value{sortField === 'value' ? sortArrow : ''}
-                        </button>
-                      </th>
-                      <th
-                        scope="col"
-                        style={{
-                          textAlign: 'right',
-                          padding: 'var(--spacing-3)',
-                          cursor: 'pointer',
-                          borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
-                          userSelect: 'none',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleSort('gainLoss')}
-                          aria-label={`Sort by gain/loss${sortField === 'gainLoss' ? sortArrow : ''}`}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            font: 'inherit',
-                            color: 'inherit',
-                            padding: 0,
-                          }}
-                        >
-                          Gain/Loss{sortField === 'gainLoss' ? sortArrow : ''}
-                        </button>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedInvestments.map((inv) => {
-                      const marketValue = Math.round(inv.shares * inv.currentPricePerShare.amount);
-                      const costBasis = Math.round(inv.shares * inv.costBasisPerShare.amount);
-                      const gainLoss = marketValue - costBasis;
-                      const gainLossPercent =
-                        costBasis > 0 ? Math.round((gainLoss / costBasis) * 10000) / 100 : 0;
-
-                      return (
-                        <tr
-                          key={inv.id}
-                          style={{
-                            borderBottom: '1px solid var(--semantic-border-default, #e5e7eb)',
-                          }}
-                        >
-                          <td style={{ padding: 'var(--spacing-3)' }}>
-                            <Link
-                              to={`/investments/${inv.id}`}
-                              style={{ textDecoration: 'none', color: 'inherit' }}
-                              aria-label={`View details for ${inv.name} (${inv.symbol})`}
-                            >
-                              <AppIcon name={getInvestmentIcon(inv.type)} />{' '}
-                              <strong>{inv.symbol}</strong>
-                              <br />
-                              <span
-                                style={{
-                                  fontSize: 'var(--type-scale-caption-font-size)',
-                                  color: 'var(--semantic-text-secondary)',
-                                }}
-                              >
-                                {inv.name}
-                              </span>
-                            </Link>
-                          </td>
-                          <td style={{ padding: 'var(--spacing-3)' }}>{TYPE_LABELS[inv.type]}</td>
-                          <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                            {inv.shares.toLocaleString(undefined, {
-                              maximumFractionDigits: 4,
-                            })}
-                          </td>
-                          <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                            <CurrencyDisplay
-                              amount={inv.currentPricePerShare.amount}
-                              currency={inv.currency.code}
-                            />
-                          </td>
-                          <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
-                            <CurrencyDisplay amount={marketValue} currency={inv.currency.code} />
-                          </td>
-                          <td
-                            style={{
-                              padding: 'var(--spacing-3)',
-                              textAlign: 'right',
-                              color:
-                                gainLoss >= 0
-                                  ? 'var(--semantic-positive, #059669)'
-                                  : 'var(--semantic-negative, #dc2626)',
-                            }}
-                          >
-                            {formatGainLoss(gainLoss)} ({gainLossPercent}%)
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </ScrollableRegion>
+                  <input
+                    type="checkbox"
+                    checked={groupBySymbol}
+                    onChange={(e) => setGroupBySymbol(e.target.checked)}
+                  />
+                  Group by symbol (roll up across accounts)
+                </label>
+              </div>
+              <HoldingsTable
+                rows={holdingRows}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                accountColumnLabel={groupBySymbol ? 'Accounts' : 'Account'}
+              />
             </div>
           </section>
         </>

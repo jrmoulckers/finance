@@ -132,6 +132,22 @@ export interface RemittanceQuote {
   readonly totalCostMinor: number | null;
 }
 
+/**
+ * How often a scheduled/recurring remittance repeats. Mirrors the cadence
+ * vocabulary used by the cash-runway forecaster (`ScheduledCashEvent`) so a
+ * recurring supplier remittance maps cleanly onto a scheduled outflow (#3265,
+ * #3244).
+ */
+export type RemittanceFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+
+/** Recurrence schedule for a remittance that repeats (e.g. monthly to family). */
+export interface RemittanceRecurrence {
+  /** How often the remittance repeats. */
+  readonly frequency: RemittanceFrequency;
+  /** Next scheduled send date (`YYYY-MM-DD`). */
+  readonly nextDate: string;
+}
+
 /** A persisted remittance entry (one row in the history). */
 export interface RemittanceRecord {
   readonly id: string;
@@ -146,6 +162,12 @@ export interface RemittanceRecord {
   readonly referenceRate: number | null;
   readonly recipient: RemittanceRecipient;
   readonly note: string | null;
+  /**
+   * Recurrence schedule when this remittance repeats, or `null` for a one-off.
+   * Recurring remittances are projected as scheduled cash outflows so cash
+   * runway reflects upcoming supplier/family transfers (#3265, #3244).
+   */
+  readonly recurrence: RemittanceRecurrence | null;
   /** ISO-8601 instant the record was created locally. */
   readonly createdAt: string;
 }

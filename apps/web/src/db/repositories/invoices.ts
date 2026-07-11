@@ -16,6 +16,8 @@
 
 import {
   computeExpectedPayDate,
+  DEFAULT_INVOICE_CURRENCY,
+  normalizeInvoiceCurrency,
   type Invoice,
   type InvoicePaymentTerm,
   type InvoiceStatus,
@@ -32,6 +34,7 @@ const INVOICE_COLUMNS = [
   'household_id',
   'client_name',
   'amount_cents',
+  'currency',
   'issue_date',
   'payment_term',
   'status',
@@ -62,6 +65,7 @@ function mapInvoice(row: Row): Invoice {
     id: requireString(row.id, 'invoice.id'),
     clientName: requireString(row.client_name, 'invoice.client_name'),
     amountCents: requireNumber(row.amount_cents, 'invoice.amount_cents'),
+    currency: normalizeInvoiceCurrency(optionalString(row.currency) ?? DEFAULT_INVOICE_CURRENCY),
     issueDate: requireString(row.issue_date, 'invoice.issue_date'),
     paymentTerm: requireString(row.payment_term, 'invoice.payment_term') as InvoicePaymentTerm,
     status: requireString(row.status, 'invoice.status') as InvoiceStatus,
@@ -120,6 +124,7 @@ export function insertInvoice(db: SqliteDb, invoice: Invoice): Invoice {
       household_id,
       client_name,
       amount_cents,
+      currency,
       issue_date,
       payment_term,
       status,
@@ -135,7 +140,7 @@ export function insertInvoice(db: SqliteDb, invoice: Invoice): Invoice {
       sync_version,
       is_synced
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       NULL,
       1,
       0
@@ -145,6 +150,7 @@ export function insertInvoice(db: SqliteDb, invoice: Invoice): Invoice {
       householdId,
       invoice.clientName,
       invoice.amountCents,
+      normalizeInvoiceCurrency(invoice.currency),
       invoice.issueDate,
       invoice.paymentTerm,
       invoice.status,
@@ -184,6 +190,7 @@ export function updateInvoiceRecord(db: SqliteDb, invoice: Invoice): Invoice | n
     `UPDATE invoice
         SET client_name = ?,
             amount_cents = ?,
+            currency = ?,
             issue_date = ?,
             payment_term = ?,
             status = ?,
@@ -201,6 +208,7 @@ export function updateInvoiceRecord(db: SqliteDb, invoice: Invoice): Invoice | n
     [
       invoice.clientName,
       invoice.amountCents,
+      normalizeInvoiceCurrency(invoice.currency),
       invoice.issueDate,
       invoice.paymentTerm,
       invoice.status,
@@ -259,6 +267,7 @@ function normalizeLegacyInvoice(entry: Invoice): Invoice {
   const nowIso = new Date().toISOString();
   return {
     ...entry,
+    currency: normalizeInvoiceCurrency(entry.currency),
     expectedPayDate:
       entry.expectedPayDate || computeExpectedPayDate(entry.issueDate, entry.paymentTerm),
     createdAt: entry.createdAt || nowIso,

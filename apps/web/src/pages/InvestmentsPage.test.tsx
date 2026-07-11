@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { useInvestments } from '../hooks';
+import { useInvestments, useAccounts } from '../hooks';
 import { InvestmentsPage } from './InvestmentsPage';
 import { AccessibilityProvider } from '../contexts/AccessibilityContext';
 
 vi.mock('../hooks', () => ({
   useInvestments: vi.fn(),
+  useAccounts: vi.fn(() => ({ accounts: [] })),
   useDisplayCurrency: vi.fn(() => ({
     displayCurrency: 'USD',
     setDisplayCurrency: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock('recharts', () => ({
 }));
 
 const mockedUseInvestments = vi.mocked(useInvestments);
+const mockedUseAccounts = vi.mocked(useAccounts);
 
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -114,6 +116,9 @@ describe('InvestmentsPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
     mockedUseInvestments.mockReturnValue(baseMockReturn);
+    mockedUseAccounts.mockReturnValue({ accounts: [] } as unknown as ReturnType<
+      typeof useAccounts
+    >);
   });
 
   it('exposes a labelled read-aloud control for total portfolio value when "Read amounts aloud" is enabled (#3278)', () => {
@@ -304,5 +309,47 @@ describe('InvestmentsPage', () => {
     );
 
     expect(screen.getByText('No investments yet')).toBeInTheDocument();
+  });
+
+  it('attributes holdings to their owning account/brokerage (#3262)', () => {
+    mockedUseAccounts.mockReturnValue({
+      accounts: [{ id: 'account-1', name: 'Fidelity Brokerage' }],
+    } as unknown as ReturnType<typeof useAccounts>);
+
+    render(
+      <MemoryRouter>
+        <InvestmentsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('columnheader', { name: 'Account' })).toBeInTheDocument();
+    expect(screen.getAllByText('Fidelity Brokerage').length).toBeGreaterThan(0);
+  });
+
+  it('rolls holdings up across accounts when grouping by symbol (#3262)', () => {
+    mockedUseInvestments.mockReturnValue({
+      ...baseMockReturn,
+      investments: [
+        { ...mockInvestments[0], id: 'inv-1', accountId: 'account-1' },
+        { ...mockInvestments[0], id: 'inv-3', accountId: 'account-2' },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <InvestmentsPage />
+      </MemoryRouter>,
+    );
+
+    // Two AAPL positions in separate accounts render as two detail rows first.
+    expect(screen.getAllByTestId('holding-row')).toHaveLength(2);
+
+    fireEvent.click(screen.getByLabelText(/group by symbol/i));
+
+    // After rolling up, a single consolidated AAPL line remains.
+    const rows = screen.getAllByTestId('holding-row');
+    expect(rows).toHaveLength(1);
+    expect(screen.getByRole('columnheader', { name: 'Accounts' })).toBeInTheDocument();
+    expect(screen.getByText('2 accounts')).toBeInTheDocument();
   });
 });

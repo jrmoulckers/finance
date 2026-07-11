@@ -28,18 +28,20 @@ function makeTransaction(options: {
   amountCents: number;
   tags?: readonly string[];
   status?: TransactionStatus;
+  categoryId?: string | null;
+  payee?: string | null;
 }): Transaction {
   nextId += 1;
   return {
     id: `txn-${nextId}`,
     householdId: 'hh-1',
     accountId: 'acct-1',
-    categoryId: null,
+    categoryId: options.categoryId ?? null,
     type: options.type,
     status: options.status ?? 'CLEARED',
     amount: { amount: options.amountCents },
     currency: { code: 'USD', decimalPlaces: 2 },
-    payee: null,
+    payee: options.payee ?? null,
     note: null,
     date: options.date,
     transferAccountId: null,
@@ -210,6 +212,111 @@ describe('classifyTransaction', () => {
         tagSets,
       ),
     ).toBeNull();
+  });
+
+  it('classifies a designated supplier category/payee expense as COGS (#3268)', () => {
+    const supplierSets = compilePnlTagSets({
+      cogsCategoryIds: ['cat-supplies'],
+      cogsPayees: ['Acme Fabrics'],
+    });
+    expect(
+      classifyTransaction(
+        makeTransaction({
+          date: '2024-01-01',
+          type: 'EXPENSE',
+          amountCents: 5000,
+          categoryId: 'cat-supplies',
+        }),
+        supplierSets,
+      ),
+    ).toBe('cogs');
+    expect(
+      classifyTransaction(
+        makeTransaction({
+          date: '2024-01-01',
+          type: 'EXPENSE',
+          amountCents: 5000,
+          payee: 'acme fabrics',
+        }),
+        supplierSets,
+      ),
+    ).toBe('cogs');
+  });
+
+  it('lets explicit tags override supplier attribution (#3268)', () => {
+    const supplierSets = compilePnlTagSets({ cogsCategoryIds: ['cat-supplies'] });
+    expect(
+      classifyTransaction(
+        makeTransaction({
+          date: '2024-01-01',
+          type: 'EXPENSE',
+          amountCents: 5000,
+          categoryId: 'cat-supplies',
+          tags: ['overhead'],
+        }),
+        supplierSets,
+      ),
+    ).toBe('overhead');
+  });
+
+  it('does not treat designated income as COGS (#3268)', () => {
+    const supplierSets = compilePnlTagSets({ cogsCategoryIds: ['cat-supplies'] });
+    expect(
+      classifyTransaction(
+        makeTransaction({
+          date: '2024-01-01',
+          type: 'INCOME',
+          amountCents: 5000,
+          categoryId: 'cat-supplies',
+        }),
+        supplierSets,
+      ),
+    ).toBe('revenue');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Untagged-expense diagnostic (#3268)
+// ---------------------------------------------------------------------------
+
+describe('buildProfitAndLoss untagged-expense diagnostic', () => {
+  it('reports expenses that only reached overhead via the type fallback', () => {
+    const statement = buildProfitAndLoss(
+      [
+        makeTransaction({ date: '2024-01-05', type: 'INCOME', amountCents: 100_000 }),
+        // Untagged supplier spend — misclassified as overhead by fallback.
+        makeTransaction({ date: '2024-01-06', type: 'EXPENSE', amountCents: 30_000 }),
+        makeTransaction({ date: '2024-01-07', type: 'EXPENSE', amountCents: 20_000 }),
+        // Explicitly tagged — not counted as untagged.
+        makeTransaction({
+          date: '2024-01-08',
+          type: 'EXPENSE',
+          amountCents: 10_000,
+          tags: ['cogs'],
+        }),
+      ],
+      { granularity: 'monthly' },
+    );
+    expect(statement.totals.untaggedExpenseCents).toBe(50_000);
+    expect(statement.totals.untaggedExpenseCount).toBe(2);
+  });
+
+  it('excludes supplier-attributed expenses from the untagged total (#3268)', () => {
+    const statement = buildProfitAndLoss(
+      [
+        makeTransaction({ date: '2024-01-05', type: 'INCOME', amountCents: 100_000 }),
+        makeTransaction({
+          date: '2024-01-06',
+          type: 'EXPENSE',
+          amountCents: 40_000,
+          categoryId: 'cat-supplies',
+        }),
+      ],
+      { granularity: 'monthly', cogsCategoryIds: ['cat-supplies'] },
+    );
+    expect(statement.totals.cogsCents).toBe(40_000);
+    expect(statement.totals.untaggedExpenseCents).toBe(0);
+    expect(statement.totals.untaggedExpenseCount).toBe(0);
   });
 });
 

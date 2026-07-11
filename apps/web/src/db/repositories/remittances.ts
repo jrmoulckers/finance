@@ -13,7 +13,11 @@
  * is stored in integer minor units and FX rates as reals.
  */
 
-import type { RemittanceFeeModel, RemittanceRecord } from '../../lib/remittance';
+import type {
+  RemittanceFeeModel,
+  RemittanceFrequency,
+  RemittanceRecord,
+} from '../../lib/remittance';
 import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
 import { getPrimaryHouseholdId } from './household';
 import { SQLITE_NOW_EXPRESSION, optionalString, requireNumber, requireString } from './helpers';
@@ -35,6 +39,8 @@ const REMITTANCE_COLUMNS = [
   'recipient_name',
   'recipient_country',
   'note',
+  'recurrence_frequency',
+  'recurrence_next_date',
   'created_at',
   'updated_at',
   'deleted_at',
@@ -64,8 +70,19 @@ function mapRemittance(row: Row): RemittanceRecord {
       country: requireString(row.recipient_country, 'remittance.recipient_country'),
     },
     note: optionalString(row.note),
+    recurrence: mapRecurrence(row),
     createdAt: requireString(row.created_at, 'remittance.created_at'),
   };
+}
+
+/** Reconstruct the recurrence schedule from its two persisted columns, or null. */
+function mapRecurrence(row: Row): RemittanceRecord['recurrence'] {
+  const frequency = optionalString(row.recurrence_frequency);
+  const nextDate = optionalString(row.recurrence_next_date);
+  if (!frequency || !nextDate) {
+    return null;
+  }
+  return { frequency: frequency as RemittanceFrequency, nextDate };
 }
 
 /** Return all non-deleted remittances, most recent send date first. */
@@ -108,13 +125,15 @@ export function insertRemittance(db: SqliteDb, record: RemittanceRecord): Remitt
       recipient_name,
       recipient_country,
       note,
+      recurrence_frequency,
+      recurrence_next_date,
       created_at,
       updated_at,
       deleted_at,
       sync_version,
       is_synced
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       NULL,
       1,
       0
@@ -133,6 +152,8 @@ export function insertRemittance(db: SqliteDb, record: RemittanceRecord): Remitt
       record.recipient.name,
       record.recipient.country,
       record.note,
+      record.recurrence?.frequency ?? null,
+      record.recurrence?.nextDate ?? null,
       record.createdAt,
       record.createdAt,
     ],
@@ -193,6 +214,7 @@ function normalizeLegacyRemittance(entry: RemittanceRecord): RemittanceRecord {
     ...entry,
     referenceRate: entry.referenceRate ?? null,
     note: entry.note ?? null,
+    recurrence: entry.recurrence ?? null,
     createdAt: entry.createdAt || new Date().toISOString(),
   };
 }

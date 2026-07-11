@@ -39,6 +39,9 @@ import {
   type Watchlist,
   type WatchlistAlert,
 } from '../hooks/useSpendingWatchlists';
+import { useSecurityWatchlists } from '../hooks/useSecurityWatchlists';
+import type { SecurityAlertLevel } from '../lib/investment/security-watchlist';
+import { computePriceMovePercent, normalizeSymbol } from '../lib/investment/security-watchlist';
 
 import '../styles/watchlists.css';
 
@@ -181,6 +184,264 @@ const WatchlistItem: React.FC<WatchlistItemProps> = ({
         </div>
       </div>
     </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Security watchlists (issue #3260)
+// ---------------------------------------------------------------------------
+
+const SECURITY_ALERT_ARIA_LABELS: Record<SecurityAlertLevel, string> = {
+  info: 'Information',
+  warning: 'Warning',
+  critical: 'Critical alert',
+};
+
+/**
+ * Security/ticker watchlists with price-move alerts. Current prices come from
+ * the user's holdings; a move from each entry's reference price beyond its
+ * threshold raises an alert.
+ */
+const SecurityWatchlistsSection: React.FC = () => {
+  const {
+    watches,
+    alerts,
+    priceBySymbolCents,
+    addWatch,
+    removeWatch,
+    toggleAlerts,
+    resetReferencePrice,
+    dismissAlert,
+  } = useSecurityWatchlists();
+
+  const [symbol, setSymbol] = useState('');
+  const [name, setName] = useState('');
+  const [referencePrice, setReferencePrice] = useState('');
+  const [threshold, setThreshold] = useState('5');
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent) => {
+      event.preventDefault();
+      const trimmedSymbol = normalizeSymbol(symbol);
+      const referenceCents = Math.round(Number.parseFloat(referencePrice) * 100);
+      const thresholdPercent = Number.parseFloat(threshold);
+      if (
+        !trimmedSymbol ||
+        !Number.isFinite(referenceCents) ||
+        referenceCents <= 0 ||
+        !Number.isFinite(thresholdPercent) ||
+        thresholdPercent <= 0
+      ) {
+        return;
+      }
+      addWatch({
+        symbol: trimmedSymbol,
+        name: name.trim() || undefined,
+        referencePriceCents: referenceCents,
+        alertThresholdPercent: thresholdPercent,
+      });
+      setSymbol('');
+      setName('');
+      setReferencePrice('');
+      setThreshold('5');
+    },
+    [addWatch, name, referencePrice, symbol, threshold],
+  );
+
+  return (
+    <section className="page-section" aria-label="Security watchlists">
+      <h2 className="page-section__title">Security Watchlists</h2>
+
+      {alerts.length > 0 && (
+        <div
+          className="watchlist-alerts"
+          role="log"
+          aria-label="Security price-move alert notifications"
+        >
+          {alerts.map((alert) => (
+            <div
+              key={alert.watch.id}
+              className={`watchlist-alert watchlist-alert--${alert.level}`}
+              role="alert"
+              aria-label={`${SECURITY_ALERT_ARIA_LABELS[alert.level]}: ${alert.message}`}
+            >
+              <div className="watchlist-alert__content">
+                <span className="watchlist-alert__icon" aria-hidden="true">
+                  <AppIcon
+                    name={
+                      alert.level === 'critical'
+                        ? 'alert-triangle'
+                        : alert.level === 'warning'
+                          ? 'alert-circle'
+                          : 'info'
+                    }
+                  />
+                </span>
+                <div className="watchlist-alert__text">
+                  <p className="watchlist-alert__message">{alert.message}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="watchlist-alert__dismiss"
+                onClick={() => dismissAlert(alert.watch.id)}
+                aria-label={`Dismiss ${alert.watch.symbol} price alert`}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="card">
+        <form
+          className="watchlist-security-form"
+          onSubmit={handleSubmit}
+          aria-label="Add security watch"
+        >
+          <div className="watchlist-form__field">
+            <label htmlFor="sec-symbol">Ticker</label>
+            <input
+              id="sec-symbol"
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="AAPL"
+              autoComplete="off"
+              required
+              aria-required="true"
+            />
+          </div>
+          <div className="watchlist-form__field">
+            <label htmlFor="sec-name">Name (optional)</label>
+            <input
+              id="sec-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Apple Inc."
+              autoComplete="off"
+            />
+          </div>
+          <div className="watchlist-form__field">
+            <label htmlFor="sec-reference">Reference price ($)</label>
+            <input
+              id="sec-reference"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={referencePrice}
+              onChange={(e) => setReferencePrice(e.target.value)}
+              placeholder="195.00"
+              required
+              aria-required="true"
+            />
+          </div>
+          <div className="watchlist-form__field">
+            <label htmlFor="sec-threshold">Alert on move (±%)</label>
+            <input
+              id="sec-threshold"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.5"
+              value={threshold}
+              onChange={(e) => setThreshold(e.target.value)}
+              required
+              aria-required="true"
+            />
+          </div>
+          <button type="submit" className="watchlist-form__submit">
+            Add ticker
+          </button>
+        </form>
+
+        {watches.length === 0 ? (
+          <EmptyState
+            title="No securities watched yet"
+            description="Add a ticker with a reference price to get alerted when it moves beyond your threshold."
+          />
+        ) : (
+          <ul className="watchlist-security-list" aria-label="Watched securities">
+            {watches.map((watch) => {
+              const currentPrice = priceBySymbolCents.get(normalizeSymbol(watch.symbol));
+              const movePercent =
+                currentPrice === undefined
+                  ? null
+                  : computePriceMovePercent(watch.referencePriceCents, currentPrice);
+              return (
+                <li key={watch.id} className="watchlist-security-item">
+                  <div className="watchlist-security-item__head">
+                    <span className="watchlist-security-item__symbol">{watch.symbol}</span>
+                    {watch.name && (
+                      <span className="watchlist-security-item__name">{watch.name}</span>
+                    )}
+                  </div>
+                  <div className="watchlist-security-item__prices">
+                    <span>
+                      Ref <CurrencyDisplay amount={watch.referencePriceCents} />
+                    </span>
+                    {currentPrice !== undefined ? (
+                      <span>
+                        Now <CurrencyDisplay amount={currentPrice} />
+                      </span>
+                    ) : (
+                      <span className="watchlist-security-item__no-price">No live price</span>
+                    )}
+                    {movePercent !== null && (
+                      <span
+                        className={`watchlist-security-item__move watchlist-security-item__move--${
+                          movePercent > 0 ? 'up' : movePercent < 0 ? 'down' : 'flat'
+                        }`}
+                      >
+                        {movePercent > 0 ? '+' : ''}
+                        {movePercent.toFixed(2)}%
+                      </span>
+                    )}
+                    <span className="watchlist-security-item__threshold">
+                      ±{watch.alertThresholdPercent}% alert
+                    </span>
+                  </div>
+                  <div className="watchlist-security-item__actions">
+                    <button
+                      type="button"
+                      onClick={() => toggleAlerts(watch.id)}
+                      aria-pressed={watch.alertsEnabled}
+                      aria-label={`${watch.alertsEnabled ? 'Disable' : 'Enable'} alerts for ${watch.symbol}`}
+                    >
+                      {watch.alertsEnabled ? (
+                        <>
+                          <AppIcon name="bell" /> Alerts on
+                        </>
+                      ) : (
+                        'Alerts off'
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => resetReferencePrice(watch.id)}
+                      disabled={currentPrice === undefined}
+                      aria-label={`Reset reference price for ${watch.symbol} to the latest price`}
+                    >
+                      Re-baseline
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeWatch(watch.id)}
+                      aria-label={`Remove ${watch.symbol} from watchlist`}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 };
 
@@ -360,6 +621,8 @@ export const WatchlistsPage: React.FC = () => {
           </div>
         </section>
       )}
+
+      <SecurityWatchlistsSection />
 
       {/* Add watchlist form (inline) */}
       {isAddFormOpen && (

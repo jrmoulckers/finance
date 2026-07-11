@@ -25,11 +25,12 @@
  * References: issue #2170
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useLocalePreferences } from '../hooks/useLocalePreferences';
 import { useRemittances } from '../hooks/useRemittances';
+import { useExchangeRates } from '../hooks/useExchangeRates';
 import { formatCurrency } from '../lib/currency';
 import { formatCurrencyGroup } from '../lib/currency-utils';
 import {
@@ -39,8 +40,18 @@ import {
 } from '../lib/currency-metadata';
 import { translate } from '../lib/i18n';
 import { normalizeNumberInput } from '../lib/i18n/local-currency-entry';
-import { quoteRemittance } from '../lib/remittance';
-import type { RemittanceFeeModel, RemittanceQuote, RemittanceRecord } from '../lib/remittance';
+import {
+  quoteRemittance,
+  projectUpcomingRemittances,
+  advanceRemittanceDate,
+  REMITTANCE_FREQUENCIES,
+} from '../lib/remittance';
+import type {
+  RemittanceFeeModel,
+  RemittanceFrequency,
+  RemittanceQuote,
+  RemittanceRecord,
+} from '../lib/remittance';
 import { formatDate } from '../utils/formatDate';
 import './remittances.css';
 
@@ -72,6 +83,11 @@ function formatRate(rate: number, locale: string): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 6,
   }).format(rate);
+}
+
+/** Plain (non-grouped) numeric string suitable for a `type="number"` input. */
+function rateInputValue(rate: number): string {
+  return String(Number(rate.toFixed(RATE_MAX_DECIMALS)));
 }
 
 function formatCountry(value: string, locale: string): string {
@@ -333,8 +349,51 @@ export const RemittancesPage: React.FC = () => {
   const [fxRate, setFxRate] = useState('');
   const [referenceRate, setReferenceRate] = useState('');
   const [note, setNote] = useState('');
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState<'none' | RemittanceFrequency>(
+    'none',
+  );
+  const [recurrenceNextDate, setRecurrenceNextDate] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Mid-market reference rate from the exchange-rate service (base = source
+  // currency), used to prefill the FX/reference rate fields (#3296).
+  const { rates: fxRates } = useExchangeRates(sourceCurrency);
+  const midMarketRate =
+    sourceCurrency !== destCurrency ? (fxRates[destCurrency]?.rate ?? null) : null;
+
+  // Prefill the mid-market reference rate when the user has not typed one, so the
+  // FX-margin estimate is populated by default without clobbering manual input.
+  useEffect(() => {
+    if (midMarketRate && midMarketRate > 0) {
+      setReferenceRate((prev) => (prev.trim() ? prev : rateInputValue(midMarketRate)));
+    }
+  }, [midMarketRate]);
+
+  const applyMidMarketRate = useCallback(() => {
+    if (midMarketRate && midMarketRate > 0) {
+      const value = rateInputValue(midMarketRate);
+      setFxRate(value);
+      setReferenceRate(value);
+    }
+  }, [midMarketRate]);
+
+  // Project the next occurrence of each recurring remittance over the coming
+  // quarter so the sender can see scheduled outflows at a glance (#3265).
+  const upcomingRemittances = useMemo(() => {
+    const from = today();
+    const horizon = advanceRemittanceDate(from, 'quarterly');
+    const projected = projectUpcomingRemittances(remittances, from, horizon);
+    // One per recurring remittance (its next occurrence), soonest first.
+    const seen = new Set<string>();
+    const next: typeof projected = [];
+    for (const item of projected) {
+      if (seen.has(item.record.id)) continue;
+      seen.add(item.record.id);
+      next.push(item);
+    }
+    return next;
+  }, [remittances]);
 
   const parsedSendMinor = toMinor(sendAmount, sourceCurrency);
   const parsedFeeMinor = fee.trim() ? toMinor(fee, sourceCurrency) : 0;
@@ -425,6 +484,8 @@ export const RemittancesPage: React.FC = () => {
     setFxRate('');
     setReferenceRate('');
     setNote('');
+    setRecurrenceFrequency('none');
+    setRecurrenceNextDate('');
     setErrors({});
     setSubmitError(null);
   }, []);
@@ -449,6 +510,13 @@ export const RemittancesPage: React.FC = () => {
           parsedRef !== undefined && Number.isFinite(parsedRef) && parsedRef > 0 ? parsedRef : null,
         recipient: { name: recipientName.trim(), country: recipientCountry.trim() },
         note: note.trim() ? note.trim() : null,
+        recurrence:
+          recurrenceFrequency === 'none'
+            ? null
+            : {
+                frequency: recurrenceFrequency,
+                nextDate: recurrenceNextDate.trim() ? recurrenceNextDate : date,
+              },
       });
 
       if (!created) {
@@ -471,6 +539,8 @@ export const RemittancesPage: React.FC = () => {
       recipientName,
       recipientCountry,
       note,
+      recurrenceFrequency,
+      recurrenceNextDate,
       resetForm,
       t,
     ],
@@ -768,12 +838,70 @@ export const RemittancesPage: React.FC = () => {
               <p id="remit-reference-rate-help" className="remittance-field__help">
                 {t('remittance.form.referenceRate.help')}
               </p>
+              {midMarketRate && midMarketRate > 0 && (
+                <div className="remittance-field__prefill">
+                  <button
+                    type="button"
+                    className="remittance-field__prefill-button"
+                    onClick={applyMidMarketRate}
+                  >
+                    {t('remittance.form.fxRate.prefill')}
+                  </button>
+                  <span className="remittance-field__help">
+                    {t('remittance.form.fxRate.prefillHint', {
+                      rate: formatRate(midMarketRate, locale),
+                    })}
+                  </span>
+                </div>
+              )}
               {errors.referenceRate && (
                 <p id="remit-reference-rate-error" className="remittance-field__error" role="alert">
                   {errors.referenceRate}
                 </p>
               )}
             </div>
+          </div>
+
+          <div className="remittance-field-row">
+            <div className="remittance-field">
+              <label htmlFor="remit-recurrence" className="remittance-field__label">
+                {t('remittance.form.recurrence.label')}
+              </label>
+              <select
+                id="remit-recurrence"
+                className="remittance-field__input"
+                value={recurrenceFrequency}
+                onChange={(e) =>
+                  setRecurrenceFrequency(e.target.value as 'none' | RemittanceFrequency)
+                }
+                aria-describedby="remit-recurrence-help"
+              >
+                <option value="none">{t('remittance.form.recurrence.none')}</option>
+                {REMITTANCE_FREQUENCIES.map((freq) => (
+                  <option key={freq} value={freq}>
+                    {t(`remittance.form.recurrence.freq.${freq}`)}
+                  </option>
+                ))}
+              </select>
+              <p id="remit-recurrence-help" className="remittance-field__help">
+                {t('remittance.form.recurrence.help')}
+              </p>
+            </div>
+            {recurrenceFrequency !== 'none' && (
+              <div className="remittance-field">
+                <label htmlFor="remit-recurrence-next" className="remittance-field__label">
+                  {t('remittance.form.recurrence.nextDate.label')}
+                </label>
+                <input
+                  id="remit-recurrence-next"
+                  className="remittance-field__input"
+                  type="date"
+                  value={recurrenceNextDate}
+                  min={date}
+                  onChange={(e) => setRecurrenceNextDate(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           <div className="remittance-field">
@@ -873,6 +1001,51 @@ export const RemittancesPage: React.FC = () => {
                   </article>
                 ))}
               </div>
+            </section>
+          )}
+
+          {upcomingRemittances.length > 0 && (
+            <section className="remittance-section" aria-label={t('remittance.upcoming.title')}>
+              <h2 className="remittance-section__title">{t('remittance.upcoming.title')}</h2>
+              <ul className="remittance-upcoming" role="list">
+                {upcomingRemittances.map((item) => {
+                  const freq = item.record.recurrence?.frequency;
+                  const frequencyLabel = freq ? t(`remittance.form.recurrence.freq.${freq}`) : '';
+                  return (
+                    <li
+                      key={item.record.id}
+                      className="remittance-upcoming__item"
+                      aria-label={t('remittance.upcoming.itemAria', {
+                        amount: formatCurrency(item.totalPaidMinor, {
+                          currency: item.record.sourceCurrency,
+                          locale,
+                        }),
+                        recipient: item.record.recipient.name,
+                        date: formatDate(item.date, { locale }),
+                        frequency: frequencyLabel,
+                      })}
+                    >
+                      <div className="remittance-upcoming__main">
+                        <span className="remittance-upcoming__recipient">
+                          {item.record.recipient.name}
+                        </span>
+                        <span className="remittance-upcoming__date">
+                          {formatDate(item.date, { locale })}
+                        </span>
+                      </div>
+                      <div className="remittance-upcoming__meta">
+                        <CurrencyDisplay
+                          amount={item.totalPaidMinor}
+                          currency={item.record.sourceCurrency}
+                        />
+                        <span className="remittance-upcoming__badge">
+                          {t('remittance.upcoming.badge', { frequency: frequencyLabel })}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             </section>
           )}
 

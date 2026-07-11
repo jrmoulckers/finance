@@ -59,6 +59,8 @@ function remittanceRow(overrides: Partial<Row> = {}): Row {
     deleted_at: null,
     sync_version: 1,
     is_synced: 0,
+    recurrence_frequency: null,
+    recurrence_next_date: null,
     ...overrides,
   };
 }
@@ -77,6 +79,7 @@ function baseRemittance(overrides: Partial<RemittanceRecord> = {}): RemittanceRe
     recipient: { name: 'Priya Supplier', country: 'IN' },
     note: 'June fabric order',
     createdAt: '2026-06-01T09:00:00.000Z',
+    recurrence: null,
     ...overrides,
   };
 }
@@ -129,6 +132,7 @@ describe('remittances repository', () => {
       recipient: { name: 'Priya Supplier', country: 'IN' },
       note: 'June fabric order',
       createdAt: '2026-06-01T09:00:00.000Z',
+      recurrence: null,
     });
   });
 
@@ -166,6 +170,8 @@ describe('remittances repository', () => {
       'Priya Supplier',
       'IN',
       'June fabric order',
+      null,
+      null,
       '2026-06-01T09:00:00.000Z',
       '2026-06-01T09:00:00.000Z',
     ]);

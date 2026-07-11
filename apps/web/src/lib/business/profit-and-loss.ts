@@ -63,12 +63,22 @@ export type PnlGranularity = 'weekly' | 'monthly';
  * Tag markers (case-insensitive, matched as whole tags) that force a
  * transaction into a specific P&L bucket regardless of its income/expense
  * type. Explicit tags always win over the type-based fallback.
+ *
+ * {@link cogsCategoryIds} and {@link cogsPayees} let an owner-operator designate
+ * supplier payments (e.g. recurring fabric-supplier remittances) as cost of
+ * goods sold *by default*, without hand-tagging every transaction. Without this,
+ * untagged expenses fall back to `overhead`, so COGS reads near zero and gross
+ * margin is overstated — misleading restock decisions (issue #3268).
  */
 export interface PnlTagConfig {
   readonly revenueTags?: readonly string[];
   readonly cogsTags?: readonly string[];
   readonly laborTags?: readonly string[];
   readonly overheadTags?: readonly string[];
+  /** Category ids whose expense transactions default to COGS (e.g. "Supplies"). */
+  readonly cogsCategoryIds?: readonly string[];
+  /** Payee names (case-insensitive, whole match) whose expenses default to COGS. */
+  readonly cogsPayees?: readonly string[];
 }
 
 export interface PnlOptions extends PnlTagConfig {
@@ -102,6 +112,15 @@ export interface PnlTotals {
   readonly netMarginBps: number | null;
   /** Count of transactions that contributed to this slice. */
   readonly transactionCount: number;
+  /**
+   * Cost (cents) of expense transactions that fell to `overhead` purely by the
+   * income/expense type fallback — i.e. carried no P&L tag and matched no COGS
+   * category/payee rule. High values mean COGS may be understated and gross
+   * margin overstated (issue #3268). Always ≥ 0.
+   */
+  readonly untaggedExpenseCents: number;
+  /** Count of expense transactions classified only by the type fallback. */
+  readonly untaggedExpenseCount: number;
 }
 
 /** A single reporting period (one week or one month). */
@@ -286,6 +305,10 @@ export interface CompiledPnlTagSets {
   readonly cogs: Set<string>;
   readonly labor: Set<string>;
   readonly overhead: Set<string>;
+  /** Category ids designated COGS-by-default (exact match, trimmed). */
+  readonly cogsCategoryIds: Set<string>;
+  /** Payee names designated COGS-by-default (normalized lower-case). */
+  readonly cogsPayees: Set<string>;
 }
 
 /** Pre-compile the configured (or default) tag markers into lookup sets. */
@@ -295,6 +318,12 @@ export function compilePnlTagSets(config: PnlTagConfig = {}): CompiledPnlTagSets
     cogs: normalizeTagList(config.cogsTags, DEFAULT_PNL_TAGS.cogs),
     labor: normalizeTagList(config.laborTags, DEFAULT_PNL_TAGS.labor),
     overhead: normalizeTagList(config.overheadTags, DEFAULT_PNL_TAGS.overhead),
+    cogsCategoryIds: new Set(
+      (config.cogsCategoryIds ?? []).map((id) => id.trim()).filter((id) => id !== ''),
+    ),
+    cogsPayees: new Set(
+      (config.cogsPayees ?? []).map(normalizeTag).filter((payee) => payee !== ''),
+    ),
   };
 }
 
@@ -302,29 +331,70 @@ function hasTag(tags: readonly string[], markers: Set<string>): boolean {
   return tags.some((tag) => markers.has(normalizeTag(tag)));
 }
 
+/** How a transaction's P&L bucket was decided. */
+export type PnlClassificationSource = 'tag' | 'supplier' | 'type-fallback';
+
+/** A classified transaction: its bucket plus how the bucket was decided. */
+export interface PnlClassification {
+  readonly category: PnlCategory;
+  readonly source: PnlClassificationSource;
+}
+
+/**
+ * Classify a transaction into a P&L bucket with provenance, or `null` if it
+ * should be ignored (transfers and voided transactions).
+ *
+ * Priority:
+ *   1. Explicit bucket tags (COGS → labor → overhead → revenue) — `source: 'tag'`.
+ *   2. Supplier attribution — an *expense* whose category id or payee is
+ *      designated COGS-by-default is classified `cogs` — `source: 'supplier'`.
+ *   3. Type fallback — income → `revenue`, expense → `overhead` —
+ *      `source: 'type-fallback'`.
+ */
+export function classifyTransactionDetailed(
+  transaction: Transaction,
+  tagSets: CompiledPnlTagSets,
+): PnlClassification | null {
+  if (transaction.type === 'TRANSFER' || transaction.status === 'VOID') {
+    return null;
+  }
+
+  const tags = transaction.tags ?? [];
+  if (hasTag(tags, tagSets.cogs)) return { category: 'cogs', source: 'tag' };
+  if (hasTag(tags, tagSets.labor)) return { category: 'labor', source: 'tag' };
+  if (hasTag(tags, tagSets.overhead)) return { category: 'overhead', source: 'tag' };
+  if (hasTag(tags, tagSets.revenue)) return { category: 'revenue', source: 'tag' };
+
+  if (transaction.type === 'EXPENSE') {
+    const categoryId = transaction.categoryId ?? undefined;
+    const payee = transaction.payee ? normalizeTag(transaction.payee) : undefined;
+    if (
+      (categoryId !== undefined && tagSets.cogsCategoryIds.has(categoryId)) ||
+      (payee !== undefined && tagSets.cogsPayees.has(payee))
+    ) {
+      return { category: 'cogs', source: 'supplier' };
+    }
+  }
+
+  return transaction.type === 'INCOME'
+    ? { category: 'revenue', source: 'type-fallback' }
+    : { category: 'overhead', source: 'type-fallback' };
+}
+
 /**
  * Classify a transaction into a P&L bucket, or `null` if it should be ignored
  * (transfers and voided transactions).
  *
  * Priority: explicit bucket tags win (checked COGS → labor → overhead →
- * revenue), otherwise income falls back to `revenue` and expenses to
+ * revenue), then supplier attribution (a COGS-designated expense category/payee
+ * defaults to `cogs`), otherwise income falls back to `revenue` and expenses to
  * `overhead` (other operating expense).
  */
 export function classifyTransaction(
   transaction: Transaction,
   tagSets: CompiledPnlTagSets,
 ): PnlCategory | null {
-  if (transaction.type === 'TRANSFER' || transaction.status === 'VOID') {
-    return null;
-  }
-
-  const tags = transaction.tags ?? [];
-  if (hasTag(tags, tagSets.cogs)) return 'cogs';
-  if (hasTag(tags, tagSets.labor)) return 'labor';
-  if (hasTag(tags, tagSets.overhead)) return 'overhead';
-  if (hasTag(tags, tagSets.revenue)) return 'revenue';
-
-  return transaction.type === 'INCOME' ? 'revenue' : 'overhead';
+  return classifyTransactionDetailed(transaction, tagSets)?.category ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -337,6 +407,8 @@ interface MutableBucket {
   laborCents: number;
   overheadCents: number;
   transactionCount: number;
+  untaggedExpenseCents: number;
+  untaggedExpenseCount: number;
 }
 
 function emptyBucket(): MutableBucket {
@@ -346,6 +418,8 @@ function emptyBucket(): MutableBucket {
     laborCents: 0,
     overheadCents: 0,
     transactionCount: 0,
+    untaggedExpenseCents: 0,
+    untaggedExpenseCount: 0,
   };
 }
 
@@ -383,6 +457,8 @@ function finalizeBucket(bucket: MutableBucket): PnlTotals {
     grossMarginBps: marginBasisPoints(grossProfitCents, bucket.revenueCents),
     netMarginBps: marginBasisPoints(netProfitCents, bucket.revenueCents),
     transactionCount: bucket.transactionCount,
+    untaggedExpenseCents: bucket.untaggedExpenseCents,
+    untaggedExpenseCount: bucket.untaggedExpenseCount,
   };
 }
 
@@ -415,18 +491,29 @@ export function buildProfitAndLoss(
       continue;
     }
 
-    const category = classifyTransaction(transaction, tagSets);
-    if (category === null) {
+    const classification = classifyTransactionDetailed(transaction, tagSets);
+    if (classification === null) {
       continue;
     }
+    const { category, source } = classification;
 
     const cents = bucketContributionCents(transaction, category);
     const key = periodKey(transaction.date, granularity);
     const bucket = buckets.get(key) ?? emptyBucket();
     addToBucket(bucket, category, cents);
-    buckets.set(key, bucket);
-
     addToBucket(combined, category, cents);
+
+    // Track expenses that only reached `overhead` via the type fallback so the
+    // UI can warn that COGS may be understated (issue #3268).
+    if (source === 'type-fallback' && transaction.type === 'EXPENSE') {
+      const magnitude = magnitudeCents(transaction.amount.amount);
+      bucket.untaggedExpenseCents += magnitude;
+      bucket.untaggedExpenseCount += 1;
+      combined.untaggedExpenseCents += magnitude;
+      combined.untaggedExpenseCount += 1;
+    }
+
+    buckets.set(key, bucket);
   }
 
   const periods = [...buckets.entries()]

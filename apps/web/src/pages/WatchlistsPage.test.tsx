@@ -6,6 +6,7 @@ import { WatchlistsPage } from './WatchlistsPage';
 import { useCategories } from '../hooks/useCategories';
 import { useSpendingWatchlists } from '../hooks/useSpendingWatchlists';
 import type { WatchlistAlert } from '../hooks/useSpendingWatchlists';
+import { useSecurityWatchlists } from '../hooks/useSecurityWatchlists';
 
 vi.mock('../hooks/useCategories', () => ({
   useCategories: vi.fn(),
@@ -15,8 +16,13 @@ vi.mock('../hooks/useSpendingWatchlists', () => ({
   useSpendingWatchlists: vi.fn(),
 }));
 
+vi.mock('../hooks/useSecurityWatchlists', () => ({
+  useSecurityWatchlists: vi.fn(),
+}));
+
 const mockedUseCategories = vi.mocked(useCategories);
 const mockedUseSpendingWatchlists = vi.mocked(useSpendingWatchlists);
+const mockedUseSecurityWatchlists = vi.mocked(useSecurityWatchlists);
 
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -80,6 +86,18 @@ describe('WatchlistsPage', () => {
       toggleAlerts: vi.fn(),
       dismissAlert: vi.fn(),
       reorderWatchlists: vi.fn(),
+      refresh: vi.fn(),
+    });
+
+    mockedUseSecurityWatchlists.mockReturnValue({
+      watches: [],
+      alerts: [],
+      priceBySymbolCents: new Map(),
+      addWatch: vi.fn(),
+      removeWatch: vi.fn(),
+      toggleAlerts: vi.fn(),
+      resetReferencePrice: vi.fn(),
+      dismissAlert: vi.fn(),
       refresh: vi.fn(),
     });
   });

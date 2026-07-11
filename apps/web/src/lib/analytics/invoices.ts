@@ -22,6 +22,8 @@ export interface Invoice {
   readonly id: string;
   readonly clientName: string;
   readonly amountCents: number;
+  /** ISO 4217 currency code the invoice is denominated in (e.g. 'USD', 'EUR'). */
+  readonly currency: string;
   readonly issueDate: string;
   readonly paymentTerm: InvoicePaymentTerm;
   readonly status: InvoiceStatus;
@@ -46,6 +48,8 @@ export interface CreateInvoiceInput {
   readonly issueDate: string;
   readonly paymentTerm: InvoicePaymentTerm;
   readonly status?: InvoiceStatus;
+  /** ISO 4217 currency code; defaults to {@link DEFAULT_INVOICE_CURRENCY} (#3263). */
+  readonly currency?: string;
 }
 
 export interface UpdateInvoiceInput {
@@ -54,6 +58,17 @@ export interface UpdateInvoiceInput {
   readonly issueDate: string;
   readonly paymentTerm: InvoicePaymentTerm;
   readonly status: InvoiceStatus;
+  /** ISO 4217 currency code; when omitted the existing currency is kept (#3263). */
+  readonly currency?: string;
+}
+
+/** Default currency for invoices created without an explicit currency (#3263). */
+export const DEFAULT_INVOICE_CURRENCY = 'USD';
+
+/** Normalize a user-supplied currency code to a trimmed upper-case ISO code. */
+export function normalizeInvoiceCurrency(currency: string | undefined): string {
+  const code = (currency ?? '').trim().toUpperCase();
+  return code === '' ? DEFAULT_INVOICE_CURRENCY : code;
 }
 
 export interface InvoicePipelineGroup {
@@ -259,9 +274,9 @@ export interface InvoiceCashInflowContext {
  * transaction against the chosen account so paid revenue shows up in balances,
  * net worth and reconciliation instead of living only in the invoice pipeline
  * (issue #3266). Amounts are positive cents (the app's income convention) and
- * the transaction adopts the receiving account's currency — invoices do not yet
- * carry their own currency (see #14), so the account the payment lands in is the
- * source of truth for currency.
+ * the transaction adopts the receiving account's currency — the invoice's own
+ * currency (#3263) records what was billed, but the cash actually lands in the
+ * receiving account, so that account's currency is the source of truth here.
  */
 export function buildInvoiceCashInflow(
   invoice: Invoice,
@@ -284,6 +299,7 @@ export function createInvoice(input: CreateInvoiceInput, nowIso: string, id: str
     id,
     clientName: input.clientName.trim(),
     amountCents: input.amountCents,
+    currency: normalizeInvoiceCurrency(input.currency),
     issueDate: input.issueDate,
     paymentTerm: input.paymentTerm,
     status: input.status ?? 'Sent',
@@ -313,6 +329,8 @@ export function applyInvoiceEdit(
     ...invoice,
     clientName: input.clientName.trim(),
     amountCents: input.amountCents,
+    currency:
+      input.currency !== undefined ? normalizeInvoiceCurrency(input.currency) : invoice.currency,
     issueDate: input.issueDate,
     paymentTerm: input.paymentTerm,
     status: input.status,
@@ -387,7 +405,7 @@ export function computeInvoiceForecast(invoices: Invoice[], todayIso: string): F
 
 /** CSV header for {@link exportInvoicesCsv}. */
 export const INVOICE_CSV_HEADER =
-  'Client,Amount,Issue date,Payment term,Status,Expected pay date,Aging bucket';
+  'Client,Amount,Currency,Issue date,Payment term,Status,Expected pay date,Aging bucket';
 
 function invoiceAmountDollars(cents: number): string {
   return (cents / 100).toFixed(2);
@@ -419,6 +437,7 @@ export function exportInvoicesCsv(invoices: Invoice[], todayIso: string): string
       [
         escapeCsvField(invoice.clientName),
         invoiceAmountDollars(invoice.amountCents),
+        invoice.currency,
         invoice.issueDate,
         PAYMENT_TERM_LABELS[invoice.paymentTerm],
         invoice.status,
@@ -428,7 +447,7 @@ export function exportInvoicesCsv(invoices: Invoice[], todayIso: string): string
     );
 
   const totalCents = normalized.reduce((sum, invoice) => sum + invoice.amountCents, 0);
-  const totalRow = ['Total', invoiceAmountDollars(totalCents), '', '', '', '', ''].join(',');
+  const totalRow = ['Total', invoiceAmountDollars(totalCents), '', '', '', '', '', ''].join(',');
 
   return [INVOICE_CSV_HEADER, ...rows, totalRow].join('\n');
 }

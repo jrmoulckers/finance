@@ -19,6 +19,7 @@ import { useTransactions } from '../hooks/useTransactions';
 import {
   buildInvoiceCashInflow,
   computeExpectedPayDate,
+  DEFAULT_INVOICE_CURRENCY,
   exportInvoicesCsv,
   FOLLOW_UP_STALE_DAYS,
   getInvoicesNeedingFollowUp,
@@ -34,6 +35,7 @@ import {
 import { buildDatedExportFileName } from '../lib/export/simple-export';
 import { formatDate } from '../utils/formatDate';
 import { dollarsToCents } from '../lib/currency';
+import { SUPPORTED_CURRENCY_METADATA } from '../lib/currency-metadata';
 import './analytics.css';
 
 function todayIsoDate(): string {
@@ -87,19 +89,19 @@ const InvoiceCard: React.FC<{
           </p>
         </div>
         <div className="invoice-card__amount">
-          <CurrencyDisplay amount={invoice.amountCents} />
+          <CurrencyDisplay amount={invoice.amountCents} currency={invoice.currency} />
           <StatusBadge status={invoice.status} />
         </div>
       </div>
       {paidCents > 0 && (
         <p className="invoice-card__payment">
-          Paid <CurrencyDisplay amount={paidCents} /> of{' '}
-          <CurrencyDisplay amount={invoice.amountCents} /> ·{' '}
+          Paid <CurrencyDisplay amount={paidCents} currency={invoice.currency} /> of{' '}
+          <CurrencyDisplay amount={invoice.amountCents} currency={invoice.currency} /> ·{' '}
           {fullyPaid ? (
             'paid in full'
           ) : (
             <>
-              <CurrencyDisplay amount={outstandingCents} /> outstanding
+              <CurrencyDisplay amount={outstandingCents} currency={invoice.currency} /> outstanding
             </>
           )}
           {invoice.paidDate ? ` · last payment ${formatDate(invoice.paidDate, { locale })}` : ''}
@@ -169,6 +171,7 @@ export const InvoicesPage: React.FC = () => {
   const { locale } = useLocalePreferences();
   const [clientName, setClientName] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState<string>(DEFAULT_INVOICE_CURRENCY);
   const [issueDate, setIssueDate] = useState(todayIsoDate);
   const [paymentTerm, setPaymentTerm] = useState<InvoicePaymentTerm>('net-30');
   const [status, setStatus] = useState<InvoiceStatus>('Sent');
@@ -181,6 +184,7 @@ export const InvoicesPage: React.FC = () => {
     setEditingInvoiceId(null);
     setClientName('');
     setAmount('');
+    setCurrency(DEFAULT_INVOICE_CURRENCY);
     setIssueDate(todayIsoDate());
     setPaymentTerm('net-30');
     setStatus('Sent');
@@ -191,6 +195,7 @@ export const InvoicesPage: React.FC = () => {
     setEditingInvoiceId(invoice.id);
     setClientName(invoice.clientName);
     setAmount((invoice.amountCents / 100).toString());
+    setCurrency(invoice.currency);
     setIssueDate(invoice.issueDate);
     setPaymentTerm(invoice.paymentTerm);
     setStatus(invoice.status);
@@ -299,9 +304,16 @@ export const InvoicesPage: React.FC = () => {
     }
 
     if (editingInvoiceId) {
-      updateInvoice(editingInvoiceId, { clientName, amountCents, issueDate, paymentTerm, status });
+      updateInvoice(editingInvoiceId, {
+        clientName,
+        amountCents,
+        currency,
+        issueDate,
+        paymentTerm,
+        status,
+      });
     } else {
-      addInvoice({ clientName, amountCents, issueDate, paymentTerm, status });
+      addInvoice({ clientName, amountCents, currency, issueDate, paymentTerm, status });
     }
     resetForm();
   };
@@ -365,6 +377,16 @@ export const InvoicesPage: React.FC = () => {
               placeholder="4200.00"
               required
             />
+          </label>
+          <label className="invoice-form__field">
+            Currency
+            <select value={currency} onChange={(event) => setCurrency(event.target.value)}>
+              {SUPPORTED_CURRENCY_METADATA.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.code} — {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="invoice-form__field">
             Issue date
