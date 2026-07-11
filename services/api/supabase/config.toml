@@ -33,6 +33,45 @@ double_confirm_changes = true
 enable_confirmations = false
 
 # ---------------------------------------------------------------------------
+# External OAuth providers (#3187)
+#
+# Social sign-in (Google / GitHub / Apple) fails in the deployed environment
+# with "Unsupported provider: provider is not enabled" because GoTrue has these
+# providers disabled/unconfigured. The buttons and the auth-oauth-start Edge
+# Function already support all three in code; what's missing is *enablement +
+# credentials* in the deployed Supabase Auth instance.
+#
+# These sections declare the providers and wire their credentials to
+# environment variables (never commit real secrets). They ship DISABLED so
+# local `supabase start` keeps working without OAuth apps. To turn a provider
+# on, provide the matching secrets in the deployed environment and flip
+# `enabled = true` (or enable it in the Supabase dashboard). See
+# services/api/docs/oauth-providers.md → "Needs Human Action".
+#
+# Each provider's authorized redirect URL must be
+#   ${OAUTH_REDIRECT_BASE}/api/auth/oauth-callback
+# ---------------------------------------------------------------------------
+
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+skip_nonce_check = false
+
+[auth.external.github]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET)"
+redirect_uri = ""
+
+[auth.external.apple]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+redirect_uri = ""
+
+# ---------------------------------------------------------------------------
 # Edge Functions (#1886) — cookie-bearing auth proxy
 #
 # `verify_jwt = false` because these functions enforce their own auth via

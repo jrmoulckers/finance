@@ -114,6 +114,49 @@ textarea:focus-visible {
 }
 
 /* -------------------------------------------------------------------
+ * 1b. Reduced Transparency (#3352)
+ *
+ * Some low-vision users enable the OS "reduce transparency" setting so
+ * that translucent surfaces resolve to solid, opaque fills — maximizing
+ * the legibility of text layered over those surfaces. The web app
+ * mirrors this the same way it honors `prefers-contrast: more`:
+ *
+ *   1. Neutralize any backdrop blur so nothing behind a surface bleeds
+ *      through and softens the text on top of it.
+ *   2. Force modal/dialog scrims to a fully opaque backdrop so the
+ *      layered content reads against a solid ground.
+ *
+ * Component-specific translucent CONTENT surfaces (e.g. the estate
+ * checklist tiles) provide their own opaque fallbacks co-located with
+ * their rules; this block covers the app-wide primitives.
+ * ------------------------------------------------------------------- */
+@media (prefers-reduced-transparency: reduce) {
+  /* Drop backdrop blur everywhere — translucent glass effects reduce
+     legibility for the users who set this preference. */
+  * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Modal/dialog scrims become fully opaque so background content cannot
+     bleed through the overlay. */
+  .form-dialog__backdrop,
+  .quick-entry__backdrop,
+  .quick-entry-backdrop,
+  .quick-add-backdrop,
+  .edit-panel-backdrop,
+  .passkey-prompt__backdrop,
+  .referral-modal__backdrop,
+  .recommendation-detail__backdrop,
+  .voice-entry-sheet__backdrop,
+  .more-sheet__scrim,
+  .consent-overlay,
+  .encryption-dialog__overlay {
+    background: var(--semantic-overlay-scrim, rgba(0, 0, 0, 1)) !important;
+  }
+}
+
+/* -------------------------------------------------------------------
  * 2. Touch Target Sizing (WCAG 2.5.8)
  *
  * All interactive elements have a minimum 44×44px touch target.
