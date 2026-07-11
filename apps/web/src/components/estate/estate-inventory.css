@@ -392,6 +392,28 @@
   background: rgba(245, 158, 11, 0.12);
 }
 
+/*
+ * Reduced transparency (#3352): low-vision users who enable the OS
+ * "reduce transparency" preference want solid, opaque surfaces. Swap the
+ * translucent status tints for an opaque neutral surface and keep the
+ * success/warning meaning via a solid left accent (not the faint wash).
+ */
+@media (prefers-reduced-transparency: reduce) {
+  .estate-checklist__item--complete,
+  .estate-checklist__item--needs-work {
+    background: var(--semantic-background-secondary);
+    border-left: 3px solid transparent;
+  }
+
+  .estate-checklist__item--complete {
+    border-left-color: var(--semantic-status-success);
+  }
+
+  .estate-checklist__item--needs-work {
+    border-left-color: var(--semantic-status-warning);
+  }
+}
+
 .estate-checklist__status {
   width: 1.75rem;
   height: 1.75rem;

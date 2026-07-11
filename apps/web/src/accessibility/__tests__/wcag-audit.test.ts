@@ -47,6 +47,33 @@ describe('Accessibility CSS', () => {
     });
   });
 
+  describe('Reduced Transparency (WCAG-adjacent, #3352)', () => {
+    it('should include a prefers-reduced-transparency media query', () => {
+      expect(css).toContain('prefers-reduced-transparency: reduce');
+    });
+
+    it('should neutralize backdrop blur under reduced transparency', () => {
+      const block = css.slice(css.indexOf('prefers-reduced-transparency: reduce'));
+      expect(block).toContain('backdrop-filter: none');
+      expect(block).toContain('-webkit-backdrop-filter: none');
+    });
+
+    it('should make modal scrims opaque under reduced transparency', () => {
+      const block = css.slice(css.indexOf('prefers-reduced-transparency: reduce'));
+      expect(block).toContain('--semantic-overlay-scrim');
+    });
+
+    it('estate tiles should provide opaque fallbacks under reduced transparency', () => {
+      const estateCss = readFileSync(
+        resolve(__dirname, '../../../src/components/estate/estate-inventory.css'),
+        'utf-8',
+      );
+      expect(estateCss).toContain('prefers-reduced-transparency: reduce');
+      const block = estateCss.slice(estateCss.indexOf('prefers-reduced-transparency: reduce'));
+      expect(block).toContain('--semantic-background-secondary');
+    });
+  });
+
   describe('Touch Target Sizing (WCAG 2.5.8)', () => {
     it('should set minimum 44px height on buttons', () => {
       expect(css).toContain('min-height: 44px');
