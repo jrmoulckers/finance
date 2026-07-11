@@ -274,6 +274,25 @@ export function BusinessPnlPage() {
         </div>
       </section>
 
+      {totals.untaggedExpenseCount > 0 ? (
+        <section
+          className="business-pnl__card business-pnl__card--hint"
+          aria-labelledby="business-pnl-cogs-hint-title"
+        >
+          <h2 id="business-pnl-cogs-hint-title" className="business-pnl__card-title">
+            COGS may be understated
+          </h2>
+          <p className="business-pnl__hint-text">
+            {formatCurrency(totals.untaggedExpenseCents)} across {totals.untaggedExpenseCount}{' '}
+            {totals.untaggedExpenseCount === 1 ? 'expense' : 'expenses'} fell into{' '}
+            <strong>overhead</strong> only because it carried no P&amp;L tag and matched no
+            cost-of-goods supplier rule. If any of these are inventory or materials, tag them{' '}
+            <code>cogs</code> (or designate the supplier as a cost of goods) so gross margin isn&apos;t
+            overstated.
+          </p>
+        </section>
+      ) : null}
+
       <section className="business-pnl__card" aria-labelledby="business-pnl-statement-title">
         <h2 id="business-pnl-statement-title" className="business-pnl__card-title">
           Statement
