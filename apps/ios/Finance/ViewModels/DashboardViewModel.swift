@@ -47,6 +47,58 @@ final class DashboardViewModel {
     /// Net worth computed via the Swift Export aggregator module.
     var netWorth: Int64 { aggregator.netWorth(accounts: accounts) }
 
+    // MARK: - Net Worth Trend (#2116)
+    //
+    // A minimalist net-worth growth line reconstructed from the current net
+    // worth and historical flows, plus a straight-line forward projection at
+    // the recent savings pace. All heavy math lives in the pure, unit-tested
+    // `NetWorthTrendCalculator`; these are thin, cached-input accessors.
+
+    /// Selected look-back window for the net-worth trend chart.
+    var netWorthTrendRange: NetWorthTrendRange = .sixMonths
+
+    /// Months of history shown when the "All" range is selected.
+    private static let netWorthAllMonths = 24
+
+    /// Months projected forward past today.
+    private static let netWorthProjectionMonths = 12
+
+    /// Reconstructed monthly net-worth history for the selected range.
+    var netWorthTrendPoints: [NetWorthTrendPoint] {
+        NetWorthTrendCalculator.history(
+            currentNetWorthMinorUnits: netWorth,
+            transactions: savingsRateTransactions,
+            months: netWorthTrendRange.months ?? Self.netWorthAllMonths
+        )
+    }
+
+    /// Average monthly net savings over the trailing six months, used to set
+    /// the projection pace.
+    var averageMonthlySavingsMinorUnits: Int64 {
+        NetWorthTrendCalculator.averageMonthlySavings(
+            transactions: savingsRateTransactions,
+            months: 6
+        )
+    }
+
+    /// Forward net-worth projection continuing from the latest history point.
+    var netWorthProjectionPoints: [NetWorthTrendPoint] {
+        guard let anchor = netWorthTrendPoints.last else { return [] }
+        return NetWorthTrendCalculator.projection(
+            from: anchor,
+            monthlySavingsMinorUnits: averageMonthlySavingsMinorUnits,
+            months: Self.netWorthProjectionMonths
+        )
+    }
+
+    /// Projected net worth a year out, in minor units.
+    var projectedNetWorthMinorUnits: Int64 {
+        netWorthProjectionPoints.last?.valueMinorUnits ?? netWorth
+    }
+
+    /// Whether there is enough data to show the trend chart.
+    var hasNetWorthTrend: Bool { !accounts.isEmpty }
+
     // MARK: - Cached Aggregations
     //
     // These values are pre-computed when data loads rather than being
