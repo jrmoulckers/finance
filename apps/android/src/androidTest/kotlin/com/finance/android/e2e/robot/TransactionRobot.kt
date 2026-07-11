@@ -34,18 +34,18 @@ class TransactionRobot(
      */
     fun assertAmountStepVisible() {
         rule.waitUntil(timeoutMillis = 5_000) {
-            rule.onAllNodes(hasContentDescription("Amount in dollars"))
+            rule.onAllNodes(hasContentDescription("Amount input", substring = true))
                 .fetchSemanticsNodes()
                 .isNotEmpty()
         }
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Amount in dollars")
+        rule.onNode(hasContentDescription("Amount input", substring = true))
             .assertIsDisplayed()
     }
 
     /** Enter the given [amount] into the Amount field. */
     fun enterAmount(amount: String) {
-        rule.onNodeWithContentDescription("Amount in dollars")
+        rule.onNode(hasContentDescription("Amount input", substring = true))
             .performTextInput(amount)
     }
 

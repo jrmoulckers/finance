@@ -3,8 +3,11 @@
 package com.finance.android.ui.viewmodel
 
 import com.finance.android.auth.TestHouseholdIdProvider
+import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.models.Account
+import com.finance.models.AccountType
 import com.finance.models.Category
 import com.finance.models.Transaction
 import com.finance.models.TransactionStatus
@@ -114,6 +117,21 @@ class TransactionsViewModelTest {
         updatedAt = now,
     )
 
+    private fun createAccount(
+        id: String,
+        name: String,
+    ) = Account(
+        id = SyncId(id),
+        householdId = householdId,
+        ownerId = householdId,
+        name = name,
+        type = AccountType.CHECKING,
+        currency = Currency.USD,
+        currentBalance = Cents(0),
+        createdAt = now,
+        updatedAt = now,
+    )
+
     // ── Test Repositories ──────────────────────────────────────────────
 
     private class TestTransactionRepository(
@@ -211,14 +229,64 @@ class TransactionsViewModelTest {
         override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
+    private class TestAccountRepository(
+        initial: List<Account> = emptyList(),
+    ) : AccountRepository {
+        private val _accounts = MutableStateFlow(initial)
+
+        override fun observeAll(householdId: SyncId): Flow<List<Account>> =
+            _accounts.map { list -> list.filter { it.deletedAt == null } }
+
+        override fun observeById(id: SyncId): Flow<Account?> =
+            _accounts.map { list -> list.find { it.id == id } }
+
+        override suspend fun getById(id: SyncId): Account? =
+            _accounts.value.find { it.id == id }
+
+        override fun observeActive(householdId: SyncId): Flow<List<Account>> =
+            _accounts.map { list -> list.filter { !it.isArchived && it.deletedAt == null } }
+
+        override suspend fun updateBalance(id: SyncId, newBalance: Cents) {
+            _accounts.value = _accounts.value.map {
+                if (it.id == id) it.copy(currentBalance = newBalance) else it
+            }
+        }
+
+        override suspend fun archive(id: SyncId) {
+            _accounts.value = _accounts.value.map {
+                if (it.id == id) it.copy(isArchived = true) else it
+            }
+        }
+
+        override suspend fun insert(entity: Account) {
+            _accounts.value = _accounts.value + entity
+        }
+
+        override suspend fun update(entity: Account) {
+            _accounts.value =
+                _accounts.value.map { if (it.id == entity.id) entity else it }
+        }
+
+        override suspend fun delete(id: SyncId) {
+            _accounts.value = _accounts.value.map {
+                if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it
+            }
+        }
+
+        override suspend fun getUnsynced(householdId: SyncId): List<Account> = emptyList()
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
+    }
+
     private fun createViewModel(
         transactions: List<Transaction> = emptyList(),
         categories: List<Category> = emptyList(),
+        accounts: List<Account> = emptyList(),
         householdIdProvider: TestHouseholdIdProvider = TestHouseholdIdProvider(),
     ) = TransactionsViewModel(
         householdIdProvider = householdIdProvider,
         transactionRepository = TestTransactionRepository(transactions),
         categoryRepository = TestCategoryRepository(categories),
+        accountRepository = TestAccountRepository(accounts),
     )
 
     // ═══════════════════════════════════════════════════════════════════
@@ -670,6 +738,41 @@ class TransactionsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, vm.uiState.value.totalCount, "Should have 1 transaction after deletion")
+    }
+
+    @Test
+    fun `undoDelete restores the deleted transaction`() = runTest {
+        val txns = listOf(
+            createTransaction("txn-1", payee = "Keep"),
+            createTransaction("txn-2", payee = "Delete"),
+        )
+
+        val vm = createViewModel(transactions = txns)
+        advanceUntilIdle()
+
+        vm.deleteTransaction(SyncId("txn-2"))
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.totalCount)
+
+        vm.undoDelete()
+        advanceUntilIdle()
+        assertEquals(2, vm.uiState.value.totalCount, "Undo should restore the transaction")
+    }
+
+    @Test
+    fun `resolves category and account names from repositories`() = runTest {
+        val txns = listOf(
+            createTransaction("txn-1", payee = "Coffee",
+                categoryId = "cat-1", accountId = "acct-1"),
+        )
+        val cats = listOf(createCategory("cat-1", "Dining"))
+        val accts = listOf(createAccount("acct-1", "Checking"))
+
+        val vm = createViewModel(transactions = txns, categories = cats, accounts = accts)
+        advanceUntilIdle()
+
+        assertEquals("Dining", vm.uiState.value.categoryNames[SyncId("cat-1")])
+        assertEquals("Checking", vm.uiState.value.accountNames[SyncId("acct-1")])
     }
 
     // ═══════════════════════════════════════════════════════════════════

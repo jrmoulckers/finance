@@ -214,6 +214,18 @@ class TransactionCreateViewModel(
         _uiState.update { it.copy(amountText = limited, amountCents = cents, errors = emptyList()) }
     }
 
+    /**
+     * Updates the amount from a raw cents value produced by the currency AmountInput
+     * component (#3724). Keeps [amountText] in sync for validation and edit pre-fill.
+     */
+    fun updateAmountCents(cents: Long) {
+        val safe = cents.coerceAtLeast(0L)
+        val whole = safe / 100L
+        val frac = safe % 100L
+        val text = "$whole.${frac.toString().padStart(2, '0')}"
+        _uiState.update { it.copy(amountCents = safe, amountText = text, errors = emptyList()) }
+    }
+
     fun updatePayee(payee: String) {
         val suggestions = if (payee.length >= 2)
             payeeHistory.filter { it.lowercase().contains(payee.lowercase()) }.take(5)

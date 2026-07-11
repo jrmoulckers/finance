@@ -42,4 +42,14 @@ class NavTransitionsTest {
     fun `tabExitTransition is defined`() {
         assertNotNull(NavTransitions.tabExitTransition)
     }
+
+    @Test
+    fun `reducedEnterTransition is defined`() {
+        assertNotNull(NavTransitions.reducedEnterTransition)
+    }
+
+    @Test
+    fun `reducedExitTransition is defined`() {
+        assertNotNull(NavTransitions.reducedExitTransition)
+    }
 }

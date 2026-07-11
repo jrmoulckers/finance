@@ -95,4 +95,22 @@ object NavTransitions {
     val tabExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
         fadeOut(animationSpec = tween(DURATION_MS))
     }
+
+    // ── Reduced-motion transitions (accessibility) ──────────────────
+
+    /**
+     * Crossfade-only enter used when the user has enabled the
+     * **reduced animations** preference (#3717). Replaces directional
+     * slides to respect WCAG 2.2 (2.3.3 Animation from Interactions).
+     */
+    val reducedEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+        fadeIn(animationSpec = tween(DURATION_MS))
+    }
+
+    /**
+     * Crossfade-only exit counterpart to [reducedEnterTransition].
+     */
+    val reducedExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+        fadeOut(animationSpec = tween(DURATION_MS))
+    }
 }

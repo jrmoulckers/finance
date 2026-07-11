@@ -4,6 +4,8 @@ package com.finance.android.ui.screens
 
 import android.content.SharedPreferences
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -25,7 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
@@ -86,6 +87,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.finance.android.ui.data.SampleData
+import com.finance.android.ui.accessibility.CognitiveAccessibilityManager
+import com.finance.android.ui.components.AmountInput
 import com.finance.android.ui.feedback.rememberHapticFeedbackAvailable
 import com.finance.android.ui.feedback.rememberTransactionHapticFeedback
 import com.finance.android.ui.theme.FinanceTheme
@@ -94,8 +97,10 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.finance.android.ui.viewmodel.CreateStep
 import com.finance.android.ui.viewmodel.TransactionCreateUiState
 import com.finance.android.ui.viewmodel.TransactionCreateViewModel
+import com.finance.core.multicurrency.CurrencyCatalog
 import com.finance.models.Category
 import com.finance.models.TransactionType
+import com.finance.models.types.Currency
 import com.finance.models.types.SyncId
 
 /**
@@ -113,6 +118,8 @@ fun TransactionCreateScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val prefs: SharedPreferences = koinInject()
+    val cognitiveManager: CognitiveAccessibilityManager = koinInject()
+    val reducedAnimations by cognitiveManager.reducedAnimations.collectAsState()
     val hapticsAvailable = rememberHapticFeedbackAvailable()
     val hapticFeedbackEnabled = prefs.getBoolean(HAPTIC_FEEDBACK_PREF_KEY, hapticsAvailable)
     val hapticFeedback = rememberTransactionHapticFeedback(
@@ -151,15 +158,21 @@ fun TransactionCreateScreen(
             StepIndicator(state.currentStep, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             if (state.errors.isNotEmpty()) ErrorMessages(state.errors, Modifier.padding(horizontal = 16.dp))
             AnimatedContent(state.currentStep, transitionSpec = {
-                val forward = targetState.index > initialState.index
-                if (forward) {
-                    slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
+                if (reducedAnimations) {
+                    // Honor the reduced-animations preference (#3717): crossfade instead
+                    // of a directional slide for users with vestibular sensitivity.
+                    fadeIn() togetherWith fadeOut()
                 } else {
-                    slideInHorizontally { -it } togetherWith slideOutHorizontally { it }
+                    val forward = targetState.index > initialState.index
+                    if (forward) {
+                        slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
+                    } else {
+                        slideInHorizontally { -it } togetherWith slideOutHorizontally { it }
+                    }
                 }
             }, label = "step", modifier = Modifier.weight(1f).fillMaxWidth()) { step ->
                 when (step) {
-                    CreateStep.AMOUNT -> AmountStep(state, viewModel::updateAmount, viewModel::updatePayee,
+                    CreateStep.AMOUNT -> AmountStep(state, viewModel::updateAmountCents, viewModel::updatePayee,
                         viewModel::selectPayeeSuggestion, viewModel::updateTransactionType,
                         viewModel::setBnplLiabilityEnabled, viewModel::updateBnplInstallmentCount)
                     CreateStep.CATEGORY -> CategoryStep(state, viewModel::selectCategory, viewModel::selectAccount,
@@ -202,9 +215,12 @@ private fun ErrorMessages(errors: List<String>, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AmountStep(state: TransactionCreateUiState, onAmt: (String) -> Unit, onPayee: (String) -> Unit,
+private fun AmountStep(state: TransactionCreateUiState, onAmtCents: (Long) -> Unit, onPayee: (String) -> Unit,
     onSugg: (String) -> Unit, onType: (TransactionType) -> Unit,
     onBnplChanged: (Boolean) -> Unit, onInstallmentCountChanged: (String) -> Unit) {
+    val currency = state.accounts.firstOrNull { it.id == state.selectedAccountId }?.currency
+        ?: Currency.USD
+    val currencySymbol = CurrencyCatalog.get(currency.code)?.symbol ?: "$"
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item(key = "type") {
             Text("Transaction Type", style = MaterialTheme.typography.labelLarge,
@@ -226,10 +242,14 @@ private fun AmountStep(state: TransactionCreateUiState, onAmt: (String) -> Unit,
         item(key = "amount") {
             Text("Amount", style = MaterialTheme.typography.labelLarge, modifier = Modifier.semantics { heading() })
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(state.amountText, onAmt, Modifier.fillMaxWidth().semantics { contentDescription = "Amount in dollars" },
-                label = { Text("Amount") }, placeholder = { Text("0.00") },
-                leadingIcon = { Icon(Icons.Filled.AttachMoney, null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+            AmountInput(
+                amountCents = state.amountCents,
+                onAmountChange = onAmtCents,
+                currencySymbol = currencySymbol,
+                decimalPlaces = currency.decimalPlaces,
+                label = "Amount",
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         item(key = "payee") {
             Text("Payee", style = MaterialTheme.typography.labelLarge, modifier = Modifier.semantics { heading() })
