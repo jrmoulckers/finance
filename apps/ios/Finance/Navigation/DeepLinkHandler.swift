@@ -107,6 +107,12 @@ final class DeepLinkHandler {
     /// The account ID to navigate to after switching to the Accounts tab.
     private(set) var pendingAccountId: String?
 
+    /// Set when another screen (e.g. the Dashboard first-run empty state)
+    /// requests that the Accounts tab open the "add account" flow. The
+    /// Accounts screen observes this and presents the create sheet, then
+    /// calls ``consumeAccountCreationRequest()``. (#3588)
+    var requestAccountCreation = false
+
     /// The transaction ID to navigate to after switching to the Transactions tab.
     private(set) var pendingTransactionId: String?
 
@@ -236,6 +242,12 @@ final class DeepLinkHandler {
         if case .account = currentDeepLink {
             currentDeepLink = nil
         }
+    }
+
+    /// Clears the "add account" request after the Accounts screen has
+    /// presented the create flow. (#3588)
+    func consumeAccountCreationRequest() {
+        requestAccountCreation = false
     }
 
     /// Clears the pending transaction navigation after the view has consumed it.
@@ -412,5 +424,6 @@ final class DeepLinkHandler {
         hasPendingQuickEntry = false
         pendingQuickEntryAction = nil
         pendingBudgetCategoryId = nil
+        requestAccountCreation = false
     }
 }

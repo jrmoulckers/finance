@@ -14,7 +14,7 @@ struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
     @State private var showingAskFinance = false
     @State private var showingSettings = false
-    @Environment(NetworkMonitor.self) private var networkMonitor: NetworkMonitor?
+    @Environment(DeepLinkHandler.self) private var deepLinkHandler: DeepLinkHandler?
 
     init(viewModel: DashboardViewModel = DashboardViewModel(
         accountRepository: RepositoryProvider.shared.accounts,
@@ -29,12 +29,11 @@ struct DashboardView: View {
             Group {
                 if viewModel.isLoading && viewModel.accounts.isEmpty {
                     DashboardSkeletonView()
+                } else if viewModel.accounts.isEmpty {
+                    dashboardEmptyState
                 } else {
                     ScrollView {
                         VStack(spacing: FinanceSpacing.lg) {
-                            if let monitor = networkMonitor, !monitor.isConnected {
-                                OfflineBanner()
-                            }
                             netWorthCard
                             savingsRateCard
                             spendingSummaryCard
@@ -47,6 +46,7 @@ struct DashboardView: View {
                     }
                 }
             }
+            .offlineAware()
             .navigationTitle(String(localized: "Dashboard"))
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -86,6 +86,27 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - First-Run Empty State (#3588)
+
+    /// Guiding empty state shown to brand-new users who have no accounts yet.
+    ///
+    /// Replaces the wall of zero-value cards with a welcoming message and a
+    /// working "Add Account" call to action that switches to the Accounts tab
+    /// and opens the create-account flow. Fully accessible via `EmptyStateView`.
+    private var dashboardEmptyState: some View {
+        EmptyStateView(
+            systemImage: "sparkles",
+            title: String(localized: "Welcome to Finance"),
+            message: String(localized: "Add your first account to see your net worth, spending, and budget health here."),
+            actionLabel: String(localized: "Add Account"),
+            action: {
+                deepLinkHandler?.selectedTab = .accounts
+                deepLinkHandler?.requestAccountCreation = true
+            }
+        )
+        .accessibilityIdentifier("dashboard_empty_state")
+    }
+
     // MARK: - Net Worth Card
 
     private var netWorthCard: some View {
@@ -104,7 +125,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, FinanceSpacing.xl)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.xl))
+        .cardBackground(cornerRadius: FinanceSpacing.Radius.xl)
         .accessibilityIdentifier("net_worth_card")
     }
 
@@ -170,7 +191,7 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .cardBackground(cornerRadius: 16)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
@@ -218,7 +239,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.xl))
+        .cardBackground(cornerRadius: FinanceSpacing.Radius.xl)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("spending_summary_card")
         .accessibilityLabel(spendingSummaryAccessibilityLabel)
@@ -274,7 +295,7 @@ struct DashboardView: View {
         }
         .frame(width: 80)
         .padding(.vertical, FinanceSpacing.sm).padding(.horizontal, FinanceSpacing.xs)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.lg))
+        .cardBackground(cornerRadius: FinanceSpacing.Radius.lg)
         .accessibilityElement(children: .ignore)
     }
 
@@ -343,7 +364,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, FinanceSpacing.sm)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.lg))
+        .cardBackground(cornerRadius: FinanceSpacing.Radius.lg)
     }
 
     // MARK: - Recent Transactions
@@ -377,7 +398,7 @@ struct DashboardView: View {
                     }
                 }
                 .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: FinanceSpacing.Radius.xl))
+                .cardBackground(cornerRadius: FinanceSpacing.Radius.xl)
             }
         }
     }
