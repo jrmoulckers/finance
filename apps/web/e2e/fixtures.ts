@@ -82,12 +82,23 @@ function createFakeJwt(): string {
  * or returning HTML error pages that break JSON parsing.
  */
 async function installAuthMocks(page: Page): Promise<void> {
+  // Register the handlers on the browser CONTEXT, not the page. WebKit /
+  // mobile-safari occasionally start the very first `/api/auth/refresh` probe
+  // during a full-page `page.goto()` before a page-scoped `page.route()` is
+  // fully live, so that request slips through to the CI Vite preview stub,
+  // which answers 401. AuthProvider reads that as `session_expired` and hard
+  // -redirects to `/login`, interrupting the test's navigation with
+  // "Navigation to … is interrupted by another navigation to …/login". Context
+  // -level routes are installed before any page traffic and cover every
+  // navigation in the context, closing that race (#2849, #3006, #3055).
+  const context = page.context();
+
   // Catch-all for any /api/ path not explicitly mocked below.
   // Route handlers are matched LIFO, so specific handlers registered after
   // this one take priority.  This prevents unmocked requests from reaching
   // the Vite dev server (which has no backend) and returning HTML responses
   // that break JSON parsing in the app.
-  await page.route('**/api/**', async (route) => {
+  await context.route('**/api/**', async (route) => {
     await route.fulfill({
       status: 404,
       contentType: 'application/json',
@@ -96,7 +107,7 @@ async function installAuthMocks(page: Page): Promise<void> {
   });
 
   // Mock the login endpoint — returns a fake access token and user object.
-  await page.route('**/api/auth/login', async (route) => {
+  await context.route('**/api/auth/login', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -116,7 +127,7 @@ async function installAuthMocks(page: Page): Promise<void> {
   //
   // This mirrors production behaviour where an HttpOnly refresh cookie
   // persists across navigations and the refresh endpoint validates it.
-  await page.route('**/api/auth/refresh', async (route) => {
+  await context.route('**/api/auth/refresh', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -128,7 +139,7 @@ async function installAuthMocks(page: Page): Promise<void> {
   });
 
   // Mock the logout endpoint — always succeed.
-  await page.route('**/api/auth/logout', async (route) => {
+  await context.route('**/api/auth/logout', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -138,7 +149,7 @@ async function installAuthMocks(page: Page): Promise<void> {
 
   // Mock the sync push endpoint — the offline mutation replay system may
   // attempt to push queued mutations.  Return an empty acknowledged list.
-  await page.route('**/api/sync/push', async (route) => {
+  await context.route('**/api/sync/push', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -148,7 +159,7 @@ async function installAuthMocks(page: Page): Promise<void> {
 
   // Mock Supabase Edge Function sync endpoints (used when a real Supabase
   // project URL is configured via VITE_SUPABASE_URL).
-  await page.route('**/functions/v1/sync-push', async (route) => {
+  await context.route('**/functions/v1/sync-push', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -156,7 +167,7 @@ async function installAuthMocks(page: Page): Promise<void> {
     });
   });
 
-  await page.route('**/functions/v1/sync-pull', async (route) => {
+  await context.route('**/functions/v1/sync-pull', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -165,7 +176,7 @@ async function installAuthMocks(page: Page): Promise<void> {
   });
 
   // Mock Supabase passkey endpoints so they don't cause network errors.
-  await page.route('**/functions/v1/passkey-*', async (route) => {
+  await context.route('**/functions/v1/passkey-*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -264,6 +275,16 @@ export const test = base.extend<{ authenticatedPage: Page }>({
       // instead of the mocked refresh endpoint. Seed a demo session so the
       // authenticated fixture stays authenticated after page.goto() calls.
       localStorage.setItem('finance_demo_session', testUserEmail);
+
+      // Seed the cached-user record AuthProvider reads on boot
+      // (`finance.lastUser`). If a refresh probe ever resolves to a transient
+      // network error rather than a clean 200, tryRestoreSession() keeps the
+      // session alive (offline mode) instead of hard-redirecting to /login —
+      // defense-in-depth against the navigation-interrupt flake (#2849).
+      localStorage.setItem(
+        'finance.lastUser',
+        JSON.stringify({ id: 'e2e-test-user-id', email: testUserEmail, hasPasskey: false }),
+      );
     }, TEST_USER.email);
 
     // 1. Install route mocks before any navigation.
