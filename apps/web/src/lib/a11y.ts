@@ -300,3 +300,111 @@ export function getTableDescription(entityName: string, count: number, context?:
   const base = `${count} ${entityName}${plural}`;
   return context ? `${base}, ${context}` : base;
 }
+
+// ---------------------------------------------------------------------------
+// Color contrast (WCAG 1.4.3 / 1.4.11)
+// ---------------------------------------------------------------------------
+
+/**
+ * Representative surface backgrounds used to sanity-check user-picked colors
+ * when the live computed background is not readily available (e.g. custom
+ * amount colors must stay legible in both light and dark themes). See #3281.
+ */
+export const REFERENCE_BACKGROUNDS = {
+  light: '#ffffff',
+  dark: '#0f1020',
+} as const;
+
+/** WCAG AA minimum contrast ratio for normal-size text. */
+export const WCAG_AA_NORMAL_TEXT = 4.5;
+
+/**
+ * Parse a `#rgb` or `#rrggbb` hex color into 0-255 RGB channels.
+ * Returns `null` for anything that is not a valid hex color.
+ */
+export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = hex.trim().replace(/^#/, '');
+  const expanded =
+    normalized.length === 3
+      ? normalized
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : normalized;
+  if (!/^[0-9a-fA-F]{6}$/.test(expanded)) {
+    return null;
+  }
+  return {
+    r: parseInt(expanded.slice(0, 2), 16),
+    g: parseInt(expanded.slice(2, 4), 16),
+    b: parseInt(expanded.slice(4, 6), 16),
+  };
+}
+
+/**
+ * Relative luminance of an sRGB color per WCAG 2.x definition.
+ * Input channels are 0-255.
+ */
+export function relativeLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
+  const channel = (value: number): number => {
+    const c = value / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+/**
+ * WCAG contrast ratio (1�21) between two hex colors. Returns `null` if
+ * either color cannot be parsed.
+ */
+export function contrastRatio(foreground: string, background: string): number | null {
+  const fg = hexToRgb(foreground);
+  const bg = hexToRgb(background);
+  if (!fg || !bg) {
+    return null;
+  }
+  const l1 = relativeLuminance(fg);
+  const l2 = relativeLuminance(bg);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+export interface AmountColorContrastResult {
+  /** Contrast ratio against the light reference background. */
+  light: number | null;
+  /** Contrast ratio against the dark reference background. */
+  dark: number | null;
+  /** Worst (lowest) ratio across both reference backgrounds. */
+  worst: number | null;
+  /** True when the color meets WCAG AA (>= 4.5:1) on BOTH backgrounds. */
+  passesBoth: boolean;
+  /** The reference background(s) on which the color fails AA. */
+  failingBackgrounds: Array<keyof typeof REFERENCE_BACKGROUNDS>;
+}
+
+/**
+ * Evaluate a user-picked amount color against the light and dark reference
+ * backgrounds. Used to warn when a custom positive/negative/zero color would
+ * be unreadable for low-vision users (#3281).
+ */
+export function evaluateAmountColorContrast(color: string): AmountColorContrastResult {
+  const light = contrastRatio(color, REFERENCE_BACKGROUNDS.light);
+  const dark = contrastRatio(color, REFERENCE_BACKGROUNDS.dark);
+  const failingBackgrounds: Array<keyof typeof REFERENCE_BACKGROUNDS> = [];
+  if (light !== null && light < WCAG_AA_NORMAL_TEXT) {
+    failingBackgrounds.push('light');
+  }
+  if (dark !== null && dark < WCAG_AA_NORMAL_TEXT) {
+    failingBackgrounds.push('dark');
+  }
+  const ratios = [light, dark].filter((r): r is number => r !== null);
+  const worst = ratios.length > 0 ? Math.min(...ratios) : null;
+  return {
+    light,
+    dark,
+    worst,
+    passesBoth: failingBackgrounds.length === 0 && ratios.length > 0,
+    failingBackgrounds,
+  };
+}

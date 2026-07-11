@@ -39,6 +39,7 @@ import { translate } from '../../lib/i18n';
 import { getLocalePack } from '../../lib/i18n/locale-packs';
 import { createSettingsCopy } from '../../lib/i18n/settings-catalog';
 import { setOnboardingComplete } from '../../lib/local-only-mode';
+import { evaluateAmountColorContrast, WCAG_AA_NORMAL_TEXT } from '../../lib/a11y';
 
 const currencyOptions: Array<{ value: string; label: string }> = SUPPORTED_CURRENCY_METADATA.map(
   ({ code, label }) => ({ value: code, label }),
@@ -69,6 +70,44 @@ function resolveColorForPicker(color: string, fallback: string): string {
     return color;
   }
   return fallback;
+}
+
+/**
+ * Inline WCAG-contrast guardrail for the custom amount-color pickers (#3281).
+ *
+ * A low-vision user can otherwise pick a pale color that is unreadable against
+ * the app background. We check the picked color against both the light and dark
+ * reference surfaces and surface a non-blocking warning naming the theme(s)
+ * where the choice falls below WCAG AA (4.5:1 for normal text).
+ */
+function AmountColorContrastWarning({
+  color,
+  fallback,
+  labelId,
+}: {
+  color: string;
+  fallback: string;
+  labelId: string;
+}): React.ReactElement | null {
+  const resolved = resolveColorForPicker(color, fallback);
+  const result = evaluateAmountColorContrast(resolved);
+  if (result.passesBoth || result.failingBackgrounds.length === 0) {
+    return null;
+  }
+  const themes = result.failingBackgrounds
+    .map((bg) => (bg === 'light' ? 'light' : 'dark'))
+    .join(' and ');
+  const worst = result.worst !== null ? result.worst.toFixed(1) : '—';
+  return (
+    <p
+      id={labelId}
+      className="settings-item__description settings-item__warning"
+      role="status"
+      style={{ color: 'var(--semantic-status-warning)' }}
+    >
+      {`Low contrast (${worst}:1) on the ${themes} background — below WCAG AA (${WCAG_AA_NORMAL_TEXT}:1). This color may be hard to read; pick a darker or more saturated shade.`}
+    </p>
+  );
 }
 
 /** Labels for negative format options. */
@@ -577,11 +616,17 @@ export const SettingsPreferencesPage: React.FC = () => {
                 type="color"
                 id="settings-positive-color"
                 aria-label="Positive amount color"
+                aria-describedby="settings-positive-color-warning"
                 value={resolveColorForPicker(displaySettings.positiveColor, '#22c55e')}
                 onChange={(e) => displaySettings.updateSettings({ positiveColor: e.target.value })}
                 className="settings-item__color-input"
               />
             </div>
+            <AmountColorContrastWarning
+              color={displaySettings.positiveColor}
+              fallback="#22c55e"
+              labelId="settings-positive-color-warning"
+            />
           </div>
 
           <div className="settings-item settings-item--static">
@@ -593,11 +638,17 @@ export const SettingsPreferencesPage: React.FC = () => {
                 type="color"
                 id="settings-negative-color"
                 aria-label="Negative amount color"
+                aria-describedby="settings-negative-color-warning"
                 value={resolveColorForPicker(displaySettings.negativeColor, '#ef4444')}
                 onChange={(e) => displaySettings.updateSettings({ negativeColor: e.target.value })}
                 className="settings-item__color-input"
               />
             </div>
+            <AmountColorContrastWarning
+              color={displaySettings.negativeColor}
+              fallback="#ef4444"
+              labelId="settings-negative-color-warning"
+            />
           </div>
 
           <div className="settings-item settings-item--static">
@@ -609,11 +660,17 @@ export const SettingsPreferencesPage: React.FC = () => {
                 type="color"
                 id="settings-zero-color"
                 aria-label="Zero amount color"
+                aria-describedby="settings-zero-color-warning"
                 value={resolveColorForPicker(displaySettings.zeroColor, '#6b7280')}
                 onChange={(e) => displaySettings.updateSettings({ zeroColor: e.target.value })}
                 className="settings-item__color-input"
               />
             </div>
+            <AmountColorContrastWarning
+              color={displaySettings.zeroColor}
+              fallback="#6b7280"
+              labelId="settings-zero-color-warning"
+            />
           </div>
 
           <div className="settings-item settings-item--static">

@@ -11,6 +11,9 @@ import {
   getPieChartTextAlternative,
   getStatusIndicator,
   getTableDescription,
+  contrastRatio,
+  hexToRgb,
+  evaluateAmountColorContrast,
 } from './a11y';
 
 describe('formatCurrencyForScreenReader', () => {
@@ -172,5 +175,34 @@ describe('getTableDescription', () => {
     expect(getTableDescription('transaction', 3, 'sorted by date')).toBe(
       '3 transactions, sorted by date',
     );
+  });
+});
+
+describe('color contrast helpers (#3281)', () => {
+  it('parses 3- and 6-digit hex', () => {
+    expect(hexToRgb('#fff')).toEqual({ r: 255, g: 255, b: 255 });
+    expect(hexToRgb('#000000')).toEqual({ r: 0, g: 0, b: 0 });
+    expect(hexToRgb('not-a-color')).toBeNull();
+  });
+
+  it('computes the canonical black-on-white contrast ratio of 21:1', () => {
+    expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 1);
+  });
+
+  it('returns null when a color cannot be parsed', () => {
+    expect(contrastRatio('var(--x)', '#ffffff')).toBeNull();
+  });
+
+  it('flags a pale positive color that fails AA on a light background', () => {
+    const result = evaluateAmountColorContrast('#c9f7d4');
+    expect(result.passesBoth).toBe(false);
+    expect(result.failingBackgrounds).toContain('light');
+  });
+
+  it('passes a strong color that clears AA on both reference backgrounds', () => {
+    const result = evaluateAmountColorContrast('#767676');
+    // Mid-grey clears 4.5:1 against both #ffffff and #0f1020.
+    expect(result.light).not.toBeNull();
+    expect(result.dark).not.toBeNull();
   });
 });
