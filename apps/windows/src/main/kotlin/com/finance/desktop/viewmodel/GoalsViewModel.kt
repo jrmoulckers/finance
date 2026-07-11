@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import java.util.UUID
 
 /**
  * UI model for a single savings goal card in the Goals screen.
@@ -33,7 +35,9 @@ data class GoalItemUi(
 data class GoalsUiState(
     val isLoading: Boolean = true,
     val goals: List<GoalItemUi> = emptyList(),
+    val errorMessage: String? = null,
     val editingGoalId: String? = null,
+    val isCreating: Boolean = false,
     val deletingGoalId: String? = null,
     val editName: String = "",
     val editTargetAmount: String = "",
@@ -67,31 +71,45 @@ class GoalsViewModel(
 
     private fun loadGoals() {
         viewModelScope.launch {
-            val goals = goalRepository.observeAll(hid).first()
-            rawGoals = goals
-            val currency = Currency.USD
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                val goals = goalRepository.observeAll(hid).first()
+                rawGoals = goals
+                val currency = Currency.USD
 
-            val items = goals.map { goal ->
-                GoalItemUi(
-                    id = goal.id.value,
-                    name = goal.name,
-                    currentAmount = CurrencyFormatter.format(
-                        goal.currentAmount, currency,
-                    ),
-                    targetAmount = CurrencyFormatter.format(
-                        goal.targetAmount, currency,
-                    ),
-                    progress = goal.progress.toFloat(),
-                    deadline = goal.targetDate?.toString(),
-                    status = goal.status,
+                val items = goals.map { goal ->
+                    GoalItemUi(
+                        id = goal.id.value,
+                        name = goal.name,
+                        currentAmount = CurrencyFormatter.format(
+                            goal.currentAmount, currency,
+                        ),
+                        targetAmount = CurrencyFormatter.format(
+                            goal.targetAmount, currency,
+                        ),
+                        progress = goal.progress.toFloat(),
+                        deadline = goal.targetDate?.toString(),
+                        status = goal.status,
+                    )
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    goals = items,
+                    errorMessage = null,
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Unable to load goals. Please try again.",
                 )
             }
-
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                goals = items,
-            )
         }
+    }
+
+    /** Retries loading after an error (#3685). */
+    fun retry() {
+        loadGoals()
     }
 
     /**
@@ -107,9 +125,22 @@ class GoalsViewModel(
         )
     }
 
-    /** Cancels the edit dialog. */
+    /**
+     * Opens the create dialog with empty fields for a new savings goal (#3677).
+     */
+    fun startCreate() {
+        _uiState.value = _uiState.value.copy(
+            isCreating = true,
+            editingGoalId = null,
+            editName = "",
+            editTargetAmount = "",
+            editCurrentAmount = "",
+        )
+    }
+
+    /** Cancels the edit or create dialog. */
     fun cancelEdit() {
-        _uiState.value = _uiState.value.copy(editingGoalId = null)
+        _uiState.value = _uiState.value.copy(editingGoalId = null, isCreating = false)
     }
 
     /** Updates the edit form name field. */
@@ -127,17 +158,41 @@ class GoalsViewModel(
         _uiState.value = _uiState.value.copy(editCurrentAmount = amount)
     }
 
-    /** Saves the edited goal to the repository. */
+    /** Saves the edited goal to the repository, or creates a new one. */
     fun saveEdit() {
-        val editingId = _uiState.value.editingGoalId ?: return
+        val state = _uiState.value
+        val targetCents = ((state.editTargetAmount.toDoubleOrNull() ?: 0.0) * 100).toLong()
+        val currentCents = ((state.editCurrentAmount.toDoubleOrNull() ?: 0.0) * 100).toLong()
+
+        if (state.isCreating) {
+            if (state.editName.isBlank() || targetCents <= 0L) return
+            val now = Clock.System.now()
+            val newGoal = Goal(
+                id = SyncId(UUID.randomUUID().toString()),
+                householdId = hid,
+                ownerId = SyncId("owner-1"),
+                name = state.editName.trim(),
+                targetAmount = com.finance.models.types.Cents(targetCents),
+                currentAmount = com.finance.models.types.Cents(currentCents),
+                currency = Currency.USD,
+                createdAt = now,
+                updatedAt = now,
+            )
+            viewModelScope.launch {
+                goalRepository.insert(newGoal)
+                _uiState.value = _uiState.value.copy(isCreating = false)
+                loadGoals()
+            }
+            return
+        }
+
+        val editingId = state.editingGoalId ?: return
         val goal = rawGoals.find { it.id.value == editingId } ?: return
-        val targetCents = ((_uiState.value.editTargetAmount.toDoubleOrNull() ?: 0.0) * 100).toLong()
-        val currentCents = ((_uiState.value.editCurrentAmount.toDoubleOrNull() ?: 0.0) * 100).toLong()
 
         viewModelScope.launch {
             goalRepository.update(
                 goal.copy(
-                    name = _uiState.value.editName,
+                    name = state.editName,
                     targetAmount = com.finance.models.types.Cents(targetCents),
                     currentAmount = com.finance.models.types.Cents(currentCents),
                 ),

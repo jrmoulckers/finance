@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finance.core.budget.BudgetHealth
+import com.finance.desktop.components.ListErrorState
 import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.BudgetItemUi
@@ -103,6 +104,16 @@ fun BudgetsScreen(modifier: Modifier = Modifier) {
                 },
             )
         }
+        return
+    }
+
+    if (state.errorMessage != null) {
+        ListErrorState(
+            message = state.errorMessage!!,
+            onRetry = { viewModel.retry() },
+            title = "Couldn't load budgets",
+            modifier = modifier,
+        )
         return
     }
 
