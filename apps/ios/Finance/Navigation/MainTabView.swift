@@ -19,6 +19,10 @@ struct MainTabView: View {
     /// (e.g. deep links) to switch tabs programmatically.
     @Binding var selectedTab: Tab
 
+    // Low-noise mode: optional tabs the user can hide. (#2122)
+    @AppStorage(FeatureVisibility.budgetsTabKey) private var showBudgetsTab = true
+    @AppStorage(FeatureVisibility.goalsTabKey) private var showGoalsTab = true
+
     init(selectedTab: Binding<Tab> = .constant(.dashboard)) {
         _selectedTab = selectedTab
     }
@@ -79,25 +83,29 @@ struct MainTabView: View {
                 .accessibilityLabel(Tab.transactions.title)
                 .accessibilityHint(String(localized: "Shows all your transactions"))
 
-            BudgetsView()
-                .tabItem {
-                    IconView(Tab.budgets.iconToken)
-                    Text(Tab.budgets.title)
-                }
-                .tag(Tab.budgets)
-                .accessibilityIdentifier("tab_budgets")
-                .accessibilityLabel(Tab.budgets.title)
-                .accessibilityHint(String(localized: "Shows your budget categories and spending"))
+            if showBudgetsTab {
+                BudgetsView()
+                    .tabItem {
+                        IconView(Tab.budgets.iconToken)
+                        Text(Tab.budgets.title)
+                    }
+                    .tag(Tab.budgets)
+                    .accessibilityIdentifier("tab_budgets")
+                    .accessibilityLabel(Tab.budgets.title)
+                    .accessibilityHint(String(localized: "Shows your budget categories and spending"))
+            }
 
-            GoalsView()
-                .tabItem {
-                    IconView(Tab.goals.iconToken)
-                    Text(Tab.goals.title)
-                }
-                .tag(Tab.goals)
-                .accessibilityIdentifier("tab_goals")
-                .accessibilityLabel(Tab.goals.title)
-                .accessibilityHint(String(localized: "Shows your financial goals and progress"))
+            if showGoalsTab {
+                GoalsView()
+                    .tabItem {
+                        IconView(Tab.goals.iconToken)
+                        Text(Tab.goals.title)
+                    }
+                    .tag(Tab.goals)
+                    .accessibilityIdentifier("tab_goals")
+                    .accessibilityLabel(Tab.goals.title)
+                    .accessibilityHint(String(localized: "Shows your financial goals and progress"))
+            }
         }
     }
 }
