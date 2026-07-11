@@ -278,7 +278,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Reachability preflight (#2794): turn a cryptic ~4s SSH fast-fail on a
+          # stale/unreachable DEPLOY_HOST into a clear, actionable diagnostic, and
+          # populate known_hosts for the BatchMode ssh below.
+          bash tools/deploy/ssh-preflight.sh "$DEPLOY_HOST" "${DEPLOY_PORT:-22}"
 
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
             echo "::error::SUPABASE_URL and SUPABASE_ANON_KEY secrets are required for staging web builds"
@@ -291,7 +295,8 @@ jobs:
           BETA_ALLOWED_EMAILS_B64=$(printf '%s' "$BETA_ALLOWED_EMAILS" | base64 -w 0)
           SENTRY_DSN_B64=$(printf '%s' "$SENTRY_DSN" | base64 -w 0)
 
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=6 "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' BETA_ALLOWED_EMAILS_B64='$BETA_ALLOWED_EMAILS_B64' SENTRY_DSN_B64='$SENTRY_DSN_B64' TARGET_SHA='$TARGET_SHA' SHA_SHORT='$SHA_SHORT' bash -s" <<'DEPLOY'
             set -euo pipefail
             case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac  # quote ~ for a literal strip (an unquoted ~ tilde-expands to $HOME and corrupts the path)
@@ -351,12 +356,15 @@ jobs:
             mkdir -p ~/.ssh
             echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
             chmod 600 ~/.ssh/deploy_key
-            ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+            # Best-effort preflight (#2794): keep monitoring verification soft, so
+            # an unreachable host degrades to a warning instead of failing the job.
+            bash tools/deploy/ssh-preflight.sh "$DEPLOY_HOST" "${DEPLOY_PORT:-22}" || true
           fi
 
           SENTRY_DSN_B64=$(printf '%s' "$SENTRY_DSN" | base64 -w 0)
 
-          if ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+          if ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=6 "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' SENTRY_DSN_B64='$SENTRY_DSN_B64' bash -s" <<'VERIFY'
             set -euo pipefail
             case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac  # quote ~ for a literal strip (an unquoted ~ tilde-expands to $HOME and corrupts the path)
@@ -420,14 +428,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Reachability preflight (#2794): a stale/rotated DEPLOY_HOST or a downed
+          # VM otherwise fails this step in ~4s with a cryptic SSH error that looks
+          # like a code bug. Probe first and emit an actionable diagnostic instead.
+          bash tools/deploy/ssh-preflight.sh "$DEPLOY_HOST" "${DEPLOY_PORT:-22}"
 
           # Deploy via SSH: reset to the exact green SHA, rebuild containers, reload Caddy.
           # Note: deliberately NOT `set -e` — historical behaviour tolerates
           # transient compose healthcheck flakes (e.g. rest container reporting
           # unhealthy momentarily during startup); failing the deploy on those
           # would be a regression.
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=6 "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' TARGET_SHA='$TARGET_SHA' bash -s" <<'DEPLOY'
             set -u
             case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac  # quote ~ for a literal strip (an unquoted ~ tilde-expands to $HOME and corrupts the path)
