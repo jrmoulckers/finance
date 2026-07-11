@@ -123,8 +123,55 @@ struct PredictionChart: View {
             .drawingGroup()
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "Spending forecast chart with predictions"))
+
+            ChartDataTable(
+                summary: forecastSummary,
+                rows: forecastRows,
+                tableLabel: String(localized: "Forecast data table")
+            )
         }
         .padding()
+    }
+
+    // MARK: - Text Alternative (#2113)
+
+    /// Spoken summary of the history and forecast ranges for VoiceOver users.
+    private var forecastSummary: String {
+        guard !historicalData.isEmpty || !predictions.isEmpty else {
+            return String(localized: "No forecast data available.")
+        }
+        var parts: [String] = []
+        if let firstH = historicalData.first, let lastH = historicalData.last {
+            parts.append(String(localized: "History from \(formattedDate(firstH.date)) to \(formattedDate(lastH.date)), latest \(formattedCurrency(lastH.value))."))
+        }
+        if let firstP = predictions.first, let lastP = predictions.last {
+            let firstVal = formattedCurrency(Double(firstP.predictedMinorUnits) / 100.0)
+            let lastVal = formattedCurrency(Double(lastP.predictedMinorUnits) / 100.0)
+            parts.append(String(localized: "Forecast from \(formattedDate(firstP.date)) to \(formattedDate(lastP.date)), predicted \(firstVal) to \(lastVal)."))
+        }
+        return parts.joined(separator: " ")
+    }
+
+    /// Historical points followed by predicted points (with confidence range),
+    /// in the same order as the chart. (#2113)
+    private var forecastRows: [ChartDataRow] {
+        var rows = historicalData.map { point in
+            ChartDataRow(label: formattedDate(point.date), value: formattedCurrency(point.value))
+        }
+        rows += predictions.map { prediction in
+            let predicted = formattedCurrency(Double(prediction.predictedMinorUnits) / 100.0)
+            let lower = formattedCurrency(Double(prediction.lowerBoundMinorUnits) / 100.0)
+            let upper = formattedCurrency(Double(prediction.upperBoundMinorUnits) / 100.0)
+            return ChartDataRow(
+                label: String(localized: "\(formattedDate(prediction.date)) (predicted)"),
+                value: String(localized: "\(predicted), range \(lower) to \(upper)")
+            )
+        }
+        return rows
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        date.formatted(.dateTime.month(.abbreviated).day())
     }
 
     // MARK: - Helpers

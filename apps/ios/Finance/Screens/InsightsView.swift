@@ -129,8 +129,7 @@ struct InsightsView: View {
             Text(value)
                 .font(.title3)
                 .fontWeight(.semibold)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(title)
                 .font(.caption)
@@ -179,6 +178,12 @@ struct InsightsView: View {
                 .accessibilityLabel(String(localized: "Spending breakdown chart"))
                 .accessibilityHint(String(localized: "Shows spending distribution across categories"))
 
+                Text(spendingBreakdownSummary(summary))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(spendingBreakdownSummary(summary))
+
                 // Legend
                 ForEach(summary.spendingBreakdown) { item in
                     HStack(spacing: 8) {
@@ -214,6 +219,22 @@ struct InsightsView: View {
                 }
             }
         }
+    }
+
+    /// Spoken summary of the spending breakdown (total and largest category)
+    /// so VoiceOver users get the gist before browsing the per-category list.
+    /// (#2113)
+    private func spendingBreakdownSummary(_ summary: InsightsSummary) -> String {
+        let items = summary.spendingBreakdown
+        guard !items.isEmpty else {
+            return String(localized: "No spending data available.")
+        }
+        let total = items.reduce(Int64(0)) { $0 + $1.amountMinorUnits }
+        let totalText = viewModel.formatCurrency(total)
+        if let largest = items.max(by: { $0.amountMinorUnits < $1.amountMinorUnits }) {
+            return String(localized: "Spending across \(items.count) categories totalling \(totalText). Largest: \(largest.categoryName) at \(viewModel.formatCurrency(largest.amountMinorUnits)), \(String(format: "%.1f", largest.percentOfTotal)) percent.")
+        }
+        return String(localized: "Spending across \(items.count) categories totalling \(totalText).")
     }
 
     // MARK: - Trend Chart
