@@ -95,6 +95,7 @@ struct InvestmentPortfolioView: View {
                     Text(String(localized: "Total Gain/Loss"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    GainLossBadge(state: portfolio.gainLossState)
                     CurrencyLabel(
                         amountInMinorUnits: portfolio.totalGainLossMinorUnits,
                         currencyCode: portfolio.currencyCode,
@@ -117,7 +118,7 @@ struct InvestmentPortfolioView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Portfolio summary"))
         .accessibilityValue(
@@ -185,7 +186,7 @@ struct InvestmentPortfolioView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     // MARK: - Asset Allocation
@@ -228,7 +229,7 @@ struct InvestmentPortfolioView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     // MARK: - Holdings List
@@ -287,7 +288,7 @@ struct InvestmentPortfolioView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .cardBackground(cornerRadius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(holding.symbol), \(holding.name)")
         .accessibilityValue(
