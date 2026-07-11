@@ -41,6 +41,7 @@ import com.finance.android.ui.components.IconPreferenceManager
 import com.finance.android.ui.expertise.ExpertiseTierManager
 import com.finance.android.ui.expertise.ExpertiseTierViewModel
 import com.finance.android.ui.learning.LearningPathViewModel
+import com.finance.android.ui.learning.LearningProgressRepository
 import com.finance.android.ui.nlp.NlpTransactionViewModel
 import com.finance.android.ui.streak.StreakRepository
 import com.finance.android.ui.streak.StreakViewModel
@@ -165,6 +166,9 @@ val appModule = module {
     /** Expertise tier manager — persists and provides the user's skill level (#379). */
     single { ExpertiseTierManager(get()) }
 
+    /** Learning progress repository — persists lessons, streak and rewards (#2208). */
+    single { LearningProgressRepository(get()) }
+
     // ── Streak tracking ───────────────────────────────────────────────
 
     /** Streak repository — derives logging dates from the transaction repository. */
@@ -221,7 +225,7 @@ val appModule = module {
     viewModelOf(::NotificationSettingsViewModel)
     viewModelOf(::AffordabilityViewModel)
     viewModelOf(::ExpertiseTierViewModel)
-    viewModelOf(::LearningPathViewModel)
+    viewModel { LearningPathViewModel(get(), get()) }
     viewModelOf(::NlpTransactionViewModel)
 
     /** On-device receipt scanning to transaction draft (#2388). */

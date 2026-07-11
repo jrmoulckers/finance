@@ -25,19 +25,22 @@ data class FinanceSemanticColors(
     val warning: Color,
 )
 
-// Design-token references. Light and dark currently resolve to the same values so
-// existing golden snapshots stay pixel-identical; dedicated dark-mode contrast
-// tuning is tracked as a separate issue.
-private val IncomeGreen = Color(0xFF2E7D32)
+// Design-token references. Light and dark resolve to distinct income greens so
+// the positive-money color keeps WCAG 2.2 AA contrast on each surface:
+//   - Light: Green 800 (0xFF2E7D32) on near-white surfaces.
+//   - Dark:  Green 400 (0xFF4ADE80) on near-black surfaces (Neutral950 ≈ #030712),
+//     where the darker Green 800 dropped below the 4.5:1 text / 3:1 UI threshold (#3731).
+private val IncomeGreenLight = Color(0xFF2E7D32)
+private val IncomeGreenDark = Green400
 private val WarningOrange = Color(0xFFFF9800)
 
 internal val LightFinanceColors = FinanceSemanticColors(
-    income = IncomeGreen,
+    income = IncomeGreenLight,
     warning = WarningOrange,
 )
 
 internal val DarkFinanceColors = FinanceSemanticColors(
-    income = IncomeGreen,
+    income = IncomeGreenDark,
     warning = WarningOrange,
 )
 

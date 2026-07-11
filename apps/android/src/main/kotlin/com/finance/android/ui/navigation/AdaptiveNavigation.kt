@@ -4,25 +4,26 @@
 
 package com.finance.android.ui.navigation
 
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
 /**
  * Navigation layout style determined by the current window width.
  *
  * - **BottomBar:** Used for compact widths (phones in portrait).
- *   Material 3 [NavigationBar] at the bottom of the screen.
+ *   Material 3 [androidx.compose.material3.NavigationBar] at the bottom of the
+ *   screen.
  *
- * - **ModalDrawer:** Used for medium and expanded widths (tablets, landscape,
- *   foldables). Material 3 [ModalNavigationDrawer] for richer navigation.
+ * - **NavigationRail:** Used for medium widths (large phones in landscape, small
+ *   tablets, unfolded foldables). Material 3
+ *   [androidx.compose.material3.NavigationRail] keeps primary destinations
+ *   visible on the leading edge instead of hiding them behind a hamburger.
  *
- * This follows the Material 3 adaptive layout guidelines:
+ * - **ModalDrawer:** Used for expanded widths (large tablets, desktop). Material 3
+ *   [androidx.compose.material3.ModalNavigationDrawer] surfaces richer
+ *   navigation with labels.
+ *
+ * This follows the Material 3 adaptive layout guidelines
+ * (Compact → bottom bar, Medium → rail, Expanded → drawer):
  * @see <a href="https://m3.material.io/foundations/layout/applying-layout/compact">
  *   Material 3 Adaptive Layout</a>
  */
@@ -30,7 +31,10 @@ enum class NavigationLayoutType {
     /** Phone portrait — bottom navigation bar. */
     BottomBar,
 
-    /** Tablet / landscape — modal navigation drawer. */
+    /** Large phone landscape / small tablet / foldable — navigation rail. */
+    NavigationRail,
+
+    /** Large tablet / desktop — modal navigation drawer. */
     ModalDrawer,
 }
 
@@ -44,5 +48,6 @@ fun resolveNavigationLayout(
     windowWidthSizeClass: WindowWidthSizeClass,
 ): NavigationLayoutType = when (windowWidthSizeClass) {
     WindowWidthSizeClass.Compact -> NavigationLayoutType.BottomBar
+    WindowWidthSizeClass.Medium -> NavigationLayoutType.NavigationRail
     else -> NavigationLayoutType.ModalDrawer
 }

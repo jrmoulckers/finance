@@ -30,6 +30,21 @@ enum class FinancialConcept {
     DIVERSIFICATION,
     RECURRING_EXPENSE,
     TRANSACTION_CATEGORY,
+
+    // ── US newcomer basics (#2178) ──────────────────────────────────
+    W2,
+    FORM_1099,
+    TAX_WITHHOLDING,
+    RETIREMENT_401K,
+    ITIN,
+
+    // ── Credit building basics (#2174) ──────────────────────────────
+    FICO_SCORE,
+    CREDIT_UTILIZATION,
+    STATEMENT_VS_DUE_DATE,
+    HARD_INQUIRY,
+    CREDIT_REPORT,
+    SECURED_CARD,
 }
 
 /**
@@ -151,6 +166,65 @@ object FinancialConceptContent {
             title = "Transaction Category",
             shortDescription = "A label that groups similar expenses together, like 'Groceries' or 'Transport'.",
             learnMoreText = "Categorising transactions helps you see where your money goes and set more accurate budgets.",
+        ),
+
+        // ── US newcomer basics (#2178) ──────────────────────────────────
+        FinancialConcept.W2 to ConceptInfo(
+            title = "W-2 Employee",
+            shortDescription = "A W-2 job means an employer pays you and takes taxes out of each paycheck for you.",
+            learnMoreText = "At tax time your employer sends a W-2 form summarising what you earned and what tax was already withheld. Most salaried and hourly jobs are W-2. You usually do not need to set money aside yourself for these taxes.",
+        ),
+        FinancialConcept.FORM_1099 to ConceptInfo(
+            title = "1099 / Contract Income",
+            shortDescription = "1099 work (gig, freelance, contract) pays you the full amount with no taxes taken out.",
+            learnMoreText = "Because nothing is withheld, you are responsible for setting aside money for taxes yourself — a common rule of thumb is to save 25-30% of 1099 pay. You may report it on a 1099 form at tax time. Many newcomers mix W-2 and 1099 income.",
+        ),
+        FinancialConcept.TAX_WITHHOLDING to ConceptInfo(
+            title = "Withholding",
+            shortDescription = "The part of your paycheck an employer sends to the government for taxes before you get paid.",
+            learnMoreText = "Withholding is a prepayment of your income tax. If too much is withheld you get a refund; if too little, you may owe at tax time. Hourly and seasonal workers can see withholding change as their hours change.",
+        ),
+        FinancialConcept.RETIREMENT_401K to ConceptInfo(
+            title = "401(k)",
+            shortDescription = "A workplace savings account for retirement that can lower your taxes today.",
+            learnMoreText = "You contribute part of each paycheck and it grows over time. Some employers add a matching contribution — money you should try not to leave on the table. You do not need to understand investing deeply to start; even a small percentage helps.",
+        ),
+        FinancialConcept.ITIN to ConceptInfo(
+            title = "ITIN",
+            shortDescription = "A tax ID number for people who need to file US taxes but cannot get a Social Security Number yet.",
+            learnMoreText = "An Individual Taxpayer Identification Number (ITIN) lets you file taxes, and some banks and lenders accept it to open accounts or build credit. Having an ITIN instead of an SSN does not stop you from budgeting, saving, or learning US finance basics.",
+        ),
+
+        // ── Credit building basics (#2174) ──────────────────────────────
+        FinancialConcept.FICO_SCORE to ConceptInfo(
+            title = "FICO / Credit Score",
+            shortDescription = "A number (about 300-850) that lenders use to judge how reliably you repay borrowed money.",
+            learnMoreText = "It is built mostly from paying on time and keeping balances low. Newcomers usually start with no score at all — that is normal, and it grows with a few months of on-time payments. You do not need to pay to build it.",
+        ),
+        FinancialConcept.CREDIT_UTILIZATION to ConceptInfo(
+            title = "Credit Utilization",
+            shortDescription = "How much of your credit limit you are using right now, shown as a percentage.",
+            learnMoreText = "If your limit is $200 and you owe $60, utilization is 30%. Keeping it under about 30% (lower is better) helps your credit score. Paying the balance down before the statement date keeps reported utilization low.",
+        ),
+        FinancialConcept.STATEMENT_VS_DUE_DATE to ConceptInfo(
+            title = "Statement Date vs Due Date",
+            shortDescription = "The statement date closes your billing cycle; the due date is when payment must arrive.",
+            learnMoreText = "The balance reported to credit bureaus is usually the one on the statement date, so paying before then lowers reported utilization. Always pay at least the minimum by the due date to avoid late fees and score damage.",
+        ),
+        FinancialConcept.HARD_INQUIRY to ConceptInfo(
+            title = "Hard Inquiry",
+            shortDescription = "A check on your credit that happens when you apply for a card or loan.",
+            learnMoreText = "Each hard inquiry can lower your score slightly for a short time, so avoid applying for many cards at once. Checking your own credit is a 'soft' inquiry and does not hurt your score.",
+        ),
+        FinancialConcept.CREDIT_REPORT to ConceptInfo(
+            title = "Credit Report",
+            shortDescription = "A detailed record of your accounts, balances, and payment history kept by credit bureaus.",
+            learnMoreText = "You can review it free once a year from each major bureau. Checking it helps you catch errors or fraud early. It is separate from your score, which is calculated from the report.",
+        ),
+        FinancialConcept.SECURED_CARD to ConceptInfo(
+            title = "Secured Credit Card",
+            shortDescription = "A starter credit card backed by a refundable deposit you pay up front.",
+            learnMoreText = "The deposit usually becomes your credit limit, which lowers the lender's risk so approval is easier with no credit history. Using a small amount and paying on time builds credit; many secured cards later 'graduate' to a regular card and return your deposit.",
         ),
     )
 }

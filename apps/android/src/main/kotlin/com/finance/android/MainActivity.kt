@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -17,8 +18,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PermanentDrawerSheet
+import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -35,6 +41,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.util.Consumer
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.finance.android.auth.AuthState
@@ -49,8 +56,12 @@ import com.finance.android.ui.components.IconView
 import com.finance.android.ui.components.LocalIconPack
 import com.finance.android.ui.navigation.FinanceBottomBar
 import com.finance.android.ui.navigation.FinanceNavHost
+import com.finance.android.ui.navigation.FinanceNavigationRail
 import com.finance.android.ui.navigation.FinanceTopBar
+import com.finance.android.ui.navigation.NavigationLayoutType
 import com.finance.android.ui.navigation.Route
+import com.finance.android.ui.navigation.TopLevelDestination
+import com.finance.android.ui.navigation.resolveNavigationLayout
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.theme.ThemePreference
 import com.finance.android.ui.theme.ThemePreferenceManager
@@ -70,6 +81,7 @@ class MainActivity : ComponentActivity() {
     private val themePreferenceManager: ThemePreferenceManager by inject()
     private val iconPreferenceManager: IconPreferenceManager by inject()
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -84,9 +96,11 @@ class MainActivity : ComponentActivity() {
             val highContrast by themePreferenceManager.highContrastEnabled.collectAsState()
             val iconPack by iconPreferenceManager.iconPack.collectAsState()
 
+            val windowSizeClass = calculateWindowSizeClass(this)
+
             FinanceTheme(darkTheme = darkTheme, highContrast = highContrast) {
                 CompositionLocalProvider(LocalIconPack provides iconPack) {
-                    FinanceApp()
+                    FinanceApp(widthSizeClass = windowSizeClass.widthSizeClass)
                 }
             }
         }
@@ -110,7 +124,10 @@ class MainActivity : ComponentActivity() {
  * retains the full navigation shell.
  */
 @Composable
-fun FinanceApp(modifier: Modifier = Modifier) {
+fun FinanceApp(
+    modifier: Modifier = Modifier,
+    widthSizeClass: WindowWidthSizeClass = WindowWidthSizeClass.Compact,
+) {
     val authViewModel: AuthViewModel = koinViewModel()
     val authState by authViewModel.authState.collectAsState()
     var showSignup by rememberSaveable { mutableStateOf(false) }
@@ -149,7 +166,7 @@ fun FinanceApp(modifier: Modifier = Modifier) {
             }
         }
         is AuthState.Authenticated -> {
-            AuthenticatedContent(modifier = modifier)
+            AuthenticatedContent(widthSizeClass = widthSizeClass, modifier = modifier)
         }
     }
 }
@@ -184,12 +201,18 @@ private fun AuthLoadingScreen(modifier: Modifier = Modifier) {
 /**
  * Main app content shown after successful authentication.
  *
- * Provides [Scaffold] with the top bar, bottom navigation, FAB,
- * and [FinanceNavHost]. Deep link intents are forwarded to the
- * nav controller for routing.
+ * Adapts the navigation shell to the available window width (#3713):
+ * - **Compact** → [FinanceBottomBar] at the bottom.
+ * - **Medium** → [FinanceNavigationRail] on the leading edge.
+ * - **Expanded** → a [PermanentNavigationDrawer] with labelled destinations.
+ *
+ * Deep link intents are forwarded to the nav controller for routing.
  */
 @Composable
-private fun AuthenticatedContent(modifier: Modifier = Modifier) {
+private fun AuthenticatedContent(
+    widthSizeClass: WindowWidthSizeClass,
+    modifier: Modifier = Modifier,
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -214,14 +237,110 @@ private fun AuthenticatedContent(modifier: Modifier = Modifier) {
         Route.Transactions.route,
     )
 
-    // Show bottom bar only on top-level destinations
-    val showBottomBar = currentRoute in setOf(
+    // Only surface side/bottom navigation on top-level destinations.
+    val isTopLevel = currentRoute in setOf(
         Route.Dashboard.route,
         Route.Transactions.route,
         Route.Planning.route,
         Route.Settings.route,
     )
 
+    val layout = resolveNavigationLayout(widthSizeClass)
+
+    when {
+        isTopLevel && layout == NavigationLayoutType.NavigationRail -> {
+            Row(modifier = modifier.fillMaxSize()) {
+                FinanceNavigationRail(navController = navController)
+                AppScaffold(
+                    navController = navController,
+                    showBottomBar = false,
+                    showFab = showFab,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        isTopLevel && layout == NavigationLayoutType.ModalDrawer -> {
+            PermanentNavigationDrawer(
+                modifier = modifier.fillMaxSize(),
+                drawerContent = {
+                    PermanentDrawerSheet {
+                        FinancePermanentDrawerItems(
+                            navController = navController,
+                            currentRoute = currentRoute,
+                        )
+                    }
+                },
+            ) {
+                AppScaffold(
+                    navController = navController,
+                    showBottomBar = false,
+                    showFab = showFab,
+                )
+            }
+        }
+        else -> {
+            AppScaffold(
+                navController = navController,
+                showBottomBar = isTopLevel,
+                showFab = showFab,
+                modifier = modifier,
+            )
+        }
+    }
+}
+
+/**
+ * Labelled destination list rendered inside the expanded-width
+ * [PermanentNavigationDrawer]. Mirrors [TopLevelDestination] so navigation
+ * stays consistent across window sizes.
+ */
+@Composable
+private fun FinancePermanentDrawerItems(
+    navController: androidx.navigation.NavHostController,
+    currentRoute: String?,
+) {
+    Text(
+        text = "Finance",
+        style = MaterialTheme.typography.headlineSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(horizontal = 28.dp, vertical = 24.dp)
+            .semantics { contentDescription = "Finance application menu" },
+    )
+    TopLevelDestination.entries.forEach { destination ->
+        val selected = currentRoute == destination.route
+        androidx.compose.material3.NavigationDrawerItem(
+            icon = { IconView(token = destination.iconToken) },
+            label = { Text(text = destination.label) },
+            selected = selected,
+            onClick = {
+                navController.navigate(destination.route) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
+            modifier = Modifier
+                .padding(androidx.compose.material3.NavigationDrawerItemDefaults.ItemPadding)
+                .semantics { contentDescription = destination.a11yDescription },
+        )
+    }
+}
+
+/**
+ * Shared [Scaffold] hosting the top bar, optional bottom bar, FAB, and the
+ * [FinanceNavHost]. Reused across every adaptive navigation layout so the app
+ * chrome stays identical whether navigation is a bottom bar, rail, or drawer.
+ */
+@Composable
+private fun AppScaffold(
+    navController: androidx.navigation.NavHostController,
+    showBottomBar: Boolean,
+    showFab: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = { FinanceTopBar(navController = navController) },

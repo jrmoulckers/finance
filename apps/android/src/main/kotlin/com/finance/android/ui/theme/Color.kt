@@ -39,6 +39,7 @@ val Teal900 = Color(0xFF134E4A)
 
 // region Primitive — Green
 val Green50 = Color(0xFFF0FDF4)
+val Green400 = Color(0xFF4ADE80)
 val Green500 = Color(0xFF22C55E)
 val Green600 = Color(0xFF16A34A)
 val Green700 = Color(0xFF15803D)
