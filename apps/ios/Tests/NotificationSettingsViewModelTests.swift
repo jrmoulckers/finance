@@ -204,6 +204,99 @@ final class NotificationSettingsViewModelTests: XCTestCase {
         vm.dismissError()
         XCTAssertFalse(vm.showError)
     }
+
+    // MARK: - Alert Center: Quiet Hours & Threshold (#2163)
+
+    @MainActor
+    private func makeViewModelWithDefaults(
+        suiteName: String
+    ) -> (NotificationSettingsViewModel, UserDefaults) {
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        let vm = NotificationSettingsViewModel(
+            scheduler: StubNotificationScheduler(),
+            budgetRepository: StubBudgetRepository(),
+            transactionRepository: StubTransactionRepository(),
+            goalRepository: StubGoalRepository(),
+            defaults: defaults
+        )
+        return (vm, defaults)
+    }
+
+    @MainActor
+    func testQuietHoursDefaults() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "quiet.defaults")
+        defer { defaults.removePersistentDomain(forName: "quiet.defaults") }
+
+        XCTAssertFalse(vm.quietHoursEnabled)
+        XCTAssertEqual(vm.quietHoursStartHour, 22)
+        XCTAssertEqual(vm.quietHoursEndHour, 7)
+    }
+
+    @MainActor
+    func testQuietHoursPersist() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "quiet.persist")
+        defer { defaults.removePersistentDomain(forName: "quiet.persist") }
+
+        vm.quietHoursEnabled = true
+        vm.quietHoursStartHour = 21
+        vm.quietHoursEndHour = 6
+
+        let vm2 = NotificationSettingsViewModel(
+            scheduler: StubNotificationScheduler(),
+            budgetRepository: StubBudgetRepository(),
+            transactionRepository: StubTransactionRepository(),
+            goalRepository: StubGoalRepository(),
+            defaults: defaults
+        )
+        XCTAssertTrue(vm2.quietHoursEnabled)
+        XCTAssertEqual(vm2.quietHoursStartHour, 21)
+        XCTAssertEqual(vm2.quietHoursEndHour, 6)
+    }
+
+    @MainActor
+    func testQuietHoursWrapAroundMidnight() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "quiet.wrap")
+        defer { defaults.removePersistentDomain(forName: "quiet.wrap") }
+
+        vm.quietHoursEnabled = true
+        vm.quietHoursStartHour = 22
+        vm.quietHoursEndHour = 7
+
+        XCTAssertTrue(vm.isWithinQuietHours(hour: 23))
+        XCTAssertTrue(vm.isWithinQuietHours(hour: 2))
+        XCTAssertFalse(vm.isWithinQuietHours(hour: 12))
+    }
+
+    @MainActor
+    func testQuietHoursDisabledNeverMatches() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "quiet.off")
+        defer { defaults.removePersistentDomain(forName: "quiet.off") }
+
+        vm.quietHoursEnabled = false
+        XCTAssertFalse(vm.isWithinQuietHours(hour: 3))
+    }
+
+    @MainActor
+    func testSetBudgetThresholdUpdatesSchedule() async {
+        let scheduler = StubNotificationScheduler()
+        let (vm, _) = makeViewModel(scheduler: scheduler)
+
+        await vm.setBudgetThreshold(90)
+
+        XCTAssertEqual(vm.budgetThresholdPercent, 90)
+    }
+
+    @MainActor
+    func testBudgetThresholdOptions() {
+        XCTAssertEqual(NotificationSettingsViewModel.budgetThresholdOptions, [75, 90, 100])
+    }
+
+    @MainActor
+    func testStateSummaryReflectsEnabledCount() {
+        let (vm, _) = makeViewModel()
+        XCTAssertTrue(vm.stateSummary.contains("\(vm.enabledScheduleCount)"))
+    }
 }
 
 // MARK: - Notification Model Tests

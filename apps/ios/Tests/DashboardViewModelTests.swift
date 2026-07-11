@@ -230,4 +230,46 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertEqual(vm.recentTransactions.count, 5,
                        "Dashboard should show at most 5 recent transactions")
     }
+
+    // MARK: - Net Worth Trend (#2116)
+
+    @MainActor
+    func testNetWorthTrendPointsEndAtCurrentNetWorth() async {
+        let vm = makeDashboardVM()
+
+        await vm.loadDashboard()
+
+        XCTAssertTrue(vm.hasNetWorthTrend)
+        XCTAssertFalse(vm.netWorthTrendPoints.isEmpty)
+        XCTAssertEqual(vm.netWorthTrendPoints.last?.valueMinorUnits, vm.netWorth)
+    }
+
+    @MainActor
+    func testNetWorthTrendRangeControlsPointCount() async {
+        let vm = makeDashboardVM()
+        await vm.loadDashboard()
+
+        vm.netWorthTrendRange = .threeMonths
+        XCTAssertEqual(vm.netWorthTrendPoints.count, 3)
+
+        vm.netWorthTrendRange = .oneYear
+        XCTAssertEqual(vm.netWorthTrendPoints.count, 12)
+    }
+
+    @MainActor
+    func testNetWorthProjectionExtendsFromHistory() async {
+        let vm = makeDashboardVM()
+        await vm.loadDashboard()
+
+        XCTAssertEqual(vm.netWorthProjectionPoints.count, 12)
+        XCTAssertTrue(vm.netWorthProjectionPoints.allSatisfy(\.isProjected))
+    }
+
+    @MainActor
+    func testNoNetWorthTrendWithoutAccounts() async {
+        let vm = makeDashboardVM(accounts: [], transactions: [], budgets: [])
+        await vm.loadDashboard()
+
+        XCTAssertFalse(vm.hasNetWorthTrend)
+    }
 }

@@ -28,6 +28,7 @@ struct SettingsView: View {
                 accountSection
                 generalSection
                 appearanceSection
+                focusSection
                 notificationsSection
                 accessibilitySection
                 securitySection
@@ -165,10 +166,36 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Focus (#2122)
+
+    private var focusSection: some View {
+        Section(String(localized: "Focus")) {
+            NavigationLink {
+                MinimalistModeScreen()
+            } label: {
+                Label(String(localized: "Focus Mode"), systemImage: "moon.stars")
+            }
+            .accessibilityLabel(String(localized: "Focus Mode"))
+            .accessibilityHint(String(localized: "Hide features you don't use for a low-noise app"))
+        }
+    }
+
     // MARK: - Notifications
 
     private var notificationsSection: some View {
         Section(String(localized: "Notifications")) {
+            NavigationLink {
+                NotificationSettingsView(
+                    budgetRepository: RepositoryProvider.shared.budgets,
+                    transactionRepository: RepositoryProvider.shared.transactions,
+                    goalRepository: RepositoryProvider.shared.goals
+                )
+            } label: {
+                Label(String(localized: "Alert Center"), systemImage: "bell.badge")
+            }
+            .accessibilityLabel(String(localized: "Alert Center"))
+            .accessibilityHint(String(localized: "Manage alerts, schedules, and quiet hours"))
+
             Toggle(isOn: $viewModel.notificationsEnabled) {
                 Label(String(localized: "Enable Notifications"), systemImage: "bell")
             }

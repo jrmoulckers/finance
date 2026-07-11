@@ -67,6 +67,7 @@ struct InvestmentPortfolioView: View {
             VStack(spacing: 20) {
                 portfolioSummaryCard(portfolio)
                 performanceChart
+                InvestmentProjectionCard(viewModel: viewModel, currencyCode: portfolio.currencyCode)
                 allocationSection
                 holdingsList(portfolio)
             }

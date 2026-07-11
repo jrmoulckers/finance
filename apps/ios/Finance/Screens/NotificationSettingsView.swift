@@ -12,6 +12,7 @@ import SwiftUI
 
 struct NotificationSettingsView: View {
     @State private var viewModel: NotificationSettingsViewModel
+    @Environment(\.openURL) private var openURL
 
     init(
         budgetRepository: BudgetRepository,
@@ -27,8 +28,11 @@ struct NotificationSettingsView: View {
 
     var body: some View {
         List {
+            summarySection
             permissionSection
             schedulesSection
+            budgetThresholdSection
+            quietHoursSection
             smartAlertsSection
         }
         .navigationTitle(String(localized: "Notifications"))
@@ -49,6 +53,24 @@ struct NotificationSettingsView: View {
             Button(String(localized: "OK"), role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    // MARK: - Summary Section (#2163)
+
+    @ViewBuilder
+    private var summarySection: some View {
+        Section {
+            HStack {
+                Image(systemName: "bell.badge")
+                    .foregroundStyle(.accent)
+                    .accessibilityHidden(true)
+                Text(viewModel.stateSummary)
+                    .font(.subheadline)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(String(localized: "Alert center status"))
+            .accessibilityValue(viewModel.stateSummary)
         }
     }
 
@@ -155,6 +177,78 @@ struct NotificationSettingsView: View {
         .accessibilityHint(schedule.type.description)
     }
 
+    // MARK: - Budget Threshold Section (#2163)
+
+    @ViewBuilder
+    private var budgetThresholdSection: some View {
+        Section {
+            Picker(
+                selection: Binding(
+                    get: { viewModel.budgetThresholdPercent },
+                    set: { newValue in
+                        Task { await viewModel.setBudgetThreshold(newValue) }
+                    }
+                )
+            ) {
+                ForEach(NotificationSettingsViewModel.budgetThresholdOptions, id: \.self) { percent in
+                    Text(String(localized: "\(Int(percent))% of budget"))
+                        .tag(percent)
+                }
+            } label: {
+                Text(String(localized: "Alert me at"))
+            }
+            .accessibilityLabel(String(localized: "Budget alert threshold"))
+            .accessibilityHint(String(localized: "How much of a budget you can spend before being alerted"))
+        } header: {
+            Text(String(localized: "Budget Threshold"))
+                .accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text(String(localized: "Trigger budget alerts when spending reaches this share of a category's limit."))
+        }
+    }
+
+    // MARK: - Quiet Hours Section (#2163)
+
+    @ViewBuilder
+    private var quietHoursSection: some View {
+        Section {
+            Toggle(isOn: $viewModel.quietHoursEnabled) {
+                Label(String(localized: "Quiet Hours"), systemImage: "moon")
+            }
+            .accessibilityLabel(String(localized: "Quiet hours"))
+            .accessibilityHint(String(localized: "Silences alerts during the selected window"))
+
+            if viewModel.quietHoursEnabled {
+                Picker(
+                    String(localized: "From"),
+                    selection: $viewModel.quietHoursStartHour
+                ) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Text(NotificationSettingsViewModel.formatHour(hour)).tag(hour)
+                    }
+                }
+                .accessibilityLabel(String(localized: "Quiet hours start"))
+
+                Picker(
+                    String(localized: "To"),
+                    selection: $viewModel.quietHoursEndHour
+                ) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Text(NotificationSettingsViewModel.formatHour(hour)).tag(hour)
+                    }
+                }
+                .accessibilityLabel(String(localized: "Quiet hours end"))
+            }
+        } header: {
+            Text(String(localized: "Quiet Hours"))
+                .accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text(viewModel.quietHoursEnabled
+                ? String(localized: "Alerts are silenced \(viewModel.quietHoursSummary).")
+                : String(localized: "Silence non-urgent alerts overnight."))
+        }
+    }
+
     // MARK: - Smart Alerts Section
 
     @ViewBuilder
@@ -180,7 +274,33 @@ struct NotificationSettingsView: View {
         }
     }
 
+    @ViewBuilder
     private func smartAlertRow(_ alert: SmartAlert) -> some View {
+        if let urlString = alert.actionURL, let url = URL(string: urlString) {
+            Button {
+                openURL(url)
+            } label: {
+                smartAlertRowContent(alert, actionable: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(alert.title)
+            .accessibilityValue(
+                String(localized: "\(alert.priority.displayName) priority. \(alert.body)")
+            )
+            .accessibilityHint(String(localized: "Double tap to open"))
+            .accessibilityAddTraits(.isButton)
+        } else {
+            smartAlertRowContent(alert, actionable: false)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(alert.title)
+                .accessibilityValue(
+                    String(localized: "\(alert.priority.displayName) priority. \(alert.body)")
+                )
+        }
+    }
+
+    private func smartAlertRowContent(_ alert: SmartAlert, actionable: Bool) -> some View {
         HStack(spacing: 12) {
             Circle()
                 .fill(alert.priority.color)
@@ -191,6 +311,7 @@ struct NotificationSettingsView: View {
                 Text(alert.title)
                     .font(.subheadline)
                     .fontWeight(.medium)
+                    .foregroundStyle(.primary)
 
                 Text(alert.body)
                     .font(.caption)
@@ -206,12 +327,14 @@ struct NotificationSettingsView: View {
                 .padding(.vertical, 2)
                 .background(alert.priority.color.opacity(0.15))
                 .clipShape(Capsule())
+
+            if actionable {
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(alert.title)
-        .accessibilityValue(
-            String(localized: "\(alert.priority.displayName) priority. \(alert.body)")
-        )
     }
 }
 

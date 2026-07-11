@@ -16,6 +16,11 @@ struct DashboardView: View {
     @State private var showingSettings = false
     @Environment(DeepLinkHandler.self) private var deepLinkHandler: DeepLinkHandler?
 
+    // Low-noise mode: quick-access cards the user can hide. (#2122)
+    @AppStorage(FeatureVisibility.investmentsKey) private var showInvestments = true
+    @AppStorage(FeatureVisibility.billsKey) private var showBills = true
+    @AppStorage(FeatureVisibility.reportsKey) private var showReports = true
+
     init(viewModel: DashboardViewModel = DashboardViewModel(
         accountRepository: RepositoryProvider.shared.accounts,
         transactionRepository: RepositoryProvider.shared.transactions,
@@ -35,6 +40,7 @@ struct DashboardView: View {
                     ScrollView {
                         VStack(spacing: FinanceSpacing.lg) {
                             netWorthCard
+                            netWorthTrendSection
                             savingsRateCard
                             spendingSummaryCard
                             budgetHealthSection
@@ -133,6 +139,17 @@ struct DashboardView: View {
     /// not visually identical to a positive balance. (#3593)
     private var netWorthColor: Color {
         viewModel.netWorth < 0 ? FinanceColors.amountNegative : .primary
+    }
+
+    // MARK: - Net Worth Trend (#2116)
+
+    /// Clean net-worth growth chart with projection, shown on the primary
+    /// surface right below the headline net-worth figure.
+    @ViewBuilder
+    private var netWorthTrendSection: some View {
+        if viewModel.hasNetWorthTrend {
+            NetWorthTrendCard(viewModel: viewModel)
+        }
     }
 
     /// Spoken label for the net-worth amount so VoiceOver conveys the figure
@@ -301,52 +318,67 @@ struct DashboardView: View {
 
     // MARK: - Quick Access
 
+    /// Whether any quick-access card is visible. When the user hides them all
+    /// in low-noise mode, the whole section (and its heading) disappears. (#2122)
+    private var hasVisibleQuickAccess: Bool {
+        showInvestments || showBills || showReports
+    }
+
+    @ViewBuilder
     private var quickAccessSection: some View {
-        VStack(alignment: .leading, spacing: FinanceSpacing.sm) {
-            Text(String(localized: "More"))
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
+        if hasVisibleQuickAccess {
+            VStack(alignment: .leading, spacing: FinanceSpacing.sm) {
+                Text(String(localized: "More"))
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
 
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-            ], spacing: FinanceSpacing.sm) {
-                NavigationLink {
-                    InvestmentPortfolioView()
-                } label: {
-                    quickAccessCard(
-                        title: String(localized: "Investments"),
-                        iconToken: .investment,
-                        color: .blue
-                    )
-                }
-                .accessibilityLabel(String(localized: "Investments"))
-                .accessibilityHint(String(localized: "Opens your investment portfolio"))
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                ], spacing: FinanceSpacing.sm) {
+                    if showInvestments {
+                        NavigationLink {
+                            InvestmentPortfolioView()
+                        } label: {
+                            quickAccessCard(
+                                title: String(localized: "Investments"),
+                                iconToken: .investment,
+                                color: .blue
+                            )
+                        }
+                        .accessibilityLabel(String(localized: "Investments"))
+                        .accessibilityHint(String(localized: "Opens your investment portfolio"))
+                    }
 
-                NavigationLink {
-                    BillsListView()
-                } label: {
-                    quickAccessCard(
-                        title: String(localized: "Bills"),
-                        iconToken: .bill,
-                        color: .orange
-                    )
-                }
-                .accessibilityLabel(String(localized: "Bills"))
-                .accessibilityHint(String(localized: "Opens your bill reminders"))
+                    if showBills {
+                        NavigationLink {
+                            BillsListView()
+                        } label: {
+                            quickAccessCard(
+                                title: String(localized: "Bills"),
+                                iconToken: .bill,
+                                color: .orange
+                            )
+                        }
+                        .accessibilityLabel(String(localized: "Bills"))
+                        .accessibilityHint(String(localized: "Opens your bill reminders"))
+                    }
 
-                NavigationLink {
-                    ReportBuilderView()
-                } label: {
-                    quickAccessCard(
-                        title: String(localized: "Reports"),
-                        iconToken: .reports,
-                        color: .purple
-                    )
+                    if showReports {
+                        NavigationLink {
+                            ReportBuilderView()
+                        } label: {
+                            quickAccessCard(
+                                title: String(localized: "Reports"),
+                                iconToken: .reports,
+                                color: .purple
+                            )
+                        }
+                        .accessibilityLabel(String(localized: "Reports"))
+                        .accessibilityHint(String(localized: "Opens the custom report builder"))
+                    }
                 }
-                .accessibilityLabel(String(localized: "Reports"))
-                .accessibilityHint(String(localized: "Opens the custom report builder"))
             }
         }
     }

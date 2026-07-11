@@ -33,6 +33,7 @@ struct TrendChart: View {
     let currencyCode: String
 
     @State private var selectedDate: Date?
+    @State private var selectedIndex: Int?
 
     /// Unique series names, preserving first-occurrence order.
     private var seriesNames: [String] {
@@ -134,8 +135,13 @@ struct TrendChart: View {
             }
             .frame(minHeight: 220)
             .drawingGroup()  // Rasterise into a single Metal layer for 60 FPS scrolling
-            .accessibilityElement(children: .contain)
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(String(localized: "Financial trend line chart"))
+            .accessibilityValue(accessibilityValueText)
+            .accessibilityHint(String(localized: "Swipe up or down with one finger to move through data points"))
+            .accessibilityAdjustableAction { direction in
+                stepSelection(direction)
+            }
 
             ChartDataTable(
                 summary: chartSummary,
@@ -144,6 +150,43 @@ struct TrendChart: View {
             )
         }
         .padding()
+    }
+
+    // MARK: - VoiceOver Point Navigation (#2115)
+    //
+    // VoiceOver users move point-by-point with the standard adjustable rotor
+    // (swipe up/down) instead of the touch-drag gesture, which is unusable
+    // without sight. Each step announces the date and value — and, for
+    // multi-series charts, the series — and mirrors the selection visually.
+
+    /// Spoken value for the chart: the current point when one is selected,
+    /// otherwise the full trend summary.
+    private var accessibilityValueText: String {
+        guard let index = selectedIndex, data.indices.contains(index) else {
+            return chartSummary
+        }
+        let point = data[index]
+        if seriesNames.count > 1 {
+            return "\(point.series), \(formattedDate(point.date)), \(formattedCurrency(point.value))"
+        }
+        return "\(formattedDate(point.date)), \(formattedCurrency(point.value))"
+    }
+
+    /// Advances or rewinds the selected point in response to the VoiceOver
+    /// adjustable action, keeping the visual selection in sync.
+    private func stepSelection(_ direction: AccessibilityAdjustmentDirection) {
+        guard !data.isEmpty else { return }
+        switch direction {
+        case .increment:
+            selectedIndex = min((selectedIndex ?? -1) + 1, data.count - 1)
+        case .decrement:
+            selectedIndex = max((selectedIndex ?? 0) - 1, 0)
+        @unknown default:
+            break
+        }
+        if let index = selectedIndex, data.indices.contains(index) {
+            selectedDate = data[index].date
+        }
     }
 
     // MARK: - Text Alternative (#2113)
