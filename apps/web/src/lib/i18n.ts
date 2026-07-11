@@ -5,6 +5,7 @@ import {
   type MessageCatalog as CatalogMessageMap,
 } from './i18n/catalog-loader';
 import { getActiveCatalogs } from './i18n/locale-packs';
+import { SELECTABLE_LOCALE_ENTRIES } from './i18n/locale-registry';
 import { getTextDirectionForLocale } from './i18n/rtl';
 
 export const DEFAULT_LOCALE = 'en-US';
@@ -19,24 +20,14 @@ export interface SupportedLocale {
   readonly textDirection: 'ltr' | 'rtl';
 }
 
-export const SUPPORTED_LOCALES: readonly SupportedLocale[] = [
-  {
-    code: 'en-US',
-    label: 'English (United States)',
-    nativeLabel: 'English (US)',
-    textDirection: 'ltr',
-  },
-  { code: 'es-ES', label: 'Spanish (Spain)', nativeLabel: 'Español', textDirection: 'ltr' },
-  { code: 'de-DE', label: 'German (Germany)', nativeLabel: 'Deutsch', textDirection: 'ltr' },
-  { code: 'ja-JP', label: 'Japanese (Japan)', nativeLabel: '日本語', textDirection: 'ltr' },
-  {
-    code: 'zh-Hans',
-    label: 'Chinese (Simplified)',
-    nativeLabel: '简体中文',
-    textDirection: 'ltr',
-  },
-  { code: 'ar', label: 'Arabic', nativeLabel: 'العربية', textDirection: 'rtl' },
-] as const;
+export const SUPPORTED_LOCALES: readonly SupportedLocale[] = SELECTABLE_LOCALE_ENTRIES.map(
+  (entry) => ({
+    code: entry.code,
+    label: entry.label,
+    nativeLabel: entry.nativeLabel,
+    textDirection: entry.textDirection,
+  }),
+);
 
 const supportedByCode = new Map(SUPPORTED_LOCALES.map((locale) => [locale.code, locale]));
 
