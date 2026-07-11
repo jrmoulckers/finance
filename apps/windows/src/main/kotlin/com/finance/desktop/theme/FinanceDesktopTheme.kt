@@ -254,7 +254,35 @@ data class Spacing(
     val epic: Dp = 80.dp,
 )
 
-val LocalSpacing = staticCompositionLocalOf { Spacing() }
+/**
+ * Comfortable (default) spacing scale — the standard Android-mirrored density.
+ */
+val ComfortableSpacing = Spacing()
+
+/**
+ * Compact spacing scale for information-dense desktop layouts (#3722).
+ *
+ * Paddings and gaps are reduced to roughly 60–70% of [ComfortableSpacing] so
+ * list-heavy screens show meaningfully more rows per screen. Values never drop
+ * below what keeps touch/click targets usable, and Narrator semantics are
+ * unaffected because only spacing — not element presence — changes.
+ */
+val CompactSpacing = Spacing(
+    none = 0.dp,
+    xs = 2.dp,
+    sm = 6.dp,
+    md = 8.dp,
+    lg = 12.dp,
+    xl = 14.dp,
+    xxl = 16.dp,
+    xxxl = 20.dp,
+    huge = 28.dp,
+    massive = 32.dp,
+    colossal = 44.dp,
+    epic = 56.dp,
+)
+
+val LocalSpacing = staticCompositionLocalOf { ComfortableSpacing }
 
 // =============================================================================
 // Theme composable
@@ -269,11 +297,16 @@ val LocalSpacing = staticCompositionLocalOf { Spacing() }
  *
  * Typography uses [FontFamily.Default] which resolves to Segoe UI on Windows,
  * aligning with Fluent Design system conventions.
+ *
+ * @param darkTheme Whether to use the dark color scheme.
+ * @param highContrast Whether to use a high-contrast color scheme (#3665).
+ * @param compact Whether to apply the [CompactSpacing] density scale (#3722).
  */
 @Composable
 fun FinanceDesktopTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     highContrast: Boolean = isHighContrastEnabled(),
+    compact: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = resolveColorScheme(
@@ -283,9 +316,10 @@ fun FinanceDesktopTheme(
         standardDark = DarkColorScheme,
     )
     val statusColors = if (darkTheme) DarkStatusColors else LightStatusColors
+    val spacing = if (compact) CompactSpacing else ComfortableSpacing
 
     CompositionLocalProvider(
-        LocalSpacing provides Spacing(),
+        LocalSpacing provides spacing,
         LocalStatusColors provides statusColors,
     ) {
         MaterialTheme(
