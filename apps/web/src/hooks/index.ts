@@ -74,6 +74,8 @@ export type {
   AlertLevel,
   CreateWatchlistInput,
 } from './useSpendingWatchlists';
+export { useSecurityWatchlists } from './useSecurityWatchlists';
+export type { UseSecurityWatchlistsResult } from './useSecurityWatchlists';
 export { useFinancialTips } from './useFinancialTips';
 export type { UseFinancialTipsResult } from './useFinancialTips';
 export { useNaturalLanguageInput, parseTransactionText } from './useNaturalLanguageInput';

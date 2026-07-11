@@ -356,3 +356,91 @@
     margin-top: 0;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Security/ticker watchlists (issue #3260)
+ * ------------------------------------------------------------------------- */
+
+.watchlist-security-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.watchlist-security-form .watchlist-form__field {
+  flex: 1 1 8rem;
+  min-width: 7rem;
+}
+
+.watchlist-security-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.watchlist-security-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-md, 8px);
+}
+
+.watchlist-security-item__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+}
+
+.watchlist-security-item__symbol {
+  font-weight: var(--font-weight-semibold);
+}
+
+.watchlist-security-item__name {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.watchlist-security-item__prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.watchlist-security-item__move--up {
+  color: var(--semantic-positive, #059669);
+  font-weight: var(--font-weight-semibold);
+}
+
+.watchlist-security-item__move--down {
+  color: var(--semantic-negative, #dc2626);
+  font-weight: var(--font-weight-semibold);
+}
+
+.watchlist-security-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.watchlist-security-item__actions button {
+  font-size: var(--type-scale-caption-font-size);
+  padding: var(--spacing-1) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-sm, 4px);
+  background: transparent;
+  cursor: pointer;
+}
+
+.watchlist-security-item__actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
