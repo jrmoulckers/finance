@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -56,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.finance.android.ui.data.SampleData
+import com.finance.android.ui.components.states.DashboardSkeleton
 import com.finance.android.ui.quickactions.QuickActionsSection
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.tips.TipsSection
@@ -90,9 +90,8 @@ fun DashboardScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     if (state.isLoading) {
-        Box(modifier = modifier.fillMaxSize().semantics { contentDescription = "Loading dashboard" },
-            contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(modifier = Modifier.semantics { contentDescription = "Loading indicator" })
+        Box(modifier = modifier.fillMaxSize().semantics { contentDescription = "Loading dashboard" }) {
+            DashboardSkeleton(Modifier.fillMaxSize())
         }
         return
     }

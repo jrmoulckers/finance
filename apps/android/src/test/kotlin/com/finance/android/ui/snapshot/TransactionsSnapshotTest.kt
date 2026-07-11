@@ -39,6 +39,8 @@ class TransactionsSnapshotTest {
         ),
         filter = TransactionFilter(),
         totalCount = 20,
+        categoryNames = SampleData.categoryMap.mapValues { it.value.name },
+        accountNames = SampleData.accountMap.mapValues { it.value.name },
     )
 
     private val noOpSyncId: (com.finance.models.types.SyncId) -> Unit = {}

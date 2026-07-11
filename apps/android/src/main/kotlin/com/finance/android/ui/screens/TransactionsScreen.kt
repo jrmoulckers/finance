@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,9 +27,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import com.finance.android.ui.components.IconView
+import com.finance.android.ui.components.states.TransactionListSkeleton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -40,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import com.finance.android.ui.data.SampleData
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.viewmodel.TransactionDateGroup
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import com.finance.android.ui.viewmodel.TransactionFilter
 import com.finance.android.ui.viewmodel.TransactionsUiState
@@ -78,56 +86,77 @@ fun TransactionsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     if (state.isLoading && state.dateGroups.isEmpty()) {
-        Box(modifier.fillMaxSize().semantics { contentDescription = "Loading transactions" },
-            contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading indicator" })
+        Box(modifier.fillMaxSize().semantics { contentDescription = "Loading transactions" }) {
+            TransactionListSkeleton(Modifier.fillMaxSize())
         }
         return
     }
     TransactionsContent(state, viewModel::refresh, viewModel::updateSearch, viewModel::toggleSearch,
         viewModel::setTypeFilter, viewModel::clearFilters, viewModel::loadMore,
-        viewModel::deleteTransaction, onEditTransaction, onTransactionClick, modifier)
+        viewModel::deleteTransaction, onEditTransaction, onTransactionClick, viewModel::undoDelete, modifier)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun TransactionsContent(
     state: TransactionsUiState, onRefresh: () -> Unit, onSearch: (String) -> Unit,
     onToggleSearch: () -> Unit, onTypeFilter: (TransactionType?) -> Unit,
     onClearFilters: () -> Unit, onLoadMore: () -> Unit,
     onDelete: (SyncId) -> Unit, onEdit: (SyncId) -> Unit,
-    onTransactionClick: (SyncId) -> Unit, modifier: Modifier = Modifier,
+    onTransactionClick: (SyncId) -> Unit, onUndoDelete: () -> Unit = {}, modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val shouldLoad by remember { derivedStateOf {
         val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()
         last != null && last.index >= listState.layoutInfo.totalItemsCount - 3
     }}
     LaunchedEffect(shouldLoad) { if (shouldLoad && state.hasMore && !state.isLoadingMore) onLoadMore() }
 
-    PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh, modifier = modifier.fillMaxSize()) {
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
-            item(key = "search") {
-                SearchFilterBar(state.isSearchActive, state.filter.searchQuery, state.filter,
-                    onSearch, onToggleSearch, onTypeFilter, onClearFilters)
-                Spacer(Modifier.height(8.dp))
-            }
-            if (state.isEmpty) { item(key = "empty") { TxnEmptyState(state.filter != TransactionFilter()) } }
-            state.dateGroups.forEach { group ->
-                item(key = "hdr-${group.date}") { DateHeader(group.dateLabel) }
-                items(group.transactions, key = { it.id.value }) { txn ->
-                    SwipeableTxnItem(txn, { onDelete(txn.id) }, { onEdit(txn.id) }, { onTransactionClick(txn.id) })
+    // Delete via swipe, then surface an Undo snackbar so an accidental swipe is
+    // recoverable. TalkBack announces the snackbar message and the Undo action (#3688).
+    val onDeleteWithUndo: (SyncId) -> Unit = { id ->
+        onDelete(id)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "Transaction deleted",
+                actionLabel = "Undo",
+                withDismissAction = true,
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) onUndoDelete()
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize()) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+                item(key = "search") {
+                    SearchFilterBar(state.isSearchActive, state.filter.searchQuery, state.filter,
+                        onSearch, onToggleSearch, onTypeFilter, onClearFilters)
                     Spacer(Modifier.height(8.dp))
                 }
+                if (state.isEmpty) { item(key = "empty") { TxnEmptyState(state.filter != TransactionFilter()) } }
+                state.dateGroups.forEach { group ->
+                    stickyHeader(key = "hdr-${group.date}") { DateHeader(group.dateLabel) }
+                    items(group.transactions, key = { it.id.value }) { txn ->
+                        SwipeableTxnItem(txn, state.categoryNames, state.accountNames,
+                            { onDeleteWithUndo(txn.id) }, { onEdit(txn.id) }, { onTransactionClick(txn.id) })
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+                if (state.isLoadingMore) {
+                    item(key = "more") { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(24.dp).semantics { contentDescription = "Loading more" }, strokeWidth = 2.dp)
+                    }}
+                }
+                item(key = "spacer") { Spacer(Modifier.height(80.dp)) }
             }
-            if (state.isLoadingMore) {
-                item(key = "more") { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(24.dp).semantics { contentDescription = "Loading more" }, strokeWidth = 2.dp)
-                }}
-            }
-            item(key = "spacer") { Spacer(Modifier.height(80.dp)) }
         }
+        SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -175,12 +204,20 @@ private fun SearchFilterBar(active: Boolean, query: String, filter: TransactionF
 private fun DateHeader(label: String) {
     Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).semantics { heading(); contentDescription = "Transactions for $label" })
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
+            .padding(vertical = 8.dp).semantics { heading(); contentDescription = "Transactions for $label" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeableTxnItem(txn: Transaction, onDelete: () -> Unit, onEdit: () -> Unit, onClick: () -> Unit) {
+private fun SwipeableTxnItem(
+    txn: Transaction,
+    categoryNames: Map<SyncId, String>,
+    accountNames: Map<SyncId, String>,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit,
+    onClick: () -> Unit,
+) {
     val dismiss = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
         when (v) { SwipeToDismissBoxValue.StartToEnd -> { onEdit(); false }
             SwipeToDismissBoxValue.EndToStart -> { onDelete(); true }
@@ -200,17 +237,24 @@ private fun SwipeableTxnItem(txn: Transaction, onDelete: () -> Unit, onEdit: () 
         Box(Modifier.fillMaxSize().background(bg, MaterialTheme.shapes.medium).padding(horizontal = 20.dp), contentAlignment = align) {
             IconView(token = iconToken, tint = tint)
         }
-    }, modifier = Modifier.semantics { contentDescription = buildTxnDesc(txn) }) { TxnListItem(txn, onClick) }
+    }, modifier = Modifier.semantics { contentDescription = buildTxnDesc(txn) }) {
+        TxnListItem(txn, categoryNames, accountNames, onClick)
+    }
 }
 
 @Composable
-private fun TxnListItem(txn: Transaction, onClick: () -> Unit) {
+private fun TxnListItem(
+    txn: Transaction,
+    categoryNames: Map<SyncId, String>,
+    accountNames: Map<SyncId, String>,
+    onClick: () -> Unit,
+) {
     val amt = CurrencyFormatter.format(txn.amount, txn.currency, showSign = true)
     val color = when (txn.type) { TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
         TransactionType.INCOME -> FinanceTheme.financeColors.income; TransactionType.TRANSFER -> MaterialTheme.colorScheme.tertiary }
     val payee = txn.payee ?: "Unknown"
-    val cat = SampleData.categoryMap[txn.categoryId]?.name ?: "Uncategorized"
-    val acct = SampleData.accountMap[txn.accountId]?.name ?: "Unknown"
+    val cat = txn.categoryId?.let { categoryNames[it] } ?: "Uncategorized"
+    val acct = accountNames[txn.accountId] ?: "Unknown"
     Card(
         Modifier
             .fillMaxWidth()
@@ -279,7 +323,9 @@ private fun TransactionsPreview() {
             TransactionsUiState(isLoading = false, dateGroups = listOf(
                 TransactionDateGroup(kotlinx.datetime.LocalDate(2025, 3, 6), "Today", SampleData.transactions.take(3)),
                 TransactionDateGroup(kotlinx.datetime.LocalDate(2025, 3, 5), "Yesterday", SampleData.transactions.drop(3).take(3))),
-                filter = TransactionFilter(), totalCount = 20),
+                filter = TransactionFilter(), totalCount = 20,
+                categoryNames = SampleData.categoryMap.mapValues { it.value.name },
+                accountNames = SampleData.accountMap.mapValues { it.value.name }),
             {}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 }

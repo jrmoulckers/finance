@@ -5,6 +5,7 @@ package com.finance.android.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.finance.android.auth.HouseholdIdProvider
+import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.models.Transaction
@@ -49,6 +50,8 @@ data class TransactionsUiState(
     val hasMore: Boolean = false,
     val isLoadingMore: Boolean = false,
     val totalCount: Int = 0,
+    val categoryNames: Map<SyncId, String> = emptyMap(),
+    val accountNames: Map<SyncId, String> = emptyMap(),
 )
 
 /**
@@ -56,17 +59,23 @@ data class TransactionsUiState(
  *
  * @param householdIdProvider Provides the authenticated user's household ID.
  * @param transactionRepository Source for transaction data.
- * @param categoryRepository Source for category data used in search-by-category-name.
+ * @param categoryRepository Source for category data used in search-by-category-name
+ *   and for resolving row category labels.
+ * @param accountRepository Source for account data used to resolve row account labels.
  */
 class TransactionsViewModel(
     private val householdIdProvider: HouseholdIdProvider,
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
+    private val accountRepository: AccountRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TransactionsUiState())
     val uiState: StateFlow<TransactionsUiState> = _uiState.asStateFlow()
     private val pageSize = 20
     private var currentPage = 0
+
+    /** The most recently deleted transaction, retained so it can be restored via Undo. */
+    private var lastDeleted: Transaction? = null
 
     init { loadTransactions() }
 
@@ -113,7 +122,23 @@ class TransactionsViewModel(
 
     fun deleteTransaction(id: SyncId) {
         viewModelScope.launch {
+            lastDeleted = transactionRepository.getById(id)
             transactionRepository.delete(id)
+            currentPage = 0; loadData()
+        }
+    }
+
+    /**
+     * Restores the most recently deleted transaction (via the Undo snackbar).
+     *
+     * Re-inserts the retained [Transaction] with its original fields so the row
+     * reappears in the list. No-op if nothing was deleted or it was already undone.
+     */
+    fun undoDelete() {
+        val restored = lastDeleted ?: return
+        lastDeleted = null
+        viewModelScope.launch {
+            transactionRepository.insert(restored)
             currentPage = 0; loadData()
         }
     }
@@ -136,7 +161,10 @@ class TransactionsViewModel(
         }
         val allTransactions = transactionRepository.observeAll(householdId).first()
         val categories = categoryRepository.observeAll(householdId).first()
+        val accounts = accountRepository.observeAll(householdId).first()
         val categoryMap = categories.associateBy { it.id }
+        val categoryNames = categories.associate { it.id to it.name }
+        val accountNames = accounts.associate { it.id to it.name }
 
         var filtered = allTransactions
         if (filter.searchQuery.isNotBlank()) {
@@ -163,7 +191,8 @@ class TransactionsViewModel(
             }
         _uiState.update {
             it.copy(dateGroups = groups, isEmpty = if (!append) groups.isEmpty() else it.isEmpty,
-                hasMore = end < total, totalCount = total)
+                hasMore = end < total, totalCount = total,
+                categoryNames = categoryNames, accountNames = accountNames)
         }
     }
 
