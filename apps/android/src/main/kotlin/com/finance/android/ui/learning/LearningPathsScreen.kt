@@ -124,9 +124,10 @@ fun LearningPathsScreen(
             }
         } else {
             PathListContent(
-                paths = state.paths,
-                progress = state.progress,
+                state = state,
                 onSelectPath = viewModel::selectPath,
+                onResume = viewModel::resumeLearning,
+                onToggleAdvanced = viewModel::toggleShowAdvanced,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -135,24 +136,216 @@ fun LearningPathsScreen(
 
 @Composable
 private fun PathListContent(
-    paths: List<LearningPath>,
-    progress: Map<String, LearningProgress>,
+    state: LearningUiState,
     onSelectPath: (String) -> Unit,
+    onResume: () -> Unit,
+    onToggleAdvanced: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val resumePath = state.resumePathId?.let { LearningPathContent.pathById(it) }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(paths, key = { it.id }) { path ->
+        item(key = "rewards") {
+            RewardsSummaryCard(rewards = state.rewards)
+        }
+        if (resumePath != null) {
+            item(key = "resume") {
+                ResumeCard(
+                    path = resumePath,
+                    moduleIndex = state.resumeModuleIndex,
+                    onResume = onResume,
+                )
+            }
+        }
+        items(state.paths, key = { it.id }) { path ->
             PathCard(
                 path = path,
-                progress = progress[path.id],
+                progress = state.progress[path.id],
                 onClick = { onSelectPath(path.id) },
             )
         }
+        if (state.beginnerMode && state.hasAdvancedContent) {
+            item(key = "advanced-toggle") {
+                AdvancedTopicsToggle(
+                    showAdvanced = state.showAdvanced,
+                    onToggle = onToggleAdvanced,
+                )
+            }
+        }
         item { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+/**
+ * Reward summary showing level, XP progress, streak and badges (#2208).
+ */
+@Composable
+private fun RewardsSummaryCard(
+    rewards: LearningRewards,
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "Level ${rewards.level}. " +
+                    "${rewards.xp} total experience points. " +
+                    "${rewards.lessonsCompleted} lessons completed. " +
+                    "${rewards.streakDays} day learning streak."
+            },
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "Level ${rewards.level}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "🔥 ${rewards.streakDays}-day streak",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { rewards.levelProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription =
+                            "${rewards.xpIntoLevel} of ${rewards.xpForNextLevel} XP to next level"
+                    },
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "${rewards.xp} XP · ${rewards.lessonsCompleted} lessons · " +
+                    "${rewards.quizzesMastered} quizzes aced",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (rewards.badges.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rewards.badges.forEach { badge ->
+                        BadgeChip(badge = badge)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BadgeChip(
+    badge: LearningBadge,
+    modifier: Modifier = Modifier,
+) {
+    val stateLabel = if (badge.unlocked) "unlocked" else "locked"
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .width(64.dp)
+            .semantics {
+                contentDescription = "${badge.title} badge, $stateLabel. ${badge.description}"
+            },
+    ) {
+        Text(
+            text = badge.icon,
+            style = MaterialTheme.typography.headlineSmall,
+            color = if (badge.unlocked) {
+                Color.Unspecified
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+            },
+        )
+        Text(
+            text = badge.title,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (badge.unlocked) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (badge.unlocked) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+            },
+        )
+    }
+}
+
+/**
+ * "Pick up where you left off" entry point (#2208).
+ */
+@Composable
+private fun ResumeCard(
+    path: LearningPath,
+    moduleIndex: Int,
+    onResume: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val moduleTitle = path.modules.getOrNull(moduleIndex)?.title ?: path.title
+    ElevatedCard(
+        onClick = onResume,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription =
+                    "Continue learning ${path.title}, next up $moduleTitle. Double tap to resume."
+            },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(16.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Pick up where you left off",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "${path.icon}  $moduleTitle",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+    }
+}
+
+/**
+ * Beginner-mode toggle that reveals or hides advanced topics (#2209).
+ */
+@Composable
+private fun AdvancedTopicsToggle(
+    showAdvanced: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val label = if (showAdvanced) "Hide advanced topics" else "Show advanced topics"
+    OutlinedButton(
+        onClick = onToggle,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = label },
+    ) {
+        Text(label)
     }
 }
 
@@ -301,14 +494,14 @@ private fun ModuleDetailContent(
                 Icon(
                     Icons.Filled.CheckCircle,
                     contentDescription = null,
-                    tint = Color(0xFF2E7D32),
+                    tint = FinanceTheme.financeColors.income,
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
                     text = "Completed",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF2E7D32),
+                    color = FinanceTheme.financeColors.income,
                     modifier = Modifier.semantics { contentDescription = "Module completed" },
                 )
             }
@@ -476,7 +669,7 @@ private fun QuizSection(
                         text = option,
                         style = MaterialTheme.typography.bodySmall,
                         color = when {
-                            isCorrect -> Color(0xFF2E7D32)
+                            isCorrect -> FinanceTheme.financeColors.income
                             isWrong -> MaterialTheme.colorScheme.error
                             else -> MaterialTheme.colorScheme.onSurface
                         },
@@ -507,7 +700,7 @@ private fun QuizSection(
                     Text(
                         text = if (isCorrect) "✓ Correct!" else "✗ Not quite",
                         style = MaterialTheme.typography.titleSmall,
-                        color = if (isCorrect) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
+                        color = if (isCorrect) FinanceTheme.financeColors.income else MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.semantics {
                             contentDescription = if (isCorrect) "Correct answer!" else "Incorrect answer"
@@ -534,14 +727,30 @@ private fun QuizSection(
 private fun LearningPathsListPreview() {
     FinanceTheme(dynamicColor = false) {
         PathListContent(
-            paths = LearningPathContent.allPaths(),
-            progress = mapOf(
-                "budgeting-basics" to LearningProgress(
-                    pathId = "budgeting-basics",
-                    completedModuleIds = setOf("bb-1"),
+            state = LearningUiState(
+                paths = LearningPathContent.allPaths(),
+                progress = mapOf(
+                    "budgeting-basics" to LearningProgress(
+                        pathId = "budgeting-basics",
+                        completedModuleIds = setOf("bb-1"),
+                    ),
                 ),
+                rewards = LearningRewards.from(
+                    mapOf(
+                        "budgeting-basics" to LearningProgress(
+                            pathId = "budgeting-basics",
+                            completedModuleIds = setOf("bb-1"),
+                        ),
+                    ),
+                    streakDays = 2,
+                ),
+                resumePathId = "budgeting-basics",
+                beginnerMode = true,
+                hasAdvancedContent = true,
             ),
             onSelectPath = {},
+            onResume = {},
+            onToggleAdvanced = {},
         )
     }
 }
