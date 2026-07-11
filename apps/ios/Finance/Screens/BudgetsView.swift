@@ -51,6 +51,16 @@ struct BudgetsView: View {
             .offlineAware()
             .navigationTitle(String(localized: "Budgets"))
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        TripBudgetsView()
+                    } label: {
+                        Image(systemName: "airplane")
+                    }
+                    .accessibilityIdentifier("trip_budgets_button")
+                    .accessibilityLabel(String(localized: "Trip budgets"))
+                    .accessibilityHint(String(localized: "Opens budgets scoped to a trip or country"))
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button { viewModel.showingCreateBudget = true } label: {
                         IconView(.add, size: 20)
@@ -133,7 +143,7 @@ struct BudgetsView: View {
             HStack(spacing: 24) {
                 VStack(spacing: 4) {
                     Text(String(localized: "Spent")).font(.caption).foregroundStyle(.secondary)
-                    CurrencyLabel(amountInMinorUnits: viewModel.totalSpent, currencyCode: "USD", showSign: false, font: .callout.bold())
+                    CurrencyLabel(amountInMinorUnits: viewModel.totalSpent, currencyCode: viewModel.displayCurrencyCode, showSign: false, font: .callout.bold())
                 }
                 ProgressRing(
                     progress: viewModel.totalBudgeted > 0 ? Double(viewModel.totalSpent) / Double(viewModel.totalBudgeted) : 0,
@@ -141,7 +151,7 @@ struct BudgetsView: View {
                 )
                 VStack(spacing: 4) {
                     Text(String(localized: "Budgeted")).font(.caption).foregroundStyle(.secondary)
-                    CurrencyLabel(amountInMinorUnits: viewModel.totalBudgeted, currencyCode: "USD", showSign: false, font: .callout.bold())
+                    CurrencyLabel(amountInMinorUnits: viewModel.totalBudgeted, currencyCode: viewModel.displayCurrencyCode, showSign: false, font: .callout.bold())
                 }
             }
         }
