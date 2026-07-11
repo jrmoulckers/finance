@@ -45,7 +45,7 @@ struct DebtPayoffCard: View {
             milestoneFooter
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(progress.name))
         .accessibilityValue(Text(accessibilitySummary))

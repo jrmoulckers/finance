@@ -48,6 +48,7 @@ struct BudgetsView: View {
                     }
                 }
             }
+            .offlineAware()
             .navigationTitle(String(localized: "Budgets"))
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -145,7 +146,7 @@ struct BudgetsView: View {
             }
         }
         .frame(maxWidth: .infinity).padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Overall budget summary"))
         .accessibilityValue(
@@ -187,7 +188,7 @@ struct BudgetsView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .cardBackground(cornerRadius: 12)
         .contentShape(RoundedRectangle(cornerRadius: 12))
         .onTapGesture { viewModel.editingBudget = budget }
         .accessibilityElement(children: .combine)

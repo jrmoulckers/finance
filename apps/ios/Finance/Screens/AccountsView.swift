@@ -11,6 +11,7 @@ import SwiftUI
 // MARK: - View
 
 struct AccountsView: View {
+    @Environment(DeepLinkHandler.self) private var deepLinkHandler: DeepLinkHandler?
     @State private var viewModel: AccountsViewModel
 
     init(viewModel: AccountsViewModel = AccountsViewModel(
@@ -38,6 +39,7 @@ struct AccountsView: View {
                     accountsList
                 }
             }
+            .offlineAware()
             .navigationTitle(String(localized: "Accounts"))
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -52,6 +54,10 @@ struct AccountsView: View {
             .sheet(isPresented: \$viewModel.showingAddAccount) { addAccountPlaceholder }
             .refreshable { await viewModel.loadAccounts() }
             .task { await viewModel.loadAccounts() }
+            .onAppear { handleAccountCreationRequest() }
+            .onChange(of: deepLinkHandler?.requestAccountCreation ?? false) { _, requested in
+                if requested { handleAccountCreationRequest() }
+            }
             .alert(String(localized: "Error"), isPresented: Binding(
                 get: { viewModel.showError },
                 set: { if !\$0 { viewModel.dismissError() } }
@@ -62,6 +68,14 @@ struct AccountsView: View {
                 Text(viewModel.errorMessage ?? "")
             }
         }
+    }
+
+    /// Opens the create-account flow when another screen (e.g. the Dashboard
+    /// first-run empty state) has requested it via ``DeepLinkHandler``. (#3588)
+    private func handleAccountCreationRequest() {
+        guard deepLinkHandler?.requestAccountCreation == true else { return }
+        viewModel.showingAddAccount = true
+        deepLinkHandler?.consumeAccountCreationRequest()
     }
 
     private var accountsList: some View {

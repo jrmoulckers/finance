@@ -136,8 +136,46 @@ struct TrendChart: View {
             .drawingGroup()  // Rasterise into a single Metal layer for 60 FPS scrolling
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "Financial trend line chart"))
+
+            ChartDataTable(
+                summary: chartSummary,
+                rows: chartRows,
+                tableLabel: String(localized: "Trend data table")
+            )
         }
         .padding()
+    }
+
+    // MARK: - Text Alternative (#2113)
+
+    /// Spoken summary describing the date range and, per series, the latest,
+    /// highest, and lowest values so VoiceOver users get the trend in text.
+    private var chartSummary: String {
+        guard let firstDate = data.map(\.date).min(),
+              let lastDate = data.map(\.date).max() else {
+            return String(localized: "No trend data available.")
+        }
+        let range = "\(formattedDate(firstDate)) to \(formattedDate(lastDate))"
+        let parts = seriesNames.map { name -> String in
+            let values = data.filter { $0.series == name }.map(\.value)
+            let latest = data.last(where: { $0.series == name })?.value ?? 0
+            let high = values.max() ?? 0
+            let low = values.min() ?? 0
+            return String(localized: "\(name): latest \(formattedCurrency(latest)), high \(formattedCurrency(high)), low \(formattedCurrency(low)).")
+        }
+        return String(localized: "Trend from \(range). ") + parts.joined(separator: " ")
+    }
+
+    /// One row per data point, kept in the same order as the chart.
+    private var chartRows: [ChartDataRow] {
+        data.map { point in
+            ChartDataRow(
+                label: seriesNames.count > 1
+                    ? "\(point.series), \(formattedDate(point.date))"
+                    : formattedDate(point.date),
+                value: formattedCurrency(point.value)
+            )
+        }
     }
 
     // MARK: - Helpers

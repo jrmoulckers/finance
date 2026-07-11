@@ -67,6 +67,12 @@ struct CategoryBreakdownChart: View {
 
             // Legend
             legendView
+
+            ChartDataTable(
+                summary: breakdownSummary,
+                rows: breakdownRows,
+                tableLabel: String(localized: "Category breakdown data table")
+            )
         }
         .padding()
         .onChange(of: selectedAngle) { _, newValue in
@@ -109,7 +115,7 @@ struct CategoryBreakdownChart: View {
 
                     Text(slice.category)
                         .font(.caption)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()
 
@@ -126,6 +132,30 @@ struct CategoryBreakdownChart: View {
     }
 
     // MARK: - Helpers
+
+    /// Spoken summary of the breakdown: total spend, category count, and the
+    /// largest category, for VoiceOver users. (#2113)
+    private var breakdownSummary: String {
+        guard !data.isEmpty else {
+            return String(localized: "No spending data available.")
+        }
+        let total = formattedCurrency(totalSpending)
+        let largest = data.max { $0.amount < $1.amount }
+        if let largest {
+            return String(localized: "Spending across \(data.count) categories totalling \(total). Largest: \(largest.category) at \(formattedCurrency(largest.amount)), \(percentageText(for: largest)).")
+        }
+        return String(localized: "Spending across \(data.count) categories totalling \(total).")
+    }
+
+    /// One row per category slice, in the same order as the chart. (#2113)
+    private var breakdownRows: [ChartDataRow] {
+        data.map { slice in
+            ChartDataRow(
+                label: slice.category,
+                value: "\(formattedCurrency(slice.amount)) (\(percentageText(for: slice)))"
+            )
+        }
+    }
 
     private func percentageText(for slice: CategorySlice) -> String {
         guard totalSpending > 0 else { return "0%" }

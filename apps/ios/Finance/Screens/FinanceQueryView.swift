@@ -150,7 +150,7 @@ struct FinanceQueryView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .cardBackground(cornerRadius: 12)
     }
 
     @ViewBuilder
@@ -176,7 +176,7 @@ struct FinanceQueryView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .cardBackground(cornerRadius: 12)
     }
 
     private var unrecognizedCard: some View {
@@ -185,7 +185,7 @@ struct FinanceQueryView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .cardBackground(cornerRadius: 12)
     }
 
     // MARK: - Examples

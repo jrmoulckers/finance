@@ -133,14 +133,14 @@ struct AnalyticsView: View {
                     title: String(localized: "Avg. Spending"),
                     value: viewModel.formatCurrency(summary.averageMonthlySpending),
                     icon: "arrow.up.right",
-                    color: .red
+                    color: FinanceColors.statusNegative
                 )
 
                 summaryCard(
                     title: String(localized: "Avg. Income"),
                     value: viewModel.formatCurrency(summary.averageMonthlyIncome),
                     icon: "arrow.down.left",
-                    color: .green
+                    color: FinanceColors.statusPositive
                 )
 
                 summaryCard(
@@ -154,7 +154,7 @@ struct AnalyticsView: View {
                     title: String(localized: "Savings Rate"),
                     value: String(format: "%.1f%%", summary.savingsRatePercent),
                     icon: "leaf",
-                    color: summary.savingsRatePercent >= 20 ? .green : .orange
+                    color: summary.savingsRatePercent >= 20 ? FinanceColors.statusPositive : FinanceColors.statusWarning
                 )
             }
         }
@@ -178,8 +178,7 @@ struct AnalyticsView: View {
             Text(value)
                 .font(.title3)
                 .fontWeight(.semibold)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(title)
                 .font(.caption)

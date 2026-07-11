@@ -85,7 +85,7 @@ struct DebtPayoffView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .cardBackground(cornerRadius: 20)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "All debts combined"))
         .accessibilityValue(String(localized: "\(portfolio.percentComplete) percent paid off"))

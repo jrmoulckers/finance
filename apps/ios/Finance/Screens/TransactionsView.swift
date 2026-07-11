@@ -12,6 +12,7 @@ import SwiftUI
 struct TransactionsView: View {
     @Environment(BiometricAuthManager.self) private var biometricManager
     @Environment(DeepLinkHandler.self) private var deepLinkHandler
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel: TransactionsViewModel
 
     init(viewModel: TransactionsViewModel = TransactionsViewModel(
@@ -43,6 +44,7 @@ struct TransactionsView: View {
                     transactionsList
                 }
             }
+            .offlineAware()
             .navigationTitle(String(localized: "Transactions"))
             .searchable(text: $viewModel.searchText, prompt: String(localized: "Search by payee, category, or account"))
             .toolbar {
@@ -236,14 +238,17 @@ struct TransactionsView: View {
     }
 
     private func transactionRow(_ transaction: TransactionItem) -> some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             IconView(transaction.type.iconToken, size: 16)
                 .foregroundStyle(transaction.type.color)
                 .frame(width: 32, height: 32)
                 .background(transaction.type.color.opacity(0.1), in: Circle())
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text(transaction.payee).font(.body).lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(transaction.payee)
+                        .font(.body)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
                     if transaction.status == .pending {
                         Text(transaction.status.displayName)
                             .font(.caption2).foregroundStyle(.orange)
@@ -256,7 +261,9 @@ struct TransactionsView: View {
                     Text("·")
                     Text(transaction.accountName)
                 }
-                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                .font(.caption).foregroundStyle(.secondary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .fixedSize(horizontal: false, vertical: true)
 
                 // Tags row (show up to 2 tag chips)
                 if !transaction.tags.isEmpty {
@@ -266,9 +273,16 @@ struct TransactionsView: View {
                         onTagTap: { tag in viewModel.filterByTag(tag) }
                     )
                 }
+                // At accessibility text sizes stack the amount below the
+                // details so nothing is truncated. (#2119)
+                if dynamicTypeSize.isAccessibilitySize {
+                    CurrencyLabel(amountInMinorUnits: transaction.amountMinorUnits, currencyCode: transaction.currencyCode, font: .callout.bold())
+                }
             }
-            Spacer()
-            CurrencyLabel(amountInMinorUnits: transaction.amountMinorUnits, currencyCode: transaction.currencyCode, font: .callout.bold())
+            if !dynamicTypeSize.isAccessibilitySize {
+                Spacer()
+                CurrencyLabel(amountInMinorUnits: transaction.amountMinorUnits, currencyCode: transaction.currencyCode, font: .callout.bold())
+            }
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)

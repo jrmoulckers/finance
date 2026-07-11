@@ -55,6 +55,8 @@ struct InvestmentDetailView: View {
             )
 
             HStack(spacing: 12) {
+                GainLossBadge(state: holding.gainLossState)
+
                 CurrencyLabel(
                     amountInMinorUnits: holding.gainLossMinorUnits,
                     currencyCode: holding.currencyCode,
@@ -70,14 +72,24 @@ struct InvestmentDetailView: View {
             }
 
             if let dailyPct = holding.dailyReturnPercent {
-                Text(String(localized: "Today: \(String(format: "%+.2f%%", dailyPct))"))
-                    .font(.caption)
-                    .foregroundStyle(dailyPct >= 0 ? Color.green : Color.red)
+                let dailyState = GainLossState(minorUnits: Int64(dailyPct * 100))
+                HStack(spacing: 4) {
+                    Image(systemName: dailyState.symbolName)
+                        .font(.caption2.weight(.bold))
+                        .accessibilityHidden(true)
+                    Text(String(localized: "Today: \(String(format: "%+.2f%%", dailyPct))"))
+                        .font(.caption)
+                }
+                .foregroundStyle(dailyState.color)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    String(localized: "Today: \(dailyState.label), \(String(format: "%.2f", abs(dailyPct))) percent")
+                )
             }
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(holding.symbol), \(holding.name)")
         .accessibilityValue(
@@ -130,12 +142,11 @@ struct InvestmentDetailView: View {
             Text(value)
                 .font(.callout)
                 .fontWeight(.medium)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .cardBackground(cornerRadius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
         .accessibilityValue(value)
@@ -184,10 +195,43 @@ struct InvestmentDetailView: View {
                 .drawingGroup()
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(String(localized: "Price history line chart for \(holding.symbol)"))
+
+                ChartDataTable(
+                    summary: priceHistorySummary,
+                    rows: priceHistoryRows,
+                    tableLabel: String(localized: "Price history data table")
+                )
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
+    }
+
+    /// Spoken summary of the price-history chart for VoiceOver users. (#2113)
+    private var priceHistorySummary: String {
+        let history = viewModel.performanceHistory
+        guard let first = history.first, let last = history.last else {
+            return String(localized: "No price history available.")
+        }
+        let start = viewModel.formatCurrency(first.valueMinorUnits, currencyCode: holding.currencyCode)
+        let end = viewModel.formatCurrency(last.valueMinorUnits, currencyCode: holding.currencyCode)
+        let highValue = history.map(\.valueMinorUnits).max() ?? last.valueMinorUnits
+        let lowValue = history.map(\.valueMinorUnits).min() ?? first.valueMinorUnits
+        let high = viewModel.formatCurrency(highValue, currencyCode: holding.currencyCode)
+        let low = viewModel.formatCurrency(lowValue, currencyCode: holding.currencyCode)
+        let startDate = first.date.formatted(.dateTime.month(.abbreviated).day())
+        let endDate = last.date.formatted(.dateTime.month(.abbreviated).day())
+        return String(localized: "Price history for \(holding.symbol) from \(startDate) to \(endDate). Started at \(start), ended at \(end). High \(high), low \(low).")
+    }
+
+    /// Row-per-point data table backing the price-history chart. (#2113)
+    private var priceHistoryRows: [ChartDataRow] {
+        viewModel.performanceHistory.map { point in
+            ChartDataRow(
+                label: point.date.formatted(.dateTime.year().month(.abbreviated).day()),
+                value: viewModel.formatCurrency(point.valueMinorUnits, currencyCode: holding.currencyCode)
+            )
+        }
     }
 
     // MARK: - Holding Info
@@ -224,7 +268,7 @@ struct InvestmentDetailView: View {
             )
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardBackground(cornerRadius: 16)
     }
 
     private func detailRow(label: String, value: String) -> some View {

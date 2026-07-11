@@ -11,6 +11,54 @@
 
 import SwiftUI
 
+// MARK: - Gain / Loss State
+
+/// Direction of an unrealised gain/loss, encoded with redundant non-color cues
+/// (icon + text label) so financial state never depends on red/green alone.
+/// (#2121)
+enum GainLossState: Sendable {
+    case gain
+    case loss
+    case flat
+
+    init(minorUnits: Int64) {
+        if minorUnits > 0 {
+            self = .gain
+        } else if minorUnits < 0 {
+            self = .loss
+        } else {
+            self = .flat
+        }
+    }
+
+    /// SF Symbol reinforcing the direction independently of color.
+    var symbolName: String {
+        switch self {
+        case .gain: "arrow.up.right"
+        case .loss: "arrow.down.right"
+        case .flat: "minus"
+        }
+    }
+
+    /// Short textual label for badges and VoiceOver.
+    var label: String {
+        switch self {
+        case .gain: String(localized: "Gain")
+        case .loss: String(localized: "Loss")
+        case .flat: String(localized: "No change")
+        }
+    }
+
+    /// WCAG-tuned semantic color token — never a raw system red/green.
+    var color: Color {
+        switch self {
+        case .gain: FinanceColors.amountPositive
+        case .loss: FinanceColors.amountNegative
+        case .flat: .primary
+        }
+    }
+}
+
 // MARK: - Asset Class
 
 /// Classification of an investment holding, mirroring KMP `AssetClass`.
@@ -93,12 +141,11 @@ struct HoldingItem: Identifiable, Hashable, Sendable {
         return (Double(currentValueMinorUnits - prev) / Double(prev)) * 100.0
     }
 
-    /// Color for the gain/loss indicator.
-    var gainLossColor: Color {
-        if gainLossMinorUnits > 0 { return .green }
-        if gainLossMinorUnits < 0 { return .red }
-        return .primary
-    }
+    /// Redundant, non-color state (icon + label) for the gain/loss indicator.
+    var gainLossState: GainLossState { GainLossState(minorUnits: gainLossMinorUnits) }
+
+    /// Color for the gain/loss indicator (semantic token, not raw red/green).
+    var gainLossColor: Color { gainLossState.color }
 }
 
 // MARK: - Portfolio Item
@@ -129,12 +176,11 @@ struct PortfolioItem: Identifiable, Sendable {
     /// Whether the portfolio is in overall profit.
     var isProfit: Bool { totalGainLossMinorUnits > 0 }
 
-    /// Color for the total gain/loss indicator.
-    var gainLossColor: Color {
-        if totalGainLossMinorUnits > 0 { return .green }
-        if totalGainLossMinorUnits < 0 { return .red }
-        return .primary
-    }
+    /// Redundant, non-color state (icon + label) for the total gain/loss.
+    var gainLossState: GainLossState { GainLossState(minorUnits: totalGainLossMinorUnits) }
+
+    /// Color for the total gain/loss indicator (semantic token, not raw red/green).
+    var gainLossColor: Color { gainLossState.color }
 }
 
 // MARK: - Allocation Slice

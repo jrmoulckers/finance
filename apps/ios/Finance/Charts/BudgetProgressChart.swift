@@ -40,29 +40,49 @@ struct BudgetRing: View {
     let currencyCode: String
 
     var body: some View {
-        Gauge(value: progress.fraction) {
-            Text(progress.name)
-                .font(.caption)
-        } currentValueLabel: {
-            Text(percentText)
-                .font(.caption2)
-                .fontWeight(.semibold)
-        } minimumValueLabel: {
-            Text("0")
-                .font(.caption2)
-        } maximumValueLabel: {
-            Text(formattedCurrency(progress.budgeted))
-                .font(.caption2)
+        VStack(spacing: 4) {
+            Gauge(value: progress.fraction) {
+                Text(progress.name)
+                    .font(.caption)
+            } currentValueLabel: {
+                Text(percentText)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+            } minimumValueLabel: {
+                Text("0")
+                    .font(.caption2)
+            } maximumValueLabel: {
+                Text(formattedCurrency(progress.budgeted))
+                    .font(.caption2)
+            }
+            .gaugeStyle(.accessoryCircular)
+            .tint(ringGradient)
+
+            if progress.isOverBudget {
+                Label(String(localized: "Over budget"), systemImage: "exclamationmark.triangle.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(FinanceColors.statusNegative)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(true)
+            }
         }
-        .gaugeStyle(.accessoryCircular)
-        .tint(ringGradient)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(progress.name)
-        .accessibilityValue(
-            String(localized: "\(percentText) spent, \(formattedCurrency(progress.spent)) of \(formattedCurrency(progress.budgeted))")
-        )
+        .accessibilityValue(accessibilityValueText)
     }
 
     // MARK: - Helpers
+
+    /// Spoken value that always states the over-budget condition in words, so
+    /// the state never depends on the ring color alone. (#2121)
+    private var accessibilityValueText: String {
+        let base = String(localized: "\(percentText) spent, \(formattedCurrency(progress.spent)) of \(formattedCurrency(progress.budgeted))")
+        if progress.isOverBudget {
+            return String(localized: "\(base). Over budget.")
+        }
+        return base
+    }
 
     private var percentText: String {
         let pct = Int((progress.fraction * 100).rounded())
@@ -71,7 +91,7 @@ struct BudgetRing: View {
 
     private var ringGradient: some ShapeStyle {
         if progress.isOverBudget {
-            return AnyShapeStyle(Color.red)
+            return AnyShapeStyle(FinanceColors.statusNegative)
         }
         return AnyShapeStyle(
             ChartColorPalette.color(at: progress.colorIndex)
