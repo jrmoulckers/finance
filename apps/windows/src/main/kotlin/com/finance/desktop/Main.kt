@@ -2,17 +2,13 @@
 
 package com.finance.desktop
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
-import androidx.compose.ui.window.rememberWindowState
 import com.finance.desktop.components.rememberShortcutHandler
 import com.finance.desktop.data.storage.UserDataPaths
 import com.finance.desktop.di.SupabaseConfig
@@ -28,6 +24,7 @@ import com.finance.desktop.widgets.WidgetRegistrationManager
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import java.awt.Dimension
 import java.awt.GraphicsEnvironment
 import javax.swing.JOptionPane
 import kotlin.system.exitProcess
@@ -70,10 +67,9 @@ fun main() {
     PerformanceTracker.recordFirstInteractive()
 
     application {
-        val windowState = rememberWindowState(
-            size = DpSize(width = 1280.dp, height = 800.dp),
-            position = WindowPosition(Alignment.Center),
-        )
+        // Restore the last window size/position (or a centered default on first
+        // run) and continuously persist bounds changes (#3589).
+        val windowState = rememberPersistedWindowState()
 
         val shortcutHandler = rememberShortcutHandler()
 
@@ -99,6 +95,7 @@ fun main() {
                     }
                 },
                 onQuit = {
+                    WindowStatePersistence.save(windowState)
                     PerformanceMonitor.stop()
                     systemTray.dispose()
                     widgetManager.dispose()
@@ -111,6 +108,7 @@ fun main() {
 
         Window(
             onCloseRequest = {
+                WindowStatePersistence.save(windowState)
                 PerformanceMonitor.stop()
                 systemTray.dispose()
                 widgetManager.dispose()
@@ -122,6 +120,14 @@ fun main() {
             state = windowState,
             onPreviewKeyEvent = { shortcutHandler.onKeyEvent(it) },
         ) {
+            // Prevent the window from shrinking below a usable size (#3589) so the
+            // sidebar + content never collapse.
+            LaunchedEffect(window) {
+                window.minimumSize = Dimension(
+                    WindowStatePersistence.MIN_WIDTH.value.toInt(),
+                    WindowStatePersistence.MIN_HEIGHT.value.toInt(),
+                )
+            }
             FinanceApp(
                 shortcutHandler,
                 quickAddManager,
