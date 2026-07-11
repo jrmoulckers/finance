@@ -34,15 +34,20 @@ import com.finance.desktop.navigation.SidebarNavigation
 import com.finance.desktop.screens.AccountsScreen
 import com.finance.desktop.screens.BudgetNegotiationScreen
 import com.finance.desktop.screens.BudgetsScreen
+import com.finance.desktop.screens.ComingSoonScreen
 import com.finance.desktop.screens.CurrencyConversionScreen
+import com.finance.desktop.screens.CryptoDashboardScreen
 import com.finance.desktop.screens.DashboardScreen
 import com.finance.desktop.screens.DiagnosticsScreen
 import com.finance.desktop.screens.FeedbackDialog
 import com.finance.desktop.screens.GamificationScreen
 import com.finance.desktop.screens.GoalsScreen
 import com.finance.desktop.screens.HealthScoreScreen
+import com.finance.desktop.screens.HouseholdScreen
+import com.finance.desktop.screens.InvestmentScreen
 import com.finance.desktop.screens.KeyboardShortcutsHelpDialog
 import com.finance.desktop.screens.LockScreen
+import com.finance.desktop.screens.ReferralScreen
 import com.finance.desktop.screens.ReportBuilderScreen
 import com.finance.desktop.screens.ReceiptOcrScreen
 import com.finance.desktop.screens.QuickAddTransactionDialog
@@ -302,15 +307,19 @@ private fun MainAppContent(
                 Screen.Widgets -> WidgetBoardScreen()
                 Screen.Upgrade -> UpgradeScreen()
                 Screen.Tips -> TipsScreen()
-                Screen.Investments -> {} // placeholder
-                Screen.Household -> {} // placeholder
+                Screen.Investments -> InvestmentScreen()
+                Screen.Household -> HouseholdScreen()
                 Screen.Achievements -> GamificationScreen()
                 Screen.Diagnostics -> DiagnosticsScreen()
                 Screen.HealthScore -> HealthScoreScreen()
                 Screen.Reports -> ReportBuilderScreen()
-                Screen.QuickAdd -> {} // handled by dialog
+                Screen.QuickAdd -> ComingSoonScreen(
+                    title = "Quick Add",
+                    description = "Use Ctrl+Shift+N or the system tray to quickly add a transaction.",
+                )
                 Screen.Import -> ReceiptOcrScreen()
-                Screen.Referral -> {} // placeholder
+                Screen.Referral -> ReferralScreen()
+                Screen.Crypto -> CryptoDashboardScreen()
                 Screen.Negotiate -> BudgetNegotiationScreen()
                 Screen.Currency -> CurrencyConversionScreen()
                 Screen.Settings -> SettingsScreen(onSignInRequested = openSignIn)

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CurrencyExchange
+import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FileUpload
@@ -80,6 +81,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finance.desktop.accessibility.focusVisible
 import com.finance.desktop.components.KeyboardShortcut
+import com.finance.desktop.components.ShortcutCategory
 import com.finance.desktop.data.repository.AuthAccount
 import com.finance.desktop.data.repository.AuthRepository
 import com.finance.desktop.components.KeyboardShortcutEffect
@@ -125,6 +127,7 @@ enum class Screen(
     Reports("Reports", Icons.Filled.Assessment, Key.Nine, "Ctrl+9", NavGroup.PRIMARY),
     HealthScore("Health Score", Icons.Filled.Favorite, Key.Eight, "Ctrl+8", NavGroup.INSIGHTS),
     Investments("Investments", Icons.AutoMirrored.Filled.ShowChart, Key.F1, "Ctrl+F1", NavGroup.INSIGHTS),
+    Crypto("Crypto & DeFi", Icons.Filled.CurrencyBitcoin, Key.F3, "Ctrl+F3", NavGroup.INSIGHTS),
     Achievements("Achievements", Icons.Filled.EmojiEvents, Key.A, "Ctrl+A", NavGroup.INSIGHTS),
     Tips("Tips", Icons.Filled.Lightbulb, Key.T, "Ctrl+T", NavGroup.INSIGHTS),
     Household("Household", Icons.Filled.Group, Key.H, "Ctrl+H", NavGroup.TOOLS),
@@ -179,6 +182,7 @@ fun SidebarNavigation(
             KeyboardShortcut(
                 key = screen.shortcutKey,
                 description = "Navigate to ${screen.label}",
+                category = ShortcutCategory.NAVIGATION,
             ) { currentScreen = screen }
         }
     }
