@@ -12,6 +12,7 @@ import { Link, useParams } from 'react-router-dom';
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInvestments } from '../hooks';
 import { formatGainLoss } from '../lib/currency';
+import { computeAllLotGainLoss } from '../lib/investment/cost-basis';
 import { getCurrentLocale } from '../lib/i18n';
 import type { InvestmentType } from '../kmp/bridge';
 
@@ -30,7 +31,7 @@ const TYPE_LABELS: Record<InvestmentType, string> = {
 /** Investment detail page component. */
 export const InvestmentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { investments, loading, error, refresh } = useInvestments();
+  const { investments, loading, error, refresh, getLots } = useInvestments();
 
   const investment = investments.find((inv) => inv.id === id) ?? null;
 
@@ -64,6 +65,12 @@ export const InvestmentDetailPage: React.FC = () => {
   const gainLoss = marketValue - costBasis;
   const gainLossPercent = costBasis > 0 ? Math.round((gainLoss / costBasis) * 10000) / 100 : 0;
   const isPositive = gainLoss >= 0;
+
+  // Per-lot cost-basis and holding-period breakdown for tax-lot planning (#3270).
+  const lots = getLots(investment.id);
+  const lotGainLoss = computeAllLotGainLoss(lots, investment.currentPricePerShare.amount);
+  const hasLots = lotGainLoss.length > 0;
+  const locale = getCurrentLocale();
 
   return (
     <>
@@ -194,6 +201,188 @@ export const InvestmentDetailPage: React.FC = () => {
               ? `This holding is up ${gainLossPercent}% from your purchase price.`
               : `This holding is down ${Math.abs(gainLossPercent)}% from your purchase price.`}
           </p>
+        </div>
+      </section>
+
+      {/* Tax lots (#3270) */}
+      <section className="page-section" aria-label="Tax lots">
+        <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
+          <h3
+            style={{
+              fontWeight: 'var(--font-weight-semibold)',
+              marginBottom: 'var(--spacing-2)',
+            }}
+          >
+            Tax lots
+          </h3>
+          <p
+            style={{
+              marginTop: 0,
+              marginBottom: 'var(--spacing-4)',
+              fontSize: 'var(--type-scale-caption-font-size)',
+              color: 'var(--semantic-text-secondary)',
+            }}
+          >
+            Per-lot cost basis and holding period. Lots held longer than one year
+            qualify for long-term capital-gains treatment.
+          </p>
+          {hasLots ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table
+                style={{ width: '100%', borderCollapse: 'collapse' }}
+                aria-label="Tax lots breakdown"
+              >
+                <thead>
+                  <tr>
+                    <th
+                      scope="col"
+                      style={{
+                        textAlign: 'left',
+                        padding: 'var(--spacing-3)',
+                        borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
+                      }}
+                    >
+                      Purchase Date
+                    </th>
+                    <th
+                      scope="col"
+                      style={{
+                        textAlign: 'right',
+                        padding: 'var(--spacing-3)',
+                        borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
+                      }}
+                    >
+                      Shares
+                    </th>
+                    <th
+                      scope="col"
+                      style={{
+                        textAlign: 'right',
+                        padding: 'var(--spacing-3)',
+                        borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
+                      }}
+                    >
+                      Cost/Share
+                    </th>
+                    <th
+                      scope="col"
+                      style={{
+                        textAlign: 'right',
+                        padding: 'var(--spacing-3)',
+                        borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
+                      }}
+                    >
+                      Cost Basis
+                    </th>
+                    <th
+                      scope="col"
+                      style={{
+                        textAlign: 'right',
+                        padding: 'var(--spacing-3)',
+                        borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
+                      }}
+                    >
+                      Market Value
+                    </th>
+                    <th
+                      scope="col"
+                      style={{
+                        textAlign: 'right',
+                        padding: 'var(--spacing-3)',
+                        borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
+                      }}
+                    >
+                      Unrealized G/L
+                    </th>
+                    <th
+                      scope="col"
+                      style={{
+                        textAlign: 'left',
+                        padding: 'var(--spacing-3)',
+                        borderBottom: '2px solid var(--semantic-border-default, #e5e7eb)',
+                      }}
+                    >
+                      Holding Period
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lotGainLoss.map(({ lot, marketValue: lotValue, unrealizedGainLoss, unrealizedGainLossPercent, isLongTerm, daysHeld }) => (
+                    <tr
+                      key={lot.id}
+                      style={{
+                        borderBottom: '1px solid var(--semantic-border-default, #e5e7eb)',
+                      }}
+                    >
+                      <td style={{ padding: 'var(--spacing-3)' }}>
+                        {new Date(`${lot.purchaseDate}T00:00:00Z`).toLocaleDateString(locale, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          timeZone: 'UTC',
+                        })}
+                      </td>
+                      <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                        {lot.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                      </td>
+                      <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                        <CurrencyDisplay
+                          amount={lot.costPerShare.amount}
+                          currency={investment.currency.code}
+                        />
+                      </td>
+                      <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                        <CurrencyDisplay
+                          amount={lot.totalCost.amount}
+                          currency={investment.currency.code}
+                        />
+                      </td>
+                      <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                        <CurrencyDisplay amount={lotValue} currency={investment.currency.code} />
+                      </td>
+                      <td
+                        style={{
+                          padding: 'var(--spacing-3)',
+                          textAlign: 'right',
+                          color:
+                            unrealizedGainLoss >= 0
+                              ? 'var(--semantic-positive, #059669)'
+                              : 'var(--semantic-negative, #dc2626)',
+                        }}
+                      >
+                        {formatGainLoss(unrealizedGainLoss)} ({unrealizedGainLossPercent}%)
+                      </td>
+                      <td style={{ padding: 'var(--spacing-3)' }}>
+                        <span
+                          style={{
+                            fontSize: 'var(--type-scale-caption-font-size)',
+                            padding: 'var(--spacing-1) var(--spacing-2)',
+                            borderRadius: 'var(--radius-sm, 4px)',
+                            backgroundColor: 'var(--semantic-background-secondary, #f3f4f6)',
+                          }}
+                        >
+                          {isLongTerm ? 'Long-term' : 'Short-term'}
+                        </span>{' '}
+                        <span
+                          style={{
+                            fontSize: 'var(--type-scale-caption-font-size)',
+                            color: 'var(--semantic-text-secondary)',
+                          }}
+                        >
+                          {daysHeld.toLocaleString()} days
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p style={{ margin: 0, color: 'var(--semantic-text-secondary)' }}>
+              No individual tax lots are recorded for this holding. The position-level
+              cost basis above is used for gain/loss.
+            </p>
+          )}
         </div>
       </section>
 

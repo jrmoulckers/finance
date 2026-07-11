@@ -134,4 +134,45 @@ describe('InvestmentDetailPage', () => {
 
     expect(screen.getByText('Database error')).toBeInTheDocument();
   });
+
+  it('renders a per-lot tax-lot breakdown with holding-period classification (#3270)', () => {
+    const lots = [
+      {
+        id: 'lot-long',
+        investmentId: 'inv-1',
+        purchaseDate: '2020-01-01',
+        shares: 4,
+        costPerShare: { amount: 10000 },
+        totalCost: { amount: 40000 },
+        ...syncMetadata,
+      },
+      {
+        id: 'lot-short',
+        investmentId: 'inv-1',
+        purchaseDate: new Date().toISOString().slice(0, 10),
+        shares: 6,
+        costPerShare: { amount: 18000 },
+        totalCost: { amount: 108000 },
+        ...syncMetadata,
+      },
+    ];
+    mockedUseInvestments.mockReturnValue({
+      ...baseMockReturn,
+      getLots: vi.fn().mockReturnValue(lots),
+    });
+
+    renderWithRoute('inv-1');
+
+    expect(screen.getByRole('table', { name: 'Tax lots breakdown' })).toBeInTheDocument();
+    expect(screen.getByText('Long-term')).toBeInTheDocument();
+    expect(screen.getByText('Short-term')).toBeInTheDocument();
+  });
+
+  it('shows a fallback note when a holding has no recorded tax lots (#3270)', () => {
+    renderWithRoute('inv-1');
+
+    expect(
+      screen.getByText(/No individual tax lots are recorded for this holding/),
+    ).toBeInTheDocument();
+  });
 });
