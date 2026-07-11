@@ -35,6 +35,7 @@ function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     id: 'inv-1',
     clientName: 'Acme Studio',
     amountCents: 400000,
+    currency: 'USD',
     issueDate: '2024-01-01',
     paymentTerm: 'net-30',
     status: 'Sent',

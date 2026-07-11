@@ -153,6 +153,7 @@ describe('ExpectedIncomePage', () => {
         id: 'inv-1',
         clientName: 'Studio Delacroix',
         amountCents: 120000,
+        currency: 'USD',
         issueDate: '2099-01-01',
         paymentTerm: 'net-30',
         status: 'Sent',

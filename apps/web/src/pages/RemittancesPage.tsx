@@ -1016,13 +1016,12 @@ export const RemittancesPage: React.FC = () => {
                       key={item.record.id}
                       className="remittance-upcoming__item"
                       aria-label={t('remittance.upcoming.itemAria', {
-                        amount: formatCurrency(
-                          item.totalPaidMinor,
-                          item.record.sourceCurrency,
+                        amount: formatCurrency(item.totalPaidMinor, {
+                          currency: item.record.sourceCurrency,
                           locale,
-                        ),
+                        }),
                         recipient: item.record.recipient.name,
-                        date: formatDate(item.date, locale),
+                        date: formatDate(item.date, { locale }),
                         frequency: frequencyLabel,
                       })}
                     >
@@ -1031,7 +1030,7 @@ export const RemittancesPage: React.FC = () => {
                           {item.record.recipient.name}
                         </span>
                         <span className="remittance-upcoming__date">
-                          {formatDate(item.date, locale)}
+                          {formatDate(item.date, { locale })}
                         </span>
                       </div>
                       <div className="remittance-upcoming__meta">

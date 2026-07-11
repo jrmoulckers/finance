@@ -81,6 +81,7 @@ const SAMPLE_INVOICE: Invoice = {
   id: 'inv-1',
   clientName: 'Etsy Wholesale',
   amountCents: 120_000,
+  currency: 'USD',
   issueDate: '2026-06-01',
   paymentTerm: 'net-30',
   status: 'Sent',

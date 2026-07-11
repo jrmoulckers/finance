@@ -216,14 +216,16 @@ describe('CashRunwayPage scheduled remittances and workspace filter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUseExchangeRates.mockReturnValue({ ...baseRatesResult, rates: {} });
-    mockedUseRemittances.mockReturnValue({ remittances: [] } as ReturnType<typeof useRemittances>);
+    mockedUseRemittances.mockReturnValue({ remittances: [] } as unknown as ReturnType<
+      typeof useRemittances
+    >);
   });
 
   it('includes recurring supplier remittances as scheduled outflows (#3244)', () => {
     mockAccounts([cashAccount('usd', 'USD', 2, 500000)]);
     mockedUseRemittances.mockReturnValue({
       remittances: [recurringRemittance()],
-    } as ReturnType<typeof useRemittances>);
+    } as unknown as ReturnType<typeof useRemittances>);
 
     render(<CashRunwayPage />);
 
@@ -235,7 +237,7 @@ describe('CashRunwayPage scheduled remittances and workspace filter', () => {
     mockAccounts([businessAccount('biz', 500000)]);
     mockedUseRemittances.mockReturnValue({
       remittances: [recurringRemittance()],
-    } as ReturnType<typeof useRemittances>);
+    } as unknown as ReturnType<typeof useRemittances>);
 
     render(<CashRunwayPage />);
     // Default "All" workspace shows the scheduled supplier remittance.
