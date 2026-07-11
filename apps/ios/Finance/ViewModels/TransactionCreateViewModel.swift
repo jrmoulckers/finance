@@ -17,6 +17,7 @@ final class TransactionCreateViewModel {
     private let accountRepository: AccountRepository
     private let transactionValidator: KMPTransactionValidatorProtocol
     private let categorizationEngine: KMPCategorizationEngineProtocol
+    private let syncQueue: SyncQueueManager
 
     /// The transaction being edited, or `nil` for create mode.
     private let editingTransaction: TransactionItem?
@@ -178,13 +179,15 @@ final class TransactionCreateViewModel {
         transaction: TransactionItem? = nil,
         quickEntryAction: String? = nil,
         transactionValidator: KMPTransactionValidatorProtocol = KMPBridge.shared.transactionValidator,
-        categorizationEngine: KMPCategorizationEngineProtocol = KMPBridge.shared.categorizationEngine
+        categorizationEngine: KMPCategorizationEngineProtocol = KMPBridge.shared.categorizationEngine,
+        syncQueue: SyncQueueManager = .shared
     ) {
         self.transactionRepository = transactionRepository
         self.accountRepository = accountRepository
         self.editingTransaction = transaction
         self.transactionValidator = transactionValidator
         self.categorizationEngine = categorizationEngine
+        self.syncQueue = syncQueue
 
         if let transaction {
             // Pre-fill fields from the existing transaction
@@ -300,6 +303,14 @@ final class TransactionCreateViewModel {
             } else {
                 try await transactionRepository.createTransaction(transaction)
             }
+
+            // Queue the change for sync so offline users get trustworthy
+            // feedback on what has and hasn't uploaded (#2204).
+            syncQueue.enqueue(
+                entityType: "transaction",
+                entityId: transaction.id,
+                summary: "\(payee) — \(formattedAmount) \(currencyCode)"
+            )
 
             // Teach the categorization engine this payee → category mapping
             if let categoryId = selectedCategoryId, !payee.isEmpty {

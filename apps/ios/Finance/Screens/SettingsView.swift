@@ -16,6 +16,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(BiometricAuthManager.self) private var biometricManager
     @Environment(AuthenticationService.self) private var authService
+    @Environment(NetworkMonitor.self) private var networkMonitor: NetworkMonitor?
     @State private var viewModel: SettingsViewModel
 
     init(viewModel: SettingsViewModel = SettingsViewModel()) {
@@ -39,7 +40,12 @@ struct SettingsView: View {
             }
             .navigationTitle(String(localized: "Settings"))
             .navigationBarTitleDisplayMode(.large)
-            .task { await viewModel.loadSettings() }
+            .task {
+                viewModel.isNetworkAvailable = { [weak networkMonitor] in
+                    networkMonitor?.isConnected ?? true
+                }
+                await viewModel.loadSettings()
+            }
             .disabled(viewModel.isDeleting)
             .overlay {
                 if viewModel.isDeleting {
@@ -365,6 +371,29 @@ struct SettingsView: View {
                 )
             }
 
+            if let networkMonitor, !networkMonitor.isConnected {
+                Label(
+                    String(localized: "You're offline. Changes are saved on this device and will sync automatically when you reconnect."),
+                    systemImage: "wifi.slash"
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(String(localized: "Offline. Changes are queued and will sync when you reconnect."))
+            }
+
+            if viewModel.syncFailedCount > 0 || viewModel.syncConflictedCount > 0 {
+                syncAttentionRows
+            }
+
+            if let summary = viewModel.lastSyncSummaryText {
+                Text(summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(summary)
+            }
+
+            syncQueueDetailLink
+
             Button {
                 Task { await viewModel.syncNow() }
             } label: {
@@ -379,6 +408,59 @@ struct SettingsView: View {
             .disabled(viewModel.isSyncing)
             .accessibilityLabel(String(localized: "Sync now"))
             .accessibilityHint(String(localized: "Triggers a manual data sync with the server"))
+
+            if viewModel.syncNeedsAttention {
+                Button {
+                    Task { await viewModel.retrySync() }
+                } label: {
+                    Label(String(localized: "Retry Failed"), systemImage: "arrow.clockwise.circle")
+                }
+                .disabled(viewModel.isSyncing)
+                .accessibilityHint(String(localized: "Retries changes that failed or need review"))
+            }
+        }
+    }
+
+    // MARK: - Sync detail
+
+    @ViewBuilder
+    private var syncAttentionRows: some View {
+        if viewModel.syncFailedCount > 0 {
+            Label(
+                String(localized: "\(viewModel.syncFailedCount) change(s) failed to upload"),
+                systemImage: "exclamationmark.arrow.triangle.2.circlepath"
+            )
+            .font(.subheadline)
+            .foregroundStyle(.red)
+        }
+        if viewModel.syncConflictedCount > 0 {
+            Label(
+                String(localized: "\(viewModel.syncConflictedCount) change(s) need review"),
+                systemImage: "exclamationmark.triangle"
+            )
+            .font(.subheadline)
+            .foregroundStyle(.orange)
+        }
+    }
+
+    @ViewBuilder
+    private var syncQueueDetailLink: some View {
+        if !viewModel.syncQueueItems.isEmpty {
+            NavigationLink {
+                SyncQueueDetailView(
+                    items: viewModel.syncQueueItems,
+                    onClearSynced: { viewModel.clearSyncedItems() }
+                )
+            } label: {
+                HStack {
+                    Label(String(localized: "Sync Details"), systemImage: "list.bullet.rectangle")
+                    Spacer()
+                    Text("\(viewModel.syncQueueItems.count)")
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                }
+            }
+            .accessibilityHint(String(localized: "Shows the per-change sync status queue"))
         }
     }
 
