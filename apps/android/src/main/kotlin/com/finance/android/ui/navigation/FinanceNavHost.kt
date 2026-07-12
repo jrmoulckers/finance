@@ -60,6 +60,13 @@ import com.finance.android.ui.screens.referral.ReferralScreen
 import com.finance.android.ui.screens.report.ReportBuilderScreen
 import com.finance.android.ui.screens.currency.CurrencyConversionScreen
 import com.finance.android.ui.screens.currency.CurrencyPickerScreen
+import com.finance.android.ui.gamification.GamificationScreen
+import com.finance.android.ui.couple.CoupleHubScreen
+import com.finance.android.ui.couple.privacy.CouplePrivacyScreen
+import com.finance.android.ui.couple.wedding.WeddingWorkspaceScreen
+import com.finance.android.ui.couple.goals.SharedGoalContributionsScreen
+import com.finance.android.ui.couple.checkin.MoneyCheckInScreen
+import com.finance.android.ui.couple.debt.DebtPayoffPlannerScreen
 import org.koin.compose.koinInject
 import timber.log.Timber
 
@@ -218,6 +225,27 @@ sealed class Route(val route: String) {
 
     /** Gig / delivery driver tools — payouts, mileage, Schedule C presets (#2141, #2137, #2133). */
     data object GigTools : Route("gig-tools")
+
+    /** Teen achievements: streaks, near-win feedback, celebration moments (#2211). */
+    data object Achievements : Route("achievements")
+
+    /** Engaged-couples money hub linking all shared-finance features. */
+    data object CoupleHub : Route("couple-hub")
+
+    /** "Yours, mine, ours" privacy model (#2142). */
+    data object CouplePrivacy : Route("couple-privacy")
+
+    /** Shared wedding-budget workspace (#2145). */
+    data object CoupleWedding : Route("couple-wedding")
+
+    /** Shared goal contributions — house down payment (#2147). */
+    data object CoupleGoals : Route("couple-goals")
+
+    /** Supportive money check-ins (#2150). */
+    data object CoupleCheckIn : Route("couple-checkin")
+
+    /** Joint debt payoff planner (#2153). */
+    data object CoupleDebt : Route("couple-debt")
 }
 
 /**
@@ -426,6 +454,38 @@ fun FinanceNavHost(
                     }
                 },
             )
+        }
+
+        // ── Teen achievements (#2211) ────────────────────────────────
+        composable(Route.Achievements.route) {
+            GamificationScreen()
+        }
+
+        // ── Engaged-couples shared finances (#2142/#2145/#2147/#2150/#2153) ──
+        composable(Route.CoupleHub.route) {
+            CoupleHubScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPrivacy = { navController.navigate(Route.CouplePrivacy.route) },
+                onOpenWedding = { navController.navigate(Route.CoupleWedding.route) },
+                onOpenGoals = { navController.navigate(Route.CoupleGoals.route) },
+                onOpenCheckIn = { navController.navigate(Route.CoupleCheckIn.route) },
+                onOpenDebt = { navController.navigate(Route.CoupleDebt.route) },
+            )
+        }
+        composable(Route.CouplePrivacy.route) {
+            CouplePrivacyScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Route.CoupleWedding.route) {
+            WeddingWorkspaceScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Route.CoupleGoals.route) {
+            SharedGoalContributionsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Route.CoupleCheckIn.route) {
+            MoneyCheckInScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Route.CoupleDebt.route) {
+            DebtPayoffPlannerScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Route.ExpertiseTier.route) {

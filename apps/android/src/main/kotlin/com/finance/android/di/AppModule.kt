@@ -48,6 +48,20 @@ import com.finance.android.ui.nlp.NlpTransactionViewModel
 import com.finance.android.ui.streak.StreakRepository
 import com.finance.android.ui.streak.StreakViewModel
 import com.finance.android.ui.streak.TransactionBackedStreakRepository
+import com.finance.android.ui.gamification.GamificationCelebrationStore
+import com.finance.android.ui.gamification.GamificationViewModel
+import com.finance.android.ui.couple.CoupleProfileRepository
+import com.finance.android.ui.couple.CoupleHubViewModel
+import com.finance.android.ui.couple.privacy.CouplePrivacyRepository
+import com.finance.android.ui.couple.privacy.CouplePrivacyViewModel
+import com.finance.android.ui.couple.debt.CoupleDebtRepository
+import com.finance.android.ui.couple.debt.DebtPlannerViewModel
+import com.finance.android.ui.couple.goals.SharedContributionRepository
+import com.finance.android.ui.couple.goals.SharedGoalViewModel
+import com.finance.android.ui.couple.wedding.WeddingRepository
+import com.finance.android.ui.couple.wedding.WeddingViewModel
+import com.finance.android.ui.couple.checkin.CheckInRepository
+import com.finance.android.ui.couple.checkin.CheckInViewModel
 import com.finance.android.ui.accessibility.CognitiveAccessibilityManager
 import com.finance.android.ui.feedback.DefaultHapticAvailabilityChecker
 import com.finance.android.ui.feedback.HapticAvailabilityChecker
@@ -175,6 +189,43 @@ val appModule = module {
 
     /** Streak repository — derives logging dates from the transaction repository. */
     single<StreakRepository> { TransactionBackedStreakRepository(get()) }
+
+    // ── Gamification (#242, #2211) ──────────────────────────────────
+    // Teen achievements: real streaks, near-win feedback, celebration moments.
+
+    /** Remembers which achievements were already celebrated (one-time celebration). */
+    single { GamificationCelebrationStore(get()) }
+
+    /** Achievements + real streaks + near-win + celebration ViewModel. */
+    viewModelOf(::GamificationViewModel)
+
+    // ── Couple money (engaged couples batch: #2142/#2145/#2147/#2150/#2153) ──
+    // All persistence uses the shared encrypted SharedPreferences singleton via org.json.
+
+    /** Shared partner profile (names + shared label) used across couple features. */
+    single { CoupleProfileRepository(get()) }
+
+    /** "Yours, mine, ours" privacy classification store (#2142). */
+    single { CouplePrivacyRepository(get()) }
+
+    /** Joint debt store for the payoff planner (#2153). */
+    single { CoupleDebtRepository(get()) }
+
+    /** Shared goal contribution store — house down payment (#2147). */
+    single { SharedContributionRepository(get()) }
+
+    /** Shared wedding-budget workspace store (#2145). */
+    single { WeddingRepository(get()) }
+
+    /** Supportive money check-in preferences and history (#2150). */
+    single { CheckInRepository(get()) }
+
+    viewModelOf(::CoupleHubViewModel)
+    viewModelOf(::CouplePrivacyViewModel)
+    viewModelOf(::DebtPlannerViewModel)
+    viewModelOf(::SharedGoalViewModel)
+    viewModelOf(::WeddingViewModel)
+    viewModelOf(::CheckInViewModel)
 
     // ── Notifications ───────────────────────────────────────────────
 
