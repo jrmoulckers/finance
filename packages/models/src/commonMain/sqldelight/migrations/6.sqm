@@ -1,0 +1,11 @@
+-- Migration v6 → v7: Denormalize biometric protection onto transactions (#3530)
+
+ALTER TABLE "transaction" ADD COLUMN is_biometric_protected INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_transaction_biometric_protected ON "transaction" (household_id, is_biometric_protected);
+
+-- Backfill from the owning category so existing rows carry the correct value.
+UPDATE "transaction"
+SET is_biometric_protected = COALESCE(
+    (SELECT c.is_biometric_protected FROM category c WHERE c.id = "transaction".category_id),
+    0
+);

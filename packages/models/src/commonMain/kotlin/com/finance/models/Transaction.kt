@@ -40,6 +40,13 @@ data class Transaction(
     val syncVersion: Long = 0,
     val isSynced: Boolean = false,
     val moodTag: String? = null,
+    /**
+     * Denormalized from the transaction's category (see #3530). When true the
+     * transaction belongs to a biometric-protected category and must sync only
+     * to its owner. Server-side triggers keep this in step with the category;
+     * clients also use it to gate local display.
+     */
+    val isBiometricProtected: Boolean = false,
 ) {
     init {
         require(amount.amount != 0L) { "Transaction amount cannot be zero" }

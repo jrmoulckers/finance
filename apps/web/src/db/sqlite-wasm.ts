@@ -732,6 +732,25 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE remittance ADD COLUMN recurrence_next_date TEXT;`,
     ],
   },
+  {
+    version: 17,
+    label: 'denormalize-biometric-protection-on-transactions',
+    up: [
+      // #3530: Biometric-protection sync filtering is re-implemented the
+      // PowerSync-valid way by denormalizing the category's protection flag onto
+      // each transaction (kept in sync server-side by DB triggers). The client
+      // schema must carry the column so PowerSync can write the synced value and
+      // the UI can gate protected transactions locally without a category join.
+      `ALTER TABLE "transaction" ADD COLUMN is_biometric_protected INTEGER NOT NULL DEFAULT 0;`,
+      `CREATE INDEX IF NOT EXISTS idx_transaction_biometric ON "transaction" (is_biometric_protected);`,
+      // Backfill from the owning category to match server-side backfill.
+      `UPDATE "transaction"
+         SET is_biometric_protected = COALESCE(
+           (SELECT c.is_biometric_protected FROM category c WHERE c.id = "transaction".category_id),
+           0
+         );`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection
