@@ -9,6 +9,8 @@ import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.GoalRepository
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.android.ui.streak.StreakCalculator
+import com.finance.android.ui.streak.StreakRepository
 import com.finance.core.gamification.AchievementCategory
 import com.finance.core.gamification.AchievementDefinition
 import com.finance.core.gamification.AchievementProgress
@@ -23,6 +25,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import timber.log.Timber
 
 /**
@@ -42,6 +47,14 @@ data class AchievementUi(
     val targetCount: Int?,
 )
 
+/** A celebration moment shown when the user unlocks a new achievement (#2211). */
+data class CelebrationState(
+    val title: String,
+    val icon: String,
+    val points: Int,
+    val rarity: AchievementRarity,
+)
+
 /**
  * Complete UI state for the Gamification screen (#242).
  */
@@ -56,13 +69,20 @@ data class GamificationUiState(
     val achievements: List<AchievementUi> = emptyList(),
     val recentlyUnlocked: List<AchievementUi> = emptyList(),
     val activeStreaks: List<Streak> = emptyList(),
+    val currentStreakDays: Int = 0,
+    val bestStreakDays: Int = 0,
+    val streakMessage: String = "",
+    val nearWins: List<NearWin> = emptyList(),
+    val celebration: CelebrationState? = null,
 )
 
 /**
- * ViewModel for the Gamification screen (#242).
+ * ViewModel for the Gamification screen (#242, #2211).
  *
- * Evaluates achievements using the KMP [GamificationEngine] and
- * builds a [GamificationProfile] for UI display.
+ * Evaluates achievements using the KMP [GamificationEngine], derives real
+ * logging streaks via [StreakRepository]/[StreakCalculator], computes
+ * near-win feedback, and raises a one-time celebration when a new
+ * achievement is unlocked.
  */
 class GamificationViewModel(
     private val householdIdProvider: HouseholdIdProvider,
@@ -70,6 +90,8 @@ class GamificationViewModel(
     private val accountRepository: AccountRepository,
     private val budgetRepository: BudgetRepository,
     private val goalRepository: GoalRepository,
+    private val streakRepository: StreakRepository,
+    private val celebrationStore: GamificationCelebrationStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GamificationUiState())
@@ -81,6 +103,11 @@ class GamificationViewModel(
 
     fun refresh() {
         loadGamification()
+    }
+
+    /** Dismisses the current celebration overlay. */
+    fun dismissCelebration() {
+        _uiState.update { it.copy(celebration = null) }
     }
 
     private fun loadGamification() {
@@ -107,15 +134,41 @@ class GamificationViewModel(
                     goals = goals,
                 )
 
+                // Real streaks derived from logging dates (#2211).
+                val loggingDates = streakRepository.observeLoggingDates(householdId.value).first()
+                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                val currentStreak = StreakCalculator.currentStreak(loggingDates, today)
+                val bestStreak = StreakCalculator.longestStreak(loggingDates)
+                val streaks = buildStreaks(currentStreak, bestStreak, loggingDates.maxOrNull() ?: today)
+
                 val profile = GamificationEngine.buildProfile(
                     progress = achievementProgress,
-                    streaks = emptyList(), // Streaks tracked separately via StreakRepository
+                    streaks = streaks,
                 )
 
                 val achievements = buildAchievementUiList(achievementProgress)
                 val recentlyUnlocked = achievements.filter { it.isUnlocked }
                     .sortedByDescending { it.points }
                     .take(3)
+
+                // Near-win feedback (#2211).
+                val nearWins = NearWinCalculator.compute(achievements, currentStreak, bestStreak)
+
+                // Celebration: fire once per genuinely new unlock (#2211).
+                val unlockedIds = achievements.filter { it.isUnlocked }.map { it.id }.toSet()
+                val alreadySeen = celebrationStore.seenIds()
+                val newlyUnlocked = achievements.firstOrNull { it.isUnlocked && it.id !in alreadySeen }
+                if (unlockedIds.isNotEmpty()) {
+                    celebrationStore.markSeen(unlockedIds)
+                }
+                val celebration = newlyUnlocked?.let {
+                    CelebrationState(
+                        title = it.title,
+                        icon = it.icon,
+                        points = it.points,
+                        rarity = it.rarity,
+                    )
+                }
 
                 // Calculate level progress fraction
                 val currentLevelPoints = GamificationEngine.pointsForLevel(profile.level)
@@ -137,21 +190,43 @@ class GamificationViewModel(
                         achievements = achievements,
                         recentlyUnlocked = recentlyUnlocked,
                         activeStreaks = profile.activeStreaks,
+                        currentStreakDays = currentStreak,
+                        bestStreakDays = bestStreak,
+                        streakMessage = StreakCalculator.streakMessage(currentStreak),
+                        nearWins = nearWins,
+                        celebration = celebration,
                     )
                 }
 
                 Timber.d(
-                    "Gamification loaded: level=%d, points=%d, unlocked=%d/%d",
+                    "Gamification loaded: level=%d, points=%d, unlocked=%d/%d, streak=%d",
                     profile.level,
                     profile.totalPoints,
                     profile.achievementsUnlocked,
                     profile.achievementsTotal,
+                    currentStreak,
                 )
             } catch (e: Exception) {
                 Timber.e(e, "Failed to load gamification data")
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+
+    private fun buildStreaks(
+        currentStreak: Int,
+        bestStreak: Int,
+        lastActivityDate: kotlinx.datetime.LocalDate,
+    ): List<Streak> {
+        if (currentStreak <= 0) return emptyList()
+        return listOf(
+            Streak(
+                type = "Daily logging",
+                currentCount = currentStreak,
+                bestCount = bestStreak,
+                lastActivityDate = lastActivityDate,
+            ),
+        )
     }
 
     private fun buildAchievementUiList(
