@@ -79,6 +79,13 @@ final class TransactionCreateViewModel {
         PickerOption(id: "c4", name: "Entertainment", icon: "film"),
         PickerOption(id: "c5", name: "Shopping", icon: "bag"),
         PickerOption(id: "c6", name: "Income", icon: "dollarsign.circle"),
+        // Kid-specific categories for family / single-parent households (#2201).
+        PickerOption(id: "kid-school", name: "School", icon: "graduationcap"),
+        PickerOption(id: "kid-childcare", name: "Childcare", icon: "figure.and.child.holdinghands"),
+        PickerOption(id: "kid-activities", name: "Activities & Sports", icon: "figure.run"),
+        PickerOption(id: "kid-birthdays", name: "Birthdays & Parties", icon: "gift"),
+        PickerOption(id: "kid-fieldtrips", name: "Field Trips", icon: "bus"),
+        PickerOption(id: "kid-clothing", name: "Kids' Clothing", icon: "tshirt"),
     ]
 
     var canAdvance: Bool {
