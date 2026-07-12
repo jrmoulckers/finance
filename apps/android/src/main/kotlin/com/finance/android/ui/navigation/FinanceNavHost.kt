@@ -57,6 +57,12 @@ import com.finance.android.ui.screens.household.HouseholdScreen
 import com.finance.android.ui.screens.investment.InvestmentPortfolioScreen
 import com.finance.android.ui.screens.nlp.NlpInputScreen
 import com.finance.android.ui.screens.referral.ReferralScreen
+import com.finance.android.ui.screens.business.BusinessSeparationScreen
+import com.finance.android.ui.screens.business.field.RuggedQuickExpenseScreen
+import com.finance.android.ui.screens.business.forecast.CashForecastScreen
+import com.finance.android.ui.screens.business.pnl.ProfitLossScreen
+import com.finance.android.ui.screens.business.receipt.ReceiptExpenseScreen
+import com.finance.android.ui.screens.business.share.ShareWinScreen
 import com.finance.android.ui.screens.report.ReportBuilderScreen
 import com.finance.android.ui.screens.currency.CurrencyConversionScreen
 import com.finance.android.ui.screens.currency.CurrencyPickerScreen
@@ -195,6 +201,26 @@ sealed class Route(val route: String) {
 
     /** On-device receipt OCR quick-entry flow (#1852). */
     data object ReceiptOcr : Route("receipt-ocr")
+
+    // ── Batch 15: business / food-truck + teen sharing ──────────────
+
+    /** Business vs personal money separation (#2182). */
+    data object BusinessSeparation : Route("business-separation")
+
+    /** Weekly/monthly food-truck P&L (#2184). */
+    data object ProfitLoss : Route("food-truck-pnl")
+
+    /** Forward-looking operating cash forecast (#2185). */
+    data object CashForecast : Route("cash-forecast")
+
+    /** Receipt capture → saved expense + COGS workflow (#2183). */
+    data object ReceiptExpense : Route("receipt-expense")
+
+    /** Rugged one-handed quick-expense entry (#2186). */
+    data object RuggedQuickExpense : Route("rugged-quick-expense")
+
+    /** Teen privacy-safe sharing of savings wins (#2210). */
+    data object ShareWin : Route("share-win")
 
     /** Conflict Resolution screen (#Sprint27). */
     data object ConflictResolution : Route("conflict-resolution")
@@ -555,6 +581,35 @@ fun FinanceNavHost(
             ReceiptOcrScreen(
                 onBack = { navController.popBackStack() },
             )
+        }
+
+        // ── Batch 15: business / food-truck + teen sharing ──────────
+
+        composable(Route.BusinessSeparation.route) {
+            BusinessSeparationScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Route.ProfitLoss.route) {
+            ProfitLossScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Route.CashForecast.route) {
+            CashForecastScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Route.ReceiptExpense.route) {
+            ReceiptExpenseScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
+        }
+
+        composable(Route.RuggedQuickExpense.route) {
+            RuggedQuickExpenseScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Route.ShareWin.route) {
+            ShareWinScreen(onBack = { navController.popBackStack() })
         }
 
         // ── Multi-currency screens (#1130) ──────────────────────────

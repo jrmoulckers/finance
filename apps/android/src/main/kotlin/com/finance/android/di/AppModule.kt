@@ -14,6 +14,13 @@ import com.finance.android.ui.screens.investment.InvestmentViewModel
 import com.finance.android.ui.screens.nlp.NlpInputViewModel
 import com.finance.android.ui.screens.currency.CurrencyViewModel
 import com.finance.android.ui.screens.referral.ReferralViewModel
+import com.finance.android.ui.screens.business.BusinessSeparationViewModel
+import com.finance.android.ui.screens.business.field.RuggedModeManager
+import com.finance.android.ui.screens.business.field.RuggedQuickExpenseViewModel
+import com.finance.android.ui.screens.business.forecast.CashForecastViewModel
+import com.finance.android.ui.screens.business.pnl.ProfitLossViewModel
+import com.finance.android.ui.screens.business.receipt.ReceiptExpenseViewModel
+import com.finance.android.ui.screens.business.share.ShareWinViewModel
 import com.finance.android.ui.screens.report.ReportBuilderViewModel
 import com.finance.android.data.repository.impl.InMemoryBudgetRepository
 import com.finance.android.data.repository.impl.InMemoryCategoryRepository
@@ -390,4 +397,27 @@ val appModule = module {
 
     /** Voice transaction review/confirmation ViewModel (#2383). */
     viewModelOf(::VoiceTransactionViewModel)
+
+    // ── Batch 15: business / food-truck + teen sharing (apps/android) ─
+
+    /** Rugged field mode preference — large targets, high contrast (#2186). */
+    single { RuggedModeManager(get()) }
+
+    /** Business vs personal money separation (#2182). */
+    viewModelOf(::BusinessSeparationViewModel)
+
+    /** Weekly/monthly food-truck P&L with COGS/labor/margins (#2184). */
+    viewModelOf(::ProfitLossViewModel)
+
+    /** Forward-looking operating cash forecast (#2185). */
+    viewModelOf(::CashForecastViewModel)
+
+    /** Receipt capture → saved expense + COGS workflow (#2183). */
+    viewModelOf(::ReceiptExpenseViewModel)
+
+    /** Rugged one-handed quick-expense entry (#2186). */
+    viewModelOf(::RuggedQuickExpenseViewModel)
+
+    /** Teen privacy-safe sharing of savings wins (#2210). */
+    viewModelOf(::ShareWinViewModel)
 }

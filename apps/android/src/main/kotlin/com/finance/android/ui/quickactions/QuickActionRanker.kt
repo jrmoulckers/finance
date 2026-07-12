@@ -121,6 +121,12 @@ class DeterministicQuickActionRanker : QuickActionRanker {
         QuickActionType.GIG_TOOLS -> setOf(TimeBucket.EVENING, TimeBucket.NIGHT)
         QuickActionType.COUPLE_SPACE -> setOf(TimeBucket.EVENING)
         QuickActionType.ACHIEVEMENTS -> setOf(TimeBucket.EVENING, TimeBucket.NIGHT)
+        QuickActionType.QUICK_EXPENSE -> setOf(TimeBucket.MIDDAY, TimeBucket.EVENING)
+        QuickActionType.SCAN_RECEIPT -> setOf(TimeBucket.MIDDAY, TimeBucket.EVENING)
+        QuickActionType.BUSINESS_MONEY -> setOf(TimeBucket.EVENING)
+        QuickActionType.CASH_FORECAST -> setOf(TimeBucket.MORNING)
+        QuickActionType.FOOD_TRUCK_PNL -> setOf(TimeBucket.EVENING)
+        QuickActionType.SHARE_WIN -> setOf(TimeBucket.EVENING, TimeBucket.NIGHT)
     }
 
     companion object {
