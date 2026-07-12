@@ -73,6 +73,7 @@ class SqlDelightTransactionRepository(
             entity.transferAccountId?.value, entity.transferTransactionId?.value,
             if (entity.isRecurring) 1L else 0L, entity.recurringRuleId?.value,
             EntityMappers.serializeTags(entity.tags), entity.moodTag,
+            if (entity.isBiometricProtected) 1L else 0L,
             entity.createdAt.toString(), entity.updatedAt.toString(),
             entity.syncVersion, 0L,
         )
@@ -87,6 +88,7 @@ class SqlDelightTransactionRepository(
             entity.transferAccountId?.value, entity.transferTransactionId?.value,
             if (entity.isRecurring) 1L else 0L, entity.recurringRuleId?.value,
             EntityMappers.serializeTags(entity.tags), entity.moodTag,
+            if (entity.isBiometricProtected) 1L else 0L,
             now, entity.syncVersion + 1, 0L, entity.id.value,
         )
     }
@@ -111,6 +113,7 @@ class SqlDelightTransactionRepository(
         currency: String, payee: String?, note: String?, date: String,
         transferAccountId: String?, transferTransactionId: String?,
         isRecurring: Long, recurringRuleId: String?, tags: String, moodTag: String?,
+        isBiometricProtected: Long,
         createdAt: String, updatedAt: String, deletedAt: String?,
         syncVersion: Long, isSynced: Long,
     ): Transaction = EntityMappers.mapTransaction(
@@ -118,5 +121,6 @@ class SqlDelightTransactionRepository(
         amount, currency, payee, note, date, transferAccountId,
         transferTransactionId, isRecurring, recurringRuleId, tags,
         createdAt, updatedAt, deletedAt, syncVersion, isSynced, moodTag,
+        isBiometricProtected,
     )
 }

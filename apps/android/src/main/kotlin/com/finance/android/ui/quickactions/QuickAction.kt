@@ -81,6 +81,14 @@ enum class QuickActionType(
         iconName = "Insights",
         baseWeight = 0.3,
     ),
+    GIG_TOOLS(
+        id = "gig_tools",
+        label = "Gig tools",
+        contentDescription = "Open gig driver tools: payouts, mileage and Schedule C deductions",
+        route = "gig-tools",
+        iconName = "DirectionsCar",
+        baseWeight = 0.35,
+    ),
     ;
 
     companion object {

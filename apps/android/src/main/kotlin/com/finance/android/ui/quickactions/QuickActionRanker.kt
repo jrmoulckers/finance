@@ -118,6 +118,7 @@ class DeterministicQuickActionRanker : QuickActionRanker {
         QuickActionType.CHECK_BILLS -> setOf(TimeBucket.MORNING)
         QuickActionType.VIEW_BUDGETS -> setOf(TimeBucket.EVENING)
         QuickActionType.VIEW_INSIGHTS -> setOf(TimeBucket.EVENING)
+        QuickActionType.GIG_TOOLS -> setOf(TimeBucket.EVENING, TimeBucket.NIGHT)
     }
 
     companion object {

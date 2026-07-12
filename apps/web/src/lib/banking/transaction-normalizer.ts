@@ -256,6 +256,10 @@ const ACCOUNT_TYPE_MAP: Record<string, BankAccountType> = {
   retirement: 'investment',
   '401k': 'investment',
   ira: 'investment',
+  crypto: 'crypto',
+  cryptocurrency: 'crypto',
+  wallet: 'crypto',
+  exchange: 'crypto',
 };
 
 /**

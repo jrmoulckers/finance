@@ -49,6 +49,9 @@ data class QuickCashUiState(
     val selectedAccountName: String = "",
     val categories: List<Category> = emptyList(),
     val selectedCategoryId: SyncId? = null,
+    val gigPresets: List<com.finance.android.ui.gig.ScheduleCPreset> =
+        com.finance.android.ui.gig.ScheduleCPresets.presets,
+    val selectedPresetKey: String? = null,
     val errors: List<QuickCashError> = emptyList(),
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
@@ -166,6 +169,27 @@ class QuickCashEntryViewModel(
         }
     }
 
+    /**
+     * Applies a Schedule C gig preset (#2141): pre-fills the note with the preset's
+     * IRS-aligned label and tags the entry for later Schedule C export. Tapping the active
+     * preset again clears it and the note it contributed.
+     */
+    fun applyPreset(key: String) {
+        _uiState.update { current ->
+            val preset = com.finance.android.ui.gig.ScheduleCPresets.byKey(key)
+            if (preset == null) return@update current
+            if (current.selectedPresetKey == key) {
+                current.copy(selectedPresetKey = null, note = "", errors = emptyList())
+            } else {
+                current.copy(
+                    selectedPresetKey = key,
+                    note = com.finance.android.ui.gig.ScheduleCPresets.noteFor(preset),
+                    errors = emptyList(),
+                )
+            }
+        }
+    }
+
     /** Builds a [QuickCashDraft] from the current state. */
     private fun draft(): QuickCashDraft = with(_uiState.value) {
         QuickCashDraft(
@@ -174,6 +198,7 @@ class QuickCashEntryViewModel(
             categoryId = selectedCategoryId,
             accountId = selectedAccountId,
             currency = currentCurrency(),
+            scheduleCPresetKey = selectedPresetKey,
         )
     }
 

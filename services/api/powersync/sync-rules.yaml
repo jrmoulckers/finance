@@ -53,36 +53,41 @@ bucket_definitions:
       # CHANGED (#1326): Added `tags` (needed by clients for tag display/filtering).
       # CHANGED (#1326): Removed legacy `recurring_rule` column — `recurring_rule_id`
       #   (the proper FK) is already present and is what clients use.
-      # CHANGED (#3528): Reverted the biometric-protection filter. A PowerSync data
-      #   query may not JOIN another table or reference token_parameters, so the
-      #   `LEFT JOIN categories` + `token_parameters.user_id` clause was a fatal
-      #   sync-rules error that crash-looped the replicator (production 502).
-      #   Hiding protected-category transactions from non-owners requires a
-      #   denormalized `is_biometric_protected` column on `transactions` — tracked
-      #   as a follow-up; see #3528.
+      # CHANGED (#3530): Re-implemented biometric-protection filtering the
+      #   PowerSync-valid way. The `is_biometric_protected` flag is now DENORMALIZED
+      #   onto `transactions` (kept in sync with the row's category by DB triggers —
+      #   see migration 20260401000002). Household members receive only NON-protected
+      #   transactions here (`is_biometric_protected = false`); protected transactions
+      #   sync to their owner alone through the `user_profile` bucket below. This
+      #   avoids the forbidden `LEFT JOIN categories` + `token_parameters.user_id`
+      #   constructs from #3528 that crash-looped the replicator.
       - >
         SELECT id, household_id, account_id, category_id, amount_cents,
                currency_code, type, payee, note, date, is_recurring,
                transfer_account_id, status,
-               transfer_transaction_id, recurring_rule_id, tags, owner_id,
+               transfer_transaction_id, recurring_rule_id, tags,
+               is_biometric_protected, owner_id,
                created_at, updated_at, deleted_at
         FROM transactions
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
+              AND is_biometric_protected = false
 
       # Spending / income categories
       # CHANGED (#1326): Added `is_system` (clients need to distinguish
       #   system-provided categories from user-created ones).
-      # CHANGED (#3528): Reverted the biometric-protection filter — a PowerSync data
-      #   query may not reference token_parameters (fatal sync-rules error). The
-      #   `is_biometric_protected` flag is still synced so clients can gate display
-      #   locally; server-side owner-only filtering (owner_id = bucket.user_id via a
-      #   user-scoped bucket) is a follow-up. See #3528.
+      # CHANGED (#3530): Re-implemented biometric-protection filtering the
+      #   PowerSync-valid way. Non-protected categories sync to all household
+      #   members here (`is_biometric_protected = false`); protected categories
+      #   sync to their owner alone through the `user_profile` bucket below. This
+      #   replaces the reverted #3528 approach (which used token_parameters in a
+      #   data query — a fatal sync-rules error).
       - >
         SELECT id, household_id, name, icon, color, parent_id, is_income,
                is_system, sort_order, is_biometric_protected, owner_id,
                created_at, updated_at, deleted_at
         FROM categories
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
+              AND is_biometric_protected = false
 
       # Budget allocations per category/period
       # CHANGED (#1326): Added `name` (Budget model has a name field that
@@ -304,6 +309,36 @@ bucket_definitions:
         SELECT id, user_id, consent_type, status, policy_version, created_at
         FROM user_consents
         WHERE user_id = bucket.user_id
+
+      # Biometric-protected categories — owner-only (#3530).
+      # These are deliberately EXCLUDED from the by_household bucket (which only
+      # syncs is_biometric_protected = false). Routing them through this
+      # user-scoped bucket (parameterised on bucket.user_id, NOT token_parameters)
+      # is the PowerSync-valid way to keep protected categories private to their
+      # owner while still syncing to that owner's own devices. Column list matches
+      # the by_household categories query so the client sees one consistent shape.
+      - >
+        SELECT id, household_id, name, icon, color, parent_id, is_income,
+               is_system, sort_order, is_biometric_protected, owner_id,
+               created_at, updated_at, deleted_at
+        FROM categories
+        WHERE owner_id = bucket.user_id AND is_biometric_protected = true
+              AND deleted_at IS NULL
+
+      # Biometric-protected transactions — owner-only (#3530).
+      # Mirror of the categories rule above, made possible by the denormalized
+      # transactions.is_biometric_protected column (migration 20260401000002).
+      # Column list matches the by_household transactions query.
+      - >
+        SELECT id, household_id, account_id, category_id, amount_cents,
+               currency_code, type, payee, note, date, is_recurring,
+               transfer_account_id, status,
+               transfer_transaction_id, recurring_rule_id, tags,
+               is_biometric_protected, owner_id,
+               created_at, updated_at, deleted_at
+        FROM transactions
+        WHERE owner_id = bucket.user_id AND is_biometric_protected = true
+              AND deleted_at IS NULL
 
   # ---------------------------------------------------------------------------
   # exchange_rates — global exchange rate data synced to all authenticated users.

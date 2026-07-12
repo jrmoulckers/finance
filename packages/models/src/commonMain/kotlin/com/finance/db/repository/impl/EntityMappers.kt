@@ -42,6 +42,7 @@ object EntityMappers {
         isRecurring: Long, recurringRuleId: String?, tags: String,
         createdAt: String, updatedAt: String, deletedAt: String?,
         syncVersion: Long, isSynced: Long, moodTag: String? = null,
+        isBiometricProtected: Long = 0L,
     ): Transaction = Transaction(
         id = SyncId(id), householdId = SyncId(householdId), ownerId = SyncId(ownerId),
         accountId = SyncId(accountId), categoryId = categoryId?.let { SyncId(it) },
@@ -55,6 +56,7 @@ object EntityMappers {
         createdAt = Instant.parse(createdAt),
         updatedAt = Instant.parse(updatedAt), deletedAt = deletedAt?.let { Instant.parse(it) },
         syncVersion = syncVersion, isSynced = isSynced != 0L,
+        isBiometricProtected = isBiometricProtected != 0L,
     )
 
     @Suppress("LongParameterList")
