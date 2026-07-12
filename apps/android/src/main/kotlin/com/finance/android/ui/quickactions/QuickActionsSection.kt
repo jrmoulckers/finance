@@ -16,7 +16,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.BusinessCenter
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -27,6 +32,7 @@ import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -233,6 +239,12 @@ private fun iconFor(type: QuickActionType): ImageVector = when (type) {
     QuickActionType.GIG_TOOLS -> Icons.Filled.DirectionsCar
     QuickActionType.COUPLE_SPACE -> Icons.Filled.Favorite
     QuickActionType.ACHIEVEMENTS -> Icons.Filled.EmojiEvents
+    QuickActionType.QUICK_EXPENSE -> Icons.Filled.Bolt
+    QuickActionType.SCAN_RECEIPT -> Icons.Filled.ReceiptLong
+    QuickActionType.BUSINESS_MONEY -> Icons.Filled.BusinessCenter
+    QuickActionType.CASH_FORECAST -> Icons.Filled.CalendarMonth
+    QuickActionType.FOOD_TRUCK_PNL -> Icons.Filled.Assessment
+    QuickActionType.SHARE_WIN -> Icons.Filled.Celebration
 }
 
 @Preview(showBackground = true)
