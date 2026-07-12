@@ -24,6 +24,7 @@ import SwiftUI
 /// boolean) so the flow is never shown again after dismissal.
 struct OnboardingView: View {
     @State private var currentPage = 0
+    @State private var showingFamilySetup = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Callback invoked when the user completes or skips onboarding.
@@ -112,6 +113,18 @@ struct OnboardingView: View {
                     .accessibilityIdentifier("onboarding_get_started")
                     .accessibilityLabel(String(localized: "Get Started"))
                     .accessibilityHint(String(localized: "Completes onboarding and enters the app"))
+
+                    Button {
+                        showingFamilySetup = true
+                    } label: {
+                        Text(String(localized: "Setting up for your family?"))
+                            .font(.callout)
+                            .frame(maxWidth: .infinity, minHeight: FinanceSpacing.minTapTarget)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("onboarding_family_setup")
+                    .accessibilityLabel(String(localized: "Set up for your family"))
+                    .accessibilityHint(String(localized: "Choose a kid-aware starter budget with categories for school, childcare, and activities"))
                 } else {
                     Button {
                         withAnimation(reduceMotion ? nil : .easeInOut) {
@@ -132,6 +145,9 @@ struct OnboardingView: View {
             .padding(.bottom, FinanceSpacing.xxl)
         }
         .background(FinanceColors.backgroundPrimary.ignoresSafeArea())
+        .sheet(isPresented: $showingFamilySetup) {
+            FamilySetupView()
+        }
         .accessibilityIdentifier("onboarding_view")
         .accessibilityLabel(String(localized: "Onboarding"))
     }

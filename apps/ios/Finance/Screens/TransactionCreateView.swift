@@ -6,11 +6,14 @@
 // Multi-step sheet for creating a new transaction.
 
 import SwiftUI
+import FinanceShared
 
 // MARK: - View
 
 struct TransactionCreateView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel: TransactionCreateViewModel
 
     init(viewModel: TransactionCreateViewModel = TransactionCreateViewModel(
@@ -56,7 +59,10 @@ struct TransactionCreateView: View {
     // MARK: - Step Indicator
 
     private var stepIndicator: some View {
-        HStack(spacing: 0) {
+        let shortLabels = CompactLayoutMetrics.stepperUsesShortLabels(
+            for: SizeClassInput(horizontalSizeClass: horizontalSizeClass, dynamicTypeSize: dynamicTypeSize)
+        )
+        return HStack(spacing: 0) {
             ForEach(TransactionCreateViewModel.Step.allCases, id: \.rawValue) { step in
                 VStack(spacing: 4) {
                     Circle()
@@ -68,8 +74,13 @@ struct TransactionCreateView: View {
                                     .font(.system(size: 7, weight: .bold)).foregroundStyle(.white)
                             }
                         }
-                    Text(step.title).font(.caption2)
-                        .foregroundStyle(step.rawValue <= viewModel.currentStep.rawValue ? .primary : .secondary)
+                    // On compact width / large text, only the current step keeps
+                    // its label so the row never crowds on an iPhone SE. (#2190)
+                    if !shortLabels || step == viewModel.currentStep {
+                        Text(step.title).font(.caption2)
+                            .foregroundStyle(step.rawValue <= viewModel.currentStep.rawValue ? .primary : .secondary)
+                            .lineLimit(1)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)

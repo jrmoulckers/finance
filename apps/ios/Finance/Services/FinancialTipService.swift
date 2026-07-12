@@ -7,7 +7,7 @@
 // the user's spending patterns, budget status, and goal progress.
 // Tip dismissals are persisted in UserDefaults (non-sensitive boolean flags).
 //
-// References: #320
+// References: #320, #2201
 
 import Foundation
 import os
@@ -252,29 +252,29 @@ final class FinancialTipService: FinancialTipProviding, @unchecked Sendable {
     ) -> [FinancialTip] {
         var tips: [FinancialTip] = []
 
-        // Over-budget warning tip
+        // Over-plan heads-up — factual, calm, next-step oriented (#2201).
         let overBudgetCategories = budgets.filter { $0.progress >= 1.0 }
         if !overBudgetCategories.isEmpty {
             let names = overBudgetCategories.map(\.name).joined(separator: ", ")
             tips.append(FinancialTip(
                 id: "tip_dynamic_over_budget",
-                title: String(localized: "Over Budget Alert"),
-                body: String(localized: "You've exceeded your budget in: \(names). Consider reducing discretionary spending for the rest of the month."),
+                title: String(localized: "Past your plan"),
+                body: String(localized: "You've gone a little past your plan in: \(names). Want to adjust one of these categories, or move a little from another?"),
                 category: .budgeting,
                 applicableContexts: [context, .budgets, .dashboard, .overspending],
-                systemImage: "exclamationmark.triangle",
+                systemImage: "slider.horizontal.3",
                 priority: 15
             ))
         }
 
-        // Near-budget warning (75%+)
+        // Near-plan heads-up (75%+) — supportive, not high-pressure (#2201).
         let nearBudgetCategories = budgets.filter { $0.progress >= 0.75 && $0.progress < 1.0 }
         if !nearBudgetCategories.isEmpty {
             let names = nearBudgetCategories.map(\.name).joined(separator: ", ")
             tips.append(FinancialTip(
                 id: "tip_dynamic_near_budget",
-                title: String(localized: "Approaching Budget Limit"),
-                body: String(localized: "You're nearing the limit in: \(names). Plan your remaining spending carefully this period."),
+                title: String(localized: "Getting close"),
+                body: String(localized: "You're nearing your plan in: \(names). You've still got room — just something to keep in mind."),
                 category: .budgeting,
                 applicableContexts: [context, .budgets, .dashboard],
                 systemImage: "gauge.with.dots.needle.67percent",

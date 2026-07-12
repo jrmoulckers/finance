@@ -8,6 +8,7 @@
 //
 // References: #305
 
+import FinanceShared
 import Observation
 import os
 import SwiftUI
@@ -44,6 +45,9 @@ final class NotificationSettingsViewModel {
         static let quietHoursEnabled = "notifications.quietHours.enabled"
         static let quietHoursStart = "notifications.quietHours.startHour"
         static let quietHoursEnd = "notifications.quietHours.endHour"
+        static let smartTimingEnabled = "notifications.smartTiming.enabled"
+        static let smartTimingFallbackHour = "notifications.smartTiming.fallbackHour"
+        static let smartTimingEngagement = "notifications.smartTiming.engagement"
     }
 
     /// Whether quiet hours suppress alerts overnight.
@@ -59,6 +63,23 @@ final class NotificationSettingsViewModel {
     /// Hour (0–23) quiet hours end.
     var quietHoursEndHour: Int {
         didSet { defaults.set(quietHoursEndHour, forKey: PrefKey.quietHoursEnd) }
+    }
+
+    // MARK: - Smart Timing (#2391)
+
+    /// Master switch for on-device smart notification timing.
+    var smartTimingEnabled: Bool {
+        didSet { defaults.set(smartTimingEnabled, forKey: PrefKey.smartTimingEnabled) }
+    }
+
+    /// The fixed hour used when there isn't enough data to personalize.
+    var smartTimingFallbackHour: Int {
+        didSet { defaults.set(smartTimingFallbackHour, forKey: PrefKey.smartTimingFallbackHour) }
+    }
+
+    /// Content-free, per-hour engagement aggregates driving the timing model.
+    private(set) var engagement: [HourEngagement] {
+        didSet { persistEngagement() }
     }
 
     /// Budget-alert threshold options offered in the UI.
@@ -92,6 +113,14 @@ final class NotificationSettingsViewModel {
         self.quietHoursEnabled = defaults.bool(forKey: PrefKey.quietHoursEnabled)
         self.quietHoursStartHour = defaults.object(forKey: PrefKey.quietHoursStart) as? Int ?? 22
         self.quietHoursEndHour = defaults.object(forKey: PrefKey.quietHoursEnd) as? Int ?? 7
+        self.smartTimingEnabled = defaults.object(forKey: PrefKey.smartTimingEnabled) as? Bool ?? true
+        self.smartTimingFallbackHour = defaults.object(forKey: PrefKey.smartTimingFallbackHour) as? Int ?? 9
+        if let data = defaults.data(forKey: PrefKey.smartTimingEngagement),
+           let decoded = try? JSONDecoder().decode([HourEngagement].self, from: data) {
+            self.engagement = decoded
+        } else {
+            self.engagement = []
+        }
     }
 
     // MARK: - Alert Center Summary (#2163)
@@ -136,6 +165,81 @@ final class NotificationSettingsViewModel {
         components.hour = clamped
         let date = Calendar.current.date(from: components) ?? Date()
         return date.formatted(.dateTime.hour())
+    }
+
+    // MARK: - Smart Timing (#2391)
+
+    /// The active quiet-hours window, or `nil` when quiet hours are off.
+    var smartTimingQuietHours: QuietHours? {
+        guard quietHoursEnabled else { return nil }
+        return QuietHours(startHour: quietHoursStartHour, endHour: quietHoursEndHour)
+    }
+
+    /// The hour smart timing would schedule the next reminder for.
+    var recommendedHour: Int {
+        SmartNotificationTiming.recommendedHour(
+            engagement: engagement,
+            quietHours: smartTimingQuietHours,
+            fallbackHour: smartTimingFallbackHour,
+            smartTimingEnabled: smartTimingEnabled
+        )
+    }
+
+    /// A localized label for the recommended delivery time.
+    var recommendedHourLabel: String { Self.formatHour(recommendedHour) }
+
+    /// Whether the model has enough on-device data to personalize timing.
+    var canPersonalizeTiming: Bool {
+        SmartNotificationTiming.canPersonalize(engagement: engagement)
+    }
+
+    /// Privacy-preserving aggregate health of smart-timing delivery.
+    var smartTimingHealth: SmartTimingHealth {
+        SmartNotificationTiming.health(engagement: engagement)
+    }
+
+    /// A one-line status describing whether timing is personalized or learning.
+    var smartTimingStatus: String {
+        guard smartTimingEnabled else {
+            return String(localized: "Reminders arrive at \(recommendedHourLabel).")
+        }
+        if canPersonalizeTiming {
+            return String(localized: "Learned your best time: \(recommendedHourLabel).")
+        }
+        let remaining = max(SmartNotificationTiming.minSignalsToPersonalize - smartTimingHealth.totalDelivered, 0)
+        return String(localized: "Still learning — \(remaining) more reminders until timing personalizes. Using \(recommendedHourLabel) for now.")
+    }
+
+    /// Records a content-free engagement signal for the given hour, merging into
+    /// the existing per-hour bucket. `acted` marks whether the user acted on it.
+    func recordEngagement(hour: Int, acted: Bool) {
+        let clamped = ((hour % 24) + 24) % 24
+        var buckets = engagement
+        if let index = buckets.firstIndex(where: { $0.hour == clamped }) {
+            let existing = buckets[index]
+            buckets[index] = HourEngagement(
+                hour: clamped,
+                deliveredCount: existing.deliveredCount + 1,
+                actedCount: existing.actedCount + (acted ? 1 : 0)
+            )
+        } else {
+            buckets.append(HourEngagement(
+                hour: clamped,
+                deliveredCount: 1,
+                actedCount: acted ? 1 : 0
+            ))
+        }
+        engagement = buckets.sorted { $0.hour < $1.hour }
+    }
+
+    /// Clears all learned timing data, returning to the fixed fallback time.
+    func resetSmartTiming() {
+        engagement = []
+    }
+
+    private func persistEngagement() {
+        guard let data = try? JSONEncoder().encode(engagement) else { return }
+        defaults.set(data, forKey: PrefKey.smartTimingEngagement)
     }
 
     /// Updates the budget-alert threshold and reschedules if enabled.

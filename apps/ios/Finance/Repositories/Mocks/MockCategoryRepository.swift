@@ -22,6 +22,14 @@ struct MockCategoryRepository: CategoryRepository {
             CategoryItem(id: "c6", name: "Utilities", colorHex: "#D69E2E", icon: "bolt", sortOrder: 5),
             CategoryItem(id: "c7", name: "Health", colorHex: "#E53E3E", icon: "heart", sortOrder: 6),
             CategoryItem(id: "c8", name: "Housing", colorHex: "#5A67D8", icon: "house", sortOrder: 7),
+            // Kid-specific starter categories for single-parent / family setups (#2201).
+            // Kids create frequent, irregular spending that broad defaults miss.
+            CategoryItem(id: "kid-school", name: "School", colorHex: "#3182CE", icon: "graduationcap", sortOrder: 8),
+            CategoryItem(id: "kid-childcare", name: "Childcare", colorHex: "#805AD5", icon: "figure.and.child.holdinghands", sortOrder: 9),
+            CategoryItem(id: "kid-activities", name: "Activities & Sports", colorHex: "#38A169", icon: "figure.run", sortOrder: 10),
+            CategoryItem(id: "kid-birthdays", name: "Birthdays & Parties", colorHex: "#D53F8C", icon: "gift", sortOrder: 11),
+            CategoryItem(id: "kid-fieldtrips", name: "Field Trips", colorHex: "#DD6B20", icon: "bus", sortOrder: 12),
+            CategoryItem(id: "kid-clothing", name: "Kids' Clothing", colorHex: "#00B5D8", icon: "tshirt", sortOrder: 13),
         ]
     }
 

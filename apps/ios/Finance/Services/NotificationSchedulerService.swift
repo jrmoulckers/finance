@@ -149,22 +149,22 @@ actor NotificationSchedulerService: NotificationSchedulerProtocol {
             if percent >= 100 {
                 return SmartAlert(
                     type: .budgetAlert,
-                    title: String(localized: "\(budget.name) Over Budget"),
-                    body: String(localized: "You've exceeded your \(budget.name) budget by \(String(format: "%.0f", percent - 100))%."),
-                    priority: .urgent
+                    title: String(localized: "\(budget.name): past your plan"),
+                    body: String(localized: "You've gone a little past your \(budget.name) plan. Want to adjust this category?"),
+                    priority: .high
                 )
             } else if percent >= 90 {
                 return SmartAlert(
                     type: .budgetAlert,
-                    title: String(localized: "\(budget.name) Almost Full"),
-                    body: String(localized: "You've used \(String(format: "%.0f", percent))% of your \(budget.name) budget."),
-                    priority: .high
+                    title: String(localized: "\(budget.name): getting close"),
+                    body: String(localized: "You've used \(String(format: "%.0f", percent))% of your \(budget.name) plan. Still some room left."),
+                    priority: .normal
                 )
             } else if percent >= 75 {
                 return SmartAlert(
                     type: .budgetAlert,
-                    title: String(localized: "\(budget.name) Budget Update"),
-                    body: String(localized: "\(String(format: "%.0f", percent))% of your \(budget.name) budget has been used."),
+                    title: String(localized: "\(budget.name) update"),
+                    body: String(localized: "\(String(format: "%.0f", percent))% of your \(budget.name) plan has been used so far."),
                     priority: .normal
                 )
             }
