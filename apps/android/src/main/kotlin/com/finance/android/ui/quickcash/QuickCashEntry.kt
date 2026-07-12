@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.quickcash
 
+import com.finance.android.ui.gig.ScheduleCPresets
 import com.finance.models.Account
 import com.finance.models.AccountType
 import com.finance.models.Category
@@ -175,6 +176,8 @@ object QuickCashEntry {
     ): Transaction {
         require(validate(draft).isEmpty()) { "Cannot build a transaction from an invalid draft" }
         val accountId = requireNotNull(draft.accountId) { "Account is required" }
+        val extraTags =
+            if (draft.scheduleCPresetKey != null) listOf(ScheduleCPresets.SCHEDULE_C_TAG) else emptyList()
         return Transaction(
             id = SyncId("txn-cash-$idSuffix"),
             householdId = householdId,
@@ -188,7 +191,7 @@ object QuickCashEntry {
             payee = null,
             note = draft.note.trim().ifBlank { null },
             date = date,
-            tags = listOf(QUICK_CASH_TAG),
+            tags = listOf(QUICK_CASH_TAG) + extraTags,
             createdAt = now,
             updatedAt = now,
             isSynced = false,
@@ -204,6 +207,8 @@ object QuickCashEntry {
  * @property categoryId optional expense category.
  * @property accountId the cash wallet/account to record against; `null` is invalid.
  * @property currency the account currency (defaults to USD).
+ * @property scheduleCPresetKey optional [ScheduleCPresets] key; when set the built
+ *   transaction is tagged for Schedule C export (#2141).
  */
 data class QuickCashDraft(
     val amountCents: Long = 0L,
@@ -211,6 +216,7 @@ data class QuickCashDraft(
     val categoryId: SyncId? = null,
     val accountId: SyncId? = null,
     val currency: Currency = Currency.USD,
+    val scheduleCPresetKey: String? = null,
 )
 
 /** Deterministic validation failures for a [QuickCashDraft]. */

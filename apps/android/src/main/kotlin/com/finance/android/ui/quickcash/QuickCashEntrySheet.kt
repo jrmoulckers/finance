@@ -91,6 +91,7 @@ fun QuickCashEntrySheet(
             onNoteChange = viewModel::updateNote,
             onSelectCategory = viewModel::selectCategory,
             onSelectAccount = viewModel::selectAccount,
+            onApplyPreset = viewModel::applyPreset,
             onSave = viewModel::save,
         )
     }
@@ -108,6 +109,7 @@ private fun QuickCashEntryContent(
     onNoteChange: (String) -> Unit,
     onSelectCategory: (com.finance.models.types.SyncId?) -> Unit,
     onSelectAccount: (com.finance.models.types.SyncId) -> Unit,
+    onApplyPreset: (String) -> Unit,
     onSave: () -> Unit,
 ) {
     Column(
@@ -166,6 +168,39 @@ private fun QuickCashEntryContent(
             selectedSemanticsSuffix = "selected category",
             onClick = onSelectCategory,
         )
+
+        // ── Gig Schedule C presets (optional, #2141) ─────────────────────
+        if (state.gigPresets.isNotEmpty()) {
+            Text(
+                text = "Gig deduction (Schedule C)",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.semantics { heading() },
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.gigPresets.forEach { preset ->
+                    val selected = preset.key == state.selectedPresetKey
+                    FilterChip(
+                        selected = selected,
+                        onClick = { onApplyPreset(preset.key) },
+                        label = { Text(preset.label) },
+                        leadingIcon = if (selected) {
+                            { Icon(Icons.Filled.Check, contentDescription = null) }
+                        } else {
+                            null
+                        },
+                        modifier = Modifier
+                            .sizeIn(minHeight = MinTouchTarget)
+                            .semantics {
+                                contentDescription = if (selected) {
+                                    "${preset.label}, selected Schedule C preset, ${preset.scheduleCLine}"
+                                } else {
+                                    "${preset.label}, ${preset.scheduleCLine}"
+                                }
+                            },
+                    )
+                }
+            }
+        }
 
         // ── Note (optional) ──────────────────────────────────────────────
         OutlinedTextField(
@@ -279,6 +314,7 @@ private fun QuickCashEntryContentPreview() {
             onNoteChange = {},
             onSelectCategory = {},
             onSelectAccount = {},
+            onApplyPreset = {},
             onSave = {},
         )
     }

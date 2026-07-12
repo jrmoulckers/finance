@@ -28,6 +28,8 @@ import com.finance.android.receipt.ReceiptTextRecognizer
 import com.finance.android.receipt.UnavailableReceiptImageCapture
 import com.finance.android.ui.receipt.ReceiptScanViewModel
 import com.finance.android.ui.quickcash.QuickCashEntryViewModel
+import com.finance.android.ui.gig.GigShiftStore
+import com.finance.android.ui.gig.GigToolsViewModel
 import com.finance.android.notifications.NotificationContentBuilder
 import com.finance.android.notifications.NotificationDispatcher
 import com.finance.android.notifications.NotificationPreferences
@@ -245,6 +247,21 @@ val appModule = module {
 
     // ── Tips ─────────────────────────────────────────────────────────
     viewModelOf(::TipsViewModel)
+
+    // ── Gig / delivery driver tools (#2141, #2137, #2133) ────────────
+
+    /** On-device (encrypted) persistence for shift-based mileage tracking. */
+    single<com.finance.android.ui.gig.GigShiftRepository> { GigShiftStore(get()) }
+
+    /** Unifies payouts-by-platform, shift mileage, and Schedule C quick-add. */
+    // Explicit definition so the default system Clock is used (not resolved from DI).
+    viewModel {
+        GigToolsViewModel(
+            householdIdProvider = get(),
+            transactionRepository = get(),
+            shiftStore = get(),
+        )
+    }
 
     // ── Insights ─────────────────────────────────────────────────────
     viewModelOf(::InsightsViewModel)

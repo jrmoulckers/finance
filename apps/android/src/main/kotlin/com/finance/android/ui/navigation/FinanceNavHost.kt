@@ -50,6 +50,7 @@ import com.finance.android.ui.expertise.ExpertiseTierScreen
 import com.finance.android.ui.learning.LearningPathsScreen
 import com.finance.android.ui.nlp.NlpTransactionScreen
 import com.finance.android.ui.receipt.ReceiptScanScreen
+import com.finance.android.ui.gig.GigToolsScreen
 import com.finance.android.ui.insights.InsightsScreen
 import com.finance.android.ui.screens.bills.BillRemindersScreen
 import com.finance.android.ui.screens.household.HouseholdScreen
@@ -214,6 +215,9 @@ sealed class Route(val route: String) {
     data object TransactionDetail : Route("transaction/{id}") {
         fun createRoute(id: String): String = "transaction/$id"
     }
+
+    /** Gig / delivery driver tools — payouts, mileage, Schedule C presets (#2141, #2137, #2133). */
+    data object GigTools : Route("gig-tools")
 }
 
 /**
@@ -409,6 +413,18 @@ fun FinanceNavHost(
         composable(Route.FinancialGlossary.route) {
             FinancialGlossaryScreen(
                 onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Route.GigTools.route) {
+            GigToolsScreen(
+                onBack = { navController.popBackStack() },
+                onLogDeduction = {
+                    // Open transaction create to log a Schedule C gig deduction (#2141).
+                    navController.navigate(Route.TransactionCreate.createRoute()) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
