@@ -297,6 +297,124 @@ final class NotificationSettingsViewModelTests: XCTestCase {
         let (vm, _) = makeViewModel()
         XCTAssertTrue(vm.stateSummary.contains("\(vm.enabledScheduleCount)"))
     }
+
+    // MARK: - Smart Timing (#2391)
+
+    @MainActor
+    func testSmartTimingDefaults() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "smart.defaults")
+        defer { defaults.removePersistentDomain(forName: "smart.defaults") }
+
+        XCTAssertTrue(vm.smartTimingEnabled)
+        XCTAssertEqual(vm.smartTimingFallbackHour, 9)
+        XCTAssertFalse(vm.canPersonalizeTiming)
+        // With no data it falls back to the fixed hour.
+        XCTAssertEqual(vm.recommendedHour, 9)
+    }
+
+    @MainActor
+    func testRecordEngagementMergesBuckets() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "smart.record")
+        defer { defaults.removePersistentDomain(forName: "smart.record") }
+
+        vm.recordEngagement(hour: 18, acted: true)
+        vm.recordEngagement(hour: 18, acted: false)
+        vm.recordEngagement(hour: 18, acted: true)
+
+        XCTAssertEqual(vm.smartTimingHealth.totalDelivered, 3)
+        XCTAssertEqual(vm.smartTimingHealth.totalActed, 2)
+    }
+
+    @MainActor
+    func testSmartTimingPersonalizesAfterEnoughSignals() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "smart.personalize")
+        defer { defaults.removePersistentDomain(forName: "smart.personalize") }
+
+        // Feed clear engagement at 6pm (outside the default quiet window).
+        for _ in 0..<6 { vm.recordEngagement(hour: 18, acted: true) }
+
+        XCTAssertTrue(vm.canPersonalizeTiming)
+        XCTAssertEqual(vm.recommendedHour, 18)
+        XCTAssertFalse(vm.recommendedHourLabel.isEmpty)
+    }
+
+    @MainActor
+    func testDisabledSmartTimingUsesFallback() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "smart.disabled")
+        defer { defaults.removePersistentDomain(forName: "smart.disabled") }
+
+        for _ in 0..<6 { vm.recordEngagement(hour: 18, acted: true) }
+        vm.smartTimingEnabled = false
+        vm.smartTimingFallbackHour = 8
+
+        XCTAssertEqual(vm.recommendedHour, 8)
+    }
+
+    @MainActor
+    func testResetSmartTimingClearsData() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "smart.reset")
+        defer { defaults.removePersistentDomain(forName: "smart.reset") }
+
+        for _ in 0..<6 { vm.recordEngagement(hour: 18, acted: true) }
+        XCTAssertTrue(vm.canPersonalizeTiming)
+
+        vm.resetSmartTiming()
+
+        XCTAssertFalse(vm.canPersonalizeTiming)
+        XCTAssertEqual(vm.smartTimingHealth.totalDelivered, 0)
+    }
+
+    @MainActor
+    func testSmartTimingRespectsQuietHours() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "smart.quiet")
+        defer { defaults.removePersistentDomain(forName: "smart.quiet") }
+
+        vm.quietHoursEnabled = true
+        vm.quietHoursStartHour = 22
+        vm.quietHoursEndHour = 7
+        // All engagement lands inside quiet hours → should not recommend those.
+        for _ in 0..<6 { vm.recordEngagement(hour: 2, acted: true) }
+
+        XCTAssertFalse(QuietHoursContains(vm.recommendedHour, start: 22, end: 7))
+    }
+
+    @MainActor
+    func testSmartTimingPersistsAcrossInstances() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "smart.persist")
+        defer { defaults.removePersistentDomain(forName: "smart.persist") }
+
+        for _ in 0..<6 { vm.recordEngagement(hour: 17, acted: true) }
+
+        let vm2 = NotificationSettingsViewModel(
+            scheduler: StubNotificationScheduler(),
+            budgetRepository: StubBudgetRepository(),
+            transactionRepository: StubTransactionRepository(),
+            goalRepository: StubGoalRepository(),
+            defaults: defaults
+        )
+        XCTAssertTrue(vm2.canPersonalizeTiming)
+        XCTAssertEqual(vm2.recommendedHour, 17)
+    }
+
+    @MainActor
+    func testSmartTimingStatusStrings() {
+        let (vm, defaults) = makeViewModelWithDefaults(suiteName: "smart.status")
+        defer { defaults.removePersistentDomain(forName: "smart.status") }
+
+        XCTAssertFalse(vm.smartTimingStatus.isEmpty)
+        for _ in 0..<6 { vm.recordEngagement(hour: 18, acted: true) }
+        XCTAssertFalse(vm.smartTimingStatus.isEmpty)
+        vm.smartTimingEnabled = false
+        XCTAssertFalse(vm.smartTimingStatus.isEmpty)
+    }
+}
+
+/// Local mirror of `QuietHours.contains` for wrap-around assertions in tests.
+private func QuietHoursContains(_ hour: Int, start: Int, end: Int) -> Bool {
+    let h = ((hour % 24) + 24) % 24
+    if start == end { return false }
+    if start < end { return h >= start && h < end }
+    return h >= start || h < end
 }
 
 // MARK: - Notification Model Tests

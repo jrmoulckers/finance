@@ -33,6 +33,7 @@ struct NotificationSettingsView: View {
             schedulesSection
             budgetThresholdSection
             quietHoursSection
+            smartTimingSection
             smartAlertsSection
         }
         .navigationTitle(String(localized: "Notifications"))
@@ -246,6 +247,55 @@ struct NotificationSettingsView: View {
             Text(viewModel.quietHoursEnabled
                 ? String(localized: "Alerts are silenced \(viewModel.quietHoursSummary).")
                 : String(localized: "Silence non-urgent alerts overnight."))
+        }
+    }
+
+    // MARK: - Smart Timing Section (#2391)
+
+    @ViewBuilder
+    private var smartTimingSection: some View {
+        Section {
+            Toggle(isOn: $viewModel.smartTimingEnabled) {
+                Label(String(localized: "Smart Timing"), systemImage: "wand.and.stars")
+            }
+            .accessibilityLabel(String(localized: "Smart notification timing"))
+            .accessibilityHint(String(localized: "Learns when you're most likely to act and delivers reminders then"))
+
+            if viewModel.smartTimingEnabled {
+                HStack {
+                    Text(String(localized: "Best time"))
+                    Spacer()
+                    Text(viewModel.recommendedHourLabel)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(String(localized: "Recommended delivery time"))
+                .accessibilityValue(viewModel.recommendedHourLabel)
+
+                Button(role: .destructive) {
+                    viewModel.resetSmartTiming()
+                } label: {
+                    Text(String(localized: "Reset learned timing"))
+                }
+                .disabled(viewModel.smartTimingHealth.totalDelivered == 0)
+                .accessibilityHint(String(localized: "Clears learned data and returns to the fixed time"))
+            } else {
+                Picker(
+                    String(localized: "Reminder time"),
+                    selection: $viewModel.smartTimingFallbackHour
+                ) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Text(NotificationSettingsViewModel.formatHour(hour)).tag(hour)
+                    }
+                }
+                .accessibilityLabel(String(localized: "Fixed reminder time"))
+            }
+        } header: {
+            Text(String(localized: "Smart Timing"))
+                .accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text(viewModel.smartTimingStatus)
         }
     }
 
