@@ -101,10 +101,24 @@ services:
     volumes:
       - /etc/passwd:/etc/passwd:ro
     healthcheck:
-      # PostgREST admin server exposes /ready (readiness) and /live (liveness).
-      # Port 3001 is set by PGRST_ADMIN_SERVER_PORT above.
+      # PostgREST admin server exposes /ready (readiness) and /live (liveness);
+      # port 3001 is set by PGRST_ADMIN_SERVER_PORT above.
+      #
+      # The postgrest/postgrest image ships only the PostgREST binary on a
+      # minimal base and has NO wget or curl, so the previous `wget /ready`
+      # probe failed on "command not found" every time — the container was
+      # flagged `unhealthy` even though it was serving /rest/v1/* fine, which
+      # is exactly the "appeared to be serving" symptom in #3083 (and what
+      # gated edge-functions during the #3066 signup outage). The image does
+      # include bash, so probe the admin server over bash's /dev/tcp and
+      # require an HTTP 200 from /ready — no extra tooling needed.
       test:
-        ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:3001/ready || exit 1']
+        [
+          'CMD',
+          'bash',
+          '-c',
+          'exec 3<>/dev/tcp/localhost/3001 && printf "GET /ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && grep -q "200 OK" <&3',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
