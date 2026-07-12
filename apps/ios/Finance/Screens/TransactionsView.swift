@@ -15,6 +15,7 @@ struct TransactionsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel: TransactionsViewModel
     @State private var showingQuickAdd = false
+    @State private var showingWalletCapture = false
 
     init(viewModel: TransactionsViewModel = TransactionsViewModel(
         repository: RepositoryProvider.shared.transactions
@@ -94,6 +95,13 @@ struct TransactionsView: View {
                             Label(String(localized: "Quick Add (NLP)"), systemImage: "text.bubble")
                         }
                         .accessibilityIdentifier("nlp_input_button")
+
+                        Button {
+                            showingWalletCapture = true
+                        } label: {
+                            Label(String(localized: "From Apple Pay"), systemImage: "creditcard")
+                        }
+                        .accessibilityIdentifier("wallet_capture_button")
                     } label: {
                         IconView(.add, size: 20)
                     }
@@ -116,6 +124,11 @@ struct TransactionsView: View {
                 Task { await viewModel.loadTransactions() }
             }) {
                 NlpInputView()
+            }
+            .sheet(isPresented: $showingWalletCapture) {
+                WalletCaptureView(onImported: {
+                    Task { await viewModel.loadTransactions() }
+                })
             }
             .sheet(isPresented: $showingQuickAdd, onDismiss: {
                 Task { await viewModel.loadTransactions() }

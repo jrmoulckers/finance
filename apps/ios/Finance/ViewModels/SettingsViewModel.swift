@@ -170,6 +170,32 @@ final class SettingsViewModel {
     /// `true` while a manual sync operation is in progress.
     var isSyncing = false
 
+    /// Queue of local changes with per-item sync status, giving offline users
+    /// trustworthy feedback about what has and hasn't synced (#2204).
+    let syncQueue: SyncQueueManager
+
+    /// Supplies current connectivity for sync runs. The view overrides this
+    /// with real reachability from `NetworkMonitor`; defaults to connected.
+    var isNetworkAvailable: () -> Bool = { true }
+
+    /// Honest headline describing the most recent sync attempt.
+    private(set) var lastSyncSummaryText: String?
+
+    /// Items in the sync queue, surfaced to the settings UI.
+    var syncQueueItems: [SyncQueueItem] { syncQueue.items }
+
+    /// Count of changes still on their way to the server.
+    var syncPendingCount: Int { syncQueue.pendingCount }
+
+    /// Count of changes that failed to upload.
+    var syncFailedCount: Int { syncQueue.failedCount }
+
+    /// Count of changes blocked by a server conflict.
+    var syncConflictedCount: Int { syncQueue.conflictedCount }
+
+    /// Whether the sync queue needs the user's attention.
+    var syncNeedsAttention: Bool { syncQueue.needsAttention }
+
     // MARK: - Constants
 
     let supportedCurrencies = [
@@ -211,6 +237,7 @@ final class SettingsViewModel {
         goalRepository: GoalRepository = MockGoalRepository(),
         exportService: DataExportService = DataExportService(),
         deletionService: DataDeletionManaging? = nil,
+        syncQueue: SyncQueueManager? = nil,
         defaults: UserDefaults = .standard
     ) {
         self.accountRepository = accountRepository
@@ -219,6 +246,7 @@ final class SettingsViewModel {
         self.goalRepository = goalRepository
         self.exportService = exportService
         self.deletionService = deletionService ?? DataDeletionService(accountRepository: accountRepository, transactionRepository: transactionRepository, budgetRepository: budgetRepository, goalRepository: goalRepository, defaults: defaults)
+        self.syncQueue = syncQueue ?? .shared
         self.defaults = defaults
 
         // Hydrate persisted preferences (use sensible defaults for first launch)
@@ -427,28 +455,48 @@ final class SettingsViewModel {
 
     // MARK: - Sync
 
-    /// Triggers a manual sync operation.
+    /// Triggers a manual sync run and reflects trustworthy per-item feedback.
     ///
-    /// In the current implementation this simulates a sync with a brief
-    /// delay. Once the KMP sync module is integrated, this will call
-    /// into the shared `SyncManager`.
+    /// When offline, locally-saved changes are marked queued (nothing is lost)
+    /// and the user is told they'll sync later. When online, each queued change
+    /// is uploaded and transitioned to synced / failed / conflicted. This
+    /// replaces the previous simulated fixed delay (#2204).
     func syncNow() async {
         guard !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
 
-        Self.logger.info("Manual sync started")
+        let connected = isNetworkAvailable()
+        Self.logger.info("Manual sync started (connected=\(connected, privacy: .public))")
 
-        // TODO: Replace with KMP SyncManager call
-        try? await Task.sleep(for: .seconds(1))
+        let summary = await syncQueue.processQueue(isConnected: connected)
+        lastSyncSummaryText = summary.headline
 
-        let now = Date.now
-        lastSyncDate = now
-        defaults.set(now, forKey: SettingsKeys.lastSyncDate)
-        pendingChangesCount = 0
-        defaults.set(0, forKey: SettingsKeys.pendingChangesCount)
+        // Only advance the "last synced" timestamp when we actually reached the
+        // server, so the UI never implies a successful sync while offline.
+        if connected {
+            let now = Date.now
+            lastSyncDate = now
+            defaults.set(now, forKey: SettingsKeys.lastSyncDate)
+        }
 
-        Self.logger.info("Manual sync completed")
+        pendingChangesCount = syncQueue.pendingCount
+        defaults.set(pendingChangesCount, forKey: SettingsKeys.pendingChangesCount)
+
+        Self.logger.info("Manual sync completed: \(summary.headline, privacy: .public)")
+    }
+
+    /// Requeues failed/conflicted items and immediately retries the queue.
+    func retrySync() async {
+        syncQueue.retryFailed()
+        await syncNow()
+    }
+
+    /// Clears successfully-synced items from the visible queue.
+    func clearSyncedItems() {
+        syncQueue.clearSynced()
+        pendingChangesCount = syncQueue.pendingCount
+        defaults.set(pendingChangesCount, forKey: SettingsKeys.pendingChangesCount)
     }
 
     // MARK: - GDPR Data Deletion

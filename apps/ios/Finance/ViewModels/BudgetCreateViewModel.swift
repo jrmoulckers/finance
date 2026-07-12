@@ -28,6 +28,17 @@ final class BudgetCreateViewModel {
     var amountText = ""
     var selectedPeriod: BudgetPeriod = .monthly
 
+    /// Currency the budget limit is entered in. Defaults to the user's display
+    /// currency so budgets roll up consistently with the dashboard, but can be
+    /// switched to a local/account currency while travelling (#2203).
+    var currencyCode: String = CurrencyPreferences.displayCurrencyCode()
+
+    /// Currencies offered in the picker.
+    let availableCurrencyCodes = CurrencyPreferences.supportedCurrencyCodes
+
+    /// Localized symbol for the currently selected budget currency.
+    var currencySymbol: String { CurrencyPreferences.symbol(for: currencyCode) }
+
     // MARK: - State
 
     var isSaving = false
@@ -71,6 +82,7 @@ final class BudgetCreateViewModel {
             selectedCategoryId = categories.first { $0.name == budget.categoryName }?.id
             amountText = Self.formatAmountForEditing(budget.limitMinorUnits)
             selectedPeriod = BudgetPeriod(rawValue: budget.period) ?? .monthly
+            currencyCode = budget.currencyCode
         }
     }
 
@@ -91,7 +103,7 @@ final class BudgetCreateViewModel {
             categoryName: categoryName,
             spentMinorUnits: editingBudget?.spentMinorUnits ?? 0,
             limitMinorUnits: amountMinorUnits,
-            currencyCode: "USD",
+            currencyCode: currencyCode,
             period: selectedPeriod.rawValue,
             icon: categoryIcon
         )

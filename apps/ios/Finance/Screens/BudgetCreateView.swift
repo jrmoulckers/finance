@@ -23,6 +23,7 @@ struct BudgetCreateView: View {
             Form {
                 categorySection
                 amountSection
+                currencySection
                 periodSection
             }
             .navigationTitle(viewModel.navigationTitle)
@@ -81,18 +82,44 @@ struct BudgetCreateView: View {
     private var amountSection: some View {
         Section {
             HStack {
-                Text(currencySymbol)
+                Text(viewModel.currencySymbol)
                     .font(.title2)
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 TextField(String(localized: "0.00"), text: $viewModel.amountText)
                     .font(.title2)
                     .keyboardType(.decimalPad)
                     .accessibilityIdentifier("budget_amount_field")
                     .accessibilityLabel(String(localized: "Budget amount"))
-                    .accessibilityHint(String(localized: "Enter the budget limit in dollars"))
+                    .accessibilityHint(
+                        String(localized: "Enter the budget limit in \(viewModel.currencyCode)")
+                    )
             }
         } header: {
             Text(String(localized: "Amount"))
+        }
+    }
+
+    // MARK: - Currency Section
+
+    private var currencySection: some View {
+        Section {
+            Picker(String(localized: "Currency"), selection: $viewModel.currencyCode) {
+                ForEach(viewModel.availableCurrencyCodes, id: \.self) { code in
+                    Text(CurrencyPreferences.pickerLabel(for: code)).tag(code)
+                }
+            }
+            .pickerStyle(.menu)
+            .accessibilityLabel(String(localized: "Budget currency"))
+            .accessibilityHint(
+                String(localized: "Choose the currency this budget limit is entered in")
+            )
+        } header: {
+            Text(String(localized: "Currency"))
+        } footer: {
+            Text(
+                String(localized: "Budgets in a currency other than your display currency are converted for dashboard roll-ups.")
+            )
         }
     }
 
@@ -111,15 +138,6 @@ struct BudgetCreateView: View {
         } header: {
             Text(String(localized: "Period"))
         }
-    }
-
-    // MARK: - Helpers
-
-    private var currencySymbol: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.currencySymbol ?? "$"
     }
 }
 

@@ -36,7 +36,11 @@ final class DashboardViewModel {
     var recentTransactions: [TransactionItem] = []
     var isLoading = false
     var errorMessage: String?
-    var currencyCode: String = "USD"
+
+    /// Active display (home) currency that drives every total and formatted
+    /// value on the dashboard. Sourced from ``CurrencyPreferences`` so the
+    /// Settings choice actually flows through here (#2203).
+    var currencyCode: String = CurrencyPreferences.displayCurrencyCode()
 
     /// Whether an error alert should be presented.
     var showError: Bool { errorMessage != nil }
@@ -275,6 +279,32 @@ final class DashboardViewModel {
         )
     }
 
+    // MARK: - Multi-currency roll-up disclosure (#2203)
+
+    /// Currency codes present in the loaded transactions that differ from the
+    /// active display currency — i.e. amounts that were converted for roll-ups.
+    var foreignCurrencyCodes: [String] {
+        let display = currencyCode.uppercased()
+        let codes = Set(
+            recentTransactions.map { $0.currencyCode.uppercased() }
+                + savingsRateTransactions.map { $0.currencyCode.uppercased() }
+        )
+        return codes.subtracting([display]).sorted()
+    }
+
+    /// Whether the dashboard is combining spend from more than one currency.
+    var hasMultiCurrencySpend: Bool { !foreignCurrencyCodes.isEmpty }
+
+    /// Short disclosure shown near totals when they combine multiple
+    /// currencies, so the user understands the home-currency figure is a
+    /// converted roll-up rather than a native sum.
+    var rollupDisclosure: String? {
+        guard hasMultiCurrencySpend else { return nil }
+        return String(
+            localized: "Totals are rolled up into \(currencyCode) from \(foreignCurrencyCodes.count) other currencies at the latest available rates."
+        )
+    }
+
     init(
         accountRepository: AccountRepository,
         transactionRepository: TransactionRepository,
@@ -292,6 +322,10 @@ final class DashboardViewModel {
     func loadDashboard() async {
         isLoading = true
         defer { isLoading = false }
+
+        // Pick up any change to the display-currency preference so totals and
+        // formatting always reflect the user's current home-currency choice.
+        currencyCode = CurrencyPreferences.displayCurrencyCode()
 
         do {
             // Instrumented with os_signpost for Instruments profiling (#903)

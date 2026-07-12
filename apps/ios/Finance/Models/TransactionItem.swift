@@ -86,8 +86,31 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
     let receiptData: Data?
     let tags: [Tag]
 
+    /// Absolute instant of the purchase, when known. Preserves the exact
+    /// moment across timezone changes so day-based reporting stays stable.
+    /// `nil` for legacy/manual entries that recorded only a calendar date (#2206).
+    let timestamp: Date?
+
+    /// Identifier of the timezone in effect where the purchase happened
+    /// (e.g. "Asia/Bangkok"). `nil` falls back to the device timezone.
+    let timeZoneIdentifier: String?
+
     /// Convenience: `true` when the transaction type is `.expense`.
     var isExpense: Bool { type == .expense }
+
+    /// Rich local timestamp for this transaction. Uses the preserved instant
+    /// and zone when available, otherwise degrades to the calendar `date` in
+    /// the device timezone.
+    var localTimestamp: TransactionTimestamp {
+        TransactionTimestamp(instant: timestamp ?? date, timeZoneIdentifier: timeZoneIdentifier)
+    }
+
+    /// Stable calendar day of the purchase in its original timezone. Use this
+    /// for day/trip bucketing so a border crossing never shifts the day.
+    var localDay: Date { localTimestamp.localDay }
+
+    /// Whether this transaction preserved a full timestamp and timezone.
+    var hasPreservedTimeZone: Bool { timestamp != nil && timeZoneIdentifier != nil }
 
     init(
         id: String,
@@ -104,7 +127,9 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
         moodTag: String? = nil,
         isRecurring: Bool = false,
         receiptData: Data? = nil,
-        tags: [Tag] = []
+        tags: [Tag] = [],
+        timestamp: Date? = nil,
+        timeZoneIdentifier: String? = nil
     ) {
         self.id = id
         self.payee = payee
@@ -121,5 +146,7 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
         self.isRecurring = isRecurring
         self.receiptData = receiptData
         self.tags = tags
+        self.timestamp = timestamp
+        self.timeZoneIdentifier = timeZoneIdentifier
     }
 }

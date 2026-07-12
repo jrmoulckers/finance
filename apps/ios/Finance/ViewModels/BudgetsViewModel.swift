@@ -28,6 +28,10 @@ final class BudgetsViewModel {
     var editingBudget: BudgetItem?
     var errorMessage: String?
 
+    /// Active display currency used for the aggregate summary totals so the
+    /// Settings preference drives this screen too (#2203).
+    var displayCurrencyCode: String = CurrencyPreferences.displayCurrencyCode()
+
     /// Whether an error alert should be presented.
     var showError: Bool { errorMessage != nil }
 
@@ -83,6 +87,8 @@ final class BudgetsViewModel {
     func loadBudgets() async {
         isLoading = true
         defer { isLoading = false }
+
+        displayCurrencyCode = CurrencyPreferences.displayCurrencyCode()
 
         do {
             budgets = try await repository.getBudgets()

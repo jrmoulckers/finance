@@ -68,6 +68,18 @@ struct TransactionDetailView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
                     .background(.quaternary, in: Capsule())
+
+                if transaction.hasPreservedTimeZone {
+                    Label(
+                        transaction.localTimestamp.localDateTimeDescription,
+                        systemImage: "globe"
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(
+                        String(localized: "Purchased locally at \(transaction.localTimestamp.localDateTimeDescription)")
+                    )
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)

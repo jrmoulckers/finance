@@ -17,6 +17,7 @@ final class TransactionCreateViewModel {
     private let accountRepository: AccountRepository
     private let transactionValidator: KMPTransactionValidatorProtocol
     private let categorizationEngine: KMPCategorizationEngineProtocol
+    private let syncQueue: SyncQueueManager
 
     /// The transaction being edited, or `nil` for create mode.
     private let editingTransaction: TransactionItem?
@@ -43,6 +44,11 @@ final class TransactionCreateViewModel {
     var selectedAccountId: String?
     var selectedCategoryId: String?
     var date = Date()
+
+    /// Identifier of the timezone captured at entry time. Preserved with the
+    /// transaction so day-based reporting stays stable after the traveller
+    /// crosses a border (#2206).
+    var timeZoneIdentifier: String = TimeZone.current.identifier
     var note = ""
     var currencyCode = "USD"
     var isSaving = false
@@ -134,6 +140,34 @@ final class TransactionCreateViewModel {
         isEditing ? String(localized: "Edit Transaction") : String(localized: "New Transaction")
     }
 
+    // MARK: - Timezone capture (#2206)
+
+    /// The timezone currently captured for this transaction.
+    var capturedTimeZone: TimeZone { TimeZone(identifier: timeZoneIdentifier) ?? .current }
+
+    /// Preview of the local timestamp that will be preserved with the entry,
+    /// e.g. "Jan 5, 2026 at 11:50 PM GMT+7".
+    var localTimestampDescription: String {
+        TransactionTimestamp(instant: date, timeZoneIdentifier: timeZoneIdentifier)
+            .localDateTimeDescription
+    }
+
+    /// Short label for the captured zone (e.g. "ICT", "GMT+7").
+    var capturedTimeZoneLabel: String {
+        capturedTimeZone.abbreviation(for: date) ?? capturedTimeZone.identifier
+    }
+
+    /// Whether the captured zone differs from the device's current zone — a
+    /// hint that this entry was logged in another country.
+    var isForeignTimeZone: Bool {
+        capturedTimeZone.secondsFromGMT(for: date) != TimeZone.current.secondsFromGMT()
+    }
+
+    /// Resets the captured timezone to the device's current zone.
+    func useCurrentTimeZone() {
+        timeZoneIdentifier = TimeZone.current.identifier
+    }
+
     /// Label for the save button on the review step.
     var saveButtonTitle: String {
         isEditing ? String(localized: "Update Transaction") : String(localized: "Save Transaction")
@@ -145,13 +179,15 @@ final class TransactionCreateViewModel {
         transaction: TransactionItem? = nil,
         quickEntryAction: String? = nil,
         transactionValidator: KMPTransactionValidatorProtocol = KMPBridge.shared.transactionValidator,
-        categorizationEngine: KMPCategorizationEngineProtocol = KMPBridge.shared.categorizationEngine
+        categorizationEngine: KMPCategorizationEngineProtocol = KMPBridge.shared.categorizationEngine,
+        syncQueue: SyncQueueManager = .shared
     ) {
         self.transactionRepository = transactionRepository
         self.accountRepository = accountRepository
         self.editingTransaction = transaction
         self.transactionValidator = transactionValidator
         self.categorizationEngine = categorizationEngine
+        self.syncQueue = syncQueue
 
         if let transaction {
             // Pre-fill fields from the existing transaction
@@ -159,6 +195,7 @@ final class TransactionCreateViewModel {
             amountCents = Int(abs(transaction.amountMinorUnits))
             payee = transaction.payee
             date = transaction.date
+            timeZoneIdentifier = transaction.timeZoneIdentifier ?? TimeZone.current.identifier
             currencyCode = transaction.currencyCode
             selectedStatus = transaction.status
             tags = transaction.tagNames
@@ -255,7 +292,9 @@ final class TransactionCreateViewModel {
             type: transactionType,
             status: selectedStatus,
             tagNames: persistedTags,
-            moodTag: moodTagsEnabled ? moodTag : nil
+            moodTag: moodTagsEnabled ? moodTag : nil,
+            timestamp: date,
+            timeZoneIdentifier: timeZoneIdentifier
         )
 
         do {
@@ -264,6 +303,14 @@ final class TransactionCreateViewModel {
             } else {
                 try await transactionRepository.createTransaction(transaction)
             }
+
+            // Queue the change for sync so offline users get trustworthy
+            // feedback on what has and hasn't uploaded (#2204).
+            syncQueue.enqueue(
+                entityType: "transaction",
+                entityId: transaction.id,
+                summary: "\(payee) — \(formattedAmount) \(currencyCode)"
+            )
 
             // Teach the categorization engine this payee → category mapping
             if let categoryId = selectedCategoryId, !payee.isEmpty {
