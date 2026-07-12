@@ -36,13 +36,20 @@ import type {
   RefreshResult,
 } from './types';
 
-/** Deterministic id helper (crypto.randomUUID when available, else a stable fallback). */
+/** Cryptographically-secure id helper (crypto.randomUUID, else getRandomValues). */
 function newId(prefix: string): string {
   const webCrypto = globalThis.crypto;
   if (webCrypto && typeof webCrypto.randomUUID === 'function') {
     return `${prefix}-${webCrypto.randomUUID()}`;
   }
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  if (webCrypto && typeof webCrypto.getRandomValues === 'function') {
+    const bytes = webCrypto.getRandomValues(new Uint8Array(16));
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${prefix}-${hex}`;
+  }
+  throw new Error(
+    'newId requires a Web Crypto implementation (crypto.randomUUID or getRandomValues)',
+  );
 }
 
 /** Trim an ISO-8601 timestamp to a `YYYY-MM-DD` date, defaulting to the epoch. */

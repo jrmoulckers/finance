@@ -83,6 +83,7 @@ class SqlDelightTransactionRepository(
             updated_at = entity.updatedAt.toString(),
             sync_version = entity.syncVersion,
             is_synced = if (entity.isSynced) 1L else 0L,
+            is_biometric_protected = if (entity.isBiometricProtected) 1L else 0L,
         )
         refreshCache()
     }
@@ -139,4 +140,5 @@ internal fun com.finance.db.Transaction.toTransaction(): Transaction = Transacti
     deletedAt = deleted_at?.let { Instant.parse(it) },
     syncVersion = sync_version,
     isSynced = is_synced != 0L,
+    isBiometricProtected = is_biometric_protected != 0L,
 )
