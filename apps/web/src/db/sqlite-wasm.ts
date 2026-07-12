@@ -745,9 +745,9 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_transaction_biometric ON "transaction" (is_biometric_protected);`,
       // Backfill from the owning category to match server-side backfill.
       `UPDATE "transaction"
-         SET is_biometric_protected = COALESCE(
-           (SELECT c.is_biometric_protected FROM category c WHERE c.id = "transaction".category_id),
-           0
+         SET is_biometric_protected = 1
+         WHERE category_id IN (
+           SELECT id FROM category WHERE is_biometric_protected = 1
          );`,
     ],
   },
