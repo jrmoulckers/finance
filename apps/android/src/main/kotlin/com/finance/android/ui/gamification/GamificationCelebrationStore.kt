@@ -24,6 +24,6 @@ class GamificationCelebrationStore(
     }
 
     private companion object {
-        const val KEY_SEEN = "gamification_celebrated_ids_v1"
+        const val KEY_SEEN = "gamification_celebrated_ids_v1" // gitleaks:allow (prefs key)
     }
 }

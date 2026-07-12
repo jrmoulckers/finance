@@ -73,6 +73,6 @@ class CoupleDebtRepository(
     }.getOrNull()
 
     private companion object {
-        const val KEY = "couple_debts_v1"
+        const val KEY = "couple_debts_v1" // gitleaks:allow (prefs key)
     }
 }
