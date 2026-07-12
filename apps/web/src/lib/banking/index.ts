@@ -54,6 +54,12 @@ export type { RawProviderTransaction, RawProviderAccount } from './transaction-n
 export { ManualImportProvider } from './manual-provider';
 export type { ImportFormat } from './manual-provider';
 
+// Crypto provider (Web3 wallets & exchanges — #2164)
+export { CryptoBankProvider } from './crypto-provider';
+
+// Default provider bootstrap
+export { registerDefaultProviders } from './register-default-providers';
+
 // Mock provider
 export { MockProvider } from './mock-provider';
 export type { MockProviderConfig } from './mock-provider';

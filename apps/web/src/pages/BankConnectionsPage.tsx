@@ -15,7 +15,7 @@
  * References: #1575, #1577, #1583
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useState } from 'react';
 
 import { ConnectionHealthCard } from '../components/bank/ConnectionHealthCard';
 import { ProviderStatusList } from '../components/bank/ProviderStatusList';
@@ -23,6 +23,16 @@ import { SafetyCenter } from '../components/bank/SafetyCenter';
 import '../components/bank/bank-connections.css';
 import { useBankConnections } from '../hooks/useBankConnections';
 import { useConnectorPermissions } from '../hooks/useConnectorPermissions';
+
+/**
+ * Crypto wallet & exchange panel (#2164). Lazy-loaded so the crypto engine only
+ * enters the bundle when a user opens the Wallets & Exchanges tab.
+ */
+const CryptoConnectionsPanel = lazy(() =>
+  import('../components/investments/CryptoConnectionsPanel').then((module) => ({
+    default: module.CryptoConnectionsPanel,
+  })),
+);
 
 // ---------------------------------------------------------------------------
 // Component
@@ -53,7 +63,9 @@ export const BankConnectionsPage: React.FC = () => {
     loadAccessLog,
   } = useConnectorPermissions();
 
-  const [activeTab, setActiveTab] = useState<'health' | 'providers' | 'safety'>('health');
+  const [activeTab, setActiveTab] = useState<'health' | 'providers' | 'crypto' | 'safety'>(
+    'health',
+  );
 
   const handleViewHistory = useCallback(
     (connectionId: string) => {
@@ -138,6 +150,15 @@ export const BankConnectionsPage: React.FC = () => {
         </button>
         <button
           type="button"
+          className={`tab-nav__tab ${activeTab === 'crypto' ? 'tab-nav__tab--active' : ''}`}
+          onClick={() => setActiveTab('crypto')}
+          aria-selected={activeTab === 'crypto'}
+          role="tab"
+        >
+          Wallets &amp; Exchanges
+        </button>
+        <button
+          type="button"
           className={`tab-nav__tab ${activeTab === 'safety' ? 'tab-nav__tab--active' : ''}`}
           onClick={() => setActiveTab('safety')}
           aria-selected={activeTab === 'safety'}
@@ -200,6 +221,21 @@ export const BankConnectionsPage: React.FC = () => {
         {/* Providers tab */}
         {activeTab === 'providers' && (
           <ProviderStatusList providers={providers} loading={connectionsLoading} />
+        )}
+
+        {/* Wallets & Exchanges tab (#2164) */}
+        {activeTab === 'crypto' && (
+          <section aria-label="Crypto wallets and exchanges">
+            <Suspense
+              fallback={
+                <div role="status" aria-live="polite">
+                  <p>Loading wallets &amp; exchanges…</p>
+                </div>
+              }
+            >
+              <CryptoConnectionsPanel />
+            </Suspense>
+          </section>
         )}
 
         {/* Safety Center tab */}

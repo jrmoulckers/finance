@@ -159,7 +159,7 @@ export interface BankAccount {
 
 /** Supported account types. */
 export type BankAccountType =
-  'checking' | 'savings' | 'credit_card' | 'loan' | 'investment' | 'other';
+  'checking' | 'savings' | 'credit_card' | 'loan' | 'investment' | 'crypto' | 'other';
 
 /**
  * A normalized financial transaction in integer cents.
