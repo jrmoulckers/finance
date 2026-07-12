@@ -272,3 +272,31 @@ jobs:
           else
             gh issue create --repo "$GITHUB_REPOSITORY" --title "Production uptime check failing" --label uptime --label infrastructure --body "$body"
           fi
+
+      - name: Resolve production uptime issue on recovery
+        if: steps.check.outputs.failed == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEALTH_URL: ${{ steps.check.outputs.url }}
+          API_HEALTH_URL: ${{ steps.check.outputs.health_url }}
+          API_STATUS_CODE: ${{ steps.check.outputs.health_status_code }}
+        run: |
+          set -euo pipefail
+          # Close the alert automatically once production is healthy again so a
+          # resolved incident does not linger open and go stale (#3078). Only the
+          # monitor's own uptime+infrastructure alert issue is ever touched, and
+          # only when this run observed a fully passing DNS/HTTP/API probe.
+          existing_issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label uptime --label infrastructure --json number --jq '.[0].number // empty')
+          if [ -n "$existing_issue" ]; then
+            body=$(printf '%s\n' \
+              "✅ Automated production uptime check recovered." \
+              "" \
+              "- URL: ${HEALTH_URL}" \
+              "- API health (${API_HEALTH_URL}): ok (HTTP ${API_STATUS_CODE})" \
+              "- Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              "- Checked at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+              "" \
+              "Closing automatically; a new alert will be opened if the check fails again.")
+            gh issue comment "$existing_issue" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh issue close "$existing_issue" --repo "$GITHUB_REPOSITORY" --reason completed
+          fi
