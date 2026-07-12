@@ -85,3 +85,94 @@ export function applyDictationCorrection(
     ),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Voice-input transaction-entry QA matrix (#2504, follow-up to #2277)
+//
+// Transaction entry and correction must work across the mainstream voice tools.
+// Each case pins the two behaviours the follow-up calls out: activation by the
+// control's spoken (visible) label, and error correction that does not lose
+// focus. Encoding the matrix in code lets the entry/correction helpers above be
+// asserted against every tool in CI, and doubles as the QA run sheet.
+// ---------------------------------------------------------------------------
+
+export type VoiceInputTool =
+  'windows-voice-access' | 'macos-voice-control' | 'dragon' | 'ios-dictation' | 'android-dictation';
+
+export interface VoiceInputQaCase {
+  tool: VoiceInputTool;
+  platform: string;
+  activationCommand: string;
+  activationField: DictationField;
+  correctionCommand: string;
+  correctionField: DictationField;
+  correctionValue: string;
+  expectation: string;
+}
+
+export function getVoiceInputTools(): VoiceInputTool[] {
+  return [
+    'windows-voice-access',
+    'macos-voice-control',
+    'dragon',
+    'ios-dictation',
+    'android-dictation',
+  ];
+}
+
+export function buildVoiceInputQaMatrix(): VoiceInputQaCase[] {
+  return [
+    {
+      tool: 'windows-voice-access',
+      platform: 'Windows 11 Voice Access',
+      activationCommand: 'Click Payee',
+      activationField: 'payee',
+      correctionCommand: 'Correct amount to twelve dollars',
+      correctionField: 'amount',
+      correctionValue: '12.00',
+      expectation: 'Spoken visible label focuses the field; correction keeps focus on amount.',
+    },
+    {
+      tool: 'macos-voice-control',
+      platform: 'macOS Voice Control',
+      activationCommand: 'Click Amount',
+      activationField: 'amount',
+      correctionCommand: 'Replace with fifteen dollars fifty',
+      correctionField: 'amount',
+      correctionValue: '15.50',
+      expectation: 'Number overlay and label activation both reach the field without focus loss.',
+    },
+    {
+      tool: 'dragon',
+      platform: 'Dragon NaturallySpeaking',
+      activationCommand: 'Click Category',
+      activationField: 'category',
+      correctionCommand: 'Select groceries',
+      correctionField: 'category',
+      correctionValue: 'Groceries',
+      expectation:
+        'Full-text control name matches the visible label; correction announces the change.',
+    },
+    {
+      tool: 'ios-dictation',
+      platform: 'iOS dictation',
+      activationCommand: 'Tap Note then dictate',
+      activationField: 'note',
+      correctionCommand: 'Dictate corrected note',
+      correctionField: 'note',
+      correctionValue: 'Lunch with client',
+      expectation:
+        'Dictation appends to the focused field; re-dictation corrects without losing focus.',
+    },
+    {
+      tool: 'android-dictation',
+      platform: 'Android (Gboard voice typing)',
+      activationCommand: 'Focus Date then speak',
+      activationField: 'date',
+      correctionCommand: 'Speak today',
+      correctionField: 'date',
+      correctionValue: 'Today',
+      expectation: 'Voice typing fills the focused field; correction keeps focus on date.',
+    },
+  ];
+}
