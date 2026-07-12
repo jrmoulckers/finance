@@ -10,6 +10,7 @@
 // References: #1121
 
 import SwiftUI
+import FinanceShared
 
 // MARK: - View
 
@@ -17,6 +18,8 @@ import SwiftUI
 /// for marking as paid and deleting.
 struct BillsListView: View {
     @State private var viewModel: BillsViewModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(viewModel: BillsViewModel = BillsViewModel(
         repository: RepositoryProvider.shared.bills
@@ -45,6 +48,16 @@ struct BillsListView: View {
             }
             .navigationTitle(String(localized: "Bills"))
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        BillCalendarView(bills: viewModel.bills)
+                    } label: {
+                        Image(systemName: "calendar")
+                    }
+                    .accessibilityIdentifier("bill_calendar_button")
+                    .accessibilityLabel(String(localized: "Bill calendar"))
+                    .accessibilityHint(String(localized: "Lines your bills up with your paydays"))
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button { viewModel.showingCreateBill = true } label: {
                         Image(systemName: "plus")
@@ -109,41 +122,26 @@ struct BillsListView: View {
     // MARK: - Summary Card
 
     private var summaryCard: some View {
-        HStack(spacing: 24) {
-            VStack(spacing: 4) {
-                Text(String(localized: "Due"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                CurrencyLabel(
-                    amountInMinorUnits: viewModel.totalDueMinorUnits,
-                    currencyCode: "USD",
-                    showSign: false,
-                    font: .title3.bold()
-                )
-            }
-
-            Divider().frame(height: 40)
-
-            VStack(spacing: 4) {
-                Text(String(localized: "Monthly Total"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                CurrencyLabel(
-                    amountInMinorUnits: viewModel.totalMonthlyMinorUnits,
-                    currencyCode: "USD",
-                    showSign: false,
-                    font: .title3.bold()
-                )
-            }
-
-            Divider().frame(height: 40)
-
-            VStack(spacing: 4) {
-                Text(String(localized: "Bills"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("\(viewModel.bills.count)")
-                    .font(.title3.bold())
+        let columns = CompactLayoutMetrics.billsSummaryColumns(
+            for: SizeClassInput(horizontalSizeClass: horizontalSizeClass, dynamicTypeSize: dynamicTypeSize)
+        )
+        return Group {
+            if columns == 1 {
+                VStack(spacing: FinanceSpacing.sm) {
+                    dueStat
+                    Divider()
+                    monthlyStat
+                    Divider()
+                    countStat
+                }
+            } else {
+                HStack(spacing: 24) {
+                    dueStat
+                    Divider().frame(height: 40)
+                    monthlyStat
+                    Divider().frame(height: 40)
+                    countStat
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -152,6 +150,44 @@ struct BillsListView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Bills summary"))
         .accessibilityValue(String(localized: "\(viewModel.bills.count) bills, \(viewModel.overdueBills.count) overdue"))
+    }
+
+    private var dueStat: some View {
+        VStack(spacing: 4) {
+            Text(String(localized: "Due"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            CurrencyLabel(
+                amountInMinorUnits: viewModel.totalDueMinorUnits,
+                currencyCode: "USD",
+                showSign: false,
+                font: .title3.bold()
+            )
+        }
+    }
+
+    private var monthlyStat: some View {
+        VStack(spacing: 4) {
+            Text(String(localized: "Monthly Total"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            CurrencyLabel(
+                amountInMinorUnits: viewModel.totalMonthlyMinorUnits,
+                currencyCode: "USD",
+                showSign: false,
+                font: .title3.bold()
+            )
+        }
+    }
+
+    private var countStat: some View {
+        VStack(spacing: 4) {
+            Text(String(localized: "Bills"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("\(viewModel.bills.count)")
+                .font(.title3.bold())
+        }
     }
 
     // MARK: - Bill Section
