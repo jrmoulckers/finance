@@ -99,3 +99,112 @@ export function buildLargeTextAuditMatrix(): LargeTextAuditCase[] {
     },
   ];
 }
+
+// ---------------------------------------------------------------------------
+// 300%/400% large-text surface QA matrix (#2487, follow-up to #2274)
+//
+// Responsive QA at 300% and 400% browser zoom plus in-app large/huge text for
+// the surfaces named in the follow-up: navigation, modals, forms, command
+// palette, chart summaries, bottom navigation, and focus indicators. Each case
+// derives its expected reflow via chooseLargeTextReflow so the run sheet stays
+// consistent with the shared reflow logic, and lists the concrete checks a
+// tester (or assertion) must confirm at that zoom level.
+// ---------------------------------------------------------------------------
+
+export type LargeTextSurface =
+  | 'navigation'
+  | 'modal'
+  | 'form'
+  | 'command-palette'
+  | 'chart-summary'
+  | 'bottom-navigation'
+  | 'focus-indicator';
+
+export interface LargeTextSurfaceQaCase {
+  surface: LargeTextSurface;
+  browserZoomPercent: 300 | 400;
+  inAppTextSize: 'large' | 'huge';
+  viewportWidth: number;
+  effectiveScale: number;
+  expectedMode: ReflowMode;
+  checks: readonly string[];
+}
+
+const LARGE_TEXT_SURFACES: Record<LargeTextSurface, { hasDenseData: boolean; checks: string[] }> = {
+  navigation: {
+    hasDenseData: false,
+    checks: [
+      'primary nav collapses to a single-column menu without clipping labels',
+      'all nav targets stay reachable by keyboard and pointer',
+    ],
+  },
+  modal: {
+    hasDenseData: false,
+    checks: [
+      'dialog stays within the viewport and scrolls on a single axis',
+      'title, body, and actions remain visible without horizontal scroll',
+    ],
+  },
+  form: {
+    hasDenseData: false,
+    checks: [
+      'labels stay associated and above their fields when stacked',
+      'no field or helper text is truncated or overlapped',
+    ],
+  },
+  'command-palette': {
+    hasDenseData: true,
+    checks: [
+      'result rows wrap to a readable card layout',
+      'active-item highlight and shortcut hints remain legible',
+    ],
+  },
+  'chart-summary': {
+    hasDenseData: true,
+    checks: [
+      'plain-language summary is shown before the chart',
+      'data table alternative allows single-axis scroll',
+    ],
+  },
+  'bottom-navigation': {
+    hasDenseData: false,
+    checks: [
+      'bottom bar does not overlap content or the on-screen keyboard',
+      'tab labels and icons remain tappable at 44px minimum targets',
+    ],
+  },
+  'focus-indicator': {
+    hasDenseData: false,
+    checks: [
+      'focus ring stays fully visible and unclipped after reflow',
+      'focus order matches the reflowed visual order',
+    ],
+  },
+};
+
+export function buildLargeTextSurfaceQaMatrix(): LargeTextSurfaceQaCase[] {
+  const zooms: Array<{ browserZoomPercent: 300 | 400; inAppTextSize: 'large' | 'huge' }> = [
+    { browserZoomPercent: 300, inAppTextSize: 'large' },
+    { browserZoomPercent: 400, inAppTextSize: 'huge' },
+  ];
+  const viewportWidth = 1280;
+
+  return (Object.keys(LARGE_TEXT_SURFACES) as LargeTextSurface[]).flatMap((surface) =>
+    zooms.map(({ browserZoomPercent, inAppTextSize }) => {
+      const decision = chooseLargeTextReflow({
+        viewportWidth,
+        browserZoomPercent,
+        hasDenseData: LARGE_TEXT_SURFACES[surface].hasDenseData,
+      });
+      return {
+        surface,
+        browserZoomPercent,
+        inAppTextSize,
+        viewportWidth,
+        effectiveScale: decision.effectiveScale,
+        expectedMode: decision.mode,
+        checks: LARGE_TEXT_SURFACES[surface].checks,
+      };
+    }),
+  );
+}
