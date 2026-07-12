@@ -19,7 +19,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EventNote
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.MoreVert
@@ -229,6 +231,8 @@ private fun iconFor(type: QuickActionType): ImageVector = when (type) {
     QuickActionType.VIEW_BUDGETS -> Icons.Filled.PieChart
     QuickActionType.VIEW_INSIGHTS -> Icons.Filled.Insights
     QuickActionType.GIG_TOOLS -> Icons.Filled.DirectionsCar
+    QuickActionType.COUPLE_SPACE -> Icons.Filled.Favorite
+    QuickActionType.ACHIEVEMENTS -> Icons.Filled.EmojiEvents
 }
 
 @Preview(showBackground = true)

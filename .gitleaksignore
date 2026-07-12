@@ -1,0 +1,5 @@
+# gitleaks false-positive allowlist (fingerprints: commit:file:rule:line)
+# These are on-device Android SharedPreferences key names, not secrets.
+# See apps/android CoupleDebtRepository / GamificationCelebrationStore.
+0effb3da2f9460cf79e0844d262f7a556affb808:apps/android/src/main/kotlin/com/finance/android/ui/gamification/GamificationCelebrationStore.kt:generic-api-key:27
+7051fa83cb9674c08ecaccf54dda726aad31fccd:apps/android/src/main/kotlin/com/finance/android/ui/couple/debt/CoupleDebtRepository.kt:generic-api-key:76

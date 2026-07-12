@@ -89,6 +89,22 @@ enum class QuickActionType(
         iconName = "DirectionsCar",
         baseWeight = 0.35,
     ),
+    COUPLE_SPACE(
+        id = "couple_space",
+        label = "Our money",
+        contentDescription = "Open the shared money space for couples: privacy, wedding, goals, check-ins and debt",
+        route = "couple-hub",
+        iconName = "Favorite",
+        baseWeight = 0.34,
+    ),
+    ACHIEVEMENTS(
+        id = "achievements",
+        label = "Achievements",
+        contentDescription = "View your achievements, streaks and progress",
+        route = "achievements",
+        iconName = "EmojiEvents",
+        baseWeight = 0.32,
+    ),
     ;
 
     companion object {

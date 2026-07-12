@@ -6,9 +6,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +43,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -53,6 +57,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -103,7 +109,13 @@ fun GamificationScreen(
         return
     }
 
-    GamificationContent(state = state, modifier = modifier)
+    Box(modifier = modifier.fillMaxSize()) {
+        GamificationContent(state = state)
+        CelebrationOverlay(
+            celebration = state.celebration,
+            onDismiss = viewModel::dismissCelebration,
+        )
+    }
 }
 
 @Composable
@@ -126,6 +138,34 @@ internal fun GamificationContent(
                 achievementsUnlocked = state.achievementsUnlocked,
                 achievementsTotal = state.achievementsTotal,
             )
+        }
+
+        // Streak highlight (#2211) — real logging streak with encouraging, non-punitive copy.
+        if (state.currentStreakDays > 0) {
+            item(key = "streak-highlight") {
+                StreakHighlightCard(
+                    currentStreakDays = state.currentStreakDays,
+                    bestStreakDays = state.bestStreakDays,
+                    message = state.streakMessage,
+                )
+            }
+        }
+
+        // Near-win feedback (#2211) — "almost there" moments to build earned anticipation.
+        if (state.nearWins.isNotEmpty()) {
+            item(key = "nearwin-header") {
+                Text(
+                    text = "So close",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics {
+                        heading()
+                        contentDescription = "Almost there section"
+                    },
+                )
+            }
+            items(state.nearWins, key = { "nearwin-${it.id}" }) { nearWin ->
+                NearWinCard(nearWin = nearWin)
+            }
         }
 
         // Recently unlocked
@@ -192,6 +232,189 @@ internal fun GamificationContent(
         }
 
         item(key = "spacer") { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+// ── Streak, Near-win & Celebration (#2211) ───────────────────────────
+
+@Composable
+private fun StreakHighlightCard(
+    currentStreakDays: Int,
+    bestStreakDays: Int,
+    message: String,
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "Current logging streak: $currentStreakDays days. " +
+                    "Best streak: $bestStreakDays days. $message"
+            },
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Row(
+            Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.LocalFireDepartment,
+                contentDescription = null,
+                tint = Color(0xFFFF6D00),
+                modifier = Modifier.size(40.dp),
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "$currentStreakDays-day streak",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                if (bestStreakDays > 0) {
+                    Text(
+                        text = "Personal best: $bestStreakDays days",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NearWinCard(nearWin: NearWin) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = nearWin.progressFraction,
+        animationSpec = tween(800),
+        label = "nearwin-progress",
+    )
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "${nearWin.title}. ${nearWin.message}. " +
+                    "${(nearWin.progressFraction * 100).toInt()} percent complete."
+            },
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFFFC107),
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = nearWin.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = nearWin.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = nearWin.remainingLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { animatedProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CelebrationOverlay(
+    celebration: CelebrationState?,
+    onDismiss: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(celebration) {
+        if (celebration != null) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+    AnimatedVisibility(
+        visible = celebration != null,
+        enter = fadeIn(tween(200)),
+        exit = fadeOut(tween(200)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xCC000000))
+                .clickable(onClick = onDismiss)
+                .semantics {
+                    contentDescription = celebration?.let {
+                        "Achievement unlocked: ${it.title}. ${it.points} points. Tap to dismiss."
+                    } ?: ""
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (celebration != null) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = scaleIn(tween(400)) + fadeIn(),
+                ) {
+                    ElevatedCard(
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                    ) {
+                        Column(
+                            Modifier.padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.EmojiEvents,
+                                contentDescription = null,
+                                tint = rarityColors[celebration.rarity] ?: Color(0xFFFFD700),
+                                modifier = Modifier.size(72.dp),
+                            )
+                            Text(
+                                text = "Achievement unlocked!",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = celebration.title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = "+${celebration.points} points",
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            TextButton(onClick = onDismiss) {
+                                Text("Awesome!")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
