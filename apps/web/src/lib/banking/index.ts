@@ -80,3 +80,11 @@ export { registerDefaultProviders } from './register-default-providers';
 // Mock provider
 export { MockProvider } from './mock-provider';
 export type { MockProviderConfig } from './mock-provider';
+
+// Base aggregator provider (edge-backed base for real aggregators — #3849)
+export { BaseAggregatorProvider, BankingProviderError } from './base-aggregator-provider';
+export type {
+  AggregatorProviderConfig,
+  EdgeTransport,
+  SyncedBankDataSource,
+} from './base-aggregator-provider';
