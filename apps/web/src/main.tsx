@@ -18,6 +18,7 @@ import { applyStoredDisplayDensityPreference, applyStoredThemePreference } from 
 import { MoneyDisplayProvider } from './lib/display-settings';
 import { applyStoredSimplifiedModePreference } from './lib/accessibility-preferences';
 import { migrateLegacyDisplayCurrencyPreference } from './lib/display-currency';
+import { bootstrapBanking } from './lib/banking';
 import { initMonitoring } from './lib/monitoring';
 import {
   isViteDevServer,
@@ -129,6 +130,14 @@ if (
 }
 
 initMonitoring();
+
+// Register the built-in banking providers into the shared registry and build
+// the provider router used for app-routed aggregator selection. Without this
+// the registry stayed empty at runtime (registration previously happened only
+// in tests), so no provider could ever be selected. The router's operational
+// metadata source is attached later, once the PowerSync `aggregator_providers`
+// query is available (#3846).
+bootstrapBanking();
 
 // ---------------------------------------------------------------------------
 // Service worker registration
