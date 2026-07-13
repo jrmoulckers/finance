@@ -364,12 +364,25 @@ export default defineConfig({
               priority: 60,
             },
             {
+              // Data-access repositories (one module per domain table) are the
+              // fastest-growing part of the shared data layer — every web
+              // feature batch adds another repository. Peel them into their own
+              // shared chunk so cumulative repository growth does not push the
+              // core shared-infra chunk (`vendor-app`) past the lazy-chunk
+              // budget, mirroring the `vendor-i18n` split (#3478). Higher
+              // priority than `vendor-app` so these paths are claimed here.
+              name: 'vendor-repositories',
+              test: /[\\/]src[\\/]db[\\/]repositories[\\/]/,
+              priority: 60,
+            },
+            {
               // Shared application infrastructure (SQLite-WASM data layer,
               // repositories, auth, React contexts) is imported by nearly every
               // route. Hoist it into one shared chunk instead of letting
               // rolldown host it inside `route-dashboard`, which chronically
               // inflated that chunk past the budget (#2983). Locale catalogs are
-              // split into `vendor-i18n` above (#3478).
+              // split into `vendor-i18n` above (#3478); data-access repositories
+              // are split into `vendor-repositories` above.
               name: 'vendor-app',
               test: /[\\/]src[\\/](db|auth|contexts)[\\/]/,
               priority: 50,
