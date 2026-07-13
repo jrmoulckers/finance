@@ -65,12 +65,12 @@ jobs:
               - 'gradle/**'
               - 'settings.gradle*'
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
-        uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
           languages: java-kotlin
           queries: +security-and-quality
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
-        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
           distribution: temurin
           java-version: '21'
@@ -79,7 +79,7 @@ jobs:
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         run: ./gradlew clean compileKotlinJvm --no-daemon --no-build-cache
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
-        uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
           category: '/language:java-kotlin'
 
@@ -89,11 +89,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+      - uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
           languages: javascript-typescript
           queries: +security-and-quality
-      - uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+      - uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
           category: '/language:javascript-typescript'
 
@@ -127,7 +127,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: TruffleHog (verified + unverified secrets)
-        uses: trufflesecurity/trufflehog@00155c9dc586f34d189adc83d3ac2698c2ec551f # v3.95.8
+        uses: trufflesecurity/trufflehog@27b0417c16317ca9a472a9a8092acce143b49c55 # v3.95.9
         with:
           # #2877: do NOT use --only-verified. We want unverified/unknown
           # results to block too, since an unverified credential is still a
@@ -285,7 +285,7 @@ jobs:
 
       - name: Upload npm audit SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         continue-on-error: true
         with:
           sarif_file: npm-audit.sarif
@@ -308,7 +308,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
           distribution: temurin
           java-version: '21'
