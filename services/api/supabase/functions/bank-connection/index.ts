@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-// TODO(alpha): SPECULATIVE — Not wired to any client. Has tests but depends
-// on Plaid/MX provider integration (PLAID_CLIENT_ID, PLAID_SECRET, etc.)
-// that is not configured. Post-alpha feature. Exclude from alpha
-// deployment. (#1390)
-
 /**
- * Bank Connection API Edge Function (#265)
+ * Bank Connection API Edge Function (#265, #3848)
  *
  * Manages bank connections via Plaid and MX aggregators. Provides
  * link token creation, access token exchange, and connection management.
+ *
+ * Plaid is the reference implementation (real REST calls via fetch). MX
+ * remains a documented stub behind the same interface until its credentials
+ * and endpoints are provisioned.
  *
  * Endpoints:
  *   POST ?action=create_link_token  — Generate a link token for Plaid/MX
@@ -44,6 +43,13 @@ import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
+import { encryptToken } from '../_shared/bank-crypto.ts';
+import {
+  createLinkToken as plaidCreateLinkToken,
+  exchangePublicToken as plaidExchangePublicToken,
+  PlaidApiError,
+  type PlaidConfig,
+} from '../_shared/plaid.ts';
 import {
   createdResponse,
   errorResponse,
@@ -74,100 +80,70 @@ interface ExchangeTokenRequest {
 }
 
 // ---------------------------------------------------------------------------
-// Encryption stub
+// Encryption
 // ---------------------------------------------------------------------------
 
 /**
- * Encrypt an access token for storage. Uses AES-256-GCM via Web Crypto API.
+ * Encrypt a provider access token for storage using AES-256-GCM.
  *
- * In production, BANK_ENCRYPTION_KEY provides the key material.
- * This is a stub — the actual implementation will use crypto.subtle.
- *
- * NEVER log the plaintext token or the encryption key.
+ * Key material comes from BANK_ENCRYPTION_KEY. NEVER log the plaintext token
+ * or the key.
  */
 async function encryptAccessToken(plaintext: string): Promise<string> {
   const key = Deno.env.get('BANK_ENCRYPTION_KEY');
   if (!key) {
     throw new Error('BANK_ENCRYPTION_KEY not configured');
   }
-
-  // Stub: In production, use AES-256-GCM with crypto.subtle
-  // For now, encode as base64 with a prefix to indicate encryption
-  const encoder = new TextEncoder();
-  const data = encoder.encode(plaintext);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(key.padEnd(32, '0').slice(0, 32)),
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt'],
-  );
-
-  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, data);
-
-  // Format: base64(iv):base64(ciphertext)
-  const ivB64 = btoa(String.fromCharCode(...iv));
-  const ctB64 = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
-
-  return `aes256gcm:${ivB64}:${ctB64}`;
+  return encryptToken(plaintext, key);
 }
 
 // ---------------------------------------------------------------------------
-// Provider API stubs
+// Provider integrations
 // ---------------------------------------------------------------------------
+
+/** Read Plaid credentials from the environment. Throws if unset. */
+function plaidConfigFromEnv(): PlaidConfig {
+  const clientId = Deno.env.get('PLAID_CLIENT_ID');
+  const secret = Deno.env.get('PLAID_SECRET');
+  if (!clientId || !secret) {
+    throw new Error('Plaid credentials not configured');
+  }
+  return {
+    clientId,
+    secret,
+    environment: Deno.env.get('PLAID_ENVIRONMENT') ?? 'sandbox',
+    webhookUrl: Deno.env.get('PLAID_WEBHOOK_URL') ?? undefined,
+  };
+}
 
 /**
  * Create a link token via the provider's API.
  *
- * STUB: In production, this calls the Plaid or MX API.
- * Returns a link_token that the client uses to launch the
- * provider's connection UI.
+ * Plaid: real POST /link/token/create. MX: documented stub pending
+ * credential provisioning.
  */
 async function createProviderLinkToken(
   provider: Provider,
-  _userId: string,
+  userId: string,
 ): Promise<{ link_token: string; expiration: string }> {
-  // Plaid: POST /link/token/create
-  // MX: POST /users/{user_guid}/connect_widget_url
   if (provider === 'plaid') {
-    const clientId = Deno.env.get('PLAID_CLIENT_ID');
-    const secret = Deno.env.get('PLAID_SECRET');
-    const environment = Deno.env.get('PLAID_ENVIRONMENT') ?? 'sandbox';
-
-    if (!clientId || !secret) {
-      throw new Error('Plaid credentials not configured');
-    }
-
-    // STUB: Would call Plaid API here
-    // const response = await fetch(`https://${environment}.plaid.com/link/token/create`, { ... });
-    void environment;
-    return {
-      link_token: `link-${provider}-${crypto.randomUUID()}`,
-      expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    };
-  } else {
-    const clientId = Deno.env.get('MX_CLIENT_ID');
-    const apiKey = Deno.env.get('MX_API_KEY');
-
-    if (!clientId || !apiKey) {
-      throw new Error('MX credentials not configured');
-    }
-
-    // STUB: Would call MX API here
-    return {
-      link_token: `link-${provider}-${crypto.randomUUID()}`,
-      expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    };
+    return plaidCreateLinkToken(plaidConfigFromEnv(), userId);
   }
+
+  // MX stub — kept behind the same interface until MX is provisioned.
+  const clientId = Deno.env.get('MX_CLIENT_ID');
+  const apiKey = Deno.env.get('MX_API_KEY');
+  if (!clientId || !apiKey) {
+    throw new Error('MX credentials not configured');
+  }
+  return {
+    link_token: `link-${provider}-${crypto.randomUUID()}`,
+    expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+  };
 }
 
 /**
  * Exchange a public token for an access token via the provider's API.
- *
- * STUB: In production, this calls Plaid's /item/public_token/exchange
- * or the MX equivalent.
  *
  * NEVER log the returned access token.
  */
@@ -175,21 +151,20 @@ async function exchangeProviderToken(
   provider: Provider,
   publicToken: string,
 ): Promise<{ access_token: string; item_id: string }> {
-  void publicToken;
-
   if (provider === 'plaid') {
-    // STUB: Would call POST /item/public_token/exchange
-    return {
-      access_token: `access-${provider}-${crypto.randomUUID()}`,
-      item_id: `item-${crypto.randomUUID()}`,
-    };
-  } else {
-    // STUB: Would call MX API
-    return {
-      access_token: `access-${provider}-${crypto.randomUUID()}`,
-      item_id: `member-${crypto.randomUUID()}`,
-    };
+    return plaidExchangePublicToken(plaidConfigFromEnv(), publicToken);
   }
+
+  // MX stub — kept behind the same interface until MX is provisioned.
+  const clientId = Deno.env.get('MX_CLIENT_ID');
+  const apiKey = Deno.env.get('MX_API_KEY');
+  if (!clientId || !apiKey) {
+    throw new Error('MX credentials not configured');
+  }
+  return {
+    access_token: `access-${provider}-${crypto.randomUUID()}`,
+    item_id: `member-${crypto.randomUUID()}`,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +234,22 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      const linkResult = await createProviderLinkToken(body.provider, user.id);
+      const linkResult = await createProviderLinkToken(body.provider, user.id).catch(
+        (err: unknown) => {
+          if (err instanceof PlaidApiError) {
+            logger.warn('Provider link token failed', {
+              provider: body.provider,
+              errorCode: err.errorCode,
+            });
+            return null;
+          }
+          throw err;
+        },
+      );
+
+      if (!linkResult) {
+        return errorResponse(req, 'Provider link token request failed', 502);
+      }
 
       logger.info('Link token created', {
         provider: body.provider,
@@ -305,7 +295,22 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       // Exchange public token for access token — NEVER log the access token
-      const exchangeResult = await exchangeProviderToken(body.provider, body.public_token);
+      const exchangeResult = await exchangeProviderToken(body.provider, body.public_token).catch(
+        (err: unknown) => {
+          if (err instanceof PlaidApiError) {
+            logger.warn('Provider token exchange failed', {
+              provider: body.provider,
+              errorCode: err.errorCode,
+            });
+            return null;
+          }
+          throw err;
+        },
+      );
+
+      if (!exchangeResult) {
+        return errorResponse(req, 'Provider token exchange failed', 502);
+      }
 
       // Encrypt access token before storage
       const encryptedToken = await encryptAccessToken(exchangeResult.access_token);
