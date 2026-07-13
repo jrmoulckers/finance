@@ -13,6 +13,8 @@ import {
   assertNotEquals,
 } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 
+import { decryptToken, encryptToken } from '../_shared/bank-crypto.ts';
+
 // ---------------------------------------------------------------------------
 // Provider validation tests
 // ---------------------------------------------------------------------------
@@ -55,8 +57,8 @@ Deno.test('exchange_token action is parsed from URL', () => {
 
 Deno.test('create_link_token requires provider', () => {
   const body = { household_id: 'test-id' };
-  const hasProvider = 'provider' in body && body.provider;
-  assertEquals(hasProvider, undefined);
+  const hasProvider = 'provider' in body;
+  assertEquals(hasProvider, false);
 });
 
 Deno.test('exchange_token requires all fields', () => {
@@ -190,4 +192,39 @@ Deno.test('sync log types are valid', () => {
   for (const t of validTypes) {
     assertEquals(validTypes.includes(t), true);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Access-token encryption at rest (real crypto, #3848)
+// ---------------------------------------------------------------------------
+
+const TEST_ENCRYPTION_KEY = '0'.repeat(64);
+
+Deno.test('exchanged access token is encrypted before storage', async () => {
+  const rawAccessToken = 'access-sandbox-plaid-secret-token';
+  const encrypted = await encryptToken(rawAccessToken, TEST_ENCRYPTION_KEY);
+
+  // What gets persisted must not be the raw token in any recoverable-by-eye form.
+  assertEquals(encrypted.startsWith('aes256gcm:'), true);
+  assertEquals(encrypted.includes(rawAccessToken), false);
+  assertNotEquals(encrypted, rawAccessToken);
+
+  // The service can still recover it for downstream Plaid calls.
+  assertEquals(await decryptToken(encrypted, TEST_ENCRYPTION_KEY), rawAccessToken);
+});
+
+Deno.test('persisted connection row never leaks the raw token', async () => {
+  const rawAccessToken = 'access-production-abcdef123456';
+  const encrypted = await encryptToken(rawAccessToken, TEST_ENCRYPTION_KEY);
+
+  // Simulate the row written to bank_connections.
+  const row = {
+    id: 'conn-9',
+    provider: 'plaid',
+    encrypted_access_token: encrypted,
+    metadata: { item_id: 'item-9' },
+    status: 'active',
+  };
+
+  assertEquals(JSON.stringify(row).includes(rawAccessToken), false);
 });
