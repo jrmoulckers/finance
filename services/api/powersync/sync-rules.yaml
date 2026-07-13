@@ -219,6 +219,17 @@ bucket_definitions:
         FROM import_jobs
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
+      # Bank connections — non-sensitive display projection (#3852)
+      # SECURITY: encrypted_access_token is DELIBERATELY EXCLUDED — clients only
+      # receive connection identity and display status, never token material.
+      - >
+        SELECT id, household_id, owner_id, provider,
+               institution_id, institution_name, status,
+               last_synced_at, error_code, error_message, metadata,
+               created_at, updated_at, deleted_at
+        FROM bank_connections
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
       # Bank connection health status (#1577)
       # SECURITY: error_detail may reference provider error codes — no PII.
       - >
