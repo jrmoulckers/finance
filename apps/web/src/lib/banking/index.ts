@@ -80,12 +80,23 @@ export { CryptoBankProvider } from './crypto-provider';
 // Default provider bootstrap
 export { registerDefaultProviders } from './register-default-providers';
 
+// NOTE: the edge-backed aggregator layer (register-aggregator-providers, the
+// concrete provider classes, and the edge transport) is intentionally NOT
+// re-exported from this barrel. It is loaded exclusively through a dynamic
+// import (see main.tsx / register-aggregator-providers.ts) so its
+// implementation stays code-split into a lazy chunk and out of the eager
+// `vendor-app` bundle (#3854). Import those modules directly where needed.
+
 // Mock provider
 export { MockProvider } from './mock-provider';
 export type { MockProviderConfig } from './mock-provider';
 
-// Base aggregator provider (edge-backed base for real aggregators — #3849)
-export { BaseAggregatorProvider, BankingProviderError } from './base-aggregator-provider';
+// Base aggregator provider types (edge-backed base for real aggregators — #3849).
+// NOTE: the BaseAggregatorProvider class and BankingProviderError value are
+// intentionally NOT re-exported from this barrel — a static value re-export
+// would pull the (otherwise lazily-loaded) provider implementation into the
+// eager `vendor-app` chunk and breach the performance budget (#3854). Import
+// them directly from './base-aggregator-provider' where needed.
 export type {
   AggregatorProviderConfig,
   EdgeTransport,

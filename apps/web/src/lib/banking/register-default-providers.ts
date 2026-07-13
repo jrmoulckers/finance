@@ -20,7 +20,12 @@ import { defaultRegistry, type ProviderRegistry } from './provider-registry';
 import type { BankConnectionProvider } from './types';
 
 /**
- * Register the built-in banking providers into [registry].
+ * Register the built-in offline banking providers into [registry].
+ *
+ * Registers only the providers that require no network transport (manual
+ * import, crypto). The edge-backed aggregator providers are registered
+ * separately and lazily via `ensureAggregatorProvidersRegistered` so their
+ * implementation code stays out of the eager startup bundle.
  *
  * @param registry - Target registry (defaults to the shared {@link defaultRegistry}).
  * @returns The providers that were newly registered by this call.

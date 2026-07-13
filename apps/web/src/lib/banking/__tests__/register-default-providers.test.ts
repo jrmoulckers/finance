@@ -13,6 +13,13 @@ describe('registerDefaultProviders', () => {
     expect(registry.getProvider('crypto')).toBeDefined();
   });
 
+  it('does not eagerly register the edge-backed aggregator providers', () => {
+    const registry = new ProviderRegistry();
+    registerDefaultProviders(registry);
+    expect(registry.getProvider('plaid')).toBeUndefined();
+    expect(registry.getProvider('mx')).toBeUndefined();
+  });
+
   it('exposes a crypto-capable provider via feature query', () => {
     const registry = new ProviderRegistry();
     registerDefaultProviders(registry);
