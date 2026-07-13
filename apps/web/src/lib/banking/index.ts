@@ -50,6 +50,9 @@ export type {
 export { bootstrapBanking, getProviderRouter, resetBankingBootstrapForTests } from './bootstrap';
 export type { BankingBootstrap } from './bootstrap';
 
+// DB-backed provider metadata source (PowerSync-synced directory — #3852)
+export { createDbProviderMetaSource } from './provider-meta-source';
+
 // Connection manager
 export { ConnectionManager, categorizeError } from './connection-manager';
 export type { RetryConfig } from './connection-manager';

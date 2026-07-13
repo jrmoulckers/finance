@@ -751,6 +751,78 @@ export const MIGRATIONS: Migration[] = [
          );`,
     ],
   },
+  {
+    version: 18,
+    label: 'add-bank-connectivity-mirror-tables',
+    up: [
+      // #3852 (Phase 4): read-only client mirrors of the server-owned bank
+      // connectivity tables. These are populated exclusively by the sync pull
+      // path — the client NEVER writes to them — so the connection-health
+      // dashboard and the provider router can read live data from local SQLite
+      // instead of hitting the network on every render.
+      //
+      // The columns mirror the PowerSync `sync-rules.yaml` projections exactly.
+      // SECURITY: bank_connection deliberately has NO token column — the
+      // encrypted access token is excluded from the sync projection and never
+      // reaches the client.
+      `CREATE TABLE IF NOT EXISTS bank_connection (
+         id                TEXT PRIMARY KEY NOT NULL,
+         household_id      TEXT NOT NULL,
+         owner_id          TEXT,
+         provider          TEXT NOT NULL,
+         institution_id    TEXT,
+         institution_name  TEXT NOT NULL,
+         status            TEXT NOT NULL,
+         last_synced_at    TEXT,
+         error_code        TEXT,
+         error_message     TEXT,
+         metadata          TEXT,
+         created_at        TEXT NOT NULL,
+         updated_at        TEXT NOT NULL,
+         deleted_at        TEXT
+       );`,
+      `CREATE INDEX IF NOT EXISTS idx_bank_connection_household ON bank_connection (household_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_bank_connection_status    ON bank_connection (status);`,
+
+      // Health history log — one row per health snapshot per connection.
+      `CREATE TABLE IF NOT EXISTS bank_connection_health (
+         id                   TEXT PRIMARY KEY NOT NULL,
+         bank_connection_id   TEXT NOT NULL,
+         household_id         TEXT NOT NULL,
+         status               TEXT NOT NULL,
+         error_category       TEXT,
+         error_detail         TEXT,
+         last_successful_sync TEXT,
+         staleness_minutes    INTEGER,
+         resolved_at          TEXT,
+         resolution_action    TEXT,
+         created_at           TEXT NOT NULL
+       );`,
+      `CREATE INDEX IF NOT EXISTS idx_bank_connection_health_connection ON bank_connection_health (bank_connection_id, created_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_bank_connection_health_household  ON bank_connection_health (household_id, created_at);`,
+
+      // Global aggregator provider directory (read-only reference data). Drives
+      // provider selection/failover in the router and provider health display.
+      `CREATE TABLE IF NOT EXISTS aggregator_provider (
+         id                TEXT PRIMARY KEY NOT NULL,
+         name              TEXT NOT NULL,
+         display_name      TEXT NOT NULL,
+         provider_type     TEXT NOT NULL,
+         status            TEXT NOT NULL,
+         health_score      INTEGER NOT NULL,
+         priority          INTEGER NOT NULL,
+         is_enabled        INTEGER NOT NULL,
+         supported_regions TEXT NOT NULL,
+         capabilities      TEXT NOT NULL,
+         last_health_check TEXT,
+         incident_count    INTEGER NOT NULL DEFAULT 0,
+         created_at        TEXT NOT NULL,
+         updated_at        TEXT NOT NULL,
+         deleted_at        TEXT
+       );`,
+      `CREATE INDEX IF NOT EXISTS idx_aggregator_provider_status ON aggregator_provider (status, priority);`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection
