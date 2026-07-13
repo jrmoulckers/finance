@@ -132,12 +132,18 @@ if (
 initMonitoring();
 
 // Register the built-in banking providers into the shared registry and build
-// the provider router used for app-routed aggregator selection. Without this
-// the registry stayed empty at runtime (registration previously happened only
-// in tests), so no provider could ever be selected. The router's operational
-// metadata source is attached later, once the PowerSync `aggregator_providers`
-// query is available (#3846).
+// the provider router used for app-routed aggregator selection. The offline
+// built-ins (manual, crypto) register synchronously here. The edge-backed
+// aggregator providers (Plaid/MX/TrueLayer/Finicity, #3854) are registered via
+// a fully dynamic import so neither their implementation nor the registration
+// module is pulled into the eager startup bundle. Routing eligibility is still
+// governed by the synced `aggregator_provider` directory, and the router's
+// operational metadata source is attached later once the PowerSync query is
+// available (#3846).
 bootstrapBanking();
+void import('./lib/banking/register-aggregator-providers').then((m) =>
+  m.ensureAggregatorProvidersRegistered(),
+);
 
 // ---------------------------------------------------------------------------
 // Service worker registration

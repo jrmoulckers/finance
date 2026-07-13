@@ -39,6 +39,11 @@ export interface BankingBootstrap {
 /**
  * Register the default providers and build the shared router.
  *
+ * Registers only the offline built-ins (manual, crypto) synchronously so the
+ * banking layer is ready at first paint. The edge-backed aggregator providers
+ * are registered lazily via `ensureAggregatorProvidersRegistered` (a dynamic
+ * import) to keep their implementation out of the eager startup bundle.
+ *
  * Idempotent: subsequent calls return the same singletons without
  * re-registering providers.
  *

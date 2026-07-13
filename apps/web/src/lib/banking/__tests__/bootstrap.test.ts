@@ -18,6 +18,12 @@ describe('bootstrapBanking', () => {
     expect(ids.length).toBeGreaterThan(0);
   });
 
+  it('does not eagerly register the aggregator providers', () => {
+    const { registry } = bootstrapBanking();
+    const ids = registry.getAllProviders().map((p) => p.id);
+    expect(ids).not.toContain('plaid');
+  });
+
   it('builds a router that routes against the registered providers', () => {
     const { router, registry } = bootstrapBanking();
     const ids = registry.getAllProviders().map((p) => p.id);
