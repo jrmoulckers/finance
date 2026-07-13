@@ -17,6 +17,7 @@ Protection Regulation (GDPR) and similar privacy frameworks.
 | [GDPR Data Minimization Audit](data-minimization-audit.md)      | Field-level schema review, retention guidance, and minimization recommendations |
 | [Data Retention Schedule](data-retention-schedule.md)           | Authoritative retention periods for all data categories with purge job specs    |
 | [CCPA Rights Verification](ccpa-verification.md)                | CCPA/CPRA consumer rights verification against implementation                   |
+| [Aggregator Data Compliance](aggregator-data-compliance.md)     | Bank aggregator live-data path assessed against GDPR / PSD2 / GLBA / CCPA       |
 | [Privacy Compliance Review](privacy-compliance-review.md)       | Full-stack GDPR & CCPA/CPRA privacy compliance assessment                       |
 | [Web Storage Audit](web-storage-audit.md)                       | Inventory of all browser storage mechanisms and privacy impact                  |
 | [Security Transparency Report](security-transparency-report.md) | Recurring transparency report with audit status and incident disclosures        |
