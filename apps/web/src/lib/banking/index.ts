@@ -33,6 +33,23 @@ export type {
 // Provider registry
 export { ProviderRegistry, defaultRegistry } from './provider-registry';
 
+// Aggregator metadata (routing inputs)
+export { defaultMetaForProvider, isStatusRoutable } from './aggregator-metadata';
+export type { AggregatorStatus, RoutableProviderMeta } from './aggregator-metadata';
+
+// Provider router (app-routed selection + failover + override)
+export { ProviderRouter, resolveRoute } from './provider-router';
+export type {
+  ProviderMetaSource,
+  RoutingDecision,
+  RoutingReason,
+  RoutingRequest,
+} from './provider-router';
+
+// Bootstrap (startup wiring)
+export { bootstrapBanking, getProviderRouter, resetBankingBootstrapForTests } from './bootstrap';
+export type { BankingBootstrap } from './bootstrap';
+
 // Connection manager
 export { ConnectionManager, categorizeError } from './connection-manager';
 export type { RetryConfig } from './connection-manager';
