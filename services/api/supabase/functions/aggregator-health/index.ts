@@ -13,7 +13,10 @@
  *
  * Security:
  *   - Requires authentication (valid JWT)
- *   - Household-scoped access via RLS
+ *   - Household-scoped access enforced IN CODE via household_members checks.
+ *     NOTE: this function uses the service-role admin client, which bypasses
+ *     RLS — every action that reads or mutates household-scoped rows MUST
+ *     verify membership explicitly (do not rely on RLS here).
  *   - NEVER returns access tokens or raw financial data
  *   - NEVER logs sensitive data
  *
@@ -244,7 +247,33 @@ serve(async (req: Request): Promise<Response> => {
 
       const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '50', 10), 100);
 
-      // RLS ensures household scoping
+      // Resolve the connection's household, then verify membership. The admin
+      // client bypasses RLS, so scoping MUST be enforced in code here (mirrors
+      // the check_health action below); a bare bank_connection_id filter would
+      // otherwise expose any household's health history cross-tenant.
+      const { data: connection, error: connError } = await supabase
+        .from('bank_connections')
+        .select('household_id')
+        .eq('id', connectionId)
+        .is('deleted_at', null)
+        .single();
+
+      if (connError || !connection) {
+        return errorResponse(req, 'Bank connection not found', 404);
+      }
+
+      const { data: membership, error: memError } = await supabase
+        .from('household_members')
+        .select('id')
+        .eq('household_id', connection.household_id)
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .single();
+
+      if (memError || !membership) {
+        return errorResponse(req, 'Household access denied', 403);
+      }
+
       const { data: history, error } = await supabase
         .from('bank_connection_health')
         .select(
@@ -359,7 +388,38 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'health_event_id is required');
       }
 
-      // RLS ensures household scoping
+      // Resolve the health event's household, then verify the caller is an
+      // owner/admin of it. The admin client bypasses RLS, so a bare id filter
+      // would let any authenticated user resolve (and thereby suppress) another
+      // household's connection-health signals. Resolving is a mutation, so it
+      // requires the same owner/admin role as other write actions.
+      const { data: healthEvent, error: eventError } = await supabase
+        .from('bank_connection_health')
+        .select('id, household_id')
+        .eq('id', healthEventId)
+        .single();
+
+      if (eventError || !healthEvent) {
+        return errorResponse(req, 'Health event not found', 404);
+      }
+
+      const { data: membership, error: memError } = await supabase
+        .from('household_members')
+        .select('id')
+        .eq('household_id', healthEvent.household_id)
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .in('role', ['owner', 'admin'])
+        .single();
+
+      if (memError || !membership) {
+        return errorResponse(
+          req,
+          'Only household owners and admins can resolve health events',
+          403,
+        );
+      }
+
       const { error: updateError } = await supabase
         .from('bank_connection_health')
         .update({
