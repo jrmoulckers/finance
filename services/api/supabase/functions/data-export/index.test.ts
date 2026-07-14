@@ -37,7 +37,15 @@ interface MockExportDeps {
 const VALID_FORMATS = ['json', 'csv'] as const;
 type ExportFormat = (typeof VALID_FORMATS)[number];
 const RATE_LIMIT_MAX = 10;
-const REDACTED_COLUMNS = new Set(['public_key']);
+const REDACTED_COLUMNS = new Set([
+  'public_key',
+  'credential_id',
+  'transports',
+  'encrypted_access_token',
+  'encrypted_refresh_token',
+  'access_token',
+  'refresh_token',
+]);
 
 const testCorsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': 'https://app.finance.example.com',
@@ -488,12 +496,85 @@ Deno.test('data-export — does not redact non-sensitive columns', async () => {
   assertEquals(body.data.accounts[0].balance_cents, 150000);
 });
 
+Deno.test('data-export — redacts aggregator access token (#3868)', async () => {
+  const req = createMockRequest({
+    method: 'GET',
+    url: 'https://test.supabase.co/functions/v1/data-export?format=json',
+  });
+  const res = await handleDataExport(req, {
+    authenticatedUser: { id: TEST_USER.id, email: TEST_USER.email },
+    exportData: {
+      bank_connections: [
+        {
+          id: 'conn-1',
+          household_id: 'hh-1',
+          provider: 'plaid',
+          institution_name: 'Test Bank',
+          status: 'connected',
+          encrypted_access_token: 'aes256gcm:secret-iv:secret-ct',
+        },
+      ],
+    },
+  });
+
+  assertStatus(res, 200);
+  const body = await res.json();
+  const conn = body.data.bank_connections[0];
+  assertEquals(conn.encrypted_access_token, '[REDACTED]');
+  // Non-sensitive fields are preserved for portability.
+  assertEquals(conn.institution_name, 'Test Bank');
+  assertEquals(conn.status, 'connected');
+});
+
+Deno.test('data-export — redacts open banking refresh token (#3868)', async () => {
+  const req = createMockRequest({
+    method: 'GET',
+    url: 'https://test.supabase.co/functions/v1/data-export?format=json',
+  });
+  const res = await handleDataExport(req, {
+    authenticatedUser: { id: TEST_USER.id, email: TEST_USER.email },
+    exportData: {
+      open_banking_connections: [
+        {
+          id: 'ob-1',
+          household_id: 'hh-1',
+          provider: 'truelayer',
+          encrypted_refresh_token: 'aes256gcm:iv:ct',
+          access_token: 'raw-token',
+        },
+      ],
+    },
+  });
+
+  const body = await res.json();
+  const conn = body.data.open_banking_connections[0];
+  assertEquals(conn.encrypted_refresh_token, '[REDACTED]');
+  assertEquals(conn.access_token, '[REDACTED]');
+});
+
 Deno.test('redactRecord — replaces public_key with [REDACTED]', () => {
   const record = { id: '123', public_key: 'secret-data', name: 'test' };
   const redacted = redactRecord(record);
   assertEquals(redacted.public_key, '[REDACTED]');
   assertEquals(redacted.name, 'test');
   assertEquals(redacted.id, '123');
+});
+
+Deno.test('redactRecord — redacts aggregator token columns (#3868)', () => {
+  const record = {
+    id: '123',
+    encrypted_access_token: 'aes256gcm:iv:ct',
+    encrypted_refresh_token: 'aes256gcm:iv:ct2',
+    access_token: 'raw',
+    refresh_token: 'raw2',
+    institution_name: 'Test Bank',
+  };
+  const redacted = redactRecord(record);
+  assertEquals(redacted.encrypted_access_token, '[REDACTED]');
+  assertEquals(redacted.encrypted_refresh_token, '[REDACTED]');
+  assertEquals(redacted.access_token, '[REDACTED]');
+  assertEquals(redacted.refresh_token, '[REDACTED]');
+  assertEquals(redacted.institution_name, 'Test Bank');
 });
 
 Deno.test('redactRecord — preserves record without sensitive columns', () => {

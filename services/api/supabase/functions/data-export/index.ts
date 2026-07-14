@@ -16,6 +16,13 @@
  *   - notification_preferences, notification_log
  *   - passkey_credentials (with sensitive data redacted)
  *
+ * Enhancement (#3868): aggregator connection data is now included for GDPR
+ * Art. 15 (access) / Art. 20 (portability) completeness:
+ *   - bank_connections, bank_connection_health, bank_connection_accounts,
+ *     bank_sync_log, open_banking_connections
+ *   The encrypted access/refresh token columns are ALWAYS redacted — a
+ *   credential must never appear in an export.
+ *
  * Anonymization: Other household members' data is anonymized —
  * their user_id, email, and display_name are replaced with opaque
  * identifiers to protect their privacy while preserving relational
@@ -74,13 +81,34 @@ const EXPORTABLE_TABLES = [
   { name: 'budgets', filterBy: 'household_id', isHouseholdScoped: true },
   { name: 'goals', filterBy: 'household_id', isHouseholdScoped: true },
   { name: 'recurring_transaction_templates', filterBy: 'household_id', isHouseholdScoped: true },
+  // Aggregator connection data (#3868) — GDPR Art. 15/20 completeness. The
+  // encrypted access/refresh token columns are stripped by REDACTED_COLUMNS.
+  { name: 'bank_connections', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'bank_connection_health', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'bank_connection_accounts', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'bank_sync_log', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'open_banking_connections', filterBy: 'household_id', isHouseholdScoped: true },
   { name: 'notification_preferences', filterBy: 'user_id', isUserScoped: true },
   { name: 'notification_log', filterBy: 'user_id', isUserScoped: true },
   { name: 'passkey_credentials', filterBy: 'user_id', isUserScoped: true },
 ] as const;
 
-/** Sensitive columns to redact from export. */
-const REDACTED_COLUMNS = new Set(['public_key', 'credential_id', 'transports']);
+/**
+ * Sensitive columns to redact from export.
+ *
+ * Includes passkey material and — for aggregator connections (#3868) — the
+ * encrypted access/refresh tokens and any raw provider secret. These are
+ * credentials and MUST NEVER leave the server in an export.
+ */
+const REDACTED_COLUMNS = new Set([
+  'public_key',
+  'credential_id',
+  'transports',
+  'encrypted_access_token',
+  'encrypted_refresh_token',
+  'access_token',
+  'refresh_token',
+]);
 
 /** User PII columns to anonymize for non-self records. */
 const USER_PII_COLUMNS = new Set(['user_id', 'email', 'display_name', 'created_by', 'owner_id']);
