@@ -18,6 +18,7 @@ import {
 } from '../_shared/cookie.ts';
 import { refreshGrant } from '../_shared/supabase-auth.ts';
 import { type AuthenticatedUser, createAdminClient } from '../_shared/auth.ts';
+import { revokeProviderTokens } from '../_shared/bank-revocation.ts';
 
 const NO_STORE_JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -263,6 +264,9 @@ async function deleteAccountData(
   }
 
   if (soleHouseholdIds.length > 0) {
+    // Revoke aggregator tokens BEFORE their bank_connections rows are deleted
+    // so the processor stops retaining access on the user's behalf (#3869).
+    await revokeConnectionTokens(supabase, 'household_id', soleHouseholdIds);
     await deleteByIn(supabase, 'encryption_keys', 'household_id', soleHouseholdIds);
     for (const table of HOUSEHOLD_CHILD_TABLES) {
       await deleteByIn(supabase, table, 'household_id', soleHouseholdIds);
@@ -301,6 +305,9 @@ async function deleteAccountData(
   // Step 6: delete every user-owned row. For shared households this is
   // how the user's contributed data (transactions, budgets, etc.) is
   // removed — they all carry `owner_id = user.id`.
+  // First revoke any aggregator tokens the user still owns in SHARED
+  // households (sole-household connections were already revoked in step 3).
+  await revokeConnectionTokens(supabase, 'owner_id', user.id);
   for (const [table, column] of USER_OWNED_TABLES) {
     await deleteByEq(supabase, table, column, user.id);
   }
@@ -429,6 +436,40 @@ async function deleteByIn(
   if (values.length === 0) return;
   const { error } = await supabase.from(table).delete().in(column, values);
   if (error) throw error;
+}
+
+/**
+ * Best-effort revoke aggregator access tokens for the bank_connections that
+ * are about to be deleted (#3869). Fetches the stored encrypted tokens for the
+ * matching connections and asks each provider to revoke them so the processor
+ * no longer retains access on the user's behalf (GDPR Art. 17 propagation).
+ *
+ * NEVER throws — account deletion must proceed even if revocation fails, and
+ * NEVER logs a token.
+ */
+async function revokeConnectionTokens(
+  supabase: SupabaseAdminClient,
+  column: 'household_id' | 'owner_id',
+  values: readonly string[] | string,
+): Promise<void> {
+  try {
+    if (Array.isArray(values) && values.length === 0) return;
+    const base = supabase.from('bank_connections').select('provider, encrypted_access_token');
+    const query = Array.isArray(values)
+      ? base.in(column, values as string[])
+      : base.eq(column, values as string);
+    const { data, error } = await query;
+    if (error || !data) return;
+    const rows = data as Array<{ provider: string; encrypted_access_token: string | null }>;
+    await revokeProviderTokens(
+      rows.map((row) => ({
+        provider: row.provider,
+        encryptedAccessToken: row.encrypted_access_token,
+      })),
+    );
+  } catch {
+    // Best-effort — never block account deletion on revocation.
+  }
 }
 
 async function updateRows(

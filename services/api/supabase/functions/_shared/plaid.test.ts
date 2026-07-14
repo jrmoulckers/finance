@@ -15,6 +15,7 @@ import {
   plaidAmountToCents,
   plaidBaseUrl,
   plaidTransactionToRecord,
+  removeItem,
   type PlaidTransaction,
 } from './plaid.ts';
 
@@ -116,4 +117,29 @@ Deno.test('plaidTransactionToRecord falls back to name then currency fallback', 
   );
   assertEquals(record.payee, 'Coffee Shop');
   assertEquals(record.currency_code, 'EUR');
+});
+
+Deno.test('removeItem posts the access token to /item/remove', async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedUrl = '';
+  let capturedBody: Record<string, unknown> = {};
+  globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) => {
+    capturedUrl = String(input);
+    capturedBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    return Promise.resolve(new Response(JSON.stringify({ request_id: 'req-1' }), { status: 200 }));
+  }) as typeof fetch;
+
+  try {
+    const result = await removeItem(
+      { clientId: 'client', secret: 'secret', environment: 'sandbox' },
+      'access-token-xyz',
+    );
+    assertEquals(result.request_id, 'req-1');
+    assertEquals(capturedUrl, 'https://sandbox.plaid.com/item/remove');
+    assertEquals(capturedBody.access_token, 'access-token-xyz');
+    assertEquals(capturedBody.client_id, 'client');
+    assertEquals(capturedBody.secret, 'secret');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

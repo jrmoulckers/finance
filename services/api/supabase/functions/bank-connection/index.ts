@@ -50,6 +50,7 @@ import {
   PlaidApiError,
   type PlaidConfig,
 } from '../_shared/plaid.ts';
+import { revokeProviderToken } from '../_shared/bank-revocation.ts';
 import {
   createdResponse,
   errorResponse,
@@ -394,7 +395,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // -----------------------------------------------------------------------
-    // DELETE — Soft-delete
+    // DELETE — Disconnect: revoke the provider token, purge it, soft-delete.
     // -----------------------------------------------------------------------
     if (req.method === 'DELETE') {
       const connectionId = url.searchParams.get('id');
@@ -404,7 +405,7 @@ serve(async (req: Request): Promise<Response> => {
 
       const { data: existing, error: fetchError } = await supabase
         .from('bank_connections')
-        .select('id, household_id')
+        .select('id, household_id, provider, encrypted_access_token')
         .eq('id', connectionId)
         .is('deleted_at', null)
         .single();
@@ -430,9 +431,23 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
+      // Best-effort revoke the token at the aggregator so the processor no
+      // longer retains access on the user's behalf (#3867). NEVER throws —
+      // a processor outage must not block the user's disconnect.
+      const revocation = await revokeProviderToken({
+        provider: existing.provider,
+        encryptedAccessToken: existing.encrypted_access_token,
+      });
+
+      // Soft-delete AND purge the stored credential — even if revocation was
+      // skipped/failed at the provider, we must not keep the token at rest.
       const { error: deleteError } = await supabase
         .from('bank_connections')
-        .update({ deleted_at: new Date().toISOString(), status: 'disconnected' })
+        .update({
+          deleted_at: new Date().toISOString(),
+          status: 'disconnected',
+          encrypted_access_token: null,
+        })
         .eq('id', connectionId);
 
       if (deleteError) {
@@ -442,7 +457,32 @@ serve(async (req: Request): Promise<Response> => {
         return internalErrorResponse(req);
       }
 
-      logger.info('Bank connection soft-deleted', { connectionId, httpStatus: 204 });
+      // Audit the revocation attempt (best-effort — never block the response).
+      const auditStatus =
+        revocation.outcome === 'revoked'
+          ? 'success'
+          : revocation.outcome === 'skipped'
+            ? 'partial'
+            : 'failure';
+      const { error: auditError } = await supabase.from('connector_access_log').insert({
+        bank_connection_id: connectionId,
+        household_id: existing.household_id,
+        access_type: 'revoke_access',
+        provider_name: existing.provider,
+        status: auditStatus,
+        error_message: revocation.detail ?? null,
+      });
+      if (auditError) {
+        logger.warn('Failed to write revocation audit log', {
+          errorMessage: auditError.message,
+        });
+      }
+
+      logger.info('Bank connection disconnected', {
+        connectionId,
+        revocationOutcome: revocation.outcome,
+        httpStatus: 204,
+      });
       return noContentResponse(req);
     }
 

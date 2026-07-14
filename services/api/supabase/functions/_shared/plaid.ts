@@ -185,6 +185,25 @@ export async function exchangePublicToken(
 }
 
 /**
+ * Permanently invalidate an Item's access token via /item/remove.
+ *
+ * After this call Plaid stops billing for the Item and the access token can no
+ * longer be used. Call this when a user disconnects a connection or deletes
+ * their account so the aggregator no longer retains access on their behalf
+ * (GDPR Art. 17 / processor deletion propagation — #3867/#3869).
+ *
+ * SECURITY: NEVER log the access token.
+ */
+export async function removeItem(
+  config: PlaidConfig,
+  accessToken: string,
+): Promise<{ request_id: string }> {
+  return plaidPost<{ request_id: string }>(config, '/item/remove', {
+    access_token: accessToken,
+  });
+}
+
+/**
  * Fetch incremental transaction updates for an item via /transactions/sync.
  *
  * @param cursor The last cursor persisted for the item (empty for first sync).
