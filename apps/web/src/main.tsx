@@ -19,6 +19,7 @@ import { MoneyDisplayProvider } from './lib/display-settings';
 import { applyStoredSimplifiedModePreference } from './lib/accessibility-preferences';
 import { migrateLegacyDisplayCurrencyPreference } from './lib/display-currency';
 import { bootstrapBanking } from './lib/banking';
+import { isFeatureEnabled } from './lib/feature-flags';
 import { initMonitoring } from './lib/monitoring';
 import {
   isViteDevServer,
@@ -140,10 +141,17 @@ initMonitoring();
 // governed by the synced `aggregator_provider` directory, and the router's
 // operational metadata source is attached later once the PowerSync query is
 // available (#3846).
+//
+// The live aggregator layer is gated behind the `live_bank_data` feature flag
+// (#3875): dark-launched at 0% rollout, so the providers stay unregistered (and
+// the live-data path inert) until the rollout is ramped. When the flag is off
+// the app behaves as manual/offline-only, exactly as before Phase 5.
 bootstrapBanking();
-void import('./lib/banking/register-aggregator-providers').then((m) =>
-  m.ensureAggregatorProvidersRegistered(),
-);
+if (isFeatureEnabled('live_bank_data')) {
+  void import('./lib/banking/register-aggregator-providers').then((m) =>
+    m.ensureAggregatorProvidersRegistered(),
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Service worker registration
