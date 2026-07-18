@@ -297,7 +297,7 @@ AI-first development workflow documentation. See the [AI README](ai/README.md) f
 | Compliance   |       8 |
 | Design       |       6 |
 | Legal        |       5 |
-| AI           |      24 |
+| AI           |      25 |
 | Testing      |       1 |
 | Audits       |       1 |
 | **Total**    | **123** |

@@ -11,7 +11,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 ## Available Agents
 
-> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **24** agents — every one is detailed on this page. Agents added in 2026-06: `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, `qa-tester`, `experimentation-engineer` (feature flags & A/B testing), and `compliance-specialist` (regulatory compliance). Run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to surface any drift between the counts on this page and the filesystem — see the [CHANGELOG](CHANGELOG.md).
+> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **25** agents — every one is detailed on this page. Agents added in 2026-06: `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, `qa-tester`, `experimentation-engineer` (feature flags & A/B testing), `compliance-specialist` (regulatory compliance), and `pwa-bug-basher` (self-service single-bug PWA bug bash). Run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to surface any drift between the counts on this page and the filesystem — see the [CHANGELOG](CHANGELOG.md).
 >
 > **Reviewer roles are asymmetric:** `accessibility-reviewer` is **review-only** (routes fixes to the owning platform agent); `security-reviewer` is the **emergency fixer** (may implement CRITICAL/HIGH security fixes in any directory, with owning-agent coordination).
 
@@ -222,6 +222,24 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 - Setting up SQLite-WASM with OPFS storage
 - Implementing ARIA accessibility and keyboard navigation
 - Configuring Web Crypto API for client-side encryption
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@pwa-bug-basher` — PWA Bug Basher
+
+**File:** `.github/agents/pwa-bug-basher.agent.md`
+
+**Purpose:** A full-lifecycle, self-service web bug fixer intended to be launched as a **standalone session per bug**. Combines `@qa-tester`-style investigation with `@web-engineer` implementation: takes one human-reported bug from repro all the way to `main` — investigate in `apps/web` → file a GitHub issue (issue-first) → surgical fix on its own worktree → PR → drive cloud CI green → self-merge → clean up.
+
+**When to use:**
+
+- A human pastes a single PWA bug (text + optional screenshot) and wants it fixed end-to-end
+- Fire-and-forget standalone bug-bash sessions that need no coordinator thread
+- Web-only defects and small accessibility/token fixes in `apps/web/`
+
+**Environment caveats:** A shared manual-bugbash dev server **may** run on port 5199 (Tailscale-reachable) — don't assume it; start your own on a different port if needed. ⚠️ **NEVER edit `apps/web/vite.config.ts`** (host-only uncommitted `allowedHosts` edit). References `.github/instructions/workflow.instructions.md` for canonical push/merge/conflict rules.
 
 **Tools:** read, edit, search, shell
 
@@ -459,6 +477,7 @@ Each agent has primary ownership over a set of directories. When multiple agents
 | `@kmp-engineer`             | `packages/`                                                                                                                                           |
 | `@backend-engineer`         | `services/api/`                                                                                                                                       |
 | `@web-engineer`             | `apps/web/`                                                                                                                                           |
+| `@pwa-bug-basher`           | `apps/web/` (one bug per standalone session, isolated worktree; never edits `apps/web/vite.config.ts`)                                                |
 | `@android-engineer`         | `apps/android/`                                                                                                                                       |
 | `@ios-engineer`             | `apps/ios/`                                                                                                                                           |
 | `@windows-engineer`         | `apps/windows/`                                                                                                                                       |
@@ -564,4 +583,4 @@ For docs-only PRs, use: `npm run ci:check:quick`
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.)
-- **24 agents** are defined in `.github/agents/` (source of truth; drift surfaced by `npm run ai:manifest:check`)
+- **25 agents** are defined in `.github/agents/` (source of truth; drift surfaced by `npm run ai:manifest:check`)

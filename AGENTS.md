@@ -115,7 +115,7 @@ AI agents that skip issue creation, commit directly to `main`, or fail to create
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.) — `npm run format` only touches JS/TS/JSON/MD/YAML
-- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow (`npm run ai:manifest:check`, backed by `tools/ai-manifest.js`) flags any drift between these counts and the filesystem; see [`docs/ai/CHANGELOG.md`](docs/ai/CHANGELOG.md). As of 2026-06 there are **24** agents (see list below).
+- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow (`npm run ai:manifest:check`, backed by `tools/ai-manifest.js`) flags any drift between these counts and the filesystem; see [`docs/ai/CHANGELOG.md`](docs/ai/CHANGELOG.md). As of 2026-06 there are **25** agents (see list below).
 
 ## AI Agent Configuration
 
@@ -134,6 +134,7 @@ Custom agents are defined in `.github/agents/`. Each agent has a specific role:
 - `kmp-engineer` — Kotlin Multiplatform shared code (SQLDelight, Ktor, kotlinx)
 - `security-reviewer` — Security and privacy code review
 - `web-engineer` — Web PWA (React/TypeScript, Service Workers, SQLite-WASM)
+- `pwa-bug-basher` — Self-service PWA bug bash (investigate → file issue → fix → PR → cloud CI → self-merge) for a single reported web bug; standalone session per bug
 - `windows-engineer` — Windows platform (Compose Desktop, Windows Hello, DPAPI)
 - `product-manager` — Product strategy, sprint planning, issue triage, roadmap management
 - `marketing-strategist` — Go-to-market, ASO, launch comms, content strategy, growth
@@ -366,6 +367,7 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 | `@kmp-engineer`             | `packages/`                                                                                                                                                                                                    |
 | `@backend-engineer`         | `services/api/`                                                                                                                                                                                                |
 | `@web-engineer`             | `apps/web/`                                                                                                                                                                                                    |
+| `@pwa-bug-basher`           | `apps/web/` (one bug per standalone session, isolated worktree; NEVER edits `apps/web/vite.config.ts`)                                                                                                         |
 | `@android-engineer`         | `apps/android/`                                                                                                                                                                                                |
 | `@ios-engineer`             | `apps/ios/`                                                                                                                                                                                                    |
 | `@windows-engineer`         | `apps/windows/`                                                                                                                                                                                                |

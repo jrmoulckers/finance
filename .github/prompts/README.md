@@ -202,6 +202,38 @@ Clean up the project with stale-days=14
 
 ---
 
+### `bug-bash` — Fix One PWA Bug End-to-End
+
+> **File:** `bug-bash.prompt.md`
+
+Runs the [`pwa-bug-basher`](../agents/pwa-bug-basher.agent.md) lifecycle for a single reported web bug: investigate in `apps/web` → file a GitHub issue → implement a surgical fix on its own worktree → open a PR → drive cloud CI green → self-merge → clean up. Designed to be launched as a standalone, fire-and-forget session per bug, but also works when invoked inside an existing session.
+
+**Parameters:**
+
+| Name  | Default | Description                                                             |
+| ----- | ------- | ----------------------------------------------------------------------- |
+| `bug` | (none)  | The bug report to fix (short description, optional screenshot + repro). |
+
+**Examples:**
+
+```
+Use the bug-bash prompt with bug="Consent dialog toggle has insufficient contrast in dark mode"
+Run bug-bash for: onboarding step 2 text can't be selected
+```
+
+**What it does:**
+
+1. Intakes the bug (asks one clarifying question only if the repro is ambiguous)
+2. Reproduces and root-causes it against `main` with verified `file:line`
+3. Files an issue-first GitHub issue with correct `platform:web` scoping
+4. Implements a surgical fix on its own worktree + adds affected tests
+5. Runs the pre-push checklist → rebase → push → PR with `Closes #N`
+6. Drives cloud CI green, resolves conflicts, self-merges once `MERGEABLE`, and removes its worktree
+
+> ⚠️ Never edits `apps/web/vite.config.ts` (the bug-bash host keeps a local-only `allowedHosts` edit there).
+
+---
+
 ## Creating New Prompts
 
 To add a new prompt:

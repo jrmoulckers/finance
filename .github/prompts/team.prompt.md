@@ -25,7 +25,7 @@ gh pr list --state open --json number,title,headRefName,statusCheckRollup
 ```
 
 - Parse the `agents` parameter into a list of agent types.
-- Map each requested agent type to its issue filter using the canonical **label → agent map** in the `sprint-planning` skill (`.github/skills/sprint-planning/SKILL.md` → "Issue-to-Agent Mapping Algorithm" → Step 2) — the single source of truth for all 24 agent types. Invert it (agent → its labels) to filter the backlog for each requested agent.
+- Map each requested agent type to its issue filter using the canonical **label → agent map** in the `sprint-planning` skill (`.github/skills/sprint-planning/SKILL.md` → "Issue-to-Agent Mapping Algorithm" → Step 2) — the single source of truth for all 25 agent types. Invert it (agent → its labels) to filter the backlog for each requested agent.
 
 - Filter the issue backlog to only issues matching the requested agent types.
 - Exclude issues already claimed by open PRs.

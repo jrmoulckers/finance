@@ -20,7 +20,7 @@ This document describes the roles, skills, and workflow rules for all AI agents 
 
 The Finance monorepo uses specialized AI agents, each with a focused domain. Agents are defined in `.github/agents/` as `<role>.agent.md` files. Each agent has a clear mission, expertise areas, boundaries, and a list of allowed tools.
 
-**Current agent types:** The authoritative roster is the set of `*.agent.md` files in `.github/agents/`; run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to flag drift between this count and the filesystem — see [`CHANGELOG.md`](CHANGELOG.md). As of 2026-06 there are **24** agents:
+**Current agent types:** The authoritative roster is the set of `*.agent.md` files in `.github/agents/`; run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to flag drift between this count and the filesystem — see [`CHANGELOG.md`](CHANGELOG.md). As of 2026-06 there are **25** agents:
 
 - **accessibility-reviewer** — Reviews UI for WCAG 2.2 AA, platform accessibility, and inclusive design. **Review-only** — routes fixes to the owning platform agent.
 - **android-engineer** — Android (Jetpack Compose, KMP, PowerSync, Keystore, Wear OS).
@@ -49,6 +49,7 @@ The Finance monorepo uses specialized AI agents, each with a focused domain. Age
 - **localization-engineer** — i18n, localization, financial terminology.
 - **experimentation-engineer** — Feature flags, A/B testing, staged rollouts, and experiment readouts.
 - **compliance-specialist** — Financial, governmental & regional regulatory compliance; obligation matrix, data residency, retention (advisory; stewards `docs/compliance/`).
+- **pwa-bug-basher** — Self-service, single-bug PWA bug bash launched as a standalone session: investigate in `apps/web` → file issue → surgical fix on its own worktree → PR → cloud CI → self-merge → cleanup.
 
 Each agent file documents:
 
