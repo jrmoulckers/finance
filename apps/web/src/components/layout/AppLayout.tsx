@@ -9,7 +9,7 @@ import { KeyboardShortcutsModal, SyncStatusBar } from '../common';
 import { CommandPalette, type CommandPaletteAction } from '../common/CommandPalette';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { NotificationCenter } from '../notifications';
-import { useBreakpoint, useKeyboardShortcuts } from '../../hooks';
+import { useBreakpoint, useCoarsePointer, useKeyboardShortcuts } from '../../hooks';
 import { useAccessibility } from '../../hooks/useAccessibility';
 import { useHiddenModules } from '../../hooks/useModuleVisibility';
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
@@ -115,6 +115,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   // rendered here only on mobile; the desktop sidebar hosts them instead. Gating
   // by breakpoint keeps exactly one instance of each control in the DOM (#3197).
   const { isMobile } = useBreakpoint();
+  // The command palette is a keyboard-first feature: it is described as running
+  // actions "from the keyboard" and every row surfaces a physical keyboard
+  // shortcut chip. On touch-primary devices there is no physical keyboard, so
+  // the ⌘K trigger and the palette itself are confusing and meaningless. Gate
+  // them behind a fine (mouse/keyboard) pointer; touch users navigate via the
+  // bottom tab bar instead (#3903).
+  const isCoarsePointer = useCoarsePointer();
+  const commandPaletteEnabled = !isCoarsePointer;
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [simpleModeEnabled, setSimpleModeEnabled] = useState(getStoredSimplifiedModePreference);
   const { isSimplified } = useAccessibility();
@@ -131,7 +139,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const { showHelp, setShowHelp, singleKeyShortcutsEnabled } = useKeyboardShortcuts({
     onNavigate,
     onNewTransaction: () => onNavigate('/transactions?new=transaction'),
-    onOpenCommandPalette: () => setShowCommandPalette(true),
+    onOpenCommandPalette: commandPaletteEnabled ? () => setShowCommandPalette(true) : undefined,
     onTogglePrivacyMode: togglePrivacyMode,
   });
   const { conflictCount } = useSyncStatus();
@@ -383,15 +391,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 <KeyboardIcon />
               </button>
             ) : null}
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Command palette"
-              aria-keyshortcuts="Control+K Meta+K /"
-              onClick={openCommandPalette}
-            >
-              <Icon name={IconToken.SEARCH} size={20} />
-            </button>
+            {commandPaletteEnabled ? (
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Command palette"
+                aria-keyshortcuts="Control+K Meta+K /"
+                onClick={openCommandPalette}
+              >
+                <Icon name={IconToken.SEARCH} size={20} />
+              </button>
+            ) : null}
             <button
               type="button"
               className={`icon-button${isSimplified ? ' icon-button--labeled' : ''}`}
@@ -452,7 +462,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         <SampleDataBanner />
       </div>
       <CommandPalette
-        isOpen={showCommandPalette}
+        isOpen={commandPaletteEnabled && showCommandPalette}
         actions={commandPaletteActions}
         onClose={closeCommandPalette}
         currentPath={activePath}
