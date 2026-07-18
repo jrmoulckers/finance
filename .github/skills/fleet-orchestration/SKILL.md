@@ -40,6 +40,7 @@ Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI 
 | `android-engineer`         | `apps/android/**`                                                     | `.github/agents/android-engineer.agent.md`         |
 | `ios-engineer`             | `apps/ios/**`                                                         | `.github/agents/ios-engineer.agent.md`             |
 | `web-engineer`             | `apps/web/**`                                                         | `.github/agents/web-engineer.agent.md`             |
+| `pwa-bug-basher`           | `apps/web/**` (standalone single-bug bug bash; own worktree)          | `.github/agents/pwa-bug-basher.agent.md`           |
 | `windows-engineer`         | `apps/windows/**`                                                     | `.github/agents/windows-engineer.agent.md`         |
 | `kmp-engineer`             | `packages/**`                                                         | `.github/agents/kmp-engineer.agent.md`             |
 | `backend-engineer`         | `services/**`                                                         | `.github/agents/backend-engineer.agent.md`         |

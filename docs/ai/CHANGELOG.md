@@ -8,6 +8,16 @@ Entries are newest-first. Use ISO dates (`YYYY-MM`). Each entry should answer: _
 
 ---
 
+## 2026-07 — PWA bug-basher agent + bug-bash prompt
+
+Source: issue #3892 (Part A of a two-part self-service bug-bash effort). Added a self-contained, single-bug PWA bug-fixing capability so a human can bash bugs as independent, standalone sessions without routing each one through a coordinator thread.
+
+- **New `pwa-bug-basher` agent (roster 24 → 25).** A full-lifecycle web bug fixer (`write_scope: full`, `risk_level: medium`, `primary_paths: ['apps/web/**']`) that combines `@qa-tester`-style investigation with `@web-engineer` implementation. Launched as a standalone session per bug, it runs the entire flow: intake a report (+ optional screenshot) → reproduce/root-cause against `main` with verified `file:line` → file an issue-first GitHub issue (`platform:web` + `bug`/`enhancement`/`accessibility`) → surgical fix on its own worktree → pre-push lint/format → rebase → push → `gh pr create --base main` with `Closes #N` → drive cloud CI green + resolve conflicts → `gh pr merge --squash` once green AND `MERGEABLE` → remove its worktree. Bakes in the bug-bash environment caveats (shared `:5199` dev server may exist — start your own if needed; **never edit `apps/web/vite.config.ts`** because the host keeps a local-only `allowedHosts` edit there) and references `.github/instructions/workflow.instructions.md` for the canonical push/merge/conflict rules. See [`pwa-bug-basher.agent.md`](../../.github/agents/pwa-bug-basher.agent.md).
+- **New `bug-bash` prompt.** A thin reusable wrapper ([`bug-bash.prompt.md`](../../.github/prompts/bug-bash.prompt.md)) with a `bug` parameter that runs the `pwa-bug-basher` flow for a single pasted bug; works standalone or inside an existing session. Listed in the [prompts README](../../.github/prompts/README.md).
+- **Roster count synced to 25** across [`AGENTS.md`](../../AGENTS.md), [`README.md`](README.md), [`agents.md`](agents.md), [`agent-instructions.md`](agent-instructions.md), [`skills.md`](skills.md) (registry + skill↔agent table), [`slash-commands.md`](slash-commands.md), [`docs/INDEX.md`](../INDEX.md), and the `fleet-orchestration` / `sprint-planning` registries; `npm run ai:manifest:check` reports no drift.
+
+---
+
 ## 2026-06 — AI-capabilities audit (Areas 1–8)
 
 Source: a structured, area-by-area audit of every AI capability surface (agents, skills, instructions, global guidance, prompts, MCP, slash commands, and the `docs/ai` corpus), run to a single bar — accuracy + gaps + enrichment + consolidation. Each area landed as its own issue-linked PR. Highlights (the compliance-specialist / architect change is logged separately, below):

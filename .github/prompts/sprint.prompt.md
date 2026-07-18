@@ -29,7 +29,7 @@ gh pr list --state open --json number,title,headRefName,statusCheckRollup
 
 For each sprint (1 through {{ N }}):
 
-1. **Categorize unclaimed issues** by agent type using the canonical **label → agent map** in the `sprint-planning` skill (`.github/skills/sprint-planning/SKILL.md` → "Issue-to-Agent Mapping Algorithm" → Step 2). That table is the single source of truth and covers all 24 agent types (including `compliance-specialist`, `experimentation-engineer`, `data-engineer`, and the review/business roles). For issues with no matching label, infer the owner from the files that will change (see the file-ownership table in `AGENTS.md`).
+1. **Categorize unclaimed issues** by agent type using the canonical **label → agent map** in the `sprint-planning` skill (`.github/skills/sprint-planning/SKILL.md` → "Issue-to-Agent Mapping Algorithm" → Step 2). That table is the single source of truth and covers all 25 agent types (including `compliance-specialist`, `experimentation-engineer`, `data-engineer`, and the review/business roles). For issues with no matching label, infer the owner from the files that will change (see the file-ownership table in `AGENTS.md`).
 
 2. **Select 1 issue per agent type** (up to 15 agents per wave).
 3. **Track assignments** in SQL todos to prevent double-dispatch.
