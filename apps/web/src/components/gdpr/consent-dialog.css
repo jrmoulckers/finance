@@ -149,7 +149,12 @@
 
 .consent-dialog__category-required {
   font-size: var(--type-scale-caption-font-size, 0.75rem);
-  color: var(--semantic-text-tertiary, var(--semantic-text-disabled));
+  /* Use the muted-but-legible secondary token (>=4.5:1 vs the dialog surface in
+   * every theme). The former --semantic-text-disabled fallback is a
+   * deliberately low-contrast, WCAG-exempt token for disabled UI and fails
+   * SC 1.4.3 as readable copy (#3884). --semantic-text-tertiary is undefined in
+   * the token set, so the fallback was always taking effect. */
+  color: var(--semantic-text-secondary);
 }
 
 .consent-dialog__category-description {
@@ -198,7 +203,15 @@
 /* Footer */
 .consent-dialog__footer {
   font-size: var(--type-scale-caption-font-size, 0.75rem);
-  color: var(--semantic-text-tertiary, var(--semantic-text-disabled));
+  /* This is a legally-significant consent notice, so the copy must clear
+   * WCAG 2.2 AA (SC 1.4.3, >=4.5:1). The previous
+   * `--semantic-text-tertiary, var(--semantic-text-disabled)` resolved to the
+   * disabled token (tertiary is undefined) — a WCAG-exempt low-contrast token
+   * meant for disabled UI, which dropped to ~1.2:1 in light and ~1.6:1 in dark.
+   * --semantic-text-secondary is the correct muted-yet-readable body token and
+   * clears AA on the dialog surface across light/dark/dark-oled/high-contrast
+   * (#3884). */
+  color: var(--semantic-text-secondary);
   text-align: center;
   margin-top: var(--spacing-2, 0.5rem);
 }
