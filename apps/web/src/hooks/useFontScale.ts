@@ -13,7 +13,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-export type FontScalePreference = 'small' | 'default' | 'large' | 'extra-large' | 'huge';
+export type FontScalePreference =
+  'small' | 'default' | 'comfortable' | 'large' | 'larger' | 'extra-large' | 'very-large' | 'huge';
 
 export interface FontScaleOption {
   value: FontScalePreference;
@@ -29,8 +30,17 @@ export const DEFAULT_FONT_SCALE_PREFERENCE: FontScalePreference = 'default';
 export const FONT_SCALE_OPTIONS: readonly FontScaleOption[] = [
   { value: 'small', label: 'Small', rootFontSize: '87.5%', scale: 0.875, basePixels: 14 },
   { value: 'default', label: 'Default', rootFontSize: '100%', scale: 1, basePixels: 16 },
+  {
+    value: 'comfortable',
+    label: 'Comfortable',
+    rootFontSize: '112.5%',
+    scale: 1.125,
+    basePixels: 18,
+  },
   { value: 'large', label: 'Large', rootFontSize: '125%', scale: 1.25, basePixels: 20 },
+  { value: 'larger', label: 'Larger', rootFontSize: '137.5%', scale: 1.375, basePixels: 22 },
   { value: 'extra-large', label: 'Extra Large', rootFontSize: '150%', scale: 1.5, basePixels: 24 },
+  { value: 'very-large', label: 'Very Large', rootFontSize: '175%', scale: 1.75, basePixels: 28 },
   { value: 'huge', label: 'Huge', rootFontSize: '200%', scale: 2, basePixels: 32 },
 ] as const;
 

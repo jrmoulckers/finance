@@ -168,6 +168,7 @@ html {
 
 /* Settings: large preference rows need one-column reflow before viewport breakpoints. */
 [data-font-scale='extra-large'] .settings-item,
+[data-font-scale='very-large'] .settings-item,
 [data-font-scale='huge'] .settings-item {
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
@@ -179,6 +180,12 @@ html {
 [data-font-scale='extra-large'] .settings-item__select,
 [data-font-scale='extra-large'] .settings-item__input,
 [data-font-scale='extra-large'] .settings-item__checkbox,
+[data-font-scale='very-large'] .settings-item__value,
+[data-font-scale='very-large'] .settings-item__control,
+[data-font-scale='very-large'] .settings-item__status,
+[data-font-scale='very-large'] .settings-item__select,
+[data-font-scale='very-large'] .settings-item__input,
+[data-font-scale='very-large'] .settings-item__checkbox,
 [data-font-scale='huge'] .settings-item__value,
 [data-font-scale='huge'] .settings-item__control,
 [data-font-scale='huge'] .settings-item__status,
@@ -186,6 +193,7 @@ html {
 [data-font-scale='huge'] .settings-item__input,
 [data-font-scale='huge'] .settings-item__checkbox,
 [data-font-scale='extra-large'] .settings-item__checkbox-wrapper,
+[data-font-scale='very-large'] .settings-item__checkbox-wrapper,
 [data-font-scale='huge'] .settings-item__checkbox-wrapper {
   grid-column: 1;
   justify-self: stretch;
@@ -196,6 +204,8 @@ html {
 
 [data-font-scale='extra-large'] .settings-item__description,
 [data-font-scale='extra-large'] .settings-item__help,
+[data-font-scale='very-large'] .settings-item__description,
+[data-font-scale='very-large'] .settings-item__help,
 [data-font-scale='huge'] .settings-item__description,
 [data-font-scale='huge'] .settings-item__help {
   grid-column: 1;
