@@ -36,6 +36,15 @@ function mockDataTransfer() {
   };
 }
 
+/** jsdom lacks pointer-capture APIs; stub them so pointer handlers don't throw. */
+function stubPointerCapture(el: Element) {
+  Object.assign(el, {
+    setPointerCapture: vi.fn(),
+    releasePointerCapture: vi.fn(),
+    hasPointerCapture: vi.fn(() => true),
+  });
+}
+
 describe('CustomizePanel', () => {
   it('renders nothing when isOpen is false', () => {
     const { container } = render(
@@ -182,6 +191,122 @@ describe('CustomizePanel', () => {
     expect(items[0]).toHaveClass('customize-panel__item--dragging');
 
     fireEvent.dragEnd(items[0], { dataTransfer });
+    expect(items[0]).not.toHaveClass('customize-panel__item--dragging');
+  });
+
+  it('exposes data-widget-id on each item for pointer hit-testing', () => {
+    const { container } = renderPanel();
+    const items = container.querySelectorAll('li.customize-panel__item');
+    for (const item of items) {
+      expect(item).toHaveAttribute('data-widget-id');
+    }
+  });
+
+  it('reorders via a touch pointer drag on the handle', () => {
+    const { props, container } = renderPanel();
+    const handles = container.querySelectorAll<HTMLElement>('.customize-panel__drag-handle');
+    const items = container.querySelectorAll<HTMLElement>('li.customize-panel__item');
+    const sourceHandle = handles[0];
+    stubPointerCapture(sourceHandle);
+
+    const fromPoint = vi.fn().mockReturnValue(items[2]);
+    document.elementFromPoint = fromPoint;
+
+    fireEvent.pointerDown(sourceHandle, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 0,
+      clientY: 0,
+    });
+    expect(items[0]).toHaveClass('customize-panel__item--dragging');
+
+    fireEvent.pointerMove(sourceHandle, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 0,
+      clientY: 200,
+    });
+    expect(items[2]).toHaveClass('customize-panel__item--drag-over');
+
+    fireEvent.pointerUp(sourceHandle, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 0,
+      clientY: 200,
+    });
+
+    expect(props.onReorder).toHaveBeenCalledOnce();
+    expect(props.onReorder).toHaveBeenCalledWith(expect.any(String), 2);
+    expect(items[0]).not.toHaveClass('customize-panel__item--dragging');
+  });
+
+  it('announces a touch pointer reorder via the live status region', () => {
+    const { container } = renderPanel();
+    const handles = container.querySelectorAll<HTMLElement>('.customize-panel__drag-handle');
+    const items = container.querySelectorAll<HTMLElement>('li.customize-panel__item');
+    const sourceHandle = handles[0];
+    stubPointerCapture(sourceHandle);
+
+    const fromPoint = vi.fn().mockReturnValue(items[2]);
+    document.elementFromPoint = fromPoint;
+
+    fireEvent.pointerDown(sourceHandle, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.pointerUp(sourceHandle, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 0,
+      clientY: 200,
+    });
+
+    expect(screen.getByRole('status')).toHaveTextContent(/moved to position 3 of/i);
+  });
+
+  it('ignores mouse pointerdown on the handle so native drag-and-drop stays in charge', () => {
+    const { props, container } = renderPanel();
+    const handles = container.querySelectorAll<HTMLElement>('.customize-panel__drag-handle');
+    const items = container.querySelectorAll<HTMLElement>('li.customize-panel__item');
+    const sourceHandle = handles[0];
+    stubPointerCapture(sourceHandle);
+
+    fireEvent.pointerDown(sourceHandle, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      clientX: 0,
+      clientY: 0,
+    });
+
+    expect(items[0]).not.toHaveClass('customize-panel__item--dragging');
+    expect(props.onReorder).not.toHaveBeenCalled();
+  });
+
+  it('does not reorder when a touch pointer drag is cancelled', () => {
+    const { props, container } = renderPanel();
+    const handles = container.querySelectorAll<HTMLElement>('.customize-panel__drag-handle');
+    const items = container.querySelectorAll<HTMLElement>('li.customize-panel__item');
+    const sourceHandle = handles[0];
+    stubPointerCapture(sourceHandle);
+
+    fireEvent.pointerDown(sourceHandle, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 0,
+      clientY: 0,
+    });
+    expect(items[0]).toHaveClass('customize-panel__item--dragging');
+
+    fireEvent.pointerCancel(sourceHandle, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: 0,
+      clientY: 0,
+    });
+
+    expect(props.onReorder).not.toHaveBeenCalled();
     expect(items[0]).not.toHaveClass('customize-panel__item--dragging');
   });
 

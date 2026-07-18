@@ -10,7 +10,15 @@
  * @module components/dashboard/CustomizePanel
  */
 
-import { useCallback, useRef, useState, type DragEvent, type FC, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useRef,
+  useState,
+  type DragEvent,
+  type FC,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
 import { Checkbox } from '../common/Checkbox';
@@ -111,6 +119,84 @@ export const CustomizePanel: FC<CustomizePanelProps> = ({
     setDragOverId(null);
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Pointer-based drag fallback (touch / pen)
+  //
+  // Native HTML5 drag-and-drop does not fire on touch devices (iOS Safari,
+  // Android Chrome), so the drag handles are dead there. Pointer Events work
+  // across mouse, touch, and pen, so we add a touch/pen fallback on the handle
+  // while leaving native DnD to drive mouse dragging (and the existing tests).
+  // The arrow buttons + keyboard remain the accessible primary reorder path;
+  // dragging is only ever an enhancement.
+  // ---------------------------------------------------------------------------
+
+  const pointerDragId = useRef<WidgetId | null>(null);
+
+  const widgetIdAtPoint = useCallback((x: number, y: number): WidgetId | null => {
+    const element = document.elementFromPoint(x, y);
+    const item = element?.closest<HTMLElement>('[data-widget-id]');
+    return (item?.dataset.widgetId as WidgetId | undefined) ?? null;
+  }, []);
+
+  const handleHandlePointerDown = useCallback((e: PointerEvent<HTMLSpanElement>, id: WidgetId) => {
+    // Let mouse users keep the richer native HTML5 drag-and-drop path.
+    if (e.pointerType === 'mouse') return;
+    e.preventDefault();
+    pointerDragId.current = id;
+    setDraggingId(id);
+    // Route subsequent pointer events to the handle even if the finger
+    // drifts off it, so we can track which row it is over.
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
+
+  const handleHandlePointerMove = useCallback(
+    (e: PointerEvent<HTMLSpanElement>) => {
+      const draggedId = pointerDragId.current;
+      if (draggedId === null) return;
+      const overId = widgetIdAtPoint(e.clientX, e.clientY);
+      setDragOverId(overId !== null && overId !== draggedId ? overId : null);
+    },
+    [widgetIdAtPoint],
+  );
+
+  const finishPointerDrag = useCallback(
+    (e: PointerEvent<HTMLSpanElement>, commit: boolean) => {
+      const draggedId = pointerDragId.current;
+      if (draggedId === null) return;
+      pointerDragId.current = null;
+
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+
+      if (commit) {
+        const overId = widgetIdAtPoint(e.clientX, e.clientY);
+        if (overId !== null && overId !== draggedId) {
+          const targetIndex = widgets.findIndex((w) => w.id === overId);
+          if (targetIndex !== -1) {
+            onReorder(draggedId, targetIndex);
+            const def = WIDGET_DEFINITION_MAP.get(draggedId);
+            announceReorder(def?.label ?? 'Widget', targetIndex + 1, widgets.length);
+          }
+        }
+      }
+
+      setDraggingId(null);
+      setDragOverId(null);
+    },
+    [widgetIdAtPoint, widgets, onReorder, announceReorder],
+  );
+
+  const handleHandlePointerUp = useCallback(
+    (e: PointerEvent<HTMLSpanElement>) => finishPointerDrag(e, true),
+    [finishPointerDrag],
+  );
+
+  const handleHandlePointerCancel = useCallback(
+    (e: PointerEvent<HTMLSpanElement>) => finishPointerDrag(e, false),
+    [finishPointerDrag],
+  );
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -160,6 +246,7 @@ export const CustomizePanel: FC<CustomizePanelProps> = ({
                 key={widget.id}
                 className={itemClass}
                 role="listitem"
+                data-widget-id={widget.id}
                 draggable
                 onDragStart={(e) => handleDragStart(e, widget.id)}
                 onDragEnter={() => handleDragEnter(widget.id)}
@@ -171,6 +258,10 @@ export const CustomizePanel: FC<CustomizePanelProps> = ({
                   className="customize-panel__drag-handle"
                   aria-hidden="true"
                   title="Drag to reorder"
+                  onPointerDown={(e) => handleHandlePointerDown(e, widget.id)}
+                  onPointerMove={handleHandlePointerMove}
+                  onPointerUp={handleHandlePointerUp}
+                  onPointerCancel={handleHandlePointerCancel}
                 >
                   ⠿
                 </span>

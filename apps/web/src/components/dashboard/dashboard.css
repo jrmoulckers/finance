@@ -311,6 +311,13 @@
   border: 1px solid var(--semantic-border-default);
   border-radius: var(--border-radius-md);
   background: var(--semantic-background-primary);
+  /* Suppress the iOS long-press text-selection callout and the saturated
+     tap highlight so pointer-dragging a row stays readable on touch. The
+     arrow buttons and checkbox remain fully operable as interactive children. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     border-color var(--duration-fast, 100ms) ease,
     box-shadow var(--duration-fast, 100ms) ease,
@@ -407,9 +414,20 @@
   font-family: inherit;
   cursor: pointer;
   line-height: 1;
+  /* Remove the saturated lavender flash on tap; the :active rule below
+     provides a subtle, readable pressed state instead. */
+  -webkit-tap-highlight-color: transparent;
 }
 
-.customize-panel__move-btn:hover:not(:disabled) {
+/* Only apply hover feedback on devices with a real hovering pointer so
+   touch devices don't get stuck in a "hovered" state after a tap. */
+@media (hover: hover) {
+  .customize-panel__move-btn:hover:not(:disabled) {
+    background: var(--semantic-background-secondary);
+  }
+}
+
+.customize-panel__move-btn:active:not(:disabled) {
   background: var(--semantic-background-secondary);
 }
 
