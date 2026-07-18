@@ -149,6 +149,22 @@ describe('LoginPage', () => {
     expect(email).toHaveAttribute('inputmode', 'email');
   });
 
+  it('exposes login-pair autocomplete tokens for password-manager save/fill', () => {
+    // iOS Safari / iCloud Keychain and most password managers pair a credential
+    // using autocomplete="username" on the identifier + "current-password" on
+    // the password. Using autocomplete="email" alone suppresses the save/fill
+    // prompt. See issue #3900.
+    renderLoginPage();
+
+    const email = screen.getByLabelText('Email');
+    expect(email).toHaveAttribute('autocomplete', 'username');
+    expect(email).toHaveAttribute('type', 'email');
+
+    const password = screen.getByLabelText('Password');
+    expect(password).toHaveAttribute('autocomplete', 'current-password');
+    expect(password).toHaveAttribute('type', 'password');
+  });
+
   it('shows hosted legal links in the login footer', () => {
     renderLoginPage();
 

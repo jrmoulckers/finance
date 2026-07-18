@@ -128,12 +128,15 @@ describe('Login form validation (#1331)', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
-  it('email field has type="email" and autocomplete="email"', () => {
+  it('email field has type="email" and autocomplete="username" for login-pair recognition', () => {
     renderLoginPage();
 
     const emailInput = screen.getByLabelText('Email');
     expect(emailInput).toHaveAttribute('type', 'email');
-    expect(emailInput).toHaveAttribute('autoComplete', 'email');
+    // The identifier half of a login pair must use autocomplete="username" so
+    // iOS Safari / iCloud Keychain and password managers offer save/fill.
+    // See issue #3900.
+    expect(emailInput).toHaveAttribute('autoComplete', 'username');
   });
 
   it('password field has type="password" and autocomplete="current-password"', () => {
