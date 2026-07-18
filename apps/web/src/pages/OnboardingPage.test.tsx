@@ -18,6 +18,7 @@ import { useAuth } from '../auth/auth-context';
 import { useBudgets } from '../hooks/useBudgets';
 import { useConsent } from '../hooks/useConsent';
 import { useConsentHistory } from '../hooks/useConsentHistory';
+import { FONT_SCALE_OPTIONS } from '../hooks/useFontScale';
 import { useLocalOnlyMode } from '../hooks/useLocalOnlyMode';
 import { useGoals } from '../hooks/useGoals';
 import { useDatabase } from '../db/DatabaseProvider';
@@ -427,6 +428,36 @@ describe('OnboardingPage', () => {
 
     expect(screen.getByRole('heading', { name: /local only/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /create account/i })).toBeInTheDocument();
+  });
+
+  it('hydrates comfort toggles from persisted preferences on mount (#3891)', () => {
+    // Persisted comfort settings are applied on boot but the onboarding controls
+    // previously ignored them, rendering OFF while the effect stayed applied.
+    localStorage.setItem('finance-theme-preference', 'high-contrast');
+    localStorage.setItem('finance-reduced-motion-preference', 'true');
+    localStorage.setItem('finance-simplified-mode', 'true');
+    localStorage.setItem('finance-font-scale-preference', 'large');
+
+    renderWithRouter(<OnboardingPage />);
+
+    expect(screen.getByRole('checkbox', { name: /high contrast/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /reduce motion/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /simplified mode/i })).toBeChecked();
+    // Derive the expected slider index dynamically so the assertion stays
+    // robust if the font-scale option set changes (#3886/#3891).
+    const largeIndex = String(FONT_SCALE_OPTIONS.findIndex((o) => o.value === 'large'));
+    expect(screen.getByRole('slider', { name: /text size/i })).toHaveValue(largeIndex);
+  });
+
+  it('leaves comfort toggles OFF when nothing is persisted (#3891)', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    expect(screen.getByRole('checkbox', { name: /high contrast/i })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /reduce motion/i })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /simplified mode/i })).not.toBeChecked();
+    // Defaults to the stored/default preference index, derived dynamically.
+    const defaultIndex = String(FONT_SCALE_OPTIONS.findIndex((o) => o.value === 'default'));
+    expect(screen.getByRole('slider', { name: /text size/i })).toHaveValue(defaultIndex);
   });
 
   it('navigates to signup without completing onboarding when Create Account is clicked', () => {
