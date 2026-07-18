@@ -26,8 +26,12 @@ import { getPrimaryHouseholdId } from '../db/repositories/household';
 import { useBudgets } from '../hooks/useBudgets';
 import { useConsent } from '../hooks/useConsent';
 import { useConsentHistory } from '../hooks/useConsentHistory';
+import { FONT_SCALE_OPTIONS, getStoredFontScalePreference } from '../hooks/useFontScale';
 import { useGoals } from '../hooks/useGoals';
 import { useLocalOnlyMode } from '../hooks/useLocalOnlyMode';
+import { getStoredReducedMotionPreference } from '../hooks/useReducedMotion';
+import { getStoredTheme } from '../hooks/useTheme';
+import { getStoredSimplifiedModePreference } from '../lib/accessibility-preferences';
 import { buildOnboardingProgressAnnouncement } from '../lib/a11y/onboarding-progress';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
 import {
@@ -115,10 +119,15 @@ const OnboardingPage: React.FC = () => {
     // education/setup sequence rather than repeating the welcome flow (#3089).
     isAuthenticated ? DEFERRED_SETUP_START_STEP : 'comfort',
   );
-  const [fontScaleValue, setFontScaleValue] = useState(DEFAULT_FONT_SCALE_INDEX);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const [simplifiedMode, setSimplifiedMode] = useState(false);
-  const [highContrast, setHighContrast] = useState(false);
+  const [fontScaleValue, setFontScaleValue] = useState(() => {
+    const storedIndex = FONT_SCALE_OPTIONS.findIndex(
+      (option) => option.value === getStoredFontScalePreference(),
+    );
+    return storedIndex >= 0 ? storedIndex : DEFAULT_FONT_SCALE_INDEX;
+  });
+  const [reducedMotion, setReducedMotion] = useState(() => getStoredReducedMotionPreference());
+  const [simplifiedMode, setSimplifiedMode] = useState(() => getStoredSimplifiedModePreference());
+  const [highContrast, setHighContrast] = useState(() => getStoredTheme() === 'high-contrast');
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [starterBudgetCreated, setStarterBudgetCreated] = useState(false);
