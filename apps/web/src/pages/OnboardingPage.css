@@ -8,11 +8,19 @@
  * ------------------------------------------------------------------- */
 
 .onboarding {
+  /* Dynamic viewport height (with 100vh fallback) so the standalone onboarding
+   * view sizes to the *visible* viewport on mobile. Plain 100vh resolves to the
+   * larger toolbar-hidden viewport, which left the trailing feature-comparison
+   * table under the browser toolbar / home indicator with no room to scroll it
+   * fully into view (#3899). */
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding: var(--spacing-6) var(--spacing-4);
+  /* Keep the last section clear of the home indicator / dynamic toolbar. */
+  padding-bottom: calc(var(--spacing-6) + env(safe-area-inset-bottom, 0px));
   background-color: var(--semantic-background-primary);
 }
 
@@ -1070,6 +1078,7 @@
 @media (max-width: 480px) {
   .onboarding {
     padding: var(--spacing-4) var(--spacing-3);
+    padding-bottom: calc(var(--spacing-4) + env(safe-area-inset-bottom, 0px));
   }
 
   .onboarding__preferences-card,
