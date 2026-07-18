@@ -337,7 +337,7 @@ export const LoginPage: React.FC = () => {
                 name="email"
                 type="email"
                 required
-                autoComplete="email"
+                autoComplete="username"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}

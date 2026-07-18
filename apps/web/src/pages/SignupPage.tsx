@@ -322,7 +322,7 @@ export const SignupPage: React.FC = () => {
                 id={emailId}
                 className="auth-field__input"
                 type="email"
-                autoComplete="email"
+                autoComplete="username"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
