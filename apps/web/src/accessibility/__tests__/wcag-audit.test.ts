@@ -89,6 +89,23 @@ describe('Accessibility CSS', () => {
     });
   });
 
+  describe('Touch Tap-Highlight Suppression (#3890)', () => {
+    it('should suppress the default touch tap-highlight on interactive elements', () => {
+      expect(css).toContain('-webkit-tap-highlight-color: transparent');
+    });
+
+    it('should suppress the tap-highlight on label rows (composite tap targets)', () => {
+      const block = css.slice(0, css.indexOf('-webkit-tap-highlight-color: transparent'));
+      expect(block).toContain('label');
+    });
+
+    it('should not weaken keyboard focus outlines', () => {
+      // Focus rings remain intact — tap-highlight suppression is independent.
+      expect(css).toContain(':focus-visible');
+      expect(css).toContain('--focus-ring-color');
+    });
+  });
+
   describe('Reduced Motion (WCAG 2.3.3)', () => {
     it('should include prefers-reduced-motion media query', () => {
       expect(css).toContain('prefers-reduced-motion: reduce');

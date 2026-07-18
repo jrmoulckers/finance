@@ -183,6 +183,41 @@ textarea {
 }
 
 /* -------------------------------------------------------------------
+ * 2a. Touch Tap-Highlight Suppression
+ *
+ * On touch devices, mobile browsers (WebKit/Blink) paint a translucent
+ * grey box over the entire tappable element when it is pressed. For
+ * composite tap targets — e.g. a <label> row wrapping a visually-hidden
+ * checkbox (see the onboarding "Reduce Motion" toggle) — this flashes the
+ * whole row grey and reads as a rendering glitch rather than intentional
+ * feedback.
+ *
+ * We suppress the default tap-highlight globally on interactive elements.
+ * This is purely a touch-paint reset: keyboard :focus-visible outlines and
+ * the --focus-ring-* tokens are unaffected (see section 1), and intentional
+ * pressed/:active affordances remain available per component. Scoped to
+ * interactive selectors (not a blanket `*`) to keep the reset predictable.
+ *
+ * Refs: issue #3890
+ * ------------------------------------------------------------------- */
+
+a,
+button,
+label,
+input,
+select,
+textarea,
+summary,
+[role='button'],
+[role='link'],
+[role='tab'],
+[role='menuitem'],
+[role='switch'],
+[role='checkbox'] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* -------------------------------------------------------------------
  * Native form-control chrome normalization (centralized)
  *
  * The browser's stock number spinner arrows and native date/time
