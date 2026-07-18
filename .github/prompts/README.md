@@ -202,33 +202,37 @@ Clean up the project with stale-days=14
 
 ---
 
-### `bug-bash` — Fix One PWA Bug End-to-End
+### `bug-bash` — Fix One Bug End-to-End (Any Platform)
 
 > **File:** `bug-bash.prompt.md`
 
-Runs the [`pwa-bug-basher`](../agents/pwa-bug-basher.agent.md) lifecycle for a single reported web bug: investigate in `apps/web` → file a GitHub issue → implement a surgical fix on its own worktree → open a PR → drive cloud CI green → self-merge → clean up. Designed to be launched as a standalone, fire-and-forget session per bug, but also works when invoked inside an existing session.
+Runs the [`bug-basher`](../agents/bug-basher.agent.md) lifecycle for a single reported bug on any of Finance's four platforms (iOS, Android, Web, Windows) or its shared `packages/`: infer the affected platform(s) from the report + screenshot → investigate → file a GitHub issue → implement a fix (shared-once when the root cause is shared, or widespread across every affected platform when the platform is undefined) on its own worktree → open a PR → drive cloud CI green → self-merge → clean up. Designed to be launched as a standalone, fire-and-forget session per bug, but also works when invoked inside an existing session.
 
 **Parameters:**
 
-| Name  | Default | Description                                                             |
-| ----- | ------- | ----------------------------------------------------------------------- |
-| `bug` | (none)  | The bug report to fix (short description, optional screenshot + repro). |
+| Name       | Default       | Description                                                                                                                            |
+| ---------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `bug`      | (none)        | The bug report to fix (short description, optional screenshot + repro).                                                                |
+| `platform` | (infer / all) | Optional target platform (`ios`, `android`, `web`, `windows`, `shared`, or `all`). Omit to infer; undefined = fix everywhere affected. |
 
 **Examples:**
 
 ```
 Use the bug-bash prompt with bug="Consent dialog toggle has insufficient contrast in dark mode"
 Run bug-bash for: onboarding step 2 text can't be selected
+Use bug-bash with bug="Amounts round incorrectly for JPY" platform="shared"
+Use bug-bash with bug="Back button skips a screen" platform="android"
 ```
 
 **What it does:**
 
-1. Intakes the bug (asks one clarifying question only if the repro is ambiguous)
-2. Reproduces and root-causes it against `main` with verified `file:line`
-3. Files an issue-first GitHub issue with correct `platform:web` scoping
-4. Implements a surgical fix on its own worktree + adds affected tests
-5. Runs the pre-push checklist → rebase → push → PR with `Closes #N`
-6. Drives cloud CI green, resolves conflicts, self-merges once `MERGEABLE`, and removes its worktree
+1. Intakes the bug + optional platform (asks one clarifying question only if the repro is ambiguous)
+2. Infers the affected platform(s) from the report + screenshot cues (honors an explicit `platform`)
+3. Reproduces and root-causes it against `main` with verified `file:line`, across the platform's code and shared `packages/`
+4. Files an issue-first GitHub issue with correct `platform:*` scoping (`platform:shared`, a single platform, or multiple for a widespread fix)
+5. Implements the fix at the right scope on its own worktree + adds affected tests (shared-once, platform-native, or widespread across every affected platform — never web-only by default)
+6. Runs the pre-push checklist → rebase → push → PR with `Closes #N`
+7. Drives cloud CI green, resolves conflicts, self-merges once `MERGEABLE`, and removes its worktree
 
 > ⚠️ Never edits `apps/web/vite.config.ts` (the bug-bash host keeps a local-only `allowedHosts` edit there).
 

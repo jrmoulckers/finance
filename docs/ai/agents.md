@@ -11,7 +11,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 ## Available Agents
 
-> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **25** agents — every one is detailed on this page. Agents added in 2026-06: `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, `qa-tester`, `experimentation-engineer` (feature flags & A/B testing), `compliance-specialist` (regulatory compliance), and `pwa-bug-basher` (self-service single-bug PWA bug bash). Run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to surface any drift between the counts on this page and the filesystem — see the [CHANGELOG](CHANGELOG.md).
+> **Source of truth:** the `*.agent.md` files in [`.github/agents/`](../../.github/agents/). As of 2026-06 there are **25** agents — every one is detailed on this page. Agents added in 2026-06: `ai-ops-engineer`, `release-manager`, `performance-engineer`, `data-engineer`, `localization-engineer`, `qa-tester`, `experimentation-engineer` (feature flags & A/B testing), `compliance-specialist` (regulatory compliance), and `bug-basher` (self-service single-bug, platform-agnostic bug bash). Run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to surface any drift between the counts on this page and the filesystem — see the [CHANGELOG](CHANGELOG.md).
 >
 > **Reviewer roles are asymmetric:** `accessibility-reviewer` is **review-only** (routes fixes to the owning platform agent); `security-reviewer` is the **emergency fixer** (may implement CRITICAL/HIGH security fixes in any directory, with owning-agent coordination).
 
@@ -227,17 +227,19 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 ---
 
-### `@pwa-bug-basher` — PWA Bug Basher
+### `@bug-basher` — Bug Basher
 
-**File:** `.github/agents/pwa-bug-basher.agent.md`
+**File:** `.github/agents/bug-basher.agent.md`
 
-**Purpose:** A full-lifecycle, self-service web bug fixer intended to be launched as a **standalone session per bug**. Combines `@qa-tester`-style investigation with `@web-engineer` implementation: takes one human-reported bug from repro all the way to `main` — investigate in `apps/web` → file a GitHub issue (issue-first) → surgical fix on its own worktree → PR → drive cloud CI green → self-merge → clean up.
+**Purpose:** A full-lifecycle, platform-agnostic, self-service bug fixer intended to be launched as a **standalone session per bug**. Combines `@qa-tester`-style investigation with platform-engineer implementation (`@web-engineer`, `@ios-engineer`, `@android-engineer`, `@windows-engineer`, `@kmp-engineer`): infers the affected platform(s) from a human-reported bug (text + optional screenshot), then takes it from repro all the way to `main` — file a GitHub issue (issue-first) → fix on its own worktree → PR → drive cloud CI green → self-merge → clean up. It fixes shared code **once** when the root cause is shared, and makes the fix **widespread** across every affected platform when the platform is undefined — never silently web-only.
 
 **When to use:**
 
-- A human pastes a single PWA bug (text + optional screenshot) and wants it fixed end-to-end
+- A human pastes a single bug (text + optional screenshot) and wants it fixed end-to-end
 - Fire-and-forget standalone bug-bash sessions that need no coordinator thread
-- Web-only defects and small accessibility/token fixes in `apps/web/`
+- Bugs on any platform (iOS, Android, Web, Windows) or in shared `packages/` — inferred from the report or named explicitly
+
+**Platform inference & fix scope:** Infers iOS/SwiftUI, Android/Compose, Web/PWA, or Windows/Compose-Desktop from device chrome, fonts, gestures, and UI framing (honors an explicitly named platform). Locates the root cause first, then decides scope: shared code → fix once (`platform:shared`); platform-specific + known platform → fix natively; undefined/multi-platform → widespread fix across every affected platform (or a cross-platform tracking issue with per-platform sub-issues). MAY dispatch platform-specialist sub-agents for large multi-native fixes.
 
 **Environment caveats:** A shared manual-bugbash dev server **may** run on port 5199 (Tailscale-reachable) — don't assume it; start your own on a different port if needed. ⚠️ **NEVER edit `apps/web/vite.config.ts`** (host-only uncommitted `allowedHosts` edit). References `.github/instructions/workflow.instructions.md` for canonical push/merge/conflict rules.
 
@@ -472,33 +474,33 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 Each agent has primary ownership over a set of directories. When multiple agents run in parallel (fleet mode), only the owning agent edits files in its area:
 
-| Agent                       | Primary ownership                                                                                                                                     |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@kmp-engineer`             | `packages/`                                                                                                                                           |
-| `@backend-engineer`         | `services/api/`                                                                                                                                       |
-| `@web-engineer`             | `apps/web/`                                                                                                                                           |
-| `@pwa-bug-basher`           | `apps/web/` (one bug per standalone session, isolated worktree; never edits `apps/web/vite.config.ts`)                                                |
-| `@android-engineer`         | `apps/android/`                                                                                                                                       |
-| `@ios-engineer`             | `apps/ios/`                                                                                                                                           |
-| `@windows-engineer`         | `apps/windows/`                                                                                                                                       |
-| `@design-engineer`          | `packages/design-tokens/` (token sources, Style Dictionary config + outputs)                                                                          |
-| `@devops-engineer`          | `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, `deploy/`, `gradle/wrapper/`, `config/detekt/`                                            |
-| `@docs-writer`              | `docs/`, root `*.md` files                                                                                                                            |
-| `@security-reviewer`        | Security fixes in any directory; review-only for non-security code                                                                                    |
-| `@accessibility-reviewer`   | Read-only review — never edits production code                                                                                                        |
-| `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                                                        |
-| `@compliance-specialist`    | `docs/compliance/` — regulatory obligation matrix, jurisdictional data-residency, retention; advisory, review-only on code                            |
-| `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                         |
-| `@product-manager`          | `docs/business/roadmap/`, `docs/business/sprints/`, GitHub Issues (read/create)                                                                       |
-| `@marketing-strategist`     | `docs/marketing/`, `docs/business/marketing/`, app store copy drafts                                                                                  |
-| `@business-analyst`         | `docs/business/pricing/`, `docs/business/revenue/`                                                                                                    |
-| `@ai-ops-engineer`          | `.github/agents/`, `.github/skills/`, `.github/instructions/`, `.github/prompts/`                                                                     |
-| `@data-engineer`            | `docs/analytics/`†, `config/analytics/`†, `docs/business/growth/` + telemetry files in `packages/core/.../analytics/` (co-owned with `@kmp-engineer`) |
-| `@experimentation-engineer` | `config/feature-flags/`                                                                                                                               |
-| `@performance-engineer`     | `performance.budget.json`, `docs/performance/`†                                                                                                       |
-| `@localization-engineer`    | `config/i18n/`†, `docs/i18n/`†                                                                                                                        |
-| `@release-manager`          | `.changeset/`, `CHANGELOG.md` (root + per-package), `docs/releases/`†                                                                                 |
-| `@qa-tester`                | Read-only across `apps/*`, `packages/`, `services/api/`; files GitHub Issues                                                                          |
+| Agent                       | Primary ownership                                                                                                                                                                                        |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@kmp-engineer`             | `packages/`                                                                                                                                                                                              |
+| `@backend-engineer`         | `services/api/`                                                                                                                                                                                          |
+| `@web-engineer`             | `apps/web/`                                                                                                                                                                                              |
+| `@bug-basher`               | `apps/`, `packages/`, `config/`, `services/` (one bug per standalone session, any platform, isolated worktree; fixes shared code once or widely across platforms; never edits `apps/web/vite.config.ts`) |
+| `@android-engineer`         | `apps/android/`                                                                                                                                                                                          |
+| `@ios-engineer`             | `apps/ios/`                                                                                                                                                                                              |
+| `@windows-engineer`         | `apps/windows/`                                                                                                                                                                                          |
+| `@design-engineer`          | `packages/design-tokens/` (token sources, Style Dictionary config + outputs)                                                                                                                             |
+| `@devops-engineer`          | `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, `deploy/`, `gradle/wrapper/`, `config/detekt/`                                                                                               |
+| `@docs-writer`              | `docs/`, root `*.md` files                                                                                                                                                                               |
+| `@security-reviewer`        | Security fixes in any directory; review-only for non-security code                                                                                                                                       |
+| `@accessibility-reviewer`   | Read-only review — never edits production code                                                                                                                                                           |
+| `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                                                                                                           |
+| `@compliance-specialist`    | `docs/compliance/` — regulatory obligation matrix, jurisdictional data-residency, retention; advisory, review-only on code                                                                               |
+| `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                                                                            |
+| `@product-manager`          | `docs/business/roadmap/`, `docs/business/sprints/`, GitHub Issues (read/create)                                                                                                                          |
+| `@marketing-strategist`     | `docs/marketing/`, `docs/business/marketing/`, app store copy drafts                                                                                                                                     |
+| `@business-analyst`         | `docs/business/pricing/`, `docs/business/revenue/`                                                                                                                                                       |
+| `@ai-ops-engineer`          | `.github/agents/`, `.github/skills/`, `.github/instructions/`, `.github/prompts/`                                                                                                                        |
+| `@data-engineer`            | `docs/analytics/`†, `config/analytics/`†, `docs/business/growth/` + telemetry files in `packages/core/.../analytics/` (co-owned with `@kmp-engineer`)                                                    |
+| `@experimentation-engineer` | `config/feature-flags/`                                                                                                                                                                                  |
+| `@performance-engineer`     | `performance.budget.json`, `docs/performance/`†                                                                                                                                                          |
+| `@localization-engineer`    | `config/i18n/`†, `docs/i18n/`†                                                                                                                                                                           |
+| `@release-manager`          | `.changeset/`, `CHANGELOG.md` (root + per-package), `docs/releases/`†                                                                                                                                    |
+| `@qa-tester`                | Read-only across `apps/*`, `packages/`, `services/api/`; files GitHub Issues                                                                                                                             |
 
 > † Net-new / planned home — created on first use (see the owning agent's File Ownership section). Cross-cutting code (analytics, i18n, performance) lives in platform-owned dirs; these agents own the schema/catalog/config + docs.
 

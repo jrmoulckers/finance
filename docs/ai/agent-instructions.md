@@ -49,7 +49,7 @@ The Finance monorepo uses specialized AI agents, each with a focused domain. Age
 - **localization-engineer** — i18n, localization, financial terminology.
 - **experimentation-engineer** — Feature flags, A/B testing, staged rollouts, and experiment readouts.
 - **compliance-specialist** — Financial, governmental & regional regulatory compliance; obligation matrix, data residency, retention (advisory; stewards `docs/compliance/`).
-- **pwa-bug-basher** — Self-service, single-bug PWA bug bash launched as a standalone session: investigate in `apps/web` → file issue → surgical fix on its own worktree → PR → cloud CI → self-merge → cleanup.
+- **bug-basher** — Self-service, single-bug bug bash launched as a standalone session for any platform: infer the affected platform(s) from the report + screenshot → file issue → fix (shared code once, or widespread across every affected platform when the platform is undefined) on its own worktree → PR → cloud CI → self-merge → cleanup.
 
 Each agent file documents:
 
