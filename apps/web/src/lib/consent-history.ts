@@ -13,6 +13,7 @@
  */
 
 import type { ConsentCategory } from './consent-storage';
+import { safeRandomUUID } from '../utils/uuid';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,7 +89,7 @@ export function recordConsentChange(
   policyVersion: string,
 ): ConsentEvent {
   const event: ConsentEvent = {
-    id: crypto.randomUUID(),
+    id: safeRandomUUID(),
     timestamp: new Date().toISOString(),
     category,
     granted,
@@ -117,7 +118,7 @@ export function recordBulkConsentChanges(
 ): ConsentEvent[] {
   const now = new Date().toISOString();
   const events: ConsentEvent[] = changes.map((change) => ({
-    id: crypto.randomUUID(),
+    id: safeRandomUUID(),
     timestamp: now,
     category: change.category,
     granted: change.granted,
