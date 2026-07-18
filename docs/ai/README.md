@@ -83,6 +83,7 @@ Finance is developed with AI agents as first-class contributors. This means:
 │   ├── android-engineer.agent.md
 │   ├── architect.agent.md
 │   ├── backend-engineer.agent.md
+│   ├── bug-basher.agent.md
 │   ├── business-analyst.agent.md
 │   ├── compliance-specialist.agent.md
 │   ├── data-engineer.agent.md
@@ -97,7 +98,6 @@ Finance is developed with AI agents as first-class contributors. This means:
 │   ├── marketing-strategist.agent.md
 │   ├── performance-engineer.agent.md
 │   ├── product-manager.agent.md
-│   ├── pwa-bug-basher.agent.md
 │   ├── qa-tester.agent.md
 │   ├── release-manager.agent.md
 │   ├── security-reviewer.agent.md
