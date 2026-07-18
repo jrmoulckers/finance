@@ -102,6 +102,11 @@ export const ComfortStep: React.FC<ComfortStepProps> = ({
               value={fontScaleValue}
               onChange={(event) => handleFontScaleChange(Number(event.target.value))}
               aria-label="Text Size"
+              aria-valuetext={
+                FONT_SCALE_OPTIONS[fontScaleValue]
+                  ? `${FONT_SCALE_OPTIONS[fontScaleValue].label} (${FONT_SCALE_OPTIONS[fontScaleValue].rootFontSize})`
+                  : undefined
+              }
             />
             <div className="onboarding__range-labels" aria-hidden="true">
               {FONT_SCALE_OPTIONS.map((option) => (

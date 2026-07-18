@@ -343,9 +343,9 @@ describe('OnboardingPage', () => {
     renderWithRouter(<OnboardingPage />);
 
     const textSizeSlider = screen.getByRole('slider', { name: /text size/i });
-    expect(textSizeSlider).toHaveAttribute('max', '4');
+    expect(textSizeSlider).toHaveAttribute('max', '7');
 
-    fireEvent.change(textSizeSlider, { target: { value: '4' } });
+    fireEvent.change(textSizeSlider, { target: { value: '7' } });
 
     expect(localStorage.getItem('finance-font-scale-preference')).toBe('huge');
     expect(document.documentElement.style.fontSize).toBe('200%');
@@ -408,7 +408,7 @@ describe('OnboardingPage', () => {
     renderWithRouter(<OnboardingPage />);
 
     fireEvent.change(screen.getByRole('slider', { name: /text size/i }), {
-      target: { value: '2' },
+      target: { value: '3' },
     });
     fireEvent.click(screen.getByRole('checkbox', { name: /reduce motion/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /simplified mode/i }));

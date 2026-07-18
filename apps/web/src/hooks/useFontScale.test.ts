@@ -23,8 +23,11 @@ const computedFontSizes: Record<string, string> = {
   '': '16px',
   '87.5%': '14px',
   '100%': '16px',
+  '112.5%': '18px',
   '125%': '20px',
+  '137.5%': '22px',
   '150%': '24px',
+  '175%': '28px',
   '200%': '32px',
 };
 
@@ -47,16 +50,29 @@ describe('useFontScale', () => {
     vi.restoreAllMocks();
   });
 
-  it('offers named steps through 200 percent text size', () => {
+  it('offers granular, evenly spaced steps through 200 percent text size', () => {
     expect(
       FONT_SCALE_OPTIONS.map((option) => [option.value, option.label, option.rootFontSize]),
     ).toEqual([
       ['small', 'Small', '87.5%'],
       ['default', 'Default', '100%'],
+      ['comfortable', 'Comfortable', '112.5%'],
       ['large', 'Large', '125%'],
+      ['larger', 'Larger', '137.5%'],
       ['extra-large', 'Extra Large', '150%'],
+      ['very-large', 'Very Large', '175%'],
       ['huge', 'Huge', '200%'],
     ]);
+  });
+
+  it('keeps neighboring steps within a 25 percentage-point jump', () => {
+    const percentages = FONT_SCALE_OPTIONS.map((option) => option.scale * 100);
+    for (let index = 1; index < percentages.length; index += 1) {
+      expect(percentages[index] - percentages[index - 1]).toBeLessThanOrEqual(25);
+    }
+    // 200% remains the maximum WCAG 2.2 SC 1.4.4 anchor.
+    expect(Math.max(...percentages)).toBe(200);
+    expect(Math.min(...percentages)).toBe(87.5);
   });
 
   it('persists and applies the Huge preference', () => {
