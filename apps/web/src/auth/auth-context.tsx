@@ -61,6 +61,7 @@ import { getPasskeyErrorMessage, PASSKEY_UNAVAILABLE_MESSAGE } from './passkey-e
 import { appendSecurityAuditEvent } from '../lib/security-audit-log';
 import { getStepUpStatus, markStepUpAuthenticated } from '../lib/session-security';
 import { isUnauthenticatedSafeRoute } from '../lib/auth/pre-auth-routes';
+import { isLocalOnlyMode } from '../lib/local-only-mode';
 import '../styles/auth.css';
 
 import {
@@ -1157,11 +1158,17 @@ interface ProtectedRouteProps {
 }
 
 /**
- * ProtectedRoute — renders children only when authenticated.
+ * ProtectedRoute — renders children only when authorized.
+ *
+ * A user is authorized when they are authenticated **or** when local-only
+ * mode is active. Local-only users intentionally have no account and never
+ * authenticate, yet the app promises them full access to the local
+ * experience (see `local-only-mode.ts`), so they must be treated as a
+ * first-class authorized state — not bounced to `/login`.
  *
  * While auth state is loading, renders the `fallback` (or nothing).
- * When the user is not authenticated, calls `onUnauthenticated` and
- * renders nothing.
+ * When the user is neither authenticated nor in local-only mode, calls
+ * `onUnauthenticated` and renders nothing.
  *
  * @example
  * ```tsx
@@ -1179,18 +1186,21 @@ export function ProtectedRoute({
   onUnauthenticated,
 }: ProtectedRouteProps) {
   const { isAuthenticated, isInitializing } = useAuth();
+  // Local-only users have no account by design but are fully authorized to
+  // use the local app, so they must not be redirected to `/login`.
+  const isAuthorized = isAuthenticated || isLocalOnlyMode();
 
   useEffect(() => {
-    if (!isInitializing && !isAuthenticated) {
+    if (!isInitializing && !isAuthorized) {
       onUnauthenticated?.();
     }
-  }, [isAuthenticated, isInitializing, onUnauthenticated]);
+  }, [isAuthorized, isInitializing, onUnauthenticated]);
 
   if (isInitializing) {
     return <>{fallback}</>;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthorized) {
     return null;
   }
 

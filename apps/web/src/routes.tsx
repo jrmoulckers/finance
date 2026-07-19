@@ -6,6 +6,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 
 import { ProtectedRoute, useAuth } from './auth/auth-context';
 import { RouteErrorBoundary } from './components/common';
+import { isLocalOnlyMode } from './lib/local-only-mode';
 import './styles/route-loader.css';
 
 /*
@@ -146,7 +147,10 @@ const RootRedirect: FC = () => {
     return <PageLoader />;
   }
 
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+  // Local-only users are authorized for the app without an account, so send
+  // them into the app rather than to /login (mirrors ProtectedRoute).
+  const destination = isAuthenticated || isLocalOnlyMode() ? '/dashboard' : '/login';
+  return <Navigate to={destination} replace />;
 };
 
 /**
