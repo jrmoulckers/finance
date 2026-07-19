@@ -25,6 +25,7 @@ vi.mock('../../auth/auth-context', () => ({
 vi.mock('../../hooks', () => ({
   useKeyboardShortcuts: vi.fn(),
   useBreakpoint: vi.fn(),
+  useCoarsePointer: vi.fn(),
   useNotifications: () => ({
     notifications: [],
     unreadCount: 0,
@@ -99,7 +100,7 @@ vi.mock('../../contexts/PrivacyModeContext', () => ({
   }),
 }));
 
-import { useBreakpoint, useKeyboardShortcuts } from '../../hooks';
+import { useBreakpoint, useCoarsePointer, useKeyboardShortcuts } from '../../hooks';
 import { AppLayout } from './AppLayout';
 
 const mockSetShowHelp = vi.fn();
@@ -125,6 +126,7 @@ describe('AppLayout', () => {
       singleKeyShortcutsEnabled: true,
     });
     mockBreakpoint('mobile');
+    vi.mocked(useCoarsePointer).mockReturnValue(false);
     mockSetShowHelp.mockClear();
   });
 
@@ -276,6 +278,31 @@ describe('AppLayout', () => {
     // The "⌘K" text glyph was replaced with a real SVG icon.
     expect(commandButton.querySelector('svg')).not.toBeNull();
     expect(commandButton.textContent).not.toContain('⌘K');
+  });
+
+  it('hides the keyboard-only Command palette trigger on touch-primary devices (#3903)', () => {
+    vi.mocked(useCoarsePointer).mockReturnValue(true);
+    renderLayout();
+
+    // No physical keyboard means the ⌘K affordance and its shortcut chips are
+    // meaningless; touch users navigate via the bottom tab bar instead.
+    expect(screen.queryByRole('button', { name: 'Command palette' })).not.toBeInTheDocument();
+  });
+
+  it('does not wire the command palette into keyboard shortcuts on touch-primary devices (#3903)', () => {
+    vi.mocked(useCoarsePointer).mockReturnValue(true);
+    renderLayout();
+
+    const options = vi.mocked(useKeyboardShortcuts).mock.calls.at(-1)?.[0];
+    expect(options?.onOpenCommandPalette).toBeUndefined();
+  });
+
+  it('keeps the command palette wired to keyboard shortcuts on fine-pointer devices (#3903)', () => {
+    vi.mocked(useCoarsePointer).mockReturnValue(false);
+    renderLayout();
+
+    const options = vi.mocked(useKeyboardShortcuts).mock.calls.at(-1)?.[0];
+    expect(typeof options?.onOpenCommandPalette).toBe('function');
   });
 
   it('opens keyboard shortcuts modal when the header button is clicked', () => {
