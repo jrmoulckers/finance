@@ -303,6 +303,28 @@ branch-protection config documented in
       ./tools/setup-branch-protection.sh                     # current repo, main
       ./tools/setup-branch-protection.sh owner/repo main     # explicit target
 
+### `verify-required-checks.mjs` - Robust deploy gate on a required check-run
+
+Gates a production deploy on a required aggregate check-run (default
+`Required Checks Gatekeeper`) for a specific commit SHA by polling the
+check-runs REST API directly. Replaces `lewagon/wait-on-check-action` in
+`deploy-production.yml` (#3915): the gatekeeper job `needs:` the ~20-30 min
+CodeQL/security jobs, so GitHub does not **create** its check-run until those
+finish. A fast staging deploy then triggered promotion and the old wait step
+looked for a check-run that did not exist yet, hard-failing with "The requested
+check was never run against this ref". This poller fails **closed**:
+
+- **pass** — gatekeeper completed with an allowed conclusion (`success`/`skipped`)
+- **fail** (immediate) — gatekeeper completed with a real failure
+- **wait** — gatekeeper missing/queued/in_progress (it is legitimately created late)
+- **deadline with no pass** — exit 1 (never deploys an ungated SHA)
+
+Reads a token from `GITHUB_TOKEN`/`GH_TOKEN` (needs `checks: read`). Unit tests
+in `verify-required-checks.test.mjs` (`node --test`); quick self-check via
+`node tools/verify-required-checks.mjs --self-test`.
+
+    node tools/verify-required-checks.mjs --sha <commit-sha> [--timeout 1500] [--interval 20]
+
 ## Suggested `package.json` scripts
 
 `package.json` is shared and is not edited by the DevOps agent. When a maintainer
