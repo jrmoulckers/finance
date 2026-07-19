@@ -190,10 +190,19 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  height: var(--layout-bottom-nav-height);
+  /* Grow the fixed bottom nav by the bottom safe-area inset so the tap targets
+     clear the iOS home indicator. Under the global `box-sizing: border-box`
+     reset, `padding-bottom` sits inside `height`, so a bare inset padding on a
+     fixed `height` would compress the nav-item content box and the icon+label
+     would overflow down into the home-indicator zone (mis-triggering taps).
+     Adding the inset to the height keeps the interactive row a full
+     `--layout-bottom-nav-height` and lifts the buttons above the indicator,
+     while the background still fills the inset strip. Mirrors the top
+     `.app-header` safe-area handling; resolves to 0px on non-notched devices. */
+  height: calc(var(--layout-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   background: var(--navigation-background);
   border-top: 1px solid var(--navigation-border);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .nav-item {
   display: flex;
