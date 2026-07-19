@@ -429,8 +429,17 @@
   border-color: var(--semantic-border-default);
 }
 
-.form-button--secondary:hover:not(:disabled) {
-  background: var(--semantic-background-secondary);
+/*
+ * Gate the hover fill behind `@media (hover: hover)` so touch devices (iOS
+ * Safari) never keep a stuck hover background after a tap. Without this, the
+ * last-tapped OAuth/secondary button renders an odd-one-out `background`
+ * (`--semantic-background-secondary`) fill while its siblings stay at rest —
+ * an inconsistent, low-contrast render in high-contrast mode (#3901).
+ */
+@media (hover: hover) {
+  .form-button--secondary:hover:not(:disabled) {
+    background: var(--semantic-background-secondary);
+  }
 }
 
 .form-button:disabled {
