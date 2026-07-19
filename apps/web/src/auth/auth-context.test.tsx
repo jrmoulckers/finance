@@ -13,10 +13,12 @@ import {
   isServiceUnavailableStatus,
   oauthProviderUnavailableMessage,
   parseBetaAllowedEmails,
+  ProtectedRoute,
   useAuth,
   type AuthProviderConfig,
 } from './auth-context';
 import { clearTokens } from './token-storage';
+import { setLocalOnlyMode } from '../lib/local-only-mode';
 
 const LAST_USER_STORAGE_KEY = 'finance.lastUser';
 
@@ -692,5 +694,64 @@ describe('loginWithOAuth keeps users in-app on a failed start (#3109)', () => {
     );
     expect(assignMock).not.toHaveBeenCalled();
     expect(screen.getByTestId('loading-state')).toHaveTextContent('ready');
+  });
+});
+
+describe('ProtectedRoute honors local-only mode (#3916)', () => {
+  const config: AuthProviderConfig = {
+    supabaseUrl: 'https://finance-test.supabase.co',
+    supabaseAnonKey: 'anon-key',
+    loginEndpoint: '/api/auth/login',
+    refreshEndpoint: '/api/auth/refresh',
+    logoutEndpoint: '/api/auth/logout',
+    signupEndpoint: '/api/auth/signup',
+  };
+
+  beforeEach(() => {
+    clearTokens();
+    localStorage.clear();
+    // No valid session — the AuthProvider settles as anonymous.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ error: 'no session' }, 401)));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearTokens();
+    localStorage.clear();
+  });
+
+  async function renderProtected(onUnauthenticated: () => void) {
+    render(
+      <AuthProvider config={config}>
+        <ProtectedRoute
+          fallback={<span data-testid="fallback">loading</span>}
+          onUnauthenticated={onUnauthenticated}
+        >
+          <span data-testid="protected">secret dashboard</span>
+        </ProtectedRoute>
+      </AuthProvider>,
+    );
+    // Wait for the provider to finish initializing (fallback disappears).
+    await waitFor(() => expect(screen.queryByTestId('fallback')).not.toBeInTheDocument());
+  }
+
+  it('renders children for an unauthenticated user when local-only mode is active', async () => {
+    setLocalOnlyMode(true);
+    const onUnauthenticated = vi.fn();
+
+    await renderProtected(onUnauthenticated);
+
+    expect(screen.getByTestId('protected')).toBeInTheDocument();
+    expect(onUnauthenticated).not.toHaveBeenCalled();
+  });
+
+  it('redirects an unauthenticated user to login when local-only mode is off', async () => {
+    setLocalOnlyMode(false);
+    const onUnauthenticated = vi.fn();
+
+    await renderProtected(onUnauthenticated);
+
+    expect(screen.queryByTestId('protected')).not.toBeInTheDocument();
+    await waitFor(() => expect(onUnauthenticated).toHaveBeenCalledOnce());
   });
 });
