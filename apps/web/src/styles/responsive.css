@@ -130,8 +130,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: var(--layout-header-height);
-  padding: 0 var(--layout-content-padding);
+  /* Grow the sticky header by the top safe-area inset so its background fills
+     the notch/status-bar strip and its content is pushed clear of it on
+     notched phones / installed PWAs. Under the global `box-sizing: border-box`
+     reset, `padding-top` sits inside `height`, so the height must include the
+     inset too — otherwise the content row would shrink instead of clearing the
+     notch. Mirrors how `.bottom-nav`/`.app-main` handle safe-area-inset-bottom
+     (needs viewport-fit=cover, which index.html sets). Resolves to 0px on
+     non-notched devices, so nothing changes there. */
+  height: calc(var(--layout-header-height) + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) var(--layout-content-padding) 0;
   background: var(--navigation-background);
   border-bottom: 1px solid var(--navigation-border);
 }
