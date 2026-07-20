@@ -23,13 +23,13 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@fluentui/react-icons": "^2.0.331",
-    "@sentry/react": "^10.63.0",
+    "@fluentui/react-icons": "^2.0.333",
+    "@sentry/react": "^10.66.0",
     "d3": "^7.9.0",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.25.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1",
+    "react-router-dom": "^7.16.0",
     "recharts": "^3.9.2",
     "sql.js": "^1.14.1",
     "tesseract.js": "^7.0.0",
