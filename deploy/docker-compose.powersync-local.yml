@@ -1,0 +1,142 @@
+# =============================================================================
+# PowerSync — LOCAL development stack (#3927)
+# =============================================================================
+# A minimal, local-only PowerSync + MongoDB pair that runs NEXT TO the Supabase
+# CLI stack and replicates from its Postgres. Unlike deploy/docker-compose.yml
+# (the full self-hosted production stack), this file:
+#
+#   - starts NO Postgres/GoTrue/Caddy of its own — it reuses the Supabase CLI's
+#     `db` over the external `supabase_network_finance-local` network
+#   - runs Mongo as a single-node replica set WITHOUT keyFile/auth (the instance
+#     is bound to a private compose network only — safe for local dev)
+#   - publishes the PowerSync API on the host (:8080) so the web app dev server
+#     (vite on the host) can reach it
+#
+# It reuses the same env-driven config (deploy/powersync.yaml) and sync rules
+# (services/api/powersync/sync-rules.yaml) as production, so behaviour matches.
+#
+# Bring it up with:  npm run powersync:up   (tools/powersync-local.mjs)
+# which also creates the required `powersync` publication on the database.
+#
+# Prerequisite: the Supabase CLI stack must already be running
+# (npm run dev:full, or `supabase start` in services/api).
+# =============================================================================
+
+name: finance-powersync-local
+
+services:
+  # ---------------------------------------------------------------------------
+  # MongoDB — PowerSync bucket storage (sync-engine state only, NOT app data)
+  # ---------------------------------------------------------------------------
+  # PowerSync uses MongoDB change streams, which require a replica set. For local
+  # dev we run a single-node replica set with no keyFile/auth (the container is
+  # only reachable on the private powersync-local network).
+  mongo:
+    image: mongo:7-jammy
+    restart: unless-stopped
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    volumes:
+      - powersync_mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand({ ping: 1 })']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - powersync-local
+
+  # ---------------------------------------------------------------------------
+  # MongoDB replica-set bootstrap — idempotent single-node rs.initiate()
+  # ---------------------------------------------------------------------------
+  mongo-rs-init:
+    image: mongo:7-jammy
+    restart: 'no'
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        for attempt in {1..30}; do
+          if mongosh --host mongo:27017 --quiet --eval '
+            try {
+              rs.status();
+              quit(0);
+            } catch (e) {
+              print("Initializing MongoDB replica set: " + (e.codeName || e.message));
+            }
+            rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "mongo:27017" }] });
+          '; then
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "MongoDB replica set initialization failed" >&2
+        exit 1
+    networks:
+      - powersync-local
+
+  # ---------------------------------------------------------------------------
+  # PowerSync — offline-first sync engine, pointed at the Supabase CLI Postgres
+  # ---------------------------------------------------------------------------
+  # PS_* values are substituted into deploy/powersync.yaml (mounted read-only).
+  # Defaults target the Supabase CLI local stack; override via env if needed.
+  #
+  #   PS_PG_URI     — the local `postgres` role already has REPLICATION; `db` is
+  #                   the Supabase CLI Postgres alias on the external network.
+  #   PS_JWT_SECRET — the Supabase CLI's default local JWT secret, so GoTrue
+  #                   tokens minted by the local stack validate here.
+  powersync:
+    image: journeyapps/powersync-service:latest
+    restart: unless-stopped
+    command: ['start', '-r', 'unified']
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/powersync.yaml
+      # PS_PG_URI is assembled from parts and injected by tools/powersync-local.mjs
+      # (npm run powersync:up), so no database credential is committed here. To run
+      # `docker compose` directly, export PS_PG_URI yourself first — see
+      # docs/guides/powersync-local.md.
+      PS_PG_URI: ${PS_PG_URI:?PS_PG_URI is not set — run `npm run powersync:up` (or export it; see docs/guides/powersync-local.md)}
+      PS_MONGO_URI: ${PS_MONGO_URI:-mongodb://mongo:27017/powersync?replicaSet=rs0}
+      PS_JWT_SECRET: ${PS_JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      PS_PORT: '8080'
+    ports:
+      - '${POWERSYNC_LOCAL_PORT:-8080}:8080'
+    volumes:
+      - ./powersync.yaml:/config/powersync.yaml:ro
+      - ../services/api/powersync/sync-rules.yaml:/config/sync-config.yaml:ro
+    healthcheck:
+      # PowerSync exposes official HTTP health probes at /probes/*.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:8080/probes/liveness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      mongo-rs-init:
+        condition: service_completed_successfully
+    networks:
+      - powersync-local
+      - supabase
+
+networks:
+  # Private network for PowerSync <-> Mongo traffic.
+  powersync-local:
+    driver: bridge
+  # The Supabase CLI's network (external). Its name derives from the CLI
+  # project_id (`finance-local`); override with SUPABASE_NETWORK if yours differs.
+  supabase:
+    external: true
+    name: ${SUPABASE_NETWORK:-supabase_network_finance-local}
+
+volumes:
+  powersync_mongo_data:

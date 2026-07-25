@@ -9,6 +9,9 @@ For backend-only Supabase work (functions, migrations, Studio), see
 [`local-supabase.md`](./local-supabase.md). This guide is the web-to-edge
 end-to-end path on top of it.
 
+To also run the **PowerSync sync engine** locally (so data can replicate to/from
+Postgres), see [`powersync-local.md`](./powersync-local.md).
+
 ## Quick start (clone → run)
 
 On a machine with **Docker Desktop running**, a single command does everything —
