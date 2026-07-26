@@ -43,6 +43,10 @@
     "check-devenv": "node tools/check-devenv.mjs",
     "doctor": "node tools/doctor.mjs",
     "dev:full": "node tools/dev-full.mjs",
+    "powersync:up": "node tools/powersync-local.mjs up",
+    "powersync:down": "node tools/powersync-local.mjs down",
+    "powersync:status": "node tools/powersync-local.mjs status",
+    "powersync:logs": "node tools/powersync-local.mjs logs",
     "prepare": "husky",
     "changeset": "changeset",
     "version": "changeset version"
