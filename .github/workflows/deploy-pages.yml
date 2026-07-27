@@ -13,9 +13,12 @@
 # Build env:
 #   - PUBLIC_BASE_PATH=/finance/  -> vite base + router basename for the
 #     project-pages subpath (https://<owner>.github.io/finance/).
-#   - VITE_SUPABASE_URL / _ANON_KEY: use repo secrets if present (backend-
-#     connected), otherwise a `placeholder` URL that activates local-first /
-#     demo mode so the app still works.
+#   - VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY: mapped from the SUPABASE_URL /
+#     SUPABASE_ANON_KEY repo secrets when present (backend-connected). When the
+#     secrets are absent (e.g. forks) a `placeholder` URL activates local-first /
+#     demo mode so the app still builds and works.
+#   - VITE_POWERSYNC_URL: mapped from the POWERSYNC_URL repo secret to enable
+#     live sync; unset -> local-first only.
 # =============================================================================
 
 name: Deploy — Web (Pages)
@@ -61,8 +64,9 @@ jobs:
       - name: Build web app (Pages subpath)
         env:
           PUBLIC_BASE_PATH: /finance/
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
         run: npm run build -w apps/web
 
       - name: SPA fallback + Pages hygiene
