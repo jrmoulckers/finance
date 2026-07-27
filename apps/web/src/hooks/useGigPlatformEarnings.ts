@@ -106,37 +106,45 @@ export function useGigPlatformEarnings(): UseGigPlatformEarningsResult {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    try {
-      const loadedRules = loadGigPlatformRules();
-      const loadedExpected = loadExpectedPayouts();
+    const load = async () => {
+      try {
+        const loadedRules = loadGigPlatformRules();
+        const loadedExpected = loadExpectedPayouts();
 
-      // Query window: from the earliest of (start of week, start of month) up
-      // to today — this covers all three earnings buckets in one read.
-      const now = new Date();
-      const bounds = computePeriodBounds(now, 1);
-      const startTs = Math.min(bounds.weekStart, bounds.monthStart);
-      const startDate = formatLocalDate(startTs);
-      const endDate = formatLocalDate(bounds.todayStart);
+        // Query window: from the earliest of (start of week, start of month) up
+        // to today — this covers all three earnings buckets in one read.
+        const now = new Date();
+        const bounds = computePeriodBounds(now, 1);
+        const startTs = Math.min(bounds.weekStart, bounds.monthStart);
+        const startDate = formatLocalDate(startTs);
+        const endDate = formatLocalDate(bounds.todayStart);
 
-      const transactions: Transaction[] = getTransactionsByDateRange(db, startDate, endDate);
-      const accounts = getAllAccounts(db);
-      const accountNames = new Map<string, string>();
-      for (const acct of accounts) accountNames.set(acct.id, acct.name);
+        const transactions: Transaction[] = await getTransactionsByDateRange(
+          db,
+          startDate,
+          endDate,
+        );
+        const accounts = await getAllAccounts(db);
+        const accountNames = new Map<string, string>();
+        for (const acct of accounts) accountNames.set(acct.id, acct.name);
 
-      const result = computePlatformEarnings(transactions, loadedRules, {
-        referenceDate: now,
-        weekStartsOn: 1,
-        accountNames,
-      });
+        const result = computePlatformEarnings(transactions, loadedRules, {
+          referenceDate: now,
+          weekStartsOn: 1,
+          accountNames,
+        });
 
-      setRules(loadedRules);
-      setExpectedPayouts(loadedExpected);
-      setEarnings(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to compute gig-platform earnings.');
-    } finally {
-      setLoading(false);
-    }
+        setRules(loadedRules);
+        setExpectedPayouts(loadedExpected);
+        setEarnings(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to compute gig-platform earnings.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, [db, refreshToken]);
 
   const addRule = useCallback(

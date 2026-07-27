@@ -21,7 +21,7 @@ export interface UseMilestoneCheckResult {
   readonly queuedMilestones: readonly DetectedMilestone[];
   readonly activeMilestone: DetectedMilestone | null;
   readonly dismissMilestone: (milestoneId: string) => void;
-  readonly checkMilestones: () => void;
+  readonly checkMilestones: () => Promise<void>;
 }
 
 export function useMilestoneCheck(): UseMilestoneCheckResult {
@@ -29,11 +29,11 @@ export function useMilestoneCheck(): UseMilestoneCheckResult {
   const { lastSyncTime } = useSyncStatus();
   const [queuedMilestones, setQueuedMilestones] = useState<DetectedMilestone[]>([]);
 
-  const checkMilestones = useCallback(() => {
+  const checkMilestones = useCallback(async () => {
     try {
-      const accounts = getAllAccounts(db);
-      const goals = getAllGoals(db);
-      const transactions = getAllTransactions(db);
+      const accounts = await getAllAccounts(db);
+      const goals = await getAllGoals(db);
+      const transactions = await getAllTransactions(db);
       const currentSnapshot = buildMilestoneSnapshot({ accounts, goals, transactions });
       const state = loadMilestoneStorageState();
       const mergedDebtBaselines = mergeDebtBaselines(state.debtBaselines, currentSnapshot);

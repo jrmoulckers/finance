@@ -8,10 +8,18 @@ import { QueryEngine } from './QueryEngine';
 
 vi.mock('../../db/DatabaseProvider', () => ({
   useDatabase: vi.fn(() => ({
-    exec: vi.fn(),
-    selectAll: vi.fn(),
-    selectOne: vi.fn(),
+    getAll: vi.fn(),
+    getOptional: vi.fn(),
+    execute: vi.fn(),
+    onChange: vi.fn(() => () => {}),
     close: vi.fn(),
+    // Escape hatch consumed by the AI query executor (local SQLite only).
+    sqlite: {
+      exec: vi.fn(),
+      selectAll: vi.fn(),
+      selectOne: vi.fn(),
+      close: vi.fn(),
+    },
   })),
 }));
 

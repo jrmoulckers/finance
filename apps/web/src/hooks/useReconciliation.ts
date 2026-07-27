@@ -21,7 +21,7 @@ export interface UseAccountReconciliationResult {
   readonly refresh: () => void;
   readonly closeReconciliation: (
     input: Omit<CloseReconciliationInput, 'accountId'>,
-  ) => AccountReconciliationSnapshot | null;
+  ) => Promise<AccountReconciliationSnapshot | null>;
 }
 
 export function useAccountReconciliation(
@@ -54,28 +54,34 @@ export function useAccountReconciliation(
     setLoading(true);
     setError(null);
 
-    try {
-      setHistory(getReconciliationHistory(db, accountId));
-      setLastReconciliation(getLastReconciliation(db, accountId));
-      setUnclearedTransactionCount(getUnclearedTransactionCount(db, accountId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load reconciliation status.');
-      setHistory([]);
-      setLastReconciliation(null);
-      setUnclearedTransactionCount(0);
-    } finally {
-      setLoading(false);
-    }
+    const load = async () => {
+      try {
+        setHistory(await getReconciliationHistory(db, accountId));
+        setLastReconciliation(await getLastReconciliation(db, accountId));
+        setUnclearedTransactionCount(await getUnclearedTransactionCount(db, accountId));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load reconciliation status.');
+        setHistory([]);
+        setLastReconciliation(null);
+        setUnclearedTransactionCount(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, [accountId, db, refreshToken]);
 
   const closeReconciliation = useCallback(
-    (input: Omit<CloseReconciliationInput, 'accountId'>): AccountReconciliationSnapshot | null => {
+    async (
+      input: Omit<CloseReconciliationInput, 'accountId'>,
+    ): Promise<AccountReconciliationSnapshot | null> => {
       if (!accountId) {
         return null;
       }
 
       try {
-        const snapshot = repoCloseReconciliation(db, { ...input, accountId });
+        const snapshot = await repoCloseReconciliation(db, { ...input, accountId });
         refresh();
         return snapshot;
       } catch (err) {

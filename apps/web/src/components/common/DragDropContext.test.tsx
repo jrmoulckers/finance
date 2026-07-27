@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Category } from '../../kmp/bridge';
@@ -107,7 +107,7 @@ describe('DragDropContext', () => {
     expect(screen.getByTestId('active-count')).toHaveTextContent('2');
   });
 
-  it('highlights drop targets and flashes success after a completed drop', () => {
+  it('highlights drop targets and flashes success after a completed drop', async () => {
     const dataTransfer = createMockDataTransfer();
     const onDropTransactions = vi.fn(() => true);
 
@@ -144,7 +144,8 @@ describe('DragDropContext', () => {
       'category-utilities',
       'Utilities',
     );
-    expect(utilitiesZone).toHaveAttribute('data-drop-state', 'success');
+    // handleDrop awaits onDropTransactions before flashing success.
+    await waitFor(() => expect(utilitiesZone).toHaveAttribute('data-drop-state', 'success'));
     expect(screen.getByTestId('success-target')).toHaveTextContent('category-utilities');
   });
 

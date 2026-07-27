@@ -15,9 +15,9 @@ export interface TransactionBulkActionsToolbarProps {
   availableTags: string[];
   onSelectAll: () => void;
   onClearSelection: () => void;
-  onBulkUpdate: (fields: BulkUpdateFields) => BulkOperationResult;
-  onBulkAddTag: (tag: string) => BulkOperationResult;
-  onBulkRemoveTag: (tag: string) => BulkOperationResult;
+  onBulkUpdate: (fields: BulkUpdateFields) => Promise<BulkOperationResult>;
+  onBulkAddTag: (tag: string) => Promise<BulkOperationResult>;
+  onBulkRemoveTag: (tag: string) => Promise<BulkOperationResult>;
   onRequestBulkDelete: () => void;
 }
 
@@ -63,32 +63,32 @@ export const TransactionBulkActionsToolbar: React.FC<TransactionBulkActionsToolb
   }, []);
 
   const handleCategoryChange = useCallback(
-    (categoryId: SyncId | null, label: string) => {
-      const result = onBulkUpdate({ categoryId });
+    async (categoryId: SyncId | null, label: string) => {
+      const result = await onBulkUpdate({ categoryId });
       setShowCategoryPicker(false);
       announceResult(formatOperationResult(`Categorized as ${label} for`, result));
     },
     [announceResult, onBulkUpdate],
   );
 
-  const handleAddTag = useCallback(() => {
+  const handleAddTag = useCallback(async () => {
     const tag = tagInput.trim();
     if (!tag) return;
-    const result = onBulkAddTag(tag);
+    const result = await onBulkAddTag(tag);
     setTagInput('');
     announceResult(formatOperationResult(`Added tag ${tag} to`, result));
   }, [announceResult, onBulkAddTag, tagInput]);
 
-  const handleRemoveTag = useCallback(() => {
+  const handleRemoveTag = useCallback(async () => {
     if (!selectedTagToRemove) return;
-    const result = onBulkRemoveTag(selectedTagToRemove);
+    const result = await onBulkRemoveTag(selectedTagToRemove);
     setSelectedTagToRemove('');
     announceResult(formatOperationResult(`Removed tag ${selectedTagToRemove} from`, result));
   }, [announceResult, onBulkRemoveTag, selectedTagToRemove]);
 
   const handleStatusChange = useCallback(
-    (status: TransactionStatus, label: string) => {
-      const result = onBulkUpdate({ status });
+    async (status: TransactionStatus, label: string) => {
+      const result = await onBulkUpdate({ status });
       setShowStatusActions(false);
       announceResult(formatOperationResult(label, result));
     },

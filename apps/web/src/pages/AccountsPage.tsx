@@ -209,7 +209,7 @@ export const AccountsPage: React.FC = () => {
       isOpen={isFormOpen}
       onCancel={handleCloseForm}
       onSubmit={async (data) => {
-        const createdAccount = createAccount(data);
+        const createdAccount = await createAccount(data);
         if (createdAccount === null) {
           throw new Error('Failed to create account.');
         }

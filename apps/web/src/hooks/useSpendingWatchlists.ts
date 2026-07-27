@@ -18,7 +18,7 @@
  * References: issue #316
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import { getTransactionsByCategory } from '../db/repositories/transactions';
 import type { SyncId, Transaction } from '../kmp/bridge';
@@ -229,43 +229,54 @@ export function useSpendingWatchlists(): UseSpendingWatchlistsResult {
     saveWatchlists(watchlists);
   }, [watchlists]);
 
+  const [alerts, setAlerts] = useState<WatchlistAlert[]>([]);
+
   // Compute alerts from spending data.
-  const alerts = useMemo<WatchlistAlert[]>(() => {
-    if (watchlists.length === 0) return [];
-
-    try {
-      setLoading(true);
-      const results: WatchlistAlert[] = [];
-
-      for (const wl of watchlists) {
-        if (!wl.alertsEnabled || dismissedIds.has(wl.id)) continue;
-
-        const { startDate, endDate } = getPeriodBounds(wl.period);
-        const transactions = getTransactionsByCategory(db, wl.categoryId, {
-          type: 'EXPENSE',
-        }).filter((t) => t.date >= startDate && t.date <= endDate);
-
-        const spentCents = computeSpending(transactions);
-        const percentage = wl.thresholdCents > 0 ? (spentCents / wl.thresholdCents) * 100 : 0;
-
-        if (percentage >= 50) {
-          results.push({
-            watchlist: wl,
-            spentCents,
-            percentage,
-            level: getAlertLevel(percentage),
-            message: buildAlertMessage(wl, percentage, spentCents),
-          });
-        }
-      }
-
-      setLoading(false);
-      return results.sort((a, b) => b.percentage - a.percentage);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to compute spending alerts.');
-      setLoading(false);
-      return [];
+  useEffect(() => {
+    if (watchlists.length === 0) {
+      setAlerts([]);
+      return;
     }
+
+    const computeAlerts = async () => {
+      try {
+        setLoading(true);
+        const results: WatchlistAlert[] = [];
+
+        for (const wl of watchlists) {
+          if (!wl.alertsEnabled || dismissedIds.has(wl.id)) continue;
+
+          const { startDate, endDate } = getPeriodBounds(wl.period);
+          const transactions = (
+            await getTransactionsByCategory(db, wl.categoryId, {
+              type: 'EXPENSE',
+            })
+          ).filter((t) => t.date >= startDate && t.date <= endDate);
+
+          const spentCents = computeSpending(transactions);
+          const percentage = wl.thresholdCents > 0 ? (spentCents / wl.thresholdCents) * 100 : 0;
+
+          if (percentage >= 50) {
+            results.push({
+              watchlist: wl,
+              spentCents,
+              percentage,
+              level: getAlertLevel(percentage),
+              message: buildAlertMessage(wl, percentage, spentCents),
+            });
+          }
+        }
+
+        setAlerts(results.sort((a, b) => b.percentage - a.percentage));
+        setLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to compute spending alerts.');
+        setAlerts([]);
+        setLoading(false);
+      }
+    };
+
+    computeAlerts();
   }, [db, watchlists, dismissedIds, refreshToken]);
 
   const addWatchlist = useCallback(

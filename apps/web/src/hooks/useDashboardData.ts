@@ -20,7 +20,7 @@ import { computeCurrentNetWorth } from '../lib/analytics/net-worth';
 import { getAllAccounts } from '../db/repositories/accounts';
 import { getBudgetWithSpending, getBudgetsByPeriod } from '../db/repositories/budgets';
 import { getRecentTransactions, getTransactionsByDateRange } from '../db/repositories/transactions';
-import type { SqliteDb } from '../db/sqlite-wasm';
+import type { AsyncDb } from '../db/async-db';
 import type { Budget, Transaction } from '../kmp/bridge';
 import { useLiveQuery } from './useLiveQuery';
 
@@ -72,8 +72,8 @@ function isBudgetActiveInMonth(budget: Budget, startDate: string, endDate: strin
   return true;
 }
 
-function aggregateDashboardData(db: SqliteDb): DashboardData {
-  const accounts = getAllAccounts(db);
+async function aggregateDashboardData(db: AsyncDb): Promise<DashboardData> {
+  const accounts = await getAllAccounts(db);
   // Reconcile with the Net Worth page and Accounts page: exclude archived
   // accounts and subtract liabilities (a sign-blind sum overstated net worth
   // and double-counted debt). See computeCurrentNetWorth for the canonical rule.
@@ -92,7 +92,7 @@ function aggregateDashboardData(db: SqliteDb): DashboardData {
     .sort((left, right) => left.type.localeCompare(right.type));
 
   const { startDate, endDate } = getCurrentMonthBounds();
-  const monthlyTransactions = getTransactionsByDateRange(db, startDate, endDate);
+  const monthlyTransactions = await getTransactionsByDateRange(db, startDate, endDate);
 
   let spentThisMonth = 0;
   let incomeThisMonth = 0;
@@ -104,7 +104,7 @@ function aggregateDashboardData(db: SqliteDb): DashboardData {
     }
   }
 
-  const monthlyBudgets = getBudgetsByPeriod(db, 'MONTHLY').filter((budget) =>
+  const monthlyBudgets = (await getBudgetsByPeriod(db, 'MONTHLY')).filter((budget) =>
     isBudgetActiveInMonth(budget, startDate, endDate),
   );
 
@@ -112,7 +112,7 @@ function aggregateDashboardData(db: SqliteDb): DashboardData {
   let budgetSpent = 0;
   for (const budget of monthlyBudgets) {
     monthlyBudget += budget.amount.amount;
-    const budgetWithSpending = getBudgetWithSpending(db, budget.id);
+    const budgetWithSpending = await getBudgetWithSpending(db, budget.id);
     budgetSpent += budgetWithSpending?.spentAmount.amount ?? 0;
   }
 
@@ -122,14 +122,14 @@ function aggregateDashboardData(db: SqliteDb): DashboardData {
     incomeThisMonth,
     monthlyBudget,
     budgetSpent,
-    recentTransactions: getRecentTransactions(db, 10),
+    recentTransactions: await getRecentTransactions(db, 10),
     accountSummary,
   };
 }
 
 export function useDashboardData(): UseDashboardDataResult {
   const runDashboardQuery = useCallback(
-    (database: SqliteDb) => aggregateDashboardData(database),
+    (database: AsyncDb) => aggregateDashboardData(database),
     [],
   );
   const { data, error, loading, refresh } = useLiveQuery<DashboardData | null>(

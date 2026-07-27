@@ -146,7 +146,7 @@ describe('RemittancesPage', () => {
   });
 
   it('submits a valid remittance with the expected payload', () => {
-    const createRemittance = vi.fn(() => SAMPLE_RECORD);
+    const createRemittance = vi.fn().mockResolvedValue(SAMPLE_RECORD);
     mockUseRemittances.mockReturnValue(buildResult({ createRemittance }));
     render(<RemittancesPage />);
 

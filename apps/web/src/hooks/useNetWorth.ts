@@ -104,14 +104,16 @@ export function useNetWorth(purposeFilter: AccountPurposeFilter = 'all'): UseNet
 
   useEffect(() => {
     setError(null);
-    try {
-      setRawAccounts(getAllAccounts(db));
-      setRawTransactions(getAllTransactions(db));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to compute net worth.');
-      setRawAccounts([]);
-      setRawTransactions([]);
-    }
+    void (async () => {
+      try {
+        setRawAccounts(await getAllAccounts(db));
+        setRawTransactions(await getAllTransactions(db));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to compute net worth.');
+        setRawAccounts([]);
+        setRawTransactions([]);
+      }
+    })();
   }, [db, refreshToken]);
 
   const scopedAccounts = useMemo(

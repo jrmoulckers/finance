@@ -1039,7 +1039,7 @@ export function HouseholdPage() {
   );
 
   const handleCreateCollegeFund = useCallback(
-    (e: FormEvent, child: ChildProfile) => {
+    async (e: FormEvent, child: ChildProfile) => {
       e.preventDefault();
       setKidError(null);
 
@@ -1067,7 +1067,7 @@ export function HouseholdPage() {
       collegeStartDate.setFullYear(collegeStartDate.getFullYear() + yearsUntilCollege);
       const targetDate = collegeStartDate.toISOString().slice(0, 10);
 
-      const createdGoal = goalData.createGoal({
+      const createdGoal = await goalData.createGoal({
         householdId: household.id,
         name: `${child.name} College Fund`,
         description: `Dedicated college fund for ${child.name}.`,
@@ -3590,7 +3590,7 @@ function useOptionalGoals(): Pick<UseGoalsResult, 'goals' | 'createGoal'> {
     const { goals, createGoal } = useGoals();
     return { goals, createGoal };
   } catch {
-    return { goals: [], createGoal: () => null };
+    return { goals: [], createGoal: () => Promise.resolve(null) };
   }
 }
 
@@ -3602,7 +3602,7 @@ function useOptionalTransactions(): Pick<
     const { transactions, updateTransaction } = useTransactions({ type: 'EXPENSE' });
     return { transactions, updateTransaction };
   } catch {
-    return { transactions: [], updateTransaction: () => null };
+    return { transactions: [], updateTransaction: () => Promise.resolve(null) };
   }
 }
 

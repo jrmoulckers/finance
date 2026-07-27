@@ -5,7 +5,7 @@ import { createElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DatabaseContext, type DatabaseContextValue } from '../../db/DatabaseProvider';
-import type { SqliteDb } from '../../db/sqlite-wasm';
+import type { AsyncDb } from '../../db/async-db';
 
 import {
   buildRecurringBillReminders,
@@ -42,7 +42,7 @@ vi.mock('../../db/repositories/householdData', () => ({
 const wrapper = ({ children }: { children: ReactNode }) =>
   createElement(
     DatabaseContext.Provider,
-    { value: { db: {} as SqliteDb, diagnostics: {} as DatabaseContextValue['diagnostics'] } },
+    { value: { db: {} as AsyncDb, diagnostics: {} as DatabaseContextValue['diagnostics'] } },
     children,
   );
 
@@ -67,13 +67,25 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+/**
+ * Render the hook and flush the asynchronous mount-load effect so household
+ * state has settled (loading `false`) before assertions. Household persistence
+ * now reads through the async `AsyncDb` layer, so the initial load resolves on
+ * a microtask rather than synchronously.
+ */
+async function renderHouseholdHook() {
+  const utils = renderHook(() => useHousehold(), { wrapper });
+  await act(async () => {});
+  return utils;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('useHousehold', () => {
-  it('returns null household when none exists', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('returns null household when none exists', async () => {
+    const { result } = await renderHouseholdHook();
 
     expect(result.current.loading).toBe(false);
     expect(result.current.household).toBeNull();
@@ -81,8 +93,8 @@ describe('useHousehold', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('creates a household with the owner as first member', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('creates a household with the owner as first member', async () => {
+    const { result } = await renderHouseholdHook();
 
     let household!: ReturnType<typeof result.current.createHousehold>;
     act(() => {
@@ -95,8 +107,8 @@ describe('useHousehold', () => {
     expect(result.current.members[0]?.role).toBe('OWNER');
   });
 
-  it('invites a member with specified role', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('invites a member with specified role', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Test Household' });
@@ -117,8 +129,8 @@ describe('useHousehold', () => {
     expect(result.current.invitations[0]?.status).toBe('PENDING');
   });
 
-  it('returns null when inviting without a household', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('returns null when inviting without a household', async () => {
+    const { result } = await renderHouseholdHook();
 
     let invitation!: ReturnType<typeof result.current.inviteMember>;
     act(() => {
@@ -132,8 +144,8 @@ describe('useHousehold', () => {
     expect(result.current.error).toBe('No household exists. Create one first.');
   });
 
-  it('revokes a pending invitation', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('revokes a pending invitation', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Test' });
@@ -154,8 +166,8 @@ describe('useHousehold', () => {
     expect(revoked!).toBe(true);
   });
 
-  it('adds and revokes a trusted helper as a read-only VIEWER member', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('adds and revokes a trusted helper as a read-only VIEWER member', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Test Household' });
@@ -188,8 +200,8 @@ describe('useHousehold', () => {
     expect(result.current.members.some((member) => member.id === helper?.id)).toBe(false);
   });
 
-  it('updates a member role', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('updates a member role', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Test' });
@@ -208,8 +220,8 @@ describe('useHousehold', () => {
     expect(result.current.members[0]?.role).toBe('ADMIN');
   });
 
-  it('removes a member', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('removes a member', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Test' });
@@ -226,8 +238,8 @@ describe('useHousehold', () => {
     expect(result.current.members).toHaveLength(0);
   });
 
-  it('sets account sharing mode', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('sets account sharing mode', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Test' });
@@ -247,8 +259,8 @@ describe('useHousehold', () => {
     expect(result.current.accountSharings[0]?.sharingMode).toBe('PRIVATE');
   });
 
-  it('persists household data across remounts via the encrypted database', () => {
-    const { result, unmount } = renderHook(() => useHousehold(), { wrapper });
+  it('persists household data across remounts via the encrypted database', async () => {
+    const { result, unmount } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Persistent Family' });
@@ -257,14 +269,14 @@ describe('useHousehold', () => {
     unmount();
 
     // Re-mount and check data is restored
-    const { result: result2 } = renderHook(() => useHousehold(), { wrapper });
+    const { result: result2 } = await renderHouseholdHook();
 
     expect(result2.current.household?.name).toBe('Persistent Family');
     expect(result2.current.members).toHaveLength(1);
   });
 
-  it('links and persists a college fund goal for an existing child profile', () => {
-    const { result, unmount } = renderHook(() => useHousehold(), { wrapper });
+  it('links and persists a college fund goal for an existing child profile', async () => {
+    const { result, unmount } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'College Family' });
@@ -289,12 +301,12 @@ describe('useHousehold', () => {
 
     unmount();
 
-    const { result: result2 } = renderHook(() => useHousehold(), { wrapper });
+    const { result: result2 } = await renderHouseholdHook();
     expect(result2.current.children[0]?.collegeFundGoalId).toBe('goal-college-1');
   });
 
-  it('checks permissions correctly', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('checks permissions correctly', async () => {
+    const { result } = await renderHouseholdHook();
 
     expect(result.current.checkPermission('OWNER', 'MANAGE_MEMBERS')).toBe(true);
     expect(result.current.checkPermission('VIEWER', 'MANAGE_MEMBERS')).toBe(false);
@@ -428,8 +440,8 @@ describe('shared expense settlement helpers', () => {
 });
 
 describe('household beta helpers and persistence', () => {
-  it('creates recurring bill reminders and marks a cycle paid into shared expenses', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('creates recurring bill reminders and marks a cycle paid into shared expenses', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Beta Household' });
@@ -473,8 +485,8 @@ describe('household beta helpers and persistence', () => {
     expect(result.current.activityEvents.some((event) => event.type === 'BILLS')).toBe(true);
   });
 
-  it('tracks goal pledges, contributions, and catch-up recommendations', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('tracks goal pledges, contributions, and catch-up recommendations', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Goal Household' });
@@ -500,8 +512,8 @@ describe('household beta helpers and persistence', () => {
     );
   });
 
-  it('summarizes shopping trips and can generate a shared expense', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('summarizes shopping trips and can generate a shared expense', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Shopping Household' });
@@ -541,8 +553,8 @@ describe('household beta helpers and persistence', () => {
     expect(result.current.sharedExpenses[0]?.description).toBe('Market shopping trip');
   });
 
-  it('calculates privacy-aware reconciliation true-up suggestions and snapshots a period', () => {
-    const { result } = renderHook(() => useHousehold(), { wrapper });
+  it('calculates privacy-aware reconciliation true-up suggestions and snapshots a period', async () => {
+    const { result } = await renderHouseholdHook();
 
     act(() => {
       result.current.createHousehold({ name: 'Reconcile Household' });

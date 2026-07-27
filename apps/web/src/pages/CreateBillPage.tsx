@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDatabase } from '../db/DatabaseProvider';
-import { queryOne, type Row } from '../db/sqlite-wasm';
+import type { Row } from '../db/sqlite-wasm';
 import { useBills } from '../hooks';
 import type { BillFrequency } from '../kmp/bridge';
 import type { CreateBillInput } from '../db/repositories/bills';
@@ -19,9 +19,8 @@ import { Checkbox } from '../components/common/Checkbox';
 import { dollarsToCents, minorUnitStep, normalizeAmountInputValue } from '../lib/currency';
 
 /** Resolve the first available household ID from the local database. */
-function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): string | null {
-  const row = queryOne<Row>(
-    db,
+async function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): Promise<string | null> {
+  const row = await db.getOptional<Row>(
     'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   if (row && typeof row.id === 'string') {
@@ -100,7 +99,7 @@ export const CreateBillPage: React.FC = () => {
   }, []);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       setSubmitError(null);
 
@@ -114,7 +113,7 @@ export const CreateBillPage: React.FC = () => {
       setSubmitting(true);
 
       try {
-        const householdId = getFirstHouseholdId(db);
+        const householdId = await getFirstHouseholdId(db);
         if (!householdId) {
           setSubmitError('No household found. Please create a household before adding bills.');
           setSubmitting(false);
@@ -133,7 +132,7 @@ export const CreateBillPage: React.FC = () => {
           note: note.trim() || null,
         };
 
-        const created = createBill(input);
+        const created = await createBill(input);
         if (created) {
           navigate('/bills');
         } else {

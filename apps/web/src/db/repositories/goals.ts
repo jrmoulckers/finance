@@ -2,8 +2,8 @@
 
 import type { Currency, Goal, GoalStatus, SyncId } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import { notifyMilestoneDataChanged } from '../../lib/milestones';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
 import {
   SQLITE_NOW_EXPRESSION,
   mapCents,
@@ -106,21 +106,22 @@ function mapGoal(row: Row): Goal {
 }
 
 /** Return all non-deleted goals ordered by persisted sort order. */
-export function getAllGoals(db: SqliteDb): Goal[] {
-  return query<Row>(
+export async function getAllGoals(db: AsyncDb): Promise<Goal[]> {
+  const { rows } = await query<Row>(
     db,
     `${GOAL_BASE_QUERY} ORDER BY sort_order ASC, (target_date IS NULL) ASC, target_date ASC, name ASC`,
-  ).rows.map(mapGoal);
+  );
+  return rows.map(mapGoal);
 }
 
 /** Find a single non-deleted goal by its identifier. */
-export function getGoalById(db: SqliteDb, goalId: SyncId): Goal | null {
-  const row = queryOne<Row>(db, `${GOAL_BASE_QUERY} AND id = ?`, [goalId]);
+export async function getGoalById(db: AsyncDb, goalId: SyncId): Promise<Goal | null> {
+  const row = await queryOne<Row>(db, `${GOAL_BASE_QUERY} AND id = ?`, [goalId]);
   return row ? mapGoal(row) : null;
 }
 
 /** Insert a new goal row and return the created goal. */
-export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
+export async function createGoal(db: AsyncDb, input: CreateGoalInput): Promise<Goal> {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
   const sortOrder = input.sortOrder ?? 0;
@@ -133,7 +134,7 @@ export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
   const status =
     input.status ?? (targetAmount > 0 && currentAmount >= targetAmount ? 'COMPLETED' : 'ACTIVE');
 
-  execute(
+  await execute(
     db,
     `INSERT INTO goal (
       id,
@@ -179,7 +180,7 @@ export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
     ],
   );
 
-  const createdGoal = getGoalById(db, id);
+  const createdGoal = await getGoalById(db, id);
   if (!createdGoal) {
     throw new Error('Failed to create goal.');
   }
@@ -189,8 +190,12 @@ export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
 }
 
 /** Update a goal row and return the refreshed goal. */
-export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInput): Goal | null {
-  const existingGoal = getGoalById(db, goalId);
+export async function updateGoal(
+  db: AsyncDb,
+  goalId: SyncId,
+  updates: UpdateGoalInput,
+): Promise<Goal | null> {
+  const existingGoal = await getGoalById(db, goalId);
   if (!existingGoal) {
     return null;
   }
@@ -210,7 +215,7 @@ export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInpu
     sortOrder: updates.sortOrder ?? existingGoal.sortOrder ?? 0,
   };
 
-  execute(
+  await execute(
     db,
     `UPDATE goal
         SET household_id = ?,
@@ -247,7 +252,7 @@ export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInpu
     ],
   );
 
-  const updatedGoal = getGoalById(db, goalId);
+  const updatedGoal = await getGoalById(db, goalId);
   if (updatedGoal) {
     notifyMilestoneDataChanged();
   }
@@ -263,12 +268,12 @@ export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInpu
  * saved, and a goal that drops back below its target is reverted from
  * `COMPLETED` to `ACTIVE`.
  */
-export function contributeToGoal(
-  db: SqliteDb,
+export async function contributeToGoal(
+  db: AsyncDb,
   goalId: SyncId,
   input: GoalContributionInput,
-): Goal | null {
-  const existingGoal = getGoalById(db, goalId);
+): Promise<Goal | null> {
+  const existingGoal = await getGoalById(db, goalId);
   if (!existingGoal) {
     return null;
   }
@@ -291,7 +296,7 @@ export function contributeToGoal(
 
   const contributionId = crypto.randomUUID();
 
-  execute(
+  await execute(
     db,
     `UPDATE goal
         SET current_amount = ?,
@@ -304,7 +309,7 @@ export function contributeToGoal(
     [nextCurrentAmount, nextStatus, goalId],
   );
 
-  execute(
+  await execute(
     db,
     `INSERT INTO goal_progress_contribution (
       id,
@@ -338,7 +343,7 @@ export function contributeToGoal(
     ],
   );
 
-  const updatedGoal = getGoalById(db, goalId);
+  const updatedGoal = await getGoalById(db, goalId);
   if (updatedGoal) {
     notifyMilestoneDataChanged();
   }
@@ -346,9 +351,9 @@ export function contributeToGoal(
   return updatedGoal;
 }
 
-export function reorderGoals(db: SqliteDb, orderedGoalIds: readonly SyncId[]): void {
+export async function reorderGoals(db: AsyncDb, orderedGoalIds: readonly SyncId[]): Promise<void> {
   for (const [sortOrder, goalId] of orderedGoalIds.entries()) {
-    execute(
+    await execute(
       db,
       `UPDATE goal
           SET sort_order = ?,
@@ -363,13 +368,13 @@ export function reorderGoals(db: SqliteDb, orderedGoalIds: readonly SyncId[]): v
 }
 
 /** Soft-delete a goal row by marking its deleted timestamp. */
-export function deleteGoal(db: SqliteDb, goalId: SyncId): boolean {
-  const existingGoal = getGoalById(db, goalId);
+export async function deleteGoal(db: AsyncDb, goalId: SyncId): Promise<boolean> {
+  const existingGoal = await getGoalById(db, goalId);
   if (!existingGoal) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE goal
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -386,21 +391,23 @@ export function deleteGoal(db: SqliteDb, goalId: SyncId): boolean {
 }
 
 /** Return goals that are currently active. */
-export function getActiveGoals(db: SqliteDb): Goal[] {
-  return query<Row>(
+export async function getActiveGoals(db: AsyncDb): Promise<Goal[]> {
+  const { rows } = await query<Row>(
     db,
     `${GOAL_BASE_QUERY} AND status = ? ORDER BY sort_order ASC, (target_date IS NULL) ASC, target_date ASC, name ASC`,
     ['ACTIVE'],
-  ).rows.map(mapGoal);
+  );
+  return rows.map(mapGoal);
 }
 
 /** Return goals that have been completed. */
-export function getCompletedGoals(db: SqliteDb): Goal[] {
-  return query<Row>(
+export async function getCompletedGoals(db: AsyncDb): Promise<Goal[]> {
+  const { rows } = await query<Row>(
     db,
     `${GOAL_BASE_QUERY} AND status = ? ORDER BY sort_order ASC, updated_at DESC, name ASC`,
     ['COMPLETED'],
-  ).rows.map(mapGoal);
+  );
+  return rows.map(mapGoal);
 }
 
 /**
@@ -413,11 +420,11 @@ export function getCompletedGoals(db: SqliteDb): Goal[] {
  * rather than fabricating a single lump-sum contribution from the goal's
  * current balance (#3381).
  */
-export function getGoalProgressContributions(
-  db: SqliteDb,
+export async function getGoalProgressContributions(
+  db: AsyncDb,
   goalId: SyncId,
-): GoalContributionRecord[] {
-  const rows = query<Row>(
+): Promise<GoalContributionRecord[]> {
+  const { rows } = await query<Row>(
     db,
     `SELECT amount, contributed_at
        FROM goal_progress_contribution
@@ -425,7 +432,7 @@ export function getGoalProgressContributions(
         AND deleted_at IS NULL
       ORDER BY contributed_at ASC, created_at ASC`,
     [goalId],
-  ).rows;
+  );
 
   let runningTotalCents = 0;
   return rows.map((row) => {

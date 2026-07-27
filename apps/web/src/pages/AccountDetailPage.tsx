@@ -550,7 +550,7 @@ export const AccountDetailPage: React.FC = () => {
         initialData={account}
         onCancel={handleCloseForm}
         onSubmit={async (data) => {
-          const updated = updateAccount(account.id, {
+          const updated = await updateAccount(account.id, {
             householdId: account.householdId,
             name: data.name,
             type: data.type,
@@ -573,10 +573,10 @@ export const AccountDetailPage: React.FC = () => {
         accountName={deletingAccount?.name ?? ''}
         transactionCount={allAccountTransactions.length}
         onCancel={() => setDeletingAccount(null)}
-        onConfirm={(_deleteTransactions) => {
+        onConfirm={async (_deleteTransactions) => {
           if (deletingAccount === null) return;
           // TODO: If _deleteTransactions is true, cascade delete via hook
-          const deleted = deleteAccount(deletingAccount.id);
+          const deleted = await deleteAccount(deletingAccount.id);
           if (deleted) {
             setDeletingAccount(null);
             navigate('/accounts', { replace: true });

@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { InvoicesPage } from './InvoicesPage';
 import type { Invoice } from '../lib/analytics/invoices';
@@ -64,7 +64,7 @@ function mockAccounts(accounts: Account[]): void {
   });
 }
 
-function mockTransactions(createTransaction = vi.fn(() => SAMPLE_TRANSACTION)) {
+function mockTransactions(createTransaction = vi.fn().mockResolvedValue(SAMPLE_TRANSACTION)) {
   mockedUseTransactions.mockReturnValue({
     transactions: [],
     loading: false,
@@ -150,7 +150,7 @@ describe('InvoicesPage', () => {
     expect(deleteInvoice).toHaveBeenCalledWith('inv-1');
   });
 
-  it('records a payment through the payment dialog and books a linked cash inflow', () => {
+  it('records a payment through the payment dialog and books a linked cash inflow', async () => {
     const recordPayment = vi.fn();
     const createTransaction = mockTransactions();
     mockedUseInvoices.mockReturnValue({
@@ -178,26 +178,30 @@ describe('InvoicesPage', () => {
     fireEvent.change(screen.getByLabelText('Payment amount'), { target: { value: '500.00' } });
     fireEvent.click(screen.getByRole('button', { name: 'Record payment' }));
 
-    // A cash-inflow (INCOME) transaction is booked against the chosen account.
-    expect(createTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        accountId: 'acc-1',
-        householdId: 'hh-1',
-        type: 'INCOME',
-        amount: { amount: 50_000 },
-        currency: { code: 'USD', decimalPlaces: 2 },
-      }),
-    );
-    // The invoice payment is linked to the account and the created transaction.
-    expect(recordPayment).toHaveBeenCalledWith(
-      'inv-1',
-      50_000,
-      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-      { accountId: 'acc-1', transactionId: 'txn-1' },
-    );
+    // createTransaction is awaited inside the async submit handler, so the linked
+    // cash inflow and recorded payment settle on a later microtask (#3266).
+    await waitFor(() => {
+      // A cash-inflow (INCOME) transaction is booked against the chosen account.
+      expect(createTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId: 'acc-1',
+          householdId: 'hh-1',
+          type: 'INCOME',
+          amount: { amount: 50_000 },
+          currency: { code: 'USD', decimalPlaces: 2 },
+        }),
+      );
+      // The invoice payment is linked to the account and the created transaction.
+      expect(recordPayment).toHaveBeenCalledWith(
+        'inv-1',
+        50_000,
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        { accountId: 'acc-1', transactionId: 'txn-1' },
+      );
+    });
   });
 
-  it('routes a "Paid" status selection through the payment dialog to book the inflow', () => {
+  it('routes a "Paid" status selection through the payment dialog to book the inflow', async () => {
     const recordPayment = vi.fn();
     const updateInvoiceStatus = vi.fn();
     const createTransaction = mockTransactions();
@@ -231,15 +235,19 @@ describe('InvoicesPage', () => {
     fireEvent.change(screen.getByLabelText('Payment amount'), { target: { value: '1200.00' } });
     fireEvent.click(screen.getByRole('button', { name: 'Record payment' }));
 
-    expect(createTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'INCOME', amount: { amount: 120_000 } }),
-    );
-    expect(recordPayment).toHaveBeenCalledWith(
-      'inv-1',
-      120_000,
-      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-      { accountId: 'acc-1', transactionId: 'txn-1' },
-    );
+    // createTransaction is awaited inside the async submit handler, so the booked
+    // inflow and recorded payment settle on a later microtask (#3266).
+    await waitFor(() => {
+      expect(createTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'INCOME', amount: { amount: 120_000 } }),
+      );
+      expect(recordPayment).toHaveBeenCalledWith(
+        'inv-1',
+        120_000,
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        { accountId: 'acc-1', transactionId: 'txn-1' },
+      );
+    });
   });
 
   it('summarizes progress on a partially paid invoice and hides payment on drafts', () => {

@@ -45,17 +45,17 @@ export interface UseInvoicesResult {
   pipelineGroups: InvoicePipelineGroup[];
   forecastBuckets: ForecastBucket[];
   totalOutstandingCents: number;
-  addInvoice: (input: CreateInvoiceInput) => Invoice;
-  updateInvoice: (invoiceId: string, input: UpdateInvoiceInput) => void;
-  updateInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => void;
-  logInvoiceContact: (invoiceId: string) => void;
+  addInvoice: (input: CreateInvoiceInput) => Promise<Invoice>;
+  updateInvoice: (invoiceId: string, input: UpdateInvoiceInput) => Promise<void>;
+  updateInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => Promise<void>;
+  logInvoiceContact: (invoiceId: string) => Promise<void>;
   recordPayment: (
     invoiceId: string,
     paymentCents: number,
     paidDate?: string,
     link?: InvoicePaymentLink,
-  ) => void;
-  deleteInvoice: (invoiceId: string) => void;
+  ) => Promise<void>;
+  deleteInvoice: (invoiceId: string) => Promise<void>;
   refresh: () => void;
 }
 
@@ -84,14 +84,16 @@ export function useInvoices(): UseInvoicesResult {
   useEffect(() => {
     const currentDate = todayIsoDate();
     setToday(currentDate);
-    try {
-      // One-time migration of any records left in the pre-#3273 localStorage
-      // store, then read the durable list back from the database.
-      importLegacyInvoices(db);
-      setInvoices(normalizeInvoiceStatuses(getAllInvoices(db), currentDate));
-    } catch {
-      setInvoices([]);
-    }
+    void (async () => {
+      try {
+        // One-time migration of any records left in the pre-#3273 localStorage
+        // store, then read the durable list back from the database.
+        await importLegacyInvoices(db);
+        setInvoices(normalizeInvoiceStatuses(await getAllInvoices(db), currentDate));
+      } catch {
+        setInvoices([]);
+      }
+    })();
   }, [db, refreshToken]);
 
   const refresh = useCallback(() => {
@@ -99,10 +101,10 @@ export function useInvoices(): UseInvoicesResult {
   }, []);
 
   const addInvoice = useCallback(
-    (input: CreateInvoiceInput): Invoice => {
+    async (input: CreateInvoiceInput): Promise<Invoice> => {
       const invoice = createInvoice(input, new Date().toISOString(), makeId());
       try {
-        insertInvoice(db, invoice);
+        await insertInvoice(db, invoice);
         refresh();
       } catch {
         // Non-throwing convention: return the computed invoice even if the
@@ -114,11 +116,11 @@ export function useInvoices(): UseInvoicesResult {
   );
 
   const updateInvoice = useCallback(
-    (invoiceId: string, input: UpdateInvoiceInput) => {
+    async (invoiceId: string, input: UpdateInvoiceInput): Promise<void> => {
       try {
-        const existing = getInvoiceById(db, invoiceId);
+        const existing = await getInvoiceById(db, invoiceId);
         if (!existing) return;
-        updateInvoiceRecord(db, applyInvoiceEdit(existing, input, new Date().toISOString()));
+        await updateInvoiceRecord(db, applyInvoiceEdit(existing, input, new Date().toISOString()));
         refresh();
       } catch {
         // Swallow — the invoices surface has no error channel.
@@ -128,11 +130,11 @@ export function useInvoices(): UseInvoicesResult {
   );
 
   const updateInvoiceStatus = useCallback(
-    (invoiceId: string, status: InvoiceStatus) => {
+    async (invoiceId: string, status: InvoiceStatus): Promise<void> => {
       try {
-        const existing = getInvoiceById(db, invoiceId);
+        const existing = await getInvoiceById(db, invoiceId);
         if (!existing) return;
-        updateInvoiceRecord(db, { ...existing, status, updatedAt: new Date().toISOString() });
+        await updateInvoiceRecord(db, { ...existing, status, updatedAt: new Date().toISOString() });
         refresh();
       } catch {
         // Swallow — the invoices surface has no error channel.
@@ -142,9 +144,9 @@ export function useInvoices(): UseInvoicesResult {
   );
 
   const deleteInvoice = useCallback(
-    (invoiceId: string) => {
+    async (invoiceId: string): Promise<void> => {
       try {
-        deleteInvoiceRecord(db, invoiceId);
+        await deleteInvoiceRecord(db, invoiceId);
         refresh();
       } catch {
         // Swallow — the invoices surface has no error channel.
@@ -154,11 +156,11 @@ export function useInvoices(): UseInvoicesResult {
   );
 
   const logInvoiceContact = useCallback(
-    (invoiceId: string) => {
+    async (invoiceId: string): Promise<void> => {
       try {
-        const existing = getInvoiceById(db, invoiceId);
+        const existing = await getInvoiceById(db, invoiceId);
         if (!existing) return;
-        updateInvoiceRecord(
+        await updateInvoiceRecord(
           db,
           recordInvoiceContact(existing, todayIsoDate(), new Date().toISOString()),
         );
@@ -171,12 +173,17 @@ export function useInvoices(): UseInvoicesResult {
   );
 
   const recordPayment = useCallback(
-    (invoiceId: string, paymentCents: number, paidDate?: string, link?: InvoicePaymentLink) => {
+    async (
+      invoiceId: string,
+      paymentCents: number,
+      paidDate?: string,
+      link?: InvoicePaymentLink,
+    ): Promise<void> => {
       try {
-        const existing = getInvoiceById(db, invoiceId);
+        const existing = await getInvoiceById(db, invoiceId);
         if (!existing) return;
         const currentDate = todayIsoDate();
-        updateInvoiceRecord(
+        await updateInvoiceRecord(
           db,
           recordInvoicePayment(
             existing,

@@ -179,11 +179,20 @@ export function useAccountDeletion(): {
 
   useEffect(() => {
     if (!isOpen) return;
-    try {
-      setHouseholdImpact(getHouseholdDeletionImpact(db, user?.id));
-    } catch {
-      setHouseholdImpact({ soloOwnedHouseholds: 0, memberHouseholds: 0, pendingInvites: 0 });
-    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const impact = await getHouseholdDeletionImpact(db, user?.id);
+        if (!cancelled) setHouseholdImpact(impact);
+      } catch {
+        if (!cancelled) {
+          setHouseholdImpact({ soloOwnedHouseholds: 0, memberHouseholds: 0, pendingInvites: 0 });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [db, isOpen, user?.id]);
 
   const handleAccountDelete = useCallback(async () => {

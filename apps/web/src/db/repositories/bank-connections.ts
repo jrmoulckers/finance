@@ -15,7 +15,7 @@
  * @module db/repositories/bank-connections
  */
 
-import { query, type Row, type SqliteDb } from '../sqlite-wasm';
+import { query, type AsyncDb, type Row } from '../async-db';
 import { optionalString, requireNumber, requireString, toBoolean } from './helpers';
 
 // ---------------------------------------------------------------------------
@@ -299,8 +299,9 @@ function mapAggregatorProvider(row: Row): AggregatorProvider {
  * @param db - The local SQLite database.
  * @returns One {@link BankConnectionHealth} per non-deleted connection.
  */
-export function listBankConnectionHealth(db: SqliteDb): BankConnectionHealth[] {
-  return query(db, CONNECTION_HEALTH_QUERY).rows.map(mapConnectionHealth);
+export async function listBankConnectionHealth(db: AsyncDb): Promise<BankConnectionHealth[]> {
+  const { rows } = await query(db, CONNECTION_HEALTH_QUERY);
+  return rows.map(mapConnectionHealth);
 }
 
 /**
@@ -309,15 +310,16 @@ export function listBankConnectionHealth(db: SqliteDb): BankConnectionHealth[] {
  * @param db - The local SQLite database.
  * @returns The enabled, non-deleted {@link AggregatorProvider} entries.
  */
-export function listAggregatorProviders(db: SqliteDb): AggregatorProvider[] {
-  return query(
+export async function listAggregatorProviders(db: AsyncDb): Promise<AggregatorProvider[]> {
+  const { rows } = await query(
     db,
     `SELECT id, name, display_name, provider_type, status, health_score,
             priority, is_enabled, supported_regions, capabilities
      FROM aggregator_provider
      WHERE deleted_at IS NULL
      ORDER BY priority ASC, name ASC`,
-  ).rows.map(mapAggregatorProvider);
+  );
+  return rows.map(mapAggregatorProvider);
 }
 
 /**
@@ -328,12 +330,12 @@ export function listAggregatorProviders(db: SqliteDb): AggregatorProvider[] {
  * @param limit - Maximum number of events to return. @default 100
  * @returns The connection's {@link HealthHistoryEvent}s, newest first.
  */
-export function listHealthHistory(
-  db: SqliteDb,
+export async function listHealthHistory(
+  db: AsyncDb,
   connectionId: string,
   limit = 100,
-): HealthHistoryEvent[] {
-  return query(
+): Promise<HealthHistoryEvent[]> {
+  const { rows } = await query(
     db,
     `SELECT id, status, error_category, error_detail, staleness_minutes,
             resolved_at, resolution_action, created_at
@@ -342,5 +344,6 @@ export function listHealthHistory(
      ORDER BY created_at DESC
      LIMIT ?`,
     [connectionId, limit],
-  ).rows.map(mapHealthHistory);
+  );
+  return rows.map(mapHealthHistory);
 }

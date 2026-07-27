@@ -16,13 +16,13 @@
  * with focus moved to the heading on each state change.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FC, FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useHousehold } from '../hooks/useHousehold';
 import type { AcceptInvitationResult } from '../hooks/useHousehold';
-import type { HouseholdRole } from '../kmp/bridge';
+import type { HouseholdInvitation, HouseholdRole } from '../kmp/bridge';
 import '../styles/auth.css';
 import '../styles/invite.css';
 
@@ -75,19 +75,41 @@ export const AcceptInvitePage: FC = () => {
   const [pastedCode, setPastedCode] = useState('');
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  const invitation = useMemo(
-    () => (code ? getInvitationByCode(code) : null),
-    [code, getInvitationByCode],
-  );
+  // The invitation lookup is async under the AsyncDb data layer, so it is
+  // resolved into state via an effect. `undefined` marks "not resolved yet"
+  // (keep showing the checking state) and is distinct from `null` ("resolved:
+  // no matching invitation"), so we never flash a not-found message mid-load.
+  const [invitation, setInvitation] = useState<HouseholdInvitation | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!code) {
+      setInvitation(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const found = await getInvitationByCode(code);
+        if (!cancelled) setInvitation(found);
+      } catch {
+        if (!cancelled) setInvitation(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [code, getInvitationByCode]);
 
   // Move focus to the heading whenever the rendered state changes so keyboard
   // and screen-reader users always land on the new message.
   useEffect(() => {
     headingRef.current?.focus();
-  }, [code, result, loading]);
+  }, [code, result, loading, invitation]);
 
   const handleAccept = useCallback(() => {
-    setResult(acceptInvitation(code));
+    void (async () => {
+      setResult(await acceptInvitation(code));
+    })();
   }, [acceptInvitation, code]);
 
   const handlePasteSubmit = useCallback(
@@ -102,7 +124,7 @@ export const AcceptInvitePage: FC = () => {
   );
 
   const householdName =
-    invitation && household?.id === invitation.householdId ? household.name : null;
+    invitation && household && household.id === invitation.householdId ? household.name : null;
 
   const renderCard = (title: string, body: ReactNode) => (
     <main className="auth-page">
@@ -157,7 +179,7 @@ export const AcceptInvitePage: FC = () => {
   }
 
   // --- Still loading the store: avoid flashing "not found" before it settles ---
-  if (loading && !result) {
+  if ((loading || invitation === undefined) && !result) {
     return renderCard(
       'Checking your invitation…',
       <p className="auth-brand__tagline" role="status">

@@ -3,16 +3,16 @@
 /**
  * Tests for the remittance persistence repository (issue #3273).
  *
- * Mocks `../sqlite-wasm` (and the household helper) and asserts the SQL /
+ * Mocks `../async-db` (and the household helper) and asserts the SQL /
  * parameters, the row → {@link RemittanceRecord} mapping (nested recipient,
  * nullable reference rate), soft-delete, and the one-time localStorage →
  * database migration.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { Row, AsyncDb } from '../async-db';
 
-vi.mock('../sqlite-wasm', () => ({
+vi.mock('../async-db', () => ({
   execute: vi.fn(),
   query: vi.fn(),
   queryOne: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock('./household', () => ({
   getPrimaryHouseholdId: vi.fn(),
 }));
 
-import { execute, query, queryOne } from '../sqlite-wasm';
+import { execute, query, queryOne } from '../async-db';
 import { getPrimaryHouseholdId } from './household';
 import {
   deleteRemittanceRecord,
@@ -37,7 +37,7 @@ const mockQuery = vi.mocked(query);
 const mockQueryOne = vi.mocked(queryOne);
 const mockGetPrimaryHouseholdId = vi.mocked(getPrimaryHouseholdId);
 
-const mockDb = {} as SqliteDb;
+const mockDb = {} as AsyncDb;
 
 function remittanceRow(overrides: Partial<Row> = {}): Row {
   return {
@@ -88,21 +88,20 @@ function baseRemittance(overrides: Partial<RemittanceRecord> = {}): RemittanceRe
 function useInMemoryRemittanceTable(seed: Row[] = []): Map<string, Row> {
   const table = new Map<string, Row>(seed.map((row) => [String(row.id), row]));
 
-  mockExecute.mockImplementation((_db, sql, params) => {
+  mockExecute.mockImplementation(async (_db, sql, params) => {
     const text = String(sql);
     if (text.includes('INSERT INTO remittance')) {
       const id = String((params as unknown[])?.[0]);
       table.set(id, remittanceRow({ id }));
     }
-    return { rowsAffected: 1 };
   });
 
-  mockQueryOne.mockImplementation((_db, _sql, params) => {
+  mockQueryOne.mockImplementation(async (_db, _sql, params) => {
     const id = String((params as unknown[])?.[0]);
     return table.get(id) ?? null;
   });
 
-  mockQuery.mockImplementation(() => ({ columns: [], rows: [...table.values()] }));
+  mockQuery.mockImplementation(async () => ({ columns: [], rows: [...table.values()] }));
 
   return table;
 }
@@ -110,14 +109,14 @@ function useInMemoryRemittanceTable(seed: Row[] = []): Map<string, Row> {
 describe('remittances repository', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetPrimaryHouseholdId.mockReturnValue('hh-1');
+    mockGetPrimaryHouseholdId.mockResolvedValue('hh-1');
     globalThis.localStorage?.clear();
   });
 
-  it('maps a row to the RemittanceRecord domain shape with a nested recipient', () => {
-    mockQuery.mockReturnValue({ columns: [], rows: [remittanceRow()] });
+  it('maps a row to the RemittanceRecord domain shape with a nested recipient', async () => {
+    mockQuery.mockResolvedValue({ columns: [], rows: [remittanceRow()] });
 
-    const [record] = getAllRemittances(mockDb);
+    const [record] = await getAllRemittances(mockDb);
 
     expect(record).toEqual({
       id: 'rem-1',
@@ -136,22 +135,22 @@ describe('remittances repository', () => {
     });
   });
 
-  it('maps a null reference rate and note back to null', () => {
-    mockQuery.mockReturnValue({
+  it('maps a null reference rate and note back to null', async () => {
+    mockQuery.mockResolvedValue({
       columns: [],
       rows: [remittanceRow({ reference_rate: null, note: null })],
     });
 
-    const [record] = getAllRemittances(mockDb);
+    const [record] = await getAllRemittances(mockDb);
 
     expect(record.referenceRate).toBeNull();
     expect(record.note).toBeNull();
   });
 
-  it('inserts a remittance with the resolved household and split recipient columns', () => {
+  it('inserts a remittance with the resolved household and split recipient columns', async () => {
     useInMemoryRemittanceTable();
 
-    const created = insertRemittance(mockDb, baseRemittance());
+    const created = await insertRemittance(mockDb, baseRemittance());
 
     expect(mockGetPrimaryHouseholdId).toHaveBeenCalledWith(mockDb);
     const [, sql, params] = mockExecute.mock.calls[0];
@@ -178,33 +177,33 @@ describe('remittances repository', () => {
     expect(created.id).toBe('rem-1');
   });
 
-  it('stores a null household when no household exists yet', () => {
-    mockGetPrimaryHouseholdId.mockReturnValue(null);
+  it('stores a null household when no household exists yet', async () => {
+    mockGetPrimaryHouseholdId.mockResolvedValue(null);
     useInMemoryRemittanceTable();
 
-    insertRemittance(mockDb, baseRemittance());
+    await insertRemittance(mockDb, baseRemittance());
 
     expect(mockExecute.mock.calls[0][2]?.[1]).toBeNull();
   });
 
-  it('soft-deletes a remittance by marking deleted_at', () => {
+  it('soft-deletes a remittance by marking deleted_at', async () => {
     useInMemoryRemittanceTable([remittanceRow()]);
 
-    expect(deleteRemittanceRecord(mockDb, 'rem-1')).toBe(true);
+    expect(await deleteRemittanceRecord(mockDb, 'rem-1')).toBe(true);
     const updateCall = mockExecute.mock.calls.find(([, sql]) =>
       String(sql).includes('UPDATE remittance'),
     );
     expect(updateCall?.[1]).toContain('deleted_at =');
   });
 
-  it('returns false when deleting a remittance that does not exist', () => {
-    mockQueryOne.mockReturnValue(null);
+  it('returns false when deleting a remittance that does not exist', async () => {
+    mockQueryOne.mockResolvedValue(null);
 
-    expect(deleteRemittanceRecord(mockDb, 'missing')).toBe(false);
+    expect(await deleteRemittanceRecord(mockDb, 'missing')).toBe(false);
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
-  it('imports legacy localStorage remittances into the database and clears the key', () => {
+  it('imports legacy localStorage remittances into the database and clears the key', async () => {
     globalThis.localStorage.setItem(
       'finance-remittances',
       JSON.stringify([
@@ -214,7 +213,7 @@ describe('remittances repository', () => {
     );
     useInMemoryRemittanceTable();
 
-    const imported = importLegacyRemittances(mockDb);
+    const imported = await importLegacyRemittances(mockDb);
 
     expect(imported).toBe(2);
     expect(globalThis.localStorage.getItem('finance-remittances')).toBeNull();
@@ -224,24 +223,24 @@ describe('remittances repository', () => {
     expect(insertCalls).toHaveLength(2);
   });
 
-  it('skips legacy records whose id already exists (idempotent re-import)', () => {
+  it('skips legacy records whose id already exists (idempotent re-import)', async () => {
     globalThis.localStorage.setItem(
       'finance-remittances',
       JSON.stringify([baseRemittance({ id: 'existing' })]),
     );
     useInMemoryRemittanceTable([remittanceRow({ id: 'existing' })]);
 
-    expect(importLegacyRemittances(mockDb)).toBe(0);
+    expect(await importLegacyRemittances(mockDb)).toBe(0);
     const insertCalls = mockExecute.mock.calls.filter(([, sql]) =>
       String(sql).includes('INSERT INTO remittance'),
     );
     expect(insertCalls).toHaveLength(0);
   });
 
-  it('returns 0 and writes nothing when there is no legacy data', () => {
+  it('returns 0 and writes nothing when there is no legacy data', async () => {
     useInMemoryRemittanceTable();
 
-    expect(importLegacyRemittances(mockDb)).toBe(0);
+    expect(await importLegacyRemittances(mockDb)).toBe(0);
     expect(mockExecute).not.toHaveBeenCalled();
   });
 });

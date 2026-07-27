@@ -14,12 +14,15 @@ import {
   type StorageDiagnostics,
   type StorageErrorCode,
 } from './sqlite-wasm';
+import { createSqliteAsyncDb, type AsyncDb } from './async-db';
+import { createPowerSyncAsyncDb } from './sync/powersync/async-adapter';
+import { connectPowerSync, isPowerSyncEnabled } from './sync/powersync/database';
 import '../styles/pages.css';
 
 /** Context value providing the database instance and diagnostics. */
 export interface DatabaseContextValue {
-  /** The initialised SQLite-WASM database instance. */
-  db: SqliteDb;
+  /** The active asynchronous database (local SQLite or live PowerSync). */
+  db: AsyncDb;
   /** Storage diagnostics from initialisation. */
   diagnostics: StorageDiagnostics;
 }
@@ -299,10 +302,20 @@ function createE2eStubDb(): SqliteDb {
 }
 
 const E2E_STUB_DB: SqliteDb = createE2eStubDb();
+const E2E_STUB_ASYNC_DB: AsyncDb = createSqliteAsyncDb(E2E_STUB_DB);
 
 const E2E_STUB_DIAGNOSTICS: StorageDiagnostics = {
   backend: 'indexeddb',
   opfsAvailable: false,
+  didFallback: false,
+  quotaBytes: null,
+  usageBytes: null,
+};
+
+/** Synthetic diagnostics describing the live PowerSync store (OPFS-backed). */
+const POWERSYNC_DIAGNOSTICS: StorageDiagnostics = {
+  backend: 'opfs',
+  opfsAvailable: true,
   didFallback: false,
   quotaBytes: null,
   usageBytes: null,
@@ -317,7 +330,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   );
 
   const [ctxValue, setCtxValue] = useState<DatabaseContextValue | null>(
-    isE2E ? { db: E2E_STUB_DB, diagnostics: E2E_STUB_DIAGNOSTICS } : null,
+    isE2E ? { db: E2E_STUB_ASYNC_DB, diagnostics: E2E_STUB_DIAGNOSTICS } : null,
   );
   const [isLoading, setIsLoading] = useState(!isE2E);
   const [initError, setInitError] = useState<InitError | null>(null);
@@ -377,6 +390,31 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
       setCtxValue(null);
 
       try {
+        // Live PowerSync path (flag ON). Falls back to the local SQLite store
+        // when the client is disabled or not fully configured, so the app still
+        // boots offline.
+        if (isPowerSyncEnabled()) {
+          try {
+            const powerSyncDb = await connectPowerSync();
+            if (powerSyncDb) {
+              if (isDisposed) {
+                return;
+              }
+              setCtxValue({
+                db: createPowerSyncAsyncDb(powerSyncDb),
+                diagnostics: POWERSYNC_DIAGNOSTICS,
+              });
+              return;
+            }
+          } catch (powerSyncError) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              '[db] PowerSync connect failed; falling back to the local store.',
+              powerSyncError,
+            );
+          }
+        }
+
         const result = await initDatabaseWithDiagnostics();
 
         try {
@@ -397,7 +435,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
           return;
         }
 
-        setCtxValue({ db: result.db, diagnostics: result.diagnostics });
+        setCtxValue({ db: createSqliteAsyncDb(result.db), diagnostics: result.diagnostics });
       } catch (initializationError) {
         if (!isDisposed) {
           setInitError(toInitError(initializationError));
@@ -460,8 +498,8 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   return <DatabaseContext.Provider value={ctxValue}>{children}</DatabaseContext.Provider>;
 }
 
-/** Access the shared SQLite-WASM database instance from React context. */
-export function useDatabase(): SqliteDb {
+/** Access the shared asynchronous database instance from React context. */
+export function useDatabase(): AsyncDb {
   const context = useContext(DatabaseContext);
   if (!context) {
     throw new Error('useDatabase must be used within a DatabaseProvider');

@@ -29,14 +29,15 @@
  */
 
 import {
+  beginSavepoint,
   execute,
   query,
   queryOne,
   releaseSavepoint,
   rollbackToSavepoint,
+  type AsyncDb,
   type Row,
-  type SqliteDb,
-} from '../sqlite-wasm';
+} from '../async-db';
 
 // ---------------------------------------------------------------------------
 // Storage-key → table mapping
@@ -146,13 +147,13 @@ function parseRows<T>(rows: Row[]): T[] {
 // Reads
 // ---------------------------------------------------------------------------
 
-function readCollection<T>(db: SqliteDb, table: string): T[] {
-  const result = query<Row>(db, `SELECT data FROM ${table} ORDER BY rowid ASC`);
+async function readCollection<T>(db: AsyncDb, table: string): Promise<T[]> {
+  const result = await query<Row>(db, `SELECT data FROM ${table} ORDER BY rowid ASC`);
   return parseRows<T>(result.rows);
 }
 
-function readSingleton<T>(db: SqliteDb, table: string): T | null {
-  const row = queryOne<Row>(db, `SELECT data FROM ${table} ORDER BY rowid ASC LIMIT 1`);
+async function readSingleton<T>(db: AsyncDb, table: string): Promise<T | null> {
+  const row = await queryOne<Row>(db, `SELECT data FROM ${table} ORDER BY rowid ASC LIMIT 1`);
   if (!row || typeof row.data !== 'string') {
     return null;
   }
@@ -164,8 +165,8 @@ function readSingleton<T>(db: SqliteDb, table: string): T | null {
 }
 
 /** Look up the id of the persisted household, used as a fallback owner scope. */
-function currentHouseholdId(db: SqliteDb): string {
-  const household = readSingleton<{ id?: unknown }>(db, 'hh_household');
+async function currentHouseholdId(db: AsyncDb): Promise<string> {
+  const household = await readSingleton<{ id?: unknown }>(db, 'hh_household');
   return household && typeof household.id === 'string' ? household.id : 'local';
 }
 
@@ -173,13 +174,13 @@ function currentHouseholdId(db: SqliteDb): string {
  * Read a household value by its storage key. Returns `fallback` when nothing is
  * persisted yet (an empty array for collections, `null` for the singleton).
  */
-export function readHouseholdValue<T>(db: SqliteDb, key: string, fallback: T): T {
+export async function readHouseholdValue<T>(db: AsyncDb, key: string, fallback: T): Promise<T> {
   const table = tableForKey(key);
   if (key === HOUSEHOLD_SINGLETON_KEY) {
-    const value = readSingleton<T>(db, table);
+    const value = await readSingleton<T>(db, table);
     return value ?? fallback;
   }
-  const rows = readCollection<unknown>(db, table);
+  const rows = await readCollection<unknown>(db, table);
   return rows as unknown as T;
 }
 
@@ -190,8 +191,8 @@ export function readHouseholdValue<T>(db: SqliteDb, key: string, fallback: T): T
 const INSERT_COLUMNS =
   '("id","household_id","data","created_at","updated_at","deleted_at","sync_version","is_synced")';
 
-function insertDocument(db: SqliteDb, table: string, columns: DocumentColumns): void {
-  execute(db, `INSERT INTO ${table} ${INSERT_COLUMNS} VALUES (?, ?, ?, ?, ?, ?, ?, ?);`, [
+async function insertDocument(db: AsyncDb, table: string, columns: DocumentColumns): Promise<void> {
+  await execute(db, `INSERT INTO ${table} ${INSERT_COLUMNS} VALUES (?, ?, ?, ?, ?, ?, ?, ?);`, [
     columns.id,
     columns.householdId,
     columns.data,
@@ -212,33 +213,37 @@ function insertDocument(db: SqliteDb, table: string, columns: DocumentColumns): 
  * previous "serialize the whole array" `localStorage` semantics — now durable,
  * encrypted, and sync-ready.
  */
-export function writeHouseholdValue<T>(db: SqliteDb, key: string, value: T): void {
+export async function writeHouseholdValue<T>(db: AsyncDb, key: string, value: T): Promise<void> {
   const table = tableForKey(key);
   const nowIso = new Date().toISOString();
   const savepointName = 'hh_write_collection';
 
-  execute(db, `SAVEPOINT ${savepointName};`);
+  await beginSavepoint(db, savepointName);
   try {
-    execute(db, `DELETE FROM ${table};`);
+    await execute(db, `DELETE FROM ${table};`);
 
     if (key === HOUSEHOLD_SINGLETON_KEY) {
       if (value !== null && value !== undefined) {
         const record = asRecord(value);
         const householdId = typeof record.id === 'string' ? record.id : 'local';
-        insertDocument(db, table, toDocumentColumns(value, 0, householdId, nowIso));
+        await insertDocument(db, table, toDocumentColumns(value, 0, householdId, nowIso));
       }
     } else if (Array.isArray(value)) {
-      const fallbackHouseholdId = currentHouseholdId(db);
-      value.forEach((entity, index) => {
-        insertDocument(db, table, toDocumentColumns(entity, index, fallbackHouseholdId, nowIso));
-      });
+      const fallbackHouseholdId = await currentHouseholdId(db);
+      for (const [index, entity] of value.entries()) {
+        await insertDocument(
+          db,
+          table,
+          toDocumentColumns(entity, index, fallbackHouseholdId, nowIso),
+        );
+      }
     }
 
-    releaseSavepoint(db, savepointName);
+    await releaseSavepoint(db, savepointName);
   } catch (writeError) {
     try {
-      rollbackToSavepoint(db, savepointName);
-      releaseSavepoint(db, savepointName);
+      await rollbackToSavepoint(db, savepointName);
+      await releaseSavepoint(db, savepointName);
     } catch {
       // Preserve the original write error if SQLite already ended the savepoint.
     }

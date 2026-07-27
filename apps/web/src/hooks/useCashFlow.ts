@@ -88,29 +88,33 @@ export function useCashFlow(monthCount = 12): UseCashFlowResult {
     setLoading(true);
     setError(null);
 
-    try {
-      // Date range spanning all months
-      const startDate = `${months[0]}-01`;
-      const lastMonth = months[months.length - 1];
-      const [y, m] = lastMonth.split('-').map(Number);
-      const endOfMonth = new Date(y, m, 0);
-      const endDate = `${y}-${String(m).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+    const load = async () => {
+      try {
+        // Date range spanning all months
+        const startDate = `${months[0]}-01`;
+        const lastMonth = months[months.length - 1];
+        const [y, m] = lastMonth.split('-').map(Number);
+        const endOfMonth = new Date(y, m, 0);
+        const endDate = `${y}-${String(m).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
 
-      const transactions = getTransactionsByDateRange(db, startDate, endDate);
-      const categories = getAllCategories(db);
+        const transactions = await getTransactionsByDateRange(db, startDate, endDate);
+        const categories = await getAllCategories(db);
 
-      const aggs = computeMonthlyAggregates(transactions, months);
-      const sum = computeCashFlowSummary(aggs);
-      const sources = computeIncomeSources(transactions, categories);
+        const aggs = computeMonthlyAggregates(transactions, months);
+        const sum = computeCashFlowSummary(aggs);
+        const sources = computeIncomeSources(transactions, categories);
 
-      setAggregates(aggs);
-      setSummary(sum);
-      setIncomeSources(sources);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to compute cash flow analytics.');
-    } finally {
-      setLoading(false);
-    }
+        setAggregates(aggs);
+        setSummary(sum);
+        setIncomeSources(sources);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to compute cash flow analytics.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, [db, refreshToken, months]);
 
   const exportCsv = useCallback(() => {

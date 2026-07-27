@@ -13,6 +13,7 @@ import {
   type InvestmentExportInput,
 } from '../lib/export/investment-export';
 import type { SqliteDb } from '../db/sqlite-wasm';
+import { createSqliteAsyncDb } from '../db/async-db';
 import { DatabaseContext, type DatabaseContextValue } from '../db/DatabaseProvider';
 import type { Investment, InvestmentLot } from '../kmp/bridge';
 
@@ -215,7 +216,7 @@ describe('DataExport', () => {
   const createTestWrapper = (db: SqliteDb | null) => {
     const contextValue: DatabaseContextValue | null = db
       ? {
-          db,
+          db: createSqliteAsyncDb(db),
           diagnostics: {
             backend: 'indexeddb',
             opfsAvailable: false,

@@ -11,7 +11,7 @@
  */
 
 import type { InvestmentLot, SyncId } from '../../kmp/bridge';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import {
   SQLITE_NOW_EXPRESSION,
   mapCents,
@@ -68,24 +68,30 @@ function mapLot(row: Row): InvestmentLot {
 }
 
 /** Return all non-deleted lots for a specific investment, ordered by purchase date. */
-export function getLotsByInvestment(db: SqliteDb, investmentId: SyncId): InvestmentLot[] {
-  return query<Row>(db, `${LOT_BASE_QUERY} AND investment_id = ? ORDER BY purchase_date ASC`, [
-    investmentId,
-  ]).rows.map(mapLot);
+export async function getLotsByInvestment(
+  db: AsyncDb,
+  investmentId: SyncId,
+): Promise<InvestmentLot[]> {
+  const { rows } = await query<Row>(
+    db,
+    `${LOT_BASE_QUERY} AND investment_id = ? ORDER BY purchase_date ASC`,
+    [investmentId],
+  );
+  return rows.map(mapLot);
 }
 
 /** Find a single non-deleted lot by its identifier. */
-export function getLotById(db: SqliteDb, lotId: SyncId): InvestmentLot | null {
-  const row = queryOne<Row>(db, `${LOT_BASE_QUERY} AND id = ?`, [lotId]);
+export async function getLotById(db: AsyncDb, lotId: SyncId): Promise<InvestmentLot | null> {
+  const row = await queryOne<Row>(db, `${LOT_BASE_QUERY} AND id = ?`, [lotId]);
   return row ? mapLot(row) : null;
 }
 
 /** Insert a new lot row and return the created lot. */
-export function createLot(db: SqliteDb, input: CreateLotInput): InvestmentLot {
+export async function createLot(db: AsyncDb, input: CreateLotInput): Promise<InvestmentLot> {
   const id = crypto.randomUUID();
   const totalCost = Math.round(input.shares * input.costPerShare.amount);
 
-  execute(
+  await execute(
     db,
     `INSERT INTO investment_lot (
       id,
@@ -117,7 +123,7 @@ export function createLot(db: SqliteDb, input: CreateLotInput): InvestmentLot {
     ],
   );
 
-  const created = getLotById(db, id);
+  const created = await getLotById(db, id);
   if (!created) {
     throw new Error('Failed to create investment lot.');
   }
@@ -126,12 +132,12 @@ export function createLot(db: SqliteDb, input: CreateLotInput): InvestmentLot {
 }
 
 /** Update a lot row and return the refreshed lot. */
-export function updateLot(
-  db: SqliteDb,
+export async function updateLot(
+  db: AsyncDb,
   lotId: SyncId,
   updates: UpdateLotInput,
-): InvestmentLot | null {
-  const existing = getLotById(db, lotId);
+): Promise<InvestmentLot | null> {
+  const existing = await getLotById(db, lotId);
   if (!existing) {
     return null;
   }
@@ -144,7 +150,7 @@ export function updateLot(
 
   const totalCost = Math.round(merged.shares * merged.costPerShare.amount);
 
-  execute(
+  await execute(
     db,
     `UPDATE investment_lot
         SET purchase_date = ?,
@@ -159,17 +165,17 @@ export function updateLot(
     [merged.purchaseDate, merged.shares, merged.costPerShare.amount, totalCost, lotId],
   );
 
-  return getLotById(db, lotId);
+  return await getLotById(db, lotId);
 }
 
 /** Soft-delete a lot row by marking its deleted timestamp. */
-export function deleteLot(db: SqliteDb, lotId: SyncId): boolean {
-  const existing = getLotById(db, lotId);
+export async function deleteLot(db: AsyncDb, lotId: SyncId): Promise<boolean> {
+  const existing = await getLotById(db, lotId);
   if (!existing) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE investment_lot
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},

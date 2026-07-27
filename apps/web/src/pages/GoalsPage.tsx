@@ -470,7 +470,7 @@ export const GoalsPage: React.FC = () => {
         return;
       }
 
-      const createdGoal = createGoal({
+      const createdGoal = await createGoal({
         householdId,
         name: suggestion.title,
         description: suggestion.reasoning.join(' '),
@@ -497,12 +497,12 @@ export const GoalsPage: React.FC = () => {
   const handleSubmitGoal = useCallback(
     async (data: CreateGoalInput) => {
       if (editingGoal !== null) {
-        const updatedGoal = updateGoal(editingGoal.id, data);
+        const updatedGoal = await updateGoal(editingGoal.id, data);
         if (updatedGoal === null) {
           throw new Error('Failed to update goal.');
         }
       } else {
-        const createdGoal = createGoal(data);
+        const createdGoal = await createGoal(data);
         if (createdGoal === null) {
           throw new Error('Failed to create goal.');
         }
@@ -519,7 +519,7 @@ export const GoalsPage: React.FC = () => {
       const previousGoal = goals.find((goal) => goal.id === input.goalId) ?? null;
       const wasComplete = previousGoal ? getGoalProgress(previousGoal).isComplete : false;
 
-      const updatedGoal = contributeToGoal(input.goalId, input);
+      const updatedGoal = await contributeToGoal(input.goalId, input);
       if (updatedGoal === null) {
         throw new Error('Failed to contribute to goal.');
       }

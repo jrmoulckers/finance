@@ -68,15 +68,15 @@ export interface UseBulkTransactionsResult {
   /** Check if a transaction is selected. */
   isSelected: (transactionId: SyncId) => boolean;
   /** Bulk update fields on all selected transactions. */
-  bulkUpdate: (fields: BulkUpdateFields) => BulkOperationResult;
+  bulkUpdate: (fields: BulkUpdateFields) => Promise<BulkOperationResult>;
   /** Add a tag to all selected transactions while preserving their existing tags. */
-  bulkAddTag: (tag: string) => BulkOperationResult;
+  bulkAddTag: (tag: string) => Promise<BulkOperationResult>;
   /** Remove a tag from all selected transactions while preserving other tags. */
-  bulkRemoveTag: (tag: string) => BulkOperationResult;
+  bulkRemoveTag: (tag: string) => Promise<BulkOperationResult>;
   /** Bulk mark all selected transactions with a new status. */
-  bulkMarkStatus: (status: TransactionStatus) => BulkOperationResult;
+  bulkMarkStatus: (status: TransactionStatus) => Promise<BulkOperationResult>;
   /** Bulk soft-delete all selected transactions. */
-  bulkDelete: () => BulkOperationResult;
+  bulkDelete: () => Promise<BulkOperationResult>;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +199,9 @@ export function useBulkTransactions(
   );
 
   const updateSelectedTransactions = useCallback(
-    (getFields: (transaction: Transaction) => BulkUpdateFields): BulkOperationResult => {
+    async (
+      getFields: (transaction: Transaction) => BulkUpdateFields,
+    ): Promise<BulkOperationResult> => {
       let successCount = 0;
       let failureCount = 0;
       const errors: string[] = [];
@@ -213,7 +215,7 @@ export function useBulkTransactions(
         }
 
         try {
-          const result = repoUpdateTransaction(db, txId, getFields(transaction));
+          const result = await repoUpdateTransaction(db, txId, getFields(transaction));
           if (result) {
             successCount++;
           } else {
@@ -238,12 +240,13 @@ export function useBulkTransactions(
   );
 
   const bulkUpdate = useCallback(
-    (fields: BulkUpdateFields): BulkOperationResult => updateSelectedTransactions(() => fields),
+    (fields: BulkUpdateFields): Promise<BulkOperationResult> =>
+      updateSelectedTransactions(() => fields),
     [updateSelectedTransactions],
   );
 
   const bulkAddTag = useCallback(
-    (tag: string): BulkOperationResult => {
+    async (tag: string): Promise<BulkOperationResult> => {
       const normalizedTag = tag.trim();
       if (!normalizedTag) {
         return { successCount: 0, failureCount: selectionCount, errors: ['Tag is required'] };
@@ -257,7 +260,7 @@ export function useBulkTransactions(
   );
 
   const bulkRemoveTag = useCallback(
-    (tag: string): BulkOperationResult => {
+    async (tag: string): Promise<BulkOperationResult> => {
       const normalizedTag = tag.trim();
       if (!normalizedTag) {
         return { successCount: 0, failureCount: selectionCount, errors: ['Tag is required'] };
@@ -271,18 +274,18 @@ export function useBulkTransactions(
   );
 
   const bulkMarkStatus = useCallback(
-    (status: TransactionStatus): BulkOperationResult => bulkUpdate({ status }),
+    (status: TransactionStatus): Promise<BulkOperationResult> => bulkUpdate({ status }),
     [bulkUpdate],
   );
 
-  const bulkDelete = useCallback((): BulkOperationResult => {
+  const bulkDelete = useCallback(async (): Promise<BulkOperationResult> => {
     let successCount = 0;
     let failureCount = 0;
     const errors: string[] = [];
 
     for (const txId of selectedIds) {
       try {
-        const deleted = repoDeleteTransaction(db, txId);
+        const deleted = await repoDeleteTransaction(db, txId);
         if (deleted) {
           successCount++;
         } else {

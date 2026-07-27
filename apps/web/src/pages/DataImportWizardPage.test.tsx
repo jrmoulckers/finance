@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAccounts } from '../hooks/useAccounts';
 import { DatabaseContext, type DatabaseContextValue } from '../db/DatabaseProvider';
 import type { SqliteDb } from '../db/sqlite-wasm';
+import { createSqliteAsyncDb } from '../db/async-db';
 import { useDataImportWizard } from '../hooks/useDataImportWizard';
 import type { UseDataImportWizardResult } from '../hooks/useDataImportWizard';
 import { DataImportWizardPage } from './DataImportWizardPage';
@@ -26,12 +27,14 @@ vi.mock('../hooks/useDataImportWizard', () => ({
 const mockedUseAccounts = vi.mocked(useAccounts);
 const mockedHook = vi.mocked(useDataImportWizard);
 
-const mockDb: SqliteDb = {
+const mockSqlite: SqliteDb = {
   exec: vi.fn(),
   selectAll: vi.fn(() => []),
   selectOne: vi.fn(() => null),
   close: vi.fn().mockResolvedValue(undefined),
 };
+
+const mockDb = createSqliteAsyncDb(mockSqlite);
 
 const databaseContextValue: DatabaseContextValue = {
   db: mockDb,

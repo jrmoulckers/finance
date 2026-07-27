@@ -5,17 +5,19 @@ import React from 'react';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseContext, type DatabaseContextValue } from '../db/DatabaseProvider';
 import type { Row, SqliteDb } from '../db/sqlite-wasm';
+import { createSqliteAsyncDb, type AsyncDb } from '../db/async-db';
 import { resetPowerSyncStatus, updatePowerSyncStatus } from '../db/sync/powersync-client';
 import { notifyDataChange, resetCrossTabSyncForTesting } from '../lib/sync/crossTab';
 import { useLiveQuery } from './useLiveQuery';
 
-function createDatabase(rowsRef: { current: Row[] }): SqliteDb {
-  return {
+function createDatabase(rowsRef: { current: Row[] }): AsyncDb {
+  const sqlite: SqliteDb = {
     exec: vi.fn(),
     selectAll: vi.fn(() => rowsRef.current),
     selectOne: vi.fn(() => rowsRef.current[0] ?? null),
     close: vi.fn(async () => undefined),
   };
+  return createSqliteAsyncDb(sqlite);
 }
 
 describe('useLiveQuery', () => {
@@ -149,12 +151,13 @@ describe('useLiveQuery', () => {
     // never settles (hanging detail pages opened from a list).
     const rowsRef = { current: [{ id: 'account-1', name: 'Checking' }] };
     const selectAll = vi.fn(() => rowsRef.current);
-    const db: SqliteDb = {
+    const sqlite: SqliteDb = {
       exec: vi.fn(),
       selectAll,
       selectOne: vi.fn(() => rowsRef.current[0] ?? null),
       close: vi.fn(async () => undefined),
     };
+    const db = createSqliteAsyncDb(sqlite);
     const wrapper = ({ children }: React.PropsWithChildren) => (
       <DatabaseContext.Provider
         value={{ db, diagnostics: {} as DatabaseContextValue['diagnostics'] }}

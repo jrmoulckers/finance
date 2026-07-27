@@ -210,7 +210,7 @@ export const InvoicesPage: React.FC = () => {
   };
 
   const handleRecordPayment = useCallback(
-    (paymentCents: number, paidDate: string, accountId: string) => {
+    async (paymentCents: number, paidDate: string, accountId: string) => {
       if (!payingInvoice) return;
 
       const account = accounts.find((candidate) => candidate.id === accountId);
@@ -219,7 +219,7 @@ export const InvoicesPage: React.FC = () => {
       // Marking an invoice paid must move real money: record the cash inflow
       // first, and only tie the payment to the invoice once it succeeds so a
       // "paid" invoice always has a linked transaction backing it (#3266).
-      const transaction = createTransaction(
+      const transaction = await createTransaction(
         buildInvoiceCashInflow(payingInvoice, {
           accountId: account.id,
           householdId: account.householdId,

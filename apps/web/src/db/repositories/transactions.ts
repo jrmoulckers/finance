@@ -13,7 +13,7 @@ import type {
 import { Currencies } from '../../kmp/bridge';
 import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { isTransactionLockedByReconciliation } from '../../lib/reconciliation';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import { notifyMilestoneDataChanged } from '../../lib/milestones';
 import { recomputeAccountBalance } from './accounts';
 import {
@@ -262,35 +262,45 @@ function buildTransactionQuery(additionalClauses: string[] = [], filters: Transa
   return { sql, params };
 }
 
-function listTransactions(
-  db: SqliteDb,
+async function listTransactions(
+  db: AsyncDb,
   additionalClauses: string[] = [],
   additionalParams: unknown[] = [],
   filters: TransactionFilters = {},
-): Transaction[] {
+): Promise<Transaction[]> {
   const { sql, params } = buildTransactionQuery(additionalClauses, filters);
-  return query<Row>(db, sql, [...additionalParams, ...params]).rows.map(mapTransaction);
+  const { rows } = await query<Row>(db, sql, [...additionalParams, ...params]);
+  return rows.map(mapTransaction);
 }
 
 /** Return all non-deleted transactions using optional text and type filters. */
-export function getAllTransactions(db: SqliteDb, filters: TransactionFilters = {}): Transaction[] {
-  return listTransactions(db, [], [], filters);
+export async function getAllTransactions(
+  db: AsyncDb,
+  filters: TransactionFilters = {},
+): Promise<Transaction[]> {
+  return await listTransactions(db, [], [], filters);
 }
 
 /** Find a single non-deleted transaction by its identifier. */
-export function getTransactionById(db: SqliteDb, transactionId: SyncId): Transaction | null {
-  const row = queryOne<Row>(db, `${TRANSACTION_BASE_QUERY} AND id = ?`, [transactionId]);
+export async function getTransactionById(
+  db: AsyncDb,
+  transactionId: SyncId,
+): Promise<Transaction | null> {
+  const row = await queryOne<Row>(db, `${TRANSACTION_BASE_QUERY} AND id = ?`, [transactionId]);
   return row ? mapTransaction(row) : null;
 }
 
 /** Insert a new transaction row and return the created transaction. */
-export function createTransaction(db: SqliteDb, input: CreateTransactionInput): Transaction {
+export async function createTransaction(
+  db: AsyncDb,
+  input: CreateTransactionInput,
+): Promise<Transaction> {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
   const splits = normalizeTransactionSplits(input.splits);
   assertBalancedSplits(input.amount, splits);
 
-  execute(
+  await execute(
     db,
     `INSERT INTO "transaction" (
       id,
@@ -372,24 +382,24 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
     ],
   );
 
-  const createdTransaction = getTransactionById(db, id);
+  const createdTransaction = await getTransactionById(db, id);
   if (!createdTransaction) {
     throw new Error('Failed to create transaction.');
   }
 
-  recomputeAccountBalance(db, input.accountId);
+  await recomputeAccountBalance(db, input.accountId);
   notifyMilestoneDataChanged();
 
   return createdTransaction;
 }
 
 /** Update a transaction row and return the refreshed transaction. */
-export function updateTransaction(
-  db: SqliteDb,
+export async function updateTransaction(
+  db: AsyncDb,
   transactionId: SyncId,
   updates: UpdateTransactionInput,
-): Transaction | null {
-  const existingTransaction = getTransactionById(db, transactionId);
+): Promise<Transaction | null> {
+  const existingTransaction = await getTransactionById(db, transactionId);
   if (!existingTransaction) {
     return null;
   }
@@ -477,7 +487,7 @@ export function updateTransaction(
 
   assertBalancedSplits(mergedTransaction.amount, mergedTransaction.splits);
 
-  execute(
+  await execute(
     db,
     `UPDATE "transaction"
         SET household_id = ?,
@@ -553,11 +563,11 @@ export function updateTransaction(
   );
 
   if (existingTransaction.accountId !== mergedTransaction.accountId) {
-    recomputeAccountBalance(db, existingTransaction.accountId);
+    await recomputeAccountBalance(db, existingTransaction.accountId);
   }
-  recomputeAccountBalance(db, mergedTransaction.accountId);
+  await recomputeAccountBalance(db, mergedTransaction.accountId);
 
-  const updatedTransaction = getTransactionById(db, transactionId);
+  const updatedTransaction = await getTransactionById(db, transactionId);
   if (updatedTransaction) {
     notifyMilestoneDataChanged();
   }
@@ -566,8 +576,8 @@ export function updateTransaction(
 }
 
 /** Soft-delete a transaction row by marking its deleted timestamp. */
-export function deleteTransaction(db: SqliteDb, transactionId: SyncId): boolean {
-  const existingTransaction = getTransactionById(db, transactionId);
+export async function deleteTransaction(db: AsyncDb, transactionId: SyncId): Promise<boolean> {
+  const existingTransaction = await getTransactionById(db, transactionId);
   if (!existingTransaction) {
     return false;
   }
@@ -576,7 +586,7 @@ export function deleteTransaction(db: SqliteDb, transactionId: SyncId): boolean 
     throw new Error('Reconciled transactions are locked and cannot be deleted.');
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE "transaction"
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -588,36 +598,36 @@ export function deleteTransaction(db: SqliteDb, transactionId: SyncId): boolean 
     [transactionId],
   );
 
-  recomputeAccountBalance(db, existingTransaction.accountId);
+  await recomputeAccountBalance(db, existingTransaction.accountId);
   notifyMilestoneDataChanged();
 
   return true;
 }
 
 /** Erase all mood tags from local transactions. */
-export function eraseAllMoodTags(db: SqliteDb): void {
-  execute(
+export async function eraseAllMoodTags(db: AsyncDb): Promise<void> {
+  await execute(
     db,
     `UPDATE "transaction" SET mood_tag = NULL, updated_at = ${SQLITE_NOW_EXPRESSION}, sync_version = 1, is_synced = 0 WHERE mood_tag IS NOT NULL`,
   );
 }
 
 /** Return transactions for a single account with optional filters applied. */
-export function getTransactionsByAccount(
-  db: SqliteDb,
+export async function getTransactionsByAccount(
+  db: AsyncDb,
   accountId: SyncId,
   filters: TransactionFilters = {},
-): Transaction[] {
-  return listTransactions(db, ['account_id = ?'], [accountId], filters);
+): Promise<Transaction[]> {
+  return await listTransactions(db, ['account_id = ?'], [accountId], filters);
 }
 
 /** Return transactions for a single category with optional filters applied. */
-export function getTransactionsByCategory(
-  db: SqliteDb,
+export async function getTransactionsByCategory(
+  db: AsyncDb,
   categoryId: SyncId,
   filters: TransactionFilters = {},
-): Transaction[] {
-  return listTransactions(
+): Promise<Transaction[]> {
+  return await listTransactions(
     db,
     [
       `(category_id = ? OR EXISTS (
@@ -632,20 +642,20 @@ export function getTransactionsByCategory(
 }
 
 /** Return transactions within an inclusive local-date range. */
-export function getTransactionsByDateRange(
-  db: SqliteDb,
+export async function getTransactionsByDateRange(
+  db: AsyncDb,
   startDate: LocalDate,
   endDate: LocalDate,
   filters: TransactionFilters = {},
-): Transaction[] {
-  return listTransactions(db, ['date >= ?', 'date <= ?'], [startDate, endDate], filters);
+): Promise<Transaction[]> {
+  return await listTransactions(db, ['date >= ?', 'date <= ?'], [startDate, endDate], filters);
 }
 
 /** Return the most recent transactions, ordered newest-first. */
-export function getRecentTransactions(
-  db: SqliteDb,
+export async function getRecentTransactions(
+  db: AsyncDb,
   limit = 10,
   filters: Omit<TransactionFilters, 'limit'> = {},
-): Transaction[] {
-  return listTransactions(db, [], [], { ...filters, limit });
+): Promise<Transaction[]> {
+  return await listTransactions(db, [], [], { ...filters, limit });
 }

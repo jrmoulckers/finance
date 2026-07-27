@@ -383,7 +383,7 @@ const OnboardingPage: React.FC = () => {
     });
   }, [analyticsEnabled, goalDraft, monthlyContribution]);
 
-  const persistOnboardingGoalsToStore = useCallback(() => {
+  const persistOnboardingGoalsToStore = useCallback(async () => {
     // Goals captured during onboarding live only in a standalone localStorage
     // key until now; migrate them into the real goals store so they show up on
     // /goals just like starter budgets do (#3405). Amounts are entered in whole
@@ -395,14 +395,14 @@ const OnboardingPage: React.FC = () => {
         return;
       }
 
-      const householdId = getPrimaryHouseholdId(db);
+      const householdId = await getPrimaryHouseholdId(db);
       if (!householdId) {
         return;
       }
 
       let migratedAny = false;
       for (const goal of pendingGoals) {
-        const created = createGoal({
+        const created = await createGoal({
           householdId,
           name: goal.name,
           description: goal.goalType || null,
@@ -521,15 +521,15 @@ const OnboardingPage: React.FC = () => {
     setStep('goals');
   }, []);
 
-  const handleSkipStarterBudget = useCallback(() => {
+  const handleSkipStarterBudget = useCallback(async () => {
     setStarterBudgetCreated(false);
     setTemplateError(null);
-    persistOnboardingGoalsToStore();
+    await persistOnboardingGoalsToStore();
     completeOnboarding();
     setStep('complete');
   }, [completeOnboarding, persistOnboardingGoalsToStore]);
 
-  const handleApplyStudentTemplate = useCallback(() => {
+  const handleApplyStudentTemplate = useCallback(async () => {
     if (!studentTemplate) {
       setTemplateError('Student starter budget is unavailable right now.');
       return;
@@ -539,7 +539,7 @@ const OnboardingPage: React.FC = () => {
     setTemplateError(null);
 
     try {
-      const createdBudgets = createBudgetTemplate({
+      const createdBudgets = await createBudgetTemplate({
         templateId: studentTemplate.id,
         startDate: firstOfCurrentMonthISO(),
       });
@@ -549,7 +549,7 @@ const OnboardingPage: React.FC = () => {
       }
 
       setStarterBudgetCreated(true);
-      persistOnboardingGoalsToStore();
+      await persistOnboardingGoalsToStore();
       completeOnboarding();
       setStep('complete');
     } catch (error) {

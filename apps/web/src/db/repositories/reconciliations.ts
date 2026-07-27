@@ -7,14 +7,15 @@ import {
   type ReconciliationTransactionInput,
 } from '../../lib/reconciliation';
 import {
+  beginSavepoint,
   execute,
   query,
   queryOne,
   releaseSavepoint,
   rollbackToSavepoint,
+  type AsyncDb,
   type Row,
-  type SqliteDb,
-} from '../sqlite-wasm';
+} from '../async-db';
 import {
   SQLITE_NOW_EXPRESSION,
   mapCents,
@@ -100,22 +101,23 @@ function mapReconciliation(row: Row): AccountReconciliationSnapshot {
   };
 }
 
-export function getReconciliationHistory(
-  db: SqliteDb,
+export async function getReconciliationHistory(
+  db: AsyncDb,
   accountId: SyncId,
-): AccountReconciliationSnapshot[] {
-  return query<Row>(
+): Promise<AccountReconciliationSnapshot[]> {
+  const { rows } = await query<Row>(
     db,
     `${RECONCILIATION_BASE_QUERY} AND account_id = ? ORDER BY statement_date DESC, created_at DESC`,
     [accountId],
-  ).rows.map(mapReconciliation);
+  );
+  return rows.map(mapReconciliation);
 }
 
-export function getLastReconciliation(
-  db: SqliteDb,
+export async function getLastReconciliation(
+  db: AsyncDb,
   accountId: SyncId,
-): AccountReconciliationSnapshot | null {
-  const row = queryOne<Row>(
+): Promise<AccountReconciliationSnapshot | null> {
+  const row = await queryOne<Row>(
     db,
     `${RECONCILIATION_BASE_QUERY} AND account_id = ? ORDER BY statement_date DESC, created_at DESC LIMIT 1`,
     [accountId],
@@ -133,17 +135,17 @@ function mapReconciliationTransaction(row: Row): ReconciliationTransactionInput 
   };
 }
 
-function getTransactionsForClose(
-  db: SqliteDb,
+async function getTransactionsForClose(
+  db: AsyncDb,
   accountId: SyncId,
   transactionIds: readonly SyncId[],
-): ReconciliationTransactionInput[] {
+): Promise<ReconciliationTransactionInput[]> {
   if (transactionIds.length === 0) {
     return [];
   }
 
   const placeholders = transactionIds.map(() => '?').join(', ');
-  const rows = query<Row>(
+  const { rows } = await query<Row>(
     db,
     `SELECT id, type, status, amount, date
        FROM "transaction"
@@ -151,7 +153,7 @@ function getTransactionsForClose(
         AND deleted_at IS NULL
         AND id IN (${placeholders})`,
     [accountId, ...transactionIds],
-  ).rows;
+  );
 
   if (rows.length !== transactionIds.length) {
     throw new Error('One or more selected transactions cannot be reconciled.');
@@ -160,8 +162,11 @@ function getTransactionsForClose(
   return rows.map(mapReconciliationTransaction);
 }
 
-export function getUnclearedTransactionCount(db: SqliteDb, accountId: SyncId): number {
-  const row = queryOne<Row>(
+export async function getUnclearedTransactionCount(
+  db: AsyncDb,
+  accountId: SyncId,
+): Promise<number> {
+  const row = await queryOne<Row>(
     db,
     `SELECT COUNT(*) AS count
        FROM "transaction"
@@ -174,14 +179,18 @@ export function getUnclearedTransactionCount(db: SqliteDb, accountId: SyncId): n
   return requireNumber(row?.count ?? 0, 'uncleared_transaction_count');
 }
 
-export function closeReconciliation(
-  db: SqliteDb,
+export async function closeReconciliation(
+  db: AsyncDb,
   input: CloseReconciliationInput,
-): AccountReconciliationSnapshot {
+): Promise<AccountReconciliationSnapshot> {
   const id = crypto.randomUUID();
   const createdBy = input.createdBy?.trim() || 'local-user';
   const uniqueTransactionIds = [...new Set(input.transactionIds)];
-  const closeTransactions = getTransactionsForClose(db, input.accountId, uniqueTransactionIds);
+  const closeTransactions = await getTransactionsForClose(
+    db,
+    input.accountId,
+    uniqueTransactionIds,
+  );
 
   if (
     closeTransactions.some(
@@ -204,10 +213,10 @@ export function closeReconciliation(
 
   const savepointName = 'close_reconciliation';
 
-  execute(db, `SAVEPOINT ${savepointName};`);
+  await beginSavepoint(db, savepointName);
 
   try {
-    execute(
+    await execute(
       db,
       `INSERT INTO account_reconciliation (
         id,
@@ -246,7 +255,7 @@ export function closeReconciliation(
     );
 
     for (const transactionId of uniqueTransactionIds) {
-      execute(
+      await execute(
         db,
         `UPDATE "transaction"
             SET status = 'RECONCILED',
@@ -261,18 +270,18 @@ export function closeReconciliation(
       );
     }
 
-    releaseSavepoint(db, savepointName);
+    await releaseSavepoint(db, savepointName);
   } catch (error) {
     try {
-      rollbackToSavepoint(db, savepointName);
-      releaseSavepoint(db, savepointName);
+      await rollbackToSavepoint(db, savepointName);
+      await releaseSavepoint(db, savepointName);
     } catch {
       // Preserve the original close error if SQLite already ended the savepoint.
     }
     throw error;
   }
 
-  const snapshot = queryOne<Row>(db, `${RECONCILIATION_BASE_QUERY} AND id = ?`, [id]);
+  const snapshot = await queryOne<Row>(db, `${RECONCILIATION_BASE_QUERY} AND id = ?`, [id]);
   if (!snapshot) {
     throw new Error('Failed to record reconciliation snapshot.');
   }

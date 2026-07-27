@@ -118,7 +118,11 @@ export const QueryEngine: React.FC = () => {
           return;
         }
 
-        const executionResult = executeFinancialQuery(db, parsed);
+        const sqlite = db.sqlite;
+        if (!sqlite) {
+          throw new Error('Financial queries are only available on the local database.');
+        }
+        const executionResult = executeFinancialQuery(sqlite, parsed);
         const formatted = formatFinancialQueryResponse(executionResult);
         appendAssistantMessage(formatted.summary, formatted);
       } catch (error) {

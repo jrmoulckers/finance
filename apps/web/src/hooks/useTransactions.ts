@@ -35,7 +35,7 @@ import {
   type TransactionFilters as RepositoryTransactionFilters,
   type UpdateTransactionInput,
 } from '../db/repositories/transactions';
-import type { SqliteDb } from '../db/sqlite-wasm';
+import type { AsyncDb } from '../db/async-db';
 import type { LocalDate, SyncId, Transaction, TransactionType } from '../kmp/bridge';
 import { useLiveQuery } from './useLiveQuery';
 
@@ -49,7 +49,10 @@ export interface TransactionFilters {
   limit?: number;
 }
 
-export function applyTransactionFilters(db: SqliteDb, filters: TransactionFilters): Transaction[] {
+export async function applyTransactionFilters(
+  db: AsyncDb,
+  filters: TransactionFilters,
+): Promise<Transaction[]> {
   const { searchTerm, type, accountId, categoryId, startDate, endDate, limit } = filters;
   const baseDbFilters: RepositoryTransactionFilters = { searchTerm, type };
 
@@ -65,7 +68,7 @@ export function applyTransactionFilters(db: SqliteDb, filters: TransactionFilter
 
     const hasLocalFilter =
       needsLocalCategoryFilter || needsLocalStartDateFilter || needsLocalEndDateFilter;
-    results = getTransactionsByAccount(db, accountId, {
+    results = await getTransactionsByAccount(db, accountId, {
       ...baseDbFilters,
       limit: hasLocalFilter ? undefined : limit,
     });
@@ -74,20 +77,20 @@ export function applyTransactionFilters(db: SqliteDb, filters: TransactionFilter
     needsLocalEndDateFilter = endDate !== undefined;
 
     const hasLocalFilter = needsLocalStartDateFilter || needsLocalEndDateFilter;
-    results = getTransactionsByCategory(db, categoryId, {
+    results = await getTransactionsByCategory(db, categoryId, {
       ...baseDbFilters,
       limit: hasLocalFilter ? undefined : limit,
     });
   } else if (startDate !== undefined && endDate !== undefined) {
-    return getTransactionsByDateRange(db, startDate, endDate, { ...baseDbFilters, limit });
+    return await getTransactionsByDateRange(db, startDate, endDate, { ...baseDbFilters, limit });
   } else if (startDate !== undefined) {
     needsLocalStartDateFilter = true;
-    results = getAllTransactions(db, baseDbFilters);
+    results = await getAllTransactions(db, baseDbFilters);
   } else if (endDate !== undefined) {
     needsLocalEndDateFilter = true;
-    results = getAllTransactions(db, baseDbFilters);
+    results = await getAllTransactions(db, baseDbFilters);
   } else {
-    return getAllTransactions(db, { ...baseDbFilters, limit });
+    return await getAllTransactions(db, { ...baseDbFilters, limit });
   }
 
   if (needsLocalCategoryFilter && categoryId !== undefined) {
@@ -118,9 +121,12 @@ export interface UseTransactionsResult {
   loading: boolean;
   error: string | null;
   refresh: () => void;
-  createTransaction: (input: CreateTransactionInput) => Transaction | null;
-  updateTransaction: (transactionId: SyncId, updates: UpdateTransactionInput) => Transaction | null;
-  deleteTransaction: (transactionId: SyncId) => boolean;
+  createTransaction: (input: CreateTransactionInput) => Promise<Transaction | null>;
+  updateTransaction: (
+    transactionId: SyncId,
+    updates: UpdateTransactionInput,
+  ) => Promise<Transaction | null>;
+  deleteTransaction: (transactionId: SyncId) => Promise<boolean>;
 }
 
 export function useTransactions(filters: TransactionFilters = {}): UseTransactionsResult {
@@ -129,7 +135,7 @@ export function useTransactions(filters: TransactionFilters = {}): UseTransactio
   const filtersKey = JSON.stringify(filters);
   const parsedFilters = useMemo(() => JSON.parse(filtersKey) as TransactionFilters, [filtersKey]);
   const runTransactionQuery = useCallback(
-    (database: SqliteDb) => applyTransactionFilters(database, parsedFilters),
+    (database: AsyncDb) => applyTransactionFilters(database, parsedFilters),
     [parsedFilters],
   );
 
@@ -148,10 +154,10 @@ export function useTransactions(filters: TransactionFilters = {}): UseTransactio
   const error = mutationError ?? liveError;
 
   const createTransaction = useCallback(
-    (input: CreateTransactionInput): Transaction | null => {
+    async (input: CreateTransactionInput): Promise<Transaction | null> => {
       try {
         setMutationError(null);
-        return repoCreateTransaction(db, input);
+        return await repoCreateTransaction(db, input);
       } catch (transactionError) {
         setMutationError(
           transactionError instanceof Error
@@ -165,10 +171,10 @@ export function useTransactions(filters: TransactionFilters = {}): UseTransactio
   );
 
   const updateTransaction = useCallback(
-    (transactionId: SyncId, updates: UpdateTransactionInput): Transaction | null => {
+    async (transactionId: SyncId, updates: UpdateTransactionInput): Promise<Transaction | null> => {
       try {
         setMutationError(null);
-        return repoUpdateTransaction(db, transactionId, updates);
+        return await repoUpdateTransaction(db, transactionId, updates);
       } catch (transactionError) {
         setMutationError(
           transactionError instanceof Error
@@ -182,10 +188,10 @@ export function useTransactions(filters: TransactionFilters = {}): UseTransactio
   );
 
   const deleteTransaction = useCallback(
-    (transactionId: SyncId): boolean => {
+    async (transactionId: SyncId): Promise<boolean> => {
       try {
         setMutationError(null);
-        return repoDeleteTransaction(db, transactionId);
+        return await repoDeleteTransaction(db, transactionId);
       } catch (transactionError) {
         setMutationError(
           transactionError instanceof Error

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Goal } from '../../kmp/bridge';
@@ -77,21 +77,21 @@ describe('useGoals', () => {
   // Loading / success state
   // -----------------------------------------------------------------------
 
-  it('returns loading false and empty list when no goals exist', () => {
+  it('returns loading false and empty list when no goals exist', async () => {
     const { result } = renderHook(() => useGoals());
 
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.goals).toEqual([]);
     expect(result.current.error).toBeNull();
   });
 
-  it('returns goals from the database', () => {
+  it('returns goals from the database', async () => {
     const goals = [makeGoal(), makeGoal({ id: 'goal-2', name: 'Vacation Fund', status: 'ACTIVE' })];
     mockGetAllGoals.mockReturnValue(goals);
 
     const { result } = renderHook(() => useGoals());
 
-    expect(result.current.goals).toHaveLength(2);
+    await waitFor(() => expect(result.current.goals).toHaveLength(2));
     expect(result.current.goals[0]?.name).toBe('Emergency Fund');
     expect(result.current.goals[1]?.name).toBe('Vacation Fund');
   });
@@ -126,7 +126,7 @@ describe('useGoals', () => {
   // CRUD — createGoal
   // -----------------------------------------------------------------------
 
-  it('creates a goal and triggers refresh', () => {
+  it('creates a goal and triggers refresh', async () => {
     mockGetAllGoals.mockReturnValue([]);
     const created = makeGoal({ id: 'goal-new', name: 'New Car' });
     mockCreateGoal.mockReturnValue(created);
@@ -134,8 +134,8 @@ describe('useGoals', () => {
     const { result } = renderHook(() => useGoals());
 
     let returned: Goal | null = null;
-    act(() => {
-      returned = result.current.createGoal({
+    await act(async () => {
+      returned = await result.current.createGoal({
         householdId: 'hh-1',
         name: 'New Car',
         targetAmount: { amount: 2500000 },
@@ -146,7 +146,7 @@ describe('useGoals', () => {
     expect(mockCreateGoal).toHaveBeenCalledOnce();
   });
 
-  it('returns null and sets error when createGoal throws', () => {
+  it('returns null and sets error when createGoal throws', async () => {
     mockGetAllGoals.mockReturnValue([]);
     mockCreateGoal.mockImplementation(() => {
       throw new Error('Insert failed');
@@ -155,8 +155,8 @@ describe('useGoals', () => {
     const { result } = renderHook(() => useGoals());
 
     let returned: Goal | null = null;
-    act(() => {
-      returned = result.current.createGoal({
+    await act(async () => {
+      returned = await result.current.createGoal({
         householdId: 'hh-1',
         name: 'New Car',
         targetAmount: { amount: 2500000 },
@@ -171,7 +171,7 @@ describe('useGoals', () => {
   // CRUD — updateGoal (progress updates)
   // -----------------------------------------------------------------------
 
-  it('updates a goal and triggers refresh', () => {
+  it('updates a goal and triggers refresh', async () => {
     mockGetAllGoals.mockReturnValue([makeGoal()]);
     const updated = makeGoal({ currentAmount: { amount: 500000 } });
     mockUpdateGoal.mockReturnValue(updated);
@@ -179,8 +179,8 @@ describe('useGoals', () => {
     const { result } = renderHook(() => useGoals());
 
     let returned: Goal | null = null;
-    act(() => {
-      returned = result.current.updateGoal('goal-1', { currentAmount: { amount: 500000 } });
+    await act(async () => {
+      returned = await result.current.updateGoal('goal-1', { currentAmount: { amount: 500000 } });
     });
 
     expect(returned).toEqual(updated);
@@ -189,7 +189,7 @@ describe('useGoals', () => {
     });
   });
 
-  it('does not refresh when updateGoal returns null', () => {
+  it('does not refresh when updateGoal returns null', async () => {
     mockGetAllGoals.mockReturnValue([]);
     mockUpdateGoal.mockReturnValue(null);
 
@@ -197,14 +197,14 @@ describe('useGoals', () => {
 
     const callCountAfterMount = mockGetAllGoals.mock.calls.length;
 
-    act(() => {
-      result.current.updateGoal('nonexistent', { name: 'Nope' });
+    await act(async () => {
+      await result.current.updateGoal('nonexistent', { name: 'Nope' });
     });
 
     expect(mockGetAllGoals.mock.calls.length).toBe(callCountAfterMount);
   });
 
-  it('returns null and sets error when updateGoal throws', () => {
+  it('returns null and sets error when updateGoal throws', async () => {
     mockGetAllGoals.mockReturnValue([]);
     mockUpdateGoal.mockImplementation(() => {
       throw new Error('Update failed');
@@ -213,8 +213,8 @@ describe('useGoals', () => {
     const { result } = renderHook(() => useGoals());
 
     let returned: Goal | null = null;
-    act(() => {
-      returned = result.current.updateGoal('goal-1', { name: 'Nope' });
+    await act(async () => {
+      returned = await result.current.updateGoal('goal-1', { name: 'Nope' });
     });
 
     expect(returned).toBeNull();
@@ -225,17 +225,18 @@ describe('useGoals', () => {
   // Reorder — reorderGoals
   // -----------------------------------------------------------------------
 
-  it('reorders goals and refreshes the list', () => {
+  it('reorders goals and refreshes the list', async () => {
     mockGetAllGoals.mockReturnValue([
       makeGoal({ id: 'goal-1', name: 'Emergency Fund' }),
       makeGoal({ id: 'goal-2', name: 'Vacation Fund' }),
     ]);
 
     const { result } = renderHook(() => useGoals());
+    await waitFor(() => expect(result.current.goals).toHaveLength(2));
     const callCountAfterMount = mockGetAllGoals.mock.calls.length;
 
-    act(() => {
-      result.current.reorderGoals(0, 1);
+    await act(async () => {
+      await result.current.reorderGoals(0, 1);
     });
 
     expect(mockReorderGoals).toHaveBeenCalledWith(mockDb, ['goal-2', 'goal-1']);
@@ -246,7 +247,7 @@ describe('useGoals', () => {
   // CRUD — contributeToGoal
   // -----------------------------------------------------------------------
 
-  it('contributes to a goal and triggers refresh', () => {
+  it('contributes to a goal and triggers refresh', async () => {
     mockGetAllGoals.mockReturnValue([makeGoal()]);
     const updated = makeGoal({ currentAmount: { amount: 300000 } });
     mockContributeToGoal.mockReturnValue(updated);
@@ -254,8 +255,8 @@ describe('useGoals', () => {
     const { result } = renderHook(() => useGoals());
 
     let returned: Goal | null = null;
-    act(() => {
-      returned = result.current.contributeToGoal('goal-1', {
+    await act(async () => {
+      returned = await result.current.contributeToGoal('goal-1', {
         goalId: 'goal-1',
         amount: { amount: 50000 },
         note: 'Paycheck transfer',
@@ -270,7 +271,7 @@ describe('useGoals', () => {
     });
   });
 
-  it('returns null and sets error when contributeToGoal throws', () => {
+  it('returns null and sets error when contributeToGoal throws', async () => {
     mockGetAllGoals.mockReturnValue([makeGoal()]);
     mockContributeToGoal.mockImplementation(() => {
       throw new Error('Contribution failed');
@@ -279,8 +280,8 @@ describe('useGoals', () => {
     const { result } = renderHook(() => useGoals());
 
     let returned: Goal | null = null;
-    act(() => {
-      returned = result.current.contributeToGoal('goal-1', {
+    await act(async () => {
+      returned = await result.current.contributeToGoal('goal-1', {
         goalId: 'goal-1',
         amount: { amount: 50000 },
       });
@@ -294,36 +295,36 @@ describe('useGoals', () => {
   // CRUD — deleteGoal
   // -----------------------------------------------------------------------
 
-  it('deletes a goal and triggers refresh', () => {
+  it('deletes a goal and triggers refresh', async () => {
     mockGetAllGoals.mockReturnValue([makeGoal()]);
     mockDeleteGoal.mockReturnValue(true);
 
     const { result } = renderHook(() => useGoals());
 
     let deleted = false;
-    act(() => {
-      deleted = result.current.deleteGoal('goal-1');
+    await act(async () => {
+      deleted = await result.current.deleteGoal('goal-1');
     });
 
     expect(deleted).toBe(true);
     expect(mockDeleteGoal).toHaveBeenCalledWith(mockDb, 'goal-1');
   });
 
-  it('returns false when deletion target is not found', () => {
+  it('returns false when deletion target is not found', async () => {
     mockGetAllGoals.mockReturnValue([]);
     mockDeleteGoal.mockReturnValue(false);
 
     const { result } = renderHook(() => useGoals());
 
     let deleted = false;
-    act(() => {
-      deleted = result.current.deleteGoal('nonexistent');
+    await act(async () => {
+      deleted = await result.current.deleteGoal('nonexistent');
     });
 
     expect(deleted).toBe(false);
   });
 
-  it('returns false and sets error when deleteGoal throws', () => {
+  it('returns false and sets error when deleteGoal throws', async () => {
     mockGetAllGoals.mockReturnValue([]);
     mockDeleteGoal.mockImplementation(() => {
       throw new Error('Delete failed');
@@ -332,8 +333,8 @@ describe('useGoals', () => {
     const { result } = renderHook(() => useGoals());
 
     let deleted = false;
-    act(() => {
-      deleted = result.current.deleteGoal('goal-1');
+    await act(async () => {
+      deleted = await result.current.deleteGoal('goal-1');
     });
 
     expect(deleted).toBe(false);

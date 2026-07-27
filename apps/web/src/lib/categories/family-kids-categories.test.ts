@@ -117,10 +117,10 @@ describe('buildFamilyKidsCategoryPlan', () => {
 });
 
 describe('applyFamilyKidsCategories', () => {
-  it('creates every missing category exactly once', () => {
+  it('creates every missing category exactly once', async () => {
     const createCategory = makeCreateCategory();
 
-    const result = applyFamilyKidsCategories<TestCategory>({
+    const result = await applyFamilyKidsCategories<TestCategory>({
       categories: [],
       householdId: 'household-1',
       createCategory,
@@ -134,13 +134,13 @@ describe('applyFamilyKidsCategories', () => {
     );
   });
 
-  it('assigns increasing sort orders above existing categories', () => {
+  it('assigns increasing sort orders above existing categories', async () => {
     const createCategory = makeCreateCategory();
     const categories: TestCategory[] = [
       { id: 'existing', name: 'Rent', householdId: 'household-1', sortOrder: 7 },
     ];
 
-    const result = applyFamilyKidsCategories<TestCategory>({
+    const result = await applyFamilyKidsCategories<TestCategory>({
       categories,
       householdId: 'household-1',
       createCategory,
@@ -151,16 +151,16 @@ describe('applyFamilyKidsCategories', () => {
     expect(sortOrders).toEqual([8, 9, 10, 11, 12, 13, 14]);
   });
 
-  it('is idempotent — a second apply creates nothing new', () => {
+  it('is idempotent — a second apply creates nothing new', async () => {
     const firstCreate = makeCreateCategory();
-    const seeded = applyFamilyKidsCategories<TestCategory>({
+    const seeded = await applyFamilyKidsCategories<TestCategory>({
       categories: [],
       householdId: 'household-1',
       createCategory: firstCreate,
     });
 
     const secondCreate = makeCreateCategory();
-    const result = applyFamilyKidsCategories<TestCategory>({
+    const result = await applyFamilyKidsCategories<TestCategory>({
       categories: seeded.created,
       householdId: 'household-1',
       createCategory: secondCreate,
@@ -171,14 +171,14 @@ describe('applyFamilyKidsCategories', () => {
     expect(secondCreate).not.toHaveBeenCalled();
   });
 
-  it('only seeds the categories that are still missing', () => {
+  it('only seeds the categories that are still missing', async () => {
     const createCategory = makeCreateCategory();
     const categories: TestCategory[] = [
       { id: 'a', name: 'School Fees', householdId: 'household-1', sortOrder: 1 },
       { id: 'b', name: 'Birthdays & Gifts', householdId: 'household-1', sortOrder: 2 },
     ];
 
-    const result = applyFamilyKidsCategories<TestCategory>({
+    const result = await applyFamilyKidsCategories<TestCategory>({
       categories,
       householdId: 'household-1',
       createCategory,
@@ -190,10 +190,10 @@ describe('applyFamilyKidsCategories', () => {
     expect(result.created.map((category) => category.name)).not.toContain('Birthdays & Gifts');
   });
 
-  it('skips records the create callback fails to persist', () => {
+  it('skips records the create callback fails to persist', async () => {
     const createCategory = vi.fn(() => null);
 
-    const result = applyFamilyKidsCategories<TestCategory>({
+    const result = await applyFamilyKidsCategories<TestCategory>({
       categories: [],
       householdId: 'household-1',
       createCategory,
@@ -203,11 +203,11 @@ describe('applyFamilyKidsCategories', () => {
     expect(result.created).toHaveLength(0);
   });
 
-  it('does not mutate the input categories array', () => {
+  it('does not mutate the input categories array', async () => {
     const createCategory = makeCreateCategory();
     const categories: TestCategory[] = [{ id: 'a', name: 'Rent' }];
 
-    applyFamilyKidsCategories<TestCategory>({
+    await applyFamilyKidsCategories<TestCategory>({
       categories,
       householdId: 'household-1',
       createCategory,

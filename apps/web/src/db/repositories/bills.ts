@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * SQLite-WASM repository for bill reminders.
+ * Repository for bill reminders.
  *
  * Handles CRUD operations for the `bill` table, following the same
  * patterns established by the accounts and goals repositories.
@@ -11,7 +11,7 @@
 
 import type { Bill, BillFrequency, BillStatus, Currency, SyncId } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import {
   SQLITE_NOW_EXPRESSION,
   mapCents,
@@ -105,40 +105,43 @@ function mapBill(row: Row): Bill {
 }
 
 /** Return every non-deleted bill ordered by due date. */
-export function getAllBills(db: SqliteDb): Bill[] {
-  return query<Row>(db, `${BILL_BASE_QUERY} ORDER BY due_date ASC, name ASC`).rows.map(mapBill);
+export async function getAllBills(db: AsyncDb): Promise<Bill[]> {
+  const { rows } = await query<Row>(db, `${BILL_BASE_QUERY} ORDER BY due_date ASC, name ASC`);
+  return rows.map(mapBill);
 }
 
 /** Find a single non-deleted bill by its identifier. */
-export function getBillById(db: SqliteDb, billId: SyncId): Bill | null {
-  const row = queryOne<Row>(db, `${BILL_BASE_QUERY} AND id = ?`, [billId]);
+export async function getBillById(db: AsyncDb, billId: SyncId): Promise<Bill | null> {
+  const row = await queryOne<Row>(db, `${BILL_BASE_QUERY} AND id = ?`, [billId]);
   return row ? mapBill(row) : null;
 }
 
 /** Return all non-deleted bills with a specific status. */
-export function getBillsByStatus(db: SqliteDb, status: BillStatus): Bill[] {
-  return query<Row>(db, `${BILL_BASE_QUERY} AND status = ? ORDER BY due_date ASC`, [
+export async function getBillsByStatus(db: AsyncDb, status: BillStatus): Promise<Bill[]> {
+  const { rows } = await query<Row>(db, `${BILL_BASE_QUERY} AND status = ? ORDER BY due_date ASC`, [
     status,
-  ]).rows.map(mapBill);
+  ]);
+  return rows.map(mapBill);
 }
 
 /** Return all non-deleted bills due within a given number of days. */
-export function getUpcomingBills(db: SqliteDb, withinDays: number): Bill[] {
-  return query<Row>(
+export async function getUpcomingBills(db: AsyncDb, withinDays: number): Promise<Bill[]> {
+  const { rows } = await query<Row>(
     db,
     `${BILL_BASE_QUERY} AND status IN ('UPCOMING', 'OVERDUE')
        AND due_date <= date('now', '+' || ? || ' days')
        ORDER BY due_date ASC`,
     [withinDays],
-  ).rows.map(mapBill);
+  );
+  return rows.map(mapBill);
 }
 
 /** Insert a new bill row and return the created bill. */
-export function createBill(db: SqliteDb, input: CreateBillInput): Bill {
+export async function createBill(db: AsyncDb, input: CreateBillInput): Promise<Bill> {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
 
-  execute(
+  await execute(
     db,
     `INSERT INTO bill (
       id,
@@ -188,7 +191,7 @@ export function createBill(db: SqliteDb, input: CreateBillInput): Bill {
     ],
   );
 
-  const created = getBillById(db, id);
+  const created = await getBillById(db, id);
   if (!created) {
     throw new Error('Failed to create bill.');
   }
@@ -197,8 +200,12 @@ export function createBill(db: SqliteDb, input: CreateBillInput): Bill {
 }
 
 /** Update a bill row and return the refreshed bill. */
-export function updateBill(db: SqliteDb, billId: SyncId, updates: UpdateBillInput): Bill | null {
-  const existing = getBillById(db, billId);
+export async function updateBill(
+  db: AsyncDb,
+  billId: SyncId,
+  updates: UpdateBillInput,
+): Promise<Bill | null> {
+  const existing = await getBillById(db, billId);
   if (!existing) {
     return null;
   }
@@ -219,7 +226,7 @@ export function updateBill(db: SqliteDb, billId: SyncId, updates: UpdateBillInpu
     lastPaidDate: updates.lastPaidDate !== undefined ? updates.lastPaidDate : existing.lastPaidDate,
   };
 
-  execute(
+  await execute(
     db,
     `UPDATE bill
         SET name = ?,
@@ -258,17 +265,17 @@ export function updateBill(db: SqliteDb, billId: SyncId, updates: UpdateBillInpu
     ],
   );
 
-  return getBillById(db, billId);
+  return await getBillById(db, billId);
 }
 
 /** Soft-delete a bill row by marking its deleted timestamp. */
-export function deleteBill(db: SqliteDb, billId: SyncId): boolean {
-  const existing = getBillById(db, billId);
+export async function deleteBill(db: AsyncDb, billId: SyncId): Promise<boolean> {
+  const existing = await getBillById(db, billId);
   if (!existing) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE bill
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -284,8 +291,8 @@ export function deleteBill(db: SqliteDb, billId: SyncId): boolean {
 }
 
 /** Mark a bill as paid, updating its status and last paid date. */
-export function markBillPaid(db: SqliteDb, billId: SyncId): Bill | null {
-  return updateBill(db, billId, {
+export async function markBillPaid(db: AsyncDb, billId: SyncId): Promise<Bill | null> {
+  return await updateBill(db, billId, {
     status: 'PAID',
     lastPaidDate: new Date().toISOString().split('T')[0],
   });

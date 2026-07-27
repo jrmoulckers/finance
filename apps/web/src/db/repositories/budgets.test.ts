@@ -3,10 +3,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BudgetPeriod, Category } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { Row, AsyncDb } from '../async-db';
 
-// Mock sqlite-wasm module
-vi.mock('../sqlite-wasm', () => ({
+// Mock async-db module
+vi.mock('../async-db', () => ({
   query: vi.fn(),
   queryOne: vi.fn(),
   execute: vi.fn(),
@@ -33,14 +33,14 @@ import {
 } from './budgets';
 
 // Import mocked functions
-import { execute, query, queryOne } from '../sqlite-wasm';
+import { execute, query, queryOne } from '../async-db';
 
 const mockQuery = vi.mocked(query);
 const mockQueryOne = vi.mocked(queryOne);
 const mockExecute = vi.mocked(execute);
 
 describe('budgets repository', () => {
-  const mockDb = {} as SqliteDb;
+  const mockDb = {} as AsyncDb;
   const syncMetadata = {
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
@@ -54,7 +54,7 @@ describe('budgets repository', () => {
   });
 
   describe('getAllBudgets', () => {
-    it('should return mapped budget objects', () => {
+    it('should return mapped budget objects', async () => {
       const mockRows: Row[] = [
         {
           id: 'budget-1',
@@ -92,9 +92,9 @@ describe('budgets repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const budgets = getAllBudgets(mockDb);
+      const budgets = await getAllBudgets(mockDb);
 
       expect(budgets).toHaveLength(2);
       expect(budgets[0]).toMatchObject({
@@ -116,10 +116,10 @@ describe('budgets repository', () => {
       });
     });
 
-    it('should filter out deleted budgets via WHERE clause', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter out deleted budgets via WHERE clause', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getAllBudgets(mockDb);
+      await getAllBudgets(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -127,10 +127,10 @@ describe('budgets repository', () => {
       );
     });
 
-    it('should order by sort_order ASC before fallback fields', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should order by sort_order ASC before fallback fields', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getAllBudgets(mockDb);
+      await getAllBudgets(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -138,7 +138,7 @@ describe('budgets repository', () => {
       );
     });
 
-    it('should preserve monetary amounts as integers', () => {
+    it('should preserve monetary amounts as integers', async () => {
       const mockRows: Row[] = [
         {
           id: 'budget-1',
@@ -159,9 +159,9 @@ describe('budgets repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const budgets = getAllBudgets(mockDb);
+      const budgets = await getAllBudgets(mockDb);
 
       expect(budgets[0].amount.amount).toBe(123456);
       expect(Number.isInteger(budgets[0].amount.amount)).toBe(true);
@@ -169,7 +169,7 @@ describe('budgets repository', () => {
   });
 
   describe('getBudgetById', () => {
-    it('should return budget when found', () => {
+    it('should return budget when found', async () => {
       const mockRow: Row = {
         id: 'budget-1',
         household_id: 'hh-1',
@@ -188,9 +188,9 @@ describe('budgets repository', () => {
         is_synced: 0,
       };
 
-      mockQueryOne.mockReturnValue(mockRow);
+      mockQueryOne.mockResolvedValue(mockRow);
 
-      const budget = getBudgetById(mockDb, 'budget-1');
+      const budget = await getBudgetById(mockDb, 'budget-1');
 
       expect(mockQueryOne).toHaveBeenCalledWith(
         mockDb,
@@ -201,18 +201,18 @@ describe('budgets repository', () => {
       expect(budget?.id).toBe('budget-1');
     });
 
-    it('should return null when not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return null when not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const budget = getBudgetById(mockDb, 'nonexistent');
+      const budget = await getBudgetById(mockDb, 'nonexistent');
 
       expect(budget).toBeNull();
     });
 
-    it('should use parameterized query', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should use parameterized query', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      getBudgetById(mockDb, 'budget-1');
+      await getBudgetById(mockDb, 'budget-1');
 
       const sql = mockQueryOne.mock.calls[0][1];
       expect(sql).toContain('id = ?');
@@ -221,8 +221,8 @@ describe('budgets repository', () => {
   });
 
   describe('getBudgetWithSpending', () => {
-    it('rolls up spending from child categories using the recursive scope query', () => {
-      mockQueryOne.mockReturnValue({
+    it('rolls up spending from child categories using the recursive scope query', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'budget-1',
         household_id: 'hh-1',
         category_id: 'cat-food',
@@ -241,7 +241,7 @@ describe('budgets repository', () => {
         spent_amount: 42350,
       });
 
-      const budget = getBudgetWithSpending(mockDb, 'budget-1');
+      const budget = await getBudgetWithSpending(mockDb, 'budget-1');
 
       expect(budget?.spentAmount.amount).toBe(42350);
       expect(budget?.remainingAmount.amount).toBe(27650);
@@ -257,8 +257,8 @@ describe('budgets repository', () => {
   });
 
   describe('getBudgetSpendingBreakdown', () => {
-    it('returns grouped spending rows ordered by highest spend', () => {
-      mockQuery.mockReturnValue({
+    it('returns grouped spending rows ordered by highest spend', async () => {
+      mockQuery.mockResolvedValue({
         columns: [],
         rows: [
           { category_id: 'cat-groceries', category_name: 'Groceries', spent_amount: 25000 },
@@ -266,7 +266,7 @@ describe('budgets repository', () => {
         ],
       });
 
-      const breakdown = getBudgetSpendingBreakdown(mockDb, 'budget-1');
+      const breakdown = await getBudgetSpendingBreakdown(mockDb, 'budget-1');
 
       expect(breakdown).toEqual([
         {
@@ -290,7 +290,7 @@ describe('budgets repository', () => {
 
   describe('createBudget', () => {
     beforeEach(() => {
-      mockQueryOne.mockReturnValue({
+      mockQueryOne.mockResolvedValue({
         id: 'new-budget',
         household_id: 'hh-1',
         category_id: 'cat-1',
@@ -309,7 +309,7 @@ describe('budgets repository', () => {
       });
     });
 
-    it('should execute INSERT with correct parameters', () => {
+    it('should execute INSERT with correct parameters', async () => {
       const input: CreateBudgetInput = {
         householdId: 'hh-1',
         categoryId: 'cat-1',
@@ -319,7 +319,7 @@ describe('budgets repository', () => {
         startDate: '2024-01-01',
       };
 
-      createBudget(mockDb, input);
+      await createBudget(mockDb, input);
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
@@ -339,7 +339,7 @@ describe('budgets repository', () => {
       );
     });
 
-    it('should use ? placeholders not string interpolation', () => {
+    it('should use ? placeholders not string interpolation', async () => {
       const input: CreateBudgetInput = {
         householdId: 'hh-1',
         categoryId: 'cat-1',
@@ -349,7 +349,7 @@ describe('budgets repository', () => {
         startDate: '2024-01-01',
       };
 
-      createBudget(mockDb, input);
+      await createBudget(mockDb, input);
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).toContain('VALUES (');
@@ -358,7 +358,7 @@ describe('budgets repository', () => {
       expect(sql).not.toContain('Budget');
     });
 
-    it('should store amount as integer', () => {
+    it('should store amount as integer', async () => {
       const input: CreateBudgetInput = {
         householdId: 'hh-1',
         categoryId: 'cat-1',
@@ -368,7 +368,7 @@ describe('budgets repository', () => {
         startDate: '2024-01-01',
       };
 
-      createBudget(mockDb, input);
+      await createBudget(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       const amountParam = params[4]; // amount is 5th param
@@ -376,7 +376,7 @@ describe('budgets repository', () => {
       expect(Number.isInteger(amountParam as number)).toBe(true);
     });
 
-    it('should default to USD when currency not provided', () => {
+    it('should default to USD when currency not provided', async () => {
       const input: CreateBudgetInput = {
         householdId: 'hh-1',
         categoryId: 'cat-1',
@@ -386,13 +386,13 @@ describe('budgets repository', () => {
         startDate: '2024-01-01',
       };
 
-      createBudget(mockDb, input);
+      await createBudget(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[5]).toBe('USD');
     });
 
-    it('should handle optional fields', () => {
+    it('should handle optional fields', async () => {
       const input: CreateBudgetInput = {
         householdId: 'hh-1',
         categoryId: 'cat-1',
@@ -405,7 +405,7 @@ describe('budgets repository', () => {
         isRollover: true,
       };
 
-      createBudget(mockDb, input);
+      await createBudget(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[5]).toBe('EUR');
@@ -413,12 +413,12 @@ describe('budgets repository', () => {
       expect(params[9]).toBe(1); // isRollover
     });
 
-    it('should accept valid budget periods', () => {
+    it('should accept valid budget periods', async () => {
       const periods: BudgetPeriod[] = ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY'];
 
-      periods.forEach((period) => {
+      for (const period of periods) {
         vi.clearAllMocks();
-        mockQueryOne.mockReturnValue({
+        mockQueryOne.mockResolvedValue({
           id: 'budget-1',
           household_id: 'hh-1',
           category_id: 'cat-1',
@@ -445,17 +445,17 @@ describe('budgets repository', () => {
           startDate: '2024-01-01',
         };
 
-        createBudget(mockDb, input);
+        await createBudget(mockDb, input);
 
         const params = mockExecute.mock.calls[0][2] as unknown[];
         expect(params[6]).toBe(period);
-      });
+      }
     });
   });
 
   describe('createBudgetTemplate', () => {
-    it('creates all student starter budgets and only creates missing categories', () => {
-      mockGetAllCategories.mockReturnValue([
+    it('creates all student starter budgets and only creates missing categories', async () => {
+      mockGetAllCategories.mockResolvedValue([
         {
           id: 'category-food-groceries',
           householdId: 'hh-1',
@@ -495,7 +495,7 @@ describe('budgets repository', () => {
         };
       });
 
-      mockQueryOne.mockImplementation((_, sql, params) => {
+      mockQueryOne.mockImplementation(async (_, sql, params) => {
         if (typeof sql === 'string' && sql.includes('WHERE deleted_at IS NULL AND id = ?')) {
           const queryParams = (params ?? []) as unknown[];
           const budgetId = queryParams[0] as string;
@@ -525,7 +525,7 @@ describe('budgets repository', () => {
         return null;
       });
 
-      const budgets = createBudgetTemplate(mockDb, {
+      const budgets = await createBudgetTemplate(mockDb, {
         templateId: 'student',
         startDate: '2024-09-01',
       });
@@ -547,8 +547,8 @@ describe('budgets repository', () => {
   });
 
   describe('reorderBudgets', () => {
-    it('updates persisted sort order for each budget id', () => {
-      reorderBudgets(mockDb, ['budget-2', 'budget-1']);
+    it('updates persisted sort order for each budget id', async () => {
+      await reorderBudgets(mockDb, ['budget-2', 'budget-1']);
 
       expect(mockExecute).toHaveBeenCalledTimes(2);
       expect(mockExecute).toHaveBeenNthCalledWith(
@@ -567,8 +567,8 @@ describe('budgets repository', () => {
   });
 
   describe('deleteBudget', () => {
-    it('should soft-delete by setting deleted_at', () => {
-      mockQueryOne.mockReturnValue({
+    it('should soft-delete by setting deleted_at', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'budget-1',
         household_id: 'hh-1',
         category_id: 'cat-1',
@@ -586,7 +586,7 @@ describe('budgets repository', () => {
         is_synced: 0,
       });
 
-      const result = deleteBudget(mockDb, 'budget-1');
+      const result = await deleteBudget(mockDb, 'budget-1');
 
       expect(result).toBe(true);
       expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE budget'), [
@@ -598,17 +598,17 @@ describe('budgets repository', () => {
       expect(sql).toContain('AND deleted_at IS NULL');
     });
 
-    it('should return false when budget not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return false when budget not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const result = deleteBudget(mockDb, 'nonexistent');
+      const result = await deleteBudget(mockDb, 'nonexistent');
 
       expect(result).toBe(false);
       expect(mockExecute).not.toHaveBeenCalled();
     });
 
-    it('should use parameterized query', () => {
-      mockQueryOne.mockReturnValue({
+    it('should use parameterized query', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'budget-1',
         household_id: 'hh-1',
         category_id: 'cat-1',
@@ -626,7 +626,7 @@ describe('budgets repository', () => {
         is_synced: 0,
       });
 
-      deleteBudget(mockDb, 'budget-1');
+      await deleteBudget(mockDb, 'budget-1');
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).not.toContain("id = 'budget-1'");
@@ -634,7 +634,7 @@ describe('budgets repository', () => {
   });
 
   describe('createBudgetTemplate', () => {
-    it('creates a single Food & Meals budget while adding tracked child categories', () => {
+    it('creates a single Food & Meals budget while adding tracked child categories', async () => {
       const createdFoodCategory: Category = {
         id: 'cat-food-meals',
         householdId: 'hh-1',
@@ -708,15 +708,15 @@ describe('budgets repository', () => {
         ...syncMetadata,
       };
 
-      mockGetAllCategories.mockReturnValue([]);
+      mockGetAllCategories.mockResolvedValue([]);
       mockCreateCategory
-        .mockReturnValueOnce(createdFoodCategory)
-        .mockReturnValueOnce(createdGroceriesCategory)
-        .mockReturnValueOnce(createdDiningCategory)
-        .mockReturnValueOnce(createdDeliveryCategory)
-        .mockReturnValueOnce(createdCoffeeCategory)
-        .mockReturnValueOnce(createdMealPrepCategory);
-      mockQueryOne.mockImplementation((_, sql, params) => {
+        .mockResolvedValueOnce(createdFoodCategory)
+        .mockResolvedValueOnce(createdGroceriesCategory)
+        .mockResolvedValueOnce(createdDiningCategory)
+        .mockResolvedValueOnce(createdDeliveryCategory)
+        .mockResolvedValueOnce(createdCoffeeCategory)
+        .mockResolvedValueOnce(createdMealPrepCategory);
+      mockQueryOne.mockImplementation(async (_, sql, params) => {
         if (
           typeof sql === 'string' &&
           sql.includes('SELECT id FROM household WHERE deleted_at IS NULL')
@@ -753,7 +753,7 @@ describe('budgets repository', () => {
         return null;
       });
 
-      const budgets = createBudgetTemplate(mockDb, {
+      const budgets = await createBudgetTemplate(mockDb, {
         templateId: 'food-meals',
         startDate: '2025-03-01',
       });
@@ -770,21 +770,21 @@ describe('budgets repository', () => {
   });
 
   describe('parameterized placeholders', () => {
-    it('should use ? placeholders in all queries', () => {
+    it('should use ? placeholders in all queries', async () => {
       // getAllBudgets
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
-      getAllBudgets(mockDb);
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
+      await getAllBudgets(mockDb);
       let sql = mockQuery.mock.calls[0][1];
       expect(sql).not.toContain("deleted_at = 'NULL'");
 
       // getBudgetById
-      mockQueryOne.mockReturnValue(null);
-      getBudgetById(mockDb, 'budget-1');
+      mockQueryOne.mockResolvedValue(null);
+      await getBudgetById(mockDb, 'budget-1');
       sql = mockQueryOne.mock.calls[0][1];
       expect(sql).toContain('id = ?');
 
       // createBudget
-      mockQueryOne.mockReturnValue({
+      mockQueryOne.mockResolvedValue({
         id: 'budget-1',
         household_id: 'hh-1',
         category_id: 'cat-1',
@@ -809,7 +809,7 @@ describe('budgets repository', () => {
         period: 'MONTHLY' as BudgetPeriod,
         startDate: '2024-01-01',
       };
-      createBudget(mockDb, input);
+      await createBudget(mockDb, input);
       sql = mockExecute.mock.calls[0][1];
       expect(sql).toContain('?');
       expect(sql).not.toContain('100000');

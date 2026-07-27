@@ -11,7 +11,7 @@
 
 import type { Currency, Investment, InvestmentType, SyncId } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import {
   SQLITE_NOW_EXPRESSION,
   mapCents,
@@ -90,31 +90,42 @@ function mapInvestment(row: Row): Investment {
 }
 
 /** Return every non-deleted investment ordered by symbol. */
-export function getAllInvestments(db: SqliteDb): Investment[] {
-  return query<Row>(db, `${INVESTMENT_BASE_QUERY} ORDER BY symbol ASC, name ASC`).rows.map(
-    mapInvestment,
-  );
+export async function getAllInvestments(db: AsyncDb): Promise<Investment[]> {
+  const { rows } = await query<Row>(db, `${INVESTMENT_BASE_QUERY} ORDER BY symbol ASC, name ASC`);
+  return rows.map(mapInvestment);
 }
 
 /** Find a single non-deleted investment by its identifier. */
-export function getInvestmentById(db: SqliteDb, investmentId: SyncId): Investment | null {
-  const row = queryOne<Row>(db, `${INVESTMENT_BASE_QUERY} AND id = ?`, [investmentId]);
+export async function getInvestmentById(
+  db: AsyncDb,
+  investmentId: SyncId,
+): Promise<Investment | null> {
+  const row = await queryOne<Row>(db, `${INVESTMENT_BASE_QUERY} AND id = ?`, [investmentId]);
   return row ? mapInvestment(row) : null;
 }
 
 /** Return all non-deleted investments for a specific account. */
-export function getInvestmentsByAccount(db: SqliteDb, accountId: SyncId): Investment[] {
-  return query<Row>(db, `${INVESTMENT_BASE_QUERY} AND account_id = ? ORDER BY symbol ASC`, [
-    accountId,
-  ]).rows.map(mapInvestment);
+export async function getInvestmentsByAccount(
+  db: AsyncDb,
+  accountId: SyncId,
+): Promise<Investment[]> {
+  const { rows } = await query<Row>(
+    db,
+    `${INVESTMENT_BASE_QUERY} AND account_id = ? ORDER BY symbol ASC`,
+    [accountId],
+  );
+  return rows.map(mapInvestment);
 }
 
 /** Insert a new investment row and return the created investment. */
-export function createInvestment(db: SqliteDb, input: CreateInvestmentInput): Investment {
+export async function createInvestment(
+  db: AsyncDb,
+  input: CreateInvestmentInput,
+): Promise<Investment> {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
 
-  execute(
+  await execute(
     db,
     `INSERT INTO investment (
       id,
@@ -156,7 +167,7 @@ export function createInvestment(db: SqliteDb, input: CreateInvestmentInput): In
     ],
   );
 
-  const created = getInvestmentById(db, id);
+  const created = await getInvestmentById(db, id);
   if (!created) {
     throw new Error('Failed to create investment.');
   }
@@ -165,12 +176,12 @@ export function createInvestment(db: SqliteDb, input: CreateInvestmentInput): In
 }
 
 /** Update an investment row and return the refreshed investment. */
-export function updateInvestment(
-  db: SqliteDb,
+export async function updateInvestment(
+  db: AsyncDb,
   investmentId: SyncId,
   updates: UpdateInvestmentInput,
-): Investment | null {
-  const existing = getInvestmentById(db, investmentId);
+): Promise<Investment | null> {
+  const existing = await getInvestmentById(db, investmentId);
   if (!existing) {
     return null;
   }
@@ -186,7 +197,7 @@ export function updateInvestment(
     currency: updates.currency ?? existing.currency,
   };
 
-  execute(
+  await execute(
     db,
     `UPDATE investment
         SET account_id = ?,
@@ -216,17 +227,17 @@ export function updateInvestment(
     ],
   );
 
-  return getInvestmentById(db, investmentId);
+  return await getInvestmentById(db, investmentId);
 }
 
 /** Soft-delete an investment row by marking its deleted timestamp. */
-export function deleteInvestment(db: SqliteDb, investmentId: SyncId): boolean {
-  const existing = getInvestmentById(db, investmentId);
+export async function deleteInvestment(db: AsyncDb, investmentId: SyncId): Promise<boolean> {
+  const existing = await getInvestmentById(db, investmentId);
   if (!existing) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE investment
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},

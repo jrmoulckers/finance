@@ -51,24 +51,24 @@ export interface UseGoalsResult {
    * Create a new savings goal and automatically refresh the list.
    * @returns The created goal, or `null` if creation failed.
    */
-  createGoal: (input: CreateGoalInput) => Goal | null;
+  createGoal: (input: CreateGoalInput) => Promise<Goal | null>;
   /**
    * Update an existing goal and automatically refresh the list.
    * @returns The updated goal, or `null` if the goal was not found or update failed.
    */
-  updateGoal: (goalId: SyncId, updates: UpdateGoalInput) => Goal | null;
+  updateGoal: (goalId: SyncId, updates: UpdateGoalInput) => Promise<Goal | null>;
   /**
    * Add progress to a goal and automatically refresh the list.
    * @returns The updated goal, or `null` if the goal was not found or contribution failed.
    */
-  contributeToGoal: (goalId: SyncId, input: GoalContributionInput) => Goal | null;
+  contributeToGoal: (goalId: SyncId, input: GoalContributionInput) => Promise<Goal | null>;
   /**
    * Soft-delete a goal and automatically refresh the list.
    * @returns `true` if deletion succeeded, `false` otherwise.
    */
-  deleteGoal: (goalId: SyncId) => boolean;
+  deleteGoal: (goalId: SyncId) => Promise<boolean>;
   /** Reorder goals and persist the updated sort order. */
-  reorderGoals: (fromIndex: number, toIndex: number) => void;
+  reorderGoals: (fromIndex: number, toIndex: number) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,21 +94,23 @@ export function useGoals(): UseGoalsResult {
     setLoading(true);
     setError(null);
 
-    try {
-      const result = getAllGoals(db);
-      setGoals(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load goals.');
-      setGoals([]);
-    } finally {
-      setLoading(false);
-    }
+    void (async () => {
+      try {
+        const result = await getAllGoals(db);
+        setGoals(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load goals.');
+        setGoals([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [db, refreshToken]);
 
   const createGoal = useCallback(
-    (input: CreateGoalInput): Goal | null => {
+    async (input: CreateGoalInput): Promise<Goal | null> => {
       try {
-        const created = repoCreateGoal(db, {
+        const created = await repoCreateGoal(db, {
           ...input,
           sortOrder: goals.length,
         });
@@ -124,9 +126,9 @@ export function useGoals(): UseGoalsResult {
   );
 
   const updateGoal = useCallback(
-    (goalId: SyncId, updates: UpdateGoalInput): Goal | null => {
+    async (goalId: SyncId, updates: UpdateGoalInput): Promise<Goal | null> => {
       try {
-        const updated = repoUpdateGoal(db, goalId, updates);
+        const updated = await repoUpdateGoal(db, goalId, updates);
         if (updated !== null) {
           refresh();
         }
@@ -141,9 +143,9 @@ export function useGoals(): UseGoalsResult {
   );
 
   const contributeToGoal = useCallback(
-    (goalId: SyncId, input: GoalContributionInput): Goal | null => {
+    async (goalId: SyncId, input: GoalContributionInput): Promise<Goal | null> => {
       try {
-        const updated = repoContributeToGoal(db, goalId, input);
+        const updated = await repoContributeToGoal(db, goalId, input);
         if (updated !== null) {
           refresh();
         }
@@ -158,9 +160,9 @@ export function useGoals(): UseGoalsResult {
   );
 
   const deleteGoal = useCallback(
-    (goalId: SyncId): boolean => {
+    async (goalId: SyncId): Promise<boolean> => {
       try {
-        const deleted = repoDeleteGoal(db, goalId);
+        const deleted = await repoDeleteGoal(db, goalId);
         if (deleted) {
           refresh();
         }
@@ -175,7 +177,7 @@ export function useGoals(): UseGoalsResult {
   );
 
   const reorderGoals = useCallback(
-    (fromIndex: number, toIndex: number) => {
+    async (fromIndex: number, toIndex: number): Promise<void> => {
       if (
         fromIndex === toIndex ||
         fromIndex < 0 ||
@@ -194,7 +196,7 @@ export function useGoals(): UseGoalsResult {
       reorderedGoals.splice(toIndex, 0, movedGoal);
 
       try {
-        repoReorderGoals(
+        await repoReorderGoals(
           db,
           reorderedGoals.map((goal) => goal.id),
         );

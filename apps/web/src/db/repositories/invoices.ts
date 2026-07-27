@@ -22,7 +22,7 @@ import {
   type InvoicePaymentTerm,
   type InvoiceStatus,
 } from '../../lib/analytics/invoices';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import { getPrimaryHouseholdId } from './household';
 import { SQLITE_NOW_EXPRESSION, optionalString, requireNumber, requireString } from './helpers';
 
@@ -94,15 +94,14 @@ function mapInvoice(row: Row): Invoice {
 }
 
 /** Return all non-deleted invoices, newest first. */
-export function getAllInvoices(db: SqliteDb): Invoice[] {
-  return query<Row>(db, `${INVOICE_BASE_QUERY} ORDER BY created_at DESC, id DESC`).rows.map(
-    mapInvoice,
-  );
+export async function getAllInvoices(db: AsyncDb): Promise<Invoice[]> {
+  const { rows } = await query<Row>(db, `${INVOICE_BASE_QUERY} ORDER BY created_at DESC, id DESC`);
+  return rows.map(mapInvoice);
 }
 
 /** Find a single non-deleted invoice by its identifier. */
-export function getInvoiceById(db: SqliteDb, invoiceId: string): Invoice | null {
-  const row = queryOne<Row>(db, `${INVOICE_BASE_QUERY} AND id = ?`, [invoiceId]);
+export async function getInvoiceById(db: AsyncDb, invoiceId: string): Promise<Invoice | null> {
+  const row = await queryOne<Row>(db, `${INVOICE_BASE_QUERY} AND id = ?`, [invoiceId]);
   return row ? mapInvoice(row) : null;
 }
 
@@ -114,10 +113,10 @@ export function getInvoiceById(db: SqliteDb, invoiceId: string): Invoice | null 
  * household when one exists so the record is scoped for sync/RLS; it stays null
  * in a clean-slate workspace with no household yet.
  */
-export function insertInvoice(db: SqliteDb, invoice: Invoice): Invoice {
-  const householdId = getPrimaryHouseholdId(db);
+export async function insertInvoice(db: AsyncDb, invoice: Invoice): Promise<Invoice> {
+  const householdId = await getPrimaryHouseholdId(db);
 
-  execute(
+  await execute(
     db,
     `INSERT INTO invoice (
       id,
@@ -165,7 +164,7 @@ export function insertInvoice(db: SqliteDb, invoice: Invoice): Invoice {
     ],
   );
 
-  const created = getInvoiceById(db, invoice.id);
+  const created = await getInvoiceById(db, invoice.id);
   if (!created) {
     throw new Error('Failed to persist invoice.');
   }
@@ -179,13 +178,13 @@ export function insertInvoice(db: SqliteDb, invoice: Invoice): Invoice {
  * computes the next {@link Invoice} via the pure domain helpers and this writes
  * every mutable column. Returns `null` when the invoice does not exist.
  */
-export function updateInvoiceRecord(db: SqliteDb, invoice: Invoice): Invoice | null {
-  const existing = getInvoiceById(db, invoice.id);
+export async function updateInvoiceRecord(db: AsyncDb, invoice: Invoice): Promise<Invoice | null> {
+  const existing = await getInvoiceById(db, invoice.id);
   if (!existing) {
     return null;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE invoice
         SET client_name = ?,
@@ -223,17 +222,17 @@ export function updateInvoiceRecord(db: SqliteDb, invoice: Invoice): Invoice | n
     ],
   );
 
-  return getInvoiceById(db, invoice.id);
+  return await getInvoiceById(db, invoice.id);
 }
 
 /** Soft-delete an invoice by marking its deleted timestamp. */
-export function deleteInvoiceRecord(db: SqliteDb, invoiceId: string): boolean {
-  const existing = getInvoiceById(db, invoiceId);
+export async function deleteInvoiceRecord(db: AsyncDb, invoiceId: string): Promise<boolean> {
+  const existing = await getInvoiceById(db, invoiceId);
   if (!existing) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE invoice
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -283,7 +282,7 @@ function normalizeLegacyInvoice(entry: Invoice): Invoice {
  * hook instances cannot double-import, and records whose id already exists are
  * skipped. Returns the number of records imported.
  */
-export function importLegacyInvoices(db: SqliteDb): number {
+export async function importLegacyInvoices(db: AsyncDb): Promise<number> {
   let raw: string | null;
   try {
     raw = globalThis.localStorage?.getItem(LEGACY_INVOICES_STORAGE_KEY) ?? null;
@@ -311,8 +310,8 @@ export function importLegacyInvoices(db: SqliteDb): number {
   for (const entry of parsed) {
     if (!isLegacyInvoice(entry)) continue;
     try {
-      if (getInvoiceById(db, entry.id)) continue;
-      insertInvoice(db, normalizeLegacyInvoice(entry));
+      if (await getInvoiceById(db, entry.id)) continue;
+      await insertInvoice(db, normalizeLegacyInvoice(entry));
       imported += 1;
     } catch {
       // Best-effort per record — a single bad row must not abort the migration.

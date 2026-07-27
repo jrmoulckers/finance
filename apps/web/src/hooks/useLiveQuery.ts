@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
-import { query, type Row, type SqliteDb } from '../db/sqlite-wasm';
+import { query, type AsyncDb, type Row } from '../db/async-db';
 import { onPowerSyncStatusChange } from '../db/sync/powersync-client';
-import { extractTablesFromSql, subscribeToDataChanges } from '../lib/sync/crossTab';
+import { extractTablesFromSql } from '../lib/sync/crossTab';
 
 export interface UseLiveQueryOptions<TData> {
   readonly initialData?: TData;
-  readonly select?: (rows: Row[], db: SqliteDb) => TData;
-  readonly queryFn?: (db: SqliteDb) => TData;
+  readonly select?: (rows: Row[], db: AsyncDb) => TData | Promise<TData>;
+  readonly queryFn?: (db: AsyncDb) => TData | Promise<TData>;
   readonly tables?: readonly string[];
   readonly enabled?: boolean;
   readonly debounceMs?: number;
@@ -38,21 +38,6 @@ function normalizeTables(tables: readonly string[]): string[] {
   ).filter((table) => table.length > 0);
 }
 
-function intersects(watchedTables: ReadonlySet<string>, changedTables: readonly string[]): boolean {
-  if (watchedTables.size === 0 || changedTables.length === 0) {
-    return true;
-  }
-
-  return changedTables.some((table) =>
-    watchedTables.has(
-      table
-        .replace(/["'`[\]]/g, '')
-        .trim()
-        .toLowerCase(),
-    ),
-  );
-}
-
 export function useLiveQuery<TData = Row[]>(
   sql: string,
   params: readonly unknown[] = [],
@@ -77,6 +62,7 @@ export function useLiveQuery<TData = Row[]>(
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runIdRef = useRef(0);
 
   // Keep the latest callbacks/values in refs so they do NOT destabilize
   // `runQuery`'s identity. Previously `runQuery` depended on `params`,
@@ -119,26 +105,42 @@ export function useLiveQuery<TData = Row[]>(
         setLoading(true);
       }
 
-      try {
-        const nextData = (() => {
-          if (queryFnRef.current) {
-            return queryFnRef.current(db);
+      // Latest-wins guard: with an async backend, several runs can be in flight
+      // at once (rapid data-change notifications). Only the most recent run is
+      // allowed to publish its result, preventing a stale query from clobbering
+      // newer data.
+      const runId = ++runIdRef.current;
+
+      void (async () => {
+        try {
+          const nextData = await (async (): Promise<TData> => {
+            if (queryFnRef.current) {
+              return queryFnRef.current(db);
+            }
+
+            const { rows } = await query<Row>(db, sql, [...paramsRef.current]);
+            return selectRef.current ? selectRef.current(rows, db) : (rows as TData);
+          })();
+
+          if (runId !== runIdRef.current) {
+            return;
           }
-
-          const rows = query<Row>(db, sql, [...paramsRef.current]).rows;
-          return selectRef.current ? selectRef.current(rows, db) : (rows as TData);
-        })();
-
-        setData(nextData);
-        setError(null);
-      } catch (queryError) {
-        setError(queryError instanceof Error ? queryError.message : errorFallback);
-        if (initialDataRef.current !== undefined) {
-          setData(initialDataRef.current);
+          setData(nextData);
+          setError(null);
+        } catch (queryError) {
+          if (runId !== runIdRef.current) {
+            return;
+          }
+          setError(queryError instanceof Error ? queryError.message : errorFallback);
+          if (initialDataRef.current !== undefined) {
+            setData(initialDataRef.current);
+          }
+        } finally {
+          if (runId === runIdRef.current) {
+            setLoading(false);
+          }
         }
-      } finally {
-        setLoading(false);
-      }
+      })();
     },
     [db, enabled, errorFallback, sql],
   );
@@ -172,11 +174,11 @@ export function useLiveQuery<TData = Row[]>(
       return;
     }
 
-    const unsubscribeDataChanges = subscribeToDataChanges((event) => {
-      if (intersects(watchedTables, event.tables)) {
-        scheduleQuery(false);
-      }
+    const unsubscribeDataChanges = db.onChange([...watchedTables], () => {
+      scheduleQuery(false);
     });
+    // Also refetch when the PowerSync connection status changes so freshly
+    // synced remote data is reflected even if no table-change event fires.
     const unsubscribePowerSync = onPowerSyncStatusChange(() => {
       scheduleQuery(false);
     });
@@ -189,7 +191,7 @@ export function useLiveQuery<TData = Row[]>(
         timerRef.current = null;
       }
     };
-  }, [enabled, scheduleQuery, watchedTables]);
+  }, [db, enabled, scheduleQuery, watchedTables]);
 
   return { data, loading, error, refresh };
 }

@@ -100,25 +100,33 @@ export function useBankConnections(): UseBankConnectionsResult {
 
   // Load connections + providers from the local SQLite mirror.
   useEffect(() => {
-    try {
-      setConnections(listBankConnectionHealth(db));
-      setProviders(listAggregatorProviders(db));
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load bank connections');
-    } finally {
-      setLoading(false);
-    }
+    const load = async () => {
+      try {
+        setConnections(await listBankConnectionHealth(db));
+        setProviders(await listAggregatorProviders(db));
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load bank connections');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, [db, refreshToken]);
 
   const loadHealthHistory = useCallback(
     (connectionId: string) => {
-      try {
-        setHealthHistory(listHealthHistory(db, connectionId));
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load health history');
-      }
+      const load = async () => {
+        try {
+          setHealthHistory(await listHealthHistory(db, connectionId));
+          setError(null);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to load health history');
+        }
+      };
+
+      load();
     },
     [db],
   );

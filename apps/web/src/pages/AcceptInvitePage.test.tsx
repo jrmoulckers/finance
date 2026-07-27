@@ -107,7 +107,7 @@ describe('AcceptInvitePage', () => {
     vi.clearAllMocks();
   });
 
-  it('shows the pending invitation with role and a working Accept CTA', () => {
+  it('shows the pending invitation with role and a working Accept CTA', async () => {
     const { acceptInvitation } = mockHousehold({
       household: baseHousehold,
       invitation: baseInvitation,
@@ -116,7 +116,8 @@ describe('AcceptInvitePage', () => {
     renderAt('/invite/ABC123');
 
     // Household name resolves because the local household matches the invite.
-    expect(screen.getByRole('heading', { name: 'Join a household' })).toBeInTheDocument();
+    // The invitation loads asynchronously, so wait for the pending card.
+    expect(await screen.findByRole('heading', { name: 'Join a household' })).toBeInTheDocument();
     expect(screen.getByText('Rivera Household')).toBeInTheDocument();
     expect(screen.getByText('Member')).toBeInTheDocument();
 
@@ -124,17 +125,17 @@ describe('AcceptInvitePage', () => {
 
     expect(acceptInvitation).toHaveBeenCalledWith('ABC123');
     // Success state replaces the form.
-    expect(screen.getByRole('heading', { name: "You're in!" })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: "You're in!" })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Go to household' })).toBeInTheDocument();
   });
 
-  it('moves focus to the heading for screen-reader users', () => {
+  it('moves focus to the heading for screen-reader users', async () => {
     mockHousehold({ household: baseHousehold, invitation: baseInvitation });
     renderAt('/invite/ABC123');
-    expect(screen.getByRole('heading', { name: 'Join a household' })).toHaveFocus();
+    expect(await screen.findByRole('heading', { name: 'Join a household' })).toHaveFocus();
   });
 
-  it('renders a generic household label when the invite is for another household', () => {
+  it('renders a generic household label when the invite is for another household', async () => {
     mockHousehold({
       household: null,
       invitation: baseInvitation,
@@ -142,19 +143,21 @@ describe('AcceptInvitePage', () => {
 
     renderAt('/invite/ABC123');
 
-    expect(screen.getByText(/invited to join a shared household/i)).toBeInTheDocument();
+    expect(await screen.findByText(/invited to join a shared household/i)).toBeInTheDocument();
   });
 
-  it('shows an accessible not-found state when the invitation is missing', () => {
+  it('shows an accessible not-found state when the invitation is missing', async () => {
     mockHousehold({ invitation: null });
 
     renderAt('/invite/UNKNOWN');
 
-    expect(screen.getByRole('heading', { name: 'Invitation not found' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Invitation not found' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/couldn't find that invitation/i);
   });
 
-  it('shows an expired state for an invitation past its expiry', () => {
+  it('shows an expired state for an invitation past its expiry', async () => {
     mockHousehold({
       invitation: {
         ...baseInvitation,
@@ -164,32 +167,32 @@ describe('AcceptInvitePage', () => {
 
     renderAt('/invite/ABC123');
 
-    expect(screen.getByRole('heading', { name: 'Invitation expired' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Invitation expired' })).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/has expired/i);
   });
 
-  it('shows a revoked state for a revoked invitation', () => {
+  it('shows a revoked state for a revoked invitation', async () => {
     mockHousehold({
       invitation: { ...baseInvitation, status: 'REVOKED' },
     });
 
     renderAt('/invite/ABC123');
 
-    expect(screen.getByRole('heading', { name: 'Invitation revoked' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Invitation revoked' })).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/was revoked/i);
   });
 
-  it('shows an already-accepted state for an accepted invitation', () => {
+  it('shows an already-accepted state for an accepted invitation', async () => {
     mockHousehold({
       invitation: { ...baseInvitation, status: 'ACCEPTED' },
     });
 
     renderAt('/invite/ABC123');
 
-    expect(screen.getByRole('heading', { name: 'Already accepted' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Already accepted' })).toBeInTheDocument();
   });
 
-  it('surfaces an inline error when accepting fails', () => {
+  it('surfaces an inline error when accepting fails', async () => {
     const { acceptInvitation } = mockHousehold({
       household: baseHousehold,
       invitation: baseInvitation,
@@ -197,10 +200,10 @@ describe('AcceptInvitePage', () => {
     });
 
     renderAt('/invite/ABC123');
-    fireEvent.click(screen.getByRole('button', { name: 'Accept invitation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept invitation' }));
 
     expect(acceptInvitation).toHaveBeenCalledWith('ABC123');
-    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong.');
     // Still on the pending screen so the invitee can retry.
     expect(screen.getByRole('button', { name: 'Accept invitation' })).toBeInTheDocument();
   });
@@ -214,7 +217,7 @@ describe('AcceptInvitePage', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('lets an invitee paste a code and navigates to the invite route', () => {
+  it('lets an invitee paste a code and navigates to the invite route', async () => {
     mockHousehold({ invitation: null });
 
     renderAt('/invite');
@@ -230,6 +233,8 @@ describe('AcceptInvitePage', () => {
 
     // Navigated to /invite/XYZ789, which resolves to the not-found state
     // because the default mock has no matching invitation.
-    expect(screen.getByRole('heading', { name: 'Invitation not found' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Invitation not found' }),
+    ).toBeInTheDocument();
   });
 });

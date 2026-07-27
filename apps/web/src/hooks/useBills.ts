@@ -64,22 +64,22 @@ export interface UseBillsResult {
    * Create a new bill and automatically refresh the list.
    * @returns The created bill, or `null` if creation failed.
    */
-  createBill: (input: CreateBillInput) => Bill | null;
+  createBill: (input: CreateBillInput) => Promise<Bill | null>;
   /**
    * Update an existing bill and automatically refresh the list.
    * @returns The updated bill, or `null` if the bill was not found or update failed.
    */
-  updateBill: (billId: SyncId, updates: UpdateBillInput) => Bill | null;
+  updateBill: (billId: SyncId, updates: UpdateBillInput) => Promise<Bill | null>;
   /**
    * Soft-delete a bill and automatically refresh the list.
    * @returns `true` if deletion succeeded, `false` otherwise.
    */
-  deleteBill: (billId: SyncId) => boolean;
+  deleteBill: (billId: SyncId) => Promise<boolean>;
   /**
    * Mark a bill as paid and automatically refresh the list.
    * @returns The updated bill, or `null` if the bill was not found.
    */
-  markPaid: (billId: SyncId) => Bill | null;
+  markPaid: (billId: SyncId) => Promise<Bill | null>;
   /**
    * Request browser notification permission for bill reminders.
    * @returns The resulting permission state.
@@ -150,29 +150,31 @@ export function useBills(): UseBillsResult {
     setLoading(true);
     setError(null);
 
-    try {
-      const result = getAllBills(db);
-      setBills(result);
-    } catch (err) {
-      // If the table doesn't exist yet, treat it as empty (not an error).
-      const message = err instanceof Error ? err.message : '';
-      if (message.includes('no such table')) {
-        setBills([]);
-      } else {
-        setError(err instanceof Error ? err.message : 'Failed to load bills.');
-        setBills([]);
+    void (async () => {
+      try {
+        const result = await getAllBills(db);
+        setBills(result);
+      } catch (err) {
+        // If the table doesn't exist yet, treat it as empty (not an error).
+        const message = err instanceof Error ? err.message : '';
+        if (message.includes('no such table')) {
+          setBills([]);
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load bills.');
+          setBills([]);
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
+    })();
   }, [db, refreshToken]);
 
   const summary = computeBillsSummary(bills);
 
   const createBill = useCallback(
-    (input: CreateBillInput): Bill | null => {
+    async (input: CreateBillInput): Promise<Bill | null> => {
       try {
-        const created = repoCreateBill(db, input);
+        const created = await repoCreateBill(db, input);
         refresh();
         return created;
       } catch (err) {
@@ -185,9 +187,9 @@ export function useBills(): UseBillsResult {
   );
 
   const updateBill = useCallback(
-    (billId: SyncId, updates: UpdateBillInput): Bill | null => {
+    async (billId: SyncId, updates: UpdateBillInput): Promise<Bill | null> => {
       try {
-        const updated = repoUpdateBill(db, billId, updates);
+        const updated = await repoUpdateBill(db, billId, updates);
         if (updated !== null) {
           refresh();
         }
@@ -202,9 +204,9 @@ export function useBills(): UseBillsResult {
   );
 
   const deleteBill = useCallback(
-    (billId: SyncId): boolean => {
+    async (billId: SyncId): Promise<boolean> => {
       try {
-        const deleted = repoDeleteBill(db, billId);
+        const deleted = await repoDeleteBill(db, billId);
         if (deleted) {
           refresh();
         }
@@ -219,9 +221,9 @@ export function useBills(): UseBillsResult {
   );
 
   const markPaid = useCallback(
-    (billId: SyncId): Bill | null => {
+    async (billId: SyncId): Promise<Bill | null> => {
       try {
-        const updated = repoMarkBillPaid(db, billId);
+        const updated = await repoMarkBillPaid(db, billId);
         if (updated !== null) {
           refresh();
         }

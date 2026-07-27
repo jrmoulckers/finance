@@ -620,110 +620,112 @@ export function useInsights(): UseInsightsResult {
     setLoading(true);
     setError(null);
 
-    try {
-      const now = new Date();
-      const currentMonth = getMonthBounds(now.getFullYear(), now.getMonth());
-      const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const previousMonth = getMonthBounds(prevDate.getFullYear(), prevDate.getMonth());
+    void (async () => {
+      try {
+        const now = new Date();
+        const currentMonth = getMonthBounds(now.getFullYear(), now.getMonth());
+        const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const previousMonth = getMonthBounds(prevDate.getFullYear(), prevDate.getMonth());
 
-      const currentTransactions = getTransactionsByDateRange(
-        db,
-        currentMonth.startDate,
-        currentMonth.endDate,
-      );
-      const previousTransactions = getTransactionsByDateRange(
-        db,
-        previousMonth.startDate,
-        previousMonth.endDate,
-      );
+        const currentTransactions = await getTransactionsByDateRange(
+          db,
+          currentMonth.startDate,
+          currentMonth.endDate,
+        );
+        const previousTransactions = await getTransactionsByDateRange(
+          db,
+          previousMonth.startDate,
+          previousMonth.endDate,
+        );
 
-      const categories = getAllCategories(db);
-      const accounts = getAllAccounts(db);
-      const allTransactions = getAllTransactions(db);
+        const categories = await getAllCategories(db);
+        const accounts = await getAllAccounts(db);
+        const allTransactions = await getAllTransactions(db);
 
-      let totalSpentThisMonth = 0;
-      let totalIncomeThisMonth = 0;
-      for (const tx of currentTransactions) {
-        if (tx.type === 'EXPENSE') totalSpentThisMonth += Math.abs(tx.amount.amount);
-        else if (tx.type === 'INCOME') totalIncomeThisMonth += tx.amount.amount;
+        let totalSpentThisMonth = 0;
+        let totalIncomeThisMonth = 0;
+        for (const tx of currentTransactions) {
+          if (tx.type === 'EXPENSE') totalSpentThisMonth += Math.abs(tx.amount.amount);
+          else if (tx.type === 'INCOME') totalIncomeThisMonth += tx.amount.amount;
+        }
+
+        let totalSpentLastMonth = 0;
+        let totalIncomeLastMonth = 0;
+        for (const tx of previousTransactions) {
+          if (tx.type === 'EXPENSE') totalSpentLastMonth += Math.abs(tx.amount.amount);
+          else if (tx.type === 'INCOME') totalIncomeLastMonth += tx.amount.amount;
+        }
+
+        const categorySpending = buildCategorySpending(currentTransactions, categories);
+        const dailySpending = buildDailySpending(currentTransactions);
+        const previousDailySpending = buildDailySpending(previousTransactions);
+
+        const spendingComparison = makeComparison(totalSpentThisMonth, totalSpentLastMonth);
+        const incomeComparison = makeComparison(totalIncomeThisMonth, totalIncomeLastMonth);
+
+        const daysElapsed = now.getDate();
+        const averageDailySpending =
+          daysElapsed > 0 ? Math.round(totalSpentThisMonth / daysElapsed) : 0;
+
+        const netCashFlow = totalIncomeThisMonth - totalSpentThisMonth;
+        const savingsRate = computeSavingsRatePercent(totalIncomeThisMonth, totalSpentThisMonth);
+
+        const topCategories = categorySpending.slice(0, 5);
+        const savingsTargetPercent = getStoredSavingsTargetPercent();
+        const recommendations = generateRecommendations(
+          categorySpending,
+          spendingComparison,
+          savingsRate,
+          netCashFlow,
+          savingsTargetPercent,
+        );
+        const { spendingBenchmarks, financialHealthScore, budgetRuleOverview } =
+          calculateSpendingBenchmarks(categorySpending, totalIncomeThisMonth, savingsRate);
+        const spendingTrends = ([6, 12, 24] as const).map((period) =>
+          buildSpendingTrendInsight(allTransactions, categories, period, now),
+        );
+        const categoryDrillDowns = topCategories.map((category) =>
+          buildCategoryDrillDown(allTransactions, categories, accounts, {
+            startDate: currentMonth.startDate,
+            endDate: currentMonth.endDate,
+            categoryId: category.categoryId,
+          }),
+        );
+        const annualSummaries = Array.from(
+          new Set(allTransactions.map((tx) => Number(tx.date.slice(0, 4))).filter(Number.isFinite)),
+        )
+          .sort((a, b) => b - a)
+          .map((year) => buildYearInReview(allTransactions, categories, year));
+
+        setInsights({
+          categorySpending,
+          dailySpending,
+          previousDailySpending,
+          totalSpentThisMonth,
+          totalSpentLastMonth,
+          totalIncomeThisMonth,
+          totalIncomeLastMonth,
+          spendingComparison,
+          incomeComparison,
+          topCategories,
+          averageDailySpending,
+          recommendations,
+          netCashFlow,
+          savingsRate,
+          spendingBenchmarks,
+          financialHealthScore,
+          budgetRuleOverview,
+          spendingTrends,
+          categoryDrillDowns,
+          annualSummaries,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to compute insights.');
+        setInsights(null);
+      } finally {
+        setLoading(false);
       }
-
-      let totalSpentLastMonth = 0;
-      let totalIncomeLastMonth = 0;
-      for (const tx of previousTransactions) {
-        if (tx.type === 'EXPENSE') totalSpentLastMonth += Math.abs(tx.amount.amount);
-        else if (tx.type === 'INCOME') totalIncomeLastMonth += tx.amount.amount;
-      }
-
-      const categorySpending = buildCategorySpending(currentTransactions, categories);
-      const dailySpending = buildDailySpending(currentTransactions);
-      const previousDailySpending = buildDailySpending(previousTransactions);
-
-      const spendingComparison = makeComparison(totalSpentThisMonth, totalSpentLastMonth);
-      const incomeComparison = makeComparison(totalIncomeThisMonth, totalIncomeLastMonth);
-
-      const daysElapsed = now.getDate();
-      const averageDailySpending =
-        daysElapsed > 0 ? Math.round(totalSpentThisMonth / daysElapsed) : 0;
-
-      const netCashFlow = totalIncomeThisMonth - totalSpentThisMonth;
-      const savingsRate = computeSavingsRatePercent(totalIncomeThisMonth, totalSpentThisMonth);
-
-      const topCategories = categorySpending.slice(0, 5);
-      const savingsTargetPercent = getStoredSavingsTargetPercent();
-      const recommendations = generateRecommendations(
-        categorySpending,
-        spendingComparison,
-        savingsRate,
-        netCashFlow,
-        savingsTargetPercent,
-      );
-      const { spendingBenchmarks, financialHealthScore, budgetRuleOverview } =
-        calculateSpendingBenchmarks(categorySpending, totalIncomeThisMonth, savingsRate);
-      const spendingTrends = ([6, 12, 24] as const).map((period) =>
-        buildSpendingTrendInsight(allTransactions, categories, period, now),
-      );
-      const categoryDrillDowns = topCategories.map((category) =>
-        buildCategoryDrillDown(allTransactions, categories, accounts, {
-          startDate: currentMonth.startDate,
-          endDate: currentMonth.endDate,
-          categoryId: category.categoryId,
-        }),
-      );
-      const annualSummaries = Array.from(
-        new Set(allTransactions.map((tx) => Number(tx.date.slice(0, 4))).filter(Number.isFinite)),
-      )
-        .sort((a, b) => b - a)
-        .map((year) => buildYearInReview(allTransactions, categories, year));
-
-      setInsights({
-        categorySpending,
-        dailySpending,
-        previousDailySpending,
-        totalSpentThisMonth,
-        totalSpentLastMonth,
-        totalIncomeThisMonth,
-        totalIncomeLastMonth,
-        spendingComparison,
-        incomeComparison,
-        topCategories,
-        averageDailySpending,
-        recommendations,
-        netCashFlow,
-        savingsRate,
-        spendingBenchmarks,
-        financialHealthScore,
-        budgetRuleOverview,
-        spendingTrends,
-        categoryDrillDowns,
-        annualSummaries,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to compute insights.');
-      setInsights(null);
-    } finally {
-      setLoading(false);
-    }
+    })();
   }, [db, refreshToken]);
 
   return { insights, loading, error, refresh };

@@ -7,7 +7,7 @@ import {
   type BudgetStarterTemplateCategory,
   type BudgetStarterTemplateId,
 } from '../../lib/budgeting/starter-budget-templates';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import { createCategory, getAllCategories } from './categories';
 import {
   SQLITE_NOW_EXPRESSION,
@@ -92,15 +92,15 @@ function normalizeCategoryName(name: string): string {
   return name.trim().toLowerCase();
 }
 
-function findFirstHouseholdId(db: SqliteDb): SyncId | null {
-  const row = queryOne<Row>(
+async function findFirstHouseholdId(db: AsyncDb): Promise<SyncId | null> {
+  const row = await queryOne<Row>(
     db,
     'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   return row ? requireString(row.id, 'household.id') : null;
 }
 
-function resolveTemplateHouseholdId(db: SqliteDb, categories: Category[]): SyncId {
+async function resolveTemplateHouseholdId(db: AsyncDb, categories: Category[]): Promise<SyncId> {
   const existingHouseholdId =
     categories.find((category) => category.isIncome === false)?.householdId ??
     categories[0]?.householdId;
@@ -109,7 +109,7 @@ function resolveTemplateHouseholdId(db: SqliteDb, categories: Category[]): SyncI
     return existingHouseholdId;
   }
 
-  const householdId = findFirstHouseholdId(db);
+  const householdId = await findFirstHouseholdId(db);
   if (!householdId) {
     throw new Error('Cannot create a starter budget without a household.');
   }
@@ -135,13 +135,13 @@ function findMatchingTemplateCategory(
   );
 }
 
-function ensureTemplateCategory(
-  db: SqliteDb,
+async function ensureTemplateCategory(
+  db: AsyncDb,
   categories: Category[],
   householdId: SyncId,
   templateCategory: BudgetStarterTemplateCategory,
   parentId: SyncId | null = null,
-): Category {
+): Promise<Category> {
   const existingCategory = findMatchingTemplateCategory(
     categories,
     householdId,
@@ -157,7 +157,7 @@ function ensureTemplateCategory(
       .filter((category) => category.householdId === householdId)
       .reduce((maxSortOrder, category) => Math.max(maxSortOrder, category.sortOrder), 0) + 1;
 
-  const createdCategory = createCategory(db, {
+  const createdCategory = await createCategory(db, {
     householdId,
     name: templateCategory.name,
     icon: templateCategory.icon,
@@ -221,26 +221,27 @@ function mapBudget(row: Row): Budget {
 }
 
 /** Return all non-deleted budgets ordered by persisted sort order. */
-export function getAllBudgets(db: SqliteDb): Budget[] {
-  return query<Row>(
+export async function getAllBudgets(db: AsyncDb): Promise<Budget[]> {
+  const { rows } = await query<Row>(
     db,
     `${BUDGET_BASE_QUERY} ORDER BY sort_order ASC, start_date DESC, name ASC`,
-  ).rows.map(mapBudget);
+  );
+  return rows.map(mapBudget);
 }
 
 /** Find a single non-deleted budget by its identifier. */
-export function getBudgetById(db: SqliteDb, budgetId: SyncId): Budget | null {
-  const row = queryOne<Row>(db, `${BUDGET_BASE_QUERY} AND id = ?`, [budgetId]);
+export async function getBudgetById(db: AsyncDb, budgetId: SyncId): Promise<Budget | null> {
+  const row = await queryOne<Row>(db, `${BUDGET_BASE_QUERY} AND id = ?`, [budgetId]);
   return row ? mapBudget(row) : null;
 }
 
 /** Insert a new budget row and return the created budget. */
-export function createBudget(db: SqliteDb, input: CreateBudgetInput): Budget {
+export async function createBudget(db: AsyncDb, input: CreateBudgetInput): Promise<Budget> {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
   const sortOrder = input.sortOrder ?? 0;
 
-  execute(
+  await execute(
     db,
     `INSERT INTO budget (
       id,
@@ -282,7 +283,7 @@ export function createBudget(db: SqliteDb, input: CreateBudgetInput): Budget {
     ],
   );
 
-  const createdBudget = getBudgetById(db, id);
+  const createdBudget = await getBudgetById(db, id);
   if (!createdBudget) {
     throw new Error('Failed to create budget.');
   }
@@ -291,21 +292,25 @@ export function createBudget(db: SqliteDb, input: CreateBudgetInput): Budget {
 }
 
 /** Create a full starter budget from a named template. */
-export function createBudgetTemplate(db: SqliteDb, input: CreateBudgetTemplateInput): Budget[] {
+export async function createBudgetTemplate(
+  db: AsyncDb,
+  input: CreateBudgetTemplateInput,
+): Promise<Budget[]> {
   const template = getBudgetStarterTemplateById(input.templateId);
   if (!template || !template.isAvailable) {
     throw new Error('Selected starter budget template is not available.');
   }
 
-  const categories = getAllCategories(db);
-  const householdId = resolveTemplateHouseholdId(db, categories);
+  const categories = await getAllCategories(db);
+  const householdId = await resolveTemplateHouseholdId(db, categories);
   const templateCategoriesByName = new Map(
     template.categories.map((category) => [normalizeCategoryName(category.name), category]),
   );
 
-  return template.categories.flatMap((templateCategory) => {
+  const budgets: Budget[] = [];
+  for (const templateCategory of template.categories) {
     const parentCategory = templateCategory.parentName
-      ? ensureTemplateCategory(
+      ? await ensureTemplateCategory(
           db,
           categories,
           householdId,
@@ -318,7 +323,7 @@ export function createBudgetTemplate(db: SqliteDb, input: CreateBudgetTemplateIn
           },
         )
       : null;
-    const category = ensureTemplateCategory(
+    const category = await ensureTemplateCategory(
       db,
       categories,
       householdId,
@@ -327,11 +332,11 @@ export function createBudgetTemplate(db: SqliteDb, input: CreateBudgetTemplateIn
     );
 
     if (templateCategory.createBudget === false) {
-      return [];
+      continue;
     }
 
-    return [
-      createBudget(db, {
+    budgets.push(
+      await createBudget(db, {
         householdId,
         categoryId: category.id,
         name: templateCategory.name,
@@ -341,17 +346,19 @@ export function createBudgetTemplate(db: SqliteDb, input: CreateBudgetTemplateIn
         endDate: null,
         isRollover: false,
       }),
-    ];
-  });
+    );
+  }
+
+  return budgets;
 }
 
 /** Update a budget row and return the refreshed budget. */
-export function updateBudget(
-  db: SqliteDb,
+export async function updateBudget(
+  db: AsyncDb,
   budgetId: SyncId,
   updates: UpdateBudgetInput,
-): Budget | null {
-  const existingBudget = getBudgetById(db, budgetId);
+): Promise<Budget | null> {
+  const existingBudget = await getBudgetById(db, budgetId);
   if (!existingBudget) {
     return null;
   }
@@ -369,7 +376,7 @@ export function updateBudget(
     sortOrder: updates.sortOrder ?? existingBudget.sortOrder ?? 0,
   };
 
-  execute(
+  await execute(
     db,
     `UPDATE budget
         SET household_id = ?,
@@ -402,17 +409,17 @@ export function updateBudget(
     ],
   );
 
-  return getBudgetById(db, budgetId);
+  return await getBudgetById(db, budgetId);
 }
 
 /** Soft-delete a budget row by marking its deleted timestamp. */
-export function deleteBudget(db: SqliteDb, budgetId: SyncId): boolean {
-  const existingBudget = getBudgetById(db, budgetId);
+export async function deleteBudget(db: AsyncDb, budgetId: SyncId): Promise<boolean> {
+  const existingBudget = await getBudgetById(db, budgetId);
   if (!existingBudget) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE budget
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -427,9 +434,12 @@ export function deleteBudget(db: SqliteDb, budgetId: SyncId): boolean {
   return true;
 }
 
-export function reorderBudgets(db: SqliteDb, orderedBudgetIds: readonly SyncId[]): void {
+export async function reorderBudgets(
+  db: AsyncDb,
+  orderedBudgetIds: readonly SyncId[],
+): Promise<void> {
   for (const [sortOrder, budgetId] of orderedBudgetIds.entries()) {
-    execute(
+    await execute(
       db,
       `UPDATE budget
           SET sort_order = ?,
@@ -444,17 +454,21 @@ export function reorderBudgets(db: SqliteDb, orderedBudgetIds: readonly SyncId[]
 }
 
 /** Return all non-deleted budgets for a given cadence. */
-export function getBudgetsByPeriod(db: SqliteDb, period: BudgetPeriod): Budget[] {
-  return query<Row>(
+export async function getBudgetsByPeriod(db: AsyncDb, period: BudgetPeriod): Promise<Budget[]> {
+  const { rows } = await query<Row>(
     db,
     `${BUDGET_BASE_QUERY} AND period = ? ORDER BY sort_order ASC, start_date DESC, name ASC`,
     [period],
-  ).rows.map(mapBudget);
+  );
+  return rows.map(mapBudget);
 }
 
 /** Return a budget alongside its calculated spending and remaining amounts. */
-export function getBudgetWithSpending(db: SqliteDb, budgetId: SyncId): BudgetWithSpending | null {
-  const row = queryOne<Row>(
+export async function getBudgetWithSpending(
+  db: AsyncDb,
+  budgetId: SyncId,
+): Promise<BudgetWithSpending | null> {
+  const row = await queryOne<Row>(
     db,
     `${buildBudgetCategoryScopeCte()}
      ${TRANSACTION_CATEGORY_AMOUNTS_CTE}
@@ -523,11 +537,11 @@ export function getBudgetWithSpending(db: SqliteDb, budgetId: SyncId): BudgetWit
 }
 
 /** Return spending grouped by category within the budget's category tree. */
-export function getBudgetSpendingBreakdown(
-  db: SqliteDb,
+export async function getBudgetSpendingBreakdown(
+  db: AsyncDb,
   budgetId: SyncId,
-): BudgetSpendingBreakdownItem[] {
-  return query<Row>(
+): Promise<BudgetSpendingBreakdownItem[]> {
+  const { rows } = await query<Row>(
     db,
     `${buildBudgetCategoryScopeCte()}
      ${TRANSACTION_CATEGORY_AMOUNTS_CTE}
@@ -559,7 +573,8 @@ export function getBudgetSpendingBreakdown(
       HAVING spent_amount > 0
       ORDER BY spent_amount DESC, c.name ASC`,
     [budgetId, budgetId],
-  ).rows.map((row) => ({
+  );
+  return rows.map((row) => ({
     categoryId: requireString(row.category_id, 'budget_breakdown.category_id'),
     categoryName: requireString(row.category_name, 'budget_breakdown.category_name'),
     spentAmount: mapCents(row.spent_amount, 'budget_breakdown.spent_amount'),

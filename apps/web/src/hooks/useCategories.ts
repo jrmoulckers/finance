@@ -25,7 +25,7 @@ import {
   type CreateCategoryInput,
   type UpdateCategoryInput,
 } from '../db/repositories/categories';
-import { queryOne, type Row } from '../db/sqlite-wasm';
+import { queryOne, type Row } from '../db/async-db';
 import type { Category, SyncId } from '../kmp/bridge';
 import { useRealtimeTable } from './useRealtimeTable';
 
@@ -85,8 +85,8 @@ function normalizeCategoryName(name: string): string {
   return name.trim().toLowerCase();
 }
 
-function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): SyncId | null {
-  const row = queryOne<Row>(
+async function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): Promise<SyncId | null> {
+  const row = await queryOne<Row>(
     db,
     'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
@@ -216,13 +216,13 @@ export interface UseCategoriesResult {
   loading: boolean;
   error: string | null;
   refresh: () => void;
-  createCategory: (input: CreateCategoryInput) => Category | null;
-  updateCategory: (categoryId: SyncId, updates: UpdateCategoryInput) => Category | null;
-  deleteCategory: (categoryId: SyncId) => boolean;
+  createCategory: (input: CreateCategoryInput) => Promise<Category | null>;
+  updateCategory: (categoryId: SyncId, updates: UpdateCategoryInput) => Promise<Category | null>;
+  deleteCategory: (categoryId: SyncId) => Promise<boolean>;
   /** Current Food & Meals template setup based on existing categories. */
   foodMealTemplate: FoodMealTemplateState;
   /** Create the missing Food & Meals parent/subcategories and return the next template state. */
-  ensureFoodMealCategories: () => FoodMealTemplateState | null;
+  ensureFoodMealCategories: () => Promise<FoodMealTemplateState | null>;
 }
 
 export function useCategories(): UseCategoriesResult {
@@ -243,10 +243,10 @@ export function useCategories(): UseCategoriesResult {
   const error = mutationError ?? liveError;
 
   const createCategory = useCallback(
-    (input: CreateCategoryInput): Category | null => {
+    async (input: CreateCategoryInput): Promise<Category | null> => {
       try {
         setMutationError(null);
-        return repoCreateCategory(db, input);
+        return await repoCreateCategory(db, input);
       } catch (categoryError) {
         setMutationError(
           categoryError instanceof Error ? categoryError.message : 'Failed to create category.',
@@ -258,10 +258,10 @@ export function useCategories(): UseCategoriesResult {
   );
 
   const updateCategory = useCallback(
-    (categoryId: SyncId, updates: UpdateCategoryInput): Category | null => {
+    async (categoryId: SyncId, updates: UpdateCategoryInput): Promise<Category | null> => {
       try {
         setMutationError(null);
-        return repoUpdateCategory(db, categoryId, updates);
+        return await repoUpdateCategory(db, categoryId, updates);
       } catch (categoryError) {
         setMutationError(
           categoryError instanceof Error ? categoryError.message : 'Failed to update category.',
@@ -273,10 +273,10 @@ export function useCategories(): UseCategoriesResult {
   );
 
   const deleteCategory = useCallback(
-    (categoryId: SyncId): boolean => {
+    async (categoryId: SyncId): Promise<boolean> => {
       try {
         setMutationError(null);
-        return repoDeleteCategory(db, categoryId);
+        return await repoDeleteCategory(db, categoryId);
       } catch (categoryError) {
         setMutationError(
           categoryError instanceof Error ? categoryError.message : 'Failed to delete category.',
@@ -289,12 +289,14 @@ export function useCategories(): UseCategoriesResult {
 
   const foodMealTemplate = useMemo(() => buildFoodMealTemplateState(categories), [categories]);
 
-  const ensureFoodMealCategories = useCallback((): FoodMealTemplateState | null => {
+  const ensureFoodMealCategories = useCallback(async (): Promise<FoodMealTemplateState | null> => {
     try {
       const nextCategories = [...categories];
       let parentCategory = foodMealTemplate.parentCategory;
       const householdId =
-        parentCategory?.householdId ?? nextCategories[0]?.householdId ?? getFirstHouseholdId(db);
+        parentCategory?.householdId ??
+        nextCategories[0]?.householdId ??
+        (await getFirstHouseholdId(db));
 
       if (!householdId) {
         setMutationError(
@@ -306,7 +308,7 @@ export function useCategories(): UseCategoriesResult {
       let createdCategories = false;
 
       if (!parentCategory) {
-        parentCategory = repoCreateCategory(db, {
+        parentCategory = await repoCreateCategory(db, {
           householdId,
           name: FOOD_MEAL_PARENT_CATEGORY_DEFINITIONS[0].name,
           icon: FOOD_MEAL_PARENT_CATEGORY_DEFINITIONS[0].icon,
@@ -329,7 +331,7 @@ export function useCategories(): UseCategoriesResult {
           continue;
         }
 
-        const createdCategory = repoCreateCategory(db, {
+        const createdCategory = await repoCreateCategory(db, {
           householdId,
           name: definition.name,
           icon: definition.icon,

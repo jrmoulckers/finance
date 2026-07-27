@@ -52,20 +52,28 @@ export function usePredictiveBalance(lookbackMonths = 3): UsePredictiveBalanceRe
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
 
-    try {
-      const accounts = getAllAccounts(db);
-      const transactions = getAllTransactions(db);
-      const result = generatePredictions(accounts, transactions, lookbackMonths);
-      setPrediction(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to compute predictions.');
-      setPrediction(null);
-    } finally {
-      setLoading(false);
-    }
+    void (async () => {
+      try {
+        const accounts = await getAllAccounts(db);
+        const transactions = await getAllTransactions(db);
+        const result = generatePredictions(accounts, transactions, lookbackMonths);
+        if (!cancelled) setPrediction(result);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Failed to compute predictions.');
+        setPrediction(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [db, refreshToken, lookbackMonths]);
 
   return { prediction, loading, error, refresh };
