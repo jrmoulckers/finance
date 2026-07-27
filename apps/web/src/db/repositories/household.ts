@@ -29,7 +29,7 @@ import type {
   GoalContribution,
 } from '../../kmp/bridge';
 import { ROLE_PERMISSIONS, cents } from '../../kmp/bridge';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import {
   SQLITE_NOW_EXPRESSION,
   mapSyncMetadata,
@@ -48,8 +48,8 @@ import {
  *
  * Call this during database initialization to ensure the schema is ready.
  */
-export function initHouseholdTables(db: SqliteDb): void {
-  execute(
+export async function initHouseholdTables(db: AsyncDb): Promise<void> {
+  await execute(
     db,
     `CREATE TABLE IF NOT EXISTS household (
       id TEXT PRIMARY KEY,
@@ -64,7 +64,7 @@ export function initHouseholdTables(db: SqliteDb): void {
     [],
   );
 
-  execute(
+  await execute(
     db,
     `CREATE TABLE IF NOT EXISTS household_member (
       id TEXT PRIMARY KEY,
@@ -83,7 +83,7 @@ export function initHouseholdTables(db: SqliteDb): void {
     [],
   );
 
-  execute(
+  await execute(
     db,
     `CREATE TABLE IF NOT EXISTS household_invitation (
       id TEXT PRIMARY KEY,
@@ -104,7 +104,7 @@ export function initHouseholdTables(db: SqliteDb): void {
     [],
   );
 
-  execute(
+  await execute(
     db,
     `CREATE TABLE IF NOT EXISTS account_sharing (
       id TEXT PRIMARY KEY,
@@ -122,7 +122,7 @@ export function initHouseholdTables(db: SqliteDb): void {
     [],
   );
 
-  execute(
+  await execute(
     db,
     `CREATE TABLE IF NOT EXISTS shared_budget (
       id TEXT PRIMARY KEY,
@@ -140,7 +140,7 @@ export function initHouseholdTables(db: SqliteDb): void {
     [],
   );
 
-  execute(
+  await execute(
     db,
     `CREATE TABLE IF NOT EXISTS shared_goal (
       id TEXT PRIMARY KEY,
@@ -261,16 +261,20 @@ export interface CreateHouseholdInput {
 }
 
 /** Retrieve the household for a given owner. Returns null if none exists. */
-export function getHouseholdByOwner(db: SqliteDb, ownerId: SyncId): Household | null {
-  const row = queryOne(db, `SELECT * FROM household WHERE owner_id = ? AND deleted_at IS NULL`, [
-    ownerId,
-  ]);
+export async function getHouseholdByOwner(db: AsyncDb, ownerId: SyncId): Promise<Household | null> {
+  const row = await queryOne(
+    db,
+    `SELECT * FROM household WHERE owner_id = ? AND deleted_at IS NULL`,
+    [ownerId],
+  );
   return row ? mapHousehold(row) : null;
 }
 
 /** Retrieve a household by its ID. */
-export function getHouseholdById(db: SqliteDb, id: SyncId): Household | null {
-  const row = queryOne(db, `SELECT * FROM household WHERE id = ? AND deleted_at IS NULL`, [id]);
+export async function getHouseholdById(db: AsyncDb, id: SyncId): Promise<Household | null> {
+  const row = await queryOne(db, `SELECT * FROM household WHERE id = ? AND deleted_at IS NULL`, [
+    id,
+  ]);
   return row ? mapHousehold(row) : null;
 }
 
@@ -280,8 +284,8 @@ export function getHouseholdById(db: SqliteDb, id: SyncId): Household | null {
  * household-scoped entity is available — e.g. savings goals saved during
  * onboarding, which happens before the first budget/account exists (#3405).
  */
-export function getPrimaryHouseholdId(db: SqliteDb): SyncId | null {
-  const row = queryOne(
+export async function getPrimaryHouseholdId(db: AsyncDb): Promise<SyncId | null> {
+  const row = await queryOne(
     db,
     `SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1`,
   );
@@ -289,26 +293,29 @@ export function getPrimaryHouseholdId(db: SqliteDb): SyncId | null {
 }
 
 /** Create a new household and add the creator as OWNER member. */
-export function createHousehold(db: SqliteDb, input: CreateHouseholdInput): Household {
+export async function createHousehold(
+  db: AsyncDb,
+  input: CreateHouseholdInput,
+): Promise<Household> {
   const id = crypto.randomUUID();
   const memberId = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  execute(
+  await execute(
     db,
     `INSERT INTO household (id, name, owner_id, created_at, updated_at, sync_version, is_synced)
      VALUES (?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
     [id, input.name.trim(), input.ownerId],
   );
 
-  execute(
+  await execute(
     db,
     `INSERT INTO household_member (id, household_id, user_id, display_name, role, joined_at, created_at, updated_at, sync_version, is_synced)
      VALUES (?, ?, ?, NULL, 'OWNER', ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
     [memberId, id, input.ownerId, now],
   );
 
-  const row = queryOne(db, `SELECT * FROM household WHERE id = ?`, [id]);
+  const row = await queryOne(db, `SELECT * FROM household WHERE id = ?`, [id]);
   return mapHousehold(row!);
 }
 
@@ -317,34 +324,38 @@ export function createHousehold(db: SqliteDb, input: CreateHouseholdInput): Hous
 // ---------------------------------------------------------------------------
 
 /** Retrieve all non-deleted members of a household. */
-export function getHouseholdMembers(db: SqliteDb, householdId: SyncId): HouseholdMember[] {
-  return query(
+export async function getHouseholdMembers(
+  db: AsyncDb,
+  householdId: SyncId,
+): Promise<HouseholdMember[]> {
+  const { rows } = await query(
     db,
     `SELECT * FROM household_member WHERE household_id = ? AND deleted_at IS NULL ORDER BY joined_at ASC`,
     [householdId],
-  ).rows.map(mapMember);
+  );
+  return rows.map(mapMember);
 }
 
 /** Update a member's role within the household. */
-export function updateMemberRole(
-  db: SqliteDb,
+export async function updateMemberRole(
+  db: AsyncDb,
   memberId: SyncId,
   role: HouseholdRole,
-): HouseholdMember | null {
-  execute(
+): Promise<HouseholdMember | null> {
+  await execute(
     db,
     `UPDATE household_member
        SET role = ?, updated_at = ${SQLITE_NOW_EXPRESSION}, sync_version = 1, is_synced = 0
      WHERE id = ? AND deleted_at IS NULL`,
     [role, memberId],
   );
-  const row = queryOne(db, `SELECT * FROM household_member WHERE id = ?`, [memberId]);
+  const row = await queryOne(db, `SELECT * FROM household_member WHERE id = ?`, [memberId]);
   return row ? mapMember(row) : null;
 }
 
 /** Soft-delete a member from the household. */
-export function removeMember(db: SqliteDb, memberId: SyncId): boolean {
-  execute(
+export async function removeMember(db: AsyncDb, memberId: SyncId): Promise<boolean> {
+  await execute(
     db,
     `UPDATE household_member
        SET deleted_at = ${SQLITE_NOW_EXPRESSION}, updated_at = ${SQLITE_NOW_EXPRESSION},
@@ -377,21 +388,28 @@ function generateInviteCode(): string {
 }
 
 /** Retrieve all non-deleted invitations for a household. */
-export function getHouseholdInvitations(db: SqliteDb, householdId: SyncId): HouseholdInvitation[] {
-  return query(
+export async function getHouseholdInvitations(
+  db: AsyncDb,
+  householdId: SyncId,
+): Promise<HouseholdInvitation[]> {
+  const { rows } = await query(
     db,
     `SELECT * FROM household_invitation WHERE household_id = ? AND deleted_at IS NULL ORDER BY created_at DESC`,
     [householdId],
-  ).rows.map(mapInvitation);
+  );
+  return rows.map(mapInvitation);
 }
 
 /** Create a new invitation with a 7-day expiry. */
-export function createInvitation(db: SqliteDb, input: CreateInvitationInput): HouseholdInvitation {
+export async function createInvitation(
+  db: AsyncDb,
+  input: CreateInvitationInput,
+): Promise<HouseholdInvitation> {
   const id = crypto.randomUUID();
   const inviteCode = generateInviteCode();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  execute(
+  await execute(
     db,
     `INSERT INTO household_invitation (id, household_id, invited_by, email, role, status, invite_code, expires_at, created_at, updated_at, sync_version, is_synced)
      VALUES (?, ?, ?, ?, ?, 'PENDING', ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
@@ -406,18 +424,18 @@ export function createInvitation(db: SqliteDb, input: CreateInvitationInput): Ho
     ],
   );
 
-  const row = queryOne(db, `SELECT * FROM household_invitation WHERE id = ?`, [id]);
+  const row = await queryOne(db, `SELECT * FROM household_invitation WHERE id = ?`, [id]);
   return mapInvitation(row!);
 }
 
 /** Accept a pending invitation by invite code. Creates a household member. */
-export function acceptInvitation(
-  db: SqliteDb,
+export async function acceptInvitation(
+  db: AsyncDb,
   inviteCode: string,
   userId: SyncId,
   displayName: string | null,
-): HouseholdMember | null {
-  const invRow = queryOne(
+): Promise<HouseholdMember | null> {
+  const invRow = await queryOne(
     db,
     `SELECT * FROM household_invitation
      WHERE invite_code = ? AND status = 'PENDING' AND deleted_at IS NULL`,
@@ -431,7 +449,7 @@ export function acceptInvitation(
 
   // Check expiry
   if (new Date(invitation.expiresAt) < now) {
-    execute(
+    await execute(
       db,
       `UPDATE household_invitation
          SET status = 'EXPIRED', updated_at = ${SQLITE_NOW_EXPRESSION}, sync_version = 1, is_synced = 0
@@ -442,7 +460,7 @@ export function acceptInvitation(
   }
 
   // Mark invitation as accepted
-  execute(
+  await execute(
     db,
     `UPDATE household_invitation
        SET status = 'ACCEPTED', updated_at = ${SQLITE_NOW_EXPRESSION}, sync_version = 1, is_synced = 0
@@ -452,20 +470,20 @@ export function acceptInvitation(
 
   // Create the member with privacy-by-default: no accounts shared
   const memberId = crypto.randomUUID();
-  execute(
+  await execute(
     db,
     `INSERT INTO household_member (id, household_id, user_id, display_name, role, joined_at, created_at, updated_at, sync_version, is_synced)
      VALUES (?, ?, ?, ?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
     [memberId, invitation.householdId, userId, displayName, invitation.role, now.toISOString()],
   );
 
-  const row = queryOne(db, `SELECT * FROM household_member WHERE id = ?`, [memberId]);
+  const row = await queryOne(db, `SELECT * FROM household_member WHERE id = ?`, [memberId]);
   return row ? mapMember(row) : null;
 }
 
 /** Revoke a pending invitation (soft-delete). */
-export function revokeInvitation(db: SqliteDb, invitationId: SyncId): boolean {
-  execute(
+export async function revokeInvitation(db: AsyncDb, invitationId: SyncId): Promise<boolean> {
+  await execute(
     db,
     `UPDATE household_invitation
        SET status = 'REVOKED', deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -489,15 +507,24 @@ export interface SetAccountSharingInput {
 }
 
 /** Get all account sharing settings for a household. */
-export function getAccountSharings(db: SqliteDb, householdId: SyncId): AccountSharing[] {
-  return query(db, `SELECT * FROM account_sharing WHERE household_id = ? AND deleted_at IS NULL`, [
-    householdId,
-  ]).rows.map(mapAccountSharing);
+export async function getAccountSharings(
+  db: AsyncDb,
+  householdId: SyncId,
+): Promise<AccountSharing[]> {
+  const { rows } = await query(
+    db,
+    `SELECT * FROM account_sharing WHERE household_id = ? AND deleted_at IS NULL`,
+    [householdId],
+  );
+  return rows.map(mapAccountSharing);
 }
 
 /** Get sharing mode for a specific account. Returns null if not configured (defaults to PRIVATE). */
-export function getAccountSharingByAccount(db: SqliteDb, accountId: SyncId): AccountSharing | null {
-  const row = queryOne(
+export async function getAccountSharingByAccount(
+  db: AsyncDb,
+  accountId: SyncId,
+): Promise<AccountSharing | null> {
+  const row = await queryOne(
     db,
     `SELECT * FROM account_sharing WHERE account_id = ? AND deleted_at IS NULL`,
     [accountId],
@@ -506,11 +533,14 @@ export function getAccountSharingByAccount(db: SqliteDb, accountId: SyncId): Acc
 }
 
 /** Set or update sharing mode for an account. Upsert pattern. */
-export function setAccountSharing(db: SqliteDb, input: SetAccountSharingInput): AccountSharing {
-  const existing = getAccountSharingByAccount(db, input.accountId);
+export async function setAccountSharing(
+  db: AsyncDb,
+  input: SetAccountSharingInput,
+): Promise<AccountSharing> {
+  const existing = await getAccountSharingByAccount(db, input.accountId);
 
   if (existing) {
-    execute(
+    await execute(
       db,
       `UPDATE account_sharing
          SET sharing_mode = ?, updated_at = ${SQLITE_NOW_EXPRESSION},
@@ -518,19 +548,19 @@ export function setAccountSharing(db: SqliteDb, input: SetAccountSharingInput): 
        WHERE id = ? AND deleted_at IS NULL`,
       [input.sharingMode, existing.id],
     );
-    const row = queryOne(db, `SELECT * FROM account_sharing WHERE id = ?`, [existing.id]);
+    const row = await queryOne(db, `SELECT * FROM account_sharing WHERE id = ?`, [existing.id]);
     return mapAccountSharing(row!);
   }
 
   const id = crypto.randomUUID();
-  execute(
+  await execute(
     db,
     `INSERT INTO account_sharing (id, account_id, household_id, owner_id, sharing_mode, created_at, updated_at, sync_version, is_synced)
      VALUES (?, ?, ?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
     [id, input.accountId, input.householdId, input.ownerId, input.sharingMode],
   );
 
-  const row = queryOne(db, `SELECT * FROM account_sharing WHERE id = ?`, [id]);
+  const row = await queryOne(db, `SELECT * FROM account_sharing WHERE id = ?`, [id]);
   return mapAccountSharing(row!);
 }
 
@@ -542,8 +572,12 @@ export function setAccountSharing(db: SqliteDb, input: SetAccountSharingInput): 
  * - SHARED accounts are visible to all household members
  * - Accounts with no sharing config default to PRIVATE (privacy-by-default)
  */
-export function isAccountVisibleToUser(db: SqliteDb, accountId: SyncId, userId: SyncId): boolean {
-  const sharing = getAccountSharingByAccount(db, accountId);
+export async function isAccountVisibleToUser(
+  db: AsyncDb,
+  accountId: SyncId,
+  userId: SyncId,
+): Promise<boolean> {
+  const sharing = await getAccountSharingByAccount(db, accountId);
 
   // Default to PRIVATE — privacy-by-default
   if (!sharing) return false;
@@ -558,14 +592,19 @@ export function isAccountVisibleToUser(db: SqliteDb, accountId: SyncId, userId: 
  * Get all accounts visible to a user in a household context.
  * Enforces privacy boundaries: only shared accounts + user's own private accounts.
  */
-export function getVisibleAccountIds(db: SqliteDb, householdId: SyncId, userId: SyncId): SyncId[] {
-  return query(
+export async function getVisibleAccountIds(
+  db: AsyncDb,
+  householdId: SyncId,
+  userId: SyncId,
+): Promise<SyncId[]> {
+  const { rows } = await query(
     db,
     `SELECT account_id FROM account_sharing
      WHERE household_id = ? AND deleted_at IS NULL
        AND (sharing_mode = 'SHARED' OR owner_id = ?)`,
     [householdId, userId],
-  ).rows.map((r: Row) => requireString(r.account_id, 'account_id'));
+  );
+  return rows.map((r: Row) => requireString(r.account_id, 'account_id'));
 }
 
 // ---------------------------------------------------------------------------
@@ -580,22 +619,28 @@ export interface SetSharedBudgetInput {
 }
 
 /** Get all shared budgets for a household. */
-export function getSharedBudgets(db: SqliteDb, householdId: SyncId): SharedBudget[] {
-  return query(db, `SELECT * FROM shared_budget WHERE household_id = ? AND deleted_at IS NULL`, [
-    householdId,
-  ]).rows.map(mapSharedBudget);
+export async function getSharedBudgets(db: AsyncDb, householdId: SyncId): Promise<SharedBudget[]> {
+  const { rows } = await query(
+    db,
+    `SELECT * FROM shared_budget WHERE household_id = ? AND deleted_at IS NULL`,
+    [householdId],
+  );
+  return rows.map(mapSharedBudget);
 }
 
 /** Set or update a shared budget configuration. Upsert pattern. */
-export function setSharedBudget(db: SqliteDb, input: SetSharedBudgetInput): SharedBudget {
-  const existing = queryOne(
+export async function setSharedBudget(
+  db: AsyncDb,
+  input: SetSharedBudgetInput,
+): Promise<SharedBudget> {
+  const existing = await queryOne(
     db,
     `SELECT * FROM shared_budget WHERE budget_id = ? AND household_id = ? AND deleted_at IS NULL`,
     [input.budgetId, input.householdId],
   );
 
   if (existing) {
-    execute(
+    await execute(
       db,
       `UPDATE shared_budget
          SET mode = ?, is_active = 1, updated_at = ${SQLITE_NOW_EXPRESSION},
@@ -603,27 +648,27 @@ export function setSharedBudget(db: SqliteDb, input: SetSharedBudgetInput): Shar
        WHERE id = ?`,
       [input.mode, requireString(existing.id, 'shared_budget.id')],
     );
-    const row = queryOne(db, `SELECT * FROM shared_budget WHERE id = ?`, [
+    const row = await queryOne(db, `SELECT * FROM shared_budget WHERE id = ?`, [
       requireString(existing.id, 'shared_budget.id'),
     ]);
     return mapSharedBudget(row!);
   }
 
   const id = crypto.randomUUID();
-  execute(
+  await execute(
     db,
     `INSERT INTO shared_budget (id, household_id, budget_id, mode, is_active, created_at, updated_at, sync_version, is_synced)
      VALUES (?, ?, ?, ?, 1, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
     [id, input.householdId, input.budgetId, input.mode],
   );
 
-  const row = queryOne(db, `SELECT * FROM shared_budget WHERE id = ?`, [id]);
+  const row = await queryOne(db, `SELECT * FROM shared_budget WHERE id = ?`, [id]);
   return mapSharedBudget(row!);
 }
 
 /** Deactivate (soft-delete) a shared budget. */
-export function removeSharedBudget(db: SqliteDb, sharedBudgetId: SyncId): boolean {
-  execute(
+export async function removeSharedBudget(db: AsyncDb, sharedBudgetId: SyncId): Promise<boolean> {
+  await execute(
     db,
     `UPDATE shared_budget
        SET is_active = 0, deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -641,10 +686,10 @@ export function removeSharedBudget(db: SqliteDb, sharedBudgetId: SyncId): boolea
  * budget categories. For now returns an empty array — real implementation
  * requires transaction aggregation queries.
  */
-export function getBudgetContributions(
-  _db: SqliteDb,
+export async function getBudgetContributions(
+  _db: AsyncDb,
   _sharedBudgetId: SyncId,
-): BudgetContribution[] {
+): Promise<BudgetContribution[]> {
   // TODO: Implement transaction aggregation for contribution tracking
   return [];
 }
@@ -661,24 +706,25 @@ export interface SetSharedGoalInput {
 }
 
 /** Get all shared goals for a household. */
-export function getSharedGoals(db: SqliteDb, householdId: SyncId): SharedGoal[] {
-  return query(
+export async function getSharedGoals(db: AsyncDb, householdId: SyncId): Promise<SharedGoal[]> {
+  const { rows } = await query(
     db,
     `SELECT * FROM shared_goal WHERE household_id = ? AND deleted_at IS NULL AND is_shared = 1`,
     [householdId],
-  ).rows.map(mapSharedGoal);
+  );
+  return rows.map(mapSharedGoal);
 }
 
 /** Set or update shared goal configuration. Upsert pattern. */
-export function setSharedGoal(db: SqliteDb, input: SetSharedGoalInput): SharedGoal {
-  const existing = queryOne(
+export async function setSharedGoal(db: AsyncDb, input: SetSharedGoalInput): Promise<SharedGoal> {
+  const existing = await queryOne(
     db,
     `SELECT * FROM shared_goal WHERE goal_id = ? AND household_id = ? AND deleted_at IS NULL`,
     [input.goalId, input.householdId],
   );
 
   if (existing) {
-    execute(
+    await execute(
       db,
       `UPDATE shared_goal
          SET is_shared = ?, updated_at = ${SQLITE_NOW_EXPRESSION},
@@ -686,21 +732,21 @@ export function setSharedGoal(db: SqliteDb, input: SetSharedGoalInput): SharedGo
        WHERE id = ?`,
       [input.isShared ? 1 : 0, requireString(existing.id, 'shared_goal.id')],
     );
-    const row = queryOne(db, `SELECT * FROM shared_goal WHERE id = ?`, [
+    const row = await queryOne(db, `SELECT * FROM shared_goal WHERE id = ?`, [
       requireString(existing.id, 'shared_goal.id'),
     ]);
     return mapSharedGoal(row!);
   }
 
   const id = crypto.randomUUID();
-  execute(
+  await execute(
     db,
     `INSERT INTO shared_goal (id, household_id, goal_id, is_shared, created_at, updated_at, sync_version, is_synced)
      VALUES (?, ?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
     [id, input.householdId, input.goalId, input.isShared ? 1 : 0],
   );
 
-  const row = queryOne(db, `SELECT * FROM shared_goal WHERE id = ?`, [id]);
+  const row = await queryOne(db, `SELECT * FROM shared_goal WHERE id = ?`, [id]);
   return mapSharedGoal(row!);
 }
 
@@ -711,7 +757,10 @@ export function setSharedGoal(db: SqliteDb, input: SetSharedGoalInput): SharedGo
  * For now returns an empty array — real implementation requires
  * transaction aggregation queries.
  */
-export function getGoalContributions(_db: SqliteDb, _sharedGoalId: SyncId): GoalContribution[] {
+export async function getGoalContributions(
+  _db: AsyncDb,
+  _sharedGoalId: SyncId,
+): Promise<GoalContribution[]> {
   // TODO: Implement contribution aggregation for shared goals
   return [];
 }
@@ -731,12 +780,12 @@ export function getPermissionsForRole(role: HouseholdRole): readonly HouseholdPe
 }
 
 /** Determine the role of a user within a household. Returns null if not a member. */
-export function getUserRole(
-  db: SqliteDb,
+export async function getUserRole(
+  db: AsyncDb,
   householdId: SyncId,
   userId: SyncId,
-): HouseholdRole | null {
-  const row = queryOne(
+): Promise<HouseholdRole | null> {
+  const row = await queryOne(
     db,
     `SELECT role FROM household_member
      WHERE household_id = ? AND user_id = ? AND deleted_at IS NULL`,

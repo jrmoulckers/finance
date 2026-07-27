@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { useMemo } from 'react';
-import type { Row } from '../db/sqlite-wasm';
+import type { Row } from '../db/async-db';
 import { useLiveQuery } from './useLiveQuery';
 
 export interface UseRealtimeTableOptions {

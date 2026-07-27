@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountType } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { Row, AsyncDb } from '../async-db';
 import {
   createAccount,
   deleteAccount,
@@ -14,29 +14,29 @@ import {
   type UpdateAccountInput,
 } from './accounts';
 
-// Mock sqlite-wasm module
-vi.mock('../sqlite-wasm', () => ({
+// Mock async-db module
+vi.mock('../async-db', () => ({
   query: vi.fn(),
   queryOne: vi.fn(),
   execute: vi.fn(),
 }));
 
 // Import mocked functions for control
-import { execute, query, queryOne } from '../sqlite-wasm';
+import { execute, query, queryOne } from '../async-db';
 
 const mockQuery = vi.mocked(query);
 const mockQueryOne = vi.mocked(queryOne);
 const mockExecute = vi.mocked(execute);
 
 describe('accounts repository', () => {
-  const mockDb = {} as SqliteDb;
+  const mockDb = {} as AsyncDb;
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('getAllAccounts', () => {
-    it('should return mapped account objects', () => {
+    it('should return mapped account objects', async () => {
       const mockRows: Row[] = [
         {
           id: 'acc-1',
@@ -76,12 +76,12 @@ describe('accounts repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({
+      mockQuery.mockResolvedValue({
         columns: Object.keys(mockRows[0]),
         rows: mockRows,
       });
 
-      const accounts = getAllAccounts(mockDb);
+      const accounts = await getAllAccounts(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -113,10 +113,10 @@ describe('accounts repository', () => {
       });
     });
 
-    it('should filter out deleted accounts via WHERE clause', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter out deleted accounts via WHERE clause', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getAllAccounts(mockDb);
+      await getAllAccounts(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -124,7 +124,7 @@ describe('accounts repository', () => {
       );
     });
 
-    it('should preserve monetary values as integers', () => {
+    it('should preserve monetary values as integers', async () => {
       const mockRows: Row[] = [
         {
           id: 'acc-1',
@@ -145,9 +145,9 @@ describe('accounts repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const accounts = getAllAccounts(mockDb);
+      const accounts = await getAllAccounts(mockDb);
 
       expect(accounts[0].currentBalance.amount).toBe(12345);
       expect(Number.isInteger(accounts[0].currentBalance.amount)).toBe(true);
@@ -155,7 +155,7 @@ describe('accounts repository', () => {
   });
 
   describe('getAccountById', () => {
-    it('should return mapped account object when found', () => {
+    it('should return mapped account object when found', async () => {
       const mockRow: Row = {
         id: 'acc-1',
         household_id: 'hh-1',
@@ -174,9 +174,9 @@ describe('accounts repository', () => {
         is_synced: 0,
       };
 
-      mockQueryOne.mockReturnValue(mockRow);
+      mockQueryOne.mockResolvedValue(mockRow);
 
-      const account = getAccountById(mockDb, 'acc-1');
+      const account = await getAccountById(mockDb, 'acc-1');
 
       expect(mockQueryOne).toHaveBeenCalledWith(
         mockDb,
@@ -188,18 +188,18 @@ describe('accounts repository', () => {
       expect(account?.name).toBe('Checking');
     });
 
-    it('should return null when account not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return null when account not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const account = getAccountById(mockDb, 'nonexistent');
+      const account = await getAccountById(mockDb, 'nonexistent');
 
       expect(account).toBeNull();
     });
 
-    it('should use parameterized query with ? placeholder', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should use parameterized query with ? placeholder', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      getAccountById(mockDb, 'acc-1');
+      await getAccountById(mockDb, 'acc-1');
 
       expect(mockQueryOne).toHaveBeenCalledWith(mockDb, expect.any(String), ['acc-1']);
       const sql = mockQueryOne.mock.calls[0][1];
@@ -211,7 +211,7 @@ describe('accounts repository', () => {
   describe('createAccount', () => {
     beforeEach(() => {
       // Mock getAccountById to return created account
-      mockQueryOne.mockReturnValue({
+      mockQueryOne.mockResolvedValue({
         id: 'new-acc-id',
         household_id: 'hh-1',
         name: 'New Account',
@@ -230,7 +230,7 @@ describe('accounts repository', () => {
       });
     });
 
-    it('should execute INSERT with correct SQL and parameters', () => {
+    it('should execute INSERT with correct SQL and parameters', async () => {
       const input: CreateAccountInput = {
         householdId: 'hh-1',
         name: 'New Account',
@@ -238,7 +238,7 @@ describe('accounts repository', () => {
         currentBalance: { amount: 50000 },
       };
 
-      createAccount(mockDb, input);
+      await createAccount(mockDb, input);
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
@@ -259,7 +259,7 @@ describe('accounts repository', () => {
       );
     });
 
-    it('should use ? placeholders not string interpolation for values', () => {
+    it('should use ? placeholders not string interpolation for values', async () => {
       const input: CreateAccountInput = {
         householdId: 'hh-1',
         name: 'New Account',
@@ -267,7 +267,7 @@ describe('accounts repository', () => {
         currentBalance: { amount: 50000 },
       };
 
-      createAccount(mockDb, input);
+      await createAccount(mockDb, input);
 
       const sql = mockExecute.mock.calls[0][1];
       // Should use ? for parameters
@@ -278,7 +278,7 @@ describe('accounts repository', () => {
       expect(sql).not.toContain('New Account');
     });
 
-    it('should store monetary amount as integer', () => {
+    it('should store monetary amount as integer', async () => {
       const input: CreateAccountInput = {
         householdId: 'hh-1',
         name: 'New Account',
@@ -286,7 +286,7 @@ describe('accounts repository', () => {
         currentBalance: { amount: 123456 },
       };
 
-      createAccount(mockDb, input);
+      await createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       const amountParam = params[9]; // current_balance includes retirement metadata params
@@ -294,7 +294,7 @@ describe('accounts repository', () => {
       expect(Number.isInteger(amountParam as number)).toBe(true);
     });
 
-    it('should use provided currency code', () => {
+    it('should use provided currency code', async () => {
       const input: CreateAccountInput = {
         householdId: 'hh-1',
         name: 'Euro Account',
@@ -303,13 +303,13 @@ describe('accounts repository', () => {
         currentBalance: { amount: 100000 },
       };
 
-      createAccount(mockDb, input);
+      await createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[8]).toBe('EUR');
     });
 
-    it('should default to USD when currency not provided', () => {
+    it('should default to USD when currency not provided', async () => {
       const input: CreateAccountInput = {
         householdId: 'hh-1',
         name: 'Account',
@@ -317,13 +317,13 @@ describe('accounts repository', () => {
         currentBalance: { amount: 100000 },
       };
 
-      createAccount(mockDb, input);
+      await createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[8]).toBe('USD');
     });
 
-    it('should handle optional fields', () => {
+    it('should handle optional fields', async () => {
       const input: CreateAccountInput = {
         householdId: 'hh-1',
         name: 'Custom Account',
@@ -335,7 +335,7 @@ describe('accounts repository', () => {
         color: '#ff0000',
       };
 
-      createAccount(mockDb, input);
+      await createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[10]).toBe(1); // isArchived
@@ -344,7 +344,7 @@ describe('accounts repository', () => {
       expect(params[13]).toBe('#ff0000'); // color
     });
 
-    it('stores retirement classification metadata', () => {
+    it('stores retirement classification metadata', async () => {
       const input: CreateAccountInput = {
         householdId: 'hh-1',
         name: 'Roth IRA',
@@ -354,7 +354,7 @@ describe('accounts repository', () => {
         retirementTaxTreatment: 'ROTH',
       };
 
-      createAccount(mockDb, input);
+      await createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[5]).toBe('ROTH_IRA');
@@ -366,7 +366,7 @@ describe('accounts repository', () => {
   describe('updateAccount', () => {
     beforeEach(() => {
       // Mock existing account
-      mockQueryOne.mockReturnValueOnce({
+      mockQueryOne.mockResolvedValueOnce({
         id: 'acc-1',
         household_id: 'hh-1',
         name: 'Old Name',
@@ -385,7 +385,7 @@ describe('accounts repository', () => {
       });
 
       // Mock updated account
-      mockQueryOne.mockReturnValueOnce({
+      mockQueryOne.mockResolvedValueOnce({
         id: 'acc-1',
         household_id: 'hh-1',
         name: 'Updated Name',
@@ -404,13 +404,13 @@ describe('accounts repository', () => {
       });
     });
 
-    it('should execute UPDATE with correct SQL and parameters', () => {
+    it('should execute UPDATE with correct SQL and parameters', async () => {
       const updates: UpdateAccountInput = {
         name: 'Updated Name',
         type: 'SAVINGS' as AccountType,
       };
 
-      updateAccount(mockDb, 'acc-1', updates);
+      await updateAccount(mockDb, 'acc-1', updates);
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
@@ -419,12 +419,12 @@ describe('accounts repository', () => {
       );
     });
 
-    it('should use ? placeholders in UPDATE statement', () => {
+    it('should use ? placeholders in UPDATE statement', async () => {
       const updates: UpdateAccountInput = {
         name: 'Updated Name',
       };
 
-      updateAccount(mockDb, 'acc-1', updates);
+      await updateAccount(mockDb, 'acc-1', updates);
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).toContain('SET household_id = ?');
@@ -433,20 +433,20 @@ describe('accounts repository', () => {
       expect(sql).not.toContain("name = 'Updated Name'");
     });
 
-    it('should return null when account not found', () => {
+    it('should return null when account not found', async () => {
       mockQueryOne.mockReset();
-      mockQueryOne.mockReturnValue(null);
+      mockQueryOne.mockResolvedValue(null);
 
-      const result = updateAccount(mockDb, 'nonexistent', { name: 'New' });
+      const result = await updateAccount(mockDb, 'nonexistent', { name: 'New' });
 
       expect(result).toBeNull();
       expect(mockExecute).not.toHaveBeenCalled();
     });
 
-    it('should merge updates with existing values', () => {
+    it('should merge updates with existing values', async () => {
       // Reset mocks
       mockQueryOne.mockReset();
-      mockQueryOne.mockReturnValueOnce({
+      mockQueryOne.mockResolvedValueOnce({
         id: 'acc-1',
         household_id: 'hh-1',
         name: 'Old Name',
@@ -468,7 +468,7 @@ describe('accounts repository', () => {
         name: 'Updated Name',
       };
 
-      updateAccount(mockDb, 'acc-1', updates);
+      await updateAccount(mockDb, 'acc-1', updates);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       // Should include both updated and existing values
@@ -479,9 +479,9 @@ describe('accounts repository', () => {
       expect(params).toContain('USD'); // unchanged currency
     });
 
-    it('should handle null values for optional fields', () => {
+    it('should handle null values for optional fields', async () => {
       mockQueryOne.mockReset();
-      mockQueryOne.mockReturnValueOnce({
+      mockQueryOne.mockResolvedValueOnce({
         id: 'acc-1',
         household_id: 'hh-1',
         name: 'Account',
@@ -504,7 +504,7 @@ describe('accounts repository', () => {
         color: null,
       };
 
-      updateAccount(mockDb, 'acc-1', updates);
+      await updateAccount(mockDb, 'acc-1', updates);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params).toContain(null); // icon
@@ -513,8 +513,8 @@ describe('accounts repository', () => {
   });
 
   describe('deleteAccount', () => {
-    it('should soft-delete by setting deleted_at timestamp', () => {
-      mockQueryOne.mockReturnValue({
+    it('should soft-delete by setting deleted_at timestamp', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'acc-1',
         household_id: 'hh-1',
         name: 'Account',
@@ -532,7 +532,7 @@ describe('accounts repository', () => {
         is_synced: 0,
       });
 
-      const result = deleteAccount(mockDb, 'acc-1');
+      const result = await deleteAccount(mockDb, 'acc-1');
 
       expect(result).toBe(true);
       expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE account'), [
@@ -544,17 +544,17 @@ describe('accounts repository', () => {
       expect(sql).toContain('AND deleted_at IS NULL');
     });
 
-    it('should return false when account not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return false when account not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const result = deleteAccount(mockDb, 'nonexistent');
+      const result = await deleteAccount(mockDb, 'nonexistent');
 
       expect(result).toBe(false);
       expect(mockExecute).not.toHaveBeenCalled();
     });
 
-    it('should use parameterized query for account ID', () => {
-      mockQueryOne.mockReturnValue({
+    it('should use parameterized query for account ID', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'acc-1',
         household_id: 'hh-1',
         name: 'Account',
@@ -572,7 +572,7 @@ describe('accounts repository', () => {
         is_synced: 0,
       });
 
-      deleteAccount(mockDb, 'acc-1');
+      await deleteAccount(mockDb, 'acc-1');
 
       expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.any(String), ['acc-1']);
       const sql = mockExecute.mock.calls[0][1];

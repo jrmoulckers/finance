@@ -205,11 +205,11 @@ const defaultBudgetsReturn = {
   error: null,
   refresh: vi.fn(),
   createBudget: vi.fn(),
-  createBudgetTemplate: vi.fn(() => null),
+  createBudgetTemplate: vi.fn().mockResolvedValue(null),
   updateBudget: vi.fn(),
   deleteBudget: vi.fn(),
   reorderBudgets: vi.fn(),
-  getBudgetSpendingBreakdown: vi.fn(() => []),
+  getBudgetSpendingBreakdown: vi.fn().mockResolvedValue([]),
 };
 
 const createGoalMock = vi.fn(() => ({ id: 'goal-1' }));
@@ -590,7 +590,7 @@ describe('OnboardingPage', () => {
     expect(document.activeElement).toBe(last);
   });
 
-  it('completes financial-literacy lessons and reflects progress in the checklist', () => {
+  it('completes financial-literacy lessons and reflects progress in the checklist', async () => {
     renderWithRouter(<OnboardingPage />);
 
     goToNewcomerStep();
@@ -607,7 +607,9 @@ describe('OnboardingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
-    expect(screen.getByText(/education lessons 3\/3 complete/i)).toBeInTheDocument();
+    // Reaching the checklist runs the async "skip" handler (goal migration +
+    // onboarding completion), so wait for the completion step to render (#3118).
+    expect(await screen.findByText(/education lessons 3\/3 complete/i)).toBeInTheDocument();
   });
 
   it('keeps financial-literacy lessons opt-in and not required to proceed', () => {
@@ -656,7 +658,9 @@ describe('OnboardingPage', () => {
 
     goToTemplateStep();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
-    fireEvent.click(screen.getByRole('button', { name: /edit guidance/i }));
+    // The checklist "Edit guidance" link only exists after the async skip handler
+    // completes onboarding and renders the completion step, so wait for it.
+    fireEvent.click(await screen.findByRole('button', { name: /edit guidance/i }));
 
     expect(screen.getByRole('heading', { name: /personalize your setup/i })).toBeInTheDocument();
     await waitFor(() =>
@@ -669,7 +673,9 @@ describe('OnboardingPage', () => {
 
     goToTemplateStep();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
-    fireEvent.click(screen.getByRole('button', { name: /review lessons/i }));
+    // The checklist "Review lessons" link only exists after the async skip handler
+    // completes onboarding and renders the completion step, so wait for it.
+    fireEvent.click(await screen.findByRole('button', { name: /review lessons/i }));
 
     expect(screen.getByRole('heading', { name: /personalize your setup/i })).toBeInTheDocument();
     await waitFor(() =>
@@ -677,7 +683,7 @@ describe('OnboardingPage', () => {
     );
   });
 
-  it('previews and saves an onboarding goal before checklist completion', () => {
+  it('previews and saves an onboarding goal before checklist completion', async () => {
     renderWithRouter(<OnboardingPage />);
 
     goToGoalsStep();
@@ -697,7 +703,9 @@ describe('OnboardingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
     // #3405: the goal is migrated into the real goals store (minor units) and the
-    // onboarding-only localStorage cache is cleared once persisted.
+    // onboarding-only localStorage cache is cleared once persisted. Migration runs
+    // in the async "skip" handler, so wait for the checklist before asserting.
+    expect(await screen.findByText(/1 goal saved/i)).toBeInTheDocument();
     expect(createGoalMock).toHaveBeenCalledWith(
       expect.objectContaining({
         householdId: 'household-1',
@@ -707,15 +715,16 @@ describe('OnboardingPage', () => {
       }),
     );
     expect(localStorage.getItem('finance-onboarding-goals')).toBe('[]');
-    expect(screen.getByText(/1 goal saved/i)).toBeInTheDocument();
   });
 
-  it('migrates onboarding goals into the real goals store when creating the starter budget (#3405)', () => {
+  it('migrates onboarding goals into the real goals store when creating the starter budget (#3405)', async () => {
     mockedUseBudgets.mockReturnValue({
       ...defaultBudgetsReturn,
-      createBudgetTemplate: vi.fn(() => [
-        { id: 'budget-1', householdId: 'household-1' },
-      ]) as unknown as typeof defaultBudgetsReturn.createBudgetTemplate,
+      createBudgetTemplate: vi
+        .fn()
+        .mockResolvedValue([
+          { id: 'budget-1', householdId: 'household-1' },
+        ]) as unknown as typeof defaultBudgetsReturn.createBudgetTemplate,
     });
 
     renderWithRouter(<OnboardingPage />);
@@ -731,6 +740,11 @@ describe('OnboardingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     fireEvent.click(screen.getByRole('button', { name: /create my budget/i }));
 
+    // Creating the starter budget triggers the async goal migration + onboarding
+    // completion, so wait for the local cache to clear before asserting (#3405).
+    // writeGoals([]) only runs after createGoal resolves, so a cleared cache also
+    // guarantees the goal was migrated.
+    await waitFor(() => expect(localStorage.getItem('finance-onboarding-goals')).toBe('[]'));
     expect(createGoalMock).toHaveBeenCalledWith(
       expect.objectContaining({
         householdId: 'household-1',
@@ -739,7 +753,6 @@ describe('OnboardingPage', () => {
         currentAmount: { amount: 0 },
       }),
     );
-    expect(localStorage.getItem('finance-onboarding-goals')).toBe('[]');
   });
 
   it('keeps onboarding goals in local storage when no household exists yet (#3405)', () => {
@@ -792,13 +805,15 @@ describe('OnboardingPage', () => {
     expect(amountInput.value).toBe('123');
   });
 
-  it('lets users hide, restore, dismiss, and reopen post-onboarding setup help', () => {
+  it('lets users hide, restore, dismiss, and reopen post-onboarding setup help', async () => {
     renderWithRouter(<OnboardingPage />);
 
     goToTemplateStep();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
-    expect(screen.getByRole('region', { name: /setup progress/i })).toBeInTheDocument();
+    // The setup checklist renders after the async "skip" handler completes
+    // onboarding, so wait for the completion step before interacting with it.
+    expect(await screen.findByRole('region', { name: /setup progress/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /quick tips/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /hide checklist/i }));
@@ -818,11 +833,11 @@ describe('OnboardingPage', () => {
     expect(screen.getByText(/budget categories are planning buckets/i)).toBeInTheDocument();
   });
 
-  it('creates the student starter budget before completing onboarding', () => {
+  it('creates the student starter budget before completing onboarding', async () => {
     const enableLocalOnly = vi.fn();
     const completeOnboarding = vi.fn();
     const rejectAll = vi.fn();
-    const createBudgetTemplate = vi.fn(() => [
+    const createBudgetTemplate = vi.fn().mockResolvedValue([
       {
         id: 'budget-1',
         householdId: 'household-1',
@@ -868,6 +883,11 @@ describe('OnboardingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     fireEvent.click(screen.getByRole('button', { name: /create my budget/i }));
 
+    // The confirmation renders only after the async template creation + goal
+    // migration completes onboarding (#3118), so wait for it before asserting.
+    expect(
+      await screen.findByText(/student starter budget is already in place/i),
+    ).toBeInTheDocument();
     expect(rejectAll).toHaveBeenCalled();
     expect(enableLocalOnly).toHaveBeenCalled();
     expect(createBudgetTemplate).toHaveBeenCalledWith({
@@ -875,7 +895,6 @@ describe('OnboardingPage', () => {
       startDate: expect.stringMatching(/^\d{4}-\d{2}-01$/),
     });
     expect(completeOnboarding).toHaveBeenCalled();
-    expect(screen.getByText(/student starter budget is already in place/i)).toBeInTheDocument();
   });
 
   it('surfaces an optional, private newcomer tax-ID and income-type step', () => {

@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDatabase } from '../db/DatabaseProvider';
 import { useFocusTrap } from '../accessibility/aria';
 import { Checkbox } from './common/Checkbox';
-import type { SqliteDb } from '../db/sqlite-wasm';
+import type { AsyncDb } from '../db/async-db';
 import { getAllAccounts } from '../db/repositories/accounts';
 import { getAllTransactions } from '../db/repositories/transactions';
 import { getAllBudgets } from '../db/repositories/budgets';
@@ -45,11 +45,11 @@ type ExportStatus =
 type ExportRecord = Record<string, unknown>;
 
 interface ExportData {
-  accounts: ReturnType<typeof getAllAccounts>;
-  transactions: ReturnType<typeof getAllTransactions>;
-  budgets: ReturnType<typeof getAllBudgets>;
-  goals: ReturnType<typeof getAllGoals>;
-  categories: ReturnType<typeof getAllCategories>;
+  accounts: Awaited<ReturnType<typeof getAllAccounts>>;
+  transactions: Awaited<ReturnType<typeof getAllTransactions>>;
+  budgets: Awaited<ReturnType<typeof getAllBudgets>>;
+  goals: Awaited<ReturnType<typeof getAllGoals>>;
+  categories: Awaited<ReturnType<typeof getAllCategories>>;
 }
 
 export interface DataExportProps {
@@ -71,23 +71,23 @@ const STRINGS = {
 };
 
 /** Gather all exportable financial data from the local SQLite-WASM database. */
-function gatherExportData(db: SqliteDb, includeMoodTags: boolean): ExportData {
-  const transactions = getAllTransactions(db).map((transaction) => {
+async function gatherExportData(db: AsyncDb, includeMoodTags: boolean): Promise<ExportData> {
+  const transactions = (await getAllTransactions(db)).map((transaction) => {
     if (includeMoodTags) return transaction;
     const { moodTag: _moodTag, ...exportableTransaction } = transaction;
     return exportableTransaction as typeof transaction;
   });
 
   return {
-    accounts: getAllAccounts(db),
+    accounts: await getAllAccounts(db),
     transactions,
-    budgets: getAllBudgets(db),
-    goals: getAllGoals(db),
-    categories: getAllCategories(db),
+    budgets: await getAllBudgets(db),
+    goals: await getAllGoals(db),
+    categories: await getAllCategories(db),
   };
 }
 
-function useExportDatabase(): SqliteDb | null {
+function useExportDatabase(): AsyncDb | null {
   try {
     return useDatabase();
   } catch {
@@ -122,8 +122,11 @@ function safeJsonRecord(value: string): ExportRecord {
   }
 }
 
-function buildPackageInput(db: SqliteDb, includeMoodTags: boolean): DataAccessPackageInput {
-  const data = gatherExportData(db, includeMoodTags);
+async function buildPackageInput(
+  db: AsyncDb,
+  includeMoodTags: boolean,
+): Promise<DataAccessPackageInput> {
+  const data = await gatherExportData(db, includeMoodTags);
   return {
     accounts: toExportRecords(data.accounts),
     transactions: toExportRecords(data.transactions),
@@ -342,10 +345,25 @@ export const DataExport: React.FC<DataExportProps> = ({
 
   const manifest = packageResult?.manifest;
   const dbUnavailable = db === null;
-  const previewInput = useMemo(
-    () => (db ? buildPackageInput(db, includeMoodTags) : null),
-    [db, includeMoodTags],
-  );
+  const [previewInput, setPreviewInput] = useState<DataAccessPackageInput | null>(null);
+  useEffect(() => {
+    if (!db) {
+      setPreviewInput(null);
+      return undefined;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const input = await buildPackageInput(db, includeMoodTags);
+        if (!cancelled) setPreviewInput(input);
+      } catch {
+        if (!cancelled) setPreviewInput(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [db, includeMoodTags]);
   const domainSummaries = useMemo(
     () => (previewInput ? summarizeDataAccessDomains(previewInput) : []),
     [previewInput],
@@ -417,7 +435,7 @@ export const DataExport: React.FC<DataExportProps> = ({
       try {
         if (!db)
           throw new Error('Database is still initializing. Please wait a moment and try again.');
-        const packageInput = buildPackageInput(db, includeMoodTags);
+        const packageInput = await buildPackageInput(db, includeMoodTags);
         await appendSecurityAuditEvent({
           action: 'data_export_generated',
           result: 'success',
@@ -504,7 +522,8 @@ export const DataExport: React.FC<DataExportProps> = ({
       if (!db)
         throw new Error('Database is still initializing. Please wait a moment and try again.');
       const generatedAt = new Date();
-      const exportData = buildBackupPackage(db, {
+      if (!db.sqlite) throw new Error('Full JSON backup is only available on the local database.');
+      const exportData = buildBackupPackage(db.sqlite, {
         appVersion: APP_VERSION,
         generatedAt,
       });
@@ -520,14 +539,14 @@ export const DataExport: React.FC<DataExportProps> = ({
     }
   }, [db]);
 
-  const downloadTransactionsCsv = useCallback(() => {
+  const downloadTransactionsCsv = useCallback(async () => {
     setErrorMessage('');
     setSimpleDownloadMessage('');
     try {
       if (!db)
         throw new Error('Database is still initializing. Please wait a moment and try again.');
       const generatedAt = new Date();
-      const exportData = buildFullJsonExport(db, { appVersion: APP_VERSION, generatedAt });
+      const exportData = await buildFullJsonExport(db, { appVersion: APP_VERSION, generatedAt });
       triggerBrowserDownload(
         buildTransactionsCsv(exportData),
         buildDatedExportFileName('finance-transactions', 'csv', generatedAt),
@@ -542,14 +561,14 @@ export const DataExport: React.FC<DataExportProps> = ({
     }
   }, [db]);
 
-  const downloadAllCsvZip = useCallback(() => {
+  const downloadAllCsvZip = useCallback(async () => {
     setErrorMessage('');
     setSimpleDownloadMessage('');
     try {
       if (!db)
         throw new Error('Database is still initializing. Please wait a moment and try again.');
       const generatedAt = new Date();
-      const exportData = buildFullJsonExport(db, {
+      const exportData = await buildFullJsonExport(db, {
         appVersion: APP_VERSION,
         generatedAt,
         preferences: readLocalStorageRecords('finance-'),

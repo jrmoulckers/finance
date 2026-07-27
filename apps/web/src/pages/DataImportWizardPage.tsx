@@ -396,7 +396,12 @@ export function DataImportWizardPage() {
       if (isBackup) {
         try {
           const parsed = await parseBackupFile(file);
-          const preview = buildRestorePreview(db, parsed, { wipeLocalDataFirst: backupWipeFirst });
+          if (!db.sqlite) {
+            throw new Error('Backup restore is only available on the local database.');
+          }
+          const preview = buildRestorePreview(db.sqlite, parsed, {
+            wipeLocalDataFirst: backupWipeFirst,
+          });
           setBackupPackage(parsed);
           setBackupPreview(preview);
           setBackupResult(null);
@@ -483,8 +488,10 @@ export function DataImportWizardPage() {
   const handleBackupWipeChange = useCallback(
     (checked: boolean) => {
       setBackupWipeFirst(checked);
-      if (backupPackage) {
-        setBackupPreview(buildRestorePreview(db, backupPackage, { wipeLocalDataFirst: checked }));
+      if (backupPackage && db.sqlite) {
+        setBackupPreview(
+          buildRestorePreview(db.sqlite, backupPackage, { wipeLocalDataFirst: checked }),
+        );
         setBackupResult(null);
       }
     },
@@ -496,7 +503,10 @@ export function DataImportWizardPage() {
     setBackupRestoring(true);
     setBackupError('');
     try {
-      const restored = restoreBackupPackage(db, backupPackage, {
+      if (!db.sqlite) {
+        throw new Error('Backup restore is only available on the local database.');
+      }
+      const restored = restoreBackupPackage(db.sqlite, backupPackage, {
         wipeLocalDataFirst: backupWipeFirst,
       });
       setBackupResult(restored);

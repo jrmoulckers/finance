@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { SqliteDb } from '../../db/sqlite-wasm';
+import type { AsyncDb } from '../../db/async-db';
 import { getAllAccounts } from '../../db/repositories/accounts';
 import { getAllBills } from '../../db/repositories/bills';
 import { getAllBudgets } from '../../db/repositories/budgets';
@@ -22,7 +22,7 @@ import { getAllTransactions } from '../../db/repositories/transactions';
 import { buildZipArchive, type ZipEntry } from '../data-access-package';
 import { getCurrentLocale } from '../i18n';
 
-type HouseholdRecord = NonNullable<ReturnType<typeof getHouseholdById>>;
+type HouseholdRecord = NonNullable<Awaited<ReturnType<typeof getHouseholdById>>>;
 
 interface CsvAccountRecord {
   id: string;
@@ -58,22 +58,22 @@ export interface FullJsonExport {
   schemaVersion: 1;
   generatedAt: string;
   appVersion: string | null;
-  accounts: ReturnType<typeof getAllAccounts>;
-  transactions: ReturnType<typeof getAllTransactions>;
-  categories: ReturnType<typeof getAllCategories>;
-  budgets: ReturnType<typeof getAllBudgets>;
-  goals: ReturnType<typeof getAllGoals>;
-  bills: ReturnType<typeof getAllBills>;
-  investments: ReturnType<typeof getAllInvestments>;
-  investmentLots: ReturnType<typeof getLotsByInvestment>;
+  accounts: Awaited<ReturnType<typeof getAllAccounts>>;
+  transactions: Awaited<ReturnType<typeof getAllTransactions>>;
+  categories: Awaited<ReturnType<typeof getAllCategories>>;
+  budgets: Awaited<ReturnType<typeof getAllBudgets>>;
+  goals: Awaited<ReturnType<typeof getAllGoals>>;
+  bills: Awaited<ReturnType<typeof getAllBills>>;
+  investments: Awaited<ReturnType<typeof getAllInvestments>>;
+  investmentLots: Awaited<ReturnType<typeof getLotsByInvestment>>;
   households: HouseholdRecord[];
-  householdMembers: ReturnType<typeof getHouseholdMembers>;
-  householdInvitations: ReturnType<typeof getHouseholdInvitations>;
-  accountSharings: ReturnType<typeof getAccountSharings>;
-  sharedBudgets: ReturnType<typeof getSharedBudgets>;
-  budgetContributions: ReturnType<typeof getBudgetContributions>;
-  sharedGoals: ReturnType<typeof getSharedGoals>;
-  goalContributions: ReturnType<typeof getGoalContributions>;
+  householdMembers: Awaited<ReturnType<typeof getHouseholdMembers>>;
+  householdInvitations: Awaited<ReturnType<typeof getHouseholdInvitations>>;
+  accountSharings: Awaited<ReturnType<typeof getAccountSharings>>;
+  sharedBudgets: Awaited<ReturnType<typeof getSharedBudgets>>;
+  budgetContributions: Awaited<ReturnType<typeof getBudgetContributions>>;
+  sharedGoals: Awaited<ReturnType<typeof getSharedGoals>>;
+  goalContributions: Awaited<ReturnType<typeof getGoalContributions>>;
   preferences: ExportRecord[];
   settings: ExportRecord[];
 }
@@ -113,20 +113,24 @@ export interface PdfSummaryInput extends TransactionsCsvInput {
   readonly categoryIds?: readonly string[];
 }
 
-export function buildFullJsonExport(
-  db: SqliteDb,
+export async function buildFullJsonExport(
+  db: AsyncDb,
   options: FullJsonExportOptions = {},
-): FullJsonExport {
-  const accounts = readOptionalTable(() => getAllAccounts(db));
-  const transactions = readOptionalTable(() => getAllTransactions(db));
-  const categories = readOptionalTable(() => getAllCategories(db));
-  const budgets = readOptionalTable(() => getAllBudgets(db));
-  const goals = readOptionalTable(() => getAllGoals(db));
-  const bills = readOptionalTable(() => getAllBills(db));
-  const investments = readOptionalTable(() => getAllInvestments(db));
-  const investmentLots = investments.flatMap((investment) =>
-    readOptionalTable(() => getLotsByInvestment(db, investment.id)),
-  );
+): Promise<FullJsonExport> {
+  const accounts = await readOptionalTable(() => getAllAccounts(db));
+  const transactions = await readOptionalTable(() => getAllTransactions(db));
+  const categories = await readOptionalTable(() => getAllCategories(db));
+  const budgets = await readOptionalTable(() => getAllBudgets(db));
+  const goals = await readOptionalTable(() => getAllGoals(db));
+  const bills = await readOptionalTable(() => getAllBills(db));
+  const investments = await readOptionalTable(() => getAllInvestments(db));
+  const investmentLots = (
+    await Promise.all(
+      investments.map((investment) =>
+        readOptionalTable(() => getLotsByInvestment(db, investment.id)),
+      ),
+    )
+  ).flat();
 
   const householdIds = collectHouseholdIds([
     accounts,
@@ -137,30 +141,54 @@ export function buildFullJsonExport(
     bills,
     investments,
   ]);
-  const households = householdIds
-    .map((householdId) => readOptionalRecord(() => getHouseholdById(db, householdId)))
-    .filter(isPresent);
-  const householdMembers = households.flatMap((household) =>
-    readOptionalTable(() => getHouseholdMembers(db, household.id)),
-  );
-  const householdInvitations = households.flatMap((household) =>
-    readOptionalTable(() => getHouseholdInvitations(db, household.id)),
-  );
-  const accountSharings = households.flatMap((household) =>
-    readOptionalTable(() => getAccountSharings(db, household.id)),
-  );
-  const sharedBudgets = households.flatMap((household) =>
-    readOptionalTable(() => getSharedBudgets(db, household.id)),
-  );
-  const budgetContributions = sharedBudgets.flatMap((sharedBudget) =>
-    readOptionalTable(() => getBudgetContributions(db, sharedBudget.id)),
-  );
-  const sharedGoals = households.flatMap((household) =>
-    readOptionalTable(() => getSharedGoals(db, household.id)),
-  );
-  const goalContributions = sharedGoals.flatMap((sharedGoal) =>
-    readOptionalTable(() => getGoalContributions(db, sharedGoal.id)),
-  );
+  const households = (
+    await Promise.all(
+      householdIds.map((householdId) =>
+        readOptionalRecord(() => getHouseholdById(db, householdId)),
+      ),
+    )
+  ).filter(isPresent);
+  const householdMembers = (
+    await Promise.all(
+      households.map((household) => readOptionalTable(() => getHouseholdMembers(db, household.id))),
+    )
+  ).flat();
+  const householdInvitations = (
+    await Promise.all(
+      households.map((household) =>
+        readOptionalTable(() => getHouseholdInvitations(db, household.id)),
+      ),
+    )
+  ).flat();
+  const accountSharings = (
+    await Promise.all(
+      households.map((household) => readOptionalTable(() => getAccountSharings(db, household.id))),
+    )
+  ).flat();
+  const sharedBudgets = (
+    await Promise.all(
+      households.map((household) => readOptionalTable(() => getSharedBudgets(db, household.id))),
+    )
+  ).flat();
+  const budgetContributions = (
+    await Promise.all(
+      sharedBudgets.map((sharedBudget) =>
+        readOptionalTable(() => getBudgetContributions(db, sharedBudget.id)),
+      ),
+    )
+  ).flat();
+  const sharedGoals = (
+    await Promise.all(
+      households.map((household) => readOptionalTable(() => getSharedGoals(db, household.id))),
+    )
+  ).flat();
+  const goalContributions = (
+    await Promise.all(
+      sharedGoals.map((sharedGoal) =>
+        readOptionalTable(() => getGoalContributions(db, sharedGoal.id)),
+      ),
+    )
+  ).flat();
 
   return {
     schemaVersion: 1,
@@ -213,8 +241,8 @@ export function buildTransactionsCsv(input: TransactionsCsvInput): string {
   return `${rows.map((row) => row.map(escapeCsvField).join(',')).join('\r\n')}\r\n`;
 }
 
-export function buildTransactionsCsvExport(db: SqliteDb): string {
-  return buildTransactionsCsv(buildFullJsonExport(db));
+export async function buildTransactionsCsvExport(db: AsyncDb): Promise<string> {
+  return buildTransactionsCsv(await buildFullJsonExport(db));
 }
 
 /** A single CSV file produced by {@link buildEntityCsvFiles}. */
@@ -588,9 +616,9 @@ function escapePdfText(value: string): string {
   return value.replace(/[\\()]/g, (match) => `\\${match}`);
 }
 
-function readOptionalTable<T>(read: () => T[]): T[] {
+async function readOptionalTable<T>(read: () => Promise<T[]>): Promise<T[]> {
   try {
-    return read();
+    return await read();
   } catch (error) {
     // Always degrade gracefully: an export must not abort because a single
     // optional table or row is missing / partially populated. Missing tables
@@ -601,9 +629,9 @@ function readOptionalTable<T>(read: () => T[]): T[] {
   }
 }
 
-function readOptionalRecord<T>(read: () => T | null): T | null {
+async function readOptionalRecord<T>(read: () => Promise<T | null>): Promise<T | null> {
   try {
-    return read();
+    return await read();
   } catch (error) {
     logExportReadFailure(error);
     return null;

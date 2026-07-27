@@ -11,7 +11,7 @@ import type {
   SyncId,
 } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import { notifyMilestoneDataChanged } from '../../lib/milestones';
 import {
   SQLITE_NOW_EXPRESSION,
@@ -111,20 +111,19 @@ export function mapAccount(row: Row): Account {
 }
 
 /** Return every non-deleted account ordered by sort order and name. */
-export function getAllAccounts(db: SqliteDb): Account[] {
-  return query<Row>(db, `${ACCOUNT_BASE_QUERY} ORDER BY sort_order ASC, name ASC`).rows.map(
-    mapAccount,
-  );
+export async function getAllAccounts(db: AsyncDb): Promise<Account[]> {
+  const { rows } = await query<Row>(db, `${ACCOUNT_BASE_QUERY} ORDER BY sort_order ASC, name ASC`);
+  return rows.map(mapAccount);
 }
 
 /** Find a single non-deleted account by its identifier. */
-export function getAccountById(db: SqliteDb, accountId: SyncId): Account | null {
-  const row = queryOne<Row>(db, `${ACCOUNT_BASE_QUERY} AND id = ?`, [accountId]);
+export async function getAccountById(db: AsyncDb, accountId: SyncId): Promise<Account | null> {
+  const row = await queryOne<Row>(db, `${ACCOUNT_BASE_QUERY} AND id = ?`, [accountId]);
   return row ? mapAccount(row) : null;
 }
 
 /** Insert a new account row and return the created account. */
-export function createAccount(db: SqliteDb, input: CreateAccountInput): Account {
+export async function createAccount(db: AsyncDb, input: CreateAccountInput): Promise<Account> {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
   const purpose = input.purpose ?? 'personal';
@@ -135,7 +134,7 @@ export function createAccount(db: SqliteDb, input: CreateAccountInput): Account 
   const hsaCoverageLevel =
     retirementAccountType === 'HSA' ? (input.hsaCoverageLevel ?? null) : null;
 
-  execute(
+  await execute(
     db,
     `INSERT INTO account (
       id,
@@ -183,7 +182,7 @@ export function createAccount(db: SqliteDb, input: CreateAccountInput): Account 
     ],
   );
 
-  const createdAccount = getAccountById(db, id);
+  const createdAccount = await getAccountById(db, id);
   if (!createdAccount) {
     throw new Error('Failed to create account.');
   }
@@ -193,12 +192,12 @@ export function createAccount(db: SqliteDb, input: CreateAccountInput): Account 
 }
 
 /** Update an account row and return the refreshed account. */
-export function updateAccount(
-  db: SqliteDb,
+export async function updateAccount(
+  db: AsyncDb,
   accountId: SyncId,
   updates: UpdateAccountInput,
-): Account | null {
-  const existingAccount = getAccountById(db, accountId);
+): Promise<Account | null> {
+  const existingAccount = await getAccountById(db, accountId);
   if (!existingAccount) {
     return null;
   }
@@ -228,7 +227,7 @@ export function updateAccount(
     color: updates.color !== undefined ? updates.color : existingAccount.color,
   };
 
-  execute(
+  await execute(
     db,
     `UPDATE account
         SET household_id = ?,
@@ -267,7 +266,7 @@ export function updateAccount(
     ],
   );
 
-  const updatedAccount = getAccountById(db, accountId);
+  const updatedAccount = await getAccountById(db, accountId);
   if (updatedAccount) {
     notifyMilestoneDataChanged();
   }
@@ -276,13 +275,13 @@ export function updateAccount(
 }
 
 /** Soft-delete an account row by marking its deleted timestamp. */
-export function deleteAccount(db: SqliteDb, accountId: SyncId): boolean {
-  const existingAccount = getAccountById(db, accountId);
+export async function deleteAccount(db: AsyncDb, accountId: SyncId): Promise<boolean> {
+  const existingAccount = await getAccountById(db, accountId);
   if (!existingAccount) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE account
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -299,15 +298,18 @@ export function deleteAccount(db: SqliteDb, accountId: SyncId): boolean {
 }
 
 /** Return all non-deleted accounts for a specific account type. */
-export function getAccountsByType(db: SqliteDb, type: AccountType): Account[] {
-  return query<Row>(db, `${ACCOUNT_BASE_QUERY} AND type = ? ORDER BY sort_order ASC, name ASC`, [
-    type,
-  ]).rows.map(mapAccount);
+export async function getAccountsByType(db: AsyncDb, type: AccountType): Promise<Account[]> {
+  const { rows } = await query<Row>(
+    db,
+    `${ACCOUNT_BASE_QUERY} AND type = ? ORDER BY sort_order ASC, name ASC`,
+    [type],
+  );
+  return rows.map(mapAccount);
 }
 
 /** Recompute an account balance from its non-deleted transactions. */
-export function recomputeAccountBalance(db: SqliteDb, accountId: SyncId): void {
-  execute(
+export async function recomputeAccountBalance(db: AsyncDb, accountId: SyncId): Promise<void> {
+  await execute(
     db,
     `UPDATE account
         SET current_balance = (

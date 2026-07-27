@@ -10,7 +10,7 @@ import {
 import { getAllCategories } from '../db/repositories/categories';
 import { getAllGoals } from '../db/repositories/goals';
 import { getAllTransactions } from '../db/repositories/transactions';
-import type { SqliteDb } from '../db/sqlite-wasm';
+import type { AsyncDb } from '../db/async-db';
 import {
   generateRecommendations,
   type PersonalizedRecommendation,
@@ -34,35 +34,38 @@ const EMPTY_SUMMARY: RecommendationSummary = {
   lastAnalyzedAt: new Date(0).toISOString(),
 };
 
-function enrichBudgets(db: SqliteDb): readonly BudgetWithSpending[] {
-  return getAllBudgets(db).map((budget) => {
-    const enriched = getBudgetWithSpending(db, budget.id);
-    if (enriched) {
-      return enriched;
-    }
+async function enrichBudgets(db: AsyncDb): Promise<readonly BudgetWithSpending[]> {
+  const budgets = await getAllBudgets(db);
+  return Promise.all(
+    budgets.map(async (budget) => {
+      const enriched = await getBudgetWithSpending(db, budget.id);
+      if (enriched) {
+        return enriched;
+      }
 
-    return {
-      ...budget,
-      spentAmount: { amount: 0 },
-      remainingAmount: { amount: budget.amount.amount },
-    };
-  });
+      return {
+        ...budget,
+        spentAmount: { amount: 0 },
+        remainingAmount: { amount: budget.amount.amount },
+      };
+    }),
+  );
 }
 
-function loadRecommendations(db: SqliteDb) {
+async function loadRecommendations(db: AsyncDb) {
   return generateRecommendations({
-    accounts: getAllAccounts(db),
-    budgets: enrichBudgets(db),
-    categories: getAllCategories(db),
-    goals: getAllGoals(db),
-    transactions: getAllTransactions(db),
+    accounts: await getAllAccounts(db),
+    budgets: await enrichBudgets(db),
+    categories: await getAllCategories(db),
+    goals: await getAllGoals(db),
+    transactions: await getAllTransactions(db),
   });
 }
 
 export function useRecommendations(maxRecommendations: number = 5): UseRecommendationsResult {
   const queryFn = useCallback(
-    (database: SqliteDb) => {
-      const result = loadRecommendations(database);
+    async (database: AsyncDb) => {
+      const result = await loadRecommendations(database);
       const recommendations = result.recommendations.slice(0, maxRecommendations);
       return {
         recommendations,

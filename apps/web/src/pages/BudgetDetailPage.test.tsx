@@ -82,7 +82,7 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
-      createBudgetTemplate: vi.fn(() => null),
+      createBudgetTemplate: vi.fn().mockResolvedValue(null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn().mockReturnValue([
@@ -153,10 +153,10 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
-      createBudgetTemplate: vi.fn(() => null),
+      createBudgetTemplate: vi.fn().mockResolvedValue(null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
-      getBudgetSpendingBreakdown: vi.fn(() => []),
+      getBudgetSpendingBreakdown: vi.fn().mockResolvedValue([]),
       reorderBudgets: vi.fn(),
     });
 
@@ -198,10 +198,10 @@ describe('BudgetDetailPage', () => {
       error: 'Failed to load budgets.',
       refresh: refreshMock,
       createBudget: vi.fn(),
-      createBudgetTemplate: vi.fn(() => null),
+      createBudgetTemplate: vi.fn().mockResolvedValue(null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
-      getBudgetSpendingBreakdown: vi.fn(() => []),
+      getBudgetSpendingBreakdown: vi.fn().mockResolvedValue([]),
       reorderBudgets: vi.fn(),
     });
 
@@ -218,10 +218,10 @@ describe('BudgetDetailPage', () => {
       error: 'Database error',
       refresh: refreshMock,
       createBudget: vi.fn(),
-      createBudgetTemplate: vi.fn(() => null),
+      createBudgetTemplate: vi.fn().mockResolvedValue(null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
-      getBudgetSpendingBreakdown: vi.fn(() => []),
+      getBudgetSpendingBreakdown: vi.fn().mockResolvedValue([]),
       reorderBudgets: vi.fn(),
     });
 
@@ -306,8 +306,15 @@ describe('BudgetDetailPage', () => {
 
     expect(screen.getByText('Weekly Meal Budget')).toBeInTheDocument();
     expect(screen.getByText('$138.57')).toBeInTheDocument();
-    // The donut chart is lazy-loaded (recharts is code-split); wait for the
-    // Suspense boundary to resolve before asserting on its title (#2983).
+    // The breakdown is an async repository read (useEffect + setState under the
+    // AsyncDb data layer), so it starts empty and settles after render. Anchor on
+    // "Tracked spending" first: it renders only once the read resolves with data,
+    // so waiting for it guarantees the transient empty-state placeholder (which
+    // also renders the text "Subcategory spending" and a "Groceries, Dining Out"
+    // hint) has unmounted, keeping the matches below unambiguous.
+    expect(await screen.findByText('Tracked spending')).toBeInTheDocument();
+    // The donut chart is lazy-loaded (React.lazy); wait for its Suspense boundary
+    // to resolve before asserting on its title (#2983).
     expect(await screen.findByText('Subcategory spending')).toBeInTheDocument();
     expect(screen.getByText(/Groceries/i)).toBeInTheDocument();
     expect(screen.getByText(/Dining Out/i)).toBeInTheDocument();
@@ -343,7 +350,7 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
-      createBudgetTemplate: vi.fn(() => null),
+      createBudgetTemplate: vi.fn().mockResolvedValue(null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
@@ -379,7 +386,7 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
-      createBudgetTemplate: vi.fn(() => null),
+      createBudgetTemplate: vi.fn().mockResolvedValue(null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),

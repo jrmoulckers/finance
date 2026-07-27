@@ -14,7 +14,7 @@
  * References: #1644
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGoals } from './useGoals';
 import { useAccounts } from './useAccounts';
 import { useDatabase } from '../db/DatabaseProvider';
@@ -47,6 +47,35 @@ export function useLinkedGoals(): UseLinkedGoalsResult {
   const { goals, loading: goalsLoading, error: goalsError, refresh: refreshGoals } = useGoals();
   const { accounts, loading: accountsLoading, refresh: refreshAccounts } = useAccounts();
 
+  // Contribution history is loaded asynchronously (the repository read is async
+  // under the AsyncDb data layer) and keyed by goal id so the memo below can
+  // build each LinkedGoal synchronously once the history is available.
+  const [contributionsByGoal, setContributionsByGoal] = useState<Map<string, GoalContribution[]>>(
+    () => new Map(),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const entries = await Promise.all(
+        goals.map(async (goal) => {
+          try {
+            const contributions = await getGoalProgressContributions(db, goal.id);
+            return [goal.id, contributions] as const;
+          } catch {
+            return [goal.id, [] as GoalContribution[]] as const;
+          }
+        }),
+      );
+      if (!cancelled) setContributionsByGoal(new Map(entries));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [db, goals]);
+
   const linkedGoals = useMemo<LinkedGoal[]>(() => {
     return goals.map((goal) => {
       // Find linked account if any
@@ -59,12 +88,7 @@ export function useLinkedGoals(): UseLinkedGoalsResult {
       // balance actually accumulated over time — not a single lump sum synthesised
       // from the current balance (#3381). buildLinkedGoal treats fewer than two
       // contributions as insufficient history.
-      let contributions: GoalContribution[];
-      try {
-        contributions = getGoalProgressContributions(db, goal.id);
-      } catch {
-        contributions = [];
-      }
+      const contributions = contributionsByGoal.get(goal.id) ?? [];
 
       return buildLinkedGoal(
         {
@@ -79,7 +103,7 @@ export function useLinkedGoals(): UseLinkedGoalsResult {
         contributions,
       );
     });
-  }, [db, goals, accounts]);
+  }, [goals, accounts, contributionsByGoal]);
 
   const refresh = () => {
     refreshGoals();

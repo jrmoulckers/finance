@@ -280,13 +280,13 @@ describe('CategoriesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add categories' }));
 
+    await waitFor(() => expect(createCategoryMock).toHaveBeenCalledTimes(7));
     expect(createCategoryMock).toHaveBeenCalledWith(
       expect.objectContaining({ householdId: 'household-1', name: 'School Fees' }),
     );
     expect(createCategoryMock).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Medical & Co-pays' }),
     );
-    expect(createCategoryMock).toHaveBeenCalledTimes(7);
   });
 
   it('does not apply the family & kids preset when cancelled', async () => {

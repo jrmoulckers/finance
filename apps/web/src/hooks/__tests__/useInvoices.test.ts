@@ -11,7 +11,7 @@
  * and nothing is ever written to `localStorage`.
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useInvoices } from '../useInvoices';
@@ -76,32 +76,32 @@ describe('useInvoices', () => {
     localStorage.clear();
   });
 
-  it('starts empty and runs the one-time legacy migration on mount', () => {
+  it('starts empty and runs the one-time legacy migration on mount', async () => {
     const { result } = renderHook(() => useInvoices());
 
+    await waitFor(() => expect(importLegacyInvoices).toHaveBeenCalledTimes(1));
     expect(result.current.invoices).toEqual([]);
-    expect(importLegacyInvoices).toHaveBeenCalledTimes(1);
   });
 
-  it('adds an invoice through the repository and returns it', () => {
+  it('adds an invoice through the repository and returns it', async () => {
     const { result } = renderHook(() => useInvoices());
 
     let created: Invoice | undefined;
-    act(() => {
-      created = result.current.addInvoice(input());
+    await act(async () => {
+      created = await result.current.addInvoice(input());
     });
 
     expect(created?.clientName).toBe('Studio Delacroix');
-    expect(result.current.invoices).toHaveLength(1);
+    await waitFor(() => expect(result.current.invoices).toHaveLength(1));
     expect(result.current.invoices[0]?.id).toBe(created?.id);
   });
 
-  it('never writes invoices to localStorage', () => {
+  it('never writes invoices to localStorage', async () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const { result } = renderHook(() => useInvoices());
 
-    act(() => {
-      result.current.addInvoice(input());
+    await act(async () => {
+      await result.current.addInvoice(input());
     });
 
     expect(localStorage.getItem('finance:invoices')).toBeNull();
@@ -109,11 +109,11 @@ describe('useInvoices', () => {
     setItem.mockRestore();
   });
 
-  it('persists across a simulated cache clear (data lives in the database)', () => {
+  it('persists across a simulated cache clear (data lives in the database)', async () => {
     const first = renderHook(() => useInvoices());
     let created: Invoice | undefined;
-    act(() => {
-      created = first.result.current.addInvoice(input());
+    await act(async () => {
+      created = await first.result.current.addInvoice(input());
     });
     first.unmount();
 
@@ -122,57 +122,60 @@ describe('useInvoices', () => {
     localStorage.clear();
 
     const second = renderHook(() => useInvoices());
-    expect(second.result.current.invoices).toHaveLength(1);
+    await waitFor(() => expect(second.result.current.invoices).toHaveLength(1));
     expect(second.result.current.invoices[0]?.id).toBe(created?.id);
   });
 
-  it('records a payment and preserves the #3266 cash-inflow link', () => {
+  it('records a payment and preserves the #3266 cash-inflow link', async () => {
     const { result } = renderHook(() => useInvoices());
     let created: Invoice | undefined;
-    act(() => {
-      created = result.current.addInvoice(input({ amountCents: 10000 }));
+    await act(async () => {
+      created = await result.current.addInvoice(input({ amountCents: 10000 }));
     });
 
-    act(() => {
-      result.current.recordPayment(created!.id, 10000, '2026-02-01', {
+    await act(async () => {
+      await result.current.recordPayment(created!.id, 10000, '2026-02-01', {
         accountId: 'acc-1',
         transactionId: 'txn-1',
       });
     });
 
-    const paid = result.current.invoices.find((invoice) => invoice.id === created?.id);
-    expect(paid?.status).toBe('Paid');
+    let paid: Invoice | undefined;
+    await waitFor(() => {
+      paid = result.current.invoices.find((invoice) => invoice.id === created?.id);
+      expect(paid?.status).toBe('Paid');
+    });
     expect(paid?.paymentAccountId).toBe('acc-1');
     expect(paid?.paymentTransactionId).toBe('txn-1');
     expect(paid?.amountPaidCents).toBe(10000);
   });
 
-  it('updates an invoice status through the repository', () => {
+  it('updates an invoice status through the repository', async () => {
     const { result } = renderHook(() => useInvoices());
     let created: Invoice | undefined;
-    act(() => {
-      created = result.current.addInvoice(input());
+    await act(async () => {
+      created = await result.current.addInvoice(input());
     });
 
-    act(() => {
-      result.current.updateInvoiceStatus(created!.id, 'Draft');
+    await act(async () => {
+      await result.current.updateInvoiceStatus(created!.id, 'Draft');
     });
 
-    expect(result.current.invoices[0]?.status).toBe('Draft');
+    await waitFor(() => expect(result.current.invoices[0]?.status).toBe('Draft'));
   });
 
-  it('deletes an invoice through the repository', () => {
+  it('deletes an invoice through the repository', async () => {
     const { result } = renderHook(() => useInvoices());
     let created: Invoice | undefined;
-    act(() => {
-      created = result.current.addInvoice(input());
+    await act(async () => {
+      created = await result.current.addInvoice(input());
     });
-    expect(result.current.invoices).toHaveLength(1);
+    await waitFor(() => expect(result.current.invoices).toHaveLength(1));
 
-    act(() => {
-      result.current.deleteInvoice(created!.id);
+    await act(async () => {
+      await result.current.deleteInvoice(created!.id);
     });
 
-    expect(result.current.invoices).toHaveLength(0);
+    await waitFor(() => expect(result.current.invoices).toHaveLength(0));
   });
 });

@@ -90,19 +90,23 @@ export function useSubscriptions(): UseSubscriptionsResult {
     setLoading(true);
     setError(null);
 
-    try {
-      const transactions = getAllTransactions(db);
-      const categories = getAllCategories(db);
-      const detected = detectSubscriptions(transactions, categories);
-      const sum = computeSubscriptionSummary(detected);
+    const load = async () => {
+      try {
+        const transactions = await getAllTransactions(db);
+        const categories = await getAllCategories(db);
+        const detected = detectSubscriptions(transactions, categories);
+        const sum = computeSubscriptionSummary(detected);
 
-      setSubscriptions(detected);
-      setSummary(sum);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to detect subscriptions.');
-    } finally {
-      setLoading(false);
-    }
+        setSubscriptions(detected);
+        setSummary(sum);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to detect subscriptions.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, [db, refreshToken]);
 
   const toggleStatus = useCallback((subscriptionId: string) => {

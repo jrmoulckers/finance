@@ -187,7 +187,7 @@ export const ReceiptOcrPage: React.FC = () => {
     return Currencies[code as keyof typeof Currencies] ?? fallback;
   };
 
-  const saveExpense = useCallback(() => {
+  const saveExpense = useCallback(async () => {
     if (workingDraft === null) return;
     if (selectedAccount === null) {
       setError('Choose an account before saving.');
@@ -198,7 +198,7 @@ export const ReceiptOcrPage: React.FC = () => {
       return;
     }
 
-    const transaction = createTransaction({
+    const transaction = await createTransaction({
       householdId: selectedAccount.householdId,
       accountId: selectedAccount.id,
       type: 'EXPENSE',

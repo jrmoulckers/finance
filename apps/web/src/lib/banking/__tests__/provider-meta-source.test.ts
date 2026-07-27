@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SqliteDb } from '../../../db/sqlite-wasm';
+import type { AsyncDb } from '../../../db/async-db';
 import type { AggregatorProvider } from '../../../db/repositories/bank-connections';
 
 vi.mock('../../../db/repositories/bank-connections', () => ({
@@ -12,7 +12,30 @@ import { listAggregatorProviders } from '../../../db/repositories/bank-connectio
 import { createDbProviderMetaSource } from '../provider-meta-source';
 
 const mockList = vi.mocked(listAggregatorProviders);
-const mockDb = {} as SqliteDb;
+
+type ChangeHandler = () => void;
+
+function createMockDb(): { db: AsyncDb; fireChange: () => void } {
+  let handler: ChangeHandler | null = null;
+  const db = {
+    getAll: vi.fn(),
+    getOptional: vi.fn(),
+    execute: vi.fn(),
+    onChange: vi.fn((_tables: readonly string[], cb: ChangeHandler) => {
+      handler = cb;
+      return () => {
+        handler = null;
+      };
+    }),
+    close: vi.fn(),
+  } as unknown as AsyncDb;
+  return { db, fireChange: () => handler?.() };
+}
+
+async function flush(): Promise<void> {
+  // Let the internal async refresh() settle before asserting on the snapshot.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 function provider(overrides: Partial<AggregatorProvider> = {}): AggregatorProvider {
   return {
@@ -35,10 +58,13 @@ beforeEach(() => {
 });
 
 describe('createDbProviderMetaSource', () => {
-  it('maps directory rows to routable metadata keyed by provider name', () => {
-    mockList.mockReturnValue([provider()]);
+  it('maps directory rows to routable metadata keyed by provider name', async () => {
+    mockList.mockResolvedValue([provider()]);
+    const { db } = createMockDb();
 
-    const meta = createDbProviderMetaSource(mockDb)();
+    const source = createDbProviderMetaSource(db);
+    await flush();
+    const meta = source();
 
     expect(meta).toEqual([
       {
@@ -52,20 +78,29 @@ describe('createDbProviderMetaSource', () => {
     ]);
   });
 
-  it('treats unknown statuses as down so they are excluded from routing', () => {
-    mockList.mockReturnValue([provider({ status: 'weird' })]);
+  it('treats unknown statuses as down so they are excluded from routing', async () => {
+    mockList.mockResolvedValue([provider({ status: 'weird' })]);
+    const { db } = createMockDb();
 
-    const [meta] = createDbProviderMetaSource(mockDb)();
+    const source = createDbProviderMetaSource(db);
+    await flush();
+    const [meta] = source();
 
     expect(meta.status).toBe('down');
   });
 
-  it('re-reads the directory on every invocation', () => {
-    mockList.mockReturnValueOnce([]).mockReturnValueOnce([provider()]);
+  it('refreshes the cached snapshot when the provider directory changes', async () => {
+    mockList.mockResolvedValueOnce([]).mockResolvedValueOnce([provider()]);
 
-    const source = createDbProviderMetaSource(mockDb);
+    const { db, fireChange } = createMockDb();
+    const source = createDbProviderMetaSource(db);
+    await flush();
 
     expect(source()).toHaveLength(0);
+
+    fireChange();
+    await flush();
+
     expect(source()).toHaveLength(1);
     expect(mockList).toHaveBeenCalledTimes(2);
   });

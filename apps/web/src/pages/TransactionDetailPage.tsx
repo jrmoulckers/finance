@@ -157,7 +157,7 @@ export const TransactionDetailPage: React.FC = () => {
       [BNPL_CUSTOM_FIELD_KEYS.liabilityType]: 'BNPL',
       [BNPL_CUSTOM_FIELD_KEYS.installmentStatus]: 'PAID',
     };
-    const result = updateTransaction(transaction.id, { customFields });
+    const result = await updateTransaction(transaction.id, { customFields });
     if (result === null) {
       throw new Error('Failed to mark BNPL installment paid.');
     }
@@ -167,7 +167,7 @@ export const TransactionDetailPage: React.FC = () => {
   const handleFormSubmit = useCallback(
     async (data: CreateTransactionInput): Promise<void> => {
       if (transaction === null) return;
-      const result = updateTransaction(transaction.id, data);
+      const result = await updateTransaction(transaction.id, data);
       if (result === null) {
         throw new Error('Failed to update transaction. Please try again.');
       }
@@ -649,9 +649,9 @@ export const TransactionDetailPage: React.FC = () => {
         message={deletingTransaction !== null ? `Are you sure you want to delete "${label}"?` : ''}
         confirmLabel="Delete"
         cancelLabel="Cancel"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deletingTransaction === null) return;
-          const deleted = deleteTransaction(deletingTransaction.id);
+          const deleted = await deleteTransaction(deletingTransaction.id);
           if (deleted) {
             setDeletingTransaction(null);
             refreshTransactions();

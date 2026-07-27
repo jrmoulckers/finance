@@ -32,7 +32,7 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateGoalInput } from '../../db/repositories/goals';
-import { queryOne, type Row } from '../../db/sqlite-wasm';
+import { type Row } from '../../db/sqlite-wasm';
 import { useAmountInput } from '../../hooks/useAmountInput';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useNavigationGuard } from '../../hooks/useNavigationGuard';
@@ -126,9 +126,8 @@ function validate(
  *
  * @returns The household SyncId or `null` if none exists.
  */
-function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): SyncId | null {
-  const row = queryOne<Row>(
-    db,
+async function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): Promise<SyncId | null> {
+  const row = await db.getOptional<Row>(
     'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   if (row && typeof row.id === 'string') {
@@ -260,7 +259,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
         return;
       }
 
-      const householdId = initialData?.householdId ?? getFirstHouseholdId(db);
+      const householdId = initialData?.householdId ?? (await getFirstHouseholdId(db));
       if (!householdId) {
         setSubmitError('No household found. Please create a household before saving goals.');
         return;

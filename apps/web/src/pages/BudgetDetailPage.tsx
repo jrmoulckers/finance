@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { Suspense, useCallback, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppIcon, type IconName } from '../components/icons';
 
@@ -10,7 +10,7 @@ import { ErrorBanner } from '../components/common/ErrorBanner';
 import { ExplainThis } from '../components/common/ExplainThis';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { BudgetForm } from '../components/forms';
-import type { CreateBudgetInput } from '../db/repositories/budgets';
+import type { BudgetSpendingBreakdownItem, CreateBudgetInput } from '../db/repositories/budgets';
 import { useBudgets } from '../hooks/useBudgets';
 import { useCategories } from '../hooks/useCategories';
 import { isFoodMealBudgetParentCategory } from '../hooks/useCategories';
@@ -78,6 +78,7 @@ export const BudgetDetailPage: React.FC = () => {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deletingBudget, setDeletingBudget] = useState<Budget | null>(null);
+  const [foodBudgetBreakdown, setFoodBudgetBreakdown] = useState<BudgetSpendingBreakdownItem[]>([]);
 
   const {
     budgets,
@@ -99,7 +100,34 @@ export const BudgetDetailPage: React.FC = () => {
     [budget, categories],
   );
   const isFoodBudget = budget ? isFoodMealBudgetParentCategory(category, categories) : false;
-  const foodBudgetBreakdown = budget && isFoodBudget ? getBudgetSpendingBreakdown(budget.id) : [];
+  // The spending breakdown is an async repository read under the AsyncDb data
+  // layer, so it is loaded into state via an effect (with a cancellation guard)
+  // rather than read during render. Mirrors usePredictiveBalance/useLinkedGoals.
+  useEffect(() => {
+    const budgetId = isFoodBudget ? (budget?.id ?? null) : null;
+    if (budgetId === null) {
+      setFoodBudgetBreakdown([]);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const breakdown = await getBudgetSpendingBreakdown(budgetId);
+        if (!cancelled) {
+          setFoodBudgetBreakdown(breakdown);
+        }
+      } catch {
+        if (!cancelled) {
+          setFoodBudgetBreakdown([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [budget?.id, isFoodBudget, getBudgetSpendingBreakdown]);
 
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
@@ -108,7 +136,7 @@ export const BudgetDetailPage: React.FC = () => {
   const handleFormSubmit = useCallback(
     async (data: CreateBudgetInput) => {
       if (!budget) return;
-      const updated = updateBudget(budget.id, data);
+      const updated = await updateBudget(budget.id, data);
       if (updated === null) {
         throw new Error('Failed to update budget.');
       }
@@ -117,9 +145,9 @@ export const BudgetDetailPage: React.FC = () => {
     [budget, updateBudget],
   );
 
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingBudget) return;
-    const deleted = deleteBudget(deletingBudget.id);
+    const deleted = await deleteBudget(deletingBudget.id);
     if (deleted) {
       setDeletingBudget(null);
       navigate('/budgets', { replace: true });

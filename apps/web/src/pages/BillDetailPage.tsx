@@ -46,9 +46,9 @@ export const BillDetailPage: React.FC = () => {
     }
   }, [bill, markPaid]);
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (bill) {
-      const deleted = deleteBill(bill.id);
+      const deleted = await deleteBill(bill.id);
       if (deleted) {
         navigate('/bills');
       }

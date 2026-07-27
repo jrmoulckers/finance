@@ -5,6 +5,7 @@ import { fn } from 'storybook/test';
 import type { Account } from '../../kmp/bridge';
 import { DatabaseContext, type DatabaseContextValue } from '../../db/DatabaseProvider';
 import type { SqliteDb } from '../../db/sqlite-wasm';
+import { createSqliteAsyncDb } from '../../db/async-db';
 import { AccountForm } from './AccountForm';
 
 import './forms.css';
@@ -13,12 +14,14 @@ import './forms.css';
 // Mock database — AccountForm calls useDatabase() to resolve householdId
 // ---------------------------------------------------------------------------
 
-const mockDb: SqliteDb = {
+const mockSqlite: SqliteDb = {
   exec: fn(),
   selectAll: fn().mockReturnValue([]),
   selectOne: fn().mockReturnValue({ id: 'hh-1' }),
   close: fn().mockResolvedValue(undefined),
 };
+
+const mockDb = createSqliteAsyncDb(mockSqlite);
 
 const mockDbContext: DatabaseContextValue = {
   db: mockDb,

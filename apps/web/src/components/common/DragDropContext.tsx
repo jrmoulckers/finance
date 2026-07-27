@@ -346,7 +346,7 @@ export interface CategoryDropZoneProps {
     transactionIds: readonly SyncId[],
     categoryId: SyncId | null,
     categoryName: string,
-  ) => boolean;
+  ) => boolean | Promise<boolean>;
 }
 
 interface DropTargetDefinition {
@@ -422,14 +422,18 @@ export function CategoryDropZone({ categories, onDropTransactions }: CategoryDro
   );
 
   const handleDrop = useCallback(
-    (target: DropTargetDefinition) => (event: ReactDragEvent<HTMLDivElement>) => {
+    (target: DropTargetDefinition) => async (event: ReactDragEvent<HTMLDivElement>) => {
       const payload = resolvePayload(event);
       if (payload === null) {
         return;
       }
 
       event.preventDefault();
-      const wasSuccessful = onDropTransactions(payload.transactionIds, target.id, target.name);
+      const wasSuccessful = await onDropTransactions(
+        payload.transactionIds,
+        target.id,
+        target.name,
+      );
       if (wasSuccessful) {
         completeDrop(target.targetId);
       } else {

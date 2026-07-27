@@ -38,8 +38,8 @@ export interface UseRemittancesResult {
   readonly loading: boolean;
   readonly error: string | null;
   readonly refresh: () => void;
-  readonly createRemittance: (input: CreateRemittanceInput) => RemittanceRecord | null;
-  readonly deleteRemittance: (id: string) => boolean;
+  readonly createRemittance: (input: CreateRemittanceInput) => Promise<RemittanceRecord | null>;
+  readonly deleteRemittance: (id: string) => Promise<boolean>;
 }
 
 function generateId(): string {
@@ -68,28 +68,30 @@ export function useRemittances(): UseRemittancesResult {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    try {
-      // One-time migration of any records left in the pre-#3273 localStorage
-      // store, then read the durable list back from the database (sorted).
-      importLegacyRemittances(db);
-      setRemittances(getAllRemittances(db));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load remittances.');
-      setRemittances([]);
-    } finally {
-      setLoading(false);
-    }
+    void (async () => {
+      try {
+        // One-time migration of any records left in the pre-#3273 localStorage
+        // store, then read the durable list back from the database (sorted).
+        await importLegacyRemittances(db);
+        setRemittances(await getAllRemittances(db));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load remittances.');
+        setRemittances([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [db, refreshToken]);
 
   const createRemittance = useCallback(
-    (input: CreateRemittanceInput): RemittanceRecord | null => {
+    async (input: CreateRemittanceInput): Promise<RemittanceRecord | null> => {
       try {
         const record: RemittanceRecord = {
           ...input,
           id: generateId(),
           createdAt: new Date().toISOString(),
         };
-        const persisted = insertRemittance(db, record);
+        const persisted = await insertRemittance(db, record);
         refresh();
         return persisted;
       } catch (err) {
@@ -101,9 +103,9 @@ export function useRemittances(): UseRemittancesResult {
   );
 
   const deleteRemittance = useCallback(
-    (id: string): boolean => {
+    async (id: string): Promise<boolean> => {
       try {
-        const removed = deleteRemittanceRecord(db, id);
+        const removed = await deleteRemittanceRecord(db, id);
         if (removed) {
           refresh();
         }

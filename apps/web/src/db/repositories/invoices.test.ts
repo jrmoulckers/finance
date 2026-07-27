@@ -4,15 +4,15 @@
  * Tests for the invoice persistence repository (issue #3273).
  *
  * The repository is a thin layer over the SQLite-WASM primitives, so these
- * tests mock `../sqlite-wasm` (and the household helper) and assert the SQL /
+ * tests mock `../async-db` (and the household helper) and assert the SQL /
  * parameters, the row → {@link Invoice} mapping (including the #3266 payment
  * link), soft-delete, and the one-time localStorage → database migration.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { Row, AsyncDb } from '../async-db';
 
-vi.mock('../sqlite-wasm', () => ({
+vi.mock('../async-db', () => ({
   execute: vi.fn(),
   query: vi.fn(),
   queryOne: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock('./household', () => ({
   getPrimaryHouseholdId: vi.fn(),
 }));
 
-import { execute, query, queryOne } from '../sqlite-wasm';
+import { execute, query, queryOne } from '../async-db';
 import { getPrimaryHouseholdId } from './household';
 import {
   deleteInvoiceRecord,
@@ -38,7 +38,7 @@ const mockQuery = vi.mocked(query);
 const mockQueryOne = vi.mocked(queryOne);
 const mockGetPrimaryHouseholdId = vi.mocked(getPrimaryHouseholdId);
 
-const mockDb = {} as SqliteDb;
+const mockDb = {} as AsyncDb;
 
 function invoiceRow(overrides: Partial<Row> = {}): Row {
   return {
@@ -88,21 +88,20 @@ function baseInvoice(overrides: Partial<Invoice> = {}): Invoice {
 function useInMemoryInvoiceTable(seed: Row[] = []): Map<string, Row> {
   const table = new Map<string, Row>(seed.map((row) => [String(row.id), row]));
 
-  mockExecute.mockImplementation((_db, sql, params) => {
+  mockExecute.mockImplementation(async (_db, sql, params) => {
     const text = String(sql);
     if (text.includes('INSERT INTO invoice')) {
       const id = String((params as unknown[])?.[0]);
       table.set(id, invoiceRow({ id, household_id: (params as unknown[])?.[1] as Row[string] }));
     }
-    return { rowsAffected: 1 };
   });
 
-  mockQueryOne.mockImplementation((_db, _sql, params) => {
+  mockQueryOne.mockImplementation(async (_db, _sql, params) => {
     const id = String((params as unknown[])?.[0]);
     return table.get(id) ?? null;
   });
 
-  mockQuery.mockImplementation(() => ({ columns: [], rows: [...table.values()] }));
+  mockQuery.mockImplementation(async () => ({ columns: [], rows: [...table.values()] }));
 
   return table;
 }
@@ -110,12 +109,12 @@ function useInMemoryInvoiceTable(seed: Row[] = []): Map<string, Row> {
 describe('invoices repository', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetPrimaryHouseholdId.mockReturnValue('hh-1');
+    mockGetPrimaryHouseholdId.mockResolvedValue('hh-1');
     globalThis.localStorage?.clear();
   });
 
-  it('maps a full row to the Invoice domain shape, including the #3266 payment link', () => {
-    mockQuery.mockReturnValue({
+  it('maps a full row to the Invoice domain shape, including the #3266 payment link', async () => {
+    mockQuery.mockResolvedValue({
       columns: [],
       rows: [
         invoiceRow({
@@ -129,7 +128,7 @@ describe('invoices repository', () => {
       ],
     });
 
-    const [invoice] = getAllInvoices(mockDb);
+    const [invoice] = await getAllInvoices(mockDb);
 
     expect(invoice).toEqual({
       id: 'inv-1',
@@ -150,10 +149,10 @@ describe('invoices repository', () => {
     });
   });
 
-  it('omits optional fields when unset so the mapped shape matches the domain factory', () => {
-    mockQuery.mockReturnValue({ columns: [], rows: [invoiceRow()] });
+  it('omits optional fields when unset so the mapped shape matches the domain factory', async () => {
+    mockQuery.mockResolvedValue({ columns: [], rows: [invoiceRow()] });
 
-    const [invoice] = getAllInvoices(mockDb);
+    const [invoice] = await getAllInvoices(mockDb);
 
     expect(invoice).not.toHaveProperty('lastContactedDate');
     expect(invoice).not.toHaveProperty('amountPaidCents');
@@ -162,10 +161,10 @@ describe('invoices repository', () => {
     expect(invoice).not.toHaveProperty('paymentTransactionId');
   });
 
-  it('inserts an invoice with the resolved household and the domain timestamps', () => {
+  it('inserts an invoice with the resolved household and the domain timestamps', async () => {
     useInMemoryInvoiceTable();
 
-    const created = insertInvoice(mockDb, baseInvoice());
+    const created = await insertInvoice(mockDb, baseInvoice());
 
     expect(mockGetPrimaryHouseholdId).toHaveBeenCalledWith(mockDb);
     const [, sql, params] = mockExecute.mock.calls[0];
@@ -191,19 +190,19 @@ describe('invoices repository', () => {
     expect(created.id).toBe('inv-1');
   });
 
-  it('stores a null household when no household exists yet (clean-slate workspace)', () => {
-    mockGetPrimaryHouseholdId.mockReturnValue(null);
+  it('stores a null household when no household exists yet (clean-slate workspace)', async () => {
+    mockGetPrimaryHouseholdId.mockResolvedValue(null);
     useInMemoryInvoiceTable();
 
-    insertInvoice(mockDb, baseInvoice());
+    await insertInvoice(mockDb, baseInvoice());
 
     expect(mockExecute.mock.calls[0][2]?.[1]).toBeNull();
   });
 
-  it('persists the #3266 payment link columns when present', () => {
+  it('persists the #3266 payment link columns when present', async () => {
     useInMemoryInvoiceTable();
 
-    insertInvoice(
+    await insertInvoice(
       mockDb,
       baseInvoice({
         status: 'Paid',
@@ -221,31 +220,31 @@ describe('invoices repository', () => {
     expect(params[13]).toBe('txn-9'); // payment_transaction_id
   });
 
-  it('returns null when updating an invoice that does not exist', () => {
-    mockQueryOne.mockReturnValue(null);
+  it('returns null when updating an invoice that does not exist', async () => {
+    mockQueryOne.mockResolvedValue(null);
 
-    expect(updateInvoiceRecord(mockDb, baseInvoice())).toBeNull();
+    expect(await updateInvoiceRecord(mockDb, baseInvoice())).toBeNull();
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
-  it('soft-deletes an invoice by marking deleted_at', () => {
+  it('soft-deletes an invoice by marking deleted_at', async () => {
     useInMemoryInvoiceTable([invoiceRow()]);
 
-    expect(deleteInvoiceRecord(mockDb, 'inv-1')).toBe(true);
+    expect(await deleteInvoiceRecord(mockDb, 'inv-1')).toBe(true);
     const updateCall = mockExecute.mock.calls.find(([, sql]) =>
       String(sql).includes('UPDATE invoice'),
     );
     expect(updateCall?.[1]).toContain('deleted_at =');
   });
 
-  it('returns false when deleting an invoice that does not exist', () => {
-    mockQueryOne.mockReturnValue(null);
+  it('returns false when deleting an invoice that does not exist', async () => {
+    mockQueryOne.mockResolvedValue(null);
 
-    expect(deleteInvoiceRecord(mockDb, 'missing')).toBe(false);
+    expect(await deleteInvoiceRecord(mockDb, 'missing')).toBe(false);
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
-  it('imports legacy localStorage invoices into the database and clears the key', () => {
+  it('imports legacy localStorage invoices into the database and clears the key', async () => {
     globalThis.localStorage.setItem(
       'finance:invoices',
       JSON.stringify([
@@ -255,7 +254,7 @@ describe('invoices repository', () => {
     );
     useInMemoryInvoiceTable();
 
-    const imported = importLegacyInvoices(mockDb);
+    const imported = await importLegacyInvoices(mockDb);
 
     expect(imported).toBe(2);
     expect(globalThis.localStorage.getItem('finance:invoices')).toBeNull();
@@ -265,24 +264,24 @@ describe('invoices repository', () => {
     expect(insertCalls).toHaveLength(2);
   });
 
-  it('skips legacy records whose id already exists (idempotent re-import)', () => {
+  it('skips legacy records whose id already exists (idempotent re-import)', async () => {
     globalThis.localStorage.setItem(
       'finance:invoices',
       JSON.stringify([baseInvoice({ id: 'existing' })]),
     );
     useInMemoryInvoiceTable([invoiceRow({ id: 'existing' })]);
 
-    expect(importLegacyInvoices(mockDb)).toBe(0);
+    expect(await importLegacyInvoices(mockDb)).toBe(0);
     const insertCalls = mockExecute.mock.calls.filter(([, sql]) =>
       String(sql).includes('INSERT INTO invoice'),
     );
     expect(insertCalls).toHaveLength(0);
   });
 
-  it('returns 0 and writes nothing when there is no legacy data', () => {
+  it('returns 0 and writes nothing when there is no legacy data', async () => {
     useInMemoryInvoiceTable();
 
-    expect(importLegacyInvoices(mockDb)).toBe(0);
+    expect(await importLegacyInvoices(mockDb)).toBe(0);
     expect(mockExecute).not.toHaveBeenCalled();
   });
 });

@@ -11,7 +11,7 @@
  * `localStorage`.
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useRemittances } from './useRemittances';
@@ -73,34 +73,34 @@ describe('useRemittances', () => {
     localStorage.clear();
   });
 
-  it('starts empty and runs the one-time legacy migration on mount', () => {
+  it('starts empty and runs the one-time legacy migration on mount', async () => {
     const { result } = renderHook(() => useRemittances());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.remittances).toEqual([]);
-    expect(result.current.loading).toBe(false);
     expect(result.current.summary.count).toBe(0);
     expect(importLegacyRemittances).toHaveBeenCalledTimes(1);
   });
 
-  it('creates a remittance and updates the summary', () => {
+  it('creates a remittance and updates the summary', async () => {
     const { result } = renderHook(() => useRemittances());
 
-    act(() => {
-      result.current.createRemittance(input());
+    await act(async () => {
+      await result.current.createRemittance(input());
     });
 
-    expect(result.current.remittances).toHaveLength(1);
+    await waitFor(() => expect(result.current.remittances).toHaveLength(1));
     expect(result.current.summary.count).toBe(1);
     expect(result.current.summary.sentByCurrency).toEqual({ USD: 50_500 });
     expect(result.current.summary.receivedByCurrency).toEqual({ MXN: 850_000 });
     expect(result.current.remittances[0]?.id).toBeTruthy();
   });
 
-  it('never writes remittances to localStorage', () => {
+  it('never writes remittances to localStorage', async () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const { result } = renderHook(() => useRemittances());
 
-    act(() => {
-      result.current.createRemittance(input());
+    await act(async () => {
+      await result.current.createRemittance(input());
     });
 
     expect(localStorage.getItem('finance-remittances')).toBeNull();
@@ -108,10 +108,10 @@ describe('useRemittances', () => {
     setItem.mockRestore();
   });
 
-  it('persists across a simulated cache clear (data lives in the database)', () => {
+  it('persists across a simulated cache clear (data lives in the database)', async () => {
     const first = renderHook(() => useRemittances());
-    act(() => {
-      first.result.current.createRemittance(input());
+    await act(async () => {
+      await first.result.current.createRemittance(input());
     });
     first.unmount();
 
@@ -120,33 +120,34 @@ describe('useRemittances', () => {
     localStorage.clear();
 
     const second = renderHook(() => useRemittances());
-    expect(second.result.current.remittances).toHaveLength(1);
+    await waitFor(() => expect(second.result.current.remittances).toHaveLength(1));
   });
 
-  it('orders the most recent send date first', () => {
+  it('orders the most recent send date first', async () => {
     const { result } = renderHook(() => useRemittances());
-    act(() => {
-      result.current.createRemittance(input({ date: '2026-05-01' }));
+    await act(async () => {
+      await result.current.createRemittance(input({ date: '2026-05-01' }));
     });
-    act(() => {
-      result.current.createRemittance(input({ date: '2026-06-15' }));
+    await act(async () => {
+      await result.current.createRemittance(input({ date: '2026-06-15' }));
     });
+    await waitFor(() => expect(result.current.remittances).toHaveLength(2));
     expect(result.current.remittances[0]?.date).toBe('2026-06-15');
     expect(result.current.remittances[1]?.date).toBe('2026-05-01');
   });
 
-  it('deletes a remittance by id', () => {
+  it('deletes a remittance by id', async () => {
     const { result } = renderHook(() => useRemittances());
     let id = '';
-    act(() => {
-      id = result.current.createRemittance(input())?.id ?? '';
+    await act(async () => {
+      id = (await result.current.createRemittance(input()))?.id ?? '';
     });
-    expect(result.current.remittances).toHaveLength(1);
+    await waitFor(() => expect(result.current.remittances).toHaveLength(1));
 
-    act(() => {
-      result.current.deleteRemittance(id);
+    await act(async () => {
+      await result.current.deleteRemittance(id);
     });
-    expect(result.current.remittances).toHaveLength(0);
+    await waitFor(() => expect(result.current.remittances).toHaveLength(0));
     expect(result.current.summary.count).toBe(0);
   });
 });

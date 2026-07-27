@@ -162,12 +162,12 @@ export const CategoriesPage: React.FC = () => {
   const handleSubmitCategory = useCallback(
     async (data: CreateCategoryInput) => {
       if (editingCategory) {
-        const updated = updateCategory(editingCategory.id, data);
+        const updated = await updateCategory(editingCategory.id, data);
         if (updated === null) {
           throw new Error('Failed to update category.');
         }
       } else {
-        const created = createCategory(data);
+        const created = await createCategory(data);
         if (created === null) {
           throw new Error('Failed to create category.');
         }
@@ -198,12 +198,12 @@ export const CategoriesPage: React.FC = () => {
     setDeletingCategory(null);
   }, []);
 
-  const handleConfirmDelete = useCallback(() => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!deletingCategory) {
       return;
     }
 
-    const deleted = deleteCategory(deletingCategory.id);
+    const deleted = await deleteCategory(deletingCategory.id);
     if (deleted) {
       setDeletingCategory(null);
       setDeleteError(null);

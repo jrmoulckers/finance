@@ -33,7 +33,7 @@ import {
   type CreateBudgetTemplateInput,
   type UpdateBudgetInput,
 } from '../db/repositories/budgets';
-import type { SqliteDb } from '../db/sqlite-wasm';
+import type { AsyncDb } from '../db/async-db';
 import type { Budget, SyncId } from '../kmp/bridge';
 import { useLiveQuery } from './useLiveQuery';
 
@@ -42,21 +42,21 @@ export interface UseBudgetsResult {
   loading: boolean;
   error: string | null;
   refresh: () => void;
-  createBudget: (input: CreateBudgetInput) => Budget | null;
+  createBudget: (input: CreateBudgetInput) => Promise<Budget | null>;
   /**
    * Create a full starter budget from a template and automatically refresh the list.
    * @returns The created budgets, or `null` if creation failed.
    */
-  createBudgetTemplate: (input: CreateBudgetTemplateInput) => Budget[] | null;
+  createBudgetTemplate: (input: CreateBudgetTemplateInput) => Promise<Budget[] | null>;
   /**
    * Update an existing budget and automatically refresh the list.
    * @returns The updated budget, or `null` if the budget was not found or update failed.
    */
-  updateBudget: (budgetId: SyncId, updates: UpdateBudgetInput) => Budget | null;
-  deleteBudget: (budgetId: SyncId) => boolean;
-  reorderBudgets: (fromIndex: number, toIndex: number) => void;
+  updateBudget: (budgetId: SyncId, updates: UpdateBudgetInput) => Promise<Budget | null>;
+  deleteBudget: (budgetId: SyncId) => Promise<boolean>;
+  reorderBudgets: (fromIndex: number, toIndex: number) => Promise<void>;
   /** Read the current spending breakdown for a budget's category tree. */
-  getBudgetSpendingBreakdown: (budgetId: SyncId) => BudgetSpendingBreakdownItem[];
+  getBudgetSpendingBreakdown: (budgetId: SyncId) => Promise<BudgetSpendingBreakdownItem[]>;
 }
 
 /** Normalised budget snapshot used by the household scorecard UI. */
@@ -131,22 +131,24 @@ export function getScorecardBudgetSnapshots(
   }));
 }
 
-function loadBudgetsWithSpending(db: SqliteDb): BudgetWithSpending[] {
+async function loadBudgetsWithSpending(db: AsyncDb): Promise<BudgetWithSpending[]> {
   try {
-    const budgets = getAllBudgets(db);
+    const budgets = await getAllBudgets(db);
 
-    return budgets.map((budget): BudgetWithSpending => {
-      const enriched = getBudgetWithSpending(db, budget.id);
-      if (enriched) {
-        return enriched;
-      }
+    return await Promise.all(
+      budgets.map(async (budget): Promise<BudgetWithSpending> => {
+        const enriched = await getBudgetWithSpending(db, budget.id);
+        if (enriched) {
+          return enriched;
+        }
 
-      return {
-        ...budget,
-        spentAmount: { amount: 0 },
-        remainingAmount: { amount: budget.amount.amount },
-      };
-    });
+        return {
+          ...budget,
+          spentAmount: { amount: 0 },
+          remainingAmount: { amount: budget.amount.amount },
+        };
+      }),
+    );
   } catch (budgetError) {
     if (budgetError instanceof Error) {
       throw budgetError;
@@ -158,7 +160,7 @@ function loadBudgetsWithSpending(db: SqliteDb): BudgetWithSpending[] {
 export function useBudgets(): UseBudgetsResult {
   const db = useDatabase();
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const runBudgetQuery = useCallback((database: SqliteDb) => loadBudgetsWithSpending(database), []);
+  const runBudgetQuery = useCallback((database: AsyncDb) => loadBudgetsWithSpending(database), []);
   const {
     data: budgets,
     loading,
@@ -176,10 +178,10 @@ export function useBudgets(): UseBudgetsResult {
 
   const error = mutationError ?? liveError;
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     try {
       setMutationError(null);
-      runBudgetQuery(db);
+      await runBudgetQuery(db);
     } catch (budgetError) {
       setMutationError(
         budgetError instanceof Error ? budgetError.message : 'Failed to load budgets.',
@@ -189,14 +191,14 @@ export function useBudgets(): UseBudgetsResult {
   }, [db, refreshLiveQuery, runBudgetQuery]);
 
   const createBudget = useCallback(
-    (input: CreateBudgetInput): Budget | null => {
+    async (input: CreateBudgetInput): Promise<Budget | null> => {
       try {
         setMutationError(null);
-        const created = repoCreateBudget(db, {
+        const created = await repoCreateBudget(db, {
           ...input,
           sortOrder: budgets.length,
         });
-        refresh();
+        await refresh();
         return created;
       } catch (budgetError) {
         setMutationError(
@@ -209,10 +211,10 @@ export function useBudgets(): UseBudgetsResult {
   );
 
   const createBudgetTemplate = useCallback(
-    (input: CreateBudgetTemplateInput): Budget[] | null => {
+    async (input: CreateBudgetTemplateInput): Promise<Budget[] | null> => {
       try {
-        const created = repoCreateBudgetTemplate(db, input);
-        refresh();
+        const created = await repoCreateBudgetTemplate(db, input);
+        await refresh();
         return created;
       } catch (err) {
         setMutationError(err instanceof Error ? err.message : 'Failed to create starter budget.');
@@ -223,12 +225,12 @@ export function useBudgets(): UseBudgetsResult {
   );
 
   const updateBudget = useCallback(
-    (budgetId: SyncId, updates: UpdateBudgetInput): Budget | null => {
+    async (budgetId: SyncId, updates: UpdateBudgetInput): Promise<Budget | null> => {
       try {
         setMutationError(null);
-        const updated = repoUpdateBudget(db, budgetId, updates);
+        const updated = await repoUpdateBudget(db, budgetId, updates);
         if (updated !== null) {
-          refresh();
+          await refresh();
         }
         return updated;
       } catch (budgetError) {
@@ -242,12 +244,12 @@ export function useBudgets(): UseBudgetsResult {
   );
 
   const deleteBudget = useCallback(
-    (budgetId: SyncId): boolean => {
+    async (budgetId: SyncId): Promise<boolean> => {
       try {
         setMutationError(null);
-        const deleted = repoDeleteBudget(db, budgetId);
+        const deleted = await repoDeleteBudget(db, budgetId);
         if (deleted) {
-          refresh();
+          await refresh();
         }
         return deleted;
       } catch (budgetError) {
@@ -261,7 +263,7 @@ export function useBudgets(): UseBudgetsResult {
   );
 
   const reorderBudgets = useCallback(
-    (fromIndex: number, toIndex: number) => {
+    async (fromIndex: number, toIndex: number): Promise<void> => {
       if (
         fromIndex === toIndex ||
         fromIndex < 0 ||
@@ -281,11 +283,11 @@ export function useBudgets(): UseBudgetsResult {
 
       try {
         setMutationError(null);
-        repoReorderBudgets(
+        await repoReorderBudgets(
           db,
           reordered.map((budget) => budget.id),
         );
-        refresh();
+        await refresh();
       } catch (budgetError) {
         setMutationError(
           budgetError instanceof Error ? budgetError.message : 'Failed to reorder budgets.',
@@ -296,9 +298,9 @@ export function useBudgets(): UseBudgetsResult {
   );
 
   const getBudgetSpendingBreakdown = useCallback(
-    (budgetId: SyncId): BudgetSpendingBreakdownItem[] => {
+    async (budgetId: SyncId): Promise<BudgetSpendingBreakdownItem[]> => {
       try {
-        return repoGetBudgetSpendingBreakdown(db, budgetId);
+        return await repoGetBudgetSpendingBreakdown(db, budgetId);
       } catch (err) {
         setMutationError(err instanceof Error ? err.message : 'Failed to load budget breakdown.');
         return [];

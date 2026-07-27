@@ -30,7 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/auth-context';
 import { useDatabase } from '../db/DatabaseProvider';
 import { readHouseholdValue, writeHouseholdValue } from '../db/repositories/householdData';
-import type { SqliteDb } from '../db/sqlite-wasm';
+import type { AsyncDb } from '../db/async-db';
 import type {
   AddChildChoreInput,
   ChildProfile,
@@ -597,13 +597,13 @@ export interface UseHouseholdResult {
    * the invitation regardless of status so the accept screen can distinguish
    * pending / accepted / expired / revoked. `null` when no invitation matches.
    */
-  getInvitationByCode: (inviteCode: string) => HouseholdInvitation | null;
+  getInvitationByCode: (inviteCode: string) => Promise<HouseholdInvitation | null>;
   /**
    * Accept an invitation by invite code, joining the current authenticated user
    * to the invitation's household. Reads the invitation from the synced store
    * (not just in-memory state) so acceptance works cross-device (#3377).
    */
-  acceptInvitation: (inviteCode: string) => AcceptInvitationResult;
+  acceptInvitation: (inviteCode: string) => Promise<AcceptInvitationResult>;
   /** Revoke a pending invitation. */
   revokeInvitation: (invitationId: SyncId) => boolean;
 
@@ -709,18 +709,18 @@ const STORAGE_KEY_SHOPPING_BUDGETS = 'finance-household-shopping-budgets';
 const STORAGE_KEY_RECONCILIATION_PLANS = 'finance-household-reconciliation-plans';
 const STORAGE_KEY_RECONCILIATION_SNAPSHOTS = 'finance-household-reconciliation-snapshots';
 
-function loadFromStorage<T>(db: SqliteDb | null, key: string, fallback: T): T {
+async function loadFromStorage<T>(db: AsyncDb | null, key: string, fallback: T): Promise<T> {
   if (!db) {
     return fallback;
   }
   try {
-    return readHouseholdValue<T>(db, key, fallback);
+    return await readHouseholdValue<T>(db, key, fallback);
   } catch {
     return fallback;
   }
 }
 
-function saveToStorage<T>(db: SqliteDb | null, key: string, value: T): void {
+function saveToStorage<T>(db: AsyncDb | null, key: string, value: T): void {
   if (!db) {
     return;
   }
@@ -1235,7 +1235,7 @@ export function useHousehold(): UseHouseholdResult {
   // mutation callbacks reach the current database handle without adding it to
   // every dependency array.
   const db = useOptionalDatabase();
-  const dbRef = useRef<SqliteDb | null>(db);
+  const dbRef = useRef<AsyncDb | null>(db);
   dbRef.current = db;
 
   const [household, setHousehold] = useState<Household | null>(null);
@@ -1269,68 +1269,96 @@ export function useHousehold(): UseHouseholdResult {
     setLoading(true);
     setError(null);
 
-    try {
-      setHousehold(loadFromStorage<Household | null>(dbRef.current, STORAGE_KEY_HOUSEHOLD, null));
-      setMembers(loadFromStorage<HouseholdMember[]>(dbRef.current, STORAGE_KEY_MEMBERS, []));
-      setInvitations(
-        loadFromStorage<HouseholdInvitation[]>(dbRef.current, STORAGE_KEY_INVITATIONS, []),
-      );
-      setAccountSharings(
-        loadFromStorage<AccountSharing[]>(dbRef.current, STORAGE_KEY_ACCOUNT_SHARINGS, []),
-      );
-      setSharedBudgets(
-        loadFromStorage<SharedBudget[]>(dbRef.current, STORAGE_KEY_SHARED_BUDGETS, []),
-      );
-      setSharedGoals(loadFromStorage<SharedGoal[]>(dbRef.current, STORAGE_KEY_SHARED_GOALS, []));
-      setSharedExpenses(
-        loadFromStorage<SharedExpense[]>(dbRef.current, STORAGE_KEY_SHARED_EXPENSES, []),
-      );
-      setSharedSettlements(
-        loadFromStorage<SharedSettlement[]>(dbRef.current, STORAGE_KEY_SHARED_SETTLEMENTS, []),
-      );
-      setActivityEvents(
-        loadFromStorage<HouseholdActivityEvent[]>(dbRef.current, STORAGE_KEY_ACTIVITY_EVENTS, []),
-      );
-      setRecurringBills(
-        loadFromStorage<RecurringSharedBill[]>(dbRef.current, STORAGE_KEY_RECURRING_BILLS, []),
-      );
-      setGoalPledges(
-        loadFromStorage<GoalContributionPledge[]>(dbRef.current, STORAGE_KEY_GOAL_PLEDGES, []),
-      );
-      setShoppingBudgets(
-        loadFromStorage<SharedShoppingBudget[]>(dbRef.current, STORAGE_KEY_SHOPPING_BUDGETS, []),
-      );
-      setReconciliationPlans(
-        loadFromStorage<HouseholdReconciliationPlan[]>(
-          dbRef.current,
-          STORAGE_KEY_RECONCILIATION_PLANS,
-          [],
-        ),
-      );
-      setReconciliationSnapshots(
-        loadFromStorage<ReconciliationSnapshot[]>(
-          dbRef.current,
-          STORAGE_KEY_RECONCILIATION_SNAPSHOTS,
-          [],
-        ),
-      );
+    const load = async () => {
+      try {
+        setHousehold(
+          await loadFromStorage<Household | null>(dbRef.current, STORAGE_KEY_HOUSEHOLD, null),
+        );
+        setMembers(
+          await loadFromStorage<HouseholdMember[]>(dbRef.current, STORAGE_KEY_MEMBERS, []),
+        );
+        setInvitations(
+          await loadFromStorage<HouseholdInvitation[]>(dbRef.current, STORAGE_KEY_INVITATIONS, []),
+        );
+        setAccountSharings(
+          await loadFromStorage<AccountSharing[]>(dbRef.current, STORAGE_KEY_ACCOUNT_SHARINGS, []),
+        );
+        setSharedBudgets(
+          await loadFromStorage<SharedBudget[]>(dbRef.current, STORAGE_KEY_SHARED_BUDGETS, []),
+        );
+        setSharedGoals(
+          await loadFromStorage<SharedGoal[]>(dbRef.current, STORAGE_KEY_SHARED_GOALS, []),
+        );
+        setSharedExpenses(
+          await loadFromStorage<SharedExpense[]>(dbRef.current, STORAGE_KEY_SHARED_EXPENSES, []),
+        );
+        setSharedSettlements(
+          await loadFromStorage<SharedSettlement[]>(
+            dbRef.current,
+            STORAGE_KEY_SHARED_SETTLEMENTS,
+            [],
+          ),
+        );
+        setActivityEvents(
+          await loadFromStorage<HouseholdActivityEvent[]>(
+            dbRef.current,
+            STORAGE_KEY_ACTIVITY_EVENTS,
+            [],
+          ),
+        );
+        setRecurringBills(
+          await loadFromStorage<RecurringSharedBill[]>(
+            dbRef.current,
+            STORAGE_KEY_RECURRING_BILLS,
+            [],
+          ),
+        );
+        setGoalPledges(
+          await loadFromStorage<GoalContributionPledge[]>(
+            dbRef.current,
+            STORAGE_KEY_GOAL_PLEDGES,
+            [],
+          ),
+        );
+        setShoppingBudgets(
+          await loadFromStorage<SharedShoppingBudget[]>(
+            dbRef.current,
+            STORAGE_KEY_SHOPPING_BUDGETS,
+            [],
+          ),
+        );
+        setReconciliationPlans(
+          await loadFromStorage<HouseholdReconciliationPlan[]>(
+            dbRef.current,
+            STORAGE_KEY_RECONCILIATION_PLANS,
+            [],
+          ),
+        );
+        setReconciliationSnapshots(
+          await loadFromStorage<ReconciliationSnapshot[]>(
+            dbRef.current,
+            STORAGE_KEY_RECONCILIATION_SNAPSHOTS,
+            [],
+          ),
+        );
 
-      const storedChildren = loadFromStorage<ChildProfile[]>(
-        dbRef.current,
-        STORAGE_KEY_CHILDREN,
-        [],
-      ).map(normalizeChildProfile);
-      const processedChildren = applyHouseholdKidsWeeklyProcessing(storedChildren);
-      setChildren(processedChildren);
+        const storedChildren = (
+          await loadFromStorage<ChildProfile[]>(dbRef.current, STORAGE_KEY_CHILDREN, [])
+        ).map(normalizeChildProfile);
+        const processedChildren = applyHouseholdKidsWeeklyProcessing(storedChildren);
+        setChildren(processedChildren);
 
-      if (JSON.stringify(storedChildren) !== JSON.stringify(processedChildren)) {
-        saveToStorage(dbRef.current, STORAGE_KEY_CHILDREN, processedChildren);
+        if (JSON.stringify(storedChildren) !== JSON.stringify(processedChildren)) {
+          saveToStorage(dbRef.current, STORAGE_KEY_CHILDREN, processedChildren);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load household data.');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load household data.');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    load();
   }, [db, refreshToken]);
 
   const getActorMemberId = useCallback((): SyncId | null => {
@@ -1520,18 +1548,18 @@ export function useHousehold(): UseHouseholdResult {
   // rather than trust the render-time snapshot (#3377). Falls back to in-memory
   // state when no database is mounted (isolated tests / provider-less renders).
   const readStoredInvitations = useCallback(
-    (): HouseholdInvitation[] =>
+    (): Promise<HouseholdInvitation[]> =>
       loadFromStorage<HouseholdInvitation[]>(dbRef.current, STORAGE_KEY_INVITATIONS, invitations),
     [invitations],
   );
 
   const getInvitationByCode = useCallback(
-    (inviteCode: string): HouseholdInvitation | null => {
+    async (inviteCode: string): Promise<HouseholdInvitation | null> => {
       const code = inviteCode.trim();
       if (!code) {
         return null;
       }
-      const stored = readStoredInvitations();
+      const stored = await readStoredInvitations();
       return (
         stored.find((inv) => inv.inviteCode === code) ??
         invitations.find((inv) => inv.inviteCode === code) ??
@@ -1542,7 +1570,7 @@ export function useHousehold(): UseHouseholdResult {
   );
 
   const acceptInvitation = useCallback(
-    (inviteCode: string): AcceptInvitationResult => {
+    async (inviteCode: string): Promise<AcceptInvitationResult> => {
       const code = inviteCode.trim();
       if (!code) {
         setError('Invalid or expired invitation code.');
@@ -1551,8 +1579,8 @@ export function useHousehold(): UseHouseholdResult {
 
       try {
         // Authoritative, freshest view of the synced store (see note above).
-        const invitationList = readStoredInvitations();
-        const memberList = loadFromStorage<HouseholdMember[]>(
+        const invitationList = await readStoredInvitations();
+        const memberList = await loadFromStorage<HouseholdMember[]>(
           dbRef.current,
           STORAGE_KEY_MEMBERS,
           members,
@@ -3087,7 +3115,7 @@ function useOptionalAuthUser(): { id: string; email: string; name?: string } | n
  *
  * Issue #3378.
  */
-function useOptionalDatabase(): SqliteDb | null {
+function useOptionalDatabase(): AsyncDb | null {
   try {
     return useDatabase();
   } catch {

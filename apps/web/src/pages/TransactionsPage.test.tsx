@@ -877,7 +877,7 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('3 selected')).toBeInTheDocument();
   });
 
-  it('bulk categorizes selected transactions through the toolbar', () => {
+  it('bulk categorizes selected transactions through the toolbar', async () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
@@ -888,12 +888,14 @@ describe('TransactionsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /change category/i }));
     fireEvent.click(screen.getByRole('option', { name: 'Utilities' }));
 
-    expect(repositoryMocks.updateTransaction).toHaveBeenCalledWith(
-      expect.anything(),
-      'transaction-1',
-      expect.objectContaining({ categoryId: 'category-utilities' }),
-    );
-    expect(refreshTransactionsMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(repositoryMocks.updateTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        'transaction-1',
+        expect.objectContaining({ categoryId: 'category-utilities' }),
+      );
+      expect(refreshTransactionsMock).toHaveBeenCalled();
+    });
   });
 
   it('bulk adds tags while preserving existing transaction tags', () => {
@@ -915,7 +917,7 @@ describe('TransactionsPage', () => {
     );
   });
 
-  it('opens bulk delete confirmation and deletes selected transactions', () => {
+  it('opens bulk delete confirmation and deletes selected transactions', async () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
@@ -928,11 +930,13 @@ describe('TransactionsPage', () => {
     const dialog = screen.getByRole('alertdialog', { name: /delete selected transactions/i });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
-    expect(repositoryMocks.deleteTransaction).toHaveBeenCalledWith(
-      expect.anything(),
-      'transaction-1',
-    );
-    expect(refreshTransactionsMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(repositoryMocks.deleteTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        'transaction-1',
+      );
+      expect(refreshTransactionsMock).toHaveBeenCalled();
+    });
   });
 
   it('uses keyboard shortcuts to move focus and toggle row selection', () => {
@@ -1060,7 +1064,7 @@ describe('TransactionsPage', () => {
     });
   });
 
-  it('drops selected transactions as a batch and uses bulk recategorization', () => {
+  it('drops selected transactions as a batch and uses bulk recategorization', async () => {
     const dataTransfer = createMockDataTransfer();
     repositoryMocks.updateTransaction.mockImplementation(
       (_db: unknown, transactionId: string, updates: { categoryId: string }) => ({
@@ -1085,15 +1089,17 @@ describe('TransactionsPage', () => {
       { dataTransfer },
     );
 
-    expect(repositoryMocks.updateTransaction).toHaveBeenCalledWith(
-      expect.anything(),
-      'transaction-1',
-      { categoryId: 'category-utilities' },
-    );
-    expect(repositoryMocks.updateTransaction).toHaveBeenCalledWith(
-      expect.anything(),
-      'transaction-2',
-      { categoryId: 'category-utilities' },
-    );
+    await waitFor(() => {
+      expect(repositoryMocks.updateTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        'transaction-1',
+        { categoryId: 'category-utilities' },
+      );
+      expect(repositoryMocks.updateTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        'transaction-2',
+        { categoryId: 'category-utilities' },
+      );
+    });
   });
 });

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { Category, SyncId } from '../../kmp/bridge';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import {
   SQLITE_NOW_EXPRESSION,
   mapSyncMetadata,
@@ -74,23 +74,22 @@ export function mapCategory(row: Row): Category {
 }
 
 /** Return all non-deleted categories ordered by sort order and name. */
-export function getAllCategories(db: SqliteDb): Category[] {
-  return query<Row>(db, `${CATEGORY_BASE_QUERY} ORDER BY sort_order ASC, name ASC`).rows.map(
-    mapCategory,
-  );
+export async function getAllCategories(db: AsyncDb): Promise<Category[]> {
+  const { rows } = await query<Row>(db, `${CATEGORY_BASE_QUERY} ORDER BY sort_order ASC, name ASC`);
+  return rows.map(mapCategory);
 }
 
 /** Find a single non-deleted category by its identifier. */
-export function getCategoryById(db: SqliteDb, categoryId: SyncId): Category | null {
-  const row = queryOne<Row>(db, `${CATEGORY_BASE_QUERY} AND id = ?`, [categoryId]);
+export async function getCategoryById(db: AsyncDb, categoryId: SyncId): Promise<Category | null> {
+  const row = await queryOne<Row>(db, `${CATEGORY_BASE_QUERY} AND id = ?`, [categoryId]);
   return row ? mapCategory(row) : null;
 }
 
 /** Insert a new category row and return the created category. */
-export function createCategory(db: SqliteDb, input: CreateCategoryInput): Category {
+export async function createCategory(db: AsyncDb, input: CreateCategoryInput): Promise<Category> {
   const id = crypto.randomUUID();
 
-  execute(
+  await execute(
     db,
     `INSERT INTO category (
       id,
@@ -130,7 +129,7 @@ export function createCategory(db: SqliteDb, input: CreateCategoryInput): Catego
     ],
   );
 
-  const createdCategory = getCategoryById(db, id);
+  const createdCategory = await getCategoryById(db, id);
   if (!createdCategory) {
     throw new Error('Failed to create category.');
   }
@@ -139,12 +138,12 @@ export function createCategory(db: SqliteDb, input: CreateCategoryInput): Catego
 }
 
 /** Update a category row and return the refreshed category. */
-export function updateCategory(
-  db: SqliteDb,
+export async function updateCategory(
+  db: AsyncDb,
   categoryId: SyncId,
   updates: UpdateCategoryInput,
-): Category | null {
-  const existingCategory = getCategoryById(db, categoryId);
+): Promise<Category | null> {
+  const existingCategory = await getCategoryById(db, categoryId);
   if (!existingCategory) {
     return null;
   }
@@ -161,7 +160,7 @@ export function updateCategory(
     isBiometricProtected: updates.isBiometricProtected ?? existingCategory.isBiometricProtected,
   };
 
-  execute(
+  await execute(
     db,
     `UPDATE category
         SET household_id = ?,
@@ -192,17 +191,18 @@ export function updateCategory(
     ],
   );
 
-  return getCategoryById(db, categoryId);
+  const updatedCategory = await getCategoryById(db, categoryId);
+  return updatedCategory;
 }
 
 /** Soft-delete a category row by marking its deleted timestamp. */
-export function deleteCategory(db: SqliteDb, categoryId: SyncId): boolean {
-  const existingCategory = getCategoryById(db, categoryId);
+export async function deleteCategory(db: AsyncDb, categoryId: SyncId): Promise<boolean> {
+  const existingCategory = await getCategoryById(db, categoryId);
   if (!existingCategory) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE category
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -218,18 +218,20 @@ export function deleteCategory(db: SqliteDb, categoryId: SyncId): boolean {
 }
 
 /** Return all child categories for a given parent category. */
-export function getCategoriesByParent(db: SqliteDb, parentId: SyncId): Category[] {
-  return query<Row>(
+export async function getCategoriesByParent(db: AsyncDb, parentId: SyncId): Promise<Category[]> {
+  const { rows } = await query<Row>(
     db,
     `${CATEGORY_BASE_QUERY} AND parent_id = ? ORDER BY sort_order ASC, name ASC`,
     [parentId],
-  ).rows.map(mapCategory);
+  );
+  return rows.map(mapCategory);
 }
 
 /** Return root categories that do not have a parent. */
-export function getRootCategories(db: SqliteDb): Category[] {
-  return query<Row>(
+export async function getRootCategories(db: AsyncDb): Promise<Category[]> {
+  const { rows } = await query<Row>(
     db,
     `${CATEGORY_BASE_QUERY} AND parent_id IS NULL ORDER BY sort_order ASC, name ASC`,
-  ).rows.map(mapCategory);
+  );
+  return rows.map(mapCategory);
 }

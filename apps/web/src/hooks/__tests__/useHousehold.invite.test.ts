@@ -16,7 +16,7 @@ import { createElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DatabaseContext, type DatabaseContextValue } from '../../db/DatabaseProvider';
-import type { SqliteDb } from '../../db/sqlite-wasm';
+import type { AsyncDb } from '../../db/async-db';
 import type { HouseholdInvitation } from '../../kmp/bridge';
 import { useHousehold } from '../useHousehold';
 
@@ -52,7 +52,7 @@ const MEMBERS_KEY = 'finance-household-members';
 const wrapper = ({ children }: { children: ReactNode }) =>
   createElement(
     DatabaseContext.Provider,
-    { value: { db: {} as SqliteDb, diagnostics: {} as DatabaseContextValue['diagnostics'] } },
+    { value: { db: {} as AsyncDb, diagnostics: {} as DatabaseContextValue['diagnostics'] } },
     children,
   );
 
@@ -72,6 +72,17 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+/**
+ * Render `useHousehold` and flush the async mount-load effect so the hook has
+ * finished hydrating from the active device store before the test interacts
+ * with it. Mirrors how the app awaits the initial load before user actions.
+ */
+async function renderHouseholdHook() {
+  const utils = renderHook(() => useHousehold(), { wrapper });
+  await act(async () => {});
+  return utils;
+}
+
 /** Parse the invitation rows persisted in a given device store. */
 function readInvitations(store: Map<string, string>): HouseholdInvitation[] {
   const raw = store.get(INVITATIONS_KEY);
@@ -89,12 +100,15 @@ function patchStoredInvitation(store: Map<string, string>, patch: Partial<Househ
  * Seed device A with a household + a pending invitation, returning the created
  * invitation and the raw device-A store. The inviter is signed in as the owner.
  */
-function seedInviteOnDeviceA(): { invitation: HouseholdInvitation; deviceA: Map<string, string> } {
+async function seedInviteOnDeviceA(): Promise<{
+  invitation: HouseholdInvitation;
+  deviceA: Map<string, string>;
+}> {
   const deviceA = new Map<string, string>();
   stores.active = deviceA;
   auth.user = { id: 'owner-1', email: 'owner@example.com', name: 'Olive Owner' };
 
-  const hook = renderHook(() => useHousehold(), { wrapper });
+  const hook = await renderHouseholdHook();
   act(() => {
     hook.result.current.createHousehold({ name: 'Rivera Household' });
   });
@@ -114,8 +128,8 @@ function seedInviteOnDeviceA(): { invitation: HouseholdInvitation; deviceA: Map<
 }
 
 describe('useHousehold — invite acceptance (#3377)', () => {
-  it('accepts an invitation created on device A from a fresh device B store', () => {
-    const { invitation, deviceA } = seedInviteOnDeviceA();
+  it('accepts an invitation created on device A from a fresh device B store', async () => {
+    const { invitation, deviceA } = await seedInviteOnDeviceA();
 
     // Sync: only the invitation row reaches the invitee's fresh device — the
     // inviter's household + member rows never arrive.
@@ -126,16 +140,16 @@ describe('useHousehold — invite acceptance (#3377)', () => {
     stores.active = deviceB;
     auth.user = { id: 'invitee-2', email: 'partner@example.com', name: 'Pat Partner' };
 
-    const deviceBHook = renderHook(() => useHousehold(), { wrapper });
+    const deviceBHook = await renderHouseholdHook();
 
     // The invitation resolves on device B even though its household never synced.
-    expect(deviceBHook.result.current.getInvitationByCode(invitation.inviteCode)?.email).toBe(
-      'partner@example.com',
-    );
+    expect(
+      (await deviceBHook.result.current.getInvitationByCode(invitation.inviteCode))?.email,
+    ).toBe('partner@example.com');
 
-    let outcome!: ReturnType<typeof deviceBHook.result.current.acceptInvitation>;
-    act(() => {
-      outcome = deviceBHook.result.current.acceptInvitation(invitation.inviteCode);
+    let outcome!: Awaited<ReturnType<typeof deviceBHook.result.current.acceptInvitation>>;
+    await act(async () => {
+      outcome = await deviceBHook.result.current.acceptInvitation(invitation.inviteCode);
     });
 
     expect(outcome.status).toBe('ACCEPTED');
@@ -158,18 +172,18 @@ describe('useHousehold — invite acceptance (#3377)', () => {
     expect(persistedInvites[0]?.isSynced).toBe(false);
   });
 
-  it('falls back to the invitee email for the member display name when no name is set', () => {
-    const { invitation, deviceA } = seedInviteOnDeviceA();
+  it('falls back to the invitee email for the member display name when no name is set', async () => {
+    const { invitation, deviceA } = await seedInviteOnDeviceA();
 
     const deviceB = new Map<string, string>();
     deviceB.set(INVITATIONS_KEY, deviceA.get(INVITATIONS_KEY) as string);
     stores.active = deviceB;
     auth.user = { id: 'invitee-2', email: 'partner@example.com' };
 
-    const hook = renderHook(() => useHousehold(), { wrapper });
-    let outcome!: ReturnType<typeof hook.result.current.acceptInvitation>;
-    act(() => {
-      outcome = hook.result.current.acceptInvitation(invitation.inviteCode);
+    const hook = await renderHouseholdHook();
+    let outcome!: Awaited<ReturnType<typeof hook.result.current.acceptInvitation>>;
+    await act(async () => {
+      outcome = await hook.result.current.acceptInvitation(invitation.inviteCode);
     });
 
     expect(outcome.status).toBe('ACCEPTED');
@@ -178,22 +192,22 @@ describe('useHousehold — invite acceptance (#3377)', () => {
     }
   });
 
-  it('returns NOT_FOUND when no invitation matches the code', () => {
+  it('returns NOT_FOUND when no invitation matches the code', async () => {
     stores.active = new Map();
     auth.user = { id: 'invitee-2', email: 'partner@example.com' };
 
-    const { result } = renderHook(() => useHousehold(), { wrapper });
-    expect(result.current.getInvitationByCode('does-not-exist')).toBeNull();
+    const { result } = await renderHouseholdHook();
+    expect(await result.current.getInvitationByCode('does-not-exist')).toBeNull();
 
-    let outcome!: ReturnType<typeof result.current.acceptInvitation>;
-    act(() => {
-      outcome = result.current.acceptInvitation('does-not-exist');
+    let outcome!: Awaited<ReturnType<typeof result.current.acceptInvitation>>;
+    await act(async () => {
+      outcome = await result.current.acceptInvitation('does-not-exist');
     });
     expect(outcome.status).toBe('NOT_FOUND');
   });
 
-  it('returns EXPIRED for an invitation past its expiry and marks it expired in the store', () => {
-    const { invitation, deviceA } = seedInviteOnDeviceA();
+  it('returns EXPIRED for an invitation past its expiry and marks it expired in the store', async () => {
+    const { invitation, deviceA } = await seedInviteOnDeviceA();
 
     const deviceB = new Map<string, string>();
     deviceB.set(INVITATIONS_KEY, deviceA.get(INVITATIONS_KEY) as string);
@@ -203,10 +217,10 @@ describe('useHousehold — invite acceptance (#3377)', () => {
     stores.active = deviceB;
     auth.user = { id: 'invitee-2', email: 'partner@example.com' };
 
-    const hook = renderHook(() => useHousehold(), { wrapper });
-    let outcome!: ReturnType<typeof hook.result.current.acceptInvitation>;
-    act(() => {
-      outcome = hook.result.current.acceptInvitation(invitation.inviteCode);
+    const hook = await renderHouseholdHook();
+    let outcome!: Awaited<ReturnType<typeof hook.result.current.acceptInvitation>>;
+    await act(async () => {
+      outcome = await hook.result.current.acceptInvitation(invitation.inviteCode);
     });
 
     expect(outcome.status).toBe('EXPIRED');
@@ -215,12 +229,12 @@ describe('useHousehold — invite acceptance (#3377)', () => {
     expect(readInvitations(deviceB)[0]?.status).toBe('EXPIRED');
   });
 
-  it('returns REVOKED for a revoked invitation', () => {
+  it('returns REVOKED for a revoked invitation', async () => {
     const deviceA = new Map<string, string>();
     stores.active = deviceA;
     auth.user = { id: 'owner-1', email: 'owner@example.com', name: 'Olive Owner' };
 
-    const hook = renderHook(() => useHousehold(), { wrapper });
+    const hook = await renderHouseholdHook();
     act(() => {
       hook.result.current.createHousehold({ name: 'Rivera Household' });
     });
@@ -235,31 +249,31 @@ describe('useHousehold — invite acceptance (#3377)', () => {
       hook.result.current.revokeInvitation(invitation.id);
     });
 
-    let outcome!: ReturnType<typeof hook.result.current.acceptInvitation>;
-    act(() => {
-      outcome = hook.result.current.acceptInvitation(invitation.inviteCode);
+    let outcome!: Awaited<ReturnType<typeof hook.result.current.acceptInvitation>>;
+    await act(async () => {
+      outcome = await hook.result.current.acceptInvitation(invitation.inviteCode);
     });
     expect(outcome.status).toBe('REVOKED');
   });
 
-  it('is idempotent — a second accept on the same device returns ALREADY_MEMBER', () => {
-    const { invitation, deviceA } = seedInviteOnDeviceA();
+  it('is idempotent — a second accept on the same device returns ALREADY_MEMBER', async () => {
+    const { invitation, deviceA } = await seedInviteOnDeviceA();
 
     const deviceB = new Map<string, string>();
     deviceB.set(INVITATIONS_KEY, deviceA.get(INVITATIONS_KEY) as string);
     stores.active = deviceB;
     auth.user = { id: 'invitee-2', email: 'partner@example.com', name: 'Pat Partner' };
 
-    const hook = renderHook(() => useHousehold(), { wrapper });
-    let first!: ReturnType<typeof hook.result.current.acceptInvitation>;
-    act(() => {
-      first = hook.result.current.acceptInvitation(invitation.inviteCode);
+    const hook = await renderHouseholdHook();
+    let first!: Awaited<ReturnType<typeof hook.result.current.acceptInvitation>>;
+    await act(async () => {
+      first = await hook.result.current.acceptInvitation(invitation.inviteCode);
     });
     expect(first.status).toBe('ACCEPTED');
 
-    let second!: ReturnType<typeof hook.result.current.acceptInvitation>;
-    act(() => {
-      second = hook.result.current.acceptInvitation(invitation.inviteCode);
+    let second!: Awaited<ReturnType<typeof hook.result.current.acceptInvitation>>;
+    await act(async () => {
+      second = await hook.result.current.acceptInvitation(invitation.inviteCode);
     });
     expect(second.status).toBe('ALREADY_MEMBER');
     if (second.status === 'ALREADY_MEMBER') {
@@ -270,17 +284,17 @@ describe('useHousehold — invite acceptance (#3377)', () => {
     expect(JSON.parse(deviceB.get(MEMBERS_KEY) as string)).toHaveLength(1);
   });
 
-  it('returns ALREADY_ACCEPTED when a different user opens an already-accepted invite', () => {
-    const { invitation, deviceA } = seedInviteOnDeviceA();
+  it('returns ALREADY_ACCEPTED when a different user opens an already-accepted invite', async () => {
+    const { invitation, deviceA } = await seedInviteOnDeviceA();
 
     // Invitee accepts on device B.
     const deviceB = new Map<string, string>();
     deviceB.set(INVITATIONS_KEY, deviceA.get(INVITATIONS_KEY) as string);
     stores.active = deviceB;
     auth.user = { id: 'invitee-2', email: 'partner@example.com', name: 'Pat Partner' };
-    const bHook = renderHook(() => useHousehold(), { wrapper });
-    act(() => {
-      bHook.result.current.acceptInvitation(invitation.inviteCode);
+    const bHook = await renderHouseholdHook();
+    await act(async () => {
+      await bHook.result.current.acceptInvitation(invitation.inviteCode);
     });
     bHook.unmount();
 
@@ -289,11 +303,11 @@ describe('useHousehold — invite acceptance (#3377)', () => {
     deviceC.set(INVITATIONS_KEY, deviceB.get(INVITATIONS_KEY) as string);
     stores.active = deviceC;
     auth.user = { id: 'other-3', email: 'other@example.com' };
-    const cHook = renderHook(() => useHousehold(), { wrapper });
+    const cHook = await renderHouseholdHook();
 
-    let outcome!: ReturnType<typeof cHook.result.current.acceptInvitation>;
-    act(() => {
-      outcome = cHook.result.current.acceptInvitation(invitation.inviteCode);
+    let outcome!: Awaited<ReturnType<typeof cHook.result.current.acceptInvitation>>;
+    await act(async () => {
+      outcome = await cHook.result.current.acceptInvitation(invitation.inviteCode);
     });
     expect(outcome.status).toBe('ALREADY_ACCEPTED');
   });

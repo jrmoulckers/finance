@@ -169,7 +169,7 @@ export interface ApplyFamilyKidsCategoriesOptions<TCategory extends FamilyKidsCa
     readonly icon: string;
     readonly color: string;
     readonly sortOrder: number;
-  }) => TCategory | null;
+  }) => TCategory | null | Promise<TCategory | null>;
 }
 
 /** Result of applying the family/kids preset. */
@@ -191,19 +191,21 @@ export interface ApplyFamilyKidsCategoriesResult<TCategory extends FamilyKidsCat
  * unit-tested without a database.
  *
  * @param options - Existing categories, household id, and a create callback.
- * @returns A summary of what was created and skipped.
+ * @returns A promise resolving to a summary of what was created and skipped.
  */
-export function applyFamilyKidsCategories<TCategory extends FamilyKidsCategoryLike>({
+export async function applyFamilyKidsCategories<TCategory extends FamilyKidsCategoryLike>({
   categories,
   householdId,
   createCategory,
-}: ApplyFamilyKidsCategoriesOptions<TCategory>): ApplyFamilyKidsCategoriesResult<TCategory> {
+}: ApplyFamilyKidsCategoriesOptions<TCategory>): Promise<
+  ApplyFamilyKidsCategoriesResult<TCategory>
+> {
   const plan = buildFamilyKidsCategoryPlan(categories);
   const created: TCategory[] = [];
   let sortOrder = nextSortOrder(categories, householdId);
 
   for (const definition of plan.missing) {
-    const record = createCategory({
+    const record = await createCategory({
       householdId,
       name: definition.name,
       icon: definition.icon,

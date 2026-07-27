@@ -70,7 +70,7 @@ export const GoalDetailPage: React.FC = () => {
   const handleFormSubmit = useCallback(
     async (data: CreateGoalInput) => {
       if (!goal) return;
-      const updated = updateGoal(goal.id, data);
+      const updated = await updateGoal(goal.id, data);
       if (updated === null) {
         throw new Error('Failed to update goal.');
       }
@@ -79,9 +79,9 @@ export const GoalDetailPage: React.FC = () => {
     [goal, updateGoal],
   );
 
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingGoal) return;
-    const deleted = deleteGoal(deletingGoal.id);
+    const deleted = await deleteGoal(deletingGoal.id);
     if (deleted) {
       setDeletingGoal(null);
       navigate('/goals', { replace: true });
@@ -90,7 +90,7 @@ export const GoalDetailPage: React.FC = () => {
 
   const handleContributionSubmit = useCallback(
     async (input: GoalContributionInput) => {
-      const updated = contributeToGoal(input.goalId, input);
+      const updated = await contributeToGoal(input.goalId, input);
       if (updated === null) {
         throw new Error('Failed to contribute to goal.');
       }

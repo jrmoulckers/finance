@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GoalStatus } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { Row, AsyncDb } from '../async-db';
 import {
   contributeToGoal,
   createGoal,
@@ -17,29 +17,29 @@ import {
   type CreateGoalInput,
 } from './goals';
 
-// Mock sqlite-wasm module
-vi.mock('../sqlite-wasm', () => ({
+// Mock async-db module
+vi.mock('../async-db', () => ({
   query: vi.fn(),
   queryOne: vi.fn(),
   execute: vi.fn(),
 }));
 
 // Import mocked functions
-import { execute, query, queryOne } from '../sqlite-wasm';
+import { execute, query, queryOne } from '../async-db';
 
 const mockQuery = vi.mocked(query);
 const mockQueryOne = vi.mocked(queryOne);
 const mockExecute = vi.mocked(execute);
 
 describe('goals repository', () => {
-  const mockDb = {} as SqliteDb;
+  const mockDb = {} as AsyncDb;
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('getAllGoals', () => {
-    it('should return mapped goal objects', () => {
+    it('should return mapped goal objects', async () => {
       const mockRows: Row[] = [
         {
           id: 'goal-1',
@@ -80,9 +80,9 @@ describe('goals repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const goals = getAllGoals(mockDb);
+      const goals = await getAllGoals(mockDb);
 
       expect(goals).toHaveLength(2);
       expect(goals[0]).toMatchObject({
@@ -108,10 +108,10 @@ describe('goals repository', () => {
       });
     });
 
-    it('should filter out deleted goals via WHERE clause', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter out deleted goals via WHERE clause', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getAllGoals(mockDb);
+      await getAllGoals(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -119,10 +119,10 @@ describe('goals repository', () => {
       );
     });
 
-    it('should order by sort_order before target date and name', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should order by sort_order before target date and name', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getAllGoals(mockDb);
+      await getAllGoals(mockDb);
 
       const sql = mockQuery.mock.calls[0][1];
       expect(sql).toContain('ORDER BY');
@@ -131,7 +131,7 @@ describe('goals repository', () => {
       expect(sql).toContain('name ASC');
     });
 
-    it('should preserve monetary amounts as integers', () => {
+    it('should preserve monetary amounts as integers', async () => {
       const mockRows: Row[] = [
         {
           id: 'goal-1',
@@ -153,9 +153,9 @@ describe('goals repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const goals = getAllGoals(mockDb);
+      const goals = await getAllGoals(mockDb);
 
       expect(goals[0].targetAmount.amount).toBe(123456);
       expect(goals[0].currentAmount.amount).toBe(789012);
@@ -165,7 +165,7 @@ describe('goals repository', () => {
   });
 
   describe('getGoalById', () => {
-    it('should return goal when found', () => {
+    it('should return goal when found', async () => {
       const mockRow: Row = {
         id: 'goal-1',
         household_id: 'hh-1',
@@ -185,9 +185,9 @@ describe('goals repository', () => {
         is_synced: 0,
       };
 
-      mockQueryOne.mockReturnValue(mockRow);
+      mockQueryOne.mockResolvedValue(mockRow);
 
-      const goal = getGoalById(mockDb, 'goal-1');
+      const goal = await getGoalById(mockDb, 'goal-1');
 
       expect(mockQueryOne).toHaveBeenCalledWith(
         mockDb,
@@ -198,18 +198,18 @@ describe('goals repository', () => {
       expect(goal?.id).toBe('goal-1');
     });
 
-    it('should return null when not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return null when not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const goal = getGoalById(mockDb, 'nonexistent');
+      const goal = await getGoalById(mockDb, 'nonexistent');
 
       expect(goal).toBeNull();
     });
 
-    it('should use parameterized query', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should use parameterized query', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      getGoalById(mockDb, 'goal-1');
+      await getGoalById(mockDb, 'goal-1');
 
       const sql = mockQueryOne.mock.calls[0][1];
       expect(sql).toContain('id = ?');
@@ -219,7 +219,7 @@ describe('goals repository', () => {
 
   describe('createGoal', () => {
     beforeEach(() => {
-      mockQueryOne.mockReturnValue({
+      mockQueryOne.mockResolvedValue({
         id: 'new-goal',
         household_id: 'hh-1',
         name: 'New Goal',
@@ -240,14 +240,14 @@ describe('goals repository', () => {
       });
     });
 
-    it('should execute INSERT with correct parameters', () => {
+    it('should execute INSERT with correct parameters', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'New Goal',
         targetAmount: { amount: 100000 },
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
@@ -269,14 +269,14 @@ describe('goals repository', () => {
       );
     });
 
-    it('should use ? placeholders not string interpolation', () => {
+    it('should use ? placeholders not string interpolation', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'New Goal',
         targetAmount: { amount: 100000 },
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).toContain('VALUES (');
@@ -285,7 +285,7 @@ describe('goals repository', () => {
       expect(sql).not.toContain('New Goal');
     });
 
-    it('should store amounts as integers', () => {
+    it('should store amounts as integers', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'Goal',
@@ -293,7 +293,7 @@ describe('goals repository', () => {
         currentAmount: { amount: 111222 },
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[4]).toBe(999888); // targetAmount
@@ -302,46 +302,46 @@ describe('goals repository', () => {
       expect(Number.isInteger(params[5] as number)).toBe(true);
     });
 
-    it('should default currentAmount to 0 when not provided', () => {
+    it('should default currentAmount to 0 when not provided', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'Goal',
         targetAmount: { amount: 100000 },
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[5]).toBe(0);
     });
 
-    it('should default to USD when currency not provided', () => {
+    it('should default to USD when currency not provided', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'Goal',
         targetAmount: { amount: 100000 },
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[6]).toBe('USD');
     });
 
-    it('should default status to ACTIVE when not provided', () => {
+    it('should default status to ACTIVE when not provided', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'Goal',
         targetAmount: { amount: 100000 },
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[8]).toBe('ACTIVE');
     });
 
-    it('marks an already-funded new goal as COMPLETED (#3776, item 8)', () => {
+    it('marks an already-funded new goal as COMPLETED (#3776, item 8)', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'Already saved',
@@ -349,13 +349,13 @@ describe('goals repository', () => {
         currentAmount: { amount: 100000 },
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[8]).toBe('COMPLETED');
     });
 
-    it('keeps an explicit status even when already funded', () => {
+    it('keeps an explicit status even when already funded', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'Explicit active',
@@ -364,13 +364,13 @@ describe('goals repository', () => {
         status: 'ACTIVE',
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[8]).toBe('ACTIVE');
     });
 
-    it('should handle optional fields', () => {
+    it('should handle optional fields', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'Custom Goal',
@@ -385,7 +385,7 @@ describe('goals repository', () => {
         accountId: 'acc-1',
       };
 
-      createGoal(mockDb, input);
+      await createGoal(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[3]).toBe('For the new roof');
@@ -398,7 +398,7 @@ describe('goals repository', () => {
       expect(params[11]).toBe('acc-1');
     });
 
-    it('should store and return descriptions', () => {
+    it('should store and return descriptions', async () => {
       const input: CreateGoalInput = {
         householdId: 'hh-1',
         name: 'New Goal',
@@ -406,7 +406,7 @@ describe('goals repository', () => {
         targetAmount: { amount: 100000 },
       };
 
-      const goal = createGoal(mockDb, input);
+      const goal = await createGoal(mockDb, input);
       const params = mockExecute.mock.calls[0][2] as unknown[];
 
       expect(params[3]).toBe('For the new roof');
@@ -415,8 +415,8 @@ describe('goals repository', () => {
   });
 
   describe('reorderGoals', () => {
-    it('updates persisted sort order for each goal id', () => {
-      reorderGoals(mockDb, ['goal-2', 'goal-1']);
+    it('updates persisted sort order for each goal id', async () => {
+      await reorderGoals(mockDb, ['goal-2', 'goal-1']);
 
       expect(mockExecute).toHaveBeenCalledTimes(2);
       expect(mockExecute).toHaveBeenNthCalledWith(
@@ -435,9 +435,9 @@ describe('goals repository', () => {
   });
 
   describe('updateGoal', () => {
-    it('should update and return descriptions', () => {
+    it('should update and return descriptions', async () => {
       mockQueryOne
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -456,7 +456,7 @@ describe('goals repository', () => {
           sync_version: 1,
           is_synced: 0,
         })
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -476,7 +476,7 @@ describe('goals repository', () => {
           is_synced: 0,
         });
 
-      const goal = updateGoal(mockDb, 'goal-1', { description: 'For the new roof' });
+      const goal = await updateGoal(mockDb, 'goal-1', { description: 'For the new roof' });
       const params = mockExecute.mock.calls[0][2] as unknown[];
 
       expect(params[2]).toBe('For the new roof');
@@ -485,9 +485,9 @@ describe('goals repository', () => {
   });
 
   describe('contributeToGoal', () => {
-    it('adds the contribution to current amount', () => {
+    it('adds the contribution to current amount', async () => {
       mockQueryOne
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -506,7 +506,7 @@ describe('goals repository', () => {
           sync_version: 1,
           is_synced: 0,
         })
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -526,7 +526,7 @@ describe('goals repository', () => {
           is_synced: 0,
         });
 
-      const goal = contributeToGoal(mockDb, 'goal-1', {
+      const goal = await contributeToGoal(mockDb, 'goal-1', {
         goalId: 'goal-1',
         amount: { amount: 15000 },
         note: 'Paycheck transfer',
@@ -552,9 +552,9 @@ describe('goals repository', () => {
       expect(goal?.currentAmount.amount).toBe(40000);
     });
 
-    it('marks the goal completed when the contribution reaches the target', () => {
+    it('marks the goal completed when the contribution reaches the target', async () => {
       mockQueryOne
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -573,7 +573,7 @@ describe('goals repository', () => {
           sync_version: 1,
           is_synced: 0,
         })
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -593,7 +593,7 @@ describe('goals repository', () => {
           is_synced: 0,
         });
 
-      const goal = contributeToGoal(mockDb, 'goal-1', {
+      const goal = await contributeToGoal(mockDb, 'goal-1', {
         goalId: 'goal-1',
         amount: { amount: 10000 },
       });
@@ -602,8 +602,8 @@ describe('goals repository', () => {
       expect(goal?.status).toBe('COMPLETED');
     });
 
-    it('rejects a zero adjustment amount', () => {
-      mockQueryOne.mockReturnValue({
+    it('rejects a zero adjustment amount', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
@@ -622,15 +622,15 @@ describe('goals repository', () => {
         is_synced: 0,
       });
 
-      expect(() =>
+      await expect(
         contributeToGoal(mockDb, 'goal-1', { goalId: 'goal-1', amount: { amount: 0 } }),
-      ).toThrow('Adjustment amount must be a non-zero value.');
+      ).rejects.toThrow('Adjustment amount must be a non-zero value.');
       expect(mockExecute).not.toHaveBeenCalled();
     });
 
-    it('records a withdrawal by reducing the current amount', () => {
+    it('records a withdrawal by reducing the current amount', async () => {
       mockQueryOne
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -649,7 +649,7 @@ describe('goals repository', () => {
           sync_version: 1,
           is_synced: 0,
         })
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -669,7 +669,7 @@ describe('goals repository', () => {
           is_synced: 0,
         });
 
-      const goal = contributeToGoal(mockDb, 'goal-1', {
+      const goal = await contributeToGoal(mockDb, 'goal-1', {
         goalId: 'goal-1',
         amount: { amount: -15000 },
         note: 'Emergency withdrawal',
@@ -688,9 +688,9 @@ describe('goals repository', () => {
       expect(goal?.currentAmount.amount).toBe(25000);
     });
 
-    it('reverts a completed goal to active when a withdrawal drops below target', () => {
+    it('reverts a completed goal to active when a withdrawal drops below target', async () => {
       mockQueryOne
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -709,7 +709,7 @@ describe('goals repository', () => {
           sync_version: 1,
           is_synced: 0,
         })
-        .mockReturnValueOnce({
+        .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
@@ -729,7 +729,7 @@ describe('goals repository', () => {
           is_synced: 0,
         });
 
-      const goal = contributeToGoal(mockDb, 'goal-1', {
+      const goal = await contributeToGoal(mockDb, 'goal-1', {
         goalId: 'goal-1',
         amount: { amount: -10000 },
       });
@@ -738,8 +738,8 @@ describe('goals repository', () => {
       expect(goal?.status).toBe('ACTIVE');
     });
 
-    it('rejects a withdrawal larger than the amount saved', () => {
-      mockQueryOne.mockReturnValue({
+    it('rejects a withdrawal larger than the amount saved', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
@@ -758,28 +758,28 @@ describe('goals repository', () => {
         is_synced: 0,
       });
 
-      expect(() =>
+      await expect(
         contributeToGoal(mockDb, 'goal-1', { goalId: 'goal-1', amount: { amount: -30000 } }),
-      ).toThrow('A withdrawal cannot exceed the amount saved for this goal.');
+      ).rejects.toThrow('A withdrawal cannot exceed the amount saved for this goal.');
       expect(mockExecute).not.toHaveBeenCalled();
     });
   });
 
   describe('getActiveGoals', () => {
-    it('should filter by ACTIVE status', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter by ACTIVE status', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getActiveGoals(mockDb);
+      await getActiveGoals(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(mockDb, expect.stringContaining('status = ?'), [
         'ACTIVE',
       ]);
     });
 
-    it('should filter out deleted goals', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter out deleted goals', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getActiveGoals(mockDb);
+      await getActiveGoals(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -788,17 +788,17 @@ describe('goals repository', () => {
       );
     });
 
-    it('should use parameterized status query', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should use parameterized status query', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getActiveGoals(mockDb);
+      await getActiveGoals(mockDb);
 
       const sql = mockQuery.mock.calls[0][1];
       expect(sql).toContain('status = ?');
       expect(sql).not.toContain("status = 'ACTIVE'");
     });
 
-    it('should return only active goals', () => {
+    it('should return only active goals', async () => {
       const mockRows: Row[] = [
         {
           id: 'goal-1',
@@ -820,9 +820,9 @@ describe('goals repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const goals = getActiveGoals(mockDb);
+      const goals = await getActiveGoals(mockDb);
 
       expect(goals).toHaveLength(1);
       expect(goals[0].status).toBe('ACTIVE');
@@ -830,8 +830,8 @@ describe('goals repository', () => {
   });
 
   describe('deleteGoal', () => {
-    it('should soft-delete by setting deleted_at', () => {
-      mockQueryOne.mockReturnValue({
+    it('should soft-delete by setting deleted_at', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
@@ -850,7 +850,7 @@ describe('goals repository', () => {
         is_synced: 0,
       });
 
-      const result = deleteGoal(mockDb, 'goal-1');
+      const result = await deleteGoal(mockDb, 'goal-1');
 
       expect(result).toBe(true);
       expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE goal'), [
@@ -862,17 +862,17 @@ describe('goals repository', () => {
       expect(sql).toContain('AND deleted_at IS NULL');
     });
 
-    it('should return false when goal not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return false when goal not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const result = deleteGoal(mockDb, 'nonexistent');
+      const result = await deleteGoal(mockDb, 'nonexistent');
 
       expect(result).toBe(false);
       expect(mockExecute).not.toHaveBeenCalled();
     });
 
-    it('should use parameterized query', () => {
-      mockQueryOne.mockReturnValue({
+    it('should use parameterized query', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
@@ -891,7 +891,7 @@ describe('goals repository', () => {
         is_synced: 0,
       });
 
-      deleteGoal(mockDb, 'goal-1');
+      await deleteGoal(mockDb, 'goal-1');
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).not.toContain("id = 'goal-1'");
@@ -899,8 +899,8 @@ describe('goals repository', () => {
   });
 
   describe('getGoalProgressContributions', () => {
-    it('maps rows and computes a cumulative running total (#3381)', () => {
-      mockQuery.mockReturnValue({
+    it('maps rows and computes a cumulative running total (#3381)', async () => {
+      mockQuery.mockResolvedValue({
         columns: [],
         rows: [
           { amount: 10000, contributed_at: '2024-01-01T00:00:00Z' },
@@ -909,7 +909,7 @@ describe('goals repository', () => {
         ],
       });
 
-      const contributions = getGoalProgressContributions(mockDb, 'goal-1');
+      const contributions = await getGoalProgressContributions(mockDb, 'goal-1');
 
       expect(contributions).toEqual([
         { date: '2024-01-01T00:00:00Z', amountCents: 10000, runningTotalCents: 10000 },
@@ -918,10 +918,10 @@ describe('goals repository', () => {
       ]);
     });
 
-    it('queries oldest-first, scoped to the goal and non-deleted rows', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('queries oldest-first, scoped to the goal and non-deleted rows', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getGoalProgressContributions(mockDb, 'goal-42');
+      await getGoalProgressContributions(mockDb, 'goal-42');
 
       const [, sql, params] = mockQuery.mock.calls[0];
       expect(sql).toContain('FROM goal_progress_contribution');
@@ -931,8 +931,8 @@ describe('goals repository', () => {
       expect(params).toEqual(['goal-42']);
     });
 
-    it('handles a withdrawal (negative amount) in the running total', () => {
-      mockQuery.mockReturnValue({
+    it('handles a withdrawal (negative amount) in the running total', async () => {
+      mockQuery.mockResolvedValue({
         columns: [],
         rows: [
           { amount: 50000, contributed_at: '2024-01-01T00:00:00Z' },
@@ -940,14 +940,14 @@ describe('goals repository', () => {
         ],
       });
 
-      const contributions = getGoalProgressContributions(mockDb, 'goal-1');
+      const contributions = await getGoalProgressContributions(mockDb, 'goal-1');
 
       expect(contributions[1].runningTotalCents).toBe(30000);
     });
 
-    it('returns an empty array when there is no history', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
-      expect(getGoalProgressContributions(mockDb, 'goal-1')).toEqual([]);
+    it('returns an empty array when there is no history', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
+      expect(await getGoalProgressContributions(mockDb, 'goal-1')).toEqual([]);
     });
   });
 });

@@ -315,8 +315,8 @@ export const BudgetsPage: React.FC = () => {
     setIsFormOpen(true);
   }, []);
 
-  const handleUseFoodMealsTemplate = useCallback(() => {
-    const nextTemplateState = ensureFoodMealCategories();
+  const handleUseFoodMealsTemplate = useCallback(async () => {
+    const nextTemplateState = await ensureFoodMealCategories();
     setEditingBudget(null);
     setDefaultCategoryId(nextTemplateState?.parentCategory?.id);
     setIsFormOpen(true);
@@ -375,12 +375,12 @@ export const BudgetsPage: React.FC = () => {
   const handleFormSubmit = useCallback(
     async (data: CreateBudgetInput) => {
       if (editingBudget) {
-        const updatedBudget = updateBudget(editingBudget.id, data);
+        const updatedBudget = await updateBudget(editingBudget.id, data);
         if (updatedBudget === null) {
           throw new Error('Failed to update budget.');
         }
       } else {
-        const createdBudget = createBudget(data);
+        const createdBudget = await createBudget(data);
         if (createdBudget === null) {
           throw new Error('Failed to create budget.');
         }
@@ -395,7 +395,7 @@ export const BudgetsPage: React.FC = () => {
 
   const handleTemplateSubmit = useCallback(
     async (data: CreateBudgetTemplateInput) => {
-      const createdBudgets = createBudgetTemplate(data);
+      const createdBudgets = await createBudgetTemplate(data);
       if (!createdBudgets || createdBudgets.length === 0) {
         throw new Error('Failed to create starter budget.');
       }
@@ -408,12 +408,12 @@ export const BudgetsPage: React.FC = () => {
   );
 
   /** Delete the selected budget after the user confirms the action. */
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingBudget) {
       return;
     }
 
-    const deleted = deleteBudget(deletingBudget.id);
+    const deleted = await deleteBudget(deletingBudget.id);
     if (deleted) {
       setDeletingBudget(null);
     }

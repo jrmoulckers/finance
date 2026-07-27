@@ -25,7 +25,7 @@ import {
   type CreateAccountInput,
   type UpdateAccountInput,
 } from '../db/repositories/accounts';
-import type { Row } from '../db/sqlite-wasm';
+import type { Row } from '../db/async-db';
 import type { Account, SyncId } from '../kmp/bridge';
 import { filterAccountsByPurpose, type AccountPurposeFilter } from '../lib/accountPurpose';
 import { useRealtimeTable } from './useRealtimeTable';
@@ -35,9 +35,9 @@ export interface UseAccountsResult {
   loading: boolean;
   error: string | null;
   refresh: () => void;
-  createAccount: (input: CreateAccountInput) => Account | null;
-  updateAccount: (accountId: SyncId, updates: UpdateAccountInput) => Account | null;
-  deleteAccount: (accountId: SyncId) => boolean;
+  createAccount: (input: CreateAccountInput) => Promise<Account | null>;
+  updateAccount: (accountId: SyncId, updates: UpdateAccountInput) => Promise<Account | null>;
+  deleteAccount: (accountId: SyncId) => Promise<boolean>;
 }
 
 export interface UseAccountsFilters {
@@ -68,10 +68,10 @@ export function useAccounts(filters: UseAccountsFilters = {}): UseAccountsResult
   const error = mutationError ?? liveError;
 
   const createAccount = useCallback(
-    (input: CreateAccountInput): Account | null => {
+    async (input: CreateAccountInput): Promise<Account | null> => {
       try {
         setMutationError(null);
-        return repoCreateAccount(db, input);
+        return await repoCreateAccount(db, input);
       } catch (accountError) {
         setMutationError(
           accountError instanceof Error ? accountError.message : 'Failed to create account.',
@@ -83,10 +83,10 @@ export function useAccounts(filters: UseAccountsFilters = {}): UseAccountsResult
   );
 
   const updateAccount = useCallback(
-    (accountId: SyncId, updates: UpdateAccountInput): Account | null => {
+    async (accountId: SyncId, updates: UpdateAccountInput): Promise<Account | null> => {
       try {
         setMutationError(null);
-        return repoUpdateAccount(db, accountId, updates);
+        return await repoUpdateAccount(db, accountId, updates);
       } catch (accountError) {
         setMutationError(
           accountError instanceof Error ? accountError.message : 'Failed to update account.',
@@ -98,10 +98,10 @@ export function useAccounts(filters: UseAccountsFilters = {}): UseAccountsResult
   );
 
   const deleteAccount = useCallback(
-    (accountId: SyncId): boolean => {
+    async (accountId: SyncId): Promise<boolean> => {
       try {
         setMutationError(null);
-        return repoDeleteAccount(db, accountId);
+        return await repoDeleteAccount(db, accountId);
       } catch (accountError) {
         setMutationError(
           accountError instanceof Error ? accountError.message : 'Failed to delete account.',

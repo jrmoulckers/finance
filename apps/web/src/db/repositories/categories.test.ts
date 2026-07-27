@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { Row, AsyncDb } from '../async-db';
 import {
   createCategory,
   deleteCategory,
@@ -11,29 +11,29 @@ import {
   type CreateCategoryInput,
 } from './categories';
 
-// Mock sqlite-wasm module
-vi.mock('../sqlite-wasm', () => ({
+// Mock async-db module
+vi.mock('../async-db', () => ({
   query: vi.fn(),
   queryOne: vi.fn(),
   execute: vi.fn(),
 }));
 
 // Import mocked functions
-import { execute, query, queryOne } from '../sqlite-wasm';
+import { execute, query, queryOne } from '../async-db';
 
 const mockQuery = vi.mocked(query);
 const mockQueryOne = vi.mocked(queryOne);
 const mockExecute = vi.mocked(execute);
 
 describe('categories repository', () => {
-  const mockDb = {} as SqliteDb;
+  const mockDb = {} as AsyncDb;
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('getAllCategories', () => {
-    it('should return mapped category objects', () => {
+    it('should return mapped category objects', async () => {
       const mockRows: Row[] = [
         {
           id: 'cat-1',
@@ -69,9 +69,9 @@ describe('categories repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const categories = getAllCategories(mockDb);
+      const categories = await getAllCategories(mockDb);
 
       expect(categories).toHaveLength(2);
       expect(categories[0]).toMatchObject({
@@ -96,10 +96,10 @@ describe('categories repository', () => {
       });
     });
 
-    it('should filter out deleted categories via WHERE clause', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter out deleted categories via WHERE clause', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getAllCategories(mockDb);
+      await getAllCategories(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -107,10 +107,10 @@ describe('categories repository', () => {
       );
     });
 
-    it('should order by sort_order and name', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should order by sort_order and name', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getAllCategories(mockDb);
+      await getAllCategories(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -120,7 +120,7 @@ describe('categories repository', () => {
   });
 
   describe('getCategoryById', () => {
-    it('should return category when found', () => {
+    it('should return category when found', async () => {
       const mockRow: Row = {
         id: 'cat-1',
         household_id: 'hh-1',
@@ -138,9 +138,9 @@ describe('categories repository', () => {
         is_synced: 0,
       };
 
-      mockQueryOne.mockReturnValue(mockRow);
+      mockQueryOne.mockResolvedValue(mockRow);
 
-      const category = getCategoryById(mockDb, 'cat-1');
+      const category = await getCategoryById(mockDb, 'cat-1');
 
       expect(mockQueryOne).toHaveBeenCalledWith(
         mockDb,
@@ -151,18 +151,18 @@ describe('categories repository', () => {
       expect(category?.id).toBe('cat-1');
     });
 
-    it('should return null when not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return null when not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const category = getCategoryById(mockDb, 'nonexistent');
+      const category = await getCategoryById(mockDb, 'nonexistent');
 
       expect(category).toBeNull();
     });
 
-    it('should use parameterized query', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should use parameterized query', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      getCategoryById(mockDb, 'cat-1');
+      await getCategoryById(mockDb, 'cat-1');
 
       const sql = mockQueryOne.mock.calls[0][1];
       expect(sql).toContain('id = ?');
@@ -172,7 +172,7 @@ describe('categories repository', () => {
 
   describe('createCategory', () => {
     beforeEach(() => {
-      mockQueryOne.mockReturnValue({
+      mockQueryOne.mockResolvedValue({
         id: 'new-cat',
         household_id: 'hh-1',
         name: 'New Category',
@@ -190,13 +190,13 @@ describe('categories repository', () => {
       });
     });
 
-    it('should execute INSERT with correct parameters', () => {
+    it('should execute INSERT with correct parameters', async () => {
       const input: CreateCategoryInput = {
         householdId: 'hh-1',
         name: 'New Category',
       };
 
-      createCategory(mockDb, input);
+      await createCategory(mockDb, input);
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
@@ -215,13 +215,13 @@ describe('categories repository', () => {
       );
     });
 
-    it('should use ? placeholders not string interpolation', () => {
+    it('should use ? placeholders not string interpolation', async () => {
       const input: CreateCategoryInput = {
         householdId: 'hh-1',
         name: 'New Category',
       };
 
-      createCategory(mockDb, input);
+      await createCategory(mockDb, input);
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).toContain('VALUES (');
@@ -230,7 +230,7 @@ describe('categories repository', () => {
       expect(sql).not.toContain('New Category');
     });
 
-    it('should handle optional fields', () => {
+    it('should handle optional fields', async () => {
       const input: CreateCategoryInput = {
         householdId: 'hh-1',
         name: 'Custom Category',
@@ -242,7 +242,7 @@ describe('categories repository', () => {
         sortOrder: 5,
       };
 
-      createCategory(mockDb, input);
+      await createCategory(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[3]).toBe('star');
@@ -253,26 +253,26 @@ describe('categories repository', () => {
       expect(params[8]).toBe(5); // sortOrder
     });
 
-    it('should default boolean fields to false/0', () => {
+    it('should default boolean fields to false/0', async () => {
       const input: CreateCategoryInput = {
         householdId: 'hh-1',
         name: 'Category',
       };
 
-      createCategory(mockDb, input);
+      await createCategory(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[6]).toBe(0); // isIncome
       expect(params[7]).toBe(0); // isSystem
     });
 
-    it('should default sortOrder to 0', () => {
+    it('should default sortOrder to 0', async () => {
       const input: CreateCategoryInput = {
         householdId: 'hh-1',
         name: 'Category',
       };
 
-      createCategory(mockDb, input);
+      await createCategory(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[8]).toBe(0);
@@ -280,20 +280,20 @@ describe('categories repository', () => {
   });
 
   describe('getCategoriesByParent', () => {
-    it('should filter by parent_id with parameterized query', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter by parent_id with parameterized query', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getCategoriesByParent(mockDb, 'parent-1');
+      await getCategoriesByParent(mockDb, 'parent-1');
 
       expect(mockQuery).toHaveBeenCalledWith(mockDb, expect.stringContaining('parent_id = ?'), [
         'parent-1',
       ]);
     });
 
-    it('should filter out deleted categories', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter out deleted categories', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getCategoriesByParent(mockDb, 'parent-1');
+      await getCategoriesByParent(mockDb, 'parent-1');
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -302,17 +302,17 @@ describe('categories repository', () => {
       );
     });
 
-    it('should use ? placeholder not string interpolation', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should use ? placeholder not string interpolation', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getCategoriesByParent(mockDb, 'parent-1');
+      await getCategoriesByParent(mockDb, 'parent-1');
 
       const sql = mockQuery.mock.calls[0][1];
       expect(sql).toContain('parent_id = ?');
       expect(sql).not.toContain("parent_id = 'parent-1'");
     });
 
-    it('should return child categories', () => {
+    it('should return child categories', async () => {
       const mockRows: Row[] = [
         {
           id: 'child-1',
@@ -348,19 +348,19 @@ describe('categories repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const categories = getCategoriesByParent(mockDb, 'parent-1');
+      const categories = await getCategoriesByParent(mockDb, 'parent-1');
 
       expect(categories).toHaveLength(2);
       expect(categories[0].parentId).toBe('parent-1');
       expect(categories[1].parentId).toBe('parent-1');
     });
 
-    it('should order by sort_order and name', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should order by sort_order and name', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getCategoriesByParent(mockDb, 'parent-1');
+      await getCategoriesByParent(mockDb, 'parent-1');
 
       const sql = mockQuery.mock.calls[0][1];
       expect(sql).toContain('ORDER BY sort_order ASC, name ASC');
@@ -368,8 +368,8 @@ describe('categories repository', () => {
   });
 
   describe('deleteCategory', () => {
-    it('should soft-delete by setting deleted_at', () => {
-      mockQueryOne.mockReturnValue({
+    it('should soft-delete by setting deleted_at', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'cat-1',
         household_id: 'hh-1',
         name: 'Category',
@@ -386,7 +386,7 @@ describe('categories repository', () => {
         is_synced: 0,
       });
 
-      const result = deleteCategory(mockDb, 'cat-1');
+      const result = await deleteCategory(mockDb, 'cat-1');
 
       expect(result).toBe(true);
       expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE category'), [
@@ -398,17 +398,17 @@ describe('categories repository', () => {
       expect(sql).toContain('AND deleted_at IS NULL');
     });
 
-    it('should return false when category not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return false when category not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const result = deleteCategory(mockDb, 'nonexistent');
+      const result = await deleteCategory(mockDb, 'nonexistent');
 
       expect(result).toBe(false);
       expect(mockExecute).not.toHaveBeenCalled();
     });
 
-    it('should use parameterized query', () => {
-      mockQueryOne.mockReturnValue({
+    it('should use parameterized query', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'cat-1',
         household_id: 'hh-1',
         name: 'Category',
@@ -425,7 +425,7 @@ describe('categories repository', () => {
         is_synced: 0,
       });
 
-      deleteCategory(mockDb, 'cat-1');
+      await deleteCategory(mockDb, 'cat-1');
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).not.toContain("id = 'cat-1'");

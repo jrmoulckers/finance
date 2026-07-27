@@ -8,6 +8,7 @@ import {
   rollbackToSavepoint,
   type SqliteDb,
 } from './sqlite-wasm';
+import { createSqliteAsyncDb } from './async-db';
 import {
   createAccount,
   createBudget,
@@ -71,6 +72,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
   const householdId = crypto.randomUUID();
   const householdMemberId = crypto.randomUUID();
   const monthStart = firstDayOfCurrentMonth();
+  const repoDb = createSqliteAsyncDb(db);
 
   // Wrap the demo rows in a savepoint so a mid-seed failure rolls back cleanly
   // without touching any outer transaction. `releaseSavepoint` /
@@ -154,35 +156,35 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       ],
     );
 
-    const food = createCategory(db, {
+    const food = await createCategory(repoDb, {
       householdId,
       name: 'Food',
       icon: 'utensils',
       color: '#16A34A',
       sortOrder: 1,
     });
-    const transport = createCategory(db, {
+    const transport = await createCategory(repoDb, {
       householdId,
       name: 'Transport',
       icon: 'car',
       color: '#2563EB',
       sortOrder: 2,
     });
-    const housing = createCategory(db, {
+    const housing = await createCategory(repoDb, {
       householdId,
       name: 'Housing',
       icon: 'home',
       color: '#7C3AED',
       sortOrder: 3,
     });
-    const entertainment = createCategory(db, {
+    const entertainment = await createCategory(repoDb, {
       householdId,
       name: 'Entertainment',
       icon: 'film',
       color: '#DB2777',
       sortOrder: 4,
     });
-    const income = createCategory(db, {
+    const income = await createCategory(repoDb, {
       householdId,
       name: 'Income',
       icon: 'wallet',
@@ -192,7 +194,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       sortOrder: 5,
     });
 
-    const checking = createAccount(db, {
+    const checking = await createAccount(repoDb, {
       householdId,
       name: 'Checking',
       type: 'CHECKING',
@@ -202,7 +204,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       color: '#2563EB',
       sortOrder: 1,
     });
-    const savings = createAccount(db, {
+    const savings = await createAccount(repoDb, {
       householdId,
       name: 'Savings',
       type: 'SAVINGS',
@@ -212,7 +214,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       color: '#059669',
       sortOrder: 2,
     });
-    const creditCard = createAccount(db, {
+    const creditCard = await createAccount(repoDb, {
       householdId,
       name: 'Credit Card',
       type: 'CREDIT_CARD',
@@ -222,7 +224,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       color: '#DC2626',
       sortOrder: 3,
     });
-    const cash = createAccount(db, {
+    const cash = await createAccount(repoDb, {
       householdId,
       name: 'Cash',
       type: 'CASH',
@@ -437,8 +439,8 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       },
     ];
 
-    transactions.forEach((transaction) => {
-      createTransaction(db, {
+    for (const transaction of transactions) {
+      await createTransaction(repoDb, {
         householdId,
         accountId: transaction.accountId,
         categoryId: transaction.categoryId,
@@ -451,9 +453,9 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
         transferAccountId: transaction.transferAccountId ?? null,
         tags: transaction.tags ?? [],
       });
-    });
+    }
 
-    createBudget(db, {
+    await createBudget(repoDb, {
       householdId,
       categoryId: food.id,
       name: 'Food',
@@ -464,7 +466,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       endDate: null,
       isRollover: false,
     });
-    createBudget(db, {
+    await createBudget(repoDb, {
       householdId,
       categoryId: transport.id,
       name: 'Transport',
@@ -475,7 +477,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       endDate: null,
       isRollover: false,
     });
-    createBudget(db, {
+    await createBudget(repoDb, {
       householdId,
       categoryId: entertainment.id,
       name: 'Entertainment',
@@ -487,7 +489,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       isRollover: true,
     });
 
-    createGoal(db, {
+    await createGoal(repoDb, {
       householdId,
       name: 'Emergency Fund',
       targetAmount: cents(1000000),
@@ -499,7 +501,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       color: '#059669',
       accountId: savings.id,
     });
-    createGoal(db, {
+    await createGoal(repoDb, {
       householdId,
       name: 'Vacation',
       targetAmount: cents(200000),

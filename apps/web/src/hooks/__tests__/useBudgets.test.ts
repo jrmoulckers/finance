@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Budget } from '../../kmp/bridge';
@@ -11,7 +11,11 @@ import { useBudgets } from '../useBudgets';
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockDb = {} as ReturnType<typeof import('../../db/DatabaseProvider').useDatabase>;
+const mockDb = {
+  // `useLiveQuery` subscribes to table-change notifications on mount, so the
+  // mock database must expose an `onChange` that returns an unsubscribe fn.
+  onChange: vi.fn(() => () => {}),
+} as unknown as ReturnType<typeof import('../../db/DatabaseProvider').useDatabase>;
 
 vi.mock('../../db/DatabaseProvider', () => ({
   useDatabase: () => mockDb,
@@ -99,15 +103,15 @@ describe('useBudgets', () => {
   // Loading / success state
   // -----------------------------------------------------------------------
 
-  it('returns loading false and empty list when no budgets exist', () => {
+  it('returns loading false and empty list when no budgets exist', async () => {
     const { result } = renderHook(() => useBudgets());
 
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.budgets).toEqual([]);
     expect(result.current.error).toBeNull();
   });
 
-  it('returns budgets enriched with spending data', () => {
+  it('returns budgets enriched with spending data', async () => {
     const budget = makeBudget();
     const enriched = makeBudgetWithSpending({}, 15000);
     mockGetAllBudgets.mockReturnValue([budget]);
@@ -115,19 +119,19 @@ describe('useBudgets', () => {
 
     const { result } = renderHook(() => useBudgets());
 
-    expect(result.current.budgets).toHaveLength(1);
+    await waitFor(() => expect(result.current.budgets).toHaveLength(1));
     expect(result.current.budgets[0]?.spentAmount.amount).toBe(15000);
     expect(result.current.budgets[0]?.remainingAmount.amount).toBe(35000);
   });
 
-  it('falls back to zero spending when getBudgetWithSpending returns null', () => {
+  it('falls back to zero spending when getBudgetWithSpending returns null', async () => {
     const budget = makeBudget({ amount: { amount: 50000 } });
     mockGetAllBudgets.mockReturnValue([budget]);
     mockGetBudgetWithSpending.mockReturnValue(null);
 
     const { result } = renderHook(() => useBudgets());
 
-    expect(result.current.budgets).toHaveLength(1);
+    await waitFor(() => expect(result.current.budgets).toHaveLength(1));
     expect(result.current.budgets[0]?.spentAmount.amount).toBe(0);
     expect(result.current.budgets[0]?.remainingAmount.amount).toBe(50000);
   });
@@ -136,33 +140,33 @@ describe('useBudgets', () => {
   // Error state
   // -----------------------------------------------------------------------
 
-  it('captures errors and sets error state', () => {
+  it('captures errors and sets error state', async () => {
     mockGetAllBudgets.mockImplementation(() => {
       throw new Error('DB read failed');
     });
 
     const { result } = renderHook(() => useBudgets());
 
-    expect(result.current.error).toBe('DB read failed');
+    await waitFor(() => expect(result.current.error).toBe('DB read failed'));
     expect(result.current.budgets).toEqual([]);
     expect(result.current.loading).toBe(false);
   });
 
-  it('sets a generic error message for non-Error throws', () => {
+  it('sets a generic error message for non-Error throws', async () => {
     mockGetAllBudgets.mockImplementation(() => {
       throw null;
     });
 
     const { result } = renderHook(() => useBudgets());
 
-    expect(result.current.error).toBe('Failed to load budgets.');
+    await waitFor(() => expect(result.current.error).toBe('Failed to load budgets.'));
   });
 
   // -----------------------------------------------------------------------
   // CRUD — createBudget
   // -----------------------------------------------------------------------
 
-  it('creates a budget and triggers refresh', () => {
+  it('creates a budget and triggers refresh', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     const created = makeBudget({ id: 'budget-new', name: 'Dining Out' });
     mockCreateBudget.mockReturnValue(created);
@@ -170,8 +174,8 @@ describe('useBudgets', () => {
     const { result } = renderHook(() => useBudgets());
 
     let returned: Budget | null = null;
-    act(() => {
-      returned = result.current.createBudget({
+    await act(async () => {
+      returned = await result.current.createBudget({
         householdId: 'hh-1',
         categoryId: 'cat-dining',
         name: 'Dining Out',
@@ -185,7 +189,7 @@ describe('useBudgets', () => {
     expect(mockCreateBudget).toHaveBeenCalledOnce();
   });
 
-  it('returns null and sets error when createBudget throws', () => {
+  it('returns null and sets error when createBudget throws', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     mockCreateBudget.mockImplementation(() => {
       throw new Error('Insert failed');
@@ -194,8 +198,8 @@ describe('useBudgets', () => {
     const { result } = renderHook(() => useBudgets());
 
     let returned: Budget | null = null;
-    act(() => {
-      returned = result.current.createBudget({
+    await act(async () => {
+      returned = await result.current.createBudget({
         householdId: 'hh-1',
         categoryId: 'cat-dining',
         name: 'Dining Out',
@@ -213,7 +217,7 @@ describe('useBudgets', () => {
   // CRUD — createBudgetTemplate
   // -----------------------------------------------------------------------
 
-  it('creates a starter budget template and triggers refresh', () => {
+  it('creates a starter budget template and triggers refresh', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     mockCreateBudgetTemplate.mockReturnValue([
       makeBudget({ id: 'budget-student-1', categoryId: 'cat-rent', name: 'Rent/Housing' }),
@@ -223,8 +227,8 @@ describe('useBudgets', () => {
     const { result } = renderHook(() => useBudgets());
 
     let returned: Budget[] | null = null;
-    act(() => {
-      returned = result.current.createBudgetTemplate({
+    await act(async () => {
+      returned = await result.current.createBudgetTemplate({
         templateId: 'student',
         startDate: '2025-04-01',
       });
@@ -237,7 +241,7 @@ describe('useBudgets', () => {
     });
   });
 
-  it('returns null and sets error when createBudgetTemplate throws', () => {
+  it('returns null and sets error when createBudgetTemplate throws', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     mockCreateBudgetTemplate.mockImplementation(() => {
       throw new Error('Template insert failed');
@@ -246,8 +250,8 @@ describe('useBudgets', () => {
     const { result } = renderHook(() => useBudgets());
 
     let returned: Budget[] | null = null;
-    act(() => {
-      returned = result.current.createBudgetTemplate({
+    await act(async () => {
+      returned = await result.current.createBudgetTemplate({
         templateId: 'student',
         startDate: '2025-04-01',
       });
@@ -261,7 +265,7 @@ describe('useBudgets', () => {
   // CRUD — updateBudget
   // -----------------------------------------------------------------------
 
-  it('updates a budget and triggers refresh', () => {
+  it('updates a budget and triggers refresh', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     const updated = makeBudget({ name: 'Updated Budget' });
     mockUpdateBudget.mockReturnValue(updated);
@@ -269,8 +273,8 @@ describe('useBudgets', () => {
     const { result } = renderHook(() => useBudgets());
 
     let returned: Budget | null = null;
-    act(() => {
-      returned = result.current.updateBudget('budget-1', { name: 'Updated Budget' });
+    await act(async () => {
+      returned = await result.current.updateBudget('budget-1', { name: 'Updated Budget' });
     });
 
     expect(returned).toEqual(updated);
@@ -279,22 +283,23 @@ describe('useBudgets', () => {
     });
   });
 
-  it('does not refresh when updateBudget returns null', () => {
+  it('does not refresh when updateBudget returns null', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     mockUpdateBudget.mockReturnValue(null);
 
     const { result } = renderHook(() => useBudgets());
 
+    await waitFor(() => expect(result.current.loading).toBe(false));
     const callCountAfterMount = mockGetAllBudgets.mock.calls.length;
 
-    act(() => {
-      result.current.updateBudget('nonexistent', { name: 'Nope' });
+    await act(async () => {
+      await result.current.updateBudget('nonexistent', { name: 'Nope' });
     });
 
     expect(mockGetAllBudgets.mock.calls.length).toBe(callCountAfterMount);
   });
 
-  it('returns null and sets error when updateBudget throws', () => {
+  it('returns null and sets error when updateBudget throws', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     mockUpdateBudget.mockImplementation(() => {
       throw new Error('Update failed');
@@ -303,8 +308,8 @@ describe('useBudgets', () => {
     const { result } = renderHook(() => useBudgets());
 
     let returned: Budget | null = null;
-    act(() => {
-      returned = result.current.updateBudget('budget-1', { name: 'Nope' });
+    await act(async () => {
+      returned = await result.current.updateBudget('budget-1', { name: 'Nope' });
     });
 
     expect(returned).toBeNull();
@@ -315,7 +320,7 @@ describe('useBudgets', () => {
   // Reorder — reorderBudgets
   // -----------------------------------------------------------------------
 
-  it('reorders budgets and refreshes the list', () => {
+  it('reorders budgets and refreshes the list', async () => {
     mockGetAllBudgets.mockReturnValue([
       makeBudget({ id: 'budget-1', name: 'Food' }),
       makeBudget({ id: 'budget-2', name: 'Rent' }),
@@ -328,10 +333,11 @@ describe('useBudgets', () => {
     );
 
     const { result } = renderHook(() => useBudgets());
+    await waitFor(() => expect(result.current.budgets).toHaveLength(2));
     const callCountAfterMount = mockGetAllBudgets.mock.calls.length;
 
-    act(() => {
-      result.current.reorderBudgets(0, 1);
+    await act(async () => {
+      await result.current.reorderBudgets(0, 1);
     });
 
     expect(mockReorderBudgets).toHaveBeenCalledWith(mockDb, ['budget-2', 'budget-1']);
@@ -342,7 +348,7 @@ describe('useBudgets', () => {
   // CRUD — deleteBudget
   // -----------------------------------------------------------------------
 
-  it('deletes a budget and triggers refresh', () => {
+  it('deletes a budget and triggers refresh', async () => {
     mockGetAllBudgets.mockReturnValue([makeBudget()]);
     mockGetBudgetWithSpending.mockReturnValue(makeBudgetWithSpending());
     mockDeleteBudget.mockReturnValue(true);
@@ -350,29 +356,29 @@ describe('useBudgets', () => {
     const { result } = renderHook(() => useBudgets());
 
     let deleted = false;
-    act(() => {
-      deleted = result.current.deleteBudget('budget-1');
+    await act(async () => {
+      deleted = await result.current.deleteBudget('budget-1');
     });
 
     expect(deleted).toBe(true);
     expect(mockDeleteBudget).toHaveBeenCalledWith(mockDb, 'budget-1');
   });
 
-  it('returns false when deletion target is not found', () => {
+  it('returns false when deletion target is not found', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     mockDeleteBudget.mockReturnValue(false);
 
     const { result } = renderHook(() => useBudgets());
 
     let deleted = false;
-    act(() => {
-      deleted = result.current.deleteBudget('nonexistent');
+    await act(async () => {
+      deleted = await result.current.deleteBudget('nonexistent');
     });
 
     expect(deleted).toBe(false);
   });
 
-  it('returns false and sets error when deleteBudget throws', () => {
+  it('returns false and sets error when deleteBudget throws', async () => {
     mockGetAllBudgets.mockReturnValue([]);
     mockDeleteBudget.mockImplementation(() => {
       throw new Error('Delete failed');
@@ -381,15 +387,15 @@ describe('useBudgets', () => {
     const { result } = renderHook(() => useBudgets());
 
     let deleted = false;
-    act(() => {
-      deleted = result.current.deleteBudget('budget-1');
+    await act(async () => {
+      deleted = await result.current.deleteBudget('budget-1');
     });
 
     expect(deleted).toBe(false);
     expect(result.current.error).toBe('Delete failed');
   });
 
-  it('returns a grouped food spending breakdown on demand', () => {
+  it('returns a grouped food spending breakdown on demand', async () => {
     mockGetBudgetSpendingBreakdown.mockReturnValue([
       { categoryId: 'cat-groceries', categoryName: 'Groceries', spentAmount: { amount: 25000 } },
       { categoryId: 'cat-dining', categoryName: 'Dining Out', spentAmount: { amount: 17350 } },
@@ -397,23 +403,28 @@ describe('useBudgets', () => {
 
     const { result } = renderHook(() => useBudgets());
 
-    expect(result.current.getBudgetSpendingBreakdown('budget-1')).toEqual([
+    let breakdown: Awaited<ReturnType<typeof result.current.getBudgetSpendingBreakdown>> = [];
+    await act(async () => {
+      breakdown = await result.current.getBudgetSpendingBreakdown('budget-1');
+    });
+
+    expect(breakdown).toEqual([
       { categoryId: 'cat-groceries', categoryName: 'Groceries', spentAmount: { amount: 25000 } },
       { categoryId: 'cat-dining', categoryName: 'Dining Out', spentAmount: { amount: 17350 } },
     ]);
     expect(mockGetBudgetSpendingBreakdown).toHaveBeenCalledWith(mockDb, 'budget-1');
   });
 
-  it('returns an empty breakdown and captures errors', () => {
+  it('returns an empty breakdown and captures errors', async () => {
     mockGetBudgetSpendingBreakdown.mockImplementation(() => {
       throw new Error('Breakdown failed');
     });
 
     const { result } = renderHook(() => useBudgets());
 
-    let breakdown: ReturnType<typeof result.current.getBudgetSpendingBreakdown> = [];
-    act(() => {
-      breakdown = result.current.getBudgetSpendingBreakdown('budget-1');
+    let breakdown: Awaited<ReturnType<typeof result.current.getBudgetSpendingBreakdown>> = [];
+    await act(async () => {
+      breakdown = await result.current.getBudgetSpendingBreakdown('budget-1');
     });
 
     expect(breakdown).toEqual([]);
@@ -424,15 +435,16 @@ describe('useBudgets', () => {
   // Refresh
   // -----------------------------------------------------------------------
 
-  it('re-fetches data when refresh is called', () => {
+  it('re-fetches data when refresh is called', async () => {
     mockGetAllBudgets.mockReturnValue([]);
 
     const { result } = renderHook(() => useBudgets());
 
+    await waitFor(() => expect(result.current.loading).toBe(false));
     const callCountAfterMount = mockGetAllBudgets.mock.calls.length;
 
-    act(() => {
-      result.current.refresh();
+    await act(async () => {
+      await result.current.refresh();
     });
 
     expect(mockGetAllBudgets.mock.calls.length).toBeGreaterThan(callCountAfterMount);

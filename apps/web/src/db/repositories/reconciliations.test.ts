@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { AsyncDb, Row } from '../async-db';
 
-vi.mock('../sqlite-wasm', () => ({
+vi.mock('../async-db', () => ({
+  beginSavepoint: vi.fn(),
   execute: vi.fn(),
   query: vi.fn(),
   queryOne: vi.fn(),
@@ -11,15 +12,16 @@ vi.mock('../sqlite-wasm', () => ({
   rollbackToSavepoint: vi.fn(),
 }));
 
-import { execute, query, queryOne, releaseSavepoint } from '../sqlite-wasm';
+import { beginSavepoint, execute, query, queryOne, releaseSavepoint } from '../async-db';
 import { closeReconciliation, getUnclearedTransactionCount } from './reconciliations';
 
+const mockBeginSavepoint = vi.mocked(beginSavepoint);
 const mockExecute = vi.mocked(execute);
 const mockQuery = vi.mocked(query);
 const mockQueryOne = vi.mocked(queryOne);
 const mockReleaseSavepoint = vi.mocked(releaseSavepoint);
 
-const mockDb = {} as SqliteDb;
+const mockDb = {} as AsyncDb;
 const generatedId = '00000000-0000-4000-8000-000000000001';
 
 function snapshotRow(overrides: Partial<Row> = {}): Row {
@@ -48,17 +50,17 @@ describe('reconciliations repository', () => {
     vi.spyOn(crypto, 'randomUUID').mockReturnValue(generatedId);
   });
 
-  it('records a snapshot and locks transactions when the difference is zero', () => {
-    mockQuery.mockReturnValueOnce({
+  it('records a snapshot and locks transactions when the difference is zero', async () => {
+    mockQuery.mockResolvedValueOnce({
       columns: [],
       rows: [
         { id: 'tx-income', type: 'INCOME', status: 'PENDING', amount: 5000, date: '2025-03-10' },
         { id: 'tx-expense', type: 'EXPENSE', status: 'CLEARED', amount: 2500, date: '2025-03-12' },
       ],
     });
-    mockQueryOne.mockReturnValueOnce(snapshotRow());
+    mockQueryOne.mockResolvedValueOnce(snapshotRow());
 
-    const snapshot = closeReconciliation(mockDb, {
+    const snapshot = await closeReconciliation(mockDb, {
       accountId: 'account-1',
       householdId: 'household-1',
       statementDate: '2025-03-31',
@@ -74,22 +76,22 @@ describe('reconciliations repository', () => {
       clearedTransactionCount: 2,
       transactionIds: ['tx-income', 'tx-expense'],
     });
-    expect(mockExecute).toHaveBeenNthCalledWith(1, mockDb, 'SAVEPOINT close_reconciliation;');
-    expect(mockExecute.mock.calls[1][1]).toContain('INSERT INTO account_reconciliation');
+    expect(mockBeginSavepoint).toHaveBeenCalledWith(mockDb, 'close_reconciliation');
+    expect(mockExecute.mock.calls[0][1]).toContain('INSERT INTO account_reconciliation');
+    expect(mockExecute.mock.calls[1][1]).toContain("SET status = 'RECONCILED'");
     expect(mockExecute.mock.calls[2][1]).toContain("SET status = 'RECONCILED'");
-    expect(mockExecute.mock.calls[3][1]).toContain("SET status = 'RECONCILED'");
     expect(mockReleaseSavepoint).toHaveBeenCalledWith(mockDb, 'close_reconciliation');
   });
 
-  it('refuses to close when selected transactions do not match the statement balance', () => {
-    mockQuery.mockReturnValueOnce({
+  it('refuses to close when selected transactions do not match the statement balance', async () => {
+    mockQuery.mockResolvedValueOnce({
       columns: [],
       rows: [
         { id: 'tx-income', type: 'INCOME', status: 'PENDING', amount: 5000, date: '2025-03-10' },
       ],
     });
 
-    expect(() =>
+    await expect(
       closeReconciliation(mockDb, {
         accountId: 'account-1',
         householdId: 'household-1',
@@ -98,14 +100,14 @@ describe('reconciliations repository', () => {
         startingBalance: { amount: 10000 },
         transactionIds: ['tx-income'],
       }),
-    ).toThrow('difference is zero');
+    ).rejects.toThrow('difference is zero');
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
-  it('counts only unreconciled, non-void transactions as uncleared', () => {
-    mockQueryOne.mockReturnValueOnce({ count: 4 });
+  it('counts only unreconciled, non-void transactions as uncleared', async () => {
+    mockQueryOne.mockResolvedValueOnce({ count: 4 });
 
-    expect(getUnclearedTransactionCount(mockDb, 'account-1')).toBe(4);
+    expect(await getUnclearedTransactionCount(mockDb, 'account-1')).toBe(4);
     expect(mockQueryOne).toHaveBeenCalledWith(
       mockDb,
       expect.stringContaining("status NOT IN ('RECONCILED', 'VOID')"),

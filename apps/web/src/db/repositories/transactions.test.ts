@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TransactionType } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { Row, AsyncDb } from '../async-db';
 import {
   createTransaction,
   deleteTransaction,
@@ -15,29 +15,29 @@ import {
   type TransactionFilters,
 } from './transactions';
 
-// Mock sqlite-wasm module
-vi.mock('../sqlite-wasm', () => ({
+// Mock async-db module
+vi.mock('../async-db', () => ({
   query: vi.fn(),
   queryOne: vi.fn(),
   execute: vi.fn(),
 }));
 
 // Import mocked functions
-import { execute, query, queryOne } from '../sqlite-wasm';
+import { execute, query, queryOne } from '../async-db';
 
 const mockQuery = vi.mocked(query);
 const mockQueryOne = vi.mocked(queryOne);
 const mockExecute = vi.mocked(execute);
 
 describe('transactions repository', () => {
-  const mockDb = {} as SqliteDb;
+  const mockDb = {} as AsyncDb;
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('getAllTransactions', () => {
-    it('should return mapped transaction objects', () => {
+    it('should return mapped transaction objects', async () => {
       const mockRows: Row[] = [
         {
           id: 'txn-1',
@@ -64,9 +64,9 @@ describe('transactions repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const transactions = getAllTransactions(mockDb);
+      const transactions = await getAllTransactions(mockDb);
 
       expect(transactions).toHaveLength(1);
       expect(transactions[0]).toMatchObject({
@@ -80,14 +80,14 @@ describe('transactions repository', () => {
       });
     });
 
-    it('should filter by search term using LIKE with parameterization', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter by search term using LIKE with parameterization', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
       const filters: TransactionFilters = {
         searchTerm: 'coffee',
       };
 
-      getAllTransactions(mockDb, filters);
+      await getAllTransactions(mockDb, filters);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -111,14 +111,14 @@ describe('transactions repository', () => {
       expect(sql).not.toContain("LIKE '%coffee%'");
     });
 
-    it('should filter by transaction type with ? placeholder', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter by transaction type with ? placeholder', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
       const filters: TransactionFilters = {
         type: 'EXPENSE' as TransactionType,
       };
 
-      getAllTransactions(mockDb, filters);
+      await getAllTransactions(mockDb, filters);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -127,14 +127,14 @@ describe('transactions repository', () => {
       );
     });
 
-    it('should apply limit with parameterized query', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should apply limit with parameterized query', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
       const filters: TransactionFilters = {
         limit: 10,
       };
 
-      getAllTransactions(mockDb, filters);
+      await getAllTransactions(mockDb, filters);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -145,8 +145,8 @@ describe('transactions repository', () => {
       expect(sql).not.toContain('LIMIT 10');
     });
 
-    it('should combine search, type, and limit filters', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should combine search, type, and limit filters', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
       const filters: TransactionFilters = {
         searchTerm: 'grocery',
@@ -154,7 +154,7 @@ describe('transactions repository', () => {
         limit: 5,
       };
 
-      getAllTransactions(mockDb, filters);
+      await getAllTransactions(mockDb, filters);
 
       const params = mockQuery.mock.calls[0][2] as unknown[];
       expect(params).toEqual([
@@ -170,7 +170,7 @@ describe('transactions repository', () => {
       ]);
     });
 
-    it('should preserve monetary amounts as integers', () => {
+    it('should preserve monetary amounts as integers', async () => {
       const mockRows: Row[] = [
         {
           id: 'txn-1',
@@ -197,15 +197,15 @@ describe('transactions repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const transactions = getAllTransactions(mockDb);
+      const transactions = await getAllTransactions(mockDb);
 
       expect(transactions[0].amount.amount).toBe(250075);
       expect(Number.isInteger(transactions[0].amount.amount)).toBe(true);
     });
 
-    it('should parse tags from JSON string', () => {
+    it('should parse tags from JSON string', async () => {
       const mockRows: Row[] = [
         {
           id: 'txn-1',
@@ -232,16 +232,16 @@ describe('transactions repository', () => {
         },
       ];
 
-      mockQuery.mockReturnValue({ columns: [], rows: mockRows });
+      mockQuery.mockResolvedValue({ columns: [], rows: mockRows });
 
-      const transactions = getAllTransactions(mockDb);
+      const transactions = await getAllTransactions(mockDb);
 
       expect(transactions[0].tags).toEqual(['tag1', 'tag2', 'tag3']);
     });
   });
 
   describe('getTransactionById', () => {
-    it('should return transaction when found', () => {
+    it('should return transaction when found', async () => {
       const mockRow: Row = {
         id: 'txn-1',
         household_id: 'hh-1',
@@ -266,9 +266,9 @@ describe('transactions repository', () => {
         is_synced: 0,
       };
 
-      mockQueryOne.mockReturnValue(mockRow);
+      mockQueryOne.mockResolvedValue(mockRow);
 
-      const transaction = getTransactionById(mockDb, 'txn-1');
+      const transaction = await getTransactionById(mockDb, 'txn-1');
 
       expect(mockQueryOne).toHaveBeenCalledWith(
         mockDb,
@@ -279,10 +279,10 @@ describe('transactions repository', () => {
       expect(transaction?.id).toBe('txn-1');
     });
 
-    it('should return null when not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return null when not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const transaction = getTransactionById(mockDb, 'nonexistent');
+      const transaction = await getTransactionById(mockDb, 'nonexistent');
 
       expect(transaction).toBeNull();
     });
@@ -290,7 +290,7 @@ describe('transactions repository', () => {
 
   describe('createTransaction', () => {
     beforeEach(() => {
-      mockQueryOne.mockReturnValue({
+      mockQueryOne.mockResolvedValue({
         id: 'new-txn',
         household_id: 'hh-1',
         account_id: 'acc-1',
@@ -315,7 +315,7 @@ describe('transactions repository', () => {
       });
     });
 
-    it('should execute INSERT with correct parameters', () => {
+    it('should execute INSERT with correct parameters', async () => {
       const input: CreateTransactionInput = {
         householdId: 'hh-1',
         accountId: 'acc-1',
@@ -325,7 +325,7 @@ describe('transactions repository', () => {
         date: '2024-01-15',
       };
 
-      createTransaction(mockDb, input);
+      await createTransaction(mockDb, input);
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
@@ -351,7 +351,7 @@ describe('transactions repository', () => {
       );
     });
 
-    it('should store amount as integer cents', () => {
+    it('should store amount as integer cents', async () => {
       const input: CreateTransactionInput = {
         householdId: 'hh-1',
         accountId: 'acc-1',
@@ -360,7 +360,7 @@ describe('transactions repository', () => {
         date: '2024-01-15',
       };
 
-      createTransaction(mockDb, input);
+      await createTransaction(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       const amountParam = params[6]; // amount is 7th param
@@ -368,7 +368,7 @@ describe('transactions repository', () => {
       expect(Number.isInteger(amountParam as number)).toBe(true);
     });
 
-    it('should serialize tags as JSON array', () => {
+    it('should serialize tags as JSON array', async () => {
       const input: CreateTransactionInput = {
         householdId: 'hh-1',
         accountId: 'acc-1',
@@ -378,14 +378,14 @@ describe('transactions repository', () => {
         tags: ['food', 'restaurant', 'dinner'],
       };
 
-      createTransaction(mockDb, input);
+      await createTransaction(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       const tagsParam = params[15];
       expect(tagsParam).toBe('["food","restaurant","dinner"]');
     });
 
-    it('should serialize balanced split lines as JSON', () => {
+    it('should serialize balanced split lines as JSON', async () => {
       const input: CreateTransactionInput = {
         householdId: 'hh-1',
         accountId: 'acc-1',
@@ -398,7 +398,7 @@ describe('transactions repository', () => {
         ],
       };
 
-      createTransaction(mockDb, input);
+      await createTransaction(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[18]).toBe(
@@ -406,7 +406,7 @@ describe('transactions repository', () => {
       );
     });
 
-    it('stores retirement contribution tagging metadata', () => {
+    it('stores retirement contribution tagging metadata', async () => {
       const input: CreateTransactionInput = {
         householdId: 'hh-1',
         accountId: 'acc-1',
@@ -417,14 +417,14 @@ describe('transactions repository', () => {
         retirementContributionDesignation: 'EMPLOYEE',
       };
 
-      createTransaction(mockDb, input);
+      await createTransaction(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params[16]).toBe(2024);
       expect(params[17]).toBe('EMPLOYEE');
     });
 
-    it('should reject split lines that do not match the transaction total', () => {
+    it('should reject split lines that do not match the transaction total', async () => {
       const input: CreateTransactionInput = {
         householdId: 'hh-1',
         accountId: 'acc-1',
@@ -434,13 +434,13 @@ describe('transactions repository', () => {
         splits: [{ categoryId: 'cat-food', amount: { amount: 3200 }, note: null }],
       };
 
-      expect(() => createTransaction(mockDb, input)).toThrow(
+      await expect(createTransaction(mockDb, input)).rejects.toThrow(
         'Split amounts must equal the transaction total.',
       );
       expect(mockExecute).not.toHaveBeenCalled();
     });
 
-    it('should use ? placeholders not string interpolation', () => {
+    it('should use ? placeholders not string interpolation', async () => {
       const input: CreateTransactionInput = {
         householdId: 'hh-1',
         accountId: 'acc-1',
@@ -450,7 +450,7 @@ describe('transactions repository', () => {
         date: '2024-01-15',
       };
 
-      createTransaction(mockDb, input);
+      await createTransaction(mockDb, input);
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).toContain('VALUES (');
@@ -459,7 +459,7 @@ describe('transactions repository', () => {
       expect(sql).not.toContain("Bob's Store");
     });
 
-    it('should handle optional fields', () => {
+    it('should handle optional fields', async () => {
       const input: CreateTransactionInput = {
         householdId: 'hh-1',
         accountId: 'acc-1',
@@ -475,7 +475,7 @@ describe('transactions repository', () => {
         tags: ['test'],
       };
 
-      createTransaction(mockDb, input);
+      await createTransaction(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
       expect(params).toContain('PENDING');
@@ -489,10 +489,10 @@ describe('transactions repository', () => {
   });
 
   describe('getTransactionsByDateRange', () => {
-    it('should filter by date range with parameterized queries', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should filter by date range with parameterized queries', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
-      getTransactionsByDateRange(mockDb, '2024-01-01', '2024-01-31');
+      await getTransactionsByDateRange(mockDb, '2024-01-01', '2024-01-31');
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
@@ -506,15 +506,15 @@ describe('transactions repository', () => {
       );
     });
 
-    it('should combine date range with other filters', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should combine date range with other filters', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
       const filters: TransactionFilters = {
         type: 'EXPENSE' as TransactionType,
         searchTerm: 'coffee',
       };
 
-      getTransactionsByDateRange(mockDb, '2024-01-01', '2024-01-31', filters);
+      await getTransactionsByDateRange(mockDb, '2024-01-01', '2024-01-31', filters);
 
       const params = mockQuery.mock.calls[0][2] as unknown[];
       // Should have date range params first, then filter params
@@ -526,8 +526,8 @@ describe('transactions repository', () => {
   });
 
   describe('deleteTransaction', () => {
-    it('should soft-delete by setting deleted_at', () => {
-      mockQueryOne.mockReturnValue({
+    it('should soft-delete by setting deleted_at', async () => {
+      mockQueryOne.mockResolvedValue({
         id: 'txn-1',
         household_id: 'hh-1',
         account_id: 'acc-1',
@@ -551,7 +551,7 @@ describe('transactions repository', () => {
         is_synced: 0,
       });
 
-      const result = deleteTransaction(mockDb, 'txn-1');
+      const result = await deleteTransaction(mockDb, 'txn-1');
 
       expect(result).toBe(true);
       expect(mockExecute).toHaveBeenCalledWith(
@@ -565,10 +565,10 @@ describe('transactions repository', () => {
       expect(sql).toContain('AND deleted_at IS NULL');
     });
 
-    it('should return false when transaction not found', () => {
-      mockQueryOne.mockReturnValue(null);
+    it('should return false when transaction not found', async () => {
+      mockQueryOne.mockResolvedValue(null);
 
-      const result = deleteTransaction(mockDb, 'nonexistent');
+      const result = await deleteTransaction(mockDb, 'nonexistent');
 
       expect(result).toBe(false);
       expect(mockExecute).not.toHaveBeenCalled();
@@ -576,14 +576,14 @@ describe('transactions repository', () => {
   });
 
   describe('LIKE parameterization edge cases', () => {
-    it('should handle search term with SQL wildcards safely', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should handle search term with SQL wildcards safely', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
       const filters: TransactionFilters = {
         searchTerm: '100%',
       };
 
-      getAllTransactions(mockDb, filters);
+      await getAllTransactions(mockDb, filters);
 
       // Should wrap in % but not escape internal wildcards (basic LIKE)
       const params = mockQuery.mock.calls[0][2] as unknown[];
@@ -599,14 +599,14 @@ describe('transactions repository', () => {
       ]);
     });
 
-    it('should trim search term whitespace', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should trim search term whitespace', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
       const filters: TransactionFilters = {
         searchTerm: '  coffee  ',
       };
 
-      getAllTransactions(mockDb, filters);
+      await getAllTransactions(mockDb, filters);
 
       const params = mockQuery.mock.calls[0][2] as unknown[];
       expect(params).toEqual([
@@ -620,14 +620,14 @@ describe('transactions repository', () => {
       ]);
     });
 
-    it('should not add LIKE clause for empty search term', () => {
-      mockQuery.mockReturnValue({ columns: [], rows: [] });
+    it('should not add LIKE clause for empty search term', async () => {
+      mockQuery.mockResolvedValue({ columns: [], rows: [] });
 
       const filters: TransactionFilters = {
         searchTerm: '   ',
       };
 
-      getAllTransactions(mockDb, filters);
+      await getAllTransactions(mockDb, filters);
 
       const sql = mockQuery.mock.calls[0][1];
       expect(sql).not.toContain('LIKE');
@@ -674,10 +674,10 @@ describe('transactions repository', () => {
       expect(sql).toContain('deleted_at IS NULL');
     };
 
-    it('recomputes the account balance after insert', () => {
-      mockQueryOne.mockReturnValue(transactionRow());
+    it('recomputes the account balance after insert', async () => {
+      mockQueryOne.mockResolvedValue(transactionRow());
 
-      createTransaction(mockDb, {
+      await createTransaction(mockDb, {
         householdId: 'hh-1',
         accountId: 'acc-1',
         type: 'EXPENSE' as TransactionType,
@@ -688,29 +688,29 @@ describe('transactions repository', () => {
       expectBalanceRecomputeFor(2, 'acc-1');
     });
 
-    it('recomputes the account balance after an amount update', () => {
-      mockQueryOne.mockReturnValue(transactionRow());
+    it('recomputes the account balance after an amount update', async () => {
+      mockQueryOne.mockResolvedValue(transactionRow());
 
-      updateTransaction(mockDb, 'txn-1', { amount: { amount: -7500 } });
+      await updateTransaction(mockDb, 'txn-1', { amount: { amount: -7500 } });
 
       expectBalanceRecomputeFor(2, 'acc-1');
     });
 
-    it('recomputes both accounts when a transaction moves accounts', () => {
+    it('recomputes both accounts when a transaction moves accounts', async () => {
       mockQueryOne
-        .mockReturnValueOnce(transactionRow({ account_id: 'acc-1' }))
-        .mockReturnValueOnce(transactionRow({ account_id: 'acc-2' }));
+        .mockResolvedValueOnce(transactionRow({ account_id: 'acc-1' }))
+        .mockResolvedValueOnce(transactionRow({ account_id: 'acc-2' }));
 
-      updateTransaction(mockDb, 'txn-1', { accountId: 'acc-2' });
+      await updateTransaction(mockDb, 'txn-1', { accountId: 'acc-2' });
 
       expectBalanceRecomputeFor(2, 'acc-1');
       expectBalanceRecomputeFor(3, 'acc-2');
     });
 
-    it('recomputes the account balance after delete', () => {
-      mockQueryOne.mockReturnValue(transactionRow());
+    it('recomputes the account balance after delete', async () => {
+      mockQueryOne.mockResolvedValue(transactionRow());
 
-      deleteTransaction(mockDb, 'txn-1');
+      await deleteTransaction(mockDb, 'txn-1');
 
       expectBalanceRecomputeFor(2, 'acc-1');
     });

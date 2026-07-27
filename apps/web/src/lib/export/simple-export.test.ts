@@ -2,6 +2,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type { SqliteDb } from '../../db/sqlite-wasm';
+import { createSqliteAsyncDb, type AsyncDb } from '../../db/async-db';
 import {
   buildAllCsvZip,
   buildDatedExportFileName,
@@ -76,14 +77,19 @@ vi.mock('../../db/repositories/household', () => ({
   getGoalContributions: vi.fn(() => []),
 }));
 
-function createMockDb(): SqliteDb {
-  return { exec: vi.fn(), close: vi.fn() } as unknown as SqliteDb;
+function createMockDb(): AsyncDb {
+  return createSqliteAsyncDb({
+    exec: vi.fn(),
+    selectAll: vi.fn(() => []),
+    selectOne: vi.fn(() => null),
+    close: vi.fn(async () => undefined),
+  } as unknown as SqliteDb);
 }
 
 describe('simple-export', () => {
-  it('builds a full structured JSON export from local repositories', () => {
+  it('builds a full structured JSON export from local repositories', async () => {
     const generatedAt = new Date('2026-05-26T12:00:00Z');
-    const result = buildFullJsonExport(createMockDb(), {
+    const result = await buildFullJsonExport(createMockDb(), {
       appVersion: '0.1.0',
       generatedAt,
       preferences: [{ key: 'finance-currency', value: 'USD' }],
@@ -126,7 +132,7 @@ describe('simple-export', () => {
       throw new Error('Missing required field: account.household_id');
     });
     try {
-      const result = buildFullJsonExport(createMockDb(), {
+      const result = await buildFullJsonExport(createMockDb(), {
         appVersion: '0.1.0',
         generatedAt: new Date('2026-05-26T12:00:00Z'),
       });
@@ -176,8 +182,8 @@ describe('simple-export', () => {
     ).toBe('finance-data-csv-2026-05-26.zip');
   });
 
-  it('builds per-entity CSV files with stable filenames and header-only output for empty entities', () => {
-    const exportData = buildFullJsonExport(createMockDb(), {
+  it('builds per-entity CSV files with stable filenames and header-only output for empty entities', async () => {
+    const exportData = await buildFullJsonExport(createMockDb(), {
       appVersion: '0.1.0',
       generatedAt: new Date('2026-05-26T12:00:00Z'),
     });
@@ -220,8 +226,8 @@ describe('simple-export', () => {
     expect(empty?.contents).toBe('(empty)\r\n');
   });
 
-  it('produces a ZIP archive containing manifest.json and per-entity CSVs', () => {
-    const exportData = buildFullJsonExport(createMockDb(), {
+  it('produces a ZIP archive containing manifest.json and per-entity CSVs', async () => {
+    const exportData = await buildFullJsonExport(createMockDb(), {
       appVersion: '0.1.0',
       generatedAt: new Date('2026-05-26T12:00:00Z'),
     });
@@ -258,8 +264,8 @@ describe('simple-export', () => {
     expect(buildGenericCsv([])).toBe('(empty)\r\n');
   });
 
-  it('builds an export manifest with scope filters', () => {
-    const exportData = buildFullJsonExport(createMockDb(), {
+  it('builds an export manifest with scope filters', async () => {
+    const exportData = await buildFullJsonExport(createMockDb(), {
       appVersion: '0.1.0',
       generatedAt: new Date('2026-05-26T12:00:00Z'),
     });
@@ -275,8 +281,8 @@ describe('simple-export', () => {
     expect(manifest.filters.accountIds).toEqual(['acc-1']);
   });
 
-  it('builds a minimal XLSX workbook with one sheet per selected entity', () => {
-    const exportData = buildFullJsonExport(createMockDb(), {
+  it('builds a minimal XLSX workbook with one sheet per selected entity', async () => {
+    const exportData = await buildFullJsonExport(createMockDb(), {
       appVersion: '0.1.0',
       generatedAt: new Date('2026-05-26T12:00:00Z'),
     });

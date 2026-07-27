@@ -7,7 +7,7 @@ import {
   getHouseholdInvitations,
   getHouseholdMembers,
 } from '../../db/repositories/household';
-import type { SqliteDb } from '../../db/sqlite-wasm';
+import type { AsyncDb } from '../../db/async-db';
 import type { SyncId } from '../../kmp/bridge';
 
 export interface HouseholdDeletionImpact {
@@ -32,19 +32,19 @@ const LOCAL_TABLE_DELETE_ORDER = [
   'widget_privacy_config',
 ] as const;
 
-export function getHouseholdDeletionImpact(
-  db: SqliteDb | null,
+export async function getHouseholdDeletionImpact(
+  db: AsyncDb | null,
   userId: SyncId | null | undefined,
-): HouseholdDeletionImpact {
+): Promise<HouseholdDeletionImpact> {
   if (!db || !userId) {
     return { soloOwnedHouseholds: 0, memberHouseholds: 0, pendingInvites: 0 };
   }
 
-  const membershipRows = db.selectAll(
+  const membershipRows = await db.getAll(
     `SELECT DISTINCT household_id FROM household_member WHERE user_id = ? AND deleted_at IS NULL`,
     [userId],
   );
-  const ownedRows = db.selectAll(
+  const ownedRows = await db.getAll(
     `SELECT id FROM household WHERE owner_id = ? AND deleted_at IS NULL`,
     [userId],
   );
@@ -62,10 +62,10 @@ export function getHouseholdDeletionImpact(
   let pendingInvites = 0;
 
   for (const householdId of householdIds) {
-    const household = getHouseholdById(db, householdId);
+    const household = await getHouseholdById(db, householdId);
     if (!household) continue;
 
-    const members = getHouseholdMembers(db, householdId);
+    const members = await getHouseholdMembers(db, householdId);
     const otherMembers = members.filter((member) => member.userId !== userId);
     const isOwner = household.ownerId === userId;
 
@@ -75,7 +75,7 @@ export function getHouseholdDeletionImpact(
       memberHouseholds += 1;
     }
 
-    pendingInvites += getHouseholdInvitations(db, householdId).filter(
+    pendingInvites += (await getHouseholdInvitations(db, householdId)).filter(
       (invite) =>
         invite.status === 'PENDING' &&
         (invite.invitedBy === userId || household.ownerId === userId),
@@ -85,11 +85,11 @@ export function getHouseholdDeletionImpact(
   return { soloOwnedHouseholds, memberHouseholds, pendingInvites };
 }
 
-export async function clearLocalAccountData(db: SqliteDb | null): Promise<void> {
+export async function clearLocalAccountData(db: AsyncDb | null): Promise<void> {
   if (db) {
     for (const table of LOCAL_TABLE_DELETE_ORDER) {
       try {
-        db.exec(`DELETE FROM ${table}`);
+        await db.execute(`DELETE FROM ${table}`);
       } catch {
         // Older local schemas may not have every optional feature table.
       }

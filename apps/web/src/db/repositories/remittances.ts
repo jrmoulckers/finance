@@ -18,7 +18,7 @@ import type {
   RemittanceFrequency,
   RemittanceRecord,
 } from '../../lib/remittance';
-import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import { getPrimaryHouseholdId } from './household';
 import { SQLITE_NOW_EXPRESSION, optionalString, requireNumber, requireString } from './helpers';
 
@@ -86,16 +86,20 @@ function mapRecurrence(row: Row): RemittanceRecord['recurrence'] {
 }
 
 /** Return all non-deleted remittances, most recent send date first. */
-export function getAllRemittances(db: SqliteDb): RemittanceRecord[] {
-  return query<Row>(
+export async function getAllRemittances(db: AsyncDb): Promise<RemittanceRecord[]> {
+  const { rows } = await query<Row>(
     db,
     `${REMITTANCE_BASE_QUERY} ORDER BY date DESC, created_at DESC, id DESC`,
-  ).rows.map(mapRemittance);
+  );
+  return rows.map(mapRemittance);
 }
 
 /** Find a single non-deleted remittance by its identifier. */
-export function getRemittanceById(db: SqliteDb, remittanceId: string): RemittanceRecord | null {
-  const row = queryOne<Row>(db, `${REMITTANCE_BASE_QUERY} AND id = ?`, [remittanceId]);
+export async function getRemittanceById(
+  db: AsyncDb,
+  remittanceId: string,
+): Promise<RemittanceRecord | null> {
+  const row = await queryOne<Row>(db, `${REMITTANCE_BASE_QUERY} AND id = ?`, [remittanceId]);
   return row ? mapRemittance(row) : null;
 }
 
@@ -106,10 +110,13 @@ export function getRemittanceById(db: SqliteDb, remittanceId: string): Remittanc
  * it). `household_id` is resolved to the primary household when one exists so the
  * record is scoped for sync/RLS; it stays null in a clean-slate workspace.
  */
-export function insertRemittance(db: SqliteDb, record: RemittanceRecord): RemittanceRecord {
-  const householdId = getPrimaryHouseholdId(db);
+export async function insertRemittance(
+  db: AsyncDb,
+  record: RemittanceRecord,
+): Promise<RemittanceRecord> {
+  const householdId = await getPrimaryHouseholdId(db);
 
-  execute(
+  await execute(
     db,
     `INSERT INTO remittance (
       id,
@@ -159,7 +166,7 @@ export function insertRemittance(db: SqliteDb, record: RemittanceRecord): Remitt
     ],
   );
 
-  const created = getRemittanceById(db, record.id);
+  const created = await getRemittanceById(db, record.id);
   if (!created) {
     throw new Error('Failed to persist remittance.');
   }
@@ -167,13 +174,13 @@ export function insertRemittance(db: SqliteDb, record: RemittanceRecord): Remitt
 }
 
 /** Soft-delete a remittance by marking its deleted timestamp. */
-export function deleteRemittanceRecord(db: SqliteDb, remittanceId: string): boolean {
-  const existing = getRemittanceById(db, remittanceId);
+export async function deleteRemittanceRecord(db: AsyncDb, remittanceId: string): Promise<boolean> {
+  const existing = await getRemittanceById(db, remittanceId);
   if (!existing) {
     return false;
   }
 
-  execute(
+  await execute(
     db,
     `UPDATE remittance
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
@@ -227,7 +234,7 @@ function normalizeLegacyRemittance(entry: RemittanceRecord): RemittanceRecord {
  * hook instances cannot double-import, and records whose id already exists are
  * skipped. Returns the number of records imported.
  */
-export function importLegacyRemittances(db: SqliteDb): number {
+export async function importLegacyRemittances(db: AsyncDb): Promise<number> {
   let raw: string | null;
   try {
     raw = globalThis.localStorage?.getItem(LEGACY_REMITTANCES_STORAGE_KEY) ?? null;
@@ -255,8 +262,8 @@ export function importLegacyRemittances(db: SqliteDb): number {
   for (const entry of parsed) {
     if (!isLegacyRemittance(entry)) continue;
     try {
-      if (getRemittanceById(db, entry.id)) continue;
-      insertRemittance(db, normalizeLegacyRemittance(entry));
+      if (await getRemittanceById(db, entry.id)) continue;
+      await insertRemittance(db, normalizeLegacyRemittance(entry));
       imported += 1;
     } catch {
       // Best-effort per record — a single bad row must not abort the migration.

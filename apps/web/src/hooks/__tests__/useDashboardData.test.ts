@@ -3,6 +3,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createSqliteAsyncDb } from '../../db/async-db';
 import type { Row, SqliteDb } from '../../db/sqlite-wasm';
 import { useDashboardData } from '../useDashboardData';
 
@@ -157,6 +158,15 @@ function createDatabase(tableRows: TableRows): SqliteDb {
   };
 }
 
+// The async DB adapter resolves reads on the microtask queue, so live-query
+// state settles after mount rather than synchronously. Flush pending
+// microtasks (and any debounce timer) inside act() before asserting.
+async function flushQuery(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 describe('useDashboardData', () => {
   let tableRows: TableRows;
   let mockDb: SqliteDb;
@@ -165,17 +175,19 @@ describe('useDashboardData', () => {
     vi.clearAllMocks();
     tableRows = { accounts: [], transactions: [], budgets: [], budgetSpending: new Map() };
     mockDb = createDatabase(tableRows);
-    testState.db = mockDb;
+    testState.db = createSqliteAsyncDb(mockDb);
   });
 
-  it('returns loading false after initial fetch', () => {
+  it('returns loading false after initial fetch', async () => {
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.loading).toBe(false);
   });
 
-  it('returns data with zero values when no accounts exist', () => {
+  it('returns data with zero values when no accounts exist', async () => {
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.data).not.toBeNull();
     expect(result.current.data?.netWorth).toBe(0);
@@ -188,18 +200,19 @@ describe('useDashboardData', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('computes net worth from all account balances', () => {
+  it('computes net worth from all account balances', async () => {
     tableRows.accounts = [
       makeAccountRow({ id: 'acct-1', current_balance: 100000 }),
       makeAccountRow({ id: 'acct-2', type: 'SAVINGS', current_balance: 50000 }),
     ];
 
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.data?.netWorth).toBe(150000);
   });
 
-  it('groups account totals by type', () => {
+  it('groups account totals by type', async () => {
     tableRows.accounts = [
       makeAccountRow({ id: 'acct-1', type: 'CHECKING', current_balance: 100000 }),
       makeAccountRow({ id: 'acct-2', type: 'SAVINGS', current_balance: 50000 }),
@@ -207,6 +220,7 @@ describe('useDashboardData', () => {
     ];
 
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     const summary = result.current.data?.accountSummary ?? [];
     const checking = summary.find((s) => s.type === 'CHECKING');
@@ -216,7 +230,7 @@ describe('useDashboardData', () => {
     expect(savings?.total).toBe(50000);
   });
 
-  it('computes monthly expense and income totals', () => {
+  it('computes monthly expense and income totals', async () => {
     tableRows.transactions = [
       makeTransactionRow({ type: 'EXPENSE', amount: -5000, date: currentMonthDate(5) }),
       makeTransactionRow({
@@ -234,41 +248,45 @@ describe('useDashboardData', () => {
     ];
 
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.data?.spentThisMonth).toBe(8000);
     expect(result.current.data?.incomeThisMonth).toBe(200000);
   });
 
-  it('computes monthly budget totals and spending', () => {
+  it('computes monthly budget totals and spending', async () => {
     const budget = makeBudgetRow();
     tableRows.budgets = [budget];
     tableRows.budgetSpending.set('budget-1', { ...budget, spent_amount: 25000 });
 
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.data?.monthlyBudget).toBe(50000);
     expect(result.current.data?.budgetSpent).toBe(25000);
   });
 
-  it('filters out budgets not active in current month', () => {
+  it('filters out budgets not active in current month', async () => {
     tableRows.budgets = [
       makeBudgetRow({ id: 'budget-old', start_date: '2020-01-01', end_date: '2020-12-31' }),
     ];
 
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.data?.monthlyBudget).toBe(0);
     expect(result.current.data?.budgetSpent).toBe(0);
     expect(mockDb.selectOne).not.toHaveBeenCalled();
   });
 
-  it('returns recent transactions from the repository', () => {
+  it('returns recent transactions from the repository', async () => {
     tableRows.transactions = [
       makeTransactionRow({ id: 'txn-1' }),
       makeTransactionRow({ id: 'txn-2' }),
     ];
 
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.data?.recentTransactions).toHaveLength(2);
     expect(vi.mocked(mockDb.selectAll).mock.calls).toContainEqual([
@@ -277,30 +295,33 @@ describe('useDashboardData', () => {
     ]);
   });
 
-  it('captures errors and sets error state', () => {
+  it('captures errors and sets error state', async () => {
     vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw new Error('DB read failed');
     });
 
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.error).toBe('DB read failed');
     expect(result.current.data).toBeNull();
     expect(result.current.loading).toBe(false);
   });
 
-  it('sets a generic error message for non-Error throws', () => {
+  it('sets a generic error message for non-Error throws', async () => {
     vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw 'something went wrong';
     });
 
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.error).toBe('Failed to load dashboard data.');
   });
 
   it('re-fetches data when refresh is called', async () => {
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
     const callCountAfterMount = vi.mocked(mockDb.selectAll).mock.calls.length;
 
     await act(async () => {
@@ -313,6 +334,7 @@ describe('useDashboardData', () => {
 
   it('sets loading to true then false during refresh', async () => {
     const { result } = renderHook(() => useDashboardData());
+    await flushQuery();
 
     expect(result.current.loading).toBe(false);
 

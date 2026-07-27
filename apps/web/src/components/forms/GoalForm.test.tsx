@@ -3,7 +3,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDatabase } from '../../db/DatabaseProvider';
-import { queryOne } from '../../db/sqlite-wasm';
 import { useAccounts } from '../../hooks/useAccounts';
 import { GoalForm, type GoalFormProps } from './GoalForm';
 
@@ -15,18 +14,13 @@ vi.mock('../../db/DatabaseProvider', () => ({
   useDatabase: vi.fn(),
 }));
 
-vi.mock('../../db/sqlite-wasm', () => ({
-  queryOne: vi.fn(),
-}));
-
 vi.mock('../../hooks/useAccounts', () => ({
   useAccounts: vi.fn(),
 }));
 
 const mockedUseDatabase = vi.mocked(useDatabase);
-const mockedQueryOne = vi.mocked(queryOne);
 const mockedUseAccounts = vi.mocked(useAccounts);
-const mockDb = {};
+const mockDb = { getOptional: vi.fn() };
 
 function renderGoalForm(overrides: Partial<GoalFormProps> = {}) {
   const onSubmit = overrides.onSubmit ?? vi.fn().mockResolvedValue(undefined);
@@ -42,7 +36,7 @@ describe('GoalForm', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2025-06-15T12:00:00Z'));
     mockedUseDatabase.mockReturnValue(mockDb as never);
-    mockedQueryOne.mockReturnValue({ id: 'household-1' } as never);
+    mockDb.getOptional.mockResolvedValue({ id: 'household-1' });
     mockedUseAccounts.mockReturnValue({
       accounts: [
         { id: 'acct-1', name: 'Joint Checking', isArchived: false },
@@ -159,13 +153,15 @@ describe('GoalForm', () => {
     );
   });
 
-  it('shows a household error when no household is available', () => {
-    mockedQueryOne.mockReturnValue(null);
+  it('shows a household error when no household is available', async () => {
+    mockDb.getOptional.mockResolvedValue(null);
     const { onSubmit } = renderGoalForm();
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'New Car' } });
     fireEvent.change(screen.getByLabelText('Target Amount'), { target: { value: '7500' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Goal' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Goal' }));
+    });
 
     expect(
       screen.getByText('No household found. Please create a household before saving goals.'),

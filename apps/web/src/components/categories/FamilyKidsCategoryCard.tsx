@@ -31,7 +31,7 @@ export interface FamilyKidsCategoryCardProps {
   /** Household the new categories belong to, or `null` when unknown. */
   readonly householdId: string | null;
   /** Creates a category; returns the created record or `null` on failure. */
-  readonly createCategory: (input: CreateCategoryInput) => Category | null;
+  readonly createCategory: (input: CreateCategoryInput) => Promise<Category | null>;
   /** Invoked after categories are successfully seeded. */
   readonly onApplied: () => void;
   /** Surfaces an error message (or clears it with `null`). */
@@ -65,7 +65,7 @@ export function FamilyKidsCategoryCard({
     setIsConfirmOpen(false);
   }, []);
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     setIsConfirmOpen(false);
 
     if (!householdId) {
@@ -73,7 +73,7 @@ export function FamilyKidsCategoryCard({
       return;
     }
 
-    const result = applyFamilyKidsCategories<Category>({
+    const result = await applyFamilyKidsCategories<Category>({
       categories,
       householdId,
       createCategory: (input) =>

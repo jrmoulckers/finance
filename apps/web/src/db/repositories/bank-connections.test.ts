@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Row, SqliteDb } from '../sqlite-wasm';
+import type { Row, AsyncDb } from '../async-db';
 
-vi.mock('../sqlite-wasm', () => ({
+vi.mock('../async-db', () => ({
   query: vi.fn(),
   queryOne: vi.fn(),
   execute: vi.fn(),
 }));
 
-import { query } from '../sqlite-wasm';
+import { query } from '../async-db';
 import {
   listAggregatorProviders,
   listBankConnectionHealth,
@@ -17,7 +17,7 @@ import {
 } from './bank-connections';
 
 const mockQuery = vi.mocked(query);
-const mockDb = {} as SqliteDb;
+const mockDb = {} as AsyncDb;
 
 function result(rows: Row[]) {
   return { columns: rows.length > 0 ? Object.keys(rows[0]) : [], rows };
@@ -28,8 +28,8 @@ beforeEach(() => {
 });
 
 describe('listBankConnectionHealth', () => {
-  it('maps a joined connection + latest health row', () => {
-    mockQuery.mockReturnValueOnce(
+  it('maps a joined connection + latest health row', async () => {
+    mockQuery.mockResolvedValueOnce(
       result([
         {
           id: 'conn-1',
@@ -47,7 +47,7 @@ describe('listBankConnectionHealth', () => {
       ]),
     );
 
-    const [connection] = listBankConnectionHealth(mockDb);
+    const [connection] = await listBankConnectionHealth(mockDb);
 
     expect(connection).toEqual({
       id: 'conn-1',
@@ -65,8 +65,8 @@ describe('listBankConnectionHealth', () => {
     });
   });
 
-  it('derives health status from connection status when no health row exists', () => {
-    mockQuery.mockReturnValueOnce(
+  it('derives health status from connection status when no health row exists', async () => {
+    mockQuery.mockResolvedValueOnce(
       result([
         {
           id: 'conn-2',
@@ -84,7 +84,7 @@ describe('listBankConnectionHealth', () => {
       ]),
     );
 
-    const [connection] = listBankConnectionHealth(mockDb);
+    const [connection] = await listBankConnectionHealth(mockDb);
 
     expect(connection.healthStatus).toBe('auth_expired');
     expect(connection.needsReauth).toBe(true);
@@ -93,8 +93,8 @@ describe('listBankConnectionHealth', () => {
     expect(connection.lastSyncedAt).toBe('2026-03-01T00:00:00Z');
   });
 
-  it('ignores unknown health/category values', () => {
-    mockQuery.mockReturnValueOnce(
+  it('ignores unknown health/category values', async () => {
+    mockQuery.mockResolvedValueOnce(
       result([
         {
           id: 'conn-3',
@@ -112,7 +112,7 @@ describe('listBankConnectionHealth', () => {
       ]),
     );
 
-    const [connection] = listBankConnectionHealth(mockDb);
+    const [connection] = await listBankConnectionHealth(mockDb);
 
     expect(connection.healthStatus).toBe('healthy');
     expect(connection.errorCategory).toBeNull();
@@ -121,8 +121,8 @@ describe('listBankConnectionHealth', () => {
 });
 
 describe('listAggregatorProviders', () => {
-  it('parses JSON regions/capabilities and coerces booleans', () => {
-    mockQuery.mockReturnValueOnce(
+  it('parses JSON regions/capabilities and coerces booleans', async () => {
+    mockQuery.mockResolvedValueOnce(
       result([
         {
           id: 'prov-1',
@@ -139,7 +139,7 @@ describe('listAggregatorProviders', () => {
       ]),
     );
 
-    const [provider] = listAggregatorProviders(mockDb);
+    const [provider] = await listAggregatorProviders(mockDb);
 
     expect(provider).toEqual({
       id: 'prov-1',
@@ -155,8 +155,8 @@ describe('listAggregatorProviders', () => {
     });
   });
 
-  it('tolerates malformed JSON', () => {
-    mockQuery.mockReturnValueOnce(
+  it('tolerates malformed JSON', async () => {
+    mockQuery.mockResolvedValueOnce(
       result([
         {
           id: 'prov-2',
@@ -173,7 +173,7 @@ describe('listAggregatorProviders', () => {
       ]),
     );
 
-    const [provider] = listAggregatorProviders(mockDb);
+    const [provider] = await listAggregatorProviders(mockDb);
 
     expect(provider.supportedRegions).toEqual([]);
     expect(provider.capabilities).toEqual({});
@@ -182,8 +182,8 @@ describe('listAggregatorProviders', () => {
 });
 
 describe('listHealthHistory', () => {
-  it('maps history rows and passes the connection id + limit', () => {
-    mockQuery.mockReturnValueOnce(
+  it('maps history rows and passes the connection id + limit', async () => {
+    mockQuery.mockResolvedValueOnce(
       result([
         {
           id: 'h-1',
@@ -198,7 +198,7 @@ describe('listHealthHistory', () => {
       ]),
     );
 
-    const events = listHealthHistory(mockDb, 'conn-1');
+    const events = await listHealthHistory(mockDb, 'conn-1');
 
     expect(events).toHaveLength(1);
     expect(events[0]).toEqual({
@@ -216,10 +216,10 @@ describe('listHealthHistory', () => {
     expect(params).toEqual(['conn-1', 100]);
   });
 
-  it('honours a custom limit', () => {
-    mockQuery.mockReturnValueOnce(result([]));
+  it('honours a custom limit', async () => {
+    mockQuery.mockResolvedValueOnce(result([]));
 
-    listHealthHistory(mockDb, 'conn-9', 25);
+    await listHealthHistory(mockDb, 'conn-9', 25);
 
     expect(mockQuery.mock.calls[0][2]).toEqual(['conn-9', 25]);
   });

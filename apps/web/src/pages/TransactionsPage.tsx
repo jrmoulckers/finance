@@ -805,12 +805,12 @@ export const TransactionsPage: React.FC = () => {
   const handleTransactionSubmit = useCallback(
     async (data: CreateTransactionInput, options?: { addAnother?: boolean }): Promise<void> => {
       if (editingTransaction !== null) {
-        const result = updateTransaction(editingTransaction.id, data);
+        const result = await updateTransaction(editingTransaction.id, data);
         if (result === null) {
           throw new Error('Failed to update transaction. Please try again.');
         }
       } else {
-        const result = createTransaction({
+        const result = await createTransaction({
           ...data,
           categoryId: autoCategorizeInput(data),
         });
@@ -839,7 +839,7 @@ export const TransactionsPage: React.FC = () => {
 
   const handleEditPanelSave = useCallback(
     async (id: string, data: CreateTransactionInput): Promise<void> => {
-      const result = updateTransaction(id, data);
+      const result = await updateTransaction(id, data);
       if (result === null) {
         throw new Error('Failed to update transaction. Please try again.');
       }
@@ -855,7 +855,7 @@ export const TransactionsPage: React.FC = () => {
 
   const handleVoiceTransactionSubmit = useCallback(
     async (data: CreateTransactionInput): Promise<void> => {
-      const result = createTransaction(data);
+      const result = await createTransaction(data);
       if (result === null) {
         throw new Error('Failed to create transaction. Please try again.');
       }
@@ -876,7 +876,7 @@ export const TransactionsPage: React.FC = () => {
 
   const handleQuickAddCreate = useCallback(
     async (data: CreateTransactionInput): Promise<void> => {
-      const result = createTransaction({
+      const result = await createTransaction({
         ...data,
         categoryId: autoCategorizeInput(data),
       });
@@ -890,12 +890,12 @@ export const TransactionsPage: React.FC = () => {
     [autoCategorizeInput, createTransaction, refreshTransactions],
   );
 
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (deletingTransaction === null) {
       return;
     }
 
-    const deleted = deleteTransaction(deletingTransaction.id);
+    const deleted = await deleteTransaction(deletingTransaction.id);
     if (deleted) {
       recordPwaMeaningfulAction();
       setDeletingTransaction(null);
@@ -1077,11 +1077,11 @@ export const TransactionsPage: React.FC = () => {
   );
 
   const handleSaveBusinessExpense = useCallback(
-    (
+    async (
       transaction: Transaction,
       update: { tags: string[]; customFields: Record<string, string> | null },
     ) => {
-      const result = updateTransaction(transaction.id, {
+      const result = await updateTransaction(transaction.id, {
         tags: update.tags,
         customFields: update.customFields,
       });
@@ -1104,8 +1104,8 @@ export const TransactionsPage: React.FC = () => {
   );
 
   const handleQuickCategorize = useCallback(
-    (transaction: Transaction, categoryId: string, categoryName: string) => {
-      const result = updateTransaction(transaction.id, { categoryId });
+    async (transaction: Transaction, categoryId: string, categoryName: string) => {
+      const result = await updateTransaction(transaction.id, { categoryId });
       if (result === null) {
         toast?.showToast({
           type: 'error',
@@ -1126,13 +1126,13 @@ export const TransactionsPage: React.FC = () => {
   );
 
   const handleMarkReviewed = useCallback(
-    (transaction: Transaction) => {
+    async (transaction: Transaction) => {
       const nextStatus = transaction.status === 'PENDING' ? 'CLEARED' : 'RECONCILED';
       if (nextStatus === transaction.status) {
         return;
       }
 
-      const result = updateTransaction(transaction.id, { status: nextStatus });
+      const result = await updateTransaction(transaction.id, { status: nextStatus });
       if (result === null) {
         toast?.showToast({
           type: 'error',
@@ -1151,7 +1151,11 @@ export const TransactionsPage: React.FC = () => {
   );
 
   const handleDropRecategorize = useCallback(
-    (draggedTransactionIds: readonly string[], categoryId: string | null, categoryName: string) => {
+    async (
+      draggedTransactionIds: readonly string[],
+      categoryId: string | null,
+      categoryName: string,
+    ) => {
       const uniqueIds = Array.from(new Set(draggedTransactionIds));
       if (uniqueIds.length === 0) {
         return false;
@@ -1180,7 +1184,7 @@ export const TransactionsPage: React.FC = () => {
       }
 
       if (uniqueIds.length > 1) {
-        const result = bulkUpdate({ categoryId });
+        const result = await bulkUpdate({ categoryId });
         if (result.successCount === 0) {
           toast?.showToast({
             type: 'error',
@@ -1207,7 +1211,7 @@ export const TransactionsPage: React.FC = () => {
         return false;
       }
 
-      const result = updateTransaction(transaction.id, { categoryId });
+      const result = await updateTransaction(transaction.id, { categoryId });
       if (result === null) {
         toast?.showToast({
           type: 'error',

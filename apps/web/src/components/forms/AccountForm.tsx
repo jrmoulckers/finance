@@ -45,7 +45,7 @@ import type {
   SyncId,
 } from '../../kmp/bridge';
 import { getCurrencyMetadata, SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
-import { queryOne, type Row } from '../../db/sqlite-wasm';
+import { type Row } from '../../db/sqlite-wasm';
 import { accountSchema } from '../../lib/validation';
 import { getFormCopy } from '../../lib/i18n/forms-catalog';
 import {
@@ -137,9 +137,8 @@ function validate(name: string, accountType: AccountType, currencyCode: string):
  *
  * @returns The household SyncId or `null` if none exists.
  */
-function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): SyncId | null {
-  const row = queryOne<Row>(
-    db,
+async function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): Promise<SyncId | null> {
+  const row = await db.getOptional<Row>(
     'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   if (row && typeof row.id === 'string') {
@@ -297,7 +296,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         return;
       }
 
-      const householdId = initialData?.householdId ?? getFirstHouseholdId(db);
+      const householdId = initialData?.householdId ?? (await getFirstHouseholdId(db));
       if (!householdId) {
         setSubmitError(getFormCopy('accountNoHousehold'));
         return;

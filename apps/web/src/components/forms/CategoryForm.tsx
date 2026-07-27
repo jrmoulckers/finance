@@ -13,7 +13,7 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateCategoryInput } from '../../db/repositories/categories';
-import { queryOne, type Row } from '../../db/sqlite-wasm';
+import type { Row } from '../../db/sqlite-wasm';
 import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Category, SyncId } from '../../kmp/bridge';
 import { Button } from '../common/Button';
@@ -33,9 +33,8 @@ interface FormErrors {
   sortOrder?: string;
 }
 
-function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): SyncId | null {
-  const row = queryOne<Row>(
-    db,
+async function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): Promise<SyncId | null> {
+  const row = await db.getOptional<Row>(
     'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   return row && typeof row.id === 'string' ? row.id : null;
@@ -165,7 +164,7 @@ export function CategoryForm({
       }
 
       const householdId =
-        initialData?.householdId ?? categories[0]?.householdId ?? getFirstHouseholdId(db);
+        initialData?.householdId ?? categories[0]?.householdId ?? (await getFirstHouseholdId(db));
       if (!householdId) {
         setSubmitError('No household found. Please create a household before saving categories.');
         return;

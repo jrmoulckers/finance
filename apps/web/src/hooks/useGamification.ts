@@ -62,84 +62,100 @@ export function useGamification(): UseGamificationResult {
     setLoading(true);
     setError(null);
 
-    try {
-      const accounts = getAllAccounts(db);
-      const goals = getAllGoals(db);
-      const budgets = getAllBudgets(db);
-      const transactions = getAllTransactions(db);
+    let cancelled = false;
 
-      // Daily logging streak. Transaction dates are stored as *local* calendar
-      // dates, so the streak anchors to the local "today"/"yesterday" and
-      // avoids the UTC off-by-one that affects evening logging in western zones.
-      const txDates = new Set(transactions.map((tx) => tx.date));
-      const {
-        current: dailyLoggingStreak,
-        longest: longestDailyLoggingStreak,
-        loggedToday,
-      } = computeLoggingStreak(txDates);
+    async function run(): Promise<void> {
+      try {
+        const accounts = await getAllAccounts(db);
+        const goals = await getAllGoals(db);
+        const budgets = await getAllBudgets(db);
+        const transactions = await getAllTransactions(db);
 
-      // Budget adherence: count budgets where spending <= budget amount
-      let budgetAdherenceMonths = 0;
-      let currentBudgetRatio = 0;
-      if (budgets.length > 0) {
-        let totalBudgeted = 0;
-        let totalSpent = 0;
-        for (const budget of budgets) {
-          const withSpending = getBudgetWithSpending(db, budget.id);
-          if (withSpending) {
-            totalBudgeted += withSpending.amount.amount;
-            totalSpent += withSpending.spentAmount.amount;
-            if (withSpending.spentAmount.amount <= withSpending.amount.amount) {
-              budgetAdherenceMonths++;
+        // Daily logging streak. Transaction dates are stored as *local* calendar
+        // dates, so the streak anchors to the local "today"/"yesterday" and
+        // avoids the UTC off-by-one that affects evening logging in western zones.
+        const txDates = new Set(transactions.map((tx) => tx.date));
+        const {
+          current: dailyLoggingStreak,
+          longest: longestDailyLoggingStreak,
+          loggedToday,
+        } = computeLoggingStreak(txDates);
+
+        // Budget adherence: count budgets where spending <= budget amount
+        let budgetAdherenceMonths = 0;
+        let currentBudgetRatio = 0;
+        if (budgets.length > 0) {
+          let totalBudgeted = 0;
+          let totalSpent = 0;
+          for (const budget of budgets) {
+            const withSpending = await getBudgetWithSpending(db, budget.id);
+            if (withSpending) {
+              totalBudgeted += withSpending.amount.amount;
+              totalSpent += withSpending.spentAmount.amount;
+              if (withSpending.spentAmount.amount <= withSpending.amount.amount) {
+                budgetAdherenceMonths++;
+              }
             }
           }
+          currentBudgetRatio = totalBudgeted > 0 ? totalSpent / totalBudgeted : 0;
         }
-        currentBudgetRatio = totalBudgeted > 0 ? totalSpent / totalBudgeted : 0;
+
+        // Goal progress
+        const goalsCompleted = goals.filter(
+          (g) => g.targetAmount.amount > 0 && g.currentAmount.amount >= g.targetAmount.amount,
+        ).length;
+
+        const totalSaved = goals.reduce((sum, g) => sum + g.currentAmount.amount, 0);
+
+        const categoriesUsed = new Set(
+          transactions.filter((tx) => tx.categoryId).map((tx) => tx.categoryId),
+        ).size;
+
+        const input: GamificationInput = {
+          transactionCount: transactions.length,
+          budgetAdherenceMonths,
+          budgetCount: budgets.length,
+          currentBudgetRatio,
+          goalCount: goals.length,
+          goalsCompleted,
+          goalProgress: goals.map((g) => ({
+            goalId: g.id,
+            goalName: g.name,
+            currentAmount: g.currentAmount.amount,
+            targetAmount: g.targetAmount.amount,
+          })),
+          dailyLoggingStreak,
+          longestDailyLoggingStreak,
+          // Net worth must subtract liabilities (credit cards, loans) rather
+          // than summing every balance as a positive asset. Reuse the canonical
+          // helper so achievement thresholds match the /net-worth screen.
+          netWorth: computeCurrentNetWorth(accounts).netWorth,
+          accountCount: accounts.length,
+          totalSaved,
+          categoriesUsed,
+          loggedToday,
+        };
+
+        if (!cancelled) {
+          setState(computeGamification(input));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to compute achievements.');
+          setState(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-
-      // Goal progress
-      const goalsCompleted = goals.filter(
-        (g) => g.targetAmount.amount > 0 && g.currentAmount.amount >= g.targetAmount.amount,
-      ).length;
-
-      const totalSaved = goals.reduce((sum, g) => sum + g.currentAmount.amount, 0);
-
-      const categoriesUsed = new Set(
-        transactions.filter((tx) => tx.categoryId).map((tx) => tx.categoryId),
-      ).size;
-
-      const input: GamificationInput = {
-        transactionCount: transactions.length,
-        budgetAdherenceMonths,
-        budgetCount: budgets.length,
-        currentBudgetRatio,
-        goalCount: goals.length,
-        goalsCompleted,
-        goalProgress: goals.map((g) => ({
-          goalId: g.id,
-          goalName: g.name,
-          currentAmount: g.currentAmount.amount,
-          targetAmount: g.targetAmount.amount,
-        })),
-        dailyLoggingStreak,
-        longestDailyLoggingStreak,
-        // Net worth must subtract liabilities (credit cards, loans) rather
-        // than summing every balance as a positive asset. Reuse the canonical
-        // helper so achievement thresholds match the /net-worth screen.
-        netWorth: computeCurrentNetWorth(accounts).netWorth,
-        accountCount: accounts.length,
-        totalSaved,
-        categoriesUsed,
-        loggedToday,
-      };
-
-      setState(computeGamification(input));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to compute achievements.');
-      setState(null);
-    } finally {
-      setLoading(false);
     }
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [db, refreshToken]);
 
   return { state, loading, error, refresh };

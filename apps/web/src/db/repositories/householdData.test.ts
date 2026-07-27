@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SqliteDb } from '../sqlite-wasm';
+import type { AsyncDb } from '../async-db';
 
 // Shared in-memory table store for the mocked sqlite primitives. `vi.hoisted`
 // keeps it available to both the (hoisted) mock factory and the test body.
@@ -9,7 +9,8 @@ const { tables } = vi.hoisted(() => ({
   tables: {} as Record<string, Array<Record<string, unknown>>>,
 }));
 
-vi.mock('../sqlite-wasm', () => ({
+vi.mock('../async-db', () => ({
+  beginSavepoint: vi.fn(),
   execute: vi.fn((_db: unknown, sql: string, params?: unknown[]) => {
     const deleteMatch = /^DELETE FROM\s+(\w+)/i.exec(sql);
     if (deleteMatch) {
@@ -38,7 +39,7 @@ vi.mock('../sqlite-wasm', () => ({
 
 import { HOUSEHOLD_SINGLETON_KEY, readHouseholdValue, writeHouseholdValue } from './householdData';
 
-const db = {} as SqliteDb;
+const db = {} as AsyncDb;
 
 const MEMBERS_KEY = 'finance-household-members';
 const CHILDREN_KEY = 'finance-household-children';
@@ -77,23 +78,25 @@ describe('householdData repository', () => {
     vi.clearAllMocks();
   });
 
-  it('returns the fallback when nothing is persisted', () => {
-    expect(readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, [])).toEqual([]);
-    expect(readHouseholdValue<FakeMember | null>(db, HOUSEHOLD_SINGLETON_KEY, null)).toBeNull();
+  it('returns the fallback when nothing is persisted', async () => {
+    expect(await readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, [])).toEqual([]);
+    expect(
+      await readHouseholdValue<FakeMember | null>(db, HOUSEHOLD_SINGLETON_KEY, null),
+    ).toBeNull();
   });
 
-  it('round-trips a collection faithfully, preserving order', () => {
+  it('round-trips a collection faithfully, preserving order', async () => {
     const members = [
       makeMember({ id: 'mem-1', displayName: 'Jordan' }),
       makeMember({ id: 'mem-2', displayName: 'Riley' }),
     ];
 
-    writeHouseholdValue(db, MEMBERS_KEY, members);
+    await writeHouseholdValue(db, MEMBERS_KEY, members);
 
-    expect(readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, [])).toEqual(members);
+    expect(await readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, [])).toEqual(members);
   });
 
-  it('round-trips deeply nested entities without loss', () => {
+  it('round-trips deeply nested entities without loss', async () => {
     const children = [
       {
         id: 'child-1',
@@ -112,12 +115,12 @@ describe('householdData repository', () => {
       },
     ];
 
-    writeHouseholdValue(db, CHILDREN_KEY, children);
+    await writeHouseholdValue(db, CHILDREN_KEY, children);
 
-    expect(readHouseholdValue(db, CHILDREN_KEY, [])).toEqual(children);
+    expect(await readHouseholdValue(db, CHILDREN_KEY, [])).toEqual(children);
   });
 
-  it('persists and reads back the household singleton object', () => {
+  it('persists and reads back the household singleton object', async () => {
     const household = {
       id: 'hh-1',
       name: 'Smith Family',
@@ -129,38 +132,38 @@ describe('householdData repository', () => {
       isSynced: true,
     };
 
-    writeHouseholdValue(db, HOUSEHOLD_SINGLETON_KEY, household);
+    await writeHouseholdValue(db, HOUSEHOLD_SINGLETON_KEY, household);
 
-    expect(readHouseholdValue(db, HOUSEHOLD_SINGLETON_KEY, null)).toEqual(household);
+    expect(await readHouseholdValue(db, HOUSEHOLD_SINGLETON_KEY, null)).toEqual(household);
   });
 
-  it('fully replaces prior contents on each write (delete-then-insert)', () => {
-    writeHouseholdValue(db, MEMBERS_KEY, [
+  it('fully replaces prior contents on each write (delete-then-insert)', async () => {
+    await writeHouseholdValue(db, MEMBERS_KEY, [
       makeMember({ id: 'mem-1' }),
       makeMember({ id: 'mem-2' }),
     ]);
-    writeHouseholdValue(db, MEMBERS_KEY, [makeMember({ id: 'mem-3', displayName: 'Sam' })]);
+    await writeHouseholdValue(db, MEMBERS_KEY, [makeMember({ id: 'mem-3', displayName: 'Sam' })]);
 
-    const stored = readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, []);
+    const stored = await readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, []);
     expect(stored).toHaveLength(1);
     expect(stored[0]?.id).toBe('mem-3');
   });
 
-  it('preserves soft-deleted tombstones in the persisted array', () => {
+  it('preserves soft-deleted tombstones in the persisted array', async () => {
     const members = [
       makeMember({ id: 'mem-1' }),
       makeMember({ id: 'mem-2', deletedAt: '2025-02-01T00:00:00Z' }),
     ];
 
-    writeHouseholdValue(db, MEMBERS_KEY, members);
+    await writeHouseholdValue(db, MEMBERS_KEY, members);
 
-    const stored = readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, []);
+    const stored = await readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, []);
     expect(stored).toHaveLength(2);
     expect(stored[1]?.deletedAt).toBe('2025-02-01T00:00:00Z');
   });
 
-  it('promotes sync and query columns from each entity', () => {
-    writeHouseholdValue(db, ACCOUNT_SHARINGS_KEY, [
+  it('promotes sync and query columns from each entity', async () => {
+    await writeHouseholdValue(db, ACCOUNT_SHARINGS_KEY, [
       {
         id: 'as-1',
         householdId: 'hh-1',
@@ -188,11 +191,11 @@ describe('householdData repository', () => {
     expect(JSON.parse(String(row?.data))).toMatchObject({ id: 'as-1', sharingMode: 'SHARED' });
   });
 
-  it('throws for an unknown storage key', () => {
-    expect(() => readHouseholdValue(db, 'finance-not-a-household-key', [])).toThrow(
+  it('throws for an unknown storage key', async () => {
+    await expect(readHouseholdValue(db, 'finance-not-a-household-key', [])).rejects.toThrow(
       /Unknown household storage key/,
     );
-    expect(() => writeHouseholdValue(db, 'finance-not-a-household-key', [])).toThrow(
+    await expect(writeHouseholdValue(db, 'finance-not-a-household-key', [])).rejects.toThrow(
       /Unknown household storage key/,
     );
   });

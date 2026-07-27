@@ -3,9 +3,10 @@
 /**
  * React hook for accessing and mutating investment portfolio data.
  *
- * Reads from the local SQLite-WASM database via the investments repository.
- * All operations are synchronous against the local DB; errors are captured
- * in state rather than thrown so callers can render gracefully.
+ * Reads from the local database via the investments repository. Reads resolve
+ * asynchronously against the AsyncDb data layer and are captured into state;
+ * errors are captured in state rather than thrown so callers can render
+ * gracefully.
  *
  * Extended to support lot-level cost-basis tracking (#1588),
  * target-vs-actual allocation (#1595), and fee analysis (#1625).
@@ -85,40 +86,46 @@ export interface UseInvestmentsResult {
    * Create a new investment and automatically refresh the list.
    * @returns The created investment, or `null` if creation failed.
    */
-  createInvestment: (input: CreateInvestmentInput) => Investment | null;
+  createInvestment: (input: CreateInvestmentInput) => Promise<Investment | null>;
   /**
    * Update an existing investment and automatically refresh the list.
    * @returns The updated investment, or `null` if the investment was not found or update failed.
    */
-  updateInvestment: (investmentId: SyncId, updates: UpdateInvestmentInput) => Investment | null;
+  updateInvestment: (
+    investmentId: SyncId,
+    updates: UpdateInvestmentInput,
+  ) => Promise<Investment | null>;
   /**
    * Soft-delete an investment and automatically refresh the list.
    * @returns `true` if deletion succeeded, `false` otherwise.
    */
-  deleteInvestment: (investmentId: SyncId) => boolean;
+  deleteInvestment: (investmentId: SyncId) => Promise<boolean>;
 
   // --- Lot operations (#1588) ---
 
   /**
-   * Get all lots for a specific investment.
-   * @returns Array of lots, or empty array on error.
+   * Get all lots for a specific investment from the reactively-loaded cache.
+   *
+   * Synchronous selector over lots preloaded alongside the investment list, so
+   * consumers can derive lot-level views inside `useMemo` without awaiting.
+   * @returns Array of lots, or empty array if none are loaded for the investment.
    */
   getLots: (investmentId: SyncId) => InvestmentLot[];
   /**
    * Create a new lot for an investment.
    * @returns The created lot, or `null` if creation failed.
    */
-  createLot: (input: CreateLotInput) => InvestmentLot | null;
+  createLot: (input: CreateLotInput) => Promise<InvestmentLot | null>;
   /**
    * Update an existing lot.
    * @returns The updated lot, or `null` if not found or update failed.
    */
-  updateLot: (lotId: SyncId, updates: UpdateLotInput) => InvestmentLot | null;
+  updateLot: (lotId: SyncId, updates: UpdateLotInput) => Promise<InvestmentLot | null>;
   /**
    * Soft-delete a lot.
    * @returns `true` if deletion succeeded, `false` otherwise.
    */
-  deleteLot: (lotId: SyncId) => boolean;
+  deleteLot: (lotId: SyncId) => Promise<boolean>;
 
   // --- Allocation analysis (#1595) ---
 
@@ -197,6 +204,9 @@ export function useInvestments(): UseInvestmentsResult {
   const db = useDatabase();
 
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [lotsByInvestment, setLotsByInvestment] = useState<Map<string, InvestmentLot[]>>(
+    () => new Map(),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -211,21 +221,36 @@ export function useInvestments(): UseInvestmentsResult {
     setLoading(true);
     setError(null);
 
-    try {
-      const result = getAllInvestments(db);
-      setInvestments(result);
-    } catch (err) {
-      // If the table doesn't exist yet, treat it as empty (not an error).
-      const message = err instanceof Error ? err.message : '';
-      if (message.includes('no such table')) {
-        setInvestments([]);
-      } else {
-        setError(err instanceof Error ? err.message : 'Failed to load investments.');
-        setInvestments([]);
+    void (async () => {
+      try {
+        const result = await getAllInvestments(db);
+        setInvestments(result);
+        // Preload every investment's lots so `getLots` can be a synchronous
+        // selector for the memoized lot-level views consumers derive (#1588).
+        const lotEntries = await Promise.all(
+          result.map(async (investment) => {
+            try {
+              return [investment.id, await getLotsByInvestment(db, investment.id)] as const;
+            } catch {
+              return [investment.id, [] as InvestmentLot[]] as const;
+            }
+          }),
+        );
+        setLotsByInvestment(new Map(lotEntries));
+      } catch (err) {
+        // If the table doesn't exist yet, treat it as empty (not an error).
+        const message = err instanceof Error ? err.message : '';
+        if (message.includes('no such table')) {
+          setInvestments([]);
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load investments.');
+          setInvestments([]);
+        }
+        setLotsByInvestment(new Map());
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
+    })();
   }, [db, refreshToken]);
 
   // Convert each holding's market value and cost basis into the user's display
@@ -298,9 +323,9 @@ export function useInvestments(): UseInvestmentsResult {
   }, [rollup, unconvertedCurrencies]);
 
   const createInvestment = useCallback(
-    (input: CreateInvestmentInput): Investment | null => {
+    async (input: CreateInvestmentInput): Promise<Investment | null> => {
       try {
-        const created = repoCreateInvestment(db, input);
+        const created = await repoCreateInvestment(db, input);
         refresh();
         return created;
       } catch (err) {
@@ -313,9 +338,9 @@ export function useInvestments(): UseInvestmentsResult {
   );
 
   const updateInvestment = useCallback(
-    (investmentId: SyncId, updates: UpdateInvestmentInput): Investment | null => {
+    async (investmentId: SyncId, updates: UpdateInvestmentInput): Promise<Investment | null> => {
       try {
-        const updated = repoUpdateInvestment(db, investmentId, updates);
+        const updated = await repoUpdateInvestment(db, investmentId, updates);
         if (updated !== null) {
           refresh();
         }
@@ -330,9 +355,9 @@ export function useInvestments(): UseInvestmentsResult {
   );
 
   const deleteInvestment = useCallback(
-    (investmentId: SyncId): boolean => {
+    async (investmentId: SyncId): Promise<boolean> => {
       try {
-        const deleted = repoDeleteInvestment(db, investmentId);
+        const deleted = await repoDeleteInvestment(db, investmentId);
         if (deleted) {
           refresh();
         }
@@ -349,24 +374,14 @@ export function useInvestments(): UseInvestmentsResult {
   // --- Lot operations (#1588) ---
 
   const getLots = useCallback(
-    (investmentId: SyncId): InvestmentLot[] => {
-      try {
-        return getLotsByInvestment(db, investmentId);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : '';
-        if (!message.includes('no such table')) {
-          setError(err instanceof Error ? err.message : 'Failed to load lots.');
-        }
-        return [];
-      }
-    },
-    [db],
+    (investmentId: SyncId): InvestmentLot[] => lotsByInvestment.get(investmentId) ?? [],
+    [lotsByInvestment],
   );
 
   const createLot = useCallback(
-    (input: CreateLotInput): InvestmentLot | null => {
+    async (input: CreateLotInput): Promise<InvestmentLot | null> => {
       try {
-        const created = repoCreateLot(db, input);
+        const created = await repoCreateLot(db, input);
         refresh();
         return created;
       } catch (err) {
@@ -379,9 +394,9 @@ export function useInvestments(): UseInvestmentsResult {
   );
 
   const updateLotFn = useCallback(
-    (lotId: SyncId, updates: UpdateLotInput): InvestmentLot | null => {
+    async (lotId: SyncId, updates: UpdateLotInput): Promise<InvestmentLot | null> => {
       try {
-        const updated = repoUpdateLot(db, lotId, updates);
+        const updated = await repoUpdateLot(db, lotId, updates);
         if (updated !== null) {
           refresh();
         }
@@ -396,9 +411,9 @@ export function useInvestments(): UseInvestmentsResult {
   );
 
   const deleteLotFn = useCallback(
-    (lotId: SyncId): boolean => {
+    async (lotId: SyncId): Promise<boolean> => {
       try {
-        const deleted = repoDeleteLot(db, lotId);
+        const deleted = await repoDeleteLot(db, lotId);
         if (deleted) {
           refresh();
         }
