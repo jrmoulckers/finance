@@ -24,6 +24,9 @@
   },
   "dependencies": {
     "@fluentui/react-icons": "^2.0.331",
+    "@journeyapps/wa-sqlite": "^1.7.2",
+    "@powersync/common": "^2.0.0",
+    "@powersync/web": "^2.0.0",
     "@sentry/react": "^10.63.0",
     "d3": "^7.9.0",
     "lucide-react": "^1.23.0",
