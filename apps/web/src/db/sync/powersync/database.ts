@@ -16,15 +16,35 @@
  * References: sync-rules.yaml, issues #3941 / #3935.
  */
 
-import type { AbstractPowerSyncDatabase } from '@powersync/common';
+import type { AbstractPowerSyncDatabase, SyncStatus } from '@powersync/common';
 
 import { isPowerSyncClientConfigured, resolvePowerSyncClientConfig } from './config';
+import {
+  resetLivePowerSyncStatus,
+  setLivePowerSyncStatus,
+  type LivePowerSyncStatus,
+} from './live-status';
 
 /** Local database filename for the PowerSync-managed SQLite store. */
 const DB_FILENAME = 'finance.db';
 
 /** Singleton instance, created lazily on first use. */
 let databasePromise: Promise<AbstractPowerSyncDatabase | null> | null = null;
+
+/** Disposes the live status listener registered on connect, if any. */
+let disposeStatusListener: (() => void) | null = null;
+
+/** Map the PowerSync runtime `SyncStatus` into the UI-facing snapshot shape. */
+function mapSyncStatus(status: SyncStatus): LivePowerSyncStatus {
+  return {
+    connected: status.connected,
+    connecting: status.connecting,
+    syncing: status.downloading || status.uploading,
+    hasSynced: status.hasSynced ?? false,
+    hasError: Boolean(status.downloadError || status.uploadError),
+    lastSyncedAt: status.lastSyncedAt ? status.lastSyncedAt.toISOString() : null,
+  };
+}
 
 /** Runtime check for whether the live PowerSync client is enabled. */
 export function isPowerSyncEnabled(): boolean {
@@ -70,6 +90,19 @@ export async function connectPowerSync(): Promise<AbstractPowerSyncDatabase | nu
   const config = resolvePowerSyncClientConfig();
   const { SupabaseConnector } = await import('./connector');
   await database.connect(new SupabaseConnector(config));
+
+  // Bridge the real runtime status into the live-status store so the visible
+  // sync bar can reflect actual connection/sync state. Registered once per
+  // database instance; disposed on disconnect/close.
+  if (!disposeStatusListener) {
+    disposeStatusListener = database.registerListener({
+      statusChanged: (status: SyncStatus) => {
+        setLivePowerSyncStatus(mapSyncStatus(status));
+      },
+    });
+  }
+  setLivePowerSyncStatus(mapSyncStatus(database.currentStatus));
+
   return database;
 }
 
@@ -79,7 +112,10 @@ export async function disconnectPowerSync(): Promise<void> {
     return;
   }
   const database = await databasePromise;
+  disposeStatusListener?.();
+  disposeStatusListener = null;
   await database?.disconnect();
+  resetLivePowerSyncStatus();
 }
 
 /** Disconnect and dispose the live PowerSync database, clearing the singleton. */
@@ -89,5 +125,8 @@ export async function closePowerSync(): Promise<void> {
   }
   const database = await databasePromise;
   databasePromise = null;
+  disposeStatusListener?.();
+  disposeStatusListener = null;
   await database?.close();
+  resetLivePowerSyncStatus();
 }
