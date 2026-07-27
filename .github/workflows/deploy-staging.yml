@@ -303,6 +303,7 @@ jobs:
             export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
             export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
             export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
+            export VITE_POWERSYNC_ENABLED="$( [ -n "$VITE_POWERSYNC_URL" ] && echo true || echo false )"
             export VITE_BETA_ALLOWED_EMAILS="$(printf '%s' "$BETA_ALLOWED_EMAILS_B64" | base64 -d)"
             export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
             export VITE_ENVIRONMENT=staging

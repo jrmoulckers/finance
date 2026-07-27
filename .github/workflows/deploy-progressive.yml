@@ -171,6 +171,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          # Enable the live PowerSync client only when a real backend URL is
+          # configured; otherwise keep it off so @powersync/web is tree-shaken.
+          VITE_POWERSYNC_ENABLED: ${{ secrets.POWERSYNC_URL != '' && 'true' || 'false' }}
         run: |
           npm run build -w packages/design-tokens
           npm run build -w apps/web

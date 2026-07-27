@@ -345,6 +345,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          # Enable the live PowerSync client only when a real backend URL is
+          # configured; otherwise keep it off so @powersync/web is tree-shaken.
+          VITE_POWERSYNC_ENABLED: ${{ secrets.POWERSYNC_URL != '' && 'true' || 'false' }}
         run: npm run build -w apps/web
 
       - name: Verify web build env
@@ -444,6 +447,7 @@ jobs:
             export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
             export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
             export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
+            export VITE_POWERSYNC_ENABLED="$( [ -n "$VITE_POWERSYNC_URL" ] && echo true || echo false )"
             export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
             export VITE_ENVIRONMENT=production
             export VITE_APP_VERSION="$SHA_SHORT"
@@ -762,6 +766,7 @@ jobs:
               export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
               export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
               export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
+              export VITE_POWERSYNC_ENABLED="$( [ -n "$VITE_POWERSYNC_URL" ] && echo true || echo false )"
               export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
               export VITE_ENVIRONMENT=production
               export VITE_APP_VERSION="$ROLLBACK_TAG"

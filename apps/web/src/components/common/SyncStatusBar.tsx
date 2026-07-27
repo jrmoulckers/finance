@@ -23,7 +23,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { useLivePowerSyncStatus } from '../../hooks/useLivePowerSyncStatus';
 import { getUnresolvedConflicts } from '../../db/sync/sync-conflict';
+import { isPowerSyncEnabled } from '../../db/sync/powersync/database';
+import type { LivePowerSyncStatus } from '../../db/sync/powersync/live-status';
 
 import '../../styles/sync-status.css';
 
@@ -64,6 +67,19 @@ function formatRelativeTime(isoString: string | null): string {
 
 type SyncVariant = 'synced' | 'pending' | 'syncing' | 'error' | 'offline' | 'conflict';
 
+/**
+ * Derive the bar variant from the live `@powersync/web` runtime status.
+ * Used only when the live PowerSync client is enabled; the real connection
+ * state — not the local mutation queue — then drives the bar.
+ */
+function deriveLiveVariant(live: LivePowerSyncStatus, isOffline: boolean): SyncVariant {
+  if (isOffline) return 'offline';
+  if (live.connecting || live.syncing) return 'syncing';
+  if (live.connected) return 'synced';
+  if (live.hasError) return 'error';
+  return 'offline';
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -77,6 +93,8 @@ type SyncVariant = 'synced' | 'pending' | 'syncing' | 'error' | 'offline' | 'con
 export const SyncStatusBar: React.FC = () => {
   const { isOnline, isOffline, pendingMutations, lastSyncTime, isSyncing, syncNow } =
     useSyncStatus();
+  const live = useLivePowerSyncStatus();
+  const powerSyncActive = isPowerSyncEnabled();
 
   const [conflictCount, setConflictCount] = useState(0);
   const [lastSyncFailed, setLastSyncFailed] = useState(false);
@@ -131,12 +149,21 @@ export const SyncStatusBar: React.FC = () => {
     variant = 'synced';
   }
 
+  // When the live PowerSync client is active, its real runtime status is the
+  // source of truth: the local mutation queue does not track the live
+  // connection. Flag off → variant is unchanged and behaviour is identical.
+  if (powerSyncActive) {
+    variant = deriveLiveVariant(live, isOffline);
+  }
+
   const handleRetry = useCallback(() => {
     setLastSyncFailed(false);
     syncNow();
   }, [syncNow]);
 
-  const relativeTime = formatRelativeTime(lastSyncTime);
+  const relativeTime = powerSyncActive
+    ? formatRelativeTime(live.lastSyncedAt)
+    : formatRelativeTime(lastSyncTime);
 
   return (
     <div
