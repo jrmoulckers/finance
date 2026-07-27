@@ -61,9 +61,14 @@ test.describe('Dashboard page', () => {
   // -------------------------------------------------------------------------
 
   test('loads and shows the main heading', async ({ authenticatedPage }) => {
-    // The AppLayout renders an <h1> with the page title "Dashboard".
-    const heading = authenticatedPage.getByRole('heading', { name: /dashboard/i }).first();
-    await expect(heading).toBeVisible();
+    // The page title "Dashboard" is exposed as the accessible name of the
+    // <main> landmark (AppLayout `aria-label={pageTitle}`) on every viewport.
+    // It is *also* rendered as an <h1> in the app header, but that header is
+    // intentionally hidden at the desktop breakpoint (see responsive.spec.ts ›
+    // "app header is hidden at desktop breakpoint"), so assert the landmark
+    // name, which is viewport-independent.
+    const main = authenticatedPage.getByRole('main', { name: /dashboard/i });
+    await expect(main).toBeVisible();
   });
 
   test('has the correct document URL', async ({ authenticatedPage }) => {

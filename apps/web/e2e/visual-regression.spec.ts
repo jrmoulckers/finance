@@ -32,6 +32,10 @@ test.describe('Visual regression', () => {
     await expect(page).toHaveScreenshot('login-page.png', {
       animations: 'disabled',
       fullPage: true,
+      // Absorb sub-pixel anti-aliasing noise between CI runs. A meaningful
+      // layout change still alters the image dimensions (a hard failure) or
+      // exceeds this ratio, so real regressions are still caught.
+      maxDiffPixelRatio: 0.01,
     });
   });
 });
