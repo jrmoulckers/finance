@@ -15,6 +15,10 @@ permissions:
   checks: read
   statuses: read
   deployments: write
+  # Required so the reusable deploy-production.yml call is not rejected at
+  # startup: its verify-ci-green job requests actions:read, and a called
+  # workflow cannot escalate a scope above the caller's grant.
+  actions: read
 
 jobs:
   promote:
