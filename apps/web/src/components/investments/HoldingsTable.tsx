@@ -13,7 +13,7 @@
  */
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import { CurrencyDisplay } from '../common';
 import { AppIcon, type IconName } from '../icons';

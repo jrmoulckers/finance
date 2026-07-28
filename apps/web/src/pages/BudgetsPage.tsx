@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { BudgetAnalytics } from '../components/budgets';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { CurrencyDisplay } from '../components/common/CurrencyDisplay';

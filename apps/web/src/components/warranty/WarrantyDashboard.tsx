@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useTransactions } from '../../hooks';
 import {
   filterWarrantyEntries,

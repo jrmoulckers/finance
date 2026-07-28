@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { Suspense, useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { TimePeriod, ViewType } from '../components/charts';
 import { ChartEmptyState } from '../components/charts/ChartEmptyState';
 import { groupTopNCategories } from '../components/charts/chart-palette';

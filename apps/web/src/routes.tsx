@@ -2,7 +2,7 @@
 
 import { lazy, Suspense, useCallback } from 'react';
 import type { FC, ReactNode } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router';
 
 import { ProtectedRoute, useAuth } from './auth/auth-context';
 import { RouteErrorBoundary } from './components/common';

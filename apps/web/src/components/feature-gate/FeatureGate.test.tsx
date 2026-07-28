@@ -2,7 +2,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { FeatureGateProvider, useFeatureGate } from './FeatureGateProvider';
 import { FeatureGate } from './FeatureGate';
 import { UpgradePrompt } from './UpgradePrompt';

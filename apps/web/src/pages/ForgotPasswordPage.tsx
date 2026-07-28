@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { z } from 'zod';
 
 import { LoadingSpinner } from '../components/common/LoadingSpinner';

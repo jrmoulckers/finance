@@ -8,7 +8,7 @@
  */
 
 import { useMemo, type FC } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import { ErrorBanner, LoadingSpinner } from '../components/common';
 import DashboardTaxReserveSection from '../components/dashboard/DashboardTaxReserveSection';

@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { useDatabase } from '../db/DatabaseProvider';
 import type { Row } from '../db/sqlite-wasm';
 import { useBills } from '../hooks';

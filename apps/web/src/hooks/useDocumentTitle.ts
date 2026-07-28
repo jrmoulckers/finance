@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 
 import { resolveDocumentTitle } from '../lib/i18n/page-title';
 import { useLocalePreferences } from './useLocalePreferences';

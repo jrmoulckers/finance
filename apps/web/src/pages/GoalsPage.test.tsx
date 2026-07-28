@@ -2,7 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { useAccounts, useCategories, useGoals, useTransactions } from '../hooks';
 import { GoalsPage } from './GoalsPage';
 import { AccessibilityProvider } from '../contexts/AccessibilityContext';

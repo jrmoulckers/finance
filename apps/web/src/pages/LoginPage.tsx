@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { useAuth } from '../auth/auth-context';
 import { getPreferredAuthMethod, setPreferredAuthMethod } from '../auth/preferred-auth-method';

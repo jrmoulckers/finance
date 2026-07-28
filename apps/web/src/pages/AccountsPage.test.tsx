@@ -2,7 +2,7 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { PrivacyModeProvider } from '../contexts/PrivacyModeContext';
 import { useAccounts } from '../hooks';
 import { evaluatePrivacyScreenCoverage } from '../lib/security/privacy-screen';

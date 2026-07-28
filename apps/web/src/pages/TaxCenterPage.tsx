@@ -3,7 +3,7 @@
 /** Tax Center page for lot-level P&L, estimated tax, and wash-sale guardrails. */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import {
   CurrencyDisplay,
   EmptyState,

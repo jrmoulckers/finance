@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FC, FormEvent, ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 
 import { useHousehold } from '../hooks/useHousehold';
 import type { AcceptInvitationResult } from '../hooks/useHousehold';

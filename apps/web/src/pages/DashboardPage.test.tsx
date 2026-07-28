@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {

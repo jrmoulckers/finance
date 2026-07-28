@@ -23,7 +23,7 @@
 import { lazy, Suspense, type ComponentType, type ReactNode } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigate } from 'react-router';
 
 import { AppBrowserRouter } from './AppBrowserRouter';
 

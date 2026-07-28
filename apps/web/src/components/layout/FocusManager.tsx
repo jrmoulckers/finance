@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { type FC, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { announce, moveFocusTo } from '../../accessibility/aria';
 
 export interface FocusManagerProps {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Navigate, Route, Routes } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../hooks/useAccessibility', () => ({

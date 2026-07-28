@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router';
 
 import { useAccounts, useCategories, useTransactions } from '../hooks';
 import { TransactionDetailPage } from './TransactionDetailPage';

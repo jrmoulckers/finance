@@ -16,7 +16,7 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import {
   useAccounts,
   useBills,

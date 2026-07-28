@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { FC, ReactNode } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 
 export interface AppBrowserRouterProps {
   /** Application routes / tree to render inside the router. */
@@ -19,7 +19,7 @@ export interface AppBrowserRouterProps {
  *
  * ## Why `useTransitions={false}` (#3551)
  *
- * `react-router-dom` v7's `<BrowserRouter>` wraps every location/router-state
+ * `react-router` v8's `<BrowserRouter>` wraps every location/router-state
  * update in `React.startTransition` by default (the library's own docs note the
  * default "can lead to buggy behaviors"). Every route in `routes.tsx` is a
  * `lazy()` page wrapped in a shared `RouteBoundary` → `<Suspense>` with the

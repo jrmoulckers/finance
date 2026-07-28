@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { getCurrentLocale } from '../lib/i18n';
 import { useBills } from '../hooks';

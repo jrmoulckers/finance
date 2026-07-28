@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { WarrantyDashboard } from './WarrantyDashboard';
 import { addDays, todayLocalDate } from '../../lib/warranty';
 import {

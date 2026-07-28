@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { InsightsPage } from './InsightsPage';
 import type { ReactNode } from 'react';
 import type { CategorySpending, UseInsightsResult } from '../hooks/useInsights';

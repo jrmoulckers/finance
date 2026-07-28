@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { PasswordInput } from '../components/auth/PasswordInput';
 import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter';
