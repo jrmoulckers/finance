@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInvestments } from '../hooks';
 import { formatGainLoss } from '../lib/currency';

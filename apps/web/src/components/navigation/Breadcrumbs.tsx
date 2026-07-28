@@ -18,7 +18,7 @@
  */
 
 import { useMemo, type FC } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import { buildBreadcrumbTrail } from '../../lib/navigation/breadcrumb-trail';
 import './breadcrumb.css';

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('react-router-dom', () => ({
+vi.mock('react-router', () => ({
   Link: ({ to, children, ...props }: { to: string; children?: ReactNode }) => (
     <a href={to} {...props}>
       {children}

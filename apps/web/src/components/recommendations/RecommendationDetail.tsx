@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
 import { ModalBackdrop } from '../common/ModalBackdrop';
 import { AppIcon } from '../icons';

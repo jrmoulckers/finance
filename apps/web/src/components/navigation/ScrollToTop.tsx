@@ -31,7 +31,7 @@
  */
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { useLocation, useNavigationType } from 'react-router-dom';
+import { useLocation, useNavigationType } from 'react-router';
 
 import { getScrollPosition, recordScrollPosition } from '../../lib/navigation/history';
 

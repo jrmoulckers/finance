@@ -17,7 +17,7 @@
  */
 
 import React, { useId, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import { CurrencyDisplay, EmptyState, LoadingSpinner } from '../common';
 import { useTransactions } from '../../hooks';

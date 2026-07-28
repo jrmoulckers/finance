@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
 import { AppIcon } from '../icons';
 import type { PersonalizedRecommendation } from '../../lib/recommendations';

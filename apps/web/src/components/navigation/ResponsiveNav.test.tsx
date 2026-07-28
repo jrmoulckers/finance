@@ -6,10 +6,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { ResponsiveNav, type NavItem } from './ResponsiveNav';
 
 // ---------------------------------------------------------------------------
-// Mock react-router-dom Link to render a plain <a> in tests
+// Mock react-router Link to render a plain <a> in tests
 // ---------------------------------------------------------------------------
 
-vi.mock('react-router-dom', () => ({
+vi.mock('react-router', () => ({
   Link: ({
     to,
     children,

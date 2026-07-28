@@ -13,7 +13,7 @@
  */
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 // Direct import keeps this heavy component code-split into the brokerage route chunk.
 import { BrokerageImportPanel } from '../components/import/BrokerageImportPanel';

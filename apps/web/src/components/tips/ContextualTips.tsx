@@ -16,7 +16,7 @@
  */
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import type { FinancialTip, TipSeverity } from './tips-engine';
 import './tips.css';
 import { AppIcon, type IconName } from '../icons';

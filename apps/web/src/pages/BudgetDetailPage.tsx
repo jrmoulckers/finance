@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 import { AppIcon, type IconName } from '../components/icons';
 
 import { ConfirmDialog } from '../components/common/ConfirmDialog';

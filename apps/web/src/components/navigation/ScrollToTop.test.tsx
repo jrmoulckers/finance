@@ -24,7 +24,7 @@ const routerState = vi.hoisted(() => ({
   navigationType: 'PUSH' as 'PUSH' | 'POP' | 'REPLACE',
 }));
 
-vi.mock('react-router-dom', () => ({
+vi.mock('react-router', () => ({
   useLocation: () => routerState.location,
   useNavigationType: () => routerState.navigationType,
 }));

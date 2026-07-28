@@ -13,7 +13,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 // Direct import keeps this heavy component code-split into the P2P route chunk.
 import { P2PImportPanel } from '../components/import/P2PImportPanel';

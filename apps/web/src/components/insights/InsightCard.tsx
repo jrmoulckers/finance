@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { AppIcon } from '../icons';
 import type { GeneratedInsight } from '../../lib/insights';
 

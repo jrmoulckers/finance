@@ -3,7 +3,7 @@
 import { StrictMode } from 'react';
 import type { FC, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { App } from './App';
 import { AppBrowserRouter } from './AppBrowserRouter';
 import { AuthProvider } from './auth/auth-context';

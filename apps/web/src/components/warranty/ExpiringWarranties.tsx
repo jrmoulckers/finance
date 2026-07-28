@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { Transaction } from '../../kmp/bridge';
 import type { WarrantyDeadline } from '../../lib/warranty';
 import { EmptyState } from '../common';

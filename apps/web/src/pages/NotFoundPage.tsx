@@ -17,7 +17,7 @@
  */
 
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { trackNotFound } from '../lib/monitoring';
 import '../styles/not-found.css';

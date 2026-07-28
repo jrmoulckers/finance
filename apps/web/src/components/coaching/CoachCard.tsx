@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { FC } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { AppIcon, type IconName } from '../icons';
 import type { CoachAlert, CoachSeverity } from '../../lib/coaching';
 import './coach.css';

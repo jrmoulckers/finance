@@ -24,7 +24,7 @@
  */
 
 import React, { useId } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { AppIcon } from '../components/icons';
 
 import {

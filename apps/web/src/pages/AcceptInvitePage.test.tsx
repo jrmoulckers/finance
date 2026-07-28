@@ -11,7 +11,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router';
 
 import type { Household, HouseholdInvitation, HouseholdMember } from '../kmp/bridge';
 import { useHousehold } from '../hooks/useHousehold';

@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { getCurrentLocale } from '../lib/i18n';
 import { pluralize } from '../lib/ui/pluralize';
 import {

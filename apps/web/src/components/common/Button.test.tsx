@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, Link } from 'react-router-dom';
+import { MemoryRouter, Link } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Button, buttonClassName } from './Button';

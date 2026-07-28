@@ -15,7 +15,7 @@
  */
 
 import { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 
 /** Route patterns that indicate a detail/sub page (has an ID segment). */
 const DETAIL_ROUTE_PATTERN =
