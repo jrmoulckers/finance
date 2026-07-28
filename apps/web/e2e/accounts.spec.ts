@@ -156,9 +156,15 @@ test.describe('Account detail page', () => {
       await page.goto(href ?? '/accounts');
       await expect(page).toHaveURL(/\/accounts\/.+/);
 
-      // Should show breadcrumb navigation back to Accounts.
-      const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i });
-      await expect(breadcrumb.getByRole('link', { name: /^accounts$/i })).toBeVisible();
+      // Should show breadcrumb navigation back to Accounts. The breadcrumb
+      // trail lives in the app header, which is shown on mobile and
+      // intentionally hidden at the desktop breakpoint (see responsive.spec.ts).
+      // Assert it only on viewports where it is part of the responsive design;
+      // on desktop, back-navigation is provided by the persistent sidebar.
+      if ((page.viewportSize()?.width ?? 0) < 768) {
+        const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i });
+        await expect(breadcrumb.getByRole('link', { name: /^accounts$/i })).toBeVisible();
+      }
 
       // Should show edit and delete buttons. Scope to <main> so the page-wide
       // /edit/i regex does not also match the sidebar 'Building Credit' nav

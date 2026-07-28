@@ -204,9 +204,15 @@ test.describe('Transaction detail page', () => {
       await page.goto(href ?? '/transactions');
       await expect(page).toHaveURL(/\/transactions\/.+/);
 
-      // Should show breadcrumb navigation back to Transactions.
-      const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i });
-      await expect(breadcrumb.getByRole('link', { name: /^transactions$/i })).toBeVisible();
+      // Should show breadcrumb navigation back to Transactions. The breadcrumb
+      // trail lives in the app header, which is shown on mobile and
+      // intentionally hidden at the desktop breakpoint (see responsive.spec.ts).
+      // Assert it only on viewports where it is part of the responsive design;
+      // on desktop, back-navigation is provided by the persistent sidebar.
+      if ((page.viewportSize()?.width ?? 0) < 768) {
+        const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i });
+        await expect(breadcrumb.getByRole('link', { name: /^transactions$/i })).toBeVisible();
+      }
 
       // Should show transaction details card
       const detailsCard = page.locator('article[aria-label="Transaction details"]');
