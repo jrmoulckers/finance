@@ -91,11 +91,18 @@ concurrency:
   # run blocked the whole lane, so automated promotions queued behind it hung
   # `pending` for hours with zero jobs started (#3086, #3186).
   #
-  # Fix: let a newer automated promotion (workflow_run -> workflow_call) or a
-  # manual `workflow_dispatch` cancel the older, superseded run (newest-wins) so
-  # the lane is freed instead of stranded. Tag pushes are distinct, immutable
+  # Newest-wins: let a newer automated promotion (workflow_run -> workflow_call)
+  # or a manual `workflow_dispatch` cancel the older, superseded run (newest-wins)
+  # so the lane is freed instead of stranded. Tag pushes are distinct, immutable
   # releases, so they keep the non-cancelling behaviour.
-  group: deploy-production
+  #
+  # Lane reset (#3955): cancelling runs while they were still `pending` (before
+  # any job had started) left the previous `deploy-production` lane in a stuck
+  # state where GitHub kept every subsequent run `pending` with ZERO jobs
+  # scheduled - with no incident, no billing issue, and no other run holding the
+  # lane. Renaming the group moves production deploys onto a fresh lane and
+  # clears the wedge, while preserving the same serialize-on-one-host guarantee.
+  group: deploy-production-v2
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions:
