@@ -25,7 +25,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
-} from 'https://esm.sh/@simplewebauthn/server@9.0.3';
+} from 'https://esm.sh/@simplewebauthn/server@13.2.0';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { errorResponse, internalErrorResponse, jsonResponse } from '../_shared/response.ts';
@@ -40,7 +40,7 @@ import { validateEnv, requireEnv } from '../_shared/env.ts';
 import type {
   AuthenticatorTransportFuture,
   VerifiedAuthenticationResponse,
-} from 'https://esm.sh/@simplewebauthn/server@9.0.3';
+} from 'https://esm.sh/@simplewebauthn/server@13.2.0';
 
 interface StoredCredential {
   id: string;
