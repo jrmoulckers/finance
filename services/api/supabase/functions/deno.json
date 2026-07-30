@@ -48,6 +48,6 @@
   "imports": {
     "std/testing/": "https://deno.land/std@0.208.0/testing/",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.0",
-    "@simplewebauthn/server": "https://esm.sh/@simplewebauthn/server@9.0.3"
+    "@simplewebauthn/server": "https://esm.sh/@simplewebauthn/server@13.2.0"
   }
 }
