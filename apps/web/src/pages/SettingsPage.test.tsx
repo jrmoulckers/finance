@@ -10,6 +10,15 @@ const offlineStatusMock = {
   isOffline: false,
   isOnline: true,
 };
+const syncStatusVariantMock = {
+  variant: 'synced' as 'synced' | 'pending' | 'syncing' | 'error' | 'offline' | 'conflict',
+  pendingMutations: 0,
+  conflictCount: 0,
+  lastSyncTime: null as string | null,
+  isOffline: false,
+  syncNow: vi.fn(),
+  retry: vi.fn(),
+};
 const { clearLocalAccountDataMock, householdImpactMock, wipeLocalDataMock } = vi.hoisted(() => ({
   clearLocalAccountDataMock: vi.fn<() => Promise<void>>(),
   householdImpactMock: vi.fn(() => ({
@@ -56,6 +65,14 @@ vi.mock('../auth/auth-context', () => ({
 vi.mock('../hooks/useOfflineStatus', () => ({
   useOfflineStatus: () => offlineStatusMock,
 }));
+
+vi.mock('../hooks/useSyncStatusVariant', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/useSyncStatusVariant')>();
+  return {
+    ...actual,
+    useSyncStatusVariant: () => syncStatusVariantMock,
+  };
+});
 
 vi.mock('../components/common', () => ({
   ErrorBanner: ({ message }: { message?: string }) => <div role="alert">{message}</div>,
@@ -259,6 +276,10 @@ describe('SettingsPage', () => {
     deleteAccountMock.mockResolvedValue(undefined);
     offlineStatusMock.isOffline = false;
     offlineStatusMock.isOnline = true;
+    syncStatusVariantMock.variant = 'synced';
+    syncStatusVariantMock.isOffline = false;
+    syncStatusVariantMock.pendingMutations = 0;
+    syncStatusVariantMock.conflictCount = 0;
 
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -577,8 +598,8 @@ describe('SettingsPage', () => {
     });
 
     it('shows offline sync messaging when the app is offline', () => {
-      offlineStatusMock.isOffline = true;
-      offlineStatusMock.isOnline = false;
+      syncStatusVariantMock.variant = 'offline';
+      syncStatusVariantMock.isOffline = true;
 
       renderSettingsAt('/settings/sync');
 
