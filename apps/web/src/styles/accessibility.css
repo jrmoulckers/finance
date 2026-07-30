@@ -384,9 +384,14 @@ input[type='radio'] {
   z-index: 10000;
 }
 
+/* Hidden state: pull each grouped link off-screen with a fixed offset rather
+   than a percentage. `.skip-links` is absolutely positioned with all-absolute
+   children, so it collapses to zero height; a percentage `top` resolves against
+   that 0px height (`top: -100%` == `0px`), leaving the links visible in the
+   top-left corner. A fixed rem offset hides them reliably (#3959). */
 .skip-links .skip-link {
   position: absolute;
-  top: -100%;
+  top: -10rem;
   left: 0;
 }
 
