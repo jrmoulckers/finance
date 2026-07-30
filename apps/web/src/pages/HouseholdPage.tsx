@@ -1174,6 +1174,48 @@ export function HouseholdPage() {
     (option) => option.value === trustedHelperAccessMethod,
   );
 
+  // These memoized derivations MUST run on every render — before any early
+  // return below — so the Hooks call order stays stable. Creating a household
+  // flips `household` from null to set; if these lived after the early returns
+  // React would see more Hooks on the next render and crash the page
+  // ("Household couldn't load").
+  const scorecard = useMemo(
+    () =>
+      buildHouseholdScorecard({
+        members,
+        budgetSnapshots: getScorecardBudgetSnapshots(budgetData.budgets, household?.id ?? ''),
+        transactions: transactionData.transactions,
+        accountSharings,
+        resolveMemberName,
+        referenceDate: new Date(),
+      }),
+    [
+      accountSharings,
+      budgetData.budgets,
+      household?.id,
+      members,
+      resolveMemberName,
+      transactionData.transactions,
+    ],
+  );
+
+  const recurringBillReminders = useMemo(
+    () => buildRecurringBillReminders(recurringBills),
+    [recurringBills],
+  );
+  const goalPledgeProgress = useMemo(() => {
+    const pledgedGoalIds = Array.from(new Set(goalPledges.map((pledge) => pledge.goalId)));
+    return pledgedGoalIds.map((goalId) => calculateGoalPledgeProgress(goalPledges, goalId));
+  }, [goalPledges]);
+  const shoppingBudgetSummaries = useMemo(
+    () =>
+      shoppingBudgets.map((budget) => ({
+        budget,
+        summary: calculateShoppingBudgetSummary(budget),
+      })),
+    [shoppingBudgets],
+  );
+
   // -- Loading state -------------------------------------------------------
 
   if (loading) {
@@ -1234,42 +1276,6 @@ export function HouseholdPage() {
 
   // -- Filter pending invitations for display
   const pendingInvitations = invitations.filter((inv) => inv.status === 'PENDING');
-  const scorecard = useMemo(
-    () =>
-      buildHouseholdScorecard({
-        members,
-        budgetSnapshots: getScorecardBudgetSnapshots(budgetData.budgets, household.id),
-        transactions: transactionData.transactions,
-        accountSharings,
-        resolveMemberName,
-        referenceDate: new Date(),
-      }),
-    [
-      accountSharings,
-      budgetData.budgets,
-      household.id,
-      members,
-      resolveMemberName,
-      transactionData.transactions,
-    ],
-  );
-
-  const recurringBillReminders = useMemo(
-    () => buildRecurringBillReminders(recurringBills),
-    [recurringBills],
-  );
-  const goalPledgeProgress = useMemo(() => {
-    const pledgedGoalIds = Array.from(new Set(goalPledges.map((pledge) => pledge.goalId)));
-    return pledgedGoalIds.map((goalId) => calculateGoalPledgeProgress(goalPledges, goalId));
-  }, [goalPledges]);
-  const shoppingBudgetSummaries = useMemo(
-    () =>
-      shoppingBudgets.map((budget) => ({
-        budget,
-        summary: calculateShoppingBudgetSummary(budget),
-      })),
-    [shoppingBudgets],
-  );
   const activeReconciliationPlan = reconciliationPlans[0] ?? null;
   const activeReconciliationSummary = activeReconciliationPlan
     ? calculateReconciliationSummary(activeReconciliationPlan)

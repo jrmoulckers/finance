@@ -563,6 +563,33 @@ describe('HouseholdPage', () => {
     expect(screen.getByText(/privacy-by-default/i)).toBeInTheDocument();
   });
 
+  // Regression for the "Household couldn't load" crash on create (#3961). The
+  // create form renders while `household` is null; once creation succeeds
+  // `household` becomes non-null on the SAME mounted component. If any Hook is
+  // declared after the `!household` early return, React renders more Hooks than
+  // the previous pass and throws. This test drives that exact transition and
+  // asserts the management UI renders instead of crashing.
+  it('does not crash when a household is created on the mounted page (#3961)', () => {
+    mockedUseHousehold.mockReturnValue(mockHouseholdResult());
+
+    const { rerender } = render(<HouseholdPage />);
+    expect(screen.getByText('Create Your Household')).toBeInTheDocument();
+
+    // Simulate createHousehold() resolving: the hook now returns a household
+    // and its owner member for the already-mounted component.
+    mockedUseHousehold.mockReturnValue(
+      mockHouseholdResult({
+        household: makeHousehold(),
+        members: [makeOwnerMember()],
+      }),
+    );
+
+    expect(() => rerender(<HouseholdPage />)).not.toThrow();
+    expect(screen.queryByText('Create Your Household')).not.toBeInTheDocument();
+    expect(screen.getByText('Smith Family')).toBeInTheDocument();
+    expect(screen.getByText('Mid-Month Scorecard')).toBeInTheDocument();
+  });
+
   it('renders household management when household exists', () => {
     mockedUseHousehold.mockReturnValue(
       mockHouseholdResult({
