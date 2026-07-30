@@ -355,6 +355,8 @@ jobs:
           # Enable the live PowerSync client only when a real backend URL is
           # configured; otherwise keep it off so @powersync/web is tree-shaken.
           VITE_POWERSYNC_ENABLED: ${{ secrets.POWERSYNC_URL != '' && 'true' || 'false' }}
+          # Production starts with an empty workspace — never seed sample data (#3957).
+          VITE_DISABLE_SAMPLE_DATA: 'true'
         run: npm run build -w apps/web
 
       - name: Verify web build env
@@ -457,6 +459,7 @@ jobs:
             export VITE_POWERSYNC_ENABLED="$( [ -n "$VITE_POWERSYNC_URL" ] && echo true || echo false )"
             export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
             export VITE_ENVIRONMENT=production
+            export VITE_DISABLE_SAMPLE_DATA=true  # production starts empty — no sample data (#3957)
             export VITE_APP_VERSION="$SHA_SHORT"
             export NODE_ENV=production
             export HUSKY=0  # husky is a devDep; skip its git-hook install on the production VM
@@ -776,6 +779,7 @@ jobs:
               export VITE_POWERSYNC_ENABLED="$( [ -n "$VITE_POWERSYNC_URL" ] && echo true || echo false )"
               export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
               export VITE_ENVIRONMENT=production
+              export VITE_DISABLE_SAMPLE_DATA=true  # production starts empty — no sample data (#3957)
               export VITE_APP_VERSION="$ROLLBACK_TAG"
               export NODE_ENV=production
               export HUSKY=0  # husky is a devDep; skip its git-hook install on the production VM
