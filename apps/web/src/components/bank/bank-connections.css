@@ -11,8 +11,8 @@
 
 .connection-health-card {
   background: var(--semantic-background-secondary, #f8f9fa);
-  border: 1px solid var(--semantic-border-primary, #dee2e6);
-  border-radius: var(--radius-3, 12px);
+  border: 1px solid var(--semantic-border-default, #dee2e6);
+  border-radius: var(--border-radius-lg, 12px);
   padding: var(--spacing-4, 16px);
   margin-bottom: var(--spacing-3, 12px);
 }
@@ -41,7 +41,7 @@
 .health-badge {
   display: inline-block;
   padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
-  border-radius: var(--radius-full, 9999px);
+  border-radius: var(--border-radius-full, 9999px);
   font-size: var(--font-size-xs, 0.75rem);
   font-weight: 600;
   text-transform: uppercase;
@@ -49,28 +49,24 @@
 }
 
 .health-badge--healthy {
-  background: var(--semantic-success-bg, #d4edda);
-  color: var(--semantic-success-text, #155724);
+  background: color-mix(in srgb, var(--semantic-status-positive, #16a34a) 15%, transparent);
+  color: var(--semantic-status-positive, #16a34a);
 }
 
-.health-badge--stale {
-  background: var(--semantic-warning-bg, #fff3cd);
-  color: var(--semantic-warning-text, #856404);
-}
-
+.health-badge--stale,
 .health-badge--warning {
-  background: var(--semantic-warning-bg, #fff3cd);
-  color: var(--semantic-warning-text, #856404);
+  background: color-mix(in srgb, var(--semantic-status-warning, #d97706) 15%, transparent);
+  color: var(--semantic-status-warning, #d97706);
 }
 
 .health-badge--error {
-  background: var(--semantic-error-bg, #f8d7da);
-  color: var(--semantic-error-text, #721c24);
+  background: color-mix(in srgb, var(--semantic-status-negative, #dc2626) 15%, transparent);
+  color: var(--semantic-status-negative, #dc2626);
 }
 
 .health-badge--unknown {
-  background: var(--semantic-neutral-bg, #e2e3e5);
-  color: var(--semantic-neutral-text, #383d41);
+  background: color-mix(in srgb, var(--semantic-text-secondary, #6b7280) 15%, transparent);
+  color: var(--semantic-text-secondary, #6b7280);
 }
 
 .connection-health-card__details {
@@ -99,7 +95,7 @@
 }
 
 .connection-health-card__value--error {
-  color: var(--semantic-error-text, #721c24);
+  color: var(--semantic-status-negative, #dc2626);
 }
 
 .connection-health-card__actions {
@@ -110,8 +106,8 @@
 
 .connection-health-card__action {
   padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
-  border: 1px solid var(--semantic-border-primary, #dee2e6);
-  border-radius: var(--radius-2, 8px);
+  border: 1px solid var(--semantic-border-default, #dee2e6);
+  border-radius: var(--border-radius-md, 8px);
   background: transparent;
   color: var(--semantic-text-primary, #111);
   font-size: var(--font-size-sm, 0.875rem);
@@ -119,17 +115,17 @@
 }
 
 .connection-health-card__action:hover {
-  background: var(--semantic-background-hover, #e9ecef);
+  background: var(--semantic-background-secondary, #e9ecef);
 }
 
 .connection-health-card__action--primary {
-  background: var(--semantic-primary, #0d6efd);
+  background: var(--semantic-interactive-default, #0d6efd);
   color: white;
-  border-color: var(--semantic-primary, #0d6efd);
+  border-color: var(--semantic-interactive-default, #0d6efd);
 }
 
 .connection-health-card__action--primary:hover {
-  background: var(--semantic-primary-hover, #0b5ed7);
+  background: var(--semantic-interactive-hover, #0b5ed7);
 }
 
 /* =========================================================================
@@ -142,8 +138,8 @@
 
 .safety-center__summary {
   background: var(--semantic-background-secondary, #f8f9fa);
-  border: 1px solid var(--semantic-border-primary, #dee2e6);
-  border-radius: var(--radius-3, 12px);
+  border: 1px solid var(--semantic-border-default, #dee2e6);
+  border-radius: var(--border-radius-lg, 12px);
   padding: var(--spacing-4, 16px);
   margin-bottom: var(--spacing-4, 16px);
 }
@@ -163,10 +159,10 @@
 
 .safety-center__note {
   font-size: var(--font-size-sm, 0.875rem);
-  color: var(--semantic-success-text, #155724);
-  background: var(--semantic-success-bg, #d4edda);
+  color: var(--semantic-status-positive, #16a34a);
+  background: color-mix(in srgb, var(--semantic-status-positive, #16a34a) 15%, transparent);
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  border-radius: var(--radius-2, 8px);
+  border-radius: var(--border-radius-md, 8px);
   margin: 0;
 }
 
@@ -187,8 +183,8 @@
 }
 
 .safety-center__item {
-  border: 1px solid var(--semantic-border-primary, #dee2e6);
-  border-radius: var(--radius-2, 8px);
+  border: 1px solid var(--semantic-border-default, #dee2e6);
+  border-radius: var(--border-radius-md, 8px);
   padding: var(--spacing-3, 12px);
   margin-bottom: var(--spacing-2, 8px);
 }
@@ -223,9 +219,9 @@
 .safety-center__permission-badge {
   font-size: var(--font-size-sm, 0.875rem);
   padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
-  border-radius: var(--radius-full, 9999px);
-  background: var(--semantic-success-bg, #d4edda);
-  color: var(--semantic-success-text, #155724);
+  border-radius: var(--border-radius-full, 9999px);
+  background: color-mix(in srgb, var(--semantic-status-positive, #16a34a) 15%, transparent);
+  color: var(--semantic-status-positive, #16a34a);
 }
 
 .safety-center__token-status {
@@ -234,12 +230,12 @@
 }
 
 .safety-center__token-status--active {
-  color: var(--semantic-success-text, #155724);
+  color: var(--semantic-status-positive, #16a34a);
 }
 
 .safety-center__token-status--expired,
 .safety-center__token-status--revoked {
-  color: var(--semantic-error-text, #721c24);
+  color: var(--semantic-status-negative, #dc2626);
 }
 
 .safety-center__scopes {
@@ -254,8 +250,8 @@
 
 .safety-center__toggle {
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  border: 1px solid var(--semantic-border-primary, #dee2e6);
-  border-radius: var(--radius-2, 8px);
+  border: 1px solid var(--semantic-border-default, #dee2e6);
+  border-radius: var(--border-radius-md, 8px);
   background: transparent;
   cursor: pointer;
   font-size: var(--font-size-sm, 0.875rem);
@@ -263,7 +259,7 @@
 }
 
 .safety-center__toggle:hover {
-  background: var(--semantic-background-hover, #e9ecef);
+  background: var(--semantic-background-secondary, #e9ecef);
 }
 
 .safety-center__log-table {
@@ -277,7 +273,7 @@
 .safety-center__log-table td {
   padding: var(--spacing-2, 8px);
   text-align: left;
-  border-bottom: 1px solid var(--semantic-border-primary, #dee2e6);
+  border-bottom: 1px solid var(--semantic-border-default, #dee2e6);
 }
 
 .safety-center__log-table th {
@@ -288,15 +284,15 @@
 }
 
 .safety-center__status--success {
-  color: var(--semantic-success-text, #155724);
+  color: var(--semantic-status-positive, #16a34a);
 }
 
 .safety-center__status--failure {
-  color: var(--semantic-error-text, #721c24);
+  color: var(--semantic-status-negative, #dc2626);
 }
 
 .safety-center__status--partial {
-  color: var(--semantic-warning-text, #856404);
+  color: var(--semantic-status-warning, #d97706);
 }
 
 .safety-center__empty {
@@ -305,7 +301,7 @@
 }
 
 .safety-center__error {
-  color: var(--semantic-error-text, #721c24);
+  color: var(--semantic-status-negative, #dc2626);
 }
 
 /* =========================================================================
@@ -327,8 +323,8 @@
 }
 
 .provider-status-list__item {
-  border: 1px solid var(--semantic-border-primary, #dee2e6);
-  border-radius: var(--radius-2, 8px);
+  border: 1px solid var(--semantic-border-default, #dee2e6);
+  border-radius: var(--border-radius-md, 8px);
   padding: var(--spacing-3, 12px);
 }
 
@@ -346,30 +342,30 @@
 
 .provider-status-list__badge {
   padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
-  border-radius: var(--radius-full, 9999px);
+  border-radius: var(--border-radius-full, 9999px);
   font-size: var(--font-size-xs, 0.75rem);
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .provider-status-list__badge--active {
-  background: var(--semantic-success-bg, #d4edda);
-  color: var(--semantic-success-text, #155724);
+  background: color-mix(in srgb, var(--semantic-status-positive, #16a34a) 15%, transparent);
+  color: var(--semantic-status-positive, #16a34a);
 }
 
 .provider-status-list__badge--degraded {
-  background: var(--semantic-warning-bg, #fff3cd);
-  color: var(--semantic-warning-text, #856404);
+  background: color-mix(in srgb, var(--semantic-status-warning, #d97706) 15%, transparent);
+  color: var(--semantic-status-warning, #d97706);
 }
 
 .provider-status-list__badge--down {
-  background: var(--semantic-error-bg, #f8d7da);
-  color: var(--semantic-error-text, #721c24);
+  background: color-mix(in srgb, var(--semantic-status-negative, #dc2626) 15%, transparent);
+  color: var(--semantic-status-negative, #dc2626);
 }
 
 .provider-status-list__badge--maintenance {
-  background: var(--semantic-neutral-bg, #e2e3e5);
-  color: var(--semantic-neutral-text, #383d41);
+  background: color-mix(in srgb, var(--semantic-text-secondary, #6b7280) 15%, transparent);
+  color: var(--semantic-text-secondary, #6b7280);
 }
 
 .provider-status-list__health {
@@ -382,15 +378,15 @@
 .provider-status-list__health-bar {
   flex: 1;
   height: 8px;
-  background: var(--semantic-background-tertiary, #e9ecef);
-  border-radius: var(--radius-full, 9999px);
+  background: var(--semantic-background-secondary, #e9ecef);
+  border-radius: var(--border-radius-full, 9999px);
   overflow: hidden;
 }
 
 .provider-status-list__health-fill {
   height: 100%;
-  background: var(--semantic-success, #28a745);
-  border-radius: var(--radius-full, 9999px);
+  background: var(--semantic-status-positive, #28a745);
+  border-radius: var(--border-radius-full, 9999px);
   transition: width 0.3s ease;
 }
 
@@ -421,31 +417,156 @@
 }
 
 /* =========================================================================
-   Dark mode
+   Page layout — header summary, tab bar, section headers
+
+   Uses the shared design-system vocabulary (page-heading / page-summary /
+   page-section come from styles) plus these page-scoped helpers, all built on
+   theme-aware --semantic-* tokens so the page matches the rest of the app.
    ========================================================================= */
 
-@media (prefers-color-scheme: dark) {
-  .connection-health-card {
-    background: var(--semantic-background-secondary, #1e1e1e);
-    border-color: var(--semantic-border-primary, #333);
-  }
-
-  .safety-center__summary {
-    background: var(--semantic-background-secondary, #1e1e1e);
-    border-color: var(--semantic-border-primary, #333);
-  }
-
-  .provider-status-list__item {
-    border-color: var(--semantic-border-primary, #333);
-  }
+.connection-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3, 12px);
+  margin-bottom: var(--spacing-5, 20px);
 }
 
-[data-theme='dark'] .connection-health-card,
-[data-theme='dark'] .safety-center__summary,
-[data-theme='dark'] .provider-status-list__item {
-  background: var(--semantic-background-secondary, #1e1e1e);
-  border-color: var(--semantic-border-primary, #333);
+.connection-summary__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+  min-width: 7rem;
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-md, 12px);
+  background: var(--semantic-background-elevated, #f9fafb);
 }
+
+.connection-summary__count {
+  font-size: var(--type-scale-headline-font-size, 1.5rem);
+  font-weight: var(--type-scale-headline-font-weight, 700);
+  line-height: 1.1;
+  color: var(--semantic-text-primary, #111827);
+}
+
+.connection-summary__count--healthy {
+  color: var(--semantic-status-positive, #16a34a);
+}
+
+.connection-summary__count--issue {
+  color: var(--semantic-status-negative, #dc2626);
+}
+
+.connection-summary__count--reauth {
+  color: var(--semantic-status-warning, #d97706);
+}
+
+.connection-summary__label {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Underline tab bar — mirrors the shared .planning-tab pattern. */
+.tab-nav {
+  display: flex;
+  gap: var(--spacing-2, 8px);
+  border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
+  margin-bottom: var(--spacing-5, 20px);
+  overflow-x: auto;
+}
+
+.tab-nav__tab {
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  border: none;
+  background: none;
+  color: var(--semantic-text-secondary, #6b7280);
+  font: inherit;
+  font-weight: var(--font-weight-medium, 500);
+  white-space: nowrap;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition:
+    color var(--duration-fast, 150ms) ease,
+    border-color var(--duration-fast, 150ms) ease;
+}
+
+.tab-nav__tab:hover {
+  color: var(--semantic-text-primary, #111827);
+}
+
+.tab-nav__tab--active {
+  color: var(--semantic-interactive-default, #2563eb);
+  border-bottom-color: var(--semantic-interactive-default, #2563eb);
+}
+
+.tab-nav__tab:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: -2px;
+  border-radius: var(--border-radius-sm, 4px);
+}
+
+.tab-content {
+  margin-top: var(--spacing-2, 8px);
+}
+
+/* Section header inside a tab panel — title + trailing action. */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3, 12px);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.section-title {
+  font-size: var(--type-scale-title-font-size, 1.25rem);
+  font-weight: var(--type-scale-title-font-weight, 600);
+  color: var(--semantic-text-primary, #111827);
+  margin: 0;
+}
+
+.section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  min-height: 40px;
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-md, 8px);
+  background: var(--semantic-background-elevated, #f9fafb);
+  color: var(--semantic-text-primary, #111827);
+  font: inherit;
+  font-weight: var(--font-weight-medium, 500);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 150ms) ease,
+    border-color var(--duration-fast, 150ms) ease;
+}
+
+.section-action:hover {
+  background: var(--semantic-background-secondary, #f3f4f6);
+  border-color: var(--semantic-interactive-default, #2563eb);
+}
+
+.section-action:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.error-message {
+  color: var(--semantic-status-negative, #dc2626);
+}
+
+/* =========================================================================
+   Dark mode
+
+   Surfaces and borders use theme-aware --semantic-* tokens, so no per-theme
+   colour overrides are needed here.
+   ========================================================================= */
 
 /* =========================================================================
    Reduced motion
