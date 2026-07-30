@@ -20,6 +20,7 @@ import React, { Suspense, lazy, useCallback, useState } from 'react';
 import { ConnectionHealthCard } from '../components/bank/ConnectionHealthCard';
 import { ProviderStatusList } from '../components/bank/ProviderStatusList';
 import { SafetyCenter } from '../components/bank/SafetyCenter';
+import { EmptyState } from '../components/common/EmptyState';
 import '../components/bank/bank-connections.css';
 import { useBankConnections } from '../hooks/useBankConnections';
 import { useConnectorPermissions } from '../hooks/useConnectorPermissions';
@@ -85,10 +86,12 @@ export const BankConnectionsPage: React.FC = () => {
   const needsReauthCount = connections.filter((c) => c.needsReauth).length;
 
   return (
-    <div className="page-container">
-      <header className="page-header">
-        <h1 className="page-title">Bank Connections</h1>
-        <p className="page-subtitle">
+    <>
+      <header>
+        <div className="page-header">
+          <h1 className="page-heading">Bank Connections</h1>
+        </div>
+        <p className="page-summary">
           Monitor connection health, manage third-party access, and configure providers.
         </p>
       </header>
@@ -129,7 +132,7 @@ export const BankConnectionsPage: React.FC = () => {
       </div>
 
       {/* Tab navigation */}
-      <nav className="tab-nav" aria-label="Bank connections sections">
+      <nav className="tab-nav" role="tablist" aria-label="Bank connections sections">
         <button
           type="button"
           className={`tab-nav__tab ${activeTab === 'health' ? 'tab-nav__tab--active' : ''}`}
@@ -198,13 +201,11 @@ export const BankConnectionsPage: React.FC = () => {
             )}
 
             {!connectionsLoading && !connectionsError && connections.length === 0 && (
-              <div className="empty-state">
-                <h3 className="empty-state__title">No bank connections</h3>
-                <p className="empty-state__description">
-                  Connect your bank accounts to automatically import transactions and monitor
-                  account balances.
-                </p>
-              </div>
+              <EmptyState
+                title="No bank connections"
+                description="Connect your bank accounts to automatically import transactions and monitor account balances."
+                headingLevel={3}
+              />
             )}
 
             {connections.map((connection) => (
@@ -249,7 +250,7 @@ export const BankConnectionsPage: React.FC = () => {
           />
         )}
       </div>
-    </div>
+    </>
   );
 };
 
