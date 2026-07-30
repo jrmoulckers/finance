@@ -15,7 +15,7 @@
  * References: #1575, #1577, #1583
  */
 
-import React, { Suspense, lazy, useCallback, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useRef, useState } from 'react';
 
 import { ConnectionHealthCard } from '../components/bank/ConnectionHealthCard';
 import { ProviderStatusList } from '../components/bank/ProviderStatusList';
@@ -34,6 +34,36 @@ const CryptoConnectionsPanel = lazy(() =>
     default: module.CryptoConnectionsPanel,
   })),
 );
+
+// ---------------------------------------------------------------------------
+// Tabs (WAI-ARIA Tabs pattern — #3862)
+// ---------------------------------------------------------------------------
+
+/** Identifiers for the four dashboard tabs, in display order. */
+type BankTabId = 'health' | 'providers' | 'crypto' | 'safety';
+
+/** A single tab's identity and visible label. */
+interface BankTabDef {
+  readonly id: BankTabId;
+  readonly label: string;
+}
+
+/**
+ * Ordered tab definitions that drive the tablist. Keeping them in one array
+ * lets the render, roving `tabIndex`, and keyboard handler stay in lockstep.
+ */
+const BANK_TABS: readonly BankTabDef[] = [
+  { id: 'health', label: 'Connection Health' },
+  { id: 'providers', label: 'Providers' },
+  { id: 'crypto', label: 'Wallets & Exchanges' },
+  { id: 'safety', label: 'Safety Center' },
+];
+
+/** Stable id of the shared tab panel; every tab's `aria-controls` points here. */
+const TAB_PANEL_ID = 'bank-connections-tabpanel';
+
+/** Builds the DOM id for a tab button so the panel can reference the active tab. */
+const tabButtonId = (id: BankTabId): string => `bank-tab-${id}`;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -64,8 +94,47 @@ export const BankConnectionsPage: React.FC = () => {
     loadAccessLog,
   } = useConnectorPermissions();
 
-  const [activeTab, setActiveTab] = useState<'health' | 'providers' | 'crypto' | 'safety'>(
-    'health',
+  const [activeTab, setActiveTab] = useState<BankTabId>('health');
+
+  // Roving-tabindex focus management for the tablist (#3862). Each tab button
+  // registers its node so keyboard navigation can move DOM focus to the newly
+  // selected tab (this UI uses automatic activation).
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const activateTab = useCallback((index: number) => {
+    const tab = BANK_TABS[index];
+    if (!tab) return;
+    setActiveTab(tab.id);
+    tabRefs.current[index]?.focus();
+  }, []);
+
+  const handleTabListKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      const currentIndex = BANK_TABS.findIndex((tab) => tab.id === activeTab);
+      if (currentIndex === -1) return;
+
+      let nextIndex: number;
+      switch (event.key) {
+        case 'ArrowRight':
+          nextIndex = (currentIndex + 1) % BANK_TABS.length;
+          break;
+        case 'ArrowLeft':
+          nextIndex = (currentIndex - 1 + BANK_TABS.length) % BANK_TABS.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = BANK_TABS.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      event.preventDefault();
+      activateTab(nextIndex);
+    },
+    [activeTab, activateTab],
   );
 
   const handleViewHistory = useCallback(
@@ -131,48 +200,45 @@ export const BankConnectionsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Tab navigation */}
-      <nav className="tab-nav" role="tablist" aria-label="Bank connections sections">
-        <button
-          type="button"
-          className={`tab-nav__tab ${activeTab === 'health' ? 'tab-nav__tab--active' : ''}`}
-          onClick={() => setActiveTab('health')}
-          aria-selected={activeTab === 'health'}
-          role="tab"
-        >
-          Connection Health
-        </button>
-        <button
-          type="button"
-          className={`tab-nav__tab ${activeTab === 'providers' ? 'tab-nav__tab--active' : ''}`}
-          onClick={() => setActiveTab('providers')}
-          aria-selected={activeTab === 'providers'}
-          role="tab"
-        >
-          Providers
-        </button>
-        <button
-          type="button"
-          className={`tab-nav__tab ${activeTab === 'crypto' ? 'tab-nav__tab--active' : ''}`}
-          onClick={() => setActiveTab('crypto')}
-          aria-selected={activeTab === 'crypto'}
-          role="tab"
-        >
-          Wallets &amp; Exchanges
-        </button>
-        <button
-          type="button"
-          className={`tab-nav__tab ${activeTab === 'safety' ? 'tab-nav__tab--active' : ''}`}
-          onClick={() => setActiveTab('safety')}
-          aria-selected={activeTab === 'safety'}
-          role="tab"
-        >
-          Safety Center
-        </button>
-      </nav>
+      {/* Tab navigation — WAI-ARIA Tabs pattern (#3862). Roving tabindex keeps a
+          single tab stop; Left/Right/Home/End move (and activate) tabs. */}
+      <div
+        className="tab-nav"
+        role="tablist"
+        aria-label="Bank connections sections"
+        onKeyDown={handleTabListKeyDown}
+      >
+        {BANK_TABS.map((tab, index) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              id={tabButtonId(tab.id)}
+              ref={(el) => {
+                tabRefs.current[index] = el;
+              }}
+              className={`tab-nav__tab ${isActive ? 'tab-nav__tab--active' : ''}`}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={TAB_PANEL_ID}
+              tabIndex={isActive ? 0 : -1}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Tab content */}
-      <div className="tab-content" role="tabpanel">
+      <div
+        className="tab-content"
+        role="tabpanel"
+        id={TAB_PANEL_ID}
+        aria-labelledby={tabButtonId(activeTab)}
+        tabIndex={0}
+      >
         {/* Health tab */}
         {activeTab === 'health' && (
           <section aria-label="Connection health">
