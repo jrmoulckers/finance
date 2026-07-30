@@ -326,6 +326,23 @@ services:
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID}
       WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN}
       CRON_SECRET: ${CRON_SECRET}
+      # Bank Connection API (Plaid / MX) — #3848. The bank-connection and
+      # bank-webhook functions read these at runtime; without them they fail
+      # env validation and return 503. Compose only forwards the vars listed
+      # here, so a value present in the VM .env is invisible to the container
+      # unless it is also mapped below. Empty defaults keep the bank features
+      # gracefully dark until the operator populates deploy/.env. Note:
+      # bank-webhook's validateEnv requires MX_WEBHOOK_SECRET even in
+      # Plaid-only mode, so it must be set (any non-empty value) to enable
+      # webhook-driven transaction ingestion.
+      PLAID_CLIENT_ID: ${PLAID_CLIENT_ID:-}
+      PLAID_SECRET: ${PLAID_SECRET:-}
+      PLAID_ENVIRONMENT: ${PLAID_ENVIRONMENT:-sandbox}
+      PLAID_WEBHOOK_URL: ${PLAID_WEBHOOK_URL:-}
+      MX_CLIENT_ID: ${MX_CLIENT_ID:-}
+      MX_API_KEY: ${MX_API_KEY:-}
+      MX_WEBHOOK_SECRET: ${MX_WEBHOOK_SECRET:-}
+      BANK_ENCRYPTION_KEY: ${BANK_ENCRYPTION_KEY:-}
     volumes:
       - ${EDGE_FUNCTIONS_PATH:-../services/api/supabase/functions}:/home/deno/functions:ro
     healthcheck:
