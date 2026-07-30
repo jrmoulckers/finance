@@ -102,7 +102,11 @@ concurrency:
   # scheduled - with no incident, no billing issue, and no other run holding the
   # lane. Renaming the group moves production deploys onto a fresh lane and
   # clears the wedge, while preserving the same serialize-on-one-host guarantee.
-  group: deploy-production-v2
+  #
+  # The `-v2` lane re-wedged the same way (an abandoned promotion left `pending`
+  # for hours cancelled newer promotions instead of yielding the lane), so bump
+  # to `-v3` for another fresh lane.
+  group: deploy-production-v3
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions:
