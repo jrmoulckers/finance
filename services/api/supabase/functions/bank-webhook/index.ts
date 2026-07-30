@@ -51,16 +51,14 @@ import {
   jsonResponse,
   methodNotAllowedResponse,
 } from '../_shared/response.ts';
-import { decryptToken } from '../_shared/bank-crypto.ts';
 import { verifyWebhookSignature } from '../_shared/webhook-verify.ts';
 import { verifyPlaidWebhook } from '../_shared/plaid-webhook.ts';
+import { getWebhookVerificationKey, type PlaidConfig } from '../_shared/plaid.ts';
 import {
-  getWebhookVerificationKey,
-  plaidTransactionToRecord,
-  transactionsSync,
-  type PlaidConfig,
-  type PlaidTransaction,
-} from '../_shared/plaid.ts';
+  ingestPlaidTransactions,
+  type BankConnectionRow,
+  type IngestionSummary,
+} from '../_shared/bank-ingest.ts';
 
 // ---------------------------------------------------------------------------
 // Config helpers
@@ -126,26 +124,6 @@ interface MxWebhookEvent {
   user_guid: string;
 }
 
-interface BankConnectionRow {
-  id: string;
-  household_id: string;
-  encrypted_access_token: string;
-  metadata: Record<string, unknown> | null;
-}
-
-interface LinkedAccount {
-  account_id: string;
-  household_id: string;
-  currency_code: string;
-}
-
-/** Summary of an ingestion run (counts only — never transaction contents). */
-interface IngestionSummary {
-  added: number;
-  modified: number;
-  removed: number;
-}
-
 type AdminClient = ReturnType<typeof createAdminClient>;
 type FunctionLogger = ReturnType<typeof createLogger>;
 
@@ -176,144 +154,6 @@ async function recordHealthEvent(
   if (error) {
     logger.warn('Failed to record health event', { errorMessage: error.message });
   }
-}
-
-// ---------------------------------------------------------------------------
-// Transaction ingestion (Plaid)
-// ---------------------------------------------------------------------------
-
-/**
- * Build a map of Plaid external account id -> internal linked account.
- * Only accounts that are linked to an internal Finance account participate.
- */
-async function loadLinkedAccounts(
-  supabase: AdminClient,
-  connectionId: string,
-): Promise<Map<string, LinkedAccount>> {
-  const { data } = await supabase
-    .from('bank_connection_accounts')
-    .select('external_account_id, account_id, household_id, currency_code, is_linked')
-    .eq('bank_connection_id', connectionId)
-    .eq('is_linked', true)
-    .is('deleted_at', null);
-
-  const map = new Map<string, LinkedAccount>();
-  for (const row of data ?? []) {
-    if (row.account_id) {
-      map.set(row.external_account_id, {
-        account_id: row.account_id,
-        household_id: row.household_id,
-        currency_code: row.currency_code ?? 'USD',
-      });
-    }
-  }
-  return map;
-}
-
-/**
- * Upsert a single Plaid transaction into `transactions` with provenance.
- * Returns true if a new row was inserted.
- *
- * NEVER logs the transaction contents.
- */
-async function upsertPlaidTransaction(
-  supabase: AdminClient,
-  txn: PlaidTransaction,
-  account: LinkedAccount,
-): Promise<boolean> {
-  // Deduplicate on the provider transaction id — provider webhooks may retry.
-  const { data: existing } = await supabase
-    .from('transactions')
-    .select('id')
-    .eq('provider_transaction_id', txn.transaction_id)
-    .is('deleted_at', null)
-    .maybeSingle();
-
-  const record = {
-    ...plaidTransactionToRecord(txn, {
-      householdId: account.household_id,
-      accountId: account.account_id,
-      currencyFallback: account.currency_code,
-    }),
-    imported_at: new Date().toISOString(),
-  };
-
-  if (existing) {
-    await supabase.from('transactions').update(record).eq('id', existing.id);
-    return false;
-  }
-
-  await supabase.from('transactions').insert(record);
-  return true;
-}
-
-/**
- * Ingest incremental transaction updates for a Plaid connection via
- * /transactions/sync, honoring the stored cursor and persisting the new one.
- */
-async function ingestPlaidTransactions(
-  supabase: AdminClient,
-  connection: BankConnectionRow,
-  logger: FunctionLogger,
-): Promise<IngestionSummary> {
-  const summary: IngestionSummary = { added: 0, modified: 0, removed: 0 };
-
-  const config = plaidConfigFromEnv();
-  const encryptionKey = Deno.env.get('BANK_ENCRYPTION_KEY');
-  if (!config.clientId || !config.secret || !encryptionKey) {
-    logger.warn('Skipping ingestion — provider config incomplete');
-    return summary;
-  }
-
-  const accessToken = await decryptToken(connection.encrypted_access_token, encryptionKey);
-  const linkedAccounts = await loadLinkedAccounts(supabase, connection.id);
-
-  let cursor = (connection.metadata?.['cursor'] as string | undefined) ?? null;
-  let hasMore = true;
-  let pages = 0;
-  const MAX_PAGES = 20; // Guard against runaway pagination.
-
-  while (hasMore && pages < MAX_PAGES) {
-    pages++;
-    const page = await transactionsSync(config, accessToken, cursor);
-
-    for (const txn of page.added) {
-      const account = linkedAccounts.get(txn.account_id);
-      if (!account) continue;
-      const inserted = await upsertPlaidTransaction(supabase, txn, account);
-      if (inserted) summary.added++;
-      else summary.modified++;
-    }
-
-    for (const txn of page.modified) {
-      const account = linkedAccounts.get(txn.account_id);
-      if (!account) continue;
-      await upsertPlaidTransaction(supabase, txn, account);
-      summary.modified++;
-    }
-
-    for (const removed of page.removed) {
-      const { data: rows } = await supabase
-        .from('transactions')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('provider_transaction_id', removed.transaction_id)
-        .is('deleted_at', null)
-        .select('id');
-      summary.removed += rows?.length ?? 0;
-    }
-
-    cursor = page.next_cursor;
-    hasMore = page.has_more;
-  }
-
-  // Persist the advanced cursor for the next sync (merge into metadata).
-  const mergedMetadata = { ...(connection.metadata ?? {}), cursor };
-  await supabase
-    .from('bank_connections')
-    .update({ metadata: mergedMetadata, last_synced_at: new Date().toISOString() })
-    .eq('id', connection.id);
-
-  return summary;
 }
 
 // ---------------------------------------------------------------------------

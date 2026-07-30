@@ -12,6 +12,8 @@ import { assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 
 import {
   buildLinkTokenRequest,
+  getAccounts,
+  plaidAccountTypeToInternal,
   plaidAmountToCents,
   plaidBaseUrl,
   plaidTransactionToRecord,
@@ -142,4 +144,69 @@ Deno.test('removeItem posts the access token to /item/remove', async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+Deno.test('getAccounts posts the access token to /accounts/get and returns accounts', async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedUrl = '';
+  let capturedBody: Record<string, unknown> = {};
+  globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) => {
+    capturedUrl = String(input);
+    capturedBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          accounts: [
+            {
+              account_id: 'acc-1',
+              name: 'Plaid Checking',
+              official_name: 'Plaid Gold Standard 0% Interest Checking',
+              mask: '0000',
+              type: 'depository',
+              subtype: 'checking',
+              balances: {
+                available: 100,
+                current: 110,
+                limit: null,
+                iso_currency_code: 'USD',
+                unofficial_currency_code: null,
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+  }) as typeof fetch;
+
+  try {
+    const result = await getAccounts(
+      { clientId: 'client', secret: 'secret', environment: 'sandbox' },
+      'access-token-xyz',
+    );
+    assertEquals(capturedUrl, 'https://sandbox.plaid.com/accounts/get');
+    assertEquals(capturedBody.access_token, 'access-token-xyz');
+    assertEquals(capturedBody.client_id, 'client');
+    assertEquals(result.accounts.length, 1);
+    assertEquals(result.accounts[0].account_id, 'acc-1');
+    assertEquals(result.accounts[0].balances.iso_currency_code, 'USD');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test('plaidAccountTypeToInternal maps Plaid types to canonical account types', () => {
+  assertEquals(plaidAccountTypeToInternal('depository', 'checking'), 'CHECKING');
+  assertEquals(plaidAccountTypeToInternal('depository', 'savings'), 'SAVINGS');
+  assertEquals(plaidAccountTypeToInternal('depository', 'money market'), 'SAVINGS');
+  assertEquals(plaidAccountTypeToInternal('depository', 'hsa'), 'SAVINGS');
+  assertEquals(plaidAccountTypeToInternal('depository', 'cash management'), 'CASH');
+  assertEquals(plaidAccountTypeToInternal('depository', 'prepaid'), 'CASH');
+  assertEquals(plaidAccountTypeToInternal('depository', null), 'CHECKING');
+  assertEquals(plaidAccountTypeToInternal('credit', 'credit card'), 'CREDIT_CARD');
+  assertEquals(plaidAccountTypeToInternal('loan', 'student'), 'LOAN');
+  assertEquals(plaidAccountTypeToInternal('investment', 'brokerage'), 'INVESTMENT');
+  assertEquals(plaidAccountTypeToInternal('brokerage', null), 'INVESTMENT');
+  assertEquals(plaidAccountTypeToInternal('other', 'other'), 'OTHER');
+  assertEquals(plaidAccountTypeToInternal(null, null), 'OTHER');
 });
