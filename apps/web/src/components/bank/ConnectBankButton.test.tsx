@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoAxeViolations } from '../../test-utils/axe';
 
 const mocks = vi.hoisted(() => ({
-  getPrimaryHouseholdId: vi.fn(),
+  readHouseholdValue: vi.fn(),
   ensureAggregatorProvidersRegistered: vi.fn(),
   createConnection: vi.fn(),
   completeConnection: vi.fn(),
@@ -27,8 +27,9 @@ vi.mock('../../db/DatabaseProvider', () => ({
   useDatabase: () => ({ __fakeDb: true }),
 }));
 
-vi.mock('../../db/repositories/household', () => ({
-  getPrimaryHouseholdId: mocks.getPrimaryHouseholdId,
+vi.mock('../../db/repositories/householdData', () => ({
+  HOUSEHOLD_SINGLETON_KEY: 'finance-household',
+  readHouseholdValue: mocks.readHouseholdValue,
 }));
 
 vi.mock('../../lib/banking/connection-manager', () => ({
@@ -59,7 +60,7 @@ const PLAID_METADATA = {
 describe('ConnectBankButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getPrimaryHouseholdId.mockResolvedValue('hh-1');
+    mocks.readHouseholdValue.mockResolvedValue({ id: 'hh-1' });
     mocks.ensureAggregatorProvidersRegistered.mockResolvedValue(undefined);
     mocks.createConnection.mockResolvedValue({ sessionId: 'link-token-1' });
     mocks.completeConnection.mockResolvedValue({ id: 'conn-1' });
@@ -74,7 +75,7 @@ describe('ConnectBankButton', () => {
     const { container } = render(<ConnectBankButton />);
 
     expect(screen.getByRole('button', { name: 'Connect a bank' })).toBeInTheDocument();
-    await waitFor(() => expect(mocks.getPrimaryHouseholdId).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.readHouseholdValue).toHaveBeenCalled());
     await expectNoAxeViolations(container);
   });
 
@@ -92,7 +93,7 @@ describe('ConnectBankButton', () => {
 
     const onConnected = vi.fn();
     render(<ConnectBankButton onConnected={onConnected} />);
-    await waitFor(() => expect(mocks.getPrimaryHouseholdId).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.readHouseholdValue).toHaveBeenCalled());
 
     await userEvent.click(screen.getByRole('button', { name: 'Connect a bank' }));
 
@@ -115,10 +116,10 @@ describe('ConnectBankButton', () => {
   });
 
   it('shows an error and does not start linking when there is no household', async () => {
-    mocks.getPrimaryHouseholdId.mockResolvedValue(null);
+    mocks.readHouseholdValue.mockResolvedValue(null);
 
     render(<ConnectBankButton />);
-    await waitFor(() => expect(mocks.getPrimaryHouseholdId).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.readHouseholdValue).toHaveBeenCalled());
 
     await userEvent.click(screen.getByRole('button', { name: 'Connect a bank' }));
 
@@ -136,7 +137,7 @@ describe('ConnectBankButton', () => {
     );
 
     render(<ConnectBankButton />);
-    await waitFor(() => expect(mocks.getPrimaryHouseholdId).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.readHouseholdValue).toHaveBeenCalled());
 
     await userEvent.click(screen.getByRole('button', { name: 'Connect a bank' }));
 
