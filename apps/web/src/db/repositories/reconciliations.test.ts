@@ -52,8 +52,20 @@ describe('reconciliations repository', () => {
     mockQuery.mockResolvedValueOnce({
       columns: [],
       rows: [
-        { id: 'tx-income', type: 'INCOME', status: 'PENDING', amount_cents: 5000, date: '2025-03-10' },
-        { id: 'tx-expense', type: 'EXPENSE', status: 'CLEARED', amount_cents: 2500, date: '2025-03-12' },
+        {
+          id: 'tx-income',
+          type: 'INCOME',
+          status: 'PENDING',
+          amount_cents: 5000,
+          date: '2025-03-10',
+        },
+        {
+          id: 'tx-expense',
+          type: 'EXPENSE',
+          status: 'CLEARED',
+          amount_cents: 2500,
+          date: '2025-03-12',
+        },
       ],
     });
     mockQueryOne.mockResolvedValueOnce(snapshotRow());
@@ -85,7 +97,13 @@ describe('reconciliations repository', () => {
     mockQuery.mockResolvedValueOnce({
       columns: [],
       rows: [
-        { id: 'tx-income', type: 'INCOME', status: 'PENDING', amount_cents: 5000, date: '2025-03-10' },
+        {
+          id: 'tx-income',
+          type: 'INCOME',
+          status: 'PENDING',
+          amount_cents: 5000,
+          date: '2025-03-10',
+        },
       ],
     });
 

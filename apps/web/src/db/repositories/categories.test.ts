@@ -375,9 +375,11 @@ describe('categories repository', () => {
       const result = await deleteCategory(mockDb, 'cat-1');
 
       expect(result).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE categories'), [
-        'cat-1',
-      ]);
+      expect(mockExecute).toHaveBeenCalledWith(
+        mockDb,
+        expect.stringContaining('UPDATE categories'),
+        ['cat-1'],
+      );
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).toContain('SET deleted_at =');
       expect(sql).toContain('WHERE id = ?');
