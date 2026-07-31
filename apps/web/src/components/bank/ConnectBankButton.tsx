@@ -22,7 +22,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useDatabase } from '../../db/DatabaseProvider';
-import { getPrimaryHouseholdId } from '../../db/repositories/household';
+import { HOUSEHOLD_SINGLETON_KEY, readHouseholdValue } from '../../db/repositories/householdData';
 
 /** Props for {@link ConnectBankButton}. */
 export interface ConnectBankButtonProps {
@@ -33,6 +33,26 @@ export interface ConnectBankButtonProps {
 type Phase = 'idle' | 'starting' | 'finishing' | 'error';
 
 const PROVIDER_ID = 'plaid';
+
+/**
+ * Resolve the active household id from the SAME `hh_household` store the rest of
+ * the app persists to (via the `useHousehold` hook / Household page).
+ *
+ * The first cut read the legacy relational `household` table, but the in-app
+ * "create a household" flow writes to `hh_household`. That table stays empty for
+ * real users, so the guard below wrongly fired even after a household existed
+ * (only sample/seed data ever populated the legacy table).
+ */
+async function resolveHouseholdId(db: ReturnType<typeof useDatabase>): Promise<string | null> {
+  const household = await readHouseholdValue<{ id?: unknown } | null>(
+    db,
+    HOUSEHOLD_SINGLETON_KEY,
+    null,
+  );
+  return household && typeof household.id === 'string' && household.id.length > 0
+    ? household.id
+    : null;
+}
 
 /**
  * A button that runs the end-to-end "connect a bank" handshake via Plaid Link.
@@ -46,7 +66,7 @@ export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
 
   useEffect(() => {
     let active = true;
-    getPrimaryHouseholdId(db)
+    resolveHouseholdId(db)
       .then((id) => {
         if (active) setHouseholdId(id);
       })
@@ -60,7 +80,14 @@ export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
 
   const handleClick = useCallback(async () => {
     if (busyRef.current) return;
-    if (!householdId) {
+    // Re-resolve on click so a household created *after* this component mounted
+    // is picked up without a page refresh (the mount effect only runs once).
+    let activeHouseholdId = householdId;
+    if (!activeHouseholdId) {
+      activeHouseholdId = await resolveHouseholdId(db).catch(() => null);
+      if (activeHouseholdId) setHouseholdId(activeHouseholdId);
+    }
+    if (!activeHouseholdId) {
       setError('Create a household before connecting a bank.');
       setPhase('error');
       return;
@@ -86,7 +113,7 @@ export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
       const manager = new ConnectionManager(defaultRegistry);
 
       const session = await manager.createConnection(PROVIDER_ID, {
-        metadata: { household_id: householdId },
+        metadata: { household_id: activeHouseholdId },
       });
 
       await openPlaidLink({
@@ -108,7 +135,7 @@ export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
                 public_token: publicToken,
                 institutionId: metadata.institution?.institution_id ?? undefined,
                 institutionName: metadata.institution?.name ?? undefined,
-                household_id: householdId,
+                household_id: activeHouseholdId,
               });
               setPhase('idle');
               onConnected?.();
@@ -128,7 +155,7 @@ export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
       setError(e instanceof Error ? e.message : 'We could not start the bank connection.');
       setPhase('error');
     }
-  }, [householdId, onConnected]);
+  }, [db, householdId, onConnected]);
 
   const busy = phase === 'starting' || phase === 'finishing';
   const label =
