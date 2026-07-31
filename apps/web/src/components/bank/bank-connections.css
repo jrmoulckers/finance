@@ -529,6 +529,13 @@
   margin-bottom: var(--spacing-4, 16px);
 }
 
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  flex-wrap: wrap;
+}
+
 .section-title {
   font-size: var(--type-scale-title-font-size, 1.25rem);
   font-weight: var(--type-scale-title-font-weight, 600);
@@ -569,6 +576,64 @@
 }
 
 /* =========================================================================
+   Connect a bank (Plaid Link launcher)
+   ========================================================================= */
+
+.connect-bank {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+}
+
+.connect-bank__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2, 8px);
+  min-height: 40px;
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-md, 8px);
+  background: var(--semantic-interactive-default, #2563eb);
+  color: var(--semantic-text-inverse, #ffffff);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.connect-bank__button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--semantic-interactive-default, #2563eb) 88%, black);
+}
+
+.connect-bank__button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.connect-bank__button:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.connect-bank__status {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #6c757d);
+}
+
+.connect-bank__status:empty {
+  display: none;
+}
+
+.connect-bank__error {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-status-negative, #dc2626);
+}
+
+/* =========================================================================
    Dark mode
 
    Surfaces and borders use theme-aware --semantic-* tokens, so no per-theme
@@ -586,6 +651,10 @@
 
   /* Honour reduced-motion for the tab selection indicator (#3862). */
   .tab-nav__tab {
+    transition: none;
+  }
+
+  .connect-bank__button {
     transition: none;
   }
 }

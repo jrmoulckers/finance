@@ -21,10 +21,10 @@ import type { WebFeatureFlag, WebFlagRegistry } from './types';
  * `live_bank_data` — gates activation of the live consolidated bank-data
  * aggregator (Plaid/MX/TrueLayer/Finicity, epic #3846) on web.
  *
- * Dark-launched: `enabled` is `true` but `rolloutPercentage` is `0`, so the
- * aggregator provider layer stays inert in production. Ramp the percentage
- * (here and in flags.json) to stage exposure once the accessibility blocker
- * (#3862) on the live bank UI is resolved.
+ * Fully ramped: `enabled` is `true` and `rolloutPercentage` is `100`, so the
+ * aggregator provider layer registers and the in-app "Connect a bank" flow
+ * (Plaid Link) is available to everyone. Keep this value in lockstep with
+ * `config/feature-flags/flags.json`.
  */
 const LIVE_BANK_DATA: WebFeatureFlag = {
   key: 'live_bank_data',
@@ -33,7 +33,7 @@ const LIVE_BANK_DATA: WebFeatureFlag = {
   enabled: true,
   owner: 'web',
   platforms: ['web'],
-  rolloutPercentage: 0,
+  rolloutPercentage: 100,
 };
 
 /** The web bootstrap flag registry, keyed by flag key. */
