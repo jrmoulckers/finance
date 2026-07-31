@@ -44,7 +44,8 @@ bucket_definitions:
       # Financial accounts (checking, savings, credit cards, etc.)
       - >
         SELECT id, household_id, name, type, currency_code, balance_cents,
-               is_active, icon, color, sort_order, owner_id,
+               is_active, icon, color, sort_order, owner_id, purpose,
+               retirement_account_type, retirement_tax_treatment, hsa_coverage_level,
                created_at, updated_at, deleted_at
         FROM accounts
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -66,7 +67,11 @@ bucket_definitions:
                currency_code, type, payee, note, date, is_recurring,
                transfer_account_id, status,
                transfer_transaction_id, recurring_rule_id, tags,
-               is_biometric_protected, owner_id,
+               is_biometric_protected, owner_id, mood_tag,
+               merchant_address, merchant_city, merchant_state, merchant_zip,
+               merchant_country, external_reference_id, statement_description,
+               custom_fields, extra_notes, counterparty_name, counterparty_account_id,
+               splits, retirement_contribution_year, retirement_contribution_designation,
                created_at, updated_at, deleted_at
         FROM transactions
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -94,7 +99,7 @@ bucket_definitions:
       #   clients need for display; was previously missing from allowlist).
       - >
         SELECT id, household_id, category_id, name, amount_cents, currency_code,
-               period, start_date, end_date, is_rollover, owner_id,
+               period, start_date, end_date, is_rollover, sort_order, owner_id,
                created_at, updated_at, deleted_at
         FROM budgets
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -103,7 +108,7 @@ bucket_definitions:
       - >
         SELECT id, household_id, name, target_cents, current_cents,
                currency_code, target_date, icon, color,
-               account_id, status, owner_id,
+               account_id, status, owner_id, description, sort_order,
                created_at, updated_at, deleted_at
         FROM goals
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -268,6 +273,45 @@ bucket_definitions:
         FROM open_banking_connections
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
+      # Goal progress contributions (schema unification) — individual deposits
+      # toward a savings goal. `amount` is in minor units (cents).
+      - >
+        SELECT id, goal_id, household_id, owner_id, amount, currency, note,
+               contributed_at, created_at, updated_at, deleted_at
+        FROM goal_progress_contributions
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Account reconciliation history (schema unification). Balances in cents.
+      - >
+        SELECT id, account_id, household_id, owner_id, statement_date,
+               statement_balance, starting_balance, cleared_transaction_count,
+               transaction_ids, created_by,
+               created_at, updated_at, deleted_at
+        FROM account_reconciliations
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Invoices (schema unification) — household-scoped rows. Personal
+      # (NULL-household) invoices sync via the user_profile bucket instead.
+      - >
+        SELECT id, household_id, owner_id, client_name, amount_cents, currency,
+               issue_date, payment_term, status, expected_pay_date,
+               last_contacted_date, amount_paid_cents, paid_date,
+               payment_account_id, payment_transaction_id,
+               created_at, updated_at, deleted_at
+        FROM invoices
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Remittances (schema unification) — household-scoped rows. Personal
+      # (NULL-household) remittances sync via the user_profile bucket instead.
+      - >
+        SELECT id, household_id, owner_id, date, source_currency, dest_currency,
+               send_amount_minor, fee_minor, fx_rate, fee_model, reference_rate,
+               recipient_name, recipient_country, note,
+               recurrence_frequency, recurrence_next_date,
+               created_at, updated_at, deleted_at
+        FROM remittances
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
   # ---------------------------------------------------------------------------
   # user_profile — per-user data that is NOT household-scoped.
   # Contains the user's own profile and their passkey credential metadata
@@ -345,11 +389,36 @@ bucket_definitions:
                currency_code, type, payee, note, date, is_recurring,
                transfer_account_id, status,
                transfer_transaction_id, recurring_rule_id, tags,
-               is_biometric_protected, owner_id,
+               is_biometric_protected, owner_id, mood_tag,
+               merchant_address, merchant_city, merchant_state, merchant_zip,
+               merchant_country, external_reference_id, statement_description,
+               custom_fields, extra_notes, counterparty_name, counterparty_account_id,
+               splits, retirement_contribution_year, retirement_contribution_designation,
                created_at, updated_at, deleted_at
         FROM transactions
         WHERE owner_id = bucket.user_id AND is_biometric_protected = true
               AND deleted_at IS NULL
+
+      # Personal invoices/remittances (schema unification) — rows created before a
+      # household exists (household_id IS NULL) sync to their owner only; household
+      # -scoped rows sync via by_household. Column lists match the by_household rules.
+      - >
+        SELECT id, household_id, owner_id, client_name, amount_cents, currency,
+               issue_date, payment_term, status, expected_pay_date,
+               last_contacted_date, amount_paid_cents, paid_date,
+               payment_account_id, payment_transaction_id,
+               created_at, updated_at, deleted_at
+        FROM invoices
+        WHERE owner_id = bucket.user_id AND household_id IS NULL AND deleted_at IS NULL
+
+      - >
+        SELECT id, household_id, owner_id, date, source_currency, dest_currency,
+               send_amount_minor, fee_minor, fx_rate, fee_model, reference_rate,
+               recipient_name, recipient_country, note,
+               recurrence_frequency, recurrence_next_date,
+               created_at, updated_at, deleted_at
+        FROM remittances
+        WHERE owner_id = bucket.user_id AND household_id IS NULL AND deleted_at IS NULL
 
   # ---------------------------------------------------------------------------
   # exchange_rates — global exchange rate data synced to all authenticated users.
