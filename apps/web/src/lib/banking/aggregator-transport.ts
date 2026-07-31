@@ -15,15 +15,17 @@
 import { getAccessToken } from '../../auth/token-storage';
 import type { EdgeTransport } from './base-aggregator-provider';
 
-/** Read a Vite env var safely (works under Vite build + test/SSR). @internal */
-function readEnv(key: string): string | undefined {
-  try {
-    const meta = import.meta as unknown as { env?: Record<string, string> };
-    const value = meta.env?.[key];
-    return typeof value === 'string' && value.length > 0 ? value : undefined;
-  } catch {
-    return undefined;
-  }
+/**
+ * Coerce a raw Vite env value to a non-empty string, or `undefined`.
+ *
+ * IMPORTANT: callers MUST read `import.meta.env.VITE_*` via **static** member
+ * access. Dynamic access (`import.meta.env[key]`) is not inlined by the
+ * production bundler (rolldown-vite) and resolves to `undefined` at runtime —
+ * which silently emptied this base URL and sent bank-connection requests to the
+ * SPA origin without the `/functions/v1` prefix (Caddy answered 405). @internal
+ */
+function nonEmpty(value: string | undefined): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 /**
@@ -37,10 +39,10 @@ function readEnv(key: string): string | undefined {
  * @returns The trimmed functions base URL, or `''` when unconfigured.
  */
 export function resolveEdgeFunctionsBaseUrl(): string {
-  const explicit = readEnv('VITE_SUPABASE_FUNCTIONS_URL');
+  const explicit = nonEmpty(import.meta.env.VITE_SUPABASE_FUNCTIONS_URL);
   if (explicit) return explicit.replace(/\/+$/, '');
 
-  const supabaseUrl = readEnv('VITE_SUPABASE_URL');
+  const supabaseUrl = nonEmpty(import.meta.env.VITE_SUPABASE_URL);
   if (!supabaseUrl) return '';
   return `${supabaseUrl.replace(/\/+$/, '')}/functions/v1`;
 }
