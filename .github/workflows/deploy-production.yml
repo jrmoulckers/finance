@@ -96,13 +96,15 @@ concurrency:
   # so the lane is freed instead of stranded. Tag pushes are distinct, immutable
   # releases, so they keep the non-cancelling behaviour.
   #
-  # Lane reset (#3955): cancelling runs while they were still `pending` (before
-  # any job had started) left the previous `deploy-production` lane in a stuck
-  # state where GitHub kept every subsequent run `pending` with ZERO jobs
-  # scheduled - with no incident, no billing issue, and no other run holding the
-  # lane. Renaming the group moves production deploys onto a fresh lane and
-  # clears the wedge, while preserving the same serialize-on-one-host guarantee.
-  group: deploy-production-v2
+  # Lane reset (#3955, again for the live-bank-data rollout): cancelling runs
+  # while they were still `pending` (before any job had started) left the
+  # previous `deploy-production` lane in a stuck state where GitHub kept every
+  # subsequent run `pending` with ZERO jobs scheduled - with no incident, no
+  # billing issue, and no other run holding the lane. Renaming the group moves
+  # production deploys onto a fresh lane and clears the wedge, while preserving
+  # the same serialize-on-one-host guarantee. Bumped v2 -> v3 to clear a fresh
+  # occurrence of this wedge.
+  group: deploy-production-v3
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions:
