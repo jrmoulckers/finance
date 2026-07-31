@@ -48,6 +48,10 @@ const accounts = new Table(
     color: text,
     sort_order: integer,
     owner_id: text,
+    purpose: text,
+    retirement_account_type: text,
+    retirement_tax_treatment: text,
+    hsa_coverage_level: text,
     created_at: text,
     updated_at: text,
     deleted_at: text,
@@ -74,6 +78,21 @@ const transactions = new Table(
     tags: text,
     is_biometric_protected: integer,
     owner_id: text,
+    mood_tag: text,
+    merchant_address: text,
+    merchant_city: text,
+    merchant_state: text,
+    merchant_zip: text,
+    merchant_country: text,
+    external_reference_id: text,
+    statement_description: text,
+    custom_fields: text,
+    extra_notes: text,
+    counterparty_name: text,
+    counterparty_account_id: text,
+    splits: text,
+    retirement_contribution_year: integer,
+    retirement_contribution_designation: text,
     created_at: text,
     updated_at: text,
     deleted_at: text,
@@ -107,6 +126,7 @@ const budgets = new Table({
   start_date: text,
   end_date: text,
   is_rollover: integer,
+  sort_order: integer,
   owner_id: text,
   created_at: text,
   updated_at: text,
@@ -125,6 +145,8 @@ const goals = new Table({
   account_id: text,
   status: text,
   owner_id: text,
+  description: text,
+  sort_order: integer,
   created_at: text,
   updated_at: text,
   deleted_at: text,
@@ -472,6 +494,80 @@ const aggregator_providers = new Table({
   deleted_at: text,
 });
 
+// ---------------------------------------------------------------------------
+// Schema-unification tables (household-scoped). Money columns are integer
+// cents / minor units; `id` is the implicit PowerSync primary key.
+// ---------------------------------------------------------------------------
+
+const goal_progress_contributions = new Table({
+  goal_id: text,
+  household_id: text,
+  owner_id: text,
+  amount: integer,
+  currency: text,
+  note: text,
+  contributed_at: text,
+  created_at: text,
+  updated_at: text,
+  deleted_at: text,
+});
+
+const account_reconciliations = new Table({
+  account_id: text,
+  household_id: text,
+  owner_id: text,
+  statement_date: text,
+  statement_balance: integer,
+  starting_balance: integer,
+  cleared_transaction_count: integer,
+  transaction_ids: text,
+  created_by: text,
+  created_at: text,
+  updated_at: text,
+  deleted_at: text,
+});
+
+const invoices = new Table({
+  household_id: text,
+  owner_id: text,
+  client_name: text,
+  amount_cents: integer,
+  currency: text,
+  issue_date: text,
+  payment_term: text,
+  status: text,
+  expected_pay_date: text,
+  last_contacted_date: text,
+  amount_paid_cents: integer,
+  paid_date: text,
+  payment_account_id: text,
+  payment_transaction_id: text,
+  created_at: text,
+  updated_at: text,
+  deleted_at: text,
+});
+
+const remittances = new Table({
+  household_id: text,
+  owner_id: text,
+  date: text,
+  source_currency: text,
+  dest_currency: text,
+  send_amount_minor: integer,
+  fee_minor: integer,
+  fx_rate: real,
+  fee_model: text,
+  reference_rate: real,
+  recipient_name: text,
+  recipient_country: text,
+  note: text,
+  recurrence_frequency: text,
+  recurrence_next_date: text,
+  created_at: text,
+  updated_at: text,
+  deleted_at: text,
+});
+
 /**
  * The canonical app schema handed to `PowerSyncDatabase`. The object keys are
  * the synced table names (must match the sync rules exactly).
@@ -499,6 +595,10 @@ export const AppSchema = new Schema({
   connector_permissions,
   connector_access_log,
   open_banking_connections,
+  goal_progress_contributions,
+  account_reconciliations,
+  invoices,
+  remittances,
   users,
   passkey_credentials,
   referrals,
