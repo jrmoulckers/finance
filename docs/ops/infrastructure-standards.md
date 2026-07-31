@@ -427,13 +427,16 @@ DNS names are the most visible identifier of the project. They appear in TLS cer
 
 The alpha deployment uses a subdomain of the owner's personal domain. A dedicated product domain will be registered before public launch.
 
-| Level           | Pattern                         | Alpha Value                       |
-| --------------- | ------------------------------- | --------------------------------- |
-| **Production**  | `finance.{base-domain}`         | `finance.jrmoulckers.com`         |
-| **Staging**     | `finance-staging.{base-domain}` | `finance-staging.jrmoulckers.com` |
-| **Base domain** | (owner's domain)                | `jrmoulckers.com` (Namecheap)     |
+| Level               | Pattern                         | Alpha Value                       |
+| ------------------- | ------------------------------- | --------------------------------- |
+| **Production**      | `finance.{base-domain}`         | `finance.jrmoulckers.com`         |
+| **Staging**         | `finance-staging.{base-domain}` | `finance-staging.jrmoulckers.com` |
+| **Transact. email** | `mail.{base-domain}`            | `mail.jrmoulckers.com`            |
+| **Base domain**     | (owner's domain)                | `jrmoulckers.com` (Namecheap)     |
 
 > **Note:** All configurations use the `DOMAIN` environment variable, so migrating to a dedicated domain (e.g., `financetrackerapp.com`) later requires updating only `.env` — no code changes.
+
+> **Transactional email** is sent via **Resend** from a dedicated `mail.{base-domain}` subdomain (`mail.jrmoulckers.com`), verified with SPF/DKIM/DMARC. The from-address is `finance@mail.jrmoulckers.com` (`SMTP_ADMIN_EMAIL`). Keeping the sending domain separate from the app domain (`finance.jrmoulckers.com`) isolates email authentication from the app's own DNS. See [password-reset-email.md](password-reset-email.md).
 
 ### Path-Based Routing (Current Architecture)
 
