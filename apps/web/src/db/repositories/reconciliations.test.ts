@@ -38,8 +38,6 @@ function snapshotRow(overrides: Partial<Row> = {}): Row {
     created_at: '2025-04-01T00:00:00Z',
     updated_at: '2025-04-01T00:00:00Z',
     deleted_at: null,
-    sync_version: 1,
-    is_synced: 0,
     ...overrides,
   };
 }
@@ -54,8 +52,8 @@ describe('reconciliations repository', () => {
     mockQuery.mockResolvedValueOnce({
       columns: [],
       rows: [
-        { id: 'tx-income', type: 'INCOME', status: 'PENDING', amount: 5000, date: '2025-03-10' },
-        { id: 'tx-expense', type: 'EXPENSE', status: 'CLEARED', amount: 2500, date: '2025-03-12' },
+        { id: 'tx-income', type: 'INCOME', status: 'PENDING', amount_cents: 5000, date: '2025-03-10' },
+        { id: 'tx-expense', type: 'EXPENSE', status: 'CLEARED', amount_cents: 2500, date: '2025-03-12' },
       ],
     });
     mockQueryOne.mockResolvedValueOnce(snapshotRow());
@@ -77,7 +75,7 @@ describe('reconciliations repository', () => {
       transactionIds: ['tx-income', 'tx-expense'],
     });
     expect(mockBeginSavepoint).toHaveBeenCalledWith(mockDb, 'close_reconciliation');
-    expect(mockExecute.mock.calls[0][1]).toContain('INSERT INTO account_reconciliation');
+    expect(mockExecute.mock.calls[0][1]).toContain('INSERT INTO account_reconciliations');
     expect(mockExecute.mock.calls[1][1]).toContain("SET status = 'RECONCILED'");
     expect(mockExecute.mock.calls[2][1]).toContain("SET status = 'RECONCILED'");
     expect(mockReleaseSavepoint).toHaveBeenCalledWith(mockDb, 'close_reconciliation');
@@ -87,7 +85,7 @@ describe('reconciliations repository', () => {
     mockQuery.mockResolvedValueOnce({
       columns: [],
       rows: [
-        { id: 'tx-income', type: 'INCOME', status: 'PENDING', amount: 5000, date: '2025-03-10' },
+        { id: 'tx-income', type: 'INCOME', status: 'PENDING', amount_cents: 5000, date: '2025-03-10' },
       ],
     });
 

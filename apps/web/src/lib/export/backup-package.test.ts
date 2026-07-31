@@ -50,14 +50,14 @@ describe('backup-package', () => {
 
   it('serializes and deserializes the canonical versioned package', () => {
     const db = createMockDb({
-      user: [{ id: 'user-1', email: 'demo@example.com', deleted_at: null }],
-      household: [{ id: 'hh-1', name: 'Home', owner_id: 'user-1', deleted_at: null }],
-      household_member: [],
-      account: [{ id: 'acc-1', household_id: 'hh-1', name: 'Checking', deleted_at: null }],
-      category: [{ id: 'cat-1', household_id: 'hh-1', name: 'Food', deleted_at: null }],
-      budget: [{ id: 'budget-1', household_id: 'hh-1', category_id: 'cat-1', deleted_at: null }],
-      goal: [{ id: 'goal-1', household_id: 'hh-1', name: 'Emergency', deleted_at: null }],
-      transaction: [{ id: 'txn-1', household_id: 'hh-1', account_id: 'acc-1', deleted_at: null }],
+      users: [{ id: 'user-1', email: 'demo@example.com', deleted_at: null }],
+      households: [{ id: 'hh-1', name: 'Home', created_by: 'user-1', deleted_at: null }],
+      household_members: [],
+      accounts: [{ id: 'acc-1', household_id: 'hh-1', name: 'Checking', deleted_at: null }],
+      categories: [{ id: 'cat-1', household_id: 'hh-1', name: 'Food', deleted_at: null }],
+      budgets: [{ id: 'budget-1', household_id: 'hh-1', category_id: 'cat-1', deleted_at: null }],
+      goals: [{ id: 'goal-1', household_id: 'hh-1', name: 'Emergency', deleted_at: null }],
+      transactions: [{ id: 'txn-1', household_id: 'hh-1', account_id: 'acc-1', deleted_at: null }],
     });
     localStorage.setItem('finance-gdpr-consent', '{"essential":true}');
     localStorage.setItem('finance-recurring-rent', '{"id":"rent"}');
@@ -88,14 +88,14 @@ describe('backup-package', () => {
 
   it('previews duplicate ids and local-storage keys before restore', () => {
     const db = createMockDb({
-      user: [],
-      household: [],
-      household_member: [],
-      account: [{ id: 'acc-1', deleted_at: null }],
-      category: [],
-      budget: [],
-      goal: [],
-      transaction: [],
+      users: [],
+      households: [],
+      household_members: [],
+      accounts: [{ id: 'acc-1', deleted_at: null }],
+      categories: [],
+      budgets: [],
+      goals: [],
+      transactions: [],
     });
     localStorage.setItem('finance-gdpr-consent', 'old');
 
@@ -123,14 +123,14 @@ describe('backup-package', () => {
 
   it('restores non-duplicate rows and supports clean restore wipes', () => {
     const db = createMockDb({
-      user: [],
-      household: [],
-      household_member: [],
-      account: [{ id: 'acc-existing', deleted_at: null }],
-      category: [],
-      budget: [],
-      goal: [],
-      transaction: [],
+      users: [],
+      households: [],
+      household_members: [],
+      accounts: [{ id: 'acc-existing', deleted_at: null }],
+      categories: [],
+      budgets: [],
+      goals: [],
+      transactions: [],
     });
     const pkg = parseBackupPackage(
       JSON.stringify({
@@ -147,8 +147,8 @@ describe('backup-package', () => {
       imported: 1,
       skippedDuplicates: 0,
     });
-    expect(db.exec).toHaveBeenCalledWith(expect.stringMatching(/^DELETE FROM "account"/));
-    expect(db.exec).toHaveBeenCalledWith(expect.stringMatching(/^INSERT INTO "account"/), [
+    expect(db.exec).toHaveBeenCalledWith(expect.stringMatching(/^DELETE FROM "accounts"/));
+    expect(db.exec).toHaveBeenCalledWith(expect.stringMatching(/^INSERT INTO "accounts"/), [
       'acc-1',
       'hh-1',
       null,

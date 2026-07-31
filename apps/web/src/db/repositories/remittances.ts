@@ -44,11 +44,9 @@ const REMITTANCE_COLUMNS = [
   'created_at',
   'updated_at',
   'deleted_at',
-  'sync_version',
-  'is_synced',
 ].join(', ');
 
-const REMITTANCE_BASE_QUERY = `SELECT ${REMITTANCE_COLUMNS} FROM remittance WHERE deleted_at IS NULL`;
+const REMITTANCE_BASE_QUERY = `SELECT ${REMITTANCE_COLUMNS} FROM remittances WHERE deleted_at IS NULL`;
 
 /** Map a database row to the {@link RemittanceRecord} domain shape. */
 function mapRemittance(row: Row): RemittanceRecord {
@@ -118,9 +116,10 @@ export async function insertRemittance(
 
   await execute(
     db,
-    `INSERT INTO remittance (
+    `INSERT INTO remittances (
       id,
       household_id,
+      owner_id,
       date,
       source_currency,
       dest_currency,
@@ -136,14 +135,13 @@ export async function insertRemittance(
       recurrence_next_date,
       created_at,
       updated_at,
-      deleted_at,
-      sync_version,
-      is_synced
+      deleted_at
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-      NULL,
-      1,
-      0
+      ?,
+      ?,
+      (SELECT id FROM users LIMIT 1),
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      NULL
     )`,
     [
       record.id,
@@ -182,11 +180,9 @@ export async function deleteRemittanceRecord(db: AsyncDb, remittanceId: string):
 
   await execute(
     db,
-    `UPDATE remittance
+    `UPDATE remittances
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [remittanceId],

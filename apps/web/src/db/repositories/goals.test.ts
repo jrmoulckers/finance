@@ -46,9 +46,9 @@ describe('goals repository', () => {
           household_id: 'hh-1',
           name: 'Emergency Fund',
           description: 'Keep three months of expenses saved.',
-          target_amount: 1000000,
-          current_amount: 500000,
-          currency: 'USD',
+          target_cents: 1000000,
+          current_cents: 500000,
+          currency_code: 'USD',
           target_date: '2024-12-31',
           status: 'ACTIVE',
           icon: 'piggy-bank',
@@ -57,16 +57,14 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
         {
           id: 'goal-2',
           household_id: 'hh-1',
           name: 'Vacation',
-          target_amount: 200000,
-          current_amount: 150000,
-          currency: 'EUR',
+          target_cents: 200000,
+          current_cents: 150000,
+          currency_code: 'EUR',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -75,8 +73,6 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 1,
         },
       ];
 
@@ -137,9 +133,9 @@ describe('goals repository', () => {
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
-          target_amount: 123456,
-          current_amount: 789012,
-          currency: 'USD',
+          target_cents: 123456,
+          current_cents: 789012,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -148,8 +144,6 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
       ];
 
@@ -170,9 +164,9 @@ describe('goals repository', () => {
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
-        target_amount: 100000,
-        current_amount: 50000,
-        currency: 'USD',
+        target_cents: 100000,
+        current_cents: 50000,
+        currency_code: 'USD',
         target_date: '2024-12-31',
         status: 'ACTIVE',
         icon: null,
@@ -181,8 +175,6 @@ describe('goals repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       };
 
       mockQueryOne.mockResolvedValue(mockRow);
@@ -224,9 +216,9 @@ describe('goals repository', () => {
         household_id: 'hh-1',
         name: 'New Goal',
         description: 'For the new roof',
-        target_amount: 100000,
-        current_amount: 0,
-        currency: 'USD',
+        target_cents: 100000,
+        current_cents: 0,
+        currency_code: 'USD',
         target_date: null,
         status: 'ACTIVE',
         icon: null,
@@ -235,8 +227,6 @@ describe('goals repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
     });
 
@@ -251,7 +241,7 @@ describe('goals repository', () => {
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('INSERT INTO goal'),
+        expect.stringContaining('INSERT INTO goals'),
         expect.arrayContaining([
           expect.any(String), // UUID
           'hh-1',
@@ -442,9 +432,9 @@ describe('goals repository', () => {
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 0,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 0,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -453,17 +443,15 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         })
         .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
           description: 'For the new roof',
-          target_amount: 100000,
-          current_amount: 0,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 0,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -472,8 +460,6 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-02T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         });
 
       const goal = await updateGoal(mockDb, 'goal-1', { description: 'For the new roof' });
@@ -492,9 +478,9 @@ describe('goals repository', () => {
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 25000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 25000,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -503,17 +489,15 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         })
         .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 40000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 40000,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -522,8 +506,6 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-02T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         });
 
       const goal = await contributeToGoal(mockDb, 'goal-1', {
@@ -532,14 +514,14 @@ describe('goals repository', () => {
         note: 'Paycheck transfer',
       });
 
-      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE goal'), [
+      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE goals'), [
         40000,
         'ACTIVE',
         'goal-1',
       ]);
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('INSERT INTO goal_progress_contribution'),
+        expect.stringContaining('INSERT INTO goal_progress_contributions'),
         expect.arrayContaining([
           expect.any(String),
           'goal-1',
@@ -559,9 +541,9 @@ describe('goals repository', () => {
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 95000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 95000,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -570,17 +552,15 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         })
         .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 105000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 105000,
+          currency_code: 'USD',
           target_date: null,
           status: 'COMPLETED',
           icon: null,
@@ -589,8 +569,6 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-02T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         });
 
       const goal = await contributeToGoal(mockDb, 'goal-1', {
@@ -607,9 +585,9 @@ describe('goals repository', () => {
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
-        target_amount: 100000,
-        current_amount: 25000,
-        currency: 'USD',
+        target_cents: 100000,
+        current_cents: 25000,
+        currency_code: 'USD',
         target_date: null,
         status: 'ACTIVE',
         icon: null,
@@ -618,8 +596,6 @@ describe('goals repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       await expect(
@@ -635,9 +611,9 @@ describe('goals repository', () => {
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 40000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 40000,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -646,17 +622,15 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         })
         .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 25000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 25000,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -665,8 +639,6 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-02T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         });
 
       const goal = await contributeToGoal(mockDb, 'goal-1', {
@@ -675,14 +647,14 @@ describe('goals repository', () => {
         note: 'Emergency withdrawal',
       });
 
-      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE goal'), [
+      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE goals'), [
         25000,
         'ACTIVE',
         'goal-1',
       ]);
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('INSERT INTO goal_progress_contribution'),
+        expect.stringContaining('INSERT INTO goal_progress_contributions'),
         expect.arrayContaining([expect.any(String), 'goal-1', 'hh-1', -15000, 'USD']),
       );
       expect(goal?.currentAmount.amount).toBe(25000);
@@ -695,9 +667,9 @@ describe('goals repository', () => {
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 105000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 105000,
+          currency_code: 'USD',
           target_date: null,
           status: 'COMPLETED',
           icon: null,
@@ -706,17 +678,15 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         })
         .mockResolvedValueOnce({
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Goal',
           description: null,
-          target_amount: 100000,
-          current_amount: 95000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 95000,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -725,8 +695,6 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-02T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         });
 
       const goal = await contributeToGoal(mockDb, 'goal-1', {
@@ -743,9 +711,9 @@ describe('goals repository', () => {
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
-        target_amount: 100000,
-        current_amount: 25000,
-        currency: 'USD',
+        target_cents: 100000,
+        current_cents: 25000,
+        currency_code: 'USD',
         target_date: null,
         status: 'ACTIVE',
         icon: null,
@@ -754,8 +722,6 @@ describe('goals repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       await expect(
@@ -804,9 +770,9 @@ describe('goals repository', () => {
           id: 'goal-1',
           household_id: 'hh-1',
           name: 'Active Goal',
-          target_amount: 100000,
-          current_amount: 50000,
-          currency: 'USD',
+          target_cents: 100000,
+          current_cents: 50000,
+          currency_code: 'USD',
           target_date: null,
           status: 'ACTIVE',
           icon: null,
@@ -815,8 +781,6 @@ describe('goals repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
       ];
 
@@ -835,9 +799,9 @@ describe('goals repository', () => {
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
-        target_amount: 100000,
-        current_amount: 0,
-        currency: 'USD',
+        target_cents: 100000,
+        current_cents: 0,
+        currency_code: 'USD',
         target_date: null,
         status: 'ACTIVE',
         icon: null,
@@ -846,14 +810,12 @@ describe('goals repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       const result = await deleteGoal(mockDb, 'goal-1');
 
       expect(result).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE goal'), [
+      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE goals'), [
         'goal-1',
       ]);
       const sql = mockExecute.mock.calls[0][1];
@@ -876,9 +838,9 @@ describe('goals repository', () => {
         id: 'goal-1',
         household_id: 'hh-1',
         name: 'Goal',
-        target_amount: 100000,
-        current_amount: 0,
-        currency: 'USD',
+        target_cents: 100000,
+        current_cents: 0,
+        currency_code: 'USD',
         target_date: null,
         status: 'ACTIVE',
         icon: null,
@@ -887,8 +849,6 @@ describe('goals repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       await deleteGoal(mockDb, 'goal-1');
@@ -924,7 +884,7 @@ describe('goals repository', () => {
       await getGoalProgressContributions(mockDb, 'goal-42');
 
       const [, sql, params] = mockQuery.mock.calls[0];
-      expect(sql).toContain('FROM goal_progress_contribution');
+      expect(sql).toContain('FROM goal_progress_contributions');
       expect(sql).toContain('goal_id = ?');
       expect(sql).toContain('deleted_at IS NULL');
       expect(sql).toContain('ORDER BY contributed_at ASC');

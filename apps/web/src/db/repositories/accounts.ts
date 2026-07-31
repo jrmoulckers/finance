@@ -33,20 +33,18 @@ const ACCOUNT_COLUMNS = [
   'retirement_account_type',
   'retirement_tax_treatment',
   'hsa_coverage_level',
-  'currency',
-  'current_balance',
-  'is_archived',
+  'currency_code',
+  'balance_cents',
+  'is_active',
   'sort_order',
   'icon',
   'color',
   'created_at',
   'updated_at',
   'deleted_at',
-  'sync_version',
-  'is_synced',
 ].join(', ');
 
-const ACCOUNT_BASE_QUERY = `SELECT ${ACCOUNT_COLUMNS} FROM account WHERE deleted_at IS NULL`;
+const ACCOUNT_BASE_QUERY = `SELECT ${ACCOUNT_COLUMNS} FROM accounts WHERE deleted_at IS NULL`;
 
 /** Input used when creating a new account record. */
 export interface CreateAccountInput {
@@ -100,9 +98,10 @@ export function mapAccount(row: Row): Account {
       row.retirement_tax_treatment,
     ) as RetirementTaxTreatment | null,
     hsaCoverageLevel: optionalString(row.hsa_coverage_level) as HsaCoverageLevel | null,
-    currency: mapCurrency(row.currency),
-    currentBalance: mapCents(row.current_balance, 'account.current_balance'),
-    isArchived: toBoolean(row.is_archived),
+    currency: mapCurrency(row.currency_code),
+    currentBalance: mapCents(row.balance_cents, 'account.balance_cents'),
+    // Unified schema stores is_active; the DTO exposes the inverse isArchived.
+    isArchived: !toBoolean(row.is_active),
     sortOrder: requireNumber(row.sort_order, 'account.sort_order'),
     icon: optionalString(row.icon),
     color: optionalString(row.color),
@@ -136,7 +135,7 @@ export async function createAccount(db: AsyncDb, input: CreateAccountInput): Pro
 
   await execute(
     db,
-    `INSERT INTO account (
+    `INSERT INTO accounts (
       id,
       household_id,
       name,
@@ -145,24 +144,20 @@ export async function createAccount(db: AsyncDb, input: CreateAccountInput): Pro
       retirement_account_type,
       retirement_tax_treatment,
       hsa_coverage_level,
-      currency,
-      current_balance,
-      is_archived,
+      currency_code,
+      balance_cents,
+      is_active,
       sort_order,
       icon,
       color,
       created_at,
       updated_at,
-      deleted_at,
-      sync_version,
-      is_synced
+      deleted_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
-      NULL,
-      1,
-      0
+      NULL
     )`,
     [
       id,
@@ -175,7 +170,7 @@ export async function createAccount(db: AsyncDb, input: CreateAccountInput): Pro
       hsaCoverageLevel,
       currency.code,
       input.currentBalance.amount,
-      input.isArchived ? 1 : 0,
+      input.isArchived ? 0 : 1,
       input.sortOrder ?? 0,
       input.icon ?? null,
       input.color ?? null,
@@ -229,7 +224,7 @@ export async function updateAccount(
 
   await execute(
     db,
-    `UPDATE account
+    `UPDATE accounts
         SET household_id = ?,
             name = ?,
             type = ?,
@@ -237,15 +232,13 @@ export async function updateAccount(
             retirement_account_type = ?,
             retirement_tax_treatment = ?,
             hsa_coverage_level = ?,
-            currency = ?,
-            current_balance = ?,
-            is_archived = ?,
+            currency_code = ?,
+            balance_cents = ?,
+            is_active = ?,
             sort_order = ?,
             icon = ?,
             color = ?,
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [
@@ -258,7 +251,7 @@ export async function updateAccount(
       mergedAccount.retirementAccountType === 'HSA' ? mergedAccount.hsaCoverageLevel : null,
       mergedAccount.currency.code,
       mergedAccount.currentBalance.amount,
-      mergedAccount.isArchived ? 1 : 0,
+      mergedAccount.isArchived ? 0 : 1,
       mergedAccount.sortOrder,
       mergedAccount.icon,
       mergedAccount.color,
@@ -283,11 +276,9 @@ export async function deleteAccount(db: AsyncDb, accountId: SyncId): Promise<boo
 
   await execute(
     db,
-    `UPDATE account
+    `UPDATE accounts
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [accountId],
@@ -311,16 +302,14 @@ export async function getAccountsByType(db: AsyncDb, type: AccountType): Promise
 export async function recomputeAccountBalance(db: AsyncDb, accountId: SyncId): Promise<void> {
   await execute(
     db,
-    `UPDATE account
-        SET current_balance = (
-              SELECT COALESCE(SUM(amount), 0)
-              FROM "transaction"
+    `UPDATE accounts
+        SET balance_cents = (
+              SELECT COALESCE(SUM(amount_cents), 0)
+              FROM transactions
               WHERE account_id = ?
                 AND deleted_at IS NULL
             ),
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [accountId, accountId],

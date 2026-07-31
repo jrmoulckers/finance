@@ -116,8 +116,8 @@ describe('executeFinancialQuery', () => {
       description: 'Laptop Store',
       absoluteAmountCents: 250000,
     });
-    expect(result.plan.sql).toContain('ABS(t.amount) >= ?');
-    expect(result.plan.sql).toContain('ORDER BY ABS(t.amount) DESC');
+    expect(result.plan.sql).toContain('ABS(t.amount_cents) >= ?');
+    expect(result.plan.sql).toContain('ORDER BY ABS(t.amount_cents) DESC');
     expect(result.plan.sql).toContain('LIMIT ?');
     expect(result.plan.params).toEqual(['2026-01-01', '2026-05-26', 10000, 3]);
   });
@@ -157,7 +157,7 @@ describe('executeFinancialQuery', () => {
       remainingAmountCents: 600000,
       onTrack: true,
     });
-    expect(result.plan.sql).toContain('FROM goal g');
+    expect(result.plan.sql).toContain('FROM goals g');
     expect(result.plan.sql).toContain('LOWER(g.name) LIKE ?');
     expect(result.plan.params).toEqual(['%emergency fund%']);
   });

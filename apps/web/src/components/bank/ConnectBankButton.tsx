@@ -21,7 +21,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useAuth } from '../../auth/auth-context';
 import { useDatabase } from '../../db/DatabaseProvider';
+import { ensureSyncedHouseholdMembership } from '../../db/repositories/household';
 import { HOUSEHOLD_SINGLETON_KEY, readHouseholdValue } from '../../db/repositories/householdData';
 
 /** Props for {@link ConnectBankButton}. */
@@ -59,6 +61,7 @@ async function resolveHouseholdId(db: ReturnType<typeof useDatabase>): Promise<s
  */
 export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
   const db = useDatabase();
+  const { user: authUser } = useAuth();
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +80,38 @@ export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
       active = false;
     };
   }, [db]);
+
+  // Backfill the synced `households` + owner `household_members` rows for the
+  // signed-in user. The app's household lives only in the local-only
+  // `hh_household` document store, but the bank-connection edge function
+  // authorizes `create_link_token` via a server-side membership row — without it
+  // the call 403s. Running this on mount (rather than at click time) gives
+  // PowerSync time to upload the rows before the user connects. Best-effort.
+  useEffect(() => {
+    const userId = authUser?.id?.trim();
+    if (!userId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const household = await readHouseholdValue<{ id?: unknown; name?: unknown } | null>(
+          db,
+          HOUSEHOLD_SINGLETON_KEY,
+          null,
+        );
+        if (!active || !household || typeof household.id !== 'string' || !household.id) return;
+        await ensureSyncedHouseholdMembership(db, {
+          householdId: household.id,
+          name: typeof household.name === 'string' ? household.name : 'Household',
+          userId,
+        });
+      } catch {
+        // Non-fatal: create_link_token will surface any genuine membership issue.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [db, authUser?.id]);
 
   const handleClick = useCallback(async () => {
     if (busyRef.current) return;

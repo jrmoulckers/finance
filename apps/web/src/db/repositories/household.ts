@@ -4,8 +4,11 @@
  * Household repository — CRUD operations for household, members, invitations,
  * account sharing, shared budgets, and shared goals.
  *
- * All writes set `is_synced = 0` and `sync_version = 1` to flag records for
- * future sync. Reads always filter `deleted_at IS NULL` (soft deletes).
+ * Synced tables (`households`, `household_members`) carry no
+ * `sync_version`/`is_synced` columns — those are server-managed and projected
+ * away by the sync rules. Local-only tables (invitations, sharing, shared
+ * budgets/goals) keep `sync_version`/`is_synced`. Reads always filter
+ * `deleted_at IS NULL` (soft deletes).
  *
  * Monetary values are stored as integer cents.
  *
@@ -49,36 +52,36 @@ import {
  * Call this during database initialization to ensure the schema is ready.
  */
 export async function initHouseholdTables(db: AsyncDb): Promise<void> {
+  // `households` and `household_members` are synced tables (Postgres →
+  // sync-rules → PowerSync). They carry no `sync_version`/`is_synced` columns
+  // (server-managed) and `household_members` has no `display_name`. The
+  // remaining tables have no synced counterpart and stay local-only with their
+  // original singular names + columns. In live mode PowerSync owns all of these
+  // (from schema.ts), so these CREATE IF NOT EXISTS statements are no-ops.
   await execute(
     db,
-    `CREATE TABLE IF NOT EXISTS household (
+    `CREATE TABLE IF NOT EXISTS households (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      owner_id TEXT NOT NULL,
+      created_by TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT,
-      sync_version INTEGER NOT NULL DEFAULT 1,
-      is_synced INTEGER NOT NULL DEFAULT 0
+      deleted_at TEXT
     )`,
     [],
   );
 
   await execute(
     db,
-    `CREATE TABLE IF NOT EXISTS household_member (
+    `CREATE TABLE IF NOT EXISTS household_members (
       id TEXT PRIMARY KEY,
       household_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
-      display_name TEXT,
       role TEXT NOT NULL DEFAULT 'MEMBER',
       joined_at TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT,
-      sync_version INTEGER NOT NULL DEFAULT 1,
-      is_synced INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (household_id) REFERENCES household(id)
+      deleted_at TEXT
     )`,
     [],
   );
@@ -98,8 +101,7 @@ export async function initHouseholdTables(db: AsyncDb): Promise<void> {
       updated_at TEXT NOT NULL,
       deleted_at TEXT,
       sync_version INTEGER NOT NULL DEFAULT 1,
-      is_synced INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (household_id) REFERENCES household(id)
+      is_synced INTEGER NOT NULL DEFAULT 0
     )`,
     [],
   );
@@ -116,8 +118,7 @@ export async function initHouseholdTables(db: AsyncDb): Promise<void> {
       updated_at TEXT NOT NULL,
       deleted_at TEXT,
       sync_version INTEGER NOT NULL DEFAULT 1,
-      is_synced INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (household_id) REFERENCES household(id)
+      is_synced INTEGER NOT NULL DEFAULT 0
     )`,
     [],
   );
@@ -134,8 +135,7 @@ export async function initHouseholdTables(db: AsyncDb): Promise<void> {
       updated_at TEXT NOT NULL,
       deleted_at TEXT,
       sync_version INTEGER NOT NULL DEFAULT 1,
-      is_synced INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (household_id) REFERENCES household(id)
+      is_synced INTEGER NOT NULL DEFAULT 0
     )`,
     [],
   );
@@ -151,8 +151,7 @@ export async function initHouseholdTables(db: AsyncDb): Promise<void> {
       updated_at TEXT NOT NULL,
       deleted_at TEXT,
       sync_version INTEGER NOT NULL DEFAULT 1,
-      is_synced INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (household_id) REFERENCES household(id)
+      is_synced INTEGER NOT NULL DEFAULT 0
     )`,
     [],
   );
@@ -166,7 +165,7 @@ function mapHousehold(row: Row): Household {
   return {
     id: requireString(row.id, 'household.id'),
     name: requireString(row.name, 'household.name'),
-    ownerId: requireString(row.owner_id, 'household.owner_id'),
+    ownerId: requireString(row.created_by, 'household.created_by'),
     ...mapSyncMetadata(row),
   };
 }
@@ -177,7 +176,7 @@ function mapMember(row: Row): HouseholdMember {
     householdId: requireString(row.household_id, 'household_member.household_id'),
     userId: requireString(row.user_id, 'household_member.user_id'),
     displayName: optionalString(row.display_name),
-    role: requireString(row.role, 'household_member.role') as HouseholdRole,
+    role: requireString(row.role, 'household_member.role').toUpperCase() as HouseholdRole,
     joinedAt: requireString(row.joined_at, 'household_member.joined_at'),
     ...mapSyncMetadata(row),
   };
@@ -264,7 +263,7 @@ export interface CreateHouseholdInput {
 export async function getHouseholdByOwner(db: AsyncDb, ownerId: SyncId): Promise<Household | null> {
   const row = await queryOne(
     db,
-    `SELECT * FROM household WHERE owner_id = ? AND deleted_at IS NULL`,
+    `SELECT * FROM households WHERE created_by = ? AND deleted_at IS NULL`,
     [ownerId],
   );
   return row ? mapHousehold(row) : null;
@@ -272,7 +271,7 @@ export async function getHouseholdByOwner(db: AsyncDb, ownerId: SyncId): Promise
 
 /** Retrieve a household by its ID. */
 export async function getHouseholdById(db: AsyncDb, id: SyncId): Promise<Household | null> {
-  const row = await queryOne(db, `SELECT * FROM household WHERE id = ? AND deleted_at IS NULL`, [
+  const row = await queryOne(db, `SELECT * FROM households WHERE id = ? AND deleted_at IS NULL`, [
     id,
   ]);
   return row ? mapHousehold(row) : null;
@@ -287,7 +286,7 @@ export async function getHouseholdById(db: AsyncDb, id: SyncId): Promise<Househo
 export async function getPrimaryHouseholdId(db: AsyncDb): Promise<SyncId | null> {
   const row = await queryOne(
     db,
-    `SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1`,
+    `SELECT id FROM households WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1`,
   );
   return row ? requireString(row.id, 'household.id') : null;
 }
@@ -303,20 +302,80 @@ export async function createHousehold(
 
   await execute(
     db,
-    `INSERT INTO household (id, name, owner_id, created_at, updated_at, sync_version, is_synced)
-     VALUES (?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
+    `INSERT INTO households (id, name, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION})`,
     [id, input.name.trim(), input.ownerId],
   );
 
   await execute(
     db,
-    `INSERT INTO household_member (id, household_id, user_id, display_name, role, joined_at, created_at, updated_at, sync_version, is_synced)
-     VALUES (?, ?, ?, NULL, 'OWNER', ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
+    `INSERT INTO household_members (id, household_id, user_id, role, joined_at, created_at, updated_at)
+     VALUES (?, ?, ?, 'OWNER', ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION})`,
     [memberId, id, input.ownerId, now],
   );
 
-  const row = await queryOne(db, `SELECT * FROM household WHERE id = ?`, [id]);
+  const row = await queryOne(db, `SELECT * FROM households WHERE id = ?`, [id]);
   return mapHousehold(row!);
+}
+
+/** Input for {@link ensureSyncedHouseholdMembership}. */
+export interface EnsureSyncedHouseholdInput {
+  householdId: SyncId;
+  name: string;
+  userId: SyncId;
+}
+
+/**
+ * Idempotently backfill a synced `households` + owner `household_members` row
+ * for an authenticated user's household.
+ *
+ * The app's household is created in the local-only `hh_household` document
+ * store (see `householdData.ts`), which never reaches the server. The
+ * `bank-connection` edge function, however, authorizes `create_link_token` by
+ * looking up a `household_members` row for `(household_id, user_id)` with a
+ * role in `('owner','admin')`. Without a synced membership row the call returns
+ * 403. This writes the relational rows so live bank connections are authorized
+ * (they upload via PowerSync under the user's own RLS: `households.created_by =
+ * auth.uid()` and the matching `household_members` insert policy).
+ *
+ * `userId` MUST be the authenticated Supabase user id (`auth.uid()`) or the
+ * upload is rejected by RLS. Role is written lowercase (`owner`) to match the
+ * server convention. No-ops when either id is missing.
+ */
+export async function ensureSyncedHouseholdMembership(
+  db: AsyncDb,
+  input: EnsureSyncedHouseholdInput,
+): Promise<void> {
+  const householdId = input.householdId?.trim();
+  const userId = input.userId?.trim();
+  if (!householdId || !userId) return;
+
+  const existingHousehold = await queryOne(db, `SELECT id FROM households WHERE id = ?`, [
+    householdId,
+  ]);
+  if (!existingHousehold) {
+    await execute(
+      db,
+      `INSERT INTO households (id, name, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION})`,
+      [householdId, input.name?.trim() || 'Household', userId],
+    );
+  }
+
+  const existingMember = await queryOne(
+    db,
+    `SELECT id FROM household_members
+     WHERE household_id = ? AND user_id = ? AND deleted_at IS NULL`,
+    [householdId, userId],
+  );
+  if (!existingMember) {
+    await execute(
+      db,
+      `INSERT INTO household_members (id, household_id, user_id, role, joined_at, created_at, updated_at)
+       VALUES (?, ?, ?, 'owner', ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION})`,
+      [crypto.randomUUID(), householdId, userId],
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -330,7 +389,7 @@ export async function getHouseholdMembers(
 ): Promise<HouseholdMember[]> {
   const { rows } = await query(
     db,
-    `SELECT * FROM household_member WHERE household_id = ? AND deleted_at IS NULL ORDER BY joined_at ASC`,
+    `SELECT * FROM household_members WHERE household_id = ? AND deleted_at IS NULL ORDER BY joined_at ASC`,
     [householdId],
   );
   return rows.map(mapMember);
@@ -344,12 +403,12 @@ export async function updateMemberRole(
 ): Promise<HouseholdMember | null> {
   await execute(
     db,
-    `UPDATE household_member
-       SET role = ?, updated_at = ${SQLITE_NOW_EXPRESSION}, sync_version = 1, is_synced = 0
+    `UPDATE household_members
+       SET role = ?, updated_at = ${SQLITE_NOW_EXPRESSION}
      WHERE id = ? AND deleted_at IS NULL`,
     [role, memberId],
   );
-  const row = await queryOne(db, `SELECT * FROM household_member WHERE id = ?`, [memberId]);
+  const row = await queryOne(db, `SELECT * FROM household_members WHERE id = ?`, [memberId]);
   return row ? mapMember(row) : null;
 }
 
@@ -357,9 +416,8 @@ export async function updateMemberRole(
 export async function removeMember(db: AsyncDb, memberId: SyncId): Promise<boolean> {
   await execute(
     db,
-    `UPDATE household_member
-       SET deleted_at = ${SQLITE_NOW_EXPRESSION}, updated_at = ${SQLITE_NOW_EXPRESSION},
-           sync_version = 1, is_synced = 0
+    `UPDATE household_members
+       SET deleted_at = ${SQLITE_NOW_EXPRESSION}, updated_at = ${SQLITE_NOW_EXPRESSION}
      WHERE id = ? AND deleted_at IS NULL`,
     [memberId],
   );
@@ -433,7 +491,7 @@ export async function acceptInvitation(
   db: AsyncDb,
   inviteCode: string,
   userId: SyncId,
-  displayName: string | null,
+  _displayName: string | null,
 ): Promise<HouseholdMember | null> {
   const invRow = await queryOne(
     db,
@@ -472,12 +530,12 @@ export async function acceptInvitation(
   const memberId = crypto.randomUUID();
   await execute(
     db,
-    `INSERT INTO household_member (id, household_id, user_id, display_name, role, joined_at, created_at, updated_at, sync_version, is_synced)
-     VALUES (?, ?, ?, ?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION}, 1, 0)`,
-    [memberId, invitation.householdId, userId, displayName, invitation.role, now.toISOString()],
+    `INSERT INTO household_members (id, household_id, user_id, role, joined_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ${SQLITE_NOW_EXPRESSION}, ${SQLITE_NOW_EXPRESSION})`,
+    [memberId, invitation.householdId, userId, invitation.role, now.toISOString()],
   );
 
-  const row = await queryOne(db, `SELECT * FROM household_member WHERE id = ?`, [memberId]);
+  const row = await queryOne(db, `SELECT * FROM household_members WHERE id = ?`, [memberId]);
   return row ? mapMember(row) : null;
 }
 
@@ -787,7 +845,7 @@ export async function getUserRole(
 ): Promise<HouseholdRole | null> {
   const row = await queryOne(
     db,
-    `SELECT role FROM household_member
+    `SELECT role FROM household_members
      WHERE household_id = ? AND user_id = ? AND deleted_at IS NULL`,
     [householdId, userId],
   );

@@ -823,6 +823,178 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_aggregator_provider_status ON aggregator_provider (status, priority);`,
     ],
   },
+  {
+    version: 19,
+    label: 'unify-schema-plural-tables-and-canonical-columns',
+    // Converge the offline schema onto the synced (PowerSync/Postgres) shape so a
+    // single repository layer can drive BOTH databases: plural table names and
+    // canonical money/flag column names. Purely structural — money is already stored
+    // in integer cents on both sides, so no arithmetic conversion is performed.
+    up: [
+      // 1. Drop the balance-recompute triggers before renaming; recreated at the end
+      //    against the renamed table/column names.
+      `DROP TRIGGER IF EXISTS trg_transaction_balance_insert;`,
+      `DROP TRIGGER IF EXISTS trg_transaction_balance_update_new;`,
+      `DROP TRIGGER IF EXISTS trg_transaction_balance_update_old;`,
+      `DROP TRIGGER IF EXISTS trg_transaction_balance_delete;`,
+
+      // 2. Rename tables singular -> plural. SQLite rewrites foreign-key references
+      //    in dependent tables automatically (legacy_alter_table is OFF by default).
+      `ALTER TABLE user RENAME TO users;`,
+      `ALTER TABLE household RENAME TO households;`,
+      `ALTER TABLE household_member RENAME TO household_members;`,
+      `ALTER TABLE account RENAME TO accounts;`,
+      `ALTER TABLE category RENAME TO categories;`,
+      `ALTER TABLE "transaction" RENAME TO transactions;`,
+      `ALTER TABLE budget RENAME TO budgets;`,
+      `ALTER TABLE goal RENAME TO goals;`,
+      `ALTER TABLE goal_progress_contribution RENAME TO goal_progress_contributions;`,
+      `ALTER TABLE account_reconciliation RENAME TO account_reconciliations;`,
+      `ALTER TABLE invoice RENAME TO invoices;`,
+      `ALTER TABLE remittance RENAME TO remittances;`,
+      `ALTER TABLE bank_connection RENAME TO bank_connections;`,
+      `ALTER TABLE aggregator_provider RENAME TO aggregator_providers;`,
+
+      // 3. Rename money/flag columns to their canonical synced names.
+      `ALTER TABLE accounts RENAME COLUMN current_balance TO balance_cents;`,
+      `ALTER TABLE accounts RENAME COLUMN currency TO currency_code;`,
+      `ALTER TABLE accounts RENAME COLUMN is_archived TO is_active;`,
+      // is_archived (1 = archived) inverts to is_active (1 = active).
+      `UPDATE accounts SET is_active = 1 - is_active;`,
+      `ALTER TABLE transactions RENAME COLUMN amount TO amount_cents;`,
+      `ALTER TABLE transactions RENAME COLUMN currency TO currency_code;`,
+      `ALTER TABLE budgets RENAME COLUMN amount TO amount_cents;`,
+      `ALTER TABLE budgets RENAME COLUMN currency TO currency_code;`,
+      `ALTER TABLE goals RENAME COLUMN target_amount TO target_cents;`,
+      `ALTER TABLE goals RENAME COLUMN current_amount TO current_cents;`,
+      `ALTER TABLE goals RENAME COLUMN currency TO currency_code;`,
+      // households: offline `owner_id` maps to the synced `created_by` column.
+      `ALTER TABLE households RENAME COLUMN owner_id TO created_by;`,
+
+      // 4. invoices/remittances carry a NOT NULL owner_id on the server; add the
+      //    column offline and backfill it to the single local user so rows upload cleanly.
+      `ALTER TABLE invoices ADD COLUMN owner_id TEXT;`,
+      `ALTER TABLE remittances ADD COLUMN owner_id TEXT;`,
+      `UPDATE invoices SET owner_id = (SELECT id FROM users LIMIT 1) WHERE owner_id IS NULL;`,
+      `UPDATE remittances SET owner_id = (SELECT id FROM users LIMIT 1) WHERE owner_id IS NULL;`,
+
+      // 5. Recreate the balance-recompute triggers against the canonical names.
+      `CREATE TRIGGER IF NOT EXISTS trg_transaction_balance_insert
+        AFTER INSERT ON transactions
+        FOR EACH ROW
+        BEGIN
+          UPDATE accounts
+          SET balance_cents = (
+            SELECT COALESCE(SUM(amount_cents), 0)
+            FROM transactions
+            WHERE account_id = NEW.account_id
+              AND deleted_at IS NULL
+          )
+          WHERE id = NEW.account_id
+            AND deleted_at IS NULL;
+        END;`,
+      `CREATE TRIGGER IF NOT EXISTS trg_transaction_balance_update_new
+        AFTER UPDATE ON transactions
+        FOR EACH ROW
+        BEGIN
+          UPDATE accounts
+          SET balance_cents = (
+            SELECT COALESCE(SUM(amount_cents), 0)
+            FROM transactions
+            WHERE account_id = NEW.account_id
+              AND deleted_at IS NULL
+          )
+          WHERE id = NEW.account_id
+            AND deleted_at IS NULL;
+        END;`,
+      `CREATE TRIGGER IF NOT EXISTS trg_transaction_balance_update_old
+        AFTER UPDATE OF account_id ON transactions
+        FOR EACH ROW
+        WHEN OLD.account_id IS NOT NEW.account_id
+        BEGIN
+          UPDATE accounts
+          SET balance_cents = (
+            SELECT COALESCE(SUM(amount_cents), 0)
+            FROM transactions
+            WHERE account_id = OLD.account_id
+              AND deleted_at IS NULL
+          )
+          WHERE id = OLD.account_id
+            AND deleted_at IS NULL;
+        END;`,
+      `CREATE TRIGGER IF NOT EXISTS trg_transaction_balance_delete
+        AFTER DELETE ON transactions
+        FOR EACH ROW
+        BEGIN
+          UPDATE accounts
+          SET balance_cents = (
+            SELECT COALESCE(SUM(amount_cents), 0)
+            FROM transactions
+            WHERE account_id = OLD.account_id
+              AND deleted_at IS NULL
+          )
+          WHERE id = OLD.account_id
+            AND deleted_at IS NULL;
+        END;`,
+
+      // 6. Create the local-only ledger tables that never had an offline migration
+      //    (investment/investment_lot/bill). They mirror the local-only declarations
+      //    in the PowerSync schema so the repository layer resolves them in both modes.
+      `CREATE TABLE IF NOT EXISTS investment (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        account_id TEXT,
+        symbol TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        shares REAL NOT NULL DEFAULT 0,
+        cost_basis_per_share REAL NOT NULL DEFAULT 0,
+        current_price_per_share REAL NOT NULL DEFAULT 0,
+        currency TEXT NOT NULL DEFAULT 'USD',
+        last_price_update TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_version INTEGER NOT NULL DEFAULT 1,
+        is_synced INTEGER NOT NULL DEFAULT 0
+      );`,
+      `CREATE TABLE IF NOT EXISTS investment_lot (
+        id TEXT PRIMARY KEY,
+        investment_id TEXT NOT NULL,
+        purchase_date TEXT NOT NULL,
+        shares REAL NOT NULL DEFAULT 0,
+        cost_per_share REAL NOT NULL DEFAULT 0,
+        total_cost INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_version INTEGER NOT NULL DEFAULT 1,
+        is_synced INTEGER NOT NULL DEFAULT 0
+      );`,
+      `CREATE TABLE IF NOT EXISTS bill (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        payee TEXT NOT NULL,
+        amount INTEGER NOT NULL DEFAULT 0,
+        currency TEXT NOT NULL DEFAULT 'USD',
+        due_date TEXT NOT NULL,
+        frequency TEXT NOT NULL,
+        status TEXT NOT NULL,
+        category_id TEXT,
+        account_id TEXT,
+        note TEXT,
+        is_auto_pay INTEGER NOT NULL DEFAULT 0,
+        reminder_days_before INTEGER NOT NULL DEFAULT 0,
+        last_paid_date TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_version INTEGER NOT NULL DEFAULT 1,
+        is_synced INTEGER NOT NULL DEFAULT 0
+      );`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection

@@ -61,9 +61,9 @@ describe('crossTab sync utilities', () => {
   it('extracts referenced tables from SQL queries', () => {
     expect(
       extractTablesFromSql(
-        'SELECT * FROM "transaction" t JOIN account a ON a.id = t.account_id WHERE t.deleted_at IS NULL',
+        'SELECT * FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.deleted_at IS NULL',
       ),
-    ).toEqual(['transaction', 'account']);
+    ).toEqual(['transactions', 'accounts']);
   });
 
   it('notifies local subscribers immediately', () => {
@@ -72,10 +72,10 @@ describe('crossTab sync utilities', () => {
       events.push(`${event.source}:${event.tables.join(',')}`);
     });
 
-    notifyDataChange(['transaction', 'account']);
+    notifyDataChange(['transactions', 'accounts']);
     unsubscribe();
 
-    expect(events).toEqual(['local:transaction,account']);
+    expect(events).toEqual(['local:transactions,accounts']);
   });
 
   it('surfaces incoming cross-tab broadcasts', () => {
@@ -88,11 +88,11 @@ describe('crossTab sync utilities', () => {
     channel.emit({
       type: 'data_change',
       origin: 'remote-tab',
-      tables: ['budget'],
+      tables: ['budgets'],
       timestamp: Date.now(),
     });
     unsubscribe();
 
-    expect(events).toEqual(['cross-tab:budget']);
+    expect(events).toEqual(['cross-tab:budgets']);
   });
 });

@@ -48,8 +48,6 @@ describe('categories repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
         {
           id: 'cat-2',
@@ -64,8 +62,6 @@ describe('categories repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 1,
         },
       ];
 
@@ -134,8 +130,6 @@ describe('categories repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       };
 
       mockQueryOne.mockResolvedValue(mockRow);
@@ -185,8 +179,6 @@ describe('categories repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
     });
 
@@ -200,7 +192,7 @@ describe('categories repository', () => {
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('INSERT INTO category'),
+        expect.stringContaining('INSERT INTO categories'),
         expect.arrayContaining([
           expect.any(String), // UUID
           'hh-1',
@@ -327,8 +319,6 @@ describe('categories repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
         {
           id: 'child-2',
@@ -343,8 +333,6 @@ describe('categories repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
       ];
 
@@ -382,14 +370,12 @@ describe('categories repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       const result = await deleteCategory(mockDb, 'cat-1');
 
       expect(result).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE category'), [
+      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE categories'), [
         'cat-1',
       ]);
       const sql = mockExecute.mock.calls[0][1];
@@ -421,8 +407,6 @@ describe('categories repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       await deleteCategory(mockDb, 'cat-1');

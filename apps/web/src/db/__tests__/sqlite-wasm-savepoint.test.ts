@@ -41,12 +41,12 @@ describe('sqlite-wasm savepoint migrations', () => {
       );
 
       const schemaTables = db.exec(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('_migrations', 'account', 'transaction') ORDER BY name ASC;",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('_migrations', 'accounts', 'transactions') ORDER BY name ASC;",
       )[0];
       expect(schemaTables?.values.map(([name]) => name)).toEqual([
         '_migrations',
-        'account',
-        'transaction',
+        'accounts',
+        'transactions',
       ]);
     } finally {
       db.close();
@@ -88,8 +88,8 @@ describe('sqlite-wasm savepoint migrations', () => {
 
       await expect(seedDatabase(wrapper)).resolves.toBeUndefined();
 
-      const accountCount = wrapper.selectOne('SELECT COUNT(*) AS count FROM account;');
-      const transactionCount = wrapper.selectOne('SELECT COUNT(*) AS count FROM "transaction";');
+      const accountCount = wrapper.selectOne('SELECT COUNT(*) AS count FROM accounts;');
+      const transactionCount = wrapper.selectOne('SELECT COUNT(*) AS count FROM transactions;');
 
       expect(Number(accountCount?.count ?? 0)).toBeGreaterThan(0);
       expect(Number(transactionCount?.count ?? 0)).toBeGreaterThan(0);
@@ -132,8 +132,8 @@ describe('sqlite-wasm savepoint migrations', () => {
       }
 
       expect(raisedNoSuchSavepoint).toBe(true);
-      const accounts = wrapper.selectOne('SELECT COUNT(*) AS count FROM account;');
-      const transactions = wrapper.selectOne('SELECT COUNT(*) AS count FROM "transaction";');
+      const accounts = wrapper.selectOne('SELECT COUNT(*) AS count FROM accounts;');
+      const transactions = wrapper.selectOne('SELECT COUNT(*) AS count FROM transactions;');
       expect(Number(accounts?.count ?? 0)).toBeGreaterThan(0);
       expect(Number(transactions?.count ?? 0)).toBeGreaterThan(0);
     } finally {

@@ -25,8 +25,8 @@ const BUDGET_COLUMNS = [
   'household_id',
   'category_id',
   'name',
-  'amount',
-  'currency',
+  'amount_cents',
+  'currency_code',
   'period',
   'start_date',
   'end_date',
@@ -35,11 +35,9 @@ const BUDGET_COLUMNS = [
   'created_at',
   'updated_at',
   'deleted_at',
-  'sync_version',
-  'is_synced',
 ].join(', ');
 
-const BUDGET_BASE_QUERY = `SELECT ${BUDGET_COLUMNS} FROM budget WHERE deleted_at IS NULL`;
+const BUDGET_BASE_QUERY = `SELECT ${BUDGET_COLUMNS} FROM budgets WHERE deleted_at IS NULL`;
 
 /** Input used when creating a new budget record. */
 export interface CreateBudgetInput {
@@ -95,7 +93,7 @@ function normalizeCategoryName(name: string): string {
 async function findFirstHouseholdId(db: AsyncDb): Promise<SyncId | null> {
   const row = await queryOne<Row>(
     db,
-    'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
+    'SELECT id FROM households WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   return row ? requireString(row.id, 'household.id') : null;
 }
@@ -173,12 +171,12 @@ async function ensureTemplateCategory(
 function buildBudgetCategoryScopeCte(): string {
   return `WITH RECURSIVE budget_category_scope(id) AS (
     SELECT category_id
-      FROM budget
+      FROM budgets
      WHERE id = ?
        AND deleted_at IS NULL
     UNION ALL
     SELECT c.id
-      FROM category c
+      FROM categories c
       JOIN budget_category_scope scope
         ON c.parent_id = scope.id
      WHERE c.deleted_at IS NULL
@@ -195,10 +193,10 @@ transaction_category_amounts AS (
            ELSE json_extract(split.value, '$.categoryId')
          END AS category_id,
          CASE
-           WHEN split.value IS NULL THEN tx.amount
+           WHEN split.value IS NULL THEN tx.amount_cents
            ELSE CAST(json_extract(split.value, '$.amount') AS INTEGER)
          END AS amount
-    FROM "transaction" tx
+    FROM transactions tx
     LEFT JOIN json_each(COALESCE(NULLIF(tx.splits, ''), '[]')) AS split
    WHERE tx.deleted_at IS NULL
 )`;
@@ -209,8 +207,8 @@ function mapBudget(row: Row): Budget {
     householdId: requireString(row.household_id, 'budget.household_id'),
     categoryId: requireString(row.category_id, 'budget.category_id'),
     name: requireString(row.name, 'budget.name'),
-    amount: mapCents(row.amount, 'budget.amount'),
-    currency: mapCurrency(row.currency),
+    amount: mapCents(row.amount_cents, 'budget.amount_cents'),
+    currency: mapCurrency(row.currency_code),
     period: requireString(row.period, 'budget.period') as BudgetPeriod,
     startDate: requireString(row.start_date, 'budget.start_date'),
     endDate: optionalString(row.end_date),
@@ -243,13 +241,13 @@ export async function createBudget(db: AsyncDb, input: CreateBudgetInput): Promi
 
   await execute(
     db,
-    `INSERT INTO budget (
+    `INSERT INTO budgets (
       id,
       household_id,
       category_id,
       name,
-      amount,
-      currency,
+      amount_cents,
+      currency_code,
       period,
       start_date,
       end_date,
@@ -257,16 +255,12 @@ export async function createBudget(db: AsyncDb, input: CreateBudgetInput): Promi
       sort_order,
       created_at,
       updated_at,
-      deleted_at,
-      sync_version,
-      is_synced
+      deleted_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
-      NULL,
-      1,
-      0
+      NULL
     )`,
     [
       id,
@@ -378,20 +372,18 @@ export async function updateBudget(
 
   await execute(
     db,
-    `UPDATE budget
+    `UPDATE budgets
         SET household_id = ?,
             category_id = ?,
             name = ?,
-            amount = ?,
-            currency = ?,
+            amount_cents = ?,
+            currency_code = ?,
             period = ?,
             start_date = ?,
             end_date = ?,
             is_rollover = ?,
             sort_order = ?,
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [
@@ -421,11 +413,9 @@ export async function deleteBudget(db: AsyncDb, budgetId: SyncId): Promise<boole
 
   await execute(
     db,
-    `UPDATE budget
+    `UPDATE budgets
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [budgetId],
@@ -441,11 +431,9 @@ export async function reorderBudgets(
   for (const [sortOrder, budgetId] of orderedBudgetIds.entries()) {
     await execute(
       db,
-      `UPDATE budget
+      `UPDATE budgets
           SET sort_order = ?,
-              updated_at = ${SQLITE_NOW_EXPRESSION},
-              sync_version = 1,
-              is_synced = 0
+              updated_at = ${SQLITE_NOW_EXPRESSION}
         WHERE id = ?
           AND deleted_at IS NULL`,
       [sortOrder, budgetId],
@@ -476,8 +464,8 @@ export async function getBudgetWithSpending(
             b.household_id AS household_id,
             b.category_id AS category_id,
             b.name AS name,
-            b.amount AS amount,
-            b.currency AS currency,
+            b.amount_cents AS amount_cents,
+            b.currency_code AS currency_code,
             b.period AS period,
             b.start_date AS start_date,
             b.end_date AS end_date,
@@ -485,8 +473,6 @@ export async function getBudgetWithSpending(
             b.created_at AS created_at,
             b.updated_at AS updated_at,
             b.deleted_at AS deleted_at,
-            b.sync_version AS sync_version,
-            b.is_synced AS is_synced,
             COALESCE(
               SUM(
                 CASE
@@ -496,7 +482,7 @@ export async function getBudgetWithSpending(
               ),
               0
             ) AS spent_amount
-       FROM budget b
+       FROM budgets b
        LEFT JOIN transaction_category_amounts t
          ON t.category_id IN (SELECT id FROM budget_category_scope)
         AND t.household_id = b.household_id
@@ -508,17 +494,15 @@ export async function getBudgetWithSpending(
                b.household_id,
                b.category_id,
                b.name,
-               b.amount,
-               b.currency,
+               b.amount_cents,
+               b.currency_code,
                b.period,
                b.start_date,
                b.end_date,
                b.is_rollover,
                b.created_at,
                b.updated_at,
-               b.deleted_at,
-               b.sync_version,
-               b.is_synced`,
+               b.deleted_at`,
     [budgetId, budgetId],
   );
 
@@ -556,10 +540,10 @@ export async function getBudgetSpendingBreakdown(
               ),
               0
             ) AS spent_amount
-       FROM budget b
+       FROM budgets b
        JOIN budget_category_scope scope
          ON 1 = 1
-       JOIN category c
+       JOIN categories c
          ON c.id = scope.id
         AND c.deleted_at IS NULL
        LEFT JOIN transaction_category_amounts t

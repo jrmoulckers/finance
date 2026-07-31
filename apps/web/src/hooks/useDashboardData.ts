@@ -133,11 +133,11 @@ export function useDashboardData(): UseDashboardDataResult {
     [],
   );
   const { data, error, loading, refresh } = useLiveQuery<DashboardData | null>(
-    'SELECT id FROM account WHERE deleted_at IS NULL',
+    'SELECT id FROM accounts WHERE deleted_at IS NULL',
     [],
     {
       initialData: null,
-      tables: ['account', 'transaction', 'budget'],
+      tables: ['accounts', 'transactions', 'budgets'],
       queryFn: runDashboardQuery,
       errorFallback: 'Failed to load dashboard data.',
     },

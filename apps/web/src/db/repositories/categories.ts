@@ -25,11 +25,9 @@ const CATEGORY_COLUMNS = [
   'created_at',
   'updated_at',
   'deleted_at',
-  'sync_version',
-  'is_synced',
 ].join(', ');
 
-const CATEGORY_BASE_QUERY = `SELECT ${CATEGORY_COLUMNS} FROM category WHERE deleted_at IS NULL`;
+const CATEGORY_BASE_QUERY = `SELECT ${CATEGORY_COLUMNS} FROM categories WHERE deleted_at IS NULL`;
 
 /** Input used when creating a new category record. */
 export interface CreateCategoryInput {
@@ -91,7 +89,7 @@ export async function createCategory(db: AsyncDb, input: CreateCategoryInput): P
 
   await execute(
     db,
-    `INSERT INTO category (
+    `INSERT INTO categories (
       id,
       household_id,
       name,
@@ -104,16 +102,12 @@ export async function createCategory(db: AsyncDb, input: CreateCategoryInput): P
       is_biometric_protected,
       created_at,
       updated_at,
-      deleted_at,
-      sync_version,
-      is_synced
+      deleted_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
-      NULL,
-      1,
-      0
+      NULL
     )`,
     [
       id,
@@ -162,7 +156,7 @@ export async function updateCategory(
 
   await execute(
     db,
-    `UPDATE category
+    `UPDATE categories
         SET household_id = ?,
             name = ?,
             icon = ?,
@@ -172,9 +166,7 @@ export async function updateCategory(
             is_system = ?,
             sort_order = ?,
             is_biometric_protected = ?,
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [
@@ -204,11 +196,9 @@ export async function deleteCategory(db: AsyncDb, categoryId: SyncId): Promise<b
 
   await execute(
     db,
-    `UPDATE category
+    `UPDATE categories
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [categoryId],

@@ -47,11 +47,9 @@ const INVOICE_COLUMNS = [
   'created_at',
   'updated_at',
   'deleted_at',
-  'sync_version',
-  'is_synced',
 ].join(', ');
 
-const INVOICE_BASE_QUERY = `SELECT ${INVOICE_COLUMNS} FROM invoice WHERE deleted_at IS NULL`;
+const INVOICE_BASE_QUERY = `SELECT ${INVOICE_COLUMNS} FROM invoices WHERE deleted_at IS NULL`;
 
 /**
  * Map a database row to the {@link Invoice} domain shape.
@@ -118,9 +116,10 @@ export async function insertInvoice(db: AsyncDb, invoice: Invoice): Promise<Invo
 
   await execute(
     db,
-    `INSERT INTO invoice (
+    `INSERT INTO invoices (
       id,
       household_id,
+      owner_id,
       client_name,
       amount_cents,
       currency,
@@ -135,14 +134,13 @@ export async function insertInvoice(db: AsyncDb, invoice: Invoice): Promise<Invo
       payment_transaction_id,
       created_at,
       updated_at,
-      deleted_at,
-      sync_version,
-      is_synced
+      deleted_at
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-      NULL,
-      1,
-      0
+      ?,
+      ?,
+      (SELECT id FROM users LIMIT 1),
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      NULL
     )`,
     [
       invoice.id,
@@ -186,7 +184,7 @@ export async function updateInvoiceRecord(db: AsyncDb, invoice: Invoice): Promis
 
   await execute(
     db,
-    `UPDATE invoice
+    `UPDATE invoices
         SET client_name = ?,
             amount_cents = ?,
             currency = ?,
@@ -199,9 +197,7 @@ export async function updateInvoiceRecord(db: AsyncDb, invoice: Invoice): Promis
             paid_date = ?,
             payment_account_id = ?,
             payment_transaction_id = ?,
-            updated_at = ?,
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ?
       WHERE id = ?
         AND deleted_at IS NULL`,
     [
@@ -234,11 +230,9 @@ export async function deleteInvoiceRecord(db: AsyncDb, invoiceId: string): Promi
 
   await execute(
     db,
-    `UPDATE invoice
+    `UPDATE invoices
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [invoiceId],
