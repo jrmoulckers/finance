@@ -24,6 +24,18 @@ import { EmptyState } from '../components/common/EmptyState';
 import '../components/bank/bank-connections.css';
 import { useBankConnections } from '../hooks/useBankConnections';
 import { useConnectorPermissions } from '../hooks/useConnectorPermissions';
+import { useFeatureFlag, FlagKeys } from '../lib/feature-flags';
+
+/**
+ * "Connect a bank" launcher (#3846). Lazy-loaded and rendered only when the
+ * `live_bank_data` flag is on, so the aggregator/Plaid Link code stays out of
+ * the bundle until a user can actually connect a bank.
+ */
+const ConnectBankButton = lazy(() =>
+  import('../components/bank/ConnectBankButton').then((module) => ({
+    default: module.ConnectBankButton,
+  })),
+);
 
 /**
  * Crypto wallet & exchange panel (#2164). Lazy-loaded so the crypto engine only
@@ -93,6 +105,8 @@ export const BankConnectionsPage: React.FC = () => {
     error: permissionsError,
     loadAccessLog,
   } = useConnectorPermissions();
+
+  const liveBankData = useFeatureFlag(FlagKeys.LIVE_BANK_DATA);
 
   const [activeTab, setActiveTab] = useState<BankTabId>('health');
 
@@ -244,14 +258,21 @@ export const BankConnectionsPage: React.FC = () => {
           <section aria-label="Connection health">
             <div className="section-header">
               <h2 className="section-title">Connection Health</h2>
-              <button
-                type="button"
-                className="section-action"
-                onClick={refreshConnections}
-                aria-label="Refresh connection health"
-              >
-                Refresh
-              </button>
+              <div className="section-actions">
+                {liveBankData && (
+                  <Suspense fallback={null}>
+                    <ConnectBankButton onConnected={refreshConnections} />
+                  </Suspense>
+                )}
+                <button
+                  type="button"
+                  className="section-action"
+                  onClick={refreshConnections}
+                  aria-label="Refresh connection health"
+                >
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {connectionsLoading && (

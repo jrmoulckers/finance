@@ -52,8 +52,8 @@ describe('useFeatureFlag with a provider', () => {
 });
 
 describe('useFeatureFlag without a provider', () => {
-  it('falls back to direct evaluation — live_bank_data is dark-launched (off)', () => {
+  it('falls back to direct evaluation — live_bank_data is ramped on (100%)', () => {
     const { result } = renderHook(() => useFeatureFlag('live_bank_data'));
-    expect(result.current).toBe(false);
+    expect(result.current).toBe(true);
   });
 });

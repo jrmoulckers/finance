@@ -42,8 +42,8 @@ describe('isFeatureEnabledWith', () => {
 });
 
 describe('isFeatureEnabled (default registry)', () => {
-  it('reports live_bank_data as off — dark-launched at 0% rollout', () => {
-    expect(isFeatureEnabled('live_bank_data')).toBe(false);
+  it('reports live_bank_data as on — ramped to 100% rollout', () => {
+    expect(isFeatureEnabled('live_bank_data')).toBe(true);
   });
 });
 

@@ -49,11 +49,11 @@
       "expires": ""
     },
     "live_bank_data": {
-      "description": "Activate the live consolidated bank-data aggregator (Plaid/MX/TrueLayer/Finicity) on web. Dark-launched at 0%; ramp to stage the rollout once a11y blocker #3862 lands.",
+      "description": "Activate the live consolidated bank-data aggregator (Plaid/MX/TrueLayer/Finicity) on web. Enables the in-app Connect-a-bank flow (Plaid Link) and aggregator provider registration.",
       "enabled": true,
       "owner": "web",
       "platforms": ["web"],
-      "rollout_percentage": 0,
+      "rollout_percentage": 100,
       "expires": ""
     }
   }
