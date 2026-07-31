@@ -24,19 +24,27 @@ export interface PowerSyncClientConfig {
   readonly enabled: boolean;
 }
 
-/** Read a trimmed Vite env var, returning an empty string when unset. */
-function readEnv(name: string): string {
-  const meta = import.meta as unknown as { env?: Record<string, string | undefined> };
-  return meta.env?.[name]?.trim() ?? '';
+/** Trim a raw Vite env value, returning an empty string when unset. @internal */
+function trimEnv(value: string | undefined): string {
+  return value?.trim() ?? '';
 }
 
-/** Resolve the PowerSync client configuration from the Vite environment. */
+/**
+ * Resolve the PowerSync client configuration from the Vite environment.
+ *
+ * Each var is read via **static** `import.meta.env.VITE_*` access so the
+ * production bundler (rolldown-vite) inlines the literal at build time. Dynamic
+ * access (`import.meta.env[key]`) is NOT inlined and resolves to `undefined` at
+ * runtime, which left every coordinate empty in production — so
+ * {@link isPowerSyncClientConfigured} returned `false` and the live client never
+ * connected (the app stayed "offline" on sample data).
+ */
 export function resolvePowerSyncClientConfig(): PowerSyncClientConfig {
   return {
-    powersyncUrl: readEnv('VITE_POWERSYNC_URL'),
-    supabaseUrl: readEnv('VITE_SUPABASE_URL'),
-    supabaseAnonKey: readEnv('VITE_SUPABASE_ANON_KEY'),
-    enabled: readEnv('VITE_POWERSYNC_ENABLED') === 'true',
+    powersyncUrl: trimEnv(import.meta.env.VITE_POWERSYNC_URL),
+    supabaseUrl: trimEnv(import.meta.env.VITE_SUPABASE_URL),
+    supabaseAnonKey: trimEnv(import.meta.env.VITE_SUPABASE_ANON_KEY),
+    enabled: trimEnv(import.meta.env.VITE_POWERSYNC_ENABLED) === 'true',
   };
 }
 
