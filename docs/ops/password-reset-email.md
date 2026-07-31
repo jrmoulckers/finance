@@ -111,14 +111,21 @@ will land in spam or be blocked. Use a transactional provider, for example:
 | Mailgun            | Mature; flexible domains                           |
 | Brevo (Sendinblue) | EU-friendly                                        |
 
+> **This deployment uses Resend.** Its SMTP relay is `smtp.resend.com:587`, the
+> SMTP **username is the literal string `resend`**, and the SMTP **password is a
+> Resend API key**. Generate the API key in the Resend dashboard.
+
 Create an account and generate **SMTP credentials** (host, port, username,
 password / API key).
 
 ### 2. Verify the sender domain (SPF / DKIM / DMARC)
 
-In the provider, add and **verify the sending domain** you control (the same
-domain used in `SMTP_ADMIN_EMAIL`, e.g. `noreply@yourdomain.com`). Add the DNS
-records the provider gives you:
+In the provider, add and **verify the sending domain** you control. Use a
+**dedicated `mail.` subdomain** (e.g. `mail.yourdomain.com`) rather than the app
+domain, so email authentication is isolated from the app's own DNS. This
+deployment sends from **`mail.jrmoulckers.com`** with the from-address
+**`finance@mail.jrmoulckers.com`** (`SMTP_ADMIN_EMAIL`). Add the DNS records the
+provider gives you:
 
 - **SPF** — a `TXT` record authorizing the provider to send for your domain.
 - **DKIM** — the `CNAME`/`TXT` record(s) the provider supplies for signing.
@@ -126,7 +133,10 @@ records the provider gives you:
   `p=none` for monitoring, tighten later).
 
 Unverified domains are the most common reason a message "sends" but lands in spam
-or is rejected outright.
+or is rejected outright. The `From` address **must** be on the verified sending
+subdomain (`mail.jrmoulckers.com`), **not** the app domain
+(`finance.jrmoulckers.com`) — Resend rejects mail whose `From` is off the
+authenticated domain.
 
 ### 3. Set the SMTP environment variables
 
@@ -134,12 +144,12 @@ Set these in the **production** `deploy/.env` (never commit real values — see
 [Secrets Inventory](secrets.md)). Variable **names** only:
 
 ```bash
-SMTP_HOST=          # provider SMTP host
-SMTP_PORT=          # 587 (STARTTLS) or 465 (TLS)
-SMTP_USER=          # provider SMTP username
-SMTP_PASS=          # provider SMTP password / API key
-SMTP_ADMIN_EMAIL=   # from-address on the verified domain, e.g. noreply@yourdomain.com
-SMTP_SENDER_NAME=   # display name, e.g. "Finance App"
+SMTP_HOST=smtp.resend.com   # Resend SMTP relay
+SMTP_PORT=587               # 587 (STARTTLS) or 465 (TLS)
+SMTP_USER=resend            # literal string "resend" for Resend
+SMTP_PASS=                  # Resend API key
+SMTP_ADMIN_EMAIL=finance@mail.jrmoulckers.com  # from-address on the verified mail. subdomain
+SMTP_SENDER_NAME=Finance    # display name, e.g. "Finance"
 ```
 
 These map 1:1 to the GoTrue settings in
