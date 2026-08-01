@@ -23,7 +23,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '../../auth/auth-context';
 import { useDatabase } from '../../db/DatabaseProvider';
-import { ensureSyncedHouseholdMembership } from '../../db/repositories/household';
+import {
+  ensureDefaultHousehold,
+  ensureSyncedHouseholdMembership,
+} from '../../db/repositories/household';
 import { HOUSEHOLD_SINGLETON_KEY, readHouseholdValue } from '../../db/repositories/householdData';
 
 /** Props for {@link ConnectBankButton}. */
@@ -68,58 +71,72 @@ export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
   const busyRef = useRef(false);
 
   useEffect(() => {
-    let active = true;
-    resolveHouseholdId(db)
-      .then((id) => {
-        if (active) setHouseholdId(id);
-      })
-      .catch(() => {
-        if (active) setHouseholdId(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [db]);
-
-  // Backfill the synced `households` + owner `household_members` rows for the
-  // signed-in user. The app's household lives only in the local-only
-  // `hh_household` document store, but the bank-connection edge function
-  // authorizes `create_link_token` via a server-side membership row — without it
-  // the call 403s. Running this on mount (rather than at click time) gives
-  // PowerSync time to upload the rows before the user connects. Best-effort.
-  useEffect(() => {
     const userId = authUser?.id?.trim();
-    if (!userId) return;
     let active = true;
     void (async () => {
       try {
+        // Read the app's household from the same `hh_household` store the rest
+        // of the app persists to (via the `useHousehold` hook / Household page).
         const household = await readHouseholdValue<{ id?: unknown; name?: unknown } | null>(
           db,
           HOUSEHOLD_SINGLETON_KEY,
           null,
         );
-        if (!active || !household || typeof household.id !== 'string' || !household.id) return;
-        await ensureSyncedHouseholdMembership(db, {
-          householdId: household.id,
-          name: typeof household.name === 'string' ? household.name : 'Household',
-          userId,
-        });
+        let id =
+          household && typeof household.id === 'string' && household.id.length > 0
+            ? household.id
+            : null;
+
+        if (userId) {
+          if (id) {
+            // Existing household: backfill the synced `households` + owner
+            // `household_members` rows so the bank-connection edge function can
+            // authorize `create_link_token` (the `hh_*` doc store never reaches
+            // the server). Running on mount gives PowerSync time to upload the
+            // rows before the user connects. Best-effort.
+            const name = typeof household?.name === 'string' ? household.name : 'Household';
+            await ensureSyncedHouseholdMembership(db, { householdId: id, name, userId });
+          } else {
+            // Fresh account with no household yet: provision a default one so
+            // the user never hits the "create a household first" wall before
+            // their very first bank connection. `ensureDefaultHousehold` also
+            // writes the synced membership rows.
+            id = await ensureDefaultHousehold(db, {
+              id: userId,
+              name: authUser?.name ?? null,
+              email: authUser?.email ?? null,
+            });
+          }
+        }
+
+        if (active) setHouseholdId(id);
       } catch {
-        // Non-fatal: create_link_token will surface any genuine membership issue.
+        // Non-fatal: create_link_token will surface any genuine membership
+        // issue, and the click handler re-attempts provisioning.
+        if (active) setHouseholdId(null);
       }
     })();
     return () => {
       active = false;
     };
-  }, [db, authUser?.id]);
+  }, [db, authUser?.id, authUser?.name, authUser?.email]);
 
   const handleClick = useCallback(async () => {
     if (busyRef.current) return;
     // Re-resolve on click so a household created *after* this component mounted
-    // is picked up without a page refresh (the mount effect only runs once).
+    // is picked up without a page refresh (the mount effect only runs once). For
+    // a signed-in user with no household yet, provision a default one here too
+    // so the connect flow just works instead of dead-ending on the wall.
     let activeHouseholdId = householdId;
     if (!activeHouseholdId) {
-      activeHouseholdId = await resolveHouseholdId(db).catch(() => null);
+      const userId = authUser?.id?.trim();
+      activeHouseholdId = userId
+        ? await ensureDefaultHousehold(db, {
+            id: userId,
+            name: authUser?.name ?? null,
+            email: authUser?.email ?? null,
+          }).catch(() => null)
+        : await resolveHouseholdId(db).catch(() => null);
       if (activeHouseholdId) setHouseholdId(activeHouseholdId);
     }
     if (!activeHouseholdId) {
@@ -190,7 +207,7 @@ export function ConnectBankButton({ onConnected }: ConnectBankButtonProps) {
       setError(e instanceof Error ? e.message : 'We could not start the bank connection.');
       setPhase('error');
     }
-  }, [db, householdId, onConnected]);
+  }, [db, householdId, authUser?.id, authUser?.name, authUser?.email, onConnected]);
 
   const busy = phase === 'starting' || phase === 'finishing';
   const label =

@@ -18,6 +18,7 @@ import { expectNoAxeViolations } from '../../test-utils/axe';
 const mocks = vi.hoisted(() => ({
   readHouseholdValue: vi.fn(),
   ensureSyncedHouseholdMembership: vi.fn(),
+  ensureDefaultHousehold: vi.fn(),
   ensureAggregatorProvidersRegistered: vi.fn(),
   createConnection: vi.fn(),
   completeConnection: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock('../../db/DatabaseProvider', () => ({
 
 vi.mock('../../db/repositories/household', () => ({
   ensureSyncedHouseholdMembership: mocks.ensureSyncedHouseholdMembership,
+  ensureDefaultHousehold: mocks.ensureDefaultHousehold,
 }));
 
 vi.mock('../../db/repositories/householdData', () => ({
@@ -73,6 +75,7 @@ describe('ConnectBankButton', () => {
     mocks.authUser = null;
     mocks.readHouseholdValue.mockResolvedValue({ id: 'hh-1' });
     mocks.ensureSyncedHouseholdMembership.mockResolvedValue(undefined);
+    mocks.ensureDefaultHousehold.mockResolvedValue('hh-new');
     mocks.ensureAggregatorProvidersRegistered.mockResolvedValue(undefined);
     mocks.createConnection.mockResolvedValue({ sessionId: 'link-token-1' });
     mocks.completeConnection.mockResolvedValue({ id: 'conn-1' });
@@ -139,6 +142,57 @@ describe('ConnectBankButton', () => {
         { householdId: 'hh-1', name: 'Test Household', userId: 'user-1' },
       ),
     );
+    // An existing household is left untouched — no default is provisioned.
+    expect(mocks.ensureDefaultHousehold).not.toHaveBeenCalled();
+  });
+
+  it('auto-provisions a default household on mount for a signed-in user with none', async () => {
+    mocks.authUser = { id: 'user-1', name: 'Alex Rivera', email: 'alex@example.com' };
+    mocks.readHouseholdValue.mockResolvedValue(null);
+
+    render(<ConnectBankButton />);
+
+    await waitFor(() =>
+      expect(mocks.ensureDefaultHousehold).toHaveBeenCalledWith(
+        { __fakeDb: true },
+        { id: 'user-1', name: 'Alex Rivera', email: 'alex@example.com' },
+      ),
+    );
+    // Provisioning owns the synced backfill; the mount effect must not also call
+    // it directly for a household that did not exist yet.
+    expect(mocks.ensureSyncedHouseholdMembership).not.toHaveBeenCalled();
+  });
+
+  it('connects using the auto-provisioned household without showing the wall', async () => {
+    mocks.authUser = { id: 'user-1' };
+    mocks.readHouseholdValue.mockResolvedValue(null);
+    mocks.ensureDefaultHousehold.mockResolvedValue('hh-fresh');
+    mocks.openPlaidLink.mockImplementation(
+      async (opts: {
+        token: string;
+        onSuccess: (publicToken: string, metadata: typeof PLAID_METADATA) => void;
+      }) => {
+        opts.onSuccess('public-token-xyz', PLAID_METADATA);
+        return { open: vi.fn(), exit: vi.fn(), destroy: vi.fn() };
+      },
+    );
+
+    render(<ConnectBankButton />);
+    await waitFor(() => expect(mocks.ensureDefaultHousehold).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Connect a bank' }));
+
+    await waitFor(() =>
+      expect(mocks.createConnection).toHaveBeenCalledWith('plaid', {
+        metadata: { household_id: 'hh-fresh' },
+      }),
+    );
+    expect(mocks.completeConnection).toHaveBeenCalledWith(
+      'plaid',
+      'link-token-1',
+      expect.objectContaining({ household_id: 'hh-fresh' }),
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('does not backfill membership when no user is signed in', async () => {
@@ -146,9 +200,10 @@ describe('ConnectBankButton', () => {
     await waitFor(() => expect(mocks.readHouseholdValue).toHaveBeenCalled());
 
     expect(mocks.ensureSyncedHouseholdMembership).not.toHaveBeenCalled();
+    expect(mocks.ensureDefaultHousehold).not.toHaveBeenCalled();
   });
 
-  it('shows an error and does not start linking when there is no household', async () => {
+  it('shows an error and does not start linking when there is no household and no user', async () => {
     mocks.readHouseholdValue.mockResolvedValue(null);
 
     render(<ConnectBankButton />);
@@ -157,6 +212,7 @@ describe('ConnectBankButton', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Connect a bank' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/create a household/i);
+    expect(mocks.ensureDefaultHousehold).not.toHaveBeenCalled();
     expect(mocks.ensureAggregatorProvidersRegistered).not.toHaveBeenCalled();
     expect(mocks.createConnection).not.toHaveBeenCalled();
   });
