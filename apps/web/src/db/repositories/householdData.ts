@@ -46,6 +46,9 @@ import {
 /** Storage key for the single household record (stored as one row). */
 export const HOUSEHOLD_SINGLETON_KEY = 'finance-household';
 
+/** Storage key for the household member collection. */
+export const HOUSEHOLD_MEMBERS_KEY = 'finance-household-members';
+
 /**
  * Maps each household storage key to its backing `hh_` table. Keys mirror the
  * legacy `localStorage` keys exactly so the hook can swap backends transparently.

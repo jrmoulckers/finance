@@ -34,6 +34,12 @@ import type {
 import { ROLE_PERMISSIONS, cents } from '../../kmp/bridge';
 import { execute, query, queryOne, type AsyncDb, type Row } from '../async-db';
 import {
+  HOUSEHOLD_MEMBERS_KEY,
+  HOUSEHOLD_SINGLETON_KEY,
+  readHouseholdValue,
+  writeHouseholdValue,
+} from './householdData';
+import {
   SQLITE_NOW_EXPRESSION,
   mapSyncMetadata,
   optionalString,
@@ -376,6 +382,103 @@ export async function ensureSyncedHouseholdMembership(
       [crypto.randomUUID(), householdId, userId],
     );
   }
+}
+
+/** Minimal authenticated-user shape needed to seed a default household. */
+export interface DefaultHouseholdAuthUser {
+  /** The authenticated Supabase user id (`auth.uid()`). */
+  id: SyncId;
+  /** OAuth display name, used for the owner member's label when present. */
+  name?: string | null;
+  /** Account email, used as a fallback owner label. */
+  email?: string | null;
+}
+
+/** Name given to the household provisioned for a brand-new account. */
+export const DEFAULT_HOUSEHOLD_NAME = 'My Household';
+
+/**
+ * Ensure the signed-in user has a household, provisioning a sensible default
+ * when they have none. Idempotent: when an `hh_household` already exists its id
+ * is returned untouched, so this is safe to call on every mount/click.
+ *
+ * Bank data is household-scoped — the `by_household` sync bucket and the
+ * `create_link_token` owner check both require a household + owner membership —
+ * so a household must exist before the first bank connection. Rather than making
+ * a fresh user hand-create one (the "create a household before connecting a
+ * bank" wall), we seed a default they can rename later.
+ *
+ * Writes BOTH the local-only `hh_household` + `hh_member` document store (the
+ * app's UI source of truth, shared with `useHousehold`) AND, via
+ * {@link ensureSyncedHouseholdMembership}, the synced `households` /
+ * `household_members` rows (server authorization + PowerSync). This keeps the
+ * two stores in step exactly like `useHousehold.createHousehold`.
+ *
+ * Returns the resolved household id, or `null` when no authenticated user id is
+ * available (a synced household cannot be owned without `auth.uid()`).
+ */
+export async function ensureDefaultHousehold(
+  db: AsyncDb,
+  authUser: DefaultHouseholdAuthUser,
+): Promise<string | null> {
+  const userId = authUser.id?.trim();
+  if (!userId) return null;
+
+  const existing = await readHouseholdValue<{ id?: unknown } | null>(
+    db,
+    HOUSEHOLD_SINGLETON_KEY,
+    null,
+  );
+  if (existing && typeof existing.id === 'string' && existing.id.length > 0) {
+    return existing.id;
+  }
+
+  const now = new Date().toISOString();
+  const householdId = crypto.randomUUID();
+  // Prefer the OAuth name, then email — never expose a raw UUID as the label.
+  const displayName =
+    (authUser.name && authUser.name.trim().length > 0 ? authUser.name.trim() : null) ??
+    (authUser.email && authUser.email.trim().length > 0 ? authUser.email.trim() : null);
+
+  const household: Household = {
+    id: householdId,
+    name: DEFAULT_HOUSEHOLD_NAME,
+    ownerId: userId,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: false,
+  };
+
+  const ownerMember: HouseholdMember = {
+    id: crypto.randomUUID(),
+    householdId,
+    userId,
+    displayName,
+    role: 'OWNER',
+    joinedAt: now,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: false,
+  };
+
+  // Local doc store first: household before members so the members write can
+  // resolve the owning household id for its promoted `household_id` column.
+  await writeHouseholdValue(db, HOUSEHOLD_SINGLETON_KEY, household);
+  await writeHouseholdValue(db, HOUSEHOLD_MEMBERS_KEY, [ownerMember]);
+
+  // Mirror into the synced tables so `create_link_token` authorizes this owner
+  // and the `by_household` bucket starts publishing their bank data.
+  await ensureSyncedHouseholdMembership(db, {
+    householdId,
+    name: household.name,
+    userId,
+  });
+
+  return householdId;
 }
 
 // ---------------------------------------------------------------------------
