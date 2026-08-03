@@ -59,8 +59,6 @@ function invoiceRow(overrides: Partial<Row> = {}): Row {
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     deleted_at: null,
-    sync_version: 1,
-    is_synced: 0,
     ...overrides,
   };
 }
@@ -90,7 +88,7 @@ function useInMemoryInvoiceTable(seed: Row[] = []): Map<string, Row> {
 
   mockExecute.mockImplementation(async (_db, sql, params) => {
     const text = String(sql);
-    if (text.includes('INSERT INTO invoice')) {
+    if (text.includes('INSERT INTO invoices')) {
       const id = String((params as unknown[])?.[0]);
       table.set(id, invoiceRow({ id, household_id: (params as unknown[])?.[1] as Row[string] }));
     }
@@ -168,7 +166,10 @@ describe('invoices repository', () => {
 
     expect(mockGetPrimaryHouseholdId).toHaveBeenCalledWith(mockDb);
     const [, sql, params] = mockExecute.mock.calls[0];
-    expect(String(sql)).toContain('INSERT INTO invoice');
+    expect(String(sql)).toContain('INSERT INTO invoices');
+    // owner_id (NOT NULL) is backfilled from the current user, not a bound param,
+    // so the parameter list stays unchanged.
+    expect(String(sql)).toContain('(SELECT id FROM users LIMIT 1)');
     expect(params).toEqual([
       'inv-1',
       'hh-1',
@@ -232,7 +233,7 @@ describe('invoices repository', () => {
 
     expect(await deleteInvoiceRecord(mockDb, 'inv-1')).toBe(true);
     const updateCall = mockExecute.mock.calls.find(([, sql]) =>
-      String(sql).includes('UPDATE invoice'),
+      String(sql).includes('UPDATE invoices'),
     );
     expect(updateCall?.[1]).toContain('deleted_at =');
   });
@@ -259,7 +260,7 @@ describe('invoices repository', () => {
     expect(imported).toBe(2);
     expect(globalThis.localStorage.getItem('finance:invoices')).toBeNull();
     const insertCalls = mockExecute.mock.calls.filter(([, sql]) =>
-      String(sql).includes('INSERT INTO invoice'),
+      String(sql).includes('INSERT INTO invoices'),
     );
     expect(insertCalls).toHaveLength(2);
   });
@@ -273,7 +274,7 @@ describe('invoices repository', () => {
 
     expect(await importLegacyInvoices(mockDb)).toBe(0);
     const insertCalls = mockExecute.mock.calls.filter(([, sql]) =>
-      String(sql).includes('INSERT INTO invoice'),
+      String(sql).includes('INSERT INTO invoices'),
     );
     expect(insertCalls).toHaveLength(0);
   });

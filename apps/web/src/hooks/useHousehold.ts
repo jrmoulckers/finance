@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/auth-context';
 import { useDatabase } from '../db/DatabaseProvider';
 import { readHouseholdValue, writeHouseholdValue } from '../db/repositories/householdData';
+import { ensureSyncedHouseholdMembership } from '../db/repositories/household';
 import type { AsyncDb } from '../db/async-db';
 import type {
   AddChildChoreInput,
@@ -1473,6 +1474,21 @@ export function useHousehold(): UseHouseholdResult {
           isSynced: false,
         };
         saveToStorage(dbRef.current, STORAGE_KEY_ACTIVITY_EVENTS, [createdEvent]);
+
+        // Mirror the new household into the synced `households` +
+        // `household_members` tables so the bank-connection edge function can
+        // authorize this owner (create_link_token). Fire-and-forget — the
+        // local-first doc store above remains the UI source of truth.
+        const syncDb = dbRef.current;
+        if (syncDb && authUser?.id?.trim()) {
+          void ensureSyncedHouseholdMembership(syncDb, {
+            householdId: newHousehold.id,
+            name: newHousehold.name,
+            userId: authUser.id,
+          }).catch(() => {
+            // Best-effort; ConnectBankButton re-attempts the backfill on mount.
+          });
+        }
 
         setHousehold(newHousehold);
         setMembers([ownerMember]);

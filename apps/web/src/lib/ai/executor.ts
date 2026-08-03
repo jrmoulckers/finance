@@ -105,7 +105,7 @@ function buildTransactionFilters(
 
   if (parsedQuery.entities.amountThreshold) {
     clauses.push(
-      `ABS(t.amount) ${parsedQuery.entities.amountThreshold.operator === 'gte' ? '>=' : '<='} ?`,
+      `ABS(t.amount_cents) ${parsedQuery.entities.amountThreshold.operator === 'gte' ? '>=' : '<='} ?`,
     );
     params.push(parsedQuery.entities.amountThreshold.amountCents);
   }
@@ -153,13 +153,13 @@ export function executeFinancialQuery(
       const plan: QueryPlan = {
         description: 'Summarize matching spending',
         sql: `SELECT
-          COALESCE(SUM(ABS(t.amount)), 0) AS total_amount,
-          COALESCE(AVG(ABS(t.amount)), 0) AS average_amount,
+          COALESCE(SUM(ABS(t.amount_cents)), 0) AS total_amount,
+          COALESCE(AVG(ABS(t.amount_cents)), 0) AS average_amount,
           COUNT(*) AS transaction_count,
-          COALESCE(MIN(t.currency), 'USD') AS currency
-        FROM "transaction" t
-        LEFT JOIN category c ON c.id = t.category_id AND c.deleted_at IS NULL
-        LEFT JOIN account a ON a.id = t.account_id AND a.deleted_at IS NULL
+          COALESCE(MIN(t.currency_code), 'USD') AS currency
+        FROM transactions t
+        LEFT JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
+        LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
         WHERE ${clauses.join(' AND ')}`,
         params,
       };
@@ -187,13 +187,13 @@ export function executeFinancialQuery(
       const plan: QueryPlan = {
         description: 'Summarize matching income',
         sql: `SELECT
-          COALESCE(SUM(t.amount), 0) AS total_amount,
-          COALESCE(AVG(t.amount), 0) AS average_amount,
+          COALESCE(SUM(t.amount_cents), 0) AS total_amount,
+          COALESCE(AVG(t.amount_cents), 0) AS average_amount,
           COUNT(*) AS transaction_count,
-          COALESCE(MIN(t.currency), 'USD') AS currency
-        FROM "transaction" t
-        LEFT JOIN category c ON c.id = t.category_id AND c.deleted_at IS NULL
-        LEFT JOIN account a ON a.id = t.account_id AND a.deleted_at IS NULL
+          COALESCE(MIN(t.currency_code), 'USD') AS currency
+        FROM transactions t
+        LEFT JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
+        LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
         WHERE ${clauses.join(' AND ')}`,
         params,
       };
@@ -221,12 +221,12 @@ export function executeFinancialQuery(
         description: 'Break spending down by category',
         sql: `SELECT
           COALESCE(c.name, 'Uncategorized') AS category_name,
-          COALESCE(SUM(ABS(t.amount)), 0) AS total_amount,
+          COALESCE(SUM(ABS(t.amount_cents)), 0) AS total_amount,
           COUNT(*) AS transaction_count,
-          COALESCE(MIN(t.currency), 'USD') AS currency
-        FROM "transaction" t
-        LEFT JOIN category c ON c.id = t.category_id AND c.deleted_at IS NULL
-        LEFT JOIN account a ON a.id = t.account_id AND a.deleted_at IS NULL
+          COALESCE(MIN(t.currency_code), 'USD') AS currency
+        FROM transactions t
+        LEFT JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
+        LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
         WHERE ${clauses.join(' AND ')}
         GROUP BY COALESCE(c.name, 'Uncategorized')
         ORDER BY total_amount DESC, category_name ASC
@@ -269,15 +269,15 @@ export function executeFinancialQuery(
           COALESCE(t.payee, t.note, t.counterparty_name, t.statement_description, 'Transaction') AS description,
           COALESCE(c.name, 'Uncategorized') AS category_name,
           COALESCE(a.name, 'Unknown account') AS account_name,
-          t.amount AS amount,
-          ABS(t.amount) AS absolute_amount,
-          t.currency AS currency,
+          t.amount_cents AS amount,
+          ABS(t.amount_cents) AS absolute_amount,
+          t.currency_code AS currency,
           t.type AS type
-        FROM "transaction" t
-        LEFT JOIN category c ON c.id = t.category_id AND c.deleted_at IS NULL
-        LEFT JOIN account a ON a.id = t.account_id AND a.deleted_at IS NULL
+        FROM transactions t
+        LEFT JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
+        LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
         WHERE ${clauses.join(' AND ')}
-        ORDER BY ABS(t.amount) DESC, t.date DESC
+        ORDER BY ABS(t.amount_cents) DESC, t.date DESC
         LIMIT ?`,
         params: [...params, limit],
       };
@@ -323,15 +323,15 @@ export function executeFinancialQuery(
         sql: `SELECT
           g.id AS id,
           g.name AS goal_name,
-          g.current_amount AS current_amount,
-          g.target_amount AS target_amount,
-          g.currency AS currency,
+          g.current_cents AS current_amount,
+          g.target_cents AS target_amount,
+          g.currency_code AS currency,
           g.status AS status,
           g.target_date AS target_date,
           g.created_at AS created_at,
           a.name AS account_name
-        FROM goal g
-        LEFT JOIN account a ON a.id = g.account_id AND a.deleted_at IS NULL
+        FROM goals g
+        LEFT JOIN accounts a ON a.id = g.account_id AND a.deleted_at IS NULL
         WHERE ${clauses.join(' AND ')}
         ORDER BY (g.target_date IS NULL) ASC, g.target_date ASC, g.name ASC
         LIMIT 5`,
@@ -405,12 +405,12 @@ export function executeFinancialQuery(
           b.id AS id,
           b.name AS budget_name,
           COALESCE(c.name, 'Uncategorized') AS category_name,
-          b.amount AS budget_amount,
-          COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN ABS(t.amount) ELSE 0 END), 0) AS spent_amount,
-          COALESCE(MIN(b.currency), 'USD') AS currency
-        FROM budget b
-        LEFT JOIN category c ON c.id = b.category_id AND c.deleted_at IS NULL
-        LEFT JOIN "transaction" t
+          b.amount_cents AS budget_amount,
+          COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN ABS(t.amount_cents) ELSE 0 END), 0) AS spent_amount,
+          COALESCE(MIN(b.currency_code), 'USD') AS currency
+        FROM budgets b
+        LEFT JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
+        LEFT JOIN transactions t
           ON t.category_id = b.category_id
          AND t.deleted_at IS NULL
          AND t.date >= ?
@@ -418,8 +418,8 @@ export function executeFinancialQuery(
          AND t.date >= b.start_date
          AND (b.end_date IS NULL OR t.date <= b.end_date)
         WHERE ${budgetClauses.join(' AND ')}
-        GROUP BY b.id, b.name, category_name, b.amount
-        ORDER BY (spent_amount * 1.0 / NULLIF(b.amount, 0)) DESC, b.name ASC
+        GROUP BY b.id, b.name, category_name, b.amount_cents
+        ORDER BY (spent_amount * 1.0 / NULLIF(b.amount_cents, 0)) DESC, b.name ASC
         LIMIT 5`,
         params: [...timeParams, ...params],
       };
@@ -461,11 +461,11 @@ export function executeFinancialQuery(
         description: 'Analyze monthly financial trends',
         sql: `SELECT
           SUBSTR(t.date, 1, 7) AS period,
-          COALESCE(SUM(${metric === 'income' ? 't.amount' : 'ABS(t.amount)'}), 0) AS total_amount,
-          COALESCE(MIN(t.currency), 'USD') AS currency
-        FROM "transaction" t
-        LEFT JOIN category c ON c.id = t.category_id AND c.deleted_at IS NULL
-        LEFT JOIN account a ON a.id = t.account_id AND a.deleted_at IS NULL
+          COALESCE(SUM(${metric === 'income' ? 't.amount_cents' : 'ABS(t.amount_cents)'}), 0) AS total_amount,
+          COALESCE(MIN(t.currency_code), 'USD') AS currency
+        FROM transactions t
+        LEFT JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
+        LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
         WHERE ${clauses.join(' AND ')}
         GROUP BY SUBSTR(t.date, 1, 7)
         ORDER BY period ASC`,

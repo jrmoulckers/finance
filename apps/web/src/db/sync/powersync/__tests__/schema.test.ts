@@ -118,4 +118,38 @@ describe('AppSchema', () => {
     expect(columnType('remittances', 'send_amount_minor')).toBe('INTEGER');
     expect(columnType('remittances', 'fx_rate')).toBe('REAL');
   });
+
+  it('declares the web-only tables as local-only and excludes them from the synced set', () => {
+    const localOnlyNames = [
+      'hh_household',
+      'hh_member',
+      'hh_invitation',
+      'hh_account_sharing',
+      'hh_shared_budget',
+      'hh_shared_goal',
+      'hh_shared_expense',
+      'hh_shared_settlement',
+      'hh_child',
+      'hh_activity_event',
+      'hh_recurring_bill',
+      'hh_goal_pledge',
+      'hh_shopping_budget',
+      'hh_reconciliation_plan',
+      'hh_reconciliation_snapshot',
+      'widget_privacy_config',
+      'investment',
+      'investment_lot',
+      'bill',
+      'account_sharing',
+      'shared_budget',
+      'shared_goal',
+      'household_invitation',
+    ];
+    for (const name of localOnlyNames) {
+      expect(table(name).localOnly).toBe(true);
+      expect(SYNCED_TABLE_NAMES).not.toContain(name);
+    }
+    // The synced set stays exactly the sync-rules mirror; local-only tables are additive.
+    expect(AppSchema.tables).toHaveLength(SYNCED_TABLE_NAMES.length + localOnlyNames.length);
+  });
 });

@@ -61,8 +61,8 @@ describe('budgets repository', () => {
           household_id: 'hh-1',
           category_id: 'cat-1',
           name: 'Groceries Budget',
-          amount: 50000,
-          currency: 'USD',
+          amount_cents: 50000,
+          currency_code: 'USD',
           period: 'MONTHLY',
           start_date: '2024-01-01',
           end_date: null,
@@ -70,16 +70,14 @@ describe('budgets repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
         {
           id: 'budget-2',
           household_id: 'hh-1',
           category_id: 'cat-2',
           name: 'Entertainment',
-          amount: 20000,
-          currency: 'EUR',
+          amount_cents: 20000,
+          currency_code: 'EUR',
           period: 'WEEKLY',
           start_date: '2024-01-01',
           end_date: '2024-12-31',
@@ -87,8 +85,6 @@ describe('budgets repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 1,
         },
       ];
 
@@ -145,8 +141,8 @@ describe('budgets repository', () => {
           household_id: 'hh-1',
           category_id: 'cat-1',
           name: 'Budget',
-          amount: 123456,
-          currency: 'USD',
+          amount_cents: 123456,
+          currency_code: 'USD',
           period: 'MONTHLY',
           start_date: '2024-01-01',
           end_date: null,
@@ -154,8 +150,6 @@ describe('budgets repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
       ];
 
@@ -175,8 +169,8 @@ describe('budgets repository', () => {
         household_id: 'hh-1',
         category_id: 'cat-1',
         name: 'Budget',
-        amount: 50000,
-        currency: 'USD',
+        amount_cents: 50000,
+        currency_code: 'USD',
         period: 'MONTHLY',
         start_date: '2024-01-01',
         end_date: null,
@@ -184,8 +178,6 @@ describe('budgets repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       };
 
       mockQueryOne.mockResolvedValue(mockRow);
@@ -227,8 +219,8 @@ describe('budgets repository', () => {
         household_id: 'hh-1',
         category_id: 'cat-food',
         name: 'Food & Meals',
-        amount: 70000,
-        currency: 'USD',
+        amount_cents: 70000,
+        currency_code: 'USD',
         period: 'MONTHLY',
         start_date: '2025-03-01',
         end_date: null,
@@ -236,8 +228,6 @@ describe('budgets repository', () => {
         created_at: '2025-03-01T00:00:00Z',
         updated_at: '2025-03-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
         spent_amount: 42350,
       });
 
@@ -295,8 +285,8 @@ describe('budgets repository', () => {
         household_id: 'hh-1',
         category_id: 'cat-1',
         name: 'New Budget',
-        amount: 100000,
-        currency: 'USD',
+        amount_cents: 100000,
+        currency_code: 'USD',
         period: 'MONTHLY',
         start_date: '2024-01-01',
         end_date: null,
@@ -304,8 +294,6 @@ describe('budgets repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
     });
 
@@ -323,7 +311,7 @@ describe('budgets repository', () => {
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('INSERT INTO budget'),
+        expect.stringContaining('INSERT INTO budgets'),
         expect.arrayContaining([
           expect.any(String), // UUID
           'hh-1',
@@ -423,8 +411,8 @@ describe('budgets repository', () => {
           household_id: 'hh-1',
           category_id: 'cat-1',
           name: 'Budget',
-          amount: 100000,
-          currency: 'USD',
+          amount_cents: 100000,
+          currency_code: 'USD',
           period,
           start_date: '2024-01-01',
           end_date: null,
@@ -432,8 +420,6 @@ describe('budgets repository', () => {
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         });
 
         const input: CreateBudgetInput = {
@@ -508,8 +494,8 @@ describe('budgets repository', () => {
             household_id: budgetParams[1],
             category_id: budgetParams[2],
             name: budgetParams[3],
-            amount: budgetParams[4],
-            currency: budgetParams[5],
+            amount_cents: budgetParams[4],
+            currency_code: budgetParams[5],
             period: budgetParams[6],
             start_date: budgetParams[7],
             end_date: budgetParams[8],
@@ -517,8 +503,6 @@ describe('budgets repository', () => {
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
             deleted_at: null,
-            sync_version: 1,
-            is_synced: 0,
           } satisfies Row;
         }
 
@@ -538,7 +522,7 @@ describe('budgets repository', () => {
         mockExecute.mock.calls.some(
           ([, sql, params]) =>
             typeof sql === 'string' &&
-            sql.includes('INSERT INTO budget') &&
+            sql.includes('INSERT INTO budgets') &&
             params?.[3] === 'Savings' &&
             params?.[4] === 2000,
         ),
@@ -573,8 +557,8 @@ describe('budgets repository', () => {
         household_id: 'hh-1',
         category_id: 'cat-1',
         name: 'Budget',
-        amount: 100000,
-        currency: 'USD',
+        amount_cents: 100000,
+        currency_code: 'USD',
         period: 'MONTHLY',
         start_date: '2024-01-01',
         end_date: null,
@@ -582,14 +566,12 @@ describe('budgets repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       const result = await deleteBudget(mockDb, 'budget-1');
 
       expect(result).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE budget'), [
+      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE budgets'), [
         'budget-1',
       ]);
       const sql = mockExecute.mock.calls[0][1];
@@ -613,8 +595,8 @@ describe('budgets repository', () => {
         household_id: 'hh-1',
         category_id: 'cat-1',
         name: 'Budget',
-        amount: 100000,
-        currency: 'USD',
+        amount_cents: 100000,
+        currency_code: 'USD',
         period: 'MONTHLY',
         start_date: '2024-01-01',
         end_date: null,
@@ -622,8 +604,6 @@ describe('budgets repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       await deleteBudget(mockDb, 'budget-1');
@@ -719,7 +699,7 @@ describe('budgets repository', () => {
       mockQueryOne.mockImplementation(async (_, sql, params) => {
         if (
           typeof sql === 'string' &&
-          sql.includes('SELECT id FROM household WHERE deleted_at IS NULL')
+          sql.includes('SELECT id FROM households WHERE deleted_at IS NULL')
         ) {
           return { id: 'hh-1' } satisfies Row;
         }
@@ -736,8 +716,8 @@ describe('budgets repository', () => {
             household_id: budgetParams[1],
             category_id: budgetParams[2],
             name: budgetParams[3],
-            amount: budgetParams[4],
-            currency: budgetParams[5],
+            amount_cents: budgetParams[4],
+            currency_code: budgetParams[5],
             period: budgetParams[6],
             start_date: budgetParams[7],
             end_date: budgetParams[8],
@@ -745,8 +725,6 @@ describe('budgets repository', () => {
             created_at: '2025-03-01T00:00:00Z',
             updated_at: '2025-03-01T00:00:00Z',
             deleted_at: null,
-            sync_version: 1,
-            is_synced: 0,
           } satisfies Row;
         }
 
@@ -789,8 +767,8 @@ describe('budgets repository', () => {
         household_id: 'hh-1',
         category_id: 'cat-1',
         name: 'Budget',
-        amount: 100000,
-        currency: 'USD',
+        amount_cents: 100000,
+        currency_code: 'USD',
         period: 'MONTHLY',
         start_date: '2024-01-01',
         end_date: null,
@@ -798,8 +776,6 @@ describe('budgets repository', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
       const input: CreateBudgetInput = {
         householdId: 'hh-1',

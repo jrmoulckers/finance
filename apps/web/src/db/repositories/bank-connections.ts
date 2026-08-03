@@ -4,9 +4,9 @@
  * Bank connectivity repository (#3852).
  *
  * Read-only access to the PowerSync-synced bank connectivity tables:
- *   - `bank_connection`        — connection identity + display status (no token)
+ *   - `bank_connections`       — connection identity + display status (no token)
  *   - `bank_connection_health` — health history log
- *   - `aggregator_provider`    — global provider directory
+ *   - `aggregator_providers`   — global provider directory
  *
  * These tables are populated exclusively by the sync pull path; the client
  * never writes to them, so this repository exposes reads only. All financial
@@ -204,7 +204,7 @@ function parseCapabilities(value: unknown): Record<string, boolean> {
 // ---------------------------------------------------------------------------
 
 /**
- * Join `bank_connection` with its latest `bank_connection_health` snapshot and
+ * Join `bank_connections` with its latest `bank_connection_health` snapshot and
  * its provider directory entry so a single row carries everything the health
  * dashboard needs.
  */
@@ -221,7 +221,7 @@ const CONNECTION_HEALTH_QUERY = `
     h.staleness_minutes     AS staleness_minutes,
     h.last_successful_sync  AS last_successful_sync,
     p.provider_type         AS provider_type
-  FROM bank_connection c
+  FROM bank_connections c
   LEFT JOIN (
     SELECT bh.bank_connection_id, bh.status, bh.error_category,
            bh.staleness_minutes, bh.last_successful_sync
@@ -234,7 +234,7 @@ const CONNECTION_HEALTH_QUERY = `
       ON latest.bank_connection_id = bh.bank_connection_id
       AND latest.max_created = bh.created_at
   ) h ON h.bank_connection_id = c.id
-  LEFT JOIN aggregator_provider p ON p.name = c.provider
+  LEFT JOIN aggregator_providers p ON p.name = c.provider
   WHERE c.deleted_at IS NULL
   ORDER BY c.institution_name COLLATE NOCASE
 `;
@@ -315,7 +315,7 @@ export async function listAggregatorProviders(db: AsyncDb): Promise<AggregatorPr
     db,
     `SELECT id, name, display_name, provider_type, status, health_score,
             priority, is_enabled, supported_regions, capabilities
-     FROM aggregator_provider
+     FROM aggregator_providers
      WHERE deleted_at IS NULL
      ORDER BY priority ASC, name ASC`,
   );
@@ -326,7 +326,7 @@ export async function listAggregatorProviders(db: AsyncDb): Promise<AggregatorPr
  * List the health history for a single connection, most recent first.
  *
  * @param db - The local SQLite database.
- * @param connectionId - The `bank_connection.id` to fetch history for.
+ * @param connectionId - The `bank_connections.id` to fetch history for.
  * @param limit - Maximum number of events to return. @default 100
  * @returns The connection's {@link HealthHistoryEvent}s, newest first.
  */

@@ -45,7 +45,7 @@ describe('useLiveQuery', () => {
     const { result } = renderHook(
       () =>
         useLiveQuery<{ id: string; name: string }[]>(
-          'SELECT * FROM account WHERE deleted_at IS NULL',
+          'SELECT * FROM accounts WHERE deleted_at IS NULL',
           [],
           {
             initialData: [],
@@ -61,7 +61,7 @@ describe('useLiveQuery', () => {
 
     rowsRef.current = [{ id: 'account-1', name: 'Savings' }];
     await act(async () => {
-      notifyDataChange(['account']);
+      notifyDataChange(['accounts']);
       await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
@@ -84,7 +84,7 @@ describe('useLiveQuery', () => {
     const { result } = renderHook(
       () =>
         useLiveQuery<{ id: string; name: string }[]>(
-          'SELECT * FROM budget WHERE deleted_at IS NULL',
+          'SELECT * FROM budgets WHERE deleted_at IS NULL',
           [],
           {
             initialData: [],
@@ -99,7 +99,7 @@ describe('useLiveQuery', () => {
 
     rowsRef.current = [{ id: 'budget-1', name: 'Utilities' }];
     await act(async () => {
-      notifyDataChange(['transaction']);
+      notifyDataChange(['transactions']);
       await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
@@ -120,7 +120,7 @@ describe('useLiveQuery', () => {
     const { result } = renderHook(
       () =>
         useLiveQuery<{ id: string; amount: number }[]>(
-          'SELECT * FROM "transaction" WHERE deleted_at IS NULL',
+          'SELECT * FROM transactions WHERE deleted_at IS NULL',
           [],
           {
             initialData: [],
@@ -170,7 +170,7 @@ describe('useLiveQuery', () => {
       () =>
         // Fresh `[]` params and `{ initialData: [] }` options on every render.
         useLiveQuery<{ id: string; name: string }[]>(
-          'SELECT * FROM account WHERE deleted_at IS NULL',
+          'SELECT * FROM accounts WHERE deleted_at IS NULL',
           [],
           { initialData: [] },
         ),

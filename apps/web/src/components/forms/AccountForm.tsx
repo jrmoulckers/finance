@@ -139,7 +139,7 @@ function validate(name: string, accountType: AccountType, currencyCode: string):
  */
 async function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): Promise<SyncId | null> {
   const row = await db.getOptional<Row>(
-    'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
+    'SELECT id FROM households WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   if (row && typeof row.id === 'string') {
     return row.id;

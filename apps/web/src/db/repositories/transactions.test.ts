@@ -46,8 +46,8 @@ describe('transactions repository', () => {
           category_id: 'cat-1',
           type: 'EXPENSE',
           status: 'CLEARED',
-          amount: -5000,
-          currency: 'USD',
+          amount_cents: -5000,
+          currency_code: 'USD',
           payee: 'Coffee Shop',
           note: 'Morning coffee',
           date: '2024-01-15',
@@ -59,8 +59,6 @@ describe('transactions repository', () => {
           created_at: '2024-01-15T10:00:00Z',
           updated_at: '2024-01-15T10:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
       ];
 
@@ -179,8 +177,8 @@ describe('transactions repository', () => {
           category_id: null,
           type: 'INCOME',
           status: 'CLEARED',
-          amount: 250075,
-          currency: 'USD',
+          amount_cents: 250075,
+          currency_code: 'USD',
           payee: null,
           note: null,
           date: '2024-01-15',
@@ -192,8 +190,6 @@ describe('transactions repository', () => {
           created_at: '2024-01-15T10:00:00Z',
           updated_at: '2024-01-15T10:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
       ];
 
@@ -214,8 +210,8 @@ describe('transactions repository', () => {
           category_id: null,
           type: 'EXPENSE',
           status: 'CLEARED',
-          amount: -1000,
-          currency: 'USD',
+          amount_cents: -1000,
+          currency_code: 'USD',
           payee: null,
           note: null,
           date: '2024-01-15',
@@ -227,8 +223,6 @@ describe('transactions repository', () => {
           created_at: '2024-01-15T10:00:00Z',
           updated_at: '2024-01-15T10:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
       ];
 
@@ -249,8 +243,8 @@ describe('transactions repository', () => {
         category_id: 'cat-1',
         type: 'EXPENSE',
         status: 'CLEARED',
-        amount: -5000,
-        currency: 'USD',
+        amount_cents: -5000,
+        currency_code: 'USD',
         payee: 'Store',
         note: 'Purchase',
         date: '2024-01-15',
@@ -262,8 +256,6 @@ describe('transactions repository', () => {
         created_at: '2024-01-15T10:00:00Z',
         updated_at: '2024-01-15T10:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       };
 
       mockQueryOne.mockResolvedValue(mockRow);
@@ -297,8 +289,8 @@ describe('transactions repository', () => {
         category_id: 'cat-1',
         type: 'EXPENSE',
         status: 'CLEARED',
-        amount: -5000,
-        currency: 'USD',
+        amount_cents: -5000,
+        currency_code: 'USD',
         payee: 'Store',
         note: 'Purchase',
         date: '2024-01-15',
@@ -310,8 +302,6 @@ describe('transactions repository', () => {
         created_at: '2024-01-15T10:00:00Z',
         updated_at: '2024-01-15T10:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
     });
 
@@ -329,7 +319,7 @@ describe('transactions repository', () => {
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('INSERT INTO "transaction"'),
+        expect.stringContaining('INSERT INTO transactions'),
         expect.arrayContaining([
           expect.any(String), // UUID
           'hh-1',
@@ -534,8 +524,8 @@ describe('transactions repository', () => {
         category_id: null,
         type: 'EXPENSE',
         status: 'CLEARED',
-        amount: -5000,
-        currency: 'USD',
+        amount_cents: -5000,
+        currency_code: 'USD',
         payee: null,
         note: null,
         date: '2024-01-15',
@@ -547,8 +537,6 @@ describe('transactions repository', () => {
         created_at: '2024-01-15T10:00:00Z',
         updated_at: '2024-01-15T10:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       const result = await deleteTransaction(mockDb, 'txn-1');
@@ -556,7 +544,7 @@ describe('transactions repository', () => {
       expect(result).toBe(true);
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('UPDATE "transaction"'),
+        expect.stringContaining('UPDATE transactions'),
         ['txn-1'],
       );
       const sql = mockExecute.mock.calls[0][1];
@@ -644,8 +632,8 @@ describe('transactions repository', () => {
       category_id: null,
       type: 'EXPENSE',
       status: 'CLEARED',
-      amount: -5000,
-      currency: 'USD',
+      amount_cents: -5000,
+      currency_code: 'USD',
       payee: null,
       note: null,
       date: '2024-01-15',
@@ -657,8 +645,6 @@ describe('transactions repository', () => {
       created_at: '2024-01-15T10:00:00Z',
       updated_at: '2024-01-15T10:00:00Z',
       deleted_at: null,
-      sync_version: 1,
-      is_synced: 0,
       ...overrides,
     });
 
@@ -666,11 +652,11 @@ describe('transactions repository', () => {
       expect(mockExecute).toHaveBeenNthCalledWith(
         callIndex,
         mockDb,
-        expect.stringContaining('UPDATE account'),
+        expect.stringContaining('UPDATE accounts'),
         [accountId, accountId],
       );
       const sql = mockExecute.mock.calls[callIndex - 1][1];
-      expect(sql).toContain('SELECT COALESCE(SUM(amount), 0)');
+      expect(sql).toContain('SELECT COALESCE(SUM(amount_cents), 0)');
       expect(sql).toContain('deleted_at IS NULL');
     };
 

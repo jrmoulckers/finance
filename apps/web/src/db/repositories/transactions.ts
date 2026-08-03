@@ -40,8 +40,8 @@ const TRANSACTION_COLUMNS = [
   'category_id',
   'type',
   'status',
-  'amount',
-  'currency',
+  'amount_cents',
+  'currency_code',
   'payee',
   'note',
   'date',
@@ -68,11 +68,9 @@ const TRANSACTION_COLUMNS = [
   'created_at',
   'updated_at',
   'deleted_at',
-  'sync_version',
-  'is_synced',
 ].join(', ');
 
-const TRANSACTION_BASE_QUERY = `SELECT ${TRANSACTION_COLUMNS} FROM "transaction" WHERE deleted_at IS NULL`;
+const TRANSACTION_BASE_QUERY = `SELECT ${TRANSACTION_COLUMNS} FROM transactions WHERE deleted_at IS NULL`;
 
 /** Shared filter options for transaction list queries. */
 export interface TransactionFilters {
@@ -157,8 +155,8 @@ function mapTransaction(row: Row): Transaction {
     categoryId: optionalString(row.category_id),
     type: requireString(row.type, 'transaction.type') as TransactionType,
     status: requireString(row.status, 'transaction.status') as TransactionStatus,
-    amount: mapCents(row.amount, 'transaction.amount'),
-    currency: mapCurrency(row.currency),
+    amount: mapCents(row.amount_cents, 'transaction.amount_cents'),
+    currency: mapCurrency(row.currency_code),
     payee: optionalString(row.payee),
     note: optionalString(row.note),
     date: requireString(row.date, 'transaction.date'),
@@ -228,8 +226,8 @@ function buildTransactionQuery(additionalClauses: string[] = [], filters: Transa
       `COALESCE(tags, '') LIKE ?`,
       `status LIKE ?`,
       `COALESCE(counterparty_name, '') LIKE ?`,
-      `COALESCE((SELECT name FROM category WHERE category.id = "transaction".category_id AND category.deleted_at IS NULL), '') LIKE ?`,
-      `COALESCE((SELECT name FROM account WHERE account.id = "transaction".account_id AND account.deleted_at IS NULL), '') LIKE ?`,
+      `COALESCE((SELECT name FROM categories WHERE categories.id = transactions.category_id AND categories.deleted_at IS NULL), '') LIKE ?`,
+      `COALESCE((SELECT name FROM accounts WHERE accounts.id = transactions.account_id AND accounts.deleted_at IS NULL), '') LIKE ?`,
     ];
     const searchParams: unknown[] = [pattern, pattern, pattern, pattern, pattern, pattern, pattern];
 
@@ -237,7 +235,7 @@ function buildTransactionQuery(additionalClauses: string[] = [], filters: Transa
     const numericSearch = filters.searchTerm.trim().replace(/[$,]/g, '');
     if (/^\d+(\.\d+)?$/.test(numericSearch)) {
       const amountCents = Math.round(parseFloat(numericSearch) * 100);
-      searchConditions.push(`amount = ?`);
+      searchConditions.push(`amount_cents = ?`);
       searchParams.push(amountCents);
     }
 
@@ -250,7 +248,7 @@ function buildTransactionQuery(additionalClauses: string[] = [], filters: Transa
     params.push(filters.type);
   }
 
-  let sql = `SELECT ${TRANSACTION_COLUMNS} FROM "transaction" WHERE ${clauses.join(
+  let sql = `SELECT ${TRANSACTION_COLUMNS} FROM transactions WHERE ${clauses.join(
     ' AND ',
   )} ORDER BY date DESC, created_at DESC`;
 
@@ -302,15 +300,15 @@ export async function createTransaction(
 
   await execute(
     db,
-    `INSERT INTO "transaction" (
+    `INSERT INTO transactions (
       id,
       household_id,
       account_id,
       category_id,
       type,
       status,
-      amount,
-      currency,
+      amount_cents,
+      currency_code,
       payee,
       note,
       date,
@@ -336,16 +334,12 @@ export async function createTransaction(
       counterparty_account_id,
       created_at,
       updated_at,
-      deleted_at,
-      sync_version,
-      is_synced
+      deleted_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
-      NULL,
-      1,
-      0
+      NULL
     )`,
     [
       id,
@@ -489,14 +483,14 @@ export async function updateTransaction(
 
   await execute(
     db,
-    `UPDATE "transaction"
+    `UPDATE transactions
         SET household_id = ?,
             account_id = ?,
             category_id = ?,
             type = ?,
             status = ?,
-            amount = ?,
-            currency = ?,
+            amount_cents = ?,
+            currency_code = ?,
             payee = ?,
             note = ?,
             date = ?,
@@ -520,9 +514,7 @@ export async function updateTransaction(
             extra_notes = ?,
             counterparty_name = ?,
             counterparty_account_id = ?,
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [
@@ -588,11 +580,9 @@ export async function deleteTransaction(db: AsyncDb, transactionId: SyncId): Pro
 
   await execute(
     db,
-    `UPDATE "transaction"
+    `UPDATE transactions
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [transactionId],
@@ -608,7 +598,7 @@ export async function deleteTransaction(db: AsyncDb, transactionId: SyncId): Pro
 export async function eraseAllMoodTags(db: AsyncDb): Promise<void> {
   await execute(
     db,
-    `UPDATE "transaction" SET mood_tag = NULL, updated_at = ${SQLITE_NOW_EXPRESSION}, sync_version = 1, is_synced = 0 WHERE mood_tag IS NOT NULL`,
+    `UPDATE transactions SET mood_tag = NULL, updated_at = ${SQLITE_NOW_EXPRESSION} WHERE mood_tag IS NOT NULL`,
   );
 }
 

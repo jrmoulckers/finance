@@ -88,7 +88,7 @@ function normalizeCategoryName(name: string): string {
 async function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): Promise<SyncId | null> {
   const row = await queryOne<Row>(
     db,
-    'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
+    'SELECT id FROM households WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   return row && typeof row.id === 'string' ? row.id : null;
 }
@@ -233,7 +233,7 @@ export function useCategories(): UseCategoriesResult {
     loading,
     error: liveError,
     refresh,
-  } = useRealtimeTable<Row>('category', {
+  } = useRealtimeTable<Row>('categories', {
     where: 'deleted_at IS NULL',
     orderBy: 'sort_order ASC, name ASC',
     errorFallback: 'Failed to load categories.',

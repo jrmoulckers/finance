@@ -35,7 +35,7 @@ interface FormErrors {
 
 async function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): Promise<SyncId | null> {
   const row = await db.getOptional<Row>(
-    'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
+    'SELECT id FROM households WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
   );
   return row && typeof row.id === 'string' ? row.id : null;
 }

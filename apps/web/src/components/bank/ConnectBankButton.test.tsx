@@ -17,14 +17,24 @@ import { expectNoAxeViolations } from '../../test-utils/axe';
 
 const mocks = vi.hoisted(() => ({
   readHouseholdValue: vi.fn(),
+  ensureSyncedHouseholdMembership: vi.fn(),
   ensureAggregatorProvidersRegistered: vi.fn(),
   createConnection: vi.fn(),
   completeConnection: vi.fn(),
   openPlaidLink: vi.fn(),
+  authUser: null as { id: string; name?: string; email?: string } | null,
+}));
+
+vi.mock('../../auth/auth-context', () => ({
+  useAuth: () => ({ user: mocks.authUser }),
 }));
 
 vi.mock('../../db/DatabaseProvider', () => ({
   useDatabase: () => ({ __fakeDb: true }),
+}));
+
+vi.mock('../../db/repositories/household', () => ({
+  ensureSyncedHouseholdMembership: mocks.ensureSyncedHouseholdMembership,
 }));
 
 vi.mock('../../db/repositories/householdData', () => ({
@@ -60,7 +70,9 @@ const PLAID_METADATA = {
 describe('ConnectBankButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.authUser = null;
     mocks.readHouseholdValue.mockResolvedValue({ id: 'hh-1' });
+    mocks.ensureSyncedHouseholdMembership.mockResolvedValue(undefined);
     mocks.ensureAggregatorProvidersRegistered.mockResolvedValue(undefined);
     mocks.createConnection.mockResolvedValue({ sessionId: 'link-token-1' });
     mocks.completeConnection.mockResolvedValue({ id: 'conn-1' });
@@ -113,6 +125,27 @@ describe('ConnectBankButton', () => {
       household_id: 'hh-1',
     });
     await waitFor(() => expect(onConnected).toHaveBeenCalledTimes(1));
+  });
+
+  it('backfills the synced household membership for a signed-in owner', async () => {
+    mocks.authUser = { id: 'user-1' };
+    mocks.readHouseholdValue.mockResolvedValue({ id: 'hh-1', name: 'Test Household' });
+
+    render(<ConnectBankButton />);
+
+    await waitFor(() =>
+      expect(mocks.ensureSyncedHouseholdMembership).toHaveBeenCalledWith(
+        { __fakeDb: true },
+        { householdId: 'hh-1', name: 'Test Household', userId: 'user-1' },
+      ),
+    );
+  });
+
+  it('does not backfill membership when no user is signed in', async () => {
+    render(<ConnectBankButton />);
+    await waitFor(() => expect(mocks.readHouseholdValue).toHaveBeenCalled());
+
+    expect(mocks.ensureSyncedHouseholdMembership).not.toHaveBeenCalled();
   });
 
   it('shows an error and does not start linking when there is no household', async () => {
