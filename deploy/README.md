@@ -354,6 +354,36 @@ docker compose exec db psql -U postgres -d postgres -c "
 "
 ```
 
+### Aligning the JWT audience (one-time)
+
+The base compose sets `GOTRUE_JWT_AUD: authenticated` so every access token carries
+`aud="authenticated"` — the value the PowerSync sync service (Supabase auth mode)
+requires. GoTrue reads the `aud` it stamps on a token from each user's
+`auth.users.aud` column, and it looks users up by **(email, aud)** at login, so the
+config and the existing rows must agree. Deployments that previously ran without
+`GOTRUE_JWT_AUD` have `auth.users.aud = ''`; align them once, right after the auth
+container picks up the new setting:
+
+```bash
+# 1. Recreate GoTrue with the corrected GOTRUE_JWT_AUD (from the deployed compose)
+docker compose up -d auth
+
+# 2. Point every existing user at the standard audience (idempotent)
+docker compose exec -T db psql -U supabase_admin -d postgres -c "
+  UPDATE auth.users SET aud = 'authenticated' WHERE COALESCE(aud, '') <> 'authenticated';
+"
+
+# 3. Confirm no empty-audience users remain (expect 0)
+docker compose exec -T db psql -U supabase_admin -d postgres -c "
+  SELECT count(*) AS empty_aud FROM auth.users WHERE COALESCE(aud, '') <> 'authenticated';
+"
+```
+
+Existing browser sessions keep working (refresh-token grants don't use the `aud`
+lookup); only a brand-new sign-in between steps 1 and 2 would be briefly rejected.
+After step 2, a hard refresh mints a token with `aud="authenticated"` and live sync
+connects.
+
 ---
 
 ## Backup Procedures
