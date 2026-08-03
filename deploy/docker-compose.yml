@@ -160,6 +160,15 @@ services:
       GOTRUE_JWT_SECRET: ${JWT_SECRET}
       GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      # Audience claim baked into every issued access token. MUST be
+      # "authenticated" (the Supabase convention): the PowerSync sync service runs
+      # in Supabase auth mode, which hard-requires aud="authenticated" and rejects
+      # any other value with PSYNC_S2105 ("Unexpected aud claim value"). Leaving
+      # this unset makes GoTrue issue tokens with an empty aud, which breaks live
+      # sync (and therefore bank-connection household authorization). GoTrue also
+      # looks users up by (email, aud) at login, so existing auth.users rows must
+      # carry the same aud — see deploy/README.md "Aligning the JWT audience".
+      GOTRUE_JWT_AUD: authenticated
 
       # Session lifecycle
       GOTRUE_SESSION_TIMEBOX: ${SESSION_TIMEBOX:-24h}
