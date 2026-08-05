@@ -2,15 +2,22 @@
 # Ops — Production DB recovery
 # =============================================================================
 #
-# Read-only diagnostics and safe recovery for the self-hosted production stack
-# when DB-dependent services return 502 (Postgres down / in recovery).
+# Read-only diagnostics and recovery for the self-hosted production stack when
+# DB-dependent services return 502. Every Docker call is wrapped in `timeout`
+# so an unresponsive Docker daemon cannot wedge the job (an earlier plain
+# `docker compose ps` hung for 15 min → job cancelled).
 #
-#   diagnose   (default) — print `docker compose ps`, db logs, disk + memory.
-#                          Makes NO changes. Run this first.
-#   up                    — `docker compose up -d` (idempotent; starts anything
-#                          that is down, recreates changed containers). Data is
-#                          preserved (named volumes are untouched).
-#   restart-db            — `docker compose restart db`, then tail db logs.
+#   diagnose        (default) read-only: uptime, disk, memory, sudo probe,
+#                   dockerd state, `docker info`/`ps` (timeout-guarded), and —
+#                   when passwordless sudo is available — recent docker journal
+#                   and kernel OOM lines. Makes NO changes.
+#   up              `docker compose up -d` (idempotent; data volumes untouched).
+#   restart-db      `docker compose restart db`, then tail db logs.
+#   restart-docker  `sudo systemctl restart docker` (fixes a hung daemon), then
+#                   `docker compose up -d`. Requires passwordless sudo.
+#   reboot          `sudo systemctl reboot` (last resort for a wedged host).
+#                   Requires passwordless sudo; containers with a restart policy
+#                   come back automatically on boot.
 #
 # Runs over the same SSH path the deploy uses (DEPLOY_HOST / DEPLOY_SSH_KEY /
 # DEPLOY_USER), gated by the `production` environment.
@@ -30,6 +37,8 @@ on:
           - diagnose
           - up
           - restart-db
+          - restart-docker
+          - reboot
 
 concurrency:
   group: ops-prod-db-recovery
@@ -42,7 +51,7 @@ jobs:
   ops:
     name: ${{ inputs.action }} on production
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     environment:
       name: production
     steps:
@@ -73,42 +82,55 @@ jobs:
             -o ServerAliveCountMax=10 \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' ACTION='$ACTION' bash -s" <<'REMOTE'
-            set -eu
+            set -u
             case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac
-            cd "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH" 2>/dev/null || true
             echo "[remote] connected to $(hostname); action=$ACTION; path=$DEPLOY_PATH"
 
             DC="docker compose -f deploy/docker-compose.yml"
+            HAVE_SUDO=no
+            if sudo -n true 2>/dev/null; then HAVE_SUDO=yes; fi
 
-            echo "=== docker compose ps ==="
-            $DC ps </dev/null || true
-            echo "=== disk (/) ==="
-            df -h / </dev/null || true
-            echo "=== memory ==="
-            free -m </dev/null || true
+            echo "=== uptime / load ==="; uptime </dev/null 2>&1 || true
+            echo "=== disk ==="; df -h </dev/null 2>&1 || true
+            echo "=== memory (MiB) ==="; free -m </dev/null 2>&1 || true
+            echo "=== passwordless sudo: $HAVE_SUDO ==="
+            echo "=== dockerd active: $(systemctl is-active docker 2>/dev/null || echo unknown) ==="
+            echo "=== docker info (timeout 20) ==="; timeout 20 docker info </dev/null 2>&1 | head -35 || echo "(docker info timed out/failed)"
+            echo "=== compose ps (timeout 25) ==="; timeout 25 $DC ps </dev/null 2>&1 || echo "(compose ps timed out/failed)"
 
             case "$ACTION" in
               diagnose)
-                echo "=== db logs (tail 150) ==="
-                $DC logs db --tail=150 --no-color </dev/null || true
+                if [ "$HAVE_SUDO" = yes ]; then
+                  echo "=== docker journal (last 40) ==="; sudo journalctl -u docker --no-pager -n 40 </dev/null 2>&1 | tail -40 || true
+                  echo "=== kernel OOM / killed (last 20) ==="; sudo dmesg </dev/null 2>&1 | grep -iE "oom|killed process|out of memory" | tail -20 || echo "(none)"
+                fi
+                echo "=== db logs (timeout 25, tail 120) ==="; timeout 25 $DC logs db --tail=120 --no-color </dev/null 2>&1 || echo "(db logs timed out/failed)"
                 ;;
               up)
-                echo "=== docker compose up -d ==="
-                $DC up -d </dev/null
+                echo "=== docker compose up -d (timeout 180) ==="; timeout 180 $DC up -d </dev/null 2>&1 || echo "(up timed out/failed)"
                 sleep 8
-                echo "=== ps after up ==="
-                $DC ps </dev/null || true
-                echo "=== db logs (tail 60) ==="
-                $DC logs db --tail=60 --no-color </dev/null || true
+                echo "=== ps after up (timeout 25) ==="; timeout 25 $DC ps </dev/null 2>&1 || true
                 ;;
               restart-db)
-                echo "=== docker compose restart db ==="
-                $DC restart db </dev/null
+                echo "=== docker compose restart db (timeout 120) ==="; timeout 120 $DC restart db </dev/null 2>&1 || echo "(restart timed out/failed)"
                 sleep 8
-                echo "=== db logs (tail 80) ==="
-                $DC logs db --tail=80 --no-color </dev/null || true
-                echo "=== ps after restart ==="
-                $DC ps </dev/null || true
+                echo "=== db logs (timeout 25, tail 80) ==="; timeout 25 $DC logs db --tail=80 --no-color </dev/null 2>&1 || true
+                ;;
+              restart-docker)
+                if [ "$HAVE_SUDO" != yes ]; then echo "::error::passwordless sudo unavailable — cannot restart the docker daemon"; exit 1; fi
+                echo "=== systemctl restart docker ==="; sudo systemctl restart docker </dev/null 2>&1 || { echo "::error::docker restart failed"; exit 1; }
+                sleep 12
+                echo "=== dockerd active: $(systemctl is-active docker 2>/dev/null) ==="
+                echo "=== docker compose up -d (timeout 180) ==="; timeout 180 $DC up -d </dev/null 2>&1 || echo "(up timed out/failed)"
+                sleep 8
+                echo "=== ps after restart (timeout 25) ==="; timeout 25 $DC ps </dev/null 2>&1 || true
+                ;;
+              reboot)
+                if [ "$HAVE_SUDO" != yes ]; then echo "::error::passwordless sudo unavailable — cannot reboot"; exit 1; fi
+                echo "=== rebooting host (containers with a restart policy return on boot) ==="
+                sudo systemctl reboot </dev/null 2>&1 || sudo reboot </dev/null 2>&1 || true
+                echo "reboot signalled"
                 ;;
             esac
           REMOTE
