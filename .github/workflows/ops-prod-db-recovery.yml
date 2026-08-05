@@ -1,0 +1,118 @@
+# =============================================================================
+# Ops — Production DB recovery
+# =============================================================================
+#
+# Read-only diagnostics and safe recovery for the self-hosted production stack
+# when DB-dependent services return 502 (Postgres down / in recovery).
+#
+#   diagnose   (default) — print `docker compose ps`, db logs, disk + memory.
+#                          Makes NO changes. Run this first.
+#   up                    — `docker compose up -d` (idempotent; starts anything
+#                          that is down, recreates changed containers). Data is
+#                          preserved (named volumes are untouched).
+#   restart-db            — `docker compose restart db`, then tail db logs.
+#
+# Runs over the same SSH path the deploy uses (DEPLOY_HOST / DEPLOY_SSH_KEY /
+# DEPLOY_USER), gated by the `production` environment.
+# =============================================================================
+
+name: Ops — Production DB recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'What to do on the production VM'
+        required: true
+        default: diagnose
+        type: choice
+        options:
+          - diagnose
+          - up
+          - restart-db
+
+concurrency:
+  group: ops-prod-db-recovery
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ops:
+    name: ${{ inputs.action }} on production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    steps:
+      - name: Run ops action over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+          ACTION: ${{ inputs.action }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo '::error::DEPLOY_HOST not configured — cannot reach the production server.'
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # ACTION comes from a fixed choice list (no injection); pass it plus
+          # DEPLOY_PATH on the command line and keep the body in a quoted heredoc.
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=10 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' ACTION='$ACTION' bash -s" <<'REMOTE'
+            set -eu
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac
+            cd "$DEPLOY_PATH"
+            echo "[remote] connected to $(hostname); action=$ACTION; path=$DEPLOY_PATH"
+
+            DC="docker compose -f deploy/docker-compose.yml"
+
+            echo "=== docker compose ps ==="
+            $DC ps </dev/null || true
+            echo "=== disk (/) ==="
+            df -h / </dev/null || true
+            echo "=== memory ==="
+            free -m </dev/null || true
+
+            case "$ACTION" in
+              diagnose)
+                echo "=== db logs (tail 150) ==="
+                $DC logs db --tail=150 --no-color </dev/null || true
+                ;;
+              up)
+                echo "=== docker compose up -d ==="
+                $DC up -d </dev/null
+                sleep 8
+                echo "=== ps after up ==="
+                $DC ps </dev/null || true
+                echo "=== db logs (tail 60) ==="
+                $DC logs db --tail=60 --no-color </dev/null || true
+                ;;
+              restart-db)
+                echo "=== docker compose restart db ==="
+                $DC restart db </dev/null
+                sleep 8
+                echo "=== db logs (tail 80) ==="
+                $DC logs db --tail=80 --no-color </dev/null || true
+                echo "=== ps after restart ==="
+                $DC ps </dev/null || true
+                ;;
+            esac
+          REMOTE
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
