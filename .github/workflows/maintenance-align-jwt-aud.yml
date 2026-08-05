@@ -63,23 +63,34 @@ jobs:
 
           # Pass DEPLOY_PATH via the command line and keep the remote body in a
           # quoted heredoc so nothing expands on the runner (mirrors deploy-production.yml).
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+          # Keepalives + ConnectTimeout stop a NAT/idle drop from wedging the session.
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=8 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'REMOTE'
             set -eu
             # Expand a leading ~ that a non-interactive shell leaves literal.
             case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac
             cd "$DEPLOY_PATH"
+            echo "[remote] connected to $(hostname); DEPLOY_PATH=$DEPLOY_PATH"
 
             DC="docker compose -f deploy/docker-compose.yml"
+            # `</dev/null` on every psql call is REQUIRED: `docker compose exec -T`
+            # proxies its stdin to the container, so without it the exec swallows the
+            # rest of this heredoc and blocks on read forever (no output → the idle
+            # SSH session is dropped with a broken pipe). Redirecting stdin fixes it.
             PSQL="$DC exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1"
 
             echo "aud distribution BEFORE:"
-            $PSQL -tAc "SELECT COALESCE(NULLIF(aud,''),'(empty)') AS aud, count(*) FROM auth.users GROUP BY 1 ORDER BY 1"
+            $PSQL -tAc "SELECT COALESCE(NULLIF(aud,''),'(empty)') AS aud, count(*) FROM auth.users GROUP BY 1 ORDER BY 1" </dev/null
 
-            $PSQL -c "UPDATE auth.users SET aud = 'authenticated' WHERE COALESCE(aud, '') <> 'authenticated'"
+            $PSQL -c "UPDATE auth.users SET aud = 'authenticated' WHERE COALESCE(aud, '') <> 'authenticated'" </dev/null
 
             echo "aud distribution AFTER:"
-            $PSQL -tAc "SELECT COALESCE(NULLIF(aud,''),'(empty)') AS aud, count(*) FROM auth.users GROUP BY 1 ORDER BY 1"
+            $PSQL -tAc "SELECT COALESCE(NULLIF(aud,''),'(empty)') AS aud, count(*) FROM auth.users GROUP BY 1 ORDER BY 1" </dev/null
           REMOTE
 
           {
