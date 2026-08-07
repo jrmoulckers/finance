@@ -476,6 +476,7 @@ These tasks create GitHub issues using the same issue-first workflow as engineer
 
 See `docs/ai/` for complete AI development documentation.
 
+<!-- prettier-ignore-start -->
 <!-- studio:base:start -->
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
@@ -617,3 +618,4 @@ Scope-specific rules live alongside the code — read the relevant one before wo
 - `skills/<name>/SKILL.md` — reusable task playbooks; read the relevant one before acting.
 - `instructions/*.instructions.md` — path-scoped coding standards.
 <!-- studio:base:end -->
+<!-- prettier-ignore-end -->
