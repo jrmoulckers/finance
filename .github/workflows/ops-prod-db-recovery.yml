@@ -15,6 +15,9 @@
 #   restart-db      `docker compose restart db`, then tail db logs.
 #   restart-docker  `sudo systemctl restart docker` (fixes a hung daemon), then
 #                   `docker compose up -d`. Requires passwordless sudo.
+#   repair-household-memberships
+#                   Backfill missing active owner memberships from each
+#                   household's verified `created_by` identity.
 #   reboot          `sudo systemctl reboot` (last resort for a wedged host).
 #                   Requires passwordless sudo; containers with a restart policy
 #                   come back automatically on boot.
@@ -38,6 +41,7 @@ on:
           - up
           - restart-db
           - restart-docker
+          - repair-household-memberships
           - reboot
 
 concurrency:
@@ -136,6 +140,31 @@ jobs:
                 echo "=== docker compose up -d (timeout 180) ==="; timeout 180 $DC up -d </dev/null 2>&1 || echo "(up timed out/failed)"
                 sleep 8
                 echo "=== ps after restart (timeout 25) ==="; timeout 25 $DC ps </dev/null 2>&1 || true
+                ;;
+              repair-household-memberships)
+                echo "=== repair missing household owner memberships ==="
+                timeout 30 $DC exec -T db psql \
+                  -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+                  -c "UPDATE public.household_members hm
+                      SET role = 'owner', updated_at = now()
+                      FROM public.households h
+                      WHERE hm.household_id = h.id
+                        AND hm.user_id = h.created_by
+                        AND hm.deleted_at IS NULL
+                        AND h.deleted_at IS NULL
+                        AND hm.role <> 'owner';
+                      INSERT INTO public.household_members (household_id, user_id, role)
+                      SELECT h.id, h.created_by, 'owner'
+                      FROM public.households h
+                      WHERE h.deleted_at IS NULL
+                        AND NOT EXISTS (
+                          SELECT 1
+                          FROM public.household_members hm
+                          WHERE hm.household_id = h.id
+                            AND hm.user_id = h.created_by
+                            AND hm.deleted_at IS NULL
+                        )
+                      ON CONFLICT DO NOTHING;" </dev/null
                 ;;
               reboot)
                 if [ "$HAVE_SUDO" != yes ]; then echo "::error::passwordless sudo unavailable — cannot reboot"; exit 1; fi

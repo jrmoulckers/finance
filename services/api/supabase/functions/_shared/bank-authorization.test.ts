@@ -16,11 +16,18 @@ interface UpsertRecord {
   options: { onConflict: string; ignoreDuplicates: boolean };
 }
 
+interface InsertRecord {
+  table: string;
+  value: Record<string, string>;
+}
+
 function clientWithResults(
   results: Record<string, QueryResult | QueryResult[]>,
   upsertError: Error | null = null,
-): { client: SupabaseClient; upserts: UpsertRecord[] } {
+  insertError: (Error & { code?: string }) | null = null,
+): { client: SupabaseClient; upserts: UpsertRecord[]; inserts: InsertRecord[] } {
   const upserts: UpsertRecord[] = [];
+  const inserts: InsertRecord[] = [];
   const client = {
     from(table: string) {
       const query = {
@@ -39,11 +46,15 @@ function clientWithResults(
           upserts.push({ table, value, options });
           return Promise.resolve({ error: upsertError });
         },
+        insert: (value: Record<string, string>) => {
+          inserts.push({ table, value });
+          return Promise.resolve({ error: insertError });
+        },
       };
       return query;
     },
   } as unknown as SupabaseClient;
-  return { client, upserts };
+  return { client, upserts, inserts };
 }
 
 Deno.test('bank management allows an owner/admin membership without writes', async () => {
@@ -71,8 +82,7 @@ Deno.test(
 Deno.test(
   'link-token creation provisions the authenticated user missing server household',
   async () => {
-    const { client, upserts } = clientWithResults({
-      household_members: { data: null, error: null },
+    const { client, upserts, inserts } = clientWithResults({
       households: [
         { data: null, error: null },
         { data: { id: 'household-1', created_by: 'user-1' }, error: null },
@@ -80,6 +90,10 @@ Deno.test(
       users: [
         { data: null, error: null },
         { data: { id: 'user-1' }, error: null },
+      ],
+      household_members: [
+        { data: null, error: null },
+        { data: null, error: null },
       ],
     });
 
@@ -104,6 +118,12 @@ Deno.test(
         table: 'households',
         value: { id: 'household-1', name: 'My Household', created_by: 'user-1' },
         options: { onConflict: 'id', ignoreDuplicates: true },
+      },
+    ]);
+    assertEquals(inserts, [
+      {
+        table: 'household_members',
+        value: { household_id: 'household-1', user_id: 'user-1', role: 'owner' },
       },
     ]);
   },
@@ -154,9 +174,91 @@ Deno.test('bank management denies when another user wins the provisioning race',
   assertEquals(upserts.length, 1);
 });
 
+Deno.test('link-token creation repairs a creator missing their server membership', async () => {
+  const { client, inserts } = clientWithResults({
+    household_members: [
+      { data: null, error: null },
+      { data: null, error: null },
+    ],
+    households: { data: { id: 'household-1', created_by: 'user-1' }, error: null },
+  });
+
+  assertEquals(
+    await ensureCanManageHousehold(client, 'household-1', 'user-1', {
+      provisionIfMissing: true,
+      userEmail: 'person@example.com',
+    }),
+    true,
+  );
+  assertEquals(inserts, [
+    {
+      table: 'household_members',
+      value: { household_id: 'household-1', user_id: 'user-1', role: 'owner' },
+    },
+  ]);
+});
+
+Deno.test('bank management accepts a concurrent active membership insert', async () => {
+  const duplicateError = Object.assign(new Error('duplicate membership'), { code: '23505' });
+  const { client } = clientWithResults(
+    {
+      household_members: [
+        { data: null, error: null },
+        { data: null, error: null },
+        { data: { id: 'member-1', role: 'owner' }, error: null },
+      ],
+      households: { data: { id: 'household-1', created_by: 'user-1' }, error: null },
+    },
+    null,
+    duplicateError,
+  );
+
+  assertEquals(
+    await ensureCanManageHousehold(client, 'household-1', 'user-1', {
+      provisionIfMissing: true,
+      userEmail: 'person@example.com',
+    }),
+    true,
+  );
+});
+
+Deno.test('bank management promotes the verified household creator to owner', async () => {
+  const { client, upserts, inserts } = clientWithResults({
+    household_members: [
+      { data: null, error: null },
+      { data: { id: 'member-1', role: 'member' }, error: null },
+    ],
+    households: { data: { id: 'household-1', created_by: 'user-1' }, error: null },
+  });
+
+  assertEquals(
+    await ensureCanManageHousehold(client, 'household-1', 'user-1', {
+      provisionIfMissing: true,
+      userEmail: 'person@example.com',
+    }),
+    true,
+  );
+  assertEquals(upserts, [
+    {
+      table: 'household_members',
+      value: {
+        id: 'member-1',
+        household_id: 'household-1',
+        user_id: 'user-1',
+        role: 'owner',
+      },
+      options: { onConflict: 'id', ignoreDuplicates: false },
+    },
+  ]);
+  assertEquals(inserts, []);
+});
+
 Deno.test('bank management preserves an existing application user while provisioning', async () => {
-  const { client, upserts } = clientWithResults({
-    household_members: { data: null, error: null },
+  const { client, upserts, inserts } = clientWithResults({
+    household_members: [
+      { data: null, error: null },
+      { data: null, error: null },
+    ],
     households: [
       { data: null, error: null },
       { data: { id: 'household-1', created_by: 'user-1' }, error: null },
@@ -178,6 +280,7 @@ Deno.test('bank management preserves an existing application user while provisio
       options: { onConflict: 'id', ignoreDuplicates: true },
     },
   ]);
+  assertEquals(inserts.length, 1);
 });
 
 Deno.test(

@@ -133,11 +133,60 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         return;
     }
 
+    if (
+      !response.ok &&
+      response.status === 409 &&
+      op.op === UpdateType.PUT &&
+      op.table === 'household_members' &&
+      (await this.hasMatchingActiveMembership(op, headers, base))
+    ) {
+      return;
+    }
+
     if (!response.ok) {
       const detail = await safeReadText(response);
       throw new Error(
         `PowerSync upload failed (${op.op} ${op.table} ${op.id}): HTTP ${response.status} ${detail}`.trim(),
       );
+    }
+  }
+
+  /**
+   * A server-provisioned owner membership can have a different id from the
+   * queued local row. Accept the unique-pair conflict only after PostgREST
+   * confirms the exact active household/user pair is visible to this JWT.
+   */
+  private async hasMatchingActiveMembership(
+    op: CrudEntry,
+    headers: Record<string, string>,
+    base: string,
+  ): Promise<boolean> {
+    const householdId = op.opData?.household_id;
+    const userId = op.opData?.user_id;
+    if (typeof householdId !== 'string' || typeof userId !== 'string') return false;
+
+    const query =
+      `${base}/household_members?household_id=eq.${encodeURIComponent(householdId)}` +
+      `&user_id=eq.${encodeURIComponent(userId)}&deleted_at=is.null` +
+      '&select=id,household_id,user_id,role';
+    const response = await this.fetchFn(query, { method: 'GET', headers });
+    if (!response.ok) return false;
+
+    try {
+      const rows = (await response.json()) as unknown;
+      return (
+        Array.isArray(rows) &&
+        rows.some(
+          (row) =>
+            row !== null &&
+            typeof row === 'object' &&
+            (row as Record<string, unknown>).household_id === householdId &&
+            (row as Record<string, unknown>).user_id === userId &&
+            ['owner', 'admin'].includes((row as Record<string, unknown>).role as string),
+        )
+      );
+    } catch {
+      return false;
     }
   }
 }
