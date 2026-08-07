@@ -44,7 +44,7 @@ import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import { encryptToken } from '../_shared/bank-crypto.ts';
-import { canManageHousehold } from '../_shared/bank-authorization.ts';
+import { ensureCanManageHousehold } from '../_shared/bank-authorization.ts';
 import {
   createLinkToken as plaidCreateLinkToken,
   exchangePublicToken as plaidExchangePublicToken,
@@ -352,7 +352,11 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'household_id is required');
       }
 
-      if (!(await canManageHousehold(supabase, body.household_id, user.id))) {
+      if (
+        !(await ensureCanManageHousehold(supabase, body.household_id, user.id, {
+          provisionIfMissing: true,
+        }))
+      ) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',
@@ -402,7 +406,7 @@ serve(async (req: Request): Promise<Response> => {
       if (!body.institution_id) return errorResponse(req, 'institution_id is required');
       if (!body.institution_name) return errorResponse(req, 'institution_name is required');
 
-      if (!(await canManageHousehold(supabase, body.household_id, user.id))) {
+      if (!(await ensureCanManageHousehold(supabase, body.household_id, user.id))) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',
@@ -575,7 +579,7 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'Bank connection not found', 404);
       }
 
-      if (!(await canManageHousehold(supabase, existing.household_id, user.id))) {
+      if (!(await ensureCanManageHousehold(supabase, existing.household_id, user.id))) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',
