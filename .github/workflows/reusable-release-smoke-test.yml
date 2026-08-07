@@ -1,16 +1,25 @@
 # =============================================================================
-# Reusable Smoke Test — Pre-release validation for all platforms
+# Reusable Release Smoke Test — Pre-release validation for all platforms
 # =============================================================================
 #
 # Runs quick sanity checks against built artifacts to verify they are functional
 # before promoting to production or advancing a staged rollout.
 #
-# Called by: rc-branch-tag.yml, deploy-progressive.yml, release-train.yml
+# This is a Finance-local reusable workflow (multi-platform: android/ios/web/
+# windows) and is intentionally NOT the canon `reusable-smoke-test.yml` defined
+# in jrmoulckers/.github (a generic single-job web-only smoke test). It was
+# renamed from `reusable-smoke-test.yml` to `reusable-release-smoke-test.yml`
+# to remove an accidental filename collision with that canon workflow — see
+# jrmoulckers/.github#60. Finance calls this file only via a relative
+# `uses: ./.github/workflows/...` path and does not consume the backbone
+# version under either name.
 #
-# Issue: #1147
+# Called by: rc-branch-tag.yml, release-train.yml
+#
+# Issue: #1147, jrmoulckers/.github#60
 # =============================================================================
 
-name: Reusable Smoke Test
+name: Reusable Release Smoke Test
 
 on:
   workflow_call:

@@ -423,7 +423,7 @@ jobs:
       needs.prepare.outputs.is_dry_run != 'true' &&
       github.event.inputs.skip_smoke_tests != 'true' &&
       github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/reusable-smoke-test.yml
+    uses: ./.github/workflows/reusable-release-smoke-test.yml
     with:
       version: ${{ needs.prepare.outputs.next_version }}
       platforms: 'android,ios,web,windows'
