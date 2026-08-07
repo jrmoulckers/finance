@@ -44,6 +44,7 @@ import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import { encryptToken } from '../_shared/bank-crypto.ts';
+import { canManageHousehold } from '../_shared/bank-authorization.ts';
 import {
   createLinkToken as plaidCreateLinkToken,
   exchangePublicToken as plaidExchangePublicToken,
@@ -351,17 +352,7 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'household_id is required');
       }
 
-      // Verify household membership
-      const { data: membership, error: memError } = await supabase
-        .from('household_members')
-        .select('id, role')
-        .eq('household_id', body.household_id)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .in('role', ['owner', 'admin'])
-        .single();
-
-      if (memError || !membership) {
+      if (!(await canManageHousehold(supabase, body.household_id, user.id))) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',
@@ -411,17 +402,7 @@ serve(async (req: Request): Promise<Response> => {
       if (!body.institution_id) return errorResponse(req, 'institution_id is required');
       if (!body.institution_name) return errorResponse(req, 'institution_name is required');
 
-      // Verify household membership
-      const { data: membership, error: memError } = await supabase
-        .from('household_members')
-        .select('id, role')
-        .eq('household_id', body.household_id)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .in('role', ['owner', 'admin'])
-        .single();
-
-      if (memError || !membership) {
+      if (!(await canManageHousehold(supabase, body.household_id, user.id))) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',
@@ -594,16 +575,7 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'Bank connection not found', 404);
       }
 
-      const { data: membership, error: memError } = await supabase
-        .from('household_members')
-        .select('id, role')
-        .eq('household_id', existing.household_id)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .in('role', ['owner', 'admin'])
-        .single();
-
-      if (memError || !membership) {
+      if (!(await canManageHousehold(supabase, existing.household_id, user.id))) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',
