@@ -11,6 +11,9 @@
 #                   dockerd state, `docker info`/`ps` (timeout-guarded), and —
 #                   when passwordless sudo is available — recent docker journal
 #                   and kernel OOM lines. Makes NO changes.
+#   diagnose-bank-data
+#                   Read-only aggregate counts for the bank-data pipeline. Does
+#                   not output account names, transaction data, or identifiers.
 #   up              `docker compose up -d` (idempotent; data volumes untouched).
 #   restart-db      `docker compose restart db`, then tail db logs.
 #   restart-docker  `sudo systemctl restart docker` (fixes a hung daemon), then
@@ -38,6 +41,7 @@ on:
         type: choice
         options:
           - diagnose
+          - diagnose-bank-data
           - up
           - restart-db
           - restart-docker
@@ -121,6 +125,54 @@ jobs:
                 timeout 25 $DC logs edge-functions --tail=160 --no-color </dev/null 2>&1 \
                   | sed -E 's/(access_token|public_token|client_id|secret|authorization)(["=: ]+)[^", }]+/\1\2<redacted>/Ig' \
                   || echo "(edge-functions logs timed out/failed)"
+                ;;
+              diagnose-bank-data)
+                echo "=== bank-data aggregate counts (no financial data or identifiers) ==="
+                timeout 30 $DC exec -T db psql \
+                  -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+                  -P pager=off \
+                  -c "SELECT metric, row_count
+                      FROM (
+                        SELECT 1 AS sort_order, 'enabled_providers' AS metric, count(*)::bigint AS row_count
+                        FROM public.aggregator_providers
+                        WHERE is_enabled
+                        UNION ALL
+                        SELECT 2, 'bank_connections', count(*)
+                        FROM public.bank_connections
+                        WHERE deleted_at IS NULL
+                        UNION ALL
+                        SELECT 3, 'connections_with_sync_cursor', count(*)
+                        FROM public.bank_connections
+                        WHERE deleted_at IS NULL
+                          AND sync_cursor IS NOT NULL
+                        UNION ALL
+                        SELECT 4, 'linked_connection_accounts', count(*)
+                        FROM public.bank_connection_accounts
+                        WHERE is_linked
+                        UNION ALL
+                        SELECT 5, 'internal_accounts_for_connections', count(DISTINCT bca.account_id)
+                        FROM public.bank_connection_accounts bca
+                        JOIN public.bank_connections bc ON bc.id = bca.connection_id
+                        JOIN public.accounts a ON a.id = bca.account_id
+                        WHERE bca.is_linked
+                          AND bc.deleted_at IS NULL
+                          AND a.deleted_at IS NULL
+                        UNION ALL
+                        SELECT 6, 'transactions_for_linked_accounts', count(DISTINCT t.id)
+                        FROM public.bank_connection_accounts bca
+                        JOIN public.bank_connections bc ON bc.id = bca.connection_id
+                        JOIN public.transactions t ON t.account_id = bca.account_id
+                        WHERE bca.is_linked
+                          AND bc.deleted_at IS NULL
+                          AND t.deleted_at IS NULL
+                        UNION ALL
+                        SELECT 7, 'connection_health_events', count(*)
+                        FROM public.bank_connection_health
+                        UNION ALL
+                        SELECT 8, 'bank_sync_log_entries', count(*)
+                        FROM public.bank_sync_log
+                      ) counts
+                      ORDER BY sort_order;" </dev/null
                 ;;
               up)
                 echo "=== docker compose up -d (timeout 180) ==="; timeout 180 $DC up -d </dev/null 2>&1 || echo "(up timed out/failed)"
