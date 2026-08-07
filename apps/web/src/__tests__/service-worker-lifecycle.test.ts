@@ -152,6 +152,16 @@ describe('Fetch strategy routing (#1330)', () => {
     const url = new URL('/assets/main.js', 'https://example.com');
     expect(STATIC_EXTENSIONS.test(url.pathname)).toBe(true);
   });
+
+  it('live backend endpoints (PowerSync + Supabase) bypass the SW via passthrough', () => {
+    // PowerSync sync service — the streaming POST that must never be cached.
+    expect(getFetchStrategyForPathname('/sync/stream')).toBe('passthrough');
+    expect(getFetchStrategyForPathname('/sync/probes/liveness')).toBe('passthrough');
+    // Supabase edge: PostgREST, GoTrue, and Edge Functions.
+    expect(getFetchStrategyForPathname('/rest/v1/accounts')).toBe('passthrough');
+    expect(getFetchStrategyForPathname('/auth/v1/token')).toBe('passthrough');
+    expect(getFetchStrategyForPathname('/functions/v1/bank-webhook')).toBe('passthrough');
+  });
 });
 
 // ---------------------------------------------------------------------------
