@@ -266,12 +266,13 @@ let _config: PowerSyncConfig | null = null;
  *   - VITE_POWERSYNC_ENABLED   — "true" to enable PowerSync
  */
 export function resolvePowerSyncConfig(): PowerSyncConfig {
-  const meta = import.meta as unknown as { env?: Record<string, string> };
+  // Static `import.meta.env.VITE_*` access so the production bundler inlines
+  // each literal — dynamic/aliased access resolves to undefined at runtime.
   return {
-    instanceUrl: meta.env?.VITE_POWERSYNC_URL ?? '',
-    supabaseUrl: meta.env?.VITE_SUPABASE_URL ?? '',
-    supabaseAnonKey: meta.env?.VITE_SUPABASE_ANON_KEY ?? '',
-    enabled: meta.env?.VITE_POWERSYNC_ENABLED === 'true',
+    instanceUrl: import.meta.env.VITE_POWERSYNC_URL ?? '',
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL ?? '',
+    supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',
+    enabled: import.meta.env.VITE_POWERSYNC_ENABLED === 'true',
   };
 }
 

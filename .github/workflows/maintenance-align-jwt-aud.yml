@@ -1,0 +1,105 @@
+# =============================================================================
+# Maintenance — Align auth.users JWT audience (one-time)
+# =============================================================================
+#
+# Sets `auth.users.aud = 'authenticated'` for any rows created while GoTrue ran
+# without `GOTRUE_JWT_AUD`. GoTrue stamps a token's `aud` from this column and
+# looks users up by (email, aud) at login, so until existing rows are aligned,
+# issued tokens carry `aud=""` — which the PowerSync sync service (Supabase auth
+# mode) rejects with PSYNC_S2105, and fresh sign-ins fail.
+#
+# The statement is fixed (not an input) and idempotent, so re-runs are safe
+# no-ops. Runs against the production server over the same SSH path the deploy
+# uses (DEPLOY_HOST / DEPLOY_SSH_KEY / DEPLOY_USER, gated by the `production`
+# environment). Trigger from the Actions tab → "Run workflow" → confirm: yes.
+# =============================================================================
+
+name: Maintenance — Align JWT audience
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "yes" to run the one-time auth.users aud alignment against production'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'no'
+          - 'yes'
+
+concurrency:
+  group: maintenance-align-jwt-aud
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  align-jwt-aud:
+    name: Align auth.users aud on production
+    if: ${{ inputs.confirm == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    steps:
+      - name: Align auth.users aud over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo '::error::DEPLOY_HOST not configured — cannot reach the production server.'
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Pass DEPLOY_PATH via the command line and keep the remote body in a
+          # quoted heredoc so nothing expands on the runner (mirrors deploy-production.yml).
+          # Keepalives + ConnectTimeout stop a NAT/idle drop from wedging the session.
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=8 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'REMOTE'
+            set -eu
+            # Expand a leading ~ that a non-interactive shell leaves literal.
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac
+            cd "$DEPLOY_PATH"
+            echo "[remote] connected to $(hostname); DEPLOY_PATH=$DEPLOY_PATH"
+
+            DC="docker compose -f deploy/docker-compose.yml"
+            # `</dev/null` on every psql call is REQUIRED: `docker compose exec -T`
+            # proxies its stdin to the container, so without it the exec swallows the
+            # rest of this heredoc and blocks on read forever (no output → the idle
+            # SSH session is dropped with a broken pipe). Redirecting stdin fixes it.
+            PSQL="$DC exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1"
+
+            echo "aud distribution BEFORE:"
+            $PSQL -tAc "SELECT COALESCE(NULLIF(aud,''),'(empty)') AS aud, count(*) FROM auth.users GROUP BY 1 ORDER BY 1" </dev/null
+
+            $PSQL -c "UPDATE auth.users SET aud = 'authenticated' WHERE COALESCE(aud, '') <> 'authenticated'" </dev/null
+
+            echo "aud distribution AFTER:"
+            $PSQL -tAc "SELECT COALESCE(NULLIF(aud,''),'(empty)') AS aud, count(*) FROM auth.users GROUP BY 1 ORDER BY 1" </dev/null
+          REMOTE
+
+          {
+            echo '### ✅ auth.users aud aligned to `authenticated`'
+            echo ''
+            echo 'PowerSync will now accept issued tokens and fresh sign-ins resolve.'
+            echo 'Hard-refresh finance.jrmoulckers.com to mint a corrected token.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

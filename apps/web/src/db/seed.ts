@@ -53,7 +53,10 @@ function firstDayOfCurrentMonth(): LocalDate {
 
 /** Seed the local SQLite database with realistic demo data when empty. */
 export async function seedDatabase(db: SqliteDb): Promise<void> {
-  const existingAccounts = queryOne<{ count: number }>(db, 'SELECT COUNT(*) AS count FROM account');
+  const existingAccounts = queryOne<{ count: number }>(
+    db,
+    'SELECT COUNT(*) AS count FROM accounts',
+  );
   const accountCount = Number(existingAccounts?.count ?? 0);
 
   if (accountCount > 0) {
@@ -87,7 +90,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
   try {
     execute(
       db,
-      `INSERT INTO user (
+      `INSERT INTO users (
         id,
         email,
         display_name,
@@ -115,10 +118,10 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
 
     execute(
       db,
-      `INSERT INTO household (
+      `INSERT INTO households (
         id,
         name,
-        owner_id,
+        created_by,
         created_at,
         updated_at,
         deleted_at,
@@ -130,7 +133,7 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
 
     execute(
       db,
-      `INSERT INTO household_member (
+      `INSERT INTO household_members (
         id,
         household_id,
         user_id,

@@ -78,7 +78,7 @@ declare global {
 function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
   const now = new Date('2026-05-26T12:00:00.000Z').toISOString();
   return {
-    user: [
+    users: [
       {
         id: 'e2e-user-1',
         email: 'demo@finance.local',
@@ -92,11 +92,11 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         is_synced: 0,
       },
     ],
-    household: [
+    households: [
       {
         id: 'e2e-household-1',
         name: 'E2E Household',
-        owner_id: 'e2e-user-1',
+        created_by: 'e2e-user-1',
         created_at: now,
         updated_at: now,
         deleted_at: null,
@@ -104,7 +104,7 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         is_synced: 0,
       },
     ],
-    household_member: [
+    household_members: [
       {
         id: 'e2e-member-1',
         household_id: 'e2e-household-1',
@@ -118,15 +118,15 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         is_synced: 0,
       },
     ],
-    account: [
+    accounts: [
       {
         id: 'e2e-account-1',
         household_id: 'e2e-household-1',
         name: 'Checking',
         type: 'CHECKING',
-        currency: 'USD',
-        current_balance: 250000,
-        is_archived: 0,
+        currency_code: 'USD',
+        balance_cents: 250000,
+        is_active: 1,
         sort_order: 1,
         icon: 'bank',
         color: '#2563EB',
@@ -137,7 +137,7 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         is_synced: 0,
       },
     ],
-    category: [
+    categories: [
       {
         id: 'e2e-category-1',
         household_id: 'e2e-household-1',
@@ -156,14 +156,14 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         is_synced: 0,
       },
     ],
-    budget: [
+    budgets: [
       {
         id: 'e2e-budget-1',
         household_id: 'e2e-household-1',
         category_id: 'e2e-category-1',
         name: 'Groceries',
-        amount: 50000,
-        currency: 'USD',
+        amount_cents: 50000,
+        currency_code: 'USD',
         period: 'MONTHLY',
         start_date: '2026-05-01',
         end_date: null,
@@ -175,15 +175,15 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         is_synced: 0,
       },
     ],
-    goal: [
+    goals: [
       {
         id: 'e2e-goal-1',
         household_id: 'e2e-household-1',
         name: 'Emergency fund',
         description: 'Three months expenses',
-        target_amount: 1000000,
-        current_amount: 250000,
-        currency: 'USD',
+        target_cents: 1000000,
+        current_cents: 250000,
+        currency_code: 'USD',
         target_date: '2026-12-31',
         status: 'ACTIVE',
         icon: 'piggy-bank',
@@ -196,7 +196,7 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         is_synced: 0,
       },
     ],
-    transaction: [
+    transactions: [
       {
         id: 'e2e-transaction-1',
         household_id: 'e2e-household-1',
@@ -204,8 +204,8 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         category_id: 'e2e-category-1',
         type: 'EXPENSE',
         status: 'CLEARED',
-        amount: -6742,
-        currency: 'USD',
+        amount_cents: -6742,
+        currency_code: 'USD',
         payee: 'Grocery Store',
         note: 'Weekly shop',
         date: '2026-05-25',
@@ -233,7 +233,7 @@ function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
         is_synced: 0,
       },
     ],
-    goal_progress_contribution: [],
+    goal_progress_contributions: [],
   };
 }
 
@@ -245,12 +245,12 @@ function createE2eBudgetWithSpendingRow(
   tables: Record<string, Array<Record<string, unknown>>>,
   budgetId: unknown,
 ): Record<string, unknown> | null {
-  const budget = (tables.budget ?? []).find(
+  const budget = (tables.budgets ?? []).find(
     (row) => row.deleted_at == null && (budgetId == null || row.id === budgetId),
   );
   if (!budget) return null;
 
-  const spentAmount = (tables.transaction ?? [])
+  const spentAmount = (tables.transactions ?? [])
     .filter(
       (transaction) =>
         transaction.deleted_at == null &&
@@ -260,7 +260,7 @@ function createE2eBudgetWithSpendingRow(
         (budget.end_date == null || String(transaction.date) <= String(budget.end_date)) &&
         transaction.type === 'EXPENSE',
     )
-    .reduce((sum, transaction) => sum + Math.abs(Number(transaction.amount ?? 0)), 0);
+    .reduce((sum, transaction) => sum + Math.abs(Number(transaction.amount_cents ?? 0)), 0);
 
   return { ...budget, spent_amount: spentAmount };
 }
@@ -282,7 +282,7 @@ function createE2eStubDb(): SqliteDb {
       }
     },
     selectAll: (sql, params) => {
-      if (/FROM\s+budget\s+b/i.test(sql)) {
+      if (/FROM\s+budgets\s+b/i.test(sql)) {
         const row = createE2eBudgetWithSpendingRow(tables, params?.[0]);
         return row ? [row] : [];
       }

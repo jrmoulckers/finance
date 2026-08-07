@@ -96,13 +96,15 @@ concurrency:
   # so the lane is freed instead of stranded. Tag pushes are distinct, immutable
   # releases, so they keep the non-cancelling behaviour.
   #
-  # Lane reset (#3955): cancelling runs while they were still `pending` (before
-  # any job had started) left the previous `deploy-production` lane in a stuck
-  # state where GitHub kept every subsequent run `pending` with ZERO jobs
-  # scheduled - with no incident, no billing issue, and no other run holding the
-  # lane. Renaming the group moves production deploys onto a fresh lane and
-  # clears the wedge, while preserving the same serialize-on-one-host guarantee.
-  group: deploy-production-v2
+  # Lane reset (#3955, again for the live-bank-data rollout): cancelling runs
+  # while they were still `pending` (before any job had started) left the
+  # previous `deploy-production` lane in a stuck state where GitHub kept every
+  # subsequent run `pending` with ZERO jobs scheduled - with no incident, no
+  # billing issue, and no other run holding the lane. Renaming the group moves
+  # production deploys onto a fresh lane and clears the wedge, while preserving
+  # the same serialize-on-one-host guarantee. Bumped v2 -> v3 to clear a fresh
+  # occurrence of this wedge.
+  group: deploy-production-v3
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions:
@@ -511,6 +513,66 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Provision bank-connection env (Plaid) on server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+          PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
+          PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
+          PLAID_ENVIRONMENT: ${{ vars.PLAID_ENVIRONMENT || 'sandbox' }}
+          PLAID_WEBHOOK_URL: ${{ vars.PLAID_WEBHOOK_URL || 'https://finance.jrmoulckers.com/functions/v1/bank-webhook?provider=plaid' }}
+          BANK_ENCRYPTION_KEY: ${{ secrets.BANK_ENCRYPTION_KEY }}
+          MX_WEBHOOK_SECRET: ${{ secrets.MX_WEBHOOK_SECRET }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo '::warning::DEPLOY_HOST not configured — skipping bank env provisioning'
+            exit 0
+          fi
+          if [ -z "$PLAID_CLIENT_ID" ] && [ -z "$MX_WEBHOOK_SECRET" ]; then
+            echo '::notice::No bank credentials configured — leaving bank features dark'
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Assemble the managed .env block on the runner and base64 it so secret
+          # values transit the SSH command line safely (mirrors the web-deploy job).
+          BLOCK=$(printf '%s\n' \
+            '# >>> plaid-managed (deploy-production.yml) >>>' \
+            "PLAID_CLIENT_ID=$PLAID_CLIENT_ID" \
+            "PLAID_SECRET=$PLAID_SECRET" \
+            "PLAID_ENVIRONMENT=$PLAID_ENVIRONMENT" \
+            "PLAID_WEBHOOK_URL=$PLAID_WEBHOOK_URL" \
+            "BANK_ENCRYPTION_KEY=$BANK_ENCRYPTION_KEY" \
+            "MX_WEBHOOK_SECRET=$MX_WEBHOOK_SECRET" \
+            '# <<< plaid-managed <<<')
+          BLOCK_B64=$(printf '%s' "$BLOCK" | base64 -w 0)
+
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' BLOCK_B64='$BLOCK_B64' bash -s" <<'REMOTE'
+            set -eu
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#"~"}" ;; esac  # quote ~ for a literal strip (unquoted ~ corrupts the path)
+            ENV_FILE="$DEPLOY_PATH/deploy/.env"
+            mkdir -p "$DEPLOY_PATH/deploy"
+            touch "$ENV_FILE"
+            tmp=$(mktemp)
+            # Drop any prior managed block, then append the fresh one (idempotent).
+            sed '/# >>> plaid-managed (deploy-production.yml) >>>/,/# <<< plaid-managed <<</d' "$ENV_FILE" > "$tmp"
+            printf '%s' "$BLOCK_B64" | base64 -d >> "$tmp"
+            printf '\n' >> "$tmp"
+            mv "$tmp" "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
+            echo "Bank env keys now present in deploy/.env:"
+            grep -E '^(PLAID_|MX_WEBHOOK_SECRET|BANK_ENCRYPTION_KEY)=' "$ENV_FILE" | sed -E 's/=.*/=<set>/' || true
+          REMOTE
+
+          echo '### 🔐 Bank env provisioned on server' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Deploy to production server
         env:

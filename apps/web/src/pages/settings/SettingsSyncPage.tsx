@@ -9,7 +9,7 @@ import {
   type PreferredAuthMethod,
 } from '../../auth/preferred-auth-method';
 import { SettingInfoWidget } from '../../components/settings';
-import { useOfflineStatus } from '../../hooks/useOfflineStatus';
+import { describeSyncVariant, useSyncStatusVariant } from '../../hooks/useSyncStatusVariant';
 
 /**
  * Sync & Devices sub-page — sync status, passkey management,
@@ -23,7 +23,12 @@ export const SettingsSyncPage: React.FC = () => {
     webAuthnSupported,
     isDemoMode: demoModeActive,
   } = useAuth();
-  const { isOffline } = useOfflineStatus();
+  const {
+    variant: syncVariant,
+    pendingMutations,
+    conflictCount,
+    isOffline,
+  } = useSyncStatusVariant();
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
   /**
@@ -90,7 +95,7 @@ export const SettingsSyncPage: React.FC = () => {
                   className={`settings-item__status-dot ${isOffline ? 'settings-item__status-dot--offline' : 'settings-item__status-dot--online'}`}
                 />
                 <span className="settings-item__value">
-                  {isOffline ? 'Offline. Changes saved locally' : 'All synced'}
+                  {describeSyncVariant(syncVariant, pendingMutations, conflictCount)}
                 </span>
               </span>
             </div>

@@ -88,14 +88,14 @@ export function useRecommendations(maxRecommendations: number = 5): UseRecommend
   );
 
   const { data, loading, error, refresh } = useLiveQuery(
-    'SELECT id FROM "transaction" WHERE deleted_at IS NULL',
+    'SELECT id FROM transactions WHERE deleted_at IS NULL',
     [],
     {
       initialData: {
         recommendations: [],
         summary: EMPTY_SUMMARY,
       },
-      tables: ['account', 'budget', 'category', 'goal', 'transaction'],
+      tables: ['accounts', 'budgets', 'categories', 'goals', 'transactions'],
       queryFn,
     },
   );

@@ -37,11 +37,9 @@ const RECONCILIATION_COLUMNS = [
   'created_at',
   'updated_at',
   'deleted_at',
-  'sync_version',
-  'is_synced',
 ].join(', ');
 
-const RECONCILIATION_BASE_QUERY = `SELECT ${RECONCILIATION_COLUMNS} FROM account_reconciliation WHERE deleted_at IS NULL`;
+const RECONCILIATION_BASE_QUERY = `SELECT ${RECONCILIATION_COLUMNS} FROM account_reconciliations WHERE deleted_at IS NULL`;
 
 export interface AccountReconciliationSnapshot {
   readonly id: SyncId;
@@ -130,7 +128,7 @@ function mapReconciliationTransaction(row: Row): ReconciliationTransactionInput 
     id: requireString(row.id, 'transaction.id'),
     type: requireString(row.type, 'transaction.type') as TransactionType,
     status: requireString(row.status, 'transaction.status') as TransactionStatus,
-    amount: { amount: requireNumber(row.amount, 'transaction.amount') },
+    amount: { amount: requireNumber(row.amount_cents, 'transaction.amount_cents') },
     date: requireString(row.date, 'transaction.date'),
   };
 }
@@ -147,8 +145,8 @@ async function getTransactionsForClose(
   const placeholders = transactionIds.map(() => '?').join(', ');
   const { rows } = await query<Row>(
     db,
-    `SELECT id, type, status, amount, date
-       FROM "transaction"
+    `SELECT id, type, status, amount_cents, date
+       FROM transactions
       WHERE account_id = ?
         AND deleted_at IS NULL
         AND id IN (${placeholders})`,
@@ -169,7 +167,7 @@ export async function getUnclearedTransactionCount(
   const row = await queryOne<Row>(
     db,
     `SELECT COUNT(*) AS count
-       FROM "transaction"
+       FROM transactions
       WHERE account_id = ?
         AND deleted_at IS NULL
         AND status NOT IN ('RECONCILED', 'VOID')`,
@@ -218,7 +216,7 @@ export async function closeReconciliation(
   try {
     await execute(
       db,
-      `INSERT INTO account_reconciliation (
+      `INSERT INTO account_reconciliations (
         id,
         account_id,
         household_id,
@@ -230,16 +228,12 @@ export async function closeReconciliation(
         created_by,
         created_at,
         updated_at,
-        deleted_at,
-        sync_version,
-        is_synced
+        deleted_at
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?,
         ${SQLITE_NOW_EXPRESSION},
         ${SQLITE_NOW_EXPRESSION},
-        NULL,
-        1,
-        0
+        NULL
       )`,
       [
         id,
@@ -257,11 +251,9 @@ export async function closeReconciliation(
     for (const transactionId of uniqueTransactionIds) {
       await execute(
         db,
-        `UPDATE "transaction"
+        `UPDATE transactions
             SET status = 'RECONCILED',
-                updated_at = ${SQLITE_NOW_EXPRESSION},
-                sync_version = 1,
-                is_synced = 0
+                updated_at = ${SQLITE_NOW_EXPRESSION}
           WHERE id = ?
             AND account_id = ?
             AND deleted_at IS NULL

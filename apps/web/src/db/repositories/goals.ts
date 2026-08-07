@@ -19,9 +19,9 @@ const GOAL_COLUMNS = [
   'household_id',
   'name',
   'description',
-  'target_amount',
-  'current_amount',
-  'currency',
+  'target_cents',
+  'current_cents',
+  'currency_code',
   'target_date',
   'status',
   'icon',
@@ -31,11 +31,9 @@ const GOAL_COLUMNS = [
   'created_at',
   'updated_at',
   'deleted_at',
-  'sync_version',
-  'is_synced',
 ].join(', ');
 
-const GOAL_BASE_QUERY = `SELECT ${GOAL_COLUMNS} FROM goal WHERE deleted_at IS NULL`;
+const GOAL_BASE_QUERY = `SELECT ${GOAL_COLUMNS} FROM goals WHERE deleted_at IS NULL`;
 
 /** Input used when creating a new goal record. */
 export interface CreateGoalInput {
@@ -92,9 +90,9 @@ function mapGoal(row: Row): Goal {
     householdId: requireString(row.household_id, 'goal.household_id'),
     name: requireString(row.name, 'goal.name'),
     description: optionalString(row.description),
-    targetAmount: mapCents(row.target_amount, 'goal.target_amount'),
-    currentAmount: mapCents(row.current_amount, 'goal.current_amount'),
-    currency: mapCurrency(row.currency),
+    targetAmount: mapCents(row.target_cents, 'goal.target_cents'),
+    currentAmount: mapCents(row.current_cents, 'goal.current_cents'),
+    currency: mapCurrency(row.currency_code),
     targetDate: optionalString(row.target_date),
     status: requireString(row.status, 'goal.status') as GoalStatus,
     icon: optionalString(row.icon),
@@ -136,14 +134,14 @@ export async function createGoal(db: AsyncDb, input: CreateGoalInput): Promise<G
 
   await execute(
     db,
-    `INSERT INTO goal (
+    `INSERT INTO goals (
       id,
       household_id,
       name,
       description,
-      target_amount,
-      current_amount,
-      currency,
+      target_cents,
+      current_cents,
+      currency_code,
       target_date,
       status,
       icon,
@@ -152,16 +150,12 @@ export async function createGoal(db: AsyncDb, input: CreateGoalInput): Promise<G
       sort_order,
       created_at,
       updated_at,
-      deleted_at,
-      sync_version,
-      is_synced
+      deleted_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
-      NULL,
-      1,
-      0
+      NULL
     )`,
     [
       id,
@@ -217,22 +211,20 @@ export async function updateGoal(
 
   await execute(
     db,
-    `UPDATE goal
+    `UPDATE goals
         SET household_id = ?,
             name = ?,
             description = ?,
-            target_amount = ?,
-            current_amount = ?,
-            currency = ?,
+            target_cents = ?,
+            current_cents = ?,
+            currency_code = ?,
             target_date = ?,
             status = ?,
             icon = ?,
             color = ?,
             account_id = ?,
             sort_order = ?,
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [
@@ -298,12 +290,10 @@ export async function contributeToGoal(
 
   await execute(
     db,
-    `UPDATE goal
-        SET current_amount = ?,
+    `UPDATE goals
+        SET current_cents = ?,
             status = ?,
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [nextCurrentAmount, nextStatus, goalId],
@@ -311,7 +301,7 @@ export async function contributeToGoal(
 
   await execute(
     db,
-    `INSERT INTO goal_progress_contribution (
+    `INSERT INTO goal_progress_contributions (
       id,
       goal_id,
       household_id,
@@ -321,17 +311,13 @@ export async function contributeToGoal(
       contributed_at,
       created_at,
       updated_at,
-      deleted_at,
-      sync_version,
-      is_synced
+      deleted_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
-      NULL,
-      1,
-      0
+      NULL
     )`,
     [
       contributionId,
@@ -355,11 +341,9 @@ export async function reorderGoals(db: AsyncDb, orderedGoalIds: readonly SyncId[
   for (const [sortOrder, goalId] of orderedGoalIds.entries()) {
     await execute(
       db,
-      `UPDATE goal
+      `UPDATE goals
           SET sort_order = ?,
-              updated_at = ${SQLITE_NOW_EXPRESSION},
-              sync_version = 1,
-              is_synced = 0
+              updated_at = ${SQLITE_NOW_EXPRESSION}
         WHERE id = ?
           AND deleted_at IS NULL`,
       [sortOrder, goalId],
@@ -376,11 +360,9 @@ export async function deleteGoal(db: AsyncDb, goalId: SyncId): Promise<boolean> 
 
   await execute(
     db,
-    `UPDATE goal
+    `UPDATE goals
         SET deleted_at = ${SQLITE_NOW_EXPRESSION},
-            updated_at = ${SQLITE_NOW_EXPRESSION},
-            sync_version = 1,
-            is_synced = 0
+            updated_at = ${SQLITE_NOW_EXPRESSION}
       WHERE id = ?
         AND deleted_at IS NULL`,
     [goalId],
@@ -427,7 +409,7 @@ export async function getGoalProgressContributions(
   const { rows } = await query<Row>(
     db,
     `SELECT amount, contributed_at
-       FROM goal_progress_contribution
+       FROM goal_progress_contributions
       WHERE goal_id = ?
         AND deleted_at IS NULL
       ORDER BY contributed_at ASC, created_at ASC`,

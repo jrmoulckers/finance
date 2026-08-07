@@ -50,7 +50,7 @@ interface TableConfig {
 const TABLES: readonly TableConfig[] = [
   {
     entity: 'users',
-    table: 'user',
+    table: 'users',
     columns: [
       'id',
       'email',
@@ -66,11 +66,11 @@ const TABLES: readonly TableConfig[] = [
   },
   {
     entity: 'households',
-    table: 'household',
+    table: 'households',
     columns: [
       'id',
       'name',
-      'owner_id',
+      'created_by',
       'created_at',
       'updated_at',
       'deleted_at',
@@ -80,7 +80,7 @@ const TABLES: readonly TableConfig[] = [
   },
   {
     entity: 'householdMembers',
-    table: 'household_member',
+    table: 'household_members',
     columns: [
       'id',
       'household_id',
@@ -96,15 +96,15 @@ const TABLES: readonly TableConfig[] = [
   },
   {
     entity: 'accounts',
-    table: 'account',
+    table: 'accounts',
     columns: [
       'id',
       'household_id',
       'name',
       'type',
-      'currency',
-      'current_balance',
-      'is_archived',
+      'currency_code',
+      'balance_cents',
+      'is_active',
       'sort_order',
       'icon',
       'color',
@@ -117,7 +117,7 @@ const TABLES: readonly TableConfig[] = [
   },
   {
     entity: 'categories',
-    table: 'category',
+    table: 'categories',
     columns: [
       'id',
       'household_id',
@@ -138,14 +138,14 @@ const TABLES: readonly TableConfig[] = [
   },
   {
     entity: 'budgets',
-    table: 'budget',
+    table: 'budgets',
     columns: [
       'id',
       'household_id',
       'category_id',
       'name',
-      'amount',
-      'currency',
+      'amount_cents',
+      'currency_code',
       'period',
       'start_date',
       'end_date',
@@ -159,15 +159,15 @@ const TABLES: readonly TableConfig[] = [
   },
   {
     entity: 'goals',
-    table: 'goal',
+    table: 'goals',
     columns: [
       'id',
       'household_id',
       'name',
       'description',
-      'target_amount',
-      'current_amount',
-      'currency',
+      'target_cents',
+      'current_cents',
+      'currency_code',
       'target_date',
       'status',
       'icon',
@@ -182,7 +182,7 @@ const TABLES: readonly TableConfig[] = [
   },
   {
     entity: 'transactions',
-    table: 'transaction',
+    table: 'transactions',
     columns: [
       'id',
       'household_id',
@@ -190,8 +190,8 @@ const TABLES: readonly TableConfig[] = [
       'category_id',
       'type',
       'status',
-      'amount',
-      'currency',
+      'amount_cents',
+      'currency_code',
       'payee',
       'note',
       'date',
@@ -224,15 +224,15 @@ const TABLES: readonly TableConfig[] = [
 const TABLE_BY_ENTITY = new Map(TABLES.map((table) => [table.entity, table]));
 const SQL_RESTORE_ORDER = TABLES.map((table) => table.entity);
 const SQL_WIPE_ORDER: readonly string[] = [
-  'goal_progress_contribution',
-  'transaction',
-  'budget',
-  'goal',
-  'category',
-  'account',
-  'household_member',
-  'household',
-  'user',
+  'goal_progress_contributions',
+  'transactions',
+  'budgets',
+  'goals',
+  'categories',
+  'accounts',
+  'household_members',
+  'households',
+  'users',
 ];
 
 const LOCAL_STORAGE_ENTITIES = [

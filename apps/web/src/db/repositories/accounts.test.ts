@@ -44,17 +44,15 @@ describe('accounts repository', () => {
           name: 'Checking',
           type: 'CHECKING',
           purpose: 'business',
-          currency: 'USD',
-          current_balance: 100000,
-          is_archived: 0,
+          currency_code: 'USD',
+          balance_cents: 100000,
+          is_active: 1,
           sort_order: 1,
           icon: 'bank',
           color: '#3b82f6',
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
         {
           id: 'acc-2',
@@ -62,17 +60,15 @@ describe('accounts repository', () => {
           name: 'Savings',
           type: 'SAVINGS',
           purpose: 'personal',
-          currency: 'EUR',
-          current_balance: 250000,
-          is_archived: 1,
+          currency_code: 'EUR',
+          balance_cents: 250000,
+          is_active: 0,
           sort_order: 2,
           icon: null,
           color: null,
           created_at: '2024-01-02T00:00:00Z',
           updated_at: '2024-01-02T00:00:00Z',
           deleted_at: null,
-          sync_version: 2,
-          is_synced: 1,
         },
       ];
 
@@ -131,17 +127,15 @@ describe('accounts repository', () => {
           household_id: 'hh-1',
           name: 'Checking',
           type: 'CHECKING',
-          currency: 'USD',
-          current_balance: 12345,
-          is_archived: 0,
+          currency_code: 'USD',
+          balance_cents: 12345,
+          is_active: 1,
           sort_order: 0,
           icon: null,
           color: null,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
           deleted_at: null,
-          sync_version: 1,
-          is_synced: 0,
         },
       ];
 
@@ -161,17 +155,15 @@ describe('accounts repository', () => {
         household_id: 'hh-1',
         name: 'Checking',
         type: 'CHECKING',
-        currency: 'USD',
-        current_balance: 100000,
-        is_archived: 0,
+        currency_code: 'USD',
+        balance_cents: 100000,
+        is_active: 1,
         sort_order: 1,
         icon: 'bank',
         color: '#3b82f6',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       };
 
       mockQueryOne.mockResolvedValue(mockRow);
@@ -216,17 +208,15 @@ describe('accounts repository', () => {
         household_id: 'hh-1',
         name: 'New Account',
         type: 'CHECKING',
-        currency: 'USD',
-        current_balance: 50000,
-        is_archived: 0,
+        currency_code: 'USD',
+        balance_cents: 50000,
+        is_active: 1,
         sort_order: 0,
         icon: null,
         color: null,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
     });
 
@@ -242,7 +232,7 @@ describe('accounts repository', () => {
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('INSERT INTO account'),
+        expect.stringContaining('INSERT INTO accounts'),
         expect.arrayContaining([
           expect.any(String), // UUID
           'hh-1',
@@ -251,7 +241,7 @@ describe('accounts repository', () => {
           'personal',
           'USD', // Default currency
           50000,
-          0, // isArchived
+          1, // is_active (not archived)
           0, // sortOrder
           null, // icon
           null, // color
@@ -289,7 +279,7 @@ describe('accounts repository', () => {
       await createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      const amountParam = params[9]; // current_balance includes retirement metadata params
+      const amountParam = params[9]; // balance_cents (index 9, after retirement metadata params)
       expect(amountParam).toBe(123456);
       expect(Number.isInteger(amountParam as number)).toBe(true);
     });
@@ -338,7 +328,7 @@ describe('accounts repository', () => {
       await createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      expect(params[10]).toBe(1); // isArchived
+      expect(params[10]).toBe(0); // is_active (isArchived: true -> is_active 0)
       expect(params[11]).toBe(5); // sortOrder
       expect(params[12]).toBe('wallet'); // icon
       expect(params[13]).toBe('#ff0000'); // color
@@ -371,17 +361,15 @@ describe('accounts repository', () => {
         household_id: 'hh-1',
         name: 'Old Name',
         type: 'CHECKING',
-        currency: 'USD',
-        current_balance: 50000,
-        is_archived: 0,
+        currency_code: 'USD',
+        balance_cents: 50000,
+        is_active: 1,
         sort_order: 1,
         icon: 'bank',
         color: '#3b82f6',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       // Mock updated account
@@ -390,17 +378,15 @@ describe('accounts repository', () => {
         household_id: 'hh-1',
         name: 'Updated Name',
         type: 'SAVINGS',
-        currency: 'EUR',
-        current_balance: 75000,
-        is_archived: 1,
+        currency_code: 'EUR',
+        balance_cents: 75000,
+        is_active: 0,
         sort_order: 2,
         icon: 'wallet',
         color: '#ff0000',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-02T00:00:00Z',
         deleted_at: null,
-        sync_version: 2,
-        is_synced: 0,
       });
     });
 
@@ -414,7 +400,7 @@ describe('accounts repository', () => {
 
       expect(mockExecute).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('UPDATE account'),
+        expect.stringContaining('UPDATE accounts'),
         expect.arrayContaining(['acc-1']),
       );
     });
@@ -451,17 +437,15 @@ describe('accounts repository', () => {
         household_id: 'hh-1',
         name: 'Old Name',
         type: 'CHECKING',
-        currency: 'USD',
-        current_balance: 50000,
-        is_archived: 0,
+        currency_code: 'USD',
+        balance_cents: 50000,
+        is_active: 1,
         sort_order: 1,
         icon: 'bank',
         color: '#3b82f6',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       const updates: UpdateAccountInput = {
@@ -486,17 +470,15 @@ describe('accounts repository', () => {
         household_id: 'hh-1',
         name: 'Account',
         type: 'CHECKING',
-        currency: 'USD',
-        current_balance: 50000,
-        is_archived: 0,
+        currency_code: 'USD',
+        balance_cents: 50000,
+        is_active: 1,
         sort_order: 1,
         icon: 'bank',
         color: '#3b82f6',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       const updates: UpdateAccountInput = {
@@ -519,23 +501,21 @@ describe('accounts repository', () => {
         household_id: 'hh-1',
         name: 'Account',
         type: 'CHECKING',
-        currency: 'USD',
-        current_balance: 50000,
-        is_archived: 0,
+        currency_code: 'USD',
+        balance_cents: 50000,
+        is_active: 1,
         sort_order: 1,
         icon: null,
         color: null,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       const result = await deleteAccount(mockDb, 'acc-1');
 
       expect(result).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE account'), [
+      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE accounts'), [
         'acc-1',
       ]);
       const sql = mockExecute.mock.calls[0][1];
@@ -559,17 +539,15 @@ describe('accounts repository', () => {
         household_id: 'hh-1',
         name: 'Account',
         type: 'CHECKING',
-        currency: 'USD',
-        current_balance: 50000,
-        is_archived: 0,
+        currency_code: 'USD',
+        balance_cents: 50000,
+        is_active: 1,
         sort_order: 1,
         icon: null,
         color: null,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         deleted_at: null,
-        sync_version: 1,
-        is_synced: 0,
       });
 
       await deleteAccount(mockDb, 'acc-1');

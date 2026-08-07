@@ -40,9 +40,9 @@ function makeAccountRow(overrides: Partial<Row> = {}): Row {
     retirement_account_type: null,
     retirement_tax_treatment: null,
     hsa_coverage_level: null,
-    currency: 'USD',
-    current_balance: 100000,
-    is_archived: 0,
+    currency_code: 'USD',
+    balance_cents: 100000,
+    is_active: 1,
     sort_order: 1,
     icon: 'bank',
     color: '#2563EB',
@@ -59,8 +59,8 @@ function makeTransactionRow(overrides: Partial<Row> = {}): Row {
     category_id: null,
     type: 'EXPENSE',
     status: 'CLEARED',
-    amount: -5000,
-    currency: 'USD',
+    amount_cents: -5000,
+    currency_code: 'USD',
     payee: 'Store',
     note: null,
     date: '2025-01-15',
@@ -95,8 +95,8 @@ function makeBudgetRow(overrides: Partial<Row> = {}): Row {
     household_id: 'hh-1',
     category_id: 'cat-1',
     name: 'Groceries',
-    amount: 50000,
-    currency: 'USD',
+    amount_cents: 50000,
+    currency_code: 'USD',
     period: 'MONTHLY',
     start_date: '2025-01-01',
     end_date: null,
@@ -114,11 +114,11 @@ function currentMonthDate(day = 15): string {
 
 function createDatabase(tableRows: TableRows): SqliteDb {
   const selectAll = vi.fn((sql: string, params?: unknown[]) => {
-    if (/FROM\s+account\b/i.test(sql)) {
+    if (/FROM\s+accounts\b/i.test(sql)) {
       return tableRows.accounts;
     }
 
-    if (/FROM\s+"transaction"/i.test(sql)) {
+    if (/FROM\s+transactions\b/i.test(sql)) {
       let rows = tableRows.transactions;
       if (/date\s+>=\s+\?/i.test(sql) && /date\s+<=\s+\?/i.test(sql)) {
         const [startDate, endDate] = params ?? [];
@@ -133,7 +133,7 @@ function createDatabase(tableRows: TableRows): SqliteDb {
       return rows;
     }
 
-    if (/FROM\s+budget\b/i.test(sql)) {
+    if (/FROM\s+budgets\b/i.test(sql)) {
       let rows = tableRows.budgets;
       if (/period\s+=\s+\?/i.test(sql)) {
         rows = rows.filter((row) => row.period === params?.[0]);
@@ -148,7 +148,7 @@ function createDatabase(tableRows: TableRows): SqliteDb {
     exec: vi.fn(),
     selectAll,
     selectOne: vi.fn((sql: string, params?: unknown[]) => {
-      if (/FROM\s+budget\s+b/i.test(sql)) {
+      if (/FROM\s+budgets\s+b/i.test(sql)) {
         const budgetId = String(params?.[0] ?? '');
         return tableRows.budgetSpending.get(budgetId) ?? null;
       }
@@ -202,8 +202,8 @@ describe('useDashboardData', () => {
 
   it('computes net worth from all account balances', async () => {
     tableRows.accounts = [
-      makeAccountRow({ id: 'acct-1', current_balance: 100000 }),
-      makeAccountRow({ id: 'acct-2', type: 'SAVINGS', current_balance: 50000 }),
+      makeAccountRow({ id: 'acct-1', balance_cents: 100000 }),
+      makeAccountRow({ id: 'acct-2', type: 'SAVINGS', balance_cents: 50000 }),
     ];
 
     const { result } = renderHook(() => useDashboardData());
@@ -214,9 +214,9 @@ describe('useDashboardData', () => {
 
   it('groups account totals by type', async () => {
     tableRows.accounts = [
-      makeAccountRow({ id: 'acct-1', type: 'CHECKING', current_balance: 100000 }),
-      makeAccountRow({ id: 'acct-2', type: 'SAVINGS', current_balance: 50000 }),
-      makeAccountRow({ id: 'acct-3', type: 'CHECKING', current_balance: 25000 }),
+      makeAccountRow({ id: 'acct-1', type: 'CHECKING', balance_cents: 100000 }),
+      makeAccountRow({ id: 'acct-2', type: 'SAVINGS', balance_cents: 50000 }),
+      makeAccountRow({ id: 'acct-3', type: 'CHECKING', balance_cents: 25000 }),
     ];
 
     const { result } = renderHook(() => useDashboardData());
@@ -232,17 +232,17 @@ describe('useDashboardData', () => {
 
   it('computes monthly expense and income totals', async () => {
     tableRows.transactions = [
-      makeTransactionRow({ type: 'EXPENSE', amount: -5000, date: currentMonthDate(5) }),
+      makeTransactionRow({ type: 'EXPENSE', amount_cents: -5000, date: currentMonthDate(5) }),
       makeTransactionRow({
         id: 'txn-2',
         type: 'EXPENSE',
-        amount: -3000,
+        amount_cents: -3000,
         date: currentMonthDate(10),
       }),
       makeTransactionRow({
         id: 'txn-3',
         type: 'INCOME',
-        amount: 200000,
+        amount_cents: 200000,
         date: currentMonthDate(15),
       }),
     ];
@@ -290,7 +290,7 @@ describe('useDashboardData', () => {
 
     expect(result.current.data?.recentTransactions).toHaveLength(2);
     expect(vi.mocked(mockDb.selectAll).mock.calls).toContainEqual([
-      expect.stringMatching(/FROM\s+"transaction"[\s\S]*LIMIT\s+\?/i),
+      expect.stringMatching(/FROM\s+transactions\b[\s\S]*LIMIT\s+\?/i),
       [10],
     ]);
   });

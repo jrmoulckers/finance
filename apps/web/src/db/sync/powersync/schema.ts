@@ -48,6 +48,10 @@ const accounts = new Table(
     color: text,
     sort_order: integer,
     owner_id: text,
+    purpose: text,
+    retirement_account_type: text,
+    retirement_tax_treatment: text,
+    hsa_coverage_level: text,
     created_at: text,
     updated_at: text,
     deleted_at: text,
@@ -74,6 +78,21 @@ const transactions = new Table(
     tags: text,
     is_biometric_protected: integer,
     owner_id: text,
+    mood_tag: text,
+    merchant_address: text,
+    merchant_city: text,
+    merchant_state: text,
+    merchant_zip: text,
+    merchant_country: text,
+    external_reference_id: text,
+    statement_description: text,
+    custom_fields: text,
+    extra_notes: text,
+    counterparty_name: text,
+    counterparty_account_id: text,
+    splits: text,
+    retirement_contribution_year: integer,
+    retirement_contribution_designation: text,
     created_at: text,
     updated_at: text,
     deleted_at: text,
@@ -107,6 +126,7 @@ const budgets = new Table({
   start_date: text,
   end_date: text,
   is_rollover: integer,
+  sort_order: integer,
   owner_id: text,
   created_at: text,
   updated_at: text,
@@ -125,6 +145,8 @@ const goals = new Table({
   account_id: text,
   status: text,
   owner_id: text,
+  description: text,
+  sort_order: integer,
   created_at: text,
   updated_at: text,
   deleted_at: text,
@@ -472,9 +494,266 @@ const aggregator_providers = new Table({
   deleted_at: text,
 });
 
+// ---------------------------------------------------------------------------
+// Schema-unification tables (household-scoped). Money columns are integer
+// cents / minor units; `id` is the implicit PowerSync primary key.
+// ---------------------------------------------------------------------------
+
+const goal_progress_contributions = new Table({
+  goal_id: text,
+  household_id: text,
+  owner_id: text,
+  amount: integer,
+  currency: text,
+  note: text,
+  contributed_at: text,
+  created_at: text,
+  updated_at: text,
+  deleted_at: text,
+});
+
+const account_reconciliations = new Table({
+  account_id: text,
+  household_id: text,
+  owner_id: text,
+  statement_date: text,
+  statement_balance: integer,
+  starting_balance: integer,
+  cleared_transaction_count: integer,
+  transaction_ids: text,
+  created_by: text,
+  created_at: text,
+  updated_at: text,
+  deleted_at: text,
+});
+
+const invoices = new Table({
+  household_id: text,
+  owner_id: text,
+  client_name: text,
+  amount_cents: integer,
+  currency: text,
+  issue_date: text,
+  payment_term: text,
+  status: text,
+  expected_pay_date: text,
+  last_contacted_date: text,
+  amount_paid_cents: integer,
+  paid_date: text,
+  payment_account_id: text,
+  payment_transaction_id: text,
+  created_at: text,
+  updated_at: text,
+  deleted_at: text,
+});
+
+const remittances = new Table({
+  household_id: text,
+  owner_id: text,
+  date: text,
+  source_currency: text,
+  dest_currency: text,
+  send_amount_minor: integer,
+  fee_minor: integer,
+  fx_rate: real,
+  fee_model: text,
+  reference_rate: real,
+  recipient_name: text,
+  recipient_country: text,
+  note: text,
+  recurrence_frequency: text,
+  recurrence_next_date: text,
+  created_at: text,
+  updated_at: text,
+  deleted_at: text,
+});
+
+// ---------------------------------------------------------------------------
+// Local-only tables — created in the client database but never synced.
+//
+// These back web-only features: the household document store (`hh_*`, one
+// uniform "document" row per collection) and the widget privacy config. They
+// are declared here so the repository layer resolves the same table names in
+// live (PowerSync) mode as it does offline; PowerSync creates them locally and
+// excludes them from every sync bucket. They are intentionally NOT part of
+// SYNCED_TABLE_NAMES (filtered out by the `localOnly` flag below).
+// ---------------------------------------------------------------------------
+
+const householdDocument = () =>
+  new Table(
+    {
+      household_id: text,
+      data: text,
+      created_at: text,
+      updated_at: text,
+      deleted_at: text,
+      sync_version: integer,
+      is_synced: integer,
+    },
+    { localOnly: true },
+  );
+
+const hh_household = householdDocument();
+const hh_member = householdDocument();
+const hh_invitation = householdDocument();
+const hh_account_sharing = householdDocument();
+const hh_shared_budget = householdDocument();
+const hh_shared_goal = householdDocument();
+const hh_shared_expense = householdDocument();
+const hh_shared_settlement = householdDocument();
+const hh_child = householdDocument();
+const hh_activity_event = householdDocument();
+const hh_recurring_bill = householdDocument();
+const hh_goal_pledge = householdDocument();
+const hh_shopping_budget = householdDocument();
+const hh_reconciliation_plan = householdDocument();
+const hh_reconciliation_snapshot = householdDocument();
+
+const widget_privacy_config = new Table(
+  {
+    widget_id: text,
+    masking_mode: text,
+    updated_at: text,
+  },
+  { localOnly: true },
+);
+
+// Local-only ledger tables that have no synced counterpart in the sync rules.
+// They keep their original (singular) offline names and columns so the
+// repository layer resolves them identically in live (PowerSync) and offline
+// modes. PowerSync creates them locally and never syncs them.
+const investment = new Table(
+  {
+    household_id: text,
+    account_id: text,
+    symbol: text,
+    name: text,
+    type: text,
+    shares: real,
+    cost_basis_per_share: real,
+    current_price_per_share: real,
+    currency: text,
+    last_price_update: text,
+    created_at: text,
+    updated_at: text,
+    deleted_at: text,
+    sync_version: integer,
+    is_synced: integer,
+  },
+  { localOnly: true },
+);
+
+const investment_lot = new Table(
+  {
+    investment_id: text,
+    purchase_date: text,
+    shares: real,
+    cost_per_share: real,
+    total_cost: integer,
+    created_at: text,
+    updated_at: text,
+    deleted_at: text,
+    sync_version: integer,
+    is_synced: integer,
+  },
+  { localOnly: true },
+);
+
+const bill = new Table(
+  {
+    household_id: text,
+    name: text,
+    payee: text,
+    amount: integer,
+    currency: text,
+    due_date: text,
+    frequency: text,
+    status: text,
+    category_id: text,
+    account_id: text,
+    note: text,
+    is_auto_pay: integer,
+    reminder_days_before: integer,
+    last_paid_date: text,
+    created_at: text,
+    updated_at: text,
+    deleted_at: text,
+    sync_version: integer,
+    is_synced: integer,
+  },
+  { localOnly: true },
+);
+
+const account_sharing = new Table(
+  {
+    account_id: text,
+    household_id: text,
+    owner_id: text,
+    sharing_mode: text,
+    created_at: text,
+    updated_at: text,
+    deleted_at: text,
+    sync_version: integer,
+    is_synced: integer,
+  },
+  { localOnly: true },
+);
+
+const shared_budget = new Table(
+  {
+    household_id: text,
+    budget_id: text,
+    mode: text,
+    is_active: integer,
+    created_at: text,
+    updated_at: text,
+    deleted_at: text,
+    sync_version: integer,
+    is_synced: integer,
+  },
+  { localOnly: true },
+);
+
+const shared_goal = new Table(
+  {
+    household_id: text,
+    goal_id: text,
+    is_shared: integer,
+    created_at: text,
+    updated_at: text,
+    deleted_at: text,
+    sync_version: integer,
+    is_synced: integer,
+  },
+  { localOnly: true },
+);
+
+// Local-only invitation store (singular name). The synced `household_invitations`
+// table above lacks the app's richer columns (email/status/invite_code), so the
+// repository layer keeps this local-only table with its original offline shape.
+const household_invitation = new Table(
+  {
+    household_id: text,
+    invited_by: text,
+    email: text,
+    role: text,
+    status: text,
+    invite_code: text,
+    expires_at: text,
+    created_at: text,
+    updated_at: text,
+    deleted_at: text,
+    sync_version: integer,
+    is_synced: integer,
+  },
+  { localOnly: true },
+);
+
 /**
  * The canonical app schema handed to `PowerSyncDatabase`. The object keys are
- * the synced table names (must match the sync rules exactly).
+ * the synced table names (must match the sync rules exactly). Local-only tables
+ * (`hh_*`, `widget_privacy_config`) are appended so the client database exposes
+ * them, but they are excluded from SYNCED_TABLE_NAMES.
  */
 export const AppSchema = new Schema({
   households,
@@ -499,6 +778,10 @@ export const AppSchema = new Schema({
   connector_permissions,
   connector_access_log,
   open_banking_connections,
+  goal_progress_contributions,
+  account_reconciliations,
+  invoices,
+  remittances,
   users,
   passkey_credentials,
   referrals,
@@ -506,7 +789,37 @@ export const AppSchema = new Schema({
   exchange_rates,
   price_history,
   aggregator_providers,
+  // Local-only (never synced) — see note above.
+  hh_household,
+  hh_member,
+  hh_invitation,
+  hh_account_sharing,
+  hh_shared_budget,
+  hh_shared_goal,
+  hh_shared_expense,
+  hh_shared_settlement,
+  hh_child,
+  hh_activity_event,
+  hh_recurring_bill,
+  hh_goal_pledge,
+  hh_shopping_budget,
+  hh_reconciliation_plan,
+  hh_reconciliation_snapshot,
+  widget_privacy_config,
+  investment,
+  investment_lot,
+  bill,
+  account_sharing,
+  shared_budget,
+  shared_goal,
+  household_invitation,
 });
 
-/** Convenience list of all synced table names in the canonical schema. */
-export const SYNCED_TABLE_NAMES: readonly string[] = AppSchema.tables.map((table) => table.name);
+/**
+ * Convenience list of all *synced* table names in the canonical schema.
+ * Local-only tables are excluded so this stays a faithful mirror of the sync
+ * rules (used by sync contract checks and diagnostics).
+ */
+export const SYNCED_TABLE_NAMES: readonly string[] = AppSchema.tables
+  .filter((table) => !table.localOnly)
+  .map((table) => table.name);

@@ -46,6 +46,9 @@ import {
 /** Storage key for the single household record (stored as one row). */
 export const HOUSEHOLD_SINGLETON_KEY = 'finance-household';
 
+/** Storage key for the household member collection. */
+export const HOUSEHOLD_MEMBERS_KEY = 'finance-household-members';
+
 /**
  * Maps each household storage key to its backing `hh_` table. Keys mirror the
  * legacy `localStorage` keys exactly so the hook can swap backends transparently.
@@ -147,13 +150,23 @@ function parseRows<T>(rows: Row[]): T[] {
 // Reads
 // ---------------------------------------------------------------------------
 
+// Order by the promoted `created_at` (insertion timestamp) with `id` as a stable
+// tiebreaker rather than SQLite's implicit `rowid`. In live mode the database is
+// PowerSync, which exposes every table as a *view* over an internal
+// `ps_data_local__*` table — and SQLite views have no `rowid`, so
+// `ORDER BY rowid` throws `no such column: rowid`, breaking every household read
+// (and, via `ensureDefaultHousehold`, dead-ending "Connect a bank" with the
+// "create a household" wall). `created_at` + `id` are real columns on the view
+// in both the offline (sqlite-wasm) and live (PowerSync) backends.
+const DOCUMENT_ORDER = 'ORDER BY created_at ASC, id ASC';
+
 async function readCollection<T>(db: AsyncDb, table: string): Promise<T[]> {
-  const result = await query<Row>(db, `SELECT data FROM ${table} ORDER BY rowid ASC`);
+  const result = await query<Row>(db, `SELECT data FROM ${table} ${DOCUMENT_ORDER}`);
   return parseRows<T>(result.rows);
 }
 
 async function readSingleton<T>(db: AsyncDb, table: string): Promise<T | null> {
-  const row = await queryOne<Row>(db, `SELECT data FROM ${table} ORDER BY rowid ASC LIMIT 1`);
+  const row = await queryOne<Row>(db, `SELECT data FROM ${table} ${DOCUMENT_ORDER} LIMIT 1`);
   if (!row || typeof row.data !== 'string') {
     return null;
   }

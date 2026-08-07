@@ -54,6 +54,31 @@ export interface PlaidSyncResult {
   has_more: boolean;
 }
 
+/** Balance snapshot attached to a Plaid account. */
+export interface PlaidAccountBalances {
+  available: number | null;
+  current: number | null;
+  limit: number | null;
+  iso_currency_code: string | null;
+  unofficial_currency_code: string | null;
+}
+
+/** A single account returned by /accounts/get. */
+export interface PlaidAccount {
+  account_id: string;
+  name: string | null;
+  official_name: string | null;
+  mask: string | null;
+  type: string | null;
+  subtype: string | null;
+  balances: PlaidAccountBalances;
+}
+
+/** Result of an /accounts/get call. */
+export interface PlaidAccountsResult {
+  accounts: PlaidAccount[];
+}
+
 /** A JSON Web Key returned by /webhook_verification_key/get. */
 export interface PlaidVerificationKey {
   kty: string;
@@ -182,6 +207,55 @@ export async function exchangePublicToken(
   publicToken: string,
 ): Promise<{ access_token: string; item_id: string }> {
   return plaidPost(config, '/item/public_token/exchange', { public_token: publicToken });
+}
+
+/**
+ * List the accounts associated with an Item via /accounts/get.
+ *
+ * Called at connection time to discover which external accounts exist so they
+ * can be provisioned + linked to internal Finance accounts. Account linking is
+ * a hard prerequisite for transaction ingestion, which drops any transaction
+ * whose external account is not linked.
+ *
+ * SECURITY: NEVER log the access token.
+ */
+export async function getAccounts(
+  config: PlaidConfig,
+  accessToken: string,
+): Promise<PlaidAccountsResult> {
+  return plaidPost<PlaidAccountsResult>(config, '/accounts/get', {
+    access_token: accessToken,
+  });
+}
+
+/**
+ * The app's canonical internal account types, stored verbatim in
+ * `accounts.type`. Mirrors the web `AccountType` union.
+ */
+export type InternalAccountType =
+  'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'CASH' | 'INVESTMENT' | 'LOAN' | 'OTHER';
+
+/**
+ * Map a Plaid account `type`/`subtype` to the app's canonical internal account
+ * type. Pure — no I/O — so it is unit-testable. Falls back to 'OTHER'.
+ *
+ * @see https://plaid.com/docs/api/accounts/#account-type-schema
+ */
+export function plaidAccountTypeToInternal(
+  type: string | null,
+  subtype: string | null,
+): InternalAccountType {
+  const t = (type ?? '').toLowerCase();
+  const s = (subtype ?? '').toLowerCase();
+  if (t === 'credit') return 'CREDIT_CARD';
+  if (t === 'loan') return 'LOAN';
+  if (t === 'investment' || t === 'brokerage') return 'INVESTMENT';
+  if (t === 'depository') {
+    if (s === 'savings' || s === 'money market' || s === 'cd' || s === 'hsa') return 'SAVINGS';
+    if (s === 'cash management' || s === 'prepaid') return 'CASH';
+    return 'CHECKING';
+  }
+  return 'OTHER';
 }
 
 /**

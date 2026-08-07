@@ -144,9 +144,9 @@ export function useTransactions(filters: TransactionFilters = {}): UseTransactio
     loading,
     error: liveError,
     refresh,
-  } = useLiveQuery<Transaction[]>('SELECT id FROM "transaction" WHERE deleted_at IS NULL', [], {
+  } = useLiveQuery<Transaction[]>('SELECT id FROM transactions WHERE deleted_at IS NULL', [], {
     initialData: [],
-    tables: ['transaction', 'account', 'category'],
+    tables: ['transactions', 'accounts', 'categories'],
     queryFn: runTransactionQuery,
     errorFallback: 'Failed to load transactions.',
   });

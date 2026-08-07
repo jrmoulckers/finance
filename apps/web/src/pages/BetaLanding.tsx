@@ -20,25 +20,21 @@ const DOWNLOAD_DEFINITIONS = [
     id: 'ios',
     title: 'iOS TestFlight',
     description: 'Join the iPhone and iPad beta through Apple TestFlight.',
-    envKey: 'VITE_NATIVE_IOS_URL',
   },
   {
     id: 'android',
     title: 'Android internal track',
     description: 'Install the Android beta from the Play Store internal test track.',
-    envKey: 'VITE_NATIVE_ANDROID_URL',
   },
   {
     id: 'windows',
     title: 'Windows MSI',
     description: 'Try the desktop beta on Windows with the MSI installer.',
-    envKey: 'VITE_NATIVE_WINDOWS_URL',
   },
   {
     id: 'macos',
     title: 'macOS DMG',
     description: 'Download the macOS beta build as a signed DMG.',
-    envKey: 'VITE_NATIVE_MACOS_URL',
   },
 ] as const;
 
@@ -72,9 +68,18 @@ function normalizeHealthStatus(payload: unknown, responseOk: boolean): SystemSta
 }
 
 function getDownloadCards(): DownloadCard[] {
-  return DOWNLOAD_DEFINITIONS.flatMap(({ envKey, ...card }) => {
-    const url = import.meta.env[envKey]?.trim();
-    return url ? [{ ...card, url }] : [];
+  // Static `import.meta.env.VITE_*` access so the production bundler inlines
+  // each literal — dynamic `import.meta.env[key]` resolves to undefined at
+  // runtime and hid every download card.
+  const urlById: Record<string, string | undefined> = {
+    ios: import.meta.env.VITE_NATIVE_IOS_URL,
+    android: import.meta.env.VITE_NATIVE_ANDROID_URL,
+    windows: import.meta.env.VITE_NATIVE_WINDOWS_URL,
+    macos: import.meta.env.VITE_NATIVE_MACOS_URL,
+  };
+  return DOWNLOAD_DEFINITIONS.flatMap(({ id, title, description }) => {
+    const url = urlById[id]?.trim();
+    return url ? [{ id, title, description, url }] : [];
   });
 }
 

@@ -216,7 +216,7 @@ jobs:
     name: RC Smoke Tests
     needs: create-rc
     if: inputs.skip_smoke_tests != true
-    uses: ./.github/workflows/reusable-smoke-test.yml
+    uses: ./.github/workflows/reusable-release-smoke-test.yml
     with:
       version: ${{ needs.create-rc.outputs.rc_version }}
       platforms: 'android,ios,web,windows'

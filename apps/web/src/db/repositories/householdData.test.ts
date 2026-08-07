@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AsyncDb } from '../async-db';
+import { query, queryOne } from '../async-db';
 
 // Shared in-memory table store for the mocked sqlite primitives. `vi.hoisted`
 // keeps it available to both the (hoisted) mock factory and the test body.
@@ -198,5 +199,27 @@ describe('householdData repository', () => {
     await expect(writeHouseholdValue(db, 'finance-not-a-household-key', [])).rejects.toThrow(
       /Unknown household storage key/,
     );
+  });
+
+  it('orders reads by a PowerSync-view-safe column, never rowid', async () => {
+    // In live mode the backing store is PowerSync, which exposes every table as
+    // a SQLite *view* (no `rowid`). `ORDER BY rowid` therefore throws
+    // `no such column: rowid`, breaking every household read and dead-ending
+    // "Connect a bank" with the false "create a household first" wall. This
+    // guards the ordering because the mocked async-db ignores SQL semantics and
+    // cannot catch a view-incompatible clause behaviourally.
+    await writeHouseholdValue(db, MEMBERS_KEY, [makeMember()]);
+    await readHouseholdValue<FakeMember[]>(db, MEMBERS_KEY, []);
+    await readHouseholdValue<FakeMember | null>(db, HOUSEHOLD_SINGLETON_KEY, null);
+
+    const selects = [...vi.mocked(query).mock.calls, ...vi.mocked(queryOne).mock.calls].map(
+      ([, sql]) => String(sql),
+    );
+
+    expect(selects.length).toBeGreaterThan(0);
+    for (const sql of selects) {
+      expect(sql).not.toMatch(/rowid/i);
+      expect(sql).toMatch(/order by created_at/i);
+    }
   });
 });

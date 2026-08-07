@@ -20,13 +20,13 @@
  * References: issue #416
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 
-import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { useLivePowerSyncStatus } from '../../hooks/useLivePowerSyncStatus';
-import { getUnresolvedConflicts } from '../../db/sync/sync-conflict';
-import { isPowerSyncEnabled } from '../../db/sync/powersync/database';
-import type { LivePowerSyncStatus } from '../../db/sync/powersync/live-status';
+import {
+  describeSyncVariant,
+  useSyncStatusVariant,
+  type SyncStatusVariant,
+} from '../../hooks/useSyncStatusVariant';
 
 import '../../styles/sync-status.css';
 
@@ -65,21 +65,6 @@ function formatRelativeTime(isoString: string | null): string {
 // Sync variant
 // ---------------------------------------------------------------------------
 
-type SyncVariant = 'synced' | 'pending' | 'syncing' | 'error' | 'offline' | 'conflict';
-
-/**
- * Derive the bar variant from the live `@powersync/web` runtime status.
- * Used only when the live PowerSync client is enabled; the real connection
- * state — not the local mutation queue — then drives the bar.
- */
-function deriveLiveVariant(live: LivePowerSyncStatus, isOffline: boolean): SyncVariant {
-  if (isOffline) return 'offline';
-  if (live.connecting || live.syncing) return 'syncing';
-  if (live.connected) return 'synced';
-  if (live.hasError) return 'error';
-  return 'offline';
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -88,82 +73,15 @@ function deriveLiveVariant(live: LivePowerSyncStatus, isOffline: boolean): SyncV
  * Compact sync status indicator for the app layout.
  *
  * Renders a thin bar showing the current sync state with appropriate
- * semantic colours and screen reader announcements.
+ * semantic colours and screen reader announcements. The status is derived by
+ * the shared `useSyncStatusVariant` hook so this bar always agrees with the
+ * Settings → Sync & Devices status row.
  */
 export const SyncStatusBar: React.FC = () => {
-  const { isOnline, isOffline, pendingMutations, lastSyncTime, isSyncing, syncNow } =
-    useSyncStatus();
-  const live = useLivePowerSyncStatus();
-  const powerSyncActive = isPowerSyncEnabled();
+  const { variant, pendingMutations, conflictCount, lastSyncTime, syncNow, retry } =
+    useSyncStatusVariant();
 
-  const [conflictCount, setConflictCount] = useState(0);
-  const [lastSyncFailed, setLastSyncFailed] = useState(false);
-
-  // Track the previous syncing state to detect sync failures.
-  const prevSyncingRef = useRef(false);
-
-  useEffect(() => {
-    if (prevSyncingRef.current && !isSyncing && pendingMutations > 0 && isOnline) {
-      // Sync just finished but mutations remain → sync failed.
-      setLastSyncFailed(true);
-    } else if (isSyncing) {
-      setLastSyncFailed(false);
-    }
-    prevSyncingRef.current = isSyncing;
-  }, [isSyncing, pendingMutations, isOnline]);
-
-  // Poll unresolved conflicts whenever sync state changes.
-  useEffect(() => {
-    let cancelled = false;
-
-    async function checkConflicts(): Promise<void> {
-      try {
-        const conflicts = await getUnresolvedConflicts();
-        if (!cancelled) {
-          setConflictCount(conflicts.length);
-        }
-      } catch {
-        // IndexedDB may not be available in some contexts.
-      }
-    }
-
-    void checkConflicts();
-    return () => {
-      cancelled = true;
-    };
-  }, [isSyncing, pendingMutations]);
-
-  // Determine the visual variant.
-  let variant: SyncVariant;
-  if (isOffline) {
-    variant = 'offline';
-  } else if (isSyncing) {
-    variant = 'syncing';
-  } else if (conflictCount > 0) {
-    variant = 'conflict';
-  } else if (lastSyncFailed) {
-    variant = 'error';
-  } else if (pendingMutations > 0) {
-    variant = 'pending';
-  } else {
-    variant = 'synced';
-  }
-
-  // When the live PowerSync client is active, its real runtime status is the
-  // source of truth: the local mutation queue does not track the live
-  // connection. Flag off → variant is unchanged and behaviour is identical.
-  if (powerSyncActive) {
-    variant = deriveLiveVariant(live, isOffline);
-  }
-
-  const handleRetry = useCallback(() => {
-    setLastSyncFailed(false);
-    syncNow();
-  }, [syncNow]);
-
-  const relativeTime = powerSyncActive
-    ? formatRelativeTime(live.lastSyncedAt)
-    : formatRelativeTime(lastSyncTime);
+  const relativeTime = formatRelativeTime(lastSyncTime);
 
   return (
     <div
@@ -174,7 +92,7 @@ export const SyncStatusBar: React.FC = () => {
     >
       <SyncIcon variant={variant} />
       <span className="sync-status-bar__text">
-        {renderStatusText(variant, pendingMutations, conflictCount)}
+        {describeSyncVariant(variant, pendingMutations, conflictCount)}
       </span>
       {relativeTime && variant === 'synced' && (
         <span className="sync-status-bar__time" aria-label={`Last synced ${relativeTime}`}>
@@ -185,7 +103,7 @@ export const SyncStatusBar: React.FC = () => {
         <button
           type="button"
           className="sync-status-bar__action"
-          onClick={handleRetry}
+          onClick={syncNow}
           aria-label="Sync pending changes now"
         >
           Sync now
@@ -195,7 +113,7 @@ export const SyncStatusBar: React.FC = () => {
         <button
           type="button"
           className="sync-status-bar__action"
-          onClick={handleRetry}
+          onClick={retry}
           aria-label="Retry failed sync"
         >
           Retry
@@ -206,36 +124,11 @@ export const SyncStatusBar: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Status text
-// ---------------------------------------------------------------------------
-
-function renderStatusText(
-  variant: SyncVariant,
-  pendingMutations: number,
-  conflictCount: number,
-): string {
-  switch (variant) {
-    case 'synced':
-      return 'All synced';
-    case 'pending':
-      return `${pendingMutations} pending change${pendingMutations !== 1 ? 's' : ''}`;
-    case 'syncing':
-      return 'Syncing\u2026';
-    case 'error':
-      return 'Sync failed';
-    case 'offline':
-      return 'Offline. Changes saved locally';
-    case 'conflict':
-      return `${conflictCount} conflict${conflictCount !== 1 ? 's' : ''} need attention`;
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Icon
 // ---------------------------------------------------------------------------
 
 interface SyncIconProps {
-  variant: SyncVariant;
+  variant: SyncStatusVariant;
 }
 
 const SyncIcon: React.FC<SyncIconProps> = ({ variant }) => {

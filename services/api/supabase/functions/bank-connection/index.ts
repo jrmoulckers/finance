@@ -44,12 +44,21 @@ import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import { encryptToken } from '../_shared/bank-crypto.ts';
+import { ensureCanManageHousehold } from '../_shared/bank-authorization.ts';
 import {
   createLinkToken as plaidCreateLinkToken,
   exchangePublicToken as plaidExchangePublicToken,
+  getAccounts as plaidGetAccounts,
+  plaidAccountTypeToInternal,
   PlaidApiError,
+  type PlaidAccount,
   type PlaidConfig,
 } from '../_shared/plaid.ts';
+import {
+  ingestPlaidTransactions,
+  type BankConnectionRow,
+  type IngestionSummary,
+} from '../_shared/bank-ingest.ts';
 import { revokeProviderToken } from '../_shared/bank-revocation.ts';
 import {
   createdResponse,
@@ -66,6 +75,9 @@ import {
 
 type Provider = 'plaid' | 'mx';
 const VALID_PROVIDERS: readonly Provider[] = ['plaid', 'mx'];
+
+type AdminClient = ReturnType<typeof createAdminClient>;
+type FunctionLogger = ReturnType<typeof createLogger>;
 
 interface CreateLinkTokenRequest {
   provider: Provider;
@@ -169,6 +181,129 @@ async function exchangeProviderToken(
 }
 
 // ---------------------------------------------------------------------------
+// Account discovery + linking
+// ---------------------------------------------------------------------------
+
+/**
+ * Discover the external accounts for a connection via the provider's API.
+ *
+ * Plaid: real POST /accounts/get. MX: documented stub (returns none) until its
+ * backend adapter lands — mirrors the createLinkToken/exchangeToken dispatch.
+ */
+async function discoverProviderAccounts(
+  provider: Provider,
+  accessToken: string,
+): Promise<PlaidAccount[]> {
+  if (provider === 'plaid') {
+    const { accounts } = await plaidGetAccounts(plaidConfigFromEnv(), accessToken);
+    return accounts;
+  }
+  // MX stub — no account discovery until MX is provisioned.
+  return [];
+}
+
+/**
+ * Run the provider's initial transaction backfill for a freshly-linked
+ * connection so transactions appear immediately (webhooks only deliver deltas
+ * afterward). Provider-agnostic dispatch — mirrors the other provider helpers.
+ */
+async function runInitialProviderSync(
+  supabase: AdminClient,
+  provider: Provider,
+  connection: BankConnectionRow,
+  logger: FunctionLogger,
+): Promise<IngestionSummary> {
+  if (provider === 'plaid') {
+    return ingestPlaidTransactions(supabase, connection, logger);
+  }
+  // MX sync lands with its backend adapter; nothing to backfill yet.
+  return { added: 0, modified: 0, removed: 0 };
+}
+
+/**
+ * Discover a connection's external accounts, provision a matching internal
+ * `accounts` row for each, and insert the linked `bank_connection_accounts`
+ * mapping (is_linked=true).
+ *
+ * Account linking is the HARD PREREQUISITE for transaction ingestion: both the
+ * webhook and the initial sync DROP any transaction whose external account is
+ * not linked here. Best-effort per account — a single failure is logged and
+ * skipped so the remaining accounts still link.
+ *
+ * @returns The number of external accounts successfully linked.
+ */
+async function provisionAndLinkAccounts(
+  supabase: AdminClient,
+  params: {
+    provider: Provider;
+    accessToken: string;
+    connectionId: string;
+    householdId: string;
+  },
+  logger: FunctionLogger,
+): Promise<number> {
+  const externalAccounts = await discoverProviderAccounts(params.provider, params.accessToken);
+  let linked = 0;
+
+  for (const ext of externalAccounts) {
+    const currencyCode = ext.balances?.iso_currency_code ?? 'USD';
+    const displayName = ext.name ?? ext.official_name ?? 'Account';
+    const currentBalance = ext.balances?.current;
+    const balanceCents =
+      typeof currentBalance === 'number' && Number.isFinite(currentBalance)
+        ? Math.round(currentBalance * 100)
+        : 0;
+
+    // 1. Provision an internal Finance account for this external account.
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
+      .insert({
+        household_id: params.householdId,
+        name: displayName,
+        type: plaidAccountTypeToInternal(ext.type, ext.subtype),
+        currency_code: currencyCode,
+        balance_cents: balanceCents,
+        is_active: true,
+      })
+      .select('id')
+      .single();
+
+    if (accountError || !account) {
+      logger.warn('Failed to provision internal account', {
+        connectionId: params.connectionId,
+        errorMessage: accountError?.message,
+      });
+      continue;
+    }
+
+    // 2. Insert the linked mapping so ingestion accepts this account's txns.
+    const { error: linkError } = await supabase.from('bank_connection_accounts').insert({
+      bank_connection_id: params.connectionId,
+      household_id: params.householdId,
+      account_id: account.id,
+      external_account_id: ext.account_id,
+      external_name: displayName,
+      external_type: ext.type,
+      external_subtype: ext.subtype,
+      currency_code: currencyCode,
+      is_linked: true,
+    });
+
+    if (linkError) {
+      logger.warn('Failed to link external account', {
+        connectionId: params.connectionId,
+        errorMessage: linkError.message,
+      });
+      continue;
+    }
+
+    linked++;
+  }
+
+  return linked;
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
@@ -217,17 +352,11 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'household_id is required');
       }
 
-      // Verify household membership
-      const { data: membership, error: memError } = await supabase
-        .from('household_members')
-        .select('id, role')
-        .eq('household_id', body.household_id)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .in('role', ['owner', 'admin'])
-        .single();
-
-      if (memError || !membership) {
+      if (
+        !(await ensureCanManageHousehold(supabase, body.household_id, user.id, {
+          provisionIfMissing: true,
+        }))
+      ) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',
@@ -277,17 +406,7 @@ serve(async (req: Request): Promise<Response> => {
       if (!body.institution_id) return errorResponse(req, 'institution_id is required');
       if (!body.institution_name) return errorResponse(req, 'institution_name is required');
 
-      // Verify household membership
-      const { data: membership, error: memError } = await supabase
-        .from('household_members')
-        .select('id, role')
-        .eq('household_id', body.household_id)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .in('role', ['owner', 'admin'])
-        .single();
-
-      if (memError || !membership) {
+      if (!(await ensureCanManageHousehold(supabase, body.household_id, user.id))) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',
@@ -344,6 +463,52 @@ serve(async (req: Request): Promise<Response> => {
         provider: body.provider,
         httpStatus: 201,
       });
+
+      // Discover + link the institution's accounts, then run an initial
+      // backfill so transactions appear immediately (webhooks only deliver
+      // DELTAS after this point). Best-effort: a failure here must NOT fail the
+      // connection — the next webhook or a manual refresh will catch up.
+      try {
+        const linkedCount = await provisionAndLinkAccounts(
+          supabase,
+          {
+            provider: body.provider,
+            accessToken: exchangeResult.access_token,
+            connectionId: connection.id,
+            householdId: body.household_id,
+          },
+          logger,
+        );
+
+        if (linkedCount > 0) {
+          const initialSync = await runInitialProviderSync(
+            supabase,
+            body.provider,
+            {
+              id: connection.id,
+              household_id: body.household_id,
+              encrypted_access_token: encryptedToken,
+              metadata: { item_id: exchangeResult.item_id },
+            },
+            logger,
+          );
+          logger.info('Initial account link + sync complete', {
+            connectionId: connection.id,
+            linkedAccounts: linkedCount,
+            added: initialSync.added,
+            modified: initialSync.modified,
+          });
+        } else {
+          logger.warn('No external accounts linked for connection', {
+            connectionId: connection.id,
+          });
+        }
+      } catch (err) {
+        logger.error('Account linking / initial sync failed (connection retained)', {
+          connectionId: connection.id,
+          errorMessage: (err as Error).message,
+        });
+      }
 
       // NEVER return the access token
       return createdResponse(req, {
@@ -414,16 +579,7 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'Bank connection not found', 404);
       }
 
-      const { data: membership, error: memError } = await supabase
-        .from('household_members')
-        .select('id, role')
-        .eq('household_id', existing.household_id)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .in('role', ['owner', 'admin'])
-        .single();
-
-      if (memError || !membership) {
+      if (!(await ensureCanManageHousehold(supabase, existing.household_id, user.id))) {
         return errorResponse(
           req,
           'Only household owners and admins can manage bank connections',

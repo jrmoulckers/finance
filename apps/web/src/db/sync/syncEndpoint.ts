@@ -19,16 +19,15 @@ import { configureSyncEndpoint, type SyncConfig } from './replayMutations';
 // Environment helpers
 // ---------------------------------------------------------------------------
 
-/** Read a Vite env variable, returning `undefined` when absent or empty. */
-function envOrUndefined(key: string): string | undefined {
-  try {
-    // Vite injects import.meta.env at build time.
-    const meta = import.meta as unknown as { env?: Record<string, string> };
-    const value = meta.env?.[key];
-    return typeof value === 'string' && value.length > 0 ? value : undefined;
-  } catch {
-    return undefined;
-  }
+/**
+ * Coerce a raw Vite env value to a non-empty string, or `undefined`.
+ *
+ * Callers read `import.meta.env.VITE_*` via **static** member access so the
+ * production bundler inlines each literal at build time; dynamic access
+ * (`import.meta.env[key]`) is not inlined and resolves to `undefined`. @internal
+ */
+function nonEmpty(value: string | undefined): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,18 +57,18 @@ export interface SyncEndpointConfig extends SyncConfig {
  */
 export function resolveSyncEndpointConfig(): SyncEndpointConfig {
   const baseUrl =
-    envOrUndefined('VITE_SYNC_BASE_URL') ??
-    envOrUndefined('VITE_API_BASE_URL') ??
+    nonEmpty(import.meta.env.VITE_SYNC_BASE_URL) ??
+    nonEmpty(import.meta.env.VITE_API_BASE_URL) ??
     (typeof self !== 'undefined' && self.location ? self.location.origin : '');
 
-  const apiKey = envOrUndefined('VITE_SUPABASE_ANON_KEY');
+  const apiKey = nonEmpty(import.meta.env.VITE_SUPABASE_ANON_KEY);
 
   return {
     baseUrl,
-    pushEndpoint: envOrUndefined('VITE_SYNC_PUSH_ENDPOINT') ?? DEFAULT_PUSH_ENDPOINT,
-    pullEndpoint: envOrUndefined('VITE_SYNC_PULL_ENDPOINT') ?? DEFAULT_PULL_ENDPOINT,
-    healthEndpoint: envOrUndefined('VITE_SYNC_HEALTH_ENDPOINT') ?? DEFAULT_HEALTH_ENDPOINT,
-    timeout: Number(envOrUndefined('VITE_SYNC_TIMEOUT_MS')) || DEFAULT_TIMEOUT_MS,
+    pushEndpoint: nonEmpty(import.meta.env.VITE_SYNC_PUSH_ENDPOINT) ?? DEFAULT_PUSH_ENDPOINT,
+    pullEndpoint: nonEmpty(import.meta.env.VITE_SYNC_PULL_ENDPOINT) ?? DEFAULT_PULL_ENDPOINT,
+    healthEndpoint: nonEmpty(import.meta.env.VITE_SYNC_HEALTH_ENDPOINT) ?? DEFAULT_HEALTH_ENDPOINT,
+    timeout: Number(nonEmpty(import.meta.env.VITE_SYNC_TIMEOUT_MS)) || DEFAULT_TIMEOUT_MS,
     apiKey,
   };
 }

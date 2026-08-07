@@ -20,8 +20,10 @@ function columnType(tableName: string, columnName: string): string | undefined {
 
 describe('AppSchema', () => {
   it('mirrors every table declared in the canonical sync rules', () => {
-    // Three buckets: by_household + user_profile + exchange_rates = 29 tables.
-    expect(SYNCED_TABLE_NAMES).toHaveLength(29);
+    // Three buckets: by_household + user_profile + exchange_rates. Includes the
+    // four schema-unification tables (goal_progress_contributions,
+    // account_reconciliations, invoices, remittances) = 33 tables.
+    expect(SYNCED_TABLE_NAMES).toHaveLength(33);
 
     for (const name of [
       'accounts',
@@ -39,6 +41,10 @@ describe('AppSchema', () => {
       'exchange_rates',
       'price_history',
       'aggregator_providers',
+      'goal_progress_contributions',
+      'account_reconciliations',
+      'invoices',
+      'remittances',
     ]) {
       expect(SYNCED_TABLE_NAMES).toContain(name);
     }
@@ -83,5 +89,67 @@ describe('AppSchema', () => {
     expect(columnType('budgets', 'is_rollover')).toBe('INTEGER');
     expect(columnType('goals', 'account_id')).toBe('TEXT');
     expect(columnType('goals', 'status')).toBe('TEXT');
+  });
+
+  it('carries the schema-unification superset columns on the core tables', () => {
+    // accounts: retirement/HSA + purpose metadata.
+    expect(columnType('accounts', 'purpose')).toBe('TEXT');
+    expect(columnType('accounts', 'retirement_account_type')).toBe('TEXT');
+    expect(columnType('accounts', 'hsa_coverage_level')).toBe('TEXT');
+    // transactions: enrichment + merchant + splits + retirement contribution.
+    expect(columnType('transactions', 'mood_tag')).toBe('TEXT');
+    expect(columnType('transactions', 'merchant_city')).toBe('TEXT');
+    expect(columnType('transactions', 'splits')).toBe('TEXT');
+    expect(columnType('transactions', 'counterparty_name')).toBe('TEXT');
+    expect(columnType('transactions', 'retirement_contribution_year')).toBe('INTEGER');
+    // budgets/goals: manual ordering + goal description.
+    expect(columnType('budgets', 'sort_order')).toBe('INTEGER');
+    expect(columnType('goals', 'description')).toBe('TEXT');
+    expect(columnType('goals', 'sort_order')).toBe('INTEGER');
+  });
+
+  it('adds the four previously web-only tables to the synced schema', () => {
+    expect(columnType('goal_progress_contributions', 'amount')).toBe('INTEGER');
+    expect(columnType('goal_progress_contributions', 'goal_id')).toBe('TEXT');
+    expect(columnType('account_reconciliations', 'statement_balance')).toBe('INTEGER');
+    expect(columnType('account_reconciliations', 'transaction_ids')).toBe('TEXT');
+    expect(columnType('invoices', 'amount_cents')).toBe('INTEGER');
+    expect(columnType('invoices', 'client_name')).toBe('TEXT');
+    expect(columnType('remittances', 'send_amount_minor')).toBe('INTEGER');
+    expect(columnType('remittances', 'fx_rate')).toBe('REAL');
+  });
+
+  it('declares the web-only tables as local-only and excludes them from the synced set', () => {
+    const localOnlyNames = [
+      'hh_household',
+      'hh_member',
+      'hh_invitation',
+      'hh_account_sharing',
+      'hh_shared_budget',
+      'hh_shared_goal',
+      'hh_shared_expense',
+      'hh_shared_settlement',
+      'hh_child',
+      'hh_activity_event',
+      'hh_recurring_bill',
+      'hh_goal_pledge',
+      'hh_shopping_budget',
+      'hh_reconciliation_plan',
+      'hh_reconciliation_snapshot',
+      'widget_privacy_config',
+      'investment',
+      'investment_lot',
+      'bill',
+      'account_sharing',
+      'shared_budget',
+      'shared_goal',
+      'household_invitation',
+    ];
+    for (const name of localOnlyNames) {
+      expect(table(name).localOnly).toBe(true);
+      expect(SYNCED_TABLE_NAMES).not.toContain(name);
+    }
+    // The synced set stays exactly the sync-rules mirror; local-only tables are additive.
+    expect(AppSchema.tables).toHaveLength(SYNCED_TABLE_NAMES.length + localOnlyNames.length);
   });
 });

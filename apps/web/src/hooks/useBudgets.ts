@@ -71,7 +71,7 @@ export interface ScorecardBudgetSnapshot {
 
 const EMPTY_BUDGET_QUERY_PARAMS: readonly unknown[] = [];
 const EMPTY_BUDGETS: BudgetWithSpending[] = [];
-const BUDGET_LIVE_QUERY_TABLES = ['budget', 'transaction'] as const;
+const BUDGET_LIVE_QUERY_TABLES = ['budgets', 'transactions'] as const;
 
 const SCORECARD_DEMO_BUDGETS: readonly Omit<ScorecardBudgetSnapshot, 'householdId'>[] = [
   {
@@ -167,7 +167,7 @@ export function useBudgets(): UseBudgetsResult {
     error: liveError,
     refresh: refreshLiveQuery,
   } = useLiveQuery<BudgetWithSpending[]>(
-    'SELECT id FROM budget WHERE deleted_at IS NULL',
+    'SELECT id FROM budgets WHERE deleted_at IS NULL',
     EMPTY_BUDGET_QUERY_PARAMS,
     {
       initialData: EMPTY_BUDGETS,

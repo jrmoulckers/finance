@@ -21,14 +21,14 @@ const LOCAL_TABLE_DELETE_ORDER = [
   'shared_budget',
   'account_sharing',
   'household_invitation',
-  '"transaction"',
-  'budget',
-  'goal',
-  'category',
-  'account',
-  'household_member',
-  'household',
-  'user',
+  'transactions',
+  'budgets',
+  'goals',
+  'categories',
+  'accounts',
+  'household_members',
+  'households',
+  'users',
   'widget_privacy_config',
 ] as const;
 
@@ -41,11 +41,11 @@ export async function getHouseholdDeletionImpact(
   }
 
   const membershipRows = await db.getAll(
-    `SELECT DISTINCT household_id FROM household_member WHERE user_id = ? AND deleted_at IS NULL`,
+    `SELECT DISTINCT household_id FROM household_members WHERE user_id = ? AND deleted_at IS NULL`,
     [userId],
   );
   const ownedRows = await db.getAll(
-    `SELECT id FROM household WHERE owner_id = ? AND deleted_at IS NULL`,
+    `SELECT id FROM households WHERE created_by = ? AND deleted_at IS NULL`,
     [userId],
   );
 

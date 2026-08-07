@@ -528,6 +528,12 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     case 'navigation':
       event.respondWith(navigationHandler(request));
       return;
+    case 'passthrough':
+      // Deliberately do NOT call event.respondWith(): let the browser handle
+      // the request natively so streaming/authenticated backend responses
+      // (e.g. PowerSync's long-lived `POST /sync/stream`) are never buffered,
+      // cached, or wrapped by the service worker.
+      return;
   }
 });
 
@@ -662,6 +668,14 @@ function isHtmlForStaticAsset(request: Request, response: Response): boolean {
  * on read so the cache self-heals without a CACHE_VERSION bump.
  */
 export async function cacheFirst(request: Request, fallbackUrl?: string): Promise<Response> {
+  // The Cache API only supports GET; cache.match()/cache.put() throw on other
+  // methods. Never run the caching path for a non-GET request — otherwise a
+  // *successful* non-GET response is discarded by the catch below and surfaced
+  // as a bogus "Offline -- resource not cached" 503.
+  if (request.method !== 'GET') {
+    return fetch(request);
+  }
+
   const cache = await caches.open(STATIC_CACHE);
 
   const cached = await cache.match(request);
@@ -805,8 +819,35 @@ function isStaticAsset(pathname: string): boolean {
   return STATIC_EXTENSIONS.test(pathname);
 }
 
+/**
+ * Live backend endpoints that must bypass the service worker entirely.
+ *
+ * Covers the PowerSync sync service (`/sync/*` — notably the long-lived
+ * streaming `POST /sync/stream`) and the Supabase edge: PostgREST (`/rest/*`),
+ * GoTrue (`/auth/*`) and Edge Functions (`/functions/*`). These responses are
+ * authenticated, non-cacheable, and frequently non-GET/streaming. Routing them
+ * through any cache strategy calls `cache.put()`, which throws on a non-GET
+ * request; the error is swallowed and surfaced as a bogus
+ * "Offline -- resource not cached" 503, masking a *successful* response as an
+ * offline failure. They must hit the network natively instead.
+ */
+function isLiveBackendPath(pathname: string): boolean {
+  return (
+    pathname === '/sync' ||
+    pathname.startsWith('/sync/') ||
+    pathname.startsWith('/rest/') ||
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/functions/')
+  );
+}
+
 export type FetchStrategy =
-  'receipt-cache-first' | 'network-first' | 'network-only-no-store' | 'cache-first' | 'navigation';
+  | 'receipt-cache-first'
+  | 'network-first'
+  | 'network-only-no-store'
+  | 'cache-first'
+  | 'navigation'
+  | 'passthrough';
 
 export function getFetchStrategyForPathname(
   pathname: string,
@@ -814,6 +855,12 @@ export function getFetchStrategyForPathname(
 ): FetchStrategy {
   if (isReceiptImagePath(pathname)) {
     return 'receipt-cache-first';
+  }
+
+  // Live backend endpoints (PowerSync + Supabase) must never be intercepted or
+  // cached — pass them straight to the network. See isLiveBackendPath.
+  if (isLiveBackendPath(pathname)) {
+    return 'passthrough';
   }
 
   if (pathname.startsWith('/api/sync/')) {

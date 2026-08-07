@@ -89,12 +89,18 @@ export function mapCents(value: unknown, field: string): Cents {
 
 /** Map shared sync metadata columns into the bridge shape. */
 export function mapSyncMetadata(row: Row): SyncMetadata {
+  // sync_version / is_synced are legacy offline-only bookkeeping columns that are not
+  // part of the unified (PowerSync) schema. When the repositories run against the live
+  // database those columns are absent, so derive a synced-by-default value; when they
+  // are present (offline database) their real values are still honoured.
+  const rawSyncVersion = (row as Record<string, unknown>).sync_version;
+  const rawIsSynced = (row as Record<string, unknown>).is_synced;
   return {
     createdAt: requireString(row.created_at, 'created_at'),
     updatedAt: requireString(row.updated_at, 'updated_at'),
     deletedAt: optionalString(row.deleted_at),
-    syncVersion: requireNumber(row.sync_version, 'sync_version'),
-    isSynced: toBoolean(row.is_synced),
+    syncVersion: typeof rawSyncVersion === 'number' ? rawSyncVersion : 0,
+    isSynced: rawIsSynced === undefined || rawIsSynced === null ? true : toBoolean(rawIsSynced),
   };
 }
 
