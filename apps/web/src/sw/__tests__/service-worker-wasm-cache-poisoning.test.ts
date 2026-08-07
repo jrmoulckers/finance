@@ -124,4 +124,19 @@ describe('cacheFirst (SQLite-WASM cache-poisoning guard, #3091)', () => {
     // A non-asset path is outside the guard, so normal caching still applies.
     expect(mockCache.put).toHaveBeenCalledTimes(1);
   });
+
+  it('bypasses the Cache API entirely for a non-GET request', async () => {
+    // The Cache API only supports GET; routing a non-GET (e.g. PowerSync's
+    // streaming POST /sync/stream) through the caching path would throw on
+    // cache.put() and be swallowed into a bogus "Offline" 503.
+    const netResponse = new Response('ok', { status: 200 });
+    globalThis.fetch = vi.fn().mockResolvedValue(netResponse);
+
+    const result = await cacheFirst(new Request(WASM_URL, { method: 'POST' }));
+
+    expect(result).toBe(netResponse);
+    expect(openMock).not.toHaveBeenCalled();
+    expect(mockCache.match).not.toHaveBeenCalled();
+    expect(mockCache.put).not.toHaveBeenCalled();
+  });
 });
