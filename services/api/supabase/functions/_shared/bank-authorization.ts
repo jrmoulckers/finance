@@ -17,7 +17,7 @@ export async function ensureCanManageHousehold(
   supabase: SupabaseClient,
   householdId: string,
   userId: string,
-  options: { provisionIfMissing?: boolean } = {},
+  options: { provisionIfMissing?: boolean; userEmail?: string } = {},
 ): Promise<boolean> {
   const { data: membership, error: membershipError } = await supabase
     .from('household_members')
@@ -43,6 +43,41 @@ export async function ensureCanManageHousehold(
 
   if (household) return true;
   if (!options.provisionIfMissing) return false;
+
+  const { data: applicationUser, error: applicationUserError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (applicationUserError) throw applicationUserError;
+
+  if (!applicationUser) {
+    const email = options.userEmail?.trim();
+    if (!email) {
+      throw new Error('Authenticated user email is required to provision an application profile');
+    }
+
+    const displayName = email.split('@')[0]?.trim() || 'User';
+    const { error: createUserError } = await supabase
+      .from('users')
+      .upsert(
+        { id: userId, email, display_name: displayName },
+        { onConflict: 'id', ignoreDuplicates: true },
+      );
+    if (createUserError) throw createUserError;
+
+    const { data: provisionedUser, error: provisionUserError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (provisionUserError) throw provisionUserError;
+    if (!provisionedUser) {
+      throw new Error('Application user profile provisioning did not create a readable row');
+    }
+  }
 
   const { error: createError } = await supabase
     .from('households')
