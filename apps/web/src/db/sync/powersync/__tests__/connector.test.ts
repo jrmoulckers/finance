@@ -142,5 +142,47 @@ describe('SupabaseConnector', () => {
       await expect(connector.uploadData(database)).rejects.toThrow(/HTTP 409/);
       expect(complete).not.toHaveBeenCalled();
     });
+
+    it('reconciles a server-provisioned active household membership', async () => {
+      const fetchFn = vi
+        .fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 409,
+          text: async () => 'duplicate active membership',
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => [
+            {
+              id: 'server-member',
+              household_id: 'household-1',
+              user_id: 'user-1',
+              role: 'owner',
+            },
+          ],
+        } as unknown as Response);
+      const { database, complete } = fakeDatabase([
+        entry({
+          op: UpdateType.PUT,
+          id: 'local-member',
+          table: 'household_members',
+          opData: { household_id: 'household-1', user_id: 'user-1', role: 'owner' },
+        }),
+      ]);
+      const connector = new SupabaseConnector(CONFIG, {
+        fetchFn: fetchFn as unknown as typeof fetch,
+        getToken: async () => 'jwt-token',
+      });
+
+      await connector.uploadData(database);
+
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      expect(fetchFn.mock.calls[1][0]).toBe(
+        'https://finance.jrmoulckers.com/rest/v1/household_members?household_id=eq.household-1&user_id=eq.user-1&deleted_at=is.null&select=id,household_id,user_id,role',
+      );
+      expect(complete).toHaveBeenCalledTimes(1);
+    });
   });
 });
