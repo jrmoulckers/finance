@@ -355,6 +355,7 @@ serve(async (req: Request): Promise<Response> => {
       if (
         !(await ensureCanManageHousehold(supabase, body.household_id, user.id, {
           provisionIfMissing: true,
+          userEmail: user.email,
         }))
       ) {
         return errorResponse(

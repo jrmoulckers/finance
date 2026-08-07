@@ -77,15 +77,29 @@ Deno.test(
         { data: null, error: null },
         { data: { id: 'household-1', created_by: 'user-1' }, error: null },
       ],
+      users: [
+        { data: null, error: null },
+        { data: { id: 'user-1' }, error: null },
+      ],
     });
 
     assertEquals(
       await ensureCanManageHousehold(client, 'household-1', 'user-1', {
         provisionIfMissing: true,
+        userEmail: 'person@example.com',
       }),
       true,
     );
     assertEquals(upserts, [
+      {
+        table: 'users',
+        value: {
+          id: 'user-1',
+          email: 'person@example.com',
+          display_name: 'person',
+        },
+        options: { onConflict: 'id', ignoreDuplicates: true },
+      },
       {
         table: 'households',
         value: { id: 'household-1', name: 'My Household', created_by: 'user-1' },
@@ -127,16 +141,65 @@ Deno.test('bank management denies when another user wins the provisioning race',
       { data: null, error: null },
       { data: { id: 'household-1', created_by: 'user-2' }, error: null },
     ],
+    users: { data: { id: 'user-1' }, error: null },
   });
 
   assertEquals(
     await ensureCanManageHousehold(client, 'household-1', 'user-1', {
       provisionIfMissing: true,
+      userEmail: 'person@example.com',
     }),
     false,
   );
   assertEquals(upserts.length, 1);
 });
+
+Deno.test('bank management preserves an existing application user while provisioning', async () => {
+  const { client, upserts } = clientWithResults({
+    household_members: { data: null, error: null },
+    households: [
+      { data: null, error: null },
+      { data: { id: 'household-1', created_by: 'user-1' }, error: null },
+    ],
+    users: { data: { id: 'user-1' }, error: null },
+  });
+
+  assertEquals(
+    await ensureCanManageHousehold(client, 'household-1', 'user-1', {
+      provisionIfMissing: true,
+      userEmail: 'person@example.com',
+    }),
+    true,
+  );
+  assertEquals(upserts, [
+    {
+      table: 'households',
+      value: { id: 'household-1', name: 'My Household', created_by: 'user-1' },
+      options: { onConflict: 'id', ignoreDuplicates: true },
+    },
+  ]);
+});
+
+Deno.test(
+  'bank management requires verified email to repair a missing application user',
+  async () => {
+    const { client, upserts } = clientWithResults({
+      household_members: { data: null, error: null },
+      households: { data: null, error: null },
+      users: { data: null, error: null },
+    });
+
+    await assertRejects(
+      () =>
+        ensureCanManageHousehold(client, 'household-1', 'user-1', {
+          provisionIfMissing: true,
+        }),
+      Error,
+      'Authenticated user email is required',
+    );
+    assertEquals(upserts, []);
+  },
+);
 
 Deno.test(
   'bank management propagates database errors instead of mislabeling them 403',
