@@ -128,51 +128,41 @@ jobs:
                 ;;
               diagnose-bank-data)
                 echo "=== bank-data aggregate counts (no financial data or identifiers) ==="
-                timeout 30 $DC exec -T db psql \
-                  -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
-                  -P pager=off \
-                  -c "SELECT metric, row_count
-                      FROM (
-                        SELECT 1 AS sort_order, 'enabled_providers' AS metric, count(*)::bigint AS row_count
-                        FROM public.aggregator_providers
-                        WHERE is_enabled
-                        UNION ALL
-                        SELECT 2, 'bank_connections', count(*)
-                        FROM public.bank_connections
-                        WHERE deleted_at IS NULL
-                        UNION ALL
-                        SELECT 3, 'connections_with_sync_cursor', count(*)
-                        FROM public.bank_connections
-                        WHERE deleted_at IS NULL
-                          AND sync_cursor IS NOT NULL
-                        UNION ALL
-                        SELECT 4, 'linked_connection_accounts', count(*)
-                        FROM public.bank_connection_accounts
-                        WHERE is_linked
-                        UNION ALL
-                        SELECT 5, 'internal_accounts_for_connections', count(DISTINCT bca.account_id)
-                        FROM public.bank_connection_accounts bca
-                        JOIN public.bank_connections bc ON bc.id = bca.connection_id
-                        JOIN public.accounts a ON a.id = bca.account_id
-                        WHERE bca.is_linked
-                          AND bc.deleted_at IS NULL
-                          AND a.deleted_at IS NULL
-                        UNION ALL
-                        SELECT 6, 'transactions_for_linked_accounts', count(DISTINCT t.id)
-                        FROM public.bank_connection_accounts bca
-                        JOIN public.bank_connections bc ON bc.id = bca.connection_id
-                        JOIN public.transactions t ON t.account_id = bca.account_id
-                        WHERE bca.is_linked
-                          AND bc.deleted_at IS NULL
-                          AND t.deleted_at IS NULL
-                        UNION ALL
-                        SELECT 7, 'connection_health_events', count(*)
-                        FROM public.bank_connection_health
-                        UNION ALL
-                        SELECT 8, 'bank_sync_log_entries', count(*)
-                        FROM public.bank_sync_log
-                      ) counts
-                      ORDER BY sort_order;" </dev/null
+                count_metric() {
+                  metric="$1"
+                  query="$2"
+                  if result=$(timeout 20 $DC exec -T db psql \
+                    -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+                    -At -c "$query" </dev/null 2>&1); then
+                    printf '%-38s %s\n' "$metric" "$result"
+                  else
+                    printf '%-38s unavailable (%s)\n' "$metric" "$(echo "$result" | head -1)"
+                  fi
+                }
+                count_metric enabled_providers \
+                  "SELECT count(*) FROM public.aggregator_providers WHERE is_enabled"
+                count_metric bank_connections \
+                  "SELECT count(*) FROM public.bank_connections WHERE deleted_at IS NULL"
+                count_metric connections_with_sync_cursor \
+                  "SELECT count(*) FROM public.bank_connections WHERE deleted_at IS NULL AND sync_cursor IS NOT NULL"
+                count_metric linked_connection_accounts \
+                  "SELECT count(*) FROM public.bank_connection_accounts WHERE is_linked"
+                count_metric internal_accounts_for_connections \
+                  "SELECT count(DISTINCT bca.account_id)
+                   FROM public.bank_connection_accounts bca
+                   JOIN public.bank_connections bc ON bc.id = bca.connection_id
+                   JOIN public.accounts a ON a.id = bca.account_id
+                   WHERE bca.is_linked AND bc.deleted_at IS NULL AND a.deleted_at IS NULL"
+                count_metric transactions_for_linked_accounts \
+                  "SELECT count(DISTINCT t.id)
+                   FROM public.bank_connection_accounts bca
+                   JOIN public.bank_connections bc ON bc.id = bca.connection_id
+                   JOIN public.transactions t ON t.account_id = bca.account_id
+                   WHERE bca.is_linked AND bc.deleted_at IS NULL AND t.deleted_at IS NULL"
+                count_metric connection_health_events \
+                  "SELECT count(*) FROM public.bank_connection_health"
+                count_metric bank_sync_log_entries \
+                  "SELECT count(*) FROM public.bank_sync_log"
                 ;;
               up)
                 echo "=== docker compose up -d (timeout 180) ==="; timeout 180 $DC up -d </dev/null 2>&1 || echo "(up timed out/failed)"
