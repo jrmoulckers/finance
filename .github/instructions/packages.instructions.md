@@ -24,6 +24,14 @@ You are working in the `packages/` directory, which contains shared libraries co
 - Financial calculations must use appropriate precision (avoid floating point for money)
 - All monetary values should use the smallest currency unit (cents, not dollars)
 
+## Prepared Shared-Code Ownership (Not Active)
+
+- Until canonical activation, `@kmp-engineer` leads shared package structure. After activation, `@native-app-engineer` leads `packages/core/`, `packages/models/`, `packages/sync/`, `packages/import/`, `gradle/libs.versions.toml`, and `settings.gradle.kts`.
+- `@finance-domain` remains the correctness lead for money algorithms only: integer minor units, rounding, budgets, goals, recurrence, categorization, reports, and currency behavior. It does not own source-set structure, schemas, repositories, or Gradle configuration.
+- `@data-engineer` co-reviews only product telemetry contracts in `AnalyticsEvent.kt`, `AnalyticsTracker.kt`, and `BufferedAnalyticsTracker.kt`. Financial reports, balances, transactions, and the domain event bus are not telemetry.
+- `packages/design-tokens/` remains owned by `@design-engineer` and follows `tokens.instructions.md`.
+- Client SQLDelight schemas and migrations remain shared/native code. Cloud PostgreSQL migrations, RLS, seed data, and PowerSync bucket rules belong to `@database-engineer` after activation; schema changes must be serialized across both owners.
+
 ## Monitoring Interfaces
 
 `packages/core/src/commonMain/kotlin/com/finance/core/monitoring/` contains cross-platform monitoring contracts:
@@ -51,6 +59,13 @@ These are `commonMain` interfaces — platform `actual` implementations live in 
 - All monetary values must be `Long` (cents) — enforce with Kotlin value classes (e.g., `@JvmInline value class Cents(val amount: Long)`)
 - Test with **kotlin.test** — all tests must pass on every target (`commonTest`, `iosTest`, `androidTest`, `jvmTest`, `jsTest`)
 - Kotlin lint: **detekt** runs in CI via GitHub Actions workflow. Follow detekt rules for code style and complexity.
+
+## Financial and Telemetry Boundaries
+
+- Treat `Cents(Long)` as integer currency minor units and carry the ISO 4217 currency/scale with every amount; never assume every currency has two decimal places.
+- Money-affecting multiplication, division, allocation, conversion, and percentages require exact integer/rational handling, checked overflow, and `HALF_EVEN` rounding.
+- Product telemetry must be consent-gated, bounded-cardinality, and free of PII, account identifiers, balances, transaction details, and raw financial amounts.
+- Monitoring contracts may report durations, counts, states, and error categories, but never financial payloads.
 
 ## Approved Model Additions
 

@@ -324,6 +324,19 @@ Map issues to agents based on labels and file paths:
 - `documentation` → @docs-writer
 - `design-system` → @design-engineer
 
+#### Prepared Canonical Dispatch (Not Active)
+
+Continue using the current mappings above until Studio canonical materialization replaces the runtime definitions. After activation:
+
+- `platform:android`, `platform:ios`, `platform:windows`, `platform:shared`, `comp:sync`, and client SQLDelight work → `@native-app-engineer`
+- Supabase migrations, RLS, database tests, seed data, and PowerSync sync rules → `@database-engineer`
+- SLOs, monitoring semantics, incidents, rollback/recovery verification, and capacity → `@sre-engineer`
+- API/Auth/Edge Function behavior → `@backend-engineer`
+- A single reported bug → run `.github/prompts/bug-bash.prompt.md`; do not require a permanent bug-basher role
+- Money-affecting work → include `@finance-domain` for correctness review while the structural owner implements
+
+Do not dispatch the future-only slugs before their generated definitions are materialized.
+
 ### 3. Include Business Tasks
 
 Every sprint MUST include at least one business/management task:
