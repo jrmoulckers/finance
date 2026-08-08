@@ -21,6 +21,9 @@
 #   repair-household-memberships
 #                   Backfill missing active owner memberships from each
 #                   household's verified `created_by` identity.
+#   repair-bank-connectivity-schema
+#                   Apply the missing bank-connectivity foundation and provider
+#                   seed, then reset Plaid cursors for a lossless re-ingestion.
 #   reboot          `sudo systemctl reboot` (last resort for a wedged host).
 #                   Requires passwordless sudo; containers with a restart policy
 #                   come back automatically on boot.
@@ -46,6 +49,7 @@ on:
           - restart-db
           - restart-docker
           - repair-household-memberships
+          - repair-bank-connectivity-schema
           - reboot
 
 concurrency:
@@ -144,19 +148,19 @@ jobs:
                 count_metric bank_connections \
                   "SELECT count(*) FROM public.bank_connections WHERE deleted_at IS NULL"
                 count_metric connections_with_sync_cursor \
-                  "SELECT count(*) FROM public.bank_connections WHERE deleted_at IS NULL AND sync_cursor IS NOT NULL"
+                  "SELECT count(*) FROM public.bank_connections WHERE deleted_at IS NULL AND metadata->>'cursor' IS NOT NULL"
                 count_metric linked_connection_accounts \
                   "SELECT count(*) FROM public.bank_connection_accounts WHERE is_linked"
                 count_metric internal_accounts_for_connections \
                   "SELECT count(DISTINCT bca.account_id)
                    FROM public.bank_connection_accounts bca
-                   JOIN public.bank_connections bc ON bc.id = bca.connection_id
+                   JOIN public.bank_connections bc ON bc.id = bca.bank_connection_id
                    JOIN public.accounts a ON a.id = bca.account_id
                    WHERE bca.is_linked AND bc.deleted_at IS NULL AND a.deleted_at IS NULL"
                 count_metric transactions_for_linked_accounts \
                   "SELECT count(DISTINCT t.id)
                    FROM public.bank_connection_accounts bca
-                   JOIN public.bank_connections bc ON bc.id = bca.connection_id
+                   JOIN public.bank_connections bc ON bc.id = bca.bank_connection_id
                    JOIN public.transactions t ON t.account_id = bca.account_id
                    WHERE bca.is_linked AND bc.deleted_at IS NULL AND t.deleted_at IS NULL"
                 count_metric connection_health_events \
@@ -207,6 +211,62 @@ jobs:
                             AND hm.deleted_at IS NULL
                         )
                       ON CONFLICT DO NOTHING;" </dev/null
+                ;;
+              repair-bank-connectivity-schema)
+                foundation="services/api/supabase/migrations/20260331000001_bank_connectivity_foundation.sql"
+                provider_seed="services/api/supabase/migrations/20260401000003_seed_aggregator_providers_phase3.sql"
+                if [ ! -f "$foundation" ] || [ ! -f "$provider_seed" ]; then
+                  echo "::error::bank connectivity migration files are missing from the deployed checkout"
+                  exit 1
+                fi
+
+                foundation_state=$(timeout 20 $DC exec -T db psql \
+                  -U supabase_admin -d postgres -At -F '|' \
+                  -c "SELECT
+                        to_regclass('public.aggregator_providers') IS NOT NULL,
+                        to_regclass('public.bank_connection_health') IS NOT NULL,
+                        EXISTS (
+                          SELECT 1 FROM information_schema.columns
+                          WHERE table_schema = 'public'
+                            AND table_name = 'transactions'
+                            AND column_name = 'provider_transaction_id'
+                        ),
+                        EXISTS (
+                          SELECT 1 FROM information_schema.columns
+                          WHERE table_schema = 'public'
+                            AND table_name = 'bank_connections'
+                            AND column_name = 'aggregator_provider_id'
+                        )" </dev/null)
+                case "$foundation_state" in
+                  't|t|t|t')
+                    echo "=== bank connectivity foundation already present; skipping ==="
+                    ;;
+                  'f|f|f|f')
+                    echo "=== apply bank connectivity foundation in one transaction ==="
+                    timeout 90 $DC exec -T db psql \
+                      -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -1 \
+                      -f - <"$foundation"
+                    ;;
+                  *)
+                    echo "::error::bank connectivity foundation is partially applied ($foundation_state); refusing an unsafe replay"
+                    exit 1
+                    ;;
+                esac
+
+                echo "=== upsert aggregator provider registry ==="
+                timeout 30 $DC exec -T db psql \
+                  -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -1 \
+                  -f - <"$provider_seed"
+
+                echo "=== reset Plaid cursors for lossless re-ingestion ==="
+                timeout 30 $DC exec -T db psql \
+                  -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+                  -c "UPDATE public.bank_connections
+                      SET metadata = metadata - 'cursor',
+                         last_synced_at = NULL,
+                         updated_at = now()
+                      WHERE provider = 'plaid'
+                       AND deleted_at IS NULL;" </dev/null
                 ;;
               reboot)
                 if [ "$HAVE_SUDO" != yes ]; then echo "::error::passwordless sudo unavailable — cannot reboot"; exit 1; fi
