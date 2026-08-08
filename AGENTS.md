@@ -26,6 +26,7 @@ Finance is a multi-platform, native-first financial tracking application for per
 3. **Accessibility** — All UI code must meet WCAG 2.2 AA minimum. Use semantic elements, support screen readers, respect reduced motion and high contrast preferences.
 4. **Security** — Follow OWASP guidelines. Never hardcode secrets. Always validate and sanitize inputs. Use parameterized queries.
 5. **Transparency** — Document all significant decisions, trade-offs, and AI-generated code rationale in commit messages and PR descriptions.
+6. **No financial-data monetization** — Finance has no advertising business model. Never sell, share, target ads with, or derive advertising profiles from financial data; product telemetry is consent-gated and excludes raw financial values.
 
 ## ⚠️ MANDATORY: Pre-Push Lint & Format (NEVER skip)
 
@@ -148,6 +149,18 @@ Custom agents are defined in `.github/agents/`. Each agent has a specific role:
 - `experimentation-engineer` — Feature flags, A/B testing, staged rollouts, experiment readouts
 
 > **Reviewer roles are not symmetric.** `accessibility-reviewer` is **review-only** — it never edits production code and routes every fix to the owning platform agent. `security-reviewer` is the designated **emergency fixer** — it may implement CRITICAL/HIGH security fixes in any directory, coordinating with the owning agent, and is review-only for non-security code.
+
+### Canonical Agent Activation Preparation (Not Active)
+
+The 25 definitions above remain the authoritative runtime roster until Studio canonical materialization happens in a later, atomic change. Finance is prepared for a future runtime of **22 Studio-generated canonical agents plus the local `finance-domain` agent**. During that activation:
+
+- `android-engineer`, `ios-engineer`, `windows-engineer`, and `kmp-engineer` consolidate into `native-app-engineer`.
+- PostgreSQL schema, migration, RLS, seed, and PowerSync-rule ownership moves from the broad backend role to `database-engineer`.
+- SLOs, monitoring semantics, incident response, capacity, rollback, and recovery verification move from broad DevOps/backend ownership to `sre-engineer`.
+- Single-bug task mode comes from `.github/prompts/bug-bash.prompt.md` and workflow instructions, not a permanent `bug-basher` role.
+- `finance-domain` remains Finance-authored and leads financial correctness while the structural owner leads the surrounding package or platform.
+
+Do not delete, rename, or locally rewrite the 24 current definitions that will later be replaced or retired. Product-specific behavior belongs in this file and scoped `.github/instructions/**`; generated definitions remain generic. See [`docs/ai/README.md`](docs/ai/README.md#future-canonical-mapping-not-active) for the complete 25-role mapping.
 
 Agent skills are in `.github/skills/` (the source of truth) and provide reusable domain knowledge. As of 2026-06 there are **20** skills. The established set includes:
 
@@ -390,12 +403,25 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 | `@localization-engineer`    | `config/i18n/`, `docs/i18n/` (net-new); locale catalogs, financial terminology                                                                                                                                   |
 | `@experimentation-engineer` | `config/feature-flags/`; A/B tests + staged rollouts (success metrics co-designed w/ `@data-engineer`, validation CI w/ `@devops-engineer`)                                                                      |
 
+**Prepared post-activation ownership (inactive until canonical materialization):**
+
+| Future owner               | Finance overlay scope and handoffs                                                                                                                                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@native-app-engineer`     | Leads `apps/android/`, `apps/ios/`, `apps/windows/`, `packages/` except `packages/design-tokens/`, and Gradle shared config. `@finance-domain` reviews money behavior; `@data-engineer` co-reviews only product-telemetry contracts.                                                       |
+| `@web-engineer`            | Continues to lead `apps/web/`; consumes shared KMP contracts through the current dual-path integration and does not duplicate shared business logic.                                                                                                                                       |
+| `@backend-engineer`        | Leads Edge Functions, authentication/API behavior, OpenAPI, validation, rate limiting, and non-database service implementation under `services/api/`.                                                                                                                                      |
+| `@database-engineer`       | Leads `services/api/supabase/migrations/`, `seed.sql`, database tests, `services/api/powersync/sync-rules.yaml`, and database backup/volume definitions. Coordinates each cloud schema change with client SQLDelight changes led by `@native-app-engineer`.                                |
+| `@sre-engineer`            | Leads reliability semantics and runbooks for `services/api/monitoring/`, `deploy/monitoring/`, uptime, incidents, rollback, backup/restore verification, disaster recovery, and capacity. Implementation changes still route to the owning backend, database, native, web, or DevOps role. |
+| `@devops-engineer`         | Retains CI/build/delivery mechanics in `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, Gradle wrapper, detekt config, and deployment automation that is not a database or reliability contract.                                                                                |
+| `@finance-domain`          | Remains the sole local agent and correctness authority for integer minor-unit arithmetic, `HALF_EVEN` rounding, budgets, goals, recurrence, categorization, reporting, and currency behavior in `packages/core/`; it does not take structural ownership from `@native-app-engineer`.       |
+| Review and advisory agents | Accessibility stays review-only; security may emergency-fix only CRITICAL/HIGH findings; compliance routes implementation; data owns product telemetry rather than financial reporting; experimentation requires `@finance-domain` review before changing money behavior.                  |
+
 **Coordination protocol:**
 
 1. **No two agents edit the same file in parallel.** If a task requires two agents to touch the same file, one agent leads and the other reviews.
-2. **Shared config files** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) must be edited by only one agent per fleet run — assign ownership to `@kmp-engineer` (Gradle) or `@devops-engineer` (Node/CI).
+2. **Shared config files** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) must be edited by only one agent per fleet run — assign Gradle ownership to the current `@kmp-engineer` or future `@native-app-engineer`, and Node/CI ownership to `@devops-engineer`.
 3. **Agents announce intent** — when starting a fleet task, the orchestrator should note which files each agent will touch in the issue or PR description.
-4. **Schema changes are serialized** — only `@backend-engineer` writes Supabase migrations; only `@kmp-engineer` writes SQLDelight `.sq` files. Both must be in sync (a single coordinated sprint task, not two independent ones).
+4. **Schema changes are serialized** — currently `@backend-engineer` writes Supabase migrations and `@kmp-engineer` writes SQLDelight `.sq` files; after activation those owners become `@database-engineer` and `@native-app-engineer`. Both sides stay in one coordinated task, never independent parallel PRs.
 5. **After parallel work, the last agent to commit runs** the pre-push checklist (`npm run format:check && npx eslint . --max-warnings 0`) **before pushing** to catch any integration issues.
 
 ### Fleet CI Monitoring & Self-Healing

@@ -3,6 +3,8 @@
 This directory contains comprehensive documentation for the AI-first development workflow used in the Finance monorepo. Every aspect of AI agent configuration, tooling, and usage is documented here for full transparency.
 
 > **New here (agent or human)?** Start with **[start-here.md](start-here.md)** — the canonical entry point that links the workflow, restrictions, agent roster, skills, and MCP setup in reading order.
+>
+> **Canonical activation preparation:** The 25 local definitions listed below are still active. A later atomic Studio materialization is planned to provide 22 generated canonical agents and retain `finance-domain` as Finance's sole local agent. No sync or runtime-file removal has happened yet.
 
 ## Why AI-First?
 
@@ -134,6 +136,42 @@ Finance is developed with AI agents as first-class contributors. This means:
 
 AGENTS.md                             # Root-level agent guidance (all AI tools)
 ```
+
+### Future Canonical Mapping (Not Active)
+
+This table records where each current authoritative role's Finance-specific behavior will live after activation. Same-slug entries become Studio-generated canonical definitions supplemented by local overlays.
+
+| Current role               | Future runtime target                                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `accessibility-reviewer`   | Canonical `accessibility-reviewer`; four-platform checks and review-only routing stay in local instructions |
+| `ai-ops-engineer`          | Canonical `ai-ops-engineer`; Finance overlay and manifest conventions stay local                            |
+| `android-engineer`         | Canonical `native-app-engineer`                                                                             |
+| `architect`                | Canonical `architect`                                                                                       |
+| `backend-engineer`         | Canonical `backend-engineer`, with database and reliability seams routed separately                         |
+| `bug-basher`               | No permanent role; `.github/prompts/bug-bash.prompt.md` plus workflow instructions                          |
+| `business-analyst`         | Canonical `business-analyst`                                                                                |
+| `compliance-specialist`    | Canonical `compliance-specialist`                                                                           |
+| `data-engineer`            | Canonical `data-engineer`; product telemetry remains distinct from financial reporting                      |
+| `design-engineer`          | Canonical `design-engineer`                                                                                 |
+| `devops-engineer`          | Canonical `devops-engineer`; SLO/incident/recovery semantics route to `sre-engineer`                        |
+| `docs-writer`              | Canonical `docs-writer`                                                                                     |
+| `experimentation-engineer` | Canonical `experimentation-engineer`                                                                        |
+| `finance-domain`           | **Local `finance-domain` retained** as Finance's financial-correctness specialist                           |
+| `ios-engineer`             | Canonical `native-app-engineer`                                                                             |
+| `kmp-engineer`             | Canonical `native-app-engineer`                                                                             |
+| `localization-engineer`    | Canonical `localization-engineer`                                                                           |
+| `marketing-strategist`     | Canonical `marketing-strategist`                                                                            |
+| `performance-engineer`     | Canonical `performance-engineer`                                                                            |
+| `product-manager`          | Canonical `product-manager`                                                                                 |
+| `qa-tester`                | Canonical `qa-tester`                                                                                       |
+| `release-manager`          | Canonical `release-manager`                                                                                 |
+| `security-reviewer`        | Canonical `security-reviewer`                                                                               |
+| `web-engineer`             | Canonical `web-engineer`                                                                                    |
+| `windows-engineer`         | Canonical `native-app-engineer`                                                                             |
+
+The planned canonical roster is: `accessibility-reviewer`, `ai-ops-engineer`, `architect`, `backend-engineer`, `business-analyst`, `compliance-specialist`, `data-engineer`, `database-engineer`, `design-engineer`, `devops-engineer`, `docs-writer`, `experimentation-engineer`, `localization-engineer`, `marketing-strategist`, `native-app-engineer`, `performance-engineer`, `product-manager`, `qa-tester`, `release-manager`, `security-reviewer`, `sre-engineer`, and `web-engineer`.
+
+The future runtime therefore contains 23 physical agent files: 22 generated canonical files and one Finance-authored local file. Activation remains blocked until the backbone member configuration opts Finance into canonical agents, declares `finance-domain` as local, resolves canonical skill references, and confirms the database/SRE/DevOps ownership seams. Until then, counts and active dispatch continue to reflect the 25-file roster. `node tools/check-ai-manifest.js --strict` validates both current filesystem counts and this preparation mapping.
 
 ### Supported AI Tools
 

@@ -14,7 +14,7 @@ You are working in `config/`, which holds versioned, cross-cutting configuration
 | ----------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
 | `config/feature-flags/` | `@experimentation-engineer` | `flags.json` flag definitions + flag-schema `README.md`; rollout lifecycle              |
 | `config/detekt/`        | `@devops-engineer`          | `detekt.yml` — Kotlin static-analysis/lint rules run in CI                              |
-| `config/i18n/`          | `@localization-engineer`    | Locale catalogs and financial-terminology config (**net-new — may not exist yet**)      |
+| `config/i18n/`          | `@localization-engineer`    | Locale catalogs and financial-terminology config                                        |
 | `config/analytics/`     | `@data-engineer`            | Privacy-preserving event schemas / telemetry taxonomy (**net-new — may not exist yet**) |
 
 ## General Rules
@@ -27,11 +27,14 @@ You are working in `config/`, which holds versioned, cross-cutting configuration
 
 ## Feature Flags (`config/feature-flags/`)
 
-- `flags.json` is the source of truth for flag **content and lifecycle**. Each flag carries `description`, `enabled`, `owner` (the feature team building behind it), `platforms`, `rollout_percentage`, and `expires`.
+- `flags.json` is the source of truth for flag **content and lifecycle**. Each flag carries `description`, `enabled`, `owner` (the feature team building behind it), `platforms`, `rollout_percentage`, `expires`, and an explicit rollback/kill-switch plan.
 - Flags are also synced to clients at runtime via the PostgreSQL `feature_flags` table + PowerSync (see `services.instructions.md`); this directory governs the **definitions**, not the sync transport.
-- Experiments are privacy-first: never bucket users on PII or raw financial data. Set an `expires` date and remove stale flags to control flag debt.
+- Experiments are privacy-first: use stable random identifiers and deterministic bucketing, never PII or raw financial data. Set an `expires` date and remove stale flags to control flag debt.
+- Any flag that changes money calculations, allocation, rounding, recurrence, or financial recommendations requires `@finance-domain` review before rollout increases.
 
 ## Lint & Analytics Config
 
 - `config/detekt/detekt.yml` defines Kotlin code-quality rules enforced in CI — keep it aligned with the conventions in `build-logic/` and `packages.instructions.md`.
 - `config/analytics/` event schemas must follow data-minimization: collect only what a defined metric needs, document each event, and never capture account numbers, balances, or transaction detail.
+- Product telemetry is distinct from financial reporting. Telemetry schemas may describe user actions and operational outcomes with bounded cardinality; financial reports remain domain data and must not be repurposed as analytics events.
+- `config/i18n/` uses stable keys, CLDR formatting rules, ISO 4217 currency metadata, plural/placeholder validation, and RTL-safe catalogs. Platform integration routes to the native or web owner.

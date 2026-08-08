@@ -22,75 +22,27 @@ This skill covers **financial calculation and domain modeling** — money repres
 
 ## Money Representation — The Golden Rule
 
-**Never use floating-point for money.** All monetary values are `Long` cents.
+**Never use floating-point for money.** Finance stores integer currency minor units in `Long`/`BIGINT`. The existing `Cents` name is a compatibility type name; its value means the currency's minor-unit quantity, which is not always two decimal places.
 
 ```kotlin
-// KMP value class (packages/models)
-import kotlin.math.abs
-
 @JvmInline
-value class Cents(val amount: Long) {
-    operator fun plus(other: Cents) = Cents(amount + other.amount)
-    operator fun minus(other: Cents) = Cents(amount - other.amount)
-    fun toDollars(): String {
-        val sign = if (amount < 0) "-" else ""
-        return "$sign\$${abs(amount) / 100}.${(abs(amount) % 100).toString().padStart(2, '0')}"
-    }
+value class Cents(val amount: Long)
 
-    companion object {
-        fun fromDecimalString(input: String): Cents {
-            val trimmed = input.trim()
-            require(trimmed.isNotEmpty()) { "Amount is required" }
-            val negative = trimmed.startsWith("-")
-            val unsigned = trimmed.removePrefix("+").removePrefix("-")
-            val parts = unsigned.split('.', limit = 2)
-            val wholeDigits = parts[0].ifEmpty { "0" }
-            val fractionDigits = parts.getOrNull(1).orEmpty()
-            require(wholeDigits.all(Char::isDigit) && fractionDigits.all(Char::isDigit)) {
-                "Amount must be a decimal string"
-            }
-
-            val cents = wholeDigits.toLong() * 100 + fractionDigits.take(2).padEnd(2, '0').toLong()
-            val thirdDigit = fractionDigits.getOrNull(2)?.digitToIntOrNull() ?: 0
-            val hasNonZeroRemainder = fractionDigits.drop(3).any { it != '0' }
-            val shouldRoundUp =
-                thirdDigit > 5 || (thirdDigit == 5 && (hasNonZeroRemainder || cents % 2L == 1L))
-            val rounded = cents + if (shouldRoundUp) 1L else 0L
-            return Cents(if (negative) -rounded else rounded)
-        }
-
-        val ZERO = Cents(0L)
-    }
-}
-```
-
-```typescript
-// Web helper (apps/web): parse decimal strings with integer math and banker's rounding.
-export function centsFromDecimalString(input: string): number {
-  const match = input.trim().match(/^([+-])?(\d*)(?:\.(\d*))?$/);
-  if (!match || (!match[2] && !match[3])) throw new Error('Amount must be a decimal string');
-
-  const [, sign = '', wholeRaw = '0', fractionRaw = ''] = match;
-  const wholeCents = Number.parseInt(wholeRaw || '0', 10) * 100;
-  const centsDigits = (fractionRaw.slice(0, 2) || '0').padEnd(2, '0');
-  const baseCents = wholeCents + Number.parseInt(centsDigits, 10);
-  const thirdDigit = Number.parseInt(fractionRaw[2] ?? '0', 10);
-  const hasNonZeroRemainder = [...fractionRaw.slice(3)].some((digit) => digit !== '0');
-  const shouldRoundUp =
-    thirdDigit > 5 || (thirdDigit === 5 && (hasNonZeroRemainder || baseCents % 2 === 1));
-  const rounded = baseCents + (shouldRoundUp ? 1 : 0);
-
-  if (!Number.isSafeInteger(rounded)) throw new Error('Amount exceeds safe integer cents range');
-  return sign === '-' ? -rounded : rounded;
-}
+data class Money(
+    val cents: Cents,
+    val currency: CurrencyCode,
+)
 ```
 
 **Rules**:
 
-- Store as `INTEGER`/`BIGINT` (cents) in SQLite and PostgreSQL
-- Keep ISO 4217 currency code alongside every amount
-- Convert to display only at the UI rendering layer
-- Use `Cents` value class in KMP, `number` (cents) in TypeScript
+- Carry an ISO 4217 currency code and minor-unit scale with every amount; support zero- and three-decimal currencies.
+- Addition/subtraction require the same currency and checked overflow.
+- Multiplication, division, percentages, allocations, and decimal parsing use exact integer/rational operations with `HALF_EVEN` rounding at the declared boundary.
+- Reconcile allocation remainders deterministically so distributed parts equal the original total.
+- Store as `INTEGER`/`BIGINT` in SQLite/PostgreSQL and as `Long` in KMP. TypeScript may use integer `number` only while `Number.isSafeInteger` remains true.
+- Convert to localized decimal display only at the UI boundary using the currency scale; never hardcode division by 100.
+- Historical FX valuation uses the rate effective at the transaction timestamp and retains rate provenance. Missing/stale rates are explicit errors or domain states, never an implicit `1:1` conversion.
 
 ## AI-Powered Financial Engines
 
@@ -138,6 +90,8 @@ When `is_rollover = true` on a budget:
 3. Add carry-forward to new period's available amount
 4. Formula: `available = budget_cents + max(0, carry_forward) - current_spent`
 
+All subtraction/addition is checked for overflow. Rollover policy must explicitly define negative carry behavior instead of relying on arithmetic truncation.
+
 ### Budget Periods
 
 - `monthly`, `weekly`, `biweekly`, `yearly`
@@ -172,12 +126,17 @@ active → archived   (manual dismissal)
 
 ### Projection
 
-```kotlin
-// Time to goal at current savings rate
-val monthlyRate = recentContributions.sum() / months
-val remaining = goal.targetCents - goal.currentCents
-val monthsToGoal = if (monthlyRate > 0) remaining / monthlyRate else Long.MAX_VALUE
-```
+- Validate positive targets and periods before division.
+- Use checked integer/rational calculations and `HALF_EVEN` rounding at the output boundary.
+- Treat non-positive savings rates as unreachable/indeterminate; do not encode them as sentinel dates or `Long.MAX_VALUE`.
+- Define overfunded progress and negative contributions explicitly rather than inheriting integer truncation behavior.
+
+## Recurring Transactions
+
+- Use `LocalDate` for calendar anchors and preserve the original anchor across short months and leap years.
+- Support interval, count, end-date, skip-date, pause/resume, and positional-weekday semantics deterministically.
+- Generate stable occurrence IDs so retries, devices, and sync replay remain idempotent.
+- Test month-end anchors, February/leap years, timezone transitions, skipped dates, termination boundaries, and duplicate generation.
 
 ## Data Export Module
 
@@ -211,8 +170,11 @@ Located at `packages/core/src/commonMain/kotlin/com/finance/core/export/`:
 
 ## Testing Checklist
 
-- [ ] Rounding boundaries, including banker's rounding ties (e.g., `1.225` → `122` cents, `1.235` → `124` cents)
+- [ ] `HALF_EVEN` boundaries for positive/negative ties and zero-, two-, and three-decimal currencies
 - [ ] Negative amounts, zero values, high-value totals (`Long.MAX_VALUE` proximity)
+- [ ] Checked overflow and deterministic allocation remainders
+- [ ] Currency mismatch and historical FX-rate timestamp/provenance behavior
+- [ ] Recurrence anchors, leap years, skips, pauses, termination, and idempotent IDs
 - [ ] Serializer output: deterministic ordering, stable schemas
 - [ ] Checksum generation with known fixtures
 - [ ] Exported data never includes sync fields or raw user IDs
