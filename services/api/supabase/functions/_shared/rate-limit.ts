@@ -229,6 +229,11 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'import-data': { maxRequests: 5, windowSeconds: 60, keyPrefix: 'import-data' },
   'spending-forecast': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'spending-forecast' },
   'bank-connection': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'bank-connection' },
+  'aggregator-health': {
+    maxRequests: 30,
+    windowSeconds: 60,
+    keyPrefix: 'aggregator-health',
+  },
   'bank-webhook': { maxRequests: 120, windowSeconds: 60, keyPrefix: 'bank-webhook' },
   'anomaly-detection': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'anomaly-detection' },
   'consent-management': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'consent-management' },

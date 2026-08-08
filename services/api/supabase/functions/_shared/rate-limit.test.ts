@@ -458,9 +458,24 @@ Deno.test('RATE_LIMITS — has entries for all expected functions', () => {
     'account-deletion',
     'sync-health-report',
     'process-recurring',
+    'process-scheduled-reports',
     'manage-webhooks',
     'admin-dashboard',
     'send-notification',
+    'launch-readiness',
+    'family-plan',
+    'referral',
+    'generate-report',
+    'exchange-rates',
+    'detect-bills',
+    'import-data',
+    'spending-forecast',
+    'bank-connection',
+    'aggregator-health',
+    'bank-webhook',
+    'anomaly-detection',
+    'consent-management',
+    'investment-sync',
   ];
 
   for (const fn of expectedFunctions) {
@@ -506,6 +521,14 @@ Deno.test('RATE_LIMITS — account-deletion has strict limit', () => {
 Deno.test('RATE_LIMITS — health-check has per-minute limit', () => {
   assertEquals(RATE_LIMITS['health-check'].windowSeconds, 60);
   assertEquals(RATE_LIMITS['health-check'].maxRequests, 60);
+});
+
+Deno.test('RATE_LIMITS — aggregator-health has a bounded namespaced limit', () => {
+  assertEquals(RATE_LIMITS['aggregator-health'], {
+    maxRequests: 30,
+    windowSeconds: 60,
+    keyPrefix: 'aggregator-health',
+  });
 });
 
 Deno.test('RATE_LIMITS — passkey-authenticate is per-minute (pre-auth)', () => {
