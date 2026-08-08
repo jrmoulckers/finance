@@ -1,6 +1,10 @@
 # synced from jrmoulckers/.github — canonical source; do not edit here
 [mcps.servers]
-context7 = { args = ["-y", "@upstash/context7-mcp@latest"], command = "npx", tools = ["*"], type = "stdio" }
-playwright = { args = ["-y", "@anthropic/mcp-server-playwright"], command = "npx", tools = ["*"], type = "stdio" }
-sequential-thinking = { args = ["-y", "@modelcontextprotocol/server-sequential-thinking"], command = "npx", tools = ["*"], type = "stdio" }
-memory = { args = ["-y", "@modelcontextprotocol/server-memory"], command = "npx", tools = ["*"], type = "stdio" }
+context7 = { args = ["-y", "@upstash/context7-mcp@4.0.0"], command = "npx", tools = ["resolve-library-id", "query-docs"], type = "stdio" }
+sequential-thinking = { args = ["-y", "@modelcontextprotocol/server-sequential-thinking@2026.7.4"], command = "npx", tools = ["sequentialthinking"], type = "stdio" }
+
+# The consuming host's enforcement of agency.toml tool allowlists is not yet documented. Keep
+# browser control and persistent-memory mutation disabled by default. A local runtime may opt in
+# only after proving that it exposes exactly the reviewed list and recording that policy locally.
+# playwright = { args = ["-y", "@playwright/mcp@0.0.79"], command = "npx", tools = ["browser_navigate", "browser_navigate_back", "browser_snapshot", "browser_take_screenshot", "browser_find", "browser_click", "browser_fill_form", "browser_type", "browser_select_option", "browser_press_key", "browser_hover", "browser_wait_for", "browser_tabs", "browser_close", "browser_console_messages"], type = "stdio" }
+# memory = { args = ["-y", "@modelcontextprotocol/server-memory@2026.7.4"], command = "npx", tools = ["read_graph", "search_nodes", "open_nodes"], type = "stdio" }

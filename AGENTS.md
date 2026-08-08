@@ -473,7 +473,8 @@ keeps them consistent.
    `${VARS}` or placeholders (`YOUR_API_KEY_HERE`) and ship a `.env.example`. If you find a
    secret that would be committed, stop and flag it.
 2. **Issue-first, PR-always.** Every change references an issue and lands as a PR. A task that
-   ends at a local commit is **incomplete**.
+   ends at a local commit is **incomplete**. Read-only research does not need an issue when it makes
+   no repository change; the issue requirement begins before the first change.
 3. **Stay in scope.** Make surgical, intentional edits. Don't reformat or "clean up" unrelated
    code. Don't work outside the repository root.
 4. **Document decisions.** Non-trivial structural or design choices get an ADR in
@@ -535,9 +536,10 @@ commands). Merge conflicts carry the same weight as red CI — resolve them befo
 
 ## Tooling (MCP)
 
-Shared MCP servers are declared in `agency.toml`: `context7` (library docs),
-`playwright` (browser automation), `sequential-thinking`, and `memory`. Product repos may add
-their own.
+Pinned MCP servers are declared in `agency.toml`. Intrinsically bounded Context7 documentation and
+sequential-thinking tools are enabled by default; Playwright browser automation and persistent
+memory are documented, pinned opt-ins until the consuming host's tool-filter enforcement is
+verified. Product repos may define a narrower local runtime policy.
 
 ## Human-Gated Operations (MANDATORY)
 
@@ -587,7 +589,11 @@ Scope-specific rules live alongside the code — read the relevant one before wo
 - `agents/*.agent.md` in this backbone, materialized as `.github/agents/*.agent.md` in consumers —
   role definitions and boundaries. Consumer copies are generated; product-specific stack/path/risk
   overlays belong in the product's root `AGENTS.md` or scoped instructions.
-- `skills/<name>/SKILL.md` — reusable task playbooks; read the relevant one before acting.
-- `instructions/*.instructions.md` — path-scoped coding standards.
+- `skills/<name>/SKILL.md` in this backbone is canonical; opted-in consumers read the generated,
+  upstream-owned `.github/skills/<name>/SKILL.md` materialization.
+- `instructions/*.instructions.md` in this backbone is canonical; opted-in consumers read generated,
+  upstream-owned `.github/instructions/*.instructions.md` copies. Root/local `AGENTS.md` and
+  more-specific scoped instructions override shared defaults without relaxing mandatory human
+  gates.
 <!-- studio:base:end -->
 <!-- prettier-ignore-end -->

@@ -1,5 +1,5 @@
 ---
-applyTo: 'docs/**,**/*.md'
+applyTo: 'docs/**,*.md,**/README.md'
 ---
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
@@ -7,11 +7,22 @@ applyTo: 'docs/**,**/*.md'
 
 Write documentation for humans first: clear, concise, accessible, and actionable.
 
+This scope intentionally covers `docs/**`, root Markdown policy such as `AGENTS.md`, and nested
+`README.md` files. It does not blanket-match every Markdown asset under `agents/`, `prompts/`,
+`skills/`, or `instructions/`.
+
+Root/local `AGENTS.md` and a more-specific scoped instruction override these shared defaults when
+they apply to the same file. Generated assets are not local editing surfaces: consumer
+`.github/agents/`, `.github/prompts/`, `.github/skills/`, and `.github/instructions/` copies remain
+upstream-owned even when a nearby README is locally authored.
+
 ## Structure
 
 - `docs/` is the default home for product documentation.
 - Architecture Decision Records belong in `docs/architecture/` unless a product repo specifies another ADR location.
-- Agent, skill, prompt, and instruction documentation lives beside those assets at repo root unless a product repo overrides the layout.
+- Canonical agent, skill, prompt, and instruction documentation lives beside source assets under
+  `agents/`, `skills/`, `prompts/`, and `instructions/`; consumer materializations live under the
+  corresponding `.github/` paths and are read-only.
 - Follow ownership in `AGENTS.md` and specialist agent files for substantive changes.
 
 ## Guidelines
