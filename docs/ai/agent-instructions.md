@@ -20,36 +20,33 @@ This document describes the roles, skills, and workflow rules for all AI agents 
 
 The Finance monorepo uses specialized AI agents, each with a focused domain. Agents are defined in `.github/agents/` as `<role>.agent.md` files. Each agent has a clear mission, expertise areas, boundaries, and a list of allowed tools.
 
-**Current agent types:** The authoritative roster is the set of `*.agent.md` files in `.github/agents/`; run `npm run ai:manifest:check` (backed by `tools/ai-manifest.js`) to flag drift between this count and the filesystem — see [`CHANGELOG.md`](CHANGELOG.md). As of 2026-06 there are **25** agents:
+**Current agent types:** The authoritative roster is the set of `*.agent.md` files in `.github/agents/`; run `npm run ai:manifest:check` to validate the exact roster, provenance boundary, and Studio sync inventory. There are **23** agents: 22 generated canonical definitions and one local specialist.
 
 - **accessibility-reviewer** — Reviews UI for WCAG 2.2 AA, platform accessibility, and inclusive design. **Review-only** — routes fixes to the owning platform agent.
-- **android-engineer** — Android (Jetpack Compose, KMP, PowerSync, Keystore, Wear OS).
+- **ai-ops-engineer** — Canonical agent/skill/instruction/prompt tooling and manifest maintenance.
 - **architect** — System architecture, ADRs, cross-platform design, sync protocols.
-- **backend-engineer** — Supabase/PostgreSQL, PowerSync, RLS, Edge Functions, migrations.
+- **backend-engineer** — Supabase Auth, Edge Functions, API behavior, OpenAPI, validation, and rate limiting.
 - **business-analyst** — Monetization, pricing, competitive analysis, revenue modeling.
+- **compliance-specialist** — Regulatory obligations, data residency, retention, and audit readiness.
+- **data-engineer** — Privacy-preserving product analytics, distinct from financial reporting.
+- **database-engineer** — PostgreSQL schema, migrations, RLS, seed/tests, PowerSync rules, and recovery data contracts.
 - **design-engineer** — Design tokens (DTCG), Style Dictionary, color/typography, component specs.
 - **devops-engineer** — CI/CD (GitHub Actions, Turborepo, Fastlane, Changesets, security scanning).
 - **docs-writer** — Technical documentation, onboarding, API docs, ADRs, AI workflow docs.
+- **experimentation-engineer** — Feature flags, staged rollouts, and experiment analysis.
 - **finance-domain** — Budgeting, financial modeling, domain logic, calculations, terminology.
-- **ios-engineer** — iOS/SwiftUI, KMP integration, Keychain, VoiceOver, watchOS.
-- **kmp-engineer** — Shared Kotlin Multiplatform (KMP) logic, SQLDelight, Ktor, Gradle config.
+- **localization-engineer** — i18n, localization, and financial terminology.
 - **marketing-strategist** — Go-to-market, ASO, launch comms, content strategy, growth.
+- **native-app-engineer** — Android, iOS, Windows, shared KMP, SQLDelight client schemas, and Gradle.
+- **performance-engineer** — Performance budgets, profiling, and regression analysis.
 - **product-manager** — Product strategy, sprint planning, issue triage, roadmap management.
 - **qa-tester** — Live testing-session orchestration, bug discovery, investigation dispatch, issue filing (read-only on code).
+- **release-manager** — Changesets/versioning, release notes, and store-submission preparation.
 - **security-reviewer** — Security/privacy audits, compliance, authentication, encryption. **Emergency fixer** — may implement CRITICAL/HIGH fixes in any directory with owning-agent coordination.
+- **sre-engineer** — SLOs, monitoring semantics, incidents, capacity, rollback, and recovery verification.
 - **web-engineer** — PWA, React/TypeScript, KMP/JS, IndexedDB/SQLite-WASM, ARIA, Web Crypto.
-- **windows-engineer** — Compose Desktop (JVM), Windows Hello, DPAPI, Narrator, MSIX.
 
-**Added in 2026-06:**
-
-- **ai-ops-engineer** — Owns `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts, evals, and the AI manifest.
-- **release-manager** — Changesets/versioning, release notes, store-submission preparation.
-- **performance-engineer** — Performance budgets, profiling, regression analysis.
-- **data-engineer** — Privacy-preserving product analytics: event schemas, taxonomy, metrics catalog (distinct from financial reporting/insights).
-- **localization-engineer** — i18n, localization, financial terminology.
-- **experimentation-engineer** — Feature flags, A/B testing, staged rollouts, and experiment readouts.
-- **compliance-specialist** — Financial, governmental & regional regulatory compliance; obligation matrix, data residency, retention (advisory; stewards `docs/compliance/`).
-- **bug-basher** — Self-service, single-bug bug bash launched as a standalone session for any platform: infer the affected platform(s) from the report + screenshot → file issue → fix (shared code once, or widespread across every affected platform when the platform is undefined) on its own worktree → PR → cloud CI → self-merge → cleanup.
+Single-bug work uses `.github/prompts/bug-bash.prompt.md`; it is task mode, not a permanent runtime role.
 
 Each agent file documents:
 

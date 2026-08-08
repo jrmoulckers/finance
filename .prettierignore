@@ -17,6 +17,42 @@ kotlin-js-store/
 # jrmoulckers/studio; must stay byte-identical, never reformatted.
 **/vendor/@jrm/
 
+# Studio-managed AI assets — generated and hash-checked by studio sync.
+# Finance-owned overlays and finance-domain remain formatter-managed.
+.github/agents/*.agent.md
+!.github/agents/finance-domain.agent.md
+.github/instructions/agents.instructions.md
+.github/instructions/docs.instructions.md
+.github/instructions/skills.instructions.md
+.github/instructions/tokens.instructions.md
+.github/instructions/workflow.instructions.md
+.github/prompts/backlog.prompt.md
+.github/prompts/cleanup.prompt.md
+.github/prompts/fix-ci.prompt.md
+.github/prompts/rebase-all.prompt.md
+.github/prompts/review.prompt.md
+.github/prompts/sprint.prompt.md
+.github/prompts/team.prompt.md
+.github/skills/accessibility-testing/CHECKLIST.md
+.github/skills/accessibility-testing/SKILL.md
+.github/skills/design-tokens/SKILL.md
+.github/skills/dev-onboarding/SKILL.md
+.github/skills/go-to-market/SKILL.md
+.github/skills/i18n-localization/CHECKLIST.md
+.github/skills/i18n-localization/SKILL.md
+.github/skills/issue-management/SKILL.md
+.github/skills/mcp-agent-tooling/SKILL.md
+.github/skills/monetization/SKILL.md
+.github/skills/performance-budgets/SKILL.md
+.github/skills/performance-budgets/WEB_CHECKLIST.md
+.github/skills/privacy-compliance/SKILL.md
+.github/skills/project-management/SKILL.md
+.github/skills/prompt-engineering/SKILL.md
+.github/skills/security-review-methodology/CHECKLIST.md
+.github/skills/security-review-methodology/SKILL.md
+.github/skills/sprint-planning/SKILL.md
+.github/skills/ux-testing/SKILL.md
+
 # Kotlin — Prettier has no parser for .kt/.kts files
 *.kt
 *.kts

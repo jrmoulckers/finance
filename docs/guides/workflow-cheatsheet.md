@@ -92,12 +92,11 @@ Type `@agent-name` in VS Code Copilot Chat:
 | `@security-reviewer`      | Security and privacy code review                       |
 | `@accessibility-reviewer` | WCAG 2.2 AA compliance review                          |
 | `@finance-domain`         | Financial modeling and domain logic                    |
-| `@backend-engineer`       | Supabase, PostgreSQL, PowerSync                        |
-| `@kmp-engineer`           | Kotlin Multiplatform shared code                       |
-| `@android-engineer`       | Jetpack Compose, Android platform                      |
-| `@ios-engineer`           | SwiftUI, iOS platform                                  |
+| `@backend-engineer`       | Supabase Auth, Edge Functions, API behavior            |
+| `@database-engineer`      | PostgreSQL, RLS, migrations, PowerSync rules           |
+| `@native-app-engineer`    | Android, iOS, Windows, and KMP shared code             |
+| `@sre-engineer`           | SLOs, incidents, rollback, recovery verification       |
 | `@web-engineer`           | React, PWA, service workers                            |
-| `@windows-engineer`       | Compose Desktop, Windows platform                      |
 | `@design-engineer`        | Design tokens, color systems, typography               |
 | `@devops-engineer`        | CI/CD, Turborepo, Fastlane                             |
 

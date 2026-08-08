@@ -1,63 +1,62 @@
 ---
 name: design-tokens
 description: >
-  Design token system guidance for the Finance app. Use for topics related to
-  DTCG tokens, Style Dictionary, color tokens, semantic tokens, component
-  tokens, chart palettes, typography, spacing, motion, contrast, theming, or
-  generated token outputs.
+  Design token system guidance. Use for topics related to DTCG tokens, color
+  tokens, semantic tokens, component tokens, typography, spacing, motion,
+  contrast, theming, token pipelines, or generated token outputs.
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Design Tokens Skill
 
-## Purpose
+**Trigger:** token authoring, color/semantic/component tokens, typography/spacing/motion,
+contrast, theming, generated token outputs.
+**Inputs:** token source, platforms in scope, themes/modes, affected components, migration risk.
+**Related:** `accessibility-testing` (contrast/motion validation), `ux-testing` (visual QA),
+`i18n-localization` (text expansion), `performance-budgets` (token output size).
 
-This skill covers **design-token authoring and consumption patterns** for Finance: primitive → semantic → component token layers, accessible color systems, typography/spacing/motion tokens, and generated platform outputs.
+## Out of scope
 
-## Out of Scope
+- Component implementation → use the relevant engineering skill.
+- Manual QA or WCAG test execution → use `ux-testing` or `accessibility-testing`.
+- Marketing visuals or launch copy → use `go-to-market`.
+- Bundle-budget decisions for generated outputs → use `performance-budgets`.
 
-- Component-level UI implementation in apps → use the relevant platform engineering skill.
-- Manual QA or accessibility test execution → use `ux-testing` or `accessibility-testing`.
-- Marketing/app-store visual copy → use `go-to-market`.
-- Performance budgets for token output size → use `performance-budgets`.
+## Token model
 
-## Related Skills
+| Layer | Owns | Example |
+| --- | --- | --- |
+| Primitive | Raw palette/scale values | `color.blue.500`, `space.4`, `font.size.16` |
+| Semantic | Product meaning and theme adaptation | `color.status.success.fg`, `surface.card` |
+| Component | Component aliases and overrides | `button.primary.bg`, `chart.axis.label` |
 
-| Skill                   | Use For                                                       |
-| ----------------------- | ------------------------------------------------------------- |
-| `accessibility-testing` | Validating contrast, reduced motion, focus visibility         |
-| `ux-testing`            | Manual visual QA and interaction bug discovery                |
-| `i18n-localization`     | Text expansion, locale-specific typography, number formatting |
-| `performance-budgets`   | Bundle/CSS budget impact from token outputs                   |
+## Method
 
-## Repo-Specific Paths
+1. **Start at source** — edit the design-token source, not generated outputs.
+2. **Separate layers** — primitive values feed semantic decisions; components consume semantic aliases.
+3. **Cover modes** — define light, dark, high-contrast, and reduced-motion behavior where relevant.
+4. **Avoid color-only meaning** — pair status colors with text, iconography, patterns, or labels.
+5. **Protect consumers** — treat token removals/renames as breaking changes and include migration notes.
+6. **Regenerate consistently** — run the product's token pipeline and verify platform outputs.
+7. **Validate visually** — check focus rings, disabled states, data visualization palettes, and text scaling.
 
-| Path                                          | Purpose                                                                                      |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `.github/instructions/tokens.instructions.md` | Canonical token authoring rules for `packages/design-tokens/**`                              |
-| `packages/design-tokens/**`                   | Token sources (`tokens/`), Style Dictionary config (`config/`), generated outputs (`build/`) |
-| `apps/web/src/theme/tokens.css`               | Current web CSS token consumer/output                                                        |
-| `apps/web/src/icons/tokens.ts`                | Icon sizing/stroke token consumer                                                            |
+## Platform notes
 
-## Token Model
+| Platform | Check |
+| --- | --- |
+| Web | CSS variables/theme bridge, contrast, reduced motion, bundle impact |
+| iOS | native color/font mapping, Dynamic Type, high contrast |
+| Android | Material/theme mapping, font scaling, minimum touch target tokens |
+| Desktop | high contrast, keyboard focus, window resizing |
 
-| Layer     | Owns                                     | Example                                     |
-| --------- | ---------------------------------------- | ------------------------------------------- |
-| Primitive | Raw palette/scale values                 | `color.blue.500`, `space.4`, `font.size.16` |
-| Semantic  | Product meaning and theme adaptation     | `color.status.positive.fg`, `surface.card`  |
-| Component | Component-specific aliases and overrides | `button.primary.bg`, `chart.axis.label`     |
+> Keep only the platforms in scope. Drop rows that don't apply.
 
-## Authoring Rules
+## Safety
 
-- Use DTCG-compatible JSON shape (`$value`, `$type`) and token references (`{color.blue.500}`).
-- Define light, dark, and high-contrast behavior for semantic color tokens.
-- Add reduced-motion alternatives for motion/animation tokens.
-- Keep financial state accessible: pair color tokens with iconography, labels, patterns, or text.
-- Treat token removals/renames as breaking changes; document migration notes for platform consumers.
-- Do not hand-edit generated Style Dictionary outputs; update source/config and regenerate.
+Do not hand-edit generated token artifacts or silently break token names consumed by the product.
+Route accessibility concerns to `accessibility-testing` when validation is required.
 
-## Finance-Specific Checks
+## Output
 
-- Positive/negative/neutral financial values remain distinguishable under color-vision deficiencies.
-- Chart/category palettes support enough distinct categories without relying solely on hue.
-- Focus ring tokens meet contrast in all themes and remain visible over card/list surfaces.
-- Currency and amount typography preserves alignment and digit readability at large font sizes.
+A token change plan or review with affected layers, platforms, generated outputs, validation evidence,
+and migration notes for breaking changes.

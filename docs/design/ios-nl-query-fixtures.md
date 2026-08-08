@@ -115,7 +115,7 @@ flowchart LR
   / `Clarification` enum tags must stay in sync with the KMP sealed types.
 
 > Adding/altering the fixture _format_ touches shared test resources — coordinate
-> with @kmp-engineer via ADR. Adding new _rows_ in the agreed format is routine.
+> with @native-app-engineer via ADR. Adding new _rows_ in the agreed format is routine.
 
 ## 4. Fixture Schema
 

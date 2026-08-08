@@ -67,7 +67,7 @@ Two principles govern everything here:
 - **No money math in Compose.** Budget drift, goal progress, and wedding deltas are
   computed in `packages/core`; the cards render privacy-safe results.
 - **No new shared rules here.** Where a summary is missing, that is an
-  @kmp-engineer follow-up under [#2150](https://github.com/jrmoulckers/finance/issues/2150),
+  @native-app-engineer follow-up under [#2150](https://github.com/jrmoulckers/finance/issues/2150),
   not a Compose workaround.
 - **No `AlarmManager` / `JobScheduler`.** Scheduling uses WorkManager exclusively.
 - **No store distribution work** (gated by #1242 — see §12).
@@ -371,7 +371,7 @@ implementation are buildable and testable now; only store distribution waits on
   [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md) §2
   "Free local build/test paths." Local WorkManager reminders fire on-device with **no
   enrollment required**.
-- Any missing **shared** summary is a `packages/core` change owned by @kmp-engineer —
+- Any missing **shared** summary is a `packages/core` change owned by @native-app-engineer —
   also unblocked; not store-gated.
 
 ### 🔒 Distribution tail — gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242)

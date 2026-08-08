@@ -11,7 +11,7 @@
 **Status:** PROPOSED — design only (implementation gated where noted)
 **Issue:** [#2556](https://github.com/jrmoulckers/finance/issues/2556) — Part of [#2114](https://github.com/jrmoulckers/finance/issues/2114)
 **Platform:** iOS / iPadOS (SwiftUI, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related design:** [ios-fire-results-goal-integration.md](./ios-fire-results-goal-integration.md) · [ios-net-worth-projection-overlay.md](./ios-net-worth-projection-overlay.md) · [ios-net-worth-trend-chart.md](./ios-net-worth-trend-chart.md) · [data-visualization.md](./data-visualization.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [ux-principles.md](./ux-principles.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -381,7 +381,7 @@ Design rationale:
 
 ## 12. Affected Surfaces & Shared Dependencies
 
-### 12.1 iOS surfaces (all in `apps/ios/`, owned by @ios-engineer)
+### 12.1 iOS surfaces (all in `apps/ios/`, owned by @native-app-engineer)
 
 | Surface                                                        | Change                                                                                               |
 | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -409,7 +409,7 @@ Design rationale:
 
 > **The shared FIRE engine is not yet in `packages/core` (KMP).** Porting it from
 > the web reference — preserving parity with `fire-calculator.test.ts` — is a
-> `packages/` change **owned by @kmp-engineer and proposed via ADR** (per
+> `packages/` change **owned by @native-app-engineer and proposed via ADR** (per
 > ownership rules); iOS must not implement the math or edit `packages/`. The iOS
 > surface binds to a Swift-native `FIPlanningBridge` protocol with a stub, so this
 > screen is fully buildable/testable before the Kotlin port lands (see
@@ -430,7 +430,7 @@ flowchart LR
     subgraph bridge["packages/sync (Swift Export — ADR if missing)"]
         B --> C["SwiftExportFireModule.fireMetrics(input)<br/>→ FIREMetricsDTO (Int64 minor units, Double %)"]
     end
-    subgraph ios["apps/ios (this PR — @ios-engineer)"]
+    subgraph ios["apps/ios (this PR — @native-app-engineer)"]
         C --> D["FICalculatorViewModel<br/>holds FIREInput, validates, debounces"]
         D --> E["FICalculatorView (form + sliders + Advanced + disclaimer)"]
         D --> F["Results cards + projection overlay (docs #2558 / #2564)"]
@@ -474,7 +474,7 @@ illustrative targets in existing locations.
   `fire-calculator.test.ts` cases: FI number at 4% = expenses × 25; FI % including
   over-100%; Coast FI discounting; savings rate; years-to-FI iteration including
   the **unreachable → maxYears** and **already-FI → 0** edges; projected-FI-date
-  derivation. Adding/porting these is **@kmp-engineer via ADR**, not this PR.
+  derivation. Adding/porting these is **@native-app-engineer via ADR**, not this PR.
 
 ### 14.2 Bridge
 
@@ -552,7 +552,7 @@ blocker [#1239](https://github.com/jrmoulckers/finance/issues/1239) gates
 The shared **FIRE engine must be ported to `packages/core`** from the web
 reference (parity with `fire-calculator.test.ts`) and **re-exported** through the
 `packages/sync` Swift Export bridge. That is a `packages/` change **owned by
-@kmp-engineer and proposed via ADR** — not implemented in this iOS PR. Until it
+@native-app-engineer and proposed via ADR** — not implemented in this iOS PR. Until it
 lands, the UI builds against the stub bridge, so the iOS surface is independently
 developable; only the live numbers depend on the shared port.
 
@@ -569,7 +569,7 @@ developable; only the live numbers depend on the shared port.
 
 1. **Shared engine location:** new `packages/core/.../planning/FireCalculator.kt`
    vs. extending the existing `analytics` package? (ADR decision with
-   @kmp-engineer.)
+   @native-app-engineer.)
 2. **Real vs. nominal return:** default to **real** (proposed, simpler — no
    separate inflation input) vs. nominal + an inflation field in Advanced?
 3. **Inline vs. pushed results:** v1 keeps inputs + results on one scroll

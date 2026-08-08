@@ -148,7 +148,7 @@ flowchart LR
 ```
 
 > This document **describes** the boundary. It does **not** implement KMP changes
-> — `packages/core` is owned by @kmp-engineer and the web engine by @web-engineer.
+> — `packages/core` is owned by @native-app-engineer and the web engine by @web-engineer.
 > Compose is a pure renderer of shared state. The existing
 > [`Goal`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt)
 > model already carries `householdId`, `ownerId`, and `currentAmount`; those are
@@ -407,7 +407,7 @@ render-only.
 - [`GoalContributionDialog.tsx`](../../apps/web/src/components/goals/GoalContributionDialog.tsx) — web add/edit parity
 - [`GoalDetailPage.tsx`](../../apps/web/src/pages/GoalDetailPage.tsx) — web goal detail parity
 - [`GoalsScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/screens/GoalsScreen.kt) — host surface
-- [`Goal.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt) — shared goal model (owned by @kmp-engineer)
+- [`Goal.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt) — shared goal model (owned by @native-app-engineer)
 - [`Household.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Household.kt) — household model
 - [`HouseholdMember.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/HouseholdMember.kt) — member/contributor model
 - [`DataPartitioning.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/DataPartitioning.kt) — shared visibility/partition rules

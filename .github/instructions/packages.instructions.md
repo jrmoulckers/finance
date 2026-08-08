@@ -24,13 +24,14 @@ You are working in the `packages/` directory, which contains shared libraries co
 - Financial calculations must use appropriate precision (avoid floating point for money)
 - All monetary values should use the smallest currency unit (cents, not dollars)
 
-## Prepared Shared-Code Ownership (Not Active)
+## Shared-Code Ownership
 
-- Until canonical activation, `@kmp-engineer` leads shared package structure. After activation, `@native-app-engineer` leads `packages/core/`, `packages/models/`, `packages/sync/`, `packages/import/`, `gradle/libs.versions.toml`, and `settings.gradle.kts`.
+- `@native-app-engineer` leads `packages/core/`, `packages/models/`, `packages/sync/`, `packages/import/`, `gradle/libs.versions.toml`, and `settings.gradle.kts`.
 - `@finance-domain` remains the correctness lead for money algorithms only: integer minor units, rounding, budgets, goals, recurrence, categorization, reports, and currency behavior. It does not own source-set structure, schemas, repositories, or Gradle configuration.
 - `@data-engineer` co-reviews only product telemetry contracts in `AnalyticsEvent.kt`, `AnalyticsTracker.kt`, and `BufferedAnalyticsTracker.kt`. Financial reports, balances, transactions, and the domain event bus are not telemetry.
 - `packages/design-tokens/` remains owned by `@design-engineer` and follows `tokens.instructions.md`.
-- Client SQLDelight schemas and migrations remain shared/native code. Cloud PostgreSQL migrations, RLS, seed data, and PowerSync bucket rules belong to `@database-engineer` after activation; schema changes must be serialized across both owners.
+- Client SQLDelight schemas and migrations remain shared/native code. Cloud PostgreSQL migrations, RLS, seed data, and PowerSync bucket rules belong to `@database-engineer`; schema changes must be serialized across both owners.
+- Financial chart and category palettes must use color-vision-deficiency-safe semantic tokens. Positive, negative, warning, and neutral states must remain distinguishable without color through labels, icons, patterns, or direct values.
 
 ## Monitoring Interfaces
 

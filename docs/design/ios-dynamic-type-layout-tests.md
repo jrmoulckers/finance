@@ -3,7 +3,7 @@
 > **Status:** PROPOSED — design only (no native build performed)
 > **Issue:** [#2550](https://github.com/jrmoulckers/finance/issues/2550) · Part of [#2119](https://github.com/jrmoulckers/finance/issues/2119)
 > **Platform:** iOS / iPadOS (SwiftUI) · Deployment target iOS 17.0
-> **Owner:** @ios-engineer
+> **Owner:** @native-app-engineer
 > **Last updated:** 2026-06-22
 
 This document specifies the **automated test harness** that proves core finance

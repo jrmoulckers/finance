@@ -21,7 +21,7 @@ This document describes the prototype slash commands for Copilot CLI used in thi
   - Reminds the operator to run the pre-push sequence before pushing and opening a PR.
 
 - **`/sprint <N> [agents]`** — run `node scripts/dispatch-sprint.js <N> "web-engineer,backend-engineer"`
-  - Produces a `/fleet`-style command to dispatch N sprints across the given agents (comma-separated). If agents are omitted, it defaults to the **full 25-agent roster** (see [`.github/agents/`](../../.github/agents/)).
+  - Produces a `/fleet`-style command to dispatch N sprints across the given agents (comma-separated). If agents are omitted, it defaults to the **full 23-agent roster** (see [`.github/agents/`](../../.github/agents/)).
   - Each agent must follow the mandatory pre-push sequence before any push.
 
 ## Mandatory pre-push sequence (include verbatim in every agent prompt)

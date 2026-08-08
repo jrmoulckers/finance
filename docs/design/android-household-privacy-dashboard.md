@@ -50,7 +50,7 @@ ours" foundation and **consumes the same shared privacy/aggregation APIs in
 - **No new shared business rules.** This Android doc does not define partition
   or RBAC logic; it consumes [`DataPartitioning`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/DataPartitioning.kt)
   and [`RbacPermissions`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/RbacPermissions.kt).
-  Any rule gap is a `packages/` change owned by @kmp-engineer, not a Compose
+  Any rule gap is a `packages/` change owned by @native-app-engineer, not a Compose
   workaround.
 - **No store distribution work.** Release signing, Play Console upload, and the
   release CI workflow stay gated by #1242 (see §10).
@@ -266,7 +266,7 @@ val combined: NetWorthSnapshot =
 
 Responsibilities split:
 
-- **Shared (`packages/core`, owned by @kmp-engineer):** what is private vs
+- **Shared (`packages/core`, owned by @native-app-engineer):** what is private vs
   shared (`DataPartitioning`), who may view/edit (`RbacPermissions`), the
   net-worth math (`NetWorthSnapshot`/`FinancialAggregator`), and ideally a
   household **privacy-safe aggregate** entry point (bucketed balances, %
@@ -419,7 +419,7 @@ waits on #1242.
   [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md)
   §2 "Free local build/test paths".
 - Any required **shared** aggregate API is a `packages/core` change (owned by
-  @kmp-engineer) — also unblocked; not store-gated.
+  @native-app-engineer) — also unblocked; not store-gated.
 
 ### 🔒 Distribution tail — gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242)
 

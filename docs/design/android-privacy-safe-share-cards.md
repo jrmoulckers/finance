@@ -67,7 +67,7 @@ already-computed, already-masked state.
   [android-streak-near-win-states.md](./android-streak-near-win-states.md); this
   doc only renders a streak _milestone_ card from already-computed streak state.
 - **No new shared models.** If a privacy-safe field is missing, it is an
-  @kmp-engineer follow-up — not a Compose workaround that reaches for raw data.
+  @native-app-engineer follow-up — not a Compose workaround that reaches for raw data.
 - **No store distribution work** (gated by #1242 — see §11).
 
 ---
@@ -331,7 +331,7 @@ waits on #1242. Card images are generated and previewed entirely on-device.
   [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md)
   §2 "Free local build/test paths."
 - Any missing privacy-safe projection field is a `packages/core` change (owned by
-  @kmp-engineer) — also unblocked; not store-gated.
+  @native-app-engineer) — also unblocked; not store-gated.
 
 ### 🔒 Distribution tail — gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242)
 
@@ -351,7 +351,7 @@ chooser opens locally; see the Sharesheet doc).
 
 1. **Revealable eligibility owner** — should the "amount is revealable" decision be
    a new field on the shared gamification projection, or derived from the existing
-   household privacy rule set? (@kmp-engineer)
+   household privacy rule set? (@native-app-engineer)
 2. **Handle vs first name** — is the opt-in identity on a card a profile handle, a
    first name, or fully anonymous by default?
 3. **Story variant scope** — do we ship the portrait/story template in v1, or

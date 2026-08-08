@@ -1,175 +1,68 @@
 ---
 name: monetization
 description: >
-  Monetization strategy, pricing, and subscription management for the Finance app. Use for topics related to freemium tier design, IAP implementation, pricing analysis, revenue optimization, or subscription lifecycle.
+  Monetization strategy, pricing, and subscription management. Use for topics
+  related to freemium tier design, paid feature boundaries, IAP or checkout
+  implementation, entitlement sync, pricing analysis, revenue optimization, or
+  subscription lifecycle.
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Monetization Skill
 
-## Purpose
+**Trigger:** pricing, freemium tiers, entitlements, paywalls, checkout/IAP, trials, churn, revenue metrics.
+**Inputs:** target audience, value metric, platforms in scope, cost model, competitor range, privacy constraints.
+**Related:** `go-to-market` (positioning/growth), `privacy-compliance` (claims/data use),
+`ux-testing` (paywall usability), `security-review-methodology` (receipt/entitlement risk).
 
-This skill covers **monetization and subscription management** — freemium tier boundaries, platform IAP integration, cross-platform entitlement sync, pricing analysis, and revenue metrics. Marketing reach and on-device financial math belong to the related skills below.
+## Out of scope
 
-## Out of Scope
+- ASO, launch communications, and growth channels → use `go-to-market`.
+- Domain calculations and product-specific feature modeling → use the relevant domain skill.
+- Backend transport or database internals → use the relevant implementation skill.
+- Privacy-as-marketing claims and regulatory basis → use `privacy-compliance`.
 
-- ASO, launch comms, and content/growth strategy → use `go-to-market`.
-- Budgets, cents math, reports, and export → use `financial-modeling`.
-- Entitlement sync transport, RLS, and Edge Functions → use `supabase-powersync`.
-- Privacy-as-premium claims and regulatory basis → use `privacy-compliance`.
+## Method
 
-## Validated Pricing
+1. **Pick the value metric** — charge for durable value, not for privacy, safety, accessibility, or access to existing user data.
+2. **Define tiers** — keep free useful, paid clearly better, and enterprise/team plans operationally supportable.
+3. **Gate server-side** — validate purchases/receipts with trusted services; never trust client-only entitlement state.
+4. **Preserve access** — downgrades should stop new premium actions, not lock users out of existing data.
+5. **Design humane prompts** — contextual, dismissible, rate-limited, accessible, and honest.
+6. **Measure lightly** — track tier changes, trials, renewals, cancellations, and funnel events without sensitive payloads.
+7. **Review regularly** — compare conversion, churn, support load, and competitor anchors before changing price.
 
-| Tier                   | Monthly    | Annual                | Includes                                                                                 |
-| ---------------------- | ---------- | --------------------- | ---------------------------------------------------------------------------------------- |
-| **Free**               | $0         | —                     | 1 budget, 1 account, manual tracking, basic reports, full offline, full privacy          |
-| **Individual Premium** | **$4.99**  | **$39.99** (~33% off) | Unlimited accounts/budgets, goals, export, advanced analytics, rollover, recurring rules |
-| **Family Premium**     | **$7.99**  | **$59.99** (~33% off) | Everything in Individual + household sharing (up to 5 members)                           |
-| **Enterprise**         | **$14.99** | —                     | Multi-household, admin dashboard, priority support (future)                              |
+## Tier design
 
-### Competitive Position
+| Tier | Purpose | Good gates | Avoid gating |
+| --- | --- | --- | --- |
+| Free | Prove the core product value | Limits on volume, automation, collaboration, advanced exports | Privacy, accessibility, account deletion, existing data access |
+| Pro/Premium | Expand power and convenience | Advanced workflows, sync/collaboration, automation, integrations | Basic safety, compliance, support for export/delete |
+| Team/Family/Enterprise | Shared administration | Roles, seats, admin controls, priority support | Individual data portability or consent controls |
 
-| App         | Monthly   | Our Advantage                                 |
-| ----------- | --------- | --------------------------------------------- |
-| YNAB        | $14.99    | **3x cheaper**, privacy-first                 |
-| Monarch     | $14.99    | **3x cheaper**, offline-first, 4 platforms    |
-| Copilot     | $13.99    | **3x cheaper**, cross-platform (not iOS-only) |
-| **Finance** | **$4.99** | Privacy-premium at accessible price           |
+## Entitlement checklist
 
-### Break-Even Analysis
+- [ ] Purchases are verified by trusted platform/server APIs where applicable.
+- [ ] Webhooks or scheduled checks handle renewals, refunds, cancellations, grace periods, and billing retry.
+- [ ] Cached entitlements have an expiry and safe offline grace behavior.
+- [ ] UI gates are backed by service/repository-layer checks.
+- [ ] Paywalls state what changes on downgrade before purchase.
+- [ ] Metrics exclude sensitive product data and personal payloads.
 
-- **Infrastructure-only break-even**: ~55 paying subscribers (Supabase Pro + PowerSync + hosting)
-- **Full-cost break-even** (including dev tools, stores): ~200 paying subscribers
-- Annual plans at 33% discount improve LTV while reducing churn
+## Revenue metrics
 
-## Freemium Tier Design
+| Metric | Readout |
+| --- | --- |
+| Free → paid conversion | Value clarity and paywall timing |
+| Trial → paid conversion | Trial quality and purchase friction |
+| Churn | Ongoing value, billing issues, support load |
+| ARPU / LTV | Pricing sustainability |
+| Refunds/support tickets | Mismatch between promise and experience |
 
-### Free Tier (Complete but Limited)
+## Safety
 
-- ✅ Core budgeting (1 budget)
-- ✅ Transaction tracking (manual entry, basic categorization)
-- ✅ 1 linked account
-- ✅ Basic reports (monthly spending summary)
-- ✅ Full offline support
-- ✅ Full privacy protections (same as Premium — no ads, no data selling)
+Do not monetize privacy, sell user data, dark-pattern upgrades, hide cancellation terms, or rely on client-only entitlement checks. Route legal/tax/store-policy questions to qualified review.
 
-### Premium Gating
+## Output
 
-| Feature                | Free | Premium   | Family       |
-| ---------------------- | ---- | --------- | ------------ |
-| Accounts               | 1    | Unlimited | Unlimited    |
-| Budgets                | 1    | Unlimited | Unlimited    |
-| Goal tracking          | ❌   | ✅        | ✅           |
-| Data export (CSV/JSON) | ❌   | ✅        | ✅           |
-| Advanced analytics     | ❌   | ✅        | ✅           |
-| Budget rollover        | ❌   | ✅        | ✅           |
-| Recurring rules        | ❌   | ✅        | ✅           |
-| Household sharing      | ❌   | ❌        | ✅ (up to 5) |
-
-### Feature Gating Architecture
-
-```
-SubscriptionTier (enum: FREE, PREMIUM, FAMILY)
-  └─ EntitlementChecker (commonMain interface)
-       └─ checks tier at repository/use-case layer
-            └─ platform UI reads entitlement to show/hide
-```
-
-- Define `SubscriptionTier` + `Entitlement` in `packages/models`
-- Implement `EntitlementChecker` in `packages/core` with `expect`/`actual` for platform receipt sources
-- Gate at **repository/use-case layer**, never UI alone
-- Cache tier locally for offline gating
-
-```kotlin
-// packages/core
-enum class SubscriptionTier { FREE, PREMIUM, FAMILY }
-
-enum class Feature {
-    UNLIMITED_ACCOUNTS, GOAL_TRACKING, DATA_EXPORT,
-    ADVANCED_ANALYTICS, HOUSEHOLD_SUPPORT, BUDGET_ROLLOVER, RECURRING_RULES,
-}
-
-object FeatureGating {
-    fun isAvailable(feature: Feature, tier: SubscriptionTier): Boolean
-    fun featuresFor(tier: SubscriptionTier): Set<Feature>
-}
-```
-
-### Upgrade Prompts — UX Principles
-
-- **Contextual**: Show when user hits gate (e.g., "Add 2nd account" → CTA), not random pop-ups
-- **Dismissible**: Clear "No thanks" action on every prompt
-- **Non-manipulative**: Explain the value; never guilt or pressure
-- **Rate-limited**: Max once per session per feature
-- **Accessible**: WCAG 2.2 AA (focus management, screen reader announcements)
-
-## Subscription Management
-
-### Platform IAP
-
-| Platform | Technology                           |
-| -------- | ------------------------------------ |
-| iOS      | StoreKit 2 + App Store Server API v2 |
-| Android  | Google Play Billing Library v7       |
-| Web      | Stripe or Paddle (hosted checkout)   |
-| Windows  | Microsoft Store IAP                  |
-
-### Cross-Platform Entitlement Flow
-
-```
-Device → Platform Store → Purchase
-Device → Supabase Edge Function (receipt validation)
-Edge Function → Platform API (verify)
-Edge Function → auth.users.app_metadata (update tier + expiry)
-PowerSync → All devices (sync entitlement)
-KMP EntitlementChecker → Local gating
-```
-
-- **Never trust the client** — always validate receipts server-side
-- Webhooks handle renewals, cancellations, grace periods
-- RLS can reference `auth.jwt() -> 'app_metadata' ->> 'subscription_tier'`
-
-### Offline Grace Period
-
-- Cache `subscription_tier` + `subscription_expires_at` in local SQLite
-- Trust cached tier if `expires_at` is in future or within 7-day grace window
-- After grace: degrade to free tier until connectivity restored
-- **Never lock users out of existing data** — only gate new premium actions
-
-## Revenue Analytics
-
-| Metric               | Target              |
-| -------------------- | ------------------- |
-| Free→Paid conversion | > 5% within 90 days |
-| Monthly churn        | < 5%                |
-| LTV (paying user)    | > $60               |
-| ARPU (all users)     | $0.50/month         |
-| MRR growth           | Track monthly       |
-
-### Conversion Funnel
-
-```
-Free Users → Feature Gate Hit → Upgrade Prompt → Trial (14 days) → Paid
-                                              ↘ Dismiss → Continue Free
-```
-
-Track: tier changes, renewals, cancellations. **Never** track financial data.
-
-## Privacy-as-Premium
-
-This is the brand differentiator:
-
-- **Free users get identical privacy** to paying users — no ads, no tracking, ever
-- **Premium = more features, NOT less privacy**
-- Revenue from subscriptions, never from user data
-- Tip jar available in Settings (optional one-time support, non-gating)
-
-## Beta User Migration
-
-1. Beta ends → users move to free tier by default
-2. "Founding member" discount: 50% off first year
-3. Beta data retained regardless of tier
-4. Premium features become read-only until upgrade (goals visible, can't create new)
-
-## Related Issues
-
-- #337–#344: Stage 12 — Monetization
+A monetization plan with tier boundaries, entitlement flow, pricing rationale, humane upgrade UX, metrics, and issue-ready implementation tasks.

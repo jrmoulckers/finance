@@ -1,35 +1,6 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: BUSL-1.1
 
-// =============================================================================
-// AI Manifest Drift Check — docs vs. filesystem reality
-// =============================================================================
-//
-// Suggested package.json script:
-//   "ai:manifest:check": "node tools/check-ai-manifest.js"
-//
-// Addresses audit issue #2863. Compares hardcoded counts in human-maintained
-// docs against the actual count of agents / skills / instructions / MCP servers
-// on disk (via tools/ai-manifest.js).
-//
-// IMPORTANT — race-safe default:
-//   By default this check is READ-ONLY and INFORMATIONAL: it prints findings and
-//   exits 0 even when drift is found. This avoids racing other agents who may be
-//   editing the docs concurrently. Set STRICT=1 to make drift BLOCKING (exit 1).
-//
-// Docs scanned for count claims:
-//   - docs/ai/README.md
-//   - docs/INDEX.md
-//   - AGENTS.md
-//
-// Usage:
-//   node tools/check-ai-manifest.js          # warn-only, exit 0
-//   STRICT=1 node tools/check-ai-manifest.js # blocking, exit 1 on drift
-//   node tools/check-ai-manifest.js --help
-//
-// Plain Node, no dependencies.
-// =============================================================================
-
 const fs = require('fs');
 const path = require('path');
 const { buildManifest } = require('./ai-manifest.js');
@@ -37,6 +8,50 @@ const { buildManifest } = require('./ai-manifest.js');
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const STRICT = process.env.STRICT === '1' || args.includes('--strict');
+const ACTIVATION_DOC = 'docs/ai/README.md';
+const PROVENANCE = 'synced from jrmoulckers/.github — canonical source; do not edit here';
+const GENERATED_AGENTS = [
+  'accessibility-reviewer',
+  'ai-ops-engineer',
+  'architect',
+  'backend-engineer',
+  'business-analyst',
+  'compliance-specialist',
+  'data-engineer',
+  'database-engineer',
+  'design-engineer',
+  'devops-engineer',
+  'docs-writer',
+  'experimentation-engineer',
+  'localization-engineer',
+  'marketing-strategist',
+  'native-app-engineer',
+  'performance-engineer',
+  'product-manager',
+  'qa-tester',
+  'release-manager',
+  'security-reviewer',
+  'sre-engineer',
+  'web-engineer',
+];
+const LOCAL_AGENTS = ['finance-domain'];
+const EXPECTED_AGENTS = [...GENERATED_AGENTS, ...LOCAL_AGENTS].sort();
+const RETIRED_AGENT_FILES = [
+  'android-engineer.agent.md',
+  'bug-basher.agent.md',
+  'ios-engineer.agent.md',
+  'kmp-engineer.agent.md',
+  'windows-engineer.agent.md',
+];
+const MANAGED_COUNTS = {
+  agents: 22,
+  skills: 19,
+  prompts: 7,
+  instructions: 5,
+  tokens: 16,
+  base: 2,
+  total: 71,
+};
 
 if (args.includes('--help') || args.includes('-h')) {
   process.stdout.write(`
@@ -44,59 +59,17 @@ AI Manifest Drift Check — Finance monorepo
 
 Usage:
   node tools/check-ai-manifest.js            # warn-only (exit 0)
+  node tools/check-ai-manifest.js --strict   # blocking (exit 1 on drift)
   STRICT=1 node tools/check-ai-manifest.js   # blocking (exit 1 on drift)
 
-Compares hardcoded counts in docs/ai/README.md, docs/INDEX.md and AGENTS.md
-against the real number of agents / skills / instructions / MCP servers on disk.
-
-Default is informational (exit 0) to avoid racing concurrent doc edits.
-Set STRICT=1 (or pass --strict) to fail CI on drift.
+Validates filesystem counts, the exact 23-agent activated roster, generated
+provenance, the sole local finance-domain agent, retired-role absence, canonical
+runtime documentation, and the 71-entry Studio sync inventory.
 `);
   process.exit(0);
 }
 
 const DOC_FILES = ['docs/ai/README.md', 'docs/INDEX.md', 'AGENTS.md'];
-const PREPARATION_DOC = 'docs/ai/README.md';
-const EXPECTED_CURRENT_ROLE_TARGETS = {
-  'accessibility-reviewer': 'canonical:accessibility-reviewer',
-  'ai-ops-engineer': 'canonical:ai-ops-engineer',
-  'android-engineer': 'canonical:native-app-engineer',
-  architect: 'canonical:architect',
-  'backend-engineer': 'canonical:backend-engineer',
-  'bug-basher': 'task:bug-bash',
-  'business-analyst': 'canonical:business-analyst',
-  'compliance-specialist': 'canonical:compliance-specialist',
-  'data-engineer': 'canonical:data-engineer',
-  'design-engineer': 'canonical:design-engineer',
-  'devops-engineer': 'canonical:devops-engineer',
-  'docs-writer': 'canonical:docs-writer',
-  'experimentation-engineer': 'canonical:experimentation-engineer',
-  'finance-domain': 'local:finance-domain',
-  'ios-engineer': 'canonical:native-app-engineer',
-  'kmp-engineer': 'canonical:native-app-engineer',
-  'localization-engineer': 'canonical:localization-engineer',
-  'marketing-strategist': 'canonical:marketing-strategist',
-  'performance-engineer': 'canonical:performance-engineer',
-  'product-manager': 'canonical:product-manager',
-  'qa-tester': 'canonical:qa-tester',
-  'release-manager': 'canonical:release-manager',
-  'security-reviewer': 'canonical:security-reviewer',
-  'web-engineer': 'canonical:web-engineer',
-  'windows-engineer': 'canonical:native-app-engineer',
-};
-const NEW_CANONICAL_AGENTS = ['database-engineer', 'sre-engineer'];
-const PLANNED_CANONICAL_AGENTS = [
-  ...new Set([
-    ...Object.values(EXPECTED_CURRENT_ROLE_TARGETS)
-      .filter((target) => target.startsWith('canonical:'))
-      .map((target) => target.slice('canonical:'.length)),
-    ...NEW_CANONICAL_AGENTS,
-  ]),
-].sort();
-
-// Each metric maps to: the manifest count key + a regex capturing a claimed
-// numeric count immediately preceding the keyword. Regexes are intentionally
-// targeted (with qualifier allow-lists) to limit false positives.
 const METRICS = [
   {
     key: 'agents',
@@ -123,25 +96,21 @@ const METRICS = [
 function scanDoc(relPath, counts) {
   const abs = path.join(ROOT, relPath);
   if (!fs.existsSync(abs)) return { missing: true, findings: [] };
-  const content = fs.readFileSync(abs, 'utf-8');
-  const lines = content.split(/\r?\n/);
+
+  const lines = fs.readFileSync(abs, 'utf8').split(/\r?\n/);
   const findings = [];
-  lines.forEach((line, idx) => {
-    // Normalize markdown emphasis (**bold**, _italic_, `code`) to spaces so
-    // claims like "there are **22** agents" still match, without losing the
-    // original line text used for reporting.
+  lines.forEach((line, index) => {
     const normalized = line.replace(/[*`_]+/g, ' ');
     for (const metric of METRICS) {
       metric.regex.lastIndex = 0;
       let match;
       while ((match = metric.regex.exec(normalized)) !== null) {
-        const claimed = parseInt(match[1], 10);
+        const claimed = Number.parseInt(match[1], 10);
         const actual = counts[metric.key];
         findings.push({
           file: relPath,
-          line: idx + 1,
+          line: index + 1,
           metric: metric.label,
-          key: metric.key,
           claimed,
           actual,
           drift: claimed !== actual,
@@ -153,117 +122,156 @@ function scanDoc(relPath, counts) {
   return { missing: false, findings };
 }
 
-function validateCanonicalPreparation(runtimeAgents) {
-  const abs = path.join(ROOT, PREPARATION_DOC);
-  if (!fs.existsSync(abs)) return [`${PREPARATION_DOC} is missing`];
+function difference(left, right) {
+  return left.filter((value) => !right.includes(value));
+}
 
-  const content = fs.readFileSync(abs, 'utf-8');
-  const start = content.indexOf('### Future Canonical Mapping (Not Active)');
-  const end = content.indexOf('### Supported AI Tools', start);
-  if (start === -1 || end === -1) {
-    return [`${PREPARATION_DOC} is missing the bounded future canonical mapping section`];
+function readJson(relPath, findings) {
+  const abs = path.join(ROOT, relPath);
+  if (!fs.existsSync(abs)) {
+    findings.push(`${relPath} is missing`);
+    return null;
   }
+  try {
+    return JSON.parse(fs.readFileSync(abs, 'utf8'));
+  } catch (error) {
+    findings.push(`${relPath} is invalid JSON: ${error.message}`);
+    return null;
+  }
+}
 
-  const section = content.slice(start, end);
-  const mappedRows = [...section.matchAll(/^\|\s*`([^`]+)`\s*\|\s*(.*?)\s*\|$/gm)];
-  const mappedTargets = new Map(mappedRows.map((match) => [match[1], match[2]]));
-  const mappedCurrentRoles = mappedRows.map((match) => match[1]).sort();
-  const expectedCurrentRoles = Object.keys(EXPECTED_CURRENT_ROLE_TARGETS).sort();
-  const actualRuntimeRoles = [...runtimeAgents].sort();
-  const missingRuntimeRoles = expectedCurrentRoles.filter(
-    (role) => !actualRuntimeRoles.includes(role),
-  );
-  const extraRuntimeRoles = actualRuntimeRoles.filter(
-    (role) => !expectedCurrentRoles.includes(role),
-  );
-  const missingMappings = expectedCurrentRoles.filter((role) => !mappedTargets.has(role));
-  const extraMappings = mappedCurrentRoles.filter((role) => !expectedCurrentRoles.includes(role));
+function validateAgentRoster(runtimeAgents) {
   const findings = [];
+  const actual = [...runtimeAgents].sort();
+  const missing = difference(EXPECTED_AGENTS, actual);
+  const extra = difference(actual, EXPECTED_AGENTS);
+  if (missing.length) findings.push(`runtime roster misses: ${missing.join(', ')}`);
+  if (extra.length) findings.push(`runtime roster has unknown roles: ${extra.join(', ')}`);
 
-  if (missingRuntimeRoles.length) {
-    findings.push(`runtime roster misses preparation roles: ${missingRuntimeRoles.join(', ')}`);
-  }
-  if (extraRuntimeRoles.length) {
-    findings.push(`runtime roster has unplanned roles: ${extraRuntimeRoles.join(', ')}`);
-  }
-  if (mappedCurrentRoles.length !== expectedCurrentRoles.length) {
-    findings.push(
-      `future mapping has ${mappedCurrentRoles.length} current-role rows; expected ${expectedCurrentRoles.length}`,
-    );
-  }
-  if (missingMappings.length) findings.push(`future mapping misses: ${missingMappings.join(', ')}`);
-  if (extraMappings.length)
-    findings.push(`future mapping has unknown roles: ${extraMappings.join(', ')}`);
-
-  for (const [currentRole, expectedTarget] of Object.entries(EXPECTED_CURRENT_ROLE_TARGETS)) {
-    const documentedTarget = mappedTargets.get(currentRole);
-    if (!documentedTarget) continue;
-    const [kind, target] = expectedTarget.split(':');
-    const expectedText =
-      kind === 'canonical'
-        ? `Canonical \`${target}\``
-        : kind === 'local'
-          ? `Local \`${target}\` retained`
-          : 'No permanent role';
-    if (!documentedTarget.includes(expectedText)) {
-      findings.push(`${currentRole} maps to "${documentedTarget}", expected ${expectedTarget}`);
+  for (const role of GENERATED_AGENTS) {
+    const relPath = `.github/agents/${role}.agent.md`;
+    const abs = path.join(ROOT, relPath);
+    if (!fs.existsSync(abs)) continue;
+    if (!fs.readFileSync(abs, 'utf8').includes(PROVENANCE)) {
+      findings.push(`${relPath} is missing canonical provenance`);
     }
   }
 
-  const rosterLine = section
-    .split(/\r?\n/)
-    .find((line) => line.startsWith('The planned canonical roster is:'));
-  const documentedCanonicalAgents = rosterLine
-    ? [...rosterLine.matchAll(/`([^`]+)`/g)].map((match) => match[1]).sort()
-    : [];
-  const missingCanonicalAgents = PLANNED_CANONICAL_AGENTS.filter(
-    (role) => !documentedCanonicalAgents.includes(role),
-  );
-  const extraCanonicalAgents = documentedCanonicalAgents.filter(
-    (role) => !PLANNED_CANONICAL_AGENTS.includes(role),
-  );
-  if (documentedCanonicalAgents.length !== PLANNED_CANONICAL_AGENTS.length) {
-    findings.push(
-      `planned canonical roster has ${documentedCanonicalAgents.length} roles; ` +
-        `expected ${PLANNED_CANONICAL_AGENTS.length}`,
-    );
-  }
-  if (missingCanonicalAgents.length) {
-    findings.push(`planned canonical roster misses: ${missingCanonicalAgents.join(', ')}`);
-  }
-  if (extraCanonicalAgents.length) {
-    findings.push(`planned canonical roster has unknown roles: ${extraCanonicalAgents.join(', ')}`);
+  for (const role of LOCAL_AGENTS) {
+    const relPath = `.github/agents/${role}.agent.md`;
+    const abs = path.join(ROOT, relPath);
+    if (!fs.existsSync(abs)) continue;
+    if (fs.readFileSync(abs, 'utf8').includes(PROVENANCE)) {
+      findings.push(`${relPath} must remain Finance-authored, not generated`);
+    }
   }
 
-  const futureCountMatch = section.match(
-    /future runtime therefore contains (\d+) physical agent files: (\d+) generated canonical files and one Finance-authored local file/,
-  );
-  if (!futureCountMatch) {
-    findings.push('future runtime count statement is missing');
-  } else {
-    const physicalCount = Number.parseInt(futureCountMatch[1], 10);
-    const canonicalCount = Number.parseInt(futureCountMatch[2], 10);
-    if (canonicalCount !== PLANNED_CANONICAL_AGENTS.length) {
-      findings.push(
-        `future runtime claims ${canonicalCount} canonical files; ` +
-          `expected ${PLANNED_CANONICAL_AGENTS.length}`,
-      );
-    }
-    if (physicalCount !== canonicalCount + 1) {
-      findings.push(
-        `future runtime claims ${physicalCount} physical files; ` +
-          `expected ${canonicalCount + 1}`,
-      );
+  for (const file of RETIRED_AGENT_FILES) {
+    if (fs.existsSync(path.join(ROOT, '.github', 'agents', file))) {
+      findings.push(`retired runtime file remains: .github/agents/${file}`);
     }
   }
 
   return findings;
 }
 
+function validateActivationDoc() {
+  const abs = path.join(ROOT, ACTIVATION_DOC);
+  if (!fs.existsSync(abs)) return [`${ACTIVATION_DOC} is missing`];
+
+  const content = fs.readFileSync(abs, 'utf8');
+  const start = content.indexOf('### Canonical Runtime Roster');
+  const end = content.indexOf('### Supported AI Tools', start);
+  if (start === -1 || end === -1) {
+    return [`${ACTIVATION_DOC} is missing the bounded canonical runtime roster section`];
+  }
+
+  const section = content.slice(start, end);
+  const rosterLine = section
+    .split(/\r?\n/)
+    .find((line) => line.startsWith('The generated canonical roster is:'));
+  const documented = rosterLine
+    ? [...rosterLine.matchAll(/`([^`]+)`/g)].map((match) => match[1]).sort()
+    : [];
+  const findings = [];
+  const missing = difference(GENERATED_AGENTS, documented);
+  const extra = difference(documented, GENERATED_AGENTS);
+  if (documented.length !== GENERATED_AGENTS.length) {
+    findings.push(
+      `documented generated roster has ${documented.length} roles; expected ${GENERATED_AGENTS.length}`,
+    );
+  }
+  if (missing.length) findings.push(`documented generated roster misses: ${missing.join(', ')}`);
+  if (extra.length)
+    findings.push(`documented generated roster has unknown roles: ${extra.join(', ')}`);
+
+  const countMatch = section.match(
+    /active runtime contains (\d+) physical agent files: (\d+) generated canonical files and one Finance-authored local file, `finance-domain`/,
+  );
+  if (!countMatch) {
+    findings.push('active runtime count statement is missing');
+  } else if (
+    Number(countMatch[1]) !== EXPECTED_AGENTS.length ||
+    Number(countMatch[2]) !== GENERATED_AGENTS.length
+  ) {
+    findings.push(
+      `active runtime count statement must be ${EXPECTED_AGENTS.length} physical / ${GENERATED_AGENTS.length} generated`,
+    );
+  }
+
+  return findings;
+}
+
+function validateSyncLock() {
+  const findings = [];
+  const lock = readJson('.studio-sync.lock.json', findings);
+  if (!lock) return findings;
+  if (lock.version !== 1) findings.push(`sync lock version is ${lock.version}; expected 1`);
+  if (lock.backbone !== 'jrmoulckers/.github') {
+    findings.push(`sync lock backbone is ${lock.backbone}; expected jrmoulckers/.github`);
+  }
+
+  const entries = Object.keys(lock.entries || {});
+  const count = (predicate) => entries.filter(predicate).length;
+  const counts = {
+    agents: count((entry) => entry.startsWith('.github/agents/')),
+    skills: count((entry) => entry.startsWith('.github/skills/')),
+    prompts: count((entry) => entry.startsWith('.github/prompts/')),
+    instructions: count((entry) => entry.startsWith('.github/instructions/')),
+    tokens: count((entry) => entry.startsWith('apps/web/vendor/@jrm/tokens/')),
+    base: count((entry) => entry === 'AGENTS.md' || entry === 'agency.toml'),
+    total: entries.length,
+  };
+  for (const [kind, expected] of Object.entries(MANAGED_COUNTS)) {
+    if (counts[kind] !== expected) {
+      findings.push(`sync lock has ${counts[kind]} managed ${kind}; expected ${expected}`);
+    }
+  }
+
+  for (const role of GENERATED_AGENTS) {
+    const entry = `.github/agents/${role}.agent.md`;
+    if (!entries.includes(entry)) findings.push(`sync lock misses generated agent: ${role}`);
+  }
+  if (entries.includes('.github/agents/finance-domain.agent.md')) {
+    findings.push('sync lock must not manage local agent finance-domain');
+  }
+  for (const file of RETIRED_AGENT_FILES) {
+    if (entries.includes(`.github/agents/${file}`)) {
+      findings.push(`sync lock retains retired agent: ${file}`);
+    }
+  }
+
+  for (const [entry, metadata] of Object.entries(lock.entries || {})) {
+    if (!metadata.sourceSha256 || !metadata.targetSha256 || !metadata.syncedAt) {
+      findings.push(`sync lock entry is incomplete: ${entry}`);
+    }
+  }
+  return findings;
+}
+
 function main() {
   const manifest = buildManifest();
   const counts = manifest.counts;
-
   process.stdout.write('AI Manifest Drift Check\n');
   process.stdout.write('=======================\n');
   process.stdout.write(
@@ -272,107 +280,93 @@ function main() {
   );
   process.stdout.write(`Mode: ${STRICT ? 'STRICT (blocking)' : 'informational (warn-only)'}\n\n`);
 
-  let allFindings = [];
+  let countFindings = [];
   for (const doc of DOC_FILES) {
     const { missing, findings } = scanDoc(doc, counts);
-    if (missing) {
-      process.stdout.write(`- ${doc}: not found (skipped)\n`);
-      continue;
-    }
-    if (findings.length === 0) {
-      process.stdout.write(`- ${doc}: no count claims detected\n`);
-    }
-    allFindings = allFindings.concat(findings);
+    if (missing) process.stdout.write(`- ${doc}: not found (skipped)\n`);
+    countFindings = countFindings.concat(findings);
   }
-  process.stdout.write('\n');
+  const driftedCounts = countFindings.filter((finding) => finding.drift);
+  const activationFindings = [
+    ...validateAgentRoster(manifest.agents),
+    ...validateActivationDoc(),
+    ...validateSyncLock(),
+  ];
 
-  const drifted = allFindings.filter((f) => f.drift);
-  const preparationFindings = validateCanonicalPreparation(manifest.agents);
-
-  process.stdout.write('Canonical activation preparation:\n');
-  if (preparationFindings.length === 0) {
+  process.stdout.write('Canonical runtime activation:\n');
+  if (activationFindings.length === 0) {
     process.stdout.write(
-      `  [ok] ${manifest.agents.length} current roles mapped; ` +
-        `${PLANNED_CANONICAL_AGENTS.length} canonical roles + finance-domain prepared\n\n`,
+      `  [ok] ${GENERATED_AGENTS.length} generated canonical agents + ` +
+        `${LOCAL_AGENTS.length} local agent; ${MANAGED_COUNTS.total} managed assets\n\n`,
     );
   } else {
-    for (const finding of preparationFindings) process.stdout.write(`  [DRIFT] ${finding}\n`);
+    for (const finding of activationFindings) process.stdout.write(`  [DRIFT] ${finding}\n`);
     process.stdout.write('\n');
   }
 
-  if (allFindings.length) {
+  if (countFindings.length) {
     process.stdout.write('Detected count claims:\n');
-    for (const f of allFindings) {
-      const status = f.drift ? 'DRIFT' : 'ok';
+    for (const finding of countFindings) {
       process.stdout.write(
-        `  [${status}] ${f.file}:${f.line} — claims ${f.claimed} ${f.metric}, actual ${f.actual}\n`,
+        `  [${finding.drift ? 'DRIFT' : 'ok'}] ${finding.file}:${finding.line} — ` +
+          `claims ${finding.claimed} ${finding.metric}, actual ${finding.actual}\n`,
       );
-      if (f.drift) process.stdout.write(`           > ${f.text}\n`);
+      if (finding.drift) process.stdout.write(`           > ${finding.text}\n`);
     }
     process.stdout.write('\n');
   }
 
-  // GitHub Actions annotations + job summary.
-  const summaryLines = [];
-  summaryLines.push('### AI Manifest Drift Check');
-  summaryLines.push('');
-  summaryLines.push(
+  const summaryLines = [
+    '### AI Manifest Drift Check',
+    '',
     `Filesystem: **${counts.agents}** agents · **${counts.skills}** skills · ` +
       `**${counts.instructions}** instructions · **${counts.mcpServers}** MCP servers`,
-  );
-  summaryLines.push('');
-  if (drifted.length === 0 && preparationFindings.length === 0) {
-    summaryLines.push('✅ No drift between doc counts and the filesystem.');
+    '',
+  ];
+  if (driftedCounts.length === 0 && activationFindings.length === 0) {
+    summaryLines.push(
+      '✅ Counts, canonical provenance, local roster, and sync inventory are valid.',
+    );
   } else {
     summaryLines.push(
-      `⚠️ Found **${drifted.length}** drifted count claim(s) and ` +
-        `**${preparationFindings.length}** canonical-preparation finding(s).`,
+      `⚠️ Found **${driftedCounts.length}** drifted count claim(s) and ` +
+        `**${activationFindings.length}** canonical-activation finding(s).`,
     );
-    summaryLines.push('');
-    summaryLines.push('| File | Line | Metric | Claimed | Actual |');
-    summaryLines.push('| ---- | ---- | ------ | ------- | ------ |');
-    for (const f of drifted) {
-      summaryLines.push(`| ${f.file} | ${f.line} | ${f.metric} | ${f.claimed} | ${f.actual} |`);
-      // Annotation so the drift shows up inline on the PR.
+    for (const finding of driftedCounts) {
       process.stdout.write(
-        `::${STRICT ? 'error' : 'warning'} file=${f.file},line=${f.line}::Manifest drift: ` +
-          `claims ${f.claimed} ${f.metric} but filesystem has ${f.actual}\n`,
+        `::${STRICT ? 'error' : 'warning'} file=${finding.file},line=${finding.line}::` +
+          `Manifest drift: claims ${finding.claimed} ${finding.metric} but filesystem has ${finding.actual}\n`,
       );
     }
-    for (const finding of preparationFindings) {
-      summaryLines.push(`- Canonical preparation: ${finding}`);
+    for (const finding of activationFindings) {
+      summaryLines.push(`- Canonical activation: ${finding}`);
       process.stdout.write(
-        `::${STRICT ? 'error' : 'warning'} file=${PREPARATION_DOC}::` +
-          `Canonical preparation drift: ${finding}\n`,
+        `::${STRICT ? 'error' : 'warning'} file=${ACTIVATION_DOC}::` +
+          `Canonical activation drift: ${finding}\n`,
       );
-    }
-  }
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    try {
-      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryLines.join('\n') + '\n');
-    } catch (err) {
-      console.error('Could not write GitHub job summary:', err.message);
     }
   }
 
-  if (drifted.length === 0 && preparationFindings.length === 0) {
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    try {
+      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summaryLines.join('\n')}\n`);
+    } catch (error) {
+      console.error('Could not write GitHub job summary:', error.message);
+    }
+  }
+
+  if (driftedCounts.length === 0 && activationFindings.length === 0) {
     process.stdout.write('✅ No drift detected.\n');
     process.exit(0);
   }
-
+  const result =
+    `${driftedCounts.length} drifted count claim(s), ` +
+    `${activationFindings.length} canonical-activation finding(s)`;
   if (STRICT) {
-    process.stdout.write(
-      `❌ ${drifted.length} drifted count claim(s), ` +
-        `${preparationFindings.length} canonical-preparation finding(s). Failing (STRICT=1).\n`,
-    );
+    process.stdout.write(`❌ ${result}. Failing (STRICT=1).\n`);
     process.exit(1);
   }
-
-  process.stdout.write(
-    `⚠️ ${drifted.length} drifted count claim(s), ` +
-      `${preparationFindings.length} canonical-preparation finding(s) — informational only. ` +
-      'Re-run with STRICT=1 to enforce. Exiting 0.\n',
-  );
+  process.stdout.write(`⚠️ ${result} — informational only. Re-run with STRICT=1 to enforce.\n`);
   process.exit(0);
 }
 

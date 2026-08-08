@@ -144,7 +144,7 @@ flowchart LR
   editable later from the same surfaces
   ([`AccountEditScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/screens/AccountEditScreen.kt)
   is the read-only boundary reference).
-- The **shared account schema is owned by @kmp-engineer**; this doc only describes
+- The **shared account schema is owned by @native-app-engineer**; this doc only describes
   the Android-side rendering and the metadata it expects to read from shared state.
 
 ---
@@ -254,7 +254,7 @@ flowchart LR
 - Monetary and percentage values → shared formatting only.
 
 > This document **describes** the boundary. It does not implement KMP or schema
-> changes — `packages/core` is owned by @kmp-engineer.
+> changes — `packages/core` is owned by @native-app-engineer.
 
 ---
 
@@ -358,7 +358,7 @@ This is a design artifact. Execution splits into a **buildable-now** tier and a
 
 Everything in the buildable-now tier runs on an emulator with **no signing, store
 credentials, or human-gated operations**. The shared account-schema additions are
-coordinated with @kmp-engineer and are not implemented in this Android-only doc.
+coordinated with @native-app-engineer and are not implemented in this Android-only doc.
 
 ---
 
@@ -389,8 +389,8 @@ coordinated with @kmp-engineer and are not implemented in this Android-only doc.
 - [`AccountsScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/screens/AccountsScreen.kt) — existing accounts surface
 - [`AccountEditScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/screens/AccountEditScreen.kt) — existing account edit surface
 - [`AccountRepository.kt`](../../apps/android/src/main/kotlin/com/finance/android/data/repository/AccountRepository.kt) — existing account repository
-- [`MoneyOperations.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/money/MoneyOperations.kt) — shared money math (owned by @kmp-engineer)
-- [`NumberFormatting.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/NumberFormatting.kt) — shared formatting (owned by @kmp-engineer)
+- [`MoneyOperations.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/money/MoneyOperations.kt) — shared money math (owned by @native-app-engineer)
+- [`NumberFormatting.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/NumberFormatting.kt) — shared formatting (owned by @native-app-engineer)
 
 **Issues**
 

@@ -3,7 +3,7 @@
 > **Status:** Design spec (implementation blocked) · **Milestone:** v1.0 (design-spec)
 > **Epic:** #2118 — Trustworthy investment tracking with real data and compound-growth projections
 > **Closes:** #2568 (KMP-backed iOS investment data, replacing mocks) · #2570 (Contribution-aware portfolio metrics and projections)
-> **Owner:** @ios-engineer · **Shared work proposed for:** @kmp-engineer
+> **Owner:** @native-app-engineer (iOS surface and shared implementation)
 > **Blocked by:** #1239 (Apple Developer Program enrollment) — **no Swift implementation lands until this clears.** This document is a design-only deliverable; it ships **one** new doc and touches no Swift or `packages/*` code.
 > **Design decisions:** D1 (return method) and D2 (projection growth rate) **maintainer-confirmed 2026-06-20** — see §11.
 > **Consumes (does not duplicate):** [`ios-chart-accessibility.md`](./ios-chart-accessibility.md), [`voiceover-chart-navigation.md`](./voiceover-chart-navigation.md), [`ios-noncolor-state-cues.md`](./ios-noncolor-state-cues.md), [`ios-dynamic-type-reflow.md`](./ios-dynamic-type-reflow.md), [`ios-net-worth-trend-chart.md`](./ios-net-worth-trend-chart.md).
@@ -22,7 +22,7 @@ This spec follows the wave-1 pilot structure established by [`ios-chart-accessib
 6. [Per-surface application map](#6-per-surface-application-map)
 7. [State coverage](#7-state-coverage)
 8. [Accessibility and non-color cues](#8-accessibility-and-non-color-cues)
-9. [Proposed shared additions (for @kmp-engineer)](#9-proposed-shared-additions-for-kmp-engineer)
+9. [Proposed shared additions (for @native-app-engineer)](#9-proposed-shared-additions-for-kmp-engineer)
 10. [Test plan](#10-test-plan)
 11. [Cross-references and resolved decisions](#11-cross-references-and-resolved-decisions)
 
@@ -90,7 +90,7 @@ The KMP-backed model in §3 deliberately mirrors the web lot model so all four p
 
 Replace `MockInvestmentRepository` with a repository that reads **real** persisted holdings and lots through the shared KMP layer, surfaced to SwiftUI via the existing Swift Export bridge — with **zero** change to `InvestmentViewModel` or the views, because the swap happens behind the `InvestmentRepository` protocol (`InvestmentRepository.swift:18-37`).
 
-### 3.2 Proposed persistence (SQLDelight, for @kmp-engineer)
+### 3.2 Proposed persistence (SQLDelight, for @native-app-engineer)
 
 New `commonMain` SQLDelight tables, following the sync-table conventions already used by `Account.sq` (every sync-enabled table carries `owner_id` referencing `auth.uid()` and `household_id` for household-level RLS isolation — see the repo schema-alignment standard):
 
@@ -98,7 +98,7 @@ New `commonMain` SQLDelight tables, following the sync-table conventions already
 - **`InvestmentLot`** — purchase lots for cost basis, mirroring web's `Lot` (`investment.ts:99-112`): `id`, `investment_id` (FK), `purchase_date`, `shares`, `cost_per_share_cents`, `total_cost_cents`, `cost_basis_method`. Per-holding `costBasis` is then `Σ lot.total_cost_cents`, never a stored denormalised guess.
 - **`InvestmentCashFlow`** — the new series that makes #2570 possible: `id`, `account_id`, `flow_date`, `amount_cents` (signed: `+` deposit/buy contribution, `−` withdrawal/sell proceeds), `kind` (`CONTRIBUTION`/`WITHDRAWAL`/`DIVIDEND`/`FEE`). Without this table, contributions cannot be separated from gains.
 
-> Schema changes are serialized: only @backend-engineer writes the matching Supabase migration and only @kmp-engineer writes the `.sq` files, as a single coordinated task. This doc only _proposes_ the shape.
+> Schema changes are serialized: only @backend-engineer writes the matching Supabase migration and only @native-app-engineer writes the `.sq` files, as a single coordinated task. This doc only _proposes_ the shape.
 
 ### 3.3 Repository and bridge path
 
@@ -264,7 +264,7 @@ Accessibility behaviour is **owned by the referenced wave-1 docs**; this section
 
 ---
 
-## 9. Proposed shared additions (for @kmp-engineer)
+## 9. Proposed shared additions (for @native-app-engineer)
 
 All pure `commonMain`, Cents-exact, deterministic. Framed as proposals; this doc does not implement them.
 

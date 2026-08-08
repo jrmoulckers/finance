@@ -178,11 +178,11 @@ transfers out (transfers are excluded from income/expense averages, `BalancePred
 and yields a single confidence value. A future reader weighing per-account accuracy against these
 costs should start here.
 
-**New shared function — proposed for @kmp-engineer (NOT added in this PR).** `BalancePredictionEngine`
+**New shared function — proposed for @native-app-engineer (NOT added in this PR).** `BalancePredictionEngine`
 today forecasts a **single account** balance, so delivering this needs a new platform-neutral
 "project net worth forward" function (proposed `packages/core/.../prediction/NetWorthProjection`,
 returning a net-worth-series + per-point `PredictionConfidence` and band bounds). It is **owned by
-@kmp-engineer / @finance-domain** and is intentionally **not** written in this design PR
+@native-app-engineer / @finance-domain** and is intentionally **not** written in this design PR
 (file-ownership rule — this PR is the one new doc only); this section is the spec it implements. The
 confidence band bounds reuse the web `formatRange(...)` formatter so masking applies uniformly.
 
@@ -321,7 +321,7 @@ Smallest set required before a native implementation of this surface is accepted
    reusing `BalancePredictionEngine`'s daily-average mechanism and confidence ladder (the mirror of
    `netWorthOverTime`'s backward derivation), rather than summing per-account `predictAtDate` (which
    double-counts transfers and has no net-worth-level confidence). The new "project net worth
-   forward" function is proposed for and owned by @kmp-engineer / @finance-domain and is **not**
+   forward" function is proposed for and owned by @native-app-engineer / @finance-domain and is **not**
    added in this design PR. **Confirmed by maintainer 2026-06-20** (recommended default accepted;
    per-account summation explicitly rejected — see §4a for the tradeoff).
 2. **Dashboard stays minimal** — the dashboard net-worth card gains only a compact, tappable trend

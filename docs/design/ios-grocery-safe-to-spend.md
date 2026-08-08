@@ -74,7 +74,7 @@ empty / no-budget-configured state.
   #2159 (`ios-today-spend-funmoney-widget.md`); this is an **in-app** card. A lock-screen
   _quick glance_ entry is noted as a follow-up in §4, not specified here.
 - **Editing `packages/*`** — the shared "remaining after" helper (§7) is **proposed for
-  @kmp-engineer** as a separate, non-blocked task; it is not written in this design PR.
+  @native-app-engineer** as a separate, non-blocked task; it is not written in this design PR.
 - **Barcode / price scanning** — the user types or speaks the basket total; itemized scanning is
   a separate future epic.
 
@@ -172,7 +172,7 @@ Everything below translates existing, shipped logic. The card invents no new mat
 | Existing masking system (widget)  | `WidgetMaskingMode {visible,bucketed,percent,dots}`, `WidgetMoneyFormatter` — `apps/ios/Shared/WidgetPrivacy.swift:6` (widget-side only; see §8)                                                     |
 
 > **Note for the build phase:** the web `safe-to-spend-shared.ts` math is TypeScript. To keep
-> parity exact and testable today, §10 **proposes (for @kmp-engineer)** a KMP
+> parity exact and testable today, §10 **proposes (for @native-app-engineer)** a KMP
 > `SafeToSpendCalculator` + a thin `GroceryAffordability` helper in `packages/core` mirroring
 > `safe-to-spend-shared.ts`, so all platforms share one tested implementation. That KMP work is
 > a **separate, non-blocked task** and is **not** done in this design PR — this PR adds only this
@@ -303,9 +303,9 @@ Notes:
   default; see §11._
 - Dictation-friendly: the field accepts voice input, so "forty-two fifty" can be spoken at the store.
 
-### 7.2 The math (proposed shared helper — for @kmp-engineer)
+### 7.2 The math (proposed shared helper — for @native-app-engineer)
 
-> **Ownership boundary.** `packages/core` is owned by **@kmp-engineer**. This doc only
+> **Ownership boundary.** `packages/core` is owned by **@native-app-engineer**. This doc only
 > **specifies** the helper; the Kotlin lives in a **separate, non-blocked task** and is **not**
 > written in this design PR (cross-package edits here would create fleet conflicts).
 
@@ -396,20 +396,20 @@ balanced against the card's reason to exist (a fast, glanceable answer).
 > _app-wide_: the same app-group key (`finance:widget-hide-balances` in the
 > `group.com.finance.app` suite, `apps/ios/Shared/WidgetPrivacy.swift`) should be **generalized
 > to a single "Hide balances" preference** consumed by the widget extension **and** by in-app
-> sensitive surfaces such as this card. The owners (**@kmp-engineer**, who own the shared masking
+> sensitive surfaces such as this card. The owners (**@native-app-engineer**, who own the shared masking
 > work in §8.3) must **reconcile #2199 and #2159 onto this one setting** — not two divergent
 > flags. (A future rename of the key to drop the `widget-` prefix is optional cleanup and out of
 > scope here; the contract is "one flag, two readers.") Cross-reference:
 > `ios-today-spend-funmoney-widget.md` §9.3.
 
-### 8.3 Proposed shared masking (for @kmp-engineer)
+### 8.3 Proposed shared masking (for @native-app-engineer)
 
 Because no in-app masking exists, the build phase needs a masking-aware formatter for in-app
 amounts. Frame it as a **shared `MaskingMode` + formatter in `packages/core`** (mirroring the web
 `MaskingMode` the chart spec already references, and conceptually the widget's
 `WidgetMaskingMode`), consumed by both the widget and in-app `CurrencyLabel`, and **driven by the
 single global "Hide balances" flag of D6 (§8.2)** — not a second widget-only flag. **Proposed for
-@kmp-engineer; not built or edited in this PR.** Specifying it here keeps one masking rule across
+@native-app-engineer; not built or edited in this PR.** Specifying it here keeps one masking rule across
 surfaces rather than a second widget-only copy.
 
 ### 8.4 Data minimization
@@ -461,7 +461,7 @@ exist and pass — `apps/web/src/lib/dashboard/safe-to-spend-shared.test.ts` and
 
 Proposed `commonTest` cases for a `SafeToSpendCalculator` + `GroceryAffordability` helper in
 `packages/core` (mirrors `safe-to-spend-shared.ts` + §7). **The calculator + tests are proposed
-for @kmp-engineer as a separate, non-blocked task — they are not part of this design PR, which
+for @native-app-engineer as a separate, non-blocked task — they are not part of this design PR, which
 adds no `packages/*` code:**
 
 | #   | Case                                                                                                         | Asserts                                                                                               |
@@ -539,7 +539,7 @@ single points to update should anything change.
   `commonTest` (§10, case 2).
 - **D4 — No new math:** the headline is computed by the **same shared safe-to-spend engine** as
   the #2159 widget; the only new shared code is a thin "remaining after" subtraction, **proposed
-  for @kmp-engineer**, not written here (§7).
+  for @native-app-engineer**, not written here (§7).
 - **D5 — Basket input is ephemeral and never leaves the device** (§7.1, §8.4); money stays in
   `Cents` minor units end-to-end (`Cents.kt:15`), converted only for input/display
   (`Cents.kt:60`).
@@ -547,7 +547,7 @@ single points to update should anything change.
   single app-group flag** the #2159 widget proposes (suggested key `finance:widget-hide-balances`
   in the `group.com.finance.app` suite, `apps/ios/Shared/WidgetPrivacy.swift`) rather than
   inventing a parallel in-app flag — but **broadens its semantics from widget-only to app-wide**.
-  The owners (**@kmp-engineer**) must reconcile #2199 and #2159 onto a single "Hide balances"
+  The owners (**@native-app-engineer**) must reconcile #2199 and #2159 onto a single "Hide balances"
   preference read by **both** the widget extension and in-app sensitive cards. Resolves the
   cross-doc-consistency requirement. Cross-reference:
   `ios-today-spend-funmoney-widget.md` §9.3. **Maintainer-confirmed (2026-06-20).**

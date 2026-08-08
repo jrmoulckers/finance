@@ -130,7 +130,7 @@ flowchart LR
 layer observes; the ViewModel consumes it the same way it observes transactions,
 accounts, budgets, and goals today.
 
-Conceptual shape (design only — owned by @kmp-engineer, **not** implemented here):
+Conceptual shape (design only — owned by @native-app-engineer, **not** implemented here):
 
 - `observeActiveStreaks(householdId): Flow<List<Streak>>` — emits the current
   streaks (already `currentCount`-filtered by `buildProfile`).
@@ -238,7 +238,7 @@ with the engine (which already takes `now`/`activityDate`):
 - **Paused / recovered** depend on a **grace-period policy that does not yet exist
   in `GamificationEngine`** (the engine resets on any gap). Until that shared policy
   lands, the UI treats a gap as **Broken/restart** and the Paused/Recovered states
-  are specified-but-dormant (flagged in §13 as an @kmp-engineer follow-up).
+  are specified-but-dormant (flagged in §13 as an @native-app-engineer follow-up).
 
 ```mermaid
 flowchart TB
@@ -345,7 +345,7 @@ locks the contract so implementation under #2211 is unambiguous.
   `GamificationViewModel` change (real streaks instead of `emptyList()`), the
   `StreakCard` state/near-win additions, and Koin registration.
 - The shared `StreakRepository` + any grace-period policy are `packages/core`
-  changes (owned by @kmp-engineer) — also unblocked; not store-gated.
+  changes (owned by @native-app-engineer) — also unblocked; not store-gated.
 - Unit tests, copy/tone tests, Compose semantics/UI tests, and Paparazzi snapshots.
 - Local verification via `./gradlew :apps:android:assembleDebug` + sideload, per
   [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md)
@@ -368,7 +368,7 @@ Until then the streak surface is fully exercisable via debug sideload.
 
 1. **Grace-period policy** — should `GamificationEngine` gain an explicit
    pause/recover/grace concept (so Paused/Recovered are real), or do we ship
-   Broken/restart only in v1? This is the key @kmp-engineer decision for #2211.
+   Broken/restart only in v1? This is the key @native-app-engineer decision for #2211.
 2. **Near-win threshold source** — confirm "near" (1 vs 2 activities, or a percent
    of the next milestone) is a single shared config value across platforms.
 3. **Streak types in v1** — which `Streak.type` values do we surface first

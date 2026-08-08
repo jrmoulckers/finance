@@ -1,49 +1,33 @@
 ---
 name: prompt-engineering
 description: >
-  Prompt engineering guidance for Finance agents. Use for topics related to
-  prompt design, reusable prompts, Copilot instructions, agent handoffs,
-  context packaging, task decomposition prompts, review prompts, or reducing
-  ambiguity in AI-agent workflows.
+  Prompt engineering guidance. Use for topics related to prompt design,
+  reusable prompts, Copilot instructions, agent handoffs, context packaging,
+  task decomposition prompts, review prompts, or reducing ambiguity in AI workflows.
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Prompt Engineering Skill
 
-## Purpose
+**Trigger:** reusable prompts, agent handoffs, context packaging, task decomposition, review prompts,
+instruction hygiene, ambiguity reduction.
+**Inputs:** goal, target repo/scope, owned files, constraints, related skills, validation expectations.
+**Related:** `issue-management` (issue-filing prompts), `project-management` (planning handoffs),
+`mcp-agent-tooling` (tool boundaries), `ux-testing` (QA prompts).
 
-This skill covers **repo-specific prompt design and instruction hygiene** for Finance agents: packaging context, defining owned files, naming constraints, selecting related skills, and writing prompts that produce verifiable, scoped work.
-
-## Out of Scope
+## Out of scope
 
 - MCP server/tool configuration → use `mcp-agent-tooling`.
-- Sprint selection and capacity planning → use `sprint-planning`.
-- Agent dispatch/CI/merge operations → use `fleet-orchestration`.
-- Issue filing quality and cross-platform duplicates → use `issue-management`.
+- Backlog selection, capacity, and sequencing → use `project-management` or `sprint-planning`.
+- CI dispatch, branch hygiene, and merge operations → use the relevant workflow skill.
+- Issue filing quality and duplicates → use `issue-management`.
 
-## Related Skills
-
-| Skill                 | Use For                                                  |
-| --------------------- | -------------------------------------------------------- |
-| `mcp-agent-tooling`   | Tool availability, MCP safety, and automation boundaries |
-| `fleet-orchestration` | Turning prompts into parallel agent execution            |
-| `sprint-planning`     | Selecting and sequencing work before prompt handoff      |
-| `issue-management`    | Prompts that file high-quality scoped issues             |
-
-## Repo-Specific Prompt Assets
-
-| Path                          | Purpose                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------- |
-| `.github/prompts/*.prompt.md` | Reusable prompts for backlog, cleanup, fix-ci, rebase-all, review, sprint, team |
-| `.github/instructions/*.md`   | Path-specific instructions loaded for code/skill/doc changes                    |
-| `.github/agents/*.agent.md`   | Specialist agent definitions and ownership expectations                         |
-| `.github/skills/*/SKILL.md`   | Durable domain knowledge invoked by trigger keywords                            |
-
-## Prompt Shape for Finance Work
+## Prompt shape
 
 ```markdown
 ## Goal
 
-[Concrete outcome tied to issue/PR/sprint]
+[Concrete outcome tied to issue/PR/workstream]
 
 ## Context
 
@@ -59,29 +43,39 @@ This skill covers **repo-specific prompt design and instruction hygiene** for Fi
 
 ## Validation
 
-[Allowed checks; if checks are forbidden, state the alternative evidence]
+[Allowed checks; if unavailable, alternative evidence]
 
 ## Completion
 
 [Expected summary, blockers, todo/status updates]
 ```
 
-## Prompt Quality Rules
+## Method
 
-- Name the exact repository paths and ownership boundaries; "fix the app" is too broad.
-- State what not to do when workflow or safety constraints matter (no secrets, no temp dirs, no external publishing).
-- Prefer acceptance criteria over implementation guesses.
-- Reference canonical workflow docs instead of embedding stale command blocks.
-- Include platform parity explicitly: Web, iOS, Android, Windows, shared KMP, backend.
-- Ask agents to verify with the smallest allowed evidence when builds/tests are forbidden.
-- For review prompts, request high-confidence findings only and require file/line evidence.
+1. **Name the outcome** — specify the user-visible or repo-visible result.
+2. **Constrain ownership** — list editable paths, read-only paths, and conflict boundaries.
+3. **Package context** — include issue numbers, relevant files, logs, screenshots, and decisions.
+4. **Prefer acceptance criteria** — describe success before prescribing implementation.
+5. **State safety limits** — secrets, external services, destructive operations, temp paths, and publishing rules.
+6. **Make validation explicit** — smallest meaningful checks, expected command names, or evidence fallback.
+7. **Define output** — summary format, files changed, unresolved blockers, and follow-up issues.
 
-## Anti-Patterns
+## Anti-patterns
 
-| Anti-Pattern                | Better Prompt Pattern                                          |
-| --------------------------- | -------------------------------------------------------------- |
-| "Audit everything"          | Name surfaces, risk categories, and output format              |
-| "Use best practices"        | Cite Finance rules: cents, privacy, offline-first, WCAG 2.2 AA |
-| "Fix CI" without logs       | Include failing run/check names and relevant logs              |
-| Hidden file ownership       | Provide an explicit edit allowlist and conflict boundaries     |
-| Restating workflow commands | Point to `docs/ai/workflow.md` canonical sections              |
+| Anti-pattern | Better prompt pattern |
+| --- | --- |
+| "Audit everything" | Name surfaces, risk categories, and output format |
+| "Use best practices" | Cite product rules, acceptance criteria, and related skills |
+| "Fix CI" without logs | Include failing checks, run IDs, and relevant excerpts |
+| Hidden ownership | Provide an explicit edit allowlist and files to avoid |
+| Stale commands | Reference canonical docs or ask for repo-native checks |
+
+## Safety
+
+Do not embed secrets, private URLs, or broad write permissions in prompts. Avoid prompts that encourage
+agents to bypass issue-first, PR-always, or conventional-commit discipline.
+
+## Output
+
+A scoped prompt or prompt review with goal, context, ownership, tasks, validation, safety constraints, and
+completion contract.

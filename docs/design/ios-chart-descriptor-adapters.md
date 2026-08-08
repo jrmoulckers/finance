@@ -136,7 +136,7 @@ flowchart LR
 > [data-visualization.md §6.1](./data-visualization.md#61-cents-to-dollars-conversion).
 
 > **No `packages/` edits in this PR.** If the shared layer should expose a
-> ready-made "chart series DTO", that is proposed to @kmp-engineer via ADR
+> ready-made "chart series DTO", that is proposed to @native-app-engineer via ADR
 > ([AGENTS.md](../../AGENTS.md)); this design names the contract only.
 
 ---
@@ -359,7 +359,7 @@ gate only.
   [human-gated-prerequisites.md §3.2](../ops/human-gated-prerequisites.md#32-ios-distribution--apple-developer-1239).
   An SME agent must **not** perform enrollment, certificate, or secret steps.
 - **Shared-logic tail:** a shared chart-series DTO in `packages/` is optional and
-  ADR-gated (@kmp-engineer); the descriptor is fully implementable today from the
+  ADR-gated (@native-app-engineer); the descriptor is fully implementable today from the
   already-bridged aggregates.
 
 _Part of [#2115](https://github.com/jrmoulckers/finance/issues/2115). Sibling

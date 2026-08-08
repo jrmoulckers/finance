@@ -12,7 +12,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2622](https://github.com/jrmoulckers/finance/issues/2622) — Part of [#2391](https://github.com/jrmoulckers/finance/issues/2391)
 **Platform:** iOS / iPadOS (SwiftUI, `UserNotifications`, `BackgroundTasks`, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-smart-notification-timing.md](./ios-smart-notification-timing.md) · [ios-finance-alert-rules-deeplinks.md](./ios-finance-alert-rules-deeplinks.md) · [ios-notification-center-navigation.md](./ios-notification-center-navigation.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [cognitive-accessibility.md](./cognitive-accessibility.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -266,7 +266,7 @@ flowchart LR
 
 - **Shared (KMP):** what is worth surfacing, the timing window math, and the
   default-schedule config are platform-neutral rules in `packages/core`. **Not
-  implemented here** — ADR with `@kmp-engineer` / `@architect`.
+  implemented here** — ADR with `@native-app-engineer` / `@architect`.
 - **Native (iOS):** all Apple-framework plumbing — `UNUserNotificationCenter`,
   `BackgroundTasks`, the fallback selector, reset controls, and the content-free
   counters. These are inherently platform APIs and stay in `apps/ios`.
@@ -386,7 +386,7 @@ clock** — no wall-clock reads, no real background scheduling.
 8. **Foreground top-up:** with background denied, a foreground launch refills an
    empty horizon.
 
-### 13.2 Shared (Kotlin · `packages/core` · `commonTest`, owned by @kmp-engineer)
+### 13.2 Shared (Kotlin · `packages/core` · `commonTest`, owned by @native-app-engineer)
 
 - Rule evaluation and window-selection boundary cases (if the math lands in
   `packages/core`) tested there with golden fixtures; default-schedule config
@@ -443,4 +443,4 @@ part of this design.
 3. Should anonymous-diagnostics export ever ship, what is the minimum bucketed
    schema and consent flow? Default remains **on-device only**.
 4. Where do rule evaluation and timing math finally live — `packages/core` vs.
-   native — given the timing doc proposes shared math? ADR with `@kmp-engineer`.
+   native — given the timing doc proposes shared math? ADR with `@native-app-engineer`.

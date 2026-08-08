@@ -11,7 +11,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2601](https://github.com/jrmoulckers/finance/issues/2601) — Part of [#2167](https://github.com/jrmoulckers/finance/issues/2167)
 **Platform:** iOS / iPadOS (SwiftUI + WidgetKit + App Clip, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-one-thumb-quick-add.md](./ios-one-thumb-quick-add.md) · [ios-compact-transaction-stepper.md](./ios-compact-transaction-stepper.md) · [ios-wallet-adjacent-capture-inbox.md](./ios-wallet-adjacent-capture-inbox.md) · [ios-grocery-affordability-appclip.md](./ios-grocery-affordability-appclip.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [cognitive-accessibility.md](./cognitive-accessibility.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [information-architecture.md](./information-architecture.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -103,7 +103,7 @@ The same idea is encoded three times, each subtly different:
 
 A single ordered catalog of quick-entry presets, each a small value type
 (conceptually in `packages/core` / `packages/models`, **estimate** — final shape
-owned by `@kmp-engineer` / `@architect`):
+owned by `@native-app-engineer` / `@architect`):
 
 ```text
 QuickEntryPreset
@@ -298,7 +298,7 @@ flowchart LR
   `applyQuickEntry(action: id)`.
 - **Estimate (label):** exposing the catalog as a shared array (mapping
   Kotlin `List` → Swift `Array`) is the proposed contract; its final shape and
-  whether tender lives in `packages/models` is decided by `@kmp-engineer` /
+  whether tender lives in `packages/models` is decided by `@native-app-engineer` /
   `@architect` via ADR — **not** implemented here. iOS must not hardcode a fourth
   divergent copy of the presets.
 - Existing shared seams reused unchanged: the deep-link `action` string contract
@@ -354,7 +354,7 @@ flowchart LR
    selection toggles `.isSelected`, and chips precede the keypad in swipe order.
 7. **Dynamic Type (snapshot):** chips strip at `.large` and `.accessibility5`
    stays one scrollable row, ≥ 44 pt, no truncation.
-8. **Shared (KMP, owned by @kmp-engineer):** the catalog's category/tender
+8. **Shared (KMP, owned by @native-app-engineer):** the catalog's category/tender
    mappings and `isEnabled` gating are unit-tested in `packages/core`.
 
 ---
@@ -394,7 +394,7 @@ See [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md).
 2. **User-customizable presets:** is the catalog fixed for v1, or should users
    reorder/add presets later? Default: fixed shared catalog for v1.
 3. **Tender model:** does `defaultTender` reference an account id, an account
-   _type_, or a payment-method enum? Owned by `@kmp-engineer` / `@architect`.
+   _type_, or a payment-method enum? Owned by `@native-app-engineer` / `@architect`.
 4. **Widget single-shortcut vs. chips:** the Lock Screen widget shows one
    configured shortcut; should a medium widget show a small chip set, or stay
    single? Default: keep single on Lock Screen, chips in-app.

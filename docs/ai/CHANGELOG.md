@@ -8,13 +8,24 @@ Entries are newest-first. Use ISO dates (`YYYY-MM`). Each entry should answer: _
 
 ---
 
+## 2026-08 — Canonical runtime activation
+
+Source: issue #4014. Activated Finance's Studio canonical runtime after the shared activation barrier landed.
+
+- **Materialized the canonical roster.** Added 22 provenance-stamped generated agents and retained `finance-domain` as the sole Finance-authored local agent, for 23 runtime agents total.
+- **Activated consolidated ownership.** Native apps and shared KMP route to `native-app-engineer`; database schema, RLS, migrations, and PowerSync rules route to `database-engineer`; reliability semantics and recovery verification route to `sre-engineer`.
+- **Retired authored runtime roles.** Removed the former Android, iOS, Windows, KMP, and permanent bug-basher definitions. Single-bug work remains available through [`bug-bash.prompt.md`](../../.github/prompts/bug-bash.prompt.md).
+- **Made activation enforceable.** Strict manifest validation now checks the exact roster, generated/local provenance boundary, retired-role absence, and all 71 managed Studio assets.
+
+---
+
 ## 2026-07 — bug-basher goes platform-agnostic (renamed from pwa-bug-basher)
 
 Source: issue #3896 (Part B, building on #3892 / PR #3895). Evolved the single-platform `pwa-bug-basher` into a platform-agnostic `bug-basher` so a bug reported without a platform — or one whose root cause lives in shared KMP code, design tokens, or i18n — is fixed once in the shared layer (covering all four platforms) or applied across every affected platform, rather than being silently scoped to web.
 
 - **Renamed `pwa-bug-basher` → `bug-basher` (roster stays 25 — rename, not add).** Every textual reference across the repo was updated; `pwa-bug-basher.agent.md` was removed and `bug-basher.agent.md` added.
 - **Broadened scope.** `primary_paths` widened from `apps/web/**` to `apps/**`, `packages/**`, `config/**`, `services/**`; `write_scope: full`, `risk_level: medium`, tools read/edit/search/shell unchanged.
-- **Encoded platform inference + fix-scope strategy (the core change).** The agent now (1) infers the affected platform(s) from report + screenshot cues (iOS/SwiftUI, Android/Compose, Web/PWA, Windows/Compose-Desktop; honors an explicit platform); (2) locates the root cause first, then decides scope — shared code → fix once (`platform:shared`, preferred); platform-specific + known platform → fix natively; undefined/multi-platform → widespread fix across every affected platform (or a cross-platform tracking issue with per-platform sub-issues per the `issue-management` skill), never defaulting to web-only; (3) MAY dispatch platform-specialist sub-agents (`@ios-engineer`, `@android-engineer`, `@web-engineer`, `@windows-engineer`, `@kmp-engineer`) for large multi-native fixes. The rest of the lifecycle (issue-first → fix on own worktree → pre-push lint/format → rebase → push → `gh pr create --base main` with `Closes #N` → drive CI green + resolve conflicts → `gh pr merge --squash` → cleanup) and the environment caveats (shared `:5199` dev server may exist; **never edit `apps/web/vite.config.ts`**; reference `.github/instructions/workflow.instructions.md`) are preserved. Related-skills broadened to add `kmp-development`, `supabase-powersync`, `design-tokens`, `i18n-localization`. See [`bug-basher.agent.md`](../../.github/agents/bug-basher.agent.md).
+- **Encoded platform inference + fix-scope strategy (the core change).** The then-current permanent role inferred affected platforms, fixed shared code once, and routed multi-platform work to the specialists that existed at the time. That behavior now lives in [`bug-bash.prompt.md`](../../.github/prompts/bug-bash.prompt.md) and routes native work through `@native-app-engineer`.
 - **`bug-bash` prompt made platform-agnostic.** Kept the `bug` parameter and added an optional `platform` parameter (default: infer/all); repointed at the renamed `bug-basher` agent. See [`bug-bash.prompt.md`](../../.github/prompts/bug-bash.prompt.md) and the [prompts README](../../.github/prompts/README.md).
 - **References synced** across [`AGENTS.md`](../../AGENTS.md), [`README.md`](README.md), [`agents.md`](agents.md) (roster + detail + ownership table), [`agent-instructions.md`](agent-instructions.md), [`skills.md`](skills.md) (skill↔agent table, broadened skills row), and the `fleet-orchestration` registry; roster count stays **25** and `npm run ai:manifest:check` reports no drift.
 
@@ -24,7 +35,7 @@ Source: issue #3896 (Part B, building on #3892 / PR #3895). Evolved the single-p
 
 Source: issue #3892 (Part A of a two-part self-service bug-bash effort). Added a self-contained, single-bug PWA bug-fixing capability so a human can bash bugs as independent, standalone sessions without routing each one through a coordinator thread.
 
-- **New `pwa-bug-basher` agent (roster 24 → 25).** A full-lifecycle web bug fixer (`write_scope: full`, `risk_level: medium`, `primary_paths: ['apps/web/**']`) that combines `@qa-tester`-style investigation with `@web-engineer` implementation. Launched as a standalone session per bug, it runs the entire flow: intake a report (+ optional screenshot) → reproduce/root-cause against `main` with verified `file:line` → file an issue-first GitHub issue (`platform:web` + `bug`/`enhancement`/`accessibility`) → surgical fix on its own worktree → pre-push lint/format → rebase → push → `gh pr create --base main` with `Closes #N` → drive cloud CI green + resolve conflicts → `gh pr merge --squash` once green AND `MERGEABLE` → remove its worktree. Bakes in the bug-bash environment caveats (shared `:5199` dev server may exist — start your own if needed; **never edit `apps/web/vite.config.ts`** because the host keeps a local-only `allowedHosts` edit there) and references `.github/instructions/workflow.instructions.md` for the canonical push/merge/conflict rules. See [`bug-basher.agent.md`](../../.github/agents/bug-basher.agent.md) (renamed from `pwa-bug-basher` in 2026-07 — see entry above).
+- **New `pwa-bug-basher` agent (historical).** This introduced the end-to-end issue/fix/PR/CI lifecycle that is now maintained by [`bug-bash.prompt.md`](../../.github/prompts/bug-bash.prompt.md).
 - **New `bug-bash` prompt.** A thin reusable wrapper ([`bug-bash.prompt.md`](../../.github/prompts/bug-bash.prompt.md)) with a `bug` parameter that runs the `pwa-bug-basher` flow for a single pasted bug; works standalone or inside an existing session. Listed in the [prompts README](../../.github/prompts/README.md).
 - **Roster count synced to 25** across [`AGENTS.md`](../../AGENTS.md), [`README.md`](README.md), [`agents.md`](agents.md), [`agent-instructions.md`](agent-instructions.md), [`skills.md`](skills.md) (registry + skill↔agent table), [`slash-commands.md`](slash-commands.md), [`docs/INDEX.md`](../INDEX.md), and the `fleet-orchestration` / `sprint-planning` registries; `npm run ai:manifest:check` reports no drift.
 
@@ -91,7 +102,7 @@ Source: the consultant-fleet [AI-Practice Audit (2026-06)](audits/ai-practice-au
 
 ### Documentation drift fixes
 
-- **Corrected hardcoded counts.** [`README.md`](README.md) (was "13 agents / 6 skills / 5 MCP servers"), [`INDEX.md`](../INDEX.md), [`agent-instructions.md`](agent-instructions.md), and [`instructions.md`](instructions.md) now state the current counts with an "as of 2026-06" caveat and point to the source-of-truth directories (and the planned `ai-manifest`) to prevent future drift.
+- **Corrected legacy hardcoded counts.** [`README.md`](README.md), [`INDEX.md`](../INDEX.md), [`agent-instructions.md`](agent-instructions.md), and [`instructions.md`](instructions.md) now point to the source-of-truth directories and manifest check to prevent future drift.
 - **Marked stale docs historical.** [`fleet-ci-analysis.md`](fleet-ci-analysis.md) carries a `Historical (as of 2026-04)` banner; [`pain-points.md`](pain-points.md) carries a freshness note.
 - **Fixed orphaned navigation.** Added [`start-here.md`](start-here.md) as the canonical entry point; linked previously-orphaned `ci-monitoring.md` and `slash-commands.md` from both indexes; added this CHANGELOG, `governance.md`, and the [audit report](audits/ai-practice-audit-2026-06.md) to the indexes.
 

@@ -58,7 +58,7 @@ This plan passes the four architecture filters in order:
 - Training the model, building the `.onnx` artifact, or selecting the model
   architecture (🔒 ML training pipeline; out of scope for this plan).
 - Implementing the `expect/actual` `ModelRuntime` in `packages/core`
-  (owned by @kmp-engineer).
+  (owned by @native-app-engineer).
 - Adding native dependencies or Gradle wiring to `apps/windows`
   (owned by the Windows platform agent).
 - Cloud inference of any kind (explicitly rejected — breaks privacy-first).
@@ -105,7 +105,7 @@ fixed** per `feature_schema_version` so the `.onnx` input tensor stays stable.
 ### 1.2 Runtime input envelope
 
 The host passes a typed `BalanceFeatures` object to the shared `ModelRuntime`
-(🔒 `expect/actual`, owned by @kmp-engineer). The serialized ONNX input tensor
+(🔒 `expect/actual`, owned by @native-app-engineer). The serialized ONNX input tensor
 is `float32[1, N]` where `N` is fixed by `feature_schema_version`.
 
 ```jsonc
@@ -346,7 +346,7 @@ a subtle "estimated" indicator when `source == HEURISTIC`.
 All tests below assert that **no network egress** occurs during inference and
 that packaging/fallback behave correctly. Pure-logic checks live in
 `commonTest`; Windows runtime/packaging checks are JVM/desktop integration
-tests (🔒 implementation owned by @kmp-engineer / Windows platform agent — this
+tests (🔒 implementation owned by @native-app-engineer / Windows platform agent — this
 plan defines the cases and acceptance criteria).
 
 ### 6.1 No-network inference
@@ -424,7 +424,7 @@ beat the heuristic baseline, and monotonicity (`p10 ≤ p50 ≤ p90`) must hold 
 | --- | ---------------------------------------------------------------------------------------------- | -------------------------- |
 | 1   | Train/export `balance-predictor` `model.onnx` (quantile regression) + run calibration gate     | 🔒 ML training pipeline    |
 | 2   | Add `com.microsoft.onnxruntime` (+ optional `-directml`) dep & native-lib vendoring to Windows | 🔒 @windows platform agent |
-| 3   | Implement `expect/actual` `ModelRuntime` + `ModelManager` in `packages/core`                   | 🔒 @kmp-engineer           |
+| 3   | Implement `expect/actual` `ModelRuntime` + `ModelManager` in `packages/core`                   | 🔒 @native-app-engineer    |
 | 4   | Host the CDN model registry/manifest and staged rollout                                        | 🔒 backend / devops        |
 | 5   | Code-sign bundled ONNX Runtime / DirectML DLLs via the existing signing pipeline               | 🔒 @devops (code signing)  |
 | 6   | Bundle runtime DLLs (and optional baseline `.onnx`) under `apps/windows/packaging/resources`   | 🔒 @windows platform agent |

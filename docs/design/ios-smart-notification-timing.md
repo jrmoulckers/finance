@@ -9,7 +9,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2621](https://github.com/jrmoulckers/finance/issues/2621) — Part of [#2391](https://github.com/jrmoulckers/finance/issues/2391)
 **Platform:** iOS / iPadOS (SwiftUI, `UserNotifications`, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-notification-center-navigation.md](./ios-notification-center-navigation.md) · [ios-finance-alert-rules-deeplinks.md](./ios-finance-alert-rules-deeplinks.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [cognitive-accessibility.md](./cognitive-accessibility.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -285,7 +285,7 @@ flowchart LR
   `packages/core` next to
   [`BillReminderEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/recurring/BillReminderEngine.kt)
   (Android/Web get the same fairness). Introducing or extending that shared
-  policy is proposed to @kmp-engineer via ADR — **not** implemented in this iOS
+  policy is proposed to @native-app-engineer via ADR — **not** implemented in this iOS
   work.
 - **iOS owns** the local engagement-bucket store, reading quiet-hours
   preferences, Focus cooperation via `UNNotificationInterruptionLevel` /
@@ -340,7 +340,7 @@ injected clock** — no wall-clock reads.
    (no amounts/payees) and that the activity-off path clears it.
 8. **Determinism (Swift/KMP unit):** identical inputs → identical
    `DeliveryDecision` across repeated runs (golden fixture).
-9. **Shared (KMP, owned by @kmp-engineer):** if the policy math lands in
+9. **Shared (KMP, owned by @native-app-engineer):** if the policy math lands in
    `packages/core`, its window-selection and boundary cases are tested there.
 
 ---
@@ -372,7 +372,7 @@ See [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md).
 
 ## 15. Open Questions
 
-1. **Where the math lives:** confirm with @kmp-engineer whether window-selection
+1. **Where the math lives:** confirm with @native-app-engineer whether window-selection
    moves to `packages/core` (cross-platform fairness) or stays an iOS adapter for
    v1, with an ADR to follow.
 2. **Bucket granularity:** hour-of-day only, or hour × weekday? Default:

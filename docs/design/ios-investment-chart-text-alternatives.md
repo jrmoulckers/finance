@@ -149,7 +149,7 @@ flowchart LR
 > See [ios-chart-summaries-data-tables.md §3](./ios-chart-summaries-data-tables.md#3-shared-dependencies--the-ios--kmp-boundary).
 
 > **KMP changes are out of scope for this PR.** The proposed summary-facts and
-> projection helpers are @kmp-engineer / @architect changes via **ADR**
+> projection helpers are @native-app-engineer / @architect changes via **ADR**
 > ([AGENTS.md](../../AGENTS.md)); this doc only wires existing/planned bridged
 > facts into the reused components.
 
@@ -377,7 +377,7 @@ gate only.
   exist; the report-table unification and investment-price summary can proceed
   against the cluster's stub facts, and the projection summary follows
   [ios-portfolio-metrics-projections.md](./ios-portfolio-metrics-projections.md).
-  The proposed shared summary-facts helper is an @kmp-engineer change via ADR.
+  The proposed shared summary-facts helper is an @native-app-engineer change via ADR.
 
 _Part of [#2113](https://github.com/jrmoulckers/finance/issues/2113). Reuses the
 chart-accessibility cluster

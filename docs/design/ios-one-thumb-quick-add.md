@@ -225,13 +225,13 @@ Quick-add composes **only** fields that exist on the shared model
 (`packages/models/.../Transaction.kt:19-53`) and routes its save through the shared validator
 (`packages/core/.../validation/TransactionValidator.kt`). This design doc **edits no shared code**;
 the two pieces of logic below are **proposed additions for `packages/core`, owned by
-@kmp-engineer** (so all platforms behave identically and the rules are unit-testable today):
+@native-app-engineer** (so all platforms behave identically and the rules are unit-testable today):
 
 1. **Default-selection** — `lastUsedAccountId ?? firstAccount`, `lastUsedType ?? EXPENSE`,
    `date = today`, `status = PENDING`, `categoryId = suggest(payee) ?? null`. Web implements these
    ad hoc in the component (`QuickEntry.tsx:106-178`); iOS has them split across the view model and
    `LogTransactionIntent`. A single `QuickAddDefaults` resolver in `packages/core` (proposed for
-   @kmp-engineer) is the smallest shared change and removes three divergent copies.
+   @native-app-engineer) is the smallest shared change and removes three divergent copies.
 2. **Minimum-field / save rule** — amount non-zero **is the only blocking rule**; payee falls back to
    `categoryName → "Expense"/"Income"` (`LogTransactionIntent.swift:117-120`); category may be null.
    This mirrors `TransactionValidator.validate` (`TransactionValidator.kt:21-77`), which already
@@ -388,11 +388,11 @@ null` (parity with `QuickEntry.tsx:106-178`).
    (`Transaction.kt:49-51`; `TransactionValidator.kt:44-54`), beyond the minimum field set; quick-add
    is expense/income only and defers transfers to the full form (§5).
 
-**Proposed shared-code follow-up (for @kmp-engineer — not done here):**
+**Proposed shared-code follow-up (for @native-app-engineer — not done here):**
 
 - The **payee-optional** product call is **resolved** (decision #1, maintainer-confirmed); it is no
   longer open.
 - The shared `QuickAddDefaults` / `resolveQuickAddPayee` helpers (§4) are **proposed additions for
-  `packages/core`, owned by @kmp-engineer** — a small shared-code change that removes three divergent
+  `packages/core`, owned by @native-app-engineer** — a small shared-code change that removes three divergent
   copies (web component, iOS view model, `LogTransactionIntent`). This design-only doc does not edit
   `packages/*`; the work should be scheduled as a separate KMP task, not treated as a design question.

@@ -116,51 +116,25 @@ AI agents that skip issue creation, commit directly to `main`, or fail to create
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.) — `npm run format` only touches JS/TS/JSON/MD/YAML
-- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow (`npm run ai:manifest:check`, backed by `tools/ai-manifest.js`) flags any drift between these counts and the filesystem; see [`docs/ai/CHANGELOG.md`](docs/ai/CHANGELOG.md). As of 2026-06 there are **25** agents (see list below).
+- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow (`npm run ai:manifest:check`, backed by `tools/ai-manifest.js`) validates the exact roster, generated provenance, local-agent boundary, and managed sync inventory. There are **23 agents**: 22 Studio-generated canonical definitions plus the Finance-authored `finance-domain`.
 
 ## AI Agent Configuration
 
-Custom agents are defined in `.github/agents/`. Each agent has a specific role:
+Custom agents are defined in `.github/agents/`. Studio-generated definitions carry a provenance stamp and must not be edited locally; Finance behavior belongs in this file and scoped `.github/instructions/**`.
 
-- `accessibility-reviewer` — Accessibility compliance review (WCAG 2.2 AA)
-- `android-engineer` — Android platform (Jetpack Compose, KMP integration, Material 3)
-- `architect` — System design and architecture decisions
-- `backend-engineer` — Supabase backend (PostgreSQL, Auth, Edge Functions, RLS, PowerSync)
-- `compliance-specialist` — Financial, governmental & regional regulatory compliance; obligation matrix, data residency, retention (advisory, stewards `docs/compliance/`)
-- `design-engineer` — Design tokens, Style Dictionary, color systems, typography
-- `devops-engineer` — CI/CD (GitHub Actions, Turborepo, Fastlane, Changesets)
-- `docs-writer` — Documentation authoring and maintenance
-- `finance-domain` — Financial domain logic and modeling
-- `ios-engineer` — iOS platform (SwiftUI, KMP via Swift Export, Apple Keychain)
-- `kmp-engineer` — Kotlin Multiplatform shared code (SQLDelight, Ktor, kotlinx)
-- `security-reviewer` — Security and privacy code review
-- `web-engineer` — Web PWA (React/TypeScript, Service Workers, SQLite-WASM)
-- `bug-basher` — Self-service bug bash (infer platform → file issue → fix → PR → cloud CI → self-merge) for a single reported bug on any platform; fixes shared code once or widely across every affected platform; standalone session per bug
-- `windows-engineer` — Windows platform (Compose Desktop, Windows Hello, DPAPI)
-- `product-manager` — Product strategy, sprint planning, issue triage, roadmap management
-- `marketing-strategist` — Go-to-market, ASO, launch comms, content strategy, growth
-- `business-analyst` — Monetization, pricing, competitive analysis, revenue modeling
-- `qa-tester` — Live testing-session orchestration, bug discovery, investigation dispatch, issue filing (read-only on code)
-- `ai-ops-engineer` — Owns `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts, evals, and the AI manifest
-- `release-manager` — Changesets/versioning, release notes, store submission preparation
-- `performance-engineer` — Performance budgets, profiling, regression analysis
-- `data-engineer` — Privacy-preserving product analytics: event schemas, taxonomy, metrics catalog (distinct from financial reporting)
-- `localization-engineer` — i18n, localization, financial terminology
-- `experimentation-engineer` — Feature flags, A/B testing, staged rollouts, experiment readouts
+- **Engineering:** `native-app-engineer`, `web-engineer`, `backend-engineer`, `database-engineer`, `devops-engineer`, `sre-engineer`, `design-engineer`, `architect`
+- **Review/advisory:** `accessibility-reviewer`, `security-reviewer`, `compliance-specialist`, `qa-tester`, `performance-engineer`
+- **Product/operations:** `product-manager`, `business-analyst`, `marketing-strategist`, `docs-writer`, `release-manager`, `ai-ops-engineer`
+- **Cross-cutting:** `data-engineer`, `localization-engineer`, `experimentation-engineer`
+- **Finance-authored local specialist:** `finance-domain`
 
 > **Reviewer roles are not symmetric.** `accessibility-reviewer` is **review-only** — it never edits production code and routes every fix to the owning platform agent. `security-reviewer` is the designated **emergency fixer** — it may implement CRITICAL/HIGH security fixes in any directory, coordinating with the owning agent, and is review-only for non-security code.
 
-### Canonical Agent Activation Preparation (Not Active)
+### Canonical Agent Runtime
 
-The 25 definitions above remain the authoritative runtime roster until Studio canonical materialization happens in a later, atomic change. Finance is prepared for a future runtime of **22 Studio-generated canonical agents plus the local `finance-domain` agent**. During that activation:
+The canonical roster is active. `native-app-engineer` owns Android, iOS, Windows, and shared KMP structure; `database-engineer` owns PostgreSQL schema, migrations, RLS, seed data, database tests, and PowerSync rules; `sre-engineer` owns SLO, incident, capacity, rollback, and recovery semantics. `backend-engineer` retains API/Auth/Edge Function behavior, while `devops-engineer` retains CI/build/delivery mechanics.
 
-- `android-engineer`, `ios-engineer`, `windows-engineer`, and `kmp-engineer` consolidate into `native-app-engineer`.
-- PostgreSQL schema, migration, RLS, seed, and PowerSync-rule ownership moves from the broad backend role to `database-engineer`.
-- SLOs, monitoring semantics, incident response, capacity, rollback, and recovery verification move from broad DevOps/backend ownership to `sre-engineer`.
-- Single-bug task mode comes from `.github/prompts/bug-bash.prompt.md` and workflow instructions, not a permanent `bug-basher` role.
-- `finance-domain` remains Finance-authored and leads financial correctness while the structural owner leads the surrounding package or platform.
-
-Do not delete, rename, or locally rewrite the 24 current definitions that will later be replaced or retired. Product-specific behavior belongs in this file and scoped `.github/instructions/**`; generated definitions remain generic. See [`docs/ai/README.md`](docs/ai/README.md#future-canonical-mapping-not-active) for the complete 25-role mapping.
+Single-bug work runs through `.github/prompts/bug-bash.prompt.md` and workflow instructions rather than a permanent agent. `finance-domain` is the sole local agent and leads financial correctness while the canonical structural owner leads the surrounding package or platform.
 
 Agent skills are in `.github/skills/` (the source of truth) and provide reusable domain knowledge. As of 2026-06 there are **20** skills. The established set includes:
 
@@ -375,37 +349,7 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 
 **File ownership by agent:**
 
-| Agent                       | Primary ownership                                                                                                                                                                                                |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@kmp-engineer`             | `packages/`                                                                                                                                                                                                      |
-| `@backend-engineer`         | `services/api/`                                                                                                                                                                                                  |
-| `@web-engineer`             | `apps/web/`                                                                                                                                                                                                      |
-| `@bug-basher`               | `apps/**`, `packages/**`, `config/**`, `services/**` (one bug per standalone session, any platform, isolated worktree; fixes shared code once or widely across platforms; NEVER edits `apps/web/vite.config.ts`) |
-| `@android-engineer`         | `apps/android/`                                                                                                                                                                                                  |
-| `@ios-engineer`             | `apps/ios/`                                                                                                                                                                                                      |
-| `@windows-engineer`         | `apps/windows/`                                                                                                                                                                                                  |
-| `@design-engineer`          | `packages/design-tokens/` (token sources, Style Dictionary config + generated outputs)                                                                                                                           |
-| `@devops-engineer`          | `.github/workflows/`, `build-logic/`, `tools/`, `scripts/`, `deploy/`, `gradle/wrapper/`, `config/detekt/`                                                                                                       |
-| `@docs-writer`              | `docs/`, `*.md` files in root                                                                                                                                                                                    |
-| `@security-reviewer`        | Emergency fixer — may implement CRITICAL/HIGH security fixes in any directory (coordinating with the owning agent); review-only for non-security code                                                            |
-| `@accessibility-reviewer`   | Review-only — never edits production code; routes every fix to the owning platform agent                                                                                                                         |
-| `@architect`                | `docs/architecture/`, ADRs; read-only for code                                                                                                                                                                   |
-| `@compliance-specialist`    | `docs/compliance/` — regulatory obligation matrix, jurisdictional data-residency, retention; advisory, review-only on code (routes fixes to owners)                                                              |
-| `@finance-domain`           | `packages/core/` business logic (shared with `@kmp-engineer`)                                                                                                                                                    |
-| `@product-manager`          | `docs/business/roadmap/`, `docs/business/sprints/`, GitHub Issues (read/create)                                                                                                                                  |
-| `@marketing-strategist`     | `docs/marketing/`, `docs/business/marketing/`, app store copy drafts                                                                                                                                             |
-| `@business-analyst`         | `docs/business/pricing/`, `docs/business/revenue/`                                                                                                                                                               |
-| `@qa-tester`                | Read-only on code; orchestrates testing sessions and files GitHub Issues                                                                                                                                         |
-| `@ai-ops-engineer`          | `.github/agents/`, `.github/skills/`, `.github/instructions/`, prompts/evals, AI manifest                                                                                                                        |
-| `@release-manager`          | `.changeset/`, version/release-notes files, store-submission prep docs                                                                                                                                           |
-| `@performance-engineer`     | `performance.budget.json`, profiling/benchmark configs, perf docs                                                                                                                                                |
-| `@data-engineer`            | `docs/analytics/`, `config/analytics/` (net-new), `docs/business/growth/` + telemetry files in `packages/core/.../analytics/` (co-owned w/ `@kmp-engineer`); product/growth analytics, NOT financial reporting   |
-| `@localization-engineer`    | `config/i18n/`, `docs/i18n/` (net-new); locale catalogs, financial terminology                                                                                                                                   |
-| `@experimentation-engineer` | `config/feature-flags/`; A/B tests + staged rollouts (success metrics co-designed w/ `@data-engineer`, validation CI w/ `@devops-engineer`)                                                                      |
-
-**Prepared post-activation ownership (inactive until canonical materialization):**
-
-| Future owner               | Finance overlay scope and handoffs                                                                                                                                                                                                                                                         |
+| Owner                      | Finance overlay scope and handoffs                                                                                                                                                                                                                                                         |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `@native-app-engineer`     | Leads `apps/android/`, `apps/ios/`, `apps/windows/`, `packages/` except `packages/design-tokens/`, and Gradle shared config. `@finance-domain` reviews money behavior; `@data-engineer` co-reviews only product-telemetry contracts.                                                       |
 | `@web-engineer`            | Continues to lead `apps/web/`; consumes shared KMP contracts through the current dual-path integration and does not duplicate shared business logic.                                                                                                                                       |
@@ -419,9 +363,9 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 **Coordination protocol:**
 
 1. **No two agents edit the same file in parallel.** If a task requires two agents to touch the same file, one agent leads and the other reviews.
-2. **Shared config files** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) must be edited by only one agent per fleet run — assign Gradle ownership to the current `@kmp-engineer` or future `@native-app-engineer`, and Node/CI ownership to `@devops-engineer`.
+2. **Shared config files** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) must be edited by only one agent per fleet run — assign Gradle ownership to `@native-app-engineer`, and Node/CI ownership to `@devops-engineer`.
 3. **Agents announce intent** — when starting a fleet task, the orchestrator should note which files each agent will touch in the issue or PR description.
-4. **Schema changes are serialized** — currently `@backend-engineer` writes Supabase migrations and `@kmp-engineer` writes SQLDelight `.sq` files; after activation those owners become `@database-engineer` and `@native-app-engineer`. Both sides stay in one coordinated task, never independent parallel PRs.
+4. **Schema changes are serialized** — `@database-engineer` writes Supabase migrations and PowerSync rules; `@native-app-engineer` writes SQLDelight `.sq` files and client models. Both sides stay in one coordinated task, never independent parallel PRs.
 5. **After parallel work, the last agent to commit runs** the pre-push checklist (`npm run format:check && npx eslint . --max-warnings 0`) **before pushing** to catch any integration issues.
 
 ### Fleet CI Monitoring & Self-Healing
@@ -640,7 +584,9 @@ then leave a clear `## Needs Human Action` note.
 Scope-specific rules live alongside the code — read the relevant one before working in that area:
 
 - Each product repo's root `AGENTS.md` — stack, paths, and product-specific rules.
-- `agents/*.agent.md` — role definitions and boundaries.
+- `agents/*.agent.md` in this backbone, materialized as `.github/agents/*.agent.md` in consumers —
+  role definitions and boundaries. Consumer copies are generated; product-specific stack/path/risk
+  overlays belong in the product's root `AGENTS.md` or scoped instructions.
 - `skills/<name>/SKILL.md` — reusable task playbooks; read the relevant one before acting.
 - `instructions/*.instructions.md` — path-scoped coding standards.
 <!-- studio:base:end -->

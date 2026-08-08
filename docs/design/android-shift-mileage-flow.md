@@ -1,7 +1,7 @@
 # Android — One-Handed Shift Mileage Flow (Start / Pause / End)
 
 > **Status:** DRAFT — design only (pending human review)
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 > **Issue:** [#2518](https://github.com/jrmoulckers/finance/issues/2518) · **Part of** [#2137](https://github.com/jrmoulckers/finance/issues/2137)
 > **Platform:** Android phone (one-handed, on-the-go), Compose + Material 3
 > **Last Updated:** 2026-06-22

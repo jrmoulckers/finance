@@ -103,7 +103,7 @@ flowchart TD
   at save time (category, amount, tags, memo) — see
   [§6](#6-transaction-draft-contract).
 - If a new preset or rule is needed, it is added in `packages/*` by
-  `@kmp-engineer`; this design does not implement it here.
+  `@native-app-engineer`; this design does not implement it here.
 
 ---
 
@@ -410,7 +410,7 @@ human-gated by #1242 — see
 
 1. **Category mapping** `ScheduleCExpenseCategory` → household `Category` row:
    owned by KMP/repository. Does a mapping table already exist, or does
-   `@kmp-engineer` need to add one? (Tracked separately; does not block the sheet.)
+   `@native-app-engineer` need to add one? (Tracked separately; does not block the sheet.)
 2. **Deductible-amount persistence**: tag/metadata vs. a dedicated field — KMP
    decision; this design carries it via tags pending that call.
 3. **Vehicle selector** scope here vs. fully in

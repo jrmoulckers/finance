@@ -194,13 +194,13 @@ explicitly (what's real vs planned). To promote a planned locale to real:
 
 > Ownership: the canonical catalog lives here (`@localization-engineer`). The KMP
 > `Strings` expect/actual mechanism in `packages/core/.../i18n/` is
-> `@kmp-engineer` — coordinate there; don't edit it from `config/i18n`.
+> `@native-app-engineer` — coordinate there; don't edit it from `config/i18n`.
 
 ## Scope boundary
 
 This PR is **i18n-only**: locale catalogs, glossary, docs, and the validator. The
 remaining work in #2166 — replacing hardcoded Kotlin strings with
-`stringResource(...)` in Compose screens — is owned by the Android platform agent.
+`stringResource(...)` in Compose screens — is owned by `@native-app-engineer`.
 The complete `es` catalog and `a11y_*` labels here are the inputs that wiring
 depends on.
 

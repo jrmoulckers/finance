@@ -60,7 +60,7 @@ mode** by default.
 
 - **No new money math in Compose.** Totals, remaining balances, due-date
   bucketing, and projections come from `packages/core` (see §2–§3). A gap in
-  shared rules is a `packages/` task owned by @kmp-engineer, not a Compose
+  shared rules is a `packages/` task owned by @native-app-engineer, not a Compose
   workaround.
 - **No actuals / cash-flow analytics here.** Budgeted-vs-actual, per-guest
   estimates, and remaining-cash views are designed in the sibling doc
@@ -108,7 +108,7 @@ flowchart LR
 - **All amounts are `Cents`/`Money` from shared code.** Compose never adds,
   subtracts, or rounds money. It formats locale-aware strings for display only.
 - The **proposed shared "wedding planner aggregate"** (a thin `packages/core`
-  addition owned by @kmp-engineer) composes existing engines; this Android doc
+  addition owned by @native-app-engineer) composes existing engines; this Android doc
   consumes it and does not define it. Until it lands, the workspace renders an
   empty/seed state.
 
@@ -119,21 +119,21 @@ flowchart LR
 The workspace composes capabilities that already exist in the shared layer or are
 a small, well-scoped addition to it.
 
-| Concern                       | Source of truth (do **not** reimplement in Compose)                                                                                                                                                                           | Today's state                                      |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Vendor totals / remaining     | [`FinancialAggregator`](../../packages/core/src/commonMain/kotlin/com/finance/core/aggregation/FinancialAggregator.kt)                                                                                                        | Exists: totals, net cash flow, spend by category   |
-| Installment / due-date bucket | [`BillReminderEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/recurring/BillReminderEngine.kt)                                                                                                            | Exists: `scheduleNextN`, `generateMonthlyCalendar` |
-| Installment record analog     | [`LiabilityInstallment`](../../packages/models/src/commonMain/kotlin/com/finance/models/LiabilityInstallment.kt)                                                                                                              | Exists: due date + amount + paid model to mirror   |
-| Goal linkage (wedding fund)   | [`Goal`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt)                                                                                                                                              | Exists: target/current/progress, `householdId`     |
-| Partner partition & roles     | [`DataPartitioning`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/DataPartitioning.kt) + [`RbacPermissions`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/RbacPermissions.kt) | Exists: `filterVisible`, `partition`, role gates   |
-| Web parity reference          | Web life-event wedding concept (reuse copy/semantics, do not fork)                                                                                                                                                            | Exists: product reference per #2645 notes          |
-| Wedding planner aggregate     | **Proposed** thin `packages/core` addition that composes the rows above                                                                                                                                                       | Not yet — @kmp-engineer follow-up under #2145      |
+| Concern                       | Source of truth (do **not** reimplement in Compose)                                                                                                                                                                           | Today's state                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Vendor totals / remaining     | [`FinancialAggregator`](../../packages/core/src/commonMain/kotlin/com/finance/core/aggregation/FinancialAggregator.kt)                                                                                                        | Exists: totals, net cash flow, spend by category     |
+| Installment / due-date bucket | [`BillReminderEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/recurring/BillReminderEngine.kt)                                                                                                            | Exists: `scheduleNextN`, `generateMonthlyCalendar`   |
+| Installment record analog     | [`LiabilityInstallment`](../../packages/models/src/commonMain/kotlin/com/finance/models/LiabilityInstallment.kt)                                                                                                              | Exists: due date + amount + paid model to mirror     |
+| Goal linkage (wedding fund)   | [`Goal`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt)                                                                                                                                              | Exists: target/current/progress, `householdId`       |
+| Partner partition & roles     | [`DataPartitioning`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/DataPartitioning.kt) + [`RbacPermissions`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/RbacPermissions.kt) | Exists: `filterVisible`, `partition`, role gates     |
+| Web parity reference          | Web life-event wedding concept (reuse copy/semantics, do not fork)                                                                                                                                                            | Exists: product reference per #2645 notes            |
+| Wedding planner aggregate     | **Proposed** thin `packages/core` addition that composes the rows above                                                                                                                                                       | Not yet — @native-app-engineer follow-up under #2145 |
 
 > **Models** ([`Goal`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt),
 > [`Budget`](../../packages/models/src/commonMain/kotlin/com/finance/models/Budget.kt))
 > already carry `householdId`/`ownerId`, so partner scoping is consistent with
 > the rest of the app. The vendor/deposit records the workspace reads are a
-> shared-model addition (owned by @kmp-engineer); Compose renders whatever the
+> shared-model addition (owned by @native-app-engineer); Compose renders whatever the
 > shared layer exposes.
 
 ---
@@ -377,7 +377,7 @@ waits on #1242.
   [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md)
   §2 "Free local build/test paths."
 - The **proposed wedding planner aggregate** is a `packages/core` change (owned
-  by @kmp-engineer) — also unblocked; not store-gated.
+  by @native-app-engineer) — also unblocked; not store-gated.
 
 ### 🔒 Distribution tail — gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242)
 

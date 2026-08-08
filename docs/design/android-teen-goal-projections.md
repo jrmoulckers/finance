@@ -134,7 +134,7 @@ flowchart LR
 ```
 
 > This document **describes** the boundary. It does **not** implement KMP changes —
-> `packages/core` is owned by @kmp-engineer, and the web engine is owned by
+> `packages/core` is owned by @native-app-engineer, and the web engine is owned by
 > @web-engineer. Compose is a pure renderer of shared state. The current
 > [`Goal`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt)
 > model already carries `targetAmount`, `currentAmount`, and `targetDate`, which are
@@ -364,7 +364,7 @@ The shared projection model is delivered by KMP `packages/core` (the web
 - [`goal-projection-engine.ts`](../../apps/web/src/lib/savings/goal-projection-engine.ts) — web parity reference (owned by @web-engineer)
 - [`GoalProjection.tsx`](../../apps/web/src/components/savings/GoalProjection.tsx) — web projection UI parity
 - [`GoalsScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/screens/GoalsScreen.kt) — host surface
-- [`Goal.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt) — shared goal model (owned by @kmp-engineer)
+- [`Goal.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt) — shared goal model (owned by @native-app-engineer)
 
 **Issues**
 

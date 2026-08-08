@@ -130,7 +130,7 @@ flowchart LR
 ```
 
 > The bridge method shown is an **estimate** of the contract iOS needs; its final
-> shape is decided by `@kmp-engineer` / `@architect`. iOS must not inline the
+> shape is decided by `@native-app-engineer` / `@architect`. iOS must not inline the
 > formula even temporarily.
 
 ## Interaction & drill-in

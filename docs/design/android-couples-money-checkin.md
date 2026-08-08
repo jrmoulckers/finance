@@ -63,7 +63,7 @@ to be **collaborative and never accusatory**.
   and respects the household privacy boundary (see §2–§3).
 - **No new shared rules here.** Where prompt content references shared figures
   (e.g., wedding spend), it consumes existing shared summaries; missing summaries
-  are an @kmp-engineer follow-up under #2150, not a Compose workaround.
+  are an @native-app-engineer follow-up under #2150, not a Compose workaround.
 - **No notifications via AlarmManager/JobScheduler.** Reminders use WorkManager
   - the existing push path (§10).
 - **No store distribution work** (gated by #1242 — see §15).
@@ -367,7 +367,7 @@ waits on #1242.
   [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md)
   §2 "Free local build/test paths."
 - Any required **shared** summary is a `packages/core` change (owned by
-  @kmp-engineer) — also unblocked; not store-gated.
+  @native-app-engineer) — also unblocked; not store-gated.
 
 ### 🔒 Distribution tail — gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242)
 

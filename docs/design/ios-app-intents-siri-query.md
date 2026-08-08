@@ -126,7 +126,7 @@ flowchart LR
   over exhaustively.
 
 > Any change to `QueryPlanner` / `FinanceQuery` shape is a **KMP change** and
-> must be proposed to @kmp-engineer / @architect via ADR — this doc does not
+> must be proposed to @native-app-engineer / @architect via ADR — this doc does not
 > implement it.
 
 ## 4. Supported Local Intents

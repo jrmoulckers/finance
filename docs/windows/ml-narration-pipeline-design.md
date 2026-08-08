@@ -66,7 +66,7 @@ step explicitly in [§11](#11-toolchain-blocked--human-action-items).
 
 ### Non-Goals
 
-- Implementing `packages/core` narration logic (owned by `@kmp-engineer`).
+- Implementing `packages/core` narration logic (owned by `@native-app-engineer`).
 - Implementing the Windows UI / Narrator wiring (owned by the Windows platform agent).
 - Provisioning ONNX Runtime native libraries or CI runners (owned by `@devops-engineer`).
 - Selecting or licensing a specific production model (requires human legal sign-off).
@@ -638,17 +638,17 @@ These steps require native toolchain provisioning, cross-agent implementation, o
 human legal/security sign-off. They are **out of scope for this design PR** and are
 flagged for follow-up issues.
 
-| #   | Item                                                                                            | Owner / Gate                       | Blocking?             |
-| --- | ----------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------- |
-| 1   | Provision ONNX Runtime + DirectML native libraries and package them in the MSI                  | `@devops-engineer` + Windows agent | **Toolchain-blocked** |
-| 2   | Configure a Windows CI runner that can load ONNX models on CPU/DirectML EP                      | `@devops-engineer`                 | **Toolchain-blocked** |
-| 3   | Select and **license-clear** the production model(s) (weights redistribution)                   | **Human — legal sign-off**         | **Human-gated**       |
-| 4   | External **privacy audit** before any abstractive-summarization model ships                     | **Human — privacy audit**          | **Human-gated**       |
-| 5   | Implement `FinancialStateSnapshot`, `TemplateNarrator`, `GroundingValidator` in `packages/core` | `@kmp-engineer`                    | Cross-agent           |
-| 6   | Implement Windows ONNX adapter + Narrator/UIA projection in `apps/windows`                      | Windows platform agent             | Cross-agent           |
-| 7   | Add Model Registry manifest entries (`narration-*`, `tier: premium`, `fallback: template`)      | `@backend-engineer` / `@devops`    | Cross-agent           |
-| 8   | Author the committed fixture/golden corpus and wire the golden + egress test targets            | `@kmp-engineer` (+ this design)    | Follow-up             |
-| 9   | Record `ml-transcripts/*` once a model exists (for replay tests)                                | `@kmp-engineer` after #3           | Depends on #3         |
+| #   | Item                                                                                            | Owner / Gate                           | Blocking?             |
+| --- | ----------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------- |
+| 1   | Provision ONNX Runtime + DirectML native libraries and package them in the MSI                  | `@devops-engineer` + Windows agent     | **Toolchain-blocked** |
+| 2   | Configure a Windows CI runner that can load ONNX models on CPU/DirectML EP                      | `@devops-engineer`                     | **Toolchain-blocked** |
+| 3   | Select and **license-clear** the production model(s) (weights redistribution)                   | **Human — legal sign-off**             | **Human-gated**       |
+| 4   | External **privacy audit** before any abstractive-summarization model ships                     | **Human — privacy audit**              | **Human-gated**       |
+| 5   | Implement `FinancialStateSnapshot`, `TemplateNarrator`, `GroundingValidator` in `packages/core` | `@native-app-engineer`                 | Cross-agent           |
+| 6   | Implement Windows ONNX adapter + Narrator/UIA projection in `apps/windows`                      | Windows platform agent                 | Cross-agent           |
+| 7   | Add Model Registry manifest entries (`narration-*`, `tier: premium`, `fallback: template`)      | `@backend-engineer` / `@devops`        | Cross-agent           |
+| 8   | Author the committed fixture/golden corpus and wire the golden + egress test targets            | `@native-app-engineer` (+ this design) | Follow-up             |
+| 9   | Record `ml-transcripts/*` once a model exists (for replay tests)                                | `@native-app-engineer` after #3        | Depends on #3         |
 
 Items 5–9 can proceed for the **deterministic template layer and its golden harness
 today**; only the ML-specific portions (1–4, and the ML parts of 6–9) are blocked.

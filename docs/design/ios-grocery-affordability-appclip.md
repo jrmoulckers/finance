@@ -9,7 +9,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2611](https://github.com/jrmoulckers/finance/issues/2611) — Part of [#2199](https://github.com/jrmoulckers/finance/issues/2199)
 **Platform:** iOS / iPadOS (WidgetKit + App Clip + SwiftUI, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-grocery-safe-to-spend-card.md](./ios-grocery-safe-to-spend-card.md) · [ios-widget-freshness-pipeline.md](./ios-widget-freshness-pipeline.md) · [ios-today-spend-funmoney-widget.md](./ios-today-spend-funmoney-widget.md) · [ios-appclip-widget-quickentry-presets.md](./ios-appclip-widget-quickentry-presets.md) · [ios-noncolor-financial-state-cues.md](./ios-noncolor-financial-state-cues.md) · [data-visualization.md](./data-visualization.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [cognitive-accessibility.md](./cognitive-accessibility.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -298,7 +298,7 @@ flowchart LR
 - **Estimate (label):** the affordability payload the cache needs (remaining,
   limit, `state`, currency, and the write time) is an extension of the existing
   `widget.budgets` cache or a small sibling key — its final shape is owned by
-  `@kmp-engineer` / `@architect` (math) and the freshness-pipeline doc (caching),
+  `@native-app-engineer` / `@architect` (math) and the freshness-pipeline doc (caching),
   via ADR. iOS must **not** inline the safe-to-spend formula even temporarily.
 - The **interactive category switch** writes only a _selection_ (chosen category
   id) to the App Group — no money mutation — staying within WidgetKit's
@@ -363,7 +363,7 @@ flowchart LR
    neutral helper and **no** real balance; with the app installed, it hands off.
 9. **Dynamic Type (snapshot):** small + medium + accessory families at `.large`
    and `.accessibility5` — figures/"as of" wrap, nothing truncates.
-10. **Shared (KMP, owned by @kmp-engineer):** safe-to-spend correctness and state
+10. **Shared (KMP, owned by @native-app-engineer):** safe-to-spend correctness and state
     thresholds are tested in `packages/core`, not iOS.
 
 ---

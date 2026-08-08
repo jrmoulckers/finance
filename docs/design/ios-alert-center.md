@@ -41,7 +41,7 @@ separates runnable-today shared `commonTest` work from native iOS tests deferred
   scheduling/permission, `.onOpenURL` deep-link handling, Dynamic Type layout, and VoiceOver
   semantics — live in `apps/ios`.
 
-The shared rule engine in §4 is **proposed for `@kmp-engineer`** (it touches `packages/core`,
+The shared rule engine in §4 is **proposed for `@native-app-engineer`** (it touches `packages/core`,
 outside the iOS agent's ownership). This doc specifies the contract; it does not implement it.
 
 ---
@@ -160,7 +160,7 @@ actions are bounded, non-destructive, and never mutate financial data without co
 
 ## 4. Shared alert-rule engine (packages/core)
 
-> **Proposed for `@kmp-engineer`.** This namespace does not exist yet. iOS consumes it via the KMP
+> **Proposed for `@native-app-engineer`.** This namespace does not exist yet. iOS consumes it via the KMP
 > bridge; it must not be re-implemented in Swift (the drift risk this epic exists to remove).
 
 Add a platform-neutral `packages/core/.../alerts` namespace that evaluates financial state into a
@@ -286,7 +286,7 @@ bar. The following **additions are proposed** (parity with the web routes in
 | `goal` (rules 8–9)          | **`goal(id:)` — NEW**           | **`/goal/{id}`**                | `.goals` (exists, no route today)  | `/goals/:id` (`:355`)           |
 | center (system notif tap)   | **`alertCenter` — NEW**         | **`/alerts`**                   | Dashboard → push `AlertCenterView` | (web: header bell)              |
 
-> **Bills gap (flagged for `@architect` / `@ios-engineer`).** Web has full `/bills`, `/bills/:id`,
+> **Bills gap (flagged for `@architect` / `@native-app-engineer`).** Web has full `/bills`, `/bills/:id`,
 > `/bills/new` routes (`routes.tsx:543–563`) but iOS has **no Bills tab and no bill detail surface**
 > in `MainTabView`. A `bill_due` deep link therefore has nowhere to land today. The minimum to make
 > rules 6–7 actionable is a bill-detail surface reachable from the deep link; until it exists, the
@@ -389,7 +389,7 @@ block.
    (`GoalItem.swift` only computes `progress`, line 61). The new shared rule defines "behind pace"
    as: the elapsed-time fraction of `(targetDate − createdAt)` exceeds the progress fraction by more
    than the `paceSensitivity` band (medium = 10 percentage points), modelled on the budget
-   `SpendingPace` shape (`types.ts:152–185`). Proposed for `@kmp-engineer` (§4, §5 rule 9).
+   `SpendingPace` shape (`types.ts:152–185`). Proposed for `@native-app-engineer` (§4, §5 rule 9).
 3. **Thresholds & opt-in posture = web parity, not new invention** — budget 50/75/90/100
    (`types.ts:87`), goal 25/50/75/100 (`:90`), bill lead days 7/3/0 (`:93`), large-transaction
    50 000¢ (`:280,338`). Rule classes on-by-default in-app; per-entity bill/balance configs opt-in
@@ -405,6 +405,6 @@ block.
 **Open items flagged for humans / other agents (not guessed):**
 
 - **Bills surface gap** — iOS has no Bills tab or bill-detail view; `bill(id:)` deep links have
-  nowhere to land. Prerequisite for rules 6–7 (§6b). For `@architect` / `@ios-engineer`.
-- **`packages/core` alert engine** — §4 is proposed-for-`@kmp-engineer`; this iOS doc specifies the
+  nowhere to land. Prerequisite for rules 6–7 (§6b). For `@architect` / `@native-app-engineer`.
+- **`packages/core` alert engine** — §4 is proposed-for-`@native-app-engineer`; this iOS doc specifies the
   contract but does not implement `packages/*` code.

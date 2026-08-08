@@ -10,7 +10,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2591](https://github.com/jrmoulckers/finance/issues/2591) — Part of [#2162](https://github.com/jrmoulckers/finance/issues/2162)
 **Platform:** iOS / iPadOS (SwiftUI + Swift Charts, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-savings-rate-dashboard-card.md](./ios-savings-rate-dashboard-card.md) · [ios-net-worth-trend-chart.md](./ios-net-worth-trend-chart.md) · [ios-chart-voiceover-navigation.md](./ios-chart-voiceover-navigation.md) · [ios-chart-summaries-data-tables.md](./ios-chart-summaries-data-tables.md) · [ios-noncolor-financial-state-cues.md](./ios-noncolor-financial-state-cues.md) · [data-visualization.md](./data-visualization.md) · [chart-component-specs.md](./chart-component-specs.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -302,7 +302,7 @@ flowchart LR
   `[MonthlySavingsRate]` (month anchor + rate + an `isDefined` flag for the
   zero-income case) would be cleaner than N per-month calls and keeps the
   zero-income decision in shared code. Its exact shape is decided by
-  `@kmp-engineer` / `@architect` via the normal ADR path — **not** implemented
+  `@native-app-engineer` / `@architect` via the normal ADR path — **not** implemented
   here, and iOS must not inline the per-month loop's business rules even
   temporarily.
 - iOS owns layout, the chart, the range control, formatting, accessibility text
@@ -354,7 +354,7 @@ flowchart LR
    `.large` and `.accessibility5`; assert the delta wraps and nothing clips.
 7. **Privacy (snapshot/unit):** with amount-hiding on, assert the chart, header,
    and rows remain visible (percent-only) and no masked dollar value appears.
-8. **Shared (KMP, owned by @kmp-engineer):** savings-rate correctness per month,
+8. **Shared (KMP, owned by @native-app-engineer):** savings-rate correctness per month,
    rounding, and the income = 0 boundary are tested in `packages/core`, not iOS.
 
 ---
@@ -396,6 +396,6 @@ See [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md).
    transactions, or stay read-only context for now? Default: read-only.
 4. **Shared series surface:** adopt the estimated `[MonthlySavingsRate]` bridge
    convenience ([§10](#10-native--kmp-boundary)) or keep N per-month calls on
-   iOS? Decision owned by `@kmp-engineer` / `@architect`.
+   iOS? Decision owned by `@native-app-engineer` / `@architect`.
 5. **Target framing:** once goals land (#2162), should the chart show a target
    band (e.g. 20%)? Deferred until goals exist.

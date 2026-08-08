@@ -234,7 +234,7 @@ flowchart LR
   and renders it.
 
 > This document **describes** the boundary. It does not implement KMP changes —
-> `packages/core` is owned by @kmp-engineer.
+> `packages/core` is owned by @native-app-engineer.
 
 ---
 
@@ -372,7 +372,7 @@ tailor is delivered through
 - [`OnboardingScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/onboarding/OnboardingScreen.kt) — existing onboarding surface
 - [`OnboardingViewModel.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/onboarding/OnboardingViewModel.kt) — existing onboarding state
 - [`OnboardingNavigation.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/onboarding/OnboardingNavigation.kt) — onboarding navigation
-- [`StringProvider.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/StringProvider.kt) — shared string provider (owned by @kmp-engineer)
+- [`StringProvider.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/StringProvider.kt) — shared string provider (owned by @native-app-engineer)
 
 **Issues**
 

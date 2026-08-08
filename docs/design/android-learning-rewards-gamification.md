@@ -86,7 +86,7 @@ sharing of wins).
 **Non-Goals**
 
 - Implementing the reward economy, achievement evaluation, or streak transitions — that
-  is the shared `GamificationEngine` / `packages/core` (owned by @kmp-engineer), with
+  is the shared `GamificationEngine` / `packages/core` (owned by @native-app-engineer), with
   the web gamification + wellness libraries as parity.
 - Owning **streak near-win visuals** — those belong to
   [android-streak-near-win-states.md](android-streak-near-win-states.md); this doc
@@ -157,7 +157,7 @@ flowchart LR
 ```
 
 > This document **describes** the boundary. It does **not** implement KMP changes —
-> `GamificationEngine` and the reward events are owned by @kmp-engineer; the web
+> `GamificationEngine` and the reward events are owned by @native-app-engineer; the web
 > gamification/wellness libraries by @web-engineer. The Android
 > [`GamificationViewModel`](../../apps/android/src/main/kotlin/com/finance/android/ui/gamification/GamificationViewModel.kt)
 > and
@@ -393,7 +393,7 @@ are the parity reference); Compose stays render-only.
 
 **Android / web / KMP (read-only boundary)**
 
-- [`GamificationEngine.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/gamification/GamificationEngine.kt) — shared reward rules (owned by @kmp-engineer)
+- [`GamificationEngine.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/gamification/GamificationEngine.kt) — shared reward rules (owned by @native-app-engineer)
 - [`GamificationTypes.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/gamification/GamificationTypes.kt) — achievement / streak / profile types
 - [`GamificationViewModel.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/gamification/GamificationViewModel.kt) — existing gamification state seam
 - [`GamificationScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/gamification/GamificationScreen.kt) — achievements area host

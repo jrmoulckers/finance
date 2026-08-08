@@ -24,14 +24,14 @@ operator with the right environment.
 
 ## 1. Scope
 
-| In scope                                                                                   | Out of scope                                                          |
-| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| Native widget surface + deep-link architecture for **Today Spend** & **Predicted Balance** | Forecasting algorithm itself (owned by `packages/` → @kmp-engineer)   |
-| Windows App SDK / Widgets (`IWidgetProvider`) integration approach                         | Android/iOS/web widget parity (owned by the respective app engineers) |
-| MSIX manifest requirements + Microsoft Store constraints                                   | Backend/API changes (`services/api/` → @backend-engineer)             |
-| Deep-link routing into in-app finance views                                                | New CI workflow YAML (`.github/workflows/` → @devops-engineer)        |
-| Privacy (hide sensitive amounts on lock), stale/offline state                              |                                                                       |
-| In-app `WidgetBoardScreen` fallback path                                                   |                                                                       |
+| In scope                                                                                   | Out of scope                                                               |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Native widget surface + deep-link architecture for **Today Spend** & **Predicted Balance** | Forecasting algorithm itself (owned by `packages/` → @native-app-engineer) |
+| Windows App SDK / Widgets (`IWidgetProvider`) integration approach                         | Android/iOS/web widget parity (owned by the respective app engineers)      |
+| MSIX manifest requirements + Microsoft Store constraints                                   | Backend/API changes (`services/api/` → @backend-engineer)                  |
+| Deep-link routing into in-app finance views                                                | New CI workflow YAML (`.github/workflows/` → @devops-engineer)             |
+| Privacy (hide sensitive amounts on lock), stale/offline state                              |                                                                            |
+| In-app `WidgetBoardScreen` fallback path                                                   |                                                                            |
 
 ---
 
@@ -102,7 +102,7 @@ manifest definition + deep-link route. No new aggregation is required.
 | Tap target          | `finance://forecast` → in-app forecast / cash-flow view                                                                  |
 | Data source         | **New** `WidgetData.predictedBalanceFormatted` (+ period + delta) sourced from the shared forecast engine in `packages/` |
 
-> **Dependency:** the projection model is owned by `packages/` (@kmp-engineer).
+> **Dependency:** the projection model is owned by `packages/` (@native-app-engineer).
 > The Windows app must consume it through a repository/use-case exposed to
 > `jvmMain`, mirroring how Android consumes the same engine. If no forecast
 > use-case is yet exported, this card is **blocked on a shared-package API** and
@@ -475,7 +475,7 @@ stateDiagram-v2
 | P5    | Lock-aware redaction + stale/offline rendering                                                            | No                                     |
 | P6    | `IWidgetProvider` COM server (Windows App SDK)                                                            | **🔒 Yes — Visual Studio + WinAppSDK** |
 | P7    | MSIX build + signing + Store/Partner Center submission                                                    | **🔒 Yes — Windows SDK tools + cert**  |
-| P8    | Predicted-balance forecast API from `packages/`                                                           | Cross-team (@kmp-engineer)             |
+| P8    | Predicted-balance forecast API from `packages/`                                                           | Cross-team (@native-app-engineer)      |
 
 Phases **P1–P5** are buildable in this repo with the existing JVM toolchain and
 should land first behind a feature flag. **P6–P8** are gated on human-operated

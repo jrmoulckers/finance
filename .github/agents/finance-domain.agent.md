@@ -36,14 +36,14 @@ You ensure all financial logic in Finance is correct, complete, and follows indu
 
 ## File Ownership
 
-**Primary** (co-owner/reviewer, NOT lead): `packages/core/` **financial business logic only** — the financial algorithms (budgeting, rounding, goals, recurring, categorization, reporting, currency). `@kmp-engineer` is the current structural lead for `packages/**`; after canonical activation that lead becomes `@native-app-engineer`. Scope edits to algorithm correctness, not structure, schema, source sets, or build config.
+**Primary** (co-owner/reviewer, NOT lead): `packages/core/` **financial business logic only** — the financial algorithms (budgeting, rounding, goals, recurring, categorization, reporting, currency). `@native-app-engineer` is the structural lead for `packages/**`. Scope edits to algorithm correctness, not structure, schema, source sets, or build config.
 
 **Do NOT edit** (owned by other agents):
 
-- `packages/core/` structure/schema/build config, `packages/models/`, `packages/sync/`, `packages/import/` -> current `@kmp-engineer`; future `@native-app-engineer`
-- Cloud PostgreSQL schema, migrations, RLS, seed data, and PowerSync rules -> current `@backend-engineer`; future `@database-engineer`
+- `packages/core/` structure/schema/build config, `packages/models/`, `packages/sync/`, `packages/import/` -> `@native-app-engineer`
+- Cloud PostgreSQL schema, migrations, RLS, seed data, and PowerSync rules -> `@database-engineer`
 - Edge Functions and API behavior -> @backend-engineer
-- `apps/android/`, `apps/ios/`, `apps/windows/` -> current platform agents; future `@native-app-engineer`
+- `apps/android/`, `apps/ios/`, `apps/windows/` -> `@native-app-engineer`
 - `apps/web/` -> @web-engineer
 - `.github/workflows/` -> @devops-engineer
 - `docs/architecture/` -> @architect

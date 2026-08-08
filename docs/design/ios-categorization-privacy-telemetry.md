@@ -271,7 +271,7 @@ numbers-only quality stats. No transactions are ever shared."`
   [#2614](https://github.com/jrmoulckers/finance/issues/2614) that emit
   content-free events.
 
-**Shared dependencies (KMP, owned by @kmp-engineer):**
+**Shared dependencies (KMP, owned by @native-app-engineer):**
 
 - [`SmartCategorizationEngine.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/categorization/SmartCategorizationEngine.kt)
   — already exposes `getStats()` (`EngineStats`), a precedent for content-free

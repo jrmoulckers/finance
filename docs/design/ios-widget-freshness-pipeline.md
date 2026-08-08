@@ -8,7 +8,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2585](https://github.com/jrmoulckers/finance/issues/2585) — Part of [#2159](https://github.com/jrmoulckers/finance/issues/2159)
 **Platform:** iOS / iPadOS (Swift concurrency + WidgetKit, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-today-spend-funmoney-widget.md](./ios-today-spend-funmoney-widget.md) · [ios-savings-rate-dashboard-card.md](./ios-savings-rate-dashboard-card.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [data-visualization.md](./data-visualization.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -287,7 +287,7 @@ flowchart LR
 - The coordinator, `WidgetDataWriter`, App Group plumbing, coalescing, and reload
   scheduling are **iOS-only** concerns.
 - Any _new_ shared aggregation (e.g. day-windowed spend) is proposed to
-  @kmp-engineer via ADR — not added in this iOS work.
+  @native-app-engineer via ADR — not added in this iOS work.
 
 ---
 
@@ -334,7 +334,7 @@ bridge ([§10](#10-native--kmp-boundary)).
    whose payloads changed (no `reloadAllTimelines` from the host).
 7. **Lifecycle (XCUITest, smallest):** background the app after a save; relaunch
    and assert the cache timestamp advanced (integration smoke).
-8. **Shared (KMP, owned by @kmp-engineer):** aggregation correctness is tested in
+8. **Shared (KMP, owned by @native-app-engineer):** aggregation correctness is tested in
    `packages/core`, not iOS.
 
 ---

@@ -155,7 +155,7 @@ flowchart LR
 ```
 
 > This document **describes** the boundary. It does **not** implement KMP changes —
-> `packages/core` is owned by @kmp-engineer and the web engines by @web-engineer.
+> `packages/core` is owned by @native-app-engineer and the web engines by @web-engineer.
 > Compose is a pure renderer of shared state. The existing
 > [`Liability`](../../packages/models/src/commonMain/kotlin/com/finance/models/Liability.kt)
 > model already carries `householdId`, `ownerId`, `type`, `remainingBalance`,
@@ -392,7 +392,7 @@ render-only.
 - [`debt-types.ts`](../../apps/web/src/lib/debt-types.ts) — debt classification types
 - [`debt-progress-rings.ts`](../../apps/web/src/lib/debt/debt-progress-rings.ts) — payoff progress visuals parity
 - [`PlanningScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/screens/PlanningScreen.kt) — candidate entry-point host
-- [`Liability.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Liability.kt) — shared liability model (owned by @kmp-engineer)
+- [`Liability.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Liability.kt) — shared liability model (owned by @native-app-engineer)
 - [`LiabilityInstallment.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/LiabilityInstallment.kt) — installment schedule model
 - [`DataPartitioning.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/DataPartitioning.kt) — shared visibility/partition rules
 

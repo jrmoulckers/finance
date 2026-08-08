@@ -6,59 +6,39 @@ parameters:
     description: Number of days of inactivity before a PR or issue is considered stale
     default: 30
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Cleanup — Project Hygiene
 
-Clean up stale worktrees, PRs, issues, and other project debris.
+Identify stale worktrees, PRs, issues, and branches. Do not perform destructive remote operations without human approval.
 
 ## Execution Plan
 
 ### 1. Prune Stale Worktrees
 
 ```bash
-npm run cleanup:worktrees
-```
-
-This runs `node tools/cleanup-worktrees.js` which:
-
-- Scans all worktrees
-- Identifies branches that are merged to main or deleted on remote
-- Reports which worktrees can be safely removed
-
-Review the output. For worktrees confirmed safe to remove:
-
-```bash
-node tools/cleanup-worktrees.js --force
-```
-
-Also check for orphaned worktrees (worktree directory exists but git metadata is broken):
-
-```bash
 git worktree list
 git worktree prune
 ```
 
+Flag worktrees whose branches are merged, deleted on the remote, or no longer have an open PR. Remove only worktrees you created and can prove are safe.
+
 ### 2. Identify Stale Pull Requests
 
 ```bash
-gh pr list --state open --json number,title,headRefName,author,createdAt,updatedAt,statusCheckRollup
+gh pr list --state open --limit 200 --json number,title,headRefName,author,createdAt,updatedAt,isDraft,statusCheckRollup,mergeable,reviewDecision
 ```
 
 Flag PRs that:
 
-- Have not been updated in **{{ stale-days }}** days
-- Have failing CI with no recent fix attempts
-- Have merge conflicts that have persisted for over 7 days
-- Are draft PRs with no activity
+- Have not been updated in **{{ stale-days }}** days.
+- Have failing CI with no recent fix attempt.
+- Have merge conflicts older than 7 days.
+- Are drafts with no activity.
 
-For each stale PR, report:
+Report PR number, title, author, last activity, CI status, and recommended action: close / rebase / nudge author / keep.
 
-- PR number, title, author
-- Last activity date
-- Current CI status
-- Recommended action: close / rebase / nudge author
-
-> **Do NOT close PRs automatically.** List them for human review with recommendations.
+> Do **not** close PRs automatically. List recommendations for human review unless the PR is yours and the repo rules explicitly allow closure.
 
 ### 3. Identify Stale Issues
 
@@ -68,60 +48,56 @@ gh issue list --state open --limit 200 --json number,title,labels,createdAt,upda
 
 Flag issues that:
 
-- Have not been updated in **{{ stale-days }}** days and have no linked PR
-- Are assigned but have no activity
-- Have no labels (may be untriaged)
+- Have not been updated in **{{ stale-days }}** days and have no linked PR.
+- Are assigned but inactive.
+- Have no labels or missing owner.
 
-### 4. Check for Duplicate Issues
+### 4. Check for Duplicates
 
-Scan issue titles for potential duplicates:
-
-- Group issues by similar keywords
-- Flag pairs with high title similarity
-- Check if multiple issues reference the same component/feature
+Group issues by similar titles, labels, components, or linked files. Flag likely duplicates for human triage.
 
 ### 5. Branch Cleanup
 
 ```bash
 git fetch --prune origin
-git branch -r --merged origin/main
+git branch -r --merged origin/<default-branch>
 ```
 
-List remote branches that are merged to main but not yet deleted. These are safe to clean up (but flag for human deletion since this is a remote operation).
+List remote branches already merged to the default branch. Remote deletion is human-gated unless the repo's rules explicitly grant it.
 
 ### 6. Report
 
-```
-## 🧹 Cleanup Report
+```markdown
+## Cleanup Report
 
 ### Worktrees
-- Pruned: X worktrees removed
-- Active: Y worktrees still in use
-- Orphaned: Z worktrees need manual cleanup
+- Pruned: X
+- Active: Y
+- Needs manual cleanup: Z
 
 ### Stale PRs ({{ stale-days }}+ days inactive)
 | PR | Title | Last Activity | CI | Action |
-|----|-------|---------------|-----|--------|
+| --- | --- | --- | --- | --- |
 | ... |
 
 ### Stale Issues ({{ stale-days }}+ days inactive)
 | # | Title | Labels | Last Activity | Action |
-|---|-------|--------|---------------|--------|
+| --- | --- | --- | --- | --- |
 | ... |
 
 ### Potential Duplicates
 | Issue A | Issue B | Similarity | Recommendation |
-|---------|---------|-----------|----------------|
+| --- | --- | --- | --- |
 | ... |
 
-### Merged Branches (safe to delete)
-| Branch | Merged PR |
-|--------|-----------|
+### Merged Branches
+| Branch | Merged PR / Evidence |
+| --- | --- |
 | ... |
 
 ### Recommendations
-- [ ] Close X stale PRs (listed above)
-- [ ] Close Y stale issues (listed above)
-- [ ] Delete Z merged branches
-- [ ] Review N potential duplicate issues
+- [ ] Close or update stale PRs listed above.
+- [ ] Close or relabel stale issues listed above.
+- [ ] Delete merged branches after human approval.
+- [ ] Review duplicate candidates.
 ```

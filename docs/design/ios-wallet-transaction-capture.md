@@ -5,7 +5,7 @@
 > **Epic:** [#2171](https://github.com/jrmoulckers/finance/issues/2171) — Wallet-aware transaction capture instead of full manual re-entry
 > **Closes:** [#2603](https://github.com/jrmoulckers/finance/issues/2603) (capture + review inbox design) · [#2605](https://github.com/jrmoulckers/finance/issues/2605) (merchant matching + duplicate detection)
 > **Platforms:** iOS (SwiftUI) primary surface · matching/dedup engine is platform-neutral `packages/core` (KMP `commonMain`)
-> **Authoring agent:** `@ios-engineer` · **Engine proposed for:** `@kmp-engineer`
+> **Authoring agent:** `@native-app-engineer` (iOS surface and shared engine)
 
 This document specifies a **Wallet-adjacent**, assisted transaction-capture flow for iOS and a
 **platform-neutral merchant-matching / duplicate-detection engine** that backs it. It is a
@@ -66,7 +66,7 @@ Plaid-style credential linking (forbidden by the trust guide), and the native Sw
 implementation (blocked on [#1239](https://github.com/jrmoulckers/finance/issues/1239)).
 
 The **matching + dedup logic is specified as shared `packages/core` logic** (Kotlin `commonMain`),
-proposed for `@kmp-engineer`, so iOS, Android, Web, and Windows all share one source of truth — the
+proposed for `@native-app-engineer`, so iOS, Android, Web, and Windows all share one source of truth — the
 same pattern already used by
 [`DuplicateDetector`](../../packages/core/src/commonMain/kotlin/com/finance/core/dataimport/DuplicateDetector.kt)
 and
@@ -255,7 +255,7 @@ is the only way a capture becomes a `Transaction` without passing through this i
 ### 5.1 The candidate model — `CapturedTransaction` (proposed `packages/core`)
 
 A captured item is **not** a `Transaction`. It is a candidate with provenance and a resolved match
-verdict. Proposed for `@kmp-engineer` in `packages/core` (sibling to `ParsedTransaction`):
+verdict. Proposed for `@native-app-engineer` in `packages/core` (sibling to `ParsedTransaction`):
 
 ```kotlin
 // packages/core/src/commonMain/kotlin/com/finance/core/capture/CapturedTransaction.kt  (PROPOSED)
@@ -377,7 +377,7 @@ choose. There are exactly three tiers:
 
 ## 6. Merchant matching & duplicate detection engine (#2605)
 
-**Proposed for `@kmp-engineer`** as pure `packages/core` `commonMain` logic — no platform deps, all
+**Proposed for `@native-app-engineer`** as pure `packages/core` `commonMain` logic — no platform deps, all
 money in `Cents`, deterministic and unit-testable. It is the prime "runnable today" deliverable: it
 needs no Apple entitlement, so its `commonTest` suite (§10) can land independently of #1239.
 
@@ -666,7 +666,7 @@ These are listed so the implementer wires them once #1239 unblocks; none gate th
 | D1  | Do captured items auto-confirm or always require review? | **Hybrid (maintainer-confirmed).** Review is the **default**; auto-confirm is a narrow **exception** for near-certain matches only (D3). Deliberate divergence from `trust-and-manual-entry.md` (§5 blockquote), bounded by two hard requirements: every auto-confirmed/-suppressed item is **surfaced as "auto-added"/"skipped duplicate" + notified**, and the action is **one-tap reversible** (`autoActionReversibleUntil`, §5.1/§5.3).                                      |
 | D2  | Does a candidate reuse `TransactionStatus.PENDING`?      | **No.** A candidate uses its own `CaptureReviewState` (`PENDING`/`CONFIRMED`/`AUTO_CONFIRMED`/`DISCARDED`/`AUTO_SUPPRESSED`); it is not a `Transaction` until confirmed/auto-posted (§5.1).                                                                                                                                                                                                                                                                                      |
 | D3  | Auto-confirm bar, suggest band, dedup window             | **Auto-confirm (≥ 0.95):** exact `Cents` amount **AND** merchant ≥ **0.95** → auto-post, no review. **Suggest-in-review (≥ 0.85):** composite ≥ 0.85 (weights 0.50/0.30/0.20) pre-selects the match in the inbox but **requires explicit confirm — never auto-posts**. **Duplicate:** exact amount **AND** ±3 days (`INTERVAL_TOLERANCE_DAYS`) **AND** merchant ≥ **0.82**. ±10% amount tolerance (`AMOUNT_TOLERANCE_PERCENT`) for recurring drift only. Search window ±14 days. |
-| D4  | Where does the matching/dedup engine live?               | **`packages/core` `commonMain`** (proposed for `@kmp-engineer`), reusing `DuplicateDetector` (exact path) + `SubscriptionDetector` tolerances. Shared by all four platforms.                                                                                                                                                                                                                                                                                                     |
+| D4  | Where does the matching/dedup engine live?               | **`packages/core` `commonMain`** (proposed for `@native-app-engineer`), reusing `DuplicateDetector` (exact path) + `SubscriptionDetector` tolerances. Shared by all four platforms.                                                                                                                                                                                                                                                                                              |
 | D5  | Implementation status                                    | **Design only.** Native Swift / PassKit / Share-Extension work is blocked on [#1239](https://github.com/jrmoulckers/finance/issues/1239); the engine's `commonTest` is runnable today and not blocked.                                                                                                                                                                                                                                                                           |
 
 ### Open questions (for implementation phase)
@@ -680,4 +680,4 @@ These are listed so the implementer wires them once #1239 unblocks; none gate th
 
 _This is a design specification. No Swift, PassKit, or `packages/core` code is created or modified by
 this document. The matching/dedup engine and `CapturedTransaction` model are **proposed** for
-`@kmp-engineer`; the iOS surfaces are **cited** for the future implementer and are not edited._
+`@native-app-engineer`; the iOS surfaces are **cited** for the future implementer and are not edited._

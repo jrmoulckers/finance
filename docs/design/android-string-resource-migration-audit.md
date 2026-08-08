@@ -368,7 +368,7 @@ sideloaded APK on an emulator or test device.
 - [../ops/human-gated-prerequisites.md](../ops/human-gated-prerequisites.md) — buildable-now vs. gated split
 - [../ops/launch-readiness-plan.md](../ops/launch-readiness-plan.md) — launch checklist
 
-**KMP i18n (read-only boundary — owned by @kmp-engineer)**
+**KMP i18n (read-only boundary — owned by @native-app-engineer)**
 
 - [`StringProvider.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/StringProvider.kt)
 - [`Strings.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/Strings.kt)

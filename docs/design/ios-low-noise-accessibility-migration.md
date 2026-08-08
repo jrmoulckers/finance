@@ -3,7 +3,7 @@
 > **Status:** PROPOSED — design only (no native build performed)
 > **Issue:** [#2581](https://github.com/jrmoulckers/finance/issues/2581) · Part of [#2122](https://github.com/jrmoulckers/finance/issues/2122)
 > **Platform:** iOS / iPadOS · WidgetKit · watchOS (SwiftUI, iOS 17+)
-> **Owner:** @ios-engineer
+> **Owner:** @native-app-engineer
 > **Last updated:** 2026-06-22
 
 This document is the **accessibility and migration plan** that makes the
@@ -310,7 +310,7 @@ Smallest/shared first; the navigation-survival tests are the heart of this doc.
 - Reuse the `ModuleVisibilityRulesTest` parity tests from
   [#2577 §11.1](./ios-module-visibility-preferences.md#11-test-plan--smallest-tests-first)
   (catalog, invariants, default-visible). No new shared logic is introduced here;
-  any addition would go via **ADR to @kmp-engineer**.
+  any addition would go via **ADR to @native-app-engineer**.
 
 ### 12.2 iOS unit (XCTest, `apps/ios/Tests/`)
 

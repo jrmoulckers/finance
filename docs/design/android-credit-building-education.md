@@ -221,7 +221,7 @@ flowchart LR
   the module never re-implements finance math.
 
 > This document **describes** the boundary. It does not implement KMP changes —
-> `packages/core` is owned by @kmp-engineer.
+> `packages/core` is owned by @native-app-engineer.
 
 ---
 
@@ -360,7 +360,7 @@ credentials, or human-gated operations**. Spanish rendering is delivered through
 - [`LearningPathContent.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/learning/LearningPathContent.kt) — existing module model
 - [`LearningPathViewModel.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/learning/LearningPathViewModel.kt) — existing path state
 - [`FinancialConceptContent.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/education/FinancialConceptContent.kt) — existing glossary content
-- [`NumberFormatting.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/NumberFormatting.kt) — shared formatting (owned by @kmp-engineer)
+- [`NumberFormatting.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/NumberFormatting.kt) — shared formatting (owned by @native-app-engineer)
 
 **Issues**
 

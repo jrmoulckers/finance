@@ -3,7 +3,7 @@
 > **Status:** PROPOSED — design only (no native build performed)
 > **Issue:** [#2554](https://github.com/jrmoulckers/finance/issues/2554) · Part of [#2121](https://github.com/jrmoulckers/finance/issues/2121)
 > **Platform:** iOS · iPadOS · watchOS · WidgetKit · App Clip (SwiftUI, iOS 17+)
-> **Owner:** @ios-engineer
+> **Owner:** @native-app-engineer
 > **Last updated:** 2026-06-22
 
 This document is the **rollout plan** for redundant, non-color financial state
@@ -314,7 +314,7 @@ holds for every screen here:
   comparison; it consumes the pre-classified `BudgetHealth` and `Cents` sign.
 - If a unified shared `AmountDirection { GAIN, NEUTRAL, LOSS }` enum is wanted so
   Android/Web/Windows share identical semantics, that addition belongs in
-  `packages/` via **ADR to @architect / @kmp-engineer** — the iOS engineer does
+  `packages/` via **ADR to @architect / @native-app-engineer** — the iOS engineer does
   not edit `packages/` directly. Until then, iOS derives direction from the
   existing `Cents` sign at the bridge.
 - The cue layer switches the Swift state enum **exhaustively** (no `default:`),

@@ -11,7 +11,7 @@
 **Issue:** [#2580](https://github.com/jrmoulckers/finance/issues/2580) — _Part of
 [#2122](https://github.com/jrmoulckers/finance/issues/2122)_
 **Platform:** iOS / iPadOS (SwiftUI · Swift Concurrency, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Last updated:** 2026-06-22
 **Related design docs:** [ux-principles.md](./ux-principles.md) ·
 [information-architecture.md](./information-architecture.md) ·
@@ -80,7 +80,7 @@ definition.
 
 ## 2. Affected iOS Surfaces
 
-All under `apps/ios/` (owned by @ios-engineer).
+All under `apps/ios/` (owned by @native-app-engineer).
 
 | Surface                                                                                  | Change                                                                                                              |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -142,7 +142,7 @@ flowchart LR
         P --> Cp["DashboardPresetDTO"]
         M --> Cm["FIREMetricsDTO / SavingsRateDTO"]
     end
-    subgraph ios["apps/ios (this PR — @ios-engineer)"]
+    subgraph ios["apps/ios (this PR — @native-app-engineer)"]
         Cp --> A["Apply preset → ModuleVisibilityStore (#2577)"]
         A --> D["DashboardView ordering + emphasis"]
         Cm --> F["FIProgressCard (estimates only)"]
@@ -167,7 +167,7 @@ flowchart LR
   [ios-portfolio-metrics-projections.md](./ios-portfolio-metrics-projections.md)).
 - **No new shared schema beyond the preset definition.** The preset reuses the module catalog
   from #2577 and the FIRE engine from #2556/#2558; landing the preset catalog in
-  `packages/models` is **@kmp-engineer via ADR**. iOS binds `StubSwiftExportBridge` (preset
+  `packages/models` is **@native-app-engineer via ADR**. iOS binds `StubSwiftExportBridge` (preset
   fixture + `fireMetrics` stub) so the surface is buildable now.
 
 ---
@@ -286,7 +286,7 @@ Per [accessibility-patterns.md](./accessibility-patterns.md) and
 
 ### 11.1 Shared (KMP) — verify/port parity, not re-implemented here
 
-- `DashboardPresetTest` (KMP, **@kmp-engineer via ADR**): the FIRE preset's visibility map
+- `DashboardPresetTest` (KMP, **@native-app-engineer via ADR**): the FIRE preset's visibility map
   shows exactly {net worth, savings rate, FI progress, investments} foregrounded and quietens
   bills/reports/mood; it **respects the #2577 non-hideable invariants** (never hides core
   tabs/Settings/net-worth hero); Standard = all visible.
@@ -356,7 +356,7 @@ not implementation. This design and its iOS code are **buildable and testable no
 
 The **preset catalog** belongs in `packages/models` (reusing the #2577 module catalog) and
 the **savings-rate / FIRE math** in `packages/core`, re-exported via `packages/sync` —
-**@kmp-engineer via ADR**, not this iOS PR. Until then iOS binds the stub bridge. This preset
+**@native-app-engineer via ADR**, not this iOS PR. Until then iOS binds the stub bridge. This preset
 **depends on** [#2577](./ios-module-visibility-preferences.md) (the visibility store) and the
 FIRE engine from #2556/#2558.
 

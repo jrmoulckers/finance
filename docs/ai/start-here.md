@@ -60,7 +60,7 @@ These are the rules that cause the most rework when skipped:
 
 ## Reference by Role
 
-- **Engineering agents** (`@kmp-engineer`, `@backend-engineer`, platform agents): [Agents](agents.md) → your row in the [ownership table](../../AGENTS.md#fleet-coordination-rules) → relevant [skill](skills.md).
+- **Engineering agents** (`@native-app-engineer`, `@web-engineer`, `@backend-engineer`, `@database-engineer`, `@sre-engineer`): [Agents](agents.md) → your row in the [ownership table](../../AGENTS.md#fleet-coordination-rules) → relevant [skill](skills.md).
 - **Reviewers**: `@accessibility-reviewer` is **review-only**; `@security-reviewer` is the **emergency fixer**. See [Agent Instructions](agent-instructions.md#agent-types).
 - **Orchestrator / fleet runs**: [Fleet Operations](fleet-operations.md).
 - **Humans onboarding to the codebase**: start at the repo-wide [Documentation Index](../INDEX.md).

@@ -140,7 +140,7 @@ flowchart LR
 > `Array`, sealed/enum → enum).
 
 > **KMP changes are out of scope for this PR.** Every "proposed" row above is an
-> @kmp-engineer / @architect change introduced via ADR per
+> @native-app-engineer / @architect change introduced via ADR per
 > [AGENTS.md](../../AGENTS.md). This design names the contracts; it does not edit
 > `packages/`.
 
@@ -443,7 +443,7 @@ gate only.
   An SME agent must **not** perform enrollment, certificate, or secret steps.
 - **Shared-logic tail:** the `Contribution` model, `PriceQuote` persistence, the
   SQLDelight-backed `InvestmentRepository`, and `SyncableInvestmentRepository` are
-  @kmp-engineer / @architect changes via **ADR**. Until they land, the iOS bridge
+  @native-app-engineer / @architect changes via **ADR**. Until they land, the iOS bridge
   can persist via `PersistentDataStore` against the proposed schema and the mock
   remains the preview/test double — so iOS work is unblocked in parallel.
 

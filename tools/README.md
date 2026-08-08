@@ -262,7 +262,7 @@ Scans `.github/agents/*.agent.md`, `.github/skills/*/SKILL.md`, `.github/instruc
 
 ### `check-ai-manifest.js` - AI manifest drift check
 
-Compares hardcoded counts in `docs/ai/README.md`, `docs/INDEX.md`, and `AGENTS.md` against the real filesystem counts (via `ai-manifest.js`). It also verifies that the pending canonical-activation section maps every current runtime role, names all 22 planned canonical roles, retains `finance-domain`, and retires `bug-basher` into task mode. **Informational by default** (warns, exit 0) to avoid racing concurrent doc edits; set `STRICT=1` or pass `--strict` to make drift blocking (exit 1). Addresses issues #2863 and #4009.
+Compares hardcoded counts in `docs/ai/README.md`, `docs/INDEX.md`, and `AGENTS.md` against the real filesystem counts (via `ai-manifest.js`). It also validates the exact 22-role generated roster, provenance stamps, the sole local `finance-domain` agent, retired-role absence, the canonical runtime documentation, and the 71-entry Studio sync inventory. **Informational by default** (warns, exit 0) to avoid racing concurrent doc edits; set `STRICT=1` or pass `--strict` to make drift blocking. Addresses issues #2863, #4009, and #4014.
 
     node tools/check-ai-manifest.js                        # Warn-only (exit 0)
     STRICT=1 node tools/check-ai-manifest.js               # Blocking (exit 1 on drift)

@@ -83,7 +83,7 @@ plain-language beginner posture), [android-teen-goal-projections.md](android-tee
 **Non-Goals**
 
 - Implementing the curriculum ordering/gating engine — that is shared `packages/`
-  curriculum logic (owned by @kmp-engineer), with the web learning libraries as parity.
+  curriculum logic (owned by @native-app-engineer), with the web learning libraries as parity.
 - Owning the **beginner-mode preference** or its copy transforms — owned by
   [android-teen-beginner-mode.md](android-teen-beginner-mode.md); this doc consumes it.
 - Owning **goal projections** (save-for-a-car math) — owned by
@@ -154,7 +154,7 @@ flowchart LR
 ```
 
 > This document **describes** the boundary. It does **not** implement curriculum
-> changes — ordering/gating logic is owned by @kmp-engineer and the web learning
+> changes — ordering/gating logic is owned by @native-app-engineer and the web learning
 > libraries by @web-engineer. **Compose only renders the chosen path list**; it never
 > sorts topics, decides what is "advanced," or evaluates an unlock condition. The
 > existing

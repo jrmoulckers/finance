@@ -4,7 +4,7 @@
 > **Issue:** [#2514](https://github.com/jrmoulckers/finance/issues/2514) — _Part of [#2133](https://github.com/jrmoulckers/finance/issues/2133)_
 > **Platform:** Android / Wear OS (Jetpack Compose, Material 3)
 > **Last Updated:** 2026-06-22
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 
 ---
 
@@ -231,5 +231,5 @@ This is a **design deliverable**; it ships as documentation only.
 - Where do `ExpectedGigPayout` records originate on mobile — user-entered schedule, imported, or inferred?
   (Owned by `packages/*`; Android consumes whatever the shared source provides.)
 - Default `dateToleranceDays` / `defaultToleranceCents` for mobile reconcile calls? (Recommend a small
-  date tolerance to absorb weekend posting delays; confirm with @kmp-engineer.)
+  date tolerance to absorb weekend posting delays; confirm with @native-app-engineer.)
 - Should the dashboard offer a Wear OS Tile/Complication for "today's expected vs received"? (Follow-up.)

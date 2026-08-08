@@ -123,7 +123,7 @@ Everything below translates existing, shipped logic. The widget invents no new m
 > **Note for the build phase:** the web `today-spend.ts` / `safe-to-spend-shared.ts` math is
 > TypeScript. The iOS widget must read precomputed values from the app-group cache (§8) — it
 > must **not** re-derive them in the widget process. To keep parity exact and testable today,
-> §11 **proposes (for `@kmp-engineer`)** a KMP `TodaySpendCalculator` in `packages/core`
+> §11 **proposes (for `@native-app-engineer`)** a KMP `TodaySpendCalculator` in `packages/core`
 > mirroring `today-spend.ts`, so all platforms share one tested implementation. That KMP work
 > is a **separate, non-blocked task** (it is not WidgetKit) and is **not** done in this
 > design PR — this PR adds only this one doc and edits no `packages/*` code.
@@ -461,7 +461,7 @@ so all platforms share one verified implementation. The web equivalents already 
 `apps/web/src/lib/dashboard/safe-to-spend-shared.test.ts` — and serve as the parity oracle.
 
 Proposed `commonTest` cases for a `TodaySpendCalculator` in `packages/core` (mirrors
-`today-spend.ts`). **The calculator + tests are proposed for `@kmp-engineer` as a separate,
+`today-spend.ts`). **The calculator + tests are proposed for `@native-app-engineer` as a separate,
 non-blocked task — they are not part of this design PR, which adds no `packages/*` code:**
 
 | #   | Case                                                                                 | Asserts                                                  |

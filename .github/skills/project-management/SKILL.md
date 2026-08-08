@@ -1,293 +1,84 @@
 ---
 name: project-management
 description: >
-  Project management patterns for the Finance monorepo. Use for topics related
-  to issue lifecycle, roadmap planning, milestone tracking, backlog grooming,
-  release management, or cross-team coordination.
+  Project management patterns. Use for topics related to issue lifecycle,
+  roadmap planning, milestone tracking, backlog grooming, release management,
+  sprint coordination, or cross-team coordination.
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Project Management Skill
 
-## Purpose
+**Trigger:** roadmap, milestones, backlog grooming, release planning, issue lifecycle,
+coordination, project health.
+**Inputs:** goals, open issues, milestones, priorities, dependencies, capacity, release constraints.
+**Related:** `issue-management` (issue quality/scoping), `ux-testing` (QA inputs),
+`prompt-engineering` (agent handoffs), `security-review-methodology` (security gates).
 
-This skill covers **issue lifecycle, backlog grooming, milestones, release management, roadmap tracking, and cross-team coordination**. It does not own issue filing quality, sprint selection, or agent execution mechanics.
+## Out of scope
 
-## Out of Scope
-
-- Issue body quality, cross-platform issue scoping, duplicates, and label correctness at filing time → use `issue-management`.
-- Sprint selection, sizing, capacity, and dependency sequencing → use `sprint-planning`.
-- Agent dispatch, worktree coordination, CI self-healing, and PR merge operations → use `fleet-orchestration`.
+- Issue body quality, labels, duplicates, and platform scoping → use `issue-management`.
+- Manual QA session design → use `ux-testing`.
+- Agent execution, CI self-healing, and merge operations → use the relevant workflow skill.
 - Platform implementation details → use the relevant engineering skill.
 
-## Related Skills
+## Issue lifecycle
 
-| Skill                 | Use For                                                  |
-| --------------------- | -------------------------------------------------------- |
-| `issue-management`    | High-quality issue creation, platform scoping, and dupes |
-| `sprint-planning`     | Choosing sprint scope, balancing capacity, ordering deps |
-| `fleet-orchestration` | Dispatching agents, monitoring CI, and self-merging PRs  |
-| `ux-testing`          | Manual QA sessions that generate candidate issues        |
-
-## Issue Lifecycle
-
-```
-Created (Triage) → Shaping → Ready → In Progress → In Review → Done
+```text
+Triage → Shaping → Ready → In Progress → In Review → Done
 ```
 
-| Stage       | Entry                   | Exit                                      |
-| ----------- | ----------------------- | ----------------------------------------- |
-| Triage      | Issue created           | Labeled, prioritized, milestone assigned  |
-| Shaping     | Requirements clear      | Effort sized, acceptance criteria written |
-| Ready       | Fully specified         | Assigned to agent or human                |
-| In Progress | Worktree created        | PR opened with `Closes #N`                |
-| In Review   | PR passes CI            | Approved and merged                       |
-| Done        | PR merged → auto-closed | —                                         |
+| Stage | Entry | Exit |
+| --- | --- | --- |
+| Triage | Issue created | Labeled, prioritized, assigned milestone or disposition |
+| Shaping | Problem accepted | Acceptance criteria, dependencies, and effort are clear |
+| Ready | Fully specified | Assigned to a human or agent |
+| In Progress | Work starts | PR opened with `Closes #N` |
+| In Review | PR and checks ready | Approved, green, mergeable, and merged |
+| Done | PR merged | Issue auto-closed |
 
-**WIP limit**: Max 3 items in-progress per person/agent.
+## Backlog grooming
 
-## Label Taxonomy
+1. **Label** — type, priority, platform/component, effort.
+2. **Clarify** — problem, acceptance criteria, and non-goals.
+3. **Deduplicate** — link duplicates or related issues.
+4. **Sequence** — identify blockers, dependencies, and parallelizable work.
+5. **Decompose** — split oversized work into independently shippable issues.
+6. **Milestone** — assign only work that fits the release goal and capacity.
 
-### Priority
+## Planning heuristics
 
-| Label | SLA                                        |
-| ----- | ------------------------------------------ |
-| `P0`  | Fix within 24 hours (blocks release)       |
-| `P1`  | Fix in current sprint (significant impact) |
-| `P2`  | Schedule within 2 sprints (normal)         |
-| `P3`  | When capacity allows (nice-to-have)        |
+| Signal | Action |
+| --- | --- |
+| Release blocker | Prioritize immediately and keep scope narrow |
+| Ambiguous issue | Move to shaping before assignment |
+| Oversized issue | Split before Ready |
+| Cross-platform UI | Decide shared vs platform-specific work with `issue-management` |
+| Repeated CI/quality failures | Reserve capacity for stabilization |
 
-### Type
+## Release management
 
-`feature`, `bug`, `chore`, `docs`, `tech-debt`
-
-### Platform
-
-`platform:ios`, `platform:android`, `platform:web`, `platform:windows`, `platform:shared`, `platform:backend`
-
-> See `issue-management` skill for the full decision tree on when to use each label and when to create platform-specific duplicate issues.
-
-### Effort (T-shirt)
-
-| Label       | Scope                                       |
-| ----------- | ------------------------------------------- |
-| `XS` (1pt)  | < 1 hour                                    |
-| `S` (2pt)   | 1–4 hours                                   |
-| `M` (5pt)   | 1–2 days                                    |
-| `L` (8pt)   | 3–5 days                                    |
-| `XL` (13pt) | 1–2 weeks — **must decompose** before Ready |
-
-## Issue-to-Agent Mapping
-
-| Label Pattern            | Agent                    |
-| ------------------------ | ------------------------ |
-| `platform:android`       | `android-engineer`       |
-| `platform:ios`           | `ios-engineer`           |
-| `platform:web`           | `web-engineer`           |
-| `platform:windows`       | `windows-engineer`       |
-| `platform:shared`, `kmp` | `kmp-engineer`           |
-| `backend`, `supabase`    | `backend-engineer`       |
-| `ci`, `devops`           | `devops-engineer`        |
-| `docs`                   | `docs-writer`            |
-| `security`, `privacy`    | `security-reviewer`      |
-| `a11y`, `accessibility`  | `accessibility-reviewer` |
-| `product`, `roadmap`     | `product-manager`        |
-| `marketing`, `launch`    | `marketing-strategist`   |
-| `business`, `pricing`    | `business-analyst`       |
-
-Cross-platform features → `architect` decomposes → one sub-issue per platform.
-
-## Fleet Sprint Lifecycle
-
-### 1. Plan
-
-```bash
-gh issue list --state open --json number,title,labels,milestone --limit 100
-```
-
-Categorize → detect dependencies → group 4–6 issues per sprint → SQL todos.
-
-### 2. Dispatch
-
-```bash
-# Use fleet orchestration — all independent agents in parallel
-node tools/agent-scripts/setup-worktree.js <agent> <type> <desc> <issue#>
-```
-
-### 3. Monitor CI
-
-```bash
-# Sprint dashboard
-node tools/agent-scripts/sprint-status.js
-
-# Per-PR checks
-gh pr checks [number]
-
-# Failed run logs
-gh run view [run-id] --log-failed
-```
-
-### 4. Self-Heal
-
-Fix failures → follow `docs/ai/workflow.md` "Mandatory Pre-Push" → push → repeat until green.
-
-### 5. Handoff
-
-All PRs quality-gate green (CI green + `MERGEABLE`) → owning agents self-merge their PRs → clean up worktrees. Add `## Needs Human Action` only for genuine blockers such as token/branch-protection limits.
-
-## CI Monitoring Patterns
-
-```bash
-# Recent workflow runs
-gh run list --limit 20
-
-# Failed runs in last week
-gh run list --status failure --limit 20
-```
-
-| Metric             | Target    |
-| ------------------ | --------- |
-| CI pass rate       | > 95%     |
-| Average build time | < 10 min  |
-| Flaky test rate    | < 2%      |
-| Time to green      | < 4 hours |
-
-## Worktree Cleanup
-
-```bash
-# After PR merge confirmed
-git worktree remove worktrees/wt-[agent]-[branch]
-
-# Bulk cleanup of stale worktrees
-node tools/cleanup-worktrees.js
-```
-
-## Milestones
-
-| Milestone     | Purpose                                 |
-| ------------- | --------------------------------------- |
-| `v0.1-alpha`  | Core infra, basic CRUD, offline storage |
-| `v0.1-beta`   | Feature-complete with sync and auth     |
-| `v1.0`        | Production-ready across all platforms   |
-| `post-launch` | Post-launch features and polish         |
-
-## Roadmap Queries
-
-```bash
-# Milestone progress
-gh issue list --milestone "v1.0" --state open
-gh issue list --milestone "v1.0" --state closed
-
-# By priority
-gh issue list --milestone "v1.0" --state open --label "P0"
-
-# Needs triage (no labels/milestone)
-gh issue list --search "is:open no:label"
-gh issue list --search "is:open no:milestone"
-```
-
-## Backlog Grooming (Weekly)
-
-1. **Label**: type, priority, platform, effort
-2. **Milestone**: assign to appropriate release
-3. **Duplicates**: link with `Duplicate of #N`
-4. **Acceptance criteria**: ensure implementable
-5. **Dependencies**: link blocking/blocked relationships
-6. **Assignment**: move to Shaping or Ready
-
-### Stale Issue Detection
-
-```bash
-gh issue list --search "is:open sort:updated-asc" --limit 50
-```
-
-### Issue Decomposition
-
-XL issues → sub-issues before Ready:
-
-- Each independently shippable (S or M)
-- One per platform for UI work
-- Shared logic separate from platform UI
-- No circular dependencies
-
-## Release Management
-
-### Changesets
-
-```bash
-npx changeset          # describe the change (write for users, not devs)
-npx changeset version  # update CHANGELOG.md
-# npx changeset publish — HUMAN ONLY
-```
-
-### Version Bumping
-
-| Bump  | When                  |
-| ----- | --------------------- |
-| Major | Breaking changes      |
-| Minor | New features          |
-| Patch | Bug fixes, perf, a11y |
-
-### Platform Release Pipelines
-
-| Platform | Tag Format       | Distribution                  |
-| -------- | ---------------- | ----------------------------- |
-| iOS      | `ios/v1.3.0`     | TestFlight → App Store        |
-| Android  | `android/v1.3.0` | Internal → Beta → Play Store  |
-| Web      | `web/v2.1.0`     | Vercel deployment             |
-| Windows  | `windows/v1.3.0` | Flight ring → Microsoft Store |
-
-**Progression**: Internal (1–2 days) → Beta (3–7 days) → Staged rollout → Full release.
+- Use semantic versioning or the product's release model consistently.
+- Write changes for users, not only implementers.
+- Keep publishing, store submission, and production deployment human-gated when required.
+- A change is not done until a PR exists, checks pass, the branch is mergeable, and the PR is merged.
 
 ## Metrics
 
-### Sprint Velocity
+| Metric | Watch for |
+| --- | --- |
+| Cycle time | Work stuck between Ready, In Progress, and Review |
+| WIP | Too many active items per person/agent |
+| Defect escape | Bugs found after release or late in review |
+| Tech debt ratio | Debt crowding out feature and reliability work |
+| CI health | Flakes, long builds, repeated red checks |
 
-Track effort-weighted points (XS=1, S=2, M=5, L=8, XL=13) closed per sprint.
+## Safety
 
-### Tech Debt Ratio
+Preserve issue-first, PR-always, and conventional-commit discipline. Do not close issues manually when
+they should auto-close via PR merge. Escalate gated operations instead of working around them.
 
-Target: < 20% of open issues. If exceeded, dedicate 1 sprint slot to debt reduction.
+## Output
 
-### Platform Parity
-
-Feature not "done" for a milestone until it ships on all 4 platforms (unless explicitly scoped).
-
-## Cross-Team Coordination
-
-### Business Sprint Integration
-
-Every sprint includes at least 1 business task:
-
-- **Product management**: triage, grooming, milestone updates (per sprint)
-- **Marketing**: content, ASO, launch comms (bi-weekly)
-- **Business analysis**: pricing, metrics, competitive research (monthly)
-
-### Fleet Coordination Rules
-
-- No two agents edit same file in parallel
-- Shared config files: single owner per fleet run
-- Schema changes strictly serialized: backend → KMP → platform
-- Last agent follows the canonical Mandatory Pre-Push validation before pushing
-
-## Key Documents
-
-| Document             | Path                                  |
-| -------------------- | ------------------------------------- |
-| Roadmap              | `docs/architecture/roadmap.md`        |
-| Project board config | `docs/architecture/project-board.md`  |
-| Versioning strategy  | `docs/guides/versioning-strategy.md`  |
-| Workflow cheatsheet  | `docs/guides/workflow-cheatsheet.md`  |
-| Issue triage report  | `docs/guides/issue-triage-report.md`  |
-| App store submission | `docs/guides/app-store-submission.md` |
-| Fleet operations     | `docs/ai/fleet-operations.md`         |
-| Agent scripts        | `tools/agent-scripts/`                |
-
-## Issue Rules (Non-Negotiable)
-
-1. Every code change references a GitHub issue
-2. **Never** close issues with `gh issue close` — auto-close via PR merge
-3. One issue per concern
-4. Acceptance criteria before Ready
-5. Cross-reference related issues with `Refs #N`
-6. Cross-platform issues need proper scoping (see `issue-management` skill)
-7. Platform-specific duplicates required when fix implementation differs by platform
+A prioritized plan, groomed backlog, milestone/release summary, or coordination report with blockers,
+owners, dependencies, and next actions.

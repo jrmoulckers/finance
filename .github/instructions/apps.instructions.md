@@ -25,9 +25,9 @@ You are working in the `apps/` directory, which contains platform-specific appli
 - Local data is stored in SQLite and encrypted at rest — SQLCipher on iOS, Android, and Windows; the web PWA uses SQLite-WASM (OPFS) and relies on browser origin-storage isolation
 - Design tokens (DTCG JSON) drive visual consistency — consume generated platform-native constants (Swift, XML resources, CSS variables, XAML resources)
 
-## Prepared Native-Agent Overlay (Not Active)
+## Native-Agent Overlay
 
-Until canonical activation, `@android-engineer`, `@ios-engineer`, `@windows-engineer`, and `@kmp-engineer` retain their current runtime ownership. After activation, `@native-app-engineer` leads the three native apps plus shared KMP packages; `@web-engineer` continues to lead the PWA.
+`@native-app-engineer` leads the three native apps plus shared KMP packages; `@web-engineer` leads the PWA.
 
 | Surface    | Concrete Finance rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -69,4 +69,4 @@ All platforms support three build variants with per-environment configuration:
 - **i18n** — Internationalization framework in `packages/core` provides multi-language financial terminology. Platform apps consume localized strings from the shared layer.
 - **`ownerId`** — All sync-enabled models include an `ownerId` field referencing the authenticated user. Platform apps must populate this on record creation.
 - **Feature flags** — Managed via PostgreSQL + PowerSync; flags sync to clients for runtime evaluation of feature availability.
-- **Accessibility routing** — `@accessibility-reviewer` remains review-only. Native findings route to the active platform owner now and `@native-app-engineer` after activation; web findings route to `@web-engineer`.
+- **Accessibility routing** — `@accessibility-reviewer` remains review-only. Native findings route to `@native-app-engineer`; web findings route to `@web-engineer`.

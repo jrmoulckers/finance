@@ -303,7 +303,7 @@ way of just picking a category.**
   "needs category" affordance.
 - A Settings row for the suggestions toggle and "Forget learned merchants."
 
-**Shared dependencies (KMP, owned by @kmp-engineer):**
+**Shared dependencies (KMP, owned by @native-app-engineer):**
 
 - [`SmartCategorizationEngine.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/categorization/SmartCategorizationEngine.kt)
   — `recordCorrection`, `suggest`, `Confidence`.

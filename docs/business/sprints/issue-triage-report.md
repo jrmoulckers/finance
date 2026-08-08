@@ -727,7 +727,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 2: Privacy Dashboard & Consent (v1.1-security Sprint 1)
 
-**Agent**: @kmp-engineer (core) + platform agents (UI)
+**Agent**: @native-app-engineer (shared/native) + @web-engineer (web UI)
 
 | #    | Title                                                 |
 | ---- | ----------------------------------------------------- |
@@ -739,7 +739,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 3: Budgeting Engine Core (v1.1-financial Sprint 1)
 
-**Agent**: @kmp-engineer (shared logic) + @finance-domain (calculations)
+**Agent**: @native-app-engineer (shared logic) + @finance-domain (calculations)
 
 | #    | Title                                          |
 | ---- | ---------------------------------------------- |
@@ -751,7 +751,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 4: Cash Flow & Net Worth Views (v1.1-financial Sprint 1)
 
-**Agent**: @kmp-engineer (data) + platform agents (visualization)
+**Agent**: @native-app-engineer (shared/native data) + @web-engineer (web visualization)
 
 | #    | Title                                                     |
 | ---- | --------------------------------------------------------- |
@@ -763,7 +763,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 5: Debt Management Suite (v1.1-financial Sprint 2–3)
 
-**Agent**: @finance-domain (logic) + @kmp-engineer (models)
+**Agent**: @finance-domain (logic) + @native-app-engineer (models)
 
 | #    | Title                                           |
 | ---- | ----------------------------------------------- |
@@ -776,7 +776,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 6: Bank Connectivity Foundation (v1.1 Integration)
 
-**Agent**: @backend-engineer (API) + @kmp-engineer (sync)
+**Agent**: @backend-engineer (API/Auth) + @database-engineer (cloud data) + @native-app-engineer (client sync)
 
 | #    | Title                                                   |
 | ---- | ------------------------------------------------------- |
@@ -789,7 +789,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 7: Household Foundation (v2.0-household Sprint 1)
 
-**Agent**: @backend-engineer (RLS) + @kmp-engineer (models) + platform agents (UI)
+**Agent**: @database-engineer (RLS/schema) + @native-app-engineer (models/native UI) + @web-engineer
 
 | #    | Title                                             |
 | ---- | ------------------------------------------------- |
@@ -802,7 +802,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 8: Investment Data Layer (v2.0-wealth Sprint 1)
 
-**Agent**: @kmp-engineer (models) + @backend-engineer (schema)
+**Agent**: @native-app-engineer (client models) + @database-engineer (schema)
 
 | #    | Title                                                  |
 | ---- | ------------------------------------------------------ |
@@ -814,7 +814,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 9: Notification & Alert System (Platform UX)
 
-**Agent**: @kmp-engineer (core) + platform agents
+**Agent**: @native-app-engineer (shared/native) + @web-engineer
 
 | #    | Title                                                   |
 | ---- | ------------------------------------------------------- |
@@ -827,7 +827,7 @@ These are groups of 3–5 related issues that can be assigned to agents with no 
 
 ### Batch 10: Tax & Self-Employment (v1.1-financial Sprint 3)
 
-**Agent**: @finance-domain + @kmp-engineer
+**Agent**: @finance-domain + @native-app-engineer
 
 | #    | Title                                                     |
 | ---- | --------------------------------------------------------- |

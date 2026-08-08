@@ -358,7 +358,7 @@ Until then, sharing is fully exercisable via debug sideload.
 
 1. **One-time de-dup storage** — confirm the "already celebrated this milestone"
    flag is a shared/persisted record (synced) rather than a device-local flag, so
-   it does not re-prompt across devices. (@kmp-engineer)
+   it does not re-prompt across devices. (@native-app-engineer)
 2. **Completed-send signal** — Android hides which app was chosen and whether the
    send completed; do we accept `share_send_initiated` as our success proxy, or add
    a returning-foreground heuristic?

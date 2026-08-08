@@ -9,7 +9,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2595](https://github.com/jrmoulckers/finance/issues/2595) — Part of [#2163](https://github.com/jrmoulckers/finance/issues/2163)
 **Platform:** iOS / iPadOS (SwiftUI, `@Observable`, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-finance-alert-rules-deeplinks.md](./ios-finance-alert-rules-deeplinks.md) · [ios-smart-notification-timing.md](./ios-smart-notification-timing.md) · [information-architecture.md](./information-architecture.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -276,7 +276,7 @@ flowchart LR
   platform-neutral business rule and belongs in KMP `packages/core` /
   `packages/models`. Today `generateSmartAlerts` lives natively; consolidating
   that logic into shared code (so Android/Web agree) is proposed to
-  @kmp-engineer via ADR — **not** implemented in this iOS work.
+  @native-app-engineer via ADR — **not** implemented in this iOS work.
 - **iOS owns** the surface, the `NavigationStack`/route enum, accessibility
   semantics, quiet-hours preference storage, and all `UNUserNotificationCenter`
   scheduling. No shared package is modified by this design.
@@ -323,7 +323,7 @@ Swift Export bridge ([§11](#11-native--kmp-boundary)).
 6. **Navigation (XCUITest, smallest):** Settings → Notifications shows the hub;
    tapping `Alert Types` pushes the existing list; tapping a summary row routes
    to the deep-link destination.
-7. **Shared (KMP, owned by @kmp-engineer):** alert-evaluation correctness is
+7. **Shared (KMP, owned by @native-app-engineer):** alert-evaluation correctness is
    tested in `packages/core`, not iOS.
 
 ---
@@ -361,5 +361,5 @@ See [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md).
 3. **Quiet-hours storage location:** plain `UserDefaults` vs the App Group suite
    (so a future widget can reflect "muted")? Default: standard defaults until a
    widget needs it.
-4. **Shared alert model:** confirm with @kmp-engineer whether `SmartAlert`
+4. **Shared alert model:** confirm with @native-app-engineer whether `SmartAlert`
    moves to `packages/models` (cross-platform parity) or stays iOS-native.
