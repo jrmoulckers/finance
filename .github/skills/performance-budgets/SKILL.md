@@ -1,70 +1,61 @@
 ---
 name: performance-budgets
 description: >
-  Performance budget guidance for the Finance app. Use for topics related to
-  Lighthouse, Core Web Vitals, LCP, INP, CLS, TBT, bundle budgets, lazy chunks,
-  route budgets, startup performance, service workers, or performance
-  regression triage.
+  Performance budget guidance. Use for topics related to Lighthouse, Core Web
+  Vitals, LCP, INP, CLS, TBT, bundle budgets, lazy chunks, route budgets,
+  startup performance, service workers, or performance regression triage.
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Performance Budgets Skill
 
-## Purpose
+**Trigger:** slow routes, Core Web Vitals, bundle growth, startup regressions, jank,
+Lighthouse failures, budget waivers.
+**Inputs:** failing route/surface, metric, actual value, budget value, build artifact or trace.
+**Related:** `ux-testing` (perceived latency), `accessibility-testing` (reduced motion/a11y gate),
+`design-tokens` (token output size), `issue-management` (scoped regression issues).
 
-This skill covers **performance budget definition, regression triage, and acceptance criteria** for Finance, with emphasis on the Web PWA and cross-platform startup/sync responsiveness.
-
-## Out of Scope
+## Out of scope
 
 - General UX bug discovery → use `ux-testing`.
-- Accessibility scoring and assistive-technology validation → use `accessibility-testing`.
-- CI dispatch/merge operations → use `fleet-orchestration`.
-- Backend query/index tuning → use `supabase-powersync` unless the issue is client-perceived latency.
+- Accessibility audits → use `accessibility-testing`.
+- Backend query/index tuning unless the issue is user-perceived latency.
+- CI dispatch or merge operations → use the relevant workflow skill.
 
-## Related Skills
+## Budget model
 
-| Skill                   | Use For                                             |
-| ----------------------- | --------------------------------------------------- |
-| `ux-testing`            | Manual perception of loading, transitions, and jank |
-| `accessibility-testing` | Reduced motion and accessibility Lighthouse gate    |
-| `web-engineer`          | React/Vite implementation fixes                     |
-| `supabase-powersync`    | Backend indexes, RLS, and server query latency      |
+| Budget | Typical signal |
+| --- | --- |
+| Route metric | LCP, INP, CLS, TBT, startup/render time |
+| Bundle size | initial JS/CSS, lazy chunks, images/fonts, generated assets |
+| Runtime | long tasks, hydration, memory, animation jank |
+| Network | request count, cache misses, service-worker behavior |
 
-## Repo-Specific Budgets and Tools
+## Method
 
-| Asset / Tool                                        | Purpose                                                        |
-| --------------------------------------------------- | -------------------------------------------------------------- |
-| `apps/web/performance.budget.json`                  | Route and bundle budget source (`/dashboard`, `/transactions`) |
-| `apps/web/lighthouserc.json`                        | Lighthouse CI thresholds (`performance >= 0.90`, a11y >= 0.95) |
-| `apps/web/lighthouserc-budget.json`                 | Lighthouse performance-budget assertion                        |
-| `apps/web/src/lib/perf/lighthouse-route-budgets.ts` | Route fixture and metric evaluation helpers                    |
-| `tools/check-web-performance-budget.mjs`            | Bundle/route budget checker used by `apps/web` `perf:budget`   |
+1. **Identify the failure type** — route metric, bundle size, resource count, startup, or runtime jank.
+2. **Use product budgets** — compare actual values to the product's configured thresholds.
+3. **Attribute cost** — isolate the dependency, route split, asset, render path, cache behavior, or data load.
+4. **Prefer deferral** — lazy-load non-critical flows and keep first paint focused on the primary task.
+5. **Protect UX** — do not remove labels, skeletons, security checks, or accessibility affordances solely for speed.
+6. **Document waivers** — make exceptions narrow, dated, issue-linked, and reviewed; never raise global budgets silently.
 
-## Current Web Budget Targets
+## Acceptance criteria
 
-| Metric / Budget     | Target                                             |
-| ------------------- | -------------------------------------------------- |
-| LCP                 | ≤ 2,500 ms per budgeted route                      |
-| INP                 | ≤ 200 ms per budgeted route                        |
-| CLS                 | ≤ 0.1 per budgeted route                           |
-| TBT                 | ≤ 200 ms in `performance.budget.json` route config |
-| Initial JS gzip     | ≤ 184,320 bytes                                    |
-| Lazy chunk gzip     | ≤ 215,000 bytes per chunk                          |
-| Speculative JS gzip | ≤ 460,800 bytes                                    |
-
-## Regression Triage
-
-1. Identify whether the regression is **route metric**, **bundle size**, **resource count**, or **runtime jank**.
-2. Attribute the largest new cost: dependency, route split, chart library, OCR/import code, service worker, or sync hydration.
-3. Prefer route-level lazy loading for non-critical flows (import/export, charts, settings subpages).
-4. Keep offline-first behavior fast: local reads should paint before sync/network work.
-5. If a waiver is unavoidable, make it narrow, dated, and tied to an issue; do not silently raise global budgets.
-
-## Acceptance Criteria
-
-- Regression issues include the failing route, metric, actual value, budget value, and likely owner path.
-- Fixes preserve accessibility and privacy; do not remove skeletons, labels, or secure checks solely for speed.
-- Bundle increases justify any new dependency and confirm it is route-split where possible.
+- Regression report names route/surface, metric, actual, budget, reproduction, and likely owner path.
+- Bundle increases justify new dependencies and confirm route-splitting where possible.
+- Fixes include the smallest relevant validation: build artifact, Lighthouse/trace, test, or before/after measurement.
 
 ## Checklist
 
-Apply [`WEB_CHECKLIST.md`](./WEB_CHECKLIST.md) when triaging or signing off a web performance-budget change.
+Apply [`WEB_CHECKLIST.md`](./WEB_CHECKLIST.md) when triaging or signing off web performance-budget changes.
+
+## Safety
+
+Report budget failures with evidence. Avoid broad threshold changes unless the product owner accepts the
+trade-off in an issue or ADR.
+
+## Output
+
+A scoped performance-budget report or issue with measurements, attribution, fix path, validation evidence,
+and any explicit waiver.

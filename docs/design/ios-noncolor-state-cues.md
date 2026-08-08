@@ -218,16 +218,16 @@ so iOS/Android/Windows/Web stay consistent and the thresholds are tested once.
 
 ### 5.1 Extend the shared `IconToken` vocabulary
 
-> **Ownership boundary.** `packages/core` is owned by **@kmp-engineer**. This doc only
+> **Ownership boundary.** `packages/core` is owned by **@native-app-engineer**. This doc only
 > **specifies** the additions; the enum/mapping edits are a **separate tracked task for
-> @kmp-engineer** and are intentionally **not made in this design PR** (cross-file edits here would
+> @native-app-engineer** and are intentionally **not made in this design PR** (cross-file edits here would
 > create fleet conflicts). The table below is the canonical spec that task implements.
 
 `packages/core/src/commonMain/kotlin/com/finance/core/icons/IconToken.kt` (enum at line 5) and its
 iOS mirror `apps/ios/Finance/Components/IconToken.swift` already define `income` (29), `expense`
 (30), `sync` (48), `success`, `warning` (59), `error`, `pending` (62), `online`, `offline` (66) —
 but they have **no trend or staleness tokens**. **Proposed additions (to be implemented by
-@kmp-engineer):**
+@native-app-engineer):**
 
 | New token   | SF Symbol (iOS mapping to add) | Lucide (standard pack) | Used for                     |
 | ----------- | ------------------------------ | ---------------------- | ---------------------------- |
@@ -379,12 +379,12 @@ build/toolchain.
      no Swift change ships in this PR (#1239 blocks the build); the intended behavior is
      documented for the implementer._
    - Color remains an **enhancement** layered on the icon/sign/text, never the sole signal.
-2. **New shared tokens — proposed, owned by @kmp-engineer.** `trendUp`, `trendDown`, `trendFlat`,
+2. **New shared tokens — proposed, owned by @native-app-engineer.** `trendUp`, `trendDown`, `trendFlat`,
    and `stale` should be added to the shared `IconToken` enum (and iOS `SFSymbolsMapping` /
    `LucideMapping`), because neither `IconToken.kt` nor `IconToken.swift` defines them today and
    #2113 references them as #2121-owned. **This design PR does not edit `IconToken.kt`** —
-   `packages/core` is @kmp-engineer-owned, so the enum/mapping change is a **separate tracked
-   task** for @kmp-engineer (spec in §5.1).
+   `packages/core` is @native-app-engineer-owned, so the enum/mapping change is a **separate tracked
+   task** for @native-app-engineer (spec in §5.1).
 3. **"Failed" is a sync state, not a transaction state** — the model's `TransactionStatus` is
    `PENDING/CLEARED/RECONCILED/VOID` (`Transaction.kt:16`); the epic's "failed" cue is mapped to
    the **sync-failed** state, not a non-existent transaction status (§4).

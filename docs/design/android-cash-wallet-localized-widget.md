@@ -1,7 +1,7 @@
 # Android — Cash Wallet Defaults & Localized Widget UX
 
 > **Status:** DRAFT — design only (pending human review)
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 > **Issue:** [#2541](https://github.com/jrmoulckers/finance/issues/2541) · **Part of** [#2180](https://github.com/jrmoulckers/finance/issues/2180)
 > **Platform:** Android phone (Jetpack Compose · Material 3 · Glance) · **minSdk 28 / compile-target 35**
 > **Last Updated:** 2026-06-22
@@ -66,7 +66,7 @@ claims "Configurable default account and category" but **hardcodes English label
   [Quick-add defaults & persistence](./android-quick-add-defaults-persistence.md)
   ([#2525](https://github.com/jrmoulckers/finance/issues/2525)); here we specialize it for **cash**.
 - Owning the cash-account **selection rule** or any finance math (shared / repository).
-- Adding new translated strings to `packages/core` (that is `@kmp-engineer`'s catalog); this doc
+- Adding new translated strings to `packages/core` (that is `@native-app-engineer`'s catalog); this doc
   defines the **boundary and the Android mirror**, not the canonical translations.
 
 ---

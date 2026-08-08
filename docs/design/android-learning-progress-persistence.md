@@ -2,7 +2,7 @@
 
 > **Status:** DRAFT — Pending human review
 > **Last Updated:** 2026-06-21
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 > **Issue:** [#2667](https://github.com/jrmoulckers/finance/issues/2667) · Part of #2208
 > **Related:** [Data Model](./data-model.md) · [Human-Gated Prerequisites Runbook](../ops/human-gated-prerequisites.md)
 
@@ -120,7 +120,7 @@ field-for-field so both clients compute completion, scores, and resume state ide
 - Module/overview roll-ups (`completionPercent`, `bestQuizPercent`).
 
 These live as pure, unit-tested functions. Where the rule is genuinely shared cross-platform, the
-preferred long-term home is the KMP `packages/` layer (owned by @kmp-engineer) so a single source of
+preferred long-term home is the KMP `packages/` layer (owned by @native-app-engineer) so a single source of
 truth feeds both web and Android. **Until that shared module exists, Android ports the web reducers
 verbatim into the repository layer** — never spread across Composables. This keeps the door open to
 delete the Kotlin copy once `packages/` exposes a common `LearningProgress` API, without touching UI.
@@ -501,7 +501,7 @@ implementation PR. Do not attempt keystore generation, account registration, or 
 - **Cross-device sync:** should learning progress eventually become a synced SQLDelight entity
   (per [data-model.md](./data-model.md) sync columns) so progress follows the user across devices?
   The repository interface is designed to allow this swap later without UI changes. Needs
-  @kmp-engineer alignment on whether the canonical model lives in `packages/`.
+  @native-app-engineer alignment on whether the canonical model lives in `packages/`.
 - **Shared reducer home:** confirm whether the ported web reducers should be promoted into a KMP
   `packages/` module (single source of truth) versus living in the Android repository short-term.
 - **Backup policy:** include/exclude the DataStore file from Android cloud auto-backup — exclude by

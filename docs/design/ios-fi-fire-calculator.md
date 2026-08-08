@@ -298,7 +298,7 @@ no new persistence surface, no Swift edits required by this design.
 > (`GoalStatusUI`, `GoalItem.swift:14`). The repo's Schema-Alignment note targets a Supabase
 > `status` enum of `active / completed / archived`. FI-target-as-goal only needs `ACTIVE` and
 > `COMPLETED`, so it is unaffected either way, but the `PAUSED`/`CANCELLED` ↔ `archived` mismatch
-> is a backend/schema decision (owner: `@backend-engineer` + `@kmp-engineer`), not an iOS one — see
+> is a backend/schema decision (owner: `@backend-engineer` + `@native-app-engineer`), not an iOS one — see
 > §11.
 
 ## 8. Surface application map
@@ -407,4 +407,4 @@ $1,142,857.14`; `swr ≤ 0 ⇒ 0`; negative SWR ⇒ 0. (Parity with `fire-calcul
 **Flagged for owners (not an iOS design decision):** the `GoalStatus` enum mismatch between the live
 KMP model (`ACTIVE/PAUSED/COMPLETED/CANCELLED`, `Goal.kt:13`) and the Schema-Alignment target
 (`active/completed/archived`). FI-target-as-goal only uses `ACTIVE`/`COMPLETED` and is unaffected,
-but the reconciliation is owned by `@backend-engineer` + `@kmp-engineer`.
+but the reconciliation is owned by `@backend-engineer` + `@native-app-engineer`.

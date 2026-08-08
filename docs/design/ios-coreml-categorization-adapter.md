@@ -60,7 +60,7 @@ Companion docs in this cluster:
 - Implementing Swift code (gated by [#1239](https://github.com/jrmoulckers/finance/issues/1239)).
 - Changing the KMP contract in this PR. Any new shared enum case (e.g. an
   `ON_DEVICE_MODEL` strategy) is **proposed via ADR** and owned by
-  @kmp-engineer — see [Open questions](#open-questions).
+  @native-app-engineer — see [Open questions](#open-questions).
 
 ---
 
@@ -327,7 +327,7 @@ path degrades gracefully to the deterministic shared engine.
   "uncategorized" affordance for batch review.
 - `apps/ios/FinanceClip` — optional trimmed model variant for quick capture.
 
-**Shared dependencies (KMP, owned by @kmp-engineer):**
+**Shared dependencies (KMP, owned by @native-app-engineer):**
 
 - [`SmartCategorizationEngine.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/categorization/SmartCategorizationEngine.kt)
   — merge + confidence enum source of truth.
@@ -392,7 +392,7 @@ checklist in
   on a simulator or a personally-provisioned device (free Personal Team).
 - Run the full XCTest adapter suite and KMP `commonTest` suite locally and in
   CI (`ci-ios`, `ci-shared`).
-- Propose the shared `ON_DEVICE_MODEL` strategy via ADR to @kmp-engineer.
+- Propose the shared `ON_DEVICE_MODEL` strategy via ADR to @native-app-engineer.
 
 **Distribution tail — gated by [#1239](https://github.com/jrmoulckers/finance/issues/1239) (human-gated):**
 
@@ -409,7 +409,7 @@ this work. Those remain human-gated.
 ## Open questions
 
 - **ADR for `ON_DEVICE_MODEL`:** add a new `CategorizationStrategy` case vs.
-  reuse `KEYWORD_MATCH` semantics? Owned by @kmp-engineer; this doc assumes a
+  reuse `KEYWORD_MATCH` semantics? Owned by @native-app-engineer; this doc assumes a
   new additive case.
 - **Model provenance:** how is `MerchantCategory.mlmodelc` produced and
   audited (training data must itself be privacy-clean)? Tracked separately;

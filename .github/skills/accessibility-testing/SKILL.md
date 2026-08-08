@@ -1,69 +1,67 @@
 ---
 name: accessibility-testing
 description: >
-  Accessibility testing methodology for the Finance app. Use for topics related
-  to WCAG 2.2 AA, a11y testing, screen readers, keyboard navigation, focus
-  management, contrast, reduced motion, TalkBack, VoiceOver, Narrator, or
-  inclusive QA.
+  Accessibility testing methodology. Use for topics related to WCAG 2.2 AA, a11y
+  testing, screen readers, keyboard navigation, focus management, contrast,
+  reduced motion, VoiceOver, TalkBack, Narrator, or inclusive QA.
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Accessibility Testing Skill
 
-## Purpose
+**Trigger:** a11y validation, WCAG 2.2 AA checks, screen-reader/keyboard passes, focus or
+contrast/motion review.
+**Inputs:** target surfaces/routes, platforms in scope, assistive tech available.
+**Related:** `ux-testing` (broader manual QA), `design-tokens` (contrast/motion tokens),
+`i18n-localization` (localized labels, text expansion), `issue-management` (filing scoped issues).
 
-This skill covers **accessibility validation and assistive-technology testing** across Web, iOS, Android, and Windows. It turns WCAG 2.2 AA requirements into concrete Finance app checks for financial workflows, charts, forms, and offline/sync states.
+## Out of scope
 
-## Out of Scope
-
-- General manual QA session orchestration and bug discovery → use `ux-testing`.
+- General manual QA orchestration and bug discovery → use `ux-testing`.
 - Design-token authoring and color-system changes → use `design-tokens`.
-- Issue filing quality, duplicate decisions, and platform labels → use `issue-management`.
-- Security/privacy vulnerability review → use `security-review-methodology` or `privacy-compliance`.
+- Security/privacy vulnerability review → use `security-review-methodology`.
 
-## Related Skills
+## Method
 
-| Skill               | Use For                                                       |
-| ------------------- | ------------------------------------------------------------- |
-| `ux-testing`        | Broader manual QA sessions and bug investigation              |
-| `design-tokens`     | Contrast-safe color tokens, motion tokens, and chart palettes |
-| `i18n-localization` | Localized labels, date/currency formats, and text expansion   |
-| `issue-management`  | Filing accessible, scoped, cross-platform issues              |
+1. **Keyboard first** — complete core flows without pointer/touch (sign-in, primary CRUD,
+   search/filter, settings).
+2. **Screen-reader pass** — verify useful names, roles, values, state changes, validation
+   errors, and status/offline banners.
+3. **Focus management** — route changes move focus to the page heading; dialogs trap focus
+   and restore it to the opener.
+4. **No color-only signaling** — never encode meaning by color alone; provide text or data-table
+   alternatives to charts and visualizations.
+5. **Visual accessibility** — verify contrast for normal/large text, focus rings, disabled
+   controls, high contrast, dark mode, and reduced motion.
+6. **Scaling & localization** — test large text / dynamic type and long translated labels;
+   critical values must remain readable and not truncate.
+7. **Error announcement** — validation and async failures use live regions / platform-native
+   announcements and include actionable recovery.
 
-## Repo-Specific Surfaces
+## Platform checklist
 
-| Surface         | Paths / Tools                                                                |
-| --------------- | ---------------------------------------------------------------------------- |
-| Web helpers     | `apps/web/src/lib/a11y.ts`, `apps/web/src/lib/ux/a11y-preferences.ts`        |
-| Web styles      | `apps/web/src/styles/accessibility.css`, `apps/web/src/theme/tokens.css`     |
-| Chart a11y      | `apps/web/src/components/charts/chart-accessibility.tsx`                     |
-| Lighthouse gate | `apps/web/lighthouserc.json` (`categories:accessibility` minimum score 0.95) |
-| Android         | `apps/android/**` Jetpack Compose semantics + TalkBack                       |
-| iOS             | `apps/ios/Finance/**` SwiftUI accessibility labels + VoiceOver               |
-| Windows         | `apps/windows/**` Compose Desktop semantics + Narrator                       |
+| Platform | Required checks |
+| --- | --- |
+| Web | Semantic HTML, ARIA only when needed, tab order, `prefers-reduced-motion`, Lighthouse accessibility gate |
+| iOS | VoiceOver rotor order, Dynamic Type, SwiftUI labels/hints |
+| Android | TalkBack order, Compose `semantics`, ≥48dp touch targets, font scaling, high contrast |
+| Desktop | Screen-reader names/roles, keyboard shortcuts, visible focus, high contrast, window resizing |
 
-## Test Methodology
+> Test only the platforms your product ships. Drop rows that don't apply.
 
-1. **Keyboard first**: complete core flows without pointer/touch: sign-in, create/edit transaction, search/filter, budget/goal CRUD, settings, export/delete account.
-2. **Screen reader pass**: verify useful names, roles, values, state changes, validation errors, and sync/offline banners.
-3. **Focus management**: route changes move focus to the page heading; dialogs trap focus and restore it to the opener.
-4. **Financial chart alternatives**: charts must expose data tables or textual summaries; never encode gains/losses by color alone.
-5. **Visual accessibility**: verify contrast for normal/large text, focus rings, disabled controls, high contrast, dark mode, and reduced motion.
-6. **Scaling and localization**: test large text/dynamic type and long translated labels; financial amounts must remain readable and not truncate critical digits.
-7. **Error announcement**: validation and async failures use live regions / platform-native announcements and include actionable recovery.
+## Acceptance criteria for a11y issues
 
-## Platform Checklist
-
-| Platform | Required Checks                                                                                          |
-| -------- | -------------------------------------------------------------------------------------------------------- |
-| Web      | Semantic HTML, ARIA only when needed, tab order, `prefers-reduced-motion`, Lighthouse accessibility gate |
-| iOS      | VoiceOver rotor order, Dynamic Type, large content viewer where applicable, SwiftUI labels/hints         |
-| Android  | TalkBack order, Compose `semantics`, minimum 48dp touch targets, font scaling, high contrast             |
-| Windows  | Narrator names/roles, keyboard shortcuts, visible focus, high contrast, window resizing                  |
-
-## Acceptance Criteria for A11y Issues
-
-- Reproduction includes the assistive technology or preference used.
+- Reproduction names the assistive technology or preference used.
 - Expected result names the WCAG criterion or platform guideline.
-- Files cite the platform implementation path and any shared helper path.
-- Cross-platform section says whether the same pattern exists on Web, iOS, Android, and Windows.
-- Severity reflects user impact, especially blocked financial workflows or hidden financial values.
+- Files cite the implementation path (and any shared helper path).
+- Cross-platform note: does the same pattern exist on the product's other platforms?
+- Severity reflects user impact — especially blocked workflows or hidden critical values.
+
+## Safety
+
+Report-only. File issues and route shared-token fixes to `design-tokens` rather than editing
+them here.
+
+## Output
+
+A scoped accessibility report plus filed issues that cite WCAG criteria and implementation paths.

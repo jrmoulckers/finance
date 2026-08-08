@@ -139,7 +139,7 @@ flowchart LR
 ```
 
 > This document **describes** the boundary; it does **not** implement KMP changes.
-> `packages/core` is owned by @kmp-engineer; the web engine by @web-engineer.
+> `packages/core` is owned by @native-app-engineer; the web engine by @web-engineer.
 
 ---
 
@@ -362,7 +362,7 @@ The shared projection model is delivered by KMP `packages/core`; the widget rend
 - [`WidgetUpdater.kt`](../../apps/android/src/main/kotlin/com/finance/android/widget/WidgetUpdater.kt) — refresh entry point
 - [`SyncWorker.kt`](../../apps/android/src/main/kotlin/com/finance/android/sync/SyncWorker.kt) — WorkManager sync entry point
 - [`goal-projection-engine.ts`](../../apps/web/src/lib/savings/goal-projection-engine.ts) — web parity reference (owned by @web-engineer)
-- [`Goal.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt) — shared goal model (owned by @kmp-engineer)
+- [`Goal.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt) — shared goal model (owned by @native-app-engineer)
 
 **Issues**
 

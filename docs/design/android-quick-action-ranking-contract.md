@@ -384,14 +384,14 @@ accessible. Requirements that the ranking contract makes easier:
 | Phase                                                                                                                             | Status               | Gate                                                                                                      |
 | --------------------------------------------------------------------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------- |
 | This design doc                                                                                                                   | ✅ Done              | None                                                                                                      |
-| Shared ranking contract (`QuickActionRanking.kt` + tests)                                                                         | ✅ Exists            | None — in `packages/core`, owned by `@kmp-engineer`                                                       |
+| Shared ranking contract (`QuickActionRanking.kt` + tests)                                                                         | ✅ Exists            | None — in `packages/core`, owned by `@native-app-engineer`                                                |
 | Android adapter: encrypted store, `QuickActionsViewModel`, freshness, telemetry, unit/Compose/Paparazzi, `assembleDebug` sideload | 🟢 **Buildable now** | None — debug sideload per [`../ops/human-gated-prerequisites.md` §2](../ops/human-gated-prerequisites.md) |
 | App Shortcuts / Glance widget rendering of ranked output (debug)                                                                  | 🟢 **Buildable now** | None — see [surfaces doc](./android-predictive-shortcuts-widgets.md)                                      |
 | Play Store release + production App Shortcut / widget distribution                                                                | 🔒 **Gated**         | [#1242](https://github.com/jrmoulckers/finance/issues/1242) — keystore + Play Console                     |
 
 The ranking adapter is **standard local Android code** — fully implementable and
 testable today with `./gradlew :apps:android:assembleDebug` plus unit, Compose, and
-Paparazzi tests. Ranking math stays in `packages/core` (owned by `@kmp-engineer`).
+Paparazzi tests. Ranking math stays in `packages/core` (owned by `@native-app-engineer`).
 **Only Play distribution** (release signing, Play Console upload) is human-gated by
 #1242 — see [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md)
 §§2–3.1. No build, signing, or store action is performed by this design.

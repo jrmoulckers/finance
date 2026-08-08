@@ -11,7 +11,7 @@
 **Status:** PROPOSED — design only (implementation gated where noted)
 **Issue:** [#2564](https://github.com/jrmoulckers/finance/issues/2564) — Part of [#2116](https://github.com/jrmoulckers/finance/issues/2116)
 **Platform:** iOS / iPadOS (SwiftUI, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related design:** [ios-net-worth-trend-chart.md](./ios-net-worth-trend-chart.md) · [ios-fi-calculator-flow.md](./ios-fi-calculator-flow.md) · [ios-fire-results-goal-integration.md](./ios-fire-results-goal-integration.md) · [data-visualization.md](./data-visualization.md) · [chart-component-specs.md](./chart-component-specs.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -340,7 +340,7 @@ description built from the full projection series, e.g.:
 
 ## 10. Affected Surfaces & Shared Dependencies
 
-### 10.1 iOS surfaces (all in `apps/ios/`, owned by @ios-engineer)
+### 10.1 iOS surfaces (all in `apps/ios/`, owned by @native-app-engineer)
 
 | Surface                                                          | Change                                                                                                                           |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -370,7 +370,7 @@ months, startMonth)` (contribution + compounding), canonical TypeScript
 > **The forward `projectNetWorth` model is not yet in `packages/core` (KMP)** (the
 > historical `netWorthOverTime` is). Porting it from the web reference (parity with
 > `net-worth-projection.test.ts`) and re-exporting via `packages/sync` is a
-> `packages/` change **owned by @kmp-engineer and proposed via ADR** — iOS must
+> `packages/` change **owned by @native-app-engineer and proposed via ADR** — iOS must
 > not implement the math or edit `packages/`. The overlay binds to a Swift-native
 > `NetWorthProjectionBridge` stub, so it is buildable/testable now (see
 > [§11](#11-native--shared-boundary), [§13](#13-implementation-readiness)).
@@ -389,7 +389,7 @@ flowchart LR
         B --> C["[NetWorthTrendPoint] (Int64, Date)"]
         I --> J["[NetWorthForecastPoint] (Int64 value/contribution/growth, Date)"]
     end
-    subgraph ios["apps/ios (this PR — @ios-engineer)"]
+    subgraph ios["apps/ios (this PR — @native-app-engineer)"]
         C --> D["NetWorthProjectionViewModel"]
         J --> D
         D --> E["NetWorthProjectionOverlay (dashed line + band + divider + scrub)"]
@@ -428,7 +428,7 @@ flowchart LR
   `net-worth-projection.test.ts`: monotonic growth with positive contribution;
   `max(0, …)` growth guard (no growth on negative net worth); correct
   month stepping and contribution/growth attribution per point; zero-growth →
-  pure contribution accumulation. **@kmp-engineer via ADR**, not this PR.
+  pure contribution accumulation. **@native-app-engineer via ADR**, not this PR.
 - `netWorthOverTime` history coverage already exists (per the trend-chart design)
   — verify, don't duplicate.
 
@@ -516,7 +516,7 @@ blocker [#1239](https://github.com/jrmoulckers/finance/issues/1239) gates
 
 The forward **`projectNetWorth` model must be ported to `packages/core`** from the
 web reference (parity with `net-worth-projection.test.ts`) and **re-exported** via
-the `packages/sync` Swift Export bridge — **@kmp-engineer via ADR**, not this iOS
+the `packages/sync` Swift Export bridge — **@native-app-engineer via ADR**, not this iOS
 PR. The historical series it extends already exists. Until the forward port lands,
 the overlay binds to the stub bridge, so the iOS surface is independently
 developable; only the live projected numbers depend on the shared port.

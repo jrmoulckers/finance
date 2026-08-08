@@ -218,7 +218,7 @@ This is the most boundary-sensitive of the cluster. The split:
 > **Boundary note (do not implement here):** the dedup-matching, confidence-
 > scoring, and any new "candidate draft" model are **shared** concerns. If they
 > don't already exist in `packages/`, introducing them is a change for
-> `@kmp-engineer` via ADR — this document specifies the iOS-side contract and
+> `@native-app-engineer` via ADR — this document specifies the iOS-side contract and
 > the data it expects, not the Kotlin implementation. iOS must not fork these
 > rules locally. Boundary: **scoring/dedup/validation in KMP, capture mechanics
 > and review UI in SwiftUI.**
@@ -366,7 +366,7 @@ part of this design.
 
 1. Where exactly should the dedup-matching and confidence-scoring models live —
    `packages/core` vs. `packages/sync` — and what is the candidate-draft schema?
-   This is an ADR conversation with `@kmp-engineer`/`@architect`.
+   This is an ADR conversation with `@native-app-engineer`/`@architect`.
 2. Should the inbox be a top-level tab, a Transactions-tab section, or a
    notification-driven sheet? Proposal: a Transactions-tab entry with a badge,
    promotable later.

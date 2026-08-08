@@ -174,12 +174,9 @@ Where `branch-name` follows: `type/description-issue#`
 **Fleet example** for implementing transaction categorization (#500):
 
 ```
-wt-kmp-feat-category-engine-500        ← @kmp-engineer: shared business logic
-wt-android-feat-category-ui-501        ← @android-engineer: Android UI
-wt-ios-feat-category-ui-502            ← @ios-engineer: iOS UI
+wt-native-feat-category-engine-500     ← @native-app-engineer: shared + native implementation
 wt-web-feat-category-ui-503            ← @web-engineer: Web UI
-wt-windows-feat-category-ui-504       ← @windows-engineer: Windows UI
-wt-backend-feat-category-sync-505     ← @backend-engineer: sync rules
+wt-database-feat-category-sync-505     ← @database-engineer: schema + sync rules
 wt-docs-feat-category-docs-506        ← @docs-writer: documentation
 ```
 
@@ -195,12 +192,11 @@ In fleet mode, **no two agents edit the same file in parallel.** Ownership is as
 
 | Agent                     | Primary ownership                                                                                                                              |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@kmp-engineer`           | `packages/`                                                                                                                                    |
-| `@backend-engineer`       | `services/api/`                                                                                                                                |
+| `@native-app-engineer`    | `apps/android/`, `apps/ios/`, `apps/windows/`, shared `packages/`, Gradle config                                                               |
+| `@backend-engineer`       | Edge Functions, Auth/API behavior, OpenAPI, validation, rate limiting                                                                          |
+| `@database-engineer`      | Supabase migrations/RLS/tests/seed, PowerSync rules, database backup/volume definitions                                                        |
+| `@sre-engineer`           | SLOs, monitoring semantics, incidents, capacity, rollback, recovery verification                                                               |
 | `@web-engineer`           | `apps/web/`                                                                                                                                    |
-| `@android-engineer`       | `apps/android/`                                                                                                                                |
-| `@ios-engineer`           | `apps/ios/`                                                                                                                                    |
-| `@windows-engineer`       | `apps/windows/`                                                                                                                                |
 | `@design-engineer`        | `packages/design-tokens/`, generated token files                                                                                               |
 | `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/`                                                                                                 |
 | `@docs-writer`            | `docs/`, root `*.md` files                                                                                                                     |
@@ -217,12 +213,12 @@ In fleet mode, **no two agents edit the same file in parallel.** Ownership is as
 
 Some files are used by multiple agents but must only be edited by **one agent per fleet run**:
 
-| File                        | Default owner      | Notes                                     |
-| --------------------------- | ------------------ | ----------------------------------------- |
-| `gradle/libs.versions.toml` | `@kmp-engineer`    | Version catalog — all Gradle dependencies |
-| `settings.gradle.kts`       | `@kmp-engineer`    | Module includes                           |
-| `package.json`              | `@devops-engineer` | Node dependencies and scripts             |
-| `turbo.json`                | `@devops-engineer` | Turborepo pipeline configuration          |
+| File                        | Default owner          | Notes                                     |
+| --------------------------- | ---------------------- | ----------------------------------------- |
+| `gradle/libs.versions.toml` | `@native-app-engineer` | Version catalog — all Gradle dependencies |
+| `settings.gradle.kts`       | `@native-app-engineer` | Module includes                           |
+| `package.json`              | `@devops-engineer`     | Node dependencies and scripts             |
+| `turbo.json`                | `@devops-engineer`     | Turborepo pipeline configuration          |
 
 If multiple agents need changes to the same shared config, one agent makes all changes and the others document what they need in their PR description under `## Needs Shared Config Change`.
 
@@ -230,9 +226,9 @@ If multiple agents need changes to the same shared config, one agent makes all c
 
 Database schema changes must be serialized — never split across independent agents:
 
-1. `@backend-engineer` writes Supabase migrations and Row-Level Security (RLS) policies
-2. `@kmp-engineer` writes SQLDelight schemas (`.sq` files) to match
-3. These two agents coordinate as a pair: the backend migration lands first, then the KMP schema aligns to it
+1. `@database-engineer` writes Supabase migrations, RLS policies, and PowerSync rules
+2. `@native-app-engineer` writes matching SQLDelight schemas (`.sq` files) and client models
+3. These two agents coordinate in one serialized task so cloud and client schemas stay aligned
 
 ---
 
@@ -370,9 +366,9 @@ Shared configuration files (`gradle/libs.versions.toml`, `package.json`, `turbo.
 
 Database schema work flows in one direction:
 
-1. `@backend-engineer` writes the Supabase migration
-2. `@kmp-engineer` aligns the SQLDelight schema
-3. Platform agents consume the KMP models
+1. `@database-engineer` writes the Supabase migration, RLS, and PowerSync rules
+2. `@native-app-engineer` aligns the SQLDelight schema and client models
+3. Native and web surfaces consume the shared contract
 
 Never split schema changes across independently running agents.
 
@@ -567,13 +563,12 @@ The orchestrator maintains a status summary in the parent issue or a tracking co
 ```markdown
 ## Fleet Status
 
-| Agent             | PR   | CI         | Conflicts | Status       |
-| ----------------- | ---- | ---------- | --------- | ------------ |
-| @kmp-engineer     | #510 | ✅ Green   | None      | Merge-ready  |
-| @android-engineer | #511 | 🔴 Failing | None      | Self-healing |
-| @ios-engineer     | #512 | ✅ Green   | None      | Merge-ready  |
-| @web-engineer     | #513 | 🟡 Running | None      | Waiting      |
-| @docs-writer      | #514 | ✅ Green   | None      | Merge-ready  |
+| Agent                | PR   | CI         | Conflicts | Status       |
+| -------------------- | ---- | ---------- | --------- | ------------ |
+| @database-engineer   | #510 | ✅ Green   | None      | Merge-ready  |
+| @native-app-engineer | #511 | 🔴 Failing | None      | Self-healing |
+| @web-engineer        | #513 | 🟡 Running | None      | Waiting      |
+| @docs-writer         | #514 | ✅ Green   | None      | Merge-ready  |
 ```
 
 ### Escalation triggers
@@ -673,16 +668,13 @@ If `git worktree list` shows a worktree from a previous run:
 
 **Fleet dispatch:**
 
-| Agent               | Subtask                      | Issue | Branch                    |
-| ------------------- | ---------------------------- | ----- | ------------------------- |
-| `@kmp-engineer`     | Search engine in shared code | #601  | `feat/search-engine-601`  |
-| `@android-engineer` | Android search UI            | #602  | `feat/android-search-602` |
-| `@ios-engineer`     | iOS search UI                | #603  | `feat/ios-search-603`     |
-| `@web-engineer`     | Web search UI                | #604  | `feat/web-search-604`     |
-| `@windows-engineer` | Windows search UI            | #605  | `feat/windows-search-605` |
-| `@docs-writer`      | Update feature docs          | #606  | `docs/search-docs-606`    |
+| Agent                  | Subtask                          | Issue | Branch                   |
+| ---------------------- | -------------------------------- | ----- | ------------------------ |
+| `@native-app-engineer` | Shared search engine + native UI | #601  | `feat/native-search-601` |
+| `@web-engineer`        | Web search UI                    | #604  | `feat/web-search-604`    |
+| `@docs-writer`         | Update feature docs              | #606  | `docs/search-docs-606`   |
 
-**Dependency:** Platform agents wait for `@kmp-engineer` to merge the search engine before consuming its API. If the KMP PR is not yet merged, platform agents can work against the expected interface (documented in the KMP issue) and rebase when it lands.
+**Dependency:** The web agent waits for `@native-app-engineer` to merge the shared search contract before consuming its API. It may work against a documented expected interface and rebase when the shared PR lands.
 
 ### Example 2: Bug fix with test and docs
 
@@ -690,10 +682,10 @@ If `git worktree list` shows a worktree from a previous run:
 
 **Fleet dispatch:**
 
-| Agent           | Subtask                                  | Issue | Branch                   |
-| --------------- | ---------------------------------------- | ----- | ------------------------ |
-| `@kmp-engineer` | Fix rollover logic + unit tests          | #700  | `fix/rollover-calc-700`  |
-| `@docs-writer`  | Update rollover section in feature guide | #701  | `docs/rollover-docs-701` |
+| Agent                  | Subtask                                  | Issue | Branch                   |
+| ---------------------- | ---------------------------------------- | ----- | ------------------------ |
+| `@native-app-engineer` | Fix rollover logic + unit tests          | #700  | `fix/rollover-calc-700`  |
+| `@docs-writer`         | Update rollover section in feature guide | #701  | `docs/rollover-docs-701` |
 
 **Coordination:** The docs agent can start immediately since the feature behavior (not the code) is well-defined in the issue. Both PRs can land independently.
 
@@ -703,11 +695,11 @@ If `git worktree list` shows a worktree from a previous run:
 
 **Serialized dispatch** (not parallel — schema must be sequential):
 
-1. `@backend-engineer` creates Supabase migration adding `tags` column → PR #801
+1. `@database-engineer` creates the Supabase migration, RLS updates, and PowerSync rule changes → PR #801
 2. **Merge PR #801** (authoring agent or orchestrator) once CI is green and `MERGEABLE`
-3. `@kmp-engineer` adds SQLDelight schema for tags → PR #802
+3. `@native-app-engineer` adds the SQLDelight schema and client models for tags → PR #802
 4. **Merge PR #802** (authoring agent or orchestrator) once CI is green and `MERGEABLE`
-5. Platform agents consume the KMP models → PRs #803–#806 (these can run in parallel)
+5. Native and web surfaces consume the shared models → follow-up PRs as needed
 
 ---
 

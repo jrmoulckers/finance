@@ -185,7 +185,7 @@ Rules:
   collapse never hides a field the validator requires without surfacing it.
 - **No `packages/` change is needed.** If future work wanted the step model
   itself to be shared/driven by KMP (e.g. cross-platform wizard config), that is
-  an ADR to `@kmp-engineer` — explicitly out of scope. Boundary: **rules in KMP,
+  an ADR to `@native-app-engineer` — explicitly out of scope. Boundary: **rules in KMP,
   reflow in SwiftUI.**
 
 ---

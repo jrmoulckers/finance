@@ -4,7 +4,7 @@
 > **Issue:** [#2512](https://github.com/jrmoulckers/finance/issues/2512) — _Part of [#2133](https://github.com/jrmoulckers/finance/issues/2133)_
 > **Platform:** Android / Wear OS (Jetpack Compose, Material 3)
 > **Last Updated:** 2026-06-22
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 
 ---
 
@@ -270,7 +270,7 @@ This is a **design deliverable**; it ships as documentation only.
 ## Open Questions
 
 - Should manual overrides live as a transaction tag, a custom field, or a dedicated column? (Decide with
-  @kmp-engineer; affects sync schema and is owned by `packages/*`.)
+  @native-app-engineer; affects sync schema and is owned by `packages/*`.)
 - Do we expose per-platform color theming, or keep platform identity to icon + label for color-blind
   safety? (Recommend label-first.)
 - Should "Reset to defaults" merge with or replace user edits? (Recommend additive merge with confirm.)

@@ -136,7 +136,7 @@ flowchart LR
 > through the shared formatter to stay locale-correct.
 
 > **KMP changes are out of scope for this PR.** Any new `commonMain` summary
-> helper is proposed to @kmp-engineer via ADR per
+> helper is proposed to @native-app-engineer via ADR per
 > [AGENTS.md](../../AGENTS.md); this design names the contract, it does not edit
 > `packages/`.
 
@@ -365,7 +365,7 @@ gate only.
   [human-gated-prerequisites.md §3.2](../ops/human-gated-prerequisites.md#32-ios-distribution--apple-developer-1239).
   An SME agent must **not** perform enrollment, certificate, or secret steps.
 - **Shared-logic tail:** the proposed `commonMain` summary helper is an
-  @kmp-engineer change via ADR; until then the iOS layer can compute summary facts
+  @native-app-engineer change via ADR; until then the iOS layer can compute summary facts
   locally from already-bridged aggregates, then migrate.
 
 _Part of [#2113](https://github.com/jrmoulckers/finance/issues/2113). Sibling

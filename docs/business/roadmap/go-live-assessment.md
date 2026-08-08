@@ -333,25 +333,25 @@ These items **block any beta launch** regardless of market or platform:
 These items are acceptable risk for a closed beta but must be resolved before
 general availability:
 
-| Priority | Item                                            | Owner              | Effort    |
-| -------- | ----------------------------------------------- | ------------------ | --------- |
-| P1       | Wire account deletion end-to-end (all clients)  | Platform engineers | 3-5 days  |
-| P1       | Complete data export coverage (4+ tables)       | @backend-engineer  | 2-3 days  |
-| P1       | CryptoObject binding for Android biometric      | @android-engineer  | 3-4 days  |
-| P1       | Certificate pinning (merge PR #974 + implement) | Platform engineers | 3-4 days  |
-| P1       | Session binding (merge PR #993 + implement)     | Platform engineers | 5-7 days  |
-| P1       | In-memory fallback rate limiter                 | @backend-engineer  | 4 hours   |
-| P1       | Reduce passkey rate limit to 10/min             | @backend-engineer  | 1 hour    |
-| P2       | Full accessibility audit (all 4 platforms)      | @a11y-reviewer     | 1-2 weeks |
-| P2       | App store screenshots + assets                  | @marketing         | 3-5 days  |
-| P2       | Content rating questionnaires (Play + MS Store) | Product            | 1-2 hours |
-| P2       | Android/iOS/Windows E2E test suites             | Platform engineers | 1-2 weeks |
-| P2       | Cross-device sync validation                    | @kmp-engineer      | 3-5 days  |
-| P2       | Release workflow dry-run (all platforms)        | @devops-engineer   | 1-2 days  |
-| P2       | Deploy monitoring stack (Sentry, Uptime Kuma)   | @devops-engineer   | 1-2 days  |
-| P3       | Web landing page with store links               | @web-engineer      | 2-3 days  |
-| P3       | Status page for users                           | @devops-engineer   | 1 day     |
-| P3       | Structured logging + distributed tracing        | @architect         | 1-2 weeks |
+| Priority | Item                                            | Owner                | Effort    |
+| -------- | ----------------------------------------------- | -------------------- | --------- |
+| P1       | Wire account deletion end-to-end (all clients)  | Platform engineers   | 3-5 days  |
+| P1       | Complete data export coverage (4+ tables)       | @backend-engineer    | 2-3 days  |
+| P1       | CryptoObject binding for Android biometric      | @native-app-engineer | 3-4 days  |
+| P1       | Certificate pinning (merge PR #974 + implement) | Platform engineers   | 3-4 days  |
+| P1       | Session binding (merge PR #993 + implement)     | Platform engineers   | 5-7 days  |
+| P1       | In-memory fallback rate limiter                 | @backend-engineer    | 4 hours   |
+| P1       | Reduce passkey rate limit to 10/min             | @backend-engineer    | 1 hour    |
+| P2       | Full accessibility audit (all 4 platforms)      | @a11y-reviewer       | 1-2 weeks |
+| P2       | App store screenshots + assets                  | @marketing           | 3-5 days  |
+| P2       | Content rating questionnaires (Play + MS Store) | Product              | 1-2 hours |
+| P2       | Android/iOS/Windows E2E test suites             | Platform engineers   | 1-2 weeks |
+| P2       | Cross-device sync validation                    | @native-app-engineer | 3-5 days  |
+| P2       | Release workflow dry-run (all platforms)        | @devops-engineer     | 1-2 days  |
+| P2       | Deploy monitoring stack (Sentry, Uptime Kuma)   | @devops-engineer     | 1-2 days  |
+| P3       | Web landing page with store links               | @web-engineer        | 2-3 days  |
+| P3       | Status page for users                           | @devops-engineer     | 1 day     |
+| P3       | Structured logging + distributed tracing        | @architect           | 1-2 weeks |
 
 ---
 

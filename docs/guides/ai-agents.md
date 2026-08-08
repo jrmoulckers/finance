@@ -1,6 +1,6 @@
 # AI Agent Usage Guide
 
-This guide explains how to use the 13 custom Copilot agents in the Finance monorepo, when to invoke each one, and how to combine them for complex workflows.
+This guide explains how to use the 23 runtime Copilot agents in the Finance monorepo, when to invoke each one, and how to combine them for complex workflows. Twenty-two definitions are Studio-generated; `finance-domain` is Finance-authored.
 
 ## Table of Contents
 
@@ -13,21 +13,20 @@ This guide explains how to use the 13 custom Copilot agents in the Finance monor
 
 ## Quick Reference
 
-| Agent                     | Role            | Best For                                             |
-| ------------------------- | --------------- | ---------------------------------------------------- |
-| `@architect`              | System design   | Cross-platform decisions, API contracts, ADRs        |
-| `@docs-writer`            | Documentation   | Guides, READMEs, API docs, ADRs                      |
-| `@security-reviewer`      | Security review | Auth, encryption, data handling, compliance          |
-| `@accessibility-reviewer` | A11y review     | WCAG compliance, screen readers, motion              |
-| `@finance-domain`         | Domain logic    | Money math, budgets, transactions, currencies        |
-| `@kmp-engineer`           | Shared code     | KMP modules, SQLDelight, Gradle, expect/actual       |
-| `@backend-engineer`       | Backend         | Supabase, PostgreSQL, RLS, PowerSync, Edge Functions |
-| `@ios-engineer`           | iOS app         | SwiftUI, KMP integration, Keychain, VoiceOver        |
-| `@android-engineer`       | Android app     | Jetpack Compose, Material 3, BiometricPrompt         |
-| `@web-engineer`           | Web PWA         | Service workers, SQLite-WASM, ARIA, Web Crypto       |
-| `@windows-engineer`       | Windows app     | Compose Desktop, Windows Hello, DPAPI, Narrator      |
-| `@devops-engineer`        | CI/CD           | GitHub Actions, Turborepo, Fastlane, Changesets      |
-| `@design-engineer`        | Design system   | Design tokens, Style Dictionary, color, typography   |
+| Agent                     | Role            | Best For                                           |
+| ------------------------- | --------------- | -------------------------------------------------- |
+| `@architect`              | System design   | Cross-platform decisions, API contracts, ADRs      |
+| `@docs-writer`            | Documentation   | Guides, READMEs, API docs, ADRs                    |
+| `@security-reviewer`      | Security review | Auth, encryption, data handling, compliance        |
+| `@accessibility-reviewer` | A11y review     | WCAG compliance, screen readers, motion            |
+| `@finance-domain`         | Domain logic    | Money math, budgets, transactions, currencies      |
+| `@native-app-engineer`    | Native/shared   | Android, iOS, Windows, KMP, SQLDelight, Gradle     |
+| `@backend-engineer`       | Backend         | Supabase Auth, Edge Functions, API behavior        |
+| `@database-engineer`      | Database        | PostgreSQL, RLS, migrations, PowerSync rules       |
+| `@sre-engineer`           | Reliability     | SLOs, incidents, rollback, recovery verification   |
+| `@web-engineer`           | Web PWA         | Service workers, SQLite-WASM, ARIA, Web Crypto     |
+| `@devops-engineer`        | CI/CD           | GitHub Actions, Turborepo, Fastlane, Changesets    |
+| `@design-engineer`        | Design system   | Design tokens, Style Dictionary, color, typography |
 
 ## Agent Profiles and Example Prompts
 
@@ -81,44 +80,42 @@ Ensures correctness of financial logic — money representation, budgeting algor
 @finance-domain Design the data model for recurring transactions with flexible frequency options.
 ```
 
-### `@kmp-engineer` — KMP Engineer
+### `@native-app-engineer` — Native App Engineer
 
-Expert on all shared Kotlin Multiplatform code in `packages/`. Owns Gradle configuration, SQLDelight schemas, expect/actual declarations, and cross-platform compatibility.
+Leads Android, iOS, Windows, and shared Kotlin Multiplatform structure. Owns Gradle configuration, client SQLDelight schemas, expect/actual declarations, and native platform integration.
 
 ```
-@kmp-engineer Add a new SQLDelight migration for the categories table with a parent_id column.
-@kmp-engineer Create expect/actual declarations for platform-specific secure storage (Keychain, Keystore, DPAPI).
-@kmp-engineer Why is commonMain pulling in java.time? Find and fix the platform leak.
+@native-app-engineer Add a SQLDelight migration and matching client models for categories.
+@native-app-engineer Create expect/actual secure-storage declarations for Keychain, Keystore, and DPAPI.
+@native-app-engineer Build the budget screen natively on Android, iOS, and Windows with platform accessibility.
 ```
 
 ### `@backend-engineer` — Backend Engineer
 
-Owns the Supabase project — PostgreSQL schemas, Row-Level Security (RLS), Edge Functions, and PowerSync sync rules.
+Owns Supabase Auth, Edge Functions, API behavior, OpenAPI, validation, CORS, and rate limiting.
 
 ```
-@backend-engineer Write an RLS policy that allows users to read only their own accounts and any shared household accounts.
 @backend-engineer Create a Supabase Edge Function to handle webhook notifications from the bank aggregator.
-@backend-engineer Configure PowerSync sync rules to selectively replicate only active budgets to the client.
+@backend-engineer Review the auth and request-validation contract for the sync API.
 ```
 
-### `@ios-engineer` — iOS Engineer
+### `@database-engineer` — Database Engineer
 
-Builds the native Apple experience with SwiftUI. Integrates KMP shared logic via Swift Export or SKIE.
-
-```
-@ios-engineer Implement a transaction detail view in SwiftUI that consumes the KMP TransactionUseCase.
-@ios-engineer Add Face ID / Touch ID authentication gating before showing account balances.
-@ios-engineer Ensure the budget chart supports Dynamic Type and VoiceOver.
-```
-
-### `@android-engineer` — Android Engineer
-
-Builds the Android and Wear OS clients with Jetpack Compose and Material 3. KMP modules are direct Kotlin dependencies.
+Owns PostgreSQL schema, reversible migrations, Row-Level Security, seed/tests, and PowerSync rules.
 
 ```
-@android-engineer Build a Compose navigation graph for the accounts → transactions → detail flow.
-@android-engineer Integrate BiometricPrompt for app unlock with fallback to device credentials.
-@android-engineer Add a Wear OS tile showing today's spending total.
+@database-engineer Write and test RLS policies for owner and household access.
+@database-engineer Add the reversible Supabase migration and coordinate the client SQLDelight schema.
+@database-engineer Configure PowerSync rules to replicate only authorized active budgets.
+```
+
+### `@sre-engineer` — SRE Engineer
+
+Owns service-level objectives, monitoring semantics, incident response, capacity, rollback, disaster recovery, and restore verification.
+
+```
+@sre-engineer Define sync freshness and API availability SLOs with actionable alerts.
+@sre-engineer Review the rollback and restore-verification runbook for this migration.
 ```
 
 ### `@web-engineer` — Web Engineer
@@ -129,16 +126,6 @@ Builds the Progressive Web App (PWA) with offline-first capability using SQLite-
 @web-engineer Set up the service worker for offline caching of the transaction list.
 @web-engineer Configure SQLite-WASM with OPFS storage backend for persistent local data.
 @web-engineer Implement keyboard navigation for the budget allocation form.
-```
-
-### `@windows-engineer` — Windows Engineer
-
-Builds the Windows desktop client with Compose Desktop (JVM target), Windows Hello, and DPAPI secure storage.
-
-```
-@windows-engineer Add Windows Hello authentication with DPAPI fallback for credential storage.
-@windows-engineer Ensure the main window supports Narrator and UI Automation patterns.
-@windows-engineer Configure MSIX packaging for Microsoft Store distribution.
 ```
 
 ### `@devops-engineer` — DevOps Engineer
@@ -169,24 +156,24 @@ For complex features, chain agents in sequence. Each agent's output becomes cont
 
 ```
 Step 1: @architect Design the data model and API contract for budget sharing between household members.
-Step 2: @kmp-engineer Implement the shared KMP logic based on the architect's design.
-Step 3: @backend-engineer Write the RLS policies and sync rules for the new shared budget tables.
+Step 2: @database-engineer Write the PostgreSQL migration, RLS policies, and PowerSync rules.
+Step 3: @native-app-engineer Implement the shared KMP logic and client SQLDelight schema.
 Step 4: @security-reviewer Review the full implementation for data isolation and auth issues.
 Step 5: @docs-writer Document the new feature in the architecture docs and update the API reference.
 ```
 
 ### Other Useful Chains
 
-| Chain                                                                        | Use Case                                                |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `@finance-domain` → `@kmp-engineer`                                          | Design domain logic, then implement in shared code      |
-| `@architect` → `@devops-engineer`                                            | Design a system change, then update CI/CD to support it |
-| `@design-engineer` → `@web-engineer` + `@android-engineer` + `@ios-engineer` | Define tokens, then implement on each platform          |
-| `@kmp-engineer` → `@security-reviewer` → `@accessibility-reviewer`           | Build, security-check, then accessibility-check         |
+| Chain                                                                     | Use Case                                                |
+| ------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `@finance-domain` → `@native-app-engineer`                                | Design domain logic, then implement in shared code      |
+| `@architect` → `@devops-engineer`                                         | Design a system change, then update CI/CD to support it |
+| `@design-engineer` → `@web-engineer` + `@native-app-engineer`             | Define tokens, then implement on every platform         |
+| `@native-app-engineer` → `@security-reviewer` → `@accessibility-reviewer` | Build, security-check, then accessibility-check         |
 
 ### Tips for Effective Chaining
 
-- **Share context explicitly.** Paste the previous agent's output or reference the files it created: _"@kmp-engineer Implement the API contract from docs/architecture/adr-012-budget-sharing.md"_
+- **Share context explicitly.** Paste the previous agent's output or reference the files it created: _"@native-app-engineer Implement the API contract from docs/architecture/adr-012-budget-sharing.md"_
 - **Keep scope narrow.** Each agent works best with a focused task — don't ask one agent to "do everything."
 - **Review between steps.** Verify each agent's output before feeding it to the next. Errors compound when passed down the chain.
 
@@ -204,18 +191,18 @@ Fleet mode uses Copilot CLI's `/fleet` command to run multiple agents in paralle
 The fleet orchestrator automatically:
 
 1. Decomposes the task into subtasks
-2. Dispatches subtasks to the appropriate agents concurrently (e.g., `@kmp-engineer` for code, `@docs-writer` for docs, `@security-reviewer` for review)
+2. Dispatches subtasks to the appropriate agents concurrently (e.g., `@native-app-engineer` for native/shared code, `@docs-writer` for docs, `@security-reviewer` for review)
 3. Manages dependencies between subtasks
 4. Aggregates results for human review
 
 ### Good Candidates for Fleet Mode
 
-| Task Pattern                | Agents Dispatched                                                                       |
-| --------------------------- | --------------------------------------------------------------------------------------- |
-| New feature end-to-end      | `@architect` + `@kmp-engineer` + `@android-engineer` + `@ios-engineer` + `@docs-writer` |
-| Code + tests + docs         | `@kmp-engineer` + `@devops-engineer` + `@docs-writer`                                   |
-| Cross-platform UI component | `@design-engineer` + `@android-engineer` + `@ios-engineer` + `@web-engineer`            |
-| Security audit              | `@security-reviewer` + `@accessibility-reviewer` (parallel reviews)                     |
+| Task Pattern                | Agents Dispatched                                                        |
+| --------------------------- | ------------------------------------------------------------------------ |
+| New feature end-to-end      | `@architect` + `@native-app-engineer` + `@web-engineer` + `@docs-writer` |
+| Code + tests + docs         | `@native-app-engineer` + `@devops-engineer` + `@docs-writer`             |
+| Cross-platform UI component | `@design-engineer` + `@native-app-engineer` + `@web-engineer`            |
+| Security audit              | `@security-reviewer` + `@accessibility-reviewer` (parallel reviews)      |
 
 ### Fleet Mode Best Practices
 
@@ -250,13 +237,13 @@ MCP (Model Context Protocol) servers extend agent capabilities. Seven servers ar
 
 ### 1. Using the wrong agent
 
-**Problem:** Asking `@architect` to write implementation code or `@kmp-engineer` to design RLS policies.
+**Problem:** Asking `@architect` to write implementation code or `@native-app-engineer` to design RLS policies.
 **Fix:** Match the task to the agent's expertise. When unsure, check the [Quick Reference](#quick-reference) table.
 
 ### 2. Prompts that are too vague
 
-**Problem:** _"@kmp-engineer fix the bug"_ — the agent doesn't know which bug, where, or what the expected behavior is.
-**Fix:** Be specific: _"@kmp-engineer The BudgetEngine.rollover() function in packages/core/src/commonMain/.../BudgetEngine.kt throws an IndexOutOfBoundsException when the category list is empty. Add an empty-list guard and a test."_
+**Problem:** _"@native-app-engineer fix the bug"_ — the agent doesn't know which bug, where, or what the expected behavior is.
+**Fix:** Be specific: _"@native-app-engineer The BudgetEngine.rollover() function in packages/core/src/commonMain/.../BudgetEngine.kt throws an IndexOutOfBoundsException when the category list is empty. Add an empty-list guard and a test."_
 
 ### 3. Skipping the review agents
 
@@ -266,7 +253,7 @@ MCP (Model Context Protocol) servers extend agent capabilities. Seven servers ar
 ### 4. Not providing context when chaining
 
 **Problem:** Asking the next agent in a chain to "continue" without specifying what was decided.
-**Fix:** Reference the concrete output: _"@kmp-engineer Implement the schema from the ADR that @architect just wrote in docs/architecture/adr-015.md"_
+**Fix:** Reference the concrete output: _"@native-app-engineer Implement the client schema from the ADR that @architect just wrote in docs/architecture/adr-015.md"_
 
 ### 5. Trusting agent output without verification
 

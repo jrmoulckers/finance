@@ -1,42 +1,48 @@
 ---
-applyTo: '.github/agents/**'
+applyTo: 'agents/**,.github/agents/**'
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Instructions for Agent Definitions
 
-You are working in `.github/agents/`, which defines Finance-specific custom agents and their operating boundaries.
-
-## Canonical Preparation State
-
-- The current 25 files remain authoritative until a later Studio sync atomically materializes the canonical roster. Preparation work must not delete, rename, or replace them.
-- The planned state is 22 Studio-generated canonical definitions plus the Finance-authored `finance-domain.agent.md`.
-- Product facts and path ownership belong in root `AGENTS.md` and scoped `.github/instructions/**`, not copied into generated role bodies.
-- After activation, do not hand-edit Studio-generated agent files. Change canonical behavior in the backbone or Finance behavior in local overlays, then rematerialize through the approved Studio workflow.
-- `bug-basher.agent.md` remains present only for runtime continuity before activation. Durable single-bug behavior belongs in `.github/prompts/bug-bash.prompt.md` and `.github/instructions/workflow.instructions.md`.
+You are working in canonical `agents/` or a consumer's materialized `.github/agents/`, which define
+reusable custom agents and their operating boundaries. Author canonical changes under `agents/`;
+consumer `.github/agents/` copies are generated and must not be edited directly.
 
 ## Agent File Schema
 
-- Each Finance-authored local file represents exactly one role and is named `<kebab-case-name>.agent.md`; the frontmatter `name` must match the filename stem.
-- Frontmatter is YAML with **eight keys** (all agents in this repo use the full set):
+- Each file represents exactly one role and is named `<kebab-case-name>.agent.md`; frontmatter `name` must match the filename stem.
+- Frontmatter is YAML with these keys unless a product repo explicitly extends the schema:
 
-  | Key             | Purpose                                                                                                                                                                                                                                                    |
-  | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-  | `name`          | Must match the filename stem (kebab-case).                                                                                                                                                                                                                 |
-  | `description`   | One-line summary shown in the agent picker.                                                                                                                                                                                                                |
-  | `model`         | Capability tier — `standard` or `strong-reasoning`.                                                                                                                                                                                                        |
-  | `when_to_use`   | A sentence telling the orchestrator when to route to this agent.                                                                                                                                                                                           |
-  | `primary_paths` | Glob(s) the agent leads or co-owns. Each must exist in the repo, or be flagged **net-new** in the File Ownership section.                                                                                                                                  |
-  | `write_scope`   | `full`, `scoped-write`, or `read-only`.                                                                                                                                                                                                                    |
-  | `risk_level`    | `low`, `medium`, or `high` — blast radius of the agent's writes.                                                                                                                                                                                           |
-  | `tools`         | Minimal list from `read`, `edit`, `search`, `shell`. Grant `edit` only to agents that change code; grant `shell` only when the role needs command execution. A **review-only** agent may hold `shell` for read-only verification but MUST NOT hold `edit`. |
+  | Key | Purpose |
+  | --- | --- |
+  | `name` | Filename stem in kebab-case. |
+  | `description` | One-line summary shown in the agent picker. |
+  | `model` | Capability tier, usually `standard` or `strong-reasoning`. |
+  | `when_to_use` | Routing guidance for the orchestrator. |
+  | `primary_paths` | Globs the agent leads or co-owns. |
+  | `write_scope` | `full`, `scoped-write`, or `read-only`. |
+  | `risk_level` | `low`, `medium`, or `high`. |
+  | `tools` | Minimal required tools from `read`, `edit`, `search`, `shell`. |
 
-- Use one clear role per Finance-authored file. Do not combine implementation, review, and product responsibilities in a single agent definition.
-- Keep `File Ownership` aligned with `AGENTS.md`; never claim paths owned by another agent without explicitly listing them under "Do NOT edit". Paths in `primary_paths` must exist, or be explicitly flagged as net-new in File Ownership.
+- Use one clear role per file. Do not combine implementation, review, and product ownership in one agent.
+- Keep `primary_paths` aligned with `AGENTS.md`; paths must exist or be called out as net-new in File Ownership.
+- Grant `edit` only to agents that change files. Review-only agents may use `shell` for read-only verification but must not have `edit`.
+- Bare `@kebab-case` references are reserved for canonical agent names and are integrity-checked.
+  Write GitHub account names as links or code without a bare `@` handle.
+- Declare skill dependencies in the **Related skills** block and prompt dependencies as "the
+  `<name>` prompt"; both forms are integrity-checked against each member's selected assets.
 
 ## Content Expectations
 
-- Include the standard sections used by existing agents: Role, Capabilities, File Ownership, Workflow, Planning & Verification, Technical Context, Boundaries, and Human-Gated Operations.
-- Reference the canonical workflow instructions instead of copying long global procedures that can drift.
-- Make capabilities repo-specific: cite Finance platforms, KMP/Supabase/PowerSync/Turborepo, accessibility, security, and privacy constraints when relevant.
-- Keep boundaries actionable and conservative for financial data, credentials, publishing, deployments, and destructive operations.
-- Canonical generation may use a different schema contract; validate generated files with Studio tooling rather than reshaping them to this local authoring template.
+Include the standard sections used by existing agents: Role, Capabilities, File Ownership, Workflow, Planning & Verification, Technical Context, Boundaries, and Human-Gated Operations.
+
+Reference `workflow.instructions.md` and `AGENTS.md` instead of copying long global procedures that can drift.
+
+Make capabilities product-agnostic by default. Product repos may add stack, platform, domain, and ownership details in their own `AGENTS.md` or scoped instructions.
+
+## Boundaries
+
+- Be conservative with credentials, deployments, publishing, destructive operations, and user data.
+- Do not claim ownership of another agent's paths without listing them under "Do NOT edit".
+- Do not bypass security, privacy, accessibility, or CI requirements for speed.

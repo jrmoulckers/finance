@@ -1,441 +1,95 @@
 ---
 name: ux-testing
 description: >
-  UX testing methodology for the Finance app. Use for topics related to alpha testing,
-  beta testing, QA, bug discovery, testing scenarios, manual testing, or user experience validation.
+  UX testing methodology. Use for topics related to alpha testing, beta testing,
+  QA, bug discovery, testing scenarios, manual testing, exploratory testing,
+  or user experience validation.
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # UX Testing Skill
 
-## Purpose
+**Trigger:** manual QA, exploratory testing, alpha/beta sessions, bug discovery, test scenarios,
+user-visible workflow validation.
+**Inputs:** surfaces/routes, platforms in scope, test data, user roles, browser/device constraints.
+**Related:** `issue-management` (filing scoped issues), `accessibility-testing` (WCAG/a11y pass),
+`performance-budgets` (latency/jank), `security-review-methodology` (security/privacy review).
 
-This skill covers **manual UX testing, QA session orchestration, bug discovery, and test scenario design** for the Finance app across Web, iOS, Android, and Windows. It hands issue quality, labels, duplicate decisions, and filing mechanics to `issue-management`.
+## Out of scope
 
-## Out of Scope
-
-- Issue body quality, platform-scoping decisions, duplicate management, and label taxonomy → use `issue-management`.
-- Accessibility conformance audits and assistive-technology test passes → use `accessibility-testing`.
+- Issue labels, duplicates, and filing mechanics → use `issue-management`.
+- Accessibility conformance audits → use `accessibility-testing`.
 - Security/privacy vulnerability review → use `security-review-methodology` or `privacy-compliance`.
-- Sprint selection, agent dispatch, CI, and merge operations → use `sprint-planning` and `fleet-orchestration`.
+- Sprint selection, CI, and merge operations → use the relevant workflow skill.
 
-## Related Skills
+## Session setup
 
-| Skill                         | Use For                                                        |
-| ----------------------------- | -------------------------------------------------------------- |
-| `issue-management`            | Filing validated issues with correct scope, labels, and dupes  |
-| `accessibility-testing`       | WCAG 2.2 AA, screen-reader, keyboard, and contrast validation  |
-| `performance-budgets`         | Lighthouse, route budgets, bundle limits, and perf regressions |
-| `security-review-methodology` | Threat-model-driven security and privacy review methodology    |
+1. **Environment** — run the product with safe test data and reset instructions.
+2. **Scope** — name feature areas, routes, roles, and platforms in scope.
+3. **Tools** — open logs/devtools where useful; capture screenshots/video only when safe.
+4. **Tracker** — use a GitHub issue, checklist, or SQL todos for session state.
+5. **Evidence bar** — every candidate issue needs reproduction, expected result, and likely owner path.
 
-## Testing Session Structure
+## Platform checklist
 
-### Pre-Session Setup
+| Platform | Check |
+| --- | --- |
+| Web | routing, responsive breakpoints, console/network errors, keyboard/mouse states |
+| iOS | native navigation, gestures, Dynamic Type, offline/background behavior |
+| Android | navigation, back behavior, permissions, font scaling, lifecycle states |
+| Desktop | resizing, keyboard shortcuts, focus, menu/window behavior |
 
-1. **Environment**: Ensure local dev server is running and seeded with test data
-2. **Platforms**: Identify which platforms are under test (check platform maturity table below)
-3. **Scope**: Define feature areas to cover (or test everything for alpha sessions)
-4. **Tooling**: Have browser DevTools open, console visible, network tab ready
-5. **State tracking**: Use SQL todos or a GitHub issue as the session tracker
+> Test only the platforms your product ships. Drop rows that don't apply.
 
-### Platform Maturity (Source of Truth)
+## What to test
 
-| Platform | Status                                  | UI Screens                                       | Testing Priority |
-| -------- | --------------------------------------- | ------------------------------------------------ | ---------------- |
-| Web      | Full implementation                     | All pages                                        | Primary          |
-| iOS      | Full SwiftUI implementation             | Transactions, Budgets, Goals, Accounts, Settings | High             |
-| Android  | First-class beta target; active Compose | Transactions, Budgets, Goals, Accounts, Settings | High             |
-| Windows  | Full Compose Desktop                    | Transactions, Budgets, Goals, Navigation         | High             |
+| Area | Look for |
+| --- | --- |
+| Navigation | deep links, active state, back/forward, auth guards, scroll/focus restoration |
+| Forms | field coverage, validation, paste/input handling, submit feedback, error recovery |
+| Search/filter | coverage, sort order, empty states, performance, result context |
+| Data display | clickability, empty/error states, responsive cards/tables/charts, action affordances |
+| Import/export | flow completion, preview, validation, duplicate handling, recovery |
+| Settings/system | persistence, sync/status banners, preferences, console or runtime errors |
 
-Update this table as platforms evolve.
+## Pre-filing gate
 
-### Session Flow
+Before filing each issue:
 
-```
-1. Human tests features, reports bugs verbally/in chat
-2. Agent dispatches parallel investigation agents (one per bug area)
-3. Investigations examine codebase for root cause, affected files, and fix approach
-4. Agent VALIDATES each issue BEFORE filing (see Pre-Filing Gate below)
-5. Agent files GitHub issues — with correct platform scope, labels, and dupes — in one pass
-6. Repeat until testing session complete
-7. Agent runs the Mandatory Post-Session Audit (see below) WITHOUT being asked
-```
+- Run the `issue-management` scoping decision tree.
+- Verify current code references; do not cite paths or lines from memory.
+- Search for duplicates or related issues.
+- Include platform scope, severity, reproduction, root cause, fix path, and validation.
 
-> ⚠️ **CRITICAL**: Steps 4 and 7 are NON-NEGOTIABLE. The agent must NEVER:
->
-> - File issues without first determining platform scope
-> - File issues without verifying code references against current `main`
-> - Wait to be told to review/audit its own issues
-> - File web-only issues that should be `platform:shared` or need platform duplicates
->
-> The human should NEVER have to say "go back and review your issues." The agent does this automatically.
-
-## Pre-Filing Gate (MANDATORY — Never Skip)
-
-> ⚠️ This gate exists because filing issues without proper scoping wastes time fixing them later. Every issue the agent files must pass this gate BEFORE `gh issue create` runs.
-
-For EACH bug discovered, the agent MUST complete these steps before filing:
-
-### 1. Cross-Platform Scope Determination
-
-Run the decision tree from `issue-management` skill:
-
-- Is this in shared code (packages/)? → `platform:shared`
-- Is this purely CSS/web-runtime? → `platform:web` only
-- Does this same bug exist on other platforms with real UI? → Check code
-- Is the fix the same across platforms? → Single `platform:shared` issue
-- Does each platform need a different fix? → **File duplicates in the same batch**
-
-**The agent must check the actual implementation** on each platform — NOT guess. Dispatch an explore agent to check if iOS, Android, or Windows have the same pattern if unsure.
-
-### 2. Code Reference Verification
-
-Every file:line reference in the issue body MUST be verified against current `main`:
-
-```bash
-# Verify the code actually exists at the cited location
-git show main:path/to/file.tsx | head -n 55 | tail -n 10
-```
-
-Do NOT cite line numbers from memory or from a feature branch. Cite `main` HEAD only.
-
-### 3. Platform Duplicate Preparation
-
-If the decision tree indicates separate issues are needed per platform:
-
-- **Prepare ALL issues (root + dupes) at once** — don't file the web issue then "come back later" for iOS/Windows
-- Each platform issue should be adapted for that platform's idioms (not copy-paste with a label swap)
-- Cross-reference all siblings: "Related: #N (root), #M, #P (platform siblings)"
-
-### 4. Label Completeness
-
-Before filing, verify every issue will have:
-
-- At least one platform label
-- A type label (`bug`, `feature`, `enhancement`, `task`)
-- Component label(s) if applicable
-- Priority label
-
----
-
-## Bug Investigation Methodology
-
-### Parallel Dispatch Pattern
-
-When multiple bugs are reported, group them by codebase area and dispatch parallel agents:
-
-```
-Area groupings:
-- Navigation/routing (routes, layout, active state, scroll)
-- Forms/input (fields, validation, formatting)
-- Search/filter (query logic, UI, performance)
-- Data display (charts, lists, cards, detail pages)
-- Import/export (wizards, file handling, mapping)
-- Auth/security (login, session, permissions)
-- Layout/CSS (responsive, alignment, transitions)
-```
-
-Each investigation agent should:
-
-1. Find the relevant source files (grep for component names, route paths)
-2. Read the implementation (exact lines, function signatures)
-3. Identify the root cause (not just symptoms)
-4. Check if the same pattern exists elsewhere (similar bugs in other features)
-5. Note which platforms share the code vs have independent implementations
-6. Suggest a concrete fix approach
-
-### What to Look For (Per Feature Area)
-
-#### Navigation
-
-- Scroll position preservation/reset on route change
-- Active state accuracy (forward nav, back nav, browser history)
-- Deep linking (direct URL, CTRL+click, bookmarks)
-- Auth guards (can unauth users see protected pages? Can auth users see login?)
-- Breadcrumb accuracy and responsiveness across viewports
-
-#### Forms
-
-- Field completeness (do form fields match the data schema?)
-- Validation (required fields, format rules, error messages)
-- Input UX (auto-format, masks, paste handling)
-- Submission feedback (loading state, success/error, navigation after)
-- Accessibility (labels, focus order, error announcements)
-
-#### Search & Filter
-
-- Field coverage (which data fields are actually searched?)
-- Match quality (partial matches, case sensitivity, stemming)
-- Sort options (what fields, directions, persistence)
-- Filter composition (AND/OR, multiple active, clear all)
-- Performance (debounce, loading indicators)
-- Result context (why did this result match?)
-
-#### Data Display (Lists, Cards, Charts)
-
-- Clickability (can items be selected/navigated to?)
-- Empty states (graceful when no data exists)
-- Error states (what happens when data fetch fails?)
-- Responsive layout (cards at every viewport width)
-- Chart readability (overlapping labels, legends, tooltips)
-- Action buttons (hover/focus states, independence, icon consistency)
-
-#### Import/Export
-
-- Navigation (can user get back to main app?)
-- Flow completeness (every step reachable and completable)
-- Validation (error recovery, inline correction)
-- Preview (see results before committing)
-- Duplicate handling (detection accuracy, user control)
-- Format detection (auto-recognize source systems)
-
-#### Layout & Transitions
-
-- Loading states (skeleton, spinner, or plain text?)
-- Page transitions (smooth or jarring?)
-- Persistent UI elements (sync status, banners — too prominent?)
-- Double-rendering (same info shown twice at different breakpoints)
-- CSS specifics (hover states, focus indicators, alignment)
-
-## Bug Report Template
-
-Every filed issue MUST include:
+## Bug report template
 
 ```markdown
 ## Problem
 
-[User-visible description of what's wrong]
+[User-visible behavior]
 
 ## Root Cause
 
-[Technical explanation with file:line references]
-
-- `path/to/file.tsx:42-55` — what's happening here
-- Why this causes the observed behavior
+[Technical explanation with verified file:line references]
 
 ## Fix
 
-[Concrete fix approach — not vague "improve this"]
-
-1. Specific change to make
-2. Where to make it
-3. What to verify after
+[Concrete change and verification]
 
 ## Files
 
-- `path/to/file.tsx:NN-MM` (primary)
-- `path/to/related.css:NN-MM` (secondary)
+- `path/to/file:NN-MM`
 
 ## Cross-Platform
 
-- **iOS**: How this applies (or doesn't) on iOS
-- **Android**: How this applies (or doesn't) on Android (first-class beta target — verify `apps/android`)
-- **Windows**: How this applies (or doesn't) on Windows
-- Does this need platform-specific issues? (see issue-management skill)
+[Platforms checked and whether separate issues are needed]
 ```
 
-### Severity Classification
+## Safety
 
-| Severity      | Description                                   | Example                                          |
-| ------------- | --------------------------------------------- | ------------------------------------------------ |
-| P0 - Critical | Feature completely broken, data loss possible | Delete account doesn't delete, transactions lost |
-| P1 - High     | Core workflow significantly impaired          | Can't search by category, can't edit budgets     |
-| P2 - Medium   | UX degradation but workaround exists          | Double title on mobile, hover both icons         |
-| P3 - Low      | Polish/enhancement, no workflow impact        | Cursor alignment, icon style preference          |
+Use safe test data. Do not file unverified issue floods; complete investigations and platform scoping before
+batch filing. Do not use OS temp directories for issue bodies.
 
-## Testing Scenarios (Ordered Checklist)
+## Output
 
-Use this to guide structured testing sessions:
-
-### 1. Authentication Flow
-
-- [ ] Sign up (new account creation)
-- [ ] Sign in (existing account)
-- [ ] Invalid credentials (error messaging)
-- [ ] Sign out (accessible, actually works)
-- [ ] Delete account (actually deletes)
-- [ ] Passkey/biometric setup
-- [ ] Password requirements enforced
-- [ ] Session persistence (close/reopen browser)
-- [ ] Auth guard (navigate to /login while logged in)
-
-### 2. Navigation & Layout
-
-- [ ] Tab switching (active state correct)
-- [ ] Scroll reset on forward nav
-- [ ] Back/forward browser buttons
-- [ ] Deep links (direct URL entry)
-- [ ] CTRL+Click to open in new tab
-- [ ] Responsive breakpoints (mobile -> desktop)
-- [ ] Sidebar positioning (footer not buried)
-- [ ] Loading transitions between pages
-
-### 3. Transactions
-
-- [ ] Create new transaction (all fields)
-- [ ] Edit existing transaction
-- [ ] Delete transaction (with confirmation)
-- [ ] Search (multiple field types)
-- [ ] Filter by category/account/date
-- [ ] Sort (ascending/descending)
-- [ ] Transaction detail view (navigate from list)
-- [ ] Dashboard recent transactions (clickable)
-
-### 4. Import
-
-- [ ] Upload CSV file
-- [ ] Format auto-detection
-- [ ] Column mapping
-- [ ] Preview before commit
-- [ ] Validation error handling
-- [ ] Duplicate detection
-- [ ] Account selection flow
-- [ ] Navigation back to main app
-
-### 5. Budgets & Goals
-
-- [ ] Create budget/goal
-- [ ] Edit from detail page
-- [ ] Delete from detail page
-- [ ] Progress visualization
-- [ ] Card display at various sizes
-- [ ] Action button hover states
-
-### 6. Charts & Reports
-
-- [ ] Pie chart with many categories (label overlap)
-- [ ] Trend chart (time period selection)
-- [ ] Dashboard summary accuracy
-- [ ] Chart responsiveness
-- [ ] Empty state when no data
-
-### 7. Settings & System
-
-- [ ] Sync status indicator
-- [ ] Keyboard shortcuts
-- [ ] Feedback mechanism
-- [ ] Accessibility (screen reader, keyboard nav)
-- [ ] Console errors (CSP, CORS, JS errors)
-
-## Filing Issues Efficiently
-
-### PowerShell-Safe Issue Creation
-
-Complex issue bodies with backticks, code fences, and special characters WILL break in PowerShell heredocs. Always use the file-based approach:
-
-```javascript
-// Write body to a repo-local scratch file, then use --body-file
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
-
-const scratchDir = path.join(process.cwd(), '.copilot-scratch', 'issues');
-fs.mkdirSync(scratchDir, { recursive: true });
-const bodyFile = path.join(scratchDir, 'gh-issue-body.md');
-
-try {
-  fs.writeFileSync(bodyFile, issueBody, 'utf8');
-  execFileSync('gh', [
-    'issue',
-    'create',
-    '--title',
-    title,
-    '--body-file',
-    bodyFile,
-    '--label',
-    labels,
-  ]);
-} finally {
-  if (fs.existsSync(bodyFile)) fs.unlinkSync(bodyFile);
-}
-```
-
-Do **not** use OS temp directories for issue bodies; use repo-local `.copilot-scratch/issues/` or an approved session-local scratch path and clean up named files afterward.
-
-### Batch Filing Pattern
-
-When filing many issues from a testing session:
-
-1. Write a Node.js script with all issues as objects
-2. Loop through, writing each body to a temp file
-3. Call `gh issue create --body-file` for each
-4. Capture URLs and log them
-5. Clean up temp files after
-
-### Mandatory Post-Session Audit (NEVER SKIP — Agent Self-Initiates)
-
-> ⚠️ **CRITICAL**: The agent MUST run this audit automatically at the end of every filing session. The human should NEVER have to ask "did you review those issues?" or "make sure you check the scope." If the human has to remind you, the workflow has failed.
-
-This audit runs IMMEDIATELY after the last issue is filed — before summarizing results to the human:
-
-#### Step 1: Platform Scope Verification (dispatch parallel agents)
-
-For each filed issue, verify:
-
-- Is the platform label correct? Cross-check against actual code implementations.
-- If labeled `platform:web` — does the same bug exist in iOS (SwiftUI) or Windows (Compose Desktop)?
-- If yes → file platform duplicates NOW, don't wait.
-- If labeled `platform:shared` — confirm the fix actually IS in shared code, not platform-specific UI.
-
-```bash
-# Example: check if iOS has the same pattern as web for scroll reset
-grep -r "scroll" apps/ios/Sources/ | head -20
-grep -r "scrollPosition\|ScrollState" apps/windows/src/ | head -20
-```
-
-#### Step 2: Code Reference Accuracy
-
-For each issue with file:line citations:
-
-- `git show main:<file>` and confirm the cited code exists at that location
-- If code has shifted due to recent merges, update the issue comment with correct lines
-- If a reference is to a function that doesn't exist, fix the issue body
-
-#### Step 3: Duplicate Detection
-
-- Are any two issues describing the same root fix on the same platform?
-- Should any issues be merged (same file, same change, filed as separate symptoms)?
-- Add "Duplicate of #N" comments where found
-
-#### Step 4: Missing Platform Duplicates
-
-For every issue NOT labeled `platform:web`-only or `platform:backend`:
-
-- Check: does iOS have real UI for this feature? → If yes, does the same bug exist there?
-- Check: does Android have real UI for this feature? → If yes, does the same bug exist there?
-- Check: does Windows have real UI for this feature? → If yes, does the same bug exist there?
-- If duplicates are needed, file them in the same batch — adapted for each platform's design language
-
-#### Step 5: Cross-Reference Completeness
-
-- All platform sibling issues must reference each other (`Related: #N`)
-- All issues from the same root cause must reference the root issue
-- All enhancement issues must note which issues they depend on
-
-#### Final Gate: Summary Report
-
-Present to the human (without being asked):
-
-```
-## Session Audit Results
-- Issues filed: N
-- Platform duplicates created: M
-- Issues corrected during audit: K
-- Issues needing human decision: P (list them)
-- Scope changes made: (list any label changes)
-```
-
----
-
-## Console Error Triage
-
-During testing, watch the browser console for:
-
-| Error Type                   | Priority | Action                                     |
-| ---------------------------- | -------- | ------------------------------------------ |
-| CSP violations               | P2       | File issue, check vite.config.ts headers   |
-| Unhandled promise rejections | P1       | Investigate — likely broken feature        |
-| 404s for assets              | P2       | Check build/public paths                   |
-| CORS errors                  | P1       | Check API/backend configuration            |
-| React errors (minified)      | P1       | Use React DevTools, check error boundaries |
-| Deprecation warnings         | P3       | Note for future cleanup                    |
-| WebSocket disconnects        | P3       | Usually Vite HMR, not user-facing          |
+A session report plus validated issues with reproduction, evidence, severity, platform scope, and related links.

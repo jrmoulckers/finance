@@ -61,7 +61,7 @@ partner-visible values respect the household privacy boundary.
   `packages/core` (see §2–§3). Compose renders and formats only.
 - **No new shared planner rules here.** When shared planner rules don't yet
   exist, this doc labels the dependency; it does not implement the rules
-  (owned by @kmp-engineer under #2145).
+  (owned by @native-app-engineer under #2145).
 - **No vendor CRUD here.** Vendor entry/states live in the shell doc (#2645).
 - **No check-in ritual here.** See
   [Android Couples Money Check-In](./android-couples-money-checkin.md) (#2652).
@@ -108,15 +108,15 @@ flowchart LR
 
 ## 3. Grounding in Existing Code
 
-| Concern                 | Source of truth (do **not** reimplement in Compose)                                                                                                                                                           | Today's state                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Budgeted vs actual      | [`FinancialAggregator`](../../packages/core/src/commonMain/kotlin/com/finance/core/aggregation/FinancialAggregator.kt) + [`Budget`](../../packages/models/src/commonMain/kotlin/com/finance/models/Budget.kt) | Exists: spend-by-category, totals vs budget amount |
-| Cash-flow projection    | [`OperatingCashForecastEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/forecast/OperatingCashForecast.kt)                                                                                 | Exists: horizon snapshots, threshold breaches      |
-| Next due date / buckets | [`BillReminderEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/recurring/BillReminderEngine.kt)                                                                                            | Exists: `scheduleNextN`, monthly calendar          |
-| Wedding savings goal    | [`Goal`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt)                                                                                                                              | Exists: target/current/`progress`                  |
-| Savings suggestions     | [`SavingsEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/savings/SavingsEngine.kt)                                                                                                        | Exists: suggestion generation (optional surface)   |
-| Partner scope           | [`DataPartitioning`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/DataPartitioning.kt)                                                                                                | Exists: `filterVisible`, `partition`               |
-| Guest-count estimator   | **Proposed** thin `packages/core` addition (headcount × per-unit)                                                                                                                                             | Not yet — @kmp-engineer follow-up under #2145      |
+| Concern                 | Source of truth (do **not** reimplement in Compose)                                                                                                                                                           | Today's state                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Budgeted vs actual      | [`FinancialAggregator`](../../packages/core/src/commonMain/kotlin/com/finance/core/aggregation/FinancialAggregator.kt) + [`Budget`](../../packages/models/src/commonMain/kotlin/com/finance/models/Budget.kt) | Exists: spend-by-category, totals vs budget amount   |
+| Cash-flow projection    | [`OperatingCashForecastEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/forecast/OperatingCashForecast.kt)                                                                                 | Exists: horizon snapshots, threshold breaches        |
+| Next due date / buckets | [`BillReminderEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/recurring/BillReminderEngine.kt)                                                                                            | Exists: `scheduleNextN`, monthly calendar            |
+| Wedding savings goal    | [`Goal`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt)                                                                                                                              | Exists: target/current/`progress`                    |
+| Savings suggestions     | [`SavingsEngine`](../../packages/core/src/commonMain/kotlin/com/finance/core/savings/SavingsEngine.kt)                                                                                                        | Exists: suggestion generation (optional surface)     |
+| Partner scope           | [`DataPartitioning`](../../packages/core/src/commonMain/kotlin/com/finance/core/household/DataPartitioning.kt)                                                                                                | Exists: `filterVisible`, `partition`                 |
+| Guest-count estimator   | **Proposed** thin `packages/core` addition (headcount × per-unit)                                                                                                                                             | Not yet — @native-app-engineer follow-up under #2145 |
 
 > The **guest-count estimator** and any wedding-specific planner rules are a
 > small shared addition. Until they land, Compose renders the actuals it can
@@ -342,7 +342,7 @@ waits on #1242.
   [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md)
   §2 "Free local build/test paths."
 - The **proposed guest-count estimator / planner rules** are a `packages/core`
-  change (owned by @kmp-engineer) — also unblocked; not store-gated.
+  change (owned by @native-app-engineer) — also unblocked; not store-gated.
 
 ### 🔒 Distribution tail — gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242)
 

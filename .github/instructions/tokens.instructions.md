@@ -1,23 +1,24 @@
 ---
-applyTo: 'packages/design-tokens/**'
+applyTo: '**/tokens/**,**/*.tokens.json'
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Instructions for Design Tokens
 
-You are working in `packages/design-tokens/`, owned by `@design-engineer` for design-token sources (`tokens/`), Style Dictionary configuration (`config/`), and generated outputs (`build/`).
-
-These instructions supplement and take precedence over `packages.instructions.md` for `packages/design-tokens/**`.
+Use these rules for design-token sources, token JSON, and generated token outputs.
 
 ## Token System Rules
 
-- Use DTCG-compatible JSON token shape (`$value`, `$type`, and references like `{color.blue.500}`) and keep the three-tier model: primitive → semantic → component.
-- Add semantic purpose before platform output. Platform-specific values belong in generated outputs or component mappings, not in primitive tokens.
-- Define light, dark, and high-contrast behavior for semantic color tokens, and include reduced-motion equivalents for motion/animation tokens.
-- Validate color choices against WCAG 2.2 AA contrast and use color-vision-deficiency-safe palettes for financial charts/categories.
-- Never convey financial state through color alone; pair color tokens with iconography, labels, or text patterns in consuming specs.
+- Prefer DTCG-compatible JSON shape: `$value`, `$type`, and references such as `{color.blue.500}`.
+- Keep a clear tier model: primitive → semantic → component.
+- Add semantic purpose before platform output; generated outputs or consuming components handle platform-specific values.
+- Define light, dark, high-contrast, and reduced-motion behavior where the token category requires it.
+- Validate color choices against WCAG 2.2 AA contrast and avoid relying on color alone to communicate state.
+- Keep token names stable. Treat removals or renames as breaking changes and document migration paths.
 
 ## Generated Output Rules
 
-- Do not hand-edit generated Style Dictionary outputs. Update token sources/configuration, rerun the generator, and commit the regenerated files in their owning paths.
-- Keep token names stable. Treat token removals or renames as breaking changes and document the migration path for platform consumers.
-- Keep source token files focused by tier/domain (`primitive`, `semantic`, `component`) to avoid broad conflicts in fleet work.
+- Do not hand-edit generated token outputs.
+- Update token sources/configuration, rerun the repo's token generator, and commit regenerated files in their owning paths.
+- Keep source token files focused by tier/domain to reduce conflicts during parallel work.
+- Do not introduce product-specific brand values into the shared layer unless the token is explicitly generic or configurable.

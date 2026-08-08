@@ -384,32 +384,32 @@ Each item below should become a separate GitHub issue. They are ordered by risk 
 
 ### Critical (Sync-Breaking)
 
-| #   | Action                                                                                                                                                                  | Owner                      | Tables                                 | Issue Scope                                           |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | -------------------------------------- | ----------------------------------------------------- |
-| 1   | **Rename monetary columns** in SQLDelight: `amount`→`amount_cents`, `current_balance`→`balance_cents`, `target_amount`→`target_cents`, `current_amount`→`current_cents` | @kmp-engineer              | accounts, transactions, budgets, goals | `.sq` files + `.sqm` migration + Kotlin model updates |
-| 2   | **Rename currency columns** in SQLDelight: `currency`→`currency_code`, `default_currency`→`currency_code`                                                               | @kmp-engineer              | all tables with currency               | `.sq` files + `.sqm` migration + Kotlin model updates |
-| 3   | **Rename `is_archived`→`is_active`** in SQLDelight (invert default: `0`→`1`) OR add sync-layer mapping                                                                  | @kmp-engineer              | accounts                               | `.sq` file + `.sqm` migration + update all queries    |
-| 4   | **Standardize goal status casing** to lowercase (`'active'`, `'completed'`, `'archived'`) in SQLDelight                                                                 | @kmp-engineer              | goals                                  | `.sq` file + Kotlin enum                              |
-| 5   | **Create `RecurringTransactionTemplate.sq`** in SQLDelight                                                                                                              | @kmp-engineer              | recurring_transaction_templates        | New `.sq` file                                        |
-| 6   | **Resolve table name convention** (singular→plural or add sync mapping)                                                                                                 | @kmp-engineer + @architect | all tables                             | Architecture decision needed first                    |
+| #   | Action                                                                                                                                                                  | Owner                             | Tables                                 | Issue Scope                                           |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------------------------- | ----------------------------------------------------- |
+| 1   | **Rename monetary columns** in SQLDelight: `amount`→`amount_cents`, `current_balance`→`balance_cents`, `target_amount`→`target_cents`, `current_amount`→`current_cents` | @native-app-engineer              | accounts, transactions, budgets, goals | `.sq` files + `.sqm` migration + Kotlin model updates |
+| 2   | **Rename currency columns** in SQLDelight: `currency`→`currency_code`, `default_currency`→`currency_code`                                                               | @native-app-engineer              | all tables with currency               | `.sq` files + `.sqm` migration + Kotlin model updates |
+| 3   | **Rename `is_archived`→`is_active`** in SQLDelight (invert default: `0`→`1`) OR add sync-layer mapping                                                                  | @native-app-engineer              | accounts                               | `.sq` file + `.sqm` migration + update all queries    |
+| 4   | **Standardize goal status casing** to lowercase (`'active'`, `'completed'`, `'archived'`) in SQLDelight                                                                 | @native-app-engineer              | goals                                  | `.sq` file + Kotlin enum                              |
+| 5   | **Create `RecurringTransactionTemplate.sq`** in SQLDelight                                                                                                              | @native-app-engineer              | recurring_transaction_templates        | New `.sq` file                                        |
+| 6   | **Resolve table name convention** (singular→plural or add sync mapping)                                                                                                 | @native-app-engineer + @architect | all tables                             | Architecture decision needed first                    |
 
 ### High (Data Loss Risk)
 
-| #   | Action                                                                                                              | Owner             | Tables       | Issue Scope                                       |
-| --- | ------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------ | ------------------------------------------------- |
-| 7   | **Add `tags TEXT` column** to Supabase `transactions` (or remove from SQLDelight)                                   | @backend-engineer | transactions | Supabase migration + PowerSync sync rule update   |
-| 8   | **Add `is_system BOOLEAN` column** to Supabase `categories` (or remove from SQLDelight)                             | @backend-engineer | categories   | Supabase migration + PowerSync sync rule update   |
-| 9   | **Add `name TEXT` column** to Supabase `budgets` (or remove from SQLDelight)                                        | @backend-engineer | budgets      | Supabase migration + PowerSync sync rule update   |
-| 10  | **Add `recurring_rule TEXT` column** to SQLDelight transactions (or confirm it's deprecated by `recurring_rule_id`) | @kmp-engineer     | transactions | Decision: keep legacy field or drop from Supabase |
+| #   | Action                                                                                                              | Owner                | Tables       | Issue Scope                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------ | ------------------------------------------------- |
+| 7   | **Add `tags TEXT` column** to Supabase `transactions` (or remove from SQLDelight)                                   | @backend-engineer    | transactions | Supabase migration + PowerSync sync rule update   |
+| 8   | **Add `is_system BOOLEAN` column** to Supabase `categories` (or remove from SQLDelight)                             | @backend-engineer    | categories   | Supabase migration + PowerSync sync rule update   |
+| 9   | **Add `name TEXT` column** to Supabase `budgets` (or remove from SQLDelight)                                        | @backend-engineer    | budgets      | Supabase migration + PowerSync sync rule update   |
+| 10  | **Add `recurring_rule TEXT` column** to SQLDelight transactions (or confirm it's deprecated by `recurring_rule_id`) | @native-app-engineer | transactions | Decision: keep legacy field or drop from Supabase |
 
 ### Medium (Consistency)
 
-| #   | Action                                                                                                          | Owner                             | Tables                               | Issue Scope           |
-| --- | --------------------------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------ | --------------------- |
-| 11  | **Resolve `owner_id` nullability** — either make Supabase NOT NULL (after backfill) or make SQLDelight nullable | @backend-engineer + @kmp-engineer | all tables with owner_id             | Coordinated migration |
-| 12  | **Resolve `households.owner_id` vs `created_by`** naming — decide canonical name                                | @architect                        | households                           | ADR needed            |
-| 13  | **Add `sync_version`/`is_synced`** to Supabase `users`, `households`, `household_members` (currently missing)   | @backend-engineer                 | users, households, household_members | Supabase migration    |
-| 14  | **Add `owner_id`** to `household_members` or document why it's excluded                                         | @architect                        | household_members                    | ADR or migration      |
+| #   | Action                                                                                                          | Owner                                    | Tables                               | Issue Scope           |
+| --- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------ | --------------------- |
+| 11  | **Resolve `owner_id` nullability** — either make Supabase NOT NULL (after backfill) or make SQLDelight nullable | @backend-engineer + @native-app-engineer | all tables with owner_id             | Coordinated migration |
+| 12  | **Resolve `households.owner_id` vs `created_by`** naming — decide canonical name                                | @architect                               | households                           | ADR needed            |
+| 13  | **Add `sync_version`/`is_synced`** to Supabase `users`, `households`, `household_members` (currently missing)   | @backend-engineer                        | users, households, household_members | Supabase migration    |
+| 14  | **Add `owner_id`** to `household_members` or document why it's excluded                                         | @architect                               | household_members                    | ADR or migration      |
 
 ### Low (Hygiene)
 

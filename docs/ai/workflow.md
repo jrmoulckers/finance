@@ -174,7 +174,7 @@ When agents operate as part of a fleet (parallel execution), the autonomous work
 
 - No two agents edit the same file in parallel
 - Shared config files assigned to one agent per fleet run
-- Schema changes serialized between `@backend-engineer` and `@kmp-engineer`
+- Schema changes serialized between `@database-engineer` and `@native-app-engineer`, with `@backend-engineer` reviewing API/Auth impacts
 - Last agent to commit runs the pre-push workflow to catch integration issues
 
 See [fleet-operations.md](fleet-operations.md) for the complete fleet operations guide.

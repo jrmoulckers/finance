@@ -12,7 +12,7 @@
 **Status:** PROPOSED — design only (implementation gated where noted)
 **Issue:** [#2558](https://github.com/jrmoulckers/finance/issues/2558) — Part of [#2114](https://github.com/jrmoulckers/finance/issues/2114)
 **Platform:** iOS / iPadOS (SwiftUI, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related design:** [ios-fi-calculator-flow.md](./ios-fi-calculator-flow.md) · [ios-net-worth-projection-overlay.md](./ios-net-worth-projection-overlay.md) · [ios-net-worth-trend-chart.md](./ios-net-worth-trend-chart.md) · [data-visualization.md](./data-visualization.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [ux-principles.md](./ux-principles.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -222,7 +222,7 @@ Goals feature** rather than building a parallel tracker.
 - This design **reuses** the Goals model/repository as-is; it does **not** modify
   `GoalItem`, `GoalRepository`, or the shared goal schema. If a first-class
   "goal kind = FI" field were ever wanted (vs. encoding via name/notes), that is a
-  shared-package change via ADR with @kmp-engineer — out of scope here.
+  shared-package change via ADR with @native-app-engineer — out of scope here.
 - Linking is **opt-in**. The calculator is fully usable without ever creating a
   goal; goal-linking is an offered convenience, not a gate.
 
@@ -337,7 +337,7 @@ and [`ProgressRing`](../../apps/ios/Finance/Components/ProgressRing.swift).
 
 ## 11. Affected Surfaces & Shared Dependencies
 
-### 11.1 iOS surfaces (all in `apps/ios/`, owned by @ios-engineer)
+### 11.1 iOS surfaces (all in `apps/ios/`, owned by @native-app-engineer)
 
 | Surface                                                       | Change                                                                                                           |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -363,7 +363,7 @@ and [`ProgressRing`](../../apps/ios/Finance/Components/ProgressRing.swift).
 
 > **Same dependency posture as the flow design:** the shared FIRE engine is **not
 > yet in `packages/core`**; porting it from the web reference (parity with
-> `fire-calculator.test.ts`) is **@kmp-engineer via ADR**. iOS binds to the
+> `fire-calculator.test.ts`) is **@native-app-engineer via ADR**. iOS binds to the
 > Swift-native `FIPlanningBridge` stub so these cards are buildable/testable now.
 
 ---
@@ -378,7 +378,7 @@ flowchart LR
     subgraph bridge["packages/sync (Swift Export — ADR if missing)"]
         B --> C["FIREMetricsDTO (Int64 minor units, Double %, Date)"]
     end
-    subgraph ios["apps/ios (this PR — @ios-engineer)"]
+    subgraph ios["apps/ios (this PR — @native-app-engineer)"]
         C --> D["FICalculatorViewModel<br/>exposes metrics + sensitivity set + linked-goal status"]
         D --> E["FIResultCard / SWRSensitivityStrip / FI-date card"]
         D --> F["GoalCreateView prefill → GoalRepository (existing)"]
@@ -412,7 +412,7 @@ flowchart LR
 - The ported `FireCalculatorTest` (KMP) covers FI number / % / Coast FI /
   years-to-FI / projected date / passive income parity with the web
   `fire-calculator.test.ts`, including over-100% progress, unreachable →
-  `maxYears`, already-FI → 0. **@kmp-engineer via ADR**, not this PR.
+  `maxYears`, already-FI → 0. **@native-app-engineer via ADR**, not this PR.
 
 ### 13.2 Bridge
 
@@ -487,7 +487,7 @@ and testable now**.
 ### Dependency note (process gate, not human-gated)
 
 The shared FIRE engine must be ported to `packages/core` and re-exported via the
-`packages/sync` Swift Export bridge — **@kmp-engineer via ADR**, not this iOS PR
+`packages/sync` Swift Export bridge — **@native-app-engineer via ADR**, not this iOS PR
 (shared with the flow design). Until then, cards bind to the stub bridge. The
 Goals model/repository are reused unchanged; a first-class "FI goal kind" (if ever
 desired) would be a separate ADR.
@@ -505,7 +505,7 @@ desired) would be a separate ADR.
 
 1. **Goal kind encoding:** v1 encodes "this is an FI goal" via name/notes
    (proposed, no schema change) vs. a first-class `goalKind` field (ADR with
-   @kmp-engineer). Confirm.
+   @native-app-engineer). Confirm.
 2. **Coast-FI as a separate goal:** offer linking Coast FI and full FI as two
    goals (proposed) vs. a single goal with a milestone?
 3. **Sensitivity rates:** fixed 4.0/3.5/3.0% (proposed) vs. user-selectable

@@ -4,7 +4,7 @@ This directory contains comprehensive documentation for the AI-first development
 
 > **New here (agent or human)?** Start with **[start-here.md](start-here.md)** — the canonical entry point that links the workflow, restrictions, agent roster, skills, and MCP setup in reading order.
 >
-> **Canonical activation preparation:** The 25 local definitions listed below are still active. A later atomic Studio materialization is planned to provide 22 generated canonical agents and retain `finance-domain` as Finance's sole local agent. No sync or runtime-file removal has happened yet.
+> **Canonical runtime active:** Finance uses 22 provenance-stamped Studio-generated agents plus the locally authored `finance-domain` specialist. Product behavior remains in root/scoped overlays; generated definitions are updated only through Studio sync.
 
 ## Why AI-First?
 
@@ -79,32 +79,30 @@ Finance is developed with AI agents as first-class contributors. This means:
 │   ├── web.instructions.md
 │   ├── workflow.instructions.md
 │   └── workflows.instructions.md
-├── agents/                           # Custom agent definitions (25 agents as of 2026-06; .github/agents/ is the source of truth)
+├── agents/                           # Runtime definitions (23 agents: 22 generated + finance-domain local)
 │   ├── accessibility-reviewer.agent.md
 │   ├── ai-ops-engineer.agent.md
-│   ├── android-engineer.agent.md
 │   ├── architect.agent.md
 │   ├── backend-engineer.agent.md
-│   ├── bug-basher.agent.md
 │   ├── business-analyst.agent.md
 │   ├── compliance-specialist.agent.md
 │   ├── data-engineer.agent.md
+│   ├── database-engineer.agent.md
 │   ├── design-engineer.agent.md
 │   ├── devops-engineer.agent.md
 │   ├── docs-writer.agent.md
 │   ├── experimentation-engineer.agent.md
-│   ├── finance-domain.agent.md
-│   ├── ios-engineer.agent.md
-│   ├── kmp-engineer.agent.md
+│   ├── finance-domain.agent.md          # Finance-authored local specialist
 │   ├── localization-engineer.agent.md
 │   ├── marketing-strategist.agent.md
+│   ├── native-app-engineer.agent.md
 │   ├── performance-engineer.agent.md
 │   ├── product-manager.agent.md
 │   ├── qa-tester.agent.md
 │   ├── release-manager.agent.md
 │   ├── security-reviewer.agent.md
+│   ├── sre-engineer.agent.md
 │   ├── web-engineer.agent.md
-│   └── windows-engineer.agent.md
 ├── skills/                           # Reusable domain knowledge (20 skills as of 2026-06; .github/skills/ is the source of truth)
 │   ├── accessibility-testing/SKILL.md
 │   ├── design-tokens/SKILL.md
@@ -137,41 +135,13 @@ Finance is developed with AI agents as first-class contributors. This means:
 AGENTS.md                             # Root-level agent guidance (all AI tools)
 ```
 
-### Future Canonical Mapping (Not Active)
+### Canonical Runtime Roster
 
-This table records where each current authoritative role's Finance-specific behavior will live after activation. Same-slug entries become Studio-generated canonical definitions supplemented by local overlays.
+The generated canonical roster is: `accessibility-reviewer`, `ai-ops-engineer`, `architect`, `backend-engineer`, `business-analyst`, `compliance-specialist`, `data-engineer`, `database-engineer`, `design-engineer`, `devops-engineer`, `docs-writer`, `experimentation-engineer`, `localization-engineer`, `marketing-strategist`, `native-app-engineer`, `performance-engineer`, `product-manager`, `qa-tester`, `release-manager`, `security-reviewer`, `sre-engineer`, and `web-engineer`.
 
-| Current role               | Future runtime target                                                                                       |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `accessibility-reviewer`   | Canonical `accessibility-reviewer`; four-platform checks and review-only routing stay in local instructions |
-| `ai-ops-engineer`          | Canonical `ai-ops-engineer`; Finance overlay and manifest conventions stay local                            |
-| `android-engineer`         | Canonical `native-app-engineer`                                                                             |
-| `architect`                | Canonical `architect`                                                                                       |
-| `backend-engineer`         | Canonical `backend-engineer`, with database and reliability seams routed separately                         |
-| `bug-basher`               | No permanent role; `.github/prompts/bug-bash.prompt.md` plus workflow instructions                          |
-| `business-analyst`         | Canonical `business-analyst`                                                                                |
-| `compliance-specialist`    | Canonical `compliance-specialist`                                                                           |
-| `data-engineer`            | Canonical `data-engineer`; product telemetry remains distinct from financial reporting                      |
-| `design-engineer`          | Canonical `design-engineer`                                                                                 |
-| `devops-engineer`          | Canonical `devops-engineer`; SLO/incident/recovery semantics route to `sre-engineer`                        |
-| `docs-writer`              | Canonical `docs-writer`                                                                                     |
-| `experimentation-engineer` | Canonical `experimentation-engineer`                                                                        |
-| `finance-domain`           | **Local `finance-domain` retained** as Finance's financial-correctness specialist                           |
-| `ios-engineer`             | Canonical `native-app-engineer`                                                                             |
-| `kmp-engineer`             | Canonical `native-app-engineer`                                                                             |
-| `localization-engineer`    | Canonical `localization-engineer`                                                                           |
-| `marketing-strategist`     | Canonical `marketing-strategist`                                                                            |
-| `performance-engineer`     | Canonical `performance-engineer`                                                                            |
-| `product-manager`          | Canonical `product-manager`                                                                                 |
-| `qa-tester`                | Canonical `qa-tester`                                                                                       |
-| `release-manager`          | Canonical `release-manager`                                                                                 |
-| `security-reviewer`        | Canonical `security-reviewer`                                                                               |
-| `web-engineer`             | Canonical `web-engineer`                                                                                    |
-| `windows-engineer`         | Canonical `native-app-engineer`                                                                             |
+The active runtime contains 23 physical agent files: 22 generated canonical files and one Finance-authored local file, `finance-domain`. Generated files carry the Studio provenance stamp and are tracked in `.studio-sync.lock.json`; `finance-domain` is intentionally absent from that lock. The four former platform/shared roles are consolidated into `native-app-engineer`, database and reliability ownership route to `database-engineer` and `sre-engineer`, and single-bug execution remains available through `.github/prompts/bug-bash.prompt.md`.
 
-The planned canonical roster is: `accessibility-reviewer`, `ai-ops-engineer`, `architect`, `backend-engineer`, `business-analyst`, `compliance-specialist`, `data-engineer`, `database-engineer`, `design-engineer`, `devops-engineer`, `docs-writer`, `experimentation-engineer`, `localization-engineer`, `marketing-strategist`, `native-app-engineer`, `performance-engineer`, `product-manager`, `qa-tester`, `release-manager`, `security-reviewer`, `sre-engineer`, and `web-engineer`.
-
-The future runtime therefore contains 23 physical agent files: 22 generated canonical files and one Finance-authored local file. Activation remains blocked until the backbone member configuration opts Finance into canonical agents, declares `finance-domain` as local, resolves canonical skill references, and confirms the database/SRE/DevOps ownership seams. Until then, counts and active dispatch continue to reflect the 25-file roster. `node tools/check-ai-manifest.js --strict` validates both current filesystem counts and this preparation mapping.
+`node tools/check-ai-manifest.js --strict` validates the exact roster, provenance boundary, retired-role absence, documentation statement, and managed sync inventory.
 
 ### Supported AI Tools
 

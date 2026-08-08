@@ -255,7 +255,7 @@ is deliberate and testable.
 2. If a _new_ platform-neutral enum is desirable (e.g., a unified
    `AmountDirection { GAIN, NEUTRAL, LOSS }` so Android/Web/Windows can share the
    exact same semantics), that addition belongs in `packages/core` /
-   `packages/models` and must be proposed via **ADR to @architect / @kmp-engineer**
+   `packages/models` and must be proposed via **ADR to @architect / @native-app-engineer**
    — per [AGENTS.md](../../AGENTS.md) the iOS engineer does not edit `packages/`
    directly. Until then, iOS derives direction from the existing `Cents` sign /
    `TransactionType` at the bridge.
@@ -385,7 +385,7 @@ Simulator).
 
 These guard the classification boundary. Most extend existing suites
 ([`BudgetCalculatorTest`](../../packages/core/src/commonTest/kotlin/com/finance/core/budget/BudgetCalculatorTest.kt),
-`BudgetUtilizationTrackingTest`) — **owned by @kmp-engineer**; this doc only
+`BudgetUtilizationTrackingTest`) — **owned by @native-app-engineer**; this doc only
 specifies the cases iOS depends on:
 
 - `BudgetHealth` boundary classification: 74.9% → `HEALTHY`, exactly 75.0% →
@@ -397,7 +397,7 @@ specifies the cases iOS depends on:
 
 ### 10.2 Native (Swift · iOS Simulator · XCTest)
 
-Owned by @ios-engineer:
+Owned by @native-app-engineer:
 
 | Test                              | Asserts                                                                                           |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -459,7 +459,7 @@ enrollment, certificate/profile creation, or GitHub secret configuration.
 
 1. **Shared `AmountDirection` enum?** Should `GAIN / NEUTRAL / LOSS` be promoted
    into `packages/core` so all four platforms share one classification, or stay
-   derived per-platform from `Cents` sign? → ADR to @architect / @kmp-engineer.
+   derived per-platform from `Cents` sign? → ADR to @architect / @native-app-engineer.
 2. **Pattern fidelity on watchOS / complications:** hatch fills may be too dense
    on small complications; fall back to symbol + sign only there? Validate during
    implementation on-device.

@@ -362,7 +362,7 @@ If approved by @business-analyst:
 
 - [ ] All email copy reviewed for brand voice alignment
 - [ ] No pressure tactics in review request or social sharing asks
-- [ ] Migration guide verified with @kmp-engineer and platform agents
+- [ ] Migration guide verified with @native-app-engineer and @web-engineer
 - [ ] Beta Pioneer badge spec shared with platform engineers
 - [ ] Feedback survey questions reviewed for inclusivity and clarity
 - [ ] Email personalization tokens ({{first_name}}, etc.) confirmed available

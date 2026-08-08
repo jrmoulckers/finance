@@ -6,28 +6,29 @@ parameters:
     description: "Scope of review: 'all' for every open PR, or a comma-separated list of PR numbers"
     default: all
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Review — Parallel Code Review for Open PRs
 
-Dispatch code-review agents in parallel to review all (or selected) open PRs.
+Review all or selected open PRs with read-only review agents.
 
 ## Execution Plan
 
-### Phase 1: Identify PRs to Review
+### 1. Identify PRs
 
 ```bash
-gh pr list --state open --json number,title,headRefName,author,additions,deletions,changedFiles,labels
+gh pr list --state open --limit 200 --json number,title,headRefName,author,isDraft,additions,deletions,changedFiles,labels
 ```
 
-If `scope` is `all`, review every open PR. Otherwise, filter to the specified PR numbers.
+If `scope` is `all`, review every open PR. Otherwise filter to the requested PR numbers.
 
 Skip PRs that:
 
-- Are draft PRs (not ready for review)
-- Have zero changed files
-- Were authored by `dependabot` or other bots
+- Are drafts.
+- Have zero changed files.
+- Were authored by bots unless explicitly requested.
 
-### Phase 2: Dispatch Review Agents
+### 2. Dispatch Review Agents
 
 For each PR, dispatch a `code-review` agent:
 
@@ -43,85 +44,69 @@ Author: <author>
 
 ## Review Focus
 
-1. **Code correctness** — logic errors, edge cases, off-by-one errors
-2. **Security** — hardcoded secrets, SQL injection, XSS, missing auth checks
-3. **Financial accuracy** — monetary calculations use cents (Long/integer), no floating point for money
-4. **Accessibility** — WCAG 2.2 AA compliance, ARIA labels, keyboard navigation
-5. **Architecture** — follows edge-first patterns, data flows through hooks/repositories
-6. **Tests** — adequate coverage for new logic, no broken tests
+1. **Correctness** — logic errors, edge cases, broken flows, data loss.
+2. **Security & privacy** — secrets, injection, XSS, missing authorization, unsafe data exposure.
+3. **Accessibility** — semantic structure, keyboard support, labels, contrast, reduced motion where UI changes are present.
+4. **Architecture** — follows the product's boundaries, ownership, and data-flow conventions.
+5. **Tests** — meaningful coverage for new logic and regressions; no brittle or disabled tests.
 
 ## Steps
 
 1. Read the PR diff:
    ```bash
    gh pr diff <number>
-````
-
-2. Read the linked issue for context:
-
+   ```
+2. Read the linked issue for context when present:
    ```bash
    gh issue view <linked-issue-number>
    ```
-
-3. Check the PR's file list and identify which platform/package is affected:
-
+3. Inspect the changed file list:
    ```bash
    gh pr view <number> --json files
    ```
-
-4. Review each changed file against the relevant `.github/instructions/` coding standards.
-
-5. Verify the pre-push checklist was followed (formatting, linting, type-check should pass).
+4. Review changed files against `AGENTS.md` and relevant `instructions/` files.
+5. Check whether the repo's lint/format/type-check/test expectations were addressed.
 
 ## Output Format
 
-Produce a structured review:
-
-```
+```markdown
 ## PR #<number> Review: <title>
 
-### 🔴 Critical (must fix)
-- [file:line] Description of critical issue
+### Critical
+- [file:line] Issue and impact
 
-### 🟡 Suggestions (should fix)
-- [file:line] Description of suggestion
+### Suggestions
+- [file:line] Improvement and rationale
 
-### 🟢 Looks Good
-- Summary of what's well-done
+### Looks Good
+- What is solid
 
 ### Verdict: APPROVE / REQUEST_CHANGES / COMMENT
 <brief justification>
 ```
 
-Only flag genuine issues — never comment on style, formatting, or trivial matters that linters handle.
+Only flag genuine issues. Do not comment on style, formatting, or trivial matters handled by tools.
 """
 )
+````
 
-```
+Launch review agents in parallel; they are read-only and cannot conflict.
 
-Launch all review agents in parallel (they are read-only and cannot conflict).
+### 3. Summarize
 
-### Phase 3: Collect and Summarize
-
-After all review agents complete, produce a summary:
-
-```
-
+```markdown
 ## Review Summary — X PRs Reviewed
 
 ### Needs Changes: Y PRs
-
-| PR  | Critical Issues | Suggestions |
-| --- | --------------- | ----------- |
+| PR | Critical Issues | Suggestions |
+| --- | --- | --- |
 | ... |
 
 ### Ready to Merge: Z PRs
-
-| PR  | Title | Reviewer Notes |
-| --- | ----- | -------------- |
+| PR | Title | Notes |
+| --- | --- | --- |
 | ... |
 
 ### Review Details
-
 <Full review output for each PR>
 ```

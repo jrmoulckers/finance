@@ -131,7 +131,7 @@ tick the boxes in sections 1–7. This is the `// TODO(human)` referenced in
 - Recording on-hardware Narrator transcripts (`ml-transcripts/*`) once a
   license-cleared model and a Windows CI runner exist.
 - Moving the narration contract types into shared `packages/core` commonMain
-  (owned by @kmp-engineer).
+  (owned by @native-app-engineer).
 
 [#2707]: https://github.com/jrmoulckers/finance/issues/2707
 [#2394]: https://github.com/jrmoulckers/finance/issues/2394

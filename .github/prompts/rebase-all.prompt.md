@@ -1,35 +1,35 @@
 ---
 name: rebase-all
-description: Rebase all open PRs onto latest main
+description: Rebase all open PRs onto the latest default branch
 parameters: []
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
-# Rebase All — Sync Every Open PR with Main
+# Rebase All — Sync Every Open PR
 
-Fetch the latest `main` branch and rebase every open PR onto it. This keeps all in-flight work up to date and avoids merge conflicts accumulating.
+Fetch the latest default branch and rebase open PRs onto it so conflicts do not accumulate.
 
 ## Execution Plan
 
-### Phase 1: Fetch and Inventory
+### 1. Fetch and Inventory
 
 ```bash
-git fetch origin main
-gh pr list --state open --json number,title,headRefName,mergeable,statusCheckRollup
+git fetch origin <default-branch>
+gh pr list --state open --limit 200 --json number,title,headRefName,mergeable,statusCheckRollup
 ```
 
-List all open PRs. Note which ones already have merge conflicts (`mergeable: "CONFLICTING"`).
+List open PRs and note existing conflicts.
 
-### Phase 2: Rebase Each PR
+### 2. Rebase Each PR
 
-For each open PR, process sequentially to avoid worktree conflicts:
+Process PRs sequentially to avoid worktree conflicts.
 
 ```bash
-# If a worktree already exists for this branch:
-git worktree list | grep <branch>
+# If a worktree already exists for the branch, use it.
+git worktree list
 cd <existing-worktree>
 
-# Otherwise create a temporary worktree:
-cd <path-to-main-checkout>   # the primary clone; sibling worktrees are created next to it
+# Otherwise create one.
 git fetch origin <branch>
 git worktree add ../wt-rebase-<number> <branch>
 cd ../wt-rebase-<number>
@@ -38,55 +38,59 @@ cd ../wt-rebase-<number>
 Then rebase:
 
 ```bash
-git fetch origin main
-git rebase origin/main
+git fetch origin <default-branch>
+git rebase origin/<default-branch>
 ```
 
-**If rebase succeeds cleanly:**
+If the rebase succeeds:
 
-```bash
-npm run format
-npx eslint . --fix
-npm run format:check && npx eslint . --max-warnings 0   # NOT ci:check — type-check fails locally
-# Only push if the checks pass:
-$env:HUSKY = "0"; git push --no-verify --force-with-lease origin <branch>   # bypass pre-push hook
-```
+1. Run the repo's relevant format/lint/type-check/test commands.
+2. Push with lease:
+   ```bash
+   git push --force-with-lease origin <branch>
+   ```
+3. Verify CI and mergeability:
+   ```bash
+   gh pr checks <number>
+   gh pr view <number> --json mergeable,mergeStateStatus
+   ```
 
-**If rebase has conflicts:**
+If conflicts occur:
 
-1. Attempt auto-resolution for trivial conflicts (whitespace, import order).
-2. For non-trivial conflicts, abort the rebase and flag for human review:
+1. Auto-resolve only trivial conflicts you understand: whitespace, import order, regenerated artifacts, or lockfiles that can be recreated by the repo's package manager.
+2. For semantic conflicts, abort and flag for human review:
    ```bash
    git rebase --abort
    ```
-3. Record the PR as needing manual conflict resolution.
+3. Record the conflicting files and recommended owner.
 
-### Phase 3: Clean Up Temporary Worktrees
+### 3. Clean Up
+
+Remove only temporary worktrees created for this run after their PRs are pushed or safely aborted:
 
 ```bash
-# Remove any worktrees created just for rebasing
 git worktree remove ../wt-rebase-<number>
 ```
 
-### Phase 4: Report
+### 4. Report
 
-```
+```markdown
 ## Rebase Report
 
 ### Successfully Rebased: X PRs
 | PR | Branch | CI Status |
-|----|--------|-----------|
+| --- | --- | --- |
 | ... |
 
-### Conflicts (needs human): X PRs
+### Conflicts (Needs Human): X PRs
 | PR | Branch | Conflicting Files |
-|----|--------|-------------------|
+| --- | --- | --- |
 | ... |
 
 ### Already Up-to-Date: X PRs
 | PR | Branch |
-|----|--------|
+| --- | --- |
 | ... |
 ```
 
-> **Note**: `--force-with-lease` is required because rebasing rewrites history on the feature branch. Per `AGENTS.md` Category 1, force-with-lease on an agent's **own** branch after a clean rebase is **auto-approved** — no human approval needed. Never use plain `git push --force`.
+Use `--force-with-lease` only for rebased PR branches you own or are authorized to repair. Never use plain `git push --force`.

@@ -13,7 +13,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2605](https://github.com/jrmoulckers/finance/issues/2605) — Part of [#2171](https://github.com/jrmoulckers/finance/issues/2171)
 **Platform:** iOS / iPadOS / macOS (SwiftUI, `@Observable`, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-wallet-adjacent-capture-inbox.md](./ios-wallet-adjacent-capture-inbox.md) · [ios-passkit-wallet-constraints.md](./ios-passkit-wallet-constraints.md) · [ios-one-thumb-quick-add.md](./ios-one-thumb-quick-add.md) · [ios-noncolor-financial-state-cues.md](./ios-noncolor-financial-state-cues.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [cognitive-accessibility.md](./cognitive-accessibility.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [data-model.md](./data-model.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -62,7 +62,7 @@ records as the **same purchase** and resolve them into one, while never
   — [ios-wallet-adjacent-capture-inbox.md](./ios-wallet-adjacent-capture-inbox.md).
 - Why Apple Pay/Wallet history is unavailable and what we may use instead —
   [ios-passkit-wallet-constraints.md](./ios-passkit-wallet-constraints.md).
-- Implementing the KMP rule engine (owned by `@kmp-engineer`; this is a design).
+- Implementing the KMP rule engine (owned by `@native-app-engineer`; this is a design).
 
 ---
 
@@ -217,7 +217,7 @@ flowchart LR
 - **Shared (KMP):** normalization, scoring, and the decision policy are
   platform-neutral, deterministic business rules — they belong in
   `packages/core` so every client reconciles identically. **This doc does not
-  implement them**; landing them is an ADR conversation with `@kmp-engineer` /
+  implement them**; landing them is an ADR conversation with `@native-app-engineer` /
   `@architect`.
 - **Native (iOS):** the `@Observable` view model, the merge/ask/undo SwiftUI,
   masking and prefill display, accessibility semantics, and persistence of the
@@ -327,7 +327,7 @@ policy) in KMP `packages/core` via the Swift Export bridge ([§7](#7-native--kmp
 Determinism is the contract, so every test uses **fixed fixtures** — no
 wall-clock reads, no network.
 
-### 12.1 Shared (Kotlin · `packages/core` · `commonTest`, owned by @kmp-engineer)
+### 12.1 Shared (Kotlin · `packages/core` · `commonTest`, owned by @native-app-engineer)
 
 1. **Normalizer golden tests:** `"SQ *BLUE BOTTLE 0123 OAKLAND CA"`,
    `"TST* Blue Bottle"`, and `"BLUEBOTTLE.COM"` all normalize to the same token
@@ -384,7 +384,7 @@ changes are required to demonstrate the iOS contract against mocks.
   [#1239](https://github.com/jrmoulckers/finance/issues/1239) — a **human** action
   per the prerequisites runbook. Feature implementation is **not** blocked by it.
 - **Shared engine:** moving normalization/scoring/policy into `packages/core` is a
-  KMP change requiring an ADR with `@kmp-engineer` / `@architect`; until then iOS
+  KMP change requiring an ADR with `@native-app-engineer` / `@architect`; until then iOS
   builds against the protocol + fixtures.
 - **Live connected-account data** depends on the bank/market-data provider
   credentials tracked separately (its own human-gated task) — not created here.
@@ -397,7 +397,7 @@ part of this design.
 ## 14. Open Questions
 
 1. Exact home for the engine — `packages/core` vs. `packages/sync` — and the
-   candidate-draft + `MatchResult` schema (ADR with `@kmp-engineer`).
+   candidate-draft + `MatchResult` schema (ADR with `@native-app-engineer`).
 2. Default tolerance bands per currency (tip/tax %, absolute floor) and the
    primary vs. extended date windows — start conservative, tune with fixtures.
 3. Should a confirmed pending→posted maturation auto-merge silently (same feed,

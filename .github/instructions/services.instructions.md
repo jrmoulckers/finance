@@ -10,11 +10,11 @@ You are working in the `services/` directory, which contains the consolidated ba
 
 - `services/api/` — The single backend API server for data synchronization
 
-## Prepared Backend Ownership Seams (Not Active)
+## Backend Ownership Seams
 
-Current runtime ownership remains with `@backend-engineer` and `@devops-engineer` until canonical activation. The prepared post-activation split is:
+The active ownership split is:
 
-| Future owner         | Finance scope                                                                                                                                                                                                                                                                                              |
+| Owner                | Finance scope                                                                                                                                                                                                                                                                                              |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@backend-engineer`  | `services/api/supabase/functions/**`, authentication and API behavior, shared Edge Function utilities, OpenAPI, request validation, CORS, rate limiting, and non-database service code; reviews Auth/Function sections of `services/api/supabase/config.toml`                                              |
 | `@database-engineer` | `services/api/supabase/migrations/**`, `services/api/supabase/seed.sql`, `services/api/supabase/tests/**`, `services/api/powersync/sync-rules.yaml`, and database backup/volume definitions under `deploy/backup/` and `deploy/volumes/db/`; leads `services/api/supabase/config.toml` with backend review |
@@ -65,7 +65,7 @@ Migration naming convention: `YYYYMMDDHHMMSS_<description>.sql` (e.g., `20260325
 - **PowerSync** sync rules define what data syncs to each client — configure in sync rules YAML
 - Sync is bidirectional: local SQLite ↔ PowerSync ↔ Supabase PostgreSQL
 - Conflict resolution uses last-write-wins (LWW) for simple fields with custom merge logic for complex data
-- Serialize each cloud schema or sync-rule change with the matching client SQLDelight/model change. After activation, `@database-engineer` leads the cloud side and `@native-app-engineer` leads the client side; `@finance-domain` reviews any money semantics
+- Serialize each cloud schema or sync-rule change with the matching client SQLDelight/model change. `@database-engineer` leads the cloud side and `@native-app-engineer` leads the client side; `@finance-domain` reviews any money semantics.
 
 ## Feature Flags
 

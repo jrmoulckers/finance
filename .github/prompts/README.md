@@ -206,7 +206,7 @@ Clean up the project with stale-days=14
 
 > **File:** `bug-bash.prompt.md`
 
-Runs the [`bug-basher`](../agents/bug-basher.agent.md) lifecycle for a single reported bug on any of Finance's four platforms (iOS, Android, Web, Windows) or its shared `packages/`: infer the affected platform(s) from the report + screenshot → investigate → file a GitHub issue → implement a fix (shared-once when the root cause is shared, or widespread across every affected platform when the platform is undefined) on its own worktree → open a PR → drive cloud CI green → self-merge → clean up. Designed to be launched as a standalone, fire-and-forget session per bug, but also works when invoked inside an existing session.
+Runs the durable single-bug task-mode lifecycle for any of Finance's four platforms (iOS, Android, Web, Windows) or its shared `packages/`: infer the affected platform(s) from the report + screenshot → investigate → file a GitHub issue → implement a fix (shared-once when the root cause is shared, or widespread across every affected platform when the platform is undefined) on its own worktree → open a PR → drive cloud CI green → self-merge → clean up. It routes implementation to the active canonical owner and does not depend on a permanent bug-fixer agent. Designed to be launched as a standalone, fire-and-forget session per bug, but also works when invoked inside an existing session.
 
 **Parameters:**
 

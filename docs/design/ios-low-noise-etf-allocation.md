@@ -10,7 +10,7 @@
 **Issue:** [#2572](https://github.com/jrmoulckers/finance/issues/2572) — _Part of
 [#2118](https://github.com/jrmoulckers/finance/issues/2118)_
 **Platform:** iOS / iPadOS (SwiftUI · Swift Charts · Swift Concurrency, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Last updated:** 2026-06-22
 **Related design docs:** [data-visualization.md](./data-visualization.md) ·
 [chart-component-specs.md](./chart-component-specs.md) ·
@@ -76,7 +76,7 @@ implemented, and lands in `packages/core` via ADR).
 
 ## 2. Affected iOS Surfaces
 
-All under `apps/ios/` (owned by @ios-engineer).
+All under `apps/ios/` (owned by @native-app-engineer).
 
 | Surface                                                                                                 | Change                                                                                                              |
 | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -112,7 +112,7 @@ flowchart LR
     subgraph bridge["packages/sync (Swift Export — ADR if missing)"]
         C --> D["AllocationRollupDTO[]<br/>(label, percent: Double,<br/>valueMinorUnits: Int64,<br/>driftPercent: Double?, asOf: Instant)"]
     end
-    subgraph ios["apps/ios (this PR — @ios-engineer)"]
+    subgraph ios["apps/ios (this PR — @native-app-engineer)"]
         D --> E["InvestmentViewModel: rollups + otherBucket + driftStates"]
         E --> F["AllocationDonut / AllocationRow / AllocationDetailView"]
     end
@@ -132,7 +132,7 @@ flowchart LR
   drift values arrive as DTOs; iOS chooses how many slices to show before grouping, but
   never re-derives the numbers.
 - **No shared schema change here.** Target-mix persistence and look-through are described
-  for `@kmp-engineer` to land via ADR; the canonical reference data shape is documented
+  for `@native-app-engineer` to land via ADR; the canonical reference data shape is documented
   in [ios-investment-data-kmp-design.md](./ios-investment-data-kmp-design.md). Until then
   iOS binds to the existing `StubSwiftExportBridge` so the surface is buildable now.
 
@@ -277,7 +277,7 @@ allocation rows in `InvestmentPortfolioView`.
 
 ### 11.1 Shared (KMP) — verify/port parity, not re-implemented here
 
-- `AllocationRollupEngineTest` (KMP, **@kmp-engineer via ADR**): fund rollup sums to 100%,
+- `AllocationRollupEngineTest` (KMP, **@native-app-engineer via ADR**): fund rollup sums to 100%,
   long tail collapses into "Other" at the threshold, look-through class split is correct,
   `drift = actual − target` (incl. no-target → null), and empty holdings → empty result.
 
@@ -341,7 +341,7 @@ not implementation. This design and its iOS code are **buildable and testable no
 
 The `AllocationRollupEngine`, look-through reference data, and target-mix persistence must
 land in `packages/core` / `packages/models` and be re-exported via `packages/sync` —
-**@kmp-engineer via ADR**, not this iOS PR. Until then the surface binds to the stub bridge.
+**@native-app-engineer via ADR**, not this iOS PR. Until then the surface binds to the stub bridge.
 
 ### Needs Human Action
 

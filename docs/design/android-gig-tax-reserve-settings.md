@@ -1,7 +1,7 @@
 # Android — Gig Tax-Reserve Settings & Onboarding Flow
 
 > **Status:** DRAFT — design only (pending human review)
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 > **Issue:** [#2517](https://github.com/jrmoulckers/finance/issues/2517) · **Part of** [#2135](https://github.com/jrmoulckers/finance/issues/2135)
 > **Platform:** Android phone + tablet (Jetpack Compose, Material 3)
 > **Last Updated:** 2026-06-22

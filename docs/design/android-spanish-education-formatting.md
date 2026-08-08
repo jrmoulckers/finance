@@ -150,7 +150,7 @@ flowchart LR
   selection onto it.
 
 > This document **describes** the boundary. It does not implement KMP changes —
-> `packages/core` is owned by @kmp-engineer.
+> `packages/core` is owned by @native-app-engineer.
 
 ---
 
@@ -349,7 +349,7 @@ human-gated operations.
 - [../ops/human-gated-prerequisites.md](../ops/human-gated-prerequisites.md) — buildable-now vs. gated split
 - [../ops/launch-readiness-plan.md](../ops/launch-readiness-plan.md) — launch checklist
 
-**KMP i18n (read-only boundary — owned by @kmp-engineer)**
+**KMP i18n (read-only boundary — owned by @native-app-engineer)**
 
 - [`StringProvider.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/StringProvider.kt)
 - [`NumberFormatting.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/i18n/NumberFormatting.kt)

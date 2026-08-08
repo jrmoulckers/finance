@@ -1,7 +1,7 @@
 # Android — Vehicle Expense & Maintenance Logging
 
 > **Status:** DRAFT — design only (pending human review)
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 > **Issue:** [#2521](https://github.com/jrmoulckers/finance/issues/2521) · **Part of** [#2139](https://github.com/jrmoulckers/finance/issues/2139)
 > **Platform:** Android phone (Jetpack Compose · Material 3 · Glance) · **minSdk 28 / compile-target 35**
 > **Last Updated:** 2026-06-22
@@ -114,7 +114,7 @@ business-use percentage; the **allocated** share is computed by
 `VehicleCostCalculator.allocateBusinessCost(...)` / `BusinessUseAllocation`. Compose shows both the
 entered amount and the shared allocated result, but performs no percentage arithmetic itself.
 
-> **KMP follow-up (out of scope here, flag `@kmp-engineer`):** a first-class
+> **KMP follow-up (out of scope here, flag `@native-app-engineer`):** a first-class
 > `VehicleFixedCostCategory.PHONE` and a per-line allocation helper would make phone allocation
 > self-describing. Until then Android surfaces an "allocation %" field and defers the math to the
 > existing shared allocator. Android **must not** add a category or allocation rule of its own.
@@ -222,7 +222,7 @@ signals are surfaced:
 > are **finance/domain logic** and belong in `packages/core/vehicle` (a shared
 > `VehicleMaintenanceReminder` projection over `VehicleMaintenanceInterval` + latest odometer).
 > Proposing/implementing that shared helper is **out of scope for this Android doc** —
-> flag `@kmp-engineer`. Compose renders whatever the shared layer computes.
+> flag `@native-app-engineer`. Compose renders whatever the shared layer computes.
 
 **Scheduling**
 
@@ -324,7 +324,7 @@ No AI agent performs those steps.
 ## 12. Open Questions
 
 - Should phone allocation get a first-class `VehicleFixedCostCategory.PHONE` in KMP, or stay `OTHER`
-  with an allocation field? (Flag `@kmp-engineer`; Android renders either way.)
+  with an allocation field? (Flag `@native-app-engineer`; Android renders either way.)
 - Does the shared maintenance-reminder projection belong to #2521's KMP slice or #2522's? Proposed:
   the **due/overdue projection** ships with the logging slice so reminders work without the
   profitability surfaces.

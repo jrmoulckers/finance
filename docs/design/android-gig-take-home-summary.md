@@ -4,7 +4,7 @@
 > **Issue:** [#2516](https://github.com/jrmoulckers/finance/issues/2516) — _Part of [#2135](https://github.com/jrmoulckers/finance/issues/2135)_
 > **Platform:** Android / Wear OS (Jetpack Compose, Material 3)
 > **Last Updated:** 2026-06-22
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 
 ---
 
@@ -232,7 +232,7 @@ This is a **design deliverable**; it ships as documentation only.
 
 - How are **operating costs** attributed to a shift/platform — direct expense transactions, allocated
   vehicle cost-per-mile, or both? (Owned by `packages/*`; Android consumes the shared allocation.)
-- Where do **shift definitions** live and how are they edited? (Shared model; confirm with @kmp-engineer.)
+- Where do **shift definitions** live and how are they edited? (Shared model; confirm with @native-app-engineer.)
 - Should the reserve rate be per-user adjustable here, or read-only from settings? (Recommend read-only on
   this screen with a deep link to the tax-reserve setting.)
 - Wear OS Tile/Complication and Glance widget for "today's take-home" — scope as follow-ups under

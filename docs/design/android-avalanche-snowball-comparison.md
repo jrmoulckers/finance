@@ -89,7 +89,7 @@ goal surfaces in
 **Non-Goals**
 
 - Implementing the payoff engine, extra-payment simulation, or interest math — that is
-  KMP `packages/core`, with the web debt engines as parity (owned by @kmp-engineer /
+  KMP `packages/core`, with the web debt engines as parity (owned by @native-app-engineer /
   @web-engineer).
 - Debt ownership, classification, and the planner shell — owned by
   [android-joint-debt-payoff-planner.md](android-joint-debt-payoff-planner.md).
@@ -164,7 +164,7 @@ flowchart LR
 ```
 
 > This document **describes** the boundary. It does **not** implement KMP changes —
-> `packages/core` is owned by @kmp-engineer and the web engines by @web-engineer.
+> `packages/core` is owned by @native-app-engineer and the web engines by @web-engineer.
 > Compose is a pure renderer of shared state. The existing
 > [`Liability`](../../packages/models/src/commonMain/kotlin/com/finance/models/Liability.kt)
 > and
@@ -435,7 +435,7 @@ stays render-only.
 - [`extra-payment-sim.ts`](../../apps/web/src/lib/expenses/extra-payment-sim.ts) — extra-payment simulation parity
 - [`debt-interest.ts`](../../apps/web/src/lib/expenses/debt-interest.ts) — interest computation parity
 - [`debt-types.ts`](../../apps/web/src/lib/debt-types.ts) — debt classification types
-- [`Liability.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Liability.kt) — shared liability model (owned by @kmp-engineer)
+- [`Liability.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Liability.kt) — shared liability model (owned by @native-app-engineer)
 - [`LiabilityInstallment.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/LiabilityInstallment.kt) — installment schedule model
 - [`PlanningScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/screens/PlanningScreen.kt) — candidate entry-point host
 

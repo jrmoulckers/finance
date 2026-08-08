@@ -9,7 +9,7 @@
 **Status:** PROPOSED — design only (native implementation buildable now; store distribution gated)
 **Issue:** [#2597](https://github.com/jrmoulckers/finance/issues/2597) — Part of [#2163](https://github.com/jrmoulckers/finance/issues/2163)
 **Platform:** iOS / iPadOS (SwiftUI, `UserNotifications`, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-notification-center-navigation.md](./ios-notification-center-navigation.md) · [ios-smart-notification-timing.md](./ios-smart-notification-timing.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [ios-noncolor-financial-state-cues.md](./ios-noncolor-financial-state-cues.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -287,7 +287,7 @@ flowchart LR
   `UNUserNotificationCenterDelegate`, the additive `AppDeepLink` cases, and the
   SwiftUI destinations. No shared package is edited by this design; consolidating
   iOS-native `generateSmartAlerts` into shared rules is proposed to
-  @kmp-engineer via ADR.
+  @native-app-engineer via ADR.
 
 ---
 
@@ -335,7 +335,7 @@ rules in KMP `packages/core` via the Swift Export bridge ([§10](#10-native--kmp
    fake repository to verify "Mark paid" records once.
 6. **Stale context (Swift unit):** with a deleted/edited entity and a **fixed
    reference `Date`**, assert the delegate falls back to the parent list.
-7. **Shared (KMP, owned by @kmp-engineer):** `BudgetCalculator` thresholds and
+7. **Shared (KMP, owned by @native-app-engineer):** `BudgetCalculator` thresholds and
    `BillReminderEngine.scheduleNotifications` are tested in `packages/core`.
 
 ---
@@ -378,5 +378,5 @@ See [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md).
 3. **Snooze granularity:** fixed (e.g. "tomorrow morning") or user-chosen? The
    timing of a snooze is owned by
    [ios-smart-notification-timing.md](./ios-smart-notification-timing.md).
-4. **Shared candidate model:** confirm with @kmp-engineer the exact Swift Export
+4. **Shared candidate model:** confirm with @native-app-engineer the exact Swift Export
    shape of an "alert candidate" so iOS never re-derives money.

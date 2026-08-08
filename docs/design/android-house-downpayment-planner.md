@@ -147,7 +147,7 @@ flowchart LR
 ```
 
 > This document **describes** the boundary. It does **not** implement KMP changes —
-> `packages/core` is owned by @kmp-engineer and the web engines by @web-engineer.
+> `packages/core` is owned by @native-app-engineer and the web engines by @web-engineer.
 > Compose is a pure renderer of shared state. The existing
 > [`Goal`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt)
 > model already carries `targetAmount`, `currentAmount`, and `targetDate`; a home
@@ -381,7 +381,7 @@ Compose stays render-only.
 - [`savings-goals.ts`](../../apps/web/src/lib/planning/savings-goals.ts) — savings planning rules
 - [`GoalProjection.tsx`](../../apps/web/src/components/savings/GoalProjection.tsx) — web projection UI parity
 - [`GoalsScreen.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/screens/GoalsScreen.kt) — host surface
-- [`Goal.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt) — shared goal model (owned by @kmp-engineer)
+- [`Goal.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Goal.kt) — shared goal model (owned by @native-app-engineer)
 - [`Household.kt`](../../packages/models/src/commonMain/kotlin/com/finance/models/Household.kt) — household model
 
 **Issues**

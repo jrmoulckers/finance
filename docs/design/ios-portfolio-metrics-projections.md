@@ -141,7 +141,7 @@ flowchart LR
 > across platforms.
 
 > **KMP changes are out of scope for this PR.** Every "proposed" row is an
-> @kmp-engineer / @architect change via **ADR** per [AGENTS.md](../../AGENTS.md).
+> @native-app-engineer / @architect change via **ADR** per [AGENTS.md](../../AGENTS.md).
 > This doc names the contracts and the iOS presentation; it does not edit
 > `packages/`.
 
@@ -422,7 +422,7 @@ gate only.
   [human-gated-prerequisites.md §3.2](../ops/human-gated-prerequisites.md#32-ios-distribution--apple-developer-1239).
   An SME agent must **not** perform enrollment, certificate, or secret steps.
 - **Shared-logic tail:** the contribution-breakdown, compound-growth projector,
-  FIRE link, and confidence model are @kmp-engineer / @architect changes via
+  FIRE link, and confidence model are @native-app-engineer / @architect changes via
   **ADR**, and they depend on the contribution/price data from
   [ios-investment-data-kmp-design.md](./ios-investment-data-kmp-design.md). Until
   those land, the iOS cards can bind to the stub bridge with seeded scenarios so

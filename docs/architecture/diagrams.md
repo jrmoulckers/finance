@@ -405,11 +405,11 @@ graph TD
     end
 
     subgraph Fleet["Agent Fleet (parallel execution)"]
-        KMP["@kmp-engineer<br/>packages/"]
-        Android["@android-engineer<br/>apps/android/"]
-        iOS["@ios-engineer<br/>apps/ios/"]
+        KMP["@native-app-engineer<br/>packages/"]
+        Android["@native-app-engineer<br/>apps/android/"]
+        iOS["@native-app-engineer<br/>apps/ios/"]
         Web["@web-engineer<br/>apps/web/"]
-        Win["@windows-engineer<br/>apps/windows/"]
+        Win["@native-app-engineer<br/>apps/windows/"]
         Backend["@backend-engineer<br/>services/api/"]
         Docs["@docs-writer<br/>docs/"]
     end

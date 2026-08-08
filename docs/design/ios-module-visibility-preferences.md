@@ -10,7 +10,7 @@
 **Issue:** [#2577](https://github.com/jrmoulckers/finance/issues/2577) — _Part of
 [#2122](https://github.com/jrmoulckers/finance/issues/2122)_
 **Platform:** iOS / iPadOS (SwiftUI · Swift Concurrency, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Last updated:** 2026-06-22
 **Related design docs:** [information-architecture.md](./information-architecture.md) ·
 [ux-principles.md](./ux-principles.md) ·
@@ -72,7 +72,7 @@ per-household/shared preferences, and any new shared backend schema.
 
 ## 2. Affected iOS Surfaces
 
-All under `apps/ios/` (owned by @ios-engineer).
+All under `apps/ios/` (owned by @native-app-engineer).
 
 | Surface                                                                                                                                                                        | Change                                                                                                             |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
@@ -139,7 +139,7 @@ flowchart LR
     subgraph bridge["packages/sync (Swift Export — ADR if missing)"]
         B --> C["ModuleVisibilityDTO<br/>(moduleId: String, isVisible: Bool)"]
     end
-    subgraph ios["apps/ios (this PR — @ios-engineer)"]
+    subgraph ios["apps/ios (this PR — @native-app-engineer)"]
         C --> D["ModuleVisibilityStore (actor, App Group UserDefaults)"]
         D --> E["ModuleVisibilityViewModel (@Observable)"]
         E --> F["MainTabView / DashboardView / SettingsView"]
@@ -279,7 +279,7 @@ dashboard")`; state is announced as on/off by VoiceOver natively. Each carries a
 
 ### 11.1 Shared (KMP) — verify/port parity, not re-implemented here
 
-- `ModuleVisibilityRulesTest` (KMP, **@kmp-engineer via ADR**): the catalog lists exactly
+- `ModuleVisibilityRulesTest` (KMP, **@native-app-engineer via ADR**): the catalog lists exactly
   the hideable modules; non-hideable invariants (Dashboard/Accounts/Transactions tabs,
   Settings reachable, "not all dashboard cards hideable") hold; default resolves to all
   visible; effective-visibility resolution is deterministic.
@@ -346,7 +346,7 @@ not implementation. This design and its iOS code are **buildable and testable no
 ### Dependency note (process gate, not human-gated)
 
 The module catalog, defaults, and invariants belong in `packages/core` / `packages/models`
-re-exported via `packages/sync` — **@kmp-engineer via ADR**, not this iOS PR. Until then iOS
+re-exported via `packages/sync` — **@native-app-engineer via ADR**, not this iOS PR. Until then iOS
 binds the stub bridge. The App-Group identifier `group.com.finance.app` already exists.
 
 ### Needs Human Action

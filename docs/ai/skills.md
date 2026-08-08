@@ -124,7 +124,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 **Knowledge areas:**
 
-- Agent type registry (25 agents: engineering, review, ops/meta, business)
+- Agent type registry (23 agents: 22 generated canonical roles plus local `finance-domain`)
 - Label-to-agent mapping for issue routing
 - Sprint planning algorithm (query → categorize → deps → group → track)
 - Fleet dispatch protocol with background task parallelism
@@ -432,35 +432,33 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 Each agent loads a focused set of skills for domain depth. The table below mirrors the **Related skills** line in every [`.github/agents/*.agent.md`](../../.github/agents/) file (the source of truth). Skills not listed for an agent still activate automatically when their trigger keywords match — this mapping captures the _primary_ skills each role should reach for.
 
-| Agent                      | Related skills                                                                                                                                                                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `accessibility-reviewer`   | `accessibility-testing`, `ux-testing`, `design-tokens`                                                                                                                                         |
-| `ai-ops-engineer`          | `prompt-engineering`, `mcp-agent-tooling`, `issue-management`                                                                                                                                  |
-| `android-engineer`         | `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens`                                                                                                              |
-| `architect`                | `kmp-development`, `edge-sync`, `supabase-powersync`, `security-review-methodology`                                                                                                            |
-| `backend-engineer`         | `supabase-powersync`, `edge-sync`, `security-review-methodology`, `privacy-compliance`                                                                                                         |
-| `bug-basher`               | `ux-testing`, `accessibility-testing`, `issue-management`, `kmp-development`, `supabase-powersync`, `design-tokens`, `i18n-localization`, `performance-budgets`, `security-review-methodology` |
-| `business-analyst`         | `monetization`, `go-to-market`, `project-management`                                                                                                                                           |
-| `compliance-specialist`    | `privacy-compliance`, `security-review-methodology`, `financial-modeling`                                                                                                                      |
-| `data-engineer`            | `privacy-compliance`, `financial-modeling`, `supabase-powersync`                                                                                                                               |
-| `design-engineer`          | `design-tokens`, `accessibility-testing`, `i18n-localization`                                                                                                                                  |
-| `devops-engineer`          | `fleet-orchestration`, `performance-budgets`, `mcp-agent-tooling`, `dev-onboarding`                                                                                                            |
-| `docs-writer`              | `dev-onboarding`, `project-management`, `prompt-engineering`                                                                                                                                   |
-| `experimentation-engineer` | `edge-sync`, `privacy-compliance`, `financial-modeling`                                                                                                                                        |
-| `finance-domain`           | `financial-modeling`, `edge-sync`, `privacy-compliance`                                                                                                                                        |
-| `ios-engineer`             | `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens`                                                                                                              |
-| `kmp-engineer`             | `kmp-development`, `edge-sync`, `financial-modeling`, `supabase-powersync`                                                                                                                     |
-| `localization-engineer`    | `i18n-localization`, `financial-modeling`, `design-tokens`                                                                                                                                     |
-| `marketing-strategist`     | `go-to-market`, `monetization`, `i18n-localization`                                                                                                                                            |
-| `performance-engineer`     | `performance-budgets`, `kmp-development`, `edge-sync`                                                                                                                                          |
-| `product-manager`          | `project-management`, `sprint-planning`, `issue-management`, `fleet-orchestration`                                                                                                             |
-| `qa-tester`                | `ux-testing`, `issue-management`, `accessibility-testing`                                                                                                                                      |
-| `release-manager`          | `project-management`, `sprint-planning`, `dev-onboarding`                                                                                                                                      |
-| `security-reviewer`        | `security-review-methodology`, `privacy-compliance`, `supabase-powersync`, `edge-sync`                                                                                                         |
-| `web-engineer`             | `performance-budgets`, `accessibility-testing`, `financial-modeling`, `edge-sync`                                                                                                              |
-| `windows-engineer`         | `kmp-development`, `financial-modeling`, `accessibility-testing`, `design-tokens`                                                                                                              |
+| Agent                      | Related skills                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accessibility-reviewer`   | `accessibility-testing`, `ux-testing`, `design-tokens`                                                                                      |
+| `ai-ops-engineer`          | `prompt-engineering`, `mcp-agent-tooling`, `issue-management`                                                                               |
+| `architect`                | `security-review-methodology`, `performance-budgets`, `kmp-development`, `edge-sync`                                                        |
+| `backend-engineer`         | `security-review-methodology`, `privacy-compliance`, `supabase-powersync`                                                                   |
+| `business-analyst`         | `monetization`, `go-to-market`, `project-management`                                                                                        |
+| `compliance-specialist`    | `privacy-compliance`, `security-review-methodology`, `financial-modeling`                                                                   |
+| `data-engineer`            | `privacy-compliance`, `financial-modeling`, `supabase-powersync`                                                                            |
+| `database-engineer`        | `security-review-methodology`, `privacy-compliance`, `supabase-powersync`                                                                   |
+| `design-engineer`          | `design-tokens`, `accessibility-testing`, `i18n-localization`                                                                               |
+| `devops-engineer`          | `project-management`, `performance-budgets`, `dev-onboarding`, `fleet-orchestration`                                                        |
+| `docs-writer`              | `dev-onboarding`, `project-management`, `prompt-engineering`                                                                                |
+| `experimentation-engineer` | `privacy-compliance`, `edge-sync`, `financial-modeling`                                                                                     |
+| `finance-domain`           | `financial-modeling`, `edge-sync`, `privacy-compliance`                                                                                     |
+| `localization-engineer`    | `i18n-localization`, `financial-modeling`, `design-tokens`                                                                                  |
+| `marketing-strategist`     | `go-to-market`, `monetization`, `i18n-localization`                                                                                         |
+| `native-app-engineer`      | `accessibility-testing`, `design-tokens`, `performance-budgets`, `kmp-development`, `financial-modeling`, `edge-sync`, `supabase-powersync` |
+| `performance-engineer`     | `performance-budgets`, `kmp-development`, `edge-sync`                                                                                       |
+| `product-manager`          | `project-management`, `sprint-planning`, `issue-management`, `fleet-orchestration`                                                          |
+| `qa-tester`                | `ux-testing`, `issue-management`, `accessibility-testing`                                                                                   |
+| `release-manager`          | `project-management`, `sprint-planning`, `dev-onboarding`                                                                                   |
+| `security-reviewer`        | `security-review-methodology`, `privacy-compliance`, `supabase-powersync`, `edge-sync`                                                      |
+| `sre-engineer`             | `performance-budgets`, `security-review-methodology`, `edge-sync`                                                                           |
+| `web-engineer`             | `performance-budgets`, `accessibility-testing`, `financial-modeling`, `edge-sync`                                                           |
 
-> This table mirrors the roster in [`agents.md`](agents.md) (**25 agents**). When you add or retire an agent, update both its `*.agent.md` **Related skills** line and this table so the two never drift.
+> This table mirrors the roster in [`agents.md`](agents.md) (**23 agents**). Generated agents inherit their canonical related skills; Finance-specific additions remain in this local catalog.
 
 ---
 

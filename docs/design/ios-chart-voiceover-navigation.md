@@ -112,7 +112,7 @@ flowchart LR
 
 > **Boundary rule:** this layer adds **no** new platform-neutral logic. It
 > consumes already-bridged aggregates and the shared formatter. No `packages/`
-> edits; any future shared helper is an @kmp-engineer ADR.
+> edits; any future shared helper is an @native-app-engineer ADR.
 
 ---
 
@@ -311,7 +311,7 @@ Smallest tests required before acceptance. Native UI tests run on Simulator with
 
 Navigation adds no platform-neutral logic; it relies on the already-tested
 aggregator/formatter modules. (Any future shared "peaks" helper would be an
-@kmp-engineer ADR with its own `commonTest`.)
+@native-app-engineer ADR with its own `commonTest`.)
 
 ---
 

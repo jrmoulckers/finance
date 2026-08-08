@@ -144,7 +144,7 @@ just composition over the existing `savingsRate`/`totalIncome`/`totalSpending` c
 ## 4. Shared card descriptor (packages/core)
 
 Add a platform-neutral descriptor so the on-screen figure, the trend cue, and the VoiceOver
-summary are all derived once and shared with web parity. **Proposed — owned by @kmp-engineer; not
+summary are all derived once and shared with web parity. **Proposed — owned by @native-app-engineer; not
 implemented in this doc.** Home: the same cross-cutting `packages/core/.../accessibility`
 namespace introduced by the chart-accessibility pattern (`docs/design/ios-chart-accessibility.md`
 §4), so the trend cue type is shared rather than re-declared per surface.
@@ -152,7 +152,7 @@ namespace introduced by the chart-accessibility pattern (`docs/design/ios-chart-
 **Proposed shared type (Kotlin, illustrative):**
 
 ```kotlin
-// packages/core/.../savings/SavingsRateCardDescriptor.kt (proposed, @kmp-engineer)
+// packages/core/.../savings/SavingsRateCardDescriptor.kt (proposed, @native-app-engineer)
 data class SavingsRateCardDescriptor(
     val periodLabel: String,        // "This month" / "June 2026"
     val currentRatePercent: Double, // FinancialAggregator.savingsRate(current month)
@@ -302,7 +302,7 @@ Smallest set of tests required before a native implementation of this card is ac
    uses income exactly as the user logged it, consistent across web and KMP. A net-of-tax
    denominator would require a **future schema field** to tag/derive tax on income; that field is
    **not invented here** — if post-tax savings rate is wanted later, it is a separate schema +
-   engine change (proposed, @kmp-engineer), not a card-layer decision.
+   engine change (proposed, @native-app-engineer), not a card-layer decision.
 3. **Masked rate is still shown.** A savings rate is a percentage (relative), so it and its trend
    remain visible when absolute balances are masked; only absolute currency is suppressed. This is
    parity with `ios-chart-accessibility.md` §6 decision #2, not a new call (§6).

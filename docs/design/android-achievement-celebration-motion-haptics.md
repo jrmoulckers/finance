@@ -375,7 +375,7 @@ Celebrations reinforce **healthy financial habits**, never spending. Guardrails:
 | Phase                                                                                                                                                     | Status               | Gate                                                                                                      |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------- |
 | This design doc                                                                                                                                           | ✅ Done              | None                                                                                                      |
-| Shared gamification + haptics models (consumed, not modified)                                                                                             | ✅ Exists            | None — `packages/core`, owned by `@kmp-engineer`                                                          |
+| Shared gamification + haptics models (consumed, not modified)                                                                                             | ✅ Exists            | None — `packages/core`, owned by `@native-app-engineer`                                                   |
 | Celebration banner / sheet / milestone card, Compose motion (reduced-motion aware), haptic bridge reuse, unit/Compose/Paparazzi, `assembleDebug` sideload | 🟢 **Buildable now** | None — debug sideload per [`../ops/human-gated-prerequisites.md` §2](../ops/human-gated-prerequisites.md) |
 | Play Store release + production distribution of the celebration experience                                                                                | 🔒 **Gated**         | [#1242](https://github.com/jrmoulckers/finance/issues/1242) — keystore + Play Console                     |
 
@@ -394,7 +394,7 @@ No build, signing, or store action is performed by this design.
 
 1. **Shared `ACHIEVEMENT_UNLOCK` effect.** Should `packages/core` add a dedicated
    semantic haptic effect (vs. reusing `TRANSACTION_SAVE_SUCCESS`)? Owned by
-   `@kmp-engineer`; this doc only consumes it.
+   `@native-app-engineer`; this doc only consumes it.
 2. **Celebration toggle granularity.** One "Celebrations" toggle vs. separate
    "motion" and "haptics" sub-toggles (beyond the existing app haptics setting)?
 3. **Coalescing window.** How long to wait before grouping simultaneous unlocks into

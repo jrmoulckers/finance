@@ -13,7 +13,7 @@
 **Status:** PROPOSED — design / constraints reference (informs implementation; store distribution gated)
 **Issue:** [#2606](https://github.com/jrmoulckers/finance/issues/2606) — Part of [#2171](https://github.com/jrmoulckers/finance/issues/2171)
 **Platform:** iOS / iPadOS (PassKit, Wallet, VisionKit; SwiftUI, iOS 17+)
-**Owner:** @ios-engineer
+**Owner:** @native-app-engineer
 **Related:** [ios-wallet-adjacent-capture-inbox.md](./ios-wallet-adjacent-capture-inbox.md) · [ios-merchant-matching-duplicate-detection.md](./ios-merchant-matching-duplicate-detection.md) · [ios-one-thumb-quick-add.md](./ios-one-thumb-quick-add.md) · [accessibility-patterns.md](./accessibility-patterns.md) · [cognitive-accessibility.md](./cognitive-accessibility.md) · [content-language-guidelines.md](./content-language-guidelines.md) · [Human-Gated Prerequisites](../ops/human-gated-prerequisites.md)
 
 ---
@@ -225,7 +225,7 @@ flowchart LR
   §3. There is intentionally **no** PassKit transaction integration to build.
 - **Shared (KMP):** the platform-neutral draft/candidate model and field-parsing
   and masking/minimization rules in `packages/core`. **Not implemented here** —
-  ADR with `@kmp-engineer` / `@architect`.
+  ADR with `@native-app-engineer` / `@architect`.
 - **Bridge:** returns **masked, display-ready** drafts; raw scanned text and any
   card-like tokens never cross into persistent state.
 
@@ -314,7 +314,7 @@ This is a constraints/UX design, so tests guard the **boundary** and the
 **fallbacks** rather than a transaction integration that (correctly) does not
 exist.
 
-### 12.1 Shared (Kotlin · `packages/core` · `commonTest`, owned by @kmp-engineer)
+### 12.1 Shared (Kotlin · `packages/core` · `commonTest`, owned by @native-app-engineer)
 
 1. **Masking unit:** parsed output never contains more than last-4; PAN-shaped
    inputs are rejected/redacted.
@@ -380,7 +380,7 @@ requests are performed as part of this design.
    pre-empt the Apple Pay misconception? Proposal: yes, one-time + a help link.
 2. Where do field-parsing helpers live — `packages/core` vs. a thin native
    parser — given they touch locale and currency formatting? ADR with
-   `@kmp-engineer`.
+   `@native-app-engineer`.
 3. Do we add a **Share Extension** in the first native milestone or defer it
    behind the distribution gate? Proposal: build it behind a flag for local QA,
    ship post-enrollment.

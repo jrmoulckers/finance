@@ -17,7 +17,7 @@ This is a **privacy control, not a sharing prompt.** The default is the most
 private sensible option, every choice is reversible, and the selected value drives
 **household row-level visibility** in the shared layer — it is never interpreted or
 enforced by Compose. No money math and no partition/RBAC rules are written here;
-that logic is a **shared `packages/core` concern** (owned by @kmp-engineer), with
+that logic is a **shared `packages/core` concern** (owned by @native-app-engineer), with
 the web "yours, mine, ours" foundation as the parity reference.
 
 ---
@@ -64,7 +64,7 @@ the web "yours, mine, ours" foundation as the parity reference.
 
 - **No new shared business rules.** The selector renders and writes a scope value;
   it does not implement partitioning, RLS, or RBAC. That is a `packages/` change
-  owned by @kmp-engineer (see §2–§3).
+  owned by @native-app-engineer (see §2–§3).
 - **No money math in Compose.** Net-worth inclusion, masking, and aggregation are
   shared concerns consumed read-only.
 - **No model schema authoring here.** Adding a per-record scope/visibility field to
@@ -389,7 +389,7 @@ implementation are buildable and testable now; only store distribution waits on
   [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md) §2
   "Free local build/test paths."
 - The per-record **scope/visibility** field is a `packages/` change owned by
-  @kmp-engineer — also unblocked; not store-gated.
+  @native-app-engineer — also unblocked; not store-gated.
 
 ### 🔒 Distribution tail — gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242)
 

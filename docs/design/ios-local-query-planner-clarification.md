@@ -112,7 +112,7 @@ flowchart LR
   (`Int` → `Int32`, `String` → `String`, `List` → `Array`).
 
 > Grammar/threshold changes are **KMP changes**: propose via ADR to
-> @kmp-engineer / @architect. This doc specifies behavior, not Kotlin code.
+> @native-app-engineer / @architect. This doc specifies behavior, not Kotlin code.
 
 ## 4. Query Grammar and Supported Dimensions
 

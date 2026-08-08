@@ -1,4 +1,4 @@
-﻿# Feature Roadmap
+# Feature Roadmap
 
 > **Generated**: 2025-07-17
 > **Based on**: [Issue Triage Report](../sprints/issue-triage-report.md) — 247 open issues triaged
@@ -78,7 +78,7 @@ graph TD
 | Sprint 2 | #1689, #1708               | Enhanced: spoken amounts, onboarding preferences             |
 | Sprint 3 | #1703, #1664, #1732        | Inclusive: cognitive mode, quiet hours, elder mode           |
 
-**Agents**: @accessibility-reviewer (audit), @web-engineer, @android-engineer, @ios-engineer, @windows-engineer
+**Agents**: @accessibility-reviewer (audit), @web-engineer, @native-app-engineer
 
 **Exit Criteria**:
 
@@ -100,7 +100,7 @@ graph TD
 | Sprint 2 | #1621, #1719, #1682, #1677, #1643, #1613 | Controls: local-only, biometric, audit, transparency, masking     |
 | Sprint 3 | #1668, #1663, #1658, #1654, #1673, #1723 | Data rights: no-telemetry, devices, erasure, access, crash, memos |
 
-**Agents**: @security-reviewer (audit), @kmp-engineer, @backend-engineer, platform agents
+**Agents**: @security-reviewer (audit), @native-app-engineer, @backend-engineer, platform agents
 
 **Exit Criteria**:
 
@@ -127,7 +127,7 @@ graph TD
 | Sprint 6 | #1700, #1573, #1630, #1568, #1601, #1570 | Business expenses + misc                 |
 | Sprint 7 | #1681, #1690                             | Advanced debt (student loans, BNPL)      |
 
-**Agents**: @finance-domain, @kmp-engineer, @backend-engineer, platform agents
+**Agents**: @finance-domain, @native-app-engineer, @database-engineer, @backend-engineer, @web-engineer
 
 **Exit Criteria**:
 
@@ -154,7 +154,7 @@ graph TD
 | Sprint 6 | #1796, #1797, #1799               | Child/teen accounts                                    |
 | Sprint 7 | #1798, #1800, #1728, #1731        | Child/teen advanced features                           |
 
-**Agents**: @backend-engineer (RLS policies), @kmp-engineer (models), platform agents
+**Agents**: @database-engineer (RLS/schema), @native-app-engineer (client models/native UI), @backend-engineer (API/Auth), @web-engineer
 
 **Exit Criteria**:
 
@@ -181,7 +181,7 @@ graph TD
 | Sprint 6 | #1672, #1667, #1738, #1678        | Crypto + HSA/529 + property                        |
 | Sprint 7 | #1744, #1742                      | Collaborative wealth + AI insights                 |
 
-**Agents**: @finance-domain, @kmp-engineer, @backend-engineer, platform agents
+**Agents**: @finance-domain, @database-engineer, @native-app-engineer, @backend-engineer, @web-engineer
 
 **Exit Criteria**:
 

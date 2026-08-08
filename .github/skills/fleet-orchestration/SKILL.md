@@ -37,21 +37,19 @@ Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI 
 
 | Agent                      | File Ownership                                                                                                    | Definition                                         |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `android-engineer`         | `apps/android/**`                                                                                                 | `.github/agents/android-engineer.agent.md`         |
-| `ios-engineer`             | `apps/ios/**`                                                                                                     | `.github/agents/ios-engineer.agent.md`             |
+| `native-app-engineer`      | `apps/android/**`, `apps/ios/**`, `apps/windows/**`, shared `packages/**`, Gradle config                          | `.github/agents/native-app-engineer.agent.md`      |
 | `web-engineer`             | `apps/web/**`                                                                                                     | `.github/agents/web-engineer.agent.md`             |
-| `bug-basher`               | `apps/**`, `packages/**`, `config/**`, `services/**` (standalone single-bug bug bash, any platform; own worktree) | `.github/agents/bug-basher.agent.md`               |
-| `windows-engineer`         | `apps/windows/**`                                                                                                 | `.github/agents/windows-engineer.agent.md`         |
-| `kmp-engineer`             | `packages/**`                                                                                                     | `.github/agents/kmp-engineer.agent.md`             |
-| `backend-engineer`         | `services/**`                                                                                                     | `.github/agents/backend-engineer.agent.md`         |
-| `devops-engineer`          | `.github/workflows/**`, `tools/**`                                                                                | `.github/agents/devops-engineer.agent.md`          |
+| `backend-engineer`         | Edge Functions, Auth/API behavior, OpenAPI, validation, rate limiting                                             | `.github/agents/backend-engineer.agent.md`         |
+| `database-engineer`        | Supabase migrations/RLS/tests/seed, PowerSync rules, database backup/volume definitions                           | `.github/agents/database-engineer.agent.md`        |
+| `sre-engineer`             | SLOs, monitoring semantics, incidents, capacity, rollback, disaster recovery, restore verification                | `.github/agents/sre-engineer.agent.md`             |
+| `devops-engineer`          | `.github/workflows/**`, `tools/**`, build/delivery mechanics                                                      | `.github/agents/devops-engineer.agent.md`          |
 | `design-engineer`          | `packages/design-tokens/**`                                                                                       | `.github/agents/design-engineer.agent.md`          |
 | `docs-writer`              | `docs/**`, root `*.md`                                                                                            | `.github/agents/docs-writer.agent.md`              |
 | `architect`                | Cross-cutting, ADRs                                                                                               | `.github/agents/architect.agent.md`                |
 | `compliance-specialist`    | `docs/compliance/**`                                                                                              | `.github/agents/compliance-specialist.agent.md`    |
-| `finance-domain`           | `packages/core/**` (business logic, shared with `kmp-engineer`)                                                   | `.github/agents/finance-domain.agent.md`           |
+| `finance-domain`           | `packages/core/**` financial correctness, with `native-app-engineer` leading structure                            | `.github/agents/finance-domain.agent.md`           |
 | `performance-engineer`     | `performance.budget.json`, `docs/performance/**`                                                                  | `.github/agents/performance-engineer.agent.md`     |
-| `data-engineer`            | `docs/analytics/**`, `config/analytics/**`, `docs/business/growth/**`                                             | `.github/agents/data-engineer.agent.md`            |
+| `data-engineer`            | `docs/analytics/**`, `config/analytics/**`, `docs/business/growth/**`; product telemetry, not financial reporting | `.github/agents/data-engineer.agent.md`            |
 | `localization-engineer`    | `config/i18n/**`, `docs/i18n/**`                                                                                  | `.github/agents/localization-engineer.agent.md`    |
 | `experimentation-engineer` | `config/feature-flags/**`                                                                                         | `.github/agents/experimentation-engineer.agent.md` |
 
@@ -80,30 +78,32 @@ Proven across **3 waves, 140+ PRs, 17 sprints per agent type** for dispatch, CI 
 
 ### Label-to-Agent Mapping
 
-| Label                        | Agent                      |
-| ---------------------------- | -------------------------- |
-| `platform:android`           | `android-engineer`         |
-| `platform:ios`               | `ios-engineer`             |
-| `platform:web`               | `web-engineer`             |
-| `platform:windows`           | `windows-engineer`         |
-| `platform:shared`, `kmp`     | `kmp-engineer`             |
-| `backend`, `supabase`        | `backend-engineer`         |
-| `ci`, `devops`               | `devops-engineer`          |
-| `docs`, `documentation`      | `docs-writer`              |
-| `security`, `privacy`        | `security-reviewer`        |
-| `compliance`, `regulatory`   | `compliance-specialist`    |
-| `a11y`, `accessibility`      | `accessibility-reviewer`   |
-| `qa`, `testing`              | `qa-tester`                |
-| `product`, `roadmap`         | `product-manager`          |
-| `marketing`, `launch`        | `marketing-strategist`     |
-| `business`, `pricing`        | `business-analyst`         |
-| `performance`                | `performance-engineer`     |
-| `i18n`, `localization`       | `localization-engineer`    |
-| `analytics`, `metrics`       | `data-engineer`            |
-| `experiment`, `feature-flag` | `experimentation-engineer` |
-| `release`                    | `release-manager`          |
-| `agent`, `skill`, `prompt`   | `ai-ops-engineer`          |
-| `finance`, `domain`          | `finance-domain`           |
+| Label                          | Agent                      |
+| ------------------------------ | -------------------------- |
+| `platform:android`             | `native-app-engineer`      |
+| `platform:ios`                 | `native-app-engineer`      |
+| `platform:web`                 | `web-engineer`             |
+| `platform:windows`             | `native-app-engineer`      |
+| `platform:shared`, `kmp`       | `native-app-engineer`      |
+| `backend`, `api`, `auth`       | `backend-engineer`         |
+| `database`, `rls`, `powersync` | `database-engineer`        |
+| `sre`, `reliability`           | `sre-engineer`             |
+| `ci`, `devops`                 | `devops-engineer`          |
+| `docs`, `documentation`        | `docs-writer`              |
+| `security`, `privacy`          | `security-reviewer`        |
+| `compliance`, `regulatory`     | `compliance-specialist`    |
+| `a11y`, `accessibility`        | `accessibility-reviewer`   |
+| `qa`, `testing`                | `qa-tester`                |
+| `product`, `roadmap`           | `product-manager`          |
+| `marketing`, `launch`          | `marketing-strategist`     |
+| `business`, `pricing`          | `business-analyst`         |
+| `performance`                  | `performance-engineer`     |
+| `i18n`, `localization`         | `localization-engineer`    |
+| `analytics`, `metrics`         | `data-engineer`            |
+| `experiment`, `feature-flag`   | `experimentation-engineer` |
+| `release`                      | `release-manager`          |
+| `agent`, `skill`, `prompt`     | `ai-ops-engineer`          |
+| `finance`, `domain`            | `finance-domain`           |
 
 ## Wave Sizing (Proven Metrics)
 
@@ -130,12 +130,12 @@ Map each issue to an agent using the label-to-agent table. If no label, infer fr
 
 ### Step 3: Identify dependencies
 
-| Dependency Rule                                   | Reason                                 |
-| ------------------------------------------------- | -------------------------------------- |
-| `backend-engineer` before `kmp-engineer` (schema) | Migrations must land before KMP models |
-| `kmp-engineer` before platform agents             | Shared models must exist first         |
-| `design-engineer` before platform agents (tokens) | Tokens must be generated before UI     |
-| `architect` before implementation (ADRs)          | Decisions before implementation        |
+| Dependency Rule                                         | Reason                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------- |
+| `database-engineer` with `native-app-engineer` (schema) | Cloud and client schema changes are one serialized task |
+| `native-app-engineer` before leaf platform consumers    | Shared models must exist first                          |
+| `design-engineer` before platform owners (tokens)       | Tokens must be generated before UI                      |
+| `architect` before implementation (ADRs)                | Decisions before implementation                         |
 
 ### Step 4: Group into sprints
 
@@ -267,18 +267,18 @@ When main advances and multiple fleet PRs need rebasing, process each agent-owne
 
 ### Shared Config Files (single owner per fleet run)
 
-| File                        | Owner             |
-| --------------------------- | ----------------- |
-| `gradle/libs.versions.toml` | `kmp-engineer`    |
-| `settings.gradle.kts`       | `kmp-engineer`    |
-| `package.json`              | `devops-engineer` |
-| `turbo.json`                | `devops-engineer` |
-| `eslint.config.mjs`         | `devops-engineer` |
+| File                        | Owner                 |
+| --------------------------- | --------------------- |
+| `gradle/libs.versions.toml` | `native-app-engineer` |
+| `settings.gradle.kts`       | `native-app-engineer` |
+| `package.json`              | `devops-engineer`     |
+| `turbo.json`                | `devops-engineer`     |
+| `eslint.config.mjs`         | `devops-engineer`     |
 
 ### Schema Serialization (never parallelize)
 
-1. `backend-engineer` → Supabase migration
-2. `kmp-engineer` → SQLDelight .sq files
+1. `database-engineer` → Supabase migration, RLS, and PowerSync rules
+2. `native-app-engineer` → SQLDelight `.sq` files and client models
 3. Plan as single coordinated task, not two independent ones
 
 ## Sprint Execution Phases

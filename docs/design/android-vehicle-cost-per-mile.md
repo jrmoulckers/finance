@@ -1,7 +1,7 @@
 # Android — Vehicle Cost-Per-Mile Profitability Surfaces
 
 > **Status:** DRAFT — design only (pending human review)
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 > **Issue:** [#2522](https://github.com/jrmoulckers/finance/issues/2522) · **Part of** [#2139](https://github.com/jrmoulckers/finance/issues/2139)
 > **Platform:** Android phone (Jetpack Compose · Material 3 · Glance) · **minSdk 28 / compile-target 35**
 > **Last Updated:** 2026-06-22
@@ -87,7 +87,7 @@ Source of truth:
 [`VehicleCostCalculator.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/vehicle/VehicleCostCalculator.kt),
 [`VehicleModels.kt`](../../packages/core/src/commonMain/kotlin/com/finance/core/vehicle/VehicleModels.kt).
 
-> **Proposed shared combiner (out of scope to implement here — flag `@kmp-engineer`):** a
+> **Proposed shared combiner (out of scope to implement here — flag `@native-app-engineer`):** a
 > `VehicleProfitabilityCalculator` in `packages/core/vehicle` that takes a `VehicleCostSummary` plus
 > shift/week earnings (cents) and miles, and returns a `ShiftProfitabilitySummary`
 > (`earningsCents`, `vehicleCostCents`, `operatingProfitCents`, `costPerMileCents`,
@@ -137,7 +137,7 @@ does not redesign those screens. Cross-links:
 | --------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------ |
 | `VehicleCostCalculator`, `VehicleCostSummary` (KMP) | Cost-per-mile + fixed/variable + totals            | Already present in `packages/core`.              |
 | `MileageCalculator`, `WorkShiftSession` (KMP)       | Miles per shift / week                             | Read-only; owned by mileage docs.                |
-| Proposed `VehicleProfitabilityCalculator` (KMP)     | Combine cost + earnings + miles → profitability    | **@kmp-engineer**; not implemented here.         |
+| Proposed `VehicleProfitabilityCalculator` (KMP)     | Combine cost + earnings + miles → profitability    | **@native-app-engineer**; not implemented here.  |
 | `NumberFormatting` / `CurrencyFormatter` (KMP)      | Locale-aware money / percent strings               | Compose never builds money strings.              |
 | Koin 4.0.1 (`koin-compose-viewmodel`)               | DI for ViewModel                                   | `koinViewModel()` in Composables.                |
 | Glance (optional widget)                            | Home-screen profitability tile                     | Debug-implementable plumbing.                    |
@@ -235,16 +235,16 @@ See [Accessibility Patterns Library](./accessibility-patterns.md) and
 
 ## 9. Test Plan
 
-| Layer                | Tool                                                          | Coverage                                                                                                     |
-| -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| KMP math (reference) | existing vehicle tests + new combiner tests (`packages/core`) | `aggregate`, cost-per-mile, and the proposed combiner — owned by `@kmp-engineer`, Android does not re-assert |
-| ViewModel            | JUnit + Turbine                                               | `ProfitabilityUiState` emissions; combiner called with correct inputs; no Compose-side math                  |
-| Card rendering       | `createComposeRule`                                           | Cost-per-mile, fixed/variable split, profit/break-even/loss states, "estimate" caption                       |
-| Empty / zero-miles   | Compose UI                                                    | "—" and guidance states; no misleading $0.00                                                                 |
-| Glance widget        | Glance test + instrumented                                    | Tile renders shared summary; "last updated"; WorkManager refresh                                             |
-| Accessibility        | semantics assertions + Accessibility Scanner                  | `contentDescription`, spoken state, 200% font scale                                                          |
-| Snapshot             | **Paparazzi**                                                 | Cost-per-mile, shift profit (profitable/break-even/loss), week trend — light / dark / OLED + 200% font + RTL |
-| Edge cases           | unit + UI                                                     | Zero miles, partial inputs (estimate), negative/loss profit, business-use < 100%, stale tile                 |
+| Layer                | Tool                                                          | Coverage                                                                                                            |
+| -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| KMP math (reference) | existing vehicle tests + new combiner tests (`packages/core`) | `aggregate`, cost-per-mile, and the proposed combiner — owned by `@native-app-engineer`, Android does not re-assert |
+| ViewModel            | JUnit + Turbine                                               | `ProfitabilityUiState` emissions; combiner called with correct inputs; no Compose-side math                         |
+| Card rendering       | `createComposeRule`                                           | Cost-per-mile, fixed/variable split, profit/break-even/loss states, "estimate" caption                              |
+| Empty / zero-miles   | Compose UI                                                    | "—" and guidance states; no misleading $0.00                                                                        |
+| Glance widget        | Glance test + instrumented                                    | Tile renders shared summary; "last updated"; WorkManager refresh                                                    |
+| Accessibility        | semantics assertions + Accessibility Scanner                  | `contentDescription`, spoken state, 200% font scale                                                                 |
+| Snapshot             | **Paparazzi**                                                 | Cost-per-mile, shift profit (profitable/break-even/loss), week trend — light / dark / OLED + 200% font + RTL        |
+| Edge cases           | unit + UI                                                     | Zero miles, partial inputs (estimate), negative/loss profit, business-use < 100%, stale tile                        |
 
 ---
 
@@ -258,7 +258,7 @@ See [Accessibility Patterns Library](./accessibility-patterns.md) and
 | Phase                                                             | Status                                                                  | Notes                                                                             |
 | ----------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **Design** (this doc)                                             | ✅ Deliverable now                                                      | No accounts/secrets needed.                                                       |
-| **Shared combiner** (`VehicleProfitabilityCalculator`, KMP)       | ⏳ KMP prerequisite                                                     | `@kmp-engineer` adds it in `packages/core`; Android renders its output.           |
+| **Shared combiner** (`VehicleProfitabilityCalculator`, KMP)       | ⏳ KMP prerequisite                                                     | `@native-app-engineer` adds it in `packages/core`; Android renders its output.    |
 | **Implementation** (Compose cards, integration points, ViewModel) | ✅ Buildable now                                                        | `./gradlew :apps:android:assembleDebug` + sideload; cost-per-mile already shared. |
 | **Glance profitability tile** (optional)                          | ✅ Buildable now                                                        | Glance widget plumbing is debug-implementable.                                    |
 | **Local tests** (unit / Compose / Paparazzi)                      | ✅ Runnable now                                                         | No enrollment.                                                                    |

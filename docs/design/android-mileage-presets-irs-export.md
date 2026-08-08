@@ -1,7 +1,7 @@
 # Android — Mileage Presets, Platform Attachment & IRS Export/Audit Trail
 
 > **Status:** DRAFT — design only (pending human review)
-> **Owner:** @android-engineer
+> **Owner:** @native-app-engineer
 > **Issue:** [#2519](https://github.com/jrmoulckers/finance/issues/2519) · **Part of** [#2137](https://github.com/jrmoulckers/finance/issues/2137)
 > **Platform:** Android phone + tablet, Compose + Material 3
 > **Last Updated:** 2026-06-22

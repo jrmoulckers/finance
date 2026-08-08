@@ -26,7 +26,7 @@ Finance has **three synchronized schema layers** that must evolve together (as d
 
 4. **Rollback risk.** If a client app version is rolled back (e.g., App Store rejection), the local database may have been migrated forward. SQLDelight does not support backward migrations. The server migration may have a `down` migration, but the client does not.
 
-5. **Review ownership is unclear.** Schema changes touch both `packages/` (owned by `@kmp-engineer`) and `services/api/` (owned by `@backend-engineer`). In fleet mode, these are different agents that may work in parallel without coordination.
+5. **Review ownership is unclear.** Schema changes touch both `packages/` (owned by `@native-app-engineer`) and `services/api/` (owned by `@backend-engineer`). In fleet mode, these are different agents that may work in parallel without coordination.
 
 ### Current Migration Inventory
 
@@ -74,7 +74,7 @@ Every schema change follows this sequence:
 5. All four changes in the SAME PR
 ```
 
-**Ownership during fleet execution:** Schema PRs are assigned to `@kmp-engineer` as lead, with `@backend-engineer` providing the server migration. Both changes go in a single coordinated PR, not separate PRs.
+**Ownership during fleet execution:** Schema PRs are assigned to `@native-app-engineer` as lead, with `@backend-engineer` providing the server migration. Both changes go in a single coordinated PR, not separate PRs.
 
 ### 3. Server-First, Additive-Only Rule
 
@@ -165,6 +165,6 @@ Generate SQLDelight schemas from the Supabase PostgreSQL schema (or vice versa) 
 - **Compatibility matrix file**: Create `docs/architecture/schema-compatibility.md` with the initial mapping from the current schema state.
 - **CI scripts**: Add schema validation scripts to `tools/` — implement as Node.js scripts that parse `.sq`, `.sql`, and `.yaml` files.
 - **PR template update**: Add a "Schema Change Checklist" section to the PR template for PRs that modify schema files.
-- **Fleet coordination**: Add schema PRs to the fleet coordination rules in `AGENTS.md` — specifically: "Schema changes are serialized — only `@backend-engineer` writes Supabase migrations; only `@kmp-engineer` writes SQLDelight `.sq` files. Both must be in sync (a single coordinated sprint task, not two independent ones)."
+- **Fleet coordination**: Add schema PRs to the fleet coordination rules in `AGENTS.md` — specifically: "Schema changes are serialized — only `@backend-engineer` writes Supabase migrations; only `@native-app-engineer` writes SQLDelight `.sq` files. Both must be in sync (a single coordinated sprint task, not two independent ones)."
 - **Rollback detection**: Implement version check in the app's database initialization code — compare `PRAGMA user_version` (SQLite) against the app's compiled schema version.
 - **Down migrations directory**: Ensure `services/api/supabase/migrations/down/` exists and contains reversals for all migrations. Validate in CI.

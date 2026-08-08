@@ -18,7 +18,7 @@ This skill covers **Kotlin Multiplatform implementation patterns** — KMP packa
 - Supabase migrations, PostgreSQL RLS policies, Edge Functions, and PowerSync backend rules → use `supabase-powersync`.
 - Client/offline replay behavior, mutation queues, and conflict UX → use `edge-sync`.
 - Financial modeling, cents parsing, reporting formulas, and export semantics → use `financial-modeling`.
-- Platform-specific UI implementation in SwiftUI, Compose, React, or Compose Desktop → use the platform engineering skills.
+- Platform-specific UI implementation in SwiftUI, Compose, or Compose Desktop → route to `native-app-engineer`; React/PWA work routes to `web-engineer`.
 
 ## Related Skills
 
@@ -386,8 +386,8 @@ When adding `owner_id` to all sync-enabled tables:
 
 ## iOS Interop Status
 
-- Swift Export is **planned, not current** — no `packages/ios-export/` exists
-- When it starts: keep Swift-facing APIs small, wrap `Flow`/`suspend`, export minimal modules
+- The staged Swift Export bridge lives under `apps/ios/Finance/KMP/` while Swift-native repositories remain active.
+- Keep Swift-facing APIs small, wrap `Flow`/`suspend`, export minimal modules, and preserve explicit live/stub boundaries until migration completes.
 
 ## JavaScript Target
 
