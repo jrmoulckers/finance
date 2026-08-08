@@ -3,9 +3,11 @@ applyTo: '**'
 ---
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
-# Issue-First Development Workflow
+# Change Delivery Workflow
 
-Every product change must trace to a GitHub issue and land through a feature branch and PR.
+Read-only research, audits, and planning do not require an issue when they make no repository
+change. Before the first repository change, verify or create an issue; every repository change must
+trace to that issue and land through a feature branch and PR.
 
 ## Default Workflow
 
@@ -21,10 +23,12 @@ Every product change must trace to a GitHub issue and land through a feature bra
 8. Push the feature branch and create a PR with `Closes #N`.
 9. Verify the PR exists with `gh pr view`.
 10. Monitor CI and mergeability until checks are green and the PR is `MERGEABLE`.
-11. Self-merge only PRs you authored when the quality gate passes and `AGENTS.md` permits it.
+11. Self-merge only PRs you authored when the quality gate passes and local `AGENTS.md` permits it.
 12. Remove the worktree after merge.
 
-Stopping at a local commit is incomplete. A task is done only when the PR is merged, or when a green, mergeable PR clearly documents a `## Needs Human Action` blocker.
+Stopping at a local commit is incomplete. A change is done only when the PR is merged, or when a
+green, mergeable PR clearly documents a `## Needs Human Action` blocker. Local `AGENTS.md` decides
+self-merge and operational authority; this instruction never expands either.
 
 ## Definition of Done
 
@@ -82,8 +86,10 @@ Amend only when the user explicitly requests it and applicable authority permits
 
 ## Calling reusable workflows
 
-Studio product repos call the backbone's reusable workflows with
-`uses: jrmoulckers/.github/.github/workflows/reusable-*.yml@main`.
+Studio product repos call the backbone's reusable workflows at a reviewed immutable commit SHA:
+`uses: jrmoulckers/.github/.github/workflows/reusable-*.yml@<reviewed-commit-sha>`. A documented
+versioned-tag policy is also acceptable only when automation proposes reviewed updates; do not use a
+mutable branch such as `@main`.
 
 **A caller `permissions:` block replaces the defaults — it does not add to them.** Every scope you
 omit is set to `none`, and a called workflow can never receive more than its caller holds. So a
@@ -108,7 +114,7 @@ permissions:
 
 jobs:
   lint:
-    uses: jrmoulckers/.github/.github/workflows/reusable-ci-lint.yml@main
+    uses: jrmoulckers/.github/.github/workflows/reusable-ci-lint.yml@<reviewed-commit-sha>
     with:
       package-manager: pnpm
 ```
@@ -138,7 +144,7 @@ permissions:
 
 jobs:
   pr-title:
-    uses: jrmoulckers/.github/.github/workflows/reusable-ci-lint.yml@main
+    uses: jrmoulckers/.github/.github/workflows/reusable-ci-lint.yml@<reviewed-commit-sha>
     with:
       lint-command: ''
       format-check-command: ''
@@ -155,7 +161,7 @@ through the sync engine, which resolves and reports them but never writes a file
 product repo must contain **no copy of its own**:
 
 - **No `.github/workflows/reusable-*.yml`.** Call the backbone's with
-  `uses: jrmoulckers/.github/.github/workflows/reusable-*.yml@main`, never
+  `uses: jrmoulckers/.github/.github/workflows/reusable-*.yml@<reviewed-commit-sha>`, never
   `uses: ./.github/workflows/reusable-*.yml`. A vendored copy is a silent fork: upstream fixes never
   reach it and nothing flags the divergence.
 - **No `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `PULL_REQUEST_TEMPLATE.md`,

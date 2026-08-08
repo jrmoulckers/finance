@@ -1,7 +1,7 @@
 {
   "version": 1,
   "backbone": "jrmoulckers/.github",
-  "generatedAt": "2026-08-08T21:23:50.955Z",
+  "generatedAt": "2026-08-08T22:42:12.457Z",
   "entries": {
     ".github/agents/accessibility-reviewer.agent.md": {
       "sourceSha256": "f83d90b50ea87be04935ba849c0a93eda729452a2d7eee81e0cb02b4bf04dae5",
@@ -114,29 +114,29 @@
       "syncedAt": "2026-08-08T01:14:28.079Z"
     },
     ".github/instructions/agents.instructions.md": {
-      "sourceSha256": "0e737985167bf67c48c296a649f2192670cf23072bfec916bd667ac9858e9cff",
-      "targetSha256": "5125da3954a45a46060e861e13075e6445cd1acc9422d16e53c8713ec3e80ec7",
-      "syncedAt": "2026-08-08T01:14:28.105Z"
+      "sourceSha256": "70f066ca74342a504f7411fbb21e62012b5b8ce05403ed32e93c3d39d145c8aa",
+      "targetSha256": "a772cb8d4790f9ae3763e6b94013000c16fb9192ab184b8ce20c3a297a10e78a",
+      "syncedAt": "2026-08-08T22:42:12.183Z"
     },
     ".github/instructions/docs.instructions.md": {
-      "sourceSha256": "e3abf5e92b341f3cac288a921ef5f2676290e9e8de7e6ed2fe3f8b596665c970",
-      "targetSha256": "599f82c2a6edb5559cb3324fe81e4f7019a8d108aa0d9ceabf1e121473fe89ab",
-      "syncedAt": "2026-08-08T01:14:28.106Z"
+      "sourceSha256": "bb072694458d15a359bf7797cf081c821b0a91505be5da647a11eaba5c412b39",
+      "targetSha256": "6e0eb456aa7802230c6783dde741278a0f2831bebb90dad6a3aec2256a48a948",
+      "syncedAt": "2026-08-08T22:42:12.187Z"
     },
     ".github/instructions/skills.instructions.md": {
-      "sourceSha256": "15b6cd3175e3f71c23b03d481dbe3b6f81bf222026cd9748e5b14d1f0cd0a6e8",
-      "targetSha256": "8c92e3c6436ded3fe6d66c6512c1577838cedb5c4e814a4cef9ead5ede7031ec",
-      "syncedAt": "2026-08-08T01:14:28.107Z"
+      "sourceSha256": "6271f97c927a53ebe9de2d50d8d2de4b9f6b1904379c5c870498ca7a046e818a",
+      "targetSha256": "849a3c2e360cdd69b3b1f68aaab5b16f46f87268fa3a541e62793a627e45d7aa",
+      "syncedAt": "2026-08-08T22:42:12.189Z"
     },
     ".github/instructions/tokens.instructions.md": {
-      "sourceSha256": "221fee8b3ab139b52d3b55cdc23bb1522da2cf1c4c88eb66b3cf138f62153002",
-      "targetSha256": "cc203e133af9f36ceddb804bb430116640e20a9576f49047e49e0a0e3dba05a3",
-      "syncedAt": "2026-08-08T01:14:28.108Z"
+      "sourceSha256": "9f4057f4cb29336105e7fdcd01191302167cff4cc9c43553416b28910772b51a",
+      "targetSha256": "88b251762e6cb19d28ec0e5e672f8caf778ebfe58066558d0bb0507fe56f7dff",
+      "syncedAt": "2026-08-08T22:42:12.193Z"
     },
     ".github/instructions/workflow.instructions.md": {
-      "sourceSha256": "cdf01e74dd016665c60e9974c6524ccd04a33b3d8a6f19631bf6b3e16fa9c5b1",
-      "targetSha256": "cca41b030a9270ab650867fadd9f916ad31625df054dc22d8c10806362ad07e3",
-      "syncedAt": "2026-08-08T21:08:12.971Z"
+      "sourceSha256": "118a896744ff62a4c1ed99c2a4d83ff1937a94d61a17ed0379ef9a03160b0a34",
+      "targetSha256": "9aaecb7bd0637b91768781c47dc29acee3d3a6cb6e176870ea442be0398cf1af",
+      "syncedAt": "2026-08-08T22:42:12.197Z"
     },
     ".github/prompts/backlog.prompt.md": {
       "sourceSha256": "662578e4e512ac591b86127f50c601283a27b6ce96c9e09b022b833f720fe750",
@@ -274,14 +274,14 @@
       "syncedAt": "2026-08-08T01:14:28.097Z"
     },
     "AGENTS.md": {
-      "sourceSha256": "d6d722c2435fa74ec0ed07230c40243df4eeddc6295fe57d6053947bbc558f64",
-      "targetSha256": "d8ca2874bceec3f3f1a5068df06f2d12c53aaa227c5e93caef1c84d76612fe4a",
-      "syncedAt": "2026-08-08T01:14:28.056Z"
+      "sourceSha256": "06c07af49b0234f194414caf3fef7c15fc9e2ee93dde2c23231a16b2070c6275",
+      "targetSha256": "8d8e14c1193b620a04cccc4bcd19ad435e7c93016c5303bc44b1962dc7bf3ef7",
+      "syncedAt": "2026-08-08T22:42:12.136Z"
     },
     "agency.toml": {
-      "sourceSha256": "281f6b5cf11d21b51acd26d139cb10d6ca9526f4844e4bac8ce8b759d9a5049e",
-      "targetSha256": "c5dc520a8bd3a4414bff540c4c00796ad1dbe4c43422731845ec07881911ef35",
-      "syncedAt": "2026-08-07T15:35:03.615Z"
+      "sourceSha256": "b097fc1ca3d98462ac07d6ba013858773a3c4eee4d98262f8373223709286e1a",
+      "targetSha256": "c07e8341261e1451d416c1f8644a937d3f7f067794929474f21a5a48eba161da",
+      "syncedAt": "2026-08-08T22:42:12.141Z"
     },
     "apps/web/vendor/@jrm/tokens/css/default/index.css": {
       "sourceSha256": "cf5214b93290c39c6a1e35dd2ac9b8df9dd6fe26e57c85c7c1d554888dc34c2f",

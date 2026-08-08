@@ -1,11 +1,25 @@
 ---
-applyTo: '**/tokens/**,**/*.tokens.json'
+applyTo: 'tokens/**,packages/tokens/**,vendor/@jrm/tokens/**,**/vendor/@jrm/tokens/**,**/*.tokens.json'
 ---
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
 # Instructions for Design Tokens
 
-Use these rules for design-token sources, token JSON, and generated token outputs.
+Use these rules for design-token source trees, token JSON, and generated outputs in the repository
+that owns them. A local product overlay wins when it identifies the actual source, generated,
+`dist/**`, or `vendor/**` paths for that repository.
+
+## Ownership
+
+- Source files are edited only in the owning token repository and path. For shared `@jrm/tokens`,
+  that owner is `jrmoulckers/studio`; this backbone only records the sync contract.
+- `dist/**`, generated files, and `vendor/**` are outputs, never alternate source trees. Do not
+  hand-edit them.
+- In consumer repositories, generated, vendored, provenance-stamped, and sync-owned token outputs
+  are always read-only. Route a source change to the Studio/token owner, regenerate there, then use
+  the studio sync flow to update consumers.
+- A consumer-specific token belongs in the source path named by that product's root/scoped
+  authority, not inside `vendor/@jrm/tokens` or another synced output.
 
 ## Token System Rules
 
@@ -19,6 +33,7 @@ Use these rules for design-token sources, token JSON, and generated token output
 ## Generated Output Rules
 
 - Do not hand-edit generated token outputs.
-- Update token sources/configuration, rerun the repo's token generator, and commit regenerated files in their owning paths.
+- In the owning repository only, update token sources/configuration, rerun its documented generator,
+  and commit regenerated files in their owning output paths.
 - Keep source token files focused by tier/domain to reduce conflicts during parallel work.
 - Do not introduce product-specific brand values into the shared layer unless the token is explicitly generic or configurable.
