@@ -202,37 +202,36 @@ Clean up the project with stale-days=14
 
 ---
 
-### `bug-bash` — Fix One Bug End-to-End (Any Platform)
+### `bug-bash` — Bounded Bug Discovery and Repair
 
 > **File:** `bug-bash.prompt.md`
 
-Runs the durable single-bug task-mode lifecycle for any of Finance's four platforms (iOS, Android, Web, Windows) or its shared `packages/`: infer the affected platform(s) from the report + screenshot → investigate → file a GitHub issue → implement a fix (shared-once when the root cause is shared, or widespread across every affected platform when the platform is undefined) on its own worktree → open a PR → drive cloud CI green → self-merge → clean up. It routes implementation to the active canonical owner and does not depend on a permanent bug-fixer agent. Designed to be launched as a standalone, fire-and-forget session per bug, but also works when invoked inside an existing session.
+Runs the canonical bounded QA campaign across Finance's four platforms (iOS, Android, Web, Windows) and shared `packages/`: define a finite scenario list, dispatch read-only discovery to `qa-tester`, file one issue per verified defect, route bounded fixes to the active canonical owner, independently verify each fix, and report the campaign. It is a task mode, not a permanent bug-fixer agent.
 
 **Parameters:**
 
-| Name       | Default       | Description                                                                                                                            |
-| ---------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `bug`      | (none)        | The bug report to fix (short description, optional screenshot + repro).                                                                |
-| `platform` | (infer / all) | Optional target platform (`ios`, `android`, `web`, `windows`, `shared`, or `all`). Omit to infer; undefined = fix everywhere affected. |
+| Name           | Default          | Description                                                     |
+| -------------- | ---------------- | --------------------------------------------------------------- |
+| `scope`        | `recent-changes` | Product area, recent change set, or test surface to investigate |
+| `max-findings` | `5`              | Maximum verified defects to carry into issue and fix work       |
 
 **Examples:**
 
 ```
-Use the bug-bash prompt with bug="Consent dialog toggle has insufficient contrast in dark mode"
-Run bug-bash for: onboarding step 2 text can't be selected
-Use bug-bash with bug="Amounts round incorrectly for JPY" platform="shared"
-Use bug-bash with bug="Back button skips a screen" platform="android"
+Use the bug-bash prompt with scope="recent bank-connectivity changes" max-findings=3
+Run bug-bash with scope="Android onboarding back navigation" max-findings=1
+Run bug-bash with scope="JPY amount rounding in shared packages" max-findings=1
 ```
 
-**What it does:**
+**Finance overlay:**
 
-1. Intakes the bug + optional platform (asks one clarifying question only if the repro is ambiguous)
-2. Infers the affected platform(s) from the report + screenshot cues (honors an explicit `platform`)
-3. Reproduces and root-causes it against `main` with verified `file:line`, across the platform's code and shared `packages/`
-4. Files an issue-first GitHub issue with correct `platform:*` scoping (`platform:shared`, a single platform, or multiple for a widespread fix)
-5. Implements the fix at the right scope on its own worktree + adds affected tests (shared-once, platform-native, or widespread across every affected platform — never web-only by default)
-6. Runs the pre-push checklist → rebase → push → PR with `Closes #N`
-7. Drives cloud CI green, resolves conflicts, self-merges once `MERGEABLE`, and removes its worktree
+1. A pasted single-bug report is a valid one-scenario `scope`; use `max-findings=1` and ask one clarifying question only when its reproduction is genuinely ambiguous. The campaign can run in a standalone session or an existing session.
+2. Infer affected platforms from the report and screenshot cues. An undefined platform means every affected platform or one shared fix, never web-only.
+3. Search both the inferred platform implementation and shared `packages/` or `config/i18n`; verify the root cause against current `main` with `file:line` evidence.
+4. Prefer one shared fix for a shared root cause. Otherwise implement natively on the known platform or make the fix widespread across every affected platform.
+5. File issue-first with the correct `platform:*`, type, and accessibility labels by following the `issue-management` skill, then route implementation to `native-app-engineer`, `web-engineer`, or the applicable shared owner.
+6. Add or update affected tests, run the complete workflow instructions through self-merge, remove the task worktree, and report issue/PR/platform/fix-scope/root-cause/worktree outcomes.
+7. For web reproduction, use a free local port rather than assuming the shared `:5199` server exists.
 
 > ⚠️ Never edits `apps/web/vite.config.ts` (the bug-bash host keeps a local-only `allowedHosts` edit there).
 

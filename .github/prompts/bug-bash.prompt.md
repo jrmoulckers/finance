@@ -1,51 +1,118 @@
 ---
 name: bug-bash
-description: Fix one pasted bug end-to-end — infer the platform(s), investigate, file issue, fix (shared-once or widespread), PR, CI, self-merge.
+description: Run a bounded bug discovery, reproduction, fix, and verification campaign
 parameters:
-  - name: bug
-    description: The bug report to fix (a short description, optionally with a screenshot and repro steps).
-    default: (none)
-  - name: platform
-    description: Optional target platform (ios, android, web, windows, shared, or all). Default — infer from the report + screenshot, and treat an undefined platform as "fix everywhere affected".
-    default: (infer / all)
+  - name: scope
+    type: string
+    description: Product area, recent change set, or test surface to investigate
+    default: recent-changes
+  - name: max-findings
+    type: integer
+    description: Maximum verified defects to carry into issue and fix work
+    default: 5
+    minimum: 1
+    maximum: 10
+built_ins:
+  - task
+  - read_agent
+  - list_agents
+  - sql_todos
+agent_dependencies:
+  - qa-tester
 ---
+<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
 
-# Bug Bash — Fix One Bug End-to-End (Any Platform)
+# Bug Bash — Bounded Discovery and Repair
 
-Run this prompt's complete lifecycle for a **single** reported bug across any of Finance's four platforms (iOS, Android, Web, Windows) or its shared `packages/`. This prompt is the durable task-mode definition and works both as a standalone fire-and-forget session and inside an existing session; it does not depend on a permanent bug-basher agent.
+Coordinate a time-boxed workflow across existing roles. This is a task-mode campaign, not a new or
+permanent agent.
 
-**Input:** the `bug` parameter — a description of the broken behavior, optionally with a screenshot and repro steps — plus an optional `platform` parameter. When `platform` is omitted, infer the affected platform(s) from the report and screenshot; treat an undefined platform as "fix every affected platform (or the shared code once)", never web-only.
+## Runtime Contract
+
+This prompt requires Copilot App/CLI parameter interpolation, `task` dispatch, agent polling through
+`read_agent` / `list_agents`, and SQL todos. These are runtime contracts, not repository custom-agent
+slugs. Validate non-empty `{{ scope }}` and validate `{{ max-findings }}` as a positive integer within
+its declared bounds. If interpolation or a required capability is unavailable, stop before dispatch,
+issue creation, or mutation.
 
 ## Execution Plan
 
-Run the complete flow below for the one bug in `{{bug}}` (target platform: `{{platform}}`):
+### 1. Resolve Authority, Roster, and Test Surface
 
-1. **Intake** — parse `{{bug}}` and `{{platform}}`. Ask one clarifying question **only** if the repro is genuinely ambiguous; otherwise proceed.
-2. **Infer platform(s)** — honor `{{platform}}` if given; otherwise infer from report + screenshot cues (iOS/SwiftUI, Android/Compose, Web/PWA, Windows/Compose-Desktop). If undefined or multi-platform, plan a shared or widespread fix.
-3. **Investigate** — reproduce/trace against `main` (`grep`/`view`; for web, start your own dev server on a free port if needed — do NOT assume the shared `:5199` server exists). Search the inferred platform's code AND shared `packages/`. Pin the root cause with `file:line` verified against `main` HEAD.
-4. **Decide scope** — root cause in shared code (`packages/`, `config/i18n`) → fix once (`platform:shared`); platform-specific + known platform → fix that platform natively; undefined/multi-platform → make the fix widespread across every affected platform (or file a cross-platform tracking issue with per-platform sub-issues). Never default to web-only. For large multi-native fixes you MAY dispatch platform sub-agents.
-5. **File the issue** — issue-first via `gh issue create` with Problem / Root Cause / Fix / Files / Cross-Platform sections and correct labels (the right `platform:*` — `platform:shared`, a single platform, or multiple — plus `bug`/`enhancement`, plus `accessibility` when relevant). Run the `issue-management` scoping decision tree.
-6. **Implement** — a surgical fix on this session's own worktree/branch, following the owning platform's conventions (web: hooks-only data flow, design tokens, ARIA/CSP; native: platform accessibility + conventions; shared: no platform leakage). Add/update the affected test.
-7. **Validate & ship** — run the affected tests, then follow `.github/instructions/workflow.instructions.md` for the complete pre-push, rebase, push, PR verification, CI/conflict healing, and self-merge lifecycle.
-8. **Clean up** — remove the task worktree after merge, then report the issue #, PR #, inferred platform(s), fix scope, and final merged state.
+Read root `AGENTS.md`, scoped `AGENTS.md` applicable to `{{ scope }}`, product documentation, and
+applicable consumer `.github/instructions/`. In the canonical backbone, also consult source
+`instructions/`.
 
-## Guardrails
+Confirm that `qa-tester` is selected and applicable under the local routing overlay. Build the
+implementation roster from known canonical plus declared-local roles, excluding disabled,
+handoff-only, read-only, or out-of-scope roles. File presence in `.github/agents/` alone is not
+dispatch authority. Infrastructure or pre-bootstrap repositories require an explicit local
+infrastructure-safe override; otherwise stop with a read-only test plan.
 
-- Respect all `AGENTS.md` human-gated operations. For the canonical push / merge / merge-conflict rules, follow `.github/instructions/workflow.instructions.md` (do not duplicate them).
-- One bug per run — file separate issues for anything else you discover; do not scope-creep.
-- Prefer a shared fix when the root cause is shared; otherwise use the owning platform's native conventions. After canonical activation, native implementation routes to `@native-app-engineer`, while web remains `@web-engineer`.
+Define a finite scenario list for `{{ scope }}` from recent changes, critical user paths, existing
+tests, and documented risk. Cap verified findings at `{{ max-findings }}` and track each scenario in
+SQL todos.
 
-## Report
+### 2. Discover and Reproduce
 
-End with a short structured summary:
+Dispatch one bounded read-only QA assignment:
 
+```text
+task(
+  agent_type="qa-tester",
+  name="bug-bash-discovery",
+  description="Discover and reproduce bounded defects",
+  prompt="Scope: {{ scope }}
+  Finding limit: {{ max-findings }}
+  Scenarios: <finite scenario list resolved in step 1>
+
+  Test only these scenarios and return at most {{ max-findings }} verified findings. For each
+  candidate include exact reproduction steps, expected/actual behavior, current-code evidence,
+  severity, likely owner, and whether the result was reproduced. Do not modify code."
+)
 ```
-## Bug Bash Result
-- Bug: <one-line>
-- Platform(s): <inferred/explicit — ios | android | web | windows | shared | multiple>
-- Fix scope: <shared-once | platform-native | widespread>
-- Issue: #<N>
-- PR: #<M> — <MERGED | green+MERGEABLE, blocked on: ...>
-- Root cause: <file:line + one-line>
-- Worktree: <removed | path retained because ...>
-```
+
+Use `read_agent` / `list_agents` to collect the result. Deduplicate candidates and discard anything
+not reproducible. Stop discovery once the finding cap is reached; do not expand into unrelated areas.
+
+### 3. File Verified Issues First
+
+Before any fix:
+
+1. Search open and recently closed issues with bounded `gh issue list --limit 100` queries.
+2. File one focused issue per verified, non-duplicate defect using the repository's issue template.
+3. Include reproduction steps, expected/actual behavior, evidence, severity, affected surface,
+   verification plan, and the applicable owner.
+4. Do not close issues manually; fixes must use `Closes #<issue>`.
+
+Remote issue writes must comply with root/scoped authority. If issue creation is unavailable or
+unauthorized, stop with complete issue drafts and do not begin implementation.
+
+### 4. Dispatch Bounded Fixes
+
+Route each issue to exactly one applicable owning role, with no more than three concurrent fixes.
+Each task must:
+
+- Prefer an app-native isolated project session/worktree from the latest default branch.
+- Otherwise use only a runtime-provided, explicitly approved worktree location allowed by local
+  authority; never invent a sibling path or reuse an unowned worktree.
+- Reproduce the defect before changing code, implement the smallest root-cause fix, and add or update
+  regression coverage.
+- Run the repository's affected format/lint/type-check/test/build commands.
+- Commit conventionally with the issue number, push the owned feature branch, and open a focused PR
+  containing `Closes #<issue>`.
+- Self-merge only when root/scoped `AGENTS.md` permits it, the session owns the PR, all required
+  checks are green, the PR is conflict-free, and GitHub reports it mergeable.
+
+Fork, human, shared, unknown, or unauthorized branches remain read-only handoffs.
+
+### 5. Verify Independently and Report
+
+After each fix, have the QA role re-run the original reproduction and relevant regression scenario
+without modifying production code. A passing unit test alone is not enough when the original
+user-visible reproduction can be exercised.
+
+Report scenarios covered, verified defects, duplicate/non-reproducible candidates, issues filed, fix
+PRs and CI/merge status, independent verification, remaining risk, and any `## Needs Human Action`
+handoffs. End the campaign when the finite scenario list or finding cap is exhausted; do not create a
+standing bug-bash role.

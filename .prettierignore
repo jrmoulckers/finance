@@ -27,6 +27,7 @@ kotlin-js-store/
 .github/instructions/tokens.instructions.md
 .github/instructions/workflow.instructions.md
 .github/prompts/backlog.prompt.md
+.github/prompts/bug-bash.prompt.md
 .github/prompts/cleanup.prompt.md
 .github/prompts/fix-ci.prompt.md
 .github/prompts/rebase-all.prompt.md

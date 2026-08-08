@@ -11,7 +11,9 @@ Every product change must trace to a GitHub issue and land through a feature bra
 
 1. Verify or create the GitHub issue.
 2. Scan for an existing worktree for the issue; resume it if found.
-3. Otherwise create a worktree from the default branch.
+3. Otherwise prefer an app-native isolated project session/worktree from the default branch. If that
+   capability is unavailable, require a runtime-provided, explicitly approved location allowed by
+   root/scoped authority.
 4. Implement scoped changes on a feature branch.
 5. Commit as `type(scope): description (#N)`.
 6. Run the repo's documented format, lint, type-check, test, and build commands for the affected surface.
@@ -38,13 +40,18 @@ Stopping at a local commit is incomplete. A task is done only when the PR is mer
 
 ## Worktrees
 
-Use git worktrees rather than extra clones.
+Prefer app-native isolated project sessions/worktrees rather than extra clones. Never invent or
+hard-code a sibling worktree path. If app-native isolation is unavailable, the runtime must provide
+an explicitly approved worktree location and root/scoped authority must permit it; otherwise stop.
 
 ```bash
 git worktree list
-git worktree add ../wt-<agent>-<type>-<issue> -b <type>/<short-description>-<issue> origin/<default-branch>
-git worktree remove ../wt-<agent>-<type>-<issue>
+git worktree add <approved-worktree-path> -b <type>/<short-description>-<issue> origin/<default-branch>
+git worktree remove <approved-owned-worktree-path>
 ```
+
+Record the exact branch, path, and creating session before mutation. Remove only worktrees created
+and owned by the current session; never recursively delete a worktree path.
 
 Branch types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`, `perf`.
 
@@ -70,7 +77,8 @@ Typical coverage:
 - Unit/integration tests for changed behavior.
 - Build/package checks for affected apps or packages.
 
-If any check fails, fix it, rerun the relevant checks, amend or commit, and push again.
+If any check fails, fix it, rerun the relevant checks, create a new scoped commit, and push again.
+Amend only when the user explicitly requests it and applicable authority permits it.
 
 ## Calling reusable workflows
 
@@ -189,8 +197,9 @@ Use `git push --force-with-lease` only after a rebase on your own PR branch. Nev
 For parallel sprint work:
 
 1. Query issues and PRs.
-2. Assign unclaimed issues by labels and file ownership in `AGENTS.md` and `.github/agents/`
-   (`agents/` in the canonical backbone).
+2. Resolve applicable roles from root/scoped `AGENTS.md`, consumer `.github/instructions/`, and
+   declared local routing. A discovered `.github/agents/` file alone does not authorize dispatch;
+   exclude disabled, handoff-only, read-only, and out-of-scope roles.
 3. Track assignments in SQL todos.
 4. Batch small related issues only when they touch the same files and keep the PR under reviewable size.
 5. Publish a merge order for dependent PRs.
