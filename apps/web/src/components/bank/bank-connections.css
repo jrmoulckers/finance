@@ -575,6 +575,46 @@
   color: var(--semantic-status-negative, #dc2626);
 }
 
+/* Connection health history */
+.connection-history {
+  margin-top: var(--spacing-5, 20px);
+  padding: var(--spacing-4, 16px);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-lg, 12px);
+  background: var(--semantic-background-elevated, #f9fafb);
+}
+
+.connection-history__header,
+.connection-history__event-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3, 12px);
+}
+
+.connection-history__header h3 {
+  margin: 0;
+}
+
+.connection-history__list {
+  display: grid;
+  gap: var(--spacing-3, 12px);
+  margin: var(--spacing-4, 16px) 0 0;
+  padding-left: var(--spacing-5, 20px);
+}
+
+.connection-history__event {
+  padding: var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-md, 8px);
+}
+
+.connection-history__event p,
+.connection-history__empty {
+  margin: var(--spacing-2, 8px) 0 0;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
 /* =========================================================================
    Connect a bank (Plaid Link launcher)
    ========================================================================= */

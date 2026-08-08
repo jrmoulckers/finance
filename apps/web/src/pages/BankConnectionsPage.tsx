@@ -25,6 +25,7 @@ import '../components/bank/bank-connections.css';
 import { useBankConnections } from '../hooks/useBankConnections';
 import { useConnectorPermissions } from '../hooks/useConnectorPermissions';
 import { useFeatureFlag, FlagKeys } from '../lib/feature-flags';
+import { formatDate } from '../utils/formatDate';
 
 /**
  * "Connect a bank" launcher (#3846). Lazy-loaded and rendered only when the
@@ -94,7 +95,10 @@ export const BankConnectionsPage: React.FC = () => {
     providers,
     loading: connectionsLoading,
     error: connectionsError,
+    healthHistory,
+    historyLoading,
     refresh: refreshConnections,
+    reloadLocal: reloadConnections,
     loadHealthHistory,
   } = useBankConnections();
 
@@ -109,6 +113,7 @@ export const BankConnectionsPage: React.FC = () => {
   const liveBankData = useFeatureFlag(FlagKeys.LIVE_BANK_DATA);
 
   const [activeTab, setActiveTab] = useState<BankTabId>('health');
+  const [historyConnectionId, setHistoryConnectionId] = useState<string | null>(null);
 
   // Roving-tabindex focus management for the tablist (#3862). Each tab button
   // registers its node so keyboard navigation can move DOM focus to the newly
@@ -153,10 +158,12 @@ export const BankConnectionsPage: React.FC = () => {
 
   const handleViewHistory = useCallback(
     (connectionId: string) => {
-      loadHealthHistory(connectionId);
+      setHistoryConnectionId(connectionId);
+      void loadHealthHistory(connectionId);
     },
     [loadHealthHistory],
   );
+  const historyConnection = connections.find((connection) => connection.id === historyConnectionId);
 
   const handleReauth = useCallback((_connectionId: string) => {
     // TODO: Trigger re-authentication flow via aggregator provider
@@ -261,13 +268,13 @@ export const BankConnectionsPage: React.FC = () => {
               <div className="section-actions">
                 {liveBankData && (
                   <Suspense fallback={null}>
-                    <ConnectBankButton onConnected={refreshConnections} />
+                    <ConnectBankButton onConnected={() => void reloadConnections()} />
                   </Suspense>
                 )}
                 <button
                   type="button"
                   className="section-action"
-                  onClick={refreshConnections}
+                  onClick={() => void refreshConnections()}
                   aria-label="Refresh connection health"
                 >
                   Refresh
@@ -303,6 +310,64 @@ export const BankConnectionsPage: React.FC = () => {
                 onReauth={handleReauth}
               />
             ))}
+
+            {historyConnectionId && (
+              <section className="connection-history" aria-labelledby="connection-history-title">
+                <div className="connection-history__header">
+                  <h3 id="connection-history-title">
+                    Health history
+                    {historyConnection ? ` for ${historyConnection.institutionName}` : ''}
+                  </h3>
+                  <button
+                    type="button"
+                    className="connection-health-card__action"
+                    onClick={() => setHistoryConnectionId(null)}
+                  >
+                    Close history
+                  </button>
+                </div>
+
+                {historyLoading ? (
+                  <p role="status">Loading health history…</p>
+                ) : healthHistory.length === 0 ? (
+                  <p className="connection-history__empty">
+                    No health events have been recorded for this connection.
+                  </p>
+                ) : (
+                  <ol className="connection-history__list">
+                    {healthHistory.map((event) => (
+                      <li key={event.id} className="connection-history__event">
+                        <div className="connection-history__event-header">
+                          <strong>{event.status.replaceAll('_', ' ')}</strong>
+                          <time dateTime={event.createdAt}>
+                            {formatDate(event.createdAt, {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </time>
+                        </div>
+                        {event.errorCategory && <p>Error category: {event.errorCategory}</p>}
+                        {event.errorDetail && <p>Error detail: {event.errorDetail}</p>}
+                        {event.resolvedAt && (
+                          <p>
+                            Resolved{' '}
+                            <time dateTime={event.resolvedAt}>
+                              {formatDate(event.resolvedAt, {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })}
+                            </time>
+                            {event.resolutionAction
+                              ? ` via ${event.resolutionAction.replaceAll('_', ' ')}`
+                              : ''}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            )}
           </section>
         )}
 

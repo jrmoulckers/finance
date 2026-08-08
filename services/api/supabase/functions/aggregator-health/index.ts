@@ -28,6 +28,7 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
+import { ingestPlaidTransactions, type IngestionSummary } from '../_shared/bank-ingest.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
@@ -303,18 +304,25 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'connection_id is required');
       }
 
-      // Fetch connection (RLS ensures household scoping)
+      // Fetch only the connection fields needed for authorization, health, and
+      // the Plaid re-sync. The encrypted token is never logged or returned.
       const { data: connection, error: connError } = await supabase
         .from('bank_connections')
         .select(
           'id, household_id, provider, status, last_synced_at, ' +
-            'error_code, staleness_threshold_hours',
+            'error_code, staleness_threshold_hours, encrypted_access_token, metadata',
         )
         .eq('id', connectionId)
         .is('deleted_at', null)
-        .single();
+        .maybeSingle();
 
-      if (connError || !connection) {
+      if (connError) {
+        logger.error('Failed to fetch bank connection for health check', {
+          errorMessage: connError.message,
+        });
+        return internalErrorResponse(req);
+      }
+      if (!connection) {
         return errorResponse(req, 'Bank connection not found', 404);
       }
 
@@ -331,12 +339,46 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse(req, 'Household access denied', 403);
       }
 
-      // Calculate health status
+      let ingestionSummary: IngestionSummary = { added: 0, modified: 0, removed: 0 };
+      let effectiveLastSyncedAt = connection.last_synced_at;
+      let refreshedPlaid = false;
+
+      if (connection.provider === 'plaid' && connection.status === 'active') {
+        try {
+          ingestionSummary = await ingestPlaidTransactions(supabase, connection, logger);
+          effectiveLastSyncedAt = new Date().toISOString();
+          refreshedPlaid = true;
+        } catch {
+          logger.error('Plaid connection refresh failed', { connectionId });
+          const { error: failureEventError } = await supabase
+            .from('bank_connection_health')
+            .insert({
+              bank_connection_id: connectionId,
+              household_id: connection.household_id,
+              status: 'provider_down',
+              error_category: 'provider',
+              error_detail: 'PLAID_SYNC_FAILED',
+              last_successful_sync: connection.last_synced_at,
+              staleness_minutes: null,
+            });
+
+          if (failureEventError) {
+            logger.error('Failed to record Plaid refresh failure', {
+              errorMessage: failureEventError.message,
+            });
+            return internalErrorResponse(req);
+          }
+          return errorResponse(req, 'Bank connection refresh failed', 502);
+        }
+      }
+
+      // Calculate health status from the timestamp produced by a successful
+      // Plaid refresh. Providers without an adapter remain health-only checks.
       const staleness = categoriseStaleness(
-        connection.last_synced_at,
+        effectiveLastSyncedAt,
         connection.staleness_threshold_hours ?? 24,
       );
-      const errorCategory = categoriseError(connection.error_code);
+      const errorCategory = refreshedPlaid ? null : categoriseError(connection.error_code);
 
       // Record health event
       const healthStatus =
@@ -351,8 +393,8 @@ serve(async (req: Request): Promise<Response> => {
         household_id: connection.household_id,
         status: healthStatus,
         error_category: errorCategory,
-        error_detail: connection.error_code,
-        last_successful_sync: connection.last_synced_at,
+        error_detail: refreshedPlaid ? null : connection.error_code,
+        last_successful_sync: effectiveLastSyncedAt,
         staleness_minutes: staleness.stalenessMinutes,
       });
 
@@ -373,6 +415,7 @@ serve(async (req: Request): Promise<Response> => {
         staleness_minutes: staleness.stalenessMinutes,
         error_category: errorCategory,
         needs_reauth: connection.status === 'needs_reauth',
+        new_transactions: ingestionSummary.added,
       });
     }
 

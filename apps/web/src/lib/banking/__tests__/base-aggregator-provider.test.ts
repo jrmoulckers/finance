@@ -317,9 +317,11 @@ describe('BaseAggregatorProvider — completeConnection', () => {
 
 describe('BaseAggregatorProvider — refreshConnection', () => {
   it('maps a healthy check_health response to success', async () => {
-    const { provider, calls } = withResponses([json({ health_status: 'healthy' })]);
+    const { provider, calls } = withResponses([
+      json({ health_status: 'healthy', new_transactions: 7 }),
+    ]);
     const result = await provider.refreshConnection('conn-1');
-    expect(result).toEqual({ connectionId: 'conn-1', success: true });
+    expect(result).toEqual({ connectionId: 'conn-1', success: true, newTransactions: 7 });
     expect(calls[0].url).toBe(
       'https://edge.example.test/functions/v1/aggregator-health?action=check_health',
     );
@@ -333,6 +335,14 @@ describe('BaseAggregatorProvider — refreshConnection', () => {
     const { provider } = withResponses([json({ health_status: 'unknown_error' })]);
     const result = await provider.refreshConnection('conn-1');
     expect(result.success).toBe(false);
+  });
+
+  it('omits a malformed new transaction count', async () => {
+    const { provider } = withResponses([
+      json({ health_status: 'healthy', new_transactions: 'not-a-number' }),
+    ]);
+    const result = await provider.refreshConnection('conn-1');
+    expect(result.newTransactions).toBeUndefined();
   });
 
   it('throws a categorized error on a non-2xx response', async () => {

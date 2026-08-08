@@ -41,8 +41,10 @@ function setupHooks(): void {
     providers: [],
     healthHistory: [],
     loading: false,
+    historyLoading: false,
     error: null,
     refresh: vi.fn(),
+    reloadLocal: vi.fn(),
     loadHealthHistory: vi.fn(),
   });
   mockedUseConnectorPermissions.mockReturnValue({
@@ -185,5 +187,93 @@ describe('BankConnectionsPage — WAI-ARIA Tabs (#3862)', () => {
   it('has no axe-core accessibility violations', async () => {
     const { container } = renderPage();
     await expectNoAxeViolations(container);
+  });
+
+  it('opens a visible history panel with an empty state', () => {
+    const loadHealthHistory = vi.fn().mockResolvedValue(undefined);
+    mockedUseBankConnections.mockReturnValue({
+      connections: [
+        {
+          id: 'conn-1',
+          provider: 'plaid',
+          institutionName: 'Example Bank',
+          connectionStatus: 'active',
+          healthStatus: 'healthy',
+          stalenessMinutes: 0,
+          errorCategory: null,
+          errorCode: null,
+          lastSyncedAt: '2026-08-07T12:00:00.000Z',
+          permissionLevel: 'read_only',
+          connectionType: 'aggregator',
+          needsReauth: false,
+        },
+      ],
+      providers: [],
+      healthHistory: [],
+      loading: false,
+      historyLoading: false,
+      error: null,
+      refresh: vi.fn(),
+      reloadLocal: vi.fn(),
+      loadHealthHistory,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /view health history/i }));
+
+    expect(loadHealthHistory).toHaveBeenCalledWith('conn-1');
+    expect(screen.getByRole('heading', { name: 'Health history for Example Bank' })).toBeVisible();
+    expect(
+      screen.getByText('No health events have been recorded for this connection.'),
+    ).toBeVisible();
+  });
+
+  it('renders health event status, timestamp, and resolution metadata', () => {
+    mockedUseBankConnections.mockReturnValue({
+      connections: [
+        {
+          id: 'conn-1',
+          provider: 'plaid',
+          institutionName: 'Example Bank',
+          connectionStatus: 'active',
+          healthStatus: 'provider_down',
+          stalenessMinutes: 10,
+          errorCategory: 'provider',
+          errorCode: 'PLAID_SYNC_FAILED',
+          lastSyncedAt: '2026-08-07T12:00:00.000Z',
+          permissionLevel: 'read_only',
+          connectionType: 'aggregator',
+          needsReauth: false,
+        },
+      ],
+      providers: [],
+      healthHistory: [
+        {
+          id: 'event-1',
+          status: 'provider_down',
+          errorCategory: 'provider',
+          errorDetail: 'PLAID_SYNC_FAILED',
+          stalenessMinutes: 10,
+          resolvedAt: '2026-08-07T13:00:00.000Z',
+          resolutionAction: 'manual_refresh',
+          createdAt: '2026-08-07T12:30:00.000Z',
+        },
+      ],
+      loading: false,
+      historyLoading: false,
+      error: null,
+      refresh: vi.fn(),
+      reloadLocal: vi.fn(),
+      loadHealthHistory: vi.fn().mockResolvedValue(undefined),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /view health history/i }));
+
+    expect(screen.getByText('provider down')).toBeVisible();
+    expect(screen.getByText('Error category: provider')).toBeVisible();
+    expect(screen.getByText('Error detail: PLAID_SYNC_FAILED')).toBeVisible();
+    expect(screen.getByText(/via manual refresh/)).toBeVisible();
+    expect(document.querySelectorAll('time')).toHaveLength(2);
   });
 });
