@@ -1,7 +1,7 @@
 {
   "version": 1,
   "backbone": "jrmoulckers/.github",
-  "generatedAt": "2026-08-08T01:14:28.119Z",
+  "generatedAt": "2026-08-08T21:23:50.955Z",
   "entries": {
     ".github/agents/accessibility-reviewer.agent.md": {
       "sourceSha256": "f83d90b50ea87be04935ba849c0a93eda729452a2d7eee81e0cb02b4bf04dae5",
@@ -134,44 +134,49 @@
       "syncedAt": "2026-08-08T01:14:28.108Z"
     },
     ".github/instructions/workflow.instructions.md": {
-      "sourceSha256": "99e4ddf304e4f82320e689bc5d1e7e7c865366285dcd89aa9e96fcc94ea1574b",
-      "targetSha256": "cbda770e489599db2ef182c4c4c2c6645031c51e6e8a058d8dbc56f43fafe15a",
-      "syncedAt": "2026-08-08T01:14:28.109Z"
+      "sourceSha256": "cdf01e74dd016665c60e9974c6524ccd04a33b3d8a6f19631bf6b3e16fa9c5b1",
+      "targetSha256": "cca41b030a9270ab650867fadd9f916ad31625df054dc22d8c10806362ad07e3",
+      "syncedAt": "2026-08-08T21:08:12.971Z"
     },
     ".github/prompts/backlog.prompt.md": {
-      "sourceSha256": "3d89a722994d69217b8489eb44fa6dd265ebc6f3c781f81e5c5ca5122a79d70e",
-      "targetSha256": "bd7ab6ce8db190d8fa04f1d9adc3942d9caf682b93e4ba4728ccc6145b0e5cce",
-      "syncedAt": "2026-08-08T01:14:28.098Z"
+      "sourceSha256": "662578e4e512ac591b86127f50c601283a27b6ce96c9e09b022b833f720fe750",
+      "targetSha256": "a263cf1aa733c06eb0232f3f0224e23874a569fdc28fcb907a8d3183e1d96f88",
+      "syncedAt": "2026-08-08T21:08:12.956Z"
+    },
+    ".github/prompts/bug-bash.prompt.md": {
+      "sourceSha256": "4bf6ca1a98664eeec1bb78081170ef0349b276911a472bf10775788b47f6dff9",
+      "targetSha256": "afdf803330b9e762215a76e44569fc03e04fee112ffb3fed608012ba03686f64",
+      "syncedAt": "2026-08-08T21:23:50.937Z"
     },
     ".github/prompts/cleanup.prompt.md": {
-      "sourceSha256": "9b0e4e4c94e361f8fc59a5a1da99894d8bed4cc06096dcb1f133a77cf68367f7",
-      "targetSha256": "31a1c944acf234a6f64d020a7ec127849e804f89a280198b6157e6950df1ea14",
-      "syncedAt": "2026-08-08T01:14:28.099Z"
+      "sourceSha256": "e20e582589a97845fd2353ea17d13d7497404dfd7246a505f4917acb197dc41d",
+      "targetSha256": "ce2268f2817e972e7b07b2fe1342796059dc341b60251d079f45d7cb4371b0b7",
+      "syncedAt": "2026-08-08T21:08:12.960Z"
     },
     ".github/prompts/fix-ci.prompt.md": {
-      "sourceSha256": "de28cbb2c039690a0c9e1bdd521885db37a9b9c6be4b586167c8e5cf5b1e8256",
-      "targetSha256": "edb6e02eef31dc774db13300eadacae04489ac4942f84d3dfd9eb80b6d7a5cc6",
-      "syncedAt": "2026-08-08T01:14:28.100Z"
+      "sourceSha256": "60ede467eb49f15a8bbf6317e190ed7794d6eb867d0530eb2420b0985bf2cef0",
+      "targetSha256": "b6e8ad2583089b3769ea07e7d4def9933880e97b91a93190f64b1614b46dc161",
+      "syncedAt": "2026-08-08T21:08:12.962Z"
     },
     ".github/prompts/rebase-all.prompt.md": {
-      "sourceSha256": "17152cf09898a2a6cb5ea2e1f390db5e1df935c48af0ac8fa2f4dab7df490b6b",
-      "targetSha256": "fe092d66be2ca24c962085329d93b00d78c788a5c7382fba7c8cad7e0cb391cf",
-      "syncedAt": "2026-08-08T01:14:28.101Z"
+      "sourceSha256": "728203d81d3a75c0bcffeffc5c510c03a30f076235b6d2ae44cf0ce07b6d3d41",
+      "targetSha256": "5b072f20945df68ac462b2d5e7bc6fbcb51621a5d1b921bda8146dcb275e0caa",
+      "syncedAt": "2026-08-08T21:08:12.964Z"
     },
     ".github/prompts/review.prompt.md": {
-      "sourceSha256": "041a14fed45e9b0adb3f9dd69425978b9fc4557c39b01d4c895ea7059362528b",
-      "targetSha256": "060a41b483876e80e910db6fad77c73b4a56c3351b38565e0ca52c4ca4f1af95",
-      "syncedAt": "2026-08-08T01:14:28.102Z"
+      "sourceSha256": "838ee6a06de981a88620933f8954f3ebaf29de109d05e5630f628904c613c559",
+      "targetSha256": "1fd07861be8d0a6ff01f0fa5bd2f06e344fdb85f28b3d5a02f5a7bdd8279aa81",
+      "syncedAt": "2026-08-08T21:08:12.965Z"
     },
     ".github/prompts/sprint.prompt.md": {
-      "sourceSha256": "0a67bd9f21f11074ace583b73da2296e08e7f4cdfadec8598836b5524f24153f",
-      "targetSha256": "ba84857d26fce86cac57e2b245a4c2d683e822fa2307d5a6a74902f07c0cfa18",
-      "syncedAt": "2026-08-08T01:14:28.103Z"
+      "sourceSha256": "bbec1d41cb46bc1ca8d9be5947f8233f49f24b53c91f76181b00226031cd2350",
+      "targetSha256": "5bbe40ad932b83362cf2adabf89f839a2ad464d213c020848a2314a5af7cc422",
+      "syncedAt": "2026-08-08T21:08:12.967Z"
     },
     ".github/prompts/team.prompt.md": {
-      "sourceSha256": "8b9a74df4667c4452707f180e27ae87f9e6553428fbdf1a9989ca0e16592e6dd",
-      "targetSha256": "cf41e4213d1e931c85439b3d7e9abc74366d5eb1e12186f59e2ccd3bf6c8d021",
-      "syncedAt": "2026-08-08T01:14:28.104Z"
+      "sourceSha256": "ad23c3f288955ff4c369d26f846c47c62b8e687c7f9e1683e550bf89335de571",
+      "targetSha256": "350f984d725ae4042418f65e8f91888a12dd651c543060fb6ce4e3e131cf16b4",
+      "syncedAt": "2026-08-08T21:08:12.968Z"
     },
     ".github/skills/accessibility-testing/CHECKLIST.md": {
       "sourceSha256": "3beba6418cb63661b908ed82bb156ecd1fd4b588996f5f0dbdad7443655670ad",

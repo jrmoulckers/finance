@@ -134,7 +134,7 @@ Custom agents are defined in `.github/agents/`. Studio-generated definitions car
 
 The canonical roster is active. `native-app-engineer` owns Android, iOS, Windows, and shared KMP structure; `database-engineer` owns PostgreSQL schema, migrations, RLS, seed data, database tests, and PowerSync rules; `sre-engineer` owns SLO, incident, capacity, rollback, and recovery semantics. `backend-engineer` retains API/Auth/Edge Function behavior, while `devops-engineer` retains CI/build/delivery mechanics.
 
-Single-bug work runs through `.github/prompts/bug-bash.prompt.md` and workflow instructions rather than a permanent agent. `finance-domain` is the sole local agent and leads financial correctness while the canonical structural owner leads the surrounding package or platform.
+Bounded bug campaigns run through `.github/prompts/bug-bash.prompt.md` rather than a permanent agent; its Finance-specific platform and single-bug interpretation lives in `.github/prompts/README.md`. `finance-domain` is the sole local agent and leads financial correctness while the canonical structural owner leads the surrounding package or platform.
 
 Agent skills are in `.github/skills/` (the source of truth) and provide reusable domain knowledge. As of 2026-06 there are **20** skills. The established set includes:
 
