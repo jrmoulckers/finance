@@ -341,11 +341,8 @@ export class BaseAggregatorProvider implements BankConnectionProvider {
    * Trigger a server-side health check / re-sync for a connection via
    * `aggregator-health?action=check_health`.
    *
-   * Because transaction data flows to the client through PowerSync rather than
-   * a per-provider fetch, "refresh" here nudges the backend to re-evaluate the
-   * connection's health; `newTransactions` is intentionally omitted since new
-   * rows arrive via sync. Throws a {@link BankingProviderError} on failure so
-   * the {@link ConnectionManager} retry policy can act on it.
+   * Transaction rows still reach the client through PowerSync, while the
+   * aggregate count reports what the server-side refresh ingested.
    */
   async refreshConnection(connectionId: string): Promise<RefreshResult> {
     const body = await this.request('aggregator-health?action=check_health', {
@@ -356,8 +353,12 @@ export class BaseAggregatorProvider implements BankConnectionProvider {
     const rec = asRecord(body);
     const health = str(rec.health_status);
     const success = health !== 'unknown_error' && health !== 'auth_expired';
+    const newTransactions =
+      typeof rec.new_transactions === 'number' && Number.isFinite(rec.new_transactions)
+        ? rec.new_transactions
+        : undefined;
 
-    return { connectionId, success };
+    return { connectionId, success, newTransactions };
   }
 
   /**

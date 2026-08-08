@@ -57,6 +57,11 @@ export interface IngestionSummary {
   removed: number;
 }
 
+/** Create a stable, data-safe error for a failed ingestion database operation. */
+function ingestionDatabaseError(operation: string): Error {
+  return new Error(`Plaid ingestion failed while ${operation}`);
+}
+
 /** Read Plaid credentials from the environment. */
 function plaidConfigFromEnv(): PlaidConfig {
   return {
@@ -74,12 +79,16 @@ export async function loadLinkedAccounts(
   supabase: AdminClient,
   connectionId: string,
 ): Promise<Map<string, LinkedAccount>> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('bank_connection_accounts')
     .select('external_account_id, account_id, household_id, currency_code, is_linked')
     .eq('bank_connection_id', connectionId)
     .eq('is_linked', true)
     .is('deleted_at', null);
+
+  if (error) {
+    throw ingestionDatabaseError('loading linked accounts');
+  }
 
   const map = new Map<string, LinkedAccount>();
   for (const row of data ?? []) {
@@ -106,12 +115,16 @@ export async function upsertPlaidTransaction(
   account: LinkedAccount,
 ): Promise<boolean> {
   // Deduplicate on the provider transaction id — provider webhooks may retry.
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from('transactions')
     .select('id')
     .eq('provider_transaction_id', txn.transaction_id)
     .is('deleted_at', null)
     .maybeSingle();
+
+  if (lookupError) {
+    throw ingestionDatabaseError('checking for an existing transaction');
+  }
 
   const record = {
     ...plaidTransactionToRecord(txn, {
@@ -123,12 +136,55 @@ export async function upsertPlaidTransaction(
   };
 
   if (existing) {
-    await supabase.from('transactions').update(record).eq('id', existing.id);
+    const { error } = await supabase.from('transactions').update(record).eq('id', existing.id);
+    if (error) {
+      throw ingestionDatabaseError('updating a transaction');
+    }
     return false;
   }
 
-  await supabase.from('transactions').insert(record);
+  const { error } = await supabase.from('transactions').insert(record);
+  if (error) {
+    throw ingestionDatabaseError('inserting a transaction');
+  }
   return true;
+}
+
+/**
+ * Soft-delete one removed Plaid transaction and return the number of rows changed.
+ */
+export async function removePlaidTransaction(
+  supabase: AdminClient,
+  providerTransactionId: string,
+): Promise<number> {
+  const { data: rows, error } = await supabase
+    .from('transactions')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('provider_transaction_id', providerTransactionId)
+    .is('deleted_at', null)
+    .select('id');
+
+  if (error) {
+    throw ingestionDatabaseError('removing a transaction');
+  }
+  return rows?.length ?? 0;
+}
+
+/** Persist the cursor and successful-sync timestamp for a completed ingestion run. */
+export async function persistPlaidSyncMetadata(
+  supabase: AdminClient,
+  connection: BankConnectionRow,
+  cursor: string | null,
+): Promise<void> {
+  const mergedMetadata = { ...(connection.metadata ?? {}), cursor };
+  const { error } = await supabase
+    .from('bank_connections')
+    .update({ metadata: mergedMetadata, last_synced_at: new Date().toISOString() })
+    .eq('id', connection.id);
+
+  if (error) {
+    throw ingestionDatabaseError('persisting the connection sync cursor');
+  }
 }
 
 /**
@@ -141,15 +197,14 @@ export async function upsertPlaidTransaction(
 export async function ingestPlaidTransactions(
   supabase: AdminClient,
   connection: BankConnectionRow,
-  logger: FunctionLogger,
+  _logger: FunctionLogger,
 ): Promise<IngestionSummary> {
   const summary: IngestionSummary = { added: 0, modified: 0, removed: 0 };
 
   const config = plaidConfigFromEnv();
   const encryptionKey = Deno.env.get('BANK_ENCRYPTION_KEY');
   if (!config.clientId || !config.secret || !encryptionKey) {
-    logger.warn('Skipping ingestion — provider config incomplete');
-    return summary;
+    throw new Error('Plaid ingestion cannot start because provider configuration is incomplete');
   }
 
   const accessToken = await decryptToken(connection.encrypted_access_token, encryptionKey);
@@ -175,18 +230,13 @@ export async function ingestPlaidTransactions(
     for (const txn of page.modified) {
       const account = linkedAccounts.get(txn.account_id);
       if (!account) continue;
-      await upsertPlaidTransaction(supabase, txn, account);
-      summary.modified++;
+      const inserted = await upsertPlaidTransaction(supabase, txn, account);
+      if (inserted) summary.added++;
+      else summary.modified++;
     }
 
     for (const removed of page.removed) {
-      const { data: rows } = await supabase
-        .from('transactions')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('provider_transaction_id', removed.transaction_id)
-        .is('deleted_at', null)
-        .select('id');
-      summary.removed += rows?.length ?? 0;
+      summary.removed += await removePlaidTransaction(supabase, removed.transaction_id);
     }
 
     cursor = page.next_cursor;
@@ -194,11 +244,7 @@ export async function ingestPlaidTransactions(
   }
 
   // Persist the advanced cursor for the next sync (merge into metadata).
-  const mergedMetadata = { ...(connection.metadata ?? {}), cursor };
-  await supabase
-    .from('bank_connections')
-    .update({ metadata: mergedMetadata, last_synced_at: new Date().toISOString() })
-    .eq('id', connection.id);
+  await persistPlaidSyncMetadata(supabase, connection, cursor);
 
   return summary;
 }
