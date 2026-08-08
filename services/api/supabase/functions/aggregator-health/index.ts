@@ -40,6 +40,8 @@ import {
   methodNotAllowedResponse,
 } from '../_shared/response.ts';
 
+const AGGREGATOR_HEALTH_RATE_LIMIT = RATE_LIMITS['aggregator-health'];
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -140,10 +142,10 @@ serve(async (req: Request): Promise<Response> => {
     const supabase = createAdminClient();
 
     // Rate limiting
-    const rateLimitResult = await checkRateLimit(supabase, user.id, RATE_LIMITS['default']);
+    const rateLimitResult = await checkRateLimit(supabase, user.id, AGGREGATOR_HEALTH_RATE_LIMIT);
     if (!rateLimitResult.allowed) {
       logger.warn('Rate limit exceeded', { httpStatus: 429 });
-      return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['default']);
+      return rateLimitResponse(req, rateLimitResult, AGGREGATOR_HEALTH_RATE_LIMIT);
     }
 
     const url = new URL(req.url);
