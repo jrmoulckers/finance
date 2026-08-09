@@ -9,9 +9,26 @@
 
 ---
 
+> **Satisfies:** `PROD-DISC-002`, `PROD-DISC-003`, `PROD-DISC-004` — Product obligations are
+> defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). Staged exposure
+> with a pre-declared decision rule (`PROD-DISC-002`), participant consent and honest framing
+> (`PROD-DISC-003`), and acting on what was learned (`PROD-DISC-004`) are central obligations.
+> This document is the Sprint 9 beta instance: the specific cohorts, gates, AI-accuracy
+> thresholds, and dates. Per-gate decisions are recorded using
+> [`templates/experiment-decision-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/experiment-decision-record.md).
+
 ## Executive Summary
 
-This document defines the beta program for AI-powered features in the Finance app. It covers participant recruitment, feature rollout strategy, structured feedback mechanisms, accuracy tracking methodology, success criteria, and the feedback-to-improvement pipeline. The beta program runs for 4 weeks before general availability.
+This document records Finance's Sprint 9 beta program for AI-powered features:
+who participates, in what order features are exposed, what accuracy is tracked,
+and the specific thresholds that gate Alpha → Beta → GA. The beta runs for four
+weeks before general availability.
+
+The generic method — how staged exposure, consent, and readout are supposed to
+work — is central and is cited above rather than restated here. What is local is
+the AI-accuracy tracking and the finance-specific success criteria: a
+miscategorized transaction or a wrong forecast is a correctness failure in a
+money product, not a tolerable UX rough edge.
 
 ---
 
@@ -70,6 +87,10 @@ Week 5+: General Availability (staged rollout)
 **Recruitment method:** In-app opt-in with beta badge. "Help shape Finance's AI features — join the beta."
 
 ### Participant Rights
+
+> Consent, honest framing, and the freedom to leave are required by
+> `PROD-DISC-003`, and `PROD-MET-002` bounds what may be collected. Listed below
+> is how Finance meets them for this program.
 
 - [ ] Clear explanation of what beta involves before opt-in
 - [ ] Ability to leave beta at any time (instant, no questions)
@@ -251,6 +272,10 @@ Settings → AI Features → Report an Issue
 ---
 
 ## Success Criteria
+
+> These gates are the decision rule for this program, declared before exposure per
+> `PROD-DISC-002`. A gate that is not met means the program does not advance —
+> `PROD-MET-003` forbids reinterpreting a missed threshold after the fact.
 
 ### Alpha → Beta Gate (End of Week 2)
 

@@ -8,6 +8,10 @@
 > **Status:** Draft — Requires 2+ weeks of Premium subscription data
 > **Depends on:** #822 (Conversion Tracking), #823 (Pricing Validation)
 
+> **Satisfies:** `PROD-BUS-002` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

@@ -10,11 +10,29 @@
 
 ---
 
+> **Satisfies:** `PROD-BUS-002`, `PROD-BUS-003`, `PROD-DISC-002` — Product obligations are
+> defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is
+> the dated Sprint 7 pricing validation. The generic experiment-design and decision method it
+> used to define is central; the benchmarks, price points, and sensitivity analysis are local.
+
 ## Executive Summary
 
-This document defines the pricing validation methodology for the Finance app's Premium tier. It includes competitive pricing benchmarks (refreshed from pre-launch), A/B test design with statistical rigor, price sensitivity analysis framework, and a decision matrix for recommending final pricing. All pricing decisions require human sign-off before implementation.
+This document records Finance's Sprint 7 pricing validation: refreshed
+competitive benchmarks, the specific price variants under test, price-sensitivity
+and demand modelling, regional considerations, and the resulting recommendation.
 
-**Key insight:** The optimal price maximizes _revenue per paywall view_ (RPV), not conversion rate. A higher price with lower conversion can yield more revenue than a lower price with higher conversion.
+Experiment design and decision discipline are not defined here — `PROD-DISC-002`
+requires a hypothesis, a pre-declared decision rule, and a stop condition
+committed before exposure, recorded using
+[`templates/experiment-decision-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/experiment-decision-record.md).
+`PROD-BUS-002` requires the value exchange to be legible and `PROD-BUS-003`
+requires pricing to be justified rather than assumed; this document is the
+evidence for both.
+
+**Key insight:** the optimal price maximizes _revenue per paywall view_ (RPV),
+not conversion rate. A higher price with lower conversion can yield more revenue
+than a lower price with higher conversion. All pricing decisions require human
+sign-off before implementation.
 
 ---
 
@@ -72,7 +90,13 @@ POSITIONING: Finance is the MOST AFFORDABLE premium option among
 
 ---
 
-## 2. A/B Test Design
+## 2. Test Variants and Parameters
+
+> Experiment design discipline is central (`PROD-DISC-002`). This section records
+> the Finance-specific variants and the parameters chosen for this test; the
+> hypothesis, decision rule, and stop condition are committed in the test's own
+> decision record opened from
+> [`templates/experiment-decision-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/experiment-decision-record.md).
 
 ### 2.1 Test Variants
 
@@ -106,7 +130,7 @@ Example calculations:
 | **Post-conversion D30 churn** | Do lower-price subscribers churn faster (less committed)?    |
 | **LTV at 6 months**           | True revenue impact (not just initial conversion)            |
 
-### 2.4 Statistical Methodology
+### 2.4 Sizing for This Test
 
 ```
 Test Parameters:
@@ -131,20 +155,17 @@ Sample Size Calculation:
 
   Practical adjustment: If traffic is low, extend test OR use Bayesian analysis
 
-Statistical Test:
+Analysis plan:
   - ANOVA for RPV comparison across 3 variants
   - Post-hoc: Tukey HSD for pairwise comparisons
   - Also run: Mann-Whitney U (non-parametric) as robustness check
   - Report: Point estimates, 95% CI, p-values, effect sizes (Cohen's d)
-
-Decision Rule:
-  1. If one variant significantly outperforms others (p < 0.05 AND practical significance):
-     → Recommend winner (pending human sign-off)
-  2. If no significant difference:
-     → Maintain current pricing (Variant A); retest after feature additions
-  3. If results are directional but not significant:
-     → Extend test duration or increase traffic; do NOT make pricing changes
 ```
+
+The decision rule and stop condition are committed in the test's decision record
+before exposure, per `PROD-DISC-002`. `PROD-MET-003` additionally forbids reading
+a directional-but-inconclusive result as a win — an inconclusive test means
+pricing does not change.
 
 ### 2.5 Test Integrity Requirements
 
@@ -277,9 +298,16 @@ Conclusion: Annual plan is better for LTV. Optimize for annual plan adoption.
 
 ---
 
-## 5. Pricing Decision Framework
+## 5. Pricing Decision Record for This Test
 
-### 5.1 Decision Matrix
+> The obligation that a price change be justified by evidence and communicated
+> honestly is central (`PROD-BUS-002`, `PROD-BUS-003`, `PROD-BUS-001`), and the
+> generic experiment decision shape is
+> [`templates/experiment-decision-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/experiment-decision-record.md).
+> Recorded below is the Finance-specific mapping from each variant outcome to the
+> action this repository commits to.
+
+### 5.1 Variant Outcomes and Committed Actions
 
 ```
 IF A/B test shows clear winner (p < 0.05):

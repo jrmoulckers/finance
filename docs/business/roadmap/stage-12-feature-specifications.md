@@ -11,6 +11,10 @@
 [Premium Conversion Tracking](../revenue/premium-conversion-tracking.md) ·
 [Freemium Optimization](../pricing/freemium-optimization-sprint9.md)
 
+> **Satisfies:** `PROD-PLAN-002` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

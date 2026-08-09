@@ -11,6 +11,10 @@
 [V2 Feature Specifications](v2-feature-specifications.md) ·
 [International Expansion Analysis](../revenue/international-expansion-analysis.md)
 
+> **Satisfies:** `PROD-STRAT-003`, `PROD-PLAN-001` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

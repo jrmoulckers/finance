@@ -18,6 +18,7 @@ A multi-platform, native-first financial tracking application for personal, fami
 - [Project Status](#project-status)
 - [Monorepo Health](#monorepo-health)
 - [Principles](#principles)
+- [Product authority](#product-authority)
 - [Platforms](#platforms)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -116,6 +117,23 @@ All workflows run on GitHub Actions — see badges at the top of this README.
 - **Accessibility** — Beautiful, inclusive interfaces for everyone
 - **Open development** — AI-developed with full transparency in documentation
 - **Ethical design** — Moral code development at the forefront of every component
+
+See [`PRODUCT.md`](./PRODUCT.md) for the product definition — users, promise,
+invariants, scope, monetization, and compliance posture.
+
+## Product authority
+
+Product obligations and outcomes are defined in
+[jrmoulckers/product](https://github.com/jrmoulckers/product). Cite obligations
+by stable ID (for example `PROD-REL-001`); pin to a commit SHA when exact
+wording matters. Roadmaps, metrics, experiments, and compliance evidence stay in
+this repository and cite the obligation they satisfy.
+
+Engineering mechanisms are defined in
+[jrmoulckers/engineering](https://github.com/jrmoulckers/engineering), design and
+interface in [jrmoulckers/studio](https://github.com/jrmoulckers/studio), and
+automation and shared agent assets in
+[jrmoulckers/.github](https://github.com/jrmoulckers/.github).
 
 ## Platforms
 

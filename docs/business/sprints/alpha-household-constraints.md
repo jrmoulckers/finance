@@ -6,6 +6,10 @@
 > **Owner:** Product Management
 > **Status:** Draft — awaiting human review
 
+> **Satisfies:** `PROD-PLAN-002`, `PROD-PLAN-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

@@ -8,6 +8,10 @@
 > **Status:** Draft — Framework ready, requires 6+ weeks of post-launch data
 > **Depends on:** #818 (KPI Dashboard), #824 (Revenue Model)
 
+> **Satisfies:** `PROD-MET-003`, `PROD-BUS-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

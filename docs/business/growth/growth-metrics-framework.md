@@ -13,31 +13,46 @@
 
 ---
 
+> **Satisfies:** `PROD-MET-001`, `PROD-MET-002`, `PROD-MET-003` — Product obligations are
+> defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). The generic
+> measurement method this document used to define locally now lives centrally; what remains
+> here is the finance-specific instance — targets, thresholds, platform parity expectations,
+> and the rollout checklist.
+
 ## Executive Summary
 
-This document defines the comprehensive growth metrics framework for the Finance
-app across all four platforms (iOS, Android, Web, Windows). It covers core
-metric definitions, per-platform tracking plans, retention curve targets, NPS
-methodology, success criteria with alert thresholds, and privacy-compliant
-tracking architecture. This framework is the single source of truth for how we
-measure success.
+This document records the Finance-specific growth measurement instance across all
+four platforms (iOS, Android, Web, Windows): the metrics we track, the targets and
+alert thresholds we hold them to, expected platform variance, and the phased
+rollout of measurement itself.
 
-### Metrics Philosophy
+It does **not** define what a metric definition must contain, how measurement is
+bounded, or how results must be interpreted — those are central obligations
+(`PROD-MET-001`, `PROD-MET-002`, `PROD-MET-003`), and the reusable shape for a
+metric record is
+[`templates/metric-definition.md`](https://github.com/jrmoulckers/product/blob/main/templates/metric-definition.md).
+The local metric catalog — one versioned definition per metric, per `PROD-MET-001` —
+is [KPI Dashboard Spec](kpi-dashboard-spec.md) §2. Definitions are not restated here.
 
-1. **Privacy-first measurement** — All metrics use anonymous, aggregated data.
-   No PII in analytics. No third-party SDKs that sell data.
-2. **Actionable over vanity** — Every metric must answer "what should we do?"
-   not just "how big are we?"
-3. **Platform parity** — Same metrics, same definitions, same targets across
-   all 4 platforms. Platform-specific breakdowns for debugging only.
-4. **Leading indicators** — Prioritize metrics that predict future outcomes
-   (activation rate, feature adoption) over lagging indicators (total users).
+### Measurement posture
+
+Finance-specific commitments layered on top of the central obligations:
+
+1. **No third-party data-selling SDKs.** Analytics use anonymous, aggregated data
+   and contain no raw financial values. Collection is consent-gated per
+   `PROD-MET-002` and `PROD-COMP-008`.
+2. **Platform parity in measurement.** The same metric definition and target apply
+   to all four platforms; per-platform breakdowns exist for debugging, not for
+   separate goals.
 
 ---
 
-## 1. Core Metrics Taxonomy
+## 1. Core Metrics and Targets
 
-### 1.1 AARRR Framework (Pirate Metrics)
+> Metric definitions live in the catalog ([KPI Dashboard Spec](kpi-dashboard-spec.md) §2).
+> The tables below record Finance's targets, not definitions.
+
+### 1.1 Funnel Targets
 
 | Stage       | Key Metric        | Definition                                      | Target       |
 | ----------- | ----------------- | ----------------------------------------------- | ------------ |
@@ -219,18 +234,13 @@ that needs investigation.
 
 ## 4. NPS Measurement
 
-### 4.1 NPS Survey Design
+> NPS survey mechanics — question design, delivery cadence, sampling, and
+> non-incentivization — are generic method. Interpretation obligations are
+> `PROD-MET-003` (report uncertainty, limitations, and material segments before
+> deciding); collection is bounded by `PROD-MET-002`. Recorded below is only
+> Finance's instance: our targets by segment and the actions we bind to them.
 
-**Core Question:** "How likely are you to recommend Finance to a friend or
-colleague?" (0–10 scale)
-
-**Follow-up (conditional):**
-
-- Promoters (9–10): "What do you love most about Finance?"
-- Passives (7–8): "What would make Finance a 10 for you?"
-- Detractors (0–6): "What's the biggest issue holding you back?"
-
-### 4.2 Survey Delivery
+### 4.1 Survey Parameters
 
 | Parameter          | Value                                       |
 | ------------------ | ------------------------------------------- |
@@ -242,7 +252,7 @@ colleague?" (0–10 scale)
 | Incentive          | None (to avoid bias)                        |
 | Sample target      | 10% of MAU per quarter                      |
 
-### 4.3 NPS Targets
+### 4.2 NPS Targets
 
 | Segment       | Target NPS | Good  | Alert |
 | ------------- | ---------- | ----- | ----- |
@@ -254,7 +264,7 @@ colleague?" (0–10 scale)
 | Web users     | 30+        | 20–40 | < 10  |
 | Windows users | 40+        | 30–50 | < 20  |
 
-### 4.4 NPS Action Protocol
+### 4.3 NPS Action Protocol
 
 | NPS Score | Action                                                      |
 | --------- | ----------------------------------------------------------- |
@@ -263,12 +273,12 @@ colleague?" (0–10 scale)
 | 10–29     | Concerning. Prioritize top detractor themes in next sprint. |
 | < 10      | Critical. Emergency product review. All hands on feedback.  |
 
-### 4.5 Qualitative Feedback Analysis
+### 4.4 Qualitative Feedback Themes
 
-- Categorize open-ended responses into themes (monthly)
-- Top 5 themes tracked over time for trend analysis
-- Common theme categories: performance, features, pricing, privacy, UX
-- Feed top themes into sprint planning as P1/P2 issues
+Finance-specific theme categories tracked for trend: performance, features,
+pricing, privacy, UX. Top themes feed sprint planning as P1/P2 issues. Reporting
+them observes `PROD-MET-003` — themes are reported with sample size and
+limitations, not as standalone conclusions.
 
 ---
 
@@ -302,7 +312,12 @@ colleague?" (0–10 scale)
 | Conversion collapse | Trial-to-paid < 3% for 14 days     | Email         | 48 hours      |
 | Platform anomaly    | Any platform metric diverges 30%+  | Slack         | 24 hours      |
 
-### 5.3 Weekly Metrics Review Cadence
+### 5.3 Review Cadence
+
+Weekly and monthly review cadence is the local instance of `PROD-MET-003`
+(interpret honestly) and `PROD-PLAN-004` (groom on a declared cadence). Every
+readout carries definition version, window, sample and missingness, and guardrail
+context before a decision is drawn from it.
 
 | Day       | Activity                                            |
 | --------- | --------------------------------------------------- |
@@ -310,16 +325,8 @@ colleague?" (0–10 scale)
 | Wednesday | Mid-week engagement check; A/B test progress review |
 | Friday    | Weekly metrics summary; publish to team             |
 
-### 5.4 Monthly Business Review Metrics
-
-| Section         | Metrics Reviewed                                |
-| --------------- | ----------------------------------------------- |
-| Growth          | New users, growth rate, channel mix, CAC        |
-| Engagement      | DAU/MAU, session metrics, feature adoption      |
-| Retention       | D1/D7/D30 curves, cohort analysis, churn trends |
-| Revenue         | MRR, ARPU, LTV, conversion funnel, plan mix     |
-| Quality         | Crash rate, store rating, NPS, support tickets  |
-| Platform health | Per-platform breakdown of all above metrics     |
+Monthly business review covers growth, engagement, retention, revenue, quality,
+and per-platform health across the same catalog definitions.
 
 ---
 

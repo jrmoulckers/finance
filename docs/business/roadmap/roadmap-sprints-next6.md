@@ -7,6 +7,10 @@
 **Status:** Planned
 **Predecessor:** [Sprint Plan 6–10](../sprints/sprint-plan-6-10.md) · [Sprint Plan 11–12](../sprints/sprint-plan-11-12.md) · [v1.2 Release & v2.0 Roadmap](v12-release-plan-v20-roadmap.md)
 
+> **Satisfies:** `PROD-PLAN-001`, `PROD-REL-004` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

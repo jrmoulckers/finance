@@ -446,6 +446,27 @@ These tasks create GitHub issues using the same issue-first workflow as engineer
 
 See `docs/ai/` for complete AI development documentation.
 
+## Product authority
+
+Product obligations and outcomes are defined in
+[jrmoulckers/product](https://github.com/jrmoulckers/product). Cite obligations
+by stable ID (for example `PROD-REL-001`); pin to a commit SHA when exact
+wording matters. Roadmaps, metrics, experiments, and compliance evidence stay in
+this repository and cite the obligation they satisfy.
+
+Engineering mechanisms are defined in
+[jrmoulckers/engineering](https://github.com/jrmoulckers/engineering), design and
+interface in [jrmoulckers/studio](https://github.com/jrmoulckers/studio), and
+automation and shared agent assets in
+[jrmoulckers/.github](https://github.com/jrmoulckers/.github).
+
+Do not copy principle text into this repository — cite the ID. Product owns the
+obligation and the reusable shape; this repository owns its instances and its
+evidence. Roadmaps, sprint plans, metric catalogs, experiment records, and
+privacy audits are instances and stay here. The repository's product definition
+is [`PRODUCT.md`](./PRODUCT.md); obligation-to-evidence traceability for
+compliance is [`docs/compliance/README.md`](./docs/compliance/README.md).
+
 <!-- prettier-ignore-start -->
 <!-- studio:base:start -->
 <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->

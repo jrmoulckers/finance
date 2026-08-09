@@ -9,13 +9,31 @@
 
 ---
 
+> **Satisfies:** `PROD-PLAN-004`, `PROD-MET-001` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the dated
+> Sprint 8 scope-adjustment decision. It previously restated metric and cohort definitions,
+> creating a second local source of truth; `PROD-MET-001` requires **one** versioned
+> definition per metric and `PROD-CONTENT-001` forbids the duplicate. Definitions now live
+> solely in the metric catalog ([KPI Dashboard Spec](kpi-dashboard-spec.md) §2).
+
 ## Executive Summary
 
-This document defines the growth metrics framework for the Finance app, establishes measurement baselines, defines the free-to-premium conversion funnel, and adjusts Sprint 8 scope based on data-driven analysis. It serves as the operating playbook for measuring and optimizing growth from Sprint 8 onward.
+This document records the Sprint 8 scope adjustment and the evidence behind it:
+which metrics were reviewed, what the competitive pricing observation showed, and
+how the engineering workload changed as a result. It is a dated planning decision,
+not a standing framework.
+
+Metric definitions are **not** defined here. The catalog is
+[KPI Dashboard Spec](kpi-dashboard-spec.md) §2; standing targets and platform
+parity expectations are in
+[Growth Metrics Framework](growth-metrics-framework.md).
 
 ---
 
-## Growth Metrics Framework
+## Metrics Reviewed for Sprint 8
+
+> Definitions resolve against the catalog ([KPI Dashboard Spec](kpi-dashboard-spec.md) §2).
+> The targets below are the Sprint 8 goals set against those definitions.
 
 ### Core KPIs
 
@@ -188,7 +206,13 @@ Based on the stability review (#788) and release planning (#792), the following 
 
 ---
 
-## Cohort Analysis Framework
+## Cohort Segments Used in This Review
+
+> Cohort and segment boundaries below are the working slices for this dated
+> review. The underlying metric definitions (session, DAU/WAU/MAU, transaction)
+> resolve against the catalog ([KPI Dashboard Spec](kpi-dashboard-spec.md) §2);
+> the Sprint 6 cohort results are in
+> [Cohort Analysis Sprint 6](cohort-analysis-sprint6.md).
 
 ### User Cohorts to Track
 

@@ -6,6 +6,10 @@
 **Status:** Assessment complete — awaiting human sign-off
 **Reference:** [Pre-Launch Checklist](../../guides/launch-checklist.md)
 
+> **Satisfies:** `PROD-PLAN-005`, `PROD-REL-001`, `PROD-REL-002` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

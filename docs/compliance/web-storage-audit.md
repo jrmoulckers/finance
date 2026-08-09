@@ -6,6 +6,12 @@
 
 This document inventories every browser storage mechanism used by the Finance web application, including cookies, localStorage, IndexedDB, Origin Private File System (OPFS), Service Worker cache, and sessionStorage. For each item, it documents what is stored, why, whether it is encrypted, and when it expires.
 
+> **Satisfies:** `PROD-COMP-002`, `PROD-COMP-008` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product), pinned to
+> [`3a752c1`](https://github.com/jrmoulckers/product/blob/3a752c11856515a74eb204675d5d5198cac1e48e/principles/compliance.md).
+> This document is the local evidence; the obligation is central. These principles
+> establish governance and qualified-review triggers and are not legal advice.
+
 ---
 
 ## Table of Contents

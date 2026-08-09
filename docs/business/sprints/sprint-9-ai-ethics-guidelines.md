@@ -8,6 +8,10 @@
 > **Status:** Complete
 > **Consultation Required:** @architect, @security-reviewer
 
+> **Satisfies:** `PROD-STRAT-001`, `PROD-COMP-002`, `PROD-COMP-008`, `PROD-DISC-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

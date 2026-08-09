@@ -8,6 +8,10 @@
 > **Status:** Draft — Framework ready, requires 30+ days of post-launch data
 > **Depends on:** #819 (Cohort Analysis), #822 (Conversion Tracking)
 
+> **Satisfies:** `PROD-MET-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

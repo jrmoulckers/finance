@@ -8,6 +8,10 @@
 > **Status:** Draft — Framework ready, requires 8+ weeks of Premium conversion data
 > **Depends on:** #822 (Conversion Tracking), #826 (Feature Usage), #828 (AI ROI)
 
+> **Satisfies:** `PROD-BUS-001`, `PROD-BUS-002` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary
