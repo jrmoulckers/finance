@@ -12,6 +12,12 @@ export const tokens = {
     "borderWidth": "2px",
     "maxChoicesPerGroup": 5
   },
+  "focus": {
+    "ring": {
+      "width": "2px",
+      "offset": "2px"
+    }
+  },
   "duration": {
     "instant": "0ms",
     "press": "50ms",
@@ -22,6 +28,15 @@ export const tokens = {
   "easing": {
     "standard": "ease",
     "linear": "linear"
+  },
+  "opacity": {
+    "none": 0,
+    "subtle": 0.04,
+    "soft": 0.08,
+    "medium": 0.12,
+    "strong": 0.24,
+    "disabled": 0.38,
+    "full": 1
   },
   "radius": {
     "sm": "9px",
@@ -45,6 +60,11 @@ export const tokens = {
     "xl": "20px",
     "2xl": "24px",
     "3xl": "32px"
+  },
+  "target": {
+    "min": "46px",
+    "compact": "32px",
+    "spacious": "56px"
   },
   "font": {
     "family": {
@@ -80,6 +100,15 @@ export const tokens = {
       "normal": "0",
       "wide": "0.08em"
     }
+  },
+  "zIndex": {
+    "base": 0,
+    "raised": 10,
+    "sticky": 100,
+    "overlay": 500,
+    "modal": 1000,
+    "toast": 2000,
+    "tooltip": 3000
   },
   "color": {
     "royal-violet": {
@@ -365,9 +394,44 @@ export const tokens = {
     "width": "3px",
     "offset": "3px"
   },
+  "cognitiveTarget": {
+    "min": "56px"
+  },
   "cognitiveElevation": {
     "none": "none",
     "low": "inset 0 0 0 1px rgba(0, 0, 0, 0.18)",
+    "raised": "0 10px 30px rgba(60, 50, 120, 0.12)"
+  },
+  "layer": {
+    "content": 0,
+    "raised": 10,
+    "nav": 100,
+    "scrim": 500,
+    "dialog": 1000,
+    "toast": 2000,
+    "tooltip": 3000
+  },
+  "state": {
+    "hover": {
+      "overlay": 0.08,
+      "surface-overlay": 0.04
+    },
+    "pressed": {
+      "overlay": 0.12
+    },
+    "selected": {
+      "overlay": 0.12
+    },
+    "disabled": {
+      "opacity": 0.38
+    },
+    "scrim": {
+      "opacity": 0.24
+    }
+  },
+  "elevation": {
+    "flat": "none",
+    "hairline": "inset 0 0 0 1px rgba(0, 0, 0, 0.18)",
     "raised": "0 10px 30px rgba(60, 50, 120, 0.12)"
   },
   "avatar": {

@@ -11,6 +11,8 @@
   --cognitive-focus-ring-offset: 3px; /** Enhanced focus-ring offset for improved visibility (default is 2px). */
   --cognitive-border-width: 2px; /** Enhanced border width for clearer element-boundary definition. */
   --cognitive-max-choices-per-group: 5; /** Maximum options presented in a single group/menu — Miller's Law (7±2) with a conservative bound for cognitive-load reduction. */
+  --focus-ring-width: 2px; /** Default focus-ring width. [data-a11y-cognitive="true"] promotes this to cognitive.focusRingWidth (3px). */
+  --focus-ring-offset: 2px; /** Gap between the control edge and the ring, so the ring stays legible on filled controls. */
   --duration-instant: 0ms;
   --duration-press: 50ms; /** Button :active press-down */
   --duration-state: 150ms; /** Hover / state color transitions */
@@ -18,6 +20,13 @@
   --duration-reduced: 0ms; /** Reduced-motion alternative — collapse motion to instant (prefers-reduced-motion). */
   --easing-standard: ease; /** Default functional easing */
   --easing-linear: linear; /** Reduced-motion / crossfade easing */
+  --opacity-none: 0; /** Fully transparent. */
+  --opacity-subtle: 0.04; /** Barely-there wash — hover on large surfaces (rows, tiles). */
+  --opacity-soft: 0.08; /** Hover overlay on controls. */
+  --opacity-medium: 0.12; /** Pressed overlay and selected-row wash. */
+  --opacity-strong: 0.24; /** Scrims and heavy washes. */
+  --opacity-disabled: 0.38; /** Disabled content alpha — WCAG-exempt, matching the disabled text/interactive tokens. */
+  --opacity-full: 1; /** Fully opaque. */
   --radius-sm: 9px; /** Controls: buttons, inputs, steppers */
   --radius-md: 14px; /** Containers: cards, tiles */
   --radius-chip: 10px; /** Icon buttons and small chips */
@@ -33,6 +42,9 @@
   --spacing-xl: 20px; /** Roomier block padding — cognitive-accessibility mode. */
   --spacing-2xl: 24px; /** Card gap / inline padding — cognitive-accessibility mode. */
   --spacing-3xl: 32px; /** Section gap — cognitive-accessibility mode. */
+  --target-min: 46px; /** Minimum interactive target — the thumb-first control height (exceeds the WCAG 2.2 AA 24px floor and the 44px platform guidance). */
+  --target-compact: 32px; /** Dense affordance (icon button inside an already-large target). Only valid when the parent row itself meets target.min. */
+  --target-spacious: 56px; /** Roomier target for primary actions and cognitive-accessibility mode. */
   --font-family-sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; /** One native sans for everything — the Quiet-Type Rule. */
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
@@ -48,6 +60,13 @@
   --font-line-height-relaxed: 1.75; /** Roomy leading — used by cognitive-accessibility mode for improved reading flow. */
   --font-letter-spacing-normal: 0;
   --font-letter-spacing-wide: 0.08em; /** Overline tracking */
+  --z-index-base: 0; /** In-flow content. */
+  --z-index-raised: 10; /** Lifted in-flow content. */
+  --z-index-sticky: 100; /** Sticky chrome. */
+  --z-index-overlay: 500; /** Scrims behind modals. */
+  --z-index-modal: 1000; /** Dialogs and sheets. */
+  --z-index-toast: 2000; /** Transient notifications. */
+  --z-index-tooltip: 3000; /** Always-on-top hints. */
   --color-royal-violet-200: oklch(0.94 0.04 285);
   --color-royal-violet-300: oklch(0.83 0.10 285);
   --color-royal-violet-400: oklch(0.71 0.16 285);
@@ -141,17 +160,13 @@
   --color-player-11: #e879f9;
   --color-player-12: #facc15;
   --avatar-size: 28px;
-  --button-primary-min-height: 46px;
   --button-primary-padding-x: 18px;
   --button-primary-padding-y: 12px;
-  --button-default-min-height: 46px;
   --button-default-padding-x: 18px;
   --button-default-padding-y: 12px;
   --button-ghost-bg: transparent;
   --button-danger-bg: transparent;
-  --input-min-height: 46px;
   --input-padding-y: 11px;
-  --nav-iconbtn-size: 46px;
   --pill-padding-y: 3px;
   --shadow-lift: var(--shadow-soft-lift-light);
   --shadow-hairline: var(--shadow-inset-hairline);
@@ -227,22 +242,41 @@
   --cognitive-spacing-block-padding: var(--spacing-xl); /** Vertical padding inside containers — 20px. */
   --cognitive-focus-width: var(--cognitive-focus-ring-width);
   --cognitive-focus-offset: var(--cognitive-focus-ring-offset);
+  --cognitive-target-min: var(--target-spacious); /** Promotes the standard 46px target to the spacious 56px step. */
   --cognitive-elevation-none: var(--shadow-none);
   --cognitive-elevation-low: var(--shadow-inset-hairline); /** Minimal hairline instead of a drop shadow. */
   --cognitive-elevation-raised: var(--shadow-soft-lift-light); /** The single soft lift, used sparingly. */
+  --layer-content: var(--z-index-base);
+  --layer-raised: var(--z-index-raised); /** Cards and tiles lifted above content. */
+  --layer-nav: var(--z-index-sticky); /** App bar, tab bar, sidebar — the persistent shell. */
+  --layer-scrim: var(--z-index-overlay); /** Dimming layer behind a modal or sheet. */
+  --layer-dialog: var(--z-index-modal); /** Modals, sheets, and popovers. */
+  --layer-toast: var(--z-index-toast);
+  --layer-tooltip: var(--z-index-tooltip);
+  --state-hover-overlay: var(--opacity-soft); /** Overlay strength for hovered controls. */
+  --state-hover-surface-overlay: var(--opacity-subtle); /** Gentler wash for large hovered surfaces (rows, tiles) so big areas do not shout. */
+  --state-pressed-overlay: var(--opacity-medium); /** Overlay strength while a control is held. */
+  --state-selected-overlay: var(--opacity-medium); /** Persistent wash marking the active item. Never the only selection signal — pair it with a non-color cue. */
+  --state-disabled-opacity: var(--opacity-disabled); /** Content alpha for disabled controls — WCAG-exempt. */
+  --state-scrim-opacity: var(--opacity-strong); /** Dimming strength behind modals and sheets. */
+  --elevation-flat: var(--shadow-none); /** No lift — the default for in-flow content. */
   --avatar-bg: var(--color-player-1); /** Default fill; runtime assigns #7c5cff–#facc15 in order. */
   --avatar-weight: var(--font-weight-bold);
   --avatar-radius: var(--radius-pill);
   --button-primary-radius: var(--radius-sm);
+  --button-primary-min-height: var(--target-min);
   --button-default-radius: var(--radius-sm);
+  --button-default-min-height: var(--target-min);
   --card-radius: var(--radius-md);
   --card-padding: var(--spacing-lg);
   --tile-radius: var(--radius-md);
   --tile-padding: var(--spacing-lg);
   --input-radius: var(--radius-sm);
+  --input-min-height: var(--target-min);
   --input-padding-x: var(--spacing-md);
   --nav-tabbar-radius: var(--radius-md);
   --nav-tab-radius: var(--radius-chip);
+  --nav-iconbtn-size: var(--target-min);
   --nav-iconbtn-radius: var(--radius-chip);
   --pill-radius: var(--radius-pill);
   --pill-padding-x: var(--spacing-sm);
@@ -262,6 +296,8 @@
   --color-danger: var(--semantic-status-negative);
   --color-warning: var(--semantic-status-warning);
   --color-focus-ring: var(--semantic-border-focus);
+  --elevation-hairline: var(--shadow-hairline); /** 1px inner ring that preserves an edge without a drop shadow. */
+  --elevation-raised: var(--shadow-lift); /** The single Soft Lift — cards, tiles, popovers, toast. */
   --avatar-text: var(--semantic-text-inverse);
   --avatar-ring: var(--shadow-hairline);
   --button-primary-bg: var(--semantic-interactive-default);
