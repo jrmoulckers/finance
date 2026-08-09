@@ -1,4 +1,4 @@
-# ADR-0017: API Versioning Strategy — Semantic Versioning, Deprecation Policy, Migration Windows
+# ADR-0026: API Versioning Strategy — Semantic Versioning, Deprecation Policy, Migration Windows
 
 **Status:** Proposed
 **Date:** 2025-07-28

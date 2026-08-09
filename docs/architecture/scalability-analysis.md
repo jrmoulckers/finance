@@ -689,7 +689,7 @@ graph TD
 - [ADR-0011: Scaling Architecture](./0011-scaling-architecture.md) — Phased scaling tiers
 - [ADR-0002: Backend & Sync Architecture](./0002-backend-sync-architecture.md) — Sync protocol design
 - [ADR-0007: Hosting Strategy](./0007-hosting-strategy.md) — VPS infrastructure
-- [ADR-0015: Premium Architecture](./adr/adr-0015-premium-architecture.md) — Tier-based rate limits
+- [ADR-0015: Premium Architecture](./0015-premium-architecture.md) — Tier-based rate limits
 - [Data Flow Diagrams](./data-flow.md) — Detailed sync flow diagrams
 - `packages/sync/src/commonMain/kotlin/com/finance/sync/SyncConfig.kt`
 - `packages/sync/src/commonMain/kotlin/com/finance/sync/queue/QueueProcessor.kt`

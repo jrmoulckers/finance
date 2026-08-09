@@ -1,6 +1,6 @@
 # ADR-0012: API Versioning Strategy
 
-**Status:** Superseded by [ADR-0017](./0017-api-versioning-strategy.md)
+**Status:** Superseded by [ADR-0026](./0026-api-versioning-strategy.md)
 **Date:** 2025-07-27
 **Author:** System Architect (AI agent)
 **Reviewers:** Pending human review
