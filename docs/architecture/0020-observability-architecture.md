@@ -6,6 +6,7 @@
 **Reviewers:** Pending human review
 **Sprint:** W2-S11
 **Extends:** [Monitoring Architecture](./monitoring.md) · [Monitoring Infrastructure](./monitoring-infrastructure.md) · [Alerting Rules](./alerting-rules.md)
+**Ratified obligations:** `ENG-OBS-001`–`ENG-OBS-007` (structured signals, live service identity, bounded dependency checks, end-to-end correlation, redacted evidence, SLO evidence, predictable degradation). This ADR records finance's implementation of them, not the rules themselves.
 
 ## Context
 

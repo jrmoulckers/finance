@@ -28,6 +28,23 @@ Finance is a multi-platform, native-first financial tracking application for per
 5. **Transparency** — Document all significant decisions, trade-offs, and AI-generated code rationale in commit messages and PR descriptions.
 6. **No financial-data monetization** — Finance has no advertising business model. Never sell, share, target ads with, or derive advertising profiles from financial data; product telemetry is consent-gated and excludes raw financial values.
 
+### Ratified engineering principles
+
+Cross-cutting engineering rules are ratified in
+[`jrmoulckers/engineering`](https://github.com/jrmoulckers/engineering) as 66 `ENG-*`
+principles, with technique in
+[`practices/`](https://github.com/jrmoulckers/engineering/tree/main/practices). Under
+[ADR-0003 (four-authority topology)](https://github.com/jrmoulckers/.github/blob/main/docs/architecture/0003-four-authority-topology.md)
+**this repository must not copy that normative text.** Cite the `ENG-*` ID instead; resolve any
+ID via
+[`principles/index.json`](https://github.com/jrmoulckers/engineering/blob/main/principles/index.json).
+The principles above are finance's own product obligations and are additional to, not a
+restatement of, the ratified set.
+
+Notably, `ENG-TEST-004` (distinct static signals) requires lint, format, type-check, and tests
+to report independently — which is why `ci:check` chains them as separate scripts rather than
+collapsing them into one command.
+
 ## ⚠️ MANDATORY: Pre-Push Lint & Format (NEVER skip)
 
 > **🚨 This is the #1 cause of fleet CI failures. Every agent MUST run these steps before EVERY `git push`.**

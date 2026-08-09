@@ -4,6 +4,12 @@ _Last updated: 2025-04-21_
 
 This document provides a comprehensive review of the Finance application's security architecture, covering encryption, authentication, session management, certificate pinning, biometric integration, threat modeling, and compliance mapping. It consolidates and extends the security decisions in [ADR-0004 (Auth & Security)](./0004-auth-security-architecture.md) with implementation-level detail.
 
+The obligations it discharges are ratified in `jrmoulckers/engineering` and are cited, not
+restated: `ENG-SEC-001` (secret lifecycle), `ENG-SEC-003` (boundary threat models),
+`ENG-SEC-004` (least authority), `ENG-SEC-005` (trust-boundary validation), `ENG-SEC-007`
+(secure failure), and `ENG-SEC-008` (privacy-minimizing lifecycle evidence). The threat model,
+MASVS mapping, and control implementations below are finance-specific.
+
 ---
 
 ## Table of Contents
