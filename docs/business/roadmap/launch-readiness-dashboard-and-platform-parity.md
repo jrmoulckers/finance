@@ -23,10 +23,12 @@
 ### Overview
 
 The launch readiness dashboard is Finance's evidence surface for `PROD-REL-001`.
-It consolidates backend health, platform readiness, key metrics, and blocking
-issues into a single at-a-glance status page so the go/no-go decision is made
-against observed state rather than assumption. The dashboard **informs** the
-decision; it does not constitute it, and a green dashboard is not by itself a go.
+It provides a single-page view answering "is it safe to launch?", consolidating
+backend health, platform readiness, key metrics, and blocking issues into an
+at-a-glance status page accessible to all stakeholders, so the go/no-go decision
+is made against observed state rather than assumption. The dashboard **informs**
+the decision; it does not constitute it, and a green dashboard is not by itself a
+go.
 
 Reference: docs/architecture/monitoring-infrastructure.md section 7
 

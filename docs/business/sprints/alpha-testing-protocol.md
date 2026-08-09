@@ -35,6 +35,19 @@ often unrecoverable once compounded. So for this product the primary guardrail o
 exposure is not engagement or crash rate but **data integrity**: the checks in §3
 are the kill conditions required by `PROD-DISC-002`.
 
+### Local operating commitments
+
+Central authority requires staged exposure with a proven ability to stop
+(`PROD-DISC-003`) but sets no turnaround target and no automation expectation.
+These are Finance's own and are retained:
+
+1. **Fast feedback loop** — tester → bug report → triage → fix → deploy → verify,
+   targeting **under 48 hours for P0/P1** issues.
+2. **Hard phase gates** — no phase advances until its exit criteria are met. A gate
+   that is not met is not waived.
+3. **Automate what can be automated** — the §3 data-quality checks run
+   continuously, not only when someone remembers to check.
+
 ---
 
 ## 1. Alpha Cohorts and Gates

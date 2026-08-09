@@ -318,14 +318,21 @@ industry benchmarks of 2–5% for users who encounter a gate).
 
 ### 6.1 Finance-specific test constraints
 
+Central authority requires a predeclared decision rule and guardrails
+(`PROD-DISC-002`) but sets no significance level, sample floor, or rollout
+commitment. These are Finance's and are retained:
+
+- **Platform:** PostHog feature flags (self-hosted) or Statsig (privacy mode).
 - **Assignment:** sticky per user — a user must never see the price change
   underneath them mid-consideration.
 - **Minimum sample:** 500 users per variant, reflecting Finance's expected
   paywall-view volume.
+- **Significance:** p < 0.05 with minimum 80% power.
 - **Maximum concurrent tests:** 2, to avoid interaction effects across the small
   monetization surface.
 - **Guardrails that may never degrade:** retention and trust signals. A pricing
   lift that costs trust is a loss for a privacy-positioned product.
+- **Rollout:** the winner is rolled out to 100% within one week of conclusion.
 - No experiment may vary privacy behavior or data collection — only presentation
   and price.
 

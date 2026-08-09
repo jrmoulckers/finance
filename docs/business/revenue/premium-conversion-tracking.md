@@ -398,11 +398,14 @@ Test duration: Until both variants reach 500+ paywall views
 
 Analysis plan: Two-proportion z-test with α=0.05
   Also report: 95% CI, effect size, p-value
+
+Decision rule (predeclared per PROD-DISC-002):
+  Implement winner only if p < 0.05 AND practical significance (MDE ≥ 3pp)
 ```
 
-The decision rule and stop condition are committed in each test's decision record
-before exposure, per `PROD-DISC-002`; `PROD-MET-003` forbids treating an
-underpowered or inconclusive result as a win.
+The threshold above is Finance's own — central authority requires that a decision
+rule and stop condition be committed before exposure, not what they must contain.
+`PROD-MET-003` forbids treating an underpowered or inconclusive result as a win.
 
 ---
 

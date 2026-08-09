@@ -12,11 +12,12 @@
 
 > **Satisfies:** `PROD-PLAN-005`, `PROD-REL-001`, `PROD-REL-002` — Product obligations are
 > defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). The reusable
-> go/no-go _shape_ — what a decision record must name, how risk acceptance must expire, what
-> counts as deterministic no-go — is central, and the template is
+> go/no-go _shape_ — what a decision record must name and how risk acceptance must be owned
+> and expire — is central, and the template is
 > [`templates/go-no-go-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/go-no-go-record.md).
-> What remains here is the dated v1.0 record: the criteria actually applied, the launch-day
-> plan, and the rollback triggers.
+> Which specific conditions count as no-go for Finance is **not** central; those thresholds
+> are local and are retained below, along with the dated v1.0 record, the launch-day plan,
+> and the rollback triggers.
 
 ## Executive Summary
 

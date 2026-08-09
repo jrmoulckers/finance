@@ -160,12 +160,20 @@ Analysis plan:
   - Post-hoc: Tukey HSD for pairwise comparisons
   - Also run: Mann-Whitney U (non-parametric) as robustness check
   - Report: Point estimates, 95% CI, p-values, effect sizes (Cohen's d)
+
+Decision rule for this test (predeclared per PROD-DISC-002):
+  1. If one variant significantly outperforms others (p < 0.05 AND practical significance):
+     → Recommend winner (pending human sign-off)
+  2. If no significant difference:
+     → Maintain current pricing (Variant A); retest after feature additions
+  3. If results are directional but not significant:
+     → Extend test duration or increase traffic; do NOT make pricing changes
 ```
 
-The decision rule and stop condition are committed in the test's decision record
-before exposure, per `PROD-DISC-002`. `PROD-MET-003` additionally forbids reading
-a directional-but-inconclusive result as a win — an inconclusive test means
-pricing does not change.
+The rule above is Finance's own — central authority requires that a decision rule
+and stop condition exist and be committed before exposure, not what their content
+must be. `PROD-MET-003` additionally forbids reading a directional-but-inconclusive
+result as a win: an inconclusive test means pricing does not change.
 
 ### 2.5 Test Integrity Requirements
 

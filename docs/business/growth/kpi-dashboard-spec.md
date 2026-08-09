@@ -39,6 +39,25 @@ selling" commitment.
 > is subject to. The five lifecycle pillars (acquire, activate, engage, monetize,
 > retain) are simply how this catalog is organized.
 
+> The five lifecycle pillars (acquire, activate, engage, monetize, retain) are how
+> this catalog is organized; central authority defines per-metric records but no
+> taxonomy, so the organizing map is retained below.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    FINANCE APP KPI FRAMEWORK                    │
+├───────────┬───────────┬───────────┬───────────┬─────────────────┤
+│ ACQUIRE   │ ACTIVATE  │ ENGAGE    │ MONETIZE  │ RETAIN          │
+├───────────┼───────────┼───────────┼───────────┼─────────────────┤
+│ Downloads │ Reg. Rate │ DAU/MAU   │ MRR       │ D1/D7/D30 Ret.  │
+│ Installs  │ Onboarding│ Session   │ ARPU      │ Churn Rate      │
+│ Sources   │ Completion│ Frequency │ Conv Rate │ Reactivation    │
+│ CAC       │ 1st Txn   │ Features  │ LTV       │ NPS Proxy       │
+│ WoW Growth│ Time-to-  │ Per-User  │ Trial→    │ Cohort Curves   │
+│           │ Value     │ Actions   │ Paid %    │                 │
+└───────────┴───────────┴───────────┴───────────┴─────────────────┘
+```
+
 ### 1.1 Privacy Constraints on Analytics
 
 All metrics MUST comply with these non-negotiable privacy constraints. Consent

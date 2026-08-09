@@ -44,6 +44,11 @@ Finance-specific commitments layered on top of the central obligations:
 2. **Platform parity in measurement.** The same metric definition and target apply
    to all four platforms; per-platform breakdowns exist for debugging, not for
    separate goals.
+3. **Leading indicators are prioritized over lagging ones.** Activation rate and
+   feature adoption predict future outcomes; total-user counts describe past ones.
+   Central authority requires each metric to state the decision it informs
+   (`PROD-MET-001`) but does not rank predictive against descriptive metrics —
+   this ordering is a Finance choice and is retained here deliberately.
 
 ---
 
@@ -234,13 +239,25 @@ that needs investigation.
 
 ## 4. NPS Measurement
 
-> NPS survey mechanics — question design, delivery cadence, sampling, and
-> non-incentivization — are generic method. Interpretation obligations are
-> `PROD-MET-003` (report uncertainty, limitations, and material segments before
-> deciding); collection is bounded by `PROD-MET-002`. Recorded below is only
-> Finance's instance: our targets by segment and the actions we bind to them.
+> Central authority governs how NPS results are **interpreted** (`PROD-MET-003` —
+> report uncertainty, limitations, guardrails, and material segments before
+> deciding) and how collection is **bounded** (`PROD-MET-002`). It does **not**
+> define survey-instrument design — question wording, follow-up branching,
+> delivery cadence, or sampling. That substance has no central home, so it is
+> retained here in full as Finance's own instrument.
 
-### 4.1 Survey Parameters
+### 4.1 Survey Design
+
+**Core Question:** "How likely are you to recommend Finance to a friend or
+colleague?" (0–10 scale)
+
+**Follow-up (conditional):**
+
+- Promoters (9–10): "What do you love most about Finance?"
+- Passives (7–8): "What would make Finance a 10 for you?"
+- Detractors (0–6): "What's the biggest issue holding you back?"
+
+### 4.2 Survey Parameters
 
 | Parameter          | Value                                       |
 | ------------------ | ------------------------------------------- |
@@ -252,7 +269,7 @@ that needs investigation.
 | Incentive          | None (to avoid bias)                        |
 | Sample target      | 10% of MAU per quarter                      |
 
-### 4.2 NPS Targets
+### 4.3 NPS Targets
 
 | Segment       | Target NPS | Good  | Alert |
 | ------------- | ---------- | ----- | ----- |
@@ -264,7 +281,7 @@ that needs investigation.
 | Web users     | 30+        | 20–40 | < 10  |
 | Windows users | 40+        | 30–50 | < 20  |
 
-### 4.3 NPS Action Protocol
+### 4.4 NPS Action Protocol
 
 | NPS Score | Action                                                      |
 | --------- | ----------------------------------------------------------- |
@@ -273,12 +290,14 @@ that needs investigation.
 | 10–29     | Concerning. Prioritize top detractor themes in next sprint. |
 | < 10      | Critical. Emergency product review. All hands on feedback.  |
 
-### 4.4 Qualitative Feedback Themes
+### 4.5 Qualitative Feedback Analysis
 
-Finance-specific theme categories tracked for trend: performance, features,
-pricing, privacy, UX. Top themes feed sprint planning as P1/P2 issues. Reporting
-them observes `PROD-MET-003` — themes are reported with sample size and
-limitations, not as standalone conclusions.
+Central authority does not define qualitative analysis method, so Finance's is
+retained: categorize open-ended responses into themes monthly, track the top five
+themes over time for trend, using the categories performance, features, pricing,
+privacy, and UX. Top themes feed sprint planning as P1/P2 issues. Reporting them
+observes `PROD-MET-003` — themes are reported with sample size and limitations,
+not as standalone conclusions.
 
 ---
 
@@ -312,11 +331,12 @@ limitations, not as standalone conclusions.
 | Conversion collapse | Trial-to-paid < 3% for 14 days     | Email         | 48 hours      |
 | Platform anomaly    | Any platform metric diverges 30%+  | Slack         | 24 hours      |
 
-### 5.3 Review Cadence
+### 5.3 Weekly Metrics Review Cadence
 
-Weekly and monthly review cadence is the local instance of `PROD-MET-003`
-(interpret honestly) and `PROD-PLAN-004` (groom on a declared cadence). Every
-readout carries definition version, window, sample and missingness, and guardrail
+Review cadence for **metrics** is not a central obligation — `PROD-PLAN-004`
+declares a cadence for backlog grooming, not for measurement review — so Finance's
+cadence is retained in full. `PROD-MET-003` governs the readout itself: every
+review carries definition version, window, sample and missingness, and guardrail
 context before a decision is drawn from it.
 
 | Day       | Activity                                            |
@@ -325,8 +345,19 @@ context before a decision is drawn from it.
 | Wednesday | Mid-week engagement check; A/B test progress review |
 | Friday    | Weekly metrics summary; publish to team             |
 
-Monthly business review covers growth, engagement, retention, revenue, quality,
-and per-platform health across the same catalog definitions.
+### 5.4 Monthly Business Review Metrics
+
+| Section         | Metrics Reviewed                                |
+| --------------- | ----------------------------------------------- |
+| Growth          | New users, growth rate, channel mix, CAC        |
+| Engagement      | DAU/MAU, session metrics, feature adoption      |
+| Retention       | D1/D7/D30 curves, cohort analysis, churn trends |
+| Revenue         | MRR, ARPU, LTV, conversion funnel, plan mix     |
+| Quality         | Crash rate, store rating, NPS, support tickets  |
+| Platform health | Per-platform breakdown of all above metrics     |
+
+All rows resolve against the catalog definitions
+([KPI Dashboard Spec](kpi-dashboard-spec.md) §2).
 
 ---
 
