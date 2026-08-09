@@ -51,6 +51,29 @@ on:
         required: false
         default: false
         type: boolean
+    secrets:
+      BANK_ENCRYPTION_KEY:
+        required: false
+      DEPLOY_HOST:
+        required: false
+      DEPLOY_SSH_KEY:
+        required: false
+      DEPLOY_USER:
+        required: false
+      MX_WEBHOOK_SECRET:
+        required: false
+      PLAID_CLIENT_ID:
+        required: false
+      PLAID_SECRET:
+        required: false
+      POWERSYNC_URL:
+        required: false
+      SENTRY_DSN:
+        required: false
+      SUPABASE_ANON_KEY:
+        required: false
+      SUPABASE_URL:
+        required: false
   workflow_dispatch:
     inputs:
       version:
@@ -107,11 +130,7 @@ concurrency:
   group: deploy-production-v3
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
-permissions:
-  contents: write
-  checks: read
-  statuses: read
-  deployments: write
+permissions: {}
 
 env:
   ENVIRONMENT: production
@@ -122,6 +141,8 @@ jobs:
     name: Prepare Deployment
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
       sha_short: ${{ steps.resolve.outputs.sha_short }}
@@ -330,6 +351,8 @@ jobs:
     if: needs.prepare.outputs.rollback != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout at deploy version
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -399,6 +422,9 @@ jobs:
       (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      deployments: write
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
@@ -506,6 +532,9 @@ jobs:
       (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      deployments: write
     environment:
       name: production
     steps:
@@ -639,6 +668,7 @@ jobs:
       (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions: {}
     # NOTE: deliberately NOT scoped to `environment: production`. This job only
     # curls the already-public production URL to verify the deploy landed; it
     # performs no deployment and consumes no environment-scoped secrets. When it
@@ -729,6 +759,9 @@ jobs:
       needs.post-deploy-smoke.result == 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      deployments: write
     environment:
       name: production
     steps:
@@ -899,6 +932,10 @@ jobs:
       (needs.auto-rollback.result == 'skipped' || needs.auto-rollback.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment:
+      name: release
+    permissions:
+      contents: write
     steps:
       - name: Checkout deployed commit
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -990,6 +1027,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions: {}
     steps:
       - name: Deployment audit trail
         run: |

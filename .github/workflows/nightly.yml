@@ -70,6 +70,7 @@ env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
   K6_VERSION: '0.54.0'
+  K6_LINUX_AMD64_SHA256: c7f03434854f837b6790ee81572e4b0f955241974c79a43cbb9f8d0fef069589
 
 jobs:
   web-build:
@@ -273,7 +274,7 @@ jobs:
           uploadArtifacts: true
           runs: 3
       - name: Lighthouse Budget Check
-        run: npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json
+        run: npx --yes @lhci/cli@0.15.1 assert --config=apps/web/lighthouserc-budget.json
 
   web-nightly-issue:
     name: Open Web Nightly Issue
@@ -322,33 +323,63 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install k6
         run: |
-          curl -fsSL "https://github.com/grafana/k6/releases/download/v${K6_VERSION}/k6-v${K6_VERSION}-linux-amd64.tar.gz" | tar xz --strip-components=1
-          sudo mv k6 /usr/local/bin/k6
+          set -euo pipefail
+          archive="$RUNNER_TEMP/k6-v${K6_VERSION}-linux-amd64.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --proto-redir '=https' \
+            "https://github.com/grafana/k6/releases/download/v${K6_VERSION}/k6-v${K6_VERSION}-linux-amd64.tar.gz" \
+            --output "$archive"
+          printf '%s  %s\n' "$K6_LINUX_AMD64_SHA256" "$archive" | sha256sum --check --strict
+          install_dir="$RUNNER_TEMP/k6"
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" --strip-components=1 --directory "$install_dir"
+          sudo install -m 0755 "$install_dir/k6" /usr/local/bin/k6
       - name: Resolve target URL
         id: target
+        env:
+          DISPATCH_TARGET_URL: ${{ github.event.inputs.target_url }}
+          STAGING_URL: ${{ secrets.STAGING_URL }}
         run: |
-          URL="${{ github.event.inputs.target_url || secrets.STAGING_URL || '' }}"
+          set -euo pipefail
+          URL="${DISPATCH_TARGET_URL:-${STAGING_URL:-}}"
           if [ -z "$URL" ]; then
             echo "url=http://localhost:3000" >> "$GITHUB_OUTPUT"
             echo "has_real_target=false" >> "$GITHUB_OUTPUT"
           else
+            [[ "$URL" =~ ^https://[^[:space:]@/]+(:[0-9]+)?(/[^[:space:]]*)?$ ]] ||
+              { echo "::error::target_url must be credential-free HTTPS"; exit 1; }
             echo "url=$URL" >> "$GITHUB_OUTPUT"
             echo "has_real_target=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Create k6 scripts
+        env:
+          BASE_URL: ${{ steps.target.outputs.url }}
+          DURATION: ${{ github.event.inputs.duration || '2m' }}
+          VUS: ${{ github.event.inputs.vus || '50' }}
         run: |
+          set -euo pipefail
+          [[ "$VUS" =~ ^[0-9]+$ ]] && (( VUS >= 1 && VUS <= 500 )) ||
+            { echo "::error::vus must be an integer from 1 through 500"; exit 1; }
+          [[ "$DURATION" =~ ^[1-9][0-9]{0,2}[smh]$ ]] ||
+            { echo "::error::duration must be 1-999 followed by s, m, or h"; exit 1; }
           mkdir -p tools/load-tests
-          cat > tools/load-tests/api.js <<'SCRIPT'
-          import http from 'k6/http';
-          import { check, sleep } from 'k6';
-          const BASE_URL = '${{ steps.target.outputs.url }}';
-          export const options = { vus: Number('${{ github.event.inputs.vus || '50' }}'), duration: '${{ github.event.inputs.duration || '2m' }}' };
-          export default function () {
-            const res = http.get(`${BASE_URL}/api/health`);
-            check(res, { 'health ok': (r) => r.status < 500 });
-            sleep(1);
-          }
-          SCRIPT
+          node <<'NODE' > tools/load-tests/api.js
+          const baseUrl = JSON.stringify(process.env.BASE_URL);
+          const duration = JSON.stringify(process.env.DURATION);
+          const vus = Number(process.env.VUS);
+          process.stdout.write([
+            "import http from 'k6/http';",
+            "import { check, sleep } from 'k6';",
+            `const BASE_URL = ${baseUrl};`,
+            `export const options = { vus: ${vus}, duration: ${duration} };`,
+            'export default function () {',
+            '  const res = http.get(`${BASE_URL}/api/health`);',
+            "  check(res, { 'health ok': (r) => r.status < 500 });",
+            '  sleep(1);',
+            '}',
+            '',
+          ].join('\n'));
+          NODE
       - name: Run k6 load tests
         id: k6
         run: |

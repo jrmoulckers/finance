@@ -13,15 +13,18 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   version:
     name: Version & Release
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment:
+      name: release
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout

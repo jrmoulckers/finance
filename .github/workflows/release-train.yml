@@ -67,9 +67,7 @@ concurrency:
   group: release-train
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -79,6 +77,8 @@ jobs:
     name: Prepare Release
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
       current_version: ${{ steps.version.outputs.current }}
       next_version: ${{ steps.version.outputs.next }}
@@ -88,6 +88,22 @@ jobs:
       is_dry_run: ${{ github.event.inputs.dry_run || 'false' }}
 
     steps:
+      - name: Validate release inputs
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          PRERELEASE_TAG: ${{ github.event.inputs.prerelease_tag || 'beta' }}
+          RELEASE_TYPE: ${{ github.event.inputs.release_type || 'patch' }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE_TYPE" in patch|minor|major|prerelease) ;; *)
+            echo "::error::unsupported release type"; exit 1 ;;
+          esac
+          [[ "$PRERELEASE_TAG" =~ ^[0-9A-Za-z][0-9A-Za-z.-]{0,31}$ ]] ||
+            { echo "::error::invalid prerelease tag"; exit 1; }
+          case "$DRY_RUN" in true|false) ;; *)
+            echo "::error::dry_run must be boolean"; exit 1 ;;
+          esac
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -112,13 +128,14 @@ jobs:
 
       - name: Determine version
         id: version
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          PRERELEASE_TAG: ${{ github.event.inputs.prerelease_tag || 'beta' }}
+          RELEASE_TYPE: ${{ github.event.inputs.release_type || 'patch' }}
         run: |
           # Get current version from package.json
           CURRENT=$(node -e "console.log(require('./package.json').version)")
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-
-          RELEASE_TYPE="${{ github.event.inputs.release_type || 'patch' }}"
-          PRERELEASE_TAG="${{ github.event.inputs.prerelease_tag || 'beta' }}"
 
           # Calculate next version
           IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT%-*}"
@@ -159,7 +176,7 @@ jobs:
           echo "| Tag | \`$TAG\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Release type | $RELEASE_TYPE |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Changesets pending | ${{ steps.changesets.outputs.changeset_count }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Dry run | ${{ github.event.inputs.dry_run || 'false' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Dry run | $DRY_RUN |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate changelog
         id: changelog
@@ -212,6 +229,11 @@ jobs:
     if: needs.prepare.outputs.is_dry_run != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment:
+      name: release
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       pr_number: ${{ steps.pr.outputs.pr_number }}
       pr_url: ${{ steps.pr.outputs.pr_url }}
@@ -276,6 +298,8 @@ jobs:
           fi
 
       - name: Commit version bump
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release_type || 'patch' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -286,7 +310,7 @@ jobs:
           - Updated changelog
           - Applied changesets
 
-          Release-Type: ${{ github.event.inputs.release_type || 'patch' }}
+          Release-Type: $RELEASE_TYPE
           Triggered-By: @${{ github.actor }}"
 
       - name: Push release branch
@@ -349,6 +373,8 @@ jobs:
     if: github.event_name == 'push' && contains(github.event.head_commit.message, 'chore(release)')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
       is_release: ${{ steps.check.outputs.is_release }}
       version: ${{ steps.check.outputs.version }}
@@ -380,6 +406,10 @@ jobs:
     if: needs.check-release-merge.outputs.is_release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    environment:
+      name: release
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -424,10 +454,14 @@ jobs:
       github.event.inputs.skip_smoke_tests != 'true' &&
       github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/reusable-release-smoke-test.yml
+    permissions:
+      contents: read
     with:
       version: ${{ needs.prepare.outputs.next_version }}
       platforms: 'android,ios,web,windows'
-    secrets: inherit
+    secrets:
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
   # ---------------------------------------------------------------------------
   # Store Metadata: Generate store submission artifacts
@@ -441,6 +475,8 @@ jobs:
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -498,6 +534,7 @@ jobs:
     if: needs.prepare.outputs.is_dry_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions: {}
 
     steps:
       - name: Dry run report

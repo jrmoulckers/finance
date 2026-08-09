@@ -13,7 +13,6 @@ concurrency:
 permissions:
   contents: write
   checks: read
-  statuses: read
   deployments: write
   # Required so the reusable deploy-production.yml call is not rejected at
   # startup: its verify-ci-green job requests actions:read, and a called
@@ -38,4 +37,16 @@ jobs:
         ${{ github.event.workflow_run.head_sha }}
       create_release: true
       auto_rollback: true
-    secrets: inherit
+    # Explicit workflow_call contract: do not expose unrelated repository secrets.
+    secrets:
+      BANK_ENCRYPTION_KEY: ${{ secrets.BANK_ENCRYPTION_KEY }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      MX_WEBHOOK_SECRET: ${{ secrets.MX_WEBHOOK_SECRET }}
+      PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
+      PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
+      POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

@@ -406,7 +406,7 @@ jobs:
 
       - name: Check npm license compliance
         run: |
-          npx license-checker --production --summary --out license-summary.txt 2>/dev/null || {
+          npx --yes license-checker@25.0.1 --production --summary --out license-summary.txt 2>/dev/null || {
             npm ls --all --json 2>/dev/null | node -e "
               const fs = require('fs');
               const data = JSON.parse(fs.readFileSync(0, 'utf8'));
@@ -511,6 +511,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Workflow security regression checks
+        run: |
+          npm run workflow:security:test
+          npm run workflow:security:check
 
       # Always-on lint + format gate (ci-lint.yml is path-filtered and may be
       # skipped, so we re-run the essentials here to guarantee coverage).

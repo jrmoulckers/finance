@@ -218,6 +218,19 @@ Detects hardcoded secrets, runs static code analysis patterns, and checks depend
     node tools/security-scan.js                            # Full scan
     node tools/security-scan.js --secrets-only             # Secret detection only
 
+### `check-workflow-security.mjs` - Privileged workflow regression gate
+
+Checks GitHub Actions workflows for full-SHA action pins, immutable external
+tooling, input-to-shell interpolation, inherited reusable secrets, protected
+release environments, least-privilege job permissions, verified k6 downloads,
+preview secret isolation, and reviewed Finance-local reusable workflow drift.
+
+```bash
+npm run workflow:security:test
+npm run workflow:security:check
+node tools/check-workflow-security.mjs --help
+```
+
 ### `ci-health-dashboard.js` - CI/CD health metrics
 
 Queries GitHub Actions via gh CLI for workflow success rates, build times, and flaky test detection.

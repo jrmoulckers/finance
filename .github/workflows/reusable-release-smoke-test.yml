@@ -13,6 +13,10 @@
 # jrmoulckers/.github#60. Finance calls this file only via a relative
 # `uses: ./.github/workflows/...` path and does not consume the backbone
 # version under either name.
+# Canonical comparison: jrmoulckers/.github@97ff60ec21321563fa0fc7ba80015261e7dcd6fa
+# Finance delta: the canonical workflow is a single web smoke job; this workflow
+# validates four native-first platforms and therefore cannot migrate without
+# dropping Android, iOS, and Windows release coverage.
 #
 # Called by: rc-branch-tag.yml, release-train.yml
 #
@@ -38,17 +42,49 @@ on:
         required: false
         type: string
         default: ''
+    secrets:
+      TURBO_TEAM:
+        required: false
+      TURBO_TOKEN:
+        required: false
     outputs:
       result:
         description: 'Overall smoke test result (pass/fail)'
         value: ${{ jobs.summary.outputs.result }}
 
+permissions: {}
+
 jobs:
+  validate:
+    name: Validate smoke inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Validate inputs
+        env:
+          ARTIFACT_RUN_ID: ${{ inputs.artifact-run-id }}
+          PLATFORMS: ${{ inputs.platforms }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+([.-][0-9A-Za-z.-]+)?$ ]] ||
+            { echo "::error::version must be SemVer-compatible"; exit 1; }
+          [[ "$PLATFORMS" =~ ^(android|ios|web|windows)(,(android|ios|web|windows))*$ ]] ||
+            { echo "::error::platforms must be a comma-separated supported platform list"; exit 1; }
+          if [[ -n "$ARTIFACT_RUN_ID" ]]; then
+            [[ "$ARTIFACT_RUN_ID" =~ ^[1-9][0-9]{0,19}$ ]] ||
+              { echo "::error::artifact-run-id must be a positive integer"; exit 1; }
+          fi
+
   # ── Android Smoke Tests ──────────────────────────────────────────
   android:
     name: Android Smoke
     if: contains(inputs.platforms, 'android')
+    needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -95,8 +131,10 @@ jobs:
 
       - name: Smoke test summary
         if: always()
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          echo "### 🤖 Android Smoke Test — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🤖 Android Smoke Test — v$VERSION" >> "$GITHUB_STEP_SUMMARY"
           echo "- Unit tests: ✅" >> "$GITHUB_STEP_SUMMARY"
           echo "- APK build: ✅" >> "$GITHUB_STEP_SUMMARY"
 
@@ -104,7 +142,10 @@ jobs:
   ios:
     name: iOS Smoke
     if: contains(inputs.platforms, 'ios')
+    needs: validate
     runs-on: macos-15
+    permissions:
+      contents: read
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -147,8 +188,10 @@ jobs:
 
       - name: Smoke test summary
         if: always()
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          echo "### 🍎 iOS Smoke Test — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🍎 iOS Smoke Test — v$VERSION" >> "$GITHUB_STEP_SUMMARY"
           echo "- Build: ✅" >> "$GITHUB_STEP_SUMMARY"
           echo "- Tests: ✅" >> "$GITHUB_STEP_SUMMARY"
 
@@ -156,7 +199,10 @@ jobs:
   web:
     name: Web Smoke
     if: contains(inputs.platforms, 'web')
+    needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 10
     env:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
@@ -196,8 +242,10 @@ jobs:
 
       - name: Smoke test summary
         if: always()
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          echo "### 🌐 Web Smoke Test — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🌐 Web Smoke Test — v$VERSION" >> "$GITHUB_STEP_SUMMARY"
           echo "- Build: ✅" >> "$GITHUB_STEP_SUMMARY"
           echo "- Tests: ✅" >> "$GITHUB_STEP_SUMMARY"
 
@@ -205,7 +253,10 @@ jobs:
   windows:
     name: Windows Smoke
     if: contains(inputs.platforms, 'windows')
+    needs: validate
     runs-on: windows-latest
+    permissions:
+      contents: read
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -231,35 +282,44 @@ jobs:
       - name: Smoke test summary
         if: always()
         shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          echo "### 🪟 Windows Smoke Test — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🪟 Windows Smoke Test — v$VERSION" >> "$GITHUB_STEP_SUMMARY"
           echo "- Build: ✅" >> "$GITHUB_STEP_SUMMARY"
           echo "- Tests: ✅" >> "$GITHUB_STEP_SUMMARY"
 
   # ── Summary ──────────────────────────────────────────────────────
   summary:
     name: Smoke Test Summary
-    needs: [android, ios, web, windows]
+    needs: [validate, android, ios, web, windows]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions: {}
     outputs:
       result: ${{ steps.result.outputs.result }}
     steps:
       - name: Evaluate results
         id: result
+        env:
+          ANDROID: ${{ needs.android.result }}
+          IOS: ${{ needs.ios.result }}
+          VALIDATE: ${{ needs.validate.result }}
+          VERSION: ${{ inputs.version }}
+          WEB: ${{ needs.web.result }}
+          WINDOWS: ${{ needs.windows.result }}
         run: |
-          ANDROID="${{ needs.android.result }}"
-          IOS="${{ needs.ios.result }}"
-          WEB="${{ needs.web.result }}"
-          WINDOWS="${{ needs.windows.result }}"
-
-          echo "### 🧪 Smoke Test Results — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🧪 Smoke Test Results — v$VERSION" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Platform | Result |" >> "$GITHUB_STEP_SUMMARY"
           echo "|----------|--------|" >> "$GITHUB_STEP_SUMMARY"
 
           FAILED=false
+          if [ "$VALIDATE" != "success" ]; then
+            echo "::error::Smoke input validation did not pass"
+            FAILED=true
+          fi
           for PLATFORM in android ios web windows; do
             RESULT_VAR=$(echo "$PLATFORM" | tr '[:lower:]' '[:upper:]')
             RESULT="${!RESULT_VAR}"
