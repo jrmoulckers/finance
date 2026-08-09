@@ -48,25 +48,65 @@ concurrency:
   group: rc-${{ github.event.inputs.version }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
+  validate:
+    name: Validate RC inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      base_ref: ${{ steps.validate.outputs.base_ref }}
+      rc_number: ${{ steps.validate.outputs.rc_number }}
+      version: ${{ steps.validate.outputs.version }}
+    steps:
+      - name: Validate inputs
+        id: validate
+        env:
+          BASE_REF: ${{ inputs.base_ref }}
+          RC_NUMBER: ${{ inputs.rc_number }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]] ||
+            { echo "::error::version must be MAJOR.MINOR.PATCH"; exit 1; }
+          [[ "$RC_NUMBER" =~ ^[0-9]+$ ]] && (( RC_NUMBER <= 9999 )) ||
+            { echo "::error::rc_number must be from 0 through 9999"; exit 1; }
+          [[ ${#BASE_REF} -le 128 && "$BASE_REF" != *..* && "$BASE_REF" != *'@{'* ]] ||
+            { echo "::error::unsafe base_ref"; exit 1; }
+          if [[ ! "$BASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            candidate="${BASE_REF#refs/heads/}"
+            candidate="${candidate#refs/tags/}"
+            git check-ref-format --branch "$candidate" >/dev/null ||
+              { echo "::error::base_ref is not a safe Git ref"; exit 1; }
+          fi
+          echo "base_ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+          echo "rc_number=$RC_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
   # ── Gate ──────────────────────────────────────────────────────────
   approve:
     name: RC Approval Gate
+    needs: validate
     runs-on: ubuntu-latest
-    environment: staging
+    permissions: {}
     steps:
-      - run: echo "✅ RC creation approved for v${{ inputs.version }}"
+      - env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: echo "RC inputs validated for v$VERSION"
 
   # ── Create RC ────────────────────────────────────────────────────
   create-rc:
     name: Create Release Candidate
-    needs: approve
+    needs: [validate, approve]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment:
+      name: staging
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       rc_version: ${{ steps.rc.outputs.rc_version }}
       rc_tag: ${{ steps.rc.outputs.rc_tag }}
@@ -76,7 +116,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ inputs.base_ref }}
+          ref: ${{ needs.validate.outputs.base_ref }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -91,10 +131,12 @@ jobs:
 
       - name: Determine RC number
         id: rc
+        env:
+          BASE_REF: ${{ needs.validate.outputs.base_ref }}
+          RC_INPUT: ${{ needs.validate.outputs.rc_number }}
+          VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          VERSION="${{ inputs.version }}"
           BRANCH="release/v${VERSION}"
-          RC_INPUT=${{ inputs.rc_number }}
 
           if [ "$RC_INPUT" -gt 0 ] 2>/dev/null; then
             RC_NUM="$RC_INPUT"
@@ -123,7 +165,7 @@ jobs:
           echo "| Version | \`${RC_VERSION}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Tag | \`${RC_TAG}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Branch | \`${BRANCH}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Base | \`${{ inputs.base_ref }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Base | \`$BASE_REF\` |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create or update release branch
         run: |
@@ -217,10 +259,14 @@ jobs:
     needs: create-rc
     if: inputs.skip_smoke_tests != true
     uses: ./.github/workflows/reusable-release-smoke-test.yml
+    permissions:
+      contents: read
     with:
       version: ${{ needs.create-rc.outputs.rc_version }}
       platforms: 'android,ios,web,windows'
-    secrets: inherit
+    secrets:
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
   # ── Summary ──────────────────────────────────────────────────────
   rc-summary:
@@ -229,6 +275,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions: {}
     steps:
       - name: Summary
         run: |

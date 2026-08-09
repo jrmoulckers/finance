@@ -90,8 +90,7 @@ concurrency:
   group: release-platform-${{ github.ref_name || github.run_id }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   prepare:
@@ -108,18 +107,77 @@ jobs:
       dry_run: ${{ steps.meta.outputs.dry_run }}
       publish_release: ${{ steps.meta.outputs.publish_release }}
       store_metadata: ${{ steps.meta.outputs.store_metadata }}
+      build_type: ${{ steps.meta.outputs.build_type }}
+      web_environment: ${{ steps.meta.outputs.web_environment }}
       matrix: ${{ steps.meta.outputs.matrix }}
+    permissions:
+      contents: read
     steps:
+      - name: Validate release inputs
+        id: validate
+        env:
+          BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
+          EVENT_NAME: ${{ github.event_name }}
+          GENERATE_STORE_METADATA: ${{ github.event.inputs.generate_store_metadata || 'true' }}
+          PLATFORM: ${{ github.event.inputs.platform || 'all' }}
+          RAW_VERSION: ${{ github.event.inputs.version }}
+          SOURCE_REF: ${{ github.event.inputs.source_ref || 'main' }}
+          WEB_ENVIRONMENT: ${{ github.event.inputs.web_environment || 'staging' }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            SOURCE_REF="$GITHUB_REF"
+          fi
+          if [[ -n "$RAW_VERSION" ]]; then
+            [[ "$RAW_VERSION" =~ ^v?[0-9]+[.][0-9]+[.][0-9]+([.-][0-9A-Za-z.-]+)?$ ]] ||
+              { echo "::error::version must be SemVer-compatible"; exit 1; }
+          fi
+          case "$PLATFORM" in all|web|android|ios|windows) ;; *)
+            echo "::error::unsupported platform"; exit 1 ;;
+          esac
+          case "$BUILD_TYPE" in release|debug) ;; *)
+            echo "::error::unsupported build type"; exit 1 ;;
+          esac
+          case "$WEB_ENVIRONMENT" in staging|production) ;; *)
+            echo "::error::unsupported web environment"; exit 1 ;;
+          esac
+          case "$DRY_RUN" in true|false) ;; *)
+            echo "::error::dry_run must be boolean"; exit 1 ;;
+          esac
+          case "$GENERATE_STORE_METADATA" in true|false) ;; *)
+            echo "::error::generate_store_metadata must be boolean"; exit 1 ;;
+          esac
+          [[ ${#SOURCE_REF} -le 128 && "$SOURCE_REF" != *..* && "$SOURCE_REF" != *'@{'* ]] ||
+            { echo "::error::unsafe source_ref"; exit 1; }
+          if [[ ! "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            candidate="${SOURCE_REF#refs/heads/}"
+            candidate="${candidate#refs/tags/}"
+            git check-ref-format --branch "$candidate" >/dev/null ||
+              { echo "::error::source_ref is not a safe Git ref"; exit 1; }
+          fi
+          echo "source_ref=$SOURCE_REF" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-          ref: ${{ github.event.inputs.source_ref || github.ref }}
+          ref: ${{ steps.validate.outputs.source_ref }}
 
       - name: Extract version metadata
         id: meta
+        env:
+          BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
+          DISPATCH_DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
+          DISPATCH_PLATFORM: ${{ github.event.inputs.platform || 'all' }}
+          DISPATCH_SOURCE_REF: ${{ steps.validate.outputs.source_ref }}
+          DISPATCH_STORE_METADATA: ${{ github.event.inputs.generate_store_metadata || 'true' }}
+          EVENT_NAME: ${{ github.event_name }}
+          RAW_VERSION: ${{ github.event.inputs.version }}
+          WEB_ENVIRONMENT: ${{ github.event.inputs.web_environment || 'staging' }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "push" ]; then
             TAG="${GITHUB_REF#refs/tags/}"
             VERSION="${TAG#v}"
             PLATFORM_FILTER="all"
@@ -128,18 +186,17 @@ jobs:
             PUBLISH_RELEASE=true
             STORE_METADATA=true
           else
-            RAW_VERSION="${{ github.event.inputs.version }}"
             if [ -n "$RAW_VERSION" ]; then
               VERSION="${RAW_VERSION#v}"
             else
               VERSION=$(node -e "console.log(require('./package.json').version)")
             fi
             TAG="v${VERSION}"
-            PLATFORM_FILTER="${{ github.event.inputs.platform || 'all' }}"
-            SOURCE_REF="${{ github.event.inputs.source_ref || 'main' }}"
-            DRY_RUN="${{ github.event.inputs.dry_run || 'true' }}"
+            PLATFORM_FILTER="$DISPATCH_PLATFORM"
+            SOURCE_REF="$DISPATCH_SOURCE_REF"
+            DRY_RUN="$DISPATCH_DRY_RUN"
             PUBLISH_RELEASE=false
-            STORE_METADATA="${{ github.event.inputs.generate_store_metadata || 'true' }}"
+            STORE_METADATA="$DISPATCH_STORE_METADATA"
           fi
 
           IFS='.-' read -r MAJOR MINOR PATCH _EXTRA <<< "$VERSION"
@@ -162,6 +219,8 @@ jobs:
           echo "dry_run=$DRY_RUN" >> "$GITHUB_OUTPUT"
           echo "publish_release=$PUBLISH_RELEASE" >> "$GITHUB_OUTPUT"
           echo "store_metadata=$STORE_METADATA" >> "$GITHUB_OUTPUT"
+          echo "build_type=$BUILD_TYPE" >> "$GITHUB_OUTPUT"
+          echo "web_environment=$WEB_ENVIRONMENT" >> "$GITHUB_OUTPUT"
 
           # Build a dynamic job matrix filtered by the requested platform. The
           # build-platform job cannot reference the matrix context in its if:,
@@ -186,6 +245,8 @@ jobs:
       matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 50
+    environment:
+      name: release
     permissions:
       contents: read
       id-token: write
@@ -263,17 +324,19 @@ jobs:
         if: matrix.platform == 'android'
         shell: bash
         env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_FILE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && format('{0}/release-keystore.jks', github.workspace) || '' }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          BUILD_TYPE: ${{ needs.prepare.outputs.build_type }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          VERSION_CODE: ${{ needs.prepare.outputs.version_code }}
         run: |
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/release-keystore.jks"
+          set -euo pipefail
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/release-keystore.jks"
           fi
-          VERSION="${{ needs.prepare.outputs.version }}"
-          VERSION_CODE="${{ needs.prepare.outputs.version_code }}"
-          BUILD_TYPE="${{ github.event.inputs.build_type || 'release' }}"
           if [ "$BUILD_TYPE" = "release" ]; then
             ./gradlew :apps:android:bundleRelease :apps:android:assembleRelease :apps:android:testReleaseUnitTest \
               -PversionName="$VERSION" \
@@ -296,12 +359,14 @@ jobs:
       - name: Build iOS artifacts
         if: matrix.platform == 'ios'
         shell: bash
+        env:
+          XCODE_CONFIGURATION: ${{ needs.prepare.outputs.build_type == 'debug' && 'Debug' || 'Release' }}
         run: |
           cd apps/ios
           xcodebuild -resolvePackageDependencies -scheme FinanceApp -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" 2>&1 | tail -10
           xcodebuild build \
             -scheme FinanceApp \
-            -configuration "${{ github.event.inputs.build_type == 'debug' && 'Debug' || 'Release' }}" \
+            -configuration "$XCODE_CONFIGURATION" \
             -destination 'generic/platform=iOS' \
             -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
             -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
@@ -319,7 +384,7 @@ jobs:
             2>&1 | tail -30
           xcodebuild archive \
             -scheme FinanceApp \
-            -configuration "${{ github.event.inputs.build_type == 'debug' && 'Debug' || 'Release' }}" \
+            -configuration "$XCODE_CONFIGURATION" \
             -destination 'generic/platform=iOS' \
             -archivePath "${{ github.workspace }}/release-artifacts/Finance.xcarchive" \
             -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
@@ -351,7 +416,7 @@ jobs:
           npm test -w apps/web
           npx -w apps/web playwright install --with-deps chromium
           npx -w apps/web playwright test --project=chromium
-          npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json || true
+          npx --yes @lhci/cli@0.15.1 assert --config=apps/web/lighthouserc-budget.json || true
           tar -czf "release-artifacts/finance-web-${{ needs.prepare.outputs.version }}.tar.gz" -C apps/web dist
           (cd apps/web && zip -r -q "${{ github.workspace }}/release-artifacts/finance-web-${{ needs.prepare.outputs.version }}.zip" dist)
           (cd release-artifacts && sha256sum * > checksums-web.sha256)
@@ -362,11 +427,17 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          WEB_ENVIRONMENT: ${{ needs.prepare.outputs.web_environment }}
         run: |
+          set -euo pipefail
           if [ -n "$VERCEL_TOKEN" ]; then
-            npm i -g vercel@latest
+            npm install --global vercel@58.9.0
             DEPLOY_LOG="$RUNNER_TEMP/vercel-release-platform.log"
-            vercel deploy --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID" ${{ github.event.inputs.web_environment == 'production' && '--prod' || '' }} --yes --archive=tgz apps/web/dist >"$DEPLOY_LOG" 2>&1 || {
+            PROD_ARGS=()
+            if [ "$WEB_ENVIRONMENT" = "production" ]; then
+              PROD_ARGS+=(--prod)
+            fi
+            vercel deploy --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID" "${PROD_ARGS[@]}" --yes --archive=tgz apps/web/dist >"$DEPLOY_LOG" 2>&1 || {
               cat "$DEPLOY_LOG"
               exit 1
             }
@@ -392,6 +463,9 @@ jobs:
       - name: Sign Windows MSI
         if: matrix.platform == 'windows' && env.HAS_WINDOWS_SIGNING_SECRETS == 'true'
         shell: pwsh
+        env:
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          WINDOWS_SIGNING_CERT_BASE64: ${{ secrets.WINDOWS_SIGNING_CERT_BASE64 }}
         run: |
           $sdkRoot = 'C:\Program Files (x86)\Windows Kits\10\bin'
           $signtool = Get-ChildItem -Path $sdkRoot -Directory |
@@ -401,12 +475,12 @@ jobs:
             Where-Object { Test-Path $_ } |
             Select-Object -First 1
           if (-not $signtool) { throw 'signtool.exe not found' }
-          $certBytes = [System.Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_CERT_BASE64 }}")
+          $certBytes = [System.Convert]::FromBase64String($env:WINDOWS_SIGNING_CERT_BASE64)
           $certPath = Join-Path $env:RUNNER_TEMP 'signing-cert.pfx'
           [System.IO.File]::WriteAllBytes($certPath, $certBytes)
           try {
             Get-ChildItem -Path release-artifacts -Filter '*.msi' | ForEach-Object {
-              & $signtool sign /f $certPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /fd sha256 /tr http://timestamp.digicert.com /td sha256 $_.FullName
+              & $signtool sign /f $certPath /p $env:WINDOWS_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $_.FullName
             }
           } finally {
             Remove-Item $certPath -Force -ErrorAction SilentlyContinue
@@ -414,7 +488,7 @@ jobs:
 
       - name: Attest build provenance
         if: needs.prepare.outputs.dry_run != 'true'
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
           subject-path: release-artifacts/*
 
@@ -437,6 +511,8 @@ jobs:
     if: needs.prepare.outputs.publish_release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment:
+      name: release
     permissions:
       contents: write
       id-token: write
@@ -478,7 +554,7 @@ jobs:
           rm -f checksums-android.sha256 checksums-ios.sha256 checksums-web.sha256 checksums-windows.sha256
 
       - name: Attest release bundle
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
           subject-path: all-artifacts/*
 
@@ -499,6 +575,8 @@ jobs:
     if: needs.prepare.outputs.store_metadata == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

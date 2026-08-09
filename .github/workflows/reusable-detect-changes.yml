@@ -26,6 +26,12 @@
 # Never add `paths:` to a required-check workflow's `on:` — gate via this detector
 # instead. See docs/ops/ci-workflow.md and
 # .github/instructions/workflows.instructions.md.
+#
+# Canonical comparison: jrmoulckers/.github@97ff60ec21321563fa0fc7ba80015261e7dcd6fa
+# `reusable-change-detection.yml` accepts validated literal JSON prefixes and
+# exact SHAs. Finance intentionally keeps this dorny/paths-filter adapter because
+# required-check callers already pass glob-based YAML filters. Migration is not
+# parity-safe without changing every caller's filter contract.
 # =============================================================================
 name: Reusable - Detect Relevant Changes
 

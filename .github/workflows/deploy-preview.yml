@@ -44,31 +44,22 @@ concurrency:
   group: preview-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  pull-requests: write
-  deployments: write
-
-env:
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+permissions: {}
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Deploy: Build and deploy preview
+  # Build: Run PR-controlled code without secrets or write-capable permissions.
   # ---------------------------------------------------------------------------
-  deploy-preview:
-    name: Deploy Preview
-    if: github.event.action != 'closed'
+  build-preview:
+    name: Build Preview
+    if: >-
+      github.event.action != 'closed' &&
+      (github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment:
-      name: preview
-      url: ${{ steps.deploy.outputs.url }}
-
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-      deployment_id: ${{ steps.deploy.outputs.deployment_id }}
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -91,11 +82,51 @@ jobs:
           NODE_ENV: production
           VITE_APP_VERSION: pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}-${{ github.sha }}
           VITE_ENVIRONMENT: preview
-          VITE_BETA_ALLOWED_EMAILS: ${{ secrets.BETA_ALLOWED_EMAILS }}
         run: |
           BUILD_START=$SECONDS
           npm run build -w apps/web
           echo "build_duration=$(( SECONDS - BUILD_START ))" >> "$GITHUB_OUTPUT"
+
+      - name: Reject unsafe preview artifacts
+        run: |
+          set -euo pipefail
+          test -d apps/web/dist
+          if find apps/web/dist -type l -print -quit | grep -q .; then
+            echo "::error::Preview artifacts must not contain symbolic links"
+            exit 1
+          fi
+
+      - name: Upload preview artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: preview-dist
+          path: apps/web/dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Deploy: Consume inert build output; never check out or execute PR code here.
+  # ---------------------------------------------------------------------------
+  deploy-preview:
+    name: Deploy Preview
+    needs: build-preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      deployments: write
+    environment:
+      name: preview
+      url: ${{ steps.deploy.outputs.url }}
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+      deployment_id: ${{ steps.deploy.outputs.deployment_id }}
+
+    steps:
+      - name: Download preview artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: preview-dist
+          path: apps/web/dist
 
       - name: Deploy to Vercel (preview)
         id: deploy
@@ -104,18 +135,28 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           HEAD_REF: ${{ github.head_ref }}
+          PR_NUM: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number || github.event.inputs.pr_number }}"
-
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::warning::VERCEL_TOKEN not configured — generating placeholder preview URL"
-            echo "url=https://finance-pr-${PR_NUM}.vercel.app" >> "$GITHUB_OUTPUT"
-            echo "deployment_id=dry-run" >> "$GITHUB_OUTPUT"
-            exit 0
+          set -euo pipefail
+          [[ "$PR_NUM" =~ ^[1-9][0-9]{0,9}$ ]] ||
+            { echo "::error::Invalid pull request number"; exit 1; }
+          [[ ${#HEAD_REF} -le 255 && "$HEAD_REF" != *$'\n'* && "$HEAD_REF" != *$'\r'* ]] ||
+            { echo "::error::Invalid head ref"; exit 1; }
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] ||
+            { echo "::error::Invalid source commit SHA"; exit 1; }
+          test -d apps/web/dist
+          if find apps/web/dist -type l -print -quit | grep -q .; then
+            echo "::error::Preview artifacts must not contain symbolic links"
+            exit 1
           fi
 
-          # Install Vercel CLI
-          npm i -g vercel@latest
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN is required for trusted preview deployments"
+            exit 1
+          fi
+
+          npm install --global vercel@58.9.0
 
           # Deploy to preview with PR-specific alias. Use a tempfile so we
           # check the exit code separately from the URL parse — piping into
@@ -128,7 +169,7 @@ jobs:
             --yes \
             --archive=tgz \
             --meta pr="${PR_NUM}" \
-            --meta commit="${{ github.sha }}" \
+            --meta commit="$SOURCE_SHA" \
             --meta branch="$HEAD_REF" \
             apps/web/dist >"$DEPLOY_LOG" 2>&1; then
             echo "::error::Vercel preview deploy failed:"
@@ -136,6 +177,8 @@ jobs:
             exit 1
           fi
           DEPLOY_URL=$(tail -1 "$DEPLOY_LOG")
+          [[ "$DEPLOY_URL" =~ ^https://[A-Za-z0-9.-]+\.vercel\.app/?$ ]] ||
+            { echo "::error::Vercel returned an invalid deployment URL"; exit 1; }
 
           # Set alias for predictable URL
           ALIAS_URL="finance-pr-${PR_NUM}.vercel.app"
@@ -147,18 +190,6 @@ jobs:
           echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
           echo "deployment_id=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Report bundle size
-        id: bundle
-        run: |
-          if [ -d "apps/web/dist" ]; then
-            TOTAL=$(du -sh apps/web/dist/ | cut -f1)
-            JS_SIZE=$(find apps/web/dist -name '*.js' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
-            CSS_SIZE=$(find apps/web/dist -name '*.css' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
-            echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
-            echo "js_kb=$(( JS_SIZE / 1024 ))" >> "$GITHUB_OUTPUT"
-            echo "css_kb=$(( CSS_SIZE / 1024 ))" >> "$GITHUB_OUTPUT"
-          fi
-
   # ---------------------------------------------------------------------------
   # Comment: Post preview URL to PR
   # ---------------------------------------------------------------------------
@@ -168,14 +199,22 @@ jobs:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Find existing comment
         id: find-comment
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
         with:
           script: |
-            const prNumber = ${{ github.event.pull_request.number || github.event.inputs.pr_number }};
+            const prNumber = Number.parseInt(process.env.PR_NUMBER, 10);
+            if (!Number.isSafeInteger(prNumber) || prNumber < 1) {
+              core.setFailed('Invalid pull request number');
+              return;
+            }
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -193,11 +232,23 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           HEAD_REF: ${{ github.head_ref }}
+          PREVIEW_URL: ${{ needs.deploy-preview.outputs.url }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          SOURCE_SHA: ${{ github.sha }}
+          COMMENT_ID: ${{ steps.find-comment.outputs.comment_id }}
         with:
           script: |
-            const prNumber = ${{ github.event.pull_request.number || github.event.inputs.pr_number }};
-            const url = '${{ needs.deploy-preview.outputs.url }}';
-            const sha = '${{ github.sha }}'.slice(0, 7);
+            const prNumber = Number.parseInt(process.env.PR_NUMBER, 10);
+            const url = process.env.PREVIEW_URL;
+            const sha = process.env.SOURCE_SHA.slice(0, 7);
+            if (!Number.isSafeInteger(prNumber) || prNumber < 1) {
+              core.setFailed('Invalid pull request number');
+              return;
+            }
+            if (!/^https:\/\/[A-Za-z0-9.-]+\.vercel\.app\/?$/.test(url)) {
+              core.setFailed('Invalid preview URL');
+              return;
+            }
 
             const body = [
               '<!-- preview-deploy -->',
@@ -214,7 +265,7 @@ jobs:
               '*Updated on every push to this PR. Preview will be removed when the PR is closed.*',
             ].join('\n');
 
-            const commentId = '${{ steps.find-comment.outputs.comment_id }}';
+            const commentId = process.env.COMMENT_ID;
 
             if (commentId) {
               await github.rest.issues.updateComment({
@@ -243,6 +294,8 @@ jobs:
     if: github.event.action != 'closed' && needs.deploy-preview.outputs.url != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     # Non-blocking: preview URL may not be immediately accessible
     continue-on-error: true
 
@@ -252,8 +305,13 @@ jobs:
 
       - name: Wait for deployment
         id: wait
+        env:
+          PREVIEW_URL: ${{ needs.deploy-preview.outputs.url }}
         run: |
-          URL="${{ needs.deploy-preview.outputs.url }}"
+          set -euo pipefail
+          URL="$PREVIEW_URL"
+          [[ "$URL" =~ ^https://[A-Za-z0-9.-]+\.vercel\.app/?$ ]] ||
+            { echo "::error::Invalid preview URL"; exit 1; }
           echo "Waiting for $URL to become accessible..."
 
           for i in $(seq 1 12); do
@@ -281,12 +339,15 @@ jobs:
 
       - name: Lighthouse Summary
         if: always()
+        env:
+          LIGHTHOUSE_OUTCOME: ${{ steps.lighthouse.outcome }}
+          PREVIEW_URL: ${{ needs.deploy-preview.outputs.url }}
         run: |
           echo "### 🔦 Lighthouse Audit (Preview)" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Preview URL:** ${{ needs.deploy-preview.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Preview URL:** $PREVIEW_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.lighthouse.outcome }}" = "success" ]; then
+          if [ "$LIGHTHOUSE_OUTCOME" = "success" ]; then
             echo "✅ Lighthouse audit completed — check artifacts for full report." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "⚠️ Lighthouse audit could not complete (preview may not be accessible)." >> "$GITHUB_STEP_SUMMARY"
@@ -297,17 +358,27 @@ jobs:
   # ---------------------------------------------------------------------------
   cleanup:
     name: Cleanup Preview
-    if: github.event.action == 'closed'
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      deployments: write
+      pull-requests: write
+    environment:
+      name: preview
 
     steps:
       - name: Remove preview deployment
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          PR_NUM: ${{ github.event.pull_request.number }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number }}"
+          set -euo pipefail
+          [[ "$PR_NUM" =~ ^[1-9][0-9]{0,9}$ ]] ||
+            { echo "::error::Invalid pull request number"; exit 1; }
           echo "### 🧹 Preview Cleanup" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
@@ -316,7 +387,7 @@ jobs:
             exit 0
           fi
 
-          npm i -g vercel@latest
+          npm install --global vercel@58.9.0
 
           # Remove the alias
           ALIAS_URL="finance-pr-${PR_NUM}.vercel.app"
@@ -329,9 +400,15 @@ jobs:
 
       - name: Update PR comment
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           script: |
-            const prNumber = ${{ github.event.pull_request.number }};
+            const prNumber = Number.parseInt(process.env.PR_NUMBER, 10);
+            if (!Number.isSafeInteger(prNumber) || prNumber < 1) {
+              core.setFailed('Invalid pull request number');
+              return;
+            }
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
