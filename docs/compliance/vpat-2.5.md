@@ -35,6 +35,12 @@ This report covers the degree of conformance for the following accessibility sta
 - **Not Applicable** — The criterion is not relevant to the product.
 - **Not Evaluated** — The product has not been evaluated against the criterion. This can be used only in WCAG Level AAA.
 
+> **Satisfies:** `PROD-CONTENT-005`, `PROD-COMP-001` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product), pinned to
+> [`3a752c1`](https://github.com/jrmoulckers/product/blob/3a752c11856515a74eb204675d5d5198cac1e48e/principles/compliance.md).
+> This document is the local evidence; the obligation is central. These principles
+> establish governance and qualified-review triggers and are not legal advice.
+
 ---
 
 ## WCAG 2.2 Level A Conformance

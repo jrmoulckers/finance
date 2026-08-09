@@ -7,6 +7,10 @@
 **Date:** 2025-07-31
 **Source Issues:** #337-#344 (Stage 12)
 
+> **Satisfies:** `PROD-BUS-001`, `PROD-STRAT-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

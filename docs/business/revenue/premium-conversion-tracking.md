@@ -10,6 +10,12 @@
 
 ---
 
+> **Satisfies:** `PROD-MET-001`, `PROD-MET-002`, `PROD-DISC-002` — Product obligations are
+> defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). Metric meaning
+> resolves against the catalog
+> ([KPI Dashboard Spec](../growth/kpi-dashboard-spec.md) §2); this document is the local
+> conversion-tracking instance and evidence.
+
 ## Executive Summary
 
 This document specifies the complete Premium conversion tracking infrastructure for the Finance app. It defines the full conversion funnel from free user to paying subscriber, catalogs every paywall touchpoint in the app, establishes trial behavior analysis frameworks, and provides the first Premium performance reporting template. This is the core monetization measurement layer — without it, we're flying blind on revenue optimization.
@@ -351,7 +357,16 @@ trial_expired:
 
 ---
 
-## 6. Paywall A/B Testing Framework
+## 6. Paywall Experiment Candidates
+
+> Experiment design and decision discipline are central (`PROD-DISC-002`) and are
+> recorded per test using
+> [`templates/experiment-decision-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/experiment-decision-record.md).
+> Listed below are the Finance-specific paywall elements considered testable and
+> the sizing that follows from Finance's paywall traffic. `PROD-BUS-001` and
+> `PROD-STRAT-001` constrain the copy variants: no paywall variant may overstate a
+> privacy guarantee, and social-proof claims must be true and verifiable — a
+> monetization surface may not spend trust to buy a conversion.
 
 ### 6.1 Testable Elements
 
@@ -365,7 +380,7 @@ trial_expired:
 | **Social proof**         | None                           | "Joined by X users this week"         | Social proof may increase trial starts         |
 | **Trigger timing**       | After 3rd gate hit             | After 5th gate hit                    | Later trigger = more invested user             |
 
-### 6.2 A/B Test Statistical Requirements
+### 6.2 Sizing at Finance's Paywall Volume
 
 ```
 Minimum Detectable Effect (MDE): 5 percentage points
@@ -381,10 +396,13 @@ Test duration: Until both variants reach 500+ paywall views
   At estimated 30 paywall views/day: ~17 days per test
   Run max 1 test at a time (avoid interaction effects)
 
-Statistical method: Two-proportion z-test with α=0.05
+Analysis plan: Two-proportion z-test with α=0.05
   Also report: 95% CI, effect size, p-value
-  Decision rule: Implement winner only if p < 0.05 AND practical significance (MDE ≥ 3pp)
 ```
+
+The decision rule and stop condition are committed in each test's decision record
+before exposure, per `PROD-DISC-002`; `PROD-MET-003` forbids treating an
+underpowered or inconclusive result as a win.
 
 ---
 

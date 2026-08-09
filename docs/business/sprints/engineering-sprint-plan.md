@@ -6,6 +6,10 @@
 > **Status:** Proposed — Pending engineering review
 > **Related:** [Sprint Plan 6–10](sprint-plan-6-10.md) · [Stability Review](sprint-6-stability-review.md)
 
+> **Satisfies:** `PROD-PLAN-002`, `PROD-PLAN-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Overview

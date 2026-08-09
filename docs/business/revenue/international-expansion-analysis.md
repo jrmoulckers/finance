@@ -8,6 +8,10 @@
 > **Status:** Draft — Market research framework with directional estimates
 > **Depends on:** #824 (Revenue Model) — Baseline economics for expansion ROI
 
+> **Satisfies:** `PROD-BUS-002`, `PROD-BUS-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

@@ -8,6 +8,10 @@
 > **Status:** Draft — Framework ready, requires AI features to be live for 4+ weeks
 > **Depends on:** #826 (Feature Usage Analytics), #822 (Conversion Tracking)
 
+> **Satisfies:** `PROD-BUS-002`, `PROD-MET-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

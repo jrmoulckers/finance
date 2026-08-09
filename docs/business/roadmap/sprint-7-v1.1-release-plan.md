@@ -8,6 +8,10 @@
 > **Target Release:** Week 14 (end of Sprint 7)
 > **Status:** Complete
 
+> **Satisfies:** `PROD-REL-003`, `PROD-REL-004` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

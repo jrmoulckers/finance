@@ -7,6 +7,10 @@
 **Status:** Planned — Pending Sprint 5 launch completion
 **Predecessor:** [Sprint Plan 1-5](sprint-plan-1-5.md)
 
+> **Satisfies:** `PROD-PLAN-001` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

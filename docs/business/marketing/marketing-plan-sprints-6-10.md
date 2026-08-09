@@ -7,6 +7,10 @@
 > **Predecessor:** [Marketing Plan Sprints 1–5](marketing-plan-sprints-1-5.md) (pre-launch)
 > **Related:** [Product Identity](../../design/product-identity.md) · [Growth Strategy](growth-strategy-post-launch.md) · [Review Strategy](review-strategy.md) · [Launch Retrospective](launch-retrospective-week-1.md) · [Privacy Messaging](privacy-marketing-messaging.md)
 
+> **Satisfies:** `PROD-PLAN-001`, `PROD-BUS-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Strategic Context

@@ -8,6 +8,10 @@
 > **Status:** Draft — Pending sufficient post-launch data (minimum 14 days)
 > **Depends on:** #818 (KPI Dashboard & Baseline)
 
+> **Satisfies:** `PROD-MET-001`, `PROD-MET-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

@@ -10,6 +10,10 @@
 **Related:** [V2 Feature Prioritization Matrix](v2-feature-prioritization-matrix.md) ·
 [v1.2 Release Plan](v12-release-plan-v20-roadmap.md)
 
+> **Satisfies:** `PROD-PLAN-002` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

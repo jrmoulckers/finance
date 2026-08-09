@@ -18,19 +18,15 @@ The development is organized into eight phases, from foundational infrastructure
 
 ## Product Identity
 
-**Core Promise:** "See your money clearly. Keep it private. No expertise required."
+Product identity does not live in an architecture document. The product
+definition — users, purpose, promise, invariants, scope and non-goals,
+monetization, measurement, and compliance posture — is
+[`PRODUCT.md`](../../PRODUCT.md) at the repository root, and the detailed
+identity specification is [Product Identity](../design/product-identity.md).
 
-**Differentiators:**
-
-1. Expertise-tiered UI — adapts to user's financial comfort level
-2. Offline-first, encrypted-at-rest privacy — Signal-like data practices
-3. 30-second daily interaction — 3-tap transaction entry, widget-first habit loop
-4. Contextual financial education — learn by using, not by studying
-5. Non-judgmental design — facts + encouragement, never guilt
-
-**Target Users:** People who want to understand their money without needing a finance degree. Inclusive of users with cognitive differences (ADHD-friendly design).
-
-See [Product Identity](../design/product-identity.md) for the complete specification.
+This document owns the technology and mechanism decisions that realize that
+product definition. Where the two disagree, `PRODUCT.md` states the obligation
+and this document states how it is met.
 
 ---
 

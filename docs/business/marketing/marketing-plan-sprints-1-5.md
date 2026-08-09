@@ -7,6 +7,10 @@
 > **Preferred location:** `docs/business/marketing/marketing-plan-sprints-1-5.md` (create `docs/business/` directory and move this file)
 > **Related:** [Product Identity](../../design/product-identity.md) · [Store Metadata](../../guides/store-metadata.md) · [Beta Testing](../../guides/beta-testing.md) · [Launch Checklist](../../guides/launch-checklist.md) · [Onboarding Strategy](../../guides/onboarding-strategy.md) · [Launch Readiness Plan](launch-readiness-plan.md)
 
+> **Satisfies:** `PROD-PLAN-001`, `PROD-BUS-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Strategic Context

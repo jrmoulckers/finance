@@ -7,6 +7,10 @@
 **Document Owner:** Product Management
 **Date:** 2025-07-31
 
+> **Satisfies:** `PROD-REL-003`, `PROD-PLAN-001` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

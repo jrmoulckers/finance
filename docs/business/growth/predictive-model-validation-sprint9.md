@@ -8,6 +8,10 @@
 > **Status:** Draft — Framework ready, requires 4-6 weeks of predictive feature usage data
 > **Depends on:** #826 (Feature Usage Analytics)
 
+> **Satisfies:** `PROD-MET-003`, `PROD-DISC-004` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## Executive Summary

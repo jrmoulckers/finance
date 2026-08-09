@@ -3,6 +3,10 @@
 > **Generated**: 2025-07-17
 > **Based on**: [Issue Triage Report](../sprints/issue-triage-report.md) — 247 open issues triaged
 
+> **Satisfies:** `PROD-STRAT-003` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ## Milestone Timeline
 
 The following Mermaid diagram shows the proposed milestone sequence and dependencies.

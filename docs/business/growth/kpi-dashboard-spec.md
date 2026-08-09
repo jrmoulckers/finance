@@ -9,38 +9,43 @@
 
 ---
 
+> **Satisfies:** `PROD-MET-001`, `PROD-MET-002` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). **§2 of this document is
+> Finance's metric catalog** — the one versioned definition per metric required by
+> `PROD-MET-001`. The reusable shape for a metric record is
+> [`templates/metric-definition.md`](https://github.com/jrmoulckers/product/blob/main/templates/metric-definition.md).
+> Sections 3 and 7 describe dashboard and analytics-stack mechanism, which is Engineering
+> authority rather than Product.
+
 ## Executive Summary
 
-This document defines the complete business intelligence infrastructure for the Finance app post-launch. It specifies every core KPI with precise definitions, data sources, calculation methodology, baseline targets, and alerting thresholds. This is the foundational measurement layer that gates all subsequent business analysis (cohort analysis, churn modeling, conversion tracking, revenue forecasting).
+This document is Finance's metric catalog and launch measurement baseline. §2
+carries the definitions — decision use, formula, population, window, and
+exclusions — that all downstream business analysis (cohort analysis, churn
+modeling, conversion tracking, revenue forecasting) resolves against. Other
+documents cite these definitions rather than restating them.
 
-**Key outcome:** A privacy-respecting, real-time metrics dashboard that provides actionable business intelligence without compromising our "no tracking, no ads, no data selling" commitment.
+**Key outcome:** a privacy-respecting metrics baseline that provides actionable
+business intelligence without compromising the "no tracking, no ads, no data
+selling" commitment.
 
 ---
 
-## 1. KPI Framework
+## 1. Collection Bounds
 
-### 1.1 Metric Taxonomy
+> `PROD-MET-002` requires measurement to be bounded by purpose and consent before
+> it is approved, and `PROD-MET-001` requires each metric to carry one versioned
+> definition. Recorded below are the Finance-specific bounds every definition in §2
+> is subject to. The five lifecycle pillars (acquire, activate, engage, monetize,
+> retain) are simply how this catalog is organized.
 
-All metrics are organized into five pillars aligned with the business lifecycle:
+### 1.1 Privacy Constraints on Analytics
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    FINANCE APP KPI FRAMEWORK                    │
-├───────────┬───────────┬───────────┬───────────┬─────────────────┤
-│ ACQUIRE   │ ACTIVATE  │ ENGAGE    │ MONETIZE  │ RETAIN          │
-├───────────┼───────────┼───────────┼───────────┼─────────────────┤
-│ Downloads │ Reg. Rate │ DAU/MAU   │ MRR       │ D1/D7/D30 Ret.  │
-│ Installs  │ Onboarding│ Session   │ ARPU      │ Churn Rate      │
-│ Sources   │ Completion│ Frequency │ Conv Rate │ Reactivation    │
-│ CAC       │ 1st Txn   │ Features  │ LTV       │ NPS Proxy       │
-│ WoW Growth│ Time-to-  │ Per-User  │ Trial→    │ Cohort Curves   │
-│           │ Value     │ Actions   │ Paid %    │                 │
-└───────────┴───────────┴───────────┴───────────┴─────────────────┘
-```
-
-### 1.2 Privacy Constraints on Analytics
-
-All metrics MUST comply with these non-negotiable privacy principles:
+All metrics MUST comply with these non-negotiable privacy constraints. Consent
+evidence is
+[`docs/compliance/consent-management-audit.md`](../../compliance/consent-management-audit.md);
+minimization evidence is
+[`docs/compliance/data-minimization-audit.md`](../../compliance/data-minimization-audit.md).
 
 | Constraint                                       | Implementation                                                                             |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
@@ -51,7 +56,13 @@ All metrics MUST comply with these non-negotiable privacy principles:
 | **No fingerprinting**                            | No canvas fingerprinting, no device fingerprinting beyond anonymous ID                     |
 | **Data minimization**                            | Collect only what's needed for each metric — no "collect everything, analyze later"        |
 
-**Recommended Analytics Stack:**
+No raw financial value — balance, transaction amount, or category name — is ever
+collected as telemetry.
+
+### 1.2 Analytics Stack Options
+
+> Stack selection is Engineering mechanism, recorded here only because the choice
+> constrains what can be measured within the bounds above.
 
 | Component         | Option A (Self-hosted) | Option B (Privacy SaaS)  |
 | ----------------- | ---------------------- | ------------------------ |
@@ -63,7 +74,12 @@ All metrics MUST comply with these non-negotiable privacy principles:
 
 ---
 
-## 2. Core KPI Definitions
+## 2. Core KPI Definitions — Finance metric catalog
+
+> This section is the single local source for metric meaning, per `PROD-MET-001`.
+> Other documents in `docs/business/` cite these definitions; they do not restate
+> them. A breaking change to a definition requires a version bump and a migration
+> note here.
 
 ### 2.1 Acquisition Metrics
 

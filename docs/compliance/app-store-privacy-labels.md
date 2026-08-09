@@ -15,6 +15,12 @@ accurately reflects what the shipping build does.
 before the next submission.** See [Material Change Triggers](#material-change-triggers)
 for the list of code changes that require a disclosure review.
 
+> **Satisfies:** `PROD-COMP-002`, `PROD-COMP-006` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product), pinned to
+> [`3a752c1`](https://github.com/jrmoulckers/product/blob/3a752c11856515a74eb204675d5d5198cac1e48e/principles/compliance.md).
+> This document is the local evidence; the obligation is central. These principles
+> establish governance and qualified-review triggers and are not legal advice.
+
 ---
 
 ## Table of Contents

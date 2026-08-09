@@ -23,6 +23,10 @@
 - [4. Sprint-Ready Batches](#4-sprint-ready-batches)
 - [5. Issues Needing Human Design Decisions](#5-issues-needing-human-design-decisions)
 
+> **Satisfies:** `PROD-PLAN-004` — Product obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
+> local instance and evidence; the obligation is central.
+
 ---
 
 ## 1. Thematic Categories
