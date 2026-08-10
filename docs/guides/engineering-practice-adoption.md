@@ -25,9 +25,17 @@ Upstream: [`docs/adopting.md`](https://github.com/jrmoulckers/engineering/blob/m
 - **Workflow reuse assessed.** See
   [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md). Action
   pinning already satisfies `GH-ACT-003` — 241/241 refs SHA-pinned.
-- **`.npmrc` committed**, mapping the `@jrmoulckers` scope to GitHub Packages. It is inert
-  until the scope is actually depended on; `npm ci` and `npm install` work normally with
-  `NODE_AUTH_TOKEN` unset (verified).
+- **`.npmrc` committed**, containing the `@jrmoulckers` scope-routing line and nothing else. It
+  is inert until the scope is actually depended on; `npm ci` and `npm install` work normally
+  with no token configured (verified).
+
+  It deliberately carries **no `_authToken` line**. Interpolating `${NODE_AUTH_TOKEN}` into a
+  tracked file puts a credential-shaped string in version control, and when the variable is
+  unset npm sends an _empty_ token rather than none — the registry then answers `401
+unauthenticated: User cannot be authenticated with the token provided`, which points at a bad
+  token when the real problem is a missing one. Credentials belong in the developer's
+  user-level `~/.npmrc`, and in CI in the file `actions/setup-node` generates from
+  `registry-url` + `scope`.
 
 ## Blocked: the shared toolchain presets
 
@@ -49,8 +57,15 @@ by CI on `main`.
 
 1. Grant this repository read access to the packages from the `jrmoulckers/engineering`
    package settings, **or** create a classic PAT with `read:packages` and store it as the
-   `PACKAGES_READ_TOKEN` repository secret.
-2. Developers export the same token locally: `$env:NODE_AUTH_TOKEN = "ghp_..."`.
+   `PACKAGES_READ_TOKEN` repository secret. GitHub Packages accepts **classic PATs only** — a
+   fine-grained token fails with the same `401` as no token at all, so this is worth getting
+   right before debugging.
+2. Developers put the token in their **user-level `~/.npmrc`**, never in the repository's:
+
+   ```text
+   //npm.pkg.github.com/:_authToken=<classic-pat-with-read-packages>
+   ```
+
 3. Add registry auth to every workflow that runs `npm ci`:
 
    ```yaml
