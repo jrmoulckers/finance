@@ -254,10 +254,9 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
 
 ## Citation audit
 
-Verified with `scripts/check-citations.mjs --review` at `v0.2.10`, run over all 804 markdown
-files: **42 literal citations across 27 distinct principles, every ID valid, and every
-principle's true title matching the claim made about it.** The wrong-meaning defect found
-elsewhere in the org did not reach finance.
+Verified with `scripts/check-citations.mjs --review` at `v0.2.11`, run over all 804 markdown
+files: **every ID valid, and every principle's true title matching the claim made about it.** The
+wrong-meaning defect reported elsewhere in the org did not reach finance.
 
 Two notes, because the exit code is not the result:
 
@@ -269,9 +268,21 @@ Two notes, because the exit code is not the result:
   title inline, which brings five previously unverifiable IDs under the checker and removes the
   blind spot described in gap 7. Prefer enumerated citations over ranges for this reason.
 
-Finance cites **nothing** for accessibility, test colocation, or service-tier structure — there
-is no ratified principle for any of them, and the prose covering them stays product-specific and
-uncited.
+Finance cites **nothing as the source** of its accessibility, test-colocation, or service-tier
+requirements — there is no ratified principle for any of them. Those are finance commitments and
+say so. Where a ratified principle bears on them _additively_, that is now stated as such rather
+than omitted:
+
+- `docs/guides/accessibility.md` and `docs/audits/accessibility-audit-wcag22.md` note that
+  `ENG-PERF-009` (assurance precedence) forbids trading accessibility away for performance. It is
+  not the source of the WCAG 2.2 AA commitment; it constrains what may be done to it.
+- Test colocation is named as a finance convention; the obligation it serves is `ENG-TEST-003`
+  (regression boundaries).
+
+The distinction is worth stating precisely, because the two readings differ in what they license.
+"Accessibility follows `ENG-PERF-009`" is false and would make the WCAG commitment look
+negotiable by amending a principle finance does not own. "`ENG-PERF-009` additionally forbids
+trading it away" is true and adds a constraint without relocating authority.
 
 ## Principles finance declines
 

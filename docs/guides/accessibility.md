@@ -4,6 +4,11 @@ Finance is designed to be usable by everyone, regardless of ability. Accessibili
 
 This guide covers the accessibility features available in Finance and how to use them.
 
+WCAG 2.2 AA is a finance commitment, not a ratified obligation — no `ENG-*` principle covers
+accessibility. Two apply additively rather than as its source: `ENG-PERF-009` (assurance
+precedence) forbids trading any of the below away to hit a performance budget, and `ENG-PERF-002`
+(versioned performance budgets) is what it would be traded against.
+
 ---
 
 ## Table of Contents
