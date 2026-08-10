@@ -243,6 +243,36 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
    profiling, the practice that would explain how is web-shaped, and there is no native area to
    host the obligation in the first place. Requesting an `ENG-NATIVE-*` (or `ENG-APP-*`) area.
 
+7. **`scripts/check-citations.mjs` does not expand ID ranges.** The checker resolves literal IDs
+   only, so a citation written as `` `ENG-OBS-001`–`ENG-OBS-007` `` is scanned as exactly two
+   citations and the five in between are never verified. That is precisely where a
+   wrong-meaning citation hides best: a range asserts something about every member while
+   showing the reader only the endpoints. In this repository the ranges concealed five IDs
+   (`ENG-OBS-002`–`006`, `ENG-DATA-002`) — all correct on manual check, but invisible to the
+   tool that exists to check them. Requesting that the checker either expand `NNN`–`NNN` ranges
+   within an area or warn that it cannot.
+
+## Citation audit
+
+Verified with `scripts/check-citations.mjs --review` at `v0.2.10`, run over all 804 markdown
+files: **42 literal citations across 27 distinct principles, every ID valid, and every
+principle's true title matching the claim made about it.** The wrong-meaning defect found
+elsewhere in the org did not reach finance.
+
+Two notes, because the exit code is not the result:
+
+- **`ENG-ARCH-003` is cited here correctly**, as the obligation to keep durable decision
+  records, in `docs/architecture/README.md`. It is one of the IDs miscited elsewhere, so it was
+  checked directly rather than assumed.
+- **Ranges were rewritten as explicit lists.** ADR-0002 and ADR-0020 previously cited
+  `ENG-DATA-001`–`003` and `ENG-OBS-001`–`007`. Both are now enumerated with each principle's
+  title inline, which brings five previously unverifiable IDs under the checker and removes the
+  blind spot described in gap 7. Prefer enumerated citations over ranges for this reason.
+
+Finance cites **nothing** for accessibility, test colocation, or service-tier structure — there
+is no ratified principle for any of them, and the prose covering them stays product-specific and
+uncited.
+
 ## Principles finance declines
 
 **None.** All 66 apply or are inapplicable-but-not-contradicted; none conflict with finance's
