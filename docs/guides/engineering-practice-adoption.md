@@ -28,6 +28,17 @@ Upstream: [`docs/adopting.md`](https://github.com/jrmoulckers/engineering/blob/m
   unsatisfying in aggregate, since removing duplication was the point. A second pass with a
   harder deletion bias is warranted once `practices/` has stabilised.
 
+- **Every citation verified against `principles/index.json`.** All **28 distinct `ENG-*` IDs**
+  cited across finance resolve to a real Ratified principle, and every parenthetical gloss
+  matches the canonical `title` exactly. A wrong ID is worse than the restated prose it
+  replaced, because it reads as authoritative while pointing at nothing — so the index, not
+  memory, is the source. Re-run the check whenever citations are added:
+
+  ```powershell
+  $idx = Get-Content <engineering>\principles\index.json -Raw | ConvertFrom-Json
+  # compare each cited ID against ($idx.principles).id
+  ```
+
 - **ADR numbering reconciled.** See [`docs/architecture/README.md`](../architecture/README.md).
 - **Workflow reuse assessed.** See
   [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md). Action
@@ -172,6 +183,38 @@ duplication this adoption removes.
    profiling. finance already documents Android Profiler + baseline profiles, Instruments +
    MetricKit + signposts, JFR + VisualVM + WPA, and a Gradle benchmark harness. That technique
    is general and belongs upstream.
+4. **No native-platform principle area.** The 66 principles span 11 areas — API, ARCH, BUILD,
+   DATA, INT, LOCAL, OBS, PERF, SEC, TEST, WEB. `WEB` covers browser frontends; **nothing covers
+   native application surface.** Searching the whole principles corpus for `mobile|Android|iOS|
+desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance ships **four**
+   platforms, **three of them native** (Android, iOS, Windows/Compose Desktop), so only
+   `apps/web` is addressed by a platform area at all.
+
+   This compounds gap 3 rather than duplicating it: `ENG-PERF-007` demands platform-native
+   profiling, the practice that would explain how is web-shaped, and there is no native area to
+   host the obligation in the first place. Requesting an `ENG-NATIVE-*` (or `ENG-APP-*`) area.
+
+## Principles finance declines
+
+**None.** All 66 apply or are inapplicable-but-not-contradicted; none conflict with finance's
+architecture, so nothing is refused.
+
+This was checked rather than assumed, and the expectation going in was the opposite — finance
+diverges from the other repos more than any of them. The divergence turns out to be one of
+**scale and platform count, not of contradicted premises**. Specific candidates examined and
+cleared:
+
+| Candidate       | Suspected tension                             | Verdict                                                                                                   |
+| --------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `ENG-API-003`   | Edge-first: logic runs on the client          | **Applies.** Supabase RLS enforces authorization server-side regardless of where computation happens.     |
+| `ENG-API-002`   | Backend is sync-only, holds no business logic | **Applies.** Migrations + PowerSync rules are exactly the owned data contract it asks for.                |
+| `ENG-WEB-004`   | Local SQLite outlives the session             | **Applies, strongly.** A PWA swapping assets under a running session is a live risk here.                 |
+| `ENG-TEST-008`  | Mutation testing across ~5,516 files          | **Applies.** Aspirational at this scale, but scope is not contradiction.                                  |
+| `ENG-LOCAL-001` | The one docket refused                        | **Affirmed.** docket's server is canonical; finance's client is. Finance is the principle's central case. |
+
+Worth noting for the corpus: `ENG-LOCAL-001` being simultaneously the principle one repo refuses
+outright and the principle another treats as foundational is a sign it is well-drawn, not
+ambiguous — it makes a real claim that a repository can fail.
 
 ## Worth hoisting up
 
@@ -182,3 +225,9 @@ Finance-invented, generic, and absent from the shared layers:
   Actions knowledge, so it belongs in `jrmoulckers/.github`.
 - **The sensitive-data-logging grep guardrail** in `ci-lint.yml` — an executable check for
   `ENG-OBS-005`, which the practices layer currently states only as an obligation.
+- **`.gitattributes` line-ending carve-out for Windows batch files.** The shared Prettier config
+  sets `endOfLine: 'lf'`, which requires a `.gitattributes` to avoid `format:check` passing in CI
+  and failing on every Windows checkout. finance already has one, and it goes further than the
+  bare `* text=auto eol=lf` being recommended: it adds `*.bat`/`*.cmd text eol=crlf`. Forcing LF
+  on batch files can break `cmd.exe` parsing, so the bare snippet trades one Windows-only failure
+  for another. The carve-out belongs in the recommendation.
