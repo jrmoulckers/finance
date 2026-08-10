@@ -9,51 +9,51 @@
 ---
 
 > **Satisfies:** `PROD-PLAN-002`, `PROD-PLAN-004` — Product obligations are defined in
-> [jrmoulckers/product](https://github.com/jrmoulckers/product). Making work decision-ready
-> before commitment and keeping the backlog intentional are central obligations. The generic
-> impact/effort scoring method this document used to define is one local technique for meeting
-> them, not a second definition of them.
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). Making work decision-ready before commitment and keeping the
+> backlog intentional are central obligations. Central prescribes no scoring method, so the
+> impact and effort rubrics below are Finance's own technique for meeting those obligations
+> and are retained as the audit trail for the scores.
 
 ## Executive Summary
 
-This document ranks the remaining open V2 issues (#293, #295, #299, #300, #301,
-#303, #304, #305) by business impact and implementation effort, producing a dated
-prioritized execution order for the v2.0 cycle. Two V2 issues (#294 Native
-Platform Integrations and #302 Offline-first Data Migration) were completed in
-earlier sprints and are excluded.
+This document ranks all remaining open V2 issues (#293, #295, #299, #300, #301,
+#303, #304, #305) by business impact and implementation effort, producing a
+prioritized execution order for the v2.0 development cycle. Two V2 issues (#294
+Native Platform Integrations and #302 Offline-first Data Migration) were
+completed in earlier sprints and are excluded.
 
-The ranking is the instance. The obligations it serves — every committed item has
-a priority, an accountable owner, bounded scope, testable acceptance, and stated
-non-goals (`PROD-PLAN-002`), and the backlog is groomed so retained items still
-carry current value and evidence (`PROD-PLAN-004`) — are central and are not
-redefined here.
+### Scoring Methodology
 
-### Scoring technique used for this ranking
-
-Each feature is scored on two dimensions and ranked by Impact / Effort. The
-rubrics below are the working technique for this dated exercise, recorded so the
-scores can be audited — they are not a standing method for the repository.
+Each feature is scored on two dimensions:
 
 - **Impact (1-5):** Composite of user value, revenue potential, retention
   effect, and competitive differentiation
 - **Effort (1-5):** Composite of engineering complexity, cross-platform scope,
   backend requirements, and dependency count
 
-| Impact | User Value       | Revenue Potential   | Retention Effect | Competitive Edge  |
-| ------ | ---------------- | ------------------- | ---------------- | ----------------- |
-| 5      | Core need, daily | Direct revenue gate | Churn prevention | No competitor has |
-| 4      | Frequent use     | Premium upsell      | Strong retention | Few competitors   |
-| 3      | Weekly use       | Indirect revenue    | Moderate         | Parity feature    |
-| 2      | Occasional use   | Minimal revenue     | Low retention    | Many have this    |
-| 1      | Nice-to-have     | No revenue impact   | Negligible       | Table stakes      |
+**Priority Score** = Impact / Effort (higher is better)
 
-| Effort | Engineering | Cross-Platform   | Backend          | Dependencies    |
-| ------ | ----------- | ---------------- | ---------------- | --------------- |
-| 5      | 12+ weeks   | All 4 platforms  | New infra needed | 3+ dependencies |
-| 4      | 8-12 weeks  | 3 platforms      | Significant API  | 2 dependencies  |
-| 3      | 4-8 weeks   | 2 platforms      | Moderate API     | 1 dependency    |
-| 2      | 2-4 weeks   | 1 platform + KMP | Minor API        | No dependencies |
-| 1      | < 2 weeks   | KMP only         | None             | No dependencies |
+---
+
+## Impact Scoring Criteria
+
+| Score | User Value       | Revenue Potential   | Retention Effect | Competitive Edge  |
+| ----- | ---------------- | ------------------- | ---------------- | ----------------- |
+| 5     | Core need, daily | Direct revenue gate | Churn prevention | No competitor has |
+| 4     | Frequent use     | Premium upsell      | Strong retention | Few competitors   |
+| 3     | Weekly use       | Indirect revenue    | Moderate         | Parity feature    |
+| 2     | Occasional use   | Minimal revenue     | Low retention    | Many have this    |
+| 1     | Nice-to-have     | No revenue impact   | Negligible       | Table stakes      |
+
+## Effort Scoring Criteria
+
+| Score | Engineering | Cross-Platform   | Backend          | Dependencies    |
+| ----- | ----------- | ---------------- | ---------------- | --------------- |
+| 5     | 12+ weeks   | All 4 platforms  | New infra needed | 3+ dependencies |
+| 4     | 8-12 weeks  | 3 platforms      | Significant API  | 2 dependencies  |
+| 3     | 4-8 weeks   | 2 platforms      | Moderate API     | 1 dependency    |
+| 2     | 2-4 weeks   | 1 platform + KMP | Minor API        | No dependencies |
+| 1     | < 2 weeks   | KMP only         | None             | No dependencies |
 
 ---
 

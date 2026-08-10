@@ -10,36 +10,33 @@
 
 ---
 
-> **Satisfies:** `PROD-PLAN-005`, `PROD-REL-001`, `PROD-REL-002` — Product obligations are
-> defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). The reusable
-> go/no-go _shape_ — what a decision record must name, how risk acceptance must expire, what
-> counts as deterministic no-go — is central, and the template is
-> [`templates/go-no-go-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/go-no-go-record.md).
-> What remains here is the dated v1.0 record: the criteria actually applied, the launch-day
-> plan, and the rollback triggers.
+> **Satisfies:** `PROD-PLAN-005`, `PROD-REL-001`, `PROD-REL-002` — Product obligations
+> are defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). What a release decision must name, and how risk
+> acceptance must be owned and expire, are central; the reusable record shape is
+> [`templates/go-no-go-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/go-no-go-record.md). Which
+> specific conditions count as no-go for Finance is **not** central — those thresholds, the
+> checklist, the sign-off roster, the dated v1.0 verdict, the launch-day plan, and the
+> rollback triggers are all local and retained below.
 
 ## Executive Summary
 
-This is the v1.0 production launch go/no-go record for Finance. It captures the
-readiness criteria applied across engineering, quality, security, infrastructure,
-store submission, documentation, and communications, together with the launch-day
-execution plan and rollback triggers.
+This document defines the formal go/no-go decision framework for the v1.0
+production launch of Finance. It provides a comprehensive checklist covering
+engineering readiness, quality gates, security posture, store submissions,
+marketing preparedness, and operational readiness. The go/no-go meeting is
+the final gate before public release.
 
-It is **not** the definition of how a go/no-go decision must be made. That is
-`PROD-REL-001` (readiness criteria across scope, security, privacy, compliance,
-accessibility, localization, content, rollback, and support), `PROD-REL-002` (risk
-acceptance must be explicit, owned, and expiring), and `PROD-PLAN-005` (the
-decision must be recorded before material exposure). New release decisions start
-from the central template, not from a copy of this file.
+### Decision Framework
+
+The launch decision uses a traffic-light system:
+
+- **🟢 GO:** All P0 criteria met, no unresolved blockers
+- **🟡 CONDITIONAL GO:** Minor gaps with documented workarounds and fix timelines
+- **🔴 NO-GO:** Any P0 criteria failed, unresolved security issues, or data loss risk
 
 ---
 
-## v1.0 Readiness Checklist
-
-> The criteria categories below are Finance's application of `PROD-REL-001`. The
-> traffic-light states used throughout are: 🟢 GO, 🟡 CONDITIONAL GO (a gap accepted
-> under `PROD-REL-002`, requiring an owner, a compensating action, and an expiry),
-> 🔴 NO-GO.
+## Go/No-Go Checklist
 
 ### 1. Engineering Readiness
 
@@ -177,14 +174,9 @@ from the central template, not from a copy of this file.
 
 ---
 
-## v1.0 Decision Thresholds
+## Go/No-Go Decision Matrix
 
-> `PROD-REL-002` requires unresolved P0 risk to be no-go and every accepted P1 or
-> material gap to carry an owner, compensating action, expiry, and remediation
-> trigger. The lists below are the Finance-specific instantiation of that
-> obligation for v1.0 — not a reusable definition of it.
-
-### Deterministic NO-GO conditions for v1.0
+### Automatic NO-GO (Any Single Item = Block Launch)
 
 - Any P0 bug unresolved
 - Security audit failure unaddressed
@@ -195,9 +187,7 @@ from the central template, not from a copy of this file.
 - No database backup mechanism
 - Store submissions rejected without resubmission plan
 
-### Gaps accepted for v1.0 under `PROD-REL-002`
-
-Each requires a named owner, a compensating action, and an expiry date:
+### Conditional GO (Acceptable with Documented Plan)
 
 - P1 bugs with workarounds and fix timeline (ship in v1.0.1 within 1 week)
 - Non-critical platform parity gaps (e.g., Windows data import can follow)
@@ -205,7 +195,7 @@ Each requires a named owner, a compensating action, and an expiry date:
 - Analytics not fully instrumented (manual tracking as interim)
 - Documentation gaps (ship and update within 1 week)
 
-### GO threshold for v1.0
+### GO Criteria
 
 - All P0 items green across all 7 sections
 - No more than 3 P1 items yellow with documented workarounds
@@ -298,30 +288,33 @@ Initiate rollback if any of the following occur within 48 hours of launch:
 
 ---
 
-## v1.0 Sign-Off
+## Stakeholder Sign-Off Template
 
-> The reusable sign-off _shape_ is central:
-> [`templates/go-no-go-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/go-no-go-record.md).
-> Do not copy the blank form that used to live here — start a new release decision
-> from the template so it stays current with `PROD-REL-001` and `PROD-REL-002`.
-> Recorded below is the v1.0 sign-off itself.
+### Go/No-Go Meeting Record
 
-**Decision date:** 2025-07-29
+**Date:** **\*\***\_\_\_**\*\***
+**Attendees:** **\*\***\_\_\_**\*\***
 
-| Role              | Decision   | Conditions/Notes |
-| ----------------- | ---------- | ---------------- |
-| Product Manager   | GO / NO-GO |                  |
-| Engineering Lead  | GO / NO-GO |                  |
-| Security Reviewer | GO / NO-GO |                  |
-| Marketing Lead    | GO / NO-GO |                  |
-| DevOps Lead       | GO / NO-GO |                  |
+| Role              | Name | Decision   | Conditions/Notes |
+| ----------------- | ---- | ---------- | ---------------- |
+| Product Manager   |      | GO / NO-GO |                  |
+| Engineering Lead  |      | GO / NO-GO |                  |
+| Security Reviewer |      | GO / NO-GO |                  |
+| Marketing Lead    |      | GO / NO-GO |                  |
+| DevOps Lead       |      | GO / NO-GO |                  |
 
 **Final Decision:** 🟢 GO / 🟡 CONDITIONAL GO / 🔴 NO-GO
 
-Any CONDITIONAL GO condition recorded above is an accepted risk under
-`PROD-REL-002` and must carry an accountable owner, a compensating action, and an
-expiry — an accepted gap without an end condition is not a valid acceptance. The
-v1.0.1 hotfix window was the declared remediation trigger.
+**Conditions (if CONDITIONAL GO):**
+
+1. ***
+2. ***
+3. ***
+
+**Fix Timeline (if CONDITIONAL GO):**
+
+- v1.0.1 hotfix target date: **\*\***\_\_\_**\*\***
+- Items to fix: **\*\***\_\_\_**\*\***
 
 ---
 

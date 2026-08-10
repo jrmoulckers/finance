@@ -8,39 +8,37 @@
 
 ---
 
-> **Satisfies:** `PROD-DISC-001`, `PROD-DISC-002`, `PROD-DISC-003` — Product obligations are
-> defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). Staged exposure,
-> predeclared bounds, kill conditions, and honest conclusion are central obligations, and the
-> reusable shape for an exposure decision is
-> [`templates/experiment-decision-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/experiment-decision-record.md).
-> What remains here is Finance's instance: the alpha cohort sizes and gates, and — most
-> importantly — the financial data-quality checks in §3, which have no generic equivalent.
+> **Satisfies:** `PROD-DISC-001`, `PROD-DISC-002`, `PROD-DISC-003` — Product
+> obligations are defined in
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). Those obligations
+> require that exposure be staged with a proven stop and that a decision rule exist
+> before exposure begins. They do **not** set a feedback-loop target, a phase-gate
+> rule, or any expectation specific to financial data integrity — the protocol below
+> is Finance's own and is retained here in full, because it is deliberately stricter
+> than a general alpha.
 
 ## Executive Summary
 
-This document records Finance's alpha exposure instance: three cohorts
-(Internal → Friends & Family → Wider Alpha) with their sizes, gates, and exit
-criteria, and the automated financial data-quality checks that determine whether a
-gate is passed.
+This document defines the repeatable testing protocol for Finance's alpha
+launch. It covers three testing phases (Internal → Friends & Family → Wider
+Alpha), entry and exit criteria for each phase, automated data-quality checks,
+bug triage and escalation, feedback collection mechanisms, key metrics, and the
+rollback plan. The goal is to ship a high-quality alpha that surfaces real
+issues early while protecting tester data integrity.
 
-The obligation to stage exposure deliberately, to predeclare stop conditions, and
-to prove exposure can be halted is central (`PROD-DISC-003`); it is not restated
-here. Bug severity and triage workflow are Engineering mechanism, recorded here
-only as the local escalation agreement.
+### Core Objectives
 
-### Why data quality is the gate
-
-Financial data errors are uniquely harmful — they erode trust permanently and are
-often unrecoverable once compounded. So for this product the primary guardrail on
-exposure is not engagement or crash rate but **data integrity**: the checks in §3
-are the kill conditions required by `PROD-DISC-002`.
+1. **Catch data-integrity bugs before they compound** — financial data errors
+   are uniquely harmful because they erode trust permanently.
+2. **Establish a fast feedback loop** — tester → bug report → triage → fix →
+   deploy → verify, targeting < 48 hours for P0/P1 issues.
+3. **Define clear phase gates** — no phase advances until exit criteria are met.
+4. **Automate what can be automated** — data-quality checks run continuously,
+   not just when someone remembers to check.
 
 ---
 
-## 1. Alpha Cohorts and Gates
-
-> Cohort staging observes `PROD-DISC-003`. Recorded below are Finance's cohort
-> sizes, durations, and gate criteria — the instance, not the method.
+## 1. Testing Phases
 
 ### Phase Overview
 
@@ -162,12 +160,7 @@ beta.
 
 ---
 
-## 2. Bug Triage and Kill Conditions
-
-> Severity taxonomy and triage workflow are Engineering mechanism, not Product
-> method — recorded here as the local escalation agreement. The escalation table
-> in §2.3 doubles as the predeclared kill conditions required by `PROD-DISC-002`:
-> each row states a condition under which exposure stops.
+## 2. Bug Triage Process
 
 ### 2.1 Severity Levels
 
@@ -210,11 +203,6 @@ flowchart TD
 ---
 
 ## 3. Data Quality Checks
-
-> **Finance-specific.** These checks have no generic equivalent in central
-> authority — they encode this product's financial correctness invariants
-> (`PRODUCT.md` invariants 6 and 7). They are the primary guardrail on alpha
-> exposure per `PROD-DISC-002`.
 
 These checks validate the integrity of financial data. They run both as
 automated scheduled jobs and as on-demand verification tools.
@@ -411,11 +399,6 @@ CREATE TABLE data_quality_runs (
 
 ## 5. Feedback Collection
 
-> Feedback-collection method — in-app prompts, milestone surveys, crash reporting —
-> is generic. Collection is bounded by `PROD-MET-002` and, where consent-dependent,
-> `PROD-COMP-008`. Recorded below is Finance's instance and, in §5.3, the
-> product-specific rule that financial values never enter a crash payload.
-
 ### 5.1 In-App Feedback
 
 | Mechanism                | Trigger                                      | Data Collected                        |
@@ -524,13 +507,7 @@ Sent via email at key milestones:
 
 ## 8. Rollback Plan
 
-> `PROD-DISC-003` requires evidence that exposure can be halted, and `PROD-REL-003`
-> requires a release to name a supported rollback target. This section is that
-> evidence. The rollback _procedures_ in §8.2 are Engineering mechanism and are
-> owned by the platform and DevOps agents; the _trigger conditions_ in §8.1 are the
-> Product stop conditions.
-
-### 8.1 Stop Conditions
+### 8.1 When to Rollback
 
 A rollback is triggered if any of the following occur during alpha:
 
@@ -619,6 +596,3 @@ The following can be **triaged forward** (documented but not blocking):
 - [Security Posture Report](../../architecture/security/security-posture-report.md)
 - [Smart Features Beta Program](sprint-9-beta-program.md)
 - [Go-Live Assessment](../roadmap/go-live-assessment.md)
-- [Product definition](../../../PRODUCT.md) — invariants this protocol protects
-- [Product obligations](https://github.com/jrmoulckers/product) — `PROD-DISC-001`,
-  `PROD-DISC-002`, `PROD-DISC-003`, `PROD-DISC-004`
