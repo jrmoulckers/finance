@@ -19,6 +19,12 @@ kotlin-js-store/
 
 # Studio-managed AI assets — generated and hash-checked by studio sync.
 # Finance-owned overlays and finance-domain remain formatter-managed.
+#
+# copilot-instructions.md is a managed-region merge (ADR-0006 in jrmoulckers/.github):
+# the block between <!-- studio:base:start --> and <!-- studio:base:end --> is authored
+# upstream and is not formatted to this repo's Prettier config. Reformatting it is
+# detected as drift and the file is skipped on the next sync.
+.github/copilot-instructions.md
 .github/agents/*.agent.md
 !.github/agents/finance-domain.agent.md
 .github/instructions/agents.instructions.md

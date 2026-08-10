@@ -2,103 +2,17 @@
 
 You are working in the Finance monorepo — a multi-platform, native-first financial tracking application.
 
-## Operation Approval Policy
+**This file is a finance-specific overlay, not a policy source.** Studio-wide policy — the core
+principles, the Definition of Done, issue-first development, coding standards, commit message
+conventions, and all eight categories of Human-Gated Operations — lives in root
+[`AGENTS.md`](../AGENTS.md) and in the studio-managed block at the bottom of this file. Each rule has
+exactly one canonical owner; read it there rather than looking for a second copy here. Everything
+below the studio markers is upstream-owned and must not be edited locally.
 
-Agent operations fall into two buckets. The **mandatory, auto-approved** workflow steps must run without asking; the **human-gated** operations must stop and wait for explicit approval. (`AGENTS.md` §"Human-Gated Operations" Categories 1–8 is the canonical, full-detail version of these rules.)
-
-### Auto-approved (mandatory — never ask for permission)
-
-These are required steps of the normal workflow. **Stopping to ask permission for any of them is a workflow violation:**
-
-- **Push your own feature branch** — `git push origin <feature-branch>`, plus the pre-push hygiene `git fetch origin main` and `git rebase origin/main`. `git push --force-with-lease` is auto-approved **only** to re-push your **own** branch after a rebase/conflict resolution.
-- **Create PRs** — `gh pr create --base main` with a linked issue (`Closes #N`) and a detailed description, immediately after the first push.
-- **Drive and merge your own PR** — monitor `gh pr checks`, fix failures, and **merge your own PR** with `gh pr merge <N> --squash` once the quality gate passes (CI green AND `MERGEABLE`). You MAY also approve/request-changes, request reviewers, dismiss reviews, and close/reopen PRs you authored. See `AGENTS.md` §"Category 2".
-- **Routine issue/PR labels** — add/remove triage labels (priority, platform, component, effort, phase, sprint, feature-area).
-
-### Human approval required (gated)
-
-**STOP, explain what you need and why, and wait for explicit human approval** before any of these:
-
-- **Risky git remote ops** — pushing to `main`/`master`/release branches; plain `git push --force` (forbidden entirely); `--force-with-lease` on a shared/integration branch or one you don't own; `pull`/`remote`/`merge` from remote
-- **Acting on a PR you did NOT author** — merging, approving, closing, or dismissing reviews on another author's PR
-- **Remote platform mutations** — issue close/reopen/delete; repo settings/releases/deployments; gating/lifecycle labels (`blocked`, `breaking-change`, `security`, `stale`, and any `wontfix`/`duplicate`/`invalid`/`do-not-merge` style label). See `AGENTS.md` §"Category 3"
-- **Outside project boundary** — file access outside the repository root; system config changes; global package installs
-- **Destructive file operations** — See detailed rules below
-- **Package publishing** — See detailed rules below
-- **Secret/credential access** — See detailed rules below
-- **Database destructive ops** — See detailed rules below
-
-If you need to perform any gated operation, STOP, explain what you need and why, and wait for human approval.
-
-### Destructive File Operations — Detailed Rules
-
-You MUST NOT delete directories or perform bulk file removal. Specific prohibitions:
-
-- NEVER run `rm -rf`, `del /S`, `Remove-Item -Recurse -Force`, or any recursive delete
-- NEVER delete more than one file in a single command without listing each file explicitly
-- NEVER overwrite a file without reading it first to understand what you're replacing
-- NEVER use wildcard deletion (`rm *.js`, `del *.log`) — always name each file
-
-**Instead, do this:**
-
-- To remove a single file: use the standard file tools, not shell commands
-- To remove multiple files: list each file by name and explain why each should be deleted
-- To clean build artifacts: tell the human to run `npm run clean` or equivalent
-- If a directory needs removal: state the directory path and contents, then ask the human to delete it
-
-### Package Publishing — Detailed Rules
-
-You MUST NOT distribute code to any external registry or platform. Specific prohibitions:
-
-- NEVER run `npm publish`, `yarn publish`, `pnpm publish`, or any publish command
-- NEVER run `docker push`, `docker buildx push`, or push container images
-- NEVER submit to app stores, package registries, or CDNs
-- NEVER run deployment scripts (`deploy.sh`, `cdk deploy`, `terraform apply`, etc.)
-- NEVER create GitHub Releases with attached binaries
-
-**Instead, do this:**
-
-- Prepare the package/release and document the steps for the human to execute
-- Create a checklist of pre-publish verification steps
-- Write release notes and changelogs, then ask the human to publish
-
-### Secret & Credential Operations — Detailed Rules
-
-You MUST NOT access, create, or modify real credentials. Specific prohibitions:
-
-- NEVER create or edit `.env` files containing actual API keys, passwords, tokens, or connection strings
-- NEVER read files in a `secrets/`, `.secrets/`, or `credentials/` directory
-- NEVER access the system keychain, Windows Credential Manager, macOS Keychain, or Linux secret-service
-- NEVER generate real API keys or tokens (e.g., via `openssl rand`, `ssh-keygen`, `gpg --gen-key`)
-- NEVER hardcode any value that looks like a secret (long random strings, base64 blobs, connection URIs with passwords)
-- NEVER echo, log, or display the contents of environment variables that may contain secrets
-
-**Instead, do this:**
-
-- Create `.env.example` or `.env.template` files with placeholder values like `YOUR_API_KEY_HERE`
-- Reference environment variable names (`process.env.DATABASE_URL`) without the actual values
-- Document what secrets are needed and where the human should configure them
-- Use placeholder values in tests (e.g., `test-api-key-not-real`)
-
-### Database Destructive Operations — Detailed Rules
-
-You MUST NOT execute operations that delete, truncate, or irreversibly modify database data. Specific prohibitions:
-
-- NEVER run `DROP TABLE`, `DROP DATABASE`, `DROP INDEX`, or any `DROP` statement
-- NEVER run `TRUNCATE TABLE` or `TRUNCATE`
-- NEVER run `DELETE FROM` without a `WHERE` clause (full table deletion)
-- NEVER run `ALTER TABLE ... DROP COLUMN` (irreversible schema change)
-- NEVER execute database migration scripts against anything other than a local dev database
-- NEVER run `pg_restore`, `mongorestore`, or database restore commands
-- NEVER modify database connection strings to point at production/staging systems
-
-**Instead, do this:**
-
-- Write migration scripts and ask the human to review and execute them
-- Use `SELECT` queries to inspect data before proposing changes
-- Create migration files with both `up` and `down` operations
-- For test data: use `INSERT` into local development databases only
-- Propose the SQL and explain its impact, then let the human run it
+What follows is only what is genuinely finance-specific: this repo's architecture, its ratified
+schema decisions, the exact local pre-push commands, and its known local quirks. Where a rule here is
+**stricter** than the studio floor, it is an **additional local constraint on top of `AGENTS.md`** —
+never a replacement for it, and never a relaxation.
 
 ## Architecture Context
 
@@ -126,25 +40,14 @@ The following schema additions have been approved to align KMP models with Supab
 - **i18n framework**: Internationalization support in `packages/core` for multi-language financial terminology
 - **All models include `ownerId`**: Every sync-enabled model has an `ownerId` field referencing the authenticated user
 
-## Development Workflow (MANDATORY)
+## Development Workflow
 
-All code changes MUST follow this workflow:
+The workflow itself — issue-first, worktree, branch, commit, push, PR, drive CI green, self-merge,
+clean up — is defined in root [`AGENTS.md`](../AGENTS.md) and
+[`.github/instructions/workflow.instructions.md`](instructions/workflow.instructions.md). Do not look
+for a second copy of it here.
 
-1. **Create or verify a GitHub issue** exists for the work (`gh issue create` if needed)
-2. **Scan for an existing worktree** for this issue: `git worktree list` — resume if found
-3. **Create a worktree** if none exists: `git worktree add ../wt-[agent-type]-[branch] -b [branch]`
-4. **Implement and commit** with issue references: `type(scope): description (#N)`
-5. **⚠️ MANDATORY PRE-PUSH: Lint & Format (NEVER skip — see checklist below). Verify with `npm run format:check && npx eslint . --max-warnings 0` (NOT `npm run ci:check` — type-check may fail locally; see Known Local Issues).**
-6. **Fetch and rebase**: `git fetch origin main && git rebase origin/main` (auto-approved)
-7. **Push the feature branch**: `$env:HUSKY = "0" ; git push --no-verify origin <branch-name>` — **MANDATORY, auto-approved, do NOT ask for permission**
-8. **Create a PR automatically** with `gh pr create` — include `Closes #N` and a detailed description — **MANDATORY, auto-approved, do NOT ask for permission**
-9. **Verify the PR exists**: `gh pr view <branch> --json number` — if it doesn't return a PR number, `gh pr create` silently failed; re-run step 8. **Not running this verification step is how "ghost PR" workflow gaps happen.**
-10. **Monitor `gh pr checks` AND PR merge state** — poll `gh pr view <N> --json mergeable,mergeStateStatus` until BOTH all checks are green AND the PR shows `MERGEABLE` (not `DIRTY`/`BEHIND`/`CONFLICTING`). **Merge conflicts carry the same P0 weight as red CI checks.** Fix CI via the Pre-Push Checklist; fix conflicts via the Merge Conflict Protocol (rebase → auto-resolve lockfiles/generated files → force-with-lease push; escalate semantic conflicts with `## Needs Human Action`).
-11. **Merge the PR once the quality gate passes** — when CI is green AND the PR is `MERGEABLE`, agents MAY merge their own PR automatically with `gh pr merge <N> --squash` (auto-approved, do NOT ask for permission). Use `--admin` to clear a branch-protection `BLOCKED` state only after confirming format + lint + affected tests are green locally, and document the override in the PR. **Work is NOT complete until the PR is merged (or, if a genuine blocker prevents merge, left green/`MERGEABLE` with a `## Needs Human Action` note).**
-12. **Never commit directly to `main`** — all changes go through feature branches and PRs
-13. **Clean up the worktree** after the merge is confirmed: `git worktree remove <path>`
-
-> ⚠️ **MANDATORY**: Steps 7-11 (push → create PR → verify PR exists → drive CI green → merge) are auto-approved and required. Stopping at step 6 (local commit only) is a **workflow violation**. So is finishing step 8 without the step-9 verification — that's how branches end up pushed with no PR open. A task is incomplete if it ends without a merged PR (or a CI-green, conflict-free PR explicitly blocked for a documented reason).
+What is local to this repo is the **exact command sequence** below. Run it before **every** `git push`.
 
 ### ⚠️ MANDATORY: Pre-Push Lint & Format Checklist (NEVER skip)
 
@@ -211,57 +114,44 @@ Tooling notes:
   Format + lint remain the fast pre-push gate, but type-check is no longer expected to fail.
 
 - **`.prettierignore` coverage** — Prettier is configured to skip `*.kt`, `*.kts`, `*.swift`, `Caddyfile`, and `*.env*` files. Do not run Prettier on these file types.
+- **Studio-managed canon is `.prettierignore`d** — `.github/copilot-instructions.md` and the generated
+  files under `.github/agents/`, `.github/instructions/`, `.github/prompts/` and `.github/skills/` are
+  authored upstream in `jrmoulckers/.github` and are not formatted to this repo's Prettier config.
+  They are listed in `.prettierignore`; do not run `npm run format` against them and do not "fix"
+  their formatting — a local edit inside the `studio:base` markers is detected as drift and the file
+  is skipped on the next sync.
 - **`npm run ci:check:quick`** — Use this for docs-only or non-code changes; it skips type-check.
 - **Husky pre-push hook** — Blocks non-interactive (agent) pushes by default. Agents must bypass with `$env:HUSKY = "0" ; git push --no-verify origin <branch>`.
 
-## Code Quality Requirements
+## Security — finance-specific controls
 
-- Write clean, self-documenting code with minimal but meaningful comments
-- Every public function/method must have a documentation comment
-- Follow platform-native conventions (don't force one language's patterns on another)
-- Prefer pure functions and immutable data structures where possible
-- All business logic must have unit tests; sync operations need integration tests
-- Use descriptive variable and function names that reflect financial domain terminology
+These are **additional local constraints layered on top of** the security and privacy rules in root
+`AGENTS.md` (core principles, Category 7 secret handling, Category 8 destructive database
+operations). They are not a replacement for them, and they are deliberately stricter because this
+repository handles real financial data.
 
-## Security (CRITICAL for financial app)
+- **NEVER log sensitive financial data in plain text** — account numbers, balances, transaction
+  amounts, merchant strings, and account identifiers must never reach `console.*`, `Log.*`,
+  `logger.*`, crash reports, or analytics payloads. CI enforces this via the "Observability
+  Guardrails" job and the gatekeeper's sensitive-data-logging backstop.
+- **Encrypt financial data at rest and in transit** on every platform, including local device
+  storage, not just the Supabase/PowerSync transport.
+- **Least privilege on every sync-enabled table** — ownership is expressed through `owner_id`
+  (`auth.uid()`) with `household_id` for household-level RLS isolation. Every new table and every new
+  API endpoint must carry an RLS policy; there is no "public" financial data.
+- **Product telemetry is consent-gated and excludes raw financial values.** Finance has no
+  advertising business model — see `AGENTS.md` core principle 6.
 
-- NEVER hardcode secrets, API keys, or credentials
-- NEVER log sensitive financial data (account numbers, balances, transactions) in plain text
-- Always use parameterized queries — no string interpolation in SQL/queries
-- Validate and sanitize all inputs at trust boundaries
-- Use encryption at rest and in transit for financial data
-- Follow the principle of least privilege for all API endpoints and data access
+## Finance-specific code conventions
 
-## Accessibility
+Generic coding standards live in root `AGENTS.md`. Only these are local:
 
-- All UI must meet WCAG 2.2 AA standards minimum
-- Use semantic HTML/native elements; support screen readers
-- Respect user preferences: reduced motion, high contrast, font scaling
-- Never convey information through color alone
-- All interactive elements must have appropriate labels and focus management
-
-## Privacy & Ethics
-
-- Collect only the minimum data necessary
-- All data collection must be transparent and documented
-- Support data export and deletion (GDPR/CCPA compliance)
-- Never sell, share, or use financial data for advertising
-- Default to the most private option in every design decision
-
-## Commit Messages
-
-- Use conventional commits: `type(scope): description (#N)` where N is the issue number
-- Types: feat, fix, docs, style, refactor, test, chore, ci, perf
-- Scope should reference the app/package/service being changed
-- Always include issue reference `(#N)` in every commit message
-- Include "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" trailer
-
-## Dependencies
-
-- Document the reason for every new dependency in the PR description
-- Prefer well-maintained, actively developed packages
-- Evaluate security posture before adding financial/crypto dependencies
-- Minimize dependency count — prefer standard library solutions when adequate
+- Use variable and function names that reflect **financial domain terminology** (e.g. `postedBalance`,
+  `budgetPeriod`, `recurringRule`) rather than generic names.
+- **Sync operations require integration tests**, not just unit tests — the sync engine's conflict and
+  replay behavior is not adequately covered by unit tests alone.
+- Evaluate the **security posture of any financial or crypto dependency** before adding it, in
+  addition to the studio-wide requirement to document why a dependency was added.
 
 ## File Organization
 
