@@ -1,8 +1,13 @@
 {
   "version": 1,
   "backbone": "jrmoulckers/.github",
-  "generatedAt": "2026-08-08T22:42:12.457Z",
+  "generatedAt": "2026-08-10T08:28:02.359Z",
   "entries": {
+    ".gitattributes": {
+      "sourceSha256": "4be6041de14159436002446da3193a178a4defa235fe71585c04002d070d80c7",
+      "targetSha256": "a591a7816b02daf54849d69af18396ff6175f24de0b06d0a1def97d0b5a9274a",
+      "syncedAt": "2026-08-10T08:28:02.352Z"
+    },
     ".github/agents/accessibility-reviewer.agent.md": {
       "sourceSha256": "f83d90b50ea87be04935ba849c0a93eda729452a2d7eee81e0cb02b4bf04dae5",
       "targetSha256": "f616ea0dbb9d4fc8414ea502196b4b6dd1da7a3e67e0c71b65c0352fabb1d38a",
@@ -113,6 +118,11 @@
       "targetSha256": "c11e3f7bccca27ccdedcd7ed54743c484b5208a96ab373d2a0b50be74efcbdf9",
       "syncedAt": "2026-08-08T01:14:28.079Z"
     },
+    ".github/copilot-instructions.md": {
+      "sourceSha256": "997b381ea68e9e081a6bb47b3f395c26d9a78b565c2c2974263b11b08703d932",
+      "targetSha256": "311544714e626b2377a1025ae1e3994cfaac00adff635ef7c5b9d35e33e360fa",
+      "syncedAt": "2026-08-10T08:28:02.351Z"
+    },
     ".github/instructions/agents.instructions.md": {
       "sourceSha256": "70f066ca74342a504f7411fbb21e62012b5b8ce05403ed32e93c3d39d145c8aa",
       "targetSha256": "a772cb8d4790f9ae3763e6b94013000c16fb9192ab184b8ce20c3a297a10e78a",
@@ -134,9 +144,9 @@
       "syncedAt": "2026-08-08T22:42:12.193Z"
     },
     ".github/instructions/workflow.instructions.md": {
-      "sourceSha256": "118a896744ff62a4c1ed99c2a4d83ff1937a94d61a17ed0379ef9a03160b0a34",
-      "targetSha256": "9aaecb7bd0637b91768781c47dc29acee3d3a6cb6e176870ea442be0398cf1af",
-      "syncedAt": "2026-08-08T22:42:12.197Z"
+      "sourceSha256": "5f9ac806833620e496f4a13c8efa0494b90a3a43a5ff887c3d6d9d75477626cd",
+      "targetSha256": "6cea1057721f85a69713c5bd0c99706418dfe549ae07a07bfabe7ac646da435f",
+      "syncedAt": "2026-08-10T08:28:02.356Z"
     },
     ".github/prompts/backlog.prompt.md": {
       "sourceSha256": "662578e4e512ac591b86127f50c601283a27b6ce96c9e09b022b833f720fe750",
@@ -362,6 +372,31 @@
       "sourceSha256": "6e7f6486dcdd44e7ce9c3d0cf60827cbae2d75dab216f774cb6e0d32b0a6a8a9",
       "targetSha256": "708c645a8553135c9bcf76b525891fc9da25d1b35f5044e6dd73057699a1f184",
       "syncedAt": "2026-08-07T15:35:03.617Z"
+    },
+    "vendor/@jrm/tokens/css/default/tokens-high-contrast-dark.css": {
+      "sourceSha256": "913ea765fa1f62448937e605981971a39a9c93de3351b9c367528dd003f2260f",
+      "targetSha256": "0f1784714ec54332429abfa85d62bac5314362b516ca611d3315cf58aee4c204",
+      "syncedAt": "2026-08-10T08:28:02.356Z"
+    },
+    "vendor/@jrm/tokens/js/default/tokens.high-contrast-dark.d.ts": {
+      "sourceSha256": "075979238c4992bb610c7914d594097b208e291b6df7ce89ff22bcfbc6e560cb",
+      "targetSha256": "e41087beb4ce5c3485bf16d0296785adad561e64909ec25e746bf20a3cb3cf22",
+      "syncedAt": "2026-08-10T08:28:02.358Z"
+    },
+    "vendor/@jrm/tokens/js/default/tokens.high-contrast-dark.js": {
+      "sourceSha256": "d490261e5773d3eeb7bf661f90c5c6e619d4f286ba827db5f329c056afe660d1",
+      "targetSha256": "ef2b470e2c6b45a36c603eef8a4ec1ed399ff8c2c133401791248b7a6d733d37",
+      "syncedAt": "2026-08-10T08:28:02.358Z"
+    },
+    "vendor/@jrm/tokens/native/compose/JrmTokens.kt": {
+      "sourceSha256": "170c97100f4d59f480a4b144fbdb7833194436d8f7c3ab39d548b83014ec8d73",
+      "targetSha256": "782e9a94c25077ef7307d798cebec5e6a7abcbb5b73f236b508a265f9514b633",
+      "syncedAt": "2026-08-10T08:28:02.358Z"
+    },
+    "vendor/@jrm/tokens/native/swift/JRMTokens.swift": {
+      "sourceSha256": "8683dc1877ed6001dab7e0b7211f24e7fdd25cc58df2560c0ff9ccac27e485b3",
+      "targetSha256": "1f9715997db446b13378c74014ac9cca8c99506692d83b9cc6257b1965c4972d",
+      "syncedAt": "2026-08-10T08:28:02.359Z"
     }
   }
 }
