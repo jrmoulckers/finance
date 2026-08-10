@@ -55,6 +55,11 @@ unauthenticated: User cannot be authenticated with the token provided`, which po
   user-level `~/.npmrc`, and in CI in the file `actions/setup-node` generates from
   `registry-url` + `scope`.
 
+  It also routes **by scope only**. Replacing the default registry wholesale would break
+  `npm audit` with `ERR_PNPM_AUDIT_ENDPOINT_NOT_EXISTS`, and no token fixes that. The routing
+  rules and the measured audit egress are recorded in
+  [`docs/security/supply-chain.md`](../security/supply-chain.md).
+
 ## Blocked: the shared toolchain presets
 
 `@jrmoulckers/eslint-config`, `@jrmoulckers/prettier-config`, and `@jrmoulckers/tsconfig` are
