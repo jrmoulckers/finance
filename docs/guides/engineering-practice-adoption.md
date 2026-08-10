@@ -194,6 +194,17 @@ including `jsx-key`. Bisecting the config would have cost one more probe than ac
    finance runs today, but it gates the `deploy-pages.yml` migration, which would otherwise
    start failing the moment `@jrmoulckers/*` enters the manifest.
 
+   The upstream fix has since landed, at
+   `f1457271427fcde18a62b07c53a1ea75e14cd644`. Migration remains gated on package access, and on a
+   second, unrelated hazard that the pin itself introduces: a caller's `permissions:` block
+   replaces the default rather than extending it, so a caller that grants less than its callee
+   declares dies as an unreadable `startup_failure`. Finance's repository default is restricted and
+   grants exactly `{contents, metadata, packages}: read` — measured, not assumed. That covers six
+   of the eight callees but **not** `reusable-ci-lint` (`pull-requests: read`) or
+   `reusable-deploy-pages` (`id-token: write`), the latter being precisely the migration
+   recommended first. See
+   [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md).
+
 4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.4.0`**,
    **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**. The React
    preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s reversal to
