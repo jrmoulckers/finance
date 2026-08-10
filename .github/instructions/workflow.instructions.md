@@ -87,9 +87,10 @@ Amend only when the user explicitly requests it and applicable authority permits
 ## Calling reusable workflows
 
 Studio product repos call the backbone's reusable workflows at a reviewed immutable commit SHA:
-`uses: jrmoulckers/.github/.github/workflows/reusable-*.yml@<reviewed-commit-sha>`. A documented
-versioned-tag policy is also acceptable only when automation proposes reviewed updates; do not use a
-mutable branch such as `@main`.
+`uses: jrmoulckers/.github/.github/workflows/reusable-*.yml@<reviewed-commit-sha>`. The reference
+must be a full 40-character SHA; branches and tags are rejected. Configure Dependabot, Renovate, or
+equivalent automation to propose SHA update PRs, then review the exact upstream diff and release
+notes. Never resolve a mutable reference during a run.
 
 **A caller `permissions:` block replaces the defaults — it does not add to them.** Every scope you
 omit is set to `none`, and a called workflow can never receive more than its caller holds. So a
@@ -105,7 +106,10 @@ Grant every scope the callee declares:
 | `reusable-ci-web` | `contents: read` |
 | `reusable-perf-budget` | `contents: read` |
 | `reusable-smoke-test` | `contents: read` |
-| `reusable-deploy-preview` | `contents: read` (plus whatever your deploy step needs) |
+| `reusable-deploy-preview` | `contents: read` |
+| `reusable-change-detection` | `contents: read` |
+| `reusable-security-ci` | `contents: read` |
+| `reusable-deploy-pages` | `contents: read`, `pages: write`, and `id-token: write` |
 
 ```yaml
 permissions:
@@ -126,6 +130,9 @@ Rules:
 - If a scope truly cannot be granted, disable the job that needs it instead
   (e.g. `semantic-pr-title: false` for `reusable-ci-lint`).
 - Debug a `startup_failure` with no log by checking caller permissions first.
+- Caller workflows own CI concurrency. Put the concurrency group on the caller workflow so matrix or
+  multi-package reusable jobs do not cancel sibling calls. Canonical Pages deployment is the
+  exception: it serializes repository deployments with `cancel-in-progress: false`.
 
 ### Taking only part of `reusable-ci-lint`
 
@@ -153,6 +160,55 @@ jobs:
 Passing an empty string is the supported opt-out. Leaving a command at its default in a repo that
 has no such script fails the job; duplicating backbone logic locally makes the product repo drift
 from canon.
+
+### Build once and reuse same-run artifacts
+
+`reusable-ci-web` optionally uploads a validated directory when `artifact-name` is set. Preview,
+performance, and smoke jobs accept that exact same-run artifact name. The caller must declare
+`needs` so the producer completes first; consumers do not accept a repository, run ID, or token, so
+they cannot fetch cross-run or cross-repository artifacts.
+
+```yaml
+jobs:
+  web:
+    uses: jrmoulckers/.github/.github/workflows/reusable-ci-web.yml@<reviewed-commit-sha>
+    with:
+      artifact-name: web-build
+      artifact-path: dist
+
+  performance:
+    needs: web
+    uses: jrmoulckers/.github/.github/workflows/reusable-perf-budget.yml@<reviewed-commit-sha>
+    with:
+      artifact-name: ${{ needs.web.outputs.artifact-name }}
+      output-dir: dist
+```
+
+At the caller workflow level, use a ref-scoped group for superseded CI runs:
+
+```yaml
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+Never pass an untrusted artifact into a job with secrets or write authority. `reusable-deploy-pages`
+does not accept an arbitrary artifact: its unprivileged build job creates the fixed Pages artifact,
+and its environment-gated deploy job only calls GitHub's deploy action with `pages: write` and
+`id-token: write`.
+
+### Security and preview boundaries
+
+- Reusable commands are trusted repository configuration. Pass literal workflow values, never event
+  titles, branch names, issue text, or other untrusted data.
+- Never use `secrets: inherit`. Canonical PR build, security, preview, performance, smoke, and change
+  detection workflows declare no secrets.
+- Preview canon is artifact-only. The removed `provider`, `preview-command`, `DEPLOY_TOKEN`, and
+  `preview-url` contracts must not be recreated. Provider deployments require a separate reviewed
+  job, a protected environment, explicit secrets, and no PR-controlled arbitrary shell.
+- Lighthouse reports remain private GitHub artifacts by default. Enable
+  `lighthouse-public-upload` only for an intentionally public, unauthenticated URL after accepting
+  that report data will leave GitHub's private artifact boundary.
 
 ### Never vendor a backbone workflow or health file
 

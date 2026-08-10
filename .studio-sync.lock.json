@@ -1,7 +1,7 @@
 {
   "version": 1,
   "backbone": "jrmoulckers/.github",
-  "generatedAt": "2026-08-08T22:42:12.457Z",
+  "generatedAt": "2026-08-09T22:23:34.208Z",
   "entries": {
     ".github/agents/accessibility-reviewer.agent.md": {
       "sourceSha256": "f83d90b50ea87be04935ba849c0a93eda729452a2d7eee81e0cb02b4bf04dae5",
@@ -113,6 +113,11 @@
       "targetSha256": "c11e3f7bccca27ccdedcd7ed54743c484b5208a96ab373d2a0b50be74efcbdf9",
       "syncedAt": "2026-08-08T01:14:28.079Z"
     },
+    ".github/copilot-instructions.md": {
+      "sourceSha256": "997b381ea68e9e081a6bb47b3f395c26d9a78b565c2c2974263b11b08703d932",
+      "targetSha256": "311544714e626b2377a1025ae1e3994cfaac00adff635ef7c5b9d35e33e360fa",
+      "syncedAt": "2026-08-09T22:23:34.194Z"
+    },
     ".github/instructions/agents.instructions.md": {
       "sourceSha256": "70f066ca74342a504f7411fbb21e62012b5b8ce05403ed32e93c3d39d145c8aa",
       "targetSha256": "a772cb8d4790f9ae3763e6b94013000c16fb9192ab184b8ce20c3a297a10e78a",
@@ -134,9 +139,9 @@
       "syncedAt": "2026-08-08T22:42:12.193Z"
     },
     ".github/instructions/workflow.instructions.md": {
-      "sourceSha256": "118a896744ff62a4c1ed99c2a4d83ff1937a94d61a17ed0379ef9a03160b0a34",
-      "targetSha256": "9aaecb7bd0637b91768781c47dc29acee3d3a6cb6e176870ea442be0398cf1af",
-      "syncedAt": "2026-08-08T22:42:12.197Z"
+      "sourceSha256": "b63ec55be43b7ee397910905d076f8d4e3ce5c648cb723a84f33033eac3e7279",
+      "targetSha256": "6dd70bdb2087822aa5f1f7ade4e28714785dc61ce468d4e490d6b57fcdd0da3d",
+      "syncedAt": "2026-08-09T22:23:34.202Z"
     },
     ".github/prompts/backlog.prompt.md": {
       "sourceSha256": "662578e4e512ac591b86127f50c601283a27b6ce96c9e09b022b833f720fe750",
@@ -304,49 +309,49 @@
       "syncedAt": "2026-08-07T15:35:03.616Z"
     },
     "apps/web/vendor/@jrm/tokens/css/default/tokens.css": {
-      "sourceSha256": "343e10b1ac7914f2a3d1255cfc6ffad1930ac1a17da9eb5aa5551e6e4f67062c",
-      "targetSha256": "bb35859efbfb66ccb46c5bcc082d552e33ab1a53b0f61575d9b1932862886d87",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "658721d427c18960232d1ecb45dbed3e54fcccd7e6efdd088d6b5fd47f5401bb",
+      "targetSha256": "9966d8a4156263ab62ca0434039309a9b8c40713dea1a53afb913c6467b05bb6",
+      "syncedAt": "2026-08-09T22:23:34.202Z"
     },
     "apps/web/vendor/@jrm/tokens/js/default/tokens.dark-oled.d.ts": {
-      "sourceSha256": "7c664068a688ec61e1844ea98e60421c9621296709c0d87a9be8d9d58dc57cb4",
-      "targetSha256": "673eba7f5ba89bc68e1eca4e6defa3c84d6b9bd9b9c4d0477992378a92fd5a02",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "e53f8fc555b2f2154adb552281c14a445ae1ce328f8cb1066fae8e773ea833fd",
+      "targetSha256": "5dfb48a5029dc0114d2ae352bb7546032c9f0b7abd0e92ef7bbebfb4187959d9",
+      "syncedAt": "2026-08-09T22:23:34.203Z"
     },
     "apps/web/vendor/@jrm/tokens/js/default/tokens.dark-oled.js": {
-      "sourceSha256": "5fb302cb1dee71b6649432ed4876a3af6dfbadcb26db80b590c40e0f079d83d5",
-      "targetSha256": "2a1cdb87edf51afb96ba02d37b9ab4c8e8c9c10a8a6991a3fd9495325fb08df8",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "26850bb09d049bad1b9efe567ec5dbdcb9093b022343cb60c6792ec3bb5f6b1d",
+      "targetSha256": "07c877b9ba26c69b87f43a84327522bbf6e665f8d04c11cc5ef0336d75cd28e3",
+      "syncedAt": "2026-08-09T22:23:34.203Z"
     },
     "apps/web/vendor/@jrm/tokens/js/default/tokens.dark.d.ts": {
-      "sourceSha256": "b5c69f8738fe2d2aa281e3c00719d54486a87b9ad638e8c4c72434ce8267636f",
-      "targetSha256": "47f4e9c0b15ad7ddd6cebfb66d1614ed0caf50b72ef9a5395a28c8952c7ccaa7",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "d944884f91eb2c5e601a220f0b4e94643c7fcaca94672514f79b272ae9e109a5",
+      "targetSha256": "dd45b4e6547bf4d9b5b08e0be63b5b65149f4e9faece2e4ada37b819ea44c77f",
+      "syncedAt": "2026-08-09T22:23:34.203Z"
     },
     "apps/web/vendor/@jrm/tokens/js/default/tokens.dark.js": {
-      "sourceSha256": "4c93c6e4a87fb014f75109b2cf237e7bad00de408cd91254d224cebff24ecbdb",
-      "targetSha256": "552fab49c3c45232492d9acaed3ba41df9060cb00548490d9359fa89cca5e6ed",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "22b8f5f79b8eb5c262b5835ccb92dbbab2848f8c9ada9391a21e5b634d35cc10",
+      "targetSha256": "c50383b8884df047377dac24068dec053f76d7e11e82ff65ce782138c29a9830",
+      "syncedAt": "2026-08-09T22:23:34.206Z"
     },
     "apps/web/vendor/@jrm/tokens/js/default/tokens.high-contrast.d.ts": {
-      "sourceSha256": "edf1099006f2936abc79328ec1fe90dbde6b8f19d27e5b0f46884a34c7b97ed5",
-      "targetSha256": "432034685862716e39fee39db5ad8127bddec27c434cfbc9fed663f212e02934",
-      "syncedAt": "2026-08-07T15:35:03.616Z"
+      "sourceSha256": "d6b591b87090addc933872d6f1f46ff047426d223ef83b840d7b2d223d8e96c3",
+      "targetSha256": "0591816177d40dbbff8ccdde01aec70fdfcfb56e1210ebeeb38ab5bf3696d2fa",
+      "syncedAt": "2026-08-09T22:23:34.206Z"
     },
     "apps/web/vendor/@jrm/tokens/js/default/tokens.high-contrast.js": {
-      "sourceSha256": "84926f6df84d4a261a43731c8396fc5a4392dbd7f5dd976356db37658dba1c5e",
-      "targetSha256": "d639bba1b5db52811db9fd59b4bdd1d216dddff9a536c6794b6f017a0e6809b3",
-      "syncedAt": "2026-08-07T15:35:03.617Z"
+      "sourceSha256": "671ccfddc1551ffb57f6cea8b29ae9bb23fccf87d74f5ae7f2363fe8fd2668fe",
+      "targetSha256": "79357f6039ee2e9ab6ddeb334253f5cdf0da4a249134b537e25d17800cfec2f0",
+      "syncedAt": "2026-08-09T22:23:34.206Z"
     },
     "apps/web/vendor/@jrm/tokens/js/default/tokens.light.d.ts": {
-      "sourceSha256": "083baa505afb21a328371317f592017c5169de739b1dba4b7cc74ad510089a92",
-      "targetSha256": "6c871828f9f6f915e9cf7c23ea5639e4dd67dcc7497a3e2f8e5f77c6594fe614",
-      "syncedAt": "2026-08-07T15:35:03.617Z"
+      "sourceSha256": "cb08b79beb8cc5c881e2d8e8a472b9fe7b6c6b03ef7798dbdd92fccc10229693",
+      "targetSha256": "63d43c252aa449a09521afb5add6b4552989c64582aa87321ecea130d07f10c8",
+      "syncedAt": "2026-08-09T22:23:34.207Z"
     },
     "apps/web/vendor/@jrm/tokens/js/default/tokens.light.js": {
-      "sourceSha256": "2b99418dd6d78b494bdd365b70dba82dc87d3f0a4fbdb201f072b4c7cba5f132",
-      "targetSha256": "6c327ab3f2c99f361245c6273fc2192647a37c7dc8b26a5ed010f33d16f97f0f",
-      "syncedAt": "2026-08-07T15:35:03.617Z"
+      "sourceSha256": "6a792f877e22cb95404210a0fc336998dab3ebf4ac604f4f6914e9b1758f01a8",
+      "targetSha256": "86cfd697037adb1ad089c6155d70e596e16b56f10ab554af5480a583acc82c1c",
+      "syncedAt": "2026-08-09T22:23:34.207Z"
     },
     "apps/web/vendor/@jrm/tokens/js/index.d.ts": {
       "sourceSha256": "852802c61e34befbe963e7c7e47abbfc3728b2687b9a73ff522177676aa8a165",
@@ -358,10 +363,20 @@
       "targetSha256": "e6f65ac26d8aab9dc02c05acd2906971ca7a8df49785f5f8e885743996dac69d",
       "syncedAt": "2026-08-07T15:35:03.617Z"
     },
+    "apps/web/vendor/@jrm/tokens/native/compose/JrmTokens.kt": {
+      "sourceSha256": "3902bcfb3af00fb5be2eeb755452b63556a0166519bbb566b82fa222962a82a7",
+      "targetSha256": "5b304437e6c9eb9ba1b7379890e563a26d391e7781f37963d0661eb403e57558",
+      "syncedAt": "2026-08-09T22:23:34.207Z"
+    },
+    "apps/web/vendor/@jrm/tokens/native/swift/JRMTokens.swift": {
+      "sourceSha256": "36f123dcd9eaaf5614872e5d1b30a8d2066b9dbb7e0f8e04659bf6dc7e3d7308",
+      "targetSha256": "d66e5007def17a8f746eca282ecfe8441a52c31fb60dedc0cc57137a1af0c19a",
+      "syncedAt": "2026-08-09T22:23:34.207Z"
+    },
     "apps/web/vendor/@jrm/tokens/tailwind/default.cjs": {
-      "sourceSha256": "6e7f6486dcdd44e7ce9c3d0cf60827cbae2d75dab216f774cb6e0d32b0a6a8a9",
-      "targetSha256": "708c645a8553135c9bcf76b525891fc9da25d1b35f5044e6dd73057699a1f184",
-      "syncedAt": "2026-08-07T15:35:03.617Z"
+      "sourceSha256": "e053a0d3479d535d4fe626117a9e7d92781b2755b21c1096ca4d7e218be62856",
+      "targetSha256": "cfe7d8bf9a7a57e45b2eb91ea8cab8fef230d1c508f7916c3d590adff52b0318",
+      "syncedAt": "2026-08-09T22:23:34.208Z"
     }
   }
 }
