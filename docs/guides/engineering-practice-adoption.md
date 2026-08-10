@@ -145,12 +145,11 @@ What must stay local, via `extend` / `ignores` / `rules`:
 
 ### Then, for Prettier
 
-`.prettierrc.json` is byte-equivalent to the shared config on all seven keys. Adopt it for
-those, and **exclude the shared markdown override** (`proseWrap: 'always'`, `printWidth: 96`).
-The 73-line `.prettierignore` is finance-specific and stays.
+`.prettierrc.json` is byte-equivalent to the shared config on all seven keys. Adopt it, **including
+the shared markdown override** (`proseWrap: 'always'`, `printWidth: 96`). The 73-line
+`.prettierignore` is finance-specific and stays.
 
-The override was measured rather than assumed, by running the exact shared override
-(`proseWrap: 'always'`, `printWidth: 96`) across every tracked markdown file:
+The override was measured rather than assumed, by running it across every tracked markdown file:
 
 | Metric                             | Value                             |
 | ---------------------------------- | --------------------------------- |
@@ -159,33 +158,47 @@ The override was measured rather than assumed, by running the exact shared overr
 | Line churn                         | **36,249 added / 29,723 removed** |
 | Total markdown lines in repository | 182,051                           |
 
-The reflow therefore rewrites roughly **36% of every markdown line finance owns** in a single
-commit, in the repository with the most open PRs and long-lived branches. That is the one-time
-cost, and it is not the objection. The recurring cost is. The same three-word insertion into the
-same paragraph, measured as wrapped-baseline against wrapped-after-edit:
+The reflow rewrites roughly **36% of every markdown line finance owns** in a single commit. The
+recurring cost is smaller: the same three-word insertion into the same paragraph, measured as
+wrapped-baseline against wrapped-after-edit, changes 5 lines under `always` against 1 under
+`preserve`. The rewrap cascade is bounded by **paragraph** length, not file length.
 
-| Regime               | Changed lines |
-| -------------------- | ------------- |
-| `preserve` (current) | 1 / 1         |
-| `always` at 96       | 5 / 5         |
+Finance argued for omitting the override on the strength of the one-time figure. **The authority
+weighed it and kept `always`**, on the basis that the recurring cost is the one that compounds and
+is bounded. That decision is accepted and recorded here rather than worked around: diverging
+locally is the duplication this adoption exists to remove.
 
-Hard wrapping rewrites the remainder of a paragraph for a one-word edit, because the insertion
-cascades the rewrap down every following line. Note the amplification is bounded by **paragraph**
-length, not file length — roughly five-fold here, not unbounded. That is still a permanent tax on
-doc edits: the real change hides among rewrapped lines during review, and two branches touching
-one paragraph now conflict where they otherwise would not.
+**Consequence: the 528-file reflow does happen**, and lands as its own isolated mechanical commit
+on a quiet tree — never folded into a content change, because a 66,000-line diff with substance
+buried in it is unreviewable.
 
-Stated fairly, `preserve` has a real cost of its own — it permits unbounded long lines, which
-read badly in a terminal and in side-by-side diffs. The technique that avoids both is
-**semantic line breaks**: one sentence per line, which bounds line length while keeping edits
-to a single line. Prettier cannot enforce it, so it is a convention rather than a setting.
+The technique that keeps hard wrapping cheap is **semantic line breaks** — one sentence per line,
+which bounds line length while keeping most edits to a single line. Prettier cannot enforce it, so
+it is a convention rather than a setting, but it is what makes `always` tolerable in practice.
 
-This was raised upstream rather than handled with a local override, since diverging locally is
-the duplication this adoption exists to remove. The recommendation sent upstream is to omit
-`proseWrap` from the shared config, or to set **`preserve`** if a shared value is wanted —
-`preserve` is the only setting safe to impose retroactively, being a no-op on existing files.
-`printWidth: 96` for markdown is unobjectionable on its own and costs nothing without `always`.
-**Consequence: the previously-planned 590-file reflow does not happen.**
+### Sealed and generated content
+
+Reformatting is only safe where formatting carries no meaning. Before the reflow, finance's tree
+was audited for content where it does. Two classes exist and both are already handled by
+`.prettierignore`:
+
+- **Sealed** — `**/vendor/@jrm/` (vendored verbatim from `jrmoulckers/studio`) and the
+  studio-managed `.github/agents`, `.github/instructions`, `.github/prompts`, and `.github/skills`
+  assets, which are generated and hash-checked upstream. Reformatting these would invalidate the
+  hash that proves they match their source.
+- **Unparseable** — `.kt`, `.kts`, `.swift`, `Caddyfile`, `.npmrc`, `*.env*`, `*.sql`.
+
+**Golden and snapshot fixtures were checked specifically and need no exclusion**, which is worth
+recording because the reason generalises. Finance has six fixture files —
+`apps/windows/src/test/resources/narration-fixtures/{golden,snapshots}/*.json` and
+`tools/ai-eval/golden-tasks/*.json` — and **every one is deserialised before comparison**
+(`json.decodeFromString` then `assertEquals` on the data class; `JSON.parse` in `run-evals.js`).
+The repository contains no `toMatchFileSnapshot`, no `toMatchSnapshot`, and no `.snap` files.
+
+So the hazard is not "golden fixtures exist" but "golden fixtures are compared as bytes." A
+parse-then-compare fixture is immune to reformatting by construction; a byte-compared one fails
+as a false test failure far from its cause. Finance has none of the latter, and the audit is
+recorded here so the next formatting change does not have to repeat it.
 
 ## Deliberately deferred
 
