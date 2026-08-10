@@ -66,19 +66,42 @@ Two blockers were identified. **One is now resolved**; the remaining one is acce
 
 ### Blocker 1 — package access
 
-`@jrmoulckers/eslint-config`, `@jrmoulckers/prettier-config`, and `@jrmoulckers/tsconfig` are
-published to **GitHub Packages, which requires authentication even to read**. The token
-available to CI and to this repository's agents does not carry the `read:packages` scope:
+The three packages are **private**, and finance's token also lacks `read:packages`. Both are
+true, and it matters which one is quoted, because **neither registry error can tell them apart**:
 
-```text
-npm error code E403
-npm error 403 Forbidden - GET https://npm.pkg.github.com/@jrmoulckers%2feslint-config
-npm error Permission permission_denied: The token provided does not match expected scopes.
+| Probe                               | Result                                                  | Distinguishes visibility? |
+| ----------------------------------- | ------------------------------------------------------- | ------------------------- |
+| `GET` registry, anonymous           | `401 authentication token not provided`                 | no — same when public     |
+| `GET` registry, token without scope | `403 permission_denied: does not match expected scopes` | no — scope checked first  |
+| Repo packages tab, anonymous        | HTTP 200 rendering the **empty state**                  | **yes**                   |
+
+Both registry responses were reproduced against `@jrmoulckers/eslint-config`. The 403 this guide
+previously quoted as the blocker is a **scope** answer returned before visibility is ever
+evaluated, so it was never evidence about visibility.
+
+`jrmoulckers/engineering` is a _public repository_; publishing from one does not make the package
+public, and the repo page gives no hint.
+
+**On the visibility probe itself.** The recommended form is
+`curl -s .../packages | grep -c eslint-config` — a count of `0` meaning private. That is an
+**absence test**, and it returns `0` just as readily for a 404, a redirect, or a login wall, so on
+its own it cannot distinguish "no packages" from "the probe did not run". Assert the positive
+marker instead: HTTP **200** plus the rendered empty-state string:
+
+```bash
+curl -s -o pkgs.html -w '%{http_code}\n' https://github.com/jrmoulckers/engineering/packages
+grep -q 'Get started with GitHub Packages' pkgs.html && echo 'no packages visible'
 ```
 
-Granting a token is a human-gated operation. **The presets were deliberately not adopted
-blind** — a lint config that cannot be executed locally would be verified for the first time
-by CI on `main`.
+Verified: HTTP 200, empty state present, zero `eslint-config` occurrences. Same failure shape as
+a `grep` guardrail that passes because it never matched — see the note on the observability check
+below.
+
+Granting access is human-gated and **owner-only**: either flip the three packages public, or
+grant this repository Read under each package's _Manage Actions access_. It is not a token or
+workflow-configuration problem, and no token available to either side carries the scope.
+**The presets were deliberately not adopted blind** — a lint config that cannot be executed
+locally would be verified for the first time by CI on `main`.
 
 ### Blocker 2 — the ESLint peer range excluded finance (**resolved upstream in 0.4.0**)
 
@@ -274,6 +297,24 @@ recording because the reason generalises. Finance has six fixture files —
 `tools/ai-eval/golden-tasks/*.json` — and **every one is deserialised before comparison**
 (`json.decodeFromString` then `assertEquals` on the data class; `JSON.parse` in `run-evals.js`).
 The repository contains no `toMatchFileSnapshot`, no `toMatchSnapshot`, and no `.snap` files.
+
+**Coverage was verified against the sync manifest, not by reading globs.** `.studio-sync.lock.json`
+lists **72** managed paths; asking Prettier itself (`--file-info`) which of them it would format
+returns **1** — `AGENTS.md`. The other 71 are already ignored.
+
+`AGENTS.md` is deliberately not in `.prettierignore`, and that is the better answer for a **mixed**
+file: it is mostly finance-authored prose with a synced block at lines 488–636, fenced by
+`<!-- prettier-ignore-start -->` / `<!-- prettier-ignore-end -->`. The fence protects the synced
+region byte-for-byte while leaving finance's own prose formatter-managed. A whole-file ignore would
+surrender the larger half to no benefit. `prettier --check AGENTS.md` passes.
+
+For the same reason finance enumerates managed assets rather than ignoring
+`.github/{agents,instructions,prompts,skills}` wholesale: those directories hold finance-owned
+overlays too, and `.prettierignore` explicitly re-includes `finance-domain.agent.md`. A blanket
+directory glob would silently exempt files finance actually maintains — including
+`.github/copilot-instructions.md`, which is **not** studio-managed here and must stay formatted.
+The enumeration's real cost is that it can go stale, so the `--file-info` sweep above is the check
+that catches drift; re-run it after any canon sync.
 
 So the hazard is not "golden fixtures exist" but "golden fixtures are compared as bytes." A
 parse-then-compare fixture is immune to reformatting by construction; a byte-compared one fails
