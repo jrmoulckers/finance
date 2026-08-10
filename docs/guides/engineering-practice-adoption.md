@@ -112,6 +112,16 @@ by CI on `main`.
    finance runs today, but it gates the `deploy-pages.yml` migration, which would otherwise
    start failing the moment `@jrmoulckers/*` enters the manifest.
 
+4. Depend on **`^0.2.0`** for `@jrmoulckers/eslint-config` and `@jrmoulckers/tsconfig`. The
+   React preset and `vite-react.json` — the two files finance actually needs — first shipped in
+   `0.2.0`, and on a `0.x` package a caret permits patch updates only, so `^0.1.0` resolves to
+   `>=0.1.0 <0.2.0` and can never reach them.
+
+   Worth stating as a method rather than a version bump: verify against the **resolved range**,
+   not the working tree. Validating a preset through a `file:` link while committing a caret
+   range that cannot reach it means the artifact tested and the artifact installed are different
+   code. That recurs at every major boundary, not just this one.
+
 ### Then, for ESLint
 
 Install the preset and reduce `eslint.config.mjs` to `base({ ignores, rules, extend })`.
@@ -139,18 +149,30 @@ What must stay local, via `extend` / `ignores` / `rules`:
 those, and **exclude the shared markdown override** (`proseWrap: 'always'`, `printWidth: 96`).
 The 73-line `.prettierignore` is finance-specific and stays.
 
-The override was measured rather than assumed. Of 592 markdown files, 585 carry prose and
-**399 would be reflowed**. The one-time reflow is not the objection; the recurring cost is.
-The same one-word insertion into the same paragraph, by `git diff --numstat`:
+The override was measured rather than assumed, by running the exact shared override
+(`proseWrap: 'always'`, `printWidth: 96`) across every tracked markdown file:
+
+| Metric                             | Value                             |
+| ---------------------------------- | --------------------------------- |
+| Markdown files tracked             | 592                               |
+| Reflowed by the override           | **528 (89%)**                     |
+| Line churn                         | **36,249 added / 29,723 removed** |
+| Total markdown lines in repository | 182,051                           |
+
+The reflow therefore rewrites roughly **36% of every markdown line finance owns** in a single
+commit, in the repository with the most open PRs and long-lived branches. That is the one-time
+cost, and it is not the objection. The recurring cost is. The same three-word insertion into the
+same paragraph, measured as wrapped-baseline against wrapped-after-edit:
 
 | Regime               | Changed lines |
 | -------------------- | ------------- |
 | `preserve` (current) | 1 / 1         |
 | `always` at 96       | 5 / 5         |
 
-Hard wrapping rewrites a whole paragraph for a one-word edit, because the insertion cascades
-the rewrap down every following line. That is a permanent five-fold diff amplification on doc
-edits: the real change hides among rewrapped lines during review, and two branches touching
+Hard wrapping rewrites the remainder of a paragraph for a one-word edit, because the insertion
+cascades the rewrap down every following line. Note the amplification is bounded by **paragraph**
+length, not file length — roughly five-fold here, not unbounded. That is still a permanent tax on
+doc edits: the real change hides among rewrapped lines during review, and two branches touching
 one paragraph now conflict where they otherwise would not.
 
 Stated fairly, `preserve` has a real cost of its own — it permits unbounded long lines, which
@@ -159,8 +181,11 @@ read badly in a terminal and in side-by-side diffs. The technique that avoids bo
 to a single line. Prettier cannot enforce it, so it is a convention rather than a setting.
 
 This was raised upstream rather than handled with a local override, since diverging locally is
-the duplication this adoption exists to remove. **Consequence: the previously-planned 590-file
-reflow does not happen.**
+the duplication this adoption exists to remove. The recommendation sent upstream is to omit
+`proseWrap` from the shared config, or to set **`preserve`** if a shared value is wanted —
+`preserve` is the only setting safe to impose retroactively, being a no-op on existing files.
+`printWidth: 96` for markdown is unobjectionable on its own and costs nothing without `always`.
+**Consequence: the previously-planned 590-file reflow does not happen.**
 
 ## Deliberately deferred
 
