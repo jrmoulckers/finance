@@ -64,6 +64,16 @@ by CI on `main`.
        NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
    ```
 
+   This applies to finance's own workflows, which install dependencies themselves. The
+   **reusable** workflows in `jrmoulckers/.github` that run `npm ci` / `pnpm install` currently
+   set no `registry-url`, no `scope`, and no `NODE_AUTH_TOKEN`, and expose no input or secret to
+   supply one — so a caller cannot fix this from its own side. That is being addressed upstream.
+
+   Ordering consequence: **do not migrate a dependency-installing workflow onto a backbone
+   reusable until both that fix and the token have landed.** It does not affect the workflows
+   finance runs today, but it gates the `deploy-pages.yml` migration, which would otherwise
+   start failing the moment `@jrmoulckers/*` enters the manifest.
+
 ### Then, for ESLint
 
 Install the preset and reduce `eslint.config.mjs` to `base({ ignores, rules, extend })`.
