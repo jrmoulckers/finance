@@ -102,10 +102,10 @@ function stripComments(cssText: string): string {
  *
  * Sourced from the vendored shared token layer, which owns the semantic colour
  * DNA and its mode variants:
- *   - light:         apps/web/vendor/@jrm/tokens/css/default/tokens.css
- *   - dark:          apps/web/vendor/@jrm/tokens/css/default/tokens-dark.css
- *   - dark-oled:     apps/web/vendor/@jrm/tokens/css/default/tokens-dark-oled.css
- *   - high-contrast: apps/web/vendor/@jrm/tokens/css/default/tokens-high-contrast.css
+ *   - light:         vendor/@jrm/tokens/css/default/tokens.css
+ *   - dark:          vendor/@jrm/tokens/css/default/tokens-dark.css
+ *   - dark-oled:     vendor/@jrm/tokens/css/default/tokens-dark-oled.css
+ *   - high-contrast: vendor/@jrm/tokens/css/default/tokens-high-contrast.css
  * If a token value changes, update this table in lockstep — that is the point
  * of the guard.
  */

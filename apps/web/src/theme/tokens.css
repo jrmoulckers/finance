@@ -11,7 +11,8 @@
  *      primitive color ramps. It also seeds the semantic COLOR layer, which
  *      the shared layer below overrides.
  *
- *   2. @jrm/tokens (shared JRM Studio DNA, vendored under apps/web/vendor/) —
+ *   2. @jrm/tokens (shared JRM Studio DNA, vendored under the repo-root
+ *      vendor/ so all four platform apps share one copy) —
  *      overrides the shared --semantic-* COLOR layer (background/text/border/
  *      interactive/status/accent) and OWNS the mode variants
  *      ([data-theme="dark|dark-oled|high-contrast"]), the prefers-color-scheme
@@ -31,7 +32,7 @@
  *   padding: var(--spacing-4);
  *   border-radius: var(--card-border-radius);
  *
- * @see apps/web/vendor/@jrm/tokens/css/default/index.css
+ * @see vendor/@jrm/tokens/css/default/index.css
  * @see packages/design-tokens/build/web/tokens.css
  */
 
@@ -55,7 +56,7 @@
  * auto-switching, reduced-motion, and the cognitive block, so finance defers
  * to it for all mode/auto-switch color behaviour (see below — finance's own
  * hand-written auto-switch blocks were removed to avoid double-definition). */
-@import '../../vendor/@jrm/tokens/css/default/index.css';
+@import '../../../../vendor/@jrm/tokens/css/default/index.css';
 
 /* Cognitive accessibility mode — finance layout/touch-target overrides
  * (complements the shared [data-a11y-cognitive] color/type block above). */

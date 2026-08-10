@@ -238,7 +238,10 @@ function validateSyncLock() {
     skills: count((entry) => entry.startsWith('.github/skills/')),
     prompts: count((entry) => entry.startsWith('.github/prompts/')),
     instructions: count((entry) => entry.startsWith('.github/instructions/')),
-    tokens: count((entry) => entry.startsWith('apps/web/vendor/@jrm/tokens/')),
+    // Tolerates the pre- and post-migration vendored token roots
+    // (apps/web/vendor/@jrm/tokens/ vs. vendor/@jrm/tokens/) so the check stays
+    // green until the sync engine regenerates the lock at the new target path.
+    tokens: count((entry) => /(^|\/)vendor\/@jrm\/tokens\//.test(entry)),
     base: count((entry) => entry === 'AGENTS.md' || entry === 'agency.toml'),
     total: entries.length,
   };

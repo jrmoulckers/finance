@@ -180,7 +180,7 @@ describe('High Contrast Token Integration', () => {
   // shared @jrm/tokens barrel that tokens.css imports (adopted from
   // jrmoulckers/studio); finance-specific amount tokens live in the overlay.
   const sharedBarrel = readFileSync(
-    resolve(__dirname, '../../../vendor/@jrm/tokens/css/default/index.css'),
+    resolve(__dirname, '../../../../../vendor/@jrm/tokens/css/default/index.css'),
     'utf-8',
   );
   const overlayCss = readFileSync(
