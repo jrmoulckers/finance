@@ -143,7 +143,7 @@ export const SettingsPage: React.FC = () => {
                   key={section.to}
                   to={section.to}
                   end={false}
-                  className={({ isActive }) =>
+                  className={({ isActive }: { isActive: boolean }) =>
                     `settings-nav__link${isActive ? ' settings-nav__link--active' : ''}`
                   }
                 >
