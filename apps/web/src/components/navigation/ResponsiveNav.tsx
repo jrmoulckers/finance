@@ -145,7 +145,7 @@ export const ResponsiveNav: React.FC<ResponsiveNavProps> = ({
                 to={item.href}
                 className="responsive-nav__link"
                 aria-current={isActive ? 'page' : undefined}
-                onClick={(e) => handleNavClick(item.href, e)}
+                onClick={(e: React.MouseEvent<HTMLAnchorElement>) => handleNavClick(item.href, e)}
               >
                 <span className="responsive-nav__icon" aria-hidden="true">
                   {item.icon}

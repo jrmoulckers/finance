@@ -198,7 +198,18 @@ Tooling notes:
 
 ### Known Local Issues
 
-- **`npm run ci:check` type-check may fail locally** — TypeScript 5.9.3 has compatibility issues with the current tsconfig. Format + lint (`npm run format:check && npx eslint . --max-warnings 0`) is sufficient for local pre-push validation. Remote CI is the source of truth for type-check.
+- **`npm run ci:check` type-check** — the previously documented "TypeScript 5.9.3 compatibility
+  issues with the current tsconfig" claim was **incorrect**. The installed compiler is TypeScript
+  **6.0.3**, and the failure was two genuine `noImplicitAny` errors on `react-router` v8 prop
+  callbacks (`ResponsiveNav.tsx`, `SettingsPage.tsx`), both since fixed. `apps/web` now
+  type-checks clean:
+
+  ```powershell
+  cd apps/web; node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit
+  ```
+
+  Format + lint remain the fast pre-push gate, but type-check is no longer expected to fail.
+
 - **`.prettierignore` coverage** — Prettier is configured to skip `*.kt`, `*.kts`, `*.swift`, `Caddyfile`, and `*.env*` files. Do not run Prettier on these file types.
 - **`npm run ci:check:quick`** — Use this for docs-only or non-code changes; it skips type-check.
 - **Husky pre-push hook** — Blocks non-interactive (agent) pushes by default. Agents must bypass with `$env:HUSKY = "0" ; git push --no-verify origin <branch>`.

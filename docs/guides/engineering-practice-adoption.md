@@ -159,31 +159,75 @@ reflow does not happen.**
 
 ## Deliberately deferred
 
-**`@jrmoulckers/tsconfig`.** `apps/web/tsconfig.json` is the repository's only tsconfig, and
-the shared base adds `verbatimModuleSyntax`, `noUncheckedIndexedAccess`, `noUnusedLocals`,
-`noUnusedParameters`, `moduleDetection: force`, `noImplicitOverride`, and
-`noFallthroughCasesInSwitch`; `vite-app.json` adds `checkJs`. Against **2,301 `.ts`/`.tsx`
-files** that is a multi-thousand-diagnostic migration, not a config swap. It needs its own
-issue.
+**`@jrmoulckers/tsconfig`.** `apps/web/tsconfig.json` is the repository's only tsconfig. Trial
+run against the shared chain (`vite-react.json` → `vite-app.json` → `base.json`, resolved from
+source): **2,691 diagnostics**, against a baseline of 0.
+
+| Code                   | Count | Cause                                                 |
+| ---------------------- | ----- | ----------------------------------------------------- |
+| TS2532 + TS18048       | 2,173 | `noUncheckedIndexedAccess` — possibly `undefined`     |
+| TS2345 + TS2322        | 416   | same family, surfacing as `T \| undefined` mismatches |
+| TS6133                 | 29    | `noUnusedLocals` / `noUnusedParameters`               |
+| TS2769                 | 27    | no overload matches                                   |
+| TS1484                 | 20    | `verbatimModuleSyntax` — needs `import type`          |
+| TS2538, TS2488, TS2339 | 24    | index/iterator/property shapes                        |
+
+**1,853 (69%) are in test files; 838 (31%) in production code.** The concentration is in import
+parsers — `qif-parser.ts` (55), `csv-parser.ts` (45), `reconciliation.ts` (36),
+`pdf-parser.ts` (34).
+
+**Triage finding: the dominant shape is provably safe.** Sampling the highest-risk codes
+(TS2538/TS2488) across production sites found no active crash. finance's diagnostics are
+overwhelmingly `arr[i]` inside `for (let i = 0; i < arr.length; i++)`, regex capture groups
+behind a match guard, and `split('|')` destructuring of a key the same function constructed —
+all in-bounds by construction, unprovable to the compiler.
+
+The useful discriminator, since a raw count is not a risk signal:
+
+> The dangerous shape is a read indexed by something **other than** the collection's own bounds
+> check — zipping two collections by position, or indexing collection A by a value found in
+> collection B. A read indexed by its own `length` guard is noise.
+
+`reconciliation.ts:196` (`existing[exactCandidates[0]]`) is the one instance of the dangerous
+shape found, and it is guarded by `exactCandidates.length === 1`.
+
+This is a real migration and needs its own issue, but it is **mechanical, not bug-revealing**,
+and should be sequenced accordingly. Fix at the call site with guards, never with `!` or `as`.
 
 ## Gaps to close upstream, in `jrmoulckers/engineering`
 
 These are engineering-repo changes. Working around them locally would create exactly the
 duplication this adoption removes.
 
-1. **No React ESLint preset.** The package ships `./base`, `./svelte`, and `./next`. finance's
+1. **No React ESLint preset.** (Closed upstream in `eslint-config@0.2.0`+.) The package shipped
+   `./base`, `./svelte`, and `./next` only. finance's
    web app is **React 19 + Vite, 2,301 `.ts`/`.tsx` files** — none of the three fit. `base()`
    carries no `eslint-plugin-react-hooks` (rules-of-hooks, exhaustive-deps) and no `jsx-a11y`,
    both of which this app needs and on which its WCAG 2.2 AA obligations depend. Requesting
    `@jrmoulckers/eslint-config/react`.
 2. **`tsconfig/vite-app.json` has no `jsx` setting** and sets `types: ['vite/client']` only. A
-   React consumer needs `"jsx": "react-jsx"`. Requesting a `vite-react.json` variant.
-3. **`practices/performance-budgets.md` covers no native or JVM profiling.** Its sections are
+   React consumer needs `"jsx": "react-jsx"`. Requesting a `vite-react.json` variant. (Closed
+   upstream in `tsconfig@0.2.0`.)
+3. **`tsconfig/base.json` sets no `ignoreDeprecations`, which aborts the run on TypeScript 6.**
+   finance is on **TypeScript 6.0.3**, where `baseUrl` is a hard error (`TS5101`), not a warning.
+   A consumer that extends the shared chain while keeping `baseUrl` + `paths` — the ordinary
+   shape for a path alias — gets **one config error and zero type diagnostics**, because the
+   compiler exits before checking anything. That reads as "the preset works, we're clean."
+
+   Either set `"ignoreDeprecations": "6.0"` in `base.json`, or document that consumers must drop
+   `baseUrl` and make `paths` tsconfig-relative (`"@/*": ["./src/*"]`), which is the better fix.
+   Worth stating loudly given the adoption wave is measuring diagnostic counts right now.
+
+4. **`vite-app.json`'s `types: ['vite/client']` replaces rather than merges.** `types` is not
+   additive across `extends`, so any consumer with test globals silently loses them. finance had
+   to restate `node`, `vitest/globals`, and `@testing-library/jest-dom` alongside `vite/client`.
+   A note in `docs/adopting.md` would save every consumer the rediscovery.
+5. **`practices/performance-budgets.md` covers no native or JVM profiling.** Its sections are
    delivery/runtime budgets and Lighthouse — yet `ENG-PERF-007` requires _platform-native_
    profiling. finance already documents Android Profiler + baseline profiles, Instruments +
    MetricKit + signposts, JFR + VisualVM + WPA, and a Gradle benchmark harness. That technique
    is general and belongs upstream.
-4. **No native-platform principle area.** The 66 principles span 11 areas — API, ARCH, BUILD,
+6. **No native-platform principle area.** The 66 principles span 11 areas — API, ARCH, BUILD,
    DATA, INT, LOCAL, OBS, PERF, SEC, TEST, WEB. `WEB` covers browser frontends; **nothing covers
    native application surface.** Searching the whole principles corpus for `mobile|Android|iOS|
 desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance ships **four**
