@@ -13,51 +13,41 @@
 
 ---
 
-> **Satisfies:** `PROD-MET-001`, `PROD-MET-002`, `PROD-MET-003` — Product obligations are
-> defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). The generic
-> measurement method this document used to define locally now lives centrally; what remains
-> here is the finance-specific instance — targets, thresholds, platform parity expectations,
-> and the rollout checklist.
+> **Satisfies:** `PROD-MET-001`, `PROD-MET-002`, `PROD-MET-003` — Product obligations
+> are defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). Those
+> obligations require that each metric have one versioned definition stating the
+> decision it informs, that collection be bounded by purpose and consent, and that
+> readouts state uncertainty and limitations. They do **not** define a metric
+> taxonomy, a survey instrument, or an indicator-preference heuristic — the method
+> below is Finance's own and is retained here in full. See also
+> [`templates/metric-definition.md`](https://github.com/jrmoulckers/product/blob/main/templates/metric-definition.md)
+> for the shape of an individual metric record.
 
 ## Executive Summary
 
-This document records the Finance-specific growth measurement instance across all
-four platforms (iOS, Android, Web, Windows): the metrics we track, the targets and
-alert thresholds we hold them to, expected platform variance, and the phased
-rollout of measurement itself.
+This document defines the comprehensive growth metrics framework for the Finance
+app across all four platforms (iOS, Android, Web, Windows). It covers core
+metric definitions, per-platform tracking plans, retention curve targets, NPS
+methodology, success criteria with alert thresholds, and privacy-compliant
+tracking architecture. This framework is the single source of truth for how we
+measure success.
 
-It does **not** define what a metric definition must contain, how measurement is
-bounded, or how results must be interpreted — those are central obligations
-(`PROD-MET-001`, `PROD-MET-002`, `PROD-MET-003`), and the reusable shape for a
-metric record is
-[`templates/metric-definition.md`](https://github.com/jrmoulckers/product/blob/main/templates/metric-definition.md).
-The local metric catalog — one versioned definition per metric, per `PROD-MET-001` —
-is [KPI Dashboard Spec](kpi-dashboard-spec.md) §2. Definitions are not restated here.
+### Metrics Philosophy
 
-### Measurement posture
-
-Finance-specific commitments layered on top of the central obligations:
-
-1. **No third-party data-selling SDKs.** Analytics use anonymous, aggregated data
-   and contain no raw financial values. Collection is consent-gated per
-   `PROD-MET-002` and `PROD-COMP-008`.
-2. **Platform parity in measurement.** The same metric definition and target apply
-   to all four platforms; per-platform breakdowns exist for debugging, not for
-   separate goals.
-3. **Leading indicators are prioritized over lagging ones.** Activation rate and
-   feature adoption predict future outcomes; total-user counts describe past ones.
-   Central authority requires each metric to state the decision it informs
-   (`PROD-MET-001`) but does not rank predictive against descriptive metrics —
-   this ordering is a Finance choice and is retained here deliberately.
+1. **Privacy-first measurement** — All metrics use anonymous, aggregated data.
+   No PII in analytics. No third-party SDKs that sell data.
+2. **Actionable over vanity** — Every metric must answer "what should we do?"
+   not just "how big are we?"
+3. **Platform parity** — Same metrics, same definitions, same targets across
+   all 4 platforms. Platform-specific breakdowns for debugging only.
+4. **Leading indicators** — Prioritize metrics that predict future outcomes
+   (activation rate, feature adoption) over lagging indicators (total users).
 
 ---
 
-## 1. Core Metrics and Targets
+## 1. Core Metrics Taxonomy
 
-> Metric definitions live in the catalog ([KPI Dashboard Spec](kpi-dashboard-spec.md) §2).
-> The tables below record Finance's targets, not definitions.
-
-### 1.1 Funnel Targets
+### 1.1 AARRR Framework (Pirate Metrics)
 
 | Stage       | Key Metric        | Definition                                      | Target       |
 | ----------- | ----------------- | ----------------------------------------------- | ------------ |
@@ -239,14 +229,7 @@ that needs investigation.
 
 ## 4. NPS Measurement
 
-> Central authority governs how NPS results are **interpreted** (`PROD-MET-003` —
-> report uncertainty, limitations, guardrails, and material segments before
-> deciding) and how collection is **bounded** (`PROD-MET-002`). It does **not**
-> define survey-instrument design — question wording, follow-up branching,
-> delivery cadence, or sampling. That substance has no central home, so it is
-> retained here in full as Finance's own instrument.
-
-### 4.1 Survey Design
+### 4.1 NPS Survey Design
 
 **Core Question:** "How likely are you to recommend Finance to a friend or
 colleague?" (0–10 scale)
@@ -257,7 +240,7 @@ colleague?" (0–10 scale)
 - Passives (7–8): "What would make Finance a 10 for you?"
 - Detractors (0–6): "What's the biggest issue holding you back?"
 
-### 4.2 Survey Parameters
+### 4.2 Survey Delivery
 
 | Parameter          | Value                                       |
 | ------------------ | ------------------------------------------- |
@@ -292,12 +275,10 @@ colleague?" (0–10 scale)
 
 ### 4.5 Qualitative Feedback Analysis
 
-Central authority does not define qualitative analysis method, so Finance's is
-retained: categorize open-ended responses into themes monthly, track the top five
-themes over time for trend, using the categories performance, features, pricing,
-privacy, and UX. Top themes feed sprint planning as P1/P2 issues. Reporting them
-observes `PROD-MET-003` — themes are reported with sample size and limitations,
-not as standalone conclusions.
+- Categorize open-ended responses into themes (monthly)
+- Top 5 themes tracked over time for trend analysis
+- Common theme categories: performance, features, pricing, privacy, UX
+- Feed top themes into sprint planning as P1/P2 issues
 
 ---
 
@@ -333,12 +314,6 @@ not as standalone conclusions.
 
 ### 5.3 Weekly Metrics Review Cadence
 
-Review cadence for **metrics** is not a central obligation — `PROD-PLAN-004`
-declares a cadence for backlog grooming, not for measurement review — so Finance's
-cadence is retained in full. `PROD-MET-003` governs the readout itself: every
-review carries definition version, window, sample and missingness, and guardrail
-context before a decision is drawn from it.
-
 | Day       | Activity                                            |
 | --------- | --------------------------------------------------- |
 | Monday    | Review weekend metrics; check for anomalies         |
@@ -355,9 +330,6 @@ context before a decision is drawn from it.
 | Revenue         | MRR, ARPU, LTV, conversion funnel, plan mix     |
 | Quality         | Crash rate, store rating, NPS, support tickets  |
 | Platform health | Per-platform breakdown of all above metrics     |
-
-All rows resolve against the catalog definitions
-([KPI Dashboard Spec](kpi-dashboard-spec.md) §2).
 
 ---
 

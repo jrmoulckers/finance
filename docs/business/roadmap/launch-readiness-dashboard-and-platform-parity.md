@@ -10,25 +10,19 @@
 ---
 
 > **Satisfies:** `PROD-REL-001`, `PROD-PLAN-003` — Product obligations are defined in
-> [jrmoulckers/product](https://github.com/jrmoulckers/product). `PROD-REL-001` requires
-> release readiness to be an explicit, evidenced decision rather than an inference from a
-> green build; the release decision itself is recorded using
-> [`templates/go-no-go-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/go-no-go-record.md).
-> Part 1 below is the Finance-specific instrumentation that supplies that evidence — it does
-> not restate the obligation or replace the decision record. Parts 2 and 3 are local
-> platform-parity assessment and implementation planning.
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). `PROD-REL-001` requires release readiness to be an explicit,
+> evidenced decision rather than an inference from a green build; the decision itself is
+> recorded using [`templates/go-no-go-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/go-no-go-record.md).
+> Central carries no readiness-_dashboard_ shape, so Part 1 below is retained in full as the
+> Finance-specific instrumentation that supplies that evidence.
 
-## Part 1: Launch Readiness Evidence Surface
+## Part 1: Launch Readiness Dashboard Requirements
 
 ### Overview
 
-The launch readiness dashboard is Finance's evidence surface for `PROD-REL-001`.
-It provides a single-page view answering "is it safe to launch?", consolidating
-backend health, platform readiness, key metrics, and blocking issues into an
-at-a-glance status page accessible to all stakeholders, so the go/no-go decision
-is made against observed state rather than assumption. The dashboard **informs**
-the decision; it does not constitute it, and a green dashboard is not by itself a
-go.
+The launch readiness dashboard provides a single-page view answering: Is it safe
+to launch? It consolidates backend health, platform readiness, key metrics, and
+blocking issues into an at-a-glance status page accessible to all stakeholders.
 
 Reference: docs/architecture/monitoring-infrastructure.md section 7
 

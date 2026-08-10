@@ -15,8 +15,11 @@
 ---
 
 > **Satisfies:** `PROD-BUS-001`, `PROD-DISC-002` — Product obligations are defined in
-> [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the local
-> instance and evidence; the obligation is central.
+> [jrmoulckers/product](https://github.com/jrmoulckers/product). `PROD-DISC-002` requires that a decision rule, guardrails, and
+> kill conditions exist before exposure; it does **not** fix the thresholds, platform, or
+> rollout timing, so the test design below is Finance's own. Individual test decisions are
+> recorded using
+> [`templates/experiment-decision-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/experiment-decision-record.md).
 
 ## Executive Summary
 
@@ -307,34 +310,15 @@ industry benchmarks of 2–5% for users who encounter a gate).
 
 ---
 
-## 6. Planned Pricing Experiments
+## 6. A/B Testing Strategy
 
-> `PROD-DISC-002` governs how an experiment is designed and decided — hypothesis,
-> pre-declared decision rule, and a stop condition committed **before** exposure.
-> The reusable record shape is
-> [`templates/experiment-decision-record.md`](https://github.com/jrmoulckers/product/blob/main/templates/experiment-decision-record.md).
-> Each test below opens its own decision record from that template; the generic
-> evaluation method that used to be restated here is not redefined locally.
+### 6.1 Testing Infrastructure
 
-### 6.1 Finance-specific test constraints
-
-Central authority requires a predeclared decision rule and guardrails
-(`PROD-DISC-002`) but sets no significance level, sample floor, or rollout
-commitment. These are Finance's and are retained:
-
-- **Platform:** PostHog feature flags (self-hosted) or Statsig (privacy mode).
-- **Assignment:** sticky per user — a user must never see the price change
-  underneath them mid-consideration.
-- **Minimum sample:** 500 users per variant, reflecting Finance's expected
-  paywall-view volume.
-- **Significance:** p < 0.05 with minimum 80% power.
-- **Maximum concurrent tests:** 2, to avoid interaction effects across the small
-  monetization surface.
-- **Guardrails that may never degrade:** retention and trust signals. A pricing
-  lift that costs trust is a loss for a privacy-positioned product.
-- **Rollout:** the winner is rolled out to 100% within one week of conclusion.
-- No experiment may vary privacy behavior or data collection — only presentation
-  and price.
+- **Platform:** PostHog feature flags (self-hosted) or Statsig (privacy mode)
+- **Assignment:** Random per user, sticky (same user always sees same variant)
+- **Minimum sample:** 500 users per variant per test
+- **Statistical significance:** p < 0.05, minimum 80% power
+- **Maximum concurrent tests:** 2 (to avoid interaction effects)
 
 ### 6.2 Test Roadmap (Priority Order)
 
@@ -345,6 +329,15 @@ commitment. These are Finance's and are retained:
 | 3        | Price point ($4.99 vs $5.99)    | $4.99 converts enough more to offset      | Week 7–12  |
 | 4        | Annual discount (20% vs 30%)    | 30% discount lifts annual adoption        | Week 9–14  |
 | 5        | Paywall layout (2-col vs stack) | Side-by-side plans convert better         | Week 11–16 |
+
+### 6.3 Test Evaluation Framework
+
+Each test must have:
+
+- **Primary metric:** The one metric that determines winner
+- **Guardrail metrics:** Metrics that must not degrade (retention, NPS)
+- **Decision criteria:** Minimum lift to ship, maximum acceptable degradation
+- **Rollout plan:** Winner rolled out to 100% within 1 week of conclusion
 
 ---
 
