@@ -20,3 +20,10 @@
 *.apk binary
 *.aab binary
 *.keystore binary
+
+# studio:base:start
+# synced from jrmoulckers/.github — canonical source; do not edit here
+# Normalize every detected text file to LF in the index and working tree.
+# Git's automatic text detection leaves binary files byte-for-byte unchanged.
+* text=auto eol=lf
+# studio:base:end
