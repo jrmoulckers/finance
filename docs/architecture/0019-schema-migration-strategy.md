@@ -13,7 +13,7 @@ Finance uses **SQLDelight** (ADR-0003) for the local database, generating type-s
 1. **Backwards compatibility** — Users on older app versions must not lose data
 2. **Data integrity** — Migrations must be atomic; partial migration = data corruption
 3. **Cross-platform consistency** — The same migration must produce identical results on iOS (Native), Android (JVM), Web (JS/WASM), and Windows (JVM)
-4. **Sync compatibility** — Local schema changes must coordinate with PowerSync sync rules (ADR-0017) and server-side PostgreSQL schema
+4. **Sync compatibility** — Local schema changes must coordinate with PowerSync sync rules (ADR-0026) and server-side PostgreSQL schema
 5. **Rollback safety** — If a new app version is rolled back (App Store rejection, critical bug), the local database must still be usable
 
 ### Schema Layers
@@ -498,7 +498,7 @@ schema-drift-check:
 - [ADR-0002: Backend & Sync Architecture](./0002-backend-sync-architecture.md)
 - [ADR-0003: Local Storage Strategy](./0003-local-storage-strategy.md)
 - [ADR-0010: V2 Architecture Vision](./0010-v2-architecture-vision.md)
-- [ADR-0017: API Versioning Strategy](./0017-api-versioning-strategy.md)
+- [ADR-0026: API Versioning Strategy](./0026-api-versioning-strategy.md)
 - [PowerSync Sync Rules](../../services/api/powersync/sync-rules.yaml)
 - [SQLDelight Migration Docs](https://cashapp.github.io/sqldelight/2.0.0/android_sqlite/migrations/)
 - [SQLite ALTER TABLE](https://www.sqlite.org/lang_altertable.html)

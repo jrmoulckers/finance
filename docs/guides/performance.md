@@ -2,6 +2,13 @@
 
 This guide defines performance targets, profiling techniques, and optimization best practices for the Finance app across all platforms.
 
+The obligations it satisfies are ratified elsewhere and are not restated here:
+`ENG-PERF-001` (reproducible measurements), `ENG-PERF-002` (versioned performance budgets),
+and `ENG-PERF-007` (platform-native profiling). See
+[practices/performance-budgets.md](https://github.com/jrmoulckers/engineering/blob/main/practices/performance-budgets.md).
+Everything below — the target values, the Gradle benchmark harness, and the per-platform
+profiling technique — is finance-specific.
+
 ## Performance Targets
 
 | Metric             | Target   | Measurement                            |

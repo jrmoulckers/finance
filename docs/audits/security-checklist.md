@@ -3,6 +3,7 @@
 **Last updated:** 2025-07-22
 **Standard:** [OWASP MASVS v2](https://mas.owasp.org/MASVS/) Level 1 (L1)
 **References:** [ADR-0004 Auth & Security](../architecture/0004-auth-security-architecture.md), [ADR-0003 Local Storage](../architecture/0003-local-storage-strategy.md)
+**Ratified obligation:** `ENG-SEC-006` (risk-focused security review). The MASVS controls and finance-specific verdicts below are this repository's evidence for it.
 
 > This checklist covers the Finance application security posture across all
 > four platforms (Android, iOS, Web, Windows). Items reference MASVS controls
