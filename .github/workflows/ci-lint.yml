@@ -160,6 +160,11 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Check for console logging in production code
+        # The `|| echo ""` below is load-bearing, not defensive noise: grep exits 1
+        # when it matches nothing, which here is the SUCCESS case. Without it the
+        # step goes red on a clean repository (and under `-o pipefail`, on any
+        # stage of the pipe matching nothing). Verified: clean=0, violation=1,
+        # `// SAFE:`=0, `.spec.`=0. Do not "simplify" it away.
         run: |
           CONSOLE_HITS=$(grep -rn 'console\.log\|console\.warn\|console\.error' \
             --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
@@ -185,6 +190,9 @@ jobs:
           fi
 
       - name: Check for sensitive data logging
+        # See the note on the previous step: the `|| echo ""` absorbs grep's
+        # exit 1 (no match), which is this check's success case. Removing it
+        # inverts the gate — it would fail on repositories with no violations.
         run: |
           SENSITIVE_PATTERNS=(
             'password'
