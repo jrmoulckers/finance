@@ -62,6 +62,11 @@ unauthenticated: User cannot be authenticated with the token provided`, which po
 
 ## Blocked: the shared toolchain presets
 
+Two **independent** blockers. The first is access; the second survives it, and is the one that
+determines what finance can actually adopt.
+
+### Blocker 1 — package access
+
 `@jrmoulckers/eslint-config`, `@jrmoulckers/prettier-config`, and `@jrmoulckers/tsconfig` are
 published to **GitHub Packages, which requires authentication even to read**. The token
 available to CI and to this repository's agents does not carry the `read:packages` scope:
@@ -75,6 +80,41 @@ npm error Permission permission_denied: The token provided does not match expect
 Granting a token is a human-gated operation. **The presets were deliberately not adopted
 blind** — a lint config that cannot be executed locally would be verified for the first time
 by CI on `main`.
+
+### Blocker 2 — the ESLint peer range excludes finance
+
+`@jrmoulckers/eslint-config@0.3.0` declares `eslint: ^9.0.0` as a peer. Finance runs
+**`eslint@10.6.0`**, so `npm install` produces an `ERESOLVE` conflict on **every** subpath —
+including `./base`. No version floor fixes this, because the constraint is in the peer range
+rather than the caret.
+
+Resolved against the installed tree rather than read off the manifest:
+
+| Peer                        | Range                | Finance has | Satisfied |
+| --------------------------- | -------------------- | ----------- | --------- |
+| `eslint`                    | `^9.0.0`             | 10.6.0      | **no**    |
+| `typescript`                | `>=5.5.0 <6.1.0`     | 6.0.3       | yes       |
+| `eslint-plugin-react`       | `^7.37.0`            | 7.37.5      | yes       |
+| `eslint-plugin-react-hooks` | `^5 \|\| ^6 \|\| ^7` | 7.1.1       | yes       |
+| `eslint-plugin-jsx-a11y`    | `^6.10.0`            | 6.10.2      | yes       |
+
+The two subpaths then behave differently, which matters because it splits one "blocked" into a
+cheap fix and an expensive one. Both were executed against finance's own ESLint 10 by resolving
+the preset from source:
+
+- **`./base` works on ESLint 10.** It loads, and its rules fire — a probe with `var` was caught
+  by `no-var`. The `^9.0.0` peer is **merely conservative**, not a real incompatibility.
+  Widening it to `^9.0.0 || ^10.0.0` upstream would unblock finance's base adoption outright.
+- **`./react` genuinely breaks on ESLint 10.** `eslint-plugin-react@7.37.5` fails while loading
+  `react/display-name`: `contextOrFilename.getFilename is not a function`, thrown from
+  `resolveBasedir` in `lib/util/version.js`. ESLint 10 removed that method. This is an upstream
+  plugin defect, not a preset defect — `eslint-plugin-react-hooks` and `eslint-plugin-jsx-a11y`
+  were tested separately and both load fine.
+
+Note the second case is a version constraint that **resolves on paper and fails in practice**:
+the preset's `eslint-plugin-react: ^7.37.0` permits exactly the version that cannot run. That is
+the same defect class as the `^0.1.0` floor recorded below — caught only by executing the
+resolved combination, not by reading the range.
 
 ### To unblock
 
@@ -112,16 +152,18 @@ by CI on `main`.
    finance runs today, but it gates the `deploy-pages.yml` migration, which would otherwise
    start failing the moment `@jrmoulckers/*` enters the manifest.
 
-4. Depend on **`^0.2.0`** for all three of `@jrmoulckers/eslint-config`, `@jrmoulckers/tsconfig`
-   and `@jrmoulckers/prettier-config`. The React preset and `vite-react.json` — the two files
-   finance actually needs — first shipped in `0.2.0`, as did `prettier-config`'s reversal to
+4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.3.0`**,
+   **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**. The React
+   preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s reversal to
    `proseWrap: 'preserve'`. On a `0.x` package a caret permits patch updates only, so `^0.1.0`
    resolves to `>=0.1.0 <0.2.0` and can never reach any of them.
 
    Worth stating as a method rather than a version bump: verify against the **resolved range**,
    not the working tree. Validating a preset through a `file:` link while committing a caret
    range that cannot reach it means the artifact tested and the artifact installed are different
-   code. That recurs at every major boundary, not just this one.
+   code. The same discipline is what surfaced Blocker 2 above — a floor bump would have looked
+   like progress while the peer range still excluded finance. Ranges recur at every boundary;
+   resolve them, do not read them.
 
 ### Then, for ESLint
 
@@ -259,6 +301,20 @@ and should be sequenced accordingly. Fix at the call site with guards, never wit
 
 These are engineering-repo changes. Working around them locally would create exactly the
 duplication this adoption removes.
+
+0. **`eslint-config`'s `eslint` peer excludes ESLint 10, and it need not.** The package declares
+   `eslint: ^9.0.0`; finance runs `10.6.0`, so installation fails `ERESOLVE` on every subpath.
+   Verified that `./base` **loads and lints correctly under ESLint 10** when resolved from
+   source, so the range is conservative rather than accurate. Requesting
+   `eslint: '^9.0.0 || ^10.0.0'`. This is the single change that would unblock finance's base
+   adoption once package access lands.
+
+   Separately, `./react` **cannot** be declared ESLint 10 compatible yet:
+   `eslint-plugin-react@7.37.5` throws `contextOrFilename.getFilename is not a function` from
+   `resolveBasedir`, a method ESLint 10 removed. The preset's `^7.37.0` peer permits exactly the
+   version that cannot run, so the manifest describes a combination that installs and then
+   fails. Until the plugin ships a fix, the honest options are to cap `eslint` at `^9` for the
+   `./react` subpath specifically, or to document it as ESLint 9 only.
 
 1. **No React ESLint preset.** (Closed upstream in `eslint-config@0.2.0`+.) The package shipped
    `./base`, `./svelte`, and `./next` only. finance's
