@@ -21,6 +21,13 @@ Upstream: [`docs/adopting.md`](https://github.com/jrmoulckers/engineering/blob/m
   `performance-budget-architecture.md` and `guides/performance.md` cite `ENG-PERF-*` and
   `ENG-WEB-003`. `AGENTS.md` names the engineering repo as the authority and states the
   no-copy rule from ADR-0003.
+
+  **Known gap in this pass: the diff was net-additive.** Citations were added, but the prose
+  they cite was largely not deleted — each file was judged to carry local context (thresholds,
+  platform specifics) beyond the ratified rule. That is defensible file by file and
+  unsatisfying in aggregate, since removing duplication was the point. A second pass with a
+  harder deletion bias is warranted once `practices/` has stabilised.
+
 - **ADR numbering reconciled.** See [`docs/architecture/README.md`](../architecture/README.md).
 - **Workflow reuse assessed.** See
   [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md). Action
@@ -112,10 +119,32 @@ What must stay local, via `extend` / `ignores` / `rules`:
 
 ### Then, for Prettier
 
-`.prettierrc.json` is byte-equivalent to the shared config on all seven keys. The only
-difference is the shared markdown override (`proseWrap: 'always'`, `printWidth: 96`), which
-reflows **590 markdown files**. Land that as an isolated mechanical commit. The 73-line
-`.prettierignore` is finance-specific and stays.
+`.prettierrc.json` is byte-equivalent to the shared config on all seven keys. Adopt it for
+those, and **exclude the shared markdown override** (`proseWrap: 'always'`, `printWidth: 96`).
+The 73-line `.prettierignore` is finance-specific and stays.
+
+The override was measured rather than assumed. Of 592 markdown files, 585 carry prose and
+**399 would be reflowed**. The one-time reflow is not the objection; the recurring cost is.
+The same one-word insertion into the same paragraph, by `git diff --numstat`:
+
+| Regime               | Changed lines |
+| -------------------- | ------------- |
+| `preserve` (current) | 1 / 1         |
+| `always` at 96       | 5 / 5         |
+
+Hard wrapping rewrites a whole paragraph for a one-word edit, because the insertion cascades
+the rewrap down every following line. That is a permanent five-fold diff amplification on doc
+edits: the real change hides among rewrapped lines during review, and two branches touching
+one paragraph now conflict where they otherwise would not.
+
+Stated fairly, `preserve` has a real cost of its own — it permits unbounded long lines, which
+read badly in a terminal and in side-by-side diffs. The technique that avoids both is
+**semantic line breaks**: one sentence per line, which bounds line length while keeping edits
+to a single line. Prettier cannot enforce it, so it is a convention rather than a setting.
+
+This was raised upstream rather than handled with a local override, since diverging locally is
+the duplication this adoption exists to remove. **Consequence: the previously-planned 590-file
+reflow does not happen.**
 
 ## Deliberately deferred
 
