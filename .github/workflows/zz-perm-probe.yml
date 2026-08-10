@@ -1,0 +1,11 @@
+name: zz-perm-probe
+
+on:
+  push:
+    branches: [jrmoulckers-automatic-bassoon]
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo probe
