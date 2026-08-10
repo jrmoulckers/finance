@@ -86,10 +86,77 @@ no counterpart. A partial migration is plausible but touches a PR-visible surfac
 smallest workflow, is **not** a required check, and its failure mode is contained. This is where
 a reuse migration should start.
 
+## The caller-permissions trap
+
+Any migration to a backbone reusable inherits a failure mode that is invisible to linting. A
+caller's `permissions:` block **replaces** the default rather than adding to it, and a called
+workflow can never hold more than its caller grants. A caller that lists fewer scopes than the
+callee declares dies as `startup_failure` in about a second, with no failing step and no readable
+log. `actionlint` does not model this and passes on both sides, so a green linter is not evidence.
+
+Scopes each backbone callee declares, at
+`f1457271427fcde18a62b07c53a1ea75e14cd644`:
+
+| Callee                      | Caller must grant                     |
+| --------------------------- | ------------------------------------- |
+| `reusable-ci-lint`          | contents, packages, pull-requests     |
+| `reusable-ci-web`           | contents, packages                    |
+| `reusable-deploy-pages`     | contents, packages, `id-token: write` |
+| `reusable-deploy-preview`   | contents, packages                    |
+| `reusable-perf-budget`      | contents, packages — installs nothing |
+| `reusable-smoke-test`       | contents, packages                    |
+| `reusable-security-ci`      | contents                              |
+| `reusable-change-detection` | contents                              |
+
+The grant tracks what the callee **declares**, not whether it installs anything —
+`reusable-perf-budget` consumes a build artifact and runs no install, so "no install, therefore no
+registry scope" is sound reasoning that produces a dead workflow.
+
+**Measured for finance, because the usual mitigation does not apply here.** The advice that "a
+caller with no `permissions:` block is immune, because it inherits the repo default" holds only
+when the repository default is permissive. Finance's is restricted:
+
+```console
+$ gh api repos/jrmoulckers/finance/actions/permissions/workflow
+{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}
+```
+
+What that actually grants was measured rather than assumed — a temporary probe workflow declaring
+no `permissions:` block, reading the `GITHUB_TOKEN Permissions` group Actions prints at job setup:
+
+```text
+##[group]GITHUB_TOKEN Permissions
+Contents: read
+Metadata: read
+Packages: read
+```
+
+So the restricted default is exactly `{contents, metadata, packages}: read`. Two consequences:
+
+1. **`packages: read` is granted by default.** The scope this trap is usually described in terms of
+   is the one least at risk here. Omitting the block covers six of the eight callees above.
+2. **It fails for the other two, and they are the ones needing a non-`packages` scope** —
+   `reusable-ci-lint` (`pull-requests: read`) and `reusable-deploy-pages` (`id-token: write`).
+   `id-token: write` is a _write_ scope, which a restricted default never grants under any
+   circumstance.
+
+The general rule, which is shorter than the table: under a restricted default, a caller may omit
+`permissions:` only if the callee needs nothing outside `{contents, metadata, packages}: read`.
+
+Finance has no escape hatch regardless — **all 31 workflows already declare a `permissions:`
+block**, so the "immune by omission" state does not exist anywhere in this repository and would
+have to be created deliberately, file by file.
+
+Note the ordering hazard this creates: the first recommended migration below is the single worst
+case in the table.
+
 ## Recommendation
 
 1. Migrate `deploy-pages.yml` first, alone, in its own PR. Lowest blast radius, not
-   branch-protection gated.
+   branch-protection gated. **Grant `contents: read`, `packages: read`, and `id-token: write`
+   explicitly** — this callee needs the one scope the restricted default can never supply, so a
+   caller written from the "packages" framing alone will fail with an unreadable
+   `startup_failure`.
 2. Then consider the `lighthouse` job of `deploy-preview.yml` → `reusable-perf-budget.yml`.
 3. Leave `ci-lint`, `ci-web`, and `ci-security` alone until the backbone reusables grow the
    Kotlin/Gradle, Playwright, and skip-with-success capabilities they currently lack. Each is a
