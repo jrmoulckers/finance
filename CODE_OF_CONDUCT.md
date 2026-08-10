@@ -1,5 +1,12 @@
 # Contributor Covenant Code of Conduct
 
+> **This Code of Conduct extends the JRM Studio canonical Code of Conduct:**
+> <https://github.com/jrmoulckers/.github/blob/main/CODE_OF_CONDUCT.md>
+>
+> Both are the Contributor Covenant and are substantively equivalent; this copy
+> names the Finance maintainer as the reporting contact. **Where this file is
+> silent, the canonical Code of Conduct governs.**
+
 ## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, color, religion, or sexual identity and orientation.

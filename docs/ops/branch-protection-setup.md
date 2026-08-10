@@ -334,4 +334,4 @@ See [GitHub docs on commit signing](https://docs.github.com/en/authentication/ma
 - [GitHub: About protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/about-protected-branches)
 - [GitHub REST API: Branch protection](https://docs.github.com/en/rest/branches/branch-protection)
 - [GitHub: Repository rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets)
-- [CONTRIBUTING.md](../../CONTRIBUTING.md) — Contributor guide with branch protection summary
+- [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) — Contributor guide with branch protection summary
