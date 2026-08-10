@@ -191,6 +191,6 @@ Track discussion health through:
 
 ## Related Documentation
 
-- [CONTRIBUTING.md](../../CONTRIBUTING.md) — Contribution guidelines
+- [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) — Contribution guidelines
 - [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) — Community standards
 - [docs/guides/](../guides/) — Development guides

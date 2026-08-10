@@ -256,7 +256,7 @@ For a detailed walkthrough of Finance's features and first-run setup, see [Getti
 
 ### Full contributor setup
 
-For VS Code configuration, Copilot agent setup, MCP servers, and commit conventions, see the [Contributing Guide](CONTRIBUTING.md).
+For VS Code configuration, Copilot agent setup, MCP servers, and commit conventions, see the [Contributing Guide](.github/CONTRIBUTING.md).
 
 ## Commands
 
