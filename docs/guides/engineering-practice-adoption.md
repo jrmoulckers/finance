@@ -112,10 +112,11 @@ by CI on `main`.
    finance runs today, but it gates the `deploy-pages.yml` migration, which would otherwise
    start failing the moment `@jrmoulckers/*` enters the manifest.
 
-4. Depend on **`^0.2.0`** for `@jrmoulckers/eslint-config` and `@jrmoulckers/tsconfig`. The
-   React preset and `vite-react.json` — the two files finance actually needs — first shipped in
-   `0.2.0`, and on a `0.x` package a caret permits patch updates only, so `^0.1.0` resolves to
-   `>=0.1.0 <0.2.0` and can never reach them.
+4. Depend on **`^0.2.0`** for all three of `@jrmoulckers/eslint-config`, `@jrmoulckers/tsconfig`
+   and `@jrmoulckers/prettier-config`. The React preset and `vite-react.json` — the two files
+   finance actually needs — first shipped in `0.2.0`, as did `prettier-config`'s reversal to
+   `proseWrap: 'preserve'`. On a `0.x` package a caret permits patch updates only, so `^0.1.0`
+   resolves to `>=0.1.0 <0.2.0` and can never reach any of them.
 
    Worth stating as a method rather than a version bump: verify against the **resolved range**,
    not the working tree. Validating a preset through a `file:` link while committing a caret
@@ -145,42 +146,59 @@ What must stay local, via `extend` / `ignores` / `rules`:
 
 ### Then, for Prettier
 
-`.prettierrc.json` is byte-equivalent to the shared config on all seven keys. Adopt it, **including
-the shared markdown override** (`proseWrap: 'always'`, `printWidth: 96`). The 73-line
-`.prettierignore` is finance-specific and stays.
+`.prettierrc.json` is byte-equivalent to the shared config on all seven keys. Adopt
+`@jrmoulckers/prettier-config` at **`^0.2.0`**, which sets `proseWrap: 'preserve'` and
+`printWidth: 96` for `*.md`. The 73-line `.prettierignore` is finance-specific and stays.
 
-The override was measured rather than assumed, by running it across every tracked markdown file:
+**Adopting the markdown override is a verified no-op here.** Finance already uses Prettier's
+default `preserve`, so the only delta is `printWidth` 100 → 96, and under `preserve` that affects
+only tables, lists and fences — not prose. Measured across every tracked markdown file:
 
-| Metric                             | Value                             |
-| ---------------------------------- | --------------------------------- |
-| Markdown files tracked             | 592                               |
-| Reflowed by the override           | **528 (89%)**                     |
-| Line churn                         | **36,249 added / 29,723 removed** |
-| Total markdown lines in repository | 182,051                           |
+| Metric                 | Value     |
+| ---------------------- | --------- |
+| Markdown files tracked | 592       |
+| Files changed          | **0**     |
+| Line churn             | **0 / 0** |
 
-The reflow rewrites roughly **36% of every markdown line finance owns** in a single commit. The
-recurring cost is smaller: the same three-word insertion into the same paragraph, measured as
-wrapped-baseline against wrapped-after-edit, changes 5 lines under `always` against 1 under
-`preserve`. The rewrap cascade is bounded by **paragraph** length, not file length.
+No reflow commit is needed.
 
-Finance argued for omitting the override on the strength of the one-time figure. **The authority
-weighed it and kept `always`**, on the basis that the recurring cost is the one that compounds and
-is bounded. That decision is accepted and recorded here rather than worked around: diverging
-locally is the duplication this adoption exists to remove.
+The earlier `0.1.x` config set `proseWrap: 'always'`, which would have rewritten **528 of 592
+files (89%)** — 36,249 added / 29,723 removed against 182,051 total markdown lines, roughly 36% of
+every markdown line finance owns. Finance objected on that basis; the authority reversed to
+`preserve` in `0.2.0` and cancelled the reflow fleet-wide. The reasoning that settled it was not
+the one-time cost:
 
-**Consequence: the 528-file reflow does happen**, and lands as its own isolated mechanical commit
-on a quiet tree — never folded into a content change, because a 66,000-line diff with substance
-buried in it is unreviewable.
+**`proseWrap: 'always'` destroys semantic line breaks**, silently, on every write. One sentence per
+line is the technique that bounds line length without taxing edits, and Prettier cannot enforce
+it — but `always` actively undoes it, while `preserve` is the setting that permits it. `preserve`
+is therefore not better in itself; it is the only value under which the convention can survive.
 
-The technique that keeps hard wrapping cheap is **semantic line breaks** — one sentence per line,
-which bounds line length while keeping most edits to a single line. Prettier cannot enforce it, so
-it is a convention rather than a setting, but it is what makes `always` tolerable in practice.
+**The merge-conflict axis does not discriminate between the two live options** and should not be
+cited in either direction. Measured directly — two branches, each editing one sentence of a shared
+paragraph, then `git merge`:
+
+| Regime                         | Edits far apart | Edits adjacent |
+| ------------------------------ | --------------- | -------------- |
+| `always`                       | clean           | CONFLICT       |
+| `preserve`, one long paragraph | **CONFLICT**    | CONFLICT       |
+| `preserve` + semantic breaks   | clean           | CONFLICT       |
+
+Conflict behaviour is governed by **line granularity, not wrapping policy**. `always` and semantic
+breaks both produce roughly sentence-length lines and behave identically. Unbroken single-line
+paragraphs are the genuinely bad case, because every concurrent edit collides on one line.
+Adjacent edits conflict under every regime, since git needs an unchanged context line between
+changes. So finance's original "`always` manufactures conflicts" argument was wrong, and so is the
+converse — the real cost of `always` is the one above.
+
+**Convention: semantic line breaks.** One sentence per line in new and substantially-edited prose.
+Not enforced, not retrofitted, and not a reason to reflow existing files.
 
 ### Sealed and generated content
 
-Reformatting is only safe where formatting carries no meaning. Before the reflow, finance's tree
-was audited for content where it does. Two classes exist and both are already handled by
-`.prettierignore`:
+Reformatting is only safe where formatting carries no meaning. Finance's tree was audited for
+content where it does. This audit stands regardless of the `proseWrap` outcome — it applies to any
+future formatting change, which is why it is recorded rather than discarded once the reflow was
+cancelled. Two classes exist and both are already handled by `.prettierignore`:
 
 - **Sealed** — `**/vendor/@jrm/` (vendored verbatim from `jrmoulckers/studio`) and the
   studio-managed `.github/agents`, `.github/instructions`, `.github/prompts`, and `.github/skills`
