@@ -150,6 +150,55 @@ prompts,skills}` wholesale. The glob form would silently stop formatting finance
 `npm run format:check` (`npx prettier --check .`, whole tree) — **exit 0, all matched files use
 Prettier code style**, with the vendored config resolving and `.prettierrc.json` deleted.
 
+### Refreshed to `v0.15.7`, and drift is now enforced in CI
+
+`node scripts/vendor-configs.mjs --check` verifies the vendored tree against
+`engineering-configs.lock.json` and **fails on drift**, so an edit to a vendored file can no longer
+pass review as a local change. It runs in `ci-lint.yml`, immediately before the Prettier step it
+protects. A newer upstream release is reported as a **notice at exit 0**, deliberately: an upstream
+tag must never redden an unrelated PR.
+
+Two things worth knowing before relying on it:
+
+- **The staleness notice makes an unauthenticated call to `api.github.com`** on every lint run. It
+  fails open — non-200, rate limit, or offline all return "fine" rather than a false signal — so it
+  is safe, but it is outbound egress on a hot path, and belongs in the same ledger as the registry
+  routing in [`docs/security/supply-chain.md`](../security/supply-chain.md).
+- **Drift detection and staleness are different checks.** The first is a hash comparison and is
+  authoritative offline; the second is advisory and silently degrades to "no answer". A green
+  `--check` means _matches the lock_, not _up to date_.
+
+The refresh `v0.15.1` → `v0.15.7` changed **0 files of content** — the shared Prettier config has
+been byte-stable across six releases. The lock proves that rather than requiring the claim be
+taken on trust, which is the whole point of recording a SHA-256 per file.
+
+### Gap 12 is still open at `v0.15.7`
+
+The refresh was also the cheapest possible test of whether the missing `"type": "module"` marker
+had been fixed upstream. It has not: `v0.15.7` still vendors two source files and no module-type
+declaration, so finance's local workaround file stays. Re-test on each refresh — it is one command
+and removes the need to guess.
+
+### Resolve the ref; do not copy a version literal
+
+Upstream's guidance, and finance follows it — with the observation that it applies to upstream's
+own announcements too. The release notice that introduced `--check` named `v0.15.3`; the newest tag
+at the time of reading was **`v0.15.7`**, four releases further on. Pinning the literal from the
+message would have been stale on arrival.
+
+```powershell
+$tag = gh api repos/jrmoulckers/engineering/releases/latest --jq .tag_name
+node scripts/vendor-configs.mjs $tag --set prettier --dest config/engineering
+```
+
+`releases/latest` was verified to agree with a version-sorted tag listing (39 tags, newest
+`v0.15.7`). **Do not substitute a lexical sort** — `Sort-Object` without a version cast returns
+`v0.9.0` as the newest of these tags, which is the failure upstream's `sort -V` note warns about,
+reproduced here on PowerShell.
+
+A recorded ref inside this document is a **historical fact** — what was vendored, when — and stays
+literal. Only the instructions use the resolver.
+
 ### The one thing this change broke, and what it exposes
 
 Adding `scripts/vendor-configs.mjs` failed `npx eslint . --max-warnings 0` with **8 `no-undef`
@@ -883,19 +932,45 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     finance carries a local workaround file that is deliberately outside the lock and therefore
     not hash-checked — which is exactly why it should not be the permanent answer.
 
-13. **The vendored/registry split needs a stated rule for _when_ to vendor.** ADR-0001 explains
-    why each package landed where it did, but not what a consumer should do with a vendored
+13. **The vendored/registry split needs a stated rule for _when_ to vendor.** ADR-0001 explains why each package landed where it did, but not what a consumer should do with a vendored
     config it is not yet ready to adopt. finance deferred `@jrmoulckers/tsconfig` on evidence
     (2,691 diagnostics) and therefore did **not** vendor it, on the reasoning that an
     unreferenced copy of another authority's config extends nothing, fails no gate, and drifts
     invisibly. Worth stating that vendoring should happen in the same change that adopts, since
     the obvious reading of "vendor the half that needs no token" is to fetch both sets at once.
 
+14. **The "no version literals" rule needs a carve-out for evidence.** Replacing every literal with
+    a placeholder is right for _instructions_, where a stale pin propagates reversed guidance. It
+    is wrong for _measurements_: "verified with the checker at `v0.2.11`" is a claim about a
+    specific tool version, and a resolver silently re-points it at a different one on every read,
+    turning a reproducible result into an unfalsifiable one. **Instructions resolve; evidence
+    pins.** Worth stating, because the audit that produced this rule flagged one of finance's
+    evidence pins as an error.
+
+    That same audit reported `v0.2.11` as **"a tag that never existed"**. It exists —
+    `git ls-remote --tags` returns 39 version tags including `v0.2.11`, contiguous with `v0.2.10`
+    and `v0.2.12`. Worth re-checking how the audit decided a tag was missing, since the same method
+    presumably ran against six other repositories.
+
+15. **The staleness notice performs unauthenticated network I/O inside a lint gate.** `--check`
+    calls `api.github.com/repos/.../releases/latest` on every run. The implementation is careful —
+    it fails open, so rate limiting or an offline runner yields no signal rather than a false
+    one — but the behaviour is undocumented at the call site, and consumers with egress review
+    (finance keeps a supply-chain ledger) need to declare it. Either document it or add a
+    `--no-remote` flag for gate use, where only the hash comparison is wanted.
+
 ## Citation audit
 
 Verified with `scripts/check-citations.mjs --review` at `v0.2.11`, run over all 804 markdown
 files: **every ID valid, and every principle's true title matching the claim made about it.** The
 wrong-meaning defect reported elsewhere in the org did not reach finance.
+
+> **`v0.2.11` is a real tag.** An upstream audit reported this citation as pointing at "a tag that
+> never existed". It does exist: `git ls-remote --tags` returns **39 version tags**, `v0.2.11`
+> among them, contiguous with `v0.2.10` and `v0.2.12`. Left as a literal deliberately — it records
+> which version of the checker produced the result below, and a resolver would silently re-point
+> that claim at a different tool on every read. **Instructions should resolve; evidence should
+> pin.**
 
 Two notes, because the exit code is not the result:
 

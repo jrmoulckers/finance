@@ -83,13 +83,89 @@ function parseArgs(argv) {
       if (!value || value.startsWith('--')) fail(`${arg} requires a value`);
       flags[arg.slice(2)] = value;
       i += 1;
+    } else if (arg === '--check') {
+      flags.check = true;
     } else if (arg.startsWith('--')) {
-      fail(`unknown option ${arg}`, 'Usage: vendor-configs.mjs <ref> [--dest <dir>] [--set a,b]');
+      fail(
+        `unknown option ${arg}`,
+        'Usage: vendor-configs.mjs <ref> [--dest <dir>] [--set a,b] | vendor-configs.mjs --check',
+      );
     } else {
       positional.push(arg);
     }
   }
   return { positional, flags };
+}
+
+/**
+ * Report whether a newer release exists. Never throws and never fails the
+ * caller: a tag pushed upstream must not turn an unrelated PR red. Returns null
+ * when the answer cannot be determined, which is treated the same as "fine" —
+ * an offline or rate-limited runner is not a staleness signal.
+ */
+async function latestRef() {
+  try {
+    const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+      headers: { accept: 'application/vnd.github+json' },
+    });
+    if (!response.ok) return null;
+    const body = await response.json();
+    return typeof body.tag_name === 'string' ? body.tag_name : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verify the vendored tree still matches the lock, then report staleness.
+ *
+ * The split in severity is the whole point. Drift is a local integrity failure
+ * — someone edited a generated file, or a write was lost — so it exits non-zero.
+ * Staleness is an upstream event the consumer has not acted on yet, so it only
+ * warns. Failing on staleness would make pinning automatic in effect: a red
+ * build pressures the next person into bumping the ref without deciding to
+ * accept the change, which is the property pinning exists to protect.
+ */
+async function check() {
+  let lock;
+  try {
+    lock = JSON.parse(await readFile(LOCK, 'utf8'));
+  } catch {
+    fail(`no ${LOCK} found`, 'Run: node scripts/vendor-configs.mjs <ref>');
+  }
+
+  const entries = Object.entries(lock.files ?? {});
+  if (entries.length === 0) fail(`${LOCK} records no files`, 'Re-run the vendor step.');
+
+  const drifted = [];
+  for (const [dest, meta] of entries) {
+    let text;
+    try {
+      text = await readFile(dest, 'utf8');
+    } catch {
+      drifted.push(`${dest}: missing`);
+      continue;
+    }
+    if (sha256(text) !== meta.sha256) drifted.push(`${dest}: content differs from the lock`);
+  }
+
+  if (drifted.length > 0) {
+    fail(
+      `${drifted.length} vendored file(s) drifted from ${LOCK}:\n  ${drifted.join('\n  ')}`,
+      `These files are generated. Do not edit them — re-run: node scripts/vendor-configs.mjs ${lock.ref}`,
+    );
+  }
+
+  process.stdout.write(`${entries.length} vendored file(s) match ${LOCK} at ${lock.ref}.\n`);
+
+  const latest = await latestRef();
+  if (latest && latest !== lock.ref) {
+    process.stdout.write(
+      `\nNotice: pinned at ${lock.ref}; newest release is ${latest}.\n` +
+        `This is not a failure. Update deliberately when you choose to:\n` +
+        `  node scripts/vendor-configs.mjs ${latest}\n`,
+    );
+  }
 }
 
 /**
@@ -147,9 +223,16 @@ const sha256 = (text) => createHash('sha256').update(text, 'utf8').digest('hex')
 
 async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
+  if (flags.check) {
+    if (positional.length > 0) {
+      fail('--check takes no ref', 'It verifies the ref already recorded in the lock file.');
+    }
+    await check();
+    return;
+  }
   const ref = positional[0];
   if (!ref) {
-    fail('a ref is required', 'Pass a tag, not a branch: node scripts/vendor-configs.mjs v0.15.0');
+    fail('a ref is required', 'Pass a tag, not a branch: node scripts/vendor-configs.mjs v1.2.3');
   }
   const dest = flags.dest ?? 'config/engineering';
   const names = (flags.set ?? Object.keys(SETS).join(',')).split(',').map((s) => s.trim());
