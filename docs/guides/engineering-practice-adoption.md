@@ -236,12 +236,14 @@ including `jsx-key`. Bisecting the config would have cost one more probe than ac
    recommended first. See
    [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md).
 
-4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.6.0`**,
+4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.7.0`**,
    **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**. The React
    preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s reversal to
    `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on ESLint 10
    (see Blocker 2), and `0.6.0` the first in which the React preset can reach type-aware rules at
-   all. On a `0.x` package a caret permits patch updates only, so `^0.1.0` resolves
+   all. `0.7.0` is a no-op for finance — see below — but is taken as the floor anyway, because
+   there is no cost to it and a stale floor is a liability the moment a later fix lands. On a
+   `0.x` package a caret permits patch updates only, so `^0.1.0` resolves
    to `>=0.1.0 <0.2.0` and can never reach any of them.
 
    Worth stating as a method rather than a version bump: verify against the **resolved range**,
@@ -338,12 +340,49 @@ default adoption lands.
 Cost note: type-aware runs are far slower. Full-repo default run **163 s**; `strictTypeChecked` on
 `apps/web/src` alone **262 s**.
 
+### 0.7.0 changes nothing on the React path — verified, not assumed
+
+`0.7.0` is published as fixing a silent drop of hooks linting: `next.js` did not bundle
+`eslint-plugin-react-hooks`, so a consumer migrating off `eslint-config-next` lost
+`rules-of-hooks` and `exhaustive-deps` with no signal. Both presets now resolve hooks through a
+shared `hooks.js`.
+
+Upstream states the React preset was never affected. That is correct, but `react.js` **did**
+change — 67 lines were removed from it — so "unchanged file" is not the evidence, and confirming
+it needed a behavioural test rather than a diff:
+
+| Check                                            | Result                                                                                             |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `base.js`, `ignores.js`, `svelte.js`             | byte-identical `0.6.0` → `0.7.0`                                                                   |
+| `react.js`                                       | −67 / +1 — pure extraction of `resolveHooks`, `isFlatConfig`, `CLASSIC_HOOK_RULES` into `hooks.js` |
+| `next.js`                                        | gains `resolveHooks` — **the only behavioural change in the release**                              |
+| Resolved rules on a `.tsx` file, `reactConfig()` | **342 on both**, **0 differing**                                                                   |
+
+The last row is the one that settles it: `--print-config` output was compared key-by-key across
+every rule, not just the hooks family. So **the 317-finding measurement recorded above stands
+without re-running it**, and the floor bump carries no re-validation cost.
+
+The same run confirms the hooks severities finance would inherit — `rules-of-hooks` **error**,
+`exhaustive-deps` **warn**, and all **15** React Compiler rules **off** unless `compiler: true`:
+
+```
+react-hooks/rules-of-hooks=2  react-hooks/exhaustive-deps=1  (15 others = 0)
+```
+
+**This is the release note that matters most to finance, for a reason it does not state.**
+`eslint.config.mjs` configures **no** `react-hooks` rules and **no** `jsx-a11y` rules, and neither
+plugin appears in any manifest. Finance lints React today with **zero hooks linting and zero
+accessibility linting**. The preset does not preserve an existing guarantee here — it introduces
+one that has never existed, which is why the earlier `rules-of-hooks` finding of 2 real defects
+came from the preset rather than from CI. It also means the drift bug fixed in `0.7.0` was only
+ever reachable through `./next`, which finance does not use.
+
 ### The 0.6.0 crash does not affect finance
 
 `0.6.0` is published as fixing a hard crash — a type-aware rule reaching a file with no TypeScript
 project aborts the **entire** ESLint run rather than failing that rule. The fix is real and the
-floor should be `^0.6.0`, but the stated rationale does not transfer here, and adopting the
-reasoning unchecked would misdescribe finance's risk:
+floor should be at least `^0.6.0`, but the stated rationale does not transfer here, and adopting
+the reasoning unchecked would misdescribe finance's risk:
 
 - `react.js` is **byte-identical between 0.5.0 and 0.6.0** — `git diff` reports no change.
 - In 0.5.0 the only entry point that enabled type-aware linting was **`next.js`**, where
@@ -351,7 +390,8 @@ reasoning unchecked would misdescribe finance's risk:
   information at all, so they could not reach the crash.
 - Finance is a `./react` consumer, so **it was never exposed.**
 
-The correct reason for finance to take `^0.6.0` is the opposite one: it is the **first release in
+The correct reason for finance to take a `0.6.0`-or-later floor is the opposite one: it is the
+**first release in
 which the React preset can reach type-aware rules at all**, because `reactConfig` spreads its
 remaining options into `base()`. That is what makes the targeted `no-floating-promises` step above
 possible; on `0.5.0` a React consumer had no route to it. The new `.js` guard — which turns every
@@ -572,6 +612,23 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
    file count — and noting that `no-floating-promises` can be enabled alone via
    `typeAware: true` plus a rule override, which is where nearly all the defect-finding value
    sits (finance: 54 real sites, versus ~1,900 stylistic findings for the full set).
+
+10. **Release notes are scoped to what changed, not to what a consumer lacks.** `0.7.0` tells
+    React consumers they "were never affected," which is true of the regression and was verified
+    here (342 resolved rules, 0 differing, `0.6.0` → `0.7.0`). But it reads as _nothing here
+    concerns you_, and for finance the opposite holds: `eslint.config.mjs` configures **no**
+    `react-hooks` and **no** `jsx-a11y` rules, and neither plugin is in any manifest. The preset
+    is not preserving finance's hooks linting — it is the only thing that would ever provide it.
+    Suggest release notes distinguish _regression scope_ from _baseline capability_, since the
+    consumers least protected today are exactly the ones a "you were never affected" line tells
+    to stop reading.
+
+11. **`exhaustive-deps` ships at `warn`, which is not a lower severity everywhere.** The
+    intent — advisory, since the rule has known false positives — is right. But finance's gate is
+    `npx eslint . --max-warnings 0`, which is also what the shared `practices/` guidance
+    encourages, and under it a `warn` fails the build identically to an `error`. The severity
+    distinction silently collapses for any consumer following that advice. Worth either saying so
+    in the README or noting which rules are expected to need per-repo downgrading.
 
 ## Citation audit
 
