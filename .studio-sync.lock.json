@@ -330,7 +330,7 @@
     },
     "vendor/@jrm/tokens/css/default/tokens.css": {
       "sourceSha256": "343e10b1ac7914f2a3d1255cfc6ffad1930ac1a17da9eb5aa5551e6e4f67062c",
-      "targetSha256": "bb35859efbfb66ccb46c5bcc082d552e33ab1a53b0f61575d9b1932862886d87",
+      "targetSha256": "9966d8a4156263ab62ca0434039309a9b8c40713dea1a53afb913c6467b05bb6",
       "syncedAt": "2026-08-07T15:35:03.616Z"
     },
     "vendor/@jrm/tokens/js/default/tokens.dark-oled.d.ts": {
