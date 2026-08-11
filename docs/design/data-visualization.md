@@ -310,7 +310,11 @@ existing components):
     {description}
   </p>
   <ResponsiveContainer>
-    <BarChart role="img" aria-labelledby={`${chartId}-title`} aria-describedby={`${chartId}-desc`}>
+    <BarChart
+      role="img"
+      aria-labelledby={`${chartId}-title`}
+      aria-describedby={`${chartId}-desc`}
+    >
       {/* Data cells with role="listitem" and aria-label */}
     </BarChart>
   </ResponsiveContainer>

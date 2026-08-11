@@ -202,7 +202,11 @@ const { theme, setTheme } = useTheme();
     { value: 'system', label: 'System', description: 'Follow device setting' },
     { value: 'light', label: 'Light', description: 'Light backgrounds' },
     { value: 'dark', label: 'Dark', description: 'Dark gray backgrounds' },
-    { value: 'dark-oled', label: 'OLED Dark', description: 'True black, saves battery on AMOLED' },
+    {
+      value: 'dark-oled',
+      label: 'OLED Dark',
+      description: 'True black, saves battery on AMOLED',
+    },
   ].map((option) => (
     <label key={option.value}>
       <input
