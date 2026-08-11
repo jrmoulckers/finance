@@ -1287,6 +1287,67 @@ Worth noting for the corpus: `ENG-LOCAL-001` being simultaneously the principle 
 outright and the principle another treats as foundational is a sign it is well-drawn, not
 ambiguous — it makes a real claim that a repository can fail.
 
+## ADR corpus audited against the decision/observation test
+
+Upstream drew a distinction worth testing: an ADR records a **tradeoff you chose**, whereas
+behaviour of a tool or platform you don't control is shared guidance, not a decision record. The
+stated test is whether you could have chosen otherwise. `ENG-ARCH-003` (Durable decisions)
+supports it — "Record consequential architectural tradeoffs as ADRs before treating them as durable
+constraints" — and its **evidence clause carries a second exclusion the framing omits**: "routine
+implementation choices do not create records". So there are two ways to file a non-decision, not
+one. External facts are the more seductive failure; routine choices are the more common one.
+
+Finance's 25 ADRs were measured against it rather than reasoned about. A cheap discriminator does
+most of the work: **an ADR recording a choice names what it rejected.** Checking every ADR for
+`Decision`, `Alternatives Considered`, and `Consequences` headings —
+
+| Result                     | Count  |
+| -------------------------- | ------ |
+| All three sections present | **24** |
+| None of the three          | **1**  |
+
+The single outlier is **ADR-0009**, and it is exactly the shape upstream describes: 811 lines
+titled "Legal, Licensing & Monetization **Analysis**", most of it an account of licence law,
+trademark availability, export-control thresholds and App Store policy — none of which finance
+chose or can change. One real decision (BUSL-1.1) sits inside it in a subsection called
+"Recommendation".
+
+**The predicted decay had already happened, and in both directions.** This is the part worth
+recording, because it converts the upstream argument from plausible to demonstrated:
+
+- The ADR's recommendation line specified a **3-year** change date. `LICENSE` says **four**
+  (`Change Date: 2030-03-08`). The document that is supposed to govern the artifact had drifted
+  from it, while still carrying `Status: Accepted`.
+- Checklist item 6, SPDX identifiers in the three `build.gradle.kts` files, was marked
+  **outstanding**. All three already carry `// SPDX-License-Identifier: BUSL-1.1`. Verified by
+  reading the files.
+
+Neither error is visible from inside the document; both are only visible by checking the ADR
+against the thing it describes. That is the cost upstream names — the facts go stale while keeping
+the authority of a decision nobody revisits — and it lands hardest on the ADR that is mostly facts,
+because there is so much more of it to go stale and no `Decision` heading to anchor what is
+actually binding.
+
+**Fixed, without rewriting history.** ADR-0009 now opens with a `## Decision` section stating the
+one durable choice, naming `LICENSE` as the authority where the two disagree, giving the rejected
+alternative (AGPL-3.0 + CLA) and the consequence accepted in exchange (not OSI-approved, so the
+README must not call the project open source unqualified). The 2025 recommendation text is left as
+written and marked superseded rather than corrected in place — an ADR records the judgement that
+was made, not a tidied version of it. §§3–8 are explicitly scoped as context with no authority to
+constrain future work, and each future action taken under them is directed to its own ADR citing
+this one.
+
+Two things this does **not** do. It does not delete the analysis: the material is useful and the
+fault was its status, not its content. And it does not renumber or split the record, because
+inbound links and the ADR index refer to 0009 and a split would trade a scoping problem for a
+provenance one.
+
+**The generalisable finding:** applying the test cost one grep across 25 files, and the value came
+from what the outlier revealed rather than from the classification itself. A document that fails
+the decision/observation test is worth auditing for drift **first**, before deciding what to do
+with it, because a corpus of observed facts filed as decisions decays silently and the decay is
+what actually hurts.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
