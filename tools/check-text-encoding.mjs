@@ -56,6 +56,19 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
  * is preferred because it makes every git call independent of the caller.
  * Both are applied, so neither is load-bearing alone: removing `cwd` leaves
  * the walk correct, and `--full-name` cannot be defeated by a caller's cwd.
+ *
+ * Since the read moved to object IDs, none of that governs *correctness* any
+ * more — an OID resolves the same from anywhere, so a mis-based path can no
+ * longer produce a wrong or failed read. What the anchors now govern is which
+ * files are selected at all, and there `:/` and `cwd` are jointly load-bearing:
+ * remove both and the walk narrows to the caller's subtree, reads it perfectly
+ * by OID, and reports success over a fraction of the repository. Nothing below
+ * can see it — every file listed was read, so conservation balances, the byte
+ * total is large, and only the count moves. No check reads the count.
+ *
+ * Remove at most one. This is the same trade the OID read bought: mis-anchoring
+ * used to fail loudly through unreadable paths, and now it cannot fail at all,
+ * so a narrowed walk is the only remaining way to be wrong and it is silent.
  */
 const repoRoot = (() => {
   const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
@@ -79,6 +92,9 @@ const repoRoot = (() => {
  * never the current subtree. It does not affect the *form* of the printed
  * paths — `--full-name` is what keeps those repository-relative, and does so
  * whatever directory the process was started from.
+ *
+ * Redundant with `cwd: repoRoot`, not with its absence: dropping both silently
+ * narrows the walk. See the `repoRoot` note above before removing either.
  *
  * @returns {{ mode: string, oid: string, path: string }[]} Tracked index entries.
  */
