@@ -41,9 +41,18 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
  * Absolute path to the repository root.
  *
  * Every git invocation below runs here rather than in the caller's working
- * directory. Both `git ls-files` and `git cat-file`'s `:<path>` syntax resolve
- * relative to the current directory, so without this the guard silently
- * examines whatever subtree it happens to be started from.
+ * directory, so the guard always examines the whole repository rather than
+ * whatever subtree it happens to be started from.
+ *
+ * The cause is `git ls-files`, which both *selects* and *prints* relative to
+ * the current directory. `git cat-file`'s `:<path>` syntax, by contrast, is
+ * root-relative — only `:./<path>` is cwd-relative — so a bare `src/app.ts`
+ * printed by a walk rooted in `apps/web` is looked up at the repository root
+ * and silently misses. Anchoring `ls-files` alone is therefore not enough:
+ * `:/` widens the selection but leaves the printed paths cwd-relative.
+ *
+ * `--full-name` on the walk is the minimal alternative fix; `cwd: repoRoot`
+ * is preferred because it makes every git call independent of the caller.
  */
 const repoRoot = (() => {
   const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
@@ -59,7 +68,8 @@ const repoRoot = (() => {
  *
  * The `:/` pathspec is redundant with running from the repository root but
  * states the intent at the call site: this walk covers the whole repository,
- * never the current subtree.
+ * never the current subtree. It does not affect the *form* of the printed
+ * paths — `cwd: repoRoot` above is what keeps those repository-relative.
  *
  * @returns {string[]} Repository-relative paths.
  */
