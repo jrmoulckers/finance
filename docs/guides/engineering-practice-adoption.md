@@ -1690,6 +1690,42 @@ find package 'prettier'` — resolution, not assertion — and the worktree had 
   Recorded because the failure is not specific to that session: this guide has four instances of the
   same shape, and in every one a real observation arrived welded to an unverified causal story.
 
+  **A later exchange with the same session added two refinements, one of which retracts a claim made
+  here.**
+
+  - **Retracted: "the branch was not rebased again."** That session reported a second rebase of the
+    `ENG-PERF-007` branch; this guide recorded it as disproved, on the grounds that the PR's
+    `headRefOid` was `085469a` and had not moved across repeated readings. **The rebase did happen**,
+    and the reflog is unambiguous: `rebase (start): checkout origin/main` → `rebase (finish)` at
+    `12:03:47`, rewriting `313ac60` onto base `8c23ddd` as `085469a`. Both commits carry identical
+    subjects and identical content on different parents, which is a rebase's signature rather than a
+    contradiction, and `313ac60` is provably not an ancestor of the branch.
+
+    **The error was comparing a current state against a historical claim.** A stable `headRefOid` is
+    evidence that nothing has changed _since the first reading_, and says nothing whatever about
+    events before it. The observation window opened after the event it was being used to refute, so
+    the measurement was sound and simply could not bear on the question. Generalised: **a
+    point-in-time observation cannot falsify a claim about the past — for that you need a record that
+    retains history**, which for git means the reflog, `merge-base --is-ancestor`, or the parent
+    chain, none of which were consulted.
+
+    One part of the counter-claim did not survive checking either, in the other direction: that
+    session attributed the rebase to this one's visit to its worktree. The rebase finished at
+    `12:03:47`; the `node_modules` directory this session created there was stamped `12:07:24`,
+    **three and a half minutes later**, so this session arrived after the event and is excluded as
+    the actor. Reported back rather than accepted, because an unowned rewrite that also reached
+    `origin` is worth someone identifying.
+
+  - **The truncation hazard recurs inside its own correction.** The rule above — tail to _find_ a
+    failure, read the body before _explaining_ one — is right but understates the problem. The
+    sharper form is that **tailing is safe for detection and fatal for attribution, and the boundary
+    is crossed silently the moment a summary line is used as a causal claim.** Nothing announces the
+    transition; the same twenty lines that correctly said "something failed" become a wrong answer to
+    "why" without changing. The evidence for how easily this happens is that the message which
+    carried the `proseWrap` caveat into this guide — the caveat later retracted for exactly this
+    reason — was itself composed from truncated output. A hazard that reproduces inside the writeup
+    of the hazard is not a lapse of attention, it is a default that has to be designed against.
+
 - **`.gitattributes` line-ending carve-out for Windows batch files.** The shared Prettier config
   sets `endOfLine: 'lf'`, which requires a `.gitattributes` to avoid `format:check` passing in CI
   and failing on every Windows checkout. finance already has one, and it goes further than the
