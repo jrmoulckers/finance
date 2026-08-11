@@ -6,8 +6,7 @@ This document provides a comprehensive review of the Finance application's secur
 
 The obligations it discharges are ratified in `jrmoulckers/engineering` and are cited, not
 restated: `ENG-SEC-001` (Secret lifecycle), `ENG-SEC-003` (Boundary threat models),
-`ENG-SEC-004` (Least authority), `ENG-SEC-005` (Trust-boundary validation), `ENG-SEC-007`
-(Secure failure), and `ENG-SEC-008` (Privacy-minimizing lifecycle evidence). The threat model,
+`ENG-SEC-004` (Least authority), `ENG-SEC-005` (Trust-boundary validation), `ENG-SEC-007` (Secure failure), and `ENG-SEC-008` (Privacy-minimizing lifecycle evidence). The threat model,
 MASVS mapping, and control implementations below are finance-specific.
 
 ---
