@@ -231,7 +231,7 @@ proceed.
 | App Review notes                   | 🟡     | Template exists; demo account not configured                    |
 | Export compliance                  | ✅     | `apps/ios/EXPORT_COMPLIANCE.md` — SQLCipher AES-256 documented  |
 | **Microsoft Store**                |        |                                                                 |
-| Name/description/screenshots       | ��     | `docs/guides/windows-store.md` guide exists                     |
+| Name/description/screenshots       | 🟡     | `docs/guides/windows-store.md` guide exists                     |
 | MSIX validation                    | 🟡     | MSIX packaging dir present; WACK not run                        |
 | Age rating questionnaire           | ❌     | Not completed                                                   |
 | **Web (PWA)**                      |        |                                                                 |

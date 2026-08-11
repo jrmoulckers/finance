@@ -525,6 +525,12 @@ jobs:
       - name: ESLint
         run: npx eslint . --max-warnings 0
 
+      # Always-on text-encoding gate (#4090). U+FFFD in a committed file means a
+      # character was already lost before the bytes arrived; mojibake is valid
+      # UTF-8, so only a byte-level scan detects it.
+      - name: Text encoding check (U+FFFD)
+        run: npm run encoding:check
+
       # Always-on lightweight secret scan as a backstop to the dedicated jobs.
       - name: Secret backstop (tracked files)
         run: |
