@@ -1519,6 +1519,35 @@ find package 'prettier'` — resolution, not assertion — and the worktree had 
   **Read the failure text before attributing the failure.** Note also that `npm install` rewrote a
   line of `package-lock.json`; that was reverted so it did not ride along in the upstream PR.
 
+  **The author's own post-mortem sharpened all three points, and the sharper forms are worth
+  keeping.** They accepted the correction, retracted the finding, reproduced 154/154 themselves and
+  confirmed the mechanism (`prettier` is a peer of `prettier-config` with no dependency entry and no
+  root install, so it cannot resolve). Three refinements:
+
+  - **The root cause was output truncation, upstream of the bad inference.** They had run
+    `npm test ... | Select-Object -Last 20`, which shows only the summary lines, so
+    `ERR_MODULE_NOT_FOUND` was on screen the whole time and never read. Every downstream step was
+    inference over a symptom nobody had inspected. Truncating a command's output is not a display
+    choice — it decides what evidence exists. Tail the summary to _find_ a failure; read the body
+    before _explaining_ one.
+  - **A control that cannot produce a distinguishing result is not evidence, it is a ritual.** This
+    is the general form of the `git stash` point and it is better than the version above: the
+    problem is not merely that the control was orthogonal, it is that it was _structurally
+    incapable_ of returning anything except "identical", so its confirmation carried no
+    information while feeling like rigour. This is exactly the argument
+    [`ENG-TEST-008` (Discriminating mutation evidence)](https://github.com/jrmoulckers/engineering/blob/main/principles/assurance/testing.md)
+    makes about a test never observed failing — and, as they noted, they had applied that principle
+    to the PR's prose the same morning without applying it to their own reasoning. **Before running
+    a control, name the result that would falsify the hypothesis. If there isn't one, it isn't a
+    control.**
+  - **The priors were backwards.** Green CI plus a red local run was read as "CI is blind" rather
+    than "my tree is broken", which prefers the hypothesis where the shared, controlled, reproducible
+    environment is at fault over the one where the local, uncontrolled, hand-assembled one is. The
+    default should run the other way.
+
+  Recorded because the failure is not specific to that session: this guide has four instances of the
+  same shape, and in every one a real observation arrived welded to an unverified causal story.
+
 - **`.gitattributes` line-ending carve-out for Windows batch files.** The shared Prettier config
   sets `endOfLine: 'lf'`, which requires a `.gitattributes` to avoid `format:check` passing in CI
   and failing on every Windows checkout. finance already has one, and it goes further than the
