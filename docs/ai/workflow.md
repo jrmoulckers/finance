@@ -62,7 +62,7 @@ gh pr create --base main --title "type(scope): description (#N)" --body "Closes 
 gh pr checks <number>   # poll until all checks are green
 ```
 
-> **Why no local type-check?** TypeScript 5.9.3 rejects `ignoreDeprecations` locally (see [CI Monitoring](ci-monitoring.md)). The canonical workflow checks format and lint locally — which are reliable — and lets remote CI handle type-check. **Remote CI is the source of truth**, not local `npm run ci:check`.
+> **Why is type-check not in the fast loop?** Only because it is slower, not because it is broken. The earlier claim that TypeScript 5.9.3 rejects `ignoreDeprecations` locally has been [retracted](ci-monitoring.md#retracted-local-type-check-fails-on-ts-593) — the installed compiler is 6.0.3 and `npm run ci:check` passes. Run the full `ci:check` before pushing when you have the time; **remote CI is the source of truth** for the platform jobs a local machine can't run.
 
 > **Note:** `lint-staged` is configured in `.husky/pre-commit` and auto-formats staged files on commit. However, agents may bypass hooks or work in worktrees where hooks aren't active. **The explicit checklist above is mandatory regardless of hook status.**
 

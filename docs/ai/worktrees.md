@@ -108,7 +108,7 @@ gh pr view <branch-name> --json number
 # If this errors with "no pull requests found" — re-run Step 7
 ```
 
-> **Remote CI is the source of truth.** Local type-check may fail on TS 5.9.3 — see [CI Monitoring](ci-monitoring.md). The workflow above checks format and lint locally (reliable), and defers type-check to remote CI.
+> **Remote CI is the source of truth** for the platform jobs a local machine can't run. The workflow above checks format and lint locally for speed; `npm run ci:check` adds type-check and is expected to pass — see [CI Monitoring](ci-monitoring.md#retracted-local-type-check-fails-on-ts-593).
 
 > **Note:** `lint-staged` is configured in `.husky/pre-commit` (`eslint --fix` + `prettier --write` for TS/JS files; `prettier --write` for JSON/YAML/MD/CSS). However, agents may bypass hooks or work in worktrees where hooks aren't active. **The explicit checklist above is mandatory regardless of hook status.**
 

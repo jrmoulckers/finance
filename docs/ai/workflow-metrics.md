@@ -100,7 +100,7 @@ Metrics are NOT used to evaluate individual agent "performance." They measure sy
 
 #### Q-1: Avoidable CI Failure Rate
 
-**Definition:** Percentage of CI runs that fail due to issues the pre-push checklist would have caught locally — formatting and lint (`npm run format:check && npx eslint . --max-warnings 0`). Type-check is excluded: it is unreliable locally on TS 5.9.3 (see [CI Monitoring](ci-monitoring.md)), so type failures are a remote-CI concern, not an avoidable local miss.
+**Definition:** Percentage of CI runs that fail due to issues the pre-push checklist would have caught locally — formatting and lint (`npm run format:check && npx eslint . --max-warnings 0`). Type-check was historically excluded on the grounds that it was unreliable locally; that claim has been [retracted](ci-monitoring.md#retracted-local-type-check-fails-on-ts-593) and type-check now passes locally, so type failures **do** count as avoidable local misses.
 
 **Measurement:** `avoidable_failures / total_ci_runs × 100`
 

@@ -86,8 +86,8 @@ See `docs/ai/worktrees.md` for the full worktree lifecycle guide.
 
 Tooling notes:
 
-- `npm run format:check && npx eslint . --max-warnings 0` — verify format + lint before every push (preferred over `npm run ci:check` — see Known Local Issues)
-- `npm run ci:check` — format:check + lint + type-check; use for full validation when TS is stable locally
+- `npm run ci:check` — format:check + lint + type-check; **type-check passes locally, so prefer this for full validation**
+- `npm run format:check && npx eslint . --max-warnings 0` — the fast format + lint subset, when you want a quicker loop than the full check
 - `npm run ci:check:quick` — lightweight check for docs-only or non-code changes
 - `npm run format` — auto-fix all Prettier issues; `npx eslint . --fix` — auto-fix ESLint issues
 - `npm run cleanup:worktrees` — clean up merged/stale worktrees

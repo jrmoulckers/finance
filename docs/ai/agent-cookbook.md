@@ -40,7 +40,7 @@ git add -A && git commit --amend --no-edit
 $env:HUSKY = "0" ; git push --no-verify origin <branch-name>
 ```
 
-> **Remote CI is the source of truth** — not local `npm run ci:check`. Local type-check may fail on TS 5.9.3. See [CI Monitoring](ci-monitoring.md).
+> **Remote CI is the source of truth** for the platform jobs a local machine can't run. Local `npm run ci:check` — including type-check — is expected to pass; see [CI Monitoring](ci-monitoring.md#retracted-local-type-check-fails-on-ts-593).
 
 ---
 

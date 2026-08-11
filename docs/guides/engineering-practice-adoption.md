@@ -1383,6 +1383,78 @@ the decision/observation test is worth auditing for drift **first**, before deci
 with it, because a corpus of observed facts filed as decisions decays silently and the decay is
 what actually hurts.
 
+## A false exemption survived in ten files while its retraction reached one
+
+Upstream's `v0.21.0` broadcast reported that a `copilot-instructions.md` claiming a TypeScript
+5.9.3 incompatibility had been steering every agent away from a working type-check gate. Most of
+that message described work finance never did — see the misattribution note below — but **this part
+was true here**, and checking it turned out to be worth more than the original claim.
+
+**The claim, measured.** finance's docs stated that TypeScript 5.9.3 rejects the
+`ignoreDeprecations` compiler option locally, so `npm run type-check` and `npm run ci:check` fail
+even on clean code, and agents should therefore check only format and lint before pushing. Every
+load-bearing element is false:
+
+| Claim                            | Measured                                                                      |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| Compiler is TypeScript 5.9.3     | **6.0.3**                                                                     |
+| `ignoreDeprecations` is rejected | `apps/web/tsconfig.json` sets `"ignoreDeprecations": "6.0"`; 6.0.3 accepts it |
+| `npm run type-check` fails       | exit **0** (turbo, 3 packages in scope, 1 task)                               |
+| `ci:check` unusable locally      | `tsc -p apps/web/tsconfig.json --noEmit` → exit **0**, no output              |
+
+**The clean result was proved, not assumed.** A healthy tree and a compiler that aborted before
+checking anything produce the same exit code and the same empty output, so a passing type-check is
+not by itself evidence the type-check ran. Planting
+`const planted: number = "definitely not a number";` under `apps/web/src` produced `TS2322` and
+exit **2**; removing it returned exit 0. The gate genuinely runs and is genuinely clean. This is
+the same discipline as the harness-versus-code distinction recorded elsewhere in this guide: a
+summary line is a claim about the harness until something makes it a claim about the code.
+
+**The part upstream did not have.** Their framing is that a wrong "known issue" is self-reinforcing
+— each agent that honours the exemption skips the command that would falsify it, so the claim is
+never retested. Correct, and finance is a worked example of a second-order version:
+
+> **A retraction does not propagate along the same paths the claim did.** The correction had
+> already landed in `.github/copilot-instructions.md`. Grepping for `5.9.3` found the claim alive
+> in **nine other files** — `ci-monitoring.md` (the hub every other doc linked to for it),
+> `workflow.md`, `agent-cookbook.md`, `troubleshooting.md`, `pain-points.md` (as open pain point
+> PP-0018), `fleet-operations.md` (twice), `fleet-ci-analysis.md`, `worktrees.md`, and
+> `workflow-metrics.md`. Fourteen occurrences in total. An agent reading any of the canonical
+> workflow docs would still have been told to skip the gate.
+
+Worse, the retraction had been applied to the _statement_ while leaving its _consequences_ in place
+two lines above it: `copilot-instructions.md` still listed the format+lint subset as "preferred over
+`npm run ci:check` — see Known Local Issues", pointing at the very section that now says the issue
+was never real. The exemption had also propagated into a **metric definition** —
+`workflow-metrics.md` excluded type failures from avoidable-CI-failure rate on its authority, so the
+false claim was quietly improving a number finance reports on itself.
+
+**What this changes for adoption.** `ENG-TEST-004` (Distinct static signals) requires format, lint
+and type-check to report independently. finance's `ci:check` satisfies the structure, but a
+documented exemption that stops anyone running one of the three signals defeats it just as
+thoroughly as merging them would. The exemption is withdrawn; PP-0018 is marked withdrawn rather
+than deleted, so the corpus keeps the lesson.
+
+**Generalisable, and offered upstream:** when retracting a documented exemption, grep the repo for
+the claim before considering it retracted, and check the guidance it _caused_ as well as the claim
+itself. Fixing the sentence is the cheap half. Recorded here because the ratio — one file corrected,
+nine still asserting it — is the useful number, not the retraction.
+
+### Misattribution in the same broadcast
+
+For the record, and so the right repo gets the credit and the re-check: the `v0.21.0` message
+attributes to finance a TypeScript 6.0.3 / `TS5101` / `baseUrl` false-clean report, a count of
+"838" in-bounds indexed reads, "your 2,691", and a `reactConfig()` diff of "266 findings". finance
+filed none of those. finance measured the published preset at **317** findings, not 266, and its
+`@jrmoulckers/tsconfig` blast radius at **2,691** was recorded here as a deferral, not as a bug
+report. The `baseUrl` finding in particular is someone else's — finance's `apps/web/tsconfig.json`
+carries `baseUrl` _and_ `ignoreDeprecations: "6.0"` together and type-checks cleanly on 6.0.3, so
+it cannot be the source of a report that the combination aborts.
+
+This is the fourth apparent mirror error across the seven-repo broadcast, and two earlier ones were
+confirmed as such. Flagged rather than corrected silently, because the reporting repo is the one
+that should be asked to re-check its own numbers.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
