@@ -1,5 +1,16 @@
 {
   // MCP server configuration for VS Code Copilot Agent Mode (JSONC — comments allowed).
+  //
+  // EXPLICIT LOCAL OVERLAY — NOT DRIFT. The canonical studio MCP policy is `agency.toml`
+  // (synced from jrmoulckers/.github). That canon enables only the intrinsically bounded
+  // servers by default and keeps `playwright` and `memory` as commented, pinned opt-ins
+  // pending verification of the host's tool-filter enforcement. This file deliberately
+  // declares a SUPERSET for the VS Code Agent Mode host: it adds `github`, `filesystem`
+  // and `supabase`, and enables `playwright` and `memory`. That divergence is intentional
+  // and member-owned — do not "reconcile" it against `agency.toml`, and do not treat it as
+  // sync drift. `agency.toml` remains the canonical policy; this is the local runtime
+  // opt-in recorded alongside it, per the note in that file. See docs/ai/mcp.md.
+  //
   // SECURITY HARDENING (audit #2856/#2857/#2858/#2878/#2879):
   //   * Every npx server is pinned to an EXACT version — no @latest, no floating tags.
   //   * No secret is ever passed as a --flag=value on argv; secrets flow via ${input:...} (env/header).
