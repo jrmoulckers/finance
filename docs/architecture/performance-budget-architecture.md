@@ -6,7 +6,7 @@
 **Reviewers:** Pending human review
 **Sprint:** W2-S8
 **Related:** [Performance Baselines](./performance-baselines.md) · [Monitoring Architecture](./monitoring.md) · [ADR-0001: Cross-Platform Framework](./0001-cross-platform-framework.md) · [ADR-0011: Scaling Architecture](./0011-scaling-architecture.md)
-**Ratified obligations:** `ENG-PERF-002` (versioned performance budgets), `ENG-WEB-003` (measured foreground performance), `ENG-TEST-004` (distinct static signals) — see [practices/performance-budgets.md](https://github.com/jrmoulckers/engineering/blob/main/practices/performance-budgets.md). The budget _values_ below are finance's.
+**Ratified obligations:** `ENG-PERF-002` (Versioned performance budgets), `ENG-WEB-003` (Measured foreground performance), `ENG-TEST-004` (Distinct static signals) — see [practices/performance-budgets.md](https://github.com/jrmoulckers/engineering/blob/main/practices/performance-budgets.md). The budget _values_ below are finance's.
 
 ---
 

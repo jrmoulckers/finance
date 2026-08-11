@@ -1160,11 +1160,77 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     files are reported as changed. The practical effect is that the one signal telling a reader
     whether an upgrade is reviewable or a no-op is wrong precisely when previewing an upgrade.
 
+18. **A line-wrapped citation name stops being verified, silently, and the format pass is what
+    wraps it.** `v0.16.5`'s `TITLED` pattern is `[^)/#\n]{2,59}`, so a parenthesised title split
+    across a newline is not recognised as a claim. It does not fail — it is simply not checked, the
+    exit code stays 0, and the only visible symptom is the "stated name(s) match" count being one
+    lower than the number of names actually written. Reproduced in finance: the `ENG-PERF-009`
+    citation in `docs/guides/accessibility.md`, whose title `Assurance precedence` was wrapped
+    between the two words by Prettier at `printWidth: 96`. Unwrapping it moved the count 30 → 31.
+
+    The trigger is a formatter this guide recommends running, so the failure sequence is: write a
+    correct named citation, format, and lose the verification with no signal. Either match across
+    newlines, or have `--review` report near-misses — an `ENG-*` ID followed by a parenthesised
+    capitalised phrase that the strict pattern rejected. A near-miss warning is the cheaper fix and
+    converts a silent gap into a visible one, which is the same argument this document makes about
+    `rules-of-hooks`: **the dangerous lint result is the one that says nothing.**
+
+    **Corollary, found while writing the paragraph above.** Quoting the broken citation verbatim as
+    an example made this document fail the check with `claimed: Assurance\nprecedence`. The pattern
+    cannot distinguish a citation from a quotation of one, so **prose about miscitation is parsed as
+    miscitation** — the guide documenting the trap trips it. Worked around here by describing the
+    wrap instead of reproducing it, which is a worse document. A skip marker for fenced or inline
+    examples would fix it.
+
 ## Citation audit
 
 Verified with `scripts/check-citations.mjs --review` at `v0.2.11`, run over all 804 markdown
 files: **every ID valid, and every principle's true title matching the claim made about it.** The
 wrong-meaning defect reported elsewhere in the org did not reach finance.
+
+### Re-audited under machine-verified names (`v0.16.5`)
+
+`v0.16.5` makes a stated title checkable: a parenthesised phrase beginning with a capital after an
+`ENG-*` ID is read as a claim and diffed against `principles/index.json`. Finance had 35 such names
+already, written in lowercase and therefore invisible to the checker. All 35 were re-derived from
+the index before being capitalised, and **all 35 were already correct** — no wrong-meaning citation
+existed to find. They are now machine-verified rather than merely right:
+
+```powershell
+node scripts/check-citations.mjs docs --index <pinned-index> --review
+# 66 citation(s) across 34 principle(s) in 441 file(s); all IDs exist, and 31 stated name(s) match.
+```
+
+**31, not 35, because the count is of unique IDs.** Five names are cited in more than one file —
+`Versioned performance budgets` in three, `Assurance precedence` in three. Worth stating because a
+count that is lower than the number of names you just wrote reads exactly like five silent
+failures, and the exit code alone does not distinguish "deduplicated" from "rejected".
+
+Mutation-tested rather than assumed. Retitling `ENG-PERF-001` to another principle's real title
+fails with a `claimed:`/`actual:` diff and **exit 1**; restoring it returns **exit 0**. The guard
+is live.
+
+### One name was silently unverified, and the format pass caused it
+
+`docs/guides/accessibility.md` cited `ENG-PERF-009` with its title stated — and Prettier's reflow
+split that title between its two words at `printWidth: 96`. Upstream's pattern excludes newlines
+(`[^)/#\n]{2,59}`), so a wrapped name is **not read as a claim at all**. It does not fail; it
+stops being checked. Exit stays 0, and the "stated names match" count silently drops by one.
+
+This fails open, and the trigger is a formatter the adoption guide itself tells you to run. The
+sequence is: write a correct named citation → run the format pass → the citation is no longer
+verified, with no signal anywhere. Unwrapping that one line moved the verified count 30 → 31 and
+the "read as named but missed" count 1 → 0.
+
+Two mitigations, neither owned here: match across newlines in the pattern, or have `--review`
+report near-misses — an `ENG-*` ID followed by a parenthesised capitalised phrase that the strict
+pattern rejected. The second is cheap and turns a silent gap into a warning. Filed as **gap 18**.
+
+**This is not wired into finance's CI**, deliberately. The checker resolves
+`principles/index.json` over the network by default, and gap 15 objects to exactly that — network
+I/O inside a lint gate. Running it in CI would contradict a finding this document makes two
+sections earlier. It is run manually on any PR that touches citations, and the command is recorded
+above so the result is reproducible.
 
 > **`v0.2.11` is a real tag.** An upstream audit reported this citation as pointing at "a tag that
 > never existed". It does exist: `git ls-remote --tags` returns **39 version tags**, `v0.2.11`
@@ -1189,10 +1255,10 @@ say so. Where a ratified principle bears on them _additively_, that is now state
 than omitted:
 
 - `docs/guides/accessibility.md` and `docs/audits/accessibility-audit-wcag22.md` note that
-  `ENG-PERF-009` (assurance precedence) forbids trading accessibility away for performance. It is
+  `ENG-PERF-009` (Assurance precedence) forbids trading accessibility away for performance. It is
   not the source of the WCAG 2.2 AA commitment; it constrains what may be done to it.
 - Test colocation is named as a finance convention; the obligation it serves is `ENG-TEST-003`
-  (regression boundaries).
+  (Regression boundaries).
 
 The distinction is worth stating precisely, because the two readings differ in what they license.
 "Accessibility follows `ENG-PERF-009`" is false and would make the WCAG commitment look

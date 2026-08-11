@@ -4,7 +4,7 @@
 **Date:** 2025-07-17
 **Author:** Copilot (AI agent), based on backend/sync research
 **Reviewers:** Pending human review
-**Ratified obligations:** `ENG-LOCAL-001` (local durable ownership), `ENG-LOCAL-002` (optional sync seam), `ENG-LOCAL-004` (zero-config safe degradation), `ENG-DATA-001` (owned durable integrity), `ENG-DATA-002` (versioned bounded data contracts), `ENG-DATA-003` (minimized governed data) — see [practices/local-first-sync.md](https://github.com/jrmoulckers/engineering/blob/main/practices/local-first-sync.md). This ADR records finance's implementation, not the rules.
+**Ratified obligations:** `ENG-LOCAL-001` (Local durable ownership), `ENG-LOCAL-002` (Optional sync seam), `ENG-LOCAL-004` (Zero-config safe degradation), `ENG-DATA-001` (Owned durable integrity), `ENG-DATA-002` (Versioned bounded data contracts), `ENG-DATA-003` (Minimized governed data) — see [practices/local-first-sync.md](https://github.com/jrmoulckers/engineering/blob/main/practices/local-first-sync.md). This ADR records finance's implementation, not the rules.
 
 ## Context
 

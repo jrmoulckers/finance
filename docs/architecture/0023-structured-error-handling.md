@@ -1,6 +1,6 @@
 # ADR-0023: Standardized Structured Error Handling Across Clients
 
-> **Ratified obligations:** `ENG-INT-003` (typed retry-safe failures) and `ENG-SEC-007`
+> **Ratified obligations:** `ENG-INT-003` (Typed retry-safe failures) and `ENG-SEC-007`
 > (secure failure). This ADR records how finance satisfies them across four clients; it does
 > not restate them. See
 > [practices/resilience.md](https://github.com/jrmoulckers/engineering/blob/main/practices/resilience.md).

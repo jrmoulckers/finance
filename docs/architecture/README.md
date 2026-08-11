@@ -1,7 +1,7 @@
 # Architecture Decision Records
 
 Durable decision records for finance. The obligation to keep them is `ENG-ARCH-003`
-(durable decisions) — see the
+(Durable decisions) — see the
 [ratified principles](https://github.com/jrmoulckers/engineering/blob/main/principles/architecture/boundaries-and-contracts.md).
 This file is the index and the numbering convention; it does not restate the rule.
 
