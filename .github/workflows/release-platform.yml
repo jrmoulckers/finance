@@ -375,7 +375,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tail -20
           xcodebuild test \
-            -scheme FinanceApp \
+            -scheme Finance-Package \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
             -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \

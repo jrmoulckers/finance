@@ -158,6 +158,11 @@ jobs:
 
       - name: Resolve SPM dependencies
         run: |
+          # `set -o pipefail` is REQUIRED wherever xcodebuild is piped into `tail`.
+          # GitHub Actions' default shell is `bash -e` *without* pipefail, so the
+          # step's exit status would be `tail`'s — always 0 — and a failed build
+          # would report success. See #4122.
+          set -o pipefail
           cd apps/ios
           xcodebuild -resolvePackageDependencies \
             -scheme FinanceApp \
@@ -166,6 +171,7 @@ jobs:
 
       - name: Build for simulator
         run: |
+          set -o pipefail
           cd apps/ios
           xcodebuild build \
             -scheme FinanceApp \
@@ -177,9 +183,12 @@ jobs:
 
       - name: Run tests
         run: |
+          set -o pipefail
           cd apps/ios
+          # The SPM-generated `<PackageName>-Package` scheme is the one carrying
+          # the test targets; `FinanceApp` is a library product.
           xcodebuild test \
-            -scheme FinanceApp \
+            -scheme Finance-Package \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -clonedSourcePackagesDirPath .spm-packages \
             -derivedDataPath .derivedData \

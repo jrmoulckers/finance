@@ -92,6 +92,12 @@ jobs:
 
       - name: Resolve SPM dependencies
         run: |
+          # `set -o pipefail` is REQUIRED on every step below that pipes xcodebuild
+          # into `tail`. GitHub Actions' default shell is `bash -e` *without*
+          # pipefail, so the step's exit status is `tail`'s — always 0 — and a
+          # failed build reports success. That masked a broken iOS build from
+          # 2026-04-20 to 2026-08-11 (#4122).
+          set -o pipefail
           cd apps/ios
           xcodebuild -resolvePackageDependencies \
             -scheme FinanceApp \
@@ -100,27 +106,45 @@ jobs:
 
       - name: Build
         run: |
+          set -o pipefail
           cd apps/ios
-          xcodebuild build \
+          # `tee` keeps the full log so the error extract below is not itself
+          # truncated by `tail` — the tail-truncated log is what made #4122
+          # hard to diagnose from CI output alone.
+          if ! xcodebuild build \
             -scheme FinanceApp \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
             -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
             CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tail -20
+            2>&1 | tee .build-xcodebuild.log | tail -20
+          then
+            echo "::error::iOS build failed — compiler errors follow"
+            grep -E ': (error|warning: treating): ' .build-xcodebuild.log | head -50 || true
+            exit 1
+          fi
 
       - name: Test
         run: |
+          set -o pipefail
           cd apps/ios
-          xcodebuild test \
-            -scheme FinanceApp \
+          # The SPM-generated `<PackageName>-Package` scheme is the one that
+          # contains the test targets; `FinanceApp` is a library product and is
+          # "not currently configured for the test action".
+          if ! xcodebuild test \
+            -scheme Finance-Package \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
             -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath .build/TestResults.xcresult \
-            2>&1 | tail -30
+            2>&1 | tee .build-xcodebuild-test.log | tail -30
+          then
+            echo "::error::iOS tests failed"
+            grep -E ': (error|failed): |XCTAssert' .build-xcodebuild-test.log | head -50 || true
+            exit 1
+          fi
 
       - name: Generate coverage report
         id: coverage
