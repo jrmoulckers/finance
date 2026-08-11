@@ -102,18 +102,20 @@ Grant every scope the callee declares:
 
 | Reusable workflow | Scopes the caller must grant |
 | --- | --- |
-| `reusable-ci-lint` | `contents: read` **and `pull-requests: read`** (Semantic PR Title job) |
-| `reusable-ci-web` | `contents: read` |
-| `reusable-perf-budget` | `contents: read` |
-| `reusable-smoke-test` | `contents: read` |
-| `reusable-deploy-preview` | `contents: read` |
+| `reusable-ci-lint` | `contents: read`, **`packages: read`**, **and `pull-requests: read`** (Semantic PR Title job) |
+| `reusable-ci-web` | `contents: read`, `packages: read` |
+| `reusable-perf-budget` | `contents: read`, `packages: read` |
+| `reusable-smoke-test` | `contents: read`, `packages: read` |
+| `reusable-native-smoke-test` | `contents: read`, `packages: read` (the web job; the other platform jobs need only `contents: read`) |
+| `reusable-deploy-preview` | `contents: read`, `packages: read` |
 | `reusable-change-detection` | `contents: read` |
 | `reusable-security-ci` | `contents: read` |
-| `reusable-deploy-pages` | `contents: read`, `pages: write`, and `id-token: write` |
+| `reusable-deploy-pages` | `contents: read`, `packages: read`, `pages: write`, and `id-token: write` |
 
 ```yaml
 permissions:
   contents: read
+  packages: read          # required by every Node-installing reusable workflow
   pull-requests: read      # required by reusable-ci-lint
 
 jobs:
@@ -161,6 +163,36 @@ Passing an empty string is the supported opt-out. Leaving a command at its defau
 has no such script fails the job; duplicating backbone logic locally makes the product repo drift
 from canon.
 
+### Smoke testing a native-first release
+
+`reusable-smoke-test` is web-shaped: one job, a Node toolchain, and an optional HTTPS probe against
+a deployed site. Use `reusable-native-smoke-test` instead when a release ships native artifacts and
+a green web check would leave Android, iOS, or Windows unvalidated.
+
+It runs `validate`, then one job per selected platform, then a `summary` that reduces the verdicts
+to a single `result` output a release workflow can gate on. Unselected platforms are reported as
+skipped and count as a pass; a selected platform that fails, fails the run.
+
+```yaml
+permissions:
+  contents: read
+  packages: read          # the web job installs Node dependencies
+
+jobs:
+  smoke:
+    uses: jrmoulckers/.github/.github/workflows/reusable-native-smoke-test.yml@<reviewed-commit-sha>
+    with:
+      version: ${{ github.ref_name }}
+      platforms: android,ios,web
+      ios-scheme: ExampleApp
+      package-manager: pnpm
+      build-command: pnpm --filter web build
+```
+
+Narrow `platforms` on non-release runs: the iOS and Windows jobs use macOS and Windows runners,
+which bill at a higher rate than Linux. Remote build caches are not accepted — builds run cold and
+Gradle's cache is read-only, so a release is validated from source rather than from a cache.
+
 ### Build once and reuse same-run artifacts
 
 `reusable-ci-web` optionally uploads a validated directory when `artifact-name` is set. Preview,
@@ -201,14 +233,76 @@ and its environment-gated deploy job only calls GitHub's deploy action with `pag
 
 - Reusable commands are trusted repository configuration. Pass literal workflow values, never event
   titles, branch names, issue text, or other untrusted data.
-- Never use `secrets: inherit`. Canonical PR build, security, preview, performance, smoke, and change
-  detection workflows declare no secrets.
+- Never use `secrets: inherit`. `NODE_AUTH_TOKEN` is the only secret any canonical reusable workflow
+  accepts, it is optional, and it must be passed explicitly when it is passed at all. When it is
+  omitted the workflow falls back to the job's `GITHUB_TOKEN`.
 - Preview canon is artifact-only. The removed `provider`, `preview-command`, `DEPLOY_TOKEN`, and
   `preview-url` contracts must not be recreated. Provider deployments require a separate reviewed
   job, a protected environment, explicit secrets, and no PR-controlled arbitrary shell.
 - Lighthouse reports remain private GitHub artifacts by default. Enable
   `lighthouse-public-upload` only for an intentionally public, unauthenticated URL after accepting
   that report data will leave GitHub's private artifact boundary.
+
+### Installing from a private registry
+
+`reusable-ci-lint`, `reusable-ci-web`, `reusable-deploy-pages`, `reusable-deploy-preview`,
+`reusable-perf-budget`, `reusable-smoke-test`, and `reusable-native-smoke-test` accept optional
+`registry-url` and
+`registry-scope` inputs plus an optional `NODE_AUTH_TOKEN` secret. Leave all three unset and the
+run is unchanged: `actions/setup-node` ignores an empty `registry-url` entirely and writes no
+`.npmrc`, and no token is placed in the install step's environment.
+
+For GitHub Packages this is zero-config — pass no secret at all:
+
+```yaml
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  web:
+    uses: jrmoulckers/.github/.github/workflows/reusable-ci-web.yml@<reviewed-commit-sha>
+    with:
+      package-manager: pnpm
+      registry-url: https://npm.pkg.github.com
+      registry-scope: '@jrmoulckers'
+```
+
+`NODE_AUTH_TOKEN` resolves as `secrets.NODE_AUTH_TOKEN || github.token`, so the job's
+`GITHUB_TOKEN` is used unless the caller passes its own. Grant the consuming repository read access
+to each package under the package's **Manage Actions access** settings; GitHub recommends this over
+storing a PAT. Pass an explicit secret only for a registry `GITHUB_TOKEN` cannot reach:
+
+```yaml
+    secrets:
+      NODE_AUTH_TOKEN: ${{ secrets.MY_REGISTRY_PAT }}
+```
+
+Rules and interactions:
+
+- `packages: read` is required for `GITHUB_TOKEN` to read a GitHub Packages package at all, and a
+  caller `permissions:` block must grant it or the run fails at startup.
+- `registry-scope` requires `registry-url`. Setting `registry-url` without a scope replaces the
+  **default** registry for every package and emits a warning.
+- `actions/setup-node` writes its `.npmrc` to `$RUNNER_TEMP/.npmrc` and exports
+  `NPM_CONFIG_USERCONFIG`, so it is **user**-level config. A repo's own committed `.npmrc` is
+  **project**-level and outranks it on every key it sets, for both npm and pnpm. A project `.npmrc`
+  that points the same scope at a different registry wins and the install still fails; either delete
+  that line or keep it byte-identical. A project `.npmrc` that only sets unrelated keys is fine.
+- pnpm reads `NPM_CONFIG_USERCONFIG` and expands `${NODE_AUTH_TOKEN}` the same way npm does, so no
+  extra pnpm-specific step is needed. `setup-node` always exports `NODE_AUTH_TOKEN` (a placeholder
+  when the secret is absent), which keeps pnpm's env-expansion from erroring.
+- The token reaches the install step only when `registry-url` is set. A run that does not configure
+  a private registry gets an empty `NODE_AUTH_TOKEN`, so a `GITHUB_TOKEN` is never exposed to
+  dependency lifecycle scripts on the default path. A consequence worth knowing: passing
+  `NODE_AUTH_TOKEN` *without* `registry-url` has no effect, because there is no `.npmrc` to consume
+  it.
+- `reusable-security-ci` needs none of this. `npm audit` and `pnpm audit` send the bulk advisory
+  request to the **default** registry, never to a scoped one, so a private scoped package in the
+  lockfile does not trigger a `401`. Pointing the *default* registry at GitHub Packages does break
+  audit, but with `ENDPOINT_NOT_EXISTS` (no audit endpoint) rather than an auth error — a token
+  would not fix it. Note that audit does transmit private package names and versions to the default
+  registry.
 
 ### Never vendor a backbone workflow or health file
 
@@ -225,6 +319,15 @@ product repo must contain **no copy of its own**:
   version for that repo. GitHub prefers a repo's own health file over the one inherited from
   `jrmoulckers/.github`, so a verbatim copy overrides the inherited file and freezes it at the day
   it was copied.
+
+  If you *are* overriding deliberately — because the repo needs product-specific security content
+  that cannot live in canon — that is allowed, but you own the consequence: the file is a fork with
+  no update path, and canon changes will never reach it. Re-read canon when it moves.
+  **Do not restate canon's policy in your own words in order to differ from it in one place**; check
+  first whether canon already offers a variant you can select. Its security policy defines two
+  support postures precisely so that a continuously-deployed product can *select* the right one
+  rather than file a deviation against the other
+  ([ADR-0010](https://github.com/jrmoulckers/.github/blob/main/docs/architecture/0010-selectable-support-postures.md)).
 
 In both cases a local copy is **worse than having nothing**, and the sync engine cannot rescue you
 — it never writes native kinds, so it can neither update the copy nor report it as drift. If you
