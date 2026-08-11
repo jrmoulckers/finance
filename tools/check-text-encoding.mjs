@@ -190,6 +190,7 @@ const failures = [];
 let scanned = 0;
 let skippedBinary = 0;
 let unreadable = 0;
+let totalBytes = 0;
 
 selfTest();
 
@@ -207,6 +208,7 @@ for (const path of trackedFiles) {
     continue;
   }
   scanned += 1;
+  totalBytes += bytes.length;
   for (const { offset, doubled } of findReplacements(bytes)) {
     failures.push({ path, line: lineOf(bytes, offset), doubled });
   }
@@ -257,6 +259,22 @@ if (unreadable > 0) {
   process.exit(1);
 }
 
+// The three checks above all reason about file *counts*, so none of them can see a reader that
+// returns an empty buffer for every path: those buffers are defined and NUL-free, so each one
+// counts as scanned text, conservation balances exactly, and the detector correctly finds nothing
+// in zero bytes. selfTest() cannot see it either, because it feeds synthetic buffers straight to
+// the detector and never exercises the reader. Only the volume of data read distinguishes a
+// repository with no U+FFFD from a reader that returned nothing at all.
+if (totalBytes === 0) {
+  console.error(
+    `::error::encoding guard read 0 bytes across ${scanned} tracked text file(s). Tracked text\n` +
+      'files are never all empty, so the reader returned nothing and every file was reported\n' +
+      'clean without being examined.',
+  );
+  process.exit(1);
+}
+
 console.log(
-  `No U+FFFD found in ${scanned} tracked text file(s) (${skippedBinary} binary file(s) skipped).`,
+  `No U+FFFD found in ${scanned} tracked text file(s), ${totalBytes} byte(s) read ` +
+    `(${skippedBinary} binary file(s) skipped).`,
 );
