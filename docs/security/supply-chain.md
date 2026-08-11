@@ -45,6 +45,25 @@ The exposure is therefore narrower than "private package names leak", but it is 
 
 This is inherent `npm audit` behaviour, not something the shared toolchain introduces. No financial or user data is involved — the payload is dependency metadata only — so it is recorded rather than mitigated. Suppress it with `npm audit --offline` or omit the audit step where that egress is unacceptable.
 
+## Vendored-config staleness check
+
+`node scripts/vendor-configs.mjs --check` runs in `ci-lint.yml` and does two separable things:
+
+| Step                                                           | Network                                                                            | Failure mode                 |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------- |
+| Hash the vendored tree against `engineering-configs.lock.json` | none                                                                               | **fails the build on drift** |
+| Report a newer upstream release                                | unauthenticated `GET api.github.com/repos/jrmoulckers/engineering/releases/latest` | notice only, exit 0          |
+
+The second is the one with an egress footprint. It transmits nothing about this repository — no
+dependency set, no package names, no request body — so unlike the audit egress above there is no
+disclosure to weigh; it is a plain public read. It **fails open** by design: non-200, rate limit,
+or an offline runner all yield "no answer", which is treated as fine rather than as a stale
+signal.
+
+Recorded because the call is invisible at the call site and sits inside a required gate. It is
+also why the two halves must not be conflated: **a green `--check` means the tree matches the
+lock, not that the pin is current.** Only the first half is authoritative offline.
+
 ## Policy
 
 Any release marked `production` must have a green provenance attestation for every shipped artifact. Release CI must fail if provenance generation fails; dry-run or non-publishing runs may skip attestation because no production artifact is shipped.

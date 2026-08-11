@@ -113,6 +113,9 @@ jobs:
       - name: ESLint
         run: npx eslint . --max-warnings 0 --cache --cache-location .eslintcache
 
+      - name: Vendored engineering configs match lock
+        run: node scripts/vendor-configs.mjs --check
+
       - name: Prettier
         run: npx prettier --check .
 
