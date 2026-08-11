@@ -16,12 +16,24 @@
 
 # --- Member-owned exceptions (must remain below the managed region) ---
 
-# Windows batch files must keep CRLF — cmd.exe is unreliable with LF-only
-# scripts, and gradlew.bat is tracked with CRLF.
+# Windows batch files must be CRLF *in the working tree* — cmd.exe is unreliable
+# with LF-only scripts. `text` stays set, so the blob is still normalized to LF in
+# the index and `eol=crlf` converts on checkout. Measured on gradlew.bat:
+# index 2800 B / CR=0; working tree 2891 B / CR=91.
+#
+# Do NOT switch these to `binary` or `-text` in order to "preserve" CRLF: that
+# unsets `text`, which disables conversion in both directions and lets CRLF into
+# the index — the opposite of what this file exists to do.
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
-# Binary files — do not touch
+# Binary files — do not touch.
+#
+# Verifying these with `git check-attr eol` is misleading: it reports `eol: lf`
+# even here, because the attribute is still assigned by the `* text=auto eol=lf`
+# rule above. It is inert — `eol` only takes effect when `text` is set, and the
+# `binary` macro (`-diff -merge -text`) unsets it. Check the committed bytes
+# (`git cat-file -s :<path>`), not the attribute readout.
 *.png binary
 *.jpg binary
 *.jpeg binary
