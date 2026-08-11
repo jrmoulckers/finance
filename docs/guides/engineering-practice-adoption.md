@@ -1491,20 +1491,47 @@ the claim before considering it retracted, and check the guidance it _caused_ as
 itself. Fixing the sentence is the cheap half. Recorded here because the ratio — one file corrected,
 nine still asserting it — is the useful number, not the retraction.
 
-### Misattribution in the same broadcast
+### Retracted: the "misattribution" claim was itself the error
 
-For the record, and so the right repo gets the credit and the re-check: the `v0.21.0` message
-attributes to finance a TypeScript 6.0.3 / `TS5101` / `baseUrl` false-clean report, a count of
-"838" in-bounds indexed reads, "your 2,691", and a `reactConfig()` diff of "266 findings". finance
-filed none of those. finance measured the published preset at **317** findings, not 266, and its
-`@jrmoulckers/tsconfig` blast radius at **2,691** was recorded here as a deferral, not as a bug
-report. The `baseUrl` finding in particular is someone else's — finance's `apps/web/tsconfig.json`
-carries `baseUrl` _and_ `ignoreDeprecations: "6.0"` together and type-checks cleanly on 6.0.3, so
-it cannot be the source of a report that the combination aborts.
+An earlier revision of this section claimed the `v0.21.0` broadcast had misattributed four things
+to finance — a TypeScript 6.0.3 / `TS5101` / `baseUrl` false-clean report, "838" in-bounds indexed
+reads, "your 2,691", and a `reactConfig()` diff of "266 findings" — and asserted that **"finance
+filed none of those"**, calling it a fourth mirror error and asking upstream to go find the real
+reporting repo. **Every part of that is wrong and it is retracted.** Checked against this file:
 
-This is the fourth apparent mirror error across the seven-repo broadcast, and two earlier ones were
-confirmed as such. Flagged rather than corrected silently, because the reporting repo is the one
-that should be asked to re-check its own numbers.
+| Attributed                                                        | Actually finance's?                 | Where                                                                    |
+| ----------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------ |
+| TS 6.0.3 / `TS5101` / `baseUrl` aborts before checking            | **Yes**                             | gap 3, including both proposed fixes                                     |
+| "drop `baseUrl`, make `paths` tsconfig-relative — the better fix" | **Yes**                             | the same entry, in those words                                           |
+| `types` replaces rather than merges                               | **Yes**                             | gap 4                                                                    |
+| 838 in-bounds indexed reads                                       | **Yes**                             | the `noUncheckedIndexedAccess` breakdown, 1,853 test / 838 production    |
+| 2,691                                                             | **Yes**                             | the `@jrmoulckers/tsconfig` trial                                        |
+| "266 findings"                                                    | **finance's own superseded number** | the from-source reconstruction, retracted here for under-counting by 19% |
+
+Only the last has anything wrong with it, and it is not a misattribution: 266 was finance's own
+figure before the measurement against the published artifact returned **317**. Upstream was quoting
+a number finance had published and later withdrawn — the fix is for finance to say "use 317", not
+for anyone to go looking for another repo.
+
+**The claim that `baseUrl` "cannot be finance's" was the worst of it**, and it was reasoned rather
+than checked: `apps/web/tsconfig.json` carries `baseUrl` _and_ `ignoreDeprecations: "6.0"` and
+type-checks cleanly, so I concluded finance could not have reported the combination aborting. But
+gap 3 is a report about **`@jrmoulckers/tsconfig`'s `base.json`**, which sets no
+`ignoreDeprecations` — a consumer extending that chain while keeping `baseUrl` is the aborting
+case. finance's own tsconfig is clean _because it does not extend the shared chain yet_. The
+observation was true and the inference from it was invalid.
+
+**Why this matters more than the error itself.** Every other correction in this document was
+produced by checking a primary artifact — the index, the tarball, `resolveConfig`, the compiler,
+the checker. This one was produced by consulting my own session notes about what finance had
+reported, and asserting from them. The guide recording the finding was in the repository the whole
+time, and one grep would have falsified the claim before it was sent. **A summary of your own work
+is a secondary source and decays like any other.** Filed here as the fifth instance of this
+document's recurring failure — a real observation welded to an unverified story — and the first
+where the unverified story was about _me_.
+
+There was also a live cost: upstream was told to go find the reporting repo and re-check its
+numbers, which is wasted work created out of nothing. Corrected to them directly.
 
 ## Worth hoisting up
 
