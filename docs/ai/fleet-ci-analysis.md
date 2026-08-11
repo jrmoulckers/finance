@@ -239,7 +239,7 @@ Before EVERY push, you MUST complete ALL of these steps IN ORDER:
 ### Common Pitfalls
 - **Markdown files need Prettier too!** `npm run format` formats .md files
 - **ESLint warnings are errors in CI!** Remove unused imports, especially `vi` in test files
-- **Local type-check may fail on TS 5.9.3** — remote CI is the source of truth
+- **Local type-check passes** (TS 6.0.3) — the TS 5.9.3 exemption is [retracted](ci-monitoring.md#retracted-local-type-check-fails-on-ts-593); remote CI remains the source of truth for platform jobs
 - **Worktrees don't share node_modules** — always run `npm install` first
 - **Husky blocks non-interactive pushes** — always use `$env:HUSKY = "0"` with `--no-verify`
 ```

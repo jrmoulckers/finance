@@ -33,11 +33,21 @@ Fix locally, follow the [canonical pre-push workflow](workflow.md#️-mandatory-
 
 Local checks (`npm run ci:check`, `npm run format:check`, etc.) are useful for catching issues early, but **remote CI is the authoritative result**. A PR is not merge-ready until `gh pr checks` shows all green — regardless of what passes locally.
 
-### Known Issue: Local type-check on TS 5.9.3
+### Retracted: "Local type-check fails on TS 5.9.3"
 
-TypeScript 5.9.3 rejects the `ignoreDeprecations` compiler option locally, causing `npm run type-check` (and therefore `npm run ci:check`) to fail even on clean code. Remote CI uses a compatible configuration and is not affected.
+This repo previously documented a known issue stating that TypeScript 5.9.3 rejects the `ignoreDeprecations` compiler option locally, so `npm run type-check` (and therefore `npm run ci:check`) failed even on clean code, and that agents should skip type-check locally. **That claim is false and is withdrawn.**
 
-**Workaround:** The [canonical pre-push workflow](workflow.md#️-mandatory-pre-push-workflow-never-skip) intentionally checks only formatting and lint locally. Let remote CI handle the type-check.
+Measured on 2026-08-11:
+
+- The installed compiler is **TypeScript 6.0.3**, not 5.9.3 (`node -e "require('typescript/package.json').version"`).
+- `apps/web/tsconfig.json` carries `"ignoreDeprecations": "6.0"`, which 6.0.3 accepts.
+- `npm run type-check` exits **0** across the repo, and `tsc -p apps/web/tsconfig.json --noEmit` exits **0** with no output.
+
+A clean type-check is also the exact shape of an _aborted_ one — same exit code, same empty output — so the run was proved rather than assumed: planting `const planted: number = "definitely not a number";` in `apps/web/src` produced `TS2322` and exit **2**, then the probe was removed. The gate runs, and it is genuinely clean.
+
+**Run type-check locally.** `npm run ci:check` is the full gate and is expected to pass. Remote CI remains authoritative for the reasons in the section above — it runs the platform jobs a local machine does not — but not because local type-check is broken.
+
+> **Why this mattered enough to write down.** A wrong "known issue" is self-reinforcing: every agent that reads it skips the gate, and skipping the gate is what stops anyone discovering the claim is false. This one survived long enough to be copied into nine other documents, and the correction had reached only one of them. When retracting an exemption, grep for it — the claim spreads further than the fix does.
 
 ---
 

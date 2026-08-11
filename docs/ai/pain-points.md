@@ -159,28 +159,28 @@ Document that KMP/Swift agents should run platform-specific build commands local
 
 ---
 
-#### PP-0018: TS 5.9.3 rejects `ignoreDeprecations` locally
+#### PP-0018: TS 5.9.3 rejects `ignoreDeprecations` locally — **withdrawn, never reproducible**
 
-| Field          | Value            |
-| -------------- | ---------------- |
-| **ID**         | PP-0018          |
-| **Severity**   | 🟡 Medium        |
-| **Category**   | CI/CD, Tooling   |
-| **First seen** | 2025-07          |
-| **Status**     | Open             |
-| **Owner**      | @devops-engineer |
+| Field          | Value                  |
+| -------------- | ---------------------- |
+| **ID**         | PP-0018                |
+| **Severity**   | ⚪ None (invalid)      |
+| **Category**   | CI/CD, Tooling         |
+| **First seen** | 2025-07                |
+| **Status**     | Withdrawn (2026-08-11) |
+| **Owner**      | @devops-engineer       |
 
 **Description:**
-TypeScript 5.9.3 rejects the `ignoreDeprecations` compiler option in `tsconfig.json`, causing `npm run type-check` (and therefore `npm run ci:check`) to fail locally even on clean code. Remote CI uses a compatible configuration and is not affected.
+This entry claimed TypeScript 5.9.3 rejects the `ignoreDeprecations` compiler option in `tsconfig.json`, causing `npm run type-check` (and therefore `npm run ci:check`) to fail locally even on clean code. **The claim is false.** The installed compiler is TypeScript **6.0.3**, `apps/web/tsconfig.json` carries `"ignoreDeprecations": "6.0"` which 6.0.3 accepts, and `npm run type-check` exits 0. Verified to be a real run, not an aborted one, by planting a type error and confirming `TS2322` / exit 2. Full measurements in [CI Monitoring](ci-monitoring.md#retracted-local-type-check-fails-on-ts-593).
 
-**Impact:**
-Agents cannot use `npm run ci:check` as a reliable local gate. The canonical pre-push workflow now skips type-check locally and defers to remote CI.
+**Impact of the pain point as written:**
+It steered every agent away from a working gate for roughly a year, and was copied into nine other documents. Type failures were also excluded from the avoidable-CI-failure metric on its authority.
 
-**Current workaround:**
-The canonical pre-push workflow checks only format and lint locally. Remote CI handles type-check.
+**Resolution:**
+Withdrawn. `npm run ci:check` is a reliable local gate; run it. The nine downstream copies were corrected in the same change.
 
-**Suggested fix:**
-Pin TypeScript version or update `tsconfig.json` to remove `ignoreDeprecations` when all deprecated APIs have been migrated.
+**Lesson (kept deliberately):**
+A wrong "known issue" is self-reinforcing — each agent that obeys the exemption skips the very command that would falsify it, so the claim is never retested. Before recording an exemption, reproduce the failure; before trusting an old one, re-run it. And when retracting one, grep for it: the claim had spread to ten files while the correction had reached one.
 
 ---
 

@@ -78,11 +78,11 @@ gh pr checks <number>
 - CI log shows TypeScript compilation errors
 - `npm run type-check` fails locally
 
-### Known Issue: TS 5.9.3
+### Retracted: "Known Issue: TS 5.9.3"
 
-TypeScript 5.9.3 rejects the `ignoreDeprecations` compiler option locally, causing `npm run type-check` (and `npm run ci:check`) to fail even on clean code. Remote CI uses a compatible configuration and is not affected.
+This section used to claim that TypeScript 5.9.3 rejects `ignoreDeprecations` locally, so a failing `npm run type-check` was "expected" and should be pushed past. **That was false** — the installed compiler is 6.0.3, the option is accepted, and the gate passes. See [CI Monitoring](ci-monitoring.md#retracted-local-type-check-fails-on-ts-593) for the measurements.
 
-**If the failure is the `ignoreDeprecations` error:** This is expected locally. Push your code (after passing format and lint checks) and let remote CI validate the type-check.
+**Treat every local type-check failure as a genuine type error.** There is no expected-failure case to wave through.
 
 ### Fix (for genuine type errors)
 
