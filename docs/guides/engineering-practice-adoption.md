@@ -82,26 +82,57 @@ evaluated, so it was never evidence about visibility.
 `jrmoulckers/engineering` is a _public repository_; publishing from one does not make the package
 public, and the repo page gives no hint.
 
-**On the visibility probe itself.** The recommended form is
-`curl -s .../packages | grep -c eslint-config` — a count of `0` meaning private. That is an
-**absence test**, and it returns `0` just as readily for a 404, a redirect, or a login wall, so on
-its own it cannot distinguish "no packages" from "the probe did not run". Assert the positive
-marker instead: HTTP **200** plus the rendered empty-state string:
+**On the visibility probe itself.** Two better forms have since been found, and the originally
+recommended one should not be used. `curl -s .../packages | grep -c eslint-config`, with a count of
+`0` meaning private, is an **absence test**: it returns `0` just as readily for a 404, a redirect,
+or a login wall, so on its own it cannot distinguish "no packages" from "the probe did not run".
+
+The decisive probe asks the API for the field directly, and needs a token carrying
+`read:packages`:
+
+```console
+$ gh api users/jrmoulckers/packages/npm/eslint-config \
+    --jq '{name,visibility,repo:.repository.full_name,version_count}'
+{"name":"eslint-config","repo":"jrmoulckers/engineering","version_count":7,"visibility":"private"}
+```
+
+All three return `visibility: private` (`eslint-config` 7 versions, `tsconfig` 3,
+`prettier-config` 2). This reports the property being asked about rather than inferring it from an
+absence, and it has a working positive control — a public package returns `"public"` through the
+same call. Where no such token is available, assert the positive marker instead of a zero count:
 
 ```bash
 curl -s -o pkgs.html -w '%{http_code}\n' https://github.com/jrmoulckers/engineering/packages
 grep -q 'Get started with GitHub Packages' pkgs.html && echo 'no packages visible'
 ```
 
-Verified: HTTP 200, empty state present, zero `eslint-config` occurrences. Same failure shape as
-a `grep` guardrail that passes because it never matched — see the note on the observability check
-below.
+**Correction: a token on this machine does carry `read:packages`.** This guide previously recorded
+that no available token had the scope. That was wrong, and the cause is worth recording because it
+is silent: `gh` holds two accounts here, and an environment-supplied `GH_TOKEN` **masks** the
+keyring one that carries the scope. `gh auth status` shows both, and the active account is the
+masked-in one:
+
+```console
+$ gh auth status
+  ✓ Logged in to github.com account jrmoulckers (GH_TOKEN)   # active
+  - Token scopes: 'gist', 'project', 'read:org', 'repo', 'user', 'workflow'
+  ✓ Logged in to github.com account jrmoulckers (keyring)
+  - Token scopes: 'admin:public_key', 'gist', 'read:org', 'read:packages', 'repo'
+```
+
+Clearing `GH_TOKEN` in the shell selects the keyring account. The failure mode is that an
+environment token silently outranks a better-scoped stored one, and every probe then reports a
+scope error that looks like an account-wide limitation.
+
+**What this unblocks, and what it does not.** With that token the registry is readable, so the
+presets can now be **validated locally against the real published artifacts** — see
+"Measured against the real artifact" below, which supersedes the earlier from-source trial. It does
+**not** unblock adoption: CI authenticates as `GITHUB_TOKEN`, which cannot read a private package
+without a grant, so committing the dependency would still fail on `main`.
 
 Granting access is human-gated and **owner-only**: either flip the three packages public, or
-grant this repository Read under each package's _Manage Actions access_. It is not a token or
-workflow-configuration problem, and no token available to either side carries the scope.
-**The presets were deliberately not adopted blind** — a lint config that cannot be executed
-locally would be verified for the first time by CI on `main`.
+grant this repository Read under each package's _Manage Actions access_. There is no API path for
+either action.
 
 ### Blocker 2 — the ESLint peer range excluded finance (**resolved upstream in 0.4.0**)
 
@@ -205,11 +236,12 @@ including `jsx-key`. Bisecting the config would have cost one more probe than ac
    recommended first. See
    [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md).
 
-4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.4.0`**,
+4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.6.0`**,
    **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**. The React
    preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s reversal to
    `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on ESLint 10
-   (see Blocker 2). On a `0.x` package a caret permits patch updates only, so `^0.1.0` resolves
+   (see Blocker 2), and `0.6.0` the first in which the React preset can reach type-aware rules at
+   all. On a `0.x` package a caret permits patch updates only, so `^0.1.0` resolves
    to `>=0.1.0 <0.2.0` and can never reach any of them.
 
    Worth stating as a method rather than a version bump: verify against the **resolved range**,
@@ -239,6 +271,92 @@ What must stay local, via `extend` / `ignores` / `rules`:
   `scripts/`, `.vscode/extensions/`, and `**/webpack.config.d/**`.
 - `no-console: off` for `services/**` and `tools/**`, which the preset's `toolingFiles` glob
   does not cover.
+
+### Measured against the real artifact (0.6.0)
+
+Everything above was originally estimated by resolving the preset **from source**. With registry
+read access the published tarballs can be executed directly, so these numbers supersede the
+earlier from-source trial. Preset installed into a throwaway sandbox inside the repo; peers
+resolved upward to finance's own `eslint@10.6.0`, `react@19.2.7`, `typescript@6.0.3`.
+
+The real `@jrmoulckers/eslint-config@0.6.0` `./react` entry point **loads and runs on ESLint 10**,
+resolving `settings.react.version` to the actual installed `19.2.7`.
+
+| Configuration                                   | Files | Errors | Warnings | Total     |
+| ----------------------------------------------- | ----- | ------ | -------- | --------- |
+| `reactConfig()`, defaults, no overrides         | 2,510 | 355    | 706      | **1,061** |
+| plus finance's existing exemptions              | 2,510 | 245    | 72       | **317**   |
+| `strictTypeChecked: true` (`apps/web/src` only) | 2,301 | 2,046  | 47       | **2,093** |
+
+**317 is the real adoption cost**, and the 744-finding gap between the first two rows is precisely
+the set of overrides listed above. It is dominated by two rules, both explained by the preset's
+`toolingFiles` glob covering `**/scripts/**` and `**/*.config.*` but **not `tools/**` or
+`services/**`**: `no-console` (659 warnings in 41 files) and `@typescript-eslint/no-require-imports`
+(84 errors in 36 files). Porting the two exemption blocks into `extend` removes both entirely,
+which confirms the mapping rather than merely asserting it.
+
+The residual 317 is mostly pre-existing accessibility debt the current config never checked:
+`jsx-a11y/no-redundant-roles` 171 (50 files) still dominates, as it did in the from-source trial.
+Also surfaced: **13 now-redundant `eslint-disable` directives across 8 files**, all suppressing
+`no-console` for `console.warn`/`console.error` calls that the shared preset's
+`allow: ['warn','error']` already permits. They are reported as unused-directive warnings, so
+adoption must delete them in the same commit.
+
+**The from-source reconstruction under-counted: 266 estimated versus 317 measured, 19% low.** Close
+enough to have supported the decision, wrong enough not to be quoted as a result. Reconstructing a
+dependency from its source is a reasonable stand-in for a blocked artifact, not a substitute for it.
+
+#### `strictTypeChecked` is not viable for finance
+
+`0.6.0` adds `base({ strictTypeChecked: true })`, opting into `recommendedTypeChecked` +
+`stylisticTypeChecked`. Upstream measured one consumer at **13** mechanical violations. Finance,
+scoped to `apps/web/src` alone — the only directory covered by a `tsconfig.json` — measures
+**2,093 across 45 distinct rules**, led by `no-unsafe-assignment` 311, `no-unnecessary-type-assertion`
+187, `no-unsafe-call` 143, `array-type` 135. That is the same order as the deferred
+`@jrmoulckers/tsconfig` trial (2,691) and for the same underlying reason, so it is deferred with it.
+
+**But one rule in that set is worth having on its own.** `no-floating-promises` finds **54 sites in
+32 files** — a swallowed rejection is a real defect class, not a style preference — and
+`no-misused-promises` a further 81 in 52. Both can be enabled without the other ~1,900 findings,
+because `typeAware: true` supplies type information while leaving the rule set at `recommended`,
+and a caller's `rules` override outranks the preset's own `no-floating-promises: 'off'`:
+
+```js
+reactConfig({
+  typeAware: true,
+  rules: {
+    '@typescript-eslint/no-floating-promises': 'error',
+    '@typescript-eslint/no-misused-promises': 'error',
+  },
+});
+```
+
+Verified: **449 total on `apps/web/src`**, versus 2,093 for the full opt-in — the two promise rules
+plus the same baseline findings, and nothing else. This is the recommended second step, after the
+default adoption lands.
+
+Cost note: type-aware runs are far slower. Full-repo default run **163 s**; `strictTypeChecked` on
+`apps/web/src` alone **262 s**.
+
+### The 0.6.0 crash does not affect finance
+
+`0.6.0` is published as fixing a hard crash — a type-aware rule reaching a file with no TypeScript
+project aborts the **entire** ESLint run rather than failing that rule. The fix is real and the
+floor should be `^0.6.0`, but the stated rationale does not transfer here, and adopting the
+reasoning unchecked would misdescribe finance's risk:
+
+- `react.js` is **byte-identical between 0.5.0 and 0.6.0** — `git diff` reports no change.
+- In 0.5.0 the only entry point that enabled type-aware linting was **`next.js`**, where
+  `typeAware` defaults to **`true`**. `base.js`, `react.js`, and `svelte.js` never requested type
+  information at all, so they could not reach the crash.
+- Finance is a `./react` consumer, so **it was never exposed.**
+
+The correct reason for finance to take `^0.6.0` is the opposite one: it is the **first release in
+which the React preset can reach type-aware rules at all**, because `reactConfig` spreads its
+remaining options into `base()`. That is what makes the targeted `no-floating-promises` step above
+possible; on `0.5.0` a React consumer had no route to it. The new `.js` guard — which turns every
+type-aware rule back off for JavaScript, applied after `extend` so a caller cannot accidentally
+outrank it — is what makes that opt-in safe.
 
 ### Then, for Prettier
 
@@ -433,6 +551,27 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
    (`ENG-OBS-002`–`006`, `ENG-DATA-002`) — all correct on manual check, but invisible to the
    tool that exists to check them. Requesting that the checker either expand `NNN`–`NNN` ranges
    within an area or warn that it cannot.
+
+8. **`toolingFiles` omits `tools/**` and `services/**`.** The shared glob covers
+   `**/scripts/**`, `**/*.config.*`, and test files, which is where the preset relaxes
+   `no-console`. finance keeps CLI-style code under `tools/` and `services/` as well, and that
+   single omission accounts for **743 of the 1,061 findings** in an unmodified run — `no-console`
+   659 and `@typescript-eslint/no-require-imports` 84. Both vanish once the two exemptions are
+   restated locally, so nothing is broken; but every consumer with a `tools/` directory will
+   rediscover this and restate the same two blocks. Worth either widening `toolingFiles` or, more
+   conservatively, exporting it so consumers can spread and extend it rather than re-authoring
+   the list. Note the preset already turns `no-console` off for tooling but never relaxes
+   `no-require-imports` anywhere, which CommonJS tooling always needs.
+
+9. **The `strictTypeChecked` cost stated in the README is unrepresentative by two orders of
+   magnitude.** `0.6.0` documents one measured consumer at **13** mechanical violations. finance,
+   scoped to the single directory covered by a `tsconfig.json`, measures **2,093 across 45
+   rules**. Both numbers are honest; quoting only the small one invites consumers to treat the
+   opt-in as a cheap afternoon. Suggest phrasing it as a range with the driver named — the cost
+   scales with how much untyped or `any`-typed surface the codebase already carries, not with
+   file count — and noting that `no-floating-promises` can be enabled alone via
+   `typeAware: true` plus a rule override, which is where nearly all the defect-finding value
+   sits (finance: 54 real sites, versus ~1,900 stylistic findings for the full set).
 
 ## Citation audit
 
