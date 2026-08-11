@@ -1160,20 +1160,25 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     files are reported as changed. The practical effect is that the one signal telling a reader
     whether an upgrade is reviewable or a no-op is wrong precisely when previewing an upgrade.
 
-18. **A line-wrapped citation name stops being verified, silently, and the format pass is what
-    wraps it.** `v0.16.5`'s `TITLED` pattern is `[^)/#\n]{2,59}`, so a parenthesised title split
-    across a newline is not recognised as a claim. It does not fail — it is simply not checked, the
-    exit code stays 0, and the only visible symptom is the "stated name(s) match" count being one
-    lower than the number of names actually written. Reproduced in finance: the `ENG-PERF-009`
-    citation in `docs/guides/accessibility.md`, whose title `Assurance precedence` was wrapped
-    between the two words by Prettier at `printWidth: 96`. Unwrapping it moved the count 30 → 31.
+18. **A line-wrapped citation name stops being verified, silently.** `v0.16.5`'s `TITLED` pattern is
+    `[^)/#\n]{2,59}`, so a parenthesised title split across a newline is not recognised as a claim.
+    It does not fail — it is simply not checked, the exit code stays 0, and the only visible symptom
+    is the "stated name(s) match" count being one lower than the number of names actually written.
+    Reproduced in finance: the `ENG-PERF-009` citation in `docs/guides/accessibility.md`, whose
+    title `Assurance precedence` was split between the two words. Unwrapping it moved the count
+    30 → 31.
 
-    The trigger is a formatter this guide recommends running, so the failure sequence is: write a
-    correct named citation, format, and lose the verification with no signal. Either match across
-    newlines, or have `--review` report near-misses — an `ENG-*` ID followed by a parenthesised
-    capitalised phrase that the strict pattern rejected. A near-miss warning is the cheaper fix and
-    converts a silent gap into a visible one, which is the same argument this document makes about
-    `rules-of-hooks`: **the dangerous lint result is the one that says nothing.**
+    **An earlier revision of this entry blamed the format pass. That was wrong and is retracted** —
+    finance resolves `proseWrap: "preserve"`, so Prettier never reflows prose here (verified by
+    `resolveConfig`, by a no-op format of an over-long paragraph, and by `git show` of the commit
+    that introduced the citation already wrapped). The break was **hand-authored**. That makes the
+    gap wider, not narrower: under `preserve` authors wrap by hand to a column convention, so every
+    repo on the shared config is exposed through its authors, and `proseWrap: 'always'` merely adds
+    a second mechanical trigger. Either match across newlines, or have `--review` report near-misses
+    — an `ENG-*` ID followed by a parenthesised capitalised phrase that the strict pattern rejected.
+    A near-miss warning is the cheaper fix and converts a silent gap into a visible one, which is
+    the same argument this document makes about `rules-of-hooks`: **the dangerous lint result is the
+    one that says nothing.**
 
     **Corollary, found while writing the paragraph above.** Quoting the broken citation verbatim as
     an example made this document fail the check with `claimed: Assurance\nprecedence`. The pattern
@@ -1210,21 +1215,51 @@ Mutation-tested rather than assumed. Retitling `ENG-PERF-001` to another princip
 fails with a `claimed:`/`actual:` diff and **exit 1**; restoring it returns **exit 0**. The guard
 is live.
 
-### One name was silently unverified, and the format pass caused it
+### One name was silently unverified — and I misattributed the cause
 
-`docs/guides/accessibility.md` cited `ENG-PERF-009` with its title stated — and Prettier's reflow
-split that title between its two words at `printWidth: 96`. Upstream's pattern excludes newlines
-(`[^)/#\n]{2,59}`), so a wrapped name is **not read as a claim at all**. It does not fail; it
-stops being checked. Exit stays 0, and the "stated names match" count silently drops by one.
+`docs/guides/accessibility.md` cited `ENG-PERF-009` with its title stated, and that title was split
+between its two words across a line break. Upstream's pattern excludes newlines
+(`[^)/#\n]{2,59}`), so a wrapped name is **not read as a claim at all**. It does not fail; it stops
+being checked. Exit stays 0, and the "stated names match" count silently drops by one. Unwrapping
+that one line moved the verified count 30 → 31 and the "read as named but missed" count 1 → 0.
 
-This fails open, and the trigger is a formatter the adoption guide itself tells you to run. The
-sequence is: write a correct named citation → run the format pass → the citation is no longer
-verified, with no signal anywhere. Unwrapping that one line moved the verified count 30 → 31 and
-the "read as named but missed" count 1 → 0.
+**That much is confirmed. The cause originally recorded here — "Prettier's reflow split it" — is
+wrong, and is retracted.** Prettier cannot have done it. Three checks, prompted by a sister repo
+pointing out that the trap needs `proseWrap: 'always'` to fire from a formatter:
+
+1. `resolveConfig` on that exact file returns **`proseWrap: "preserve"`**, `printWidth: 96` —
+   finance resolves its Prettier options from the vendored shared config via `package.json`.
+2. Formatting a deliberately over-long paragraph containing a named citation is a **no-op**: 3
+   lines in, 3 lines out, nothing reflowed.
+3. `git show aa730191:docs/guides/accessibility.md` — the commit that introduced the citation —
+   shows it **already split across two lines when authored**, and lowercase (`(assurance
+precedence)`), so at that point it was not a name claim at all. The break predates any format
+   pass over it.
+
+**The real mechanism is worse, because it is the one this repo actively encourages.** With
+`proseWrap: preserve`, Prettier never reflows prose, so authors wrap by hand to a ~96-column
+convention — and a hand wrap is now the _only_ thing that can split a title. This document argued
+for `preserve` fleet-wide and won the reversal, so **the format decision recorded here as a success
+is the same decision that creates the exposure**. That is not an argument against `preserve`; the
+reflow measurement behind it (592 files, 399 reflowing, 1 line vs 5 for a one-word edit) still
+stands. It is an argument that the two findings interact, and the interaction was invisible while
+the cause was misattributed to the formatter.
+
+The correction also changes who is exposed. Under the original account the trap fires on any repo
+that runs the format pass. Under the correct one it fires on **authors**, in every repo, and
+`proseWrap: 'always'` merely adds a second, mechanical trigger on top. Repos on `preserve` are not
+safe from gap 18 — they are exposed to it in the way that is hardest to see, because a hand wrap
+looks deliberate in review.
 
 Two mitigations, neither owned here: match across newlines in the pattern, or have `--review`
 report near-misses — an `ENG-*` ID followed by a parenthesised capitalised phrase that the strict
 pattern rejected. The second is cheap and turns a silent gap into a warning. Filed as **gap 18**.
+
+The method lesson is the recurring one in this document, applied to myself for the third time: the
+observation (a split title, a dropped count) was real and reproducible, and the **causal story
+attached to it was assumed rather than tested**. One `resolveConfig` call would have falsified it
+immediately. Prefer checking the mechanism you are about to name over the one that fits the
+narrative.
 
 **This is not wired into finance's CI**, deliberately. The checker resolves
 `principles/index.json` over the network by default, and gap 15 objects to exactly that — network
