@@ -7,7 +7,7 @@
 > **Standard:** WCAG 2.2 Level AA
 
 WCAG 2.2 AA is finance's own commitment; no ratified principle mandates it. `ENG-PERF-009`
-(assurance precedence) applies _additively_: whatever this audit finds, it may not be traded away
+(Assurance precedence) applies _additively_: whatever this audit finds, it may not be traded away
 to meet a performance budget.
 
 ---

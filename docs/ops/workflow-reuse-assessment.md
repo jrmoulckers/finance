@@ -47,7 +47,7 @@ The backbone publishes 8 reusables. Seven finance workflows overlap one.
 title it adds: the skip-with-success `changes` detector that keeps a required check reporting on
 every PR; `.eslintcache` restore keys; financial-terminology glossary validation
 (`scripts/i18n/validate-glossary.js`); and an `observability-guardrails` job whose sensitive-data
-grep **fails the build** — the executable form of `ENG-OBS-005` (redacted observable evidence).
+grep **fails the build** — the executable form of `ENG-OBS-005` (Redacted observable evidence).
 The reusable has no equivalent for any of these. Swapping it in would delete a blocking privacy
 check.
 

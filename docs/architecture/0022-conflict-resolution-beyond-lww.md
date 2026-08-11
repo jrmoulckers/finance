@@ -1,6 +1,6 @@
 # ADR-0022: Conflict Resolution Beyond Last-Write-Wins
 
-> **Ratified obligation:** `ENG-LOCAL-003` (declared conflict model). The requirement to
+> **Ratified obligation:** `ENG-LOCAL-003` (Declared conflict model). The requirement to
 > declare a conflict model is ratified upstream; what follows is finance's declaration. See
 > [practices/local-first-sync.md](https://github.com/jrmoulckers/engineering/blob/main/practices/local-first-sync.md).
 

@@ -5,7 +5,7 @@
 **Author:** System Architect (AI agent)
 **Reviewers:** Pending human review
 **Sprint:** W2-S7
-**Ratified obligation:** `ENG-LOCAL-003` (declared conflict model) — see [practices/local-first-sync.md](https://github.com/jrmoulckers/engineering/blob/main/practices/local-first-sync.md). Superseded in part by [ADR-0022](./0022-conflict-resolution-beyond-lww.md).
+**Ratified obligation:** `ENG-LOCAL-003` (Declared conflict model) — see [practices/local-first-sync.md](https://github.com/jrmoulckers/engineering/blob/main/practices/local-first-sync.md). Superseded in part by [ADR-0022](./0022-conflict-resolution-beyond-lww.md).
 
 ## Context
 
