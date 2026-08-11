@@ -469,8 +469,8 @@ export const TransactionDetailPage: React.FC = () => {
               border: 'none',
               cursor: 'pointer',
               padding: 'var(--spacing-2) 0',
-              fontSize: 'var(--type-scale-subheading-font-size)',
-              fontWeight: 'var(--type-scale-subheading-font-weight)',
+              fontSize: 'var(--type-scale-title-font-size)',
+              fontWeight: 'var(--type-scale-title-font-weight)',
               color: 'var(--semantic-text-primary)',
               textAlign: 'left',
             }}
@@ -562,7 +562,7 @@ export const TransactionDetailPage: React.FC = () => {
                             style={{
                               textAlign: 'left',
                               padding: 'var(--spacing-1) var(--spacing-2)',
-                              borderBottom: '1px solid var(--semantic-border-primary)',
+                              borderBottom: '1px solid var(--semantic-border-default)',
                               fontWeight: 600,
                             }}
                           >
@@ -573,7 +573,7 @@ export const TransactionDetailPage: React.FC = () => {
                             style={{
                               textAlign: 'left',
                               padding: 'var(--spacing-1) var(--spacing-2)',
-                              borderBottom: '1px solid var(--semantic-border-primary)',
+                              borderBottom: '1px solid var(--semantic-border-default)',
                               fontWeight: 600,
                             }}
                           >
@@ -587,7 +587,7 @@ export const TransactionDetailPage: React.FC = () => {
                             <td
                               style={{
                                 padding: 'var(--spacing-1) var(--spacing-2)',
-                                borderBottom: '1px solid var(--semantic-border-primary)',
+                                borderBottom: '1px solid var(--semantic-border-default)',
                               }}
                             >
                               {key}
@@ -595,7 +595,7 @@ export const TransactionDetailPage: React.FC = () => {
                             <td
                               style={{
                                 padding: 'var(--spacing-1) var(--spacing-2)',
-                                borderBottom: '1px solid var(--semantic-border-primary)',
+                                borderBottom: '1px solid var(--semantic-border-default)',
                               }}
                             >
                               {value}

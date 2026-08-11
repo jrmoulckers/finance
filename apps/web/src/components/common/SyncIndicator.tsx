@@ -74,7 +74,7 @@ export const SyncIndicator: React.FC<SyncIndicatorProps> = ({ className = '' }) 
         borderRadius: '999px',
         border: `1px solid ${borderColor}`,
         background,
-        color: 'var(--color-text-primary)',
+        color: 'var(--semantic-text-primary)',
         fontSize: '0.75rem',
         fontWeight: 600,
         lineHeight: 1,
