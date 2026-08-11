@@ -6,7 +6,7 @@ name: Web CI
 on:
   push:
     branches: [main]
-    paths: ['apps/web/**', 'packages/design-tokens/**']
+    paths: ['apps/web/**', 'packages/design-tokens/**', 'vendor/**']
   pull_request:
     branches: [main]
 
@@ -39,6 +39,10 @@ jobs:
         relevant:
           - 'apps/web/**'
           - 'packages/design-tokens/**'
+          # Vendored @jrm/tokens is imported by apps/web/src/theme/tokens.css and
+          # resolved by PostCSS at build time, so it must trigger the build even
+          # though it lives outside apps/web/.
+          - 'vendor/**'
           - '.github/workflows/ci-web.yml'
           - '.github/workflows/reusable-detect-changes.yml'
 
