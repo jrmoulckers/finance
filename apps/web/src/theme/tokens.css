@@ -1,24 +1,48 @@
 /**
  * Design token CSS imports.
  *
- * Finance renders from TWO layered token sources:
+ * Finance renders from TWO layered token sources. They are NOT split by
+ * concern — both carry a structural layer. They are split by NAMING, which is
+ * a transitional state, not a design (#4069).
  *
- *   1. @finance/design-tokens (base) — supplies the STRUCTURAL layer finance
- *      consumes pervasively and that the shared package does not own:
- *      numeric spacing (--spacing-4), type scale (--type-scale-*),
- *      radii (--border-radius-*), elevation (--elevation-*), motion
- *      (--duration-*, --easing-*, --animation-*), component tokens, and the
- *      primitive color ramps. It also seeds the semantic COLOR layer, which
- *      the shared layer below overrides.
+ *   1. @finance/design-tokens (base) — supplies the structural vocabulary that
+ *      finance's own components actually reference: numeric spacing
+ *      (--spacing-4), type scale (--type-scale-*), radii (--border-radius-*),
+ *      elevation (--elevation-*), motion (--duration-*, --easing-*,
+ *      --animation-*), component tokens, and the primitive color ramps. It also
+ *      seeds the semantic COLOR layer, which the shared layer below overrides.
  *
  *   2. @jrm/tokens (shared JRM Studio DNA, vendored under the repo-root
- *      vendor/ so all four platform apps share one copy) —
- *      overrides the shared --semantic-* COLOR layer (background/text/border/
- *      interactive/status/accent) and OWNS the mode variants
+ *      vendor/ so all four platform apps share one copy) — its index.css is an
+ *      aggregate BARREL, not a color-only sheet: its first import is
+ *      ./tokens.css, the structural sheet. So the shared layer DOES own and
+ *      DOES deliver spacing, radius, font, elevation, shadow, motion, layer,
+ *      and component tokens — finance loads all of them on every page.
+ *      It additionally overrides the --semantic-* COLOR layer (background/text/
+ *      border/interactive/status/accent) and OWNS the mode variants
  *      ([data-theme="dark|dark-oled|high-contrast"]), the prefers-color-scheme
  *      / prefers-contrast AUTO-SWITCHING, reduced-motion, and the cognitive
- *      [data-a11y-cognitive="true"] block. Imported AFTER the base so its
- *      brand colors win by cascade order.
+ *      [data-a11y-cognitive="true"] block. Imported AFTER the base so it wins
+ *      by cascade order.
+ *
+ * WHY BOTH STILL EXIST: the two layers mostly use DIFFERENT NAMES for the same
+ * concepts (--border-radius-* vs --radius-*, --type-scale-* vs --font-size-*),
+ * so they coexist instead of one replacing the other, and finance's components
+ * still point at the finance-named ones. Retiring @finance/design-tokens is
+ * therefore a RENAME MIGRATION, not a wiring fix — nothing here is
+ * mis-imported. Do NOT "fix" the imports; see #4069.
+ *
+ * WHERE THEY DO COLLIDE: 65 variable names are defined by both layers and the
+ * shared layer wins all of them; 33 resolve to a value finance did not intend.
+ * Most are the intended semantic color overrides, but some are not — notably
+ * --easing-standard, which finance defines as cubic-bezier(0.2, 0, 0, 1) and
+ * the shared layer redefines as the `ease` keyword. Tracked in #4069; do not
+ * assume a token named here resolves to the value defined in layer 1.
+ *
+ * CAUTION when migrating: map radii BY VALUE, never by name. finance's t-shirt
+ * radius names are shifted one step from the shared scale
+ * (--border-radius-sm is 4px; the shared --radius-sm is not), so a
+ * name-preserving rename silently changes corner radii and nothing fails.
  *
  * A thin finance-overlay.css then covers the finance-specific color delta the
  * shared layer does not own (e.g. --semantic-amount-*).
@@ -50,11 +74,13 @@
 /* High-contrast theme — explicit toggle via [data-theme="high-contrast"] */
 @import '../../../../packages/design-tokens/build/web/tokens-high-contrast.css';
 
-/* --- Layer 2: shared JRM Studio @jrm/tokens (semantic color DNA + modes) ----
- * Vendored, registry-free copy of the shared package. Its barrel emits the
- * light + [data-theme=*] mode blocks, prefers-color-scheme / prefers-contrast
- * auto-switching, reduced-motion, and the cognitive block, so finance defers
- * to it for all mode/auto-switch color behaviour (see below — finance's own
+/* --- Layer 2: shared JRM Studio @jrm/tokens (structure + semantic color DNA)
+ * Vendored, registry-free copy of the shared package. index.css is the
+ * aggregate barrel: it pulls in ./tokens.css (the STRUCTURAL sheet) plus the
+ * dark / dark-oled / high-contrast sheets, then emits the light +
+ * [data-theme=*] mode blocks, prefers-color-scheme / prefers-contrast
+ * auto-switching, reduced-motion, and the cognitive block. Finance defers to it
+ * for all mode/auto-switch color behaviour (see below — finance's own
  * hand-written auto-switch blocks were removed to avoid double-definition). */
 @import '../../../../vendor/@jrm/tokens/css/default/index.css';
 
