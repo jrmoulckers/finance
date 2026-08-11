@@ -236,13 +236,14 @@ including `jsx-key`. Bisecting the config would have cost one more probe than ac
    recommended first. See
    [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md).
 
-4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.7.0`**,
+4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.8.0`**,
    **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**. The React
    preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s reversal to
    `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on ESLint 10
    (see Blocker 2), and `0.6.0` the first in which the React preset can reach type-aware rules at
-   all. `0.7.0` is a no-op for finance — see below — but is taken as the floor anyway, because
-   there is no cost to it and a stale floor is a liability the moment a later fix lands. On a
+   all. `0.7.0` and `0.8.0` are both no-ops for finance — see below — but are taken as the floor
+   anyway, because there is no cost to either and a stale floor is a liability the moment a later
+   fix lands. On a
    `0.x` package a caret permits patch updates only, so `^0.1.0` resolves
    to `>=0.1.0 <0.2.0` and can never reach any of them.
 
@@ -339,6 +340,80 @@ default adoption lands.
 
 Cost note: type-aware runs are far slower. Full-repo default run **163 s**; `strictTypeChecked` on
 `apps/web/src` alone **262 s**.
+
+### 0.8.0 is types-only, and the file-set warning measures zero here
+
+`0.8.0` adds type declarations for every entrypoint (`base.d.ts`, `svelte.d.ts`, `react.d.ts`,
+`next.d.ts`, shared `types.d.ts`) wired through `exports`. Confirmed it changes no behaviour:
+**all six JavaScript files — `base.js`, `ignores.js`, `react.js`, `svelte.js`, `next.js`,
+`hooks.js` — are byte-identical to `0.7.0`**, and `dependencies` and `peerDependencies` are
+unchanged. The 317-finding measurement stands for a third release running.
+
+The declarations themselves are **inert at finance today**: no `tsconfig.json` in the repository
+sets `checkJs` or `allowJs`, and `eslint.config.mjs` is not in any tsconfig `include`. So the
+option checking `0.8.0` enables is a benefit finance would have to opt into, not one the floor
+bump delivers. Taking `^0.8.0` still costs nothing — it is the same code — but the release note's
+headline feature should not be recorded here as a gain that was actually received.
+
+Upstream also warns that **the presets lint more files than a local config did**, that a
+rule-by-rule diff scores this as zero, and that the file _set_ must be compared too. The warning
+is correct in general and worth stating; it measures **zero for finance**, and it is worth
+recording why rather than just that.
+
+The two configs cover different extensions on paper:
+
+|                     | Extensions covered                                    |
+| ------------------- | ----------------------------------------------------- |
+| `eslint.config.mjs` | `.ts` `.tsx` `.mjs` `.js`                             |
+| Preset (`base.js`)  | `.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs` |
+
+So the preset adds `.mts`, `.cts`, `.jsx`, and `.cjs`. Counting tracked files after the shared
+ignores:
+
+```
+.ts 1852   .tsx 601   .js 42   .mjs 15     = 2510
+.mts 0     .cts 0     .jsx 0   .cjs 0      = 0
+```
+
+**Finance contains none of the four added extensions**, so both configs select the same 2,510
+files. That number is not a coincidence: it is exactly the file count the `0.6.0` measurement
+reported, which independently confirms the run covered the preset's full selection.
+
+Two caveats worth keeping:
+
+- This is an accident of finance's current file inventory, not a property of the configs. The
+  first `.cjs` or `.jsx` file added to the repo is linted by the preset and not by today's config,
+  with no signal. It is a reason to re-measure on adoption, not to assume.
+- The **ignore** side does differ and does not net to zero: the preset ignores `**/coverage/**`,
+  `**/dev-dist/**`, `**/.svelte-kit/**`, and `**/.impeccable/**` (which finance does not), while
+  finance ignores `**/.gradle/**` (which the preset does not). These are generated directories, so
+  they are largely untracked and invisible to a tracked-file count — but `.gradle` is why that
+  ignore is on the must-port list rather than droppable.
+
+Separately, the numbers here were never exposed to the blind spot upstream describes: **317 was
+produced by running the preset over the repository, not by diffing rule tables.** A rule diff
+cannot see file-set changes; an actual run cannot miss them. That is the general argument for
+measuring the artifact rather than reasoning about the config, and it is the same reason the
+from-source reconstruction under-counted by 19%.
+
+### Source-shape guards: one latent case, not currently active
+
+Upstream warns that a large format pass re-breaks tests asserting against literal source text on
+every rebase, and that the fix belongs at the read (normalise quotes, collapse whitespace) rather
+than in the assertion.
+
+Finance has exactly one test of that shape:
+[`apps/web/src/accessibility/__tests__/wcag-audit.test.ts`](../../apps/web/src/accessibility/__tests__/wcag-audit.test.ts).
+It `readFileSync`s CSS sources and makes ~25 literal substring assertions —
+`toContain('min-height: 44px')`, `toContain('clip: rect(0, 0, 0, 0)')` — each of which depends on
+Prettier's CSS spacing. One assertion already uses `\s*` and is resilient; the rest are not.
+
+**It is not at risk today**, and the reason is a measurement already recorded above: adopting
+`prettier-config@^0.2.0` reformats **zero** files, because `.prettierrc.json` is byte-equivalent to
+the shared config on all seven keys and `proseWrap` was reverted to `preserve`. With no format
+pass there is no reflow to re-break. Recorded as a latent exposure with a named file so that any
+future change to shared CSS formatting is understood to have a test cost attached, rather than
+being discovered through a mysteriously failing accessibility suite.
 
 ### 0.7.0 changes nothing on the React path — verified, not assumed
 
