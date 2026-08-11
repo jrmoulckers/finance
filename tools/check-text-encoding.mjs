@@ -53,6 +53,8 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
  *
  * `--full-name` on the walk is the minimal alternative fix; `cwd: repoRoot`
  * is preferred because it makes every git call independent of the caller.
+ * Both are applied, so neither is load-bearing alone: removing `cwd` leaves
+ * the walk correct, and `--full-name` cannot be defeated by a caller's cwd.
  */
 const repoRoot = (() => {
   const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
@@ -69,12 +71,13 @@ const repoRoot = (() => {
  * The `:/` pathspec is redundant with running from the repository root but
  * states the intent at the call site: this walk covers the whole repository,
  * never the current subtree. It does not affect the *form* of the printed
- * paths — `cwd: repoRoot` above is what keeps those repository-relative.
+ * paths — `--full-name` is what keeps those repository-relative, and does so
+ * whatever directory the process was started from.
  *
  * @returns {string[]} Repository-relative paths.
  */
 function listTrackedFiles() {
-  const result = spawnSync('git', ['ls-files', '-z', '--', ':/'], {
+  const result = spawnSync('git', ['ls-files', '-z', '--full-name', '--', ':/'], {
     cwd: repoRoot,
     maxBuffer: 1024 * 1024 * 256,
   });
