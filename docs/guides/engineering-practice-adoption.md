@@ -1347,6 +1347,56 @@ mode and `preserve` is the state in which the break is permanent. The exposure i
 the only automatic repair. The reflow measurement still justifies `preserve` on balance, but the
 remedy has to be the checker, because under `preserve` nothing else will ever catch this.
 
+### The atomicity result was scoped to linked citations, and most citations are not linked
+
+A sister repo pointed out that the paragraph above generalises a result obtained on **one** citation
+form. That is correct, and the correction matters more than the original finding.
+
+Two forms are in use. The **linked** form, `[`ID` (Title)](path)`, is what I tested — Prettier treats
+a Markdown link as an atomic inline node, so it cannot break inside it. The **bare** form,
+`` `ID` (Title) ``, is ordinary inline text with an ordinary break opportunity at every space, and it
+is the form the upstream practice PR uses and the form all five of finance's own split citations
+use. Prettier's atomicity protects the form almost nobody writes.
+
+Swept both forms across 41 margin positions (filler padding 0–80, step 2) at `printWidth: 96` under
+`--prose-wrap always`, with a deliberately wrong title in every fixture so that a check which _runs_
+must exit 1. Exit code is the discriminator, because the summary sentence differs between
+checked-and-failed and never-checked.
+
+| Citation form                | Wrong name caught | Silently missed |
+| ---------------------------- | ----------------- | --------------- |
+| Bare — `` `ID` (Title) ``    | 25 / 41           | **16 / 41**     |
+| Linked — `[`ID` (Title)](p)` | **41 / 41**       | 0 / 41          |
+
+Three things this establishes that neither repo had:
+
+1. **`always` does not merely fail to heal the bare form — it creates the defect.** On a correctly
+   authored single line, with no author involved, the formatter inserts the break. So `preserve` is
+   the safer setting for citation-bearing prose specifically, which is a second and independent
+   reason for it beyond the 592-file reflow measurement.
+2. **The misses are a contiguous band, not a scatter** — pads 30 through 60, and nothing outside it.
+   Below the band the whole line fits; above it the citation is pushed wholly onto the next line
+   intact. The hazard is precisely "the citation straddles the margin", which is why it feels random.
+3. **There are two break sites, not one.** After the ID, and _inside_ the title (`(Mandatory` ⏎
+   `coverage thresholds)`). A near-miss detector keyed only on ID-then-newline would miss the second,
+   which accounted for the lower half of the band.
+
+The linked form being 41/41 makes "prefer linked named citations" a **complete** mitigation under
+`always`, not a partial one — though it is worth being precise about its limit: it defends against
+the _formatter_, and under `preserve` a hand break inside a link is still unrecoverable. Links are
+not a substitute for the detector; they remove one of the two authors of the defect.
+
+### Five live instances in finance, and they were correct only by luck
+
+Searching finance's own corpus for the shape found **five**, in `docs/architecture/README.md`,
+`docs/architecture/security-architecture.md`, `docs/guides/accessibility.md`,
+`docs/audits/accessibility-audit-wcag22.md`, and this guide. Rejoining them onto one line moved the
+whole-tree verified count **36 → 41** — five name claims that every human reviewer reads as verified
+and the checker had never once checked. All five turned out to state the correct title, which is the
+point: they passed on their content being right, not on anything having confirmed it. Fixed by
+rejoining; Prettier reports the files unchanged afterwards, confirming `preserve` will not re-break
+them.
+
 Two mitigations, neither owned here: match across newlines in the pattern, or have `--review`
 report near-misses — an `ENG-*` ID followed by a parenthesised capitalised phrase that the strict
 pattern rejected. The second is cheap and turns a silent gap into a warning. Filed as **gap 18**.
@@ -1356,6 +1406,17 @@ observation (a split title, a dropped count) was real and reproducible, and the 
 attached to it was assumed rather than tested**. One `resolveConfig` call would have falsified it
 immediately. Prefer checking the mechanism you are about to name over the one that fits the
 narrative.
+
+**And the sweep above took two wrong detectors before it took a right one**, both of the same family
+this document has now named five times — an instrument that cannot distinguish the two states it is
+being used to tell apart. The first grepped the checker output for `stated name`, which also occurs
+in v9's _"checks run:"_ line, so every run looked like the name had been checked. The second grepped
+for `stated name(s) match`, which is absent both when the check is skipped **and** when it runs and
+fails — collapsing the good outcome into the bad one and reporting 0/41 for a form that actually
+scores 41/41. Only the exit code separates all three states. The lesson is not "grep more carefully":
+it is that a detector needs its own positive control, and the cheapest one is a fixture that _must_
+fail. Every number in the table above comes from a wrong-by-construction title for exactly that
+reason.
 
 **This is not wired into finance's CI**, deliberately. The checker resolves
 `principles/index.json` over the network by default, and gap 15 objects to exactly that — network
@@ -1388,8 +1449,7 @@ than omitted:
 - `docs/guides/accessibility.md` and `docs/audits/accessibility-audit-wcag22.md` note that
   `ENG-PERF-009` (Assurance precedence) forbids trading accessibility away for performance. It is
   not the source of the WCAG 2.2 AA commitment; it constrains what may be done to it.
-- Test colocation is named as a finance convention; the obligation it serves is `ENG-TEST-003`
-  (Regression boundaries).
+- Test colocation is named as a finance convention; the obligation it serves is `ENG-TEST-003` (Regression boundaries).
 
 The distinction is worth stating precisely, because the two readings differ in what they license.
 "Accessibility follows `ENG-PERF-009`" is false and would make the WCAG commitment look
