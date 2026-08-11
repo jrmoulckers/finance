@@ -261,7 +261,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-1);
-  font-size: var(--type-scale-body-small-font-size);
+  font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-text-primary);
   cursor: pointer;
 }
@@ -300,14 +300,14 @@
 }
 
 .fire-scenario-btn__mult {
-  font-size: var(--type-scale-body-small-font-size);
+  font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-text-secondary);
 }
 
 .fire-results__scenario-note {
   margin: 0 0 var(--spacing-4) 0;
   color: var(--semantic-text-secondary);
-  font-size: var(--type-scale-body-small-font-size);
+  font-size: var(--type-scale-caption-font-size);
 }
 
 /* FI progress bar + income replacement (#3320). */
@@ -353,7 +353,7 @@
 .fire-progress__replacement {
   margin: 0;
   color: var(--semantic-text-secondary);
-  font-size: var(--type-scale-body-small-font-size);
+  font-size: var(--type-scale-caption-font-size);
 }
 
 /* Comparison / sensitivity tables (#3317, #3319). */
@@ -372,13 +372,13 @@
 .fire-table__note {
   margin: 0 0 var(--spacing-2) 0;
   color: var(--semantic-text-secondary);
-  font-size: var(--type-scale-body-small-font-size);
+  font-size: var(--type-scale-caption-font-size);
 }
 
 .fire-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--type-scale-body-small-font-size);
+  font-size: var(--type-scale-caption-font-size);
 }
 
 .fire-table th,

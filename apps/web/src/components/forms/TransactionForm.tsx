@@ -1552,7 +1552,7 @@ export function TransactionForm({
                 style={{
                   color:
                     hasSplitRows && !splitValidation.isBalanced
-                      ? 'var(--semantic-text-danger)'
+                      ? 'var(--semantic-status-negative)'
                       : 'var(--semantic-text-secondary)',
                   marginBottom: 'var(--spacing-2)',
                 }}
