@@ -25,6 +25,14 @@
   --semantic-accent-ink: #806600;
   --semantic-status-positive: oklch(0.47 0.10 165); /** Pair with icon+text — never color alone. */
   --semantic-status-negative: oklch(0.50 0.13 25);
-  --semantic-status-warning: oklch(0.53 0.11 80);
-  --semantic-status-info: oklch(0.52 0.12 230);
+  --semantic-status-warning: oklch(0.41 0.08 80); /** Uses 800, not 700. The high-contrast theme still renders on a haze background-raised surface, where amber at 700 measures only 4.37:1 — below AA in the one theme that must never fail. 800 measures 8.89:1 on white and 7.25:1 on haze. */
+  --semantic-status-info: oklch(0.42 0.10 230); /** Uses 800, not 700, for the same reason as warning: sky at 700 measures 4.28:1 on the haze raised surface. 800 measures 8.05:1 on white and 6.57:1 on haze. */
+  --semantic-status-pending: oklch(0.40 0.07 195); /** In-flight, processing, syncing. Pair with an icon or label; never signal state by hue alone. */
+  --semantic-status-neutral: #0f1020;
+  --semantic-status-positive-subtle: oklch(0.98 0.015 165);
+  --semantic-status-negative-subtle: oklch(0.98 0.012 25);
+  --semantic-status-warning-subtle: oklch(0.98 0.015 80);
+  --semantic-status-info-subtle: oklch(0.98 0.01 230);
+  --semantic-status-pending-subtle: oklch(0.98 0.012 195);
+  --semantic-status-neutral-subtle: #dcdcea;
 }

@@ -4,17 +4,20 @@ import light from './default/tokens.light.js';
 import dark from './default/tokens.dark.js';
 import darkOled from './default/tokens.dark-oled.js';
 import highContrast from './default/tokens.high-contrast.js';
+import highContrastDark from './default/tokens.high-contrast-dark.js';
 
 export declare const tokens: typeof light;
 export declare const tokensLight: typeof light;
 export declare const tokensDark: typeof dark;
 export declare const tokensDarkOled: typeof darkOled;
 export declare const tokensHighContrast: typeof highContrast;
+export declare const tokensHighContrastDark: typeof highContrastDark;
 export declare const themes: {
   readonly light: typeof light;
   readonly dark: typeof dark;
   readonly 'dark-oled': typeof darkOled;
   readonly 'high-contrast': typeof highContrast;
+  readonly 'high-contrast-dark': typeof highContrastDark;
 };
 
 export default tokens;

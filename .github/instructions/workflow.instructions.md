@@ -92,6 +92,42 @@ must be a full 40-character SHA; branches and tags are rejected. Configure Depen
 equivalent automation to propose SHA update PRs, then review the exact upstream diff and release
 notes. Never resolve a mutable reference during a run.
 
+### Keep required checks terminal
+
+Never put `paths` or `paths-ignore` on the `pull_request` trigger of a workflow that supplies a
+required check. When the filter does not match, GitHub does not start the workflow or create its
+check run, so the required check remains pending and blocks the pull request indefinitely.
+
+Trigger the workflow for every pull request in its protected scope, detect applicability in a job,
+and gate the expensive job with `jobs.<job_id>.if`. A skipped job produces a terminal `skipped`
+conclusion that GitHub accepts as success for a required check:
+
+```yaml
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: read
+
+jobs:
+  changes:
+    uses: jrmoulckers/.github/.github/workflows/reusable-change-detection.yml@<reviewed-commit-sha>
+    with:
+      path-groups-json: '{"web":["apps/web/","packages/ui/"]}'
+
+  lint:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.changed-groups-json), 'web')
+    uses: jrmoulckers/.github/.github/workflows/reusable-ci-lint.yml@<reviewed-commit-sha>
+```
+
+Event filtering is still appropriate for workflows that do not supply required checks. For a
+required check, however, no workflow run is categorically different from an intentionally skipped
+job: only the latter reports a terminal result. Keep the required job's name stable so the ruleset
+continues to require the intended check.
+
 **A caller `permissions:` block replaces the defaults — it does not add to them.** Every scope you
 omit is set to `none`, and a called workflow can never receive more than its caller holds. So a
 least-privilege `permissions: { contents: read }` in the caller silently strips the scopes the
@@ -131,10 +167,50 @@ Rules:
 - Omitting `permissions:` entirely inherits the repo default — safe, but less explicit.
 - If a scope truly cannot be granted, disable the job that needs it instead
   (e.g. `semantic-pr-title: false` for `reusable-ci-lint`).
-- Debug a `startup_failure` with no log by checking caller permissions first.
+- Debug a `startup_failure` with no log by checking caller permissions first — but confirm the
+  failure is scoped to the calling job before you do (see below).
 - Caller workflows own CI concurrency. Put the concurrency group on the caller workflow so matrix or
   multi-package reusable jobs do not cancel sibling calls. Canonical Pages deployment is the
   exception: it serializes repository deployments with `cancel-in-progress: false`.
+
+### A no-log failure is not always a permissions problem
+
+The permissions trap above is not the only way a run dies in seconds with an empty log. On a
+**private** repository, exhausting the Actions spending limit refuses the run before any job
+starts, with `recent account payments have failed or your spending limit needs to be increased`.
+Actions is free on public repositories for every runner type, so this cannot happen there.
+
+Discriminate before investigating, because the two look nearly identical and only one of them is
+a defect in this repository:
+
+| | Caller permissions | Spending limit |
+| --- | --- | --- |
+| What failed | Only the job that `uses:` the callee | **Every** job in the run, including untouched ones |
+| Triggered by | Adding or narrowing a `permissions:` block | Adding an expensive runner, or simply reaching the monthly cap |
+| Fixed in | The workflow file | Billing settings — nothing in the repository is wrong |
+
+**Check the run summary first: if jobs you did not touch failed alongside the one you did, stop
+reading YAML and check billing.** A green history proves nothing here, because the cap is reached
+by cumulative spend rather than by anything in the diff.
+
+That check is free but not always decisive — a single-job workflow presents identically under both
+causes. **`gh run view --log-failed` cannot separate them either; it returns `log not found` for
+both.** When the observation cannot decide, read the annotation, which survives even though the log
+does not:
+
+```bash
+gh run view <run-id> --json jobs --jq '.jobs[].databaseId'
+gh api repos/OWNER/REPO/check-runs/<check-run-id>/annotations
+```
+
+The billing refusal carries its `recent account payments have failed…` message there. A permissions
+failure does not. (Reported by `jrmoulckers/studio` from the live incident; the endpoint itself is
+verified, returning `[]` for a healthy run.)
+
+Non-Linux runners carry a minute multiplier — macOS bills at 10x and Windows at 2x — so adding a
+single macOS job can exhaust a budget that Linux jobs had comfortably fit inside. Budget for the
+multiplier when you add one, and prefer `ubuntu-latest` unless the job genuinely requires the
+platform (Swift and Xcode toolchains do; Node builds do not).
 
 ### Taking only part of `reusable-ci-lint`
 
@@ -269,9 +345,8 @@ jobs:
 ```
 
 `NODE_AUTH_TOKEN` resolves as `secrets.NODE_AUTH_TOKEN || github.token`, so the job's
-`GITHUB_TOKEN` is used unless the caller passes its own. Grant the consuming repository read access
-to each package under the package's **Manage Actions access** settings; GitHub recommends this over
-storing a PAT. Pass an explicit secret only for a registry `GITHUB_TOKEN` cannot reach:
+`GITHUB_TOKEN` is used unless the caller passes its own. Pass an explicit secret only for a registry
+`GITHUB_TOKEN` cannot reach:
 
 ```yaml
     secrets:
@@ -280,8 +355,23 @@ storing a PAT. Pass an explicit secret only for a registry `GITHUB_TOKEN` cannot
 
 Rules and interactions:
 
+- **Authentication and authorization are separate.** A token is always required: the registry
+  rejects an unauthenticated read with `401` even for a **public** package. Package visibility only
+  decides *who* is allowed, not *whether* credentials are needed. So `packages: read` and a token
+  stay mandatory regardless of visibility, and flipping a package to public is never a reason to
+  drop either.
+- Authorization depends on visibility. A **public** package needs no grant — `GITHUB_TOKEN` can read
+  it. A **private** package must additionally grant the consuming repository read access under the
+  package's **Manage Actions access** settings, which GitHub recommends over storing a PAT. A `403`
+  (`permission_denied: read_package`) means authentication succeeded and authorization failed, so it
+  points at the grant or the package, not at the token being absent.
 - `packages: read` is required for `GITHUB_TOKEN` to read a GitHub Packages package at all, and a
-  caller `permissions:` block must grant it or the run fails at startup.
+  caller `permissions:` block must grant it. **If the caller omits it the entire run fails at
+  startup**: no jobs are created, no check-run is produced, and there is no log to read — the only
+  surface text is a generic "workflow file issue". The failure is whole-run, not per-job, so
+  unrelated valid jobs in the same workflow file do not run either. Nothing inside a reusable
+  workflow can detect or report this, because the permission ceiling is enforced before any job
+  exists; it can only be caught by inspecting caller workflows before the run.
 - `registry-scope` requires `registry-url`. Setting `registry-url` without a scope replaces the
   **default** registry for every package and emits a warning.
 - `actions/setup-node` writes its `.npmrc` to `$RUNNER_TEMP/.npmrc` and exports

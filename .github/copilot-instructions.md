@@ -187,8 +187,7 @@ conflict, `AGENTS.md` wins.
 
 ## The installed AI layer
 
-Most of `.github/` is generated and distributed from the `jrmoulckers/.github` backbone. Treat it
-as read-only here:
+Much of `.github/` is generated and distributed from the `jrmoulckers/.github` backbone:
 
 | Path | What it is | How to use it |
 | --- | --- | --- |
@@ -198,7 +197,26 @@ as read-only here:
 | `.github/instructions/*.instructions.md` | Path-scoped rules | Applied automatically by glob; obey the most specific match |
 | `agency.toml` | Reviewed MCP servers and tool allowlists | Do not add servers or widen tool grants locally |
 
-**Never edit a generated file to change shared behaviour.** A local edit is detected as drift, is
+**Provenance is per file, not per directory — and in some files, per region.** Three shapes:
+
+- **Whole-file canon.** A `synced from jrmoulckers/.github` marker at the top and no region markers.
+  The entire file is generated. The comment syntax varies with the file type — HTML in Markdown, `#`
+  in `.toml`, `.yml`, `.gitattributes` and `.gitignore`, `/* */` in `.js`, `.ts`, `.css`, `.kt` and
+  `.swift`, and none at all in `.json`, which has no comment syntax.
+- **Managed-region files.** Root `AGENTS.md`, this file, and `.gitattributes` carry canon *between*
+  the `studio:base:start` and `studio:base:end` markers and are member-owned everywhere else. The
+  block is generated; the surrounding content is yours to write, trim, and maintain. Editing inside
+  the markers is drift; editing outside them is expected. `sync/lib/copier.mjs` is authoritative for
+  which files these are — the list above is illustrative and grows when a managed-merge kind is
+  added.
+- **Unmarked files.** Repository-owned and yours to edit normally. `.github/agents/` in particular
+  routinely holds both tiers side by side: canonical studio roles alongside locally authored agents
+  carrying authority specific to that repository.
+
+Check the marker — and, in a managed-region file, which side of it you are on — before assuming
+anything is off-limits.
+
+**Never edit generated content to change shared behaviour.** A local edit is detected as drift, is
 skipped on the next sync, and silently strands the repository on a stale copy. Change the canonical
 source in `jrmoulckers/.github` and let it sync. Genuinely repository-specific behaviour belongs in
 the local `AGENTS.md`, a locally authored agent, or a scoped instructions file.

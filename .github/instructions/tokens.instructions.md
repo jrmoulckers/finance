@@ -29,6 +29,31 @@ that owns them. A local product overlay wins when it identifies the actual sourc
 - Define light, dark, high-contrast, and reduced-motion behavior where the token category requires it.
 - Validate color choices against WCAG 2.2 AA contrast and avoid relying on color alone to communicate state.
 - Keep token names stable. Treat removals or renames as breaking changes and document migration paths.
+- **Treat a changed token *value* as an announced change, not a routine update.** A rename or removal
+  is the loud failure: consumers stop compiling and someone investigates. A value shift is the quiet
+  one — every consumer still builds, every test still passes, and the rendered result moves. The
+  ceremony belongs on the case that cannot announce itself.
+
+### Announcing a token value change
+
+The sync engine mirrors `dist/` verbatim and cannot tell a shifted value from an added file; both
+arrive in the member PR's **Updated** list as a path. So the announcement has to come from the
+owning repository, which is the only place that knows a value moved.
+
+When a value changes in `jrmoulckers/studio`:
+
+- State it in the change's own PR body and release notes as a **value shift**, with a before/after
+  table of the affected tokens. Naming the tier is not enough — `spacing.md: 12px → 16px` is the
+  reviewable unit.
+- Say explicitly whether names were preserved. "Names stable, values moved" is the sentence a member
+  needs, because it tells them the compile-clean path is the risky one.
+- Call out visual-regression surfaces the member should re-check: spacing and radius shifts move
+  layout, color shifts move contrast ratios and can break a WCAG 2.2 AA result that previously
+  passed.
+
+A member receiving a `chore(sync)` PR that touches `vendor/@jrm/tokens/**` should assume values may
+have moved and verify visually before merging. An entry in **Updated** means the bytes changed; it
+does not mean only additions arrived.
 
 ## Generated Output Rules
 
