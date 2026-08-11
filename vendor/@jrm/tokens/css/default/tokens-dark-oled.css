@@ -27,4 +27,12 @@
   --semantic-status-negative: #f87171;
   --semantic-status-warning: #fbbf24;
   --semantic-status-info: oklch(0.80 0.11 230);
+  --semantic-status-pending: oklch(0.80 0.11 195); /** In-flight, processing, syncing. 11.77:1 on the true-black primary surface. Pair with an icon or label; never signal state by hue alone. */
+  --semantic-status-neutral: #a3a6cb;
+  --semantic-status-positive-subtle: oklch(0.25 0.05 165); /** Low-emphasis positive fill. Carries text.primary at 13.04:1 while staying dark enough not to defeat the OLED power saving of a true-black base. */
+  --semantic-status-negative-subtle: oklch(0.28 0.06 25);
+  --semantic-status-warning-subtle: oklch(0.29 0.05 80);
+  --semantic-status-info-subtle: oklch(0.30 0.07 230);
+  --semantic-status-pending-subtle: oklch(0.28 0.05 195);
+  --semantic-status-neutral-subtle: #2c2e4d;
 }

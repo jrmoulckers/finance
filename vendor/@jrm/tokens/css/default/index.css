@@ -4,9 +4,11 @@
 @import './tokens-dark.css';
 @import './tokens-dark-oled.css';
 @import './tokens-high-contrast.css';
+@import './tokens-high-contrast-dark.css';
 
-/* Chart series swap to CVD-safe high-contrast variants under the explicit HC theme. */
-[data-theme="high-contrast"] {
+/* Chart series swap to CVD-safe high-contrast variants under either HC theme. */
+[data-theme="high-contrast"],
+[data-theme="high-contrast-dark"] {
     --color-chart-1: var(--color-chart-hc-1);
     --color-chart-2: var(--color-chart-hc-2);
     --color-chart-3: var(--color-chart-hc-3);
@@ -42,6 +44,14 @@
     --semantic-status-negative: var(--color-loss-500);
     --semantic-status-warning: var(--color-caution-500);
     --semantic-status-info: var(--color-info-400);
+    --semantic-status-pending: var(--color-pending-400);
+    --semantic-status-neutral: var(--color-ink-lavender-gray);
+    --semantic-status-positive-subtle: var(--color-win-900);
+    --semantic-status-negative-subtle: var(--color-loss-900);
+    --semantic-status-warning-subtle: var(--color-caution-900);
+    --semantic-status-info-subtle: var(--color-info-900);
+    --semantic-status-pending-subtle: var(--color-pending-900);
+    --semantic-status-neutral-subtle: var(--color-ink-lifted-slate);
     --shadow-lift: var(--shadow-soft-lift-dark);
     --shadow-hairline: var(--shadow-inset-hairline);
   }
@@ -72,8 +82,16 @@
     --semantic-accent-ink: var(--color-crown-gold-ink-light);
     --semantic-status-positive: var(--color-win-700);
     --semantic-status-negative: var(--color-loss-700);
-    --semantic-status-warning: var(--color-caution-700);
-    --semantic-status-info: var(--color-info-700);
+    --semantic-status-warning: var(--color-caution-800);
+    --semantic-status-info: var(--color-info-800);
+    --semantic-status-pending: var(--color-pending-800);
+    --semantic-status-neutral: var(--color-ink-midnight);
+    --semantic-status-positive-subtle: var(--color-win-50);
+    --semantic-status-negative-subtle: var(--color-loss-50);
+    --semantic-status-warning-subtle: var(--color-caution-50);
+    --semantic-status-info-subtle: var(--color-info-50);
+    --semantic-status-pending-subtle: var(--color-pending-50);
+    --semantic-status-neutral-subtle: var(--color-paper-cloud-line);
     --shadow-lift: var(--shadow-soft-lift-light);
     --shadow-hairline: var(--shadow-inset-hairline);
     --color-chart-1: var(--color-chart-hc-1);
@@ -86,24 +104,52 @@
 }
 
 /*
- * Dark + more contrast: brighter foregrounds and stronger borders on the dark
- * surfaces for users who want both.
+ * Dark + more contrast: promote the full high-contrast-dark palette. This block
+ * used to be a hand-maintained list of a dozen overrides that existed nowhere
+ * else in the system — invisible to JS and native consumers, and impossible for
+ * a user to select explicitly. It is now generated from the same theme file that
+ * backs [data-theme="high-contrast-dark"], so the preference-driven path and the
+ * explicit path can no longer drift apart.
  */
 @media (prefers-color-scheme: dark) and (prefers-contrast: more) {
   :root:not([data-theme]) {
+    --semantic-background-primary: var(--color-base-black);
+    --semantic-background-secondary: var(--color-ink-midnight);
+    --semantic-background-elevated: var(--color-ink-indigo-slate);
+    --semantic-background-raised: var(--color-ink-raised-slate);
     --semantic-text-primary: var(--color-base-white);
     --semantic-text-secondary: var(--color-ink-moonlight);
-    --semantic-text-inverse: var(--color-ink-midnight);
+    --semantic-text-disabled: var(--color-ink-lavender-gray);
+    --semantic-text-inverse: var(--color-base-black);
     --semantic-border-default: var(--color-ink-lavender-gray);
     --semantic-border-focus: var(--color-royal-violet-300);
     --semantic-border-error: var(--color-loss-300);
     --semantic-interactive-default: var(--color-royal-violet-300);
     --semantic-interactive-hover: var(--color-royal-violet-200);
     --semantic-interactive-pressed: var(--color-royal-violet-200);
-    --semantic-status-positive: var(--color-win-500);
-    --semantic-status-negative: var(--color-loss-400);
-    --semantic-status-warning: var(--color-caution-500);
+    --semantic-interactive-disabled: var(--color-ink-lifted-slate);
+    --semantic-accent-default: var(--color-crown-gold-400);
+    --semantic-accent-ink: var(--color-crown-gold-400);
+    --semantic-status-positive: var(--color-win-400);
+    --semantic-status-negative: var(--color-loss-300);
+    --semantic-status-warning: var(--color-caution-400);
     --semantic-status-info: var(--color-info-300);
+    --semantic-status-pending: var(--color-pending-300);
+    --semantic-status-neutral: var(--color-ink-moonlight);
+    --semantic-status-positive-subtle: var(--color-win-700);
+    --semantic-status-negative-subtle: var(--color-loss-700);
+    --semantic-status-warning-subtle: var(--color-caution-700);
+    --semantic-status-info-subtle: var(--color-info-700);
+    --semantic-status-pending-subtle: var(--color-pending-700);
+    --semantic-status-neutral-subtle: var(--color-ink-court-line);
+    --shadow-lift: var(--shadow-soft-lift-dark);
+    --shadow-hairline: var(--shadow-inset-hairline);
+    --color-chart-1: var(--color-chart-hc-1);
+    --color-chart-2: var(--color-chart-hc-2);
+    --color-chart-3: var(--color-chart-hc-3);
+    --color-chart-4: var(--color-chart-hc-4);
+    --color-chart-5: var(--color-chart-hc-5);
+    --color-chart-6: var(--color-chart-hc-6);
   }
 }
 
@@ -112,9 +158,20 @@
  */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --motion-press-duration: 0ms;
-    --motion-state-duration: 0ms;
-    --motion-tile-duration: 0ms;
+    /* Deliberately 1ms, not 0ms: a zero-duration transition or animation never
+       fires transitionend/animationend, so cleanup or focus hand-off that awaits
+       those events would hang for reduced-motion users. Matches --duration-reduced.
+       Generated from tokens/semantic/motion.json so a new purpose cannot escape it. */
+    --motion-press-duration: 1ms;
+    --motion-state-duration: 1ms;
+    --motion-tile-duration: 1ms;
+    --motion-page-transition-duration: 1ms;
+    --motion-list-item-duration: 1ms;
+    --motion-progress-duration: 1ms;
+    --motion-celebrate-duration: 1ms;
+    --motion-fade-in-duration: 1ms;
+    --motion-fade-out-duration: 1ms;
+    --motion-loading-duration: 1ms;
   }
 }
 
@@ -135,7 +192,36 @@
   --text-overline-size: var(--cognitive-type-overline-size);
   --text-overline-line-height: var(--cognitive-type-overline-line-height);
 
-  --motion-press-duration: 0ms;
-  --motion-state-duration: 0ms;
-  --motion-tile-duration: 0ms;
+  /* Component sizing for the mode — generated from tokens/component/cognitive.json so a
+     new variant or property cannot keep its default sizing here by omission. */
+  --button-primary-padding-x: var(--cognitive-button-padding-x);
+  --button-primary-padding-y: var(--cognitive-button-padding-y);
+  --button-primary-radius: var(--cognitive-button-radius);
+  --button-primary-min-height: var(--cognitive-button-min-height);
+  --button-default-padding-x: var(--cognitive-button-padding-x);
+  --button-default-padding-y: var(--cognitive-button-padding-y);
+  --button-default-radius: var(--cognitive-button-radius);
+  --button-default-min-height: var(--cognitive-button-min-height);
+  --input-padding-x: var(--cognitive-input-padding-x);
+  --input-padding-y: var(--cognitive-input-padding-y);
+  --input-radius: var(--cognitive-input-radius);
+  --input-min-height: var(--cognitive-input-min-height);
+  --card-padding: var(--cognitive-card-padding);
+  --card-radius: var(--cognitive-card-radius);
+
+  /* Matches --duration-reduced: an instant-but-nonzero duration still fires
+     transitionend/animationend, so listeners that await them never hang.
+     Generated from tokens/semantic/motion.json, like the media-query block above —
+     cognitive mode is documented as a superset of prefers-reduced-motion, so the two
+     lists must never diverge. */
+  --motion-press-duration: 1ms;
+  --motion-state-duration: 1ms;
+  --motion-tile-duration: 1ms;
+  --motion-page-transition-duration: 1ms;
+  --motion-list-item-duration: 1ms;
+  --motion-progress-duration: 1ms;
+  --motion-celebrate-duration: 1ms;
+  --motion-fade-in-duration: 1ms;
+  --motion-fade-out-duration: 1ms;
+  --motion-loading-duration: 1ms;
 }
