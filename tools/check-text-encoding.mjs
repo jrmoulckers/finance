@@ -22,6 +22,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 const REPLACEMENT = Buffer.from([0xef, 0xbf, 0xbd]);
 
@@ -66,7 +67,12 @@ const repoRoot = (() => {
 })();
 
 /**
- * Lists every tracked path at HEAD.
+ * Lists every tracked entry at HEAD as a `{ mode, oid, path }` triple.
+ *
+ * `-s` is what makes the read downstream safe. It emits the index entry's object
+ * ID alongside the path, and an OID is *global*: it needs no resolution, so it
+ * cannot be resolved against the wrong directory. Paths must be resolved, and a
+ * resolution can land somewhere else — see `readIndexBytes` below.
  *
  * The `:/` pathspec is redundant with running from the repository root but
  * states the intent at the call site: this walk covers the whole repository,
@@ -74,10 +80,10 @@ const repoRoot = (() => {
  * paths — `--full-name` is what keeps those repository-relative, and does so
  * whatever directory the process was started from.
  *
- * @returns {string[]} Repository-relative paths.
+ * @returns {{ mode: string, oid: string, path: string }[]} Tracked index entries.
  */
-function listTrackedFiles() {
-  const result = spawnSync('git', ['ls-files', '-z', '--full-name', '--', ':/'], {
+function listTrackedEntries() {
+  const result = spawnSync('git', ['ls-files', '-s', '-z', '--full-name', '--', ':/'], {
     cwd: repoRoot,
     maxBuffer: 1024 * 1024 * 256,
   });
@@ -85,22 +91,54 @@ function listTrackedFiles() {
     console.error('Unable to list tracked files via `git ls-files`.');
     process.exit(1);
   }
-  return result.stdout.toString('utf8').split('\0').filter(Boolean);
+
+  const entries = [];
+  for (const record of result.stdout.toString('utf8').split('\0').filter(Boolean)) {
+    // `<mode> <oid> <stage>\t<path>` — the path may itself contain whitespace,
+    // so split the metadata off at the tab rather than tokenising the record.
+    const tab = record.indexOf('\t');
+    const [mode, oid, stage] = record.slice(0, tab).split(' ');
+    const path = record.slice(tab + 1);
+
+    // A non-zero stage means an unmerged path, where "the" committed bytes do
+    // not exist — there are two or three competing versions. Scanning either
+    // side would report on a file that is not what any commit contains.
+    if (stage !== '0') {
+      console.error(
+        `::error::encoding guard found ${path} at merge stage ${stage}. The index is in a\n` +
+          'conflicted state, so there is no single committed version to scan.',
+      );
+      process.exit(1);
+    }
+    entries.push({ mode, oid, path });
+  }
+  return entries;
 }
 
 /**
- * Reads every tracked path's committed bytes in a single `git cat-file --batch`
+ * Reads every tracked entry's committed bytes in a single `git cat-file --batch`
  * pass. Reading from the index rather than the working tree matters because a
  * checkout filter can differ from what is committed; doing it in one process
  * matters because spawning `git show` per file takes minutes on this repo.
  *
- * @param {string[]} paths Repository-relative paths.
+ * Lookup is by **object ID**, not by `:<path>`. That closes the *identity* axis,
+ * which is separate from the population axis `cwd: repoRoot` closes above:
+ *
+ *   population  a narrowed walk reads too few files   -> `:/` + `cwd: repoRoot`
+ *   identity    a resolved path reads the wrong file  -> read by OID
+ *
+ * The distinction is not academic. Before #4099 the walk was anchored while the
+ * read was not, and from `docs/testing` the guard reported "1 tracked text file"
+ * having read the *root* README rather than the local one — every count correct,
+ * every byte wrong. An OID cannot do that: it is not resolved against anything.
+ *
+ * @param {{ oid: string, path: string }[]} entries Tracked index entries.
  * @returns {Map<string, Buffer>} Path to committed bytes.
  */
-function readIndexBytes(paths) {
+function readIndexBytes(entries) {
   const result = spawnSync('git', ['cat-file', '--batch'], {
     cwd: repoRoot,
-    input: paths.map((path) => `:${path}`).join('\n') + '\n',
+    input: entries.map((entry) => entry.oid).join('\n') + '\n',
     maxBuffer: 1024 * 1024 * 1024,
   });
   if (result.status !== 0) {
@@ -111,7 +149,9 @@ function readIndexBytes(paths) {
   const contents = new Map();
   const out = result.stdout;
   let cursor = 0;
-  for (const path of paths) {
+  // `--batch` emits exactly one record per input line, in order, so the Nth
+  // record belongs to the Nth entry even when two paths share an OID.
+  for (const { path } of entries) {
     const newline = out.indexOf(0x0a, cursor);
     if (newline === -1) break;
     const header = out.slice(cursor, newline).toString('utf8');
@@ -125,6 +165,19 @@ function readIndexBytes(paths) {
     cursor = start + size + 1;
   }
   return contents;
+}
+
+/**
+ * Recomputes a blob's object ID from its bytes.
+ *
+ * Git hashes `blob <length>\0<content>`, so this reproduces the index entry's
+ * OID exactly when — and only when — the bytes are the ones that entry names.
+ *
+ * @param {Buffer} bytes File contents.
+ * @returns {string} The 40-character blob OID.
+ */
+function blobOid(bytes) {
+  return createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
 }
 
 /**
@@ -197,9 +250,23 @@ function selfTest() {
       process.exit(1);
     }
   }
+
+  // The identity check is only as good as the hash construction behind it. Git's
+  // empty blob is a fixed, published OID, so this pins the `blob <len>\0` prefix
+  // without shelling out. Get the prefix wrong and every file would mismatch —
+  // this names the cause instead of reporting 5,520 corrupt files.
+  const EMPTY_BLOB = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
+  const actualEmpty = blobOid(Buffer.alloc(0));
+  if (actualEmpty !== EMPTY_BLOB) {
+    console.error(
+      `::error::encoding guard self-test failed: empty blob hashed to ${actualEmpty}, expected ${EMPTY_BLOB}.`,
+    );
+    process.exit(1);
+  }
 }
 
 const failures = [];
+const misread = [];
 let scanned = 0;
 let skippedBinary = 0;
 let unreadable = 0;
@@ -207,13 +274,23 @@ let totalBytes = 0;
 
 selfTest();
 
-const trackedFiles = listTrackedFiles();
-const contents = readIndexBytes(trackedFiles);
+const trackedEntries = listTrackedEntries();
+// A gitlink is a commit, not a blob; reading it would hand the scanner a commit
+// object's bytes. None exist here today, so this is a guard against a submodule
+// being added later and quietly becoming the one entry nobody scans.
+const blobEntries = trackedEntries.filter((entry) => entry.mode !== '160000');
+const skippedNonBlob = trackedEntries.length - blobEntries.length;
+const contents = readIndexBytes(blobEntries);
 
-for (const path of trackedFiles) {
+for (const { path, oid } of blobEntries) {
   const bytes = contents.get(path);
   if (bytes === undefined) {
     unreadable += 1;
+    continue;
+  }
+  // Identity, not cardinality: prove these bytes are the ones this entry names.
+  if (blobOid(bytes) !== oid) {
+    misread.push(path);
     continue;
   }
   if (bytes.includes(0x00)) {
@@ -242,6 +319,23 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
+// The identity axis. Every other check in this file reasons about a count or a
+// volume, and a substituted file conserves both: reading the root README in
+// place of docs/testing's leaves the totals untouched and the result wrong. This
+// is the only check whose reference quantity does not come from the walk — the
+// OID is recorded by git, and the bytes either hash to it or they do not.
+if (misread.length > 0) {
+  for (const path of misread.slice(0, 20)) {
+    console.error(`::error file=${path}::content does not hash to this entry's object ID`);
+  }
+  console.error(
+    `::error::encoding guard read ${misread.length} file(s) whose bytes do not match the object\n` +
+      'ID recorded for them. The reader returned some other file, so any clean result would\n' +
+      'describe the wrong content.',
+  );
+  process.exit(1);
+}
+
 if (scanned === 0) {
   console.error(
     '::error::encoding guard examined 0 tracked text files. This repository always has tracked\n' +
@@ -256,10 +350,10 @@ if (scanned === 0) {
 // reference quantity is derived from the same walk it polices, so a narrowed
 // walk shrinks both sides together and passes. The floor's reference is the
 // constant 0, which nothing about the walk can move.
-if (scanned + skippedBinary + unreadable !== trackedFiles.length) {
+if (scanned + skippedBinary + unreadable + skippedNonBlob !== trackedEntries.length) {
   console.error(
-    `::error::encoding guard accounted for ${scanned + skippedBinary + unreadable} of ` +
-      `${trackedFiles.length} tracked file(s). Files vanished from the walk without being\n` +
+    `::error::encoding guard accounted for ${scanned + skippedBinary + unreadable + skippedNonBlob} of ` +
+      `${trackedEntries.length} tracked file(s). Files vanished from the walk without being\n` +
       'counted, so the clean result covers an unknown subset of the repository.',
   );
   process.exit(1);
