@@ -38,12 +38,36 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
 }
 
 /**
+ * Absolute path to the repository root.
+ *
+ * Every git invocation below runs here rather than in the caller's working
+ * directory. Both `git ls-files` and `git cat-file`'s `:<path>` syntax resolve
+ * relative to the current directory, so without this the guard silently
+ * examines whatever subtree it happens to be started from.
+ */
+const repoRoot = (() => {
+  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+  if (result.status !== 0) {
+    console.error('Unable to locate the repository root via `git rev-parse --show-toplevel`.');
+    process.exit(1);
+  }
+  return result.stdout.trim();
+})();
+
+/**
  * Lists every tracked path at HEAD.
+ *
+ * The `:/` pathspec is redundant with running from the repository root but
+ * states the intent at the call site: this walk covers the whole repository,
+ * never the current subtree.
  *
  * @returns {string[]} Repository-relative paths.
  */
 function listTrackedFiles() {
-  const result = spawnSync('git', ['ls-files', '-z'], { maxBuffer: 1024 * 1024 * 256 });
+  const result = spawnSync('git', ['ls-files', '-z', '--', ':/'], {
+    cwd: repoRoot,
+    maxBuffer: 1024 * 1024 * 256,
+  });
   if (result.status !== 0) {
     console.error('Unable to list tracked files via `git ls-files`.');
     process.exit(1);
@@ -62,6 +86,7 @@ function listTrackedFiles() {
  */
 function readIndexBytes(paths) {
   const result = spawnSync('git', ['cat-file', '--batch'], {
+    cwd: repoRoot,
     input: paths.map((path) => `:${path}`).join('\n') + '\n',
     maxBuffer: 1024 * 1024 * 1024,
   });
@@ -164,6 +189,7 @@ function selfTest() {
 const failures = [];
 let scanned = 0;
 let skippedBinary = 0;
+let unreadable = 0;
 
 selfTest();
 
@@ -172,7 +198,10 @@ const contents = readIndexBytes(trackedFiles);
 
 for (const path of trackedFiles) {
   const bytes = contents.get(path);
-  if (bytes === undefined) continue;
+  if (bytes === undefined) {
+    unreadable += 1;
+    continue;
+  }
   if (bytes.includes(0x00)) {
     skippedBinary += 1;
     continue;
@@ -202,6 +231,28 @@ if (scanned === 0) {
   console.error(
     '::error::encoding guard examined 0 tracked text files. This repository always has tracked\n' +
       'text files, so an empty scan means the guard is broken, not that the tree is clean.',
+  );
+  process.exit(1);
+}
+
+// Every tracked path must land in exactly one bucket. This catches a file that
+// silently disappears from the walk without being counted anywhere. It is a
+// weaker check than the floor above rather than a replacement for it: its
+// reference quantity is derived from the same walk it polices, so a narrowed
+// walk shrinks both sides together and passes. The floor's reference is the
+// constant 0, which nothing about the walk can move.
+if (scanned + skippedBinary + unreadable !== trackedFiles.length) {
+  console.error(
+    `::error::encoding guard accounted for ${scanned + skippedBinary + unreadable} of ` +
+      `${trackedFiles.length} tracked file(s). Files vanished from the walk without being\n` +
+      'counted, so the clean result covers an unknown subset of the repository.',
+  );
+  process.exit(1);
+}
+
+if (unreadable > 0) {
+  console.error(
+    `::error::encoding guard could not read ${unreadable} tracked file(s) from the index.`,
   );
   process.exit(1);
 }
