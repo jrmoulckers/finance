@@ -166,7 +166,8 @@ async function verifyPlayIntegrityToken(
   }
 
   // Check device integrity
-  const deviceIntegrity = result.tokenPayloadExternal?.deviceIntegrity?.deviceRecognitionVerdict;
+  const deviceIntegrity =
+    result.tokenPayloadExternal?.deviceIntegrity?.deviceRecognitionVerdict;
   const appIntegrity = result.tokenPayloadExternal?.appIntegrity?.appRecognitionVerdict;
 
   return {

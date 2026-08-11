@@ -7,11 +7,11 @@ Upstream: [`docs/adopting.md`](https://github.com/jrmoulckers/engineering/blob/m
 
 ## Layers
 
-| Layer                                                                                                         | What it gives finance                            | Status                  |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------- |
-| [Principles](https://github.com/jrmoulckers/engineering/tree/main/principles) — 66 `ENG-*` rules              | Cited by ID; resolve via `principles/index.json` | **Adopted**             |
-| [Practices](https://github.com/jrmoulckers/engineering/tree/main/practices)                                   | Linked by URL from finance docs                  | **Adopted**             |
-| [Packages](https://github.com/jrmoulckers/engineering/tree/main/packages) — shared ESLint/Prettier/TS presets | Executable enforcement                           | **Blocked** — see below |
+| Layer                                                                                                         | What it gives finance                            | Status                                                                     |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
+| [Principles](https://github.com/jrmoulckers/engineering/tree/main/principles) — 66 `ENG-*` rules              | Cited by ID; resolve via `principles/index.json` | **Adopted**                                                                |
+| [Practices](https://github.com/jrmoulckers/engineering/tree/main/practices)                                   | Linked by URL from finance docs                  | **Adopted**                                                                |
+| [Packages](https://github.com/jrmoulckers/engineering/tree/main/packages) — shared ESLint/Prettier/TS presets | Executable enforcement                           | **Split** — Prettier adopted (vendored); ESLint blocked; tsconfig deferred |
 
 ## Done
 
@@ -59,6 +59,125 @@ unauthenticated: User cannot be authenticated with the token provided`, which po
   `npm audit` with `ERR_PNPM_AUDIT_ENDPOINT_NOT_EXISTS`, and no token fixes that. The routing
   rules and the measured audit egress are recorded in
   [`docs/security/supply-chain.md`](../security/supply-chain.md).
+
+## Adopted: the shared Prettier config, vendored
+
+As of engineering `v0.15.1` the delivery model split (upstream ADR-0001):
+`@jrmoulckers/prettier-config` and `@jrmoulckers/tsconfig` are **vendored at a ref** rather than
+installed, so they need no registry, no token, and no `read:packages` grant.
+`@jrmoulckers/eslint-config` stays on the registry because it owns four runtime dependencies that
+consumers must not re-choose. **finance has adopted the Prettier half.**
+
+```powershell
+node scripts/vendor-configs.mjs v0.15.1 --set prettier --dest config/engineering
+```
+
+Committed: `scripts/vendor-configs.mjs`, `config/engineering/prettier/{index.js,svelte.js}`, and
+`engineering-configs.lock.json` (ref + SHA-256 per file, so a refresh is a reviewable diff and
+drift shows against the hash). Wiring is a `prettier` field in `package.json` pointing at the
+vendored file; `.prettierrc.json` was **removed**, since a dedicated rc file outranks the
+`package.json` field and would have silently kept the old config in force while appearing adopted.
+
+**`@jrmoulckers/tsconfig` was deliberately not vendored.** Its adoption is deferred on evidence
+(2,691 diagnostics — see _Deliberately deferred_). Vendoring a config nothing extends would put
+an unreferenced copy of someone else's authority in the tree, where it rots silently and fails no
+gate. Vendor it in the same change that adopts it, not before.
+
+### Measured cost: 5 files, 48 lines — and it is not zero
+
+This guide previously predicted a **0-file** reflow, on the basis that `.prettierrc.json` is
+byte-equivalent to the shared config across all seven scalar keys. That prediction was **wrong**,
+and the reason is worth recording: the shared config carries an **eighth** thing the key-by-key
+comparison never looked at — an `overrides` block setting `printWidth: 96` for `*.md`. finance
+had no markdown override at all, so markdown moved 100 → 96.
+
+Measured on the full tree, not estimated:
+
+| Effect                | Files | Lines |
+| --------------------- | ----: | ----: |
+| Fenced code in `*.md` |     5 |    48 |
+| Markdown tables       |     0 |     0 |
+| Prose reflow          |     0 |     0 |
+
+Isolated by re-running the same five files with `--print-width 100`: all clean, so the delta is
+entirely the override and nothing else in the shared config touches finance. `proseWrap:
+'preserve'` — which finance's own 592-file measurement argued for and which upstream adopted —
+holds exactly as advertised: **no prose line moved.** Every changed line is a TypeScript snippet
+inside a fenced block being re-wrapped at the narrower width.
+
+The general lesson is the one this guide keeps re-learning: **a key-by-key config diff scores
+structural additions as zero.** `overrides`, `ignores`, and file-selection globs are invisible to
+it. Compare resolved output for a representative file of each type — `prettier.resolveConfig()`
+answers this directly — not the literal config objects.
+
+### Gap 12 — the vendor script drops `"type": "module"`
+
+`packages/prettier-config/package.json` upstream declares `"type": "module"`, and the vendored
+files are ESM (`export default`). The script vendors **only** the source files, so the module-type
+declaration is lost. In a consumer whose root `package.json` has no `type` field — finance's does
+not — the vendored `.js` is nominally CommonJS.
+
+It works here, but only because Node ≥22.7 retries a failed CJS parse as ESM. It says so:
+
+```
+[MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of …/config/engineering/prettier/index.js is
+not specified and it doesn't parse as CommonJS. Reparsing as ES module …
+```
+
+On older Node, or in any tool that resolves the file without that fallback, this is a hard
+`SyntaxError: Unexpected token 'export'` — and the failure surfaces at the tool, far from the
+vendoring step that caused it. finance works around it with a two-line
+`config/engineering/prettier/package.json` containing `{ "type": "module" }`. That file is **not**
+in the lockfile and is not hash-checked, which is the wrong place for it: the module type is a
+property of the upstream package, so the fix belongs upstream. **Recommendation: have
+`vendor-configs.mjs` emit the `type` marker for any ESM set** rather than leaving each of seven
+consumers to discover it.
+
+### `.impeccable/` added to `.prettierignore`
+
+`prettier --check .` scans the whole tree, and the bundled impeccable skill writes
+`.impeccable/hook.cache.json`. That directory is excluded only in machine-local
+`.git/info/exclude`, so git ignores it but Prettier does not — a permanent local-only red on
+`format:check` that CI never reproduces. One ignore line removes the false signal.
+
+The studio-synced ignore block upstream recommends alongside this was **already present**, and in
+a stricter form: finance enumerates each managed file individually with a `!` re-include for
+finance-owned `finance-domain.agent.md`, rather than ignoring `.github/{agents,instructions,
+prompts,skills}` wholesale. The glob form would silently stop formatting finance's own overlays.
+
+### Verified
+
+`npm run format:check` (`npx prettier --check .`, whole tree) — **exit 0, all matched files use
+Prettier code style**, with the vendored config resolving and `.prettierrc.json` deleted.
+
+### The one thing this change broke, and what it exposes
+
+Adding `scripts/vendor-configs.mjs` failed `npx eslint . --max-warnings 0` with **8 `no-undef`
+errors** — `fetch` once, `process` seven times. Not a preset problem; finance's own config. Two
+separate defects in the hand-rolled tooling block, both of which the change merely happened to be
+the first file to touch:
+
+1. **The glob is asymmetric.** It lists `tools/**/*.js`, `tools/**/*.mjs`, and `scripts/**/*.js` —
+   but not `scripts/**/*.mjs`. An ESM script under `scripts/` got no Node globals at all. The
+   omission was invisible because until now no such file existed.
+2. **The globals are a hand-maintained list, so they drift from the runtime.** `fetch` has been a
+   Node global since 18 and is absent, as are `URL`, `TextEncoder`, `structuredClone` and the rest
+   of the modern surface. Each will fail the same way, one at a time, on first use.
+
+Fixed narrowly here (add the glob, add `fetch`), but the durable fix is the shared preset:
+`toolingFiles` applies `globals.node` wholesale, so both defects are unrepresentable. **This is a
+concrete point in favour of adopting `@jrmoulckers/eslint-config` that the rule-by-rule diff does
+not score** — the diff compares rules, and this is a `languageOptions` difference.
+
+It also inverts upstream's warning that "the presets lint more files than your old config did,
+typically `scripts/**/*.mjs`". Here finance's config already **selects** that path (via the
+top-level `**/*.mjs` selection) but **configures** it wrongly. Selection and configuration are two
+different comparisons and both need making.
+
+The process failure is worth naming too: `npm run format:check` was run and `npx eslint .` was
+not, on the reasoning that a Prettier-config change cannot affect ESLint. True of the config —
+false of the commit, which also added a source file. **Run the whole gate, not the part that
+seems relevant.**
 
 ## Blocked: the shared toolchain presets
 
@@ -212,6 +331,10 @@ including `jsx-key`. Bisecting the config would have cost one more probe than ac
 
 ### To unblock
 
+**Scope note: this section now applies to `@jrmoulckers/eslint-config` alone.** Since `v0.15.1`,
+`prettier-config` and `tsconfig` are vendored at a ref and need none of the steps below. Prettier
+is adopted; tsconfig is deferred on its own evidence, not on access.
+
 1. Grant this repository read access to the packages from the `jrmoulckers/engineering`
    package settings, **or** create a classic PAT with `read:packages` and store it as the
    `PACKAGES_READ_TOKEN` repository secret. GitHub Packages accepts **classic PATs only** — a
@@ -302,6 +425,12 @@ Everything above was originally estimated by resolving the preset **from source*
 read access the published tarballs can be executed directly, so these numbers supersede the
 earlier from-source trial. Preset installed into a throwaway sandbox inside the repo; peers
 resolved upward to finance's own `eslint@10.6.0`, `react@19.2.7`, `typescript@6.0.3`.
+
+> **These counts are pinned to a tree, and will be re-measured at adoption.** They were taken
+> against `main` as it stood when the sandbox ran. A green gate proves a config works on the tree
+> it ran against, not the tree it merges into — `main` here moves fast enough that a branch can
+> quietly diverge from the measured state. So `317` is a planning figure with a known expiry, not
+> a commitment; the adopting change re-runs it rather than citing this row.
 
 The real `@jrmoulckers/eslint-config@0.6.0` `./react` entry point **loads and runs on ESLint 10**,
 resolving `settings.react.version` to the actual installed `19.2.7`.
@@ -496,21 +625,30 @@ outrank it — is what makes that opt-in safe.
 
 ### Then, for Prettier
 
-`.prettierrc.json` is byte-equivalent to the shared config on all seven keys. Adopt
-`@jrmoulckers/prettier-config` at **`^0.2.0`**, which sets `proseWrap: 'preserve'` and
-`printWidth: 96` for `*.md`. The 73-line `.prettierignore` is finance-specific and stays.
+**Done — see _Adopted: the shared Prettier config, vendored_ above.** Since engineering `v0.15.1`
+this no longer requires the registry at all; the config is vendored at a ref.
 
-**Adopting the markdown override is a verified no-op here.** Finance already uses Prettier's
-default `preserve`, so the only delta is `printWidth` 100 → 96, and under `preserve` that affects
-only tables, lists and fences — not prose. Measured across every tracked markdown file:
+**Correction to the figure this section used to carry.** It claimed adopting the markdown override
+was a "verified no-op" at **0 files changed**. Running it for real produced **5 files / 48 lines**.
+The old number was measured by invoking Prettier with a simulated config rather than through the
+wired gate, and it missed fenced code blocks entirely. The corrected breakdown — and the
+confirmation that prose churn really is zero — is in the adopted section above.
 
-| Metric                 | Value     |
-| ---------------------- | --------- |
-| Markdown files tracked | 592       |
-| Files changed          | **0**     |
-| Line churn             | **0 / 0** |
+The lesson is not that the override is expensive; 48 lines is nothing. It is that **a simulated
+config run is not evidence about the gate.** `npm run format:check` after wiring is the only thing
+that answers this, and it disagreed with the simulation. Nothing below this line was affected: the
+`proseWrap` analysis stands, and it was measured against real files.
 
-No reflow commit is needed.
+The 73-line `.prettierignore` is finance-specific and stays.
+
+**The `proseWrap` decision, which is what actually mattered.** Finance already used Prettier's
+default `preserve`, so the only delta was `printWidth` 100 → 96 — and under `preserve` that reaches
+tables, lists and fences, not prose. Measured across every tracked markdown file:
+
+| Metric                 | Value |
+| ---------------------- | ----- |
+| Markdown files tracked | 592   |
+| Files reflowing prose  | **0** |
 
 The earlier `0.1.x` config set `proseWrap: 'always'`, which would have rewritten **528 of 592
 files (89%)** — 36,249 added / 29,723 removed against 182,051 total markdown lines, roughly 36% of
@@ -588,7 +726,14 @@ recorded here so the next formatting change does not have to repeat it.
 
 ## Deliberately deferred
 
-**`@jrmoulckers/tsconfig`.** `apps/web/tsconfig.json` is the repository's only tsconfig. Trial
+**`@jrmoulckers/tsconfig`** — and, following from that, it is **deliberately not vendored either**.
+`v0.15.1` makes the files fetchable with no token, which removes the access argument but not the
+migration cost below. A vendored config that nothing `extends` is not adoption: it fails no gate,
+is checked by no CI, and drifts against upstream silently until someone tries to use it. Fetch it
+in the change that adopts it. (Its `node.json` entrypoint, new in `v0.15.1`, is likewise not
+needed here — finance executes no `.ts` directly.)
+
+`apps/web/tsconfig.json` is the repository's only tsconfig. Trial
 run against the shared chain (`vite-react.json` → `vite-app.json` → `base.json`, resolved from
 source): **2,691 diagnostics**, against a baseline of 0.
 
@@ -725,6 +870,26 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     encourages, and under it a `warn` fails the build identically to an `error`. The severity
     distinction silently collapses for any consumer following that advice. Worth either saying so
     in the README or noting which rules are expected to need per-repo downgrading.
+
+12. **`vendor-configs.mjs` drops `"type": "module"`.** Upstream
+    `packages/prettier-config/package.json` declares it and the vendored files are ESM, but the
+    script copies only the source files, so the module type is lost. Any consumer whose root
+    `package.json` has no `type` field — finance's has none — receives nominally-CommonJS files
+    containing `export default`. finance survives only because Node ≥22.7 retries a failed CJS
+    parse as ESM, emitting `MODULE_TYPELESS_PACKAGE_JSON`; on older Node, or under any resolver
+    without that fallback, it is a hard `SyntaxError` surfacing at the tool rather than at the
+    vendoring step. The module type is a property of the upstream package, so the fix belongs in
+    the script: **emit a `{ "type": "module" }` marker into the destination for any ESM set.**
+    finance carries a local workaround file that is deliberately outside the lock and therefore
+    not hash-checked — which is exactly why it should not be the permanent answer.
+
+13. **The vendored/registry split needs a stated rule for _when_ to vendor.** ADR-0001 explains
+    why each package landed where it did, but not what a consumer should do with a vendored
+    config it is not yet ready to adopt. finance deferred `@jrmoulckers/tsconfig` on evidence
+    (2,691 diagnostics) and therefore did **not** vendor it, on the reasoning that an
+    unreferenced copy of another authority's config extends nothing, fails no gate, and drifts
+    invisibly. Worth stating that vendoring should happen in the same change that adopts, since
+    the obvious reading of "vendor the half that needs no token" is to fetch both sets at once.
 
 ## Citation audit
 

@@ -322,7 +322,9 @@ const { values: args } = parseArgs({
 function parseSimpleYaml(text) {
   // For the full implementation, install 'yaml' package: npm install yaml
   // This is a placeholder that shows the intended interface
-  throw new Error('Install yaml package: npm install yaml, then use import {parse} from "yaml"');
+  throw new Error(
+    'Install yaml package: npm install yaml, then use import {parse} from "yaml"',
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -590,7 +592,10 @@ describe('Dashboard Generator', () => {
       ],
     };
     // Score should be 50%
-    assert.strictEqual(2, checklist.categories[0].items.filter((i) => i.status === 'done').length);
+    assert.strictEqual(
+      2,
+      checklist.categories[0].items.filter((i) => i.status === 'done').length,
+    );
   });
 
   it('identifies P0 blockers correctly', () => {

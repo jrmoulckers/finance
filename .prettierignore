@@ -13,6 +13,9 @@ packages/design-tokens/build/
 kotlin-js-store/
 .github/workflow-templates/
 
+# Local tool cache written by the bundled impeccable skill; never committed.
+.impeccable/
+
 # Vendored third-party design tokens (@jrm/tokens) — synced verbatim from
 # jrmoulckers/studio; must stay byte-identical, never reformatted.
 **/vendor/@jrm/

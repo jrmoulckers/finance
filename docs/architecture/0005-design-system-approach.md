@@ -97,10 +97,26 @@ Tokens are organized in three layers, each building on the previous:
         "$description": "Overspending, alerts — CVD-safe magenta"
       },
       "neutral": { "$value": "#666666", "$type": "color" },
-      "category1": { "$value": "#648FFF", "$type": "color", "$description": "IBM CVD-safe blue" },
-      "category2": { "$value": "#785EF0", "$type": "color", "$description": "IBM CVD-safe purple" },
-      "category3": { "$value": "#FE6100", "$type": "color", "$description": "IBM CVD-safe orange" },
-      "category4": { "$value": "#FFB000", "$type": "color", "$description": "IBM CVD-safe yellow" }
+      "category1": {
+        "$value": "#648FFF",
+        "$type": "color",
+        "$description": "IBM CVD-safe blue"
+      },
+      "category2": {
+        "$value": "#785EF0",
+        "$type": "color",
+        "$description": "IBM CVD-safe purple"
+      },
+      "category3": {
+        "$value": "#FE6100",
+        "$type": "color",
+        "$description": "IBM CVD-safe orange"
+      },
+      "category4": {
+        "$value": "#FFB000",
+        "$type": "color",
+        "$description": "IBM CVD-safe yellow"
+      }
     }
   },
   "spacing": {
