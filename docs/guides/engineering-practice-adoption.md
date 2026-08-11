@@ -1025,7 +1025,8 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
    profiling, the practice that would explain how is web-shaped, and there is no native area to
    host the obligation in the first place. Requesting an `ENG-NATIVE-*` (or `ENG-APP-*`) area.
 
-7. **`scripts/check-citations.mjs` does not expand ID ranges.** The checker resolves literal IDs
+7. **`scripts/check-citations.mjs` does not expand ID ranges.** (**Closed upstream in checker
+   `v9`** — verified below.) The checker resolves literal IDs
    only, so a citation written as `` `ENG-OBS-001`–`ENG-OBS-007` `` is scanned as exactly two
    citations and the five in between are never verified. That is precisely where a
    wrong-meaning citation hides best: a range asserts something about every member while
@@ -1033,6 +1034,28 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
    (`ENG-OBS-002`–`006`, `ENG-DATA-002`) — all correct on manual check, but invisible to the
    tool that exists to check them. Requesting that the checker either expand `NNN`–`NNN` ranges
    within an area or warn that it cannot.
+
+   **Verified closed** against `check-citations.mjs` at `1607a6d` (`TOOL_VERSION 9`), which lists
+   `range members` in its checks-run line. Both directions were tested, because a pass alone would
+   not have distinguished "expands ranges" from "still ignores them":
+
+   | Probe                                                       | Result                                              |
+   | ----------------------------------------------------------- | --------------------------------------------------- |
+   | `OBS-005` through `OBS-009`, prefixes elided (OBS ends 007) | **exit 1**, naming the two nonexistent members      |
+   | `ENG-OBS-001`–`ENG-OBS-007` (valid)                         | exit 0, **7 citations from 2 endpoints** — expanded |
+
+   The second row is the load-bearing one: under the old behaviour it would have reported 2. Over
+   finance's whole tree the checker now reports **92 citations across 34 principles in 441 files,
+   35 stated names, exit 0**.
+
+   **The `ENG-` prefixes in the first row are elided deliberately, and that is itself a finding.**
+   Written in full, the invalid probe range trips the checker _in this guide_ — the run above
+   initially exited 1 against this very file, flagging the two members of a range that is being
+   **quoted as a failing example**, not asserted as a citation. The checker cannot distinguish
+   mentioning a citation from making one. That is the correct trade for a tool whose job is to
+   catch unverifiable claims, but it means the guide documenting a citation defect cannot state the
+   defect in its own notation. Worth an upstream escape hatch — a fenced block or an
+   `<!-- citations: ignore -->` marker — since every repo that documents a bad citation will hit it.
 
 8. **`toolingFiles` omits `tools/**` and `services/**`.** The shared glob covers
    `**/scripts/**`, `**/*.config.*`, and test files, which is where the preset relaxes
@@ -1532,6 +1555,47 @@ where the unverified story was about _me_.
 
 There was also a live cost: upstream was told to go find the reporting repo and re-check its
 numbers, which is wasted work created out of nothing. Corrected to them directly.
+
+### A search that returns zero is not a measurement
+
+One turn after retracting the misattribution claim above — whose lesson was _check a primary
+artifact instead of your own notes_ — the same claim was made again, and this time the checking
+was the part that failed.
+
+Upstream credited finance with "your two ranges" and with finding the range blind spot. To verify,
+every tracked file was searched with `git ls-files` and this pattern:
+
+```text
+ENG-[A-Z]+-\d{3}\s*(?:-|\u2013|\u2014|to)\s*(?:ENG-[A-Z]+-)?\d{2,3}
+```
+
+It returned **0 hits across 74 `ENG-*` references**, and that zero was reported upstream as a
+measurement. It was wrong. finance's ranges are written `` `ENG-OBS-001`–`ENG-OBS-007` `` — each ID
+wrapped in backticks — and `\s*` cannot cross a backtick. Re-run allowing them, the same corpus
+returns **5 ranges**, all in this guide, and gap 7 above _is_ finance's range finding, stating the
+concealed IDs by name. Both things upstream said were true.
+
+**The failure is not the regex, it is that a zero result was trusted without a positive control.**
+A search that finds nothing and a search that cannot find anything produce identical output: no
+matches, exit 0, no error. They are the same two indistinguishable states as a type-check that
+passes and one that aborted before starting, and as a citation checker that verified a name and one
+that silently skipped it. The instrument reports absence of evidence identically to evidence of
+absence.
+
+The remedy is the one this document has already reached twice by other routes, now stated for
+search: **before believing a zero, run the pattern against a case you know is present.** Here the
+positive control was free and sitting in the same file — gap 7 contains a range in exactly the form
+being searched for. One test against it falsifies the pattern instantly.
+
+Applied immediately afterwards when verifying the upstream fix: the `v9` range check was tested
+with a **deliberately invalid range** first, confirming exit 1 and the two missing interior members
+by name, and only then was the passing run treated as meaningful. A tool that has not been observed
+failing is not evidence that anything passed — `ENG-TEST-008` (Discriminating mutation evidence),
+which is now the fourth distinct instrument in this adoption to have needed it.
+
+The cost was again external and again asymmetric: upstream was told, for the second consecutive
+turn, that a finding credited to finance was not finance's, and asked to go re-check the
+attribution. Both times the disproving evidence was local and free.
 
 ## Worth hoisting up
 
