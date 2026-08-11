@@ -462,11 +462,11 @@ is adopted; tsconfig is deferred on its own evidence, not on access.
 
 4. Depend on the current floors as **ranges, not carets**:
 
-   | Package                        | Range            | Note                                            |
-   | ------------------------------ | ---------------- | ----------------------------------------------- |
-   | `@jrmoulckers/eslint-config`   | `>=0.8.0 <0.9.0` | **not** `<1.0.0` — `0.9.0` is broken, see below |
-   | `@jrmoulckers/tsconfig`        | `>=0.4.0 <1.0.0` | vendored channel — range is advisory only       |
-   | `@jrmoulckers/prettier-config` | `>=0.3.0 <1.0.0` | vendored here; pinned by ref + lock instead     |
+   | Package                        | Range            | Note                                               |
+   | ------------------------------ | ---------------- | -------------------------------------------------- |
+   | `@jrmoulckers/eslint-config`   | `>=0.9.0 <1.0.0` | plus three plugins in `devDependencies`, see below |
+   | `@jrmoulckers/tsconfig`        | `>=0.4.0 <1.0.0` | vendored channel — range is advisory only          |
+   | `@jrmoulckers/prettier-config` | `>=0.3.0 <1.0.0` | vendored here; pinned by ref + lock instead        |
 
    The React preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s
    reversal to `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on
@@ -506,23 +506,23 @@ is adopted; tsconfig is deferred on its own evidence, not on access.
    have looked like progress while the peer range still excluded finance. Ranges recur at every
    boundary; resolve them, do not read them.
 
-   That discipline immediately paid out. Applying `>=0.8.0 <1.0.0` as recommended and then asking
-   npm what it actually installed returned **`0.9.0`** — a release announced in no message, and one
-   that does not work. See the next section.
+   That discipline still paid out, though not as first reported. Applying `>=0.8.0 <1.0.0` as
+   recommended and then asking npm what it actually installed returned **`0.9.0`** — at that point
+   a release announced in no message, and one that changes what a consumer must declare. The
+   conclusion drawn from it was wrong and is retracted below; the habit of resolving the range
+   rather than reading it is what surfaced the change at all.
 
-### `0.9.0` breaks `./react`, and the recommended range selects it
+### `0.9.0` is intentional, and gap 16 is retracted
 
-`>=0.8.0 <1.0.0` was adopted upstream to escape the `0.x` caret trap. Resolving it rather than
-reading it shows it selects `0.9.0`, which cannot load:
+An earlier revision of this document filed `0.9.0` as **gap 16**, a packaging defect that broke
+`./react`. **That was wrong, and the error was mine.** Upstream has since explained the change, and
+re-measuring against that explanation shows it is deliberate, documented, and correctly signalled.
+The mechanism this document described is accurate; the conclusion drawn from it was not.
 
-```powershell
-npm install "@jrmoulckers/eslint-config@>=0.8.0 <1.0.0"   # resolves 0.9.0, exit 0, no warning
-node -e "import('@jrmoulckers/eslint-config/react')"      # ERR_MODULE_NOT_FOUND: eslint-plugin-react
-```
-
-**Cause.** Between `0.8.0` and `0.9.0` every preset file is byte-identical — `git diff --no-index`
-across the two published tarballs reports one changed file, `package.json`. It moves the five
-framework plugins out of `peerDependencies` into a new top-level key, **`frameworkPlugins`**:
+**What is real.** Between `0.8.0` and `0.9.0` every preset file is byte-identical — `git diff
+--no-index` across the two published tarballs reports one changed file, `package.json` — and it
+moves the five framework plugins out of `peerDependencies` into a top-level `frameworkPlugins` key
+that npm does not implement:
 
 ```diff
    "peerDependencies": {
@@ -537,43 +537,62 @@ framework plugins out of `peerDependencies` into a new top-level key, **`framewo
 +  "frameworkPlugins": { ... the five, relocated ... }
 ```
 
-`frameworkPlugins` is not a field npm implements. It is inert metadata. But the code still needs
-those packages at module scope — `react.js` opens with a static
-`import reactPlugin from 'eslint-plugin-react'`, `hooks.js` with
-`import reactHooks from 'eslint-plugin-react-hooks'`, and `react.js`'s own docblock still reads
-"Requires `eslint-plugin-react`, `eslint-plugin-react-hooks`, and `eslint-plugin-jsx-a11y` in the
-consumer." So a hard runtime requirement now has no manifest declaration anywhere.
+**What that is for.** `peerDependenciesMeta.optional: true` suppresses the _error_ for a missing
+peer; it does not stop npm ≥7 auto-installing one it can resolve. So every consumer was installing
+every framework's toolchain. Measured here, one scratch project, bare preset only:
 
-**Measured A/B**, one scratch project, same command, version the only variable:
+| Install                                 | Size        | Svelte plugin | Next plugin |
+| --------------------------------------- | ----------- | ------------- | ----------- |
+| `eslint-config@0.8.0`, React consumer   | **75.0 MB** | present       | present     |
+| `eslint-config@0.9.0` + 3 React plugins | **71.7 MB** | absent        | absent      |
 
-| Version | Packages added | Plugins present                            | `import '.../react'`   |
-| ------- | -------------- | ------------------------------------------ | ---------------------- |
-| `0.8.0` | 205            | react 7.37.5, hooks 7.1.1, jsx-a11y 6.10.2 | **LOADED OK**          |
-| `0.9.0` | 111            | none                                       | `ERR_MODULE_NOT_FOUND` |
+75.0 MB reproduces upstream's figure exactly. The saving for finance is **3.3 MB, 4.4%** — not the
+75 → 36.6 MB headline, because 36.6 MB is the bare preset with no framework plugins, a state no
+consumer can lint from. The dead weight removed is real; its size is an order of magnitude smaller
+than advertised for anyone who then installs their own stack.
 
-npm ≥7 installs optional peers when they resolve, which is what produced the 94-package delta and
-made `0.8.0` work out of the box. Removing the declaration removes the install, and because the
-peers were marked `optional` there is **no warning on the way through**: the install exits 0 and
-looks clean.
+**Why the original finding was wrong.** The probe harness was
+`import(...).catch(e => console.log(e.code))`, which catches the rejection and lets node exit 0. I
+reported "exit 0, no warning" as evidence the failure was silent. It is not silent — that was my
+harness reporting its own exit code. Re-measured through ESLint itself:
 
-**This reverts the fix `0.7.0` shipped.** That release's stated purpose was to make
-`eslint-plugin-react-hooks` a declared peer of the Next preset so that a missing plugin "produces a
-module-resolution error rather than a silent downgrade". `0.9.0` deletes the declaration for all
-five plugins across all presets. The failure mode is now worse than before `0.7.0`, because it
-reaches `./react` — the entry point that release explicitly described as unaffected.
+| Condition                        | `npx eslint` exit | Output                                                |
+| -------------------------------- | ----------------- | ----------------------------------------------------- |
+| all framework plugins present    | `1`               | normal lint results                                   |
+| `eslint-plugin-react-hooks` gone | `2`               | `ERR_MODULE_NOT_FOUND`, **names the missing package** |
 
-**Consequence for finance beyond the crash.** The peer range was also the only machine-checkable
-statement of the ESLint 10 incompatibility in Blocker 2: `eslint-plugin-react: ^7.37.0`, whose own
-peer caps at `eslint: … || ^9.7`, is what makes npm refuse an unsatisfiable tree at install time.
-With the declaration gone, npm has nothing to check, so an incompatible plugin pairing stops being
-an `ERESOLVE` and becomes a runtime failure inside a lint run. That is a strictly later, noisier
-place to discover it.
+Exit 2 naming the package is a loud failure. The general lesson is the one this document already
+records about lint evidence, turned on its author: **a probe reports the exit code of the probe,
+not of the thing under test.** Where an exit code is the finding, it has to be taken from the real
+tool.
 
-Finance therefore pins **`>=0.8.0 <0.9.0`** — deliberately excluding the current release — and this
-is filed as **gap 16**. The fix upstream is to restore the five entries to `peerDependencies`; if
-the intent was to stop npm auto-installing them, the mechanism for that is
-`peerDependenciesMeta.*.optional` combined with a documented install step, not a field npm does not
-read.
+**What finance must do.** Pin `>=0.9.0 <1.0.0` and declare the plugins the React preset imports at
+module scope in `devDependencies`. There are **three**, not two:
+
+```jsonc
+"eslint-plugin-react": "^7.37.0",
+"eslint-plugin-react-hooks": "^5 || ^6 || ^7",
+"eslint-plugin-jsx-a11y": "^6.10.0"
+```
+
+`eslint-plugin-jsx-a11y` matters: `react.js` line 3 is a static `import jsxA11y from
+'eslint-plugin-jsx-a11y'`, so with only the first two the entry point still throws. Upstream's
+broadcast named two; its `docs/adopting.md` per-stack table correctly names three, and the table is
+the authority. Verified both ways — two plugins → `Cannot find package 'eslint-plugin-jsx-a11y'`;
+three → `LOADED OK, entries=14`. The Next row omits `jsx-a11y` and that is also correct: the Next
+entry point loads clean with exactly the two it lists.
+
+**One consequence still stands.** The peer range was the only machine-checkable statement of the
+ESLint 10 constraint in Blocker 2 — `eslint-plugin-react: ^7.37.0`, whose own peer caps at
+`eslint: … || ^9.7`, is what let npm refuse an unsatisfiable tree at install time. Moving it to an
+inert field means npm no longer checks it. Under `0.9.0` that obligation transfers to the consumer,
+which is the stated intent: finance now owns the `eslint-plugin-react` version directly and can
+hold it if a future release regresses on ESLint 10. Worth recording as a transfer of
+responsibility, not a loss.
+
+Every preset measurement in this document is stated against a **resolved version** already —
+`0.5.0`, `0.6.0`, `0.7.0`, `0.8.0` — because each was run against a specific published tarball
+rather than an installed range. Those findings are therefore unaffected by this correction.
 
 Every preset measurement in this document is stated against a **resolved version** already —
 `0.5.0`, `0.6.0`, `0.7.0`, `0.8.0` — because each was run against a specific published tarball
@@ -1092,25 +1111,26 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     (finance keeps a supply-chain ledger) need to declare it. Either document it or add a
     `--no-remote` flag for gate use, where only the hash comparison is wanted.
 
-16. **`eslint-config@0.9.0` moves five required plugins out of `peerDependencies` into a
-    `frameworkPlugins` key npm does not read, breaking `./react`.** `react.js` and `hooks.js`
-    static-import `eslint-plugin-react`, `eslint-plugin-jsx-a11y` and `eslint-plugin-react-hooks` at
-    module scope, and `react.js`'s docblock still states it requires them — but nothing declares
-    them any more. Because they had been `optional` peers, npm installs cleanly and silently: exit
-    0, no warning, 94 fewer packages, and `import '@jrmoulckers/eslint-config/react'` throws
-    `ERR_MODULE_NOT_FOUND`. Measured A/B in one scratch project with version as the only variable —
-    `0.8.0` loads, `0.9.0` does not.
+16. **~~`eslint-config@0.9.0` breaks `./react`.~~ RETRACTED — this was my error, not a defect.**
+    The mechanism was reported accurately: `0.9.0` moves five plugins from `peerDependencies` into a
+    `frameworkPlugins` key npm does not read, while `react.js` and `hooks.js` still static-import
+    them. But it is deliberate — `optional: true` never prevented npm ≥7 from auto-installing a
+    resolvable peer, so every consumer was pulling every framework's toolchain, and upstream's
+    `docs/adopting.md` documents the per-stack plugins each consumer must now declare.
 
-    Two things make this urgent rather than routine. First, **the currently recommended range
-    selects it**: `>=0.8.0 <1.0.0`, published as the fix for the `0.x` caret trap, resolves to
-    `0.9.0`. Second, it **reverts `0.7.0`**, whose stated purpose was to make the hooks plugin a
-    declared peer so a missing one "produces a module-resolution error rather than a silent
-    downgrade" — and it now reaches `./react`, the entry point that release described as never
-    having been affected.
+    **The part I got wrong was the severity, and I got it wrong by mis-measuring.** I reported the
+    failure as silent — "exit 0, no warning" — from a probe of the form
+    `import(...).catch(e => console.log(e.code))`, which swallows the rejection and lets node exit 0.
+    That was my harness's exit code, not ESLint's. Through the real tool, a missing framework plugin
+    exits **2** and names the package. Loud, not silent. Where an exit code _is_ the finding, take it
+    from the tool under test.
 
-    Restore the five entries to `peerDependencies`. If the goal was to stop npm auto-installing
-    them, the supported mechanism is `peerDependenciesMeta.*.optional` plus a documented install
-    step — not a field outside the manifest spec. Until then finance pins `>=0.8.0 <0.9.0`.
+    Two things remain worth reporting upstream, neither a defect: the **75 → 36.6 MB** saving is
+    measured against the bare preset, which no consumer can lint from — for a React consumer that
+    installs the three plugins it needs, the real figure is **75.0 → 71.7 MB, 4.4%**; and the
+    broadcast named two React plugins where three are required, `eslint-plugin-jsx-a11y` being a
+    static import at `react.js` line 3. The `docs/adopting.md` table is right; only the broadcast
+    was short. Finance pins `>=0.9.0 <1.0.0`.
 
 17. **`--dest` writes the lock to the repo root but keys it by the destination path, so a trial
     vendoring disarms the drift gate while reporting success.** Vendoring into a scratch directory
