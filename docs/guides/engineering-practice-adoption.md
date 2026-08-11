@@ -172,6 +172,27 @@ Only auto-detection is broken: `detectReactVersion()` calls `context.getFilename
 10 removed. The plugin is fine; a config asking it to auto-detect is not. The upstream fix resolves
 React's version at config-construction time so the detection path is never entered.
 
+**Where the `'detect'` setting came from — checked, because the attribution has since drifted.**
+Upstream later re-described this as a fault in the consuming repository's own config, with the
+remedy "delete your `settings.react.version = 'detect'` line." That does not fit finance, and the
+package history says otherwise. Both are verifiable from the published tarballs:
+
+| Version | `react.js`                                                 |
+| ------- | ---------------------------------------------------------- |
+| `0.3.0` | line 141: `settings: { react: { version: 'detect' } }`     |
+| `0.4.0` | `detectReactVersion()`, emitting a concrete version string |
+| `0.8.0` | same as `0.4.0`                                            |
+
+The `'detect'` opt-in was **in the preset**, at the line upstream itself first identified, and was
+fixed in `0.4.0`. Finance never had a line to delete: `eslint.config.mjs` contains **no `settings`
+block and no reference to React at all** — `git grep` for `settings.*react` across every `.mjs`,
+`.js`, `.cjs`, and `.json` in the repository returns nothing. The failure was observed here only
+because the preset was being run from source at `0.3.0`.
+
+This is recorded because the remedy is being circulated to six other repositories. A repo that
+follows it will search for a line it does not have, find nothing, and be left without either the
+cause or the fix — while the actual fix, upgrading past `0.4.0`, goes unstated.
+
 Verified against `0.4.0`'s actual `react.js` on finance's ESLint 10.6.0:
 
 - `react/jsx-key` fires on a missing key
