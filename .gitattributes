@@ -2,10 +2,22 @@
 # This prevents `core.autocrlf` from converting LF → CRLF on Windows,
 # keeping Prettier (`endOfLine: "lf"`) and EditorConfig (`end_of_line = lf`)
 # happy on all platforms.
+#
+# The general LF rule is owned by the studio:base managed region below.
+# Member-specific exceptions MUST stay after that region: .gitattributes is
+# last-match-wins, so any carve-out placed above it is silently overridden.
 
+# studio:base:start
+# synced from jrmoulckers/.github — canonical source; do not edit here
+# Normalize every detected text file to LF in the index and working tree.
+# Git's automatic text detection leaves binary files byte-for-byte unchanged.
 * text=auto eol=lf
+# studio:base:end
 
-# Windows batch files must keep CRLF
+# --- Member-owned exceptions (must remain below the managed region) ---
+
+# Windows batch files must keep CRLF — cmd.exe is unreliable with LF-only
+# scripts, and gradlew.bat is tracked with CRLF.
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
@@ -20,10 +32,3 @@
 *.apk binary
 *.aab binary
 *.keystore binary
-
-# studio:base:start
-# synced from jrmoulckers/.github — canonical source; do not edit here
-# Normalize every detected text file to LF in the index and working tree.
-# Git's automatic text detection leaves binary files byte-for-byte unchanged.
-* text=auto eol=lf
-# studio:base:end
