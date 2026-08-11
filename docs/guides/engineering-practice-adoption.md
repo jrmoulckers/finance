@@ -1327,6 +1327,30 @@ Finance-invented, generic, and absent from the shared layers:
   made. **Read the statement, not the title**, and treat a citation as a quotation rather than a
   label.
 
+  **A defect was reported against upstream from that same worktree, and there was no defect.** The
+  report was that `npm test` failed on five files in `packages/eslint-config` and
+  `packages/prettier-config`, that stashing the change and re-running on clean `main` reproduced it
+  identically, and that green CI was therefore hiding a real failure. Every part of that is
+  checkable and the conclusion is still wrong. The failures were all `ERR_MODULE_NOT_FOUND: Cannot
+find package 'prettier'` — resolution, not assertion — and the worktree had no `node_modules` at
+  all. Running `npm install` at its root took the suite to **154/154 passing**. The test count is
+  the tell: it went 79 → 154, so the original run was not five failures out of a complete suite, it
+  was a suite that could not load half its files.
+
+  Two method lessons, both cheap and both generic:
+
+  - **CI passing where a fresh worktree fails is evidence _for_ an uninstalled tree, not against
+    it.** CI runs `npm ci` first; the install is precisely the variable CI controls and a new
+    worktree does not. That observation was read as "CI is blind" when it was the diagnosis.
+  - **`git stash` controls for the patch, not for the environment.** A missing `node_modules` is
+    invariant under stashing, so re-running on clean `main` could only ever return "identical
+    failures". The control was real but orthogonal to the hypothesis it was taken to test.
+
+  Same shape as the probe-harness error recorded above: in both cases the summary line — an exit
+  code, a pass/fail count — was taken as the finding without reading the error underneath it.
+  **Read the failure text before attributing the failure.** Note also that `npm install` rewrote a
+  line of `package-lock.json`; that was reverted so it did not ride along in the upstream PR.
+
 - **`.gitattributes` line-ending carve-out for Windows batch files.** The shared Prettier config
   sets `endOfLine: 'lf'`, which requires a `.gitattributes` to avoid `format:check` passing in CI
   and failing on every Windows checkout. finance already has one, and it goes further than the
