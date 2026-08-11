@@ -74,9 +74,6 @@ kotlin-js-store/
 Caddyfile
 Caddyfile.*
 
-# npm registry config — KEY=VALUE pairs, no Prettier parser
-.npmrc
-
 # Environment files — contain KEY=VALUE pairs, not parseable
 *.env
 *.env.*

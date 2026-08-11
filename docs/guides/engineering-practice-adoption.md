@@ -150,6 +150,36 @@ prompts,skills}` wholesale. The glob form would silently stop formatting finance
 `npm run format:check` (`npx prettier --check .`, whole tree) — **exit 0, all matched files use
 Prettier code style**, with the vendored config resolving and `.prettierrc.json` deleted.
 
+### 13 of the ignore entries were inert, and one of them was mine
+
+Upstream advised adding `.npmrc` to `.prettierignore`, then retracted it. Rather than take either the
+advice or the retraction, I measured: removed the entry and re-ran `format:check` — **exit 0**. The
+mechanism is that Prettier only considers files it can infer a parser for, and `.npmrc` has none;
+naming it explicitly exits **2** with `No parser could be inferred`, which is a crash rather than a
+lint failure. So the entry never suppressed anything.
+
+Removing the whole no-parser class at once — `*.jar`, `*.apk`, `*.aab`, `*.sql`, `*.kt`, `*.kts`,
+`*.swift`, `Caddyfile`, `Caddyfile.*`, `*.env`, `*.env.*`, `.env*`, plus `.npmrc` — also leaves
+`format:check` green. **Thirteen of this file's entries have no effect** under `prettier --check .`,
+in any invocation mode, because they defend against a parser that does not exist. There are no
+Prettier plugins configured (the vendored config declares none), so the built-in parser set is the
+whole story.
+
+Only `.npmrc` is removed. The other twelve stay, for a reason that is about readers rather than
+about Prettier: `.github/copilot-instructions.md` and `AGENTS.md` both tell agents that
+"`.prettierignore` covers `*.kt`, `*.kts`, `*.swift`, `Caddyfile`, `*.env*`". Deleting entries the
+repo's own instructions promise are there would contradict documented policy to remove lines that
+cost nothing. `.npmrc` is **not** in that documented list, so removing it restores consistency with
+it rather than breaking it.
+
+The transferable point is about the shape of the original advice. "Add this to `.prettierignore`" and
+"remove it again" are both instructions about a file, and neither is checkable by reading the file —
+the entry's effect depends on the **script**, and finance's is `prettier --check .`, the invocation
+under which the entry is inert. A glob like `--check "**/*"` would make it matter, and would
+simultaneously make it useless: **1,633 of finance's 5,520 tracked files** have no Prettier parser,
+so a thirteen-line ignore list defends against under one percent of what such a glob would hit. The
+fault would be the glob, not the ignore file.
+
 ### Refreshed to `v0.15.7`, and drift is now enforced in CI
 
 `node scripts/vendor-configs.mjs --check` verifies the vendored tree against
