@@ -1176,6 +1176,47 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     repo on the shared config is exposed through its authors, and `proseWrap: 'always'` merely adds
     a second mechanical trigger. Either match across newlines, or have `--review` report near-misses
     — an `ENG-*` ID followed by a parenthesised capitalised phrase that the strict pattern rejected.
+
+    **Severity is worse than "the count drops", and `always` is the safe setting, not the trigger.**
+    Both corrections come from measurement, and the second reverses what this entry said above.
+
+    A four-case probe against the real `check-citations.mjs` v7, on a scratch corpus:
+
+    | Case | Name      | Line     | Result                                                    |
+    | ---- | --------- | -------- | --------------------------------------------------------- |
+    | A    | correct   | one line | `1 stated name(s) match`, exit **0**                      |
+    | B    | **wrong** | one line | **exit 1**, `claimed:`/`actual:` diff — the control fires |
+    | C    | correct   | wrapped  | exit **0**, name silently unchecked                       |
+    | D    | **wrong** | wrapped  | exit **0** — **a false name passes**                      |
+
+    Case D is the finding. The check exists specifically to catch a real ID standing for a different
+    rule, and a hand wrap defeats it completely. Worse, the summary does not report `0 stated
+name(s) match` — the clause **disappears from the output entirely**, so a file whose every name
+    claim is unverified is textually indistinguishable from one that makes no name claims. There is
+    no count to notice being low. Case B matters as much as D: it is the control proving the checker
+    genuinely discriminates, so C and D isolate the wrap rather than a broken checker.
+
+    **The durability inversion.** This entry said `preserve` is the safer state and `always` adds a
+    trigger. Measured against Prettier 3 at `printWidth: 96`, that is backwards, because Prettier
+    treats a Markdown link as an **atomic inline node**:
+
+    - `--prose-wrap always` on a title hand-broken across two lines **re-joins it** and moves the
+      whole link onto its own line. An adversarial case with the title broken in _two_ places healed
+      completely. The formatter cannot insert a newline inside `[...](...)`, so under `always` a
+      mid-title break is neither creatable by the formatter nor survivable.
+    - `--prose-wrap preserve` returns the broken title **byte-identical**. The formatter is
+      contractually obliged to leave it exactly where the author put it.
+
+    So `preserve` is not the mitigation — it is the state in which a bad break is durable,
+    invisible, and looks deliberate in review, while `always` is self-healing for this failure mode.
+
+    **This does not reverse finance's `proseWrap` recommendation, and should not.** That decision
+    rested on 399 of 592 files reflowing and a one-word edit costing 5 changed lines instead of 1 —
+    a far broader consideration than one failure class, and semantic line breaks remain worth
+    keeping. The honest statement is narrower: **`preserve` shifts this error class onto authors and
+    simultaneously removes the mechanism that would repair it.** The fix belongs in the checker, not
+    in the format setting — which makes the near-miss detector above the right remedy rather than a
+    nice-to-have, since under `preserve` nothing else will ever catch it.
     A near-miss warning is the cheaper fix and converts a silent gap into a visible one, which is
     the same argument this document makes about `rules-of-hooks`: **the dangerous lint result is the
     one that says nothing.**
@@ -1250,6 +1291,16 @@ that runs the format pass. Under the correct one it fires on **authors**, in eve
 `proseWrap: 'always'` merely adds a second, mechanical trigger on top. Repos on `preserve` are not
 safe from gap 18 — they are exposed to it in the way that is hardest to see, because a hand wrap
 looks deliberate in review.
+
+**A later measurement inverts even that.** The sentence above still treats `always` as an
+additional trigger. It is not one: Prettier treats a Markdown link as an atomic inline node, so
+`--prose-wrap always` cannot insert a newline inside `[...](...)`, and re-joins a title an author
+broke by hand — verified on a title broken in two places, which healed completely. `preserve`
+returns the same broken title byte-identical. `always` is therefore self-healing for this failure
+mode and `preserve` is the state in which the break is permanent. The exposure is not merely
+"authors as well as formatters"; it is that the setting finance argued for is the one that removes
+the only automatic repair. The reflow measurement still justifies `preserve` on balance, but the
+remedy has to be the checker, because under `preserve` nothing else will ever catch this.
 
 Two mitigations, neither owned here: match across newlines in the pattern, or have `--review`
 report near-misses — an `ENG-*` ID followed by a parenthesised capitalised phrase that the strict
