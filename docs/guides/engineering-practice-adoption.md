@@ -179,6 +179,19 @@ had been fixed upstream. It has not: `v0.15.7` still vendors two source files an
 declaration, so finance's local workaround file stays. Re-test on each refresh — it is one command
 and removes the need to guess.
 
+### Staying at `v0.15.7` while `v0.16.4` exists is a measured decision
+
+`--check` reports the newer release as a non-failing notice. Rather than take or ignore it blind,
+both files were fetched at `v0.16.4` and hash-compared: **SHA-256 identical to `v0.15.7` for both
+`index.js` and `svelte.js`.** Nine releases changed nothing finance consumes, so the refresh would
+be a lock-file-only commit. It is deferred until a release actually changes content — which the
+hash comparison will detect, and which is the whole point of vendoring at a hash rather than a
+range.
+
+Doing that comparison is what surfaced **gap 17**: the preview command mutates the repository lock
+and disarms the drift gate. Preview upgrades with care until that is fixed upstream, and
+`git status` afterwards.
+
 ### Resolve the ref; do not copy a version literal
 
 Upstream's guidance, and finance follows it — with the observation that it applies to upstream's
@@ -297,6 +310,24 @@ presets can now be **validated locally against the real published artifacts** �
 "Measured against the real artifact" below, which supersedes the earlier from-source trial. It does
 **not** unblock adoption: CI authenticates as `GITHUB_TOKEN`, which cannot read a private package
 without a grant, so committing the dependency would still fail on `main`.
+
+**`401` and `403` are different failures, and finance hits neither locally.** Upstream now
+distinguishes authentication (`401` — token absent, wrong host, or wrong token class) from
+authorization (`403 permission_denied: read_package` — the token is valid and correctly scoped but
+the package has not been shared with the consumer), noting that the tell for the latter is metadata
+resolving while only the tarball download fails. Finance tested for exactly that split and does not
+have it — with the keyring token both halves succeed:
+
+```console
+$ npm view @jrmoulckers/eslint-config version   # metadata  -> 0.9.0
+$ npm pack @jrmoulckers/eslint-config@0.9.0     # tarball   -> 10425 bytes, exit 0
+```
+
+So the local install path is fully open, and the three failures now sit in a clean hierarchy:
+`401` = no/!scoped token (what an unauthenticated CI run gets), `403 read_package` = scoped token
+without a grant (what finance would get if the token were scoped but unshared), and neither = what
+finance actually observes. **The blocker is therefore narrower than recorded above: it is
+CI-only.** Local adoption work needs no grant at all; only landing it does.
 
 Granting access is human-gated and **owner-only**: either flip the three packages public, or
 grant this repository Read under each package's _Manage Actions access_. There is no API path for
@@ -429,23 +460,124 @@ is adopted; tsconfig is deferred on its own evidence, not on access.
    recommended first. See
    [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md).
 
-4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.8.0`**,
-   **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**. The React
-   preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s reversal to
-   `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on ESLint 10
-   (see Blocker 2), and `0.6.0` the first in which the React preset can reach type-aware rules at
-   all. `0.7.0` and `0.8.0` are both no-ops for finance — see below — but are taken as the floor
-   anyway, because there is no cost to either and a stale floor is a liability the moment a later
-   fix lands. On a
-   `0.x` package a caret permits patch updates only, so `^0.1.0` resolves
-   to `>=0.1.0 <0.2.0` and can never reach any of them.
+4. Depend on the current floors as **ranges, not carets**:
 
-   Worth stating as a method rather than a version bump: verify against the **resolved range**,
-   not the working tree. Validating a preset through a `file:` link while committing a caret
-   range that cannot reach it means the artifact tested and the artifact installed are different
-   code. The same discipline surfaced Blocker 2 — a floor bump alone would have looked like
-   progress while the peer range still excluded finance. Ranges recur at every boundary; resolve
-   them, do not read them.
+   | Package                        | Range            | Note                                            |
+   | ------------------------------ | ---------------- | ----------------------------------------------- |
+   | `@jrmoulckers/eslint-config`   | `>=0.8.0 <0.9.0` | **not** `<1.0.0` — `0.9.0` is broken, see below |
+   | `@jrmoulckers/tsconfig`        | `>=0.4.0 <1.0.0` | vendored channel — range is advisory only       |
+   | `@jrmoulckers/prettier-config` | `>=0.3.0 <1.0.0` | vendored here; pinned by ref + lock instead     |
+
+   The React preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s
+   reversal to `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on
+   ESLint 10 (see Blocker 2), and `0.6.0` the first in which the React preset can reach type-aware
+   rules at all. `0.7.0` and `0.8.0` are both no-ops for finance — see below — but are taken as the
+   floor anyway, because there is no cost to either and a stale floor is a liability the moment a
+   later fix lands.
+
+   **This document previously recommended `^0.8.0`, `^0.3.0` and `^0.2.0`, and that was wrong.**
+   On a `0.x` package a caret permits patch updates only: `^0.8.0` resolves to `>=0.8.0 <0.9.0-0`
+   and can never reach `0.9.0`, let alone the current `0.15.7`. Verified rather than reasoned:
+
+   ```powershell
+   node -e "console.log(require('semver').satisfies('0.9.0','^0.8.0'))"   # false
+   ```
+
+   The failure is silent and self-inflicted — a repository can report a defect as outstanding
+   months after it was fixed, because its range cannot resolve the fix. **finance was never
+   actually frozen**, since it depends on none of these packages yet (`@jrmoulckers` appears in
+   neither `package.json` nor `package-lock.json`), but the recommendation above would have frozen
+   it at the moment of adoption.
+
+   Worth recording _how_ the error survived: the caret rule was **already stated correctly in this
+   very section**, one paragraph below the floors it contradicted. A rule written down next to the
+   thing that violates it does not enforce itself. The upstream guide made the identical mistake in
+   the identical shape — warning against `^0.1.0` while its own table used `^0.3.0`. **Prefer a
+   range a tool can check over a rule a reader must apply.**
+
+   Two ranges above are now advisory only. `prettier-config` is vendored at a ref and pinned by
+   `engineering-configs.lock.json`; `tsconfig` is deliberately not vendored at all. For those, the
+   lock is the pin and a semver range describes nothing that is installed.
+
+   Worth stating as a method rather than a version bump: verify against the **resolved version**,
+   not the pinned range and not the working tree. Validating a preset through a `file:` link while
+   committing a caret range that cannot reach it means the artifact tested and the artifact
+   installed are different code. The same discipline surfaced Blocker 2 — a floor bump alone would
+   have looked like progress while the peer range still excluded finance. Ranges recur at every
+   boundary; resolve them, do not read them.
+
+   That discipline immediately paid out. Applying `>=0.8.0 <1.0.0` as recommended and then asking
+   npm what it actually installed returned **`0.9.0`** — a release announced in no message, and one
+   that does not work. See the next section.
+
+### `0.9.0` breaks `./react`, and the recommended range selects it
+
+`>=0.8.0 <1.0.0` was adopted upstream to escape the `0.x` caret trap. Resolving it rather than
+reading it shows it selects `0.9.0`, which cannot load:
+
+```powershell
+npm install "@jrmoulckers/eslint-config@>=0.8.0 <1.0.0"   # resolves 0.9.0, exit 0, no warning
+node -e "import('@jrmoulckers/eslint-config/react')"      # ERR_MODULE_NOT_FOUND: eslint-plugin-react
+```
+
+**Cause.** Between `0.8.0` and `0.9.0` every preset file is byte-identical — `git diff --no-index`
+across the two published tarballs reports one changed file, `package.json`. It moves the five
+framework plugins out of `peerDependencies` into a new top-level key, **`frameworkPlugins`**:
+
+```diff
+   "peerDependencies": {
+-    "@next/eslint-plugin-next": "^15.0.0 || ^16.0.0",
+     "eslint": "^9.0.0 || ^10.0.0",
+-    "eslint-plugin-jsx-a11y": "^6.10.0",
+-    "eslint-plugin-react": "^7.37.0",
+-    "eslint-plugin-react-hooks": "^5.0.0 || ^6.0.0 || ^7.0.0",
+-    "eslint-plugin-svelte": "^2.46.0 || ^3.0.0",
+     "typescript": ">=5.5.0 <6.1.0"
+   },
++  "frameworkPlugins": { ... the five, relocated ... }
+```
+
+`frameworkPlugins` is not a field npm implements. It is inert metadata. But the code still needs
+those packages at module scope — `react.js` opens with a static
+`import reactPlugin from 'eslint-plugin-react'`, `hooks.js` with
+`import reactHooks from 'eslint-plugin-react-hooks'`, and `react.js`'s own docblock still reads
+"Requires `eslint-plugin-react`, `eslint-plugin-react-hooks`, and `eslint-plugin-jsx-a11y` in the
+consumer." So a hard runtime requirement now has no manifest declaration anywhere.
+
+**Measured A/B**, one scratch project, same command, version the only variable:
+
+| Version | Packages added | Plugins present                            | `import '.../react'`   |
+| ------- | -------------- | ------------------------------------------ | ---------------------- |
+| `0.8.0` | 205            | react 7.37.5, hooks 7.1.1, jsx-a11y 6.10.2 | **LOADED OK**          |
+| `0.9.0` | 111            | none                                       | `ERR_MODULE_NOT_FOUND` |
+
+npm ≥7 installs optional peers when they resolve, which is what produced the 94-package delta and
+made `0.8.0` work out of the box. Removing the declaration removes the install, and because the
+peers were marked `optional` there is **no warning on the way through**: the install exits 0 and
+looks clean.
+
+**This reverts the fix `0.7.0` shipped.** That release's stated purpose was to make
+`eslint-plugin-react-hooks` a declared peer of the Next preset so that a missing plugin "produces a
+module-resolution error rather than a silent downgrade". `0.9.0` deletes the declaration for all
+five plugins across all presets. The failure mode is now worse than before `0.7.0`, because it
+reaches `./react` — the entry point that release explicitly described as unaffected.
+
+**Consequence for finance beyond the crash.** The peer range was also the only machine-checkable
+statement of the ESLint 10 incompatibility in Blocker 2: `eslint-plugin-react: ^7.37.0`, whose own
+peer caps at `eslint: … || ^9.7`, is what makes npm refuse an unsatisfiable tree at install time.
+With the declaration gone, npm has nothing to check, so an incompatible plugin pairing stops being
+an `ERESOLVE` and becomes a runtime failure inside a lint run. That is a strictly later, noisier
+place to discover it.
+
+Finance therefore pins **`>=0.8.0 <0.9.0`** — deliberately excluding the current release — and this
+is filed as **gap 16**. The fix upstream is to restore the five entries to `peerDependencies`; if
+the intent was to stop npm auto-installing them, the mechanism for that is
+`peerDependenciesMeta.*.optional` combined with a documented install step, not a field npm does not
+read.
+
+Every preset measurement in this document is stated against a **resolved version** already —
+`0.5.0`, `0.6.0`, `0.7.0`, `0.8.0` — because each was run against a specific published tarball
+rather than an installed range. Those findings are therefore unaffected by this correction.
 
 ### Then, for ESLint
 
@@ -551,8 +683,8 @@ unchanged. The 317-finding measurement stands for a third release running.
 The declarations themselves are **inert at finance today**: no `tsconfig.json` in the repository
 sets `checkJs` or `allowJs`, and `eslint.config.mjs` is not in any tsconfig `include`. So the
 option checking `0.8.0` enables is a benefit finance would have to opt into, not one the floor
-bump delivers. Taking `^0.8.0` still costs nothing — it is the same code — but the release note's
-headline feature should not be recorded here as a gain that was actually received.
+bump delivers. Taking `>=0.8.0 <1.0.0` still costs nothing — it is the same code — but the release
+note's headline feature should not be recorded here as a gain that was actually received.
 
 Upstream also warns that **the presets lint more files than a local config did**, that a
 rule-by-rule diff scores this as zero, and that the file _set_ must be compared too. The warning
@@ -607,12 +739,13 @@ It `readFileSync`s CSS sources and makes ~25 literal substring assertions —
 `toContain('min-height: 44px')`, `toContain('clip: rect(0, 0, 0, 0)')` — each of which depends on
 Prettier's CSS spacing. One assertion already uses `\s*` and is resilient; the rest are not.
 
-**It is not at risk today**, and the reason is a measurement already recorded above: adopting
-`prettier-config@^0.2.0` reformats **zero** files, because `.prettierrc.json` is byte-equivalent to
-the shared config on all seven keys and `proseWrap` was reverted to `preserve`. With no format
-pass there is no reflow to re-break. Recorded as a latent exposure with a named file so that any
-future change to shared CSS formatting is understood to have a test cost attached, rather than
-being discovered through a mysteriously failing accessibility suite.
+**It is not at risk today**, and the reason is a measurement recorded above — though not the one
+this paragraph originally cited. Adopting the shared Prettier config reformatted **5 files, all
+markdown, all fenced code blocks**. It reformatted **no CSS at all**, so there was no reflow for
+these assertions to lose. The earlier claim here was "zero files", which was wrong in general and
+happened to be harmless for this test specifically. Recorded as a latent exposure with a named file
+so that any future change to shared CSS formatting is understood to have a test cost attached,
+rather than being discovered through a mysteriously failing accessibility suite.
 
 ### 0.7.0 changes nothing on the React path — verified, not assumed
 
@@ -655,7 +788,7 @@ ever reachable through `./next`, which finance does not use.
 
 `0.6.0` is published as fixing a hard crash — a type-aware rule reaching a file with no TypeScript
 project aborts the **entire** ESLint run rather than failing that rule. The fix is real and the
-floor should be at least `^0.6.0`, but the stated rationale does not transfer here, and adopting
+floor should be at least `0.6.0`, but the stated rationale does not transfer here, and adopting
 the reasoning unchecked would misdescribe finance's risk:
 
 - `react.js` is **byte-identical between 0.5.0 and 0.6.0** — `git diff` reports no change.
@@ -958,6 +1091,54 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     one — but the behaviour is undocumented at the call site, and consumers with egress review
     (finance keeps a supply-chain ledger) need to declare it. Either document it or add a
     `--no-remote` flag for gate use, where only the hash comparison is wanted.
+
+16. **`eslint-config@0.9.0` moves five required plugins out of `peerDependencies` into a
+    `frameworkPlugins` key npm does not read, breaking `./react`.** `react.js` and `hooks.js`
+    static-import `eslint-plugin-react`, `eslint-plugin-jsx-a11y` and `eslint-plugin-react-hooks` at
+    module scope, and `react.js`'s docblock still states it requires them — but nothing declares
+    them any more. Because they had been `optional` peers, npm installs cleanly and silently: exit
+    0, no warning, 94 fewer packages, and `import '@jrmoulckers/eslint-config/react'` throws
+    `ERR_MODULE_NOT_FOUND`. Measured A/B in one scratch project with version as the only variable —
+    `0.8.0` loads, `0.9.0` does not.
+
+    Two things make this urgent rather than routine. First, **the currently recommended range
+    selects it**: `>=0.8.0 <1.0.0`, published as the fix for the `0.x` caret trap, resolves to
+    `0.9.0`. Second, it **reverts `0.7.0`**, whose stated purpose was to make the hooks plugin a
+    declared peer so a missing one "produces a module-resolution error rather than a silent
+    downgrade" — and it now reaches `./react`, the entry point that release described as never
+    having been affected.
+
+    Restore the five entries to `peerDependencies`. If the goal was to stop npm auto-installing
+    them, the supported mechanism is `peerDependenciesMeta.*.optional` plus a documented install
+    step — not a field outside the manifest spec. Until then finance pins `>=0.8.0 <0.9.0`.
+
+17. **`--dest` writes the lock to the repo root but keys it by the destination path, so a trial
+    vendoring disarms the drift gate while reporting success.** Vendoring into a scratch directory
+    to preview an upgrade —
+    `node scripts/vendor-configs.mjs v0.16.4 --set prettier --dest $TEMP/probe` — rewrote the
+    repository's `engineering-configs.lock.json` in place: `ref` moved `v0.15.7` → `v0.16.4`, and
+    both file keys became absolute temp paths (`C:/Users/.../Temp/v0164/prettier/index.js`). `LOCK`
+    is a bare relative constant resolved against the cwd, so `--dest` redirects the vendored files
+    but never the lock.
+
+    The consequence is worse than a dirty working tree, because `--check` iterates the lock's keys.
+    **Mutation-tested:** with the mutated lock in place, appending a line to the real
+    `config/engineering/prettier/index.js` still produced
+    `2 vendored file(s) match … at v0.16.4`, **exit 0**. Restoring the lock and repeating the same
+    corruption correctly failed with exit 1. So the gate CI relies on can be silently pointed at a
+    directory outside the repository — one that will later cease to exist — by a command whose
+    entire purpose is to be a read-only preview, and it keeps reporting success either way.
+
+    Two fixes, both cheap: resolve `LOCK` relative to `--dest` (a scratch vendoring gets a scratch
+    lock and leaves the repo alone), and have `--check` reject entries whose path escapes the
+    repository root rather than trusting them.
+
+    A corollary defect surfaced in the same run: the script reported
+    `Ref moved v0.15.7 -> v0.16.4; 2 file(s) changed content.` while both files were **byte-identical
+    across the two refs** — SHA-256 equal, `git diff` empty. The "changed" test compares against the
+    previous lock entry _for that destination key_, and `--dest` had changed the key, so unchanged
+    files are reported as changed. The practical effect is that the one signal telling a reader
+    whether an upgrade is reviewable or a no-op is wrong precisely when previewing an upgrade.
 
 ## Citation audit
 
