@@ -122,9 +122,50 @@ function lineOf(bytes, offset) {
   return line;
 }
 
+/**
+ * Verifies the detector against synthetic input before it is trusted on real files.
+ *
+ * Without this, a broken detector and a clean repository produce the same exit code. The
+ * positive cases prove `findReplacements` still recognises both fault patterns; the negative
+ * case proves it is not simply reporting a hit for everything.
+ *
+ * @returns {void}
+ */
+function selfTest() {
+  const cases = [
+    {
+      name: 'single replacement',
+      bytes: Buffer.concat([Buffer.from('a'), REPLACEMENT]),
+      expected: 1,
+    },
+    {
+      name: 'split surrogate pair',
+      bytes: Buffer.concat([REPLACEMENT, REPLACEMENT]),
+      expected: 1,
+    },
+    {
+      name: 'clean text',
+      bytes: Buffer.from('en dash \u2013 and emoji \u{1f511}', 'utf8'),
+      expected: 0,
+    },
+  ];
+
+  for (const { name, bytes, expected } of cases) {
+    const actual = findReplacements(bytes).length;
+    if (actual !== expected) {
+      console.error(
+        `::error::encoding guard self-test failed: ${name} returned ${actual} result(s), expected ${expected}.`,
+      );
+      process.exit(1);
+    }
+  }
+}
+
 const failures = [];
 let scanned = 0;
 let skippedBinary = 0;
+
+selfTest();
 
 const trackedFiles = listTrackedFiles();
 const contents = readIndexBytes(trackedFiles);
@@ -153,6 +194,14 @@ if (failures.length > 0) {
   console.error(
     'A U+FFFD in a committed file means the original character is gone. Recover it from an\n' +
       'uncorrupted revision if one exists; otherwise reconstruct it from context and say so.',
+  );
+  process.exit(1);
+}
+
+if (scanned === 0) {
+  console.error(
+    '::error::encoding guard examined 0 tracked text files. This repository always has tracked\n' +
+      'text files, so an empty scan means the guard is broken, not that the tree is clean.',
   );
   process.exit(1);
 }
