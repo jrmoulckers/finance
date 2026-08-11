@@ -236,7 +236,7 @@ end
     end
 
     subgraph "Windows"
-        WK["�� KEK + SQLCipher key"]
+        WK["🔑 KEK + SQLCipher key"]
         WDP["DPAPI<br/>Per-user protection"]
         WK --> WDP
     end

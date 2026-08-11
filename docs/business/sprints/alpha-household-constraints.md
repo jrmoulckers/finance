@@ -87,7 +87,7 @@ needed to the signup backend — only the client onboarding flow is simplified
 | Shared account indicators      | 🔒 Hidden    | No sharing in alpha                            |
 | Household switching            | 🔒 Hidden    | Only one household; switcher is unnecessary    |
 | Transfer between households    | 🔒 Hidden    | Single household only                          |
-| Organization / advisor access  | �� Hidden    | Enterprise features not in alpha scope         |
+| Organization / advisor access  | 🔒 Hidden    | Enterprise features not in alpha scope         |
 
 **Implementation approach:** Use the existing feature-flag system (PostgreSQL +
 PowerSync sync rules) to gate multi-user features behind

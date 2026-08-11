@@ -354,7 +354,7 @@ export function relativeLuminance({ r, g, b }: { r: number; g: number; b: number
 }
 
 /**
- * WCAG contrast ratio (1�21) between two hex colors. Returns `null` if
+ * WCAG contrast ratio (1–21) between two hex colors. Returns `null` if
  * either color cannot be parsed.
  */
 export function contrastRatio(foreground: string, background: string): number | null {
