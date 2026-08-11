@@ -1009,11 +1009,33 @@ duplication this adoption removes.
    additive across `extends`, so any consumer with test globals silently loses them. finance had
    to restate `node`, `vitest/globals`, and `@testing-library/jest-dom` alongside `vite/client`.
    A note in `docs/adopting.md` would save every consumer the rediscovery.
-5. **`practices/performance-budgets.md` covers no native or JVM profiling.** Its sections are
+5. **`practices/performance-budgets.md` covers no native or JVM profiling.** (**Closed upstream —
+   `practices/native-profiling.md` now exists**, with the omissions noted below.) Its sections are
    delivery/runtime budgets and Lighthouse — yet `ENG-PERF-007` requires _platform-native_
    profiling. finance already documents Android Profiler + baseline profiles, Instruments +
    MetricKit + signposts, JFR + VisualVM + WPA, and a Gradle benchmark harness. That technique
    is general and belongs upstream.
+
+   **Landed as a new file rather than as the proposed diff, and three pieces did not survive.** The
+   text finance drafted was a +149-line extension to `performance-budgets.md`, sent upstream twice;
+   what shipped is a separate `practices/native-profiling.md` of about half the length. It keeps two
+   of the six drafted section headings verbatim and the load-bearing framing, so the draft clearly
+   fed it. Verified by fetching the landed file and testing for each substantive claim:
+
+   | Dropped from the draft                                               | Why it mattered                                                                                                                                                                                                                                                                           |
+   | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | **The sampling floor** — no `sampling interval`, `sampled` vs traced | A sampling profiler resolves nothing below its interval, so diffuse cost appears as _absence_, not as a small number. A flat profile then reads as "this path is cheap." Sampled and traced captures of the same workload are also not comparable, and mixing them reads as a regression. |
+   | **Thermal state and device tier**                                    | The two most common ways a native measurement silently lies. The same capture run twice under sustained load can differ by more than the regression being chased, and the engineer's own device is the one that hides it. `emulator` survived; the other two did not.                     |
+   | **`ENG-TEST-008` — break the channel on purpose once**               | The strongest idea in the draft, and the through-line of this entire adoption: a field channel never observed failing is an assumption, and its output is identical in the healthy case and the blind case.                                                                               |
+
+   The first two are the specifically **native** content — the reason a native profiling practice
+   needs to exist separately from a web one — and the third is the discipline that makes any of it
+   verifiable. Re-proposed upstream rather than restated here, since a practice may not be copied
+   into a product repo.
+
+   Note also that the finance-authored PR is **still open and unmerged** while its content ships
+   elsewhere; flagged upstream so it is closed rather than landing a second time.
+
 6. **No native-platform principle area.** The 66 principles span 11 areas — API, ARCH, BUILD,
    DATA, INT, LOCAL, OBS, PERF, SEC, TEST, WEB. `WEB` covers browser frontends; **nothing covers
    native application surface.** Searching the whole principles corpus for `mobile|Android|iOS|
