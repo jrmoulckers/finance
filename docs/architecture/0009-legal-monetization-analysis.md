@@ -22,6 +22,29 @@
 
 ---
 
+## Decision
+
+**Finance is licensed under BUSL-1.1 with a four-year Change Date to Apache-2.0.**
+
+That is the one durable architectural tradeoff this record carries, and `LICENSE` is its
+authority: `Change Date: 2030-03-08`, `Change License: Apache License, Version 2.0`. Where this
+document and `LICENSE` disagree, `LICENSE` wins.
+
+The alternative considered and rejected was AGPL-3.0 plus a CLA for dual-licensing (§2.6). It was
+rejected because it requires a CLA from every contributor before publication, which BSL does not.
+The consequence accepted in exchange is that BUSL-1.1 is **not** OSI-approved open source, so the
+README must not describe the project as open source without qualification.
+
+**Scope of the rest of this document.** §§3–8 are analysis of law and platform policy that finance
+does not control — trademark availability, export-control thresholds, patent subject matter, App
+Store terms. Per `ENG-ARCH-003` (Durable decisions), whose evidence clause records consequential
+_durable choices_ and explicitly excludes routine ones, that material is **context, not decision**.
+It is dated, it is not legal advice (see the disclaimer above), and it carries no authority to
+constrain future work. Only this section does. When one of those findings is acted on, the choice
+made under it belongs in its own ADR that cites this analysis as context.
+
+---
+
 ## Table of Contents
 
 1. [Executive Summary](#1-executive-summary)
@@ -138,6 +161,12 @@ This is not hypothetical. Amazon, Google, and other cloud providers have built c
 
 **Primary Recommendation: BSL 1.1 with a 3-year change date to Apache 2.0**
 
+> **Superseded on implementation:** the change date actually adopted is **four** years, not the
+> three recommended here — `LICENSE` records `Change Date: 2030-03-08`. The 2025 recommendation is
+> left as written because an ADR records the judgement that was made, not a tidied version of it;
+> the bullets below therefore still say "3 years" and are historical. For the constraint in force,
+> see the Decision section above.
+
 This is the strongest recommendation for a solo developer monetizing a financial app:
 
 - ✅ Source code is publicly visible (aligns with "open development" principle)
@@ -170,9 +199,9 @@ If changing from MIT:
 3. [x] Update `package.json` `"license"` field — **Done (`"BUSL-1.1"`)**
 4. [x] Update all `// SPDX-License-Identifier: MIT` headers in source files — **Done (`BUSL-1.1`)**
 5. [x] Update `README.md` license section — **Done**
-6. [ ] Update `build.gradle.kts` SPDX identifiers (in `packages/core/`, `packages/sync/`, `packages/models/`)
+6. [x] Update `build.gradle.kts` SPDX identifiers (in `packages/core/`, `packages/sync/`, `packages/models/`) — **Done; all three carry `// SPDX-License-Identifier: BUSL-1.1` (verified 2026-08-11)**
 7. [ ] Add a `LICENSING.md` file explaining the license choice and any commercial licensing options
-8. [x] If BSL: define the "Change Date" (e.g., 3 years from each release) and "Change License" (Apache 2.0) — **Change Date: 2030-03-08, Change License: Apache 2.0**
+8. [x] If BSL: define the "Change Date" (e.g., 3 years from each release) and "Change License" (Apache 2.0) — **Change Date: 2030-03-08 (four years), Change License: Apache 2.0**
 9. [ ] If AGPL: prepare a CLA (see §3) before accepting any external contributions
 10. [ ] Consult an attorney to review the license text and any modifications
 
