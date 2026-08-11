@@ -1219,6 +1219,28 @@ Finance-invented, generic, and absent from the shared layers:
   Compose-specific half (recomposition counting, `derivedStateOf`, baseline profiles, `key()` in
   lazy lists) deliberately **stays** in `docs/guides/performance.md`: it is one product's stack,
   and hoisting it would put Compose guidance in front of six repos that have no Compose.
+
+  **Opened upstream** as a PR against `jrmoulckers/engineering` — one file, `+143/−8`, with three
+  further sections requested by the engineering session: a named baseline device in the versioned
+  budget under `ENG-PERF-002` ("a native budget without a named device is unfalsifiable"),
+  profile-to-diagnose versus benchmark-to-gate with a gating-harness table, and carrying the
+  `ENG-OBS-004` correlation identifier into `os_signpost` / `Trace.beginSection` / JFR regions.
+  Verified before opening: `check-citations.mjs` and `check-coverage.mjs` both pass, coverage
+  unchanged at 59/66 with the 7 known gaps intact, every new `ENG-*` ID anchored in an `^#{2,6}`
+  heading because the ratchet counts nothing else, and `principles/` and `docs/ratification/`
+  untouched — both are sealed by path and hash.
+
+  **Two of the citations in the draft were wrong, and existence-checking would not have caught
+  either.** The draft claimed `ENG-TEST-004` "requires the gate to be automated and deterministic"
+  (it separates static signals from behavior tests) and that `ENG-OBS-004` "requires structured
+  logs to carry a stable operation name" (it requires propagated correlation identifiers that are
+  unique, bounded, and unrelated to sensitive identity). Both IDs exist, both were cited in
+  plausible contexts, and both claims were false. They were caught only by reading the `statement`
+  and `evidence` fields out of `principles/index.json` rather than inferring from the titles —
+  "Distinct static signals" and "End-to-end correlation" both _sound_ like they support the claims
+  made. **Read the statement, not the title**, and treat a citation as a quotation rather than a
+  label.
+
 - **`.gitattributes` line-ending carve-out for Windows batch files.** The shared Prettier config
   sets `endOfLine: 'lf'`, which requires a `.gitattributes` to avoid `format:check` passing in CI
   and failing on every Windows checkout. finance already has one, and it goes further than the

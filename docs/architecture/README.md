@@ -16,11 +16,12 @@ sequence. Numbers are never reused and never renumbered once referenced elsewher
 sole exception is the 0017 collision recorded below. Start from
 [`adr-template.md`](./adr-template.md).
 
-> A unified ADR convention is being decided across the studio. finance uses the flat
-> `NNNN-kebab-slug.md` form because it matches
-> [`jrmoulckers/.github`](https://github.com/jrmoulckers/.github/blob/main/docs/architecture/0003-four-authority-topology.md)
-> and 22 of these 25 records already used it. If the central decision differs, this
-> directory follows it.
+> **Confirmed.** `docs/architecture/NNNN-kebab-slug.md` is the studio convention, not a
+> provisional local choice — confirmed by the engineering repo, which uses it itself. finance
+> already matched it: 22 of these 25 records used the form before reconciliation, and it agrees
+> with
+> [`jrmoulckers/.github`](https://github.com/jrmoulckers/.github/blob/main/docs/architecture/0003-four-authority-topology.md).
+> No further migration is pending.
 
 ## Index
 
