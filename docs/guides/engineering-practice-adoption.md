@@ -2489,6 +2489,76 @@ evidence finance already held.** See _Blocker 1_ — the visibility probe report
 published versions and `prettier-config` with 2, in this document, two hundred lines from the
 assertion that neither was published. Nothing evaluated the pair.
 
+### A capability list is a claim, not a report
+
+A peer repository discovered it had run a six-versions-stale citation checker all day and reported
+every number from it. Its banner named the version in every run and never varied, so it read as
+decoration. That prompted two checks here, and the second one contradicts the intuitive reading.
+
+**finance's currency guard works, and I was throwing its answer away.**
+
+`npm run eng:vendor:check` does not merely verify the vendored bytes against the lock. It fetches
+the newest upstream release and compares _content_, then says which case it found:
+
+```
+3 vendored file(s) match engineering-configs.lock.json at v0.86.0.
+
+Notice: pinned at v0.86.0; newest release is v0.96.0, but all 3 vendored file(s)
+are byte-identical there. No action needed -- refreshing the ref would produce no diff.
+```
+
+That is a direct answer to "is the tool I am running current?" — the precise question the peer
+repository could not answer about itself. It was available in finance the whole time.
+
+I have run this check on roughly fifteen pull requests and reported `vendor exit=0` every time,
+because I redirected the output to a file and read only `$LASTEXITCODE`. **The exit code is
+deliberately identical in the stale and the current case** — staleness warns rather than fails, by
+design, so that a red build cannot pressure someone into bumping a pin they have not decided to
+accept. That design is right, and it means the exit code cannot carry the currency signal. All of
+it is in the text I discarded.
+
+So the peer's defect and mine are the same defect against opposite signals: they ignored a field
+because it never varied, and I ignored a field _that did vary_ because I had reduced the tool to
+the one bit that never does. **Reducing a check to its exit code discards precisely the part that a
+non-failing check exists to tell you.**
+
+#### The list of checks that ran is mostly not a list of checks that ran
+
+The stronger finding is about the capability report itself, and it applies to the checker finance
+runs today, not only to stale ones.
+
+`rangeMembers` occurs **exactly once** in the entire checker — at offset 14801 in the copy finance
+runs, and at 14073 in `v0.66.0` — as a string literal inside the output array:
+
+```js
+checksRun: ['ids', 'statedNames', 'rangeMembers', ...(opts.links ? ['linkPaths'] : [])],
+```
+
+Three of the four entries are hardcoded. Only `linkPaths` is derived from runtime state. And the
+consequence is measurable: `v0.66.0` contains no `contextWindow` function (0 occurrences, against 3
+in the current copy), which is what the range-member check needs — yet `v0.66.0` declares
+`rangeMembers` in both its human banner and its machine-readable `--json` output. The banner text
+is byte-identical across a version that implements the check and one that does not.
+
+**The conditional element is what makes the literals credible.** A wholly hardcoded list reads as a
+label and invites no trust. A list where one element visibly responds to a flag reads as
+introspection, and the three that never respond inherit that credibility. This is the same shape as
+a `TOOL_VERSION` that failed to distinguish two released checkers, but more deceptive, because
+`--json` `checksRun` presents itself as the machine-checkable answer to "what ran".
+
+The general rule, which is worth stating beyond this tool: **a self-reported capability list is an
+assertion by the author about intent, not an observation about execution.** It can only be trusted
+if it is constructed from the checks actually performed.
+
+**Change belongs upstream, not here.** `checksRun` and the banner should be assembled from the
+checks the run actually executed, so that a build lacking an implementation cannot claim it. finance
+cannot fix this by vendoring differently; the declaration is in the tool. Recorded here because
+finance's own gate emits the unearned claim on every run.
+
+One thing deliberately not repeated: the peer also reported the adjacency check as non-functional in
+`v0.66.0`. `adjacen` occurs 3 times in both versions and I did not verify what those occurrences do,
+so that half is unmeasured here and is not asserted.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
