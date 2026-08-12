@@ -530,17 +530,35 @@ function coverageRoots(recorded) {
   return [...roots];
 }
 
-// Reads a file only if it is plausibly a stamped text file. The stamp is always within the
-// first bytes, but the whole text is needed for the line-anchored match; the size cap keeps a
-// large generated artifact from being read on every run, and the try/catch drops anything that
-// is not decodable rather than letting the walk throw on a binary that lands under a root.
+// Reads a file only if it is plausibly a stamped text file. The size cap keeps a large
+// generated artifact from being read on every run, and anything undecodable or unreadable is
+// dropped rather than allowed to throw from inside the walk.
+//
+// Size and content are taken through ONE descriptor: `statSync` followed by `readFileSync`
+// checks one path and then reads it again, so the file can change between the two calls
+// (js/file-system-race, flagged by CodeQL on this function's first version). That is not
+// hypothetical here -- this walk runs over a tree the sync engine writes, so a run overlapping
+// a sync is exactly the case. `fstatSync` on an open descriptor measures the object already
+// held, and the subsequent reads come from the same object.
 const STAMP_READ_LIMIT = 512 * 1024;
 function readTextForStamp(file) {
+  let fd;
   try {
-    if (fs.statSync(file).size > STAMP_READ_LIMIT) return null;
-    return fs.readFileSync(file, 'utf8');
+    fd = fs.openSync(file, 'r');
+    const { size } = fs.fstatSync(fd);
+    if (size > STAMP_READ_LIMIT) return null;
+    const buffer = Buffer.allocUnsafe(size);
+    let offset = 0;
+    while (offset < size) {
+      const read = fs.readSync(fd, buffer, offset, size - offset, offset);
+      if (read === 0) break;
+      offset += read;
+    }
+    return buffer.subarray(0, offset).toString('utf8');
   } catch {
     return null;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
   }
 }
 

@@ -133,6 +133,32 @@ test('the two-sided premise guard fires when the walk observes only Markdown', (
   );
 });
 
+test('the stamp reader skips files past the size cap', () => {
+  // The cap was inert when added: nothing in the corpus is near 512 KB, so disabling it left
+  // the suite green. A guard that cannot fire is indistinguishable from one that was deleted,
+  // so the condition is constructed here rather than waited for. The probe is stamped and
+  // unrecorded, which is the state that produces a finding -- so if the cap stops working the
+  // file is read, matched, and reported, and this test says so.
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const dir = path.join(ROOT, '.github/skills/__size_probe__');
+  const file = path.join(dir, 'SKILL.md');
+  const stamp = '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->';
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+
+    // PREMISE: at the small size it IS reported, so a clean result at the large size is the
+    // cap working rather than the walk failing to reach the directory at all.
+    fs.writeFileSync(file, `${stamp}\n\n# probe\n`);
+    assert.equal(verifyLockCoverage(lock).length, 1, 'PREMISE: small stamped probe is reported');
+
+    fs.writeFileSync(file, `${stamp}\n\n${'x'.repeat(600 * 1024)}\n`);
+    assert.deepEqual(verifyLockCoverage(lock), [], 'a file past the size cap must not be read');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  assert.deepEqual(verifyLockCoverage(lock), [], 'probe must leave no residue');
+});
+
 test('CRLF input digests identically to LF, for both shapes', () => {
   // Every input this repo can read is already LF: `.gitattributes` sets `* text=auto eol=lf`
   // and 0 of 61 managed files carry CRLF. So deleting the tool's normalization altogether
