@@ -32,6 +32,10 @@ const {
   ENFORCEMENT_WORKFLOW,
   driftEnforcement,
   enforcementFindings,
+  SYNC_LOCK,
+  triggerPaths,
+  triggerCovers,
+  triggerFindings,
   METRICS,
   HELP_TEXT,
   EXPECTED_AGENTS,
@@ -940,4 +944,59 @@ test('the report states CI enforcement, not just this invocation mode (#4233)', 
     out.indexOf('CI drift enforcement') < out.indexOf('Canonical runtime activation:'),
     'enforcement disclosure must precede the verdict it qualifies',
   );
+});
+
+// --- #4251: a path-filtered check cannot fire on the files outside its filter ------------
+//
+// An edit outside `on.pull_request.paths` produces no run, which renders as an ABSENT check in
+// the PR list rather than a failing one. The self-referential case is the sharp one and it is
+// why this exists: `enforcementFindings` reads the workflow to catch prose/workflow
+// disagreement, so a workflow-only edit is exactly what that guard is for and exactly what
+// cannot trigger it.
+
+test('an unreadable trigger is an error, never an empty glob list (#4251)', () => {
+  // Failing closed matters more here than elsewhere: an empty list would make triggerCovers
+  // return false for everything, which reads as "total coverage gap" rather than "unknown",
+  // while a silently-empty parse would read as "nothing excluded". Both are wrong; error is not.
+  assert.ok('error' in triggerPaths('name: x\non:\n  workflow_dispatch:\n'));
+  assert.ok('error' in triggerPaths('on:\n  pull_request:\n    branches: [main]\n'));
+  assert.ok('error' in triggerPaths('on:\n  pull_request:\n    paths:\n'));
+  const ok = triggerPaths("on:\n  pull_request:\n    paths:\n      - 'AGENTS.md'\n");
+  assert.deepEqual(ok.globs, ['AGENTS.md']);
+});
+
+test('trigger globs cover a subtree only via /** (#4251)', () => {
+  const globs = ['.github/agents/**', 'AGENTS.md'];
+  assert.equal(triggerCovers(globs, '.github/agents/architect.agent.md'), true);
+  assert.equal(triggerCovers(globs, 'AGENTS.md'), true);
+  // A prefix match without the separator would wrongly cover a sibling directory.
+  assert.equal(triggerCovers(globs, '.github/agents-extra/x.md'), false);
+  assert.equal(triggerCovers(globs, 'vendor/@jrm/tokens/css/default/tokens.css'), false);
+  assert.equal(triggerCovers(globs, 'AGENTS.md.bak'), false);
+});
+
+test('the workflow this check reads must be able to trigger it (#4251)', () => {
+  const covering =
+    "on:\n  pull_request:\n    paths:\n      - '.github/workflows/ai-manifest-check.yml'\n" +
+    "      - '.studio-sync.lock.json'\n";
+  assert.deepEqual(triggerFindings(covering, []), [], 'fully covered inputs are not a finding');
+
+  const blind = "on:\n  pull_request:\n    paths:\n      - 'AGENTS.md'\n";
+  const findings = triggerFindings(blind, []);
+  assert.equal(findings.length, 2);
+  assert.ok(findings.some((f) => f.includes(ENFORCEMENT_WORKFLOW)));
+  assert.ok(findings.some((f) => f.includes(SYNC_LOCK)));
+});
+
+test('uncovered managed entries are counted against the whole population (#4251)', () => {
+  const globs =
+    "on:\n  pull_request:\n    paths:\n      - '.github/workflows/ai-manifest-check.yml'\n" +
+    "      - '.studio-sync.lock.json'\n      - '.github/agents/**'\n";
+  const keys = ['.github/agents/a.md', 'vendor/@jrm/tokens/x.css', 'agency.toml'];
+  const findings = triggerFindings(globs, keys);
+  assert.equal(findings.length, 1);
+  // The denominator is the point: "2 uncovered" alone cannot be read without the population.
+  assert.match(findings[0], /2 of 3 managed entries/);
+  assert.match(findings[0], /vendor\/@jrm/);
+  assert.deepEqual(triggerFindings(globs, ['.github/agents/a.md']), []);
 });
