@@ -1402,8 +1402,34 @@ duplication this adoption removes.
    verifiable. Re-proposed upstream rather than restated here, since a practice may not be copied
    into a product repo.
 
+   **Correction — two of those three have since landed, and this ledger went stale.** Re-checked
+   against the live files rather than against the report of them, because the row above was true
+   when written and quietly stopped being true:
+
+   | Drafted content            | Status                                                                            |
+   | -------------------------- | --------------------------------------------------------------------------------- |
+   | The sampling floor         | **Landed** — `performance-budgets.md`, `### Know the floor of your instrument`    |
+   | Thermal state, device tier | **Landed** — `native-profiling.md`, as device tier / thermal and power / emulator |
+   | `ENG-TEST-008` channel     | **Still absent** from both performance guides                                     |
+
+   The sampling floor landed in `performance-budgets.md` rather than `native-profiling.md`, on the
+   reasoning that `pprof` and `node --cpu-prof` are in that file's tool table and nothing about
+   sampling resolution is native-specific. That is the better home, and it means **a hoist can land
+   in a different file than the one it was proposed against** — so checking only the target file
+   reports a false negative. This ledger did exactly that.
+
+   The third row survives and is narrower than it looks. `testing.md` does carry
+   `## Prove the test can fail (ENG-TEST-008)`, so the general principle is covered; what is still
+   unlanded is the **field-channel** application — breaking the observability channel on purpose to
+   establish it would report a failure, which is a different claim from breaking a test.
+
    Note also that the finance-authored PR is **still open and unmerged** while its content ships
-   elsewhere; flagged upstream so it is closed rather than landing a second time.
+   elsewhere; flagged upstream so it is closed rather than landing a second time. Its author now
+   reports it as `CONFLICTING`, 48 commits behind, and recommends closing rather than rebasing —
+   which this check supports more strongly than their own estimate did. They named the KMP
+   `kotlinx-benchmark`/`jvmTest` row as the last content plausibly not upstream; it **is** upstream,
+   at `native-profiling.md` line 88 with a dedicated paragraph arguing the row carries more weight
+   than its size suggests. Both of the remainders they identified are already landed.
 
 6. **No native-platform principle area.** The 66 principles span 11 areas — API, ARCH, BUILD,
    DATA, INT, LOCAL, OBS, PERF, SEC, TEST, WEB. `WEB` covers browser frontends; **nothing covers
