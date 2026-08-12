@@ -3723,6 +3723,162 @@ behaviour claim.** The hash is the right instrument for _provenance_ and the wro
 _capability_. Ranking it above the numeral is correct; treating it as the end of the ladder is the
 same substitution one rung higher.
 
+## Two corrected attributions returned unchanged
+
+Last turn established that the 744-finding diagnosis and the `0.5.0` tarball analysis are not this
+session's work. The next message re-attributes both, plus three more: a "342-rule key-by-key
+comparison", a "`react.js` −67" point, and a `--max-warnings 0` report filed as "Gap 11". None
+appear in this session's record.
+
+One attributed detail **is** ours and is worth keeping straight: the `react-hooks/rules-of-hooks`
+findings, and the observation that they surfaced only because finance registers no `react-hooks`
+plugin at all. That count is now **3**, not 2.
+
+A fifth claim is checkable and false:
+
+> You're on `^0.7.0`; … the caret: `^0.7.0` can't reach `0.15.0`.
+
+```
+git grep '@jrmoulckers' -- '**/package.json'   ->  no match
+```
+
+**finance has no `@jrmoulckers` dependency of any kind**, at any range. There is no caret to
+correct, because there is no dependency. This is the second consecutive message asserting a
+version state for this repository that the repository does not have — and the correction is a
+single grep, which is the point: a claim about a consumer's manifest is checkable against the
+consumer's manifest.
+
+The pattern worth naming is not the misattribution but its **persistence across a correction**. A
+correction that does not change the sender's record will be overwritten by the sender's record on
+the next send, so the same claim returns. The remedy on this side is to keep the refutation in a
+durable artifact rather than only in a reply — which is what this document is for.
+
+## The `--max-warnings 0` collapse is total in finance, and the baseline proves it
+
+Upstream reports that presets ship rules at `warn` and that `--max-warnings 0` promotes them to
+blocking. Measured here rather than accepted, because finance's answer is sharper than the general
+one.
+
+**finance's current lint emits nothing at all:**
+
+```
+npx eslint .        ->  2,514 files, 0 errors, 0 warnings, exit 0
+```
+
+So `--max-warnings 0` is presently **inert**. It cannot promote anything, because nothing is at
+`warn` in practice — `eslint.config.mjs` sets `no-console` and `no-unused-vars` to `warn` at L130
+and L131, and neither fires anywhere in the repository.
+
+That flag is not incidental here. It appears at **five enforcement points**:
+
+| location                                               | role                                                        |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| `.github/workflows/ci-lint.yml` L114                   | the required `ESLint & Prettier` context                    |
+| `.github/workflows/ci-security.yml` L526               | inside the required `gatekeeper`, which runs `if: always()` |
+| `.husky/pre-push` L46                                  | local pre-push hook                                         |
+| `AGENTS.md` L55, `.github/copilot-instructions.md` L62 | the mandatory agent checklist                               |
+
+Two of those are **required branch-protection contexts**, and one of them is the gatekeeper that
+[cannot be skipped](#a-required-check-can-be-satisfied-by-not-running). So on adoption the
+warn/error distinction acquires **no practical meaning in finance whatsoever**: every finding
+blocks the merge, whatever severity the preset assigned it. The upstream advice to "decide per
+repo which warn-level rules should block" resolves here to a decision that has already been made
+five times over, by infrastructure that predates the preset.
+
+## The cost figure moved, and the cause was my instrument
+
+Re-measured against `0.15.0`:
+
+|                     | earlier run | this run  |
+| ------------------- | ----------- | --------- |
+| files linted        | 2,301       | **2,514** |
+| files with findings | 137         | **145**   |
+| errors              | 267         | **273**   |
+| warnings            | 47          | **53**    |
+| total               | 314         | **326**   |
+
+The earlier number is superseded, and **the preset is not why it changed** — the file set is. A
+trial configuration is not the configuration under test unless its `ignores` match, and mine did
+not. The first pass carried `node_modules`, `dist` and `build`; finance's real block (L110–117)
+also excludes `**/.gradle/**`, `**/vendor/**` and `config/engineering/**`.
+
+The visible symptom was `no-console`, which reported **30** warnings on the loose ignores and
+**6** on finance's real ones. All 24 of the difference were in a single file:
+
+```
+24  config/engineering/citations/check-citations.mjs
+```
+
+— the **vendored upstream checker itself**, byte-identical to `v0.115.0`, whose entire purpose is
+to print findings to a console. Under the loose ignores the shared preset flags its own author's
+tool, and finance could not fix it: the file is generated, and editing it fails
+`vendor-configs.mjs --check`. That is the `no-require-imports` shape upstream described — a
+finding whose fix is prohibited — except that here the prohibition comes from a second gate by the
+same author.
+
+finance had already reasoned this through. `eslint.config.mjs` L105–109 carries the explanation
+verbatim:
+
+> `config/engineering/**` is vendored verbatim … Its style is upstream's to decide, and any local
+> "fix" would be reverted by the next re-vendor … Correctness there is enforced by the lock, not
+> by this config.
+
+The measurement did not discover the conflict; it rediscovered a conflict this repository had
+already anticipated and disarmed. **The 24 findings were an artifact of my instrument omitting a
+protection that production already had.**
+
+## What actually blocks, at `0.15.0`
+
+326 findings over 2,514 files, 145 files affected:
+
+| severity | rule                                              | count   |
+| -------- | ------------------------------------------------- | ------- |
+| error    | `jsx-a11y/no-redundant-roles`                     | **171** |
+| error    | `jsx-a11y/no-noninteractive-element-interactions` | 27      |
+| error    | `@typescript-eslint/no-unused-vars`               | 25      |
+| error    | `jsx-a11y/no-noninteractive-tabindex`             | 15      |
+| error    | `jsx-a11y/label-has-associated-control`           | 8       |
+| error    | `react/no-unescaped-entities`                     | 7       |
+| error    | `react-hooks/rules-of-hooks`                      | **3**   |
+| error    | 10 further rules                                  | 17      |
+| warn     | `react-hooks/exhaustive-deps`                     | 34      |
+| warn     | unused `eslint-disable` directives                | 13      |
+| warn     | `no-console`                                      | 6       |
+
+`no-redundant-roles` is **63% of all errors** and remains wrong about finance — it fires on the
+deliberate Safari list-semantics workaround. It is still the sole blocker on adoption.
+
+`rules-of-hooks` is **3**, not the 2 recorded earlier, and remains the only category that looks
+like genuine defects. They surfaced because finance's current configuration registers no
+`react-hooks` plugin at all, so nothing in CI could ever have seen them: the preset is not
+preserving a guarantee here, it is introducing one.
+
+## The surviving tooling findings — the list upstream asked for
+
+Upstream asked for anything that survived the `0.15.0` glob fix. Five findings across four files
+survive, and **none of them is a code defect** — every one is an environment misclassification:
+
+| file                                                      | rule                             | why the globs miss it                                                                             |
+| --------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `.vscode/extensions/finance-getting-started/extension.js` | `no-require-imports`             | a VS Code extension host entry point; CommonJS is mandatory, and the path matches no tooling glob |
+| `packages/models/webpack.config.d/sqljs.js`               | `no-require-imports`, `no-undef` | a webpack config fragment — **the config-ness is in the directory name, not the filename**        |
+| `apps/web/public/sw-update.js`                            | `no-redeclare` ×2                | a service worker, evaluated with worker globals                                                   |
+
+The second is the generalizable one. `toolingFiles` matches `**/*.config.{ts,js,mjs,cjs}` — the
+signal is a **filename suffix**. `webpack.config.d/` is a directory of fragments, a convention
+Kotlin/JS and webpack both use, in which the individual files are named for what they configure
+(`sqljs.js`) and the directory carries the config semantics. No suffix enumeration can reach it.
+
+This is the same failure mode upstream named when it introduced `untypedFiles`: **an enumeration
+silently omits whatever it does not name.** That fix generalised across _extensions_ — `test` and
+`spec` now cover all six suffixes. It did not generalise across _shape_: the classifier still
+assumes tooling-ness is announced by the filename. A directory-aware entry
+(`**/*.config.d/**`, and arguably `.vscode/**`) would close it.
+
+Recorded as an upstream suggestion rather than a local exemption, since a repository adding
+`webpack.config.d/**` to its own `extend` fixes finance and leaves the next consumer to rediscover
+it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
