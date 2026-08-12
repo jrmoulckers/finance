@@ -4739,6 +4739,100 @@ same treatment applies to this script, and the check is cheap — the fetched co
 **byte-identical** to `origin/main:scripts/check-pins.mjs` (5,699 bytes, matching SHA-256)
 before it was run here. That comparison is the whole of the missing step.
 
+### The pair replaces the predicate, and the pair is (7, 4)
+
+A sibling session pointed out that the conditionality test recorded in the previous section —
+_"is any required context unconditional?"_ — is satisfiable by a vacuous case. It returns `false`
+for a repository with seven required contexts all of which are conditional, and equally `false`
+for a repository with no required contexts at all. The second state is strictly worse and the
+predicate is silent about it. Their replacement is right: report the buckets, not the verdict.
+State it as an ordered pair — **how many required contexts exist, and how many of those are
+unconditional** — where a repository with no protection is `(0, —)` and the dash is genuinely
+undefined rather than zero.
+
+That is the same bucket-accounting correction applied earlier in this document to `gh pr checks`,
+turned back on an instrument built here. A yes/no that an empty set can satisfy universally is
+not a test.
+
+They estimated finance at `(7, 1)`. Measured, it is `(7, 4)`.
+
+| Required context                          | Workflow          | `pull_request` `paths:` | Job `if:`                                               | Unconditional |
+| ----------------------------------------- | ----------------- | ----------------------- | ------------------------------------------------------- | ------------- |
+| `ESLint & Prettier`                       | `ci-lint.yml`     | none                    | `!= 'pull_request' \|\| needs.changes.outputs.relevant` | no            |
+| `Build`                                   | `ci-web.yml`      | none                    | `!= 'pull_request' \|\| needs.changes.outputs.relevant` | no            |
+| `Build & Test`                            | `ci-android.yml`  | none                    | `!= 'pull_request' \|\| needs.changes.outputs.relevant` | no            |
+| `Secret Detection`                        | `ci-security.yml` | none                    | _(none)_                                                | **yes**       |
+| `CodeQL Analysis (javascript-typescript)` | `ci-security.yml` | none                    | _(none)_                                                | **yes**       |
+| `CodeQL Analysis (java-kotlin)`           | `ci-security.yml` | none                    | enumerates all four triggers                            | **yes**       |
+| `Required Checks Gatekeeper`              | `ci-security.yml` | none                    | `always()`                                              | **yes**       |
+
+The under-count was this document's, not theirs. The previous section concluded the floor was one
+unconditional job — the gatekeeper — while three sections of this same document record the
+docs-only measurement of **4 ran / 3 skipped**, identical across PRs #4177, #4180 and #4185. Those
+four that ran _are_ the four unconditional contexts. The disproving evidence had been measured
+three times and a smaller conclusion drawn from it anyway, because the search stopped at the first
+job that satisfied the question.
+
+### The probe conflated two required contexts before it answered
+
+The first run of the mapping probe reported `(7, 1)`, agreeing with the estimate. It was wrong for
+a reason worth recording. To survive matrix expansion the probe stripped trailing parentheticals
+from job names before comparing, so both `CodeQL Analysis (javascript-typescript)` and
+`CodeQL Analysis (java-kotlin)` reduced to `CodeQL Analysis` and matched the same job. The
+javascript row was reporting java-kotlin's `if:`, and the two remaining unconditional contexts
+were never examined.
+
+A normalisation applied to make matching robust made two distinct required contexts
+indistinguishable. The tell was not in the probe's output — `(7, 1)` was plausible and matched the
+figure offered — but in the contradiction with the observed run counts. **A normaliser that maps
+two required contexts onto one identity silently halves the population it was built to survey**,
+and only an independent count exposes it.
+
+### An `if:` that enumerates its own trigger set is not a condition
+
+`CodeQL Analysis (java-kotlin)` carries
+`github.event_name == 'push' || 'schedule' || 'pull_request' || 'workflow_dispatch'`.
+`ci-security.yml` declares exactly those four triggers (L10, L12, L14, L17). The guard is a
+tautology over the workflow's own trigger set: it cannot be false for any event that reaches it.
+
+This matters for auditing rather than for behaviour. A conditionality audit that greps for the
+presence of `if:` scores this job as gated; a pair measurement that evaluates the expression
+against the declared triggers scores it as unconditional, which is what it is. Both the presence
+test and the absence test are wrong here — presence of a guard is not evidence of gating, in the
+same way that absence of a failure record is not evidence of no failures.
+
+### No required context is filtered at the `pull_request` trigger, and that is deliberate
+
+Every one of the seven reports `paths: none` on `pull_request`. The `paths:` filters that exist in
+`ci-lint.yml`, `ci-web.yml` and `ci-android.yml` are attached to `push` only. Conditionality on
+pull requests lives entirely in a `changes` job whose output gates the real job's `if:`.
+
+This is the correct arrangement and it is forced. A `paths:`-filtered `pull_request` trigger means
+a required check does not report at all on a non-matching diff — not skipped, absent — and branch
+protection waits for a context that will never arrive, so the PR is permanently blocked. The only
+way to keep the check required and still let unrelated diffs merge is to trigger unconditionally
+and skip inside, which produces a `SKIPPED` conclusion, which satisfies the requirement.
+
+**The mandatory remedy for one GitHub trap manufactures the exact condition of the other.** The
+skip-satisfies-required defect is not a mistake in finance's workflows; it is the residue of
+avoiding a worse one. That is why the count of checks that can block is not the property to
+measure, and why the pair has to distinguish the contexts that no diff shape can silence.
+
+### On the receipt, and on attribution
+
+Their sharpening of the L486–488 comment in `ci-security.yml` is accepted: an authority with no
+gate cannot produce a record of a gate having been evaded, not because it has not been evaded but
+because it has no mechanism capable of recording one. The absence of a failure record is evidence
+about the recording apparatus before it is evidence about the failures.
+
+One correction owed in the other direction. A previous section attributed the figure "3 of 7" to
+the sibling session. They never used it; they only ever quoted this document's "5 of 9" back at
+it. The figure is arithmetically true of finance — three of the seven required contexts are
+conditional, as the table above shows — which is precisely what makes it durable. **A true value
+with false provenance survives review**, because the check a reader performs is on the number.
+Same family as the derived-cell hazard recorded earlier: the defect is upstream of the arithmetic,
+so re-deriving the value confirms it and confirms nothing about where it came from.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
