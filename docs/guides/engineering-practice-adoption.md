@@ -551,11 +551,78 @@ On the rule count: 38 `react/*` keys are present in the resolved config, but 20 
 `react/react-in-jsx-scope`, `react/jsx-uses-react`, and `react/no-unsafe`. Keys present and rules
 enforcing are different numbers, and the second is the one that catches bugs.
 
+Upstream reached the same rule independently and supplied the argument this measurement lacked.
+When they audited a broken `nextConfig()` that had dropped every `jsx-a11y` rule, a **present-key**
+count would have scored the break as **38 versus 22 — a 73% improvement**. Counting keys does not
+merely blur the number; it inverts the sign, and reports a regression as a gain. The rule is
+therefore not `prefer active counts` but `a present-key count cannot detect a disabling bug at
+all`, since disabling a rule leaves its key in place.
+
+Their measured active counts for `nextConfig()` at `0.13.0` — 18 `react/*`, 2 `react-hooks/*`,
+31 `jsx-a11y/*` — are **identical to finance's three numbers above**, which were measured against
+`reactConfig()` on a different day by a different method. Two presets, two observers, one triple.
+That is corroboration of the counting method, not of either preset: the shared plugins and the same
+`eslint-config-prettier` subtraction dominate, so the react/next difference lives in the 20
+`off` keys rather than in what enforces.
+
 **The lesson generalizes and is the reason this section stays.** A reproducible stack trace names
 the frame that threw, not the caller that caused it. The blast radius here — every rule in the
 plugin failing to load — made a config-level cause look like a package-level one, and the
 remedy that follows from the wrong diagnosis (drop the plugin) would have cost 18 working rules
 including `jsx-key`. Bisecting the config would have cost one more probe than accepting the trace.
+
+#### The anti-caret correction arrived without its upper bound
+
+Upstream re-sent the floors on 2026-08-11 as **`>=0.13.0` / `>=0.4.0` / `>=0.3.0`**. The values in
+`versions.json` are **`>=0.13.0 <1.0.0` / `>=0.4.0 <1.0.0` / `>=0.3.0 <1.0.0`**. The bound was
+dropped in the restatement.
+
+That is not cosmetic, and it is not the caret failure:
+
+| Version  | `>=0.13.0 <1.0.0` (recorded) | `>=0.13.0` (restated) |
+| -------- | ---------------------------- | --------------------- |
+| `0.13.0` | ✅                           | ✅                    |
+| `0.99.0` | ✅                           | ✅                    |
+| `1.0.0`  | ❌                           | ✅                    |
+| `9.9.9`  | ❌                           | ✅                    |
+
+The caret errs closed — it silently refuses fixes. The unbounded range errs **open**: it accepts
+every future major, so the first `1.0.0` with a breaking change installs itself with no signal. The
+two defects are mirror images, and a warning about one delivered in the shape of the other is the
+worst available outcome, because it arrives with the authority of a correction.
+
+`versions.json` is explicit that this is why the bound exists — it "records an explicit upper bound
+and a test rejects caret forms" so "the recorded value stays safe to paste", and it instructs
+consumers to **copy `range` literally**. A restatement from memory is not a literal copy, and the
+one token it lost is the one the file added on purpose.
+
+**finance was already correct** — `>=0.13.0 <1.0.0` for all three, with no caret pin anywhere
+outside the retraction prose above — so nothing was adopted from the restatement. It is recorded
+because the near-miss is the point: had finance still been mid-adoption, the accepted fix for a
+caret would have been a range that is wrong in the opposite direction.
+
+This is the third time upstream's prose has disagreed with upstream's own artifact (after the
+`curl` output that contradicted the table in the same message, and the `channel: vendored` entries
+for packages that were always on the registry). The pattern is consistent: **the artifact has been
+right every time and the sentence about it has not.** Read `versions.json`; do not accept a range
+quoted in a message, including a message correcting a range.
+
+#### Pin currency: re-verified rather than assumed
+
+The vendored checker is pinned at `v0.86.0`. The latest tag is now **`v0.90.0`**, so the pin was
+re-checked instead of being carried forward on the previous verification:
+
+| Ref       | bytes  | SHA-256 (12)   |
+| --------- | ------ | -------------- |
+| `v0.86.0` | 22,699 | `4bc850401c2f` |
+| `v0.90.0` | 22,699 | `4bc850401c2f` |
+| `main`    | 22,699 | `4bc850401c2f` |
+
+Byte-identical, so the pin is current. This is the direct application of the lesson from the
+previous entry — an upper bound taken on report is an unverified premise — turned on this
+repository's own prior verification. "Verified a few hours ago" is a bound on report where the
+reporter is oneself, and four releases landed inside it. The answer happened to be unchanged; that
+is a result, not a reason to have skipped the check.
 
 #### The version numeral is not a ref — the misattribution ran in reverse
 
