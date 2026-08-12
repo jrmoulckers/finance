@@ -4491,6 +4491,136 @@ sides are correct. It is visible only if provenance travels attached to the valu
 class as the derived-cell hazard recorded earlier, one level of abstraction up: there, a cell
 whose origin was forgotten; here, a column whose _function_ was forgotten.
 
+### An apology for duplicated work, where the duplication ran the other way
+
+Upstream reported that a hoist authored here had already landed, apologised for not saying so,
+and concluded: _"Nothing is wrong with your patch. It's a correct implementation of a change
+that exists."_ Checked rather than accepted, and the ordering is the reverse.
+
+#### Two instruments failed here first, both by treating an incomplete record as a complete one
+
+Worth recording before the finding, because the finding was nearly the opposite.
+
+**First instrument — a stale local ref.** `git log -- practices/native-profiling.md` returned
+_empty_, which reads as "this file has no history." The query ran against local `main`, which
+was **130 commits behind `origin/main`**. Against the remote the file has three commits. An
+absence produced by a stale ref is a property of the ref.
+
+**Second instrument — this session's own summary.** The conversation summary carries no
+mention of authoring a hoist patch, and that silence was briefly taken as evidence that the
+work was not this session's — the attribution defect this document has recorded repeatedly,
+pointed the wrong way. The session artifact directory settles it:
+
+```
+hoist-native-profiling-v1-superseded.md   2026-08-10 10:44   6,041 B
+hoist-native-profiling.md                 2026-08-10 13:11   4,104 B
+mkhoist3.mjs / fixpatch3.mjs              2026-08-10 22:25
+hoist-perf007-final.patch                 2026-08-11 10:13  13,021 B
+```
+
+The patch is this session's. Both failures are one class — **a lossy record's silence read as
+the world's silence** — and the second is the more dangerous, because a summary is _designed_
+to omit and therefore always answers.
+
+#### The ordering is inverted: there was nothing to be told
+
+Upstream's account is that the work landed first and this session should have been told. The
+target file's creation is checkable:
+
+| Ref                                                            | `practices/native-profiling.md` present |
+| -------------------------------------------------------------- | --------------------------------------- |
+| `2d8e72c` — the base upstream says the patch was built against | **no**                                  |
+| `92e62dc^`                                                     | **no**                                  |
+| `92e62dc` (#101)                                               | **yes — created here**                  |
+
+Timeline, all `-07:00`:
+
+| When            | What                                                       |
+| --------------- | ---------------------------------------------------------- |
+| 08-10 10:44     | hoist prose v1 written here                                |
+| 08-10 13:11     | hoist prose final written here                             |
+| 08-11 **10:13** | **`hoist-perf007-final.patch` written here**               |
+| 08-11 **14:07** | `92e62dc` #101 **creates** `practices/native-profiling.md` |
+| 08-11 20:16     | `7b86a53` #147 adds the field-channel column               |
+
+The practice file did not exist when the patch was written — it was created **3h54m
+afterwards**, and the prose it derives from predates it by over **27 hours**. So the
+duplicated-work apology is owed in the other direction, and more precisely: **no notification
+could have been given, because at the time there was nothing to notify.**
+
+This is the stale-state failure the correspondence keeps circling, in its least obvious form.
+Both parties agree work was duplicated; both would have accepted the apology; and the only
+thing that establishes who duplicated whom is a file-existence check at a named commit.
+
+#### Bimodal overlap distinguishes adoption from convergence
+
+"Already in `main`" and "independently reimplemented" predict different overlap. Measured
+against `origin/main`:
+
+| Unit                                | Result                       |
+| ----------------------------------- | ---------------------------- |
+| substantive added lines (>25 chars) | **2 of 108 verbatim — 1.9%** |
+| section headings                    | **2 of 6 verbatim**          |
+
+Neither hypothesis fits. Independent convergence does not produce two word-for-word headings
+(`Name the baseline device in the budget`, `Profile to diagnose, benchmark to gate`); wholesale
+adoption does not produce 1.9% of body text. The pattern is **partial adoption** — the
+structure taken, the prose rewritten.
+
+The remaining heading is the one that matters, because the divergence is in the citation:
+
+```
+here : ### Know your instrument's floor (ENG-PERF-007)
+main : ### Know the floor of your instrument (ENG-PERF-001, ENG-PERF-008)
+```
+
+Same claim, **different principles cited**. In a layer whose entire purpose is that every
+normative sentence names the ID it derives from, that is not a rewording. A body-text diff
+scores it as near-identical; the citation is the part that changed.
+
+Also worth separating: upstream placed the sampling-floor material in `native-profiling.md`.
+It is in `performance-budgets.md` — the file the patch actually targets. The content claim was
+right and the location claim was wrong, which is only visible if you search the tree rather
+than the file you were told to open.
+
+#### The figure in circulation is one this session retired
+
+Upstream continues to quote **317**. That number is this session's, and it is superseded:
+
+| Figure  | Basis                                                                 | Status         |
+| ------- | --------------------------------------------------------------------- | -------------- |
+| 317     | 2,510 files, trial ignores                                            | **superseded** |
+| **326** | 2,514 files, finance's _production_ ignores; 273 errors + 53 warnings | current        |
+
+The retraction was published in a reply; the number lives in a table. **A superseded figure
+keeps circulating because the correction and the number have different half-lives** — which is
+the same reason this document exists rather than relying on messages.
+
+One counting note that resolves an apparent third figure: the raw run JSON contains **313**
+messages carrying a `ruleId`. The other 13 are unused-directive reports, which have a null
+`ruleId` and are still findings. 313 + 13 = 326. A count of a findings file must state whether
+null-rule entries are in scope, or two correct counts will disagree by exactly the directives.
+
+#### finance is not Kotlin-only
+
+Upstream's re-measure advice was conditional: _"if finance has any `.tsx` … if it's
+Kotlin/native only, it's provenance."_ Tracked files:
+
+| `.tsx`  | `.ts` | `.kt` | `apps/web/**` | React in web manifest |
+| ------- | ----- | ----- | ------------- | --------------------- |
+| **601** | 1,852 | 1,075 | **2,521**     | yes                   |
+
+It is both, and the TypeScript surface is the larger one. The conditional is the interesting
+part rather than the error: a correct qualifier attached to a wrong premise produces advice
+that is _safe to give_ and _impossible to apply_ — the recipient must supply the fact the
+sender lost, and a recipient who trusted it would have skipped the measurement.
+
+Confirmed for quotation, since it was attributed correctly: `react-hooks/rules-of-hooks` fires
+at exactly two sites — `apps/web/src/pages/HouseholdPage.tsx` (**2**) and
+`apps/web/e2e/fixtures.ts` (**1**) — with the caveat as written, that the rule catches
+`const { x } = useHook()` and misses `return { x: useHook().x }`, so a clean run is not proof
+of absence.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
