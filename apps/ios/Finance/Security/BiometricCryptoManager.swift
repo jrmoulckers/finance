@@ -30,7 +30,7 @@ actor BiometricCryptoManager {
         case keyNotFound
     }
 
-    private let keyTag = ""com.finance.biometric-bound"".data(using: .utf8)!
+    private let keyTag = "com.finance.biometric-bound".data(using: .utf8)!
 
     /// Whether Secure Enclave is available for biometric binding.
     nonisolated var isAvailable: Bool {
@@ -92,9 +92,9 @@ actor BiometricCryptoManager {
         guard let publicKey = SecKeyCopyPublicKey(privateKey) else {
             throw CryptoError.keyGenerationFailed(
                 underlying: NSError(
-                    domain: ""BiometricCrypto"",
+                    domain: "BiometricCrypto",
                     code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: ""Failed to extract public key""]
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to extract public key"]
                 )
             )
         }
@@ -104,9 +104,9 @@ actor BiometricCryptoManager {
         ) as Data? else {
             throw CryptoError.keyGenerationFailed(
                 underlying: NSError(
-                    domain: ""BiometricCrypto"",
+                    domain: "BiometricCrypto",
                     code: -2,
-                    userInfo: [NSLocalizedDescriptionKey: ""Failed to export public key""]
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to export public key"]
                 )
             )
         }
