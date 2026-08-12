@@ -13,6 +13,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { load as loadYaml } from 'js-yaml';
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workflowDirectory = join(repositoryRoot, '.github', 'workflows');
 const canonicalWorkflowSha = '97ff60ec21321563fa0fc7ba80015261e7dcd6fa';
@@ -249,11 +251,106 @@ export function findInheritingJobs(workflow) {
   return { base: inlineBase || 'block', jobs: inheriting };
 }
 
+/**
+ * Returns the declared trigger names for a parsed workflow document, covering
+ * the three forms GitHub accepts: `on: push`, `on: [push, ...]`, and a mapping.
+ *
+ * YAML 1.1 resolves a bare `on` key to boolean true, so the `true` fallback is
+ * required for workflows that do not quote it.
+ */
+function declaredTriggers(document) {
+  const on = document?.on ?? document?.[true];
+  if (typeof on === 'string') return [on];
+  if (Array.isArray(on)) return on.filter((entry) => typeof entry === 'string');
+  if (on && typeof on === 'object') return Object.keys(on);
+  return [];
+}
+
+/**
+ * Returns the event names a guard accepts, but only when the guard is a plain
+ * disjunction of `github.event_name == '<event>'` terms.
+ *
+ * Returns null for every other shape. That is deliberate: a guard combining
+ * `&&`, negation, parentheses, `always()`, or job outputs cannot be decided
+ * from the trigger list alone, and a checker that guesses at those would report
+ * violations against correct workflows.
+ */
+export function pureEventDisjunction(expression) {
+  if (typeof expression !== 'string') return null;
+  const normalized = expression
+    .replace(/\$\{\{/g, ' ')
+    .replace(/\}\}/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalized || /[&!()]/.test(normalized)) return null;
+  const events = [];
+  for (const term of normalized.split('||')) {
+    const match = /^github\.event_name\s*==\s*'([a-z_]+)'$/.exec(term.trim());
+    if (!match) return null;
+    events.push(match[1]);
+  }
+  return events.length > 0 ? events : null;
+}
+
+/**
+ * Reports job and step guards that no declared trigger can satisfy.
+ *
+ * Such a guard is not merely conditional — it is permanently false, so the job
+ * reports `skipped` on every run forever. That matters here because the
+ * gatekeeper accepts `skipped` as passing (it must: `dependency-review` is
+ * legitimately skipped on push), so a guard that can never be true is a
+ * security job that is green forever with nothing to notice it.
+ *
+ * The dangerous edit is not to the guard. Deleting a trigger from the `on:`
+ * block — which never mentions the job — silently converts a live guard into a
+ * dead one, and `ci-security.yml`'s `dependency-review` is a single trigger
+ * deletion away from exactly that.
+ *
+ * Reusable workflows are exempt: inside a `workflow_call` target,
+ * `github.event_name` is the *caller's* event, so its own trigger list says
+ * nothing about which values are reachable.
+ */
+export function findDeadEventGuards(file, workflow) {
+  let document;
+  try {
+    document = loadYaml(workflow);
+  } catch {
+    return [];
+  }
+  if (!document || typeof document !== 'object') return [];
+
+  const triggers = declaredTriggers(document);
+  if (triggers.length === 0 || triggers.includes('workflow_call')) return [];
+
+  const violations = [];
+  const inspect = (where, expression) => {
+    const events = pureEventDisjunction(expression);
+    if (!events || events.some((event) => triggers.includes(event))) return;
+    violations.push(
+      `${where} is guarded on ${events.map((event) => `'${event}'`).join('/')}, ` +
+        `which no declared trigger (${triggers.join(', ')}) can satisfy — it can never run`,
+    );
+  };
+
+  for (const [jobId, job] of Object.entries(document.jobs ?? {})) {
+    if (!job || typeof job !== 'object') continue;
+    inspect(`job '${jobId}'`, job.if);
+    const steps = Array.isArray(job.steps) ? job.steps : [];
+    steps.forEach((step, index) => {
+      if (step && typeof step === 'object') {
+        inspect(`job '${jobId}' step ${index + 1}`, step.if);
+      }
+    });
+  }
+  return violations.map((violation) => `${file}: ${violation}`);
+}
+
 export function scanWorkflowSecurity(workflows, productionCompose = '') {
   const errors = [];
   const report = (file, message) => errors.push(`${file}: ${message}`);
 
   for (const [file, workflow] of Object.entries(workflows)) {
+    errors.push(...findDeadEventGuards(file, workflow));
     for (const violation of findMutableReferenceViolations(workflow)) {
       report(file, `line ${violation.line}: ${violation.reason}`);
     }
