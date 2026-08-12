@@ -7196,6 +7196,96 @@ Tested rather than assumed: `raw.githubusercontent.com/.../principles/index.json
 different surfaces. The job genuinely validates. Recorded because a refuted hypothesis is evidence
 and the record otherwise fills only with confirmed ones.
 
+## The population is never in the output: auditing finance's own gates
+
+The engineering sibling stated a rule strongly enough to be falsifiable: _every clean result in
+this thread has been clean over a population, and the population is never in the output._ finance
+ships five gates, so the claim is testable here rather than agreeable. Ran all five and read the
+clean output:
+
+| Gate                           | Clean output names its population?                       |
+| ------------------------------ | -------------------------------------------------------- |
+| `tool:imports:check`           | yes — 130 references, 45 files, 8 excluded               |
+| `node:version:check`           | yes — 37 pins, 31 workflows, 452 dependency declarations |
+| `gradle:prefetch:check`        | yes — 10 jobs across 31 workflows                        |
+| `citations:enumerations:check` | yes — 3160 files, 19 exempted                            |
+| `workflow:security:check`      | **no — "passed (.github\workflows)"**                    |
+
+Four of five. The exception is the security gate, which is the one where a green over an unnamed
+subset costs the most. The rule predicted a finding and it landed on the highest-stakes instrument.
+
+### A hypothesis about it, refuted by running it
+
+The checker resolves named files as `workflows['deploy-preview.yml'] ?? ''`, six times. Reading
+that, the inference is immediate and alarming: rename or delete a workflow and its security
+assertions evaluate against an empty string, so they retire silently and the gate still prints
+"passed". A per-file fail-open in a security control.
+
+Measured instead of filed:
+
+```
+baseline                        errors: 0   (31 workflows)
+without deploy-preview.yml      errors: 3   (30 workflows)
+without nightly.yml             errors: 1   (30 workflows)
+without deploy-production.yml   errors: 5   (30 workflows)
+with ZERO workflows             errors: 29
+```
+
+**Removing a workflow raises errors. It fails closed.** Every named-file assertion is phrased
+positively — _this file must contain X_ — so an absent file fails it rather than skipping it. The
+`?? ''` fallback exists to avoid a crash, not to excuse a check.
+
+The inference was wrong in the direction that would have produced an accusation against a control
+that was working. That is the failure mode this adoption has repeatedly called the dangerous one,
+arriving from the other side: not an instrument over-reporting compliance, but a reader
+over-reporting a defect. **Reading a control tells you what it says; only running it tells you
+which way it fails.** Nothing in the 21 existing tests asserted the fail-closed property, so the
+suite would not have contradicted the misreading either.
+
+### What shipped
+
+`summarizeScope()` and a clean run that names its population:
+
+```
+Workflow security regression check passed (.github/workflows): 31 workflow(s) scanned;
+30 of 30 named assertion target(s) present; 1 covered by the universal checks only.
+```
+
+That last figure is new information the old output could not carry: `copilot-setup-steps.yml` is
+covered by the universal checks alone and by no file-specific assertion. Not a defect — it is
+unprivileged — but it is exactly the fact a named-file audit cannot see, and it is now printed
+rather than discoverable.
+
+Five tests pin what reading got wrong: an empty workflow set must fail closed; removing each of
+three named workflows must raise errors; every named target must exist on disk; the scope must be
+arithmetic over the tree rather than a constant.
+
+### A decorative assertion, and three equivalent mutants proved rather than asserted
+
+First mutation run killed 3 of 6. The two survivors both shrank the named set, and the test meant
+to stop them read `assert.equal(scope.named, NAMED_WORKFLOW_ASSERTIONS.size)` — **comparing the set
+to itself.** Second decorative assertion found in two turns, by the same method, in a test written
+immediately after documenting the first. Replaced by pinning the _complement_ against the disk:
+the list of workflows covered by universal checks only must equal exactly
+`['copilot-setup-steps.yml']`, which grows the moment an entry leaves the named set.
+
+Three mutants still survived. Rather than adding tests until they died, measured whether they
+_could_ die — how much each component uniquely contributes to the union:
+
+| Component dropped               | Union size | Uniquely lost |
+| ------------------------------- | ---------- | ------------- |
+| `privilegedWorkflows`           | 30         | none          |
+| `localReusableBaselines`        | 30         | none          |
+| `requiredEnvironmentJobs`       | 30         | none          |
+| `leastPrivilegeWorkflows`       | 30         | none          |
+| `permissionInheritanceBaseline` | 11         | **19 files**  |
+| literals                        | 30         | none          |
+
+`permissionInheritanceBaseline` subsumes every other component for the purpose of the denominator.
+Dropping the others changes the union by **zero**, so no test can distinguish those mutants: they
+are provably equivalent, with the table as the proof rather than an adjudication by assertion.
+Final 3 of 6, and the survivor list carries the structural fact that a 6-of-6 would have deleted.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
