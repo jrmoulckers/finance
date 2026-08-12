@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -242,4 +243,72 @@ test('normalizeReviewedPins leaves unpinned references intact so they still drif
 test('normalizeReviewedPins does not elide a non-uses line that contains a SHA', () => {
   const line = '      run: echo 11bd71901bbe5b1630ceea73d27597364c9af683';
   assert.equal(normalizeReviewedPins(line), line);
+});
+
+// The reviewed-baseline hash and the 40-hex pin requirement both react to a `uses:` line,
+// so redundancy is the null hypothesis and PR #4214's "still covered by the pin check"
+// claim needs an input table, not an assertion. These three tests pin an input that
+// separates the pair in each direction: C and E defeat the pin check, F defeats the
+// baseline. A guard pair with no separating input is one guard read twice.
+//
+// Both reviewed files must appear in every map: an absent one reads as '' and drifts,
+// which silently fires the baseline on every row including the control.
+const reviewedWorkflows = () => ({
+  'reusable-detect-changes.yml': readFileSync(
+    new URL('../.github/workflows/reusable-detect-changes.yml', import.meta.url),
+    'utf8',
+  ),
+  'reusable-release-smoke-test.yml': readFileSync(
+    new URL('../.github/workflows/reusable-release-smoke-test.yml', import.meta.url),
+    'utf8',
+  ),
+});
+const drifted = (errors) => errors.some((error) => /reviewed local reusable drifted/.test(error));
+const unpinned = (errors) => errors.some((error) => /not pinned by full SHA/.test(error));
+
+test('control: the reviewed workflows as committed trip neither guard', () => {
+  const errors = scanWorkflowSecurity(reviewedWorkflows());
+  assert.equal(drifted(errors), false);
+  assert.equal(unpinned(errors), false);
+});
+
+test('repointing a pinned action to another owner is caught by the baseline alone', () => {
+  const workflows = reviewedWorkflows();
+  const before = workflows['reusable-detect-changes.yml'];
+  const after = before.replace(/uses: dorny\//, 'uses: attacker/');
+  assert.notEqual(after, before, 'expected a pinned reference to mutate');
+  workflows['reusable-detect-changes.yml'] = after;
+
+  const errors = scanWorkflowSecurity(workflows);
+  assert.equal(drifted(errors), true);
+  assert.equal(unpinned(errors), false, 'still a full SHA, so the pin check is silent');
+});
+
+test('a structural edit touching no uses: line is caught by the baseline alone', () => {
+  const workflows = reviewedWorkflows();
+  workflows['reusable-detect-changes.yml'] += '      - run: echo pwned\n';
+
+  const errors = scanWorkflowSecurity(workflows);
+  assert.equal(drifted(errors), true);
+  assert.equal(unpinned(errors), false);
+});
+
+test('an unpinned action outside the reviewed set is caught by the pin check alone', () => {
+  const workflows = reviewedWorkflows();
+  workflows['unreviewed.yml'] = [
+    'name: Unreviewed',
+    'on: push',
+    'permissions:',
+    '  contents: read',
+    'jobs:',
+    '  build:',
+    '    runs-on: ubuntu-latest',
+    '    steps:',
+    '      - uses: actions/checkout@v4',
+    '',
+  ].join('\n');
+
+  const errors = scanWorkflowSecurity(workflows);
+  assert.equal(unpinned(errors), true);
+  assert.equal(drifted(errors), false, 'the baseline has no jurisdiction outside its 2 files');
 });

@@ -5503,6 +5503,188 @@ injected job → 1; restored → 0; repointed action → 1; final → 0. 17/17 u
 with a delay fuse. It passes review, passes CI, and passes every run until the bot's first edit —
 and the component that finally reports red is neither of the two controls that conflict.
 
+## Auditing my own guard pair with a coverage table
+
+PR #4214 claimed that what the pin-normalised baseline gives up is "still covered by
+`findMutableReferenceViolations`". That is a _they fail differently_ claim published without an
+input table — the same defect as reporting `0 violations` without a denominator. Both checks react
+to a `uses:` line, so redundancy was the null hypothesis and I had not tested it.
+
+Tabulated at the scan level, with both reviewed files present:
+
+| Input                                       | reviewed baseline | 40-hex pin check | separates? |
+| ------------------------------------------- | ----------------- | ---------------- | ---------- |
+| A control, as committed                     | —                 | —                | no         |
+| B pin rotation, same repo                   | —                 | —                | no         |
+| C repointed to `attacker/…`                 | **FIRES**         | —                | **yes**    |
+| D pin replaced by `@v4`                     | FIRES             | FIRES            | no         |
+| E structural edit, no `uses:` change        | **FIRES**         | —                | **yes**    |
+| F unpinned action in an unreviewed workflow | —                 | **FIRES**        | **yes**    |
+
+**Three separating inputs, in both directions.** C and E defeat the pin check; F defeats the
+baseline, because the baseline's domain is 2 files and the pin check's is all 31. So the pair
+_partitions_ — neither is decoration, and the #4214 claim holds as measured rather than asserted.
+Row B is the deadlock case, and both being silent on it is the fix working.
+
+Encoded as four tests (A, C, E, F), so the separation is maintained rather than observed once.
+Mutation-tested: dropping the normalisation kills 2, widening the elision to unpinned refs kills 1,
+dropping the `owner/repo` capture kills 4.
+
+### Three instrument bugs, and only one of them a control row could catch
+
+Building this table went wrong three times, in three different ways, and the pattern in _which_
+row noticed is the actual finding.
+
+1. **Over-matching predicate.** My first attempt passed `scanWorkflowSecurity` a map containing
+   only the file under test. The _other_ reviewed file was then absent, read as `''`, and drifted —
+   so the baseline column read `FIRES` on every row. **The control row caught this**, because a
+   known-negative that fires is a loud failure.
+2. **Under-matching predicate.** My drift predicate was `/reviewed reusable drifted/`; the code
+   emits `reviewed **local** reusable drifted`. It matched nothing, ever. **The control row passed
+   — vacuously.** So did row F's negative half. Only the positive rows C and E failed, and they are
+   the reason I looked.
+3. **A no-op input.** Row C mutated `uses: actions/` → `uses: attacker/`, but
+   `reusable-detect-changes.yml` references no `actions/*` at all; its only action is
+   `dorny/paths-filter`. The edit changed nothing. **An `assert.notEqual(after, before)` guard
+   caught it** — a line I added only because of the mutation-testing lesson below.
+
+The asymmetry is worth stating plainly: **a control row protects against a predicate that
+over-matches, never one that under-matches.** A control is a known negative, and a predicate that
+can never match satisfies every known negative perfectly. Both of my first two bugs produced a
+table; one was visibly wrong and one looked clean. Negative rows are load-bearing only in the
+presence of positive rows that share the same predicate.
+
+### A mutation that never applied looks exactly like a surviving mutant
+
+Mutation-testing this, my second mutation reported **0 failures** — apparently a coverage gap. It
+had not applied: I searched for `uses:\s*([^@\s]+)@[0-9a-f]{40}[^\n]*$` while the source reads
+`uses:\s*)([^@\s]+)@…`, one paren different, so `String.replace` matched nothing and I
+mutation-tested the unmutated file.
+
+**Mutation testing has no natural failure signal for the mutation itself.** A mutant that was never
+introduced and a mutant that survives are the same observation — `0 failures` — and the tooling
+reports them identically. Every other check in this document at least fails loudly when
+misconfigured. The remedy is one line: assert the edit landed before trusting the run, which is now
+done for all three mutations and, in row C, for the test input too.
+
+**Portable form:** verify the mutant exists before concluding anything from the suite that ran
+against it. An experiment that silently did nothing reports as a finding about the thing you were
+testing.
+
+## The globals drift the sibling reported, reproduced by accident and fixed at the class
+
+Writing the separation tests above needed `new URL(...)` to resolve a workflow path. ESLint failed
+with `'URL' is not defined`. That is the sibling session's report arriving unprompted: finance's
+`eslint.config.mjs` hand-listed **13** globals for its tooling files — `console`, `process`,
+`require`, `module`, `config`, `__dirname`, `__filename`, `Buffer`, `fetch`, `setTimeout`,
+`clearTimeout`, `setInterval`, `clearInterval` — and Node has long since moved past that list.
+
+Two properties make it worse than an ordinary omission:
+
+- **It is invisible to a rule-by-rule config diff.** The defect lives in `languageOptions`, not in
+  `rules`, so every comparison this document has published between finance's config and the shared
+  preset scored it zero. Selection and configuration are two comparisons.
+- **It surfaces only when the first file needing the global is written.** The list had been wrong
+  for as long as Node has shipped a global `URL`; nothing in the repo had used one in a tooling
+  file. The check was green because of a property of the inputs, not of the config — the same shape
+  as the `:path` suffix that made an earlier probe safe by accident.
+
+Fixed by sourcing from the runtime instead of restating it: `...globals.node` plus
+`config: 'readonly'`, which is a real local global for Kotlin/JS `webpack.config.d` and has **no
+Node equivalent**. Of the 13 hand-listed, **12 are in `globals.node` and only `config` is not**, so
+the spread is a strict superset apart from that one name. This makes the drift _unrepresentable_
+rather than merely corrected — the argument for the shared preset's `toolingFiles`, and a better
+argument than any rule comparison can produce, because the rules were never the difference.
+
+**`globals` was a phantom dependency.** It resolved only because ESLint pulls it transitively;
+importing it directly without declaring it is a build that works until an unrelated dependency bump
+hoists it away. Now declared in `devDependencies`.
+
+A measurement note on myself: I probed the transitive copy at `17.9.0`, then `npm install` resolved
+`^17.9.0` to **`17.11.0`**. My `URL`-is-present evidence was gathered against a version that is no
+longer the one installed, so I re-ran the probe against `17.11.0` (81 keys, `URL` present, `config`
+absent) before claiming anything. **A pre-install probe is evidence about the tree you had, not the
+tree you shipped** — the same staleness recorded twice already in this document, here at a
+two-minute interval rather than a two-week one.
+
+### The lock was wrong in a way `npm ci --dry-run` certified as fine
+
+Declaring `globals` broke CI on three jobs with
+`npm ci ... Missing: conventional-commits-parser@6.4.0 from lock file`. Three facts, in the order
+they mattered:
+
+- **My `node_modules` had drifted from `main`.** Dozens of merges had landed since it was last
+  installed, and `globals@17.9.0` was present locally while appearing **nowhere in `main`'s lock**.
+  Every `npm install --save-dev globals` I ran resolved against that drifted tree, so each
+  regenerated lock was wrong in a different way — one of them declaring `globals` in
+  `devDependencies` with **no `node_modules/globals` entry at all**, which is exactly the
+  inconsistency `npm ci` refuses.
+- **`npm ci --dry-run` returned exit 0 on that broken lock.** It is the check whose entire purpose
+  is lock integrity, and it passed the lock that CI then rejected. `eslint` and `prettier` passed
+  too, which is unsurprising — but the dry run is the one that claimed the relevant thing.
+- **The fix was to stop generating and start from a known tree.** `npm ci` against `main`'s lock
+  first (3 min, 731 packages), _then_ `npm install --save-dev globals` (1 package), then a real
+  `npm ci` to confirm (5 min, 732 packages, exit 0).
+
+**A lockfile is a statement about a tree, and you cannot amend it from a tree that has drifted.**
+The generated result is a function of local state that no diff displays, which is why three
+successive attempts produced three different wrong answers with no visible cause.
+
+The portable rule matches the mutation-testing one above: **the cheap check that models the
+expensive one is evidence about the model.** `--dry-run` is a simulated invocation, and this
+document has now recorded three separate occasions where a simulated invocation certified something
+the real command rejected.
+
+### The real cause: my npm is two majors ahead of CI's
+
+The lock kept failing CI because **`.nvmrc` pins Node 22 and CI runs npm 10, while this machine
+runs Node 24 / npm 11**. npm 11 _prunes_ an optional peer entry that npm 10 _requires_:
+`node_modules/git-raw-commits/node_modules/conventional-commits-parser@6.4.0`, marked
+`"optional": true, "peer": true`.
+
+So every regeneration produced a lock that was **correct for the npm that wrote it and invalid for
+the npm that reads it**. Four attempts, four rejections, with a local `npm ci` passing every time —
+because my local `npm ci` is npm 11.
+
+Two things this falsifies, both of which I had been treating as settled:
+
+- **"Verified with the real command" was not enough.** The earlier note in this document said the
+  fix for a bad simulation is to run what CI runs. I did: `npm ci`, twice, exit 0. The command was
+  right and the _runtime_ was wrong, which no amount of re-running locally would surface. Running
+  `npx npm@10 ci` reproduced CI's failure immediately and confirmed the fix (738 packages, exit 0).
+- **A lockfile is not a portable artifact.** It is a statement about a tree _as resolved by a
+  specific npm major_, and the repo pins the Node version precisely so everyone shares one. I was
+  outside that pin and nothing warned me — `.nvmrc` is advisory unless a version manager reads it.
+
+The fix was to stop regenerating and restore the pruned entry surgically, taking the exact object
+from `main`'s lock and re-inserting it at its original position. The diff against `main` is then
+**14 insertions, 0 deletions** — purely the `globals` addition, which is what the change was
+supposed to be.
+
+**Portable form: match the runtime, not just the command.** `.nvmrc` exists to make that
+checkable, and a pre-push check that compares `node --version` against it would have converted four
+CI round-trips into one local error. Recorded as a follow-up.
+
+## Destroying uncommitted work with a sync habit
+
+Between finishing the tests above and committing them, I ran `git reset --hard origin/main` to
+check sync state and lost every uncommitted change: the ESLint fix, the four tests, both doc
+sections. All were reconstructible from context, so the cost was time, not content.
+
+The command was not a mistake in isolation. It is recorded in this session's own operating notes as
+the way to sync — a habit formed over dozens of PRs where it ran against a **clean tree**, and
+correct every one of those times. Applied to a dirty tree it is a destructive operation with no
+confirmation and no undo, because uncommitted work is not in the reflog.
+
+**The invariant lived in the state of the tree, not in the command**, and nothing local would
+notice it changing — which is precisely the defect class this document has been cataloguing in
+`git rev-parse` guards, in the `:path` suffix, and in the globals list above. Having written that
+sentence three times about other people's code, I then shipped it as behaviour.
+
+The cheap remedy is `git stash --include-untracked` before any sync, or `git status --short` read
+_before_ rather than after. The durable one is the same rule as everywhere else: a command whose
+safety depends on an unstated precondition should state it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
