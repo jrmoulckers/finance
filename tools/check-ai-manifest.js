@@ -13,8 +13,18 @@ const ACTIVATION_DOC = 'docs/ai/README.md';
 // The stamp is delivered as a standalone comment on its own line. Matching it as a substring
 // cannot tell the delivered stamp from prose or a code span that quotes it — which the one
 // deliberately unstamped file is the most likely file to do — so match the delivered form.
+// Matches the delivered provenance stamp for either origin, in either comment syntax the
+// engine emits for it. The previous form matched one origin in one syntax
+// (`<!-- synced from jrmoulckers/.github ... -->`), which was the third of three independent
+// filters hiding the entire vendored token corpus from the coverage walk (#4204). Tokens
+// arrive from a different repository AND in block-comment syntax:
+//   .github  <!-- synced from jrmoulckers/.github — canonical source; do not edit here -->
+//   tokens   /* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */
+// Still line-anchored, for the original reason: matching as a substring cannot tell a
+// delivered stamp from prose or a code span quoting it, and the one deliberately unstamped
+// file is the likeliest to quote it.
 const PROVENANCE_LINE =
-  /^<!-- synced from jrmoulckers\/\.github — canonical source; do not edit here -->$/m;
+  /^(?:<!--|\/\*|#) (?:generated \+ )?synced from jrmoulckers\/[^\n]*?do not edit here(?: -->| \*\/)?$/m;
 const GENERATED_AGENTS = [
   'accessibility-reviewer',
   'ai-ops-engineer',
@@ -468,22 +478,88 @@ const MANAGED_BASES = [
 function verifyLockCoverage(lock) {
   const findings = [];
   const recorded = new Set(Object.keys(lock.entries || {}));
+  const seen = new Set();
   let stampedRecorded = 0;
-  for (const base of MANAGED_BASES) {
+  let stampedRecordedNonMarkdown = 0;
+  for (const base of coverageRoots(recorded)) {
     for (const file of walkFiles(path.join(ROOT, base))) {
       const relPath = path.relative(ROOT, file).split(path.sep).join('/');
-      if (!/\.mdx?$/.test(relPath)) continue;
-      if (!PROVENANCE_LINE.test(fs.readFileSync(file, 'utf8'))) continue;
-      if (recorded.has(relPath)) stampedRecorded += 1;
-      else findings.push(`carries canonical provenance but is not a lock entry: ${relPath}`);
+      // Roots may nest -- the lock contributes `.github`, which contains every MANAGED_BASES
+      // entry -- so a file is reachable by more than one root and would otherwise be counted
+      // and reported once per root. The suite's stamped-unrecorded control caught this
+      // immediately as `2 !== 1`, which is what that control is for.
+      if (seen.has(relPath)) continue;
+      seen.add(relPath);
+      const text = readTextForStamp(file);
+      if (text === null) continue;
+      if (!PROVENANCE_LINE.test(text)) continue;
+      if (recorded.has(relPath)) {
+        stampedRecorded += 1;
+        if (!/\.mdx?$/.test(relPath)) stampedRecordedNonMarkdown += 1;
+      } else {
+        findings.push(`carries canonical provenance but is not a lock entry: ${relPath}`);
+      }
     }
   }
-  // Premise guard: if nothing stamped is recorded, the walk is not reaching managed files and
-  // a clean result means the check stopped observing, not that coverage is complete.
+  // Premise guard, now two-sided. The first clause is the original: nothing observed means the
+  // walk stopped reaching managed files, and a clean result reports that as complete coverage.
+  // The second exists because this check spent its whole life blind to every non-Markdown
+  // entry -- 23 of 81, the vendored token corpus -- behind three filters that were each a
+  // provable no-op when removed alone (#4204). Only the conjunction was load-bearing, so no
+  // single-variable audit could find it. This clause fails if the walk regresses to Markdown.
   if (stampedRecorded === 0) {
     findings.push('lock-coverage walk found no recorded canonical file — check is not observing');
+  } else if (stampedRecordedNonMarkdown === 0) {
+    findings.push(
+      'lock-coverage walk observed only Markdown — the non-Markdown corpus is unobserved (#4204)',
+    );
   }
   return findings;
+}
+
+// Roots are derived from the lock rather than hand-listed, so the walk follows the engine when
+// it delivers somewhere new instead of silently declining to look. MANAGED_BASES stays in the
+// union: those directories must be walked even when nothing in them is recorded yet, which is
+// the only state in which an unrecorded stamped file is the interesting finding.
+function coverageRoots(recorded) {
+  const roots = new Set(MANAGED_BASES);
+  for (const entry of recorded) {
+    const top = entry.split('/')[0];
+    if (top && top !== entry) roots.add(top);
+  }
+  return [...roots];
+}
+
+// Reads a file only if it is plausibly a stamped text file. The size cap keeps a large
+// generated artifact from being read on every run, and anything undecodable or unreadable is
+// dropped rather than allowed to throw from inside the walk.
+//
+// Size and content are taken through ONE descriptor: `statSync` followed by `readFileSync`
+// checks one path and then reads it again, so the file can change between the two calls
+// (js/file-system-race, flagged by CodeQL on this function's first version). That is not
+// hypothetical here -- this walk runs over a tree the sync engine writes, so a run overlapping
+// a sync is exactly the case. `fstatSync` on an open descriptor measures the object already
+// held, and the subsequent reads come from the same object.
+const STAMP_READ_LIMIT = 512 * 1024;
+function readTextForStamp(file) {
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const { size } = fs.fstatSync(fd);
+    if (size > STAMP_READ_LIMIT) return null;
+    const buffer = Buffer.allocUnsafe(size);
+    let offset = 0;
+    while (offset < size) {
+      const read = fs.readSync(fd, buffer, offset, size - offset, offset);
+      if (read === 0) break;
+      offset += read;
+    }
+    return buffer.subarray(0, offset).toString('utf8');
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
 }
 
 function walkFiles(dir) {
@@ -791,6 +867,7 @@ if (require.main === module) {
 
 module.exports = {
   toLF,
+  PROVENANCE_LINE,
   managedRegion,
   managedDigest,
   verifyLockCoverage,
