@@ -2964,7 +2964,14 @@ more honest lower claim.
 
 A broadcast to seven repositories mixes fleet-wide findings with per-repo actions, and the
 addressee of "yours to action" is decided by the reader. Both items addressed to finance this
-round were measured before being recorded.
+
+> **Correction (2026-08-12).** Upstream has since retracted the routing: the pnpm and `secrets:`
+> items were another repository's findings, mis-sent here. The paragraph above treats them as
+> "addressed to finance", which was the reasonable reading and was wrong. The measurements stand —
+> finance is npm either way — but the framing should have been _unattributed_, not _ours_. Note
+> that the ambiguity was visible before the retraction and was recorded as a shape rather than
+> resolved as a question; asking would have cost one message.
+> round were measured before being recorded.
 
 **pnpm `auditConfig` relocation — not applicable.** The report is that pnpm 11.10.0 stops reading
 `pnpm.auditConfig` from `package.json`, dropping suppressions silently with an unchanged exit
@@ -3002,6 +3009,118 @@ exposure is a slower failure rather than a missed one.
 The general form is worth keeping: **a lint-style count of a missing flag is not a finding until
 the call sites are read**, because the flag may be absent for the reason that the code does
 something better. 16 of 18 would have been a confident and wrong number.
+
+### The blocker was never owner-side, and the evidence for it was void
+
+For the whole of this adoption, one item has been recorded as blocking: an owner grant of
+`read:packages` on the three `@jrmoulckers/*` packages. The evidence was `npm view` returning
+`E401`, reproduced many times. Upstream independently agreed, and wrote that "the wall is
+visibility rather than token scope." Both of us were wrong, and the error was measurable here at
+any point.
+
+Upstream's note that `gh` reports on the identity actually in effect prompted the check:
+
+| Credential source        | Active  | Scopes                                                              |
+| ------------------------ | ------- | ------------------------------------------------------------------- |
+| `GH_TOKEN` (environment) | **yes** | `gist`, `project`, `read:org`, `repo`, `user`, `workflow`           |
+| keyring                  | no      | `admin:public_key`, `gist`, `read:org`, **`read:packages`**, `repo` |
+
+Two credentials, the same username, differing on exactly the scope in question — and the one
+without it wins, because an environment `GH_TOKEN` outranks the keyring.
+
+The second half is worse. `.npmrc` in this repository is one line:
+
+```ini
+@jrmoulckers:registry=https://npm.pkg.github.com
+```
+
+A registry, and **no `_authToken` at all**, with no user-level `.npmrc` either. So every `npm
+view` this session ran **anonymously** against a registry that requires authentication for reads.
+The `E401` was not evidence about a grant, a scope, or a visibility setting. It was the registry
+correctly reporting that nobody had presented a credential.
+
+Supplying the keyring token, which has the scope:
+
+| Package                        | Result | Published  |
+| ------------------------------ | ------ | ---------- |
+| `@jrmoulckers/eslint-config`   | exit 0 | **0.15.0** |
+| `@jrmoulckers/tsconfig`        | exit 0 | **0.4.0**  |
+| `@jrmoulckers/prettier-config` | exit 0 | **0.4.0**  |
+
+All three resolve. These are the **first registry-verified version numbers in this document**;
+every other version recorded here was quoted from a message.
+
+**The honest limit of this result.** The identity that succeeded is the org owner's, so it does
+not establish that an arbitrary member can read the packages. What it does establish is that the
+`E401` never tested that question, and therefore that nothing in the blocker's evidence supported
+the blocker. A pending owner action and an absent local credential produce the same `E401`, and
+this session spent its entire duration reading one as the other.
+
+The generalisation is the sharpest available form of a theme running through this whole document.
+Earlier entries establish that a _green_ result can certify nothing — wrong scope, stale binary,
+no invocation, no enforcement. This is the same defect on the red side: **a failing check is not
+evidence of the failure it names.** `E401` names authorisation, and three distinct conditions
+produce it — no credential, an under-scoped credential, and a genuine denial. Only the third was
+ever recorded, and it was the one that was not happening.
+
+And it inverts the reporting relationship. The blocker was escalated _upstream_, to an owner, for
+action; it was resolvable _locally_ the entire time, by the party reporting it. A blocker attached
+to someone else's authority is the least likely of all blockers to be re-tested, because the
+reporter has defined the fix as not theirs.
+
+### Three claims settle now that the registry is readable
+
+**The React gap is closed.** The opening brief for this adoption listed the preset's subpaths as
+`./base`, `./svelte`, `./next`, and the first finding recorded here was that a React consumer had
+no entry point — flagged as a gap for the engineering repo to fill rather than to work around.
+`@jrmoulckers/eslint-config@0.15.0` declares six exports:
+
+```json
+".", "./base", "./svelte", "./react", "./next", "./ignores"
+```
+
+`./react` exists and ships `react.js`, `react-layer.js` and `hooks.js`. The gap is closed, and it
+is closed _in the registry_, which is the only place the question could ever have been settled.
+
+**The TypeScript peer range is satisfied, and finance's recorded compiler version was stale.**
+The published peer is `typescript: ">=5.5.0 <6.1.0"`. finance runs **6.0.3** — not the 5.9.3 this
+repository's own notes still assert — and `semver.satisfies` returns true. The long-running peer
+disagreement is resolved by measurement rather than by either party conceding.
+
+**`allowImportingTsExtensions` is genuinely absent from the shared base, and is not finance's
+exposure.** Upstream warned that the base is not a superset and that a consumer verifying
+adoption as "0 lost / 0 gained" may have checked only the ESLint side. The option is absent, and
+finance does not use it. The warning is right and the named option is the wrong one here — which
+is worth stating, because a reader who checks only the named option concludes there is no
+exposure, and there is.
+
+### What finance would actually lose to `@jrmoulckers/tsconfig`, measured
+
+finance has exactly **one** `tsconfig.json`, at `apps/web/`. Resolving the shared
+`vite-react.json` chain — `vite-react` → `vite-app` → `base` — gives the first real delta.
+
+**Silently lost unless re-declared:**
+
+| Option               | finance                                                   | shared            | Consequence                                                                             |
+| -------------------- | --------------------------------------------------------- | ----------------- | --------------------------------------------------------------------------------------- |
+| `types`              | `["node", "vitest/globals", "@testing-library/jest-dom"]` | `["vite/client"]` | `types` is **replaced, not merged** — test globals and jest-dom matchers stop resolving |
+| `baseUrl` / `paths`  | `"."` / `@/* -> src/*`                                    | absent            | every `@/` import fails to resolve                                                      |
+| `ignoreDeprecations` | `"6.0"`                                                   | absent            | required on TypeScript 6.0.3                                                            |
+
+The `types` row is the concrete form of upstream's warning. It is more dangerous than a missing
+compiler flag because the failure is not a config error — it surfaces as thousands of unrelated
+"cannot find name" diagnostics in test files, which reads as a broken test setup rather than as a
+config regression, and points debugging away from the change that caused it.
+
+**Newly gained (all error-producing, none previously counted):** `moduleDetection: force`,
+`verbatimModuleSyntax`, `noUncheckedIndexedAccess`, `noImplicitOverride`,
+`noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `useDefineForClassFields`,
+`allowJs` + **`checkJs`** — the last of which newly type-checks finance's 42 `.js` files — plus a
+`target`/`lib` move from ES2022 to ES2023.
+
+This does not change the standing decision to defer the tsconfig adoption on cost. It does change
+its basis from an estimated finding count to an enumerated list of three losses and ten gains,
+and it means the deferral is now a decision rather than a guess.
 
 ## Worth hoisting up
 
