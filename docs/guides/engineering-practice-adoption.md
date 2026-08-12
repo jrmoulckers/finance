@@ -573,9 +573,17 @@ than the registry, and `tsconfig` is deferred on its own evidence, not on access
 
    | Package                        | Range             | Note                                                    |
    | ------------------------------ | ----------------- | ------------------------------------------------------- |
-   | `@jrmoulckers/eslint-config`   | `>=0.12.0 <1.0.0` | plus three plugins in `devDependencies`, see below      |
+   | `@jrmoulckers/eslint-config`   | `>=0.13.0 <1.0.0` | plus three plugins in `devDependencies`, see below      |
    | `@jrmoulckers/tsconfig`        | `>=0.4.0 <1.0.0`  | registry channel; not installed here — deferred on cost |
    | `@jrmoulckers/prettier-config` | `>=0.3.0 <1.0.0`  | registry channel; vendored here by ref + lock instead   |
+
+   Re-read 2026-08-12: `eslint-config` had moved to **`0.13.0`** while this table still said
+   `0.12.0`. Worth being precise about the severity, because it is not the caret failure upstream
+   warns about. `>=0.12.0 <1.0.0` **already resolved `0.13.0`** — a correct lower-bound range
+   degrades gracefully and keeps installing new releases, where `^0.12.0` would have silently
+   excluded them. What went stale was the printed floor, which claims a currency it no longer has,
+   not the dependency itself. The two failure modes deserve different urgency and the caret warning
+   should not be read as covering both.
 
    The React preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s
    reversal to `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on
@@ -2071,6 +2079,20 @@ assertion that neither was published. Nothing evaluated the pair.
 
 Finance-invented, generic, and absent from the shared layers:
 
+- **A currency check must compare the artifact, not the version label.** `vendor-configs.mjs`
+  reported "pinned at `v0.15.7`; newest release is `v0.77.0`" — 62 releases, which reads as
+  seriously stale. Both vendored files are **byte-identical at both refs**, and identical at every
+  ref from `v0.5.0` through `main`; the last real change was the `proseWrap` reversal finance itself
+  argued for. Ref distance is not artifact distance whenever the vendored subset changes less often
+  than the repository is tagged, which is the normal case for a config package. The notice now
+  compares the SHA-256 the lock already records and distinguishes "newer tag, no diff" from "newer
+  tag, these N files differ". This matters for the same asymmetry reason as an un-failable
+  guardrail: a notice that is a false alarm 62 times trains the reader to skip the one time it is
+  real, so a signal nobody reads and one that never fires fail identically. Both directions are
+  controlled — `v0.2.0` reports both files as differing, `v0.5.0`/`v0.77.0`/`main` report identical.
+
+  Generic to any vendor-by-ref scheme, so it belongs in `jrmoulckers/.github` rather than here.
+
 - **The skip-with-success required-check pattern** — a path-filtered required check never
   reports status, leaving PRs permanently `BLOCKED`; gate inside the workflow instead. Generic
   Actions knowledge, so it belongs in `jrmoulckers/.github`.
@@ -2263,3 +2285,40 @@ find package 'prettier'` — resolution, not assertion — and the worktree had 
   variable empty by accident, whereas `|| echo ""` makes the empty result the explicit value being
   assigned. Same green build, but the second states the intent that a clean repository is a valid
   outcome rather than a suppressed error.
+
+  **Correction, measured.** The clause "under `pipefail`" above was wrong about the mechanism, and
+  the conclusion survives it. A `grep` whose no-match is the **last** command in the pipeline fails
+  under plain `-e` too, because the assignment takes the exit status of the last command in the
+  substitution — `pipefail` is not what catches that case. Measured, all four combinations:
+
+  | Pipeline shape                                       | `bash -e` | `bash -eo pipefail` |
+  | ---------------------------------------------------- | --------- | ------------------- |
+  | last command fails (`… \| grep -v`, no match)        | 1         | 1                   |
+  | **early fails, last always succeeds** (`… \| wc -l`) | **0**     | **1**               |
+  | finance's `echo "$HITS" \| wc -l`                    | 0         | 0                   |
+  | the shipped `\|\| echo ""` guard                     | 0         | 0                   |
+
+  So the hazard is a pipeline **ending in a command that always succeeds** — `wc -l`, `head`,
+  `sort`, `tee`. Those report success under GitHub's default shell and start failing the moment
+  someone adds `shell: bash`, which GitHub expands to `bash --noprofile --norc -eo pipefail`.
+  Adding that line looks like a formatting preference and is a semantic change to error handling.
+
+  finance's own `COUNT=$(echo "$HITS" | wc -l)` is that exact shape and is safe **only** because
+  `echo` cannot fail. It is one substituted command away from the failing form.
+
+- **A live instance of it, found by applying the corrected rule.** `ci-windows.yml` declares
+  `shell: bash` and ran `MSI=$(find … -name '*.msi' 2>/dev/null | head -1)`. `find` exits 1 when
+  the build produced no output directory; `head` still exits 0; `pipefail` propagates the 1 and
+  `-e` aborts the step at the assignment. The step is `if: always()` — so it runs **because** the
+  build failed, which is precisely when the directory is absent. Reproduced: dir absent under
+  pipefail, step exits 1 and nothing after that line executes; under the default shell, exit 0.
+  With `|| true`, exit 0 and `MSI` empty; with a real MSI present the guard changes nothing.
+
+  Fixed, plus three latent instances of the same shape that are safe today only because their
+  steps do not declare `shell: bash` — `ci-android.yml` (`find … .apk | head -1`) and two in
+  `ci-ios.yml` (`.profdata`, `.xctest`). Guarding them now means adding `shell: bash` later cannot
+  quietly convert them into the live case.
+
+  The generalisable part is the same asymmetry as the required-check finding, one layer down: the
+  guard is missing **exactly on the runs the step exists for**. A summary step that reports build
+  failures had a failure mode reachable only on failed builds, so every green run confirmed it.

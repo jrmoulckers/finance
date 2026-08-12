@@ -160,12 +160,57 @@ async function check() {
 
   const latest = await latestRef();
   if (latest && latest !== lock.ref) {
-    process.stdout.write(
-      `\nNotice: pinned at ${lock.ref}; newest release is ${latest}.\n` +
-        `This is not a failure. Update deliberately when you choose to:\n` +
-        `  node scripts/vendor-configs.mjs ${latest}\n`,
-    );
+    // A newer tag is not the same claim as newer content, and conflating the two
+    // makes this notice a false alarm most of the time. Measured on 2026-08-12:
+    // pinned v0.15.7 vs newest v0.77.0 — 62 releases apart, and both vendored
+    // files byte-identical. Ref distance is not artifact distance, because these
+    // two files change far less often than the repository is tagged. A notice
+    // that cries wolf 62 times trains the reader to skip the one time it matters,
+    // which is the same asymmetry that makes a guardrail unable to go red: a
+    // signal nobody reads is indistinguishable from one that never fires. So
+    // compare the bytes the lock already records, and say which case this is.
+    const drifted = await changedFilesAt(latest, lock);
+    if (drifted === null) {
+      process.stdout.write(
+        `\nNotice: pinned at ${lock.ref}; newest release is ${latest}.\n` +
+          `Could not compare content at ${latest}; treating as no signal.\n`,
+      );
+    } else if (drifted.length === 0) {
+      process.stdout.write(
+        `\nNotice: pinned at ${lock.ref}; newest release is ${latest}, ` +
+          `but all ${entries.length} vendored file(s) are byte-identical there.\n` +
+          `No action needed — refreshing the ref would produce no diff.\n`,
+      );
+    } else {
+      process.stdout.write(
+        `\nNotice: pinned at ${lock.ref}; newest release is ${latest}, ` +
+          `and ${drifted.length} vendored file(s) differ there:\n` +
+          drifted.map((f) => `  ${f}\n`).join('') +
+          `This is not a failure. Update deliberately when you choose to:\n` +
+          `  node scripts/vendor-configs.mjs ${latest}\n`,
+      );
+    }
   }
+}
+
+/**
+ * Which vendored files actually differ at `ref`, by the same SHA-256 the lock
+ * records. Returns null if any fetch fails, so an offline runner reports "no
+ * signal" rather than a wrong answer in either direction.
+ */
+async function changedFilesAt(ref, lock) {
+  const changed = [];
+  for (const [dest, entry] of Object.entries(lock.files)) {
+    let text;
+    try {
+      text = await fetchFile(ref, entry.source);
+    } catch {
+      return null;
+    }
+    if (text === null || text === undefined) return null;
+    if (sha256(text) !== entry.sha256) changed.push(dest);
+  }
+  return changed;
 }
 
 /**
