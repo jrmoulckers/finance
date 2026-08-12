@@ -27,6 +27,8 @@ const {
   commentFamily,
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
+  exemptionMatches,
+  sourceDisclosureLines,
   DOC_FILES,
   scanDoc,
   scanDocs,
@@ -433,6 +435,67 @@ test('the exemption self-liquidates: it is a finding once the entry reproduces a
     result.findings.some((f) => f.includes('stale reproduction exemption')),
     `a tolerance outliving its defect must announce itself, got ${JSON.stringify(result.findings)}`,
   );
+});
+
+// --- #4222: the conjunct no test could vary -----------------------------------------------
+//
+// `exemptionMatches` is a conjunction over two hashes. Both existing tests above vary only the
+// RECORDED half, because the digest half is computed from the delivered bytes of the one file
+// this repo must not modify. So the mutant that deleted `known.reproduces === digest` left the
+// suite 37/37 green -- under a test named "pinned to both hashes". The guard that went unpinned
+// was the guard on the file I am forbidden to touch, and the inaccessibility is the reason.
+//
+// Answering the decision from arguments makes all four quadrants reachable without the bytes.
+
+test('the exemption matches on both hashes, exercised in all four quadrants', () => {
+  const known = KNOWN_UNREPRODUCED[KNOWN_ENTRY];
+  const other = 'b'.repeat(64);
+  assert.notEqual(known.recorded, other, 'PREMISE: the wrong value must really differ');
+  assert.notEqual(known.reproduces, other, 'PREMISE: the wrong value must really differ');
+
+  assert.equal(
+    exemptionMatches(KNOWN_ENTRY, known.recorded, known.reproduces),
+    true,
+    'the exact pinned state must be absorbed',
+  );
+  // The quadrant no in-place test could reach: the record still reads as the pinned corruption
+  // while the BYTES have become something else. That is a second, different corruption of this
+  // path -- exactly what KNOWN_UNREPRODUCED promises not to inherit.
+  assert.equal(
+    exemptionMatches(KNOWN_ENTRY, known.recorded, other),
+    false,
+    'a second corruption of the same path must not inherit the exemption',
+  );
+  assert.equal(
+    exemptionMatches(KNOWN_ENTRY, other, known.reproduces),
+    false,
+    'a record the exemption does not name must not be absorbed',
+  );
+  assert.equal(exemptionMatches(KNOWN_ENTRY, other, other), false);
+});
+
+test('the exemption is pinned to a path, and generalises to none', () => {
+  const known = KNOWN_UNREPRODUCED[KNOWN_ENTRY];
+  assert.equal(
+    exemptionMatches('vendor/@jrm/tokens/js/index.js', known.recorded, known.reproduces),
+    false,
+    'an unnamed path must not borrow the pinned hashes',
+  );
+});
+
+test('the disclosure names every path and never collapses to a count', () => {
+  // The prose at KNOWN_UNREPRODUCED promises "listing each path means the set cannot grow
+  // unnoticed, which is the property a bare count lacks". As a loop inside main() that promise
+  // was unreachable by any test, and emptying it left the suite green (#4222).
+  const lines = sourceDisclosureLines(Object.keys(KNOWN_UNREPRODUCED));
+  assert.equal(lines.length, Object.keys(KNOWN_UNREPRODUCED).length, 'one line per exemption');
+  for (const entry of Object.keys(KNOWN_UNREPRODUCED)) {
+    assert.ok(
+      lines.some((l) => l.includes(entry) && l.includes(KNOWN_UNREPRODUCED[entry].issue)),
+      `every exemption must be disclosed by path and issue; ${entry} was not`,
+    );
+  }
+  assert.deepEqual(sourceDisclosureLines([]), [], 'no exemptions discloses nothing, not a zero');
 });
 
 test('an entry stating no source hash is named rather than silently skipped', () => {
