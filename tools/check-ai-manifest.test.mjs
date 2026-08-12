@@ -20,6 +20,9 @@ const {
   managedRegion,
   managedDigest,
   verifyLockCoverage,
+  lockCoverage,
+  WALK_SKIP,
+  PROVENANCE_HINT,
   unstampSource,
   commentFamily,
   verifySourceReproduction,
@@ -530,4 +533,155 @@ test('inspected counts documents actually read, not documents declared', () => {
   assert.deepEqual(scan.missing, ['docs/does-not-exist-4212.md']);
   assert.equal(scan.declared, 2);
   assert.equal(scan.inspected, 1);
+});
+
+// --- #4217: the walk must reach the population the claim covers -------------------------------
+//
+// verifyLockCoverage claims something repo-wide -- no stamped file anywhere is missing from the
+// lock -- while deriving its walk roots FROM the lock. So a stamped file could only be found in a
+// directory the lock already mentioned, and an unrecorded engine write is by definition the case
+// where it does not. 14 of 16 top-level directories were never entered, and the three root-level
+// managed files were structurally unreachable via `top !== entry`.
+//
+// Nothing asked, because the numerator was large: 65 stamped files reads as thorough. A zero
+// invites the question a 65 closes.
+
+test('the walk reaches every recorded target that exists on disk', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const coverage = lockCoverage(lock);
+  // Before #4217 this was 65 of 68: .gitattributes, AGENTS.md and agency.toml sit at the repo
+  // root, and `if (top && top !== entry)` excluded exactly the entries with no directory part.
+  assert.equal(
+    coverage.visitedRecorded,
+    coverage.recordedPresent,
+    'every recorded target present on disk must be visited by the walk',
+  );
+  assert.ok(coverage.recordedPresent > 0, 'PREMISE: some recorded target exists on disk');
+});
+
+test('a recorded target the walk cannot reach is reported as unvisited', () => {
+  // DISCLOSURE: the test above asserts the conservation property but does not exercise the
+  // guard -- today every recorded target IS visited, so disabling the guard changed nothing and
+  // the mutant survived. A property that happens to hold is not a pinned guard. This constructs
+  // the state the guard exists for: a recorded entry that is present on disk and structurally
+  // outside the walk, by putting it behind a WALK_SKIP directory.
+  // Must be a real directory: in a git worktree `.git` is a FILE, so existsSync alone picks a
+  // name that cannot hold a probe. The predicate has to match the thing the walk skips.
+  const skipped = [...WALK_SKIP].find((name) => {
+    const candidate = path.join(ROOT, name);
+    return fs.existsSync(candidate) && fs.statSync(candidate).isDirectory();
+  });
+  assert.ok(skipped, 'PREMISE: at least one excluded directory exists to hide a file behind');
+  const rel = `${skipped}/__unvisited_probe_4217__.md`;
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  try {
+    // Deliberately unstamped: the finding under test is about reach, not about provenance.
+    fs.writeFileSync(path.join(ROOT, rel), '# probe\n');
+    lock.entries[rel] = { sourceSha256: 'x', targetSha256: 'y', syncedAt: '1970-01-01T00:00:00Z' };
+    const coverage = lockCoverage(lock);
+    assert.ok(
+      coverage.findings.some((f) => f.includes('never visited') && f.includes(rel)),
+      `an unreachable recorded target must be named; got ${JSON.stringify(coverage.findings.slice(0, 3))}`,
+    );
+    assert.ok(
+      coverage.visitedRecorded < coverage.recordedPresent,
+      'the reported numerator must fall short of the population it claims to cover',
+    );
+  } finally {
+    fs.rmSync(path.join(ROOT, rel), { force: true });
+  }
+});
+
+test('root-level managed files are inside the walk', () => {
+  // The three that were unreachable. Named individually rather than counted, so that losing one
+  // is a failure rather than a smaller number.
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const rootLevel = Object.keys(lock.entries).filter((entry) => !entry.includes('/'));
+  assert.ok(rootLevel.length > 0, 'PREMISE: the lock records root-level entries');
+  const stray = path.join(ROOT, '__coverage_root_probe_4217__.md');
+  try {
+    fs.writeFileSync(
+      stray,
+      '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->\n\n# probe\n',
+    );
+    const findings = verifyLockCoverage(lock);
+    assert.ok(
+      findings.some((f) => f.includes('__coverage_root_probe_4217__')),
+      `a stamped file at the repo root must be reported; got ${JSON.stringify(findings.slice(0, 3))}`,
+    );
+  } finally {
+    fs.rmSync(stray, { force: true });
+  }
+  assert.deepEqual(verifyLockCoverage(lock), [], 'probe must leave no residue');
+});
+
+test('a stamped file in a directory the lock never mentions is caught', () => {
+  // The defect itself. `apps/` holds no lock entry, so the old lock-derived roots could not
+  // reach it -- and `apps/web/vendor/@jrm/tokens` is where this repo's tokens actually lived
+  // until the repo-root migration, so a regressed delivery lands exactly here.
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  assert.ok(
+    !Object.keys(lock.entries).some((entry) => entry.startsWith('apps/')),
+    'PREMISE: no lock entry lives under apps/, so only a repo-wide walk reaches it',
+  );
+  const dir = path.join(ROOT, 'apps', '__coverage_probe_4217__');
+  const file = path.join(dir, 'stray.css');
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      file,
+      '/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */\n\na{}\n',
+    );
+    const findings = verifyLockCoverage(lock);
+    assert.ok(
+      findings.some((f) => f.includes('__coverage_probe_4217__')),
+      `a stamped file under apps/ must be reported; got ${JSON.stringify(findings.slice(0, 3))}`,
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  assert.deepEqual(verifyLockCoverage(lock), [], 'probe must leave no residue');
+});
+
+test('the prescreen is implied by the pattern, not an independent guess', () => {
+  // The prescreen exists for cost: without it the repo-wide walk runs a multiline regex over
+  // ~44 MB. A filter is exactly what hid the token corpus for the life of this check (#4204),
+  // so it is admissible ONLY because every string the regex accepts contains the literal. This
+  // asserts that relation over all delivered stamp forms rather than trusting the reading.
+  const delivered = [
+    '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->',
+    '/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */',
+    '# synced from jrmoulckers/.github — canonical source; do not edit here',
+    '<!-- generated + synced from jrmoulckers/studio — do not edit here -->',
+  ];
+  for (const stamp of delivered) {
+    assert.ok(PROVENANCE_LINE.test(stamp), `PREMISE: pattern must accept ${stamp.slice(0, 24)}`);
+    assert.ok(
+      stamp.includes(PROVENANCE_HINT),
+      `prescreen would reject a stamp the pattern accepts: ${stamp}`,
+    );
+  }
+  // And the relation must hold structurally, not only on these four samples.
+  assert.ok(
+    PROVENANCE_LINE.source.includes('synced from jrmoulckers'),
+    'the pattern must mandate the prescreen literal',
+  );
+});
+
+test('the walk names its exclusions rather than dropping them silently', () => {
+  // WALK_SKIP is a filter over the walked population and therefore has to be stated. This does
+  // not assert the list is correct -- it asserts it is finite, declared, and cannot quietly
+  // grow to include a directory the engine delivers into.
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const tops = new Set(
+    Object.keys(lock.entries)
+      .map((entry) => entry.split('/')[0])
+      .filter((top) => top),
+  );
+  for (const skipped of WALK_SKIP) {
+    assert.ok(
+      !tops.has(skipped),
+      `WALK_SKIP excludes a directory the lock delivers into: ${skipped}`,
+    );
+  }
 });

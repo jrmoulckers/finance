@@ -25,6 +25,19 @@ const ACTIVATION_DOC = 'docs/ai/README.md';
 // file is the likeliest to quote it.
 const PROVENANCE_LINE =
   /^(?:<!--|\/\*|#) (?:generated \+ )?synced from jrmoulckers\/[^\n]*?do not edit here(?: -->| \*\/)?$/m;
+// A substring the regex above cannot match without. Used only as a fast prescreen before the
+// line-anchored test, which is the expensive part over a repo-wide walk: without it the walk
+// runs a multiline regex over ~44 MB and takes ~59s; with it the regex sees only the ~68 files
+// that contain the literal, and the walk costs ~4s.
+//
+// This is a filter, and filters are precisely what hid the token corpus for the life of this
+// check (#4204). It is safe only because it is *implied by* the pattern rather than an
+// independent guess about the corpus -- every string PROVENANCE_LINE accepts contains it by
+// construction -- and there is a test asserting exactly that, over all delivered stamp forms.
+// A prefix-read optimization was considered and rejected for failing this standard: the largest
+// stamp offset in this repo is 37,605 bytes, in AGENTS.md, so any plausible prefix window would
+// have silently dropped one of the three files this issue exists to reach.
+const PROVENANCE_HINT = 'synced from jrmoulckers/';
 const GENERATED_AGENTS = [
   'accessibility-reviewer',
   'ai-ops-engineer',
@@ -428,7 +441,18 @@ function validateSyncLock() {
   }
 
   findings.push(...verifyManagedContent(lock));
-  findings.push(...verifyLockCoverage(lock));
+  const coverage = lockCoverage(lock);
+  findings.push(...coverage.findings);
+  // The walk's breadth is stated, not implied. The claim this check makes is repo-wide -- no
+  // stamped file anywhere is missing from the lock -- so the number of files it actually
+  // entered belongs next to it. A large stamped count reads as thorough and is exactly what
+  // stopped anyone asking which directories were never entered (#4217).
+  process.stdout.write(
+    `  [coverage] walked ${coverage.walked} file(s); ` +
+      `${coverage.visitedRecorded} of ${coverage.recordedPresent} present recorded targets visited` +
+      (coverage.skipped ? `; ${coverage.skipped} unreadable or past the size cap` : '') +
+      '\n',
+  );
   const source = verifySourceReproduction(lock);
   findings.push(...source.findings);
   const total = source.reproduced + source.unreproduced.length + source.knownUnreproduced.length;
@@ -514,13 +538,10 @@ function managedDigest(text) {
 // Counts alone cannot catch this: they count lock entries, not files.
 const PENDING_SYNC = /(^|\/)vendor\/@jrm\/tokens\//;
 
-// Bases whose contents the sync engine may own. Used only to bound the coverage walk below.
-const MANAGED_BASES = [
-  '.github/agents',
-  '.github/skills',
-  '.github/prompts',
-  '.github/instructions',
-];
+// The engine's own delivered bases, kept only as documentation of what it owns. The coverage
+// walk no longer bounds itself by them (#4217): deriving roots from the lock made the check
+// blind exactly where it was interesting, and all four bases live under `.github`, a directory
+// the lock already supplied, so the union contributed nothing it did not already have.
 
 // The inverse of verifyManagedContent: that asks "entry present, is the file there?", this
 // asks "file present, is it recorded?". A lock-iterating check cannot reach a canon target
@@ -538,38 +559,74 @@ const MANAGED_BASES = [
 // inventory, which the lock does not record (it stores only version/backbone/generatedAt/
 // entries). Two such files are known today, reported as .github#669; closing that axis needs
 // the backbone at runtime, the owner-gated question in #4141.
-function verifyLockCoverage(lock) {
+// Directories the coverage walk does not enter. Named explicitly and reported, because an
+// unnamed exclusion is how this check spent its whole life blind (#4204, #4217). None of these
+// can hold an engine-written file: the sync engine writes only to paths it records in the lock,
+// and no lock entry has ever named one of them.
+const WALK_SKIP = new Set([
+  '.git',
+  'node_modules',
+  '.gradle',
+  'build',
+  'dist',
+  '.turbo',
+  '.next',
+  'coverage',
+]);
+
+// Reports what the walk saw as well as what it objected to. `verifyLockCoverage` keeps the
+// findings-only signature every existing test uses; `main` reads the counts so the passing
+// summary carries its own measurement rather than asserting coverage it never states.
+function lockCoverage(lock) {
   const findings = [];
   const recorded = new Set(Object.keys(lock.entries || {}));
   const seen = new Set();
+  let walked = 0;
+  let skipped = 0;
   let stampedRecorded = 0;
   let stampedRecordedNonMarkdown = 0;
-  for (const base of coverageRoots(recorded)) {
-    for (const file of walkFiles(path.join(ROOT, base))) {
-      const relPath = path.relative(ROOT, file).split(path.sep).join('/');
-      // Roots may nest -- the lock contributes `.github`, which contains every MANAGED_BASES
-      // entry -- so a file is reachable by more than one root and would otherwise be counted
-      // and reported once per root. The suite's stamped-unrecorded control caught this
-      // immediately as `2 !== 1`, which is what that control is for.
-      if (seen.has(relPath)) continue;
-      seen.add(relPath);
-      const text = readTextForStamp(file);
-      if (text === null) continue;
-      if (!PROVENANCE_LINE.test(text)) continue;
-      if (recorded.has(relPath)) {
-        stampedRecorded += 1;
-        if (!/\.mdx?$/.test(relPath)) stampedRecordedNonMarkdown += 1;
-      } else {
-        findings.push(`carries canonical provenance but is not a lock entry: ${relPath}`);
-      }
+  for (const file of walkFiles(ROOT)) {
+    const relPath = path.relative(ROOT, file).split(path.sep).join('/');
+    if (seen.has(relPath)) continue;
+    seen.add(relPath);
+    walked += 1;
+    const text = readTextForStamp(file);
+    if (text === null) {
+      skipped += 1;
+      continue;
+    }
+    if (!text.includes(PROVENANCE_HINT)) continue;
+    if (!PROVENANCE_LINE.test(text)) continue;
+    if (recorded.has(relPath)) {
+      stampedRecorded += 1;
+      if (!/\.mdx?$/.test(relPath)) stampedRecordedNonMarkdown += 1;
+    } else {
+      findings.push(`carries canonical provenance but is not a lock entry: ${relPath}`);
     }
   }
-  // Premise guard, now two-sided. The first clause is the original: nothing observed means the
-  // walk stopped reaching managed files, and a clean result reports that as complete coverage.
-  // The second exists because this check spent its whole life blind to every non-Markdown
-  // entry -- 23 of 81, the vendored token corpus -- behind three filters that were each a
-  // provable no-op when removed alone (#4204). Only the conjunction was load-bearing, so no
-  // single-variable audit could find it. This clause fails if the walk regresses to Markdown.
+
+  // Conservation, and the clause that would have caught #4217. The walk previously derived its
+  // roots from the lock -- `entry.split('/')[0]`, guarded by `top !== entry` -- so the three
+  // root-level managed files (.gitattributes, AGENTS.md, agency.toml) were structurally
+  // unreachable, and 14 of this repo's 16 top-level directories were never entered at all. The
+  // claim is repo-wide ("no stamped file is unrecorded") while the walk covered two directories,
+  // and the numerator concealed it: 65 stamped files reads as thorough, so nothing invited the
+  // question that a 0 would have. Asserting that the walk REACHES every recorded target that
+  // exists on disk is the property; a count of what it happened to find is not.
+  const recordedPresent = [...recorded].filter((entry) => fs.existsSync(path.join(ROOT, entry)));
+  const unvisited = recordedPresent.filter((entry) => !seen.has(entry));
+  if (unvisited.length) {
+    findings.push(
+      `lock-coverage walk never visited ${unvisited.length} recorded target(s) that exist on ` +
+        `disk: ${unvisited.slice(0, 5).join(', ')}${unvisited.length > 5 ? ', …' : ''}`,
+    );
+  }
+
+  // Premise guard, two-sided. The first clause is the original: nothing observed means the walk
+  // stopped reaching managed files, and a clean result reports that as complete coverage. The
+  // second exists because this check spent its whole life blind to every non-Markdown entry --
+  // 23 of 81, the vendored token corpus -- behind three filters that were each a provable no-op
+  // when removed alone (#4204). Only the conjunction was load-bearing.
   if (stampedRecorded === 0) {
     findings.push('lock-coverage walk found no recorded canonical file — check is not observing');
   } else if (stampedRecordedNonMarkdown === 0) {
@@ -577,20 +634,18 @@ function verifyLockCoverage(lock) {
       'lock-coverage walk observed only Markdown — the non-Markdown corpus is unobserved (#4204)',
     );
   }
-  return findings;
+  return {
+    findings,
+    walked,
+    skipped,
+    stampedRecorded,
+    recordedPresent: recordedPresent.length,
+    visitedRecorded: recordedPresent.length - unvisited.length,
+  };
 }
 
-// Roots are derived from the lock rather than hand-listed, so the walk follows the engine when
-// it delivers somewhere new instead of silently declining to look. MANAGED_BASES stays in the
-// union: those directories must be walked even when nothing in them is recorded yet, which is
-// the only state in which an unrecorded stamped file is the interesting finding.
-function coverageRoots(recorded) {
-  const roots = new Set(MANAGED_BASES);
-  for (const entry of recorded) {
-    const top = entry.split('/')[0];
-    if (top && top !== entry) roots.add(top);
-  }
-  return [...roots];
+function verifyLockCoverage(lock) {
+  return lockCoverage(lock).findings;
 }
 
 // Reads a file only if it is plausibly a stamped text file. The size cap keeps a large
@@ -628,6 +683,7 @@ function readTextForStamp(file) {
 function walkFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((item) => {
+    if (WALK_SKIP.has(item.name)) return [];
     const full = path.join(dir, item.name);
     return item.isDirectory() ? walkFiles(full) : [full];
   });
@@ -1008,6 +1064,7 @@ if (require.main === module) {
 module.exports = {
   toLF,
   PROVENANCE_LINE,
+  PROVENANCE_HINT,
   DOC_FILES,
   METRICS,
   scanDoc,
@@ -1016,6 +1073,8 @@ module.exports = {
   managedRegion,
   managedDigest,
   verifyLockCoverage,
+  lockCoverage,
+  WALK_SKIP,
   unstampSource,
   commentFamily,
   verifySourceReproduction,
