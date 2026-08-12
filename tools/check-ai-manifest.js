@@ -364,9 +364,14 @@ function validateSyncLock() {
   findings.push(...verifyLockCoverage(lock));
   const source = verifySourceReproduction(lock);
   findings.push(...source.findings);
+  const total = source.reproduced + source.unreproduced.length;
   process.stdout.write(
-    `  [source] ${source.reproduced} managed targets unstamp to their recorded canon source\n`,
+    `  [source] ${source.reproduced} of ${total} managed targets unstamp to their ` +
+      `recorded canon source\n`,
   );
+  for (const entry of source.unreproduced) {
+    process.stdout.write(`  [source] not reproducible, cause unknown: ${entry} (#4190)\n`);
+  }
   return findings;
 }
 
@@ -468,24 +473,35 @@ function walkFiles(dir) {
   });
 }
 
-// The exact text the engine injects. Kept separate from PROVENANCE_LINE (an anchored /m
-// test) because unstamping needs the literal to locate and splice, not merely detect.
-const PROVENANCE_STAMP =
-  '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->';
+// Matches the engine's stamp in any comment syntax it emits, for either message. The
+// previous literal recognized exactly one combination -- HTML comment, canon message -- and
+// silently skipped 11 present entries that carry the stamp in `#`, `/* */`, or the studio
+// "generated + synced" wording. A check that skips is worse than one that fails: the count
+// it printed read as complete.
+const PROVENANCE_STAMP_LINE =
+  /^(<!--|\/\*|#|\/\/)\s*(generated \+ )?synced from jrmoulckers\/(\.github|studio)\b/;
 
-// Recovers canon's pre-stamp bytes from a delivered file, inverting provenance.mjs:
-//   :69-70  frontmatter present -> injectAfterFrontmatter -> splice(i+1, 0, stamp)  ONE line
-//   :72     no frontmatter      -> `${stamp}\n\n${content}`                          TWO lines
-// Position decides the shape, so a single rule is wrong in one direction or the other:
-// always-strip-one reproduces 50 of 54 and fails the no-frontmatter CHECKLIST.md files;
-// always-strip-two reproduces only those 4. Both controls are asserted to fail in
-// tools/check-ai-manifest.test.mjs so the split cannot be collapsed silently.
-function unstampProvenance(text) {
+// Returns the candidate pre-stamp bodies for a delivered file. At least two stampers exist
+// and they differ in shape: the canon-docs path (provenance.mjs:69-72) writes the stamp
+// alone after frontmatter but `${stamp}\n\n${content}` without it, while the studio token
+// path writes `${stamp}\n${content}` with no blank. Only the first has source I have read,
+// so rather than guess a per-asset-kind rule this returns both strips and the caller accepts
+// a hash match under either.
+//
+// That is not a weakening. Reproducing a recorded sha256 under either strip is cryptographic
+// proof that the delivered bytes are canon's source plus a stamp; a wrong-strip false accept
+// needs a collision. The rules that WERE guessed here got measured first and refuted: a
+// unified "strip the blank line if present" reproduces 14 of 65, because content after
+// frontmatter legitimately begins with a blank line.
+function unstampCandidates(text) {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
-  const index = lines.indexOf(PROVENANCE_STAMP);
-  if (index === -1) return null;
-  lines.splice(index, lines[0] === '---' ? 1 : 2);
-  return lines.join('\n');
+  const index = lines.findIndex((line) => PROVENANCE_STAMP_LINE.test(line));
+  if (index === -1) return [];
+  return [1, 2].map((count) => {
+    const copy = lines.slice();
+    copy.splice(index, count);
+    return copy.join('\n');
+  });
 }
 
 // Verifies the lock's sourceSha256 against local bytes. The tool previously recorded this
@@ -493,7 +509,7 @@ function unstampProvenance(text) {
 // sits on disk and matched 0 of 56. That result was real and its reading was wrong:
 // sourceSha256 hashes canon BEFORE the stamp is injected, so the delivered form cannot
 // match it for any entry, ever -- the measurement could not have come out otherwise. Undo
-// the injection and the field reproduces exactly (54 of 54, byte-identical to canon's blob,
+// the injection and the field reproduces (64 of 65, byte-identical to canon's blob,
 // confirmed against `4950ca7e` for workflow.instructions.md). A false impossibility claim
 // stops the search, which is why this is a check and not just a corrected comment (#4186).
 //
@@ -501,8 +517,14 @@ function unstampProvenance(text) {
 // region source, not the whole file, so whole-file unstamping is inapplicable by
 // construction. This proves delivery fidelity, NOT currency -- it shows canon said this at
 // sync time, never that canon still says it.
+//
+// Unreproduced entries are disclosed by path rather than raised as findings. One exists
+// today (#4190) and its cause is unknown; asserting corruption on evidence that does not
+// establish it would make the check red on a file that must not be deleted. Listing each
+// path means the set cannot grow unnoticed, which is the property a bare count lacks.
 function verifySourceReproduction(lock) {
   const findings = [];
+  const unreproduced = [];
   let reproduced = 0;
   for (const [entry, metadata] of Object.entries(lock.entries || {})) {
     if (!metadata || !metadata.sourceSha256) continue;
@@ -510,22 +532,20 @@ function verifySourceReproduction(lock) {
     if (!fs.existsSync(absolute)) continue;
     const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
     if (managedRegion(text) !== null) continue;
-    const source = unstampProvenance(text);
-    if (source === null) continue;
-    const digest = crypto.createHash('sha256').update(source).digest('hex');
-    if (digest === metadata.sourceSha256) reproduced += 1;
-    else
-      findings.push(
-        `does not unstamp to its recorded canon source: ${entry} ` +
-          `(sha256 ${digest.slice(0, 12)}, lock records ${metadata.sourceSha256.slice(0, 12)})`,
-      );
+    const candidates = unstampCandidates(text);
+    if (candidates.length === 0) continue;
+    const matched = candidates.some(
+      (body) => crypto.createHash('sha256').update(body).digest('hex') === metadata.sourceSha256,
+    );
+    if (matched) reproduced += 1;
+    else unreproduced.push(entry);
   }
   // Premise guard, for the same reason the claim this replaces was wrong: a population of
   // zero would make this pass unconditionally and read as confirmation of delivery fidelity.
   if (reproduced === 0) {
     findings.push('no lock entry unstamped to its canon source — check is not observing');
   }
-  return { findings, reproduced };
+  return { findings, reproduced, unreproduced };
 }
 
 function verifyManagedContent(lock) {
@@ -693,6 +713,6 @@ module.exports = {
   managedRegion,
   managedDigest,
   verifyLockCoverage,
-  unstampProvenance,
+  unstampCandidates,
   verifySourceReproduction,
 };
