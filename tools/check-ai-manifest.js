@@ -361,6 +361,7 @@ function validateSyncLock() {
   }
 
   findings.push(...verifyManagedContent(lock));
+  findings.push(...verifyLockCoverage(lock));
   return findings;
 }
 
@@ -398,13 +399,69 @@ function managedDigest(text) {
   return crypto.createHash('sha256').update(payload).digest('hex');
 }
 
-// Absence is tolerated only for the vendored token outputs still awaiting the repo-root
-// Absence is tolerated only for the vendored token outputs still awaiting the repo-root
-// sync (see #4169). Deriving the tolerance from that path rather than pinning a count
-// means it shrinks to zero on its own when the sync lands, and any other missing managed
-// target -- a deleted skill, prompt, instruction, or root doc -- is reported rather than
-// silently skipped. Counts alone cannot catch this: they count lock entries, not files.
+// Absence is tolerated only under the vendored-token base. The repo-root sync itself has
+// already run (the lock's generatedAt is that run's output); these paths are absent because
+// the frozen copies were deliberately deleted in #4066/#4076 so the next run repopulates
+// them. Absence is the one state the engine's local-modification guard does not block --
+// copier.mjs:248 plans `add` unconditionally for a missing path -- so the tolerance
+// self-discharges on the next successful run. Deriving it from the path rather than pinning
+// a count is what makes that automatic, and any other missing managed target -- a deleted
+// skill, prompt, instruction, or root doc -- is reported rather than silently skipped.
+// Counts alone cannot catch this: they count lock entries, not files.
 const PENDING_SYNC = /(^|\/)vendor\/@jrm\/tokens\//;
+
+// Bases whose contents the sync engine may own. Used only to bound the coverage walk below.
+const MANAGED_BASES = [
+  '.github/agents',
+  '.github/skills',
+  '.github/prompts',
+  '.github/instructions',
+];
+
+// The inverse of verifyManagedContent: that asks "entry present, is the file there?", this
+// asks "file present, is it recorded?". A lock-iterating check cannot reach a canon target
+// that never became an entry, and the engine can produce one -- copier.mjs:94 leaves the lock
+// untouched on drift, so a member file that already differed from canon at first sync is
+// never recorded and is thereafter invisible to every check either side runs.
+//
+// Only the STAMPED case is decidable here, and it is decidable exactly: the engine writes the
+// provenance line, so a stamped file with no entry means engine-written but unrecorded.
+// Baseline is 0 and there is no exemption list.
+//
+// The unstamped case is NOT decidable member-side and this check does not claim it. A canon
+// target that drifted before it was ever synced carries no stamp -- the engine never wrote it
+// -- so it is indistinguishable from a legitimately Finance-authored file without canon's
+// inventory, which the lock does not record (it stores only version/backbone/generatedAt/
+// entries). Two such files are known today, reported as .github#669; closing that axis needs
+// the backbone at runtime, the owner-gated question in #4141.
+function verifyLockCoverage(lock) {
+  const findings = [];
+  const recorded = new Set(Object.keys(lock.entries || {}));
+  let stampedRecorded = 0;
+  for (const base of MANAGED_BASES) {
+    for (const file of walkFiles(path.join(ROOT, base))) {
+      const relPath = path.relative(ROOT, file).split(path.sep).join('/');
+      if (!/\.mdx?$/.test(relPath)) continue;
+      if (!PROVENANCE_LINE.test(fs.readFileSync(file, 'utf8'))) continue;
+      if (recorded.has(relPath)) stampedRecorded += 1;
+      else findings.push(`carries canonical provenance but is not a lock entry: ${relPath}`);
+    }
+  }
+  // Premise guard: if nothing stamped is recorded, the walk is not reaching managed files and
+  // a clean result means the check stopped observing, not that coverage is complete.
+  if (stampedRecorded === 0) {
+    findings.push('lock-coverage walk found no recorded canonical file — check is not observing');
+  }
+  return findings;
+}
+
+function walkFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((item) => {
+    const full = path.join(dir, item.name);
+    return item.isDirectory() ? walkFiles(full) : [full];
+  });
+}
 
 function verifyManagedContent(lock) {
   const findings = [];
@@ -568,4 +625,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { managedRegion, managedDigest };
+module.exports = { managedRegion, managedDigest, verifyLockCoverage };
