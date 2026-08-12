@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  deadEventConjunct,
   extractJob,
   findDeadEventGuards,
   findInheritingJobs,
@@ -10,6 +11,38 @@ import {
   pureEventDisjunction,
   scanWorkflowSecurity,
 } from './check-workflow-security.mjs';
+
+test('findDeadEventGuards decides conjunctions that a pure disjunction cannot', () => {
+  const workflow = `
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  report:
+    if: \${{ always() && github.event_name == 'pull_request' && needs.build.outputs.ok == 'true' }}
+    steps:
+      - run: echo hi
+`;
+
+  const violations = findDeadEventGuards('ci-web.yml', workflow);
+  assert.equal(violations.length, 1);
+  assert.match(violations[0], /requires event 'pull_request'/);
+});
+
+test('deadEventConjunct ignores an undeclared event inside a parenthesised disjunction', () => {
+  // '(a || b) && c' is satisfiable via b even when a is unreachable, so this
+  // is not decidable by conjunct analysis and must not be reported.
+  const expression =
+    "(github.event_name == 'schedule' || github.event_name == 'push') && needs.x.outputs.y";
+  assert.equal(deadEventConjunct(expression, ['push']), null);
+  // A bare top-level conjunct naming an undeclared event is decidable.
+  assert.equal(
+    deadEventConjunct("github.event_name == 'schedule' && needs.x", ['push']),
+    'schedule',
+  );
+  // Negation is never decided.
+  assert.equal(deadEventConjunct("github.event_name != 'schedule' && needs.x", ['push']), null);
+});
 
 test('findDeadEventGuards flags a guard no declared trigger can satisfy', () => {
   const workflow = `

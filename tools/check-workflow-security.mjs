@@ -293,6 +293,58 @@ export function pureEventDisjunction(expression) {
 }
 
 /**
+ * Splits an expression on top-level `&&`, ignoring operators nested in parens.
+ *
+ * A quoted string containing `&&` could mis-split, but the failure mode is
+ * one-directional: the fragments then fail the strict conjunct pattern below
+ * and the guard is left undecided. This parser can under-decide, never
+ * over-report.
+ */
+function topLevelConjuncts(expression) {
+  const parts = [];
+  let depth = 0;
+  let current = '';
+  for (let index = 0; index < expression.length; index += 1) {
+    const character = expression[index];
+    if (character === '(') depth += 1;
+    if (character === ')') depth -= 1;
+    if (depth === 0 && expression.startsWith('&&', index)) {
+      parts.push(current);
+      current = '';
+      index += 1;
+      continue;
+    }
+    current += character;
+  }
+  parts.push(current);
+  return parts;
+}
+
+/**
+ * Returns the event a guard requires but no trigger can deliver, or null.
+ *
+ * `pureEventDisjunction` decides only guards made entirely of `||` terms, which
+ * is 6 of finance's 42 non-reusable `event_name` guards. This covers a second
+ * decidable class: if any top-level conjunct is `github.event_name == '<event>'`
+ * and no trigger declares that event, the conjunct is permanently false, so the
+ * whole conjunction is — regardless of what the other operands do. That is what
+ * makes the case decidable without evaluating `needs.*` or `always()`.
+ */
+export function deadEventConjunct(expression, triggers) {
+  if (typeof expression !== 'string' || !expression.includes('event_name')) return null;
+  const normalized = expression
+    .replace(/\$\{\{/g, ' ')
+    .replace(/\}\}/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  for (const conjunct of topLevelConjuncts(normalized)) {
+    const match = /^\s*github\.event_name\s*==\s*'([a-z_]+)'\s*$/.exec(conjunct);
+    if (match && !triggers.includes(match[1])) return match[1];
+  }
+  return null;
+}
+
+/**
  * Reports job and step guards that no declared trigger can satisfy.
  *
  * Such a guard is not merely conditional — it is permanently false, so the job
@@ -325,11 +377,21 @@ export function findDeadEventGuards(file, workflow) {
   const violations = [];
   const inspect = (where, expression) => {
     const events = pureEventDisjunction(expression);
-    if (!events || events.some((event) => triggers.includes(event))) return;
-    violations.push(
-      `${where} is guarded on ${events.map((event) => `'${event}'`).join('/')}, ` +
-        `which no declared trigger (${triggers.join(', ')}) can satisfy — it can never run`,
-    );
+    if (events) {
+      if (events.some((event) => triggers.includes(event))) return;
+      violations.push(
+        `${where} is guarded on ${events.map((event) => `'${event}'`).join('/')}, ` +
+          `which no declared trigger (${triggers.join(', ')}) can satisfy — it can never run`,
+      );
+      return;
+    }
+    const dead = deadEventConjunct(expression, triggers);
+    if (dead) {
+      violations.push(
+        `${where} requires event '${dead}', which no declared trigger ` +
+          `(${triggers.join(', ')}) can satisfy — the guard can never be true`,
+      );
+    }
   };
 
   for (const [jobId, job] of Object.entries(document.jobs ?? {})) {
