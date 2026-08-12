@@ -12,6 +12,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 const {
@@ -28,6 +29,10 @@ const {
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
   CANON_CITATIONS,
+  METRICS,
+  HELP_TEXT,
+  EXPECTED_AGENTS,
+  MANAGED_COUNTS,
   citationFindings,
   exemptionMatches,
   sourceDisclosureLines,
@@ -37,6 +42,7 @@ const {
   countCoverageFindings,
 } = require('./check-ai-manifest.js');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const TOOL = path.join(ROOT, 'tools', 'check-ai-manifest.js');
 
 const sha = (text) => crypto.createHash('sha256').update(text).digest('hex');
 const wrap = (body) => `<!-- studio:base:start -->\n${body}<!-- studio:base:end -->\n`;
@@ -560,6 +566,75 @@ test('every registered citation names a symbol this file actually mentions', () 
       `CANON_CITATIONS names ${row.symbol}, but no comment in this file cites it`,
     );
   }
+});
+
+// --- #4230: the tool's own advertisement was outside every arm it advertises ---------------
+
+// Mirrors scanDoc's normalization so these assertions test the METRIC rules rather than a
+// second, divergent copy of the matching logic.
+function metricHits(text) {
+  const normalized = text.replace(/[*`_]+/g, ' ');
+  const hits = [];
+  for (const metric of METRICS) {
+    metric.regex.lastIndex = 0;
+    let match;
+    while ((match = metric.regex.exec(normalized)) !== null) {
+      hits.push(`${metric.label}=${match[1]}`);
+    }
+  }
+  return hits;
+}
+//
+// `--help` claimed a "23-agent roster" and an "81-entry inventory" as hard-coded literals, in a
+// file absent from DOC_FILES, written in a compound-adjective form that matches no METRIC. Three
+// independent reasons the count arm could never read the sentence that advertises the count arm.
+
+test('the help text derives its counts instead of transcribing them', () => {
+  const claims = [...HELP_TEXT.matchAll(/(\d+)-(agent|entry)/g)];
+  assert.equal(claims.length, 2, 'PREMISE: both advertised counts are present to be checked');
+  const byNoun = Object.fromEntries(claims.map((c) => [c[2], Number(c[1])]));
+  assert.equal(byNoun.agent, EXPECTED_AGENTS.length, 'help agent count must track the roster');
+  assert.equal(byNoun.entry, MANAGED_COUNTS.total, 'help entry count must track the lock total');
+});
+
+test('a compound-adjective count claim is a claim, not an invisible one', () => {
+  // The evasion #4212 named for `twenty-three agents`, in the form a copy editor produces by
+  // accident. Both spellings must reach the same metric or the arm certifies text it never read.
+  const hyphen = metricHits('the exact 23-agent activated roster');
+  const spaced = metricHits('the exact 23 agents activated roster');
+  assert.deepEqual(hyphen, ['agents=23'], 'hyphenated form must be detected');
+  assert.deepEqual(spaced, ['agents=23'], 'spaced form must still be detected');
+});
+
+test('closing the hyphen gap widened matching only where a digit precedes the noun', () => {
+  // A separator class is blunt, so the cost is measured rather than assumed. `multi-agent` has
+  // no digit and stays prose; `2019-agent-era` newly matches and is the accepted false positive
+  // -- a spurious finding a human clears, which is the safe polarity for this arm. `v2 agents`
+  // matched under the old `\s+` rule too, so it is not evidence about this change either way.
+  assert.deepEqual(metricHits('multi-agent orchestration across the fleet'), []);
+  assert.deepEqual(metricHits('agents-of-change tooling'), []);
+  assert.deepEqual(metricHits('see the 2019-agent-era notes'), ['agents=2019']);
+});
+
+test('the corpus yields the claims it yielded before, not merely more than zero', () => {
+  // The existing observation guard asserts claimCount > 0. Changing COUNT_GAP from `\s+` to
+  // `[-\s]` dropped AGENTS.md's skills claim -- 4 became 3 -- and every one of 47 tests passed,
+  // because a guard armed against the empty corpus is blind at n=3. Pinning the cardinality is
+  // what makes a silently narrowed regex fail here instead of in the report nobody re-reads.
+  const counts = { agents: 23, skills: 20, instructions: 5, mcpServers: 0, prompts: 8 };
+  const total = DOC_FILES.reduce((sum, doc) => sum + scanDoc(doc, counts).findings.length, 0);
+  assert.equal(total, 4, 'the declared corpus carries four count claims');
+});
+
+test('--help reaches this tool, rather than exiting inside a require', () => {
+  // HELP_TEXT was unreachable: ai-manifest.js called process.exit(0) at module scope whenever
+  // --help appeared in argv, so requiring it killed the process at line 7 and the drift checker
+  // printed the GENERATOR's help. No count arm could read the sentence because no one could see
+  // it. Asserted by execution, since the defect was in reachability, not content.
+  const out = execFileSync(process.execPath, [TOOL, '--help'], { encoding: 'utf8' });
+  assert.match(out, /AI Manifest Drift Check/, 'must print this tool, not the generator');
+  assert.doesNotMatch(out, /AI Manifest Generator/, 'a required module must not answer --help');
+  assert.equal(out, HELP_TEXT, 'the printed help is the constant the derivation test pins');
 });
 
 test('an entry stating no source hash is named rather than silently skipped', () => {

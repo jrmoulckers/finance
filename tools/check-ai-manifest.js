@@ -82,8 +82,11 @@ const MANAGED_COUNTS = {
   total: 81,
 };
 
-if (args.includes('--help') || args.includes('-h')) {
-  process.stdout.write(`
+// The tool's own advertisement of what it checks. Both counts are interpolated rather than
+// transcribed, because a hand-written number here decays exactly when the surface it describes
+// changes -- and this file is not in DOC_FILES, so the count arm it advertises never read it.
+// Correctness by construction; the test then pins that the construction is still a derivation.
+const HELP_TEXT = `
 AI Manifest Drift Check — Finance monorepo
 
 Usage:
@@ -91,34 +94,53 @@ Usage:
   node tools/check-ai-manifest.js --strict   # blocking (exit 1 on drift)
   STRICT=1 node tools/check-ai-manifest.js   # blocking (exit 1 on drift)
 
-Validates filesystem counts, the exact 23-agent activated roster, generated
+Validates filesystem counts, the exact ${EXPECTED_AGENTS.length}-agent activated roster, generated
 provenance, the sole local finance-domain agent, retired-role absence, canonical
-runtime documentation, and the 81-entry Studio sync inventory.
-`);
+runtime documentation, and the ${MANAGED_COUNTS.total}-entry Studio sync inventory.
+`;
+
+if (args.includes('--help') || args.includes('-h')) {
+  process.stdout.write(HELP_TEXT);
   process.exit(0);
 }
 
 const DOC_FILES = ['docs/ai/README.md', 'docs/INDEX.md', 'AGENTS.md'];
+// `<n>-agent roster` is a count claim and reads as one, but `\s` does not match the hyphen, so
+// the compound-adjective form matched no METRIC and was certified unread -- the same evasion
+// #4212 documented for `twenty-three agents`, in the form a copy editor produces by accident
+// rather than on purpose. The separator admits either spelling.
+//
+// It is `\s+|-`, NOT `[-\s]`. The bare class drops the `+` that the original `\s+` carried and
+// silently stops matching a claim separated by more than one space -- which is what a re-wrapped
+// logical line produces. That spelling passed all 47 tests and removed a real claim from the
+// report; the corpus claim count is asserted below precisely because the suite did not notice.
+const COUNT_GAP = '(?:\\s+|-)';
 const METRICS = [
   {
     key: 'agents',
     label: 'agents',
-    regex: /(\d+)\s+(?:AI\s+|active\s+|custom\s+|copilot\s+|total\s+|defined\s+)*agents?\b/gi,
+    regex: new RegExp(
+      `(\\d+)${COUNT_GAP}(?:AI${COUNT_GAP}|active${COUNT_GAP}|custom${COUNT_GAP}|copilot${COUNT_GAP}|total${COUNT_GAP}|defined${COUNT_GAP})*agents?\\b`,
+      'gi',
+    ),
   },
   {
     key: 'skills',
     label: 'skills',
-    regex: /(\d+)\s+(?:reusable\s+|domain\s+|agent\s+|total\s+)*skills?\b/gi,
+    regex: new RegExp(
+      `(\\d+)${COUNT_GAP}(?:reusable${COUNT_GAP}|domain${COUNT_GAP}|agent${COUNT_GAP}|total${COUNT_GAP})*skills?\\b`,
+      'gi',
+    ),
   },
   {
     key: 'instructions',
     label: 'instructions',
-    regex: /(\d+)\s+(?:instruction\s+files?|instructions?)\b/gi,
+    regex: new RegExp(`(\\d+)${COUNT_GAP}(?:instruction${COUNT_GAP}files?|instructions?)\\b`, 'gi'),
   },
   {
     key: 'mcpServers',
     label: 'MCP servers',
-    regex: /(\d+)\s+MCP\s+servers?\b/gi,
+    regex: new RegExp(`(\\d+)${COUNT_GAP}MCP${COUNT_GAP}servers?\\b`, 'gi'),
   },
 ];
 
@@ -1170,6 +1192,9 @@ module.exports = {
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
   CANON_CITATIONS,
+  HELP_TEXT,
+  EXPECTED_AGENTS,
+  MANAGED_COUNTS,
   citationFindings,
   BARE_COORDINATE,
   exemptionMatches,

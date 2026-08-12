@@ -35,7 +35,12 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 
-if (args.includes('--help') || args.includes('-h')) {
+// `require.main === module` is load-bearing, not decoration. This block calls process.exit at
+// module scope, so without the guard `require('./ai-manifest.js')` terminates the REQUIRING
+// process whenever `--help` is anywhere in argv -- which is why `check-ai-manifest.js --help`
+// printed this generator's help and never its own. The same idiom already guards run() below;
+// it was applied to the main block and not to the earlier exit.
+if (require.main === module && (args.includes('--help') || args.includes('-h'))) {
   process.stdout.write(`
 AI Manifest Generator — Finance monorepo
 
