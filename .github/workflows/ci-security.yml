@@ -525,6 +525,17 @@ jobs:
       - name: ESLint
         run: npx eslint . --max-warnings 0
 
+      # Always-on ENG-* citation gate. The eng-citations job in ci-lint.yml
+      # runs this too, but that job is not a required context, so a red result
+      # there cannot block a merge. Running it here puts it behind the single
+      # check branch protection requires.
+      #
+      # The wrapper blocks on a citation defect (exit 1) but only warns when
+      # the upstream index is unreachable (exit 2), so an outage in another
+      # repository cannot block every merge in finance.
+      - name: ENG citation check
+        run: node scripts/eng-citations-gate.mjs
+
       # Always-on text-encoding gate (#4090). U+FFFD in a committed file means a
       # character was already lost before the bytes arrived; mojibake is valid
       # UTF-8, so only a byte-level scan detects it.

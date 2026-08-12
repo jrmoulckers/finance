@@ -2559,6 +2559,134 @@ One thing deliberately not repeated: the peer also reported the adjacency check 
 `v0.66.0`. `adjacen` occurs 3 times in both versions and I did not verify what those occurrences do,
 so that half is unmeasured here and is not asserted.
 
+### Enforcement is a fourth link, and finance's was broken
+
+A peer repository found its citation gate correct in scope, correct in content, and **wired into no
+CI job at all** — defined, invoked by nothing. It proposed the chain: scope, binary version, and
+invocation are each silent on failure, and a green result is compatible with any link being broken.
+
+Turning that on finance found a fourth link the chain does not name.
+
+**Invocation here is sound, and I checked it by observation rather than by reading YAML.** On PR
+#4146 the job ran, in 14 seconds, and its log reports numbers identical to the local run:
+
+```
+132 citation(s) across 39 principle(s) in 806 file(s); all IDs exist, and 42 stated name(s) match.
+```
+
+That equality matters beyond invocation: a soft-failed index fetch would have exited 2, and a
+partial index would have changed the principle count. Matching numbers are evidence the fetch
+genuinely resolved.
+
+**Then the link that was broken.** `ENG Citations` is not in `main`'s required contexts:
+
+```
+ESLint & Prettier, Secret Detection, CodeQL Analysis (javascript-typescript),
+CodeQL Analysis (java-kotlin), Build, Build & Test, Required Checks Gatekeeper
+```
+
+Nor is it aggregated by `Required Checks Gatekeeper`, which lives in a different workflow file and
+so cannot reach it through `needs:`. **The gate ran, was correct, and could not block anything.**
+
+This is worth stating precisely, because it is close to something already claimed here and is not
+the same claim. When the gate shipped, this guide recorded that both its failure modes had been
+_proven to fail_. That was true. **Proving a check can fail is not proving a failure blocks** —
+they are different links, and the first is the one that feels like diligence.
+
+#### The fix, and why it is not simply "make it required"
+
+Adding a required context is a branch-protection change and human-gated. But finance already built
+the mechanism for exactly this problem: the gatekeeper is the one required check, and it
+independently re-runs lint and format precisely because the path-filtered workflow that owns them
+may be skipped. The citation check now runs there too — a workflow change, not a settings change.
+
+That introduces a hazard the existing gatekeeper steps do not have: every prior step is local, and
+this one fetches an index from another repository. Making a required check depend on an external
+fetch means an upstream outage blocks every merge in finance.
+
+The checker already draws the distinction needed to avoid that, and it is measured, not assumed:
+
+| Condition                                | Exit  |
+| ---------------------------------------- | ----- |
+| Citation names an ID that does not exist | **1** |
+| Upstream index unreachable               | **2** |
+
+So the step blocks on 1 and warns on 2. A local defect is finance's problem and must stop the
+merge; an upstream incident is not, and must not.
+
+The policy lives in `scripts/eng-citations-gate.mjs` rather than inline shell, so the three cases can
+be executed locally instead of argued about. All three were:
+
+| Case                                              | Gate exit                   | Effect        |
+| ------------------------------------------------- | --------------------------- | ------------- |
+| Clean tree                                        | 0                           | merge allowed |
+| A tracked file citing an ID absent from the index | **1**                       | merge blocked |
+| Index URL 404s                                    | **0**, with a `::warning::` | merge allowed |
+
+Two assumptions underneath were also tested rather than reasoned about:
+
+- **The exit codes are distinguishable at all.** Wrappers commonly normalise a child's status to 1,
+  which would collapse both cases into "blocking" and couple finance's merge queue to upstream
+  availability. Measured: the checker exits **2** on an unreachable index and **1** on a bogus ID,
+  and `spawnSync` reports both faithfully. An unanticipated code falls through to blocking, which is
+  the safe direction for a gate.
+- **No credential is involved.** The existing job passes no token and the index resolves anonymously
+  in CI, so the gatekeeper behaves identically. Had a token been required and absent, the step would
+  have exited 2 and warned green forever — which is this document's recurring failure, and it would
+  have been introduced by the commit that added the guard against it.
+
+### Three local validators passed a workflow file GitHub rejected
+
+The first attempt at the step above put the exit-code policy in an inline shell block. It was
+committed, pushed, and **broke `ci-security.yml` outright**: GitHub reported `Invalid workflow file
+... You have an error in your yaml syntax`, produced no jobs, and therefore never reported the
+required `Required Checks Gatekeeper` context. The PR sat at `BLOCKED` for forty minutes.
+
+The failure mode is worth recording because of how it presents. **A workflow that fails to parse
+does not show a red check — it shows a missing one.** `gh pr checks` listed no failures, because the
+jobs were never created. The run appears in `gh run list` identified by _path_ rather than by name,
+which is the visible tell:
+
+```
+CI — Lint                            completed  success
+.github/workflows/ci-security.yml    completed  failure
+```
+
+Diagnosing it needed the run page, because `gh api .../check-runs/<id>/annotations` returns 404 for
+a run with no jobs — the same shape as the private-repo billing-hold failures a peer repository
+reported, where logs and summaries are all empty.
+
+**Every local check passed on the broken file:**
+
+| Validator                                           | Verdict on the file GitHub rejected |
+| --------------------------------------------------- | ----------------------------------- |
+| `js-yaml` parse                                     | OK                                  |
+| `js-yaml` structural read (11 steps, correct order) | OK                                  |
+| `prettier --check .`                                | OK                                  |
+| `npm run workflow:security:check` / `:test`         | OK                                  |
+
+Byte-level checks were clean too: no BOM, no tabs, LF endings, no trailing space after `run: |`. I
+could not identify the offending token, and I want to state that plainly rather than invent a
+cause — **the honest finding is that finance has no local validator that agrees with GitHub's
+workflow parser**, and three that disagree with it silently.
+
+The fix does not depend on knowing the token. Moving the policy out of inline shell into
+`scripts/eng-citations-gate.mjs` reduced the workflow change to a single `run:` line, which is
+better independently: the exit-code policy is now executable locally, and its three cases are
+tested above rather than asserted. That is the right response to a construct you cannot validate —
+stop emitting the construct.
+
+Two smaller things the attempt exposed, both from writing YAML through PowerShell:
+
+- A double-quoted here-string ate a backtick-escaped word, turning `` `eng-citations` `` into
+  `ng-citations` in a comment. Prettier, ESLint and the YAML parsers were all happy with it. Line
+  arrays and `WriteAllLines` avoid the class entirely.
+- `npm run` scripts here reject `console.*` under `no-console`; the repo idiom is
+  `process.stdout.write` / `process.stderr.write`, as in `scripts/vendor-configs.mjs`. The gate
+  script was rewritten to match, and **its three cases were re-tested after that rewrite** rather
+  than assumed to have survived it, since the change touched the same statements that carry the exit
+  codes.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
