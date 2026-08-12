@@ -1830,6 +1830,73 @@ The cost was again external and again asymmetric: upstream was told, for the sec
 turn, that a finding credited to finance was not finance's, and asked to go re-check the
 attribution. Both times the disproving evidence was local and free.
 
+### A span is safe exactly when a machine-checked ledger enumerates its exceptions
+
+Upstream sharpened the range finding above into a rule worth keeping, and the sharpening came from
+a case where finance was wrong. This guide previously reported that a `practices/` header claimed
+`ENG-PERF-001`–`009` and thereby concealed three unimplemented principles. That was retracted: no
+range-form claim exists in `practices/`, headers enumerate individually, and the three gaps
+(`ENG-PERF-003`, `-004`, `-009`) are disclosed in `practices/uncovered.json`, named in prose, and
+reconciled by `check-coverage` — which fails if the ledger and reality disagree.
+
+So two spans that look identical behave oppositely, and the difference is not the notation:
+
+| Span                                                 | Interior members tracked by         | Verdict                      |
+| ---------------------------------------------------- | ----------------------------------- | ---------------------------- |
+| finance's `` `ENG-OBS-001`–`ENG-OBS-007` `` citation | nothing, before checker `v9`        | unsafe — asserted, unchecked |
+| upstream's `practices/` coverage catalog             | `uncovered.json` + `check-coverage` | safe — exceptions enumerated |
+
+**The rule is therefore not "avoid ranges."** It is: a span asserts a claim about members it does
+not display, so it is only as good as whatever machine-checks the members it omits. That is a
+better rule than the one finance proposed because it says what to do with a span you inherit —
+find the ledger, or build it — rather than telling you to rewrite notation that may be fine.
+
+Finance's own spans are the confirming case, and the fix ran in the direction the rule predicts:
+they were made safe by **acquiring the check, not by deleting the spans**. Checker `v9` expands
+`NNN`–`NNN` into its members and resolves each one, and that expansion was itself confirmed
+falsifiable before its passing runs were believed — a deliberately invalid range exits 1 naming the
+two nonexistent members. The spans are unchanged; the ledger underneath them is new.
+
+### The fourth check had one live input, and had never been shown able to fail
+
+Upstream disclosed that every test in its React block asserted on `react-hooks/*` rules or on the
+config object, so **no rule from `eslint-plugin-react` had ever executed** — the plugin could have
+failed to load entirely and the suite would have stayed green. Applying that inward found the same
+shape in finance's own instrument.
+
+Checker `v9` prints `checks run: IDs, stated names, range members, link paths`. Three of those four
+had been exercised against a known-failing input. **`link paths` had not.** Two facts, both
+measured:
+
+- Across every tracked markdown file, exactly **one** link has visible text naming an `ENG-*` ID
+  and a target under `principles/` — `docs/guides/engineering-practice-adoption.md:1913`. That is
+  the check's entire live input set in this repository, and it passes.
+- Until now, nothing established that it _could_ fail. A check with one passing input and no
+  negative control is indistinguishable from a check that is silently skipping.
+
+Both controls now exist, run against fixtures rather than against the repository:
+
+| Fixture                                            | Raw exit | Output                                    |
+| -------------------------------------------------- | -------- | ----------------------------------------- |
+| Real ID, link to the correct `source` path         | **0**    | clean                                     |
+| Same real ID, link to a different area's directory | **1**    | names the wrong path and the expected one |
+
+The check is sound. What was unsound was believing it on the strength of a green run — the same
+error as trusting a zero-hit search, recorded above, and the same error upstream just disclosed
+about its own suite. One live input is one deletion away from zero, and the banner would go on
+claiming four checks ran either way. This is the fourth distinct instrument in this adoption to
+have needed `ENG-TEST-008` (Discriminating mutation evidence).
+
+**And the harness failed a fourth time while measuring it.** The first two runs reported `exit=0`
+for a fixture the checker was correctly rejecting, because `node … 2>&1 | Select-Object` leaves
+`$LASTEXITCODE` at `0`; re-run with output redirected to a file and no pipeline, the same fixture
+reports `1`. That is the identical defect as the earlier `Select-String`/`$?` reading and the
+grep-for-a-banner-line reading: an **inverting** instrument, which maps the correct outcome onto
+the failure it was built to detect. Had the pipeline form been trusted, the conclusion would have
+been that the link check is broken — a false report about upstream's tool, from finance, for the
+third time in this adoption. The tell is the same one every time: the reading was _accurate about
+something_, just not about the question asked.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
