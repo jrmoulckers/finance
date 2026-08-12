@@ -9,7 +9,11 @@ const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const STRICT = process.env.STRICT === '1' || args.includes('--strict');
 const ACTIVATION_DOC = 'docs/ai/README.md';
-const PROVENANCE = 'synced from jrmoulckers/.github — canonical source; do not edit here';
+// The stamp is delivered as a standalone comment on its own line. Matching it as a substring
+// cannot tell the delivered stamp from prose or a code span that quotes it — which the one
+// deliberately unstamped file is the most likely file to do — so match the delivered form.
+const PROVENANCE_LINE =
+  /^<!-- synced from jrmoulckers\/\.github — canonical source; do not edit here -->$/m;
 const GENERATED_AGENTS = [
   'accessibility-reviewer',
   'ai-ops-engineer',
@@ -216,7 +220,7 @@ function validateAgentRoster(runtimeAgents) {
     const relPath = `.github/agents/${role}.agent.md`;
     const abs = path.join(ROOT, relPath);
     if (!fs.existsSync(abs)) continue;
-    if (!fs.readFileSync(abs, 'utf8').includes(PROVENANCE)) {
+    if (!PROVENANCE_LINE.test(fs.readFileSync(abs, 'utf8'))) {
       findings.push(`${relPath} is missing canonical provenance`);
     }
   }
@@ -225,7 +229,7 @@ function validateAgentRoster(runtimeAgents) {
     const relPath = `.github/agents/${role}.agent.md`;
     const abs = path.join(ROOT, relPath);
     if (!fs.existsSync(abs)) continue;
-    if (fs.readFileSync(abs, 'utf8').includes(PROVENANCE)) {
+    if (PROVENANCE_LINE.test(fs.readFileSync(abs, 'utf8'))) {
       findings.push(`${relPath} must remain Finance-authored, not generated`);
     }
   }
