@@ -231,6 +231,70 @@ export const MAX_TAG_PAGES = 30;
  * Returns prose rather than a boolean because the two directions mean different
  * things and a caller cannot recover which from a flag.
  */
+/**
+ * Identity of the script that wrote a lock.
+ *
+ * `lock.ref` records the ref that was *requested*. It says nothing about the
+ * vintage of the script that did the requesting, and the two drift apart
+ * silently: a lock can name the newest upstream ref while the writer is many
+ * releases old, because the writer is not part of the payload it vendors. A
+ * fleet audit found exactly that here — this repository's lock pinned the
+ * newest ref in the fleet and its script was the same vintage as everyone
+ * else's. The field was being read as currency; it is not one.
+ *
+ * Upstream's remedy records a version number. That would be false here. This
+ * script is a fork: ten local commits, carrying `--prune`, `divergenceNotice`,
+ * and a paginated tag read that upstream does not have. A version string would
+ * assert an equivalence that does not hold, and asserting it is how a previous
+ * turn ended with a local flag reported to upstream as upstream's bug.
+ *
+ * So the recorded identity is a content hash. It answers the question that is
+ * actually being asked -- "was this lock written by the script now checking
+ * it?" -- and it answers it for a fork, where a version number cannot.
+ *
+ * Operational consequence, learned by tripping it: the hash covers the file
+ * verbatim, so the FORMATTER invalidates it. Editing this script and running
+ * Prettier leaves the lock naming a revision that no longer exists on disk.
+ * Re-vendor last -- after `prettier --write`, not before -- or `--check` will
+ * report a mismatch caused by whitespace. A cost, and the honest one: a
+ * content hash cannot tell a semantic change from a reflow, which is the same
+ * limitation this repository accepted when it chose bytes over a version
+ * string, and the reason this is a notice rather than a failure.
+ */
+/**
+ * Which staged files a lock does not already cover.
+ *
+ * Extracted so the widening guard is testable without a network fetch. The
+ * inline version was correct and unreachable by any test, which is the same
+ * shape as a control that cannot be observed to have run.
+ */
+export function widenedByRun(destKeys, previousFiles) {
+  if (!previousFiles) return [];
+  return destKeys.filter((key) => !previousFiles[key]);
+}
+
+export function writerIdentity(scriptText) {
+  return {
+    sha256: createHash('sha256').update(scriptText, 'utf8').digest('hex'),
+    bytes: Buffer.byteLength(scriptText, 'utf8'),
+  };
+}
+
+/**
+ * What `--check` should say about a lock's writer.
+ *
+ * Three states, kept distinct because collapsing them is the failure this
+ * repository keeps finding: an absent field and a matching field must not
+ * render alike, and neither must be reported as a defect.
+ */
+export function writerNotice(recorded, current) {
+  if (!recorded || typeof recorded.sha256 !== 'string') {
+    return 'Unverified: this lock records no writer identity, so the script that wrote it cannot be compared to the one checking it.';
+  }
+  if (recorded.sha256 === current.sha256) return null;
+  return `Notice: this lock was written by a different revision of this script (recorded ${recorded.sha256.slice(0, 12)}, current ${current.sha256.slice(0, 12)}); the vendored file set may have changed since.`;
+}
+
 export function divergenceNotice(releaseRef, tagRef) {
   if (!releaseRef || !tagRef || releaseRef === tagRef) return null;
   const higher = highestSemver([releaseRef, tagRef]);
@@ -457,6 +521,20 @@ async function check() {
       'A green --check would keep saying the tree matches a lock nothing reads. ' +
         'Restore the reference, or drop the set with --prune and delete the files.',
     );
+  }
+
+  const writerMessage = writerNotice(
+    lock.tool,
+    writerIdentity(await readFile(resolve(fileURLToPath(import.meta.url)), 'utf8').catch(() => '')),
+  );
+  if (writerMessage) {
+    // Third distinct claim in this report, deliberately not folded into the
+    // other two. `staleReason` means "could not check the ref"; `refNotice`
+    // means "checked, sources disagreed"; this means "the lock's writer is not
+    // the script reading it, so the vendored FILE SET may be wrong" -- which no
+    // amount of hashing the recorded files can detect, because a file that was
+    // never vendored has no hash to mismatch.
+    process.stdout.write(`\n${writerMessage}\n`);
   }
 
   const { ref: latest, reason: staleReason, notice: refNotice } = await latestRef();
@@ -731,6 +809,42 @@ async function main() {
     }
   }
 
+  let previous = null;
+  try {
+    previous = JSON.parse(await readFile(LOCK, 'utf8'));
+  } catch {
+    // No previous lock: this is a first vendor.
+  }
+  // The mirror image, and the one that was missing. The guard above catches a
+  // run that would DROP locked files; nothing caught a run that ADDS files the
+  // lock never covered. That asymmetry has a specific cost: the documented
+  // refresh command is `node scripts/vendor-configs.mjs <newer-ref>` with no
+  // `--set`, which defaults to every set. Run against a lock covering a subset,
+  // it writes the missing sets to disk and records them, and reports success.
+  //
+  // Found by following that exact instruction: a bare re-vendor at the SAME ref
+  // turned 6 locked files into 12, adding a whole config/engineering/tsconfig/
+  // tree this repository had deliberately not adopted. Nothing said so; the
+  // summary line counts what it wrote, not what changed about the selection.
+  //
+  // Naming a set explicitly is the signal of intent, so an explicit `--set` is
+  // allowed to widen. It is the implicit default -- the refresh path -- that
+  // must not.
+  //
+  // Checked before the write loop, not after. The first version of this guard
+  // ran after it and failed correctly -- having already left all six files on
+  // disk. A guard that reports the state it was meant to prevent, after
+  // creating it, is a message rather than a control.
+  const destKeys = staged.map((item) => item.dest.split('\\').join('/'));
+  const addedToLock = widenedByRun(destKeys, previous?.files);
+  if (previous && addedToLock.length > 0 && !flags.set) {
+    fail(
+      `this would add ${addedToLock.length} file(s) the lock does not cover:\n` +
+        addedToLock.map((key) => `  - ${key}`).join('\n'),
+      `The lock covers [${[...new Set(Object.keys(previous.files ?? {}).map((key) => key.split('/').at(-2)))].join(', ')}]. ` +
+        'Re-run with --set naming exactly those to refresh in place, or name the wider set deliberately.',
+    );
+  }
   for (const item of staged) {
     await mkdir(dirname(item.dest), { recursive: true });
     await writeFile(item.dest, item.text, 'utf8');
@@ -741,6 +855,9 @@ async function main() {
     ref,
     fetchedAt: new Date().toISOString(),
     refresh: `node scripts/vendor-configs.mjs <newer-ref>`,
+    tool: writerIdentity(
+      await readFile(resolve(fileURLToPath(import.meta.url)), 'utf8').catch(() => ''),
+    ),
     files: Object.fromEntries(
       staged.map((item) => [
         item.dest.split('\\').join('/'),
@@ -748,13 +865,6 @@ async function main() {
       ]),
     ),
   };
-
-  let previous = null;
-  try {
-    previous = JSON.parse(await readFile(LOCK, 'utf8'));
-  } catch {
-    // No previous lock: this is a first vendor.
-  }
 
   // A partial `--set` rewrites the whole lock, so any previously locked file
   // outside the chosen sets drops out of it while staying on disk. `--check`

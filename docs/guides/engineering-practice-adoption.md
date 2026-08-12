@@ -7286,6 +7286,84 @@ Dropping the others changes the union by **zero**, so no test can distinguish th
 are provably equivalent, with the table as the proof rather than an adjudication by assertion.
 Final 3 of 6, and the survivor list carries the structural fact that a 6-of-6 would have deleted.
 
+## A lock records the ref you asked for, not the vintage of the thing that asked
+
+A fleet audit reported that this repository runs a stale vendoring script, and used
+`engineering-configs.lock.json` as the evidence: `ref` is `v0.134.0`, the newest pin in the
+fleet, while the script behind it was said to be many releases old. The general claim is
+correct and worth stating plainly.
+
+**`lock.ref` records the ref that was requested. It says nothing about the script that did the
+requesting**, because the script is not part of the payload it vendors — it is not in
+`lock.files`, so nothing hashes it and nothing notices when it drifts. A lock can name the
+newest possible ref and have been written by anything.
+
+Two of the three specific defects did not reproduce, and the discriminator is why.
+
+The audit's test was `/would change/.test(readFileSync('scripts/vendor-configs.mjs'))` — a
+search for a string from the upstream fix. It returns `refresh me` here. But running the tool
+prints:
+
+```
+Notice: pinned at v0.134.0; newest release is v0.145.0, and 1 vendored file(s) differ there:
+  config/engineering/citations/check-citations.mjs
+```
+
+That is content-gated staleness — it names _which_ file differs — and a cadence-only check
+cannot produce that line. This repository implemented the same capability independently, with
+different wording, so **a string match for someone else's fix reports a capability this tree
+has as a capability it lacks**. A grep for a remedy is not a test for the property the remedy
+was meant to establish, and the gap between the two is exactly the size of the space of other
+ways to be correct.
+
+The third defect was real: the lock carried no writer entry at all, so `--check` passed
+silently over a question it had never asked.
+
+### A version number would have been false here
+
+The upstream remedy records a tool version. This script is a fork — ten local commits carrying
+`--prune`, `divergenceNotice`, and a paginated tag read that upstream does not have. A version
+string in this lock would assert an equivalence that does not hold, and asserting exactly that
+is how an earlier turn ended with a locally-added flag reported to its supposed author as their
+bug.
+
+So the recorded identity is a **content hash of the writer**. It answers the question actually
+being asked — _was this lock written by the script now checking it?_ — and it answers it for a
+fork, where a version number cannot. Three states, kept distinguishable, because collapsing them
+is the defect being fixed: absent (`Unverified:`), matching (silent), differing (`Notice:`).
+
+The cost is stated rather than hidden: a content hash cannot tell a semantic change from a
+reflow, so **the formatter invalidates it**. Re-vendor after `prettier --write`, never before.
+
+### Following the remedy found a worse defect than the one it fixed
+
+The documented refresh command is `node scripts/vendor-configs.mjs <newer-ref>`, with no
+`--set`. Run here at the _same_ ref, it turned 6 vendored files into 12, writing a
+`config/engineering/tsconfig/` tree this repository had deliberately not adopted, recording it
+in the lock, and exiting 0. The summary line counts what it wrote, not what changed about the
+selection.
+
+A guard against a `--set` that _drops_ locked files was added earlier; **its mirror image was
+missing**. Guards get written in the direction of the harm someone already suffered, so the
+opposite direction stays open, and the asymmetry is invisible precisely because the existing
+guard makes the area look covered.
+
+The first version of the new guard ran after the write loop. It failed correctly — having
+already left all six files on disk. _A control that reports the state it was meant to prevent,
+after creating it, is a message._ It now runs before any write, and an explicit `--set` is
+treated as the signal of intent that may widen; the implicit default — the refresh path, the
+one the whole fleet was told to run — may not.
+
+`widenedByRun` is exported and pinned by 5 tests; `writerIdentity`/`writerNotice` by 6. All 11
+mutants killed; 37 tests pass.
+
+### Incidental: one flagged gap has closed
+
+The widening run revealed that upstream now ships `config/engineering/tsconfig/vite-react.json`.
+That was one of the two preset gaps this adoption flagged. It is not adopted here — tsconfig
+remains deliberately out of the vendored set — but the gap is closed upstream and the follow-up
+should be re-scoped rather than re-argued.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

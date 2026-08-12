@@ -4,6 +4,9 @@ import {
   apiHeaders,
   highestSemver,
   divergenceNotice,
+  widenedByRun,
+  writerIdentity,
+  writerNotice,
   latestRef,
   MAX_TAG_PAGES,
   nextPageUrl,
@@ -285,4 +288,87 @@ test('the notice compares by semver, not by string order', () => {
   // comparison this would render the in-flight wording backwards.
   const notice = divergenceNotice('v0.9.0', 'v0.10.0');
   assert.match(notice, /tag v0\.10\.0 is ahead/);
+});
+
+// -- writer identity -------------------------------------------------------
+// `lock.ref` records the ref requested, not the vintage of the writer. These
+// pin the distinction, because it is the one a fleet audit read past.
+
+test('the same text yields the same identity, and different text does not', () => {
+  const a = writerIdentity('const x = 1;\n');
+  assert.equal(writerIdentity('const x = 1;\n').sha256, a.sha256);
+  assert.notEqual(writerIdentity('const x = 2;\n').sha256, a.sha256);
+  assert.equal(a.bytes, 13);
+});
+
+test('bytes counts UTF-8 bytes, not characters', () => {
+  // A length-based field would call these equal. The em dash is 3 bytes.
+  assert.equal(writerIdentity('abc').bytes, 3);
+  assert.equal(writerIdentity('a—c').bytes, 5);
+});
+
+test('an absent writer entry is reported as unverified, not as a match', () => {
+  const current = writerIdentity('whatever');
+  for (const recorded of [undefined, null, {}, { sha256: 42 }]) {
+    const notice = writerNotice(recorded, current);
+    assert.match(notice, /^Unverified:/);
+  }
+});
+
+test('a matching writer produces no notice', () => {
+  const text = 'const tool = 1;\n';
+  assert.equal(writerNotice(writerIdentity(text), writerIdentity(text)), null);
+});
+
+test('a differing writer names both revisions and the consequence', () => {
+  const notice = writerNotice(writerIdentity('old'), writerIdentity('new'));
+  assert.match(notice, /^Notice:/);
+  assert.match(notice, /different revision/);
+  // The consequence is the point: hashes of the recorded files cannot detect a
+  // file that was never vendored at all.
+  assert.match(notice, /file set may have changed/);
+  assert.match(notice, new RegExp(writerIdentity('old').sha256.slice(0, 12)));
+  assert.match(notice, new RegExp(writerIdentity('new').sha256.slice(0, 12)));
+});
+
+test('unverified and differing render distinguishably', () => {
+  // The whole defect being fixed: a lock with no writer entry passed quietly,
+  // rendering identically to one that had been verified.
+  const absent = writerNotice(null, writerIdentity('x'));
+  const differs = writerNotice(writerIdentity('y'), writerIdentity('x'));
+  assert.notEqual(absent, differs);
+  assert.ok(absent !== null && differs !== null);
+});
+// -- widening guard --------------------------------------------------------
+// The mirror of the existing drop guard. The refresh command documented in the
+// lock takes no --set, so it defaults to every set; against a subset lock that
+// silently adds files. Measured: 6 locked files became 12.
+
+test('a run covering exactly the locked files widens nothing', () => {
+  const locked = { 'a/x.js': {}, 'a/y.js': {} };
+  assert.deepEqual(widenedByRun(['a/x.js', 'a/y.js'], locked), []);
+});
+
+test('a run adding an uncovered set names every added file', () => {
+  const locked = { 'a/x.js': {} };
+  assert.deepEqual(widenedByRun(['a/x.js', 'b/p.json', 'b/q.json'], locked), [
+    'b/p.json',
+    'b/q.json',
+  ]);
+});
+
+test('a narrower run widens nothing, because dropping is the other guard', () => {
+  assert.deepEqual(widenedByRun(['a/x.js'], { 'a/x.js': {}, 'a/y.js': {} }), []);
+});
+
+test('a first vendor has no previous lock and so cannot widen', () => {
+  // Without this the guard would fire on every initial adoption.
+  assert.deepEqual(widenedByRun(['a/x.js'], undefined), []);
+  assert.deepEqual(widenedByRun(['a/x.js'], null), []);
+});
+
+test('an empty previous file map is still a previous lock', () => {
+  // Distinct from "no lock": a lock with zero files is covered by nothing, so
+  // every staged file is an addition.
+  assert.deepEqual(widenedByRun(['a/x.js'], {}), ['a/x.js']);
 });
