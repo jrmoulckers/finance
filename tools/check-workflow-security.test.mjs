@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {
@@ -11,8 +13,14 @@ import {
   findRunExpressionViolations,
   normalizeReviewedPins,
   pureEventDisjunction,
+  NAMED_WORKFLOW_ASSERTIONS,
   scanWorkflowSecurity,
+  summarizeScope,
 } from './check-workflow-security.mjs';
+
+const testRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const workflowDirectory = join(testRoot, '.github', 'workflows');
+const productionCompose = readFileSync(join(testRoot, 'deploy', 'docker-compose.yml'), 'utf8');
 
 test('findDeadEventGuards decides conjunctions that a pure disjunction cannot', () => {
   const workflow = `
@@ -311,4 +319,74 @@ test('an unpinned action outside the reviewed set is caught by the pin check alo
   const errors = scanWorkflowSecurity(workflows);
   assert.equal(unpinned(errors), true);
   assert.equal(drifted(errors), false, 'the baseline has no jurisdiction outside its 2 files');
+});
+
+// --- The population a clean run is clean over -------------------------------
+//
+// These pin a property that was inferred backwards. Reading the six `?? ''`
+// fallbacks suggested that a renamed or deleted workflow would silently pass,
+// because an absent file becomes an empty string. Running it showed the
+// opposite: every named-file assertion is positive, so an absent file FAILS it.
+// The tests exist because reading gave the wrong answer and nothing in the
+// suite would have caught the reader.
+
+const workflowsOnDisk = () =>
+  Object.fromEntries(
+    readdirSync(workflowDirectory)
+      .filter((file) => /\.ya?ml$/.test(file))
+      .sort()
+      .map((file) => [file, readFileSync(join(workflowDirectory, file), 'utf8')]),
+  );
+
+test('an empty workflow set fails closed rather than passing vacuously', () => {
+  // The single most important property of this checker: a green must not be
+  // obtainable by giving it nothing to read.
+  assert.ok(scanWorkflowSecurity({}, '').length > 0);
+});
+
+test('removing a named-assertion workflow raises errors rather than retiring checks', () => {
+  const full = workflowsOnDisk();
+  assert.equal(scanWorkflowSecurity(full, productionCompose).length, 0);
+  for (const victim of ['deploy-preview.yml', 'nightly.yml', 'deploy-production.yml']) {
+    const reduced = { ...full };
+    delete reduced[victim];
+    assert.ok(
+      scanWorkflowSecurity(reduced, productionCompose).length > 0,
+      `removing ${victim} must not be a silent pass`,
+    );
+  }
+});
+
+test('every named assertion target is present on disk', () => {
+  // A named target that no longer exists is an assertion whose subject left.
+  const present = workflowsOnDisk();
+  const absent = [...NAMED_WORKFLOW_ASSERTIONS].filter((file) => !(file in present));
+  assert.deepEqual(absent, []);
+});
+
+test('the reported scope is arithmetic over the real tree, not a constant', () => {
+  const disk = workflowsOnDisk();
+  const scope = summarizeScope(disk);
+  assert.equal(scope.loaded, Object.keys(disk).length);
+  assert.equal(scope.present, scope.named);
+  assert.ok(scope.loaded >= scope.present);
+});
+
+test('the named denominator is pinned to the tree, not to itself', () => {
+  // An earlier version asserted `scope.named === NAMED_WORKFLOW_ASSERTIONS.size`,
+  // which compares the set to itself and is therefore decorative: two mutants
+  // that shrank the set survived it. Pinning the COMPLEMENT against the disk is
+  // what makes the denominator falsifiable — drop an entry from the named set
+  // and this list grows.
+  const disk = Object.keys(workflowsOnDisk());
+  const universalOnly = disk.filter((file) => !NAMED_WORKFLOW_ASSERTIONS.has(file));
+  assert.deepEqual(universalOnly, ['copilot-setup-steps.yml']);
+});
+
+test('summarizeScope counts what it is given, not what is on disk', () => {
+  assert.deepEqual(summarizeScope({}), {
+    loaded: 0,
+    named: NAMED_WORKFLOW_ASSERTIONS.size,
+    present: 0,
+  });
 });

@@ -431,6 +431,42 @@ export function findDeadEventGuards(file, workflow) {
   return violations.map((violation) => `${file}: ${violation}`);
 }
 
+/**
+ * The population a clean run was clean over.
+ *
+ * A green from this checker used to print only "passed". That is the shape this
+ * repository has now hit five times — a correct verdict over a population the
+ * output does not name — so the scope is reported beside the verdict.
+ *
+ * `named` is the count of workflow files this checker asserts against by name.
+ * It matters because those assertions are the ones whose subject can disappear:
+ * a rename retires them silently as far as the file list is concerned. Measured
+ * rather than assumed, they do NOT fail open — every named-file check is a
+ * positive assertion, so an absent file fails it. Removing `deploy-preview.yml`
+ * raises 3 errors, `deploy-production.yml` 5, and an empty workflow set raises
+ * 29. That property was inferred backwards by reading the `?? ''` fallbacks and
+ * corrected by running it; it is pinned by tests now precisely because reading
+ * gave the wrong answer.
+ */
+export const NAMED_WORKFLOW_ASSERTIONS = new Set([
+  ...privilegedWorkflows,
+  ...Object.keys(localReusableBaselines),
+  ...Object.keys(requiredEnvironmentJobs),
+  ...leastPrivilegeWorkflows,
+  ...Object.keys(permissionInheritanceBaseline),
+  'deploy-preview.yml',
+  'nightly.yml',
+]);
+
+export function summarizeScope(workflows) {
+  const named = [...NAMED_WORKFLOW_ASSERTIONS];
+  return {
+    loaded: Object.keys(workflows).length,
+    named: named.length,
+    present: named.filter((file) => file in workflows).length,
+  };
+}
+
 export function scanWorkflowSecurity(workflows, productionCompose = '') {
   const errors = [];
   const report = (file, message) => errors.push(`${file}: ${message}`);
@@ -591,15 +627,20 @@ function main() {
     join(repositoryRoot, 'deploy', 'docker-compose.yml'),
     'utf8',
   );
-  const errors = scanWorkflowSecurity(loadWorkflows(), productionCompose);
+  const workflows = loadWorkflows();
+  const errors = scanWorkflowSecurity(workflows, productionCompose);
   if (errors.length > 0) {
     console.error('Workflow security regression check failed:');
     for (const error of errors) console.error(`- ${error}`);
     process.exitCode = 1;
     return;
   }
+  const scope = summarizeScope(workflows);
+  const universalOnly = scope.loaded - scope.present;
   console.log(
-    `Workflow security regression check passed (${relative(repositoryRoot, workflowDirectory)}).`,
+    `Workflow security regression check passed (${relative(repositoryRoot, workflowDirectory)}): ` +
+      `${scope.loaded} workflow(s) scanned; ${scope.present} of ${scope.named} named ` +
+      `assertion target(s) present; ${universalOnly} covered by the universal checks only.`,
   );
 }
 
