@@ -438,6 +438,49 @@ Granting access is human-gated and **owner-only**: either flip the three package
 grant this repository Read under each package's _Manage Actions access_. There is no API path for
 either action.
 
+#### The auth-free substitute is verified by a check that the same `401` switches off
+
+While blocked, finance reads peer ranges from `versions.json` in the engineering repo rather than
+from the registry, on the stated grounds that CI verifies that file against what is published.
+**It does — and the verification includes peer ranges, not just versions**, which was worth
+confirming rather than assuming, because finance's own TypeScript peer-disagreement finding rests
+entirely on that block. Read from `scripts/check-published-versions.mjs` on `main`:
+
+| Line | Behaviour                                                        |
+| ---- | ---------------------------------------------------------------- |
+| 48   | `diffPeers()` compares recorded against published peer ranges    |
+| 98   | reads `peerDependencies` from the packument's `dist-tags.latest` |
+| 165  | each differing peer becomes a `problem`                          |
+
+So the block is genuinely checked. The caveat is in how the check behaves when it cannot run:
+
+| Line   | Behaviour                                                             |
+| ------ | --------------------------------------------------------------------- |
+| 82–83  | HTTP **`401` or `403`** → `unreachable: true`                         |
+| 132–33 | `unreachable` → pushed to `unknown`, **not** to `problems`            |
+| 189–94 | `unknown` emits `console.warn`; the text says "this is not a failure" |
+| 186    | `process.exitCode = 1` only when `problems` is non-empty              |
+
+An authorization failure is therefore classified as an outage, and **the gate stays green with
+zero packages verified**. The console output is honest about it — `verified === 0` prints
+"versions.json was not confirmed against the registry on this run" rather than the usual "matches
+the registry for 3 of 3" — but that distinction lives only in log prose that nobody reads on a
+green run, which is the same shape as the "3 of 3" line that was quoted as proof of the opposite
+of what it said.
+
+**Why this is finance's problem specifically.** `401` on all three packages is not a hypothetical
+here — it is exactly what finance observes. The condition that blocks finance from the registry is
+the condition that silently stops the peer block being verified, and the repositories directed to
+trust that block as their auth-free substitute are precisely the ones without the access needed to
+notice it had lapsed. A credential regression is also durable rather than transient, so unlike a
+real outage it would not self-correct on the next run.
+
+**Proposed upstream, not worked around here** (finance cannot fix another authority's checker, and
+the file is still the best available source): treat `401`/`403` as a `problem` rather than as
+`unreachable`, or fail when `verified === 0` while a token was present. `404` should stay
+`unknown` — the existing comment gives a good reason for that one, and it is a different
+condition. finance continues to cite `versions.json`, now knowing which runs confirm it.
+
 ### Blocker 2 — the ESLint peer range excluded finance (**resolved upstream in 0.4.0**)
 
 `@jrmoulckers/eslint-config@0.3.0` declared `eslint: ^9.0.0` as a peer. Finance runs
@@ -513,6 +556,31 @@ the frame that threw, not the caller that caused it. The blast radius here — e
 plugin failing to load — made a config-level cause look like a package-level one, and the
 remedy that follows from the wrong diagnosis (drop the plugin) would have cost 18 working rules
 including `jsx-key`. Bisecting the config would have cost one more probe than accepting the trace.
+
+#### The version numeral is not a ref — the misattribution ran in reverse
+
+Upstream later reported this section as stale, on the diagnosis that finance had read the repo at
+tag **`v0.4.0`** and mistaken a nine-minor-old tree for current: "at `v0.4.0` (= `0.3.0`, what you
+read)". The correction was accompanied by a re-run of finance's own `./react` experiment, which
+reproduced finance's result.
+
+The diagnosis does not fit the record above. finance never read a tag. It read **published package
+tarballs** at three package versions — `0.3.0`, `0.4.0` and `0.8.0` (the `react.js` table) — and
+then re-measured the whole adoption against the real `0.6.0` artifact resolved from the registry.
+Two of those numerals are _higher_ than the tag finance is said to have been stuck at, which is
+available in the same section that was being corrected.
+
+The mechanism is the tag/package confusion that upstream itself documented, run in the opposite
+direction. Their rule is **never infer a package version from a tag**, because the two series
+numerically resemble each other. The inverse holds equally and is not yet stated: **never infer
+which ref someone read from a package version they quoted.** `0.4.0` appearing in a report is not
+evidence of tag `v0.4.0`; here it was the version in which the fix landed, named as the fix.
+
+Worth recording for the same reason the original wrong diagnosis was kept: it is cheap to check and
+expensive to skip. The check is to read what the report says it measured — the guide states the
+artifact and the resolved peer table on every claim — rather than pattern-matching a numeral. A
+correction issued against a misread of the evidence costs more than the error it targets, because
+it arrives with the authority of a re-run experiment attached, and the re-run agreed with finance.
 
 ### To unblock
 
@@ -779,7 +847,7 @@ records about lint evidence, turned on its author: **a probe reports the exit co
 not of the thing under test.** Where an exit code is the finding, it has to be taken from the real
 tool.
 
-**What finance must do.** Pin `>=0.12.0 <1.0.0` and declare the plugins the React preset imports at
+**What finance must do.** Pin `>=0.13.0 <1.0.0` and declare the plugins the React preset imports at
 module scope in `devDependencies`. There are **three**, not two:
 
 ```jsonc
@@ -1476,7 +1544,7 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     installs the three plugins it needs, the real figure is **75.0 → 71.7 MB, 4.4%**; and the
     broadcast named two React plugins where three are required, `eslint-plugin-jsx-a11y` being a
     static import at `react.js` line 3. The `docs/adopting.md` table is right; only the broadcast
-    was short. Finance pins `>=0.12.0 <1.0.0`.
+    was short. Finance pins `>=0.13.0 <1.0.0`.
 
 17. **`--dest` writes the lock to the repo root but keys it by the destination path, so a trial
     vendoring disarms the drift gate while reporting success.** Vendoring into a scratch directory
