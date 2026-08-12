@@ -131,6 +131,11 @@ jobs:
       - name: Tooling imports are declared
         run: npm run tool:imports:check
 
+      - name: Principle enumerations are cited, not restated
+        run: npm run citations:enumerations:check
+
+      - name: Enumeration checker tests
+        run: npm run citations:enumerations:test
   pr-title:
     name: Semantic PR Title
     needs: changes

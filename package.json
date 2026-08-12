@@ -42,6 +42,8 @@
     "workflow:security:test": "node --test tools/check-workflow-security.test.mjs",
     "gradle:prefetch:check": "node tools/check-gradle-prefetch.mjs",
     "tool:imports:check": "node tools/check-tool-imports.mjs",
+    "citations:enumerations:check": "node tools/check-citation-enumerations.mjs",
+    "citations:enumerations:test": "node --test tools/check-citation-enumerations.test.mjs",
     "gradle:prefetch:test": "node --test tools/check-gradle-prefetch.test.mjs",
     "agent:worktree": "node tools/agent-scripts/setup-worktree.js",
     "agent:check": "node tools/agent-scripts/pre-push-check.js",
