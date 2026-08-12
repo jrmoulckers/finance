@@ -31,7 +31,7 @@
 
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 
 const REPO = 'jrmoulckers/engineering';
 const LOCK = 'engineering-configs.lock.json';
@@ -53,6 +53,16 @@ const SETS = {
   prettier: {
     from: 'packages/prettier-config',
     files: ['index.js', 'svelte.js'],
+    // These files are ESM, and upstream says so via `"type": "module"` in the
+    // package it publishes. Vendoring copies the files and leaves that behind,
+    // so in a consumer whose root package.json has no `type` field they are
+    // nominally CommonJS and `export default` is a syntax error. Node >=22.7
+    // masks it by retrying a failed CJS parse as ESM, so it works while warning.
+    //
+    // Emitting the marker here rather than hand-maintaining it beside the files
+    // is what puts it under the lock: an unhashed marker is invisible to
+    // `--check`, which is the whole point of having a lock.
+    moduleType: 'module',
   },
   // Not a config — the ENG-* citation checker. It is vendored rather than copied
   // because upstream owns it and its header says it is "fetched over the network
@@ -265,13 +275,32 @@ async function missingModuleMarkers(files) {
 async function changedFilesAt(ref, lock) {
   const changed = [];
   for (const [dest, entry] of Object.entries(lock.files)) {
+    // A derived entry has no upstream file to fetch — its source key carries a
+    // `#fragment`. Fetching it verbatim would 404, and the caller reads a failed
+    // fetch as "no signal", so a single derived entry would silently disable
+    // staleness reporting for every other file in the lock.
+    const [sourcePath, derivedFrom] = entry.source.split('#');
     let text;
     try {
-      text = await fetchFile(ref, entry.source);
+      text = await fetchFile(ref, sourcePath);
     } catch {
       return null;
     }
     if (text === null || text === undefined) return null;
+    if (derivedFrom === 'type') {
+      // The marker mirrors one field of upstream's manifest, so it is stale
+      // exactly when that field changes — not when the manifest changes.
+      let declared;
+      try {
+        declared = JSON.parse(text).type;
+      } catch {
+        return null;
+      }
+      if (sha256(`${JSON.stringify({ type: declared }, null, 2)}\n`) !== entry.sha256) {
+        changed.push(dest);
+      }
+      continue;
+    }
     if (sha256(text) !== entry.sha256) changed.push(dest);
   }
   return changed;
@@ -305,7 +334,15 @@ function assertPayload(path, text) {
         'This is usually an HTML error page served with status 200.',
       );
     }
-    if (!parsed || typeof parsed !== 'object' || !parsed.compilerOptions) {
+    if (!parsed || typeof parsed !== 'object') {
+      fail(`${path} is not a JSON object`, 'It parsed, but it is not a configuration file.');
+    }
+    // A package manifest is fetched to read its declared module type, not to be
+    // vendored as a config. Requiring `compilerOptions` of every .json assumed
+    // the only JSON upstream serves is a tsconfig, which stopped being true the
+    // moment the module-type marker needed verifying. Parsing still guards the
+    // HTML-error-page case, which is what this function exists for.
+    if (basename(path) !== 'package.json' && !parsed.compilerOptions) {
       fail(
         `${path} has no "compilerOptions"`,
         'It parsed, but it is not a TypeScript configuration.',
@@ -316,15 +353,17 @@ function assertPayload(path, text) {
   }
 }
 
-async function fetchFile(ref, path) {
+async function fetchFile(ref, path, required = true) {
   const url = `https://raw.githubusercontent.com/${REPO}/${ref}/${path}`;
   let response;
   try {
     response = await fetch(url);
   } catch (cause) {
+    if (!required) return null;
     fail(`could not reach ${url}`, String(cause.message ?? cause));
   }
   if (!response.ok) {
+    if (!required) return null;
     fail(
       `${url} returned HTTP ${response.status}`,
       `Check that ref '${ref}' exists in ${REPO} and contains this path.`,
@@ -361,11 +400,49 @@ async function main() {
   // report success.
   const staged = [];
   for (const name of names) {
-    const { from, files } = SETS[name];
+    const { from, files, moduleType } = SETS[name];
     for (const file of files) {
       const path = `${from}/${file}`;
       const text = await fetchFile(ref, path);
       staged.push({ name, path, file, text, dest: join(dest, name, file) });
+    }
+    if (moduleType) {
+      // `moduleType` is a literal, and literals silently diverge from the thing
+      // they claim to mirror. Verify it against the ref rather than trusting it:
+      // a marker stating the WRONG type is worse than no marker at all, because
+      // an explicit type overrides Node's own CJS/ESM detection fallback and
+      // converts a runtime that would have coped into one that cannot.
+      const manifest = await fetchFile(ref, `${from}/package.json`, false);
+      if (manifest === null) {
+        process.stderr.write(
+          `\nwarning: could not read ${from}/package.json at ${ref}.\n` +
+            `Emitting "type": "${moduleType}" unverified.\n`,
+        );
+      } else {
+        let declared;
+        try {
+          declared = JSON.parse(manifest).type;
+        } catch {
+          declared = undefined;
+        }
+        if (declared !== moduleType) {
+          fail(
+            `${from} declares type '${declared ?? 'none'}' at ${ref}, but this script emits '${moduleType}'`,
+            'Upstream changed its module type. Update SETS to match before vendoring.',
+          );
+        }
+      }
+      staged.push({
+        name,
+        // Derived from upstream's package.json rather than copied from it, so it
+        // carries a distinct source key. Staged like any other file so the lock
+        // covers it — a marker outside the lock is the unhashed workaround this
+        // replaces, and `--check` would report it clean forever.
+        path: `${from}/package.json#type`,
+        file: 'package.json',
+        text: `${JSON.stringify({ type: moduleType }, null, 2)}\n`,
+        dest: join(dest, name, 'package.json'),
+      });
     }
   }
 

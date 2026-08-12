@@ -5896,6 +5896,100 @@ repetition, because each individual disclaimer is true and only the sequence cre
 inference.** No single message is wrong, so no single message is challengeable. The remedy is to
 name the owner positively rather than to decline in turn.
 
+## Dropping the unhashed marker, and the check I nearly disabled to do it
+
+Upstream fixed the `"type": "module"` gap and asked finance to drop its workaround file. Doing so
+took three changes to the local vendoring fork, and the second one would have silently disabled
+staleness reporting for every vendored file — the exact class of defect the fix was meant to close.
+
+### Why port rather than converge
+
+Upstream's script is now 1,023 lines to finance's 418, so replacing the fork wholesale looks like
+the obvious move. It isn't: upstream has **no `citations` set** and no reference to
+`check-citations.mjs` at all. Converging would drop the vendoring of the checker that runs on every
+PR here. So the module-type behaviour was ported into the fork instead, and the fork's divergence is
+now a deliberate superset rather than lag.
+
+### The marker is now under the lock
+
+Previously `config/engineering/prettier/package.json` was hand-written, tracked by git, and **absent
+from `engineering-configs.lock.json`** — so `--check` reported the tree clean regardless of what the
+marker said. Now it is generated and staged like any other file, with a distinct source key:
+
+```json
+"config/engineering/prettier/package.json": {
+  "source": "packages/prettier-config/package.json#type",
+  "sha256": "3ca9d4af…"
+}
+```
+
+Mutation-tested in both directions: editing the marker to `"commonjs"` now fails
+`--check` with `content differs from the lock`, exit 1; restoring it returns exit 0. That is the
+whole difference between a marker and a locked marker.
+
+The emitted type is verified against the ref rather than trusted, because a marker stating the
+_wrong_ type is worse than none — an explicit type overrides Node's own CJS/ESM detection fallback,
+converting a runtime that would have coped into one that cannot.
+
+### The defect I nearly shipped
+
+`changedFilesAt()` fetches `entry.source` for every lock entry, and reads any failure as "no
+signal", returning `null` for the whole set. A derived entry whose source key is
+`packages/prettier-config/package.json#type` has no fetchable file — so adding one entry to the lock
+would have made the staleness comparison return `null` **for all four files, permanently**, while
+printing a cheerful "unknown" rather than an error.
+
+That is this document's recurring shape once more: a correct-looking green produced by a check that
+no longer runs. It would have been introduced _by_ the fix for an unhashed file, in the function
+whose own comment (six lines above) already warns that this path "swallows throws and reports no
+signal".
+
+**My stated mechanism for it was wrong, and measuring corrected me.** I claimed the fetch would 404. It does not:
+
+| step                      | actual behaviour                                                   |
+| ------------------------- | ------------------------------------------------------------------ |
+| `fetch(url + '#type')`    | WHATWG fetch **strips the fragment** → HTTP **200**, real manifest |
+| `path.endsWith('.json')`  | **false** — the path ends `#type`, so the JSON branch is skipped   |
+| else-branch `/^export /m` | manifest has no `export ` → `fail('exports nothing')` → throw      |
+| caller                    | catches → `null` → "no signal"                                     |
+
+Same outcome, different route, and the route matters: a 404 would have been visible in any network
+log, whereas a 200 whose payload is then rejected on a shape rule looks like a content problem with
+upstream. Fixed by splitting the source key on `#` and comparing the derived field — so the marker's
+staleness stays _live_, tracking upstream's declared `type` rather than being skipped.
+
+### A guard that outlived its assumption
+
+Fetching the manifest also tripped `assertPayload`, which required `compilerOptions` of every
+`.json` — true while the only JSON upstream served was a tsconfig, false the moment a manifest had
+to be read. Narrowed to exempt `package.json` while keeping the JSON.parse guard that catches an
+HTML error page served as 200, which is what the function exists for.
+
+### Two measurements on upstream's message
+
+**The pagination finding reproduces, and is worse than reported.** They cited 154 tags with 30
+visible; measured here:
+
+| instrument                   | tags    |
+| ---------------------------- | ------- |
+| `gh api .../tags` (page 1)   | **30**  |
+| `gh api --paginate .../tags` | **160** |
+| `git ls-remote --tags`       | **160** |
+
+An 81% false-negative rate, biased entirely toward _old_ tags — precisely the population a stale-pin
+audit examines.
+
+**So I audited my own published figure with the sound instrument.** This document claims a re-pin
+"across 34 tags". Against the full 159-tag semver list, tags in `(v0.86.0, v0.120.0]` number
+**exactly 34**. The figure survives; had it been derived from page 1 it would have been silently
+capped. Worth stating because the correct response to someone else's instrument defect is to check
+whether your own numbers came from the same well, not to note that theirs did.
+
+**Their announcement was stale on arrival, again.** It announced `v0.118.0`; `releases/latest`
+resolved to `v0.122.0` — four tags ahead, minutes later. Vendored at the resolved ref, not the
+quoted literal. Fifth instance recorded, and consistent with their own root cause: tag-triggered
+publishing plus manual tagging means any literal ages faster than the doc quoting it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
