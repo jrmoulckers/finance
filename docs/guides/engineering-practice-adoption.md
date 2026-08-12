@@ -2727,6 +2727,82 @@ passed is compatible with a correct gate and with one that cannot fail, and no a
 distinguishes them. The honest statement is that the block path is verified on the developer
 machine and unverified in the environment that enforces it.
 
+### Half of finance's CI jobs took their privileges by inheritance
+
+The fleet's workflow-permissions discussion has been entirely about grants that are too _small_:
+a caller omits a scope its callee needs and the run dies as a `startup_failure`. That hazard
+announces itself. The mirror hazard does not.
+
+A job that omits `permissions:` inherits the workflow-level grant, and the workflow-level grant is
+necessarily the **union** of what the file's most-privileged job needs. So the least-privileged job
+in a file runs at the privilege of the most-privileged one, and nothing ever fails to say so.
+
+Measured across all 31 workflows and 120 jobs:
+
+| Convention                     | Files | Jobs | Inheriting | New job fails                 |
+| ------------------------------ | ----- | ---- | ---------- | ----------------------------- |
+| `permissions: {}` at top level | 9     | 58   | 0          | closed                        |
+| Scoped grant at top level      | 21    | 61   | 60         | open                          |
+| No top-level block             | 1     | 1    | 0          | closed (job declares its own) |
+
+**60 of 120 jobs — half the repository — receive their scopes implicitly.** The concrete cases are
+not theoretical: `nightly.yml` grants `issues:write`, `pull-requests:write` and
+`security-events:write` at file level, and its `load-test` and `zap-baseline` jobs inherit all
+three. `ci-security.yml` grants `security-events:write` to ten jobs including `summary` and
+`gatekeeper`. `ci-android.yml` hands `security-events:write` to `changes`, a path-filter job.
+
+This is `ENG-SEC-004` (Least authority) precisely, and the principle names the mechanism rather
+than just the outcome: _broad or **implicit** authority turns one compromised identity or component
+into unrelated access_. Inheritance is the implicit form. The nine `permissions: {}` files are
+`ENG-SEC-007` (Secure failure) working as intended — a job added there without a block gets
+metadata only and its checkout fails immediately, so the mistake surfaces on the first run.
+
+**`permissions: {}` is not deny-all**, and it is worth being accurate about this because the
+fail-closed property depends on what survives rather than on nothing surviving. `metadata: read`
+cannot be dropped. The value of the empty map is not that it grants nothing; it is that what it
+grants is insufficient to check out the repository.
+
+#### The existing check had the same defect as everything else this session
+
+finance already had a least-privilege check, and it had been passing for as long as it existed. It
+asserts that privileged workflows declare `permissions: {}` — against a **hardcoded list of eight
+filenames**. That is the scope link once more, expressed as a list rather than as a path: the other
+twenty-one files were not failing the check, they were not _in_ it.
+
+The list had also drifted from the one beside it. `privilegedWorkflows` names ten files;
+`leastPrivilegeWorkflows` named eight. `rc-branch-tag.yml` is privileged, already satisfies the
+requirement, and was not asserted to — so removing its `permissions: {}` would have been silent.
+Adding it costs nothing today and closes the gap. (`nightly.yml` is the other omission and is
+genuinely non-empty, so it stays out.)
+
+The new check derives its scope from the tree instead of from a list, and is a **ratchet**: the 60
+jobs that already inherit are recorded as a baseline, and the check fails only when a sixty-first
+appears. Rewriting 21 workflows to drop scopes that jobs may actually need would risk breaking CI
+to fix a latent issue; freezing the current state and blocking growth does not. Shrinking the
+baseline is always safe.
+
+#### Two implementations, because one implementation is an assertion
+
+The check is dependency-free line scanning, matching the surrounding tool. `js-yaml` is **not a
+declared dependency** of finance — it resolved in a scratch script only by hoisting, which is
+exactly the kind of accident that makes a tool work until it doesn't.
+
+So the numbers above were produced twice: once with a real YAML parser, once with the shipped
+line-scanner. They agree on **60 of 60 inheriting jobs with zero mismatched files**. A single
+implementation would have given a number with nothing to check it against, and the count is the
+entire basis for the baseline.
+
+Both directions of the gate are proven rather than argued: an unbaselined inheriting job produces
+the error, a job declaring its own `permissions:` does not, and an empty-map base reports nothing.
+Unit tests cover all three.
+
+#### Enforcement, for free
+
+`workflow:security:check` already runs inside the required `Gatekeeper` job. Extending that script
+rather than adding a new step means the fourth link is closed with **no workflow-file edit at all**
+— which, having previously broken `ci-security.yml` in a way no local validator detected, is worth
+more than the tidiness of a separate script.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

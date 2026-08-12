@@ -54,10 +54,80 @@ const leastPrivilegeWorkflows = [
   'deploy-production.yml',
   'deploy-progressive.yml',
   'deploy-rollback.yml',
+  'rc-branch-tag.yml',
   'release-platform.yml',
   'release-train.yml',
   'reusable-release-smoke-test.yml',
 ];
+
+// Jobs that omit `permissions:` inherit the workflow-level grant, which is necessarily the union
+// of what the file's most-privileged job needs. ENG-SEC-004 names *implicit* authority as the
+// hazard, so this is a ratchet rather than a rewrite: the jobs below are the ones that already
+// inherited when the check was introduced, and the check fails only when a new one appears.
+// Shrinking this list is always safe; adding to it requires a deliberate edit and review.
+const permissionInheritanceBaseline = {
+  'ai-eval.yml': ['evals'],
+  'ai-manifest-check.yml': ['manifest'],
+  'ai-metrics.yml': ['collect'],
+  'ci-android.yml': ['changes', 'detekt', 'build-and-test', 'instrumented-tests'],
+  'ci-feature-flags.yml': ['validate-flags'],
+  'ci-ios.yml': ['changes', 'build'],
+  'ci-lint.yml': [
+    'changes',
+    'eslint-prettier',
+    'pr-title',
+    'observability-guardrails',
+    'eng-citations',
+  ],
+  'ci-security.yml': [
+    'codeql-java-kotlin',
+    'codeql-javascript',
+    'dependency-review',
+    'secret-scanning',
+    'gitleaks',
+    'npm-audit',
+    'gradle-dependency-check',
+    'license-check',
+    'summary',
+    'gatekeeper',
+  ],
+  'ci-shared.yml': ['lint-and-test'],
+  'ci-web.yml': [
+    'changes',
+    'build',
+    'unit-tests',
+    'e2e-pr-smoke',
+    'e2e-pr-report',
+    'e2e-main-desktop',
+    'e2e-main-report',
+  ],
+  'ci-windows.yml': ['changes', 'build'],
+  'deploy-pages.yml': ['build', 'deploy'],
+  'deploy-staging.yml': [
+    'pre-deploy-checks',
+    'deploy-web-vm',
+    'deploy-backend',
+    'smoke-tests',
+    'notify',
+  ],
+  'housekeeping.yml': ['add-to-project', 'stale', 'uptime', 'prod-uptime'],
+  'maintenance-align-jwt-aud.yml': ['align-jwt-aud'],
+  'migration-reversal-check.yml': ['reversals'],
+  'nightly.yml': [
+    'web-build',
+    'web-e2e-tests',
+    'web-e2e-report',
+    'web-visual-regression',
+    'web-lighthouse',
+    'web-nightly-issue',
+    'load-test',
+    'zap-baseline',
+  ],
+  'ops-prod-db-recovery.yml': ['ops'],
+  'promote-production.yml': ['promote'],
+  'reusable-detect-changes.yml': ['detect'],
+  'update-visual-snapshots.yml': ['update'],
+};
 
 function normalize(text) {
   return text.replace(/\r\n/g, '\n');
@@ -147,6 +217,38 @@ export function findMutableReferenceViolations(workflow) {
   return violations;
 }
 
+export function findInheritingJobs(workflow) {
+  const lines = normalize(workflow).split('\n');
+  const topLevel = lines.findIndex((line) => /^permissions:/.test(line));
+  if (topLevel === -1) return { base: null, jobs: [] };
+
+  const inlineBase = lines[topLevel].slice('permissions:'.length).trim();
+  if (inlineBase === '{}') return { base: '{}', jobs: [] };
+
+  const jobsStart = lines.findIndex((line) => /^jobs:\s*$/.test(line));
+  if (jobsStart === -1) return { base: inlineBase || 'block', jobs: [] };
+
+  const inheriting = [];
+  for (let index = jobsStart + 1; index < lines.length; index += 1) {
+    const header = lines[index].match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
+    if (!header) continue;
+    let end = lines.length;
+    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+      if (/^ {2}[A-Za-z0-9_-]+:\s*$/.test(lines[cursor])) {
+        end = cursor;
+        break;
+      }
+    }
+    const declaresPermissions = lines
+      .slice(index + 1, end)
+      .some((line) => /^ {4}permissions:/.test(line));
+    if (!declaresPermissions) inheriting.push(header[1]);
+    index = end - 1;
+  }
+
+  return { base: inlineBase || 'block', jobs: inheriting };
+}
+
 export function scanWorkflowSecurity(workflows, productionCompose = '') {
   const errors = [];
   const report = (file, message) => errors.push(`${file}: ${message}`);
@@ -171,6 +273,17 @@ export function scanWorkflowSecurity(workflows, productionCompose = '') {
   for (const file of leastPrivilegeWorkflows) {
     if (!/^permissions:\s*\{\}\s*$/m.test(workflows[file] ?? '')) {
       report(file, 'privileged workflow must default to permissions: {}');
+    }
+  }
+
+  for (const [file, workflow] of Object.entries(workflows)) {
+    const allowed = new Set(permissionInheritanceBaseline[file] ?? []);
+    for (const jobName of findInheritingJobs(workflow).jobs) {
+      if (allowed.has(jobName)) continue;
+      report(
+        file,
+        `job ${jobName} omits permissions: and inherits the workflow-level grant; declare job-level permissions (ENG-SEC-004)`,
+      );
     }
   }
 
