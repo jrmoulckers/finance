@@ -93,20 +93,24 @@ const METRICS = [
   },
 ];
 
-// A prose paragraph is the only construct markdown formatters re-wrap, so it is the only
-// construct whose line breaks may not be assumed. Blocks holding a fence, list marker, table
-// row, blockquote, heading, or indented code are left exactly as written.
+// A wrapped prose paragraph and a wrapped list item are the constructs a markdown formatter
+// re-flows, so neither may be assumed to keep its line breaks. These markers begin a new
+// logical line; lines that follow without one are continuations of it.
 const STRUCTURED_LINE = /^(\s*([-*+]|\d+\.)\s|\s*[|>#]|\s*```|\s{4,}\S)/;
 
 /**
- * Split text into logical lines, joining wrapped prose paragraphs back into one entry.
+ * Split text into logical lines, joining wrapped prose and wrapped list items.
  *
  * Pinned phrases and `<number> <noun>` metric claims are asserted against text that no
  * formatter promises to leave hard-wrapped where it is today. Matching physical lines makes
  * every such assertion depend on wrap position: a re-wrap silently drops metric matches and
  * splits the roster statement, which reports as missing content rather than as a format change.
- * Whitespace is never the content being asserted, so collapsing it inside a paragraph weakens
- * nothing — a genuinely absent phrase or wrong number still fails.
+ * Whitespace is never the content being asserted, so collapsing it weakens nothing — a
+ * genuinely absent phrase or wrong number still fails.
+ *
+ * A new logical line begins at each structural marker, so continuation lines join the item
+ * they belong to and a number in one bullet can never pair with a noun in the next. Fenced
+ * code is emitted verbatim, including any blank lines inside it.
  *
  * @param {string} text Raw document or section text.
  * @returns {{ text: string, line: number }[]} Logical lines with their 1-based start line.
@@ -114,26 +118,39 @@ const STRUCTURED_LINE = /^(\s*([-*+]|\d+\.)\s|\s*[|>#]|\s*```|\s{4,}\S)/;
 function logicalLines(text) {
   const physical = text.split(/\r?\n/);
   const out = [];
-  let block = [];
-  let blockStart = 0;
+  let buffer = [];
+  let start = 0;
+  let fenced = false;
 
   const flush = () => {
-    if (!block.length) return;
-    if (block.some((line) => STRUCTURED_LINE.test(line))) {
-      block.forEach((line, offset) => out.push({ text: line, line: blockStart + offset + 1 }));
-    } else {
-      out.push({ text: block.map((line) => line.trim()).join(' '), line: blockStart + 1 });
-    }
-    block = [];
+    if (!buffer.length) return;
+    out.push({ text: buffer.map((line) => line.trim()).join(' '), line: start + 1 });
+    buffer = [];
   };
 
   physical.forEach((line, index) => {
+    if (/^\s*```/.test(line)) {
+      flush();
+      fenced = !fenced;
+      out.push({ text: line, line: index + 1 });
+      return;
+    }
+    if (fenced) {
+      out.push({ text: line, line: index + 1 });
+      return;
+    }
     if (line.trim() === '') {
       flush();
       return;
     }
-    if (!block.length) blockStart = index;
-    block.push(line);
+    if (STRUCTURED_LINE.test(line)) {
+      flush();
+      start = index;
+      buffer = [line];
+      return;
+    }
+    if (!buffer.length) start = index;
+    buffer.push(line);
   });
   flush();
   return out;
