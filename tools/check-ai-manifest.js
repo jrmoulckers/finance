@@ -362,6 +362,11 @@ function validateSyncLock() {
 
   findings.push(...verifyManagedContent(lock));
   findings.push(...verifyLockCoverage(lock));
+  const source = verifySourceReproduction(lock);
+  findings.push(...source.findings);
+  process.stdout.write(
+    `  [source] ${source.reproduced} managed targets unstamp to their recorded canon source\n`,
+  );
   return findings;
 }
 
@@ -463,6 +468,66 @@ function walkFiles(dir) {
   });
 }
 
+// The exact text the engine injects. Kept separate from PROVENANCE_LINE (an anchored /m
+// test) because unstamping needs the literal to locate and splice, not merely detect.
+const PROVENANCE_STAMP =
+  '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->';
+
+// Recovers canon's pre-stamp bytes from a delivered file, inverting provenance.mjs:
+//   :69-70  frontmatter present -> injectAfterFrontmatter -> splice(i+1, 0, stamp)  ONE line
+//   :72     no frontmatter      -> `${stamp}\n\n${content}`                          TWO lines
+// Position decides the shape, so a single rule is wrong in one direction or the other:
+// always-strip-one reproduces 50 of 54 and fails the no-frontmatter CHECKLIST.md files;
+// always-strip-two reproduces only those 4. Both controls are asserted to fail in
+// tools/check-ai-manifest.test.mjs so the split cannot be collapsed silently.
+function unstampProvenance(text) {
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const index = lines.indexOf(PROVENANCE_STAMP);
+  if (index === -1) return null;
+  lines.splice(index, lines[0] === '---' ? 1 : 2);
+  return lines.join('\n');
+}
+
+// Verifies the lock's sourceSha256 against local bytes. The tool previously recorded this
+// field as unreachable member-side, on a measurement that hashed each delivered file as it
+// sits on disk and matched 0 of 56. That result was real and its reading was wrong:
+// sourceSha256 hashes canon BEFORE the stamp is injected, so the delivered form cannot
+// match it for any entry, ever -- the measurement could not have come out otherwise. Undo
+// the injection and the field reproduces exactly (54 of 54, byte-identical to canon's blob,
+// confirmed against `4950ca7e` for workflow.instructions.md). A false impossibility claim
+// stops the search, which is why this is a check and not just a corrected comment (#4186).
+//
+// Marker-managed files are excluded rather than failed: there sourceSha256 covers canon's
+// region source, not the whole file, so whole-file unstamping is inapplicable by
+// construction. This proves delivery fidelity, NOT currency -- it shows canon said this at
+// sync time, never that canon still says it.
+function verifySourceReproduction(lock) {
+  const findings = [];
+  let reproduced = 0;
+  for (const [entry, metadata] of Object.entries(lock.entries || {})) {
+    if (!metadata || !metadata.sourceSha256) continue;
+    const absolute = path.join(ROOT, entry);
+    if (!fs.existsSync(absolute)) continue;
+    const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
+    if (managedRegion(text) !== null) continue;
+    const source = unstampProvenance(text);
+    if (source === null) continue;
+    const digest = crypto.createHash('sha256').update(source).digest('hex');
+    if (digest === metadata.sourceSha256) reproduced += 1;
+    else
+      findings.push(
+        `does not unstamp to its recorded canon source: ${entry} ` +
+          `(sha256 ${digest.slice(0, 12)}, lock records ${metadata.sourceSha256.slice(0, 12)})`,
+      );
+  }
+  // Premise guard, for the same reason the claim this replaces was wrong: a population of
+  // zero would make this pass unconditionally and read as confirmation of delivery fidelity.
+  if (reproduced === 0) {
+    findings.push('no lock entry unstamped to its canon source — check is not observing');
+  }
+  return { findings, reproduced };
+}
+
 function verifyManagedContent(lock) {
   const findings = [];
   const pending = [];
@@ -495,9 +560,8 @@ function verifyManagedContent(lock) {
   //
   // The wording is deliberate: this asserts "unmodified since sync", NOT "current with
   // canon". targetSha256 records what was delivered; sourceSha256 records what canon
-  // looked like at sync time and is canon-side content -- measured unmatched by anything
-  // local for all 68 present entries. Canon can therefore move arbitrarily far ahead
-  // while every check here stays green, and a stale file defeats detection by existing.
+  // looked like at sync time. Canon can therefore move arbitrarily far ahead while every
+  // check here stays green, and a stale file defeats detection by existing.
   // Closing that requires comparing against the backbone at runtime, which is the open
   // owner-gated question in #4141. Until then this line must not imply currency.
   process.stdout.write(
@@ -625,4 +689,10 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { managedRegion, managedDigest, verifyLockCoverage };
+module.exports = {
+  managedRegion,
+  managedDigest,
+  verifyLockCoverage,
+  unstampProvenance,
+  verifySourceReproduction,
+};
