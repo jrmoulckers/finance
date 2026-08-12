@@ -6298,6 +6298,106 @@ lives inside its own search space measures itself first.** Upstream had already 
 conclusion from the other side, which is why their check excludes its own script by content rather
 than by path — a renamed copy would otherwise vouch for the tree.
 
+## Version distance is a proxy for maintenance status, and it fails where it matters
+
+A sibling session proposed that "N majors behind" measures nothing useful, because upstream
+maintains several release lines at once: two pins at the identical tag `v4.4.0`, identical major
+distance, had opposite exposure — one line had received the latest backport wave, the other was
+abandoned. Their sample was 9 pins. finance has 236, so the claim is testable here at scale.
+
+Resolved every pinned SHA to its tag, then computed two metrics per pin: **major distance** to the
+newest release, and **line-tip lag** — whether the pin is the newest release _within its own major
+line_.
+
+|         | at line tip | behind line tip |
+| ------- | ----------- | --------------- |
+| pins    | 89          | **147**         |
+| actions | 18          | 9               |
+
+Major distance rates 198 of 236 pins (84%) as perfectly current. Line-tip lag flags 147 (62%). The
+two do not merely disagree in strength — they cross, so neither is a refinement of the other.
+
+### The independent oracle
+
+Dependabot is configured here for `github-actions`, weekly, and PR #4012 is its outstanding group
+bump. That makes it an oracle computed by someone else's code, so the two metrics can be scored
+rather than argued about.
+
+|                 | in #4012 | not in #4012 |
+| --------------- | -------- | ------------ |
+| behind line tip | **147**  | 0            |
+| at line tip     | 0        | **89**       |
+
+A perfect partition over 236 pins, zero error in either direction. Against the same oracle:
+
+|               | in #4012 | not in #4012 |
+| ------------- | -------- | ------------ |
+| major gap > 0 | 37       | 1            |
+| major gap = 0 | **110**  | 88           |
+
+**110 pins are rated perfectly current by major distance and are pins the bot wants to move** — 75%
+of the proposal is invisible to the metric. The single apparent miss in the other direction is not a
+miss: `changesets/action v2.0.0` was published 2026-08-11, three days _after_ #4012 opened, so the
+bot could not have proposed it. Corrected for time of observation, major distance has no false
+positives and 110 false negatives.
+
+`actions/checkout` is the clean case. 75 pins at `v7.0.0`, major gap **0**, and `v7.0.1` is the line
+tip. By the usual metric it is the most current pin in the repo; it is simultaneously the largest
+single block of stale pins.
+
+### This corrects a claim made earlier in this document
+
+An earlier section argued that a blocked dependabot PR could not be compounding toward insecurity,
+because the pins it would refresh had not gone stale. That measurement used major distance. Under
+line-tip lag the compounding is real and quantified: 147 pins, and no `ci(deps)` group bump has
+landed since 2026-07-06.
+
+The revision is not "I measured carelessly" — the earlier number was correct for the metric used.
+**The metric was load-bearing and unstated**, which is the failure mode. A staleness claim has to
+name its metric, because the two available ones differ by 110 pins on the same tree.
+
+### What the closures were, and were not
+
+Four `ci(deps)` PRs closed between 2026-07-13 and 2026-08-08 look like four rejections. They are
+not: each carries dependabot's own _"updatable in another way, so this is no longer needed"_ — the
+bot superseding itself as the group grew (6 → 8 → 9 → 11 → 12 updates). There has been **one**
+rolling proposal, never rejected and never landed. Counting closures would have reported four
+decisions where zero were made.
+
+### And the thing actually holding 147 pins
+
+#4012 is **33 pass, 1 fail, 0 pending**. Every security and pin gate on it is green — the control
+deadlock recorded earlier in this document is genuinely resolved. The single failure is:
+
+```
+Downloading https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+Exception in thread "main" java.net.SocketException: Unexpected end of file from server
+        at org.gradle.wrapper.Install.forceFetch(SourceFile:2)
+```
+
+A transient reset fetching the Gradle distribution, 27 seconds in, before anything compiled. The
+wrapper retries zero times (`networkTimeout=10000`, no retry). So 62% of the workflow supply chain
+is held behind a network blip on one job, and the repo already knew about this class — the
+`|| ./gradlew ...` in `release-platform.yml` is a hand-rolled retry at exactly one of 25 `./gradlew`
+call sites.
+
+Fixed in `ci-windows.yml` by prefetching the distribution in its own retried step. The scoping is
+the point: retrying `./gradlew --version` retries **only the download**, so a real build failure
+still fails on the first attempt. A `||` retry around the build itself would have doubled CI time on
+genuine failures and made a flaky test look green on the second roll.
+
+Five other workflows (`ci-android`, `ci-shared`, `ci-security`, `release-platform`,
+`reusable-release-smoke-test`) share the exposure at 23 remaining call sites and are unfixed here.
+
+### Generalisation
+
+> **A pin's risk is set by whether its line is still being maintained, not by how far its number is
+> from the newest number.** Version distance is a proxy for that, and it degrades exactly where
+> upstream backports — which is where a conservative pinner lives by choice.
+
+Line-tip lag is a better proxy, not a measurement of the real thing: it counts _a release you do not
+have_, not _a fix you need_. It over-reports, which is the safe direction for a gate.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
