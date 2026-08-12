@@ -2875,6 +2875,134 @@ rather than adding a new step means the fourth link is closed with **no workflow
 — which, having previously broken `ci-security.yml` in a way no local validator detected, is worth
 more than the tidiness of a separate script.
 
+### A paraphrase of a scoping rule inverted the answer for 18 finance files
+
+The 2026-08-13 broadcast described `@jrmoulckers/eslint-config@0.14.0` as fixing a crash class:
+`base()` applies the type-checked rule sets unscoped, then re-disables them for `**/*.ts*`,
+`**/*.js*` and `toolingFiles`, so any other extension gets type-aware rules with no project and
+aborts the run. The mechanism is real. The two globs are not what the source contains, and the
+difference is load-bearing.
+
+`base.js` on `origin/main` (package `0.15.0`) enumerates extensions explicitly, at L104 and L113:
+
+```js
+files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'],
+files: ['**/*.js', '**/*.jsx', '**/*.mjs', '**/*.cjs'],
+```
+
+Eight literal extensions, not two star-globs. Matched with `minimatch`, the two descriptions
+disagree on **five of nine** candidate extensions:
+
+| File    | prose globs | source list |
+| ------- | ----------- | ----------- |
+| `.js`   | covered     | covered     |
+| `.jsx`  | covered     | covered     |
+| `.ts`   | covered     | covered     |
+| `.tsx`  | covered     | covered     |
+| `.mjs`  | **not**     | covered     |
+| `.cjs`  | **not**     | covered     |
+| `.mts`  | **not**     | covered     |
+| `.cts`  | **not**     | covered     |
+| `.json` | covered     | **not**     |
+
+`*.js*` does not match `.mjs` — the glob needs a literal `.js`, and `.mjs` has none. Four of the
+five disagreements run in the dangerous direction: the paraphrase reports as _uncovered_, and
+therefore in the crash class, four extensions the code covers.
+
+This was not academic here. Reasoning from the broadcast, finance has **18 linted `.mjs` files**,
+which the prose places squarely in the crash class — a live exposure requiring a floor bump. The
+source says they are covered. The exposure claim was drafted and discarded only because the
+source was read; it would have shipped as a finding otherwise, and it would have been wrong.
+
+**What finance actually lints.** From `eslint . --format json`, 2,513 files:
+
+| Extension | Files | In the eight? |
+| --------- | ----: | ------------- |
+| `.ts`     | 1,852 | yes           |
+| `.tsx`    |   601 | yes           |
+| `.js`     |    42 | yes           |
+| `.mjs`    |    18 | yes           |
+
+Four extensions, all covered. finance is structurally immune to this crash class, and there is
+no configuration it could adopt that would expose it, short of introducing a template language.
+
+### `untypedFiles` is an escape hatch, not a default
+
+The 0.14.0 addition is applied conditionally — `base.js` L126, `untypedFiles.length > 0` — and
+defaults to `[]`. A `base()` consumer who hits the crash still hits it after upgrading; the
+release gives them the means to fix it, not the fix. It is the shipped `svelte.js` that is
+repaired, because that preset passes the globs itself at L75:
+
+```js
+untypedFiles: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
+```
+
+"Fixes the class" is accurate for the preset upstream ships and not for the entry point the
+sentence names. The distinction decides whether a consumer needs to change a version number or
+change a call, and only the second is true for `base()`.
+
+### The floor is not being bumped, and the reason is not inertia
+
+Upstream sent `>=0.14.0 <1.0.0` with an instruction to copy it literally. finance records
+`>=0.13.0 <1.0.0` and is keeping it, on three measured grounds:
+
+1. **It already resolves the release.** A correct lower-bound range degrades gracefully;
+   `>=0.13.0 <1.0.0` installs `0.14.0` and `0.15.0` unchanged. This is the same distinction drawn
+   earlier in this document between a stale printed floor and a stale dependency — only the
+   caret form has the second failure.
+2. **The bump would encode a requirement finance does not have.** A floor is a compatibility
+   claim. Asserting `>=0.14.0` states that finance needs the `untypedFiles` fix; the extension
+   census above shows it cannot.
+3. **The number was stale on arrival.** `origin/main` publishes `0.15.0`. The instruction to copy
+   a version literally and the shelf-life of a borrowed version pull against each other, and this
+   is the fourth time in this thread a quoted version has aged before it could be applied.
+
+`>=0.13.0 <1.0.0` is not a lag behind `>=0.14.0 <1.0.0`; it is the same range with a weaker and
+more honest lower claim.
+
+### Two broadcast items measured as not applicable
+
+A broadcast to seven repositories mixes fleet-wide findings with per-repo actions, and the
+addressee of "yours to action" is decided by the reader. Both items addressed to finance this
+round were measured before being recorded.
+
+**pnpm `auditConfig` relocation — not applicable.** The report is that pnpm 11.10.0 stops reading
+`pnpm.auditConfig` from `package.json`, dropping suppressions silently with an unchanged exit
+code. finance is npm:
+
+| Evidence                          | Value                        |
+| --------------------------------- | ---------------------------- |
+| `packageManager`                  | `npm@10.9.4`                 |
+| Lockfile                          | `package-lock.json` (291 KB) |
+| `pnpm-lock.yaml` / workspace file | absent                       |
+| `pnpm` key in `package.json`      | absent                       |
+| `pnpm` references in 31 workflows | **0**                        |
+| `npm ci` invocations              | 37                           |
+
+No surface, so no finding. Recorded rather than dropped, because "measured as inapplicable" and
+"not looked at" are the same silence otherwise.
+
+**`curl` without `-f` — measured, and the remedy is the weaker pattern.** 18 `curl` lines across
+workflows and scripts; 16 lack `-f`/`--fail`. Read as a count, that would be the finding. It is
+not, because the dominant pattern captures the status directly:
+
+```bash
+http_code=$(curl -sSL -o "$HEALTH_RESPONSE" -w '%{http_code}' "$BASE_URL/health" || echo '000')
+if [ "$http_code" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"(ok|healthy)"' "$HEALTH_RESPONSE"; then
+```
+
+The hazard upstream describes is an error body written at exit 0 and then consumed as if valid.
+Here the body is consumed only after the status is `200` **and** the content matches. That is
+strictly stronger than `-f`, which reports failure through an exit code and discards the body —
+and adding `-f` would actively break these checks, since they need the code on the failing path
+in order to report it. The one exception is `nightly.yml` L420-421, two readiness loops that
+accept any HTTP status; a `zaproxy` scan with `fail_action: true` runs behind them, so the
+exposure is a slower failure rather than a missed one.
+
+The general form is worth keeping: **a lint-style count of a missing flag is not a finding until
+the call sites are read**, because the flag may be absent for the reason that the code does
+something better. 16 of 18 would have been a confident and wrong number.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
