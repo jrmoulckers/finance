@@ -385,6 +385,12 @@ function validateSyncLock() {
   return findings;
 }
 
+// The engine hashes LF-normalized text (`hashText`, lock.mjs:57). Naming it here rather
+// than spelling `.replace(/\r\n/g, '\n')` at each call site keeps one word for one rule:
+// three inline spellings is what made this normalization impossible to cite accurately,
+// and impossible to notice was untested (#4201).
+const toLF = (text) => text.replace(/\r\n/g, '\n');
+
 // Markers delimiting a managed region, per comment syntax of the host file.
 // Group 2 is the region body; the markers themselves are excluded from the digest.
 const REGION_MARKERS = [
@@ -413,9 +419,14 @@ function managedRegion(text) {
 // Leading whitespace inside a managed region is therefore significant and must be preserved.
 const stripTrailing = (text) => text.replace(/\s+$/, '');
 
+// `toLF` is applied here rather than assumed of the caller. Every current caller already
+// normalizes at the read, so this is idempotent today -- but this function is exported, the
+// precondition was unstated, and a caller that reads a file plainly is the obvious thing to
+// write. The rule stated three lines above now runs in full under it (#4201).
 function managedDigest(text) {
-  const region = managedRegion(text);
-  const payload = region === null ? text : stripTrailing(region);
+  const normalized = toLF(text);
+  const region = managedRegion(normalized);
+  const payload = region === null ? normalized : stripTrailing(region);
   return crypto.createHash('sha256').update(payload).digest('hex');
 }
 
@@ -534,7 +545,7 @@ function commentFamily(entryPath) {
 // would shrink the denominator with nothing saying so, which is the silent-channel defect
 // this tool already corrected twice (#4190, #4191). The caller discloses it by path.
 function unstampSource(entryPath, text) {
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const lines = toLF(text).split('\n');
   const index = lines.findIndex((line) => PROVENANCE_STAMP_LINE.test(line));
   if (index === -1) return { status: 'no-stamp' };
   const family = commentFamily(entryPath);
@@ -591,7 +602,7 @@ function verifySourceReproduction(lock) {
       unobserved.push(entry);
       continue;
     }
-    const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
+    const text = toLF(fs.readFileSync(absolute, 'utf8'));
     if (managedRegion(text) !== null) {
       unobserved.push(entry);
       continue;
@@ -631,7 +642,7 @@ function verifyManagedContent(lock) {
       else findings.push(`managed target is missing: ${entry}`);
       continue;
     }
-    const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
+    const text = toLF(fs.readFileSync(absolute, 'utf8'));
     const digest = managedDigest(text);
     if (digest !== metadata.targetSha256) {
       const scope = managedRegion(text) === null ? 'managed file' : 'managed region';
@@ -779,6 +790,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  toLF,
   managedRegion,
   managedDigest,
   verifyLockCoverage,

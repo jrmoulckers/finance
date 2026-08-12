@@ -15,6 +15,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const {
+  toLF,
   managedRegion,
   managedDigest,
   verifyLockCoverage,
@@ -47,6 +48,29 @@ test('the whole-file rule strips nothing', () => {
   assert.equal(managedRegion(text), null);
   assert.equal(managedDigest(text), sha(text));
   assert.notEqual(managedDigest(text), sha(text.trim()));
+});
+
+test('CRLF input digests identically to LF, for both shapes', () => {
+  // Every input this repo can read is already LF: `.gitattributes` sets `* text=auto eol=lf`
+  // and 0 of 61 managed files carry CRLF. So deleting the tool's normalization altogether
+  // left the whole suite green and `--strict` at exit 0 -- correct code, held up by a
+  // checkout setting rather than by anything that could fail (#4201). These assertions are
+  // the ones that notice. They construct CRLF rather than reading it, so they do not depend
+  // on the working tree's line endings and cannot decay if `.gitattributes` changes.
+  for (const lf of ['no markers here\n', wrap('canon line\n'), wrap('\nleading blank\n')]) {
+    const crlf = lf.replace(/\n/g, '\r\n');
+    assert.notEqual(crlf, lf, 'PREMISE: the two inputs must actually differ');
+    assert.equal(managedDigest(crlf), managedDigest(lf), 'digest must not depend on line endings');
+  }
+});
+
+test('toLF is idempotent and leaves a lone CR alone', () => {
+  // Idempotence is what lets the callers keep normalizing at the read without double-handling.
+  // The lone-CR case pins the boundary: the engine's rule is CRLF -> LF, not "delete every CR".
+  const mixed = 'a\r\nb\nc\r\n';
+  assert.equal(toLF(mixed), 'a\nb\nc\n');
+  assert.equal(toLF(toLF(mixed)), toLF(mixed));
+  assert.equal(toLF('old\rmac'), 'old\rmac');
 });
 
 test('lock coverage: baseline is zero, and a stamped unrecorded file is caught', () => {
