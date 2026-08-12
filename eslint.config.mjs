@@ -114,6 +114,17 @@ export default [
       '**/.gradle/**',
       '**/vendor/**',
       'config/engineering/**',
+      // Playwright writes bundled JS here — the HTML report is a megabyte of
+      // minified webpack output and traces carry snapshot scripts. These are in
+      // .gitignore (L103-106), but flat config does not read .gitignore, so
+      // without these globs a *failed* local run makes the next `eslint .`
+      // report thousands of problems in files nobody wrote. CI never sees it:
+      // no job runs Playwright and ESLint together, so the gate cannot warn
+      // about a condition only a developer's working tree can reach.
+      '**/playwright-report/**',
+      '**/playwright-report-live/**',
+      '**/blob-report/**',
+      '**/test-results/**',
     ],
   },
   {
