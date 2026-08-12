@@ -1883,3 +1883,46 @@ find package 'prettier'` — resolution, not assertion — and the worktree had 
   bare `* text=auto eol=lf` being recommended: it adds `*.bat`/`*.cmd text eol=crlf`. Forcing LF
   on batch files can break `cmd.exe` parsing, so the bare snippet trades one Windows-only failure
   for another. The carve-out belongs in the recommendation.
+
+- **A path filter and a required check interact two different ways, and the safe one is the ugly
+  one.** Upstream could not test this (no protected branch) and framed it as two rival outcomes: the
+  check never reports and the PR blocks forever, or it is treated as satisfied and the gate is
+  bypassed. **Both happen.** Which one you get is decided by where the filter sits, and finance runs
+  both configurations today against a protected `main` whose required contexts include
+  `ESLint & Prettier`, `Secret Detection`, `Build & Test`, and `Required Checks Gatekeeper`.
+
+  | Filter placement                            | GitHub's behaviour                       | Failure direction                      |
+  | ------------------------------------------- | ---------------------------------------- | -------------------------------------- |
+  | `on: pull_request: paths:` (workflow level) | the check never reports at all           | **fail-closed** — PR stuck pending     |
+  | job-level `if:` (skip-with-success)         | conclusion `skipped`, counted as passing | **fail-open** — gate silently bypassed |
+
+  Measured, not inferred. PR #4126 changed exactly one file,
+  `docs/guides/engineering-practice-adoption.md`, which matches none of `ci-lint.yml`'s filters —
+  the workflow's list covers `**/*.ts`, `**/*.json`, `apps/**`, `packages/**`, `services/**` and
+  friends, but no `docs/**` and no `**/*.md`. The required `ESLint & Prettier` context completed with
+  `conclusion: skipped`, the PR reported `MERGEABLE`/`CLEAN`, and it merged. A skipped required check
+  is a satisfied one.
+
+  The fail-closed half is recorded in `ci-lint.yml` itself, as a guardrail comment above the
+  `changes` job (lines 54–58) warning against adding `paths:` to the `pull_request:` trigger because
+  a filtered-out required check "never reports its status, leaving PRs stuck in a BLOCKED state."
+  Note that the `push:` trigger _does_ carry a `paths:` list — that is safe precisely because pushes
+  to `main` are not the gate.
+
+  **The inversion is the part worth hoisting.** The pattern everyone adopts to avoid the blocking
+  annoyance — gate inside the workflow, skip with success — is the one that fails open. It is correct
+  for lint, where a skipped check on a docs-only PR is exactly right, and it is **wrong for a leak
+  gate**, where the whole premise is that nothing merges unexamined. So the recommendation cannot be
+  one pattern: a _relevance_ check should skip with success, and a _prohibition_ check should run
+  unfiltered on every PR and decide internally. finance's own configuration is correct for lint and
+  would be a silent hole if the secret-detection gate were built the same way. That is not a
+  hypothetical about someone else's repo; it is one `if:` away in this one.
+
+- **`|| echo ""` beats `|| true` when the grep result is captured.** Upstream flagged that a guardrail
+  script's `grep` exits 1 on no match and fails the job on a clean repository under `pipefail`.
+  finance already carries the fix and a load-bearing comment forbidding its "simplification"
+  (`ci-lint.yml` lines 166–170), but uses `|| echo ""` rather than the suggested `|| true`. In a
+  command substitution the distinction matters: `|| true` suppresses the exit code while leaving the
+  variable empty by accident, whereas `|| echo ""` makes the empty result the explicit value being
+  assigned. Same green build, but the second states the intent that a clean repository is a valid
+  outcome rather than a suppressed error.
