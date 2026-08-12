@@ -26,6 +26,7 @@ on:
       - 'AGENTS.md'
       - 'tools/ai-manifest.js'
       - 'tools/check-ai-manifest.js'
+      - 'tools/check-ai-manifest.test.mjs'
   workflow_dispatch:
 
 concurrency:
@@ -49,6 +50,12 @@ jobs:
 
       - name: Generate manifest
         run: node tools/ai-manifest.js --markdown
+
+      - name: Digest rule tests
+        # Blocking, unlike the drift check below. These pin the two targetSha256 rules against
+        # the sync engine; the live check cannot catch a wrong rule, because this repo's corpus
+        # contains no input that separates the correct rule from its near-miss (.github#659).
+        run: npm run ai:manifest:test
 
       - name: Check for drift (informational)
         # Default is warn-only (exit 0). Set STRICT=1 here to make drift blocking.
