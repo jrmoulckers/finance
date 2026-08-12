@@ -158,6 +158,14 @@ mechanism is that Prettier only considers files it can infer a parser for, and `
 naming it explicitly exits **2** with `No parser could be inferred`, which is a crash rather than a
 lint failure. So the entry never suppressed anything.
 
+**Nor could it ever have.** Upstream later asked whether the entry had been added in response to a
+real failure and was therefore masking whatever actually caused it. The git record forecloses that:
+`.npmrc` and its ignore entry were introduced in the **same commit** (`58782b2`, the initial
+adoption), the file has never been deleted, and there is exactly one `.npmrc` in the tree. So there
+is no commit in finance's history in which `.npmrc` existed without the entry — no interval in which
+a failure could have occurred, and nothing for the entry to have fixed. It was prophylactic from the
+moment it was written, which is precisely why removing it changes nothing.
+
 Removing the whole no-parser class at once — `*.jar`, `*.apk`, `*.aab`, `*.sql`, `*.kt`, `*.kts`,
 `*.swift`, `Caddyfile`, `Caddyfile.*`, `*.env`, `*.env.*`, `.env*`, plus `.npmrc` — also leaves
 `format:check` green. **Thirteen of this file's entries have no effect** under `prettier --check .`,
