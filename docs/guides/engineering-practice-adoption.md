@@ -7499,6 +7499,114 @@ as current carries the command that would refute it, so re-checking costs one
 invocation rather than a re-derivation. The `.tsx` claim above survived many restatements
 precisely because it read as a conclusion and not as a measurement.
 
+## A state census cannot answer an event question, and repair is what hides the difference
+
+The sibling session found this in its own tree: a claim of the form _"this has
+never happened in 154 release-era tags"_ was a census of surviving **states**,
+while the thing being claimed was an **event**. The event had occurred that same
+day and had been repaired within two minutes, and the repair removed it from the
+census. Worse, the repair was cheap by design, so the census under-counts by an
+amount the design guarantees will be most of them.
+
+finance has the same shape, and here it is measurable, because git keeps the
+history that a working tree does not.
+
+`workflow:security:check` verifies every `uses:` ref is pinned to a 40-character
+SHA. It passes, and it is right to pass:
+
+```
+31 workflow(s) scanned; 30 of 30 named assertion target(s) present
+```
+
+Walking the 209 commits that touched `.github/workflows` on `main`:
+
+| measure                                    | value                                            |
+| ------------------------------------------ | ------------------------------------------------ |
+| commits examined                           | 209                                              |
+| commits carrying at least one unpinned ref | **89 (42.6%)**                                   |
+| distinct unpinned refs over time           | 23                                               |
+| most recent                                | `actions/attest-build-provenance@v4`, 2026-08-07 |
+| working tree                               | clean                                            |
+
+So the compliance the gate reports was **achieved, not maintained**, and the most
+recent lapse was five days before the gate was read, not in some distant
+pre-adoption era. Nothing in the gate's output is false. What the output invites
+is an inference about the repository from a measurement of the tree.
+
+**This is a different axis from every previous scope defect in this document.**
+All the earlier ones were about _which files_ an instrument looked at: excluded
+tests, missing workspaces, unreached steps, and the remedy was to print the
+denominator. That remedy does not touch this one, because the file denominator
+was already complete and correct -- 31 of 31. The narrowing is **temporal**, and a
+file count cannot express it at any level of detail.
+
+The fix is the same sentence in a different dimension. The gate now says what
+point in time it speaks for, and `npm run workflow:pin:history` answers the event
+question directly, so the claim can be re-measured in one invocation instead of
+re-derived. It is deliberately not a CI gate: it needs full history, which shallow
+CI clones lack, and a check that fails a pull request for what an earlier commit
+did is pointed at the wrong target.
+
+### The census was wrong first, in the accusatory direction
+
+The first version reported **209 of 209** commits dirty, including a HEAD the gate
+passes. Three refs drove it -- `actions/setup-python@v5`, `setup-dotnet@v4`,
+`setup-java@v4` -- and all three are inside a commented-out block of future setup
+steps in `copilot-setup-steps.yml`:
+
+```yaml
+# - name: Setup Python
+#   uses: actions/setup-python@v5
+```
+
+`git grep uses:` matches comments. The gate does not, and the gate was correct
+throughout. Had the disagreement not been checked by hand before being written
+down, it would have shipped as a finding that the pinning gate was broken.
+
+That is the failure mode the sibling named in the same message and then found in
+its own wording: **an instrument that fails toward accusation.** Both halves
+occurred here within the same hour -- their clause said a published package was
+never published, and my census said a compliant tree was non-compliant. The
+common structure is that both instruments were measuring a proxy (`publish` job
+conclusion; `uses:` text) and reporting the conclusion in the vocabulary of the
+target (registry state; pinning compliance).
+
+The rule that follows is narrower and more useful than "fail toward silence":
+**an instrument may only accuse in the vocabulary it actually measured.** The
+census can say _"this line of text is not a 40-hex ref"_. It cannot say _"this
+repository is unpinned"_ until it knows what a step is.
+
+Both exclusions are now pinned by name in `check-workflow-pin-history.test.mjs`,
+including one asserting that a commented-out step next to a real one does not
+mask it -- the over-correction is as available as the original defect.
+
+A fourth surfaced only under mutation testing, and it is the subtlest. The tool
+excluded local reusable workflows with `if (action.startsWith('./')) continue;`,
+and a test asserted that `uses: ./.github/workflows/ci-shared.yml` produced no
+finding. The test passed. Deleting the guard entirely did not fail it.
+
+The reason is that the match pattern requires an `@ref`, and a local reusable
+workflow has none, so such a line never reaches the guard. The test was green
+because the fixture could not get that far -- **coverage of a branch by a fixture
+that never enters it.** The guard was dead code, and the test was documentation
+of an intention rather than a constraint on behaviour.
+
+This is the same structure as the deferred-rule count elsewhere in this document:
+a number, or a green, that is true of the wrong population. Here the population
+was "inputs that reach line N", and it was empty. The guard is now removed and
+the test asserts the _reason_ -- that the string contains no `@` -- so it fails if
+the pattern is ever widened to match refless `uses:` entries.
+
+Mutation testing is what separated these. The test suite was 16 for 16 green both
+before and after the guard existed, and no amount of re-reading the tests would
+have said which. Six mutants, six killed, after.
+A third defect surfaced only in the extraction. The scratch census recorded
+first-seen attribution with `if (!refs.has(entry))`, which -- because `git log` is
+reverse-chronological -- kept the **newest** commit under a name meaning the
+oldest. The headline counts do not depend on attribution, so the scratch run was
+clean, correct, and wrong in a field nobody read. It was caught by writing the
+test, not by re-reading the code.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

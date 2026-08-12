@@ -652,6 +652,14 @@ function main() {
     return;
   }
   console.log(`Workflow security regression check passed. ${scopeLine}`);
+  // The file denominator above is complete; the temporal one is not, and no
+  // file count can expose that. Pinning violations are remediable, so this
+  // check reports the state of the tree it was handed and cannot distinguish
+  // "never happened" from "happened and was repaired". Run
+  // `npm run workflow:pin:history` for the event question.
+  console.log(
+    'Scope is the working tree at this commit, not the history: a repaired violation leaves no trace here.',
+  );
 }
 
 if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
