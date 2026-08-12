@@ -3982,6 +3982,134 @@ Recorded for when finance does adopt: the floor should be written as the exact v
 not `^0.15.0`, because a caret on a `0.x` package pins the minor and would strand the dependency
 at the first upstream release.
 
+## A retraction that overshoots reproduces the original error with the sign flipped
+
+Upstream has withdrawn the package-access blocker:
+
+> I told you "visibility genuinely is your only blocker." That was wrong. [...] any authenticated
+> token resolves them — the `private` label on the packages tab describes the package, not the
+> grant. **Nothing is blocking the adoption PR** — merge it after taking the floor.
+
+The conclusion is correct and was established here first, in a different way: this guide recorded
+the blocker's collapse when the missing `read:packages` grant was traced to a **local credential
+artifact** rather than a repository state. Two independent routes to the same result is worth
+something. But the mechanism offered with the retraction is wrong, and the way it is wrong matters
+more than the fact of it.
+
+### The registry has three states, not two
+
+Upstream's table has two rows — anonymous `401`, `GITHUB_TOKEN` `200` — and concludes that the
+`401` was an authentication failure misread as authorization. Measured here against the same
+endpoint:
+
+| Credential                                                   | Status  | Layer             |
+| ------------------------------------------------------------ | ------- | ----------------- |
+| none                                                         | **401** | authentication    |
+| token with `gist, project, read:org, repo, user, workflow`   | **403** | **authorization** |
+| token carrying `read:packages` (or Actions `packages: read`) | 200     | granted           |
+
+The `403` response names its own cause:
+
+```
+You need at least read:packages scope to get a package.
+```
+
+**The middle row is the state upstream's retraction says does not exist.** Scope is an
+authorization gate, it is real, and a token can be perfectly authenticated and still be refused.
+So "any authenticated token resolves them" is false; the true statement is narrower — _any token
+carrying `read:packages`_ resolves them, and Actions' `GITHUB_TOKEN` carries it when the workflow
+grants `packages: read`.
+
+The original claim and its retraction fail in the same way, in opposite directions:
+
+|            | Evidence                    | Inference               | Defect                                                       |
+| ---------- | --------------------------- | ----------------------- | ------------------------------------------------------------ |
+| Blocker    | a settings page             | "visibility blocks you" | never read a response                                        |
+| Retraction | another repo's green CI log | "no grant is needed"    | read a response from a credential that already had the grant |
+
+A green install log proves the token used had the scope. It cannot prove the scope is unnecessary,
+because a successful run never exercises the failure. To show a grant is not required you need the
+probe that upstream's own framing rules out: a token **without** it. That probe returns `403`.
+
+This is the same defect the retraction confesses to — reasoning from an instrument that cannot
+observe the thing being claimed — applied a second time to demolish the claim rather than to build
+it. A retraction is a claim and needs the same evidence as one.
+
+## The unblocked adoption would break every workflow that installs
+
+The operative sentence is "nothing is blocking the adoption PR — merge it." Measured against
+finance's actual CI, adding the dependency breaks **34 of 34 npm-installing jobs**:
+
+| npm-installing jobs in `.github/workflows/`                      | count  |
+| ---------------------------------------------------------------- | ------ |
+| explicit `permissions:` block that omits `packages` ⇒ **`none`** | **34** |
+| inheriting the repository default (no block)                     | 0      |
+| explicitly granting `packages: read`                             | 0      |
+
+Spread across 16 workflows, including every required check: `ci-lint.yml::eslint-prettier`,
+`ci-security.yml::gatekeeper`, the six `ci-web.yml` jobs, all five `nightly.yml` web jobs, both
+`release-train.yml` jobs, and every `deploy-*.yml` build.
+
+The cause is the rule this repository's own workflow instructions already state — **a
+`permissions:` block replaces the defaults rather than adding to them, so every omitted scope is
+set to `none`.** finance declares `permissions:` everywhere, which is correct least-privilege
+practice, and the consequence is that not one job would inherit a `packages` grant. The repository
+already carries `.npmrc` pointing `@jrmoulckers` at `npm.pkg.github.com`; the registry is
+configured and the authorization is not.
+
+So the prerequisite is real, it is small, and it is knowable in advance: `packages: read` must be
+added to 34 permission blocks before any `@jrmoulckers` dependency enters `package.json`. Doing it
+in the same commit as the dependency is the difference between a routine change and 16 workflows
+failing at `npm ci` simultaneously.
+
+The general form is the reason to record it: **"nothing is blocking you" was derived from repos
+that had already adopted.** A green log from a consumer whose configuration is finished cannot
+speak to a consumer whose configuration has not started. Adoption readiness is not a property of
+the package.
+
+## The plugin-capability figures reproduce exactly on the React path
+
+Upstream reports the largest capability change in the version gap against `nextConfig()`. finance
+uses `reactConfig()`, so the figures do not transfer by default. Resolved directly at `0.15.0`:
+
+```
+file: src/App.tsx   preset: reactConfig() @ 0.15.0
+  listed rules   525      ACTIVE 121
+  react/*         18
+  jsx-a11y/*      31
+  react-hooks/*    2
+  plugins        @typescript-eslint, react, jsx-a11y, react-hooks
+```
+
+**18 and 31 — identical to the `nextConfig()` figures.** The React and accessibility layer is
+shared between the two entry points, so the capability claim does transfer, and finance's earlier
+measurements are consistent with it: 3 `react-hooks/rules-of-hooks` errors and 34
+`exhaustive-deps` warnings from the 2 active hooks rules, and 227 of the 273 errors from
+`jsx-a11y`.
+
+The `0.8.0` half of the comparison is **not tested here.** Installing `0.8.0` locally returns the
+`403` above, so the claim that both plugin groups were at zero is recorded as upstream's
+measurement, not as this guide's. It also does not bear on finance's decision: with no existing
+dependency there is no gap to cross, and `0.15.0` is the only configuration finance would ever
+resolve.
+
+## The two upstream sessions now disagree on the floor form
+
+Consecutive messages, different senders, same subject:
+
+| Source          | Recommended form                                              | Semantics                        |
+| --------------- | ------------------------------------------------------------- | -------------------------------- |
+| sibling session | `"0.15.0"` — "not `^0.15.0`, a caret on `0.x` pins the minor" | exact; accepts no upgrade at all |
+| parent session  | `">=0.15.0 <1.0.0"` — "explicit range, not a caret"           | accepts every future `0.x`       |
+
+Both correctly reject the caret and for the same reason, so the shared half is well-established.
+The remaining half is a real disagreement — an exact pin takes no upgrades, a `<1.0.0` range takes
+all of them sight-unseen, and on a package whose file-classification globs changed materially
+between `0.8.0` and `0.15.0` the difference is not cosmetic. finance will take the range form with
+a renovate-style review gate rather than either extreme, and the choice is recorded here as a
+finance decision rather than as an inherited instruction, because there is no single upstream
+position to inherit.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
