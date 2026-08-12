@@ -176,7 +176,12 @@ jobs:
           path: |
             apps/ios/.build-xcodebuild.log
             apps/ios/.build-xcodebuild-test.log
-          if-no-files-found: ignore
+          # `.build-xcodebuild*.log` are dotfiles, and upload-artifact defaults to
+          # `include-hidden-files: false`, so without this the upload silently
+          # matches nothing. `warn` rather than `ignore` for the same reason: an
+          # absent log should announce itself, not disappear quietly (#4122).
+          if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 14
 
       - name: Generate coverage report
