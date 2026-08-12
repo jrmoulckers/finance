@@ -381,9 +381,24 @@ function managedRegion(text) {
 
 // Reproduces the sync engine's targetSha256. The two shapes differ in trimming, so a
 // single rule verifies one group and reports false drift on the other:
-//   marker-managed -> sha256 of the region body, trimmed, markers excluded
-//   whole-file     -> sha256 of the whole file, LF-normalized, NOT trimmed
-// Verified against every present lock entry: 3 region, 65 whole, 0 mismatches.
+//   marker-managed -> sha256 of the region body, TRAILING whitespace stripped, markers excluded
+//   whole-file     -> sha256 of the whole file, LF-normalized, not stripped
+// The engine is `toLF(inner).replace(/\s+$/, '')` (basemerge.mjs:165, canonicalizeInner).
+// `.trim()` is the natural external guess and is wrong: it strips the leading end too, so the
+// two rules agree on every region body that does not begin with whitespace and diverge on
+// every one that does. This repo's 68 present lock entries contain no instance of that input
+// class, so the sweep that derived `.trim()` returned 0 mismatches over a corpus incapable of
+// separating the rules -- a true measurement that could not have found this (.github#659).
+// Leading whitespace inside a managed region is therefore significant and must be preserved.
+const stripTrailing = (text) => text.replace(/\s+$/, '');
+
+function managedDigest(text) {
+  const region = managedRegion(text);
+  const payload = region === null ? text : stripTrailing(region);
+  return crypto.createHash('sha256').update(payload).digest('hex');
+}
+
+// Absence is tolerated only for the vendored token outputs still awaiting the repo-root
 // Absence is tolerated only for the vendored token outputs still awaiting the repo-root
 // sync (see #4169). Deriving the tolerance from that path rather than pinning a count
 // means it shrinks to zero on its own when the sync lands, and any other missing managed
@@ -406,11 +421,9 @@ function verifyManagedContent(lock) {
       continue;
     }
     const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
-    const region = managedRegion(text);
-    const payload = region === null ? text : region.trim();
-    const digest = crypto.createHash('sha256').update(payload).digest('hex');
+    const digest = managedDigest(text);
     if (digest !== metadata.targetSha256) {
-      const scope = region === null ? 'managed file' : 'managed region';
+      const scope = managedRegion(text) === null ? 'managed file' : 'managed region';
       findings.push(
         `${scope} was edited after sync: ${entry} ` +
           `(sha256 ${digest.slice(0, 12)}, lock records ${metadata.targetSha256.slice(0, 12)})`,
@@ -539,4 +552,10 @@ function main() {
   process.exit(0);
 }
 
-main();
+// Guarded so the digest rule can be exercised by tools/check-ai-manifest.test.mjs. `main()`
+// calls process.exit, so an unguarded call would terminate any importer.
+if (require.main === module) {
+  main();
+}
+
+module.exports = { managedRegion, managedDigest };

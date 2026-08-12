@@ -35,6 +35,7 @@
     "cleanup:worktrees": "node tools/cleanup-worktrees.js",
     "ai:manifest": "node tools/ai-manifest.js",
     "ai:manifest:check": "node tools/check-ai-manifest.js",
+    "ai:manifest:test": "node --test tools/check-ai-manifest.test.mjs",
     "encoding:check": "node tools/check-text-encoding.mjs",
     "workflow:security:check": "node tools/check-workflow-security.mjs",
     "workflow:security:test": "node --test tools/check-workflow-security.test.mjs",
