@@ -7364,6 +7364,63 @@ That was one of the two preset gaps this adoption flagged. It is not adopted her
 remains deliberately out of the vendored set — but the gap is closed upstream and the follow-up
 should be re-scoped rather than re-argued.
 
+## Every scope line in this repository was on the green path
+
+Four independent routes had converged on one rule: _print the scope beside the verdict._ This
+repository shipped it — `summarizeScope()`, an excluded-test count, an exemption count. Then a
+sibling session observed that a partition has to sum or one of its parts is invisible, which
+prompted the obvious next question, which nobody in four rounds had asked.
+
+**Which branch does the scope print on?**
+
+All of them printed it on success only. Forcing each gate red:
+
+| Gate                           | Red-path output                 | Missing                |
+| ------------------------------ | ------------------------------- | ---------------------- |
+| `tool:imports:check`           | `1 undeclared import`           | the entire denominator |
+| `citations:enumerations:check` | `1 across 3161 scanned file(s)` | the exempted bucket    |
+| `workflow:security:check`      | `N errors`                      | the entire denominator |
+
+The failure branch `return`ed before the scope line in two of the three, and printed two of
+three buckets in the third.
+
+This inverts the rule as it had been stated. **The green path is where the denominator matters
+least** — nothing was found, so how much was searched is a question about confidence. The red
+path is where it matters most: _1 undeclared import across 45 files with 8 excluded_ and _1
+across 3_ are different claims, and only one of them is a small problem. A reader triaging a
+red check is precisely the reader who cannot afford to guess at the population.
+
+The sharpest instance is the one shipped last turn. `summarizeScope()` was added to answer
+"the population is never in the output" — and was called _after_ the failure return. **The
+remedy for the rule reproduced the defect the rule describes, on the branch where it is worse.**
+A control written from a lesson can inherit the exact blind spot the lesson was about, because
+the lesson gets applied to the case that prompted it and the symmetric case is never enumerated.
+Same shape as the missing widening guard, one section up, found the same week.
+
+Fixed in all three: the scope is computed before the branch and emitted on both, and the
+enumeration checker now names the exempted bucket on failure — the bucket that can _hide_ a
+violation, since an exempted line is one the check chose not to see.
+
+### The test fixture was itself a violation
+
+Adding a red-path test for the enumeration checker required writing a restated enumeration into
+a fixture. The suite went red — the checker found the string in its own test file.
+
+That is not a mistake to avoid; it is **entailed by the subject matter**. Any checker whose
+input language is the language it is written in will find itself: a linter's fixtures, a
+secret-scanner's test vectors, an import checker's sample modules. `tool:imports:check` already
+excludes 8 test files for exactly this reason.
+
+The consequence is what makes it worth naming. The exclusion is _forced_, so the denominator is
+permanently narrower than the tree — not a temporary narrowing to be ratcheted back later. Which
+is precisely why `8 test file(s) excluded` has to be printed: it is the only thing distinguishing
+a structural exclusion from a scope bug, and the two are indistinguishable from a bare green.
+
+The fixture is exempted with the existing per-line `enumeration-fixture` marker rather than by
+adding a path exclusion, so the narrowing stays one line wide and stays counted.
+
+5 mutants killed across the three gates; suites now 20, 17, and 29 tests.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

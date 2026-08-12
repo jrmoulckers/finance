@@ -161,7 +161,13 @@ export async function main(root) {
 
   if (violations.length > 0) {
     process.stdout.write(
-      `\nRestated principle enumeration(s) — ${violations.length} across ${scanned} scanned file(s):\n\n`,
+      // The exemption count belongs here, not only on the green path. A failure
+      // reporting "1 across 3161 scanned file(s)" states two of three buckets,
+      // and the missing one is the only bucket that can HIDE a violation --
+      // an exempted line is one this check chose not to see. A partition has
+      // to sum, or one of its parts is invisible.
+      `\nRestated principle enumeration(s) — ${violations.length} across ${scanned} scanned ` +
+        `file(s), with ${exempted} line(s) exempted via the "${EXEMPTION}" marker:\n\n`,
     );
     for (const v of violations) {
       process.stdout.write(`  ${v.file}:${v.line}  ${v.id}\n`);

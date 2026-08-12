@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { spawnSync } from 'node:child_process';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 import {
   bareSpecifier,
@@ -129,4 +133,40 @@ test('isScannedFile declines a file that is not a module', () => {
   assert.equal(isScannedFile('README.md'), false);
   assert.equal(isScannedFile('config.json'), false);
   assert.equal(isScannedFile(undefined), false);
+});
+
+// -- scope on the failure path ---------------------------------------------
+// The scope line used to print only on success, so a failure named a count
+// over an unstated denominator. 1 of 45 files with 8 excluded is a different
+// claim from 1 of 3.
+
+const toolDirectory = dirname(fileURLToPath(import.meta.url));
+const TOOL = join(toolDirectory, 'check-tool-imports.mjs');
+
+function runWithProbe(source) {
+  const probe = join(toolDirectory, '_scope_probe_fixture.mjs');
+  writeFileSync(probe, source, 'utf8');
+  try {
+    return spawnSync(process.execPath, [TOOL], { encoding: 'utf8' });
+  } finally {
+    unlinkSync(probe);
+  }
+}
+
+test('a failing run states the scope it failed over', () => {
+  const result = runWithProbe("import q from 'no-such-package-scope-probe';\nexport default q;\n");
+  assert.equal(result.status, 1, 'the probe must actually fail, or this asserts nothing');
+  const output = `${result.stdout}${result.stderr}`;
+  assert.match(output, /Scope: \d+ module reference\(s\) across \d+ file\(s\)/);
+  // The excluded bucket is the one that must never look like a scope bug: a
+  // test for an import checker cannot avoid containing imports as data, so the
+  // exclusion is structural and permanent.
+  assert.match(output, /\d+ test file\(s\) excluded/);
+});
+
+test('a passing run states the same scope, so the two branches agree', () => {
+  const result = spawnSync(process.execPath, [TOOL], { encoding: 'utf8' });
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\d+ module reference\(s\) across \d+ file\(s\)/);
+  assert.match(result.stdout, /\d+ test file\(s\) excluded/);
 });

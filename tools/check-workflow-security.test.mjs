@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -389,4 +390,36 @@ test('summarizeScope counts what it is given, not what is on disk', () => {
     named: NAMED_WORKFLOW_ASSERTIONS.size,
     present: 0,
   });
+});
+
+// -- scope on the failure path ---------------------------------------------
+// summarizeScope() was added to answer "the population is never in the
+// output", then called AFTER the failure return -- so the remedy reproduced
+// the defect on the branch where the denominator matters more. "3 errors" over
+// 31 workflows is a different claim from "3 errors" over 3.
+
+const SECURITY_TOOL = resolve(testRoot, 'tools', 'check-workflow-security.mjs');
+
+test('a passing run states the scope', () => {
+  const result = spawnSync(process.execPath, [SECURITY_TOOL], { encoding: 'utf8' });
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\d+ workflow\(s\) scanned in /);
+  assert.match(result.stdout, /\d+ of \d+ named assertion target\(s\) present/);
+  assert.match(result.stdout, /\d+ covered by the universal checks only/);
+});
+
+test('the failure branch emits the scope before returning', () => {
+  // Pinned by source rather than by running a mutated tree, because forcing a
+  // real failure would mean writing a broken workflow into .github/workflows.
+  // Stated as the narrowing it is: this asserts the ordering, not the text.
+  const source = readFileSync(SECURITY_TOOL, 'utf8');
+  const scopeAssigned = source.indexOf('const scope = summarizeScope(workflows);');
+  const failureBranch = source.indexOf('if (errors.length > 0) {');
+  const scopeOnFailure = source.indexOf('console.error(`Scope: ${scopeLine}`);');
+  assert.ok(scopeAssigned > -1 && failureBranch > -1 && scopeOnFailure > -1);
+  assert.ok(scopeAssigned < failureBranch, 'scope must be computed before the branch');
+  assert.ok(
+    scopeOnFailure > failureBranch && scopeOnFailure < source.indexOf('process.exitCode = 1;'),
+    'the failure branch must print the scope before it sets the exit code',
+  );
 });

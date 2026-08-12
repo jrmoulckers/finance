@@ -143,6 +143,16 @@ function main() {
       '\nAn undeclared import resolves only while an unrelated package happens to hoist it.',
     );
     console.error('Add it to devDependencies so the requirement is stated where it is checked.');
+    // The scope belongs on this branch too. It used to print only below, on
+    // the green path, so a failure said "1 undeclared import" over an unstated
+    // denominator -- and 1 of 45 files with 8 excluded is a different claim
+    // from 1 of 3. The excluded count matters most here: test files are
+    // structurally excluded, because a test for an import checker cannot avoid
+    // containing import statements as data, so that exclusion is permanent and
+    // must never look like a scope bug.
+    console.error(
+      `Scope: ${references} module reference(s) across ${scanned} file(s) in ${SCANNED_DIRECTORIES.join(', ')}; ${skipped} test file(s) excluded.`,
+    );
     process.exitCode = 1;
     return;
   }

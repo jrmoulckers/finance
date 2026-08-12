@@ -629,19 +629,29 @@ function main() {
   );
   const workflows = loadWorkflows();
   const errors = scanWorkflowSecurity(workflows, productionCompose);
+
+  // Computed before the branch, deliberately. The previous version called
+  // summarizeScope() after the failure return, so the scope printed on the
+  // green path and vanished on the red one -- the branch where a reader most
+  // needs the denominator, because "3 errors" is a different claim over 31
+  // workflows than over 3. The scope line was added to answer "the population
+  // is never in the output"; putting it on the success path only reproduced
+  // that defect on the branch that matters more.
+  const scope = summarizeScope(workflows);
+  const universalOnly = scope.loaded - scope.present;
+  const scopeLine =
+    `${scope.loaded} workflow(s) scanned in ${relative(repositoryRoot, workflowDirectory)}; ` +
+    `${scope.present} of ${scope.named} named assertion target(s) present; ` +
+    `${universalOnly} covered by the universal checks only.`;
+
   if (errors.length > 0) {
     console.error('Workflow security regression check failed:');
     for (const error of errors) console.error(`- ${error}`);
+    console.error(`Scope: ${scopeLine}`);
     process.exitCode = 1;
     return;
   }
-  const scope = summarizeScope(workflows);
-  const universalOnly = scope.loaded - scope.present;
-  console.log(
-    `Workflow security regression check passed (${relative(repositoryRoot, workflowDirectory)}): ` +
-      `${scope.loaded} workflow(s) scanned; ${scope.present} of ${scope.named} named ` +
-      `assertion target(s) present; ${universalOnly} covered by the universal checks only.`,
-  );
+  console.log(`Workflow security regression check passed. ${scopeLine}`);
 }
 
 if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
