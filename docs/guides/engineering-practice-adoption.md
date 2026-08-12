@@ -985,8 +985,10 @@ records about lint evidence, turned on its author: **a probe reports the exit co
 not of the thing under test.** Where an exit code is the finding, it has to be taken from the real
 tool.
 
-**What finance must do.** Pin `>=0.13.0 <1.0.0` and declare the plugins the React preset imports at
-module scope in `devDependencies`. There are **three**, not two:
+**What finance must do.** Pin `^0.17.0` (see _"The caret reversal"_ below — upstream reversed this
+form in `v0.119.0`, and the earlier `>=0.13.0 <1.0.0` recorded here is superseded as an instruction
+while remaining accurate as a record of what was decided at the time). Declare the plugins the React
+preset imports at module scope in `devDependencies`. There are **three**, not two:
 
 ```jsonc
 "eslint-plugin-react": "^7.37.0",
@@ -5989,6 +5991,80 @@ whether your own numbers came from the same well, not to note that theirs did.
 resolved to `v0.122.0` — four tags ahead, minutes later. Vendored at the resolved ref, not the
 quoted literal. Fifth instance recorded, and consistent with their own root cause: tag-triggered
 publishing plus manual tagging means any literal ages faster than the doc quoting it.
+
+## The caret reversal, and the control that was never the range
+
+Upstream reversed its version-range guidance in `v0.119.0`, from `>=X.Y.0 <1.0.0` to `^0.17.0`,
+after finding that `eslint-config` dropped five framework peers in `0.9.0` and restored them in
+`0.16.0` — breaking changes in minors, which is where `0.x` convention puts them.
+
+The reversal is correct. Two things about it are worth recording anyway.
+
+### The caret was rejected for the property it is now recommended for
+
+Both upstream sessions previously rejected the caret, and this guide recorded their agreement as the
+settled half of a disagreement:
+
+| source          | recommended then    | stated reason                                         |
+| --------------- | ------------------- | ----------------------------------------------------- |
+| sibling session | `"0.15.0"` exact    | "not `^0.15.0` — **a caret on `0.x` pins the minor**" |
+| parent session  | `">=0.15.0 <1.0.0"` | "explicit range, **not a caret**"                     |
+
+Measured, the semantics never moved:
+
+```
+^0.17.0          -> >=0.17.0 <0.18.0-0     admits 0.17.9 ✓   0.18.0 ✗
+>=0.17.0 <1.0.0                            admits 0.18.0 ✓   0.99.0 ✓
+```
+
+So `^0.17.0` pins the minor — exactly the property cited when rejecting it. **What changed is not
+the semantics but which behaviour counts as the failure**: when the risk was "frozen too tightly",
+minor-pinning was the defect; once the risk became "admits a breaking minor unreviewed", the same
+minor-pinning became the remedy.
+
+That makes this a reversal of the one point recorded here as _well-established_ — the half both
+senders agreed on, which is the half a consumer is least likely to re-derive. A disagreement invites
+checking; a consensus does not.
+
+### finance had already recorded the hazard, and chose a different remedy
+
+From the earlier entry, before upstream's reversal:
+
+> an exact pin takes no upgrades, a `<1.0.0` range takes all of them sight-unseen, and on a package
+> whose file-classification globs changed materially between `0.8.0` and `0.15.0` the difference is
+> not cosmetic
+
+finance's remedy was a review gate rather than a narrower range. Upstream's is a narrower range.
+Both target the same failure — an upstream minor arriving unreviewed.
+
+### The range is close to inert here, and that is the part the guidance omits
+
+The argument on both sides treats the declared range as the control over which version gets
+installed. In this repository it mostly is not:
+
+| fact                        | value   |
+| --------------------------- | ------- |
+| `package-lock.json` tracked | **yes** |
+| `npm ci` invocations in CI  | **29**  |
+| dependabot npm ecosystem    | weekly  |
+
+`npm ci` installs exactly what the lockfile records and **ignores the range's breadth entirely**. A
+wide range therefore cannot silently deliver `0.18.0` to a build here; the lockfile pins the
+resolved version, and changing it requires regenerating the lock — which dependabot proposes as a
+reviewable PR whatever the range says.
+
+So for a lockfile-driven consumer the range is a _floor declaration_, not an admission control, and
+the difference between the two forms is second-order. It becomes first-order in a consumer that
+resolves by range at build time — no committed lock, or `npm install` in CI.
+
+This does not make the new guidance wrong; it makes it **conditional**, and the condition is
+unstated. Flagged upward: the recommendation should name the precondition under which a range is a
+control at all, in the same way `--check`'s warn-only staleness names the condition that justifies
+it.
+
+**Recorded decision for finance:** adopt `^0.17.0` when registry access unblocks. It costs nothing
+under `npm ci`, it is correct for the paths where the lock is not authoritative, and aligning with
+upstream is worth more than defending a form whose practical difference here is near zero.
 
 ## Worth hoisting up
 
