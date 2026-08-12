@@ -384,16 +384,25 @@ function managedRegion(text) {
 //   marker-managed -> sha256 of the region body, trimmed, markers excluded
 //   whole-file     -> sha256 of the whole file, LF-normalized, NOT trimmed
 // Verified against every present lock entry: 3 region, 65 whole, 0 mismatches.
+// Absence is tolerated only for the vendored token outputs still awaiting the repo-root
+// sync (see #4169). Deriving the tolerance from that path rather than pinning a count
+// means it shrinks to zero on its own when the sync lands, and any other missing managed
+// target -- a deleted skill, prompt, instruction, or root doc -- is reported rather than
+// silently skipped. Counts alone cannot catch this: they count lock entries, not files.
+const PENDING_SYNC = /(^|\/)vendor\/@jrm\/tokens\//;
+
 function verifyManagedContent(lock) {
   const findings = [];
   const pending = [];
+  let verified = 0;
   for (const [entry, metadata] of Object.entries(lock.entries || {})) {
     if (!metadata || !metadata.targetSha256) continue;
     const absolute = path.join(ROOT, entry);
     // Presence before classification: an absent target has no content to classify, and
     // must not fall through to a whole-file compare that would report permanent drift.
     if (!fs.existsSync(absolute)) {
-      pending.push(entry);
+      if (PENDING_SYNC.test(entry)) pending.push(entry);
+      else findings.push(`managed target is missing: ${entry}`);
       continue;
     }
     const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
@@ -406,13 +415,18 @@ function verifyManagedContent(lock) {
         `${scope} was edited after sync: ${entry} ` +
           `(sha256 ${digest.slice(0, 12)}, lock records ${metadata.targetSha256.slice(0, 12)})`,
       );
+    } else {
+      verified += 1;
     }
   }
-  if (pending.length) {
-    process.stdout.write(
-      `  [pending] ${pending.length} managed targets absent, awaiting the next sync run\n`,
-    );
-  }
+  // Report what was verified, not only what was skipped. A run that verifies nothing must
+  // be distinguishable at a glance from one that verifies everything -- otherwise the
+  // check can stop observing while still reading as success.
+  process.stdout.write(
+    `  [content] ${verified} managed targets verified against the lock` +
+      (pending.length ? `; ${pending.length} awaiting the next sync run` : '') +
+      '\n',
+  );
   return findings;
 }
 
