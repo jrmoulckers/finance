@@ -560,6 +560,65 @@ function citationFindings(text, citations = CANON_CITATIONS) {
   return findings;
 }
 
+// A green "AI Manifest Check" in the PR list does NOT mean drift is absent. The drift step runs
+// with STRICT: '0', so it prints findings and exits 0; only the digest rule tests block. The
+// workflow says so plainly in its own comments -- but the reader deciding whether to merge sees
+// the check name, not the workflow file, and AGENTS.md described the workflow as validating the
+// roster without saying that arm cannot fail. The disclosure existed one click from the decision.
+//
+// So the enforcement mode is READ FROM THE WORKFLOW and compared against the prose, rather than
+// the prose being trusted. Flipping STRICT without rewriting the sentence now fails here, and so
+// does rewriting the sentence without flipping STRICT.
+const ENFORCEMENT_WORKFLOW = '.github/workflows/ai-manifest-check.yml';
+const ENFORCEMENT_STEP = 'Check for drift';
+
+/**
+ * Determine whether the drift step blocks, by reading the workflow rather than believing prose.
+ *
+ * @param {string} workflowText Contents of the manifest-check workflow.
+ * @returns {{mode: 'blocking'|'warn-only'}|{error: string}} Mode, or why it could not be read.
+ */
+function driftEnforcement(workflowText) {
+  const at = workflowText.indexOf(ENFORCEMENT_STEP);
+  // Fails closed. A renamed step must not read as "warn-only" by default: that silent-skip
+  // default is how a parser stops observing and still returns a confident answer.
+  if (at < 0) return { error: `cannot locate the "${ENFORCEMENT_STEP}" step` };
+  const block = workflowText.slice(at, at + 500);
+  const strict = /STRICT:\s*'?(\d)'?/.exec(block);
+  if (!strict && !block.includes('--strict')) {
+    return { error: 'drift step declares neither STRICT nor --strict' };
+  }
+  const blocking = block.includes('--strict') || (strict && strict[1] === '1');
+  return { mode: blocking ? 'blocking' : 'warn-only' };
+}
+
+/**
+ * Report disagreement between the workflow's real enforcement and how the docs describe it.
+ *
+ * @param {string} workflowText Contents of the manifest-check workflow.
+ * @param {string} docText Contents of the runtime documentation making the claim.
+ * @returns {string[]} Findings; empty when the prose matches the workflow.
+ */
+function enforcementFindings(workflowText, docText) {
+  const read = driftEnforcement(workflowText);
+  if (read.error) return [`cannot read drift enforcement: ${read.error}`];
+  if (!docText.includes('AI Manifest Check')) {
+    return ['runtime docs no longer describe the AI Manifest Check workflow'];
+  }
+  const findings = [];
+  const saysWarn = docText.includes('warn-only');
+  if (read.mode === 'warn-only' && !saysWarn) {
+    findings.push(
+      'the drift step runs with STRICT off, but the docs do not say the check is warn-only — ' +
+        'a green check would read as "no drift" when it cannot fail on drift',
+    );
+  }
+  if (read.mode === 'blocking' && saysWarn) {
+    findings.push('the drift step now blocks, but the docs still describe it as warn-only');
+  }
+  return findings;
+}
+
 // The engine hashes LF-normalized text (`hashText` in `lock.mjs`). Naming it here rather
 // than spelling `.replace(/\r\n/g, '\n')` at each call site keeps one word for one rule:
 // three inline spellings is what made this normalization impossible to cite accurately,
@@ -1049,6 +1108,34 @@ function verifyManagedContent(lock) {
   return findings;
 }
 
+/**
+ * Read CI's drift enforcement mode for display, degrading to the reason it could not be read.
+ *
+ * @returns {string} A human-readable mode or error string; never throws.
+ */
+function readEnforcementMode() {
+  const workflowPath = path.join(ROOT, ENFORCEMENT_WORKFLOW);
+  if (!fs.existsSync(workflowPath)) return 'unreadable (workflow not found)';
+  const read = driftEnforcement(fs.readFileSync(workflowPath, 'utf8'));
+  return read.error ? `unreadable (${read.error})` : read.mode;
+}
+
+/**
+ * Compare the workflow's real drift enforcement with how AGENTS.md describes it.
+ *
+ * @returns {string[]} Findings; empty when prose and workflow agree.
+ */
+function validateEnforcementDoc() {
+  const workflowPath = path.join(ROOT, ENFORCEMENT_WORKFLOW);
+  const docPath = path.join(ROOT, 'AGENTS.md');
+  if (!fs.existsSync(workflowPath)) return [`missing workflow: ${ENFORCEMENT_WORKFLOW}`];
+  if (!fs.existsSync(docPath)) return ['missing AGENTS.md'];
+  return enforcementFindings(
+    fs.readFileSync(workflowPath, 'utf8'),
+    fs.readFileSync(docPath, 'utf8'),
+  );
+}
+
 function main() {
   const manifest = buildManifest();
   const counts = manifest.counts;
@@ -1058,7 +1145,13 @@ function main() {
     `Filesystem reality: ${counts.agents} agents, ${counts.skills} skills, ` +
       `${counts.instructions} instructions, ${counts.mcpServers} MCP servers\n`,
   );
-  process.stdout.write(`Mode: ${STRICT ? 'STRICT (blocking)' : 'informational (warn-only)'}\n\n`);
+  process.stdout.write(`Mode: ${STRICT ? 'STRICT (blocking)' : 'informational (warn-only)'}\n`);
+  // `Mode` above is *this invocation's* strictness. The line below is CI's, read from the workflow
+  // rather than described, and printed unconditionally: the reader deciding to merge sees the check
+  // name and this report, never the workflow's own comments (#4233).
+  process.stdout.write(
+    `CI drift enforcement (${ENFORCEMENT_WORKFLOW}): ${readEnforcementMode()}\n\n`,
+  );
 
   const scan = scanDocs(counts);
   const countFindings = scan.claims;
@@ -1068,6 +1161,7 @@ function main() {
     ...validateAgentRoster(manifest.agents),
     ...validateActivationDoc(),
     ...validateSyncLock(),
+    ...validateEnforcementDoc(),
   ];
   for (const doc of scan.missing) process.stdout.write(`- ${doc}: not found\n`);
   // Printed unconditionally, in both the passing and the failing branch. The old report emitted
@@ -1192,6 +1286,9 @@ module.exports = {
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
   CANON_CITATIONS,
+  ENFORCEMENT_WORKFLOW,
+  driftEnforcement,
+  enforcementFindings,
   HELP_TEXT,
   EXPECTED_AGENTS,
   MANAGED_COUNTS,
