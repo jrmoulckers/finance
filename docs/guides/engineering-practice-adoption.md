@@ -1066,16 +1066,58 @@ config run is not evidence about the gate.** `npm run format:check` after wiring
 that answers this, and it disagreed with the simulation. Nothing below this line was affected: the
 `proseWrap` analysis stands, and it was measured against real files.
 
+**What the 48 lines actually are, and why another repo's category list did not predict them.**
+A second repo (cartridge) measured the same adoption at 575 lines and enumerated three residue
+categories: pipe-table re-padding, `singleQuote` rewriting inside fenced code, and emphasis
+normalisation (`*x*` → `_x_`). Checked against finance's five files, **none of those three fired
+even once.** Every one of finance's 48 lines is a fourth category the list does not contain:
+**embedded fenced code re-wrapped by the narrower `printWidth`** — JSON and TypeScript samples
+whose lines fell in the 96–100 column band and were split.
+
+```diff
+-      "category1": { "$value": "#648FFF", "$type": "color", "$description": "IBM CVD-safe blue" },
++      "category1": {
++        "$value": "#648FFF",
++        "$type": "color",
++        "$description": "IBM CVD-safe blue"
++      },
+```
+
+The reason the lists disagree is worth stating as a rule: **the residue is a function of the diff
+between the old and new configs, not of the config being adopted.** finance's previous
+`.prettierrc.json` already set `singleQuote: true` and already matched on `tabWidth`, `endOfLine`
+and `trailingComma`, so the only markdown-relevant delta was `printWidth` 100 → 96. cartridge's
+prior config evidently differed on more axes. Two repos adopting the identical config therefore
+get disjoint residue sets, and a category list derived from one adoption cannot generalise —
+only the per-repo config delta predicts it.
+
+**Corollary: the "line counts are unchanged" structural check does not hold here.** It is offered
+as proof that no authored break moved, but finance's line counts changed in **5 of 5** files
+(432→448, 543→548, 628→632, 238→242, 364→365). The invariant only holds when no fenced code block
+contains a line in the band between the new and old `printWidth`, which is a property of the
+corpus rather than of `preserve`. The claim it is meant to support — zero prose churn — is true
+here and was verified directly instead: 0 changed lines outside fences and outside table rows.
+
+**And the measurement is not reversible, which is a trap for anyone auditing this after the fact.**
+Re-running the same comparison against the _post-adoption_ tree reports **3** changed files, not 5.
+Prettier preserves an object's expanded form when the source already has a line break after `{`, so
+re-formatting adopted content at the old width does not restore the joined form. Measuring adoption
+cost on already-adopted content silently undercounts it; the pre-adoption tree (`37c2747f~1`) is the
+only valid input, and it reproduces the real commit exactly at 5 files. Same defect class as the
+merge-conflict matrix above — an experiment run against the post-transform artifact.
+
 The 73-line `.prettierignore` is finance-specific and stays.
 
 **The `proseWrap` decision, which is what actually mattered.** Finance already used Prettier's
 default `preserve`, so the only delta was `printWidth` 100 → 96 — and under `preserve` that reaches
 tables, lists and fences, not prose. Measured across every tracked markdown file:
 
-| Metric                 | Value |
-| ---------------------- | ----- |
-| Markdown files tracked | 592   |
-| Files reflowing prose  | **0** |
+| Metric                              | Value |
+| ----------------------------------- | ----- |
+| Markdown files tracked              | 593   |
+| Files reflowing prose               | **0** |
+| Files changed by the adoption       | 5     |
+| Changed lines outside fences/tables | **0** |
 
 The earlier `0.1.x` config set `proseWrap: 'always'`, which would have rewritten **528 of 592
 files (89%)** — 36,249 added / 29,723 removed against 182,051 total markdown lines, roughly 36% of
