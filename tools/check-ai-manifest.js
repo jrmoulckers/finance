@@ -54,6 +54,7 @@ const MANAGED_COUNTS = {
   instructions: 5,
   tokens: 23,
   base: 2,
+  rootDocs: 2,
   total: 81,
 };
 
@@ -302,23 +303,41 @@ function validateSyncLock() {
   }
 
   const entries = Object.keys(lock.entries || {});
-  const count = (predicate) => entries.filter(predicate).length;
-  const counts = {
-    agents: count((entry) => entry.startsWith('.github/agents/')),
-    skills: count((entry) => entry.startsWith('.github/skills/')),
-    prompts: count((entry) => entry.startsWith('.github/prompts/')),
-    instructions: count((entry) => entry.startsWith('.github/instructions/')),
+  // Counts and the exhaustiveness assertion below are both derived from this one table,
+  // so a kind can never be counted by one and missed by the other.
+  const KIND_PREDICATES = {
+    agents: (entry) => entry.startsWith('.github/agents/'),
+    skills: (entry) => entry.startsWith('.github/skills/'),
+    prompts: (entry) => entry.startsWith('.github/prompts/'),
+    instructions: (entry) => entry.startsWith('.github/instructions/'),
     // Tolerates the pre- and post-migration vendored token roots
     // (apps/web/vendor/@jrm/tokens/ vs. vendor/@jrm/tokens/) so the check stays
     // green until the sync engine regenerates the lock at the new target path.
-    tokens: count((entry) => /(^|\/)vendor\/@jrm\/tokens\//.test(entry)),
-    base: count((entry) => entry === 'AGENTS.md' || entry === 'agency.toml'),
-    total: entries.length,
+    tokens: (entry) => /(^|\/)vendor\/@jrm\/tokens\//.test(entry),
+    base: (entry) => entry === 'AGENTS.md' || entry === 'agency.toml',
+    rootDocs: (entry) => entry === '.gitattributes' || entry === '.github/copilot-instructions.md',
   };
+  const counts = { total: entries.length };
+  for (const [kind, predicate] of Object.entries(KIND_PREDICATES)) {
+    counts[kind] = entries.filter(predicate).length;
+  }
   for (const [kind, expected] of Object.entries(MANAGED_COUNTS)) {
     if (counts[kind] !== expected) {
       findings.push(`sync lock has ${counts[kind]} managed ${kind}; expected ${expected}`);
     }
+  }
+
+  // The kind buckets must exhaustively partition the lock. `total` is a cardinality,
+  // so it only catches entries being added or dropped -- an entry that is *substituted*
+  // inside a region no bucket matches keeps every count correct and passes silently.
+  // Asserting exhaustiveness fails on a future managed asset landing in an unmatched
+  // path, rather than only on the two entries that exposed the gap.
+  const predicates = Object.values(KIND_PREDICATES);
+  const unclassified = entries.filter((entry) => !predicates.some((match) => match(entry)));
+  if (unclassified.length) {
+    findings.push(
+      `sync lock has ${unclassified.length} entries in no counted kind: ${unclassified.join(', ')}`,
+    );
   }
 
   for (const role of GENERATED_AGENTS) {
