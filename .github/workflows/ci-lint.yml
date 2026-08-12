@@ -122,6 +122,9 @@ jobs:
       - name: Validate financial-terminology glossary
         run: node scripts/i18n/validate-glossary.js
 
+      - name: Workflow Node pins agree with .nvmrc
+        run: npm run node:version:check
+
   pr-title:
     name: Semantic PR Title
     needs: changes
