@@ -48,9 +48,9 @@ const MANAGED_COUNTS = {
   skills: 19,
   prompts: 8,
   instructions: 5,
-  tokens: 16,
+  tokens: 23,
   base: 2,
-  total: 72,
+  total: 81,
 };
 
 if (args.includes('--help') || args.includes('-h')) {
@@ -64,7 +64,7 @@ Usage:
 
 Validates filesystem counts, the exact 23-agent activated roster, generated
 provenance, the sole local finance-domain agent, retired-role absence, canonical
-runtime documentation, and the 72-entry Studio sync inventory.
+runtime documentation, and the 81-entry Studio sync inventory.
 `);
   process.exit(0);
 }
