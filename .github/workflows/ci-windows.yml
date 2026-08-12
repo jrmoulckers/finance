@@ -111,7 +111,16 @@ jobs:
           echo "| Build duration | ${{ steps.build.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Package duration | ${{ steps.package.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Gradle cache | ${{ github.ref == 'refs/heads/main' && 'read-write' || 'read-only' }} |" >> "$GITHUB_STEP_SUMMARY"
-          MSI=$(find apps/windows/build/compose/binaries -name '*.msi' 2>/dev/null | head -1)
+          # `|| true` is load-bearing here, not defensive noise. This step declares
+          # `shell: bash`, which GitHub expands to `bash --noprofile --norc -eo pipefail`.
+          # `find` exits 1 when the build produced no output directory; `head` still
+          # exits 0, so pipefail propagates the 1 and `-e` aborts the step at this
+          # assignment. The step is `if: always()`, so it runs *because* the build
+          # failed — the guard is absent exactly on the runs the summary exists for.
+          # Measured: dir absent, pipefail -> step exit 1 and nothing after this line
+          # runs; with `|| true` -> exit 0, MSI empty. With a real MSI present the
+          # guard changes nothing.
+          MSI=$(find apps/windows/build/compose/binaries -name '*.msi' 2>/dev/null | head -1 || true)
           if [ -n "$MSI" ]; then
             SIZE=$(du -sh "$MSI" | cut -f1)
             echo "| MSI size | $SIZE |" >> "$GITHUB_STEP_SUMMARY"

@@ -284,7 +284,10 @@ jobs:
           echo "| Compile duration | ${{ steps.compile.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Unit test duration | ${{ steps.unit-tests.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Gradle cache | ${{ github.ref == 'refs/heads/main' && 'read-write' || 'read-only' }} |" >> "$GITHUB_STEP_SUMMARY"
-          APK=$(find apps/android/build/outputs/apk/debug -name '*.apk' 2>/dev/null | head -1)
+          # `|| true`: find exits 1 when the output dir is absent, head still exits 0.
+          # Harmless under the default shell, fatal under `shell: bash` (-eo pipefail),
+          # and this step runs with `if: always()` — i.e. exactly when the dir is missing.
+          APK=$(find apps/android/build/outputs/apk/debug -name '*.apk' 2>/dev/null | head -1 || true)
           if [ -n "$APK" ]; then
             SIZE=$(du -sh "$APK" | cut -f1)
             echo "| Debug APK size | $SIZE |" >> "$GITHUB_STEP_SUMMARY"

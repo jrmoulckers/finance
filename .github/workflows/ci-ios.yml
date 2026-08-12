@@ -210,8 +210,10 @@ jobs:
           fi
 
           # ── LCOV for third-party tooling ─────────────────────────
-          PROFDATA="$(find "$XCRESULT" -name '*.profdata' -type f 2>/dev/null | head -1)"
-          BINARY="$(find "$XCRESULT" -name '*.xctest' -type d 2>/dev/null | head -1)"
+          # `|| true` on both: find exits 1 if $XCRESULT is absent while head exits 0,
+          # so the pipeline only looks safe under the default shell. See ci-windows.yml.
+          PROFDATA="$(find "$XCRESULT" -name '*.profdata' -type f 2>/dev/null | head -1 || true)"
+          BINARY="$(find "$XCRESULT" -name '*.xctest' -type d 2>/dev/null | head -1 || true)"
           if [ -n "$PROFDATA" ] && [ -n "$BINARY" ]; then
             xcrun llvm-cov export -format=lcov \
               -instr-profile "$PROFDATA" \
