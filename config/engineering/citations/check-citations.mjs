@@ -54,6 +54,11 @@
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// This file lives in scripts/, so the repository root is one level up. Used to
+// map tag-pinned URLs into this repo back onto the local checkout.
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Two non-empty lines either side of the citing line, skipping blanks rather
 // than spending the budget on them. Returns the citing line too, so callers can
@@ -175,6 +180,74 @@ async function loadIndex(source) {
   return new Map(principles.map((p) => [p.id, p]));
 }
 
+/**
+ * GitHub's heading-anchor algorithm: lowercase, strip anything that is not a
+ * word character, space or hyphen, then convert spaces to hyphens. Inline
+ * markdown is stripped first so `## The \`typeAware\` flag` slugifies the way
+ * GitHub renders it rather than keeping the backticks.
+ *
+ * Returns null when the file cannot be read, which the caller treats as "not
+ * my defect to report" rather than as a missing anchor.
+ */
+async function readHeadingSlugs(file) {
+  let text;
+  try {
+    text = await readFile(file, 'utf8');
+  } catch {
+    return null;
+  }
+  const slugs = new Set();
+  let inFence = false;
+  for (const line of text.split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    // A `#` inside a fenced block is a shell comment, not a heading.
+    if (inFence) continue;
+    const heading = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+    if (!heading) continue;
+    const slug = heading[2]
+      .replace(/`([^`]*)`/g, '$1')
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/[*_~]/g, '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s/g, '-');
+    // GitHub disambiguates repeats with -1, -2, ... in document order.
+    let candidate = slug;
+    for (let n = 1; slugs.has(candidate); n += 1) candidate = `${slug}-${n}`;
+    slugs.add(candidate);
+  }
+  return slugs;
+}
+
+/**
+ * Map a citation link to a principle file on disk, or null when it cannot be
+ * checked locally.
+ *
+ * Consumers cite absolute, tag-pinned URLs into this repository rather than
+ * relative paths, so resolving only relative links would make the anchor check
+ * vacuous for every repo that actually uses it. A same-repo blob or raw URL is
+ * mapped back onto the local checkout by its path; anything pointing at another
+ * host or repository is left alone.
+ *
+ * Caveat worth knowing: the local checkout is the working tree, not the ref the
+ * URL pins. A citation pinned at an old tag is validated against today's
+ * headings, so this reports the anchor a re-pin would land on — which is the
+ * question worth answering, since a stale pin is read when it is bumped.
+ */
+function resolvePrincipleFile(link) {
+  const remote =
+    /^https?:\/\/(?:github\.com\/jrmoulckers\/engineering\/(?:blob|tree)|raw\.githubusercontent\.com\/jrmoulckers\/engineering)\/[^/]+\/(.+)$/.exec(
+      link.target,
+    );
+  if (remote) return path.resolve(REPO_ROOT, remote[1]);
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(link.target)) return null; // another host
+  return path.resolve(path.dirname(link.file), link.target);
+}
+
 async function collectFiles(target) {
   const info = await stat(target);
   if (info.isFile()) return [target];
@@ -206,11 +279,12 @@ async function scanFile(file) {
       const id = label.match(/\bENG-[A-Z]+-\d{3}\b/)?.[0];
       if (!id) continue;
       const target = href.split('#')[0].trim();
+      const fragment = href.includes('#') ? href.slice(href.indexOf('#') + 1).trim() : '';
       // Only links that aim at a principle source file. A link whose text names
       // an ID but points at a practice guide is citing the technique, not the
       // principle, and is correct as written.
       if (!/(^|\/)principles\//.test(target)) continue;
-      links.push({ file, line: i + 1, id, href, target });
+      links.push({ file, line: i + 1, id, href, target, fragment });
     }
 
     for (const match of text.matchAll(CITATION)) {
@@ -328,12 +402,38 @@ async function main() {
     .map((t) => ({ ...t, want: known.get(t.id).title }))
     .filter((t) => normalizeTitle(t.claimed) !== normalizeTitle(t.want));
 
+  // A fragment cannot 404. `principles/foo.md#no-such-heading` serves 200 and
+  // lands at the top of the file, so retitling a heading silently degrades
+  // every citation of it from "this specific rule" to "this file, somewhere".
+  // There is no error to observe, which is why the link check above — which
+  // discards the fragment — cannot see it. Raised by a consumer who verified
+  // all 11 of their own anchors by hand after reaching the same conclusion.
+  const badAnchors = [];
+  if (opts.links) {
+    const headingCache = new Map();
+    for (const l of links.filter((x) => x.fragment && known.has(x.id))) {
+      const abs = resolvePrincipleFile(l);
+      if (abs === null) continue;
+      if (!headingCache.has(abs)) headingCache.set(abs, await readHeadingSlugs(abs));
+      const slugs = headingCache.get(abs);
+      // A file that could not be read is already reported by the link check;
+      // reporting a missing anchor as well would be the same defect twice.
+      if (slugs === null) continue;
+      if (!slugs.has(l.fragment)) badAnchors.push({ ...l, known: [...slugs] });
+    }
+  }
+
   if (opts.json) {
     console.log(
       JSON.stringify(
         {
           checkerVersion: TOOL_VERSION,
-          checksRun: ['ids', 'statedNames', 'rangeMembers', ...(opts.links ? ['linkPaths'] : [])],
+          checksRun: [
+            'ids',
+            'statedNames',
+            'rangeMembers',
+            ...(opts.links ? ['linkPaths', 'linkAnchors'] : []),
+          ],
           index: opts.index,
           scanned: files.length,
           citations: citations.map((c) => ({
@@ -342,13 +442,19 @@ async function main() {
           })),
           unknown,
           badLinks,
+          badAnchors,
           badTitles,
         },
         null,
         2,
       ),
     );
-    return unknown.length > 0 || badLinks.length > 0 || badTitles.length > 0 ? 1 : 0;
+    return unknown.length > 0 ||
+      badLinks.length > 0 ||
+      badAnchors.length > 0 ||
+      badTitles.length > 0
+      ? 1
+      : 0;
   }
 
   if (citations.length === 0) {
@@ -485,6 +591,24 @@ async function main() {
 
   const distinct = new Set(citations.map((c) => c.id));
 
+  if (badAnchors.length > 0) {
+    console.error(
+      `${badAnchors.length} citation link(s) point at a heading that does not exist:\n`,
+    );
+    for (const a of badAnchors) {
+      console.error(`  ${a.file}:${a.line}  ${a.id} -> ${a.href}`);
+      const near = a.known.filter((s) => s.includes(a.fragment) || a.fragment.includes(s));
+      if (near.length > 0) console.error(`      did you mean: ${near.slice(0, 3).join(', ')}`);
+    }
+    console.error(
+      '\nA fragment cannot 404. The file serves 200 and the reader lands at the\n' +
+        'top, so this degrades silently from "this specific rule" to "this file,\n' +
+        'somewhere" — with no error anywhere to observe. Retitling a heading\n' +
+        'breaks every citation of it and nothing says so.',
+    );
+    return 1;
+  }
+
   if (badTitles.length > 0) {
     console.error(`${badTitles.length} citation(s) state the wrong principle name:\n`);
     for (const t of badTitles) {
@@ -509,7 +633,7 @@ async function main() {
   );
   console.log(
     `checker v${TOOL_VERSION}; checks run: IDs, stated names, range members` +
-      (opts.links ? ', link paths' : ' (link paths SKIPPED via --no-links)') +
+      (opts.links ? ', link paths, link anchors' : ' (link paths SKIPPED via --no-links)') +
       `. Index: ${opts.index}`,
   );
   if (!opts.review) {
@@ -521,12 +645,22 @@ async function main() {
   return 0;
 }
 
-main().then(
-  (code) => {
-    process.exitCode = code;
-  },
-  (err) => {
-    console.error(`check-citations: ${err.message}`);
-    process.exitCode = 2;
-  },
-);
+// Exported for direct unit testing. The slug algorithm has cases no fixture in
+// this repository exercises — fenced code, duplicate headings, inline markdown —
+// and an end-to-end test of those passes for the wrong reason: a nonexistent
+// anchor fails identically whether or not the fence was handled.
+export { readHeadingSlugs };
+
+// Only run the CLI when invoked as one. Without this, importing the module to
+// test a helper executes a full scan.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (err) => {
+      console.error(`check-citations: ${err.message}`);
+      process.exitCode = 2;
+    },
+  );
+}

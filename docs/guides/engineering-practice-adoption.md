@@ -5685,6 +5685,109 @@ The cheap remedy is `git stash --include-untracked` before any sync, or `git sta
 _before_ rather than after. The durable one is the same rule as everywhere else: a command whose
 safety depends on an unstated precondition should state it.
 
+## Re-pinning across 34 tags, and what actually changed
+
+Upstream reported that `publish.yml` triggers only on tag push, tagging was manual, and **30 PRs
+merged without a tag** — so `releases/latest` served a stale script and fixes reported as shipped
+were unreachable from any ref a consumer could pin.
+
+Measured before re-pinning. The claim understates it:
+
+| ref        | `scripts/vendor-configs.mjs` | sha256 (first 16)  |
+| ---------- | ---------------------------- | ------------------ |
+| `v0.86.0`  | 303 lines                    | `35241DC829A49D63` |
+| `v0.100.0` | 303 lines                    | `35241DC829A49D63` |
+| `v0.110.0` | 303 lines                    | `35241DC829A49D63` |
+| `v0.115.0` | 303 lines                    | `35241DC829A49D63` |
+| `v0.116.0` | 873 lines                    | `04B70C5F5BBA4F00` |
+| `v0.120.0` | 903 lines                    | `2054166291D5F983` |
+
+**Byte-identical across 29 tags.** Three distinct scripts across the six sampled tags. So the
+`v0.15.x` pin cluster recorded earlier in this document was not the failure it looked like — for
+`vendor-configs.mjs`, `v0.86.0` and `v0.115.0` were _the same artifact_, and re-pinning between
+them would have changed nothing while appearing to be diligence.
+
+**The notice was itself stale on arrival.** It announced `v0.116.0` as the head; `releases/latest`
+resolved to **`v0.120.0`**, four tags further on. This is the fourth stale literal recorded here and
+the first to appear inside a message _about_ stale literals. Re-pinned to the resolved ref, not the
+quoted one — the habit the upstream doc itself prescribes.
+
+### What actually changed, which is the question that was asked
+
+finance vendors **3 files**. Across 34 tags, **exactly 1 changed**:
+
+| vendored file                                      | v0.86.0 → v0.120.0            |
+| -------------------------------------------------- | ----------------------------- |
+| `config/engineering/prettier/index.js`             | unchanged                     |
+| `config/engineering/prettier/svelte.js`            | unchanged                     |
+| `config/engineering/citations/check-citations.mjs` | **changed** (532 → 666 lines) |
+
+The two unchanged files are the control: had the hashing pipeline been wrong, all three would have
+differed. The vendoring tool independently reported `1 file(s) changed content`, agreeing with the
+measurement.
+
+The checker's delta is `+147 / -13`, and every one of the 13 removals is upstream evolution, not a
+finance-local edit — so the file was a clean vendored copy and replacing it lost nothing. Its
+self-reported version string is **`v9` before and after**, so the version is not a usable signal for
+what a re-pin brings.
+
+The one observable capability gain is a new check: **`link anchors`**.
+
+### The new check is vacuous in every consumer repo
+
+`--check` and the citation gate both went green, and the parent's own caution applies: _a
+newly-silent tool and a broken tool look identical from outside_. Tested rather than assumed.
+
+A citation with a correct file path and a deliberately nonexistent `#fragment`:
+
+```
+node config/engineering/citations/check-citations.mjs .
+  142 citation(s) ... checks run: IDs, stated names, range members, link paths, link anchors
+  exit 0
+```
+
+**Silent.** The mechanism is one line:
+
+```js
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+```
+
+In the engineering repo the script lives in `scripts/`, so `..` is the repo root and
+`principles/operations/observability.md` resolves. Vendored into
+`config/engineering/citations/`, `..` is **`config/engineering/`**, and the checker looks for
+`config/engineering/principles/operations/observability.md` — which no consumer has.
+`readHeadingSlugs` returns `null` on a failed read, the caller treats that as "not my defect to
+report", and the check silently does nothing while continuing to advertise itself as run.
+
+Proved by supplying exactly that file — a stub with one real heading — and re-running the identical
+probe:
+
+```
+1 citation link(s) point at a heading that does not exist:
+  docs/guides/tmp-anchor-probe.md:3  <principles path>#this-anchor-does-not-exist-anywhere
+exit 1
+```
+
+Same input, same checker, opposite result — the difference is entirely whether a path derived from
+the _script's own location_ happens to exist. The stub and probe were removed after measuring.
+
+The sharp edge is that the source comment two lines above reasons about precisely this risk:
+
+> resolving only relative links would make the anchor check vacuous for every repo that actually
+> uses it
+
+The author identified the failure, chose absolute-URL mapping to avoid it, and the mapping is
+anchored to a path that is only correct in the repo where the check is **least** needed. **A check
+that is vacuous where it is used and live where it is authored will always be observed working.**
+
+This is the fifth vacuous pass catalogued in this document, and the first where the vacuity is a
+function of _file layout_ rather than of an empty input set — which makes it invisible to the
+denominator discipline, because the denominator is non-zero (141 citations) and every one of them
+is skipped.
+
+Reported upstream as a defect in the engineering repo rather than worked around here: the fix is to
+resolve the principle root from the lock or a flag, not from `import.meta.url`.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
