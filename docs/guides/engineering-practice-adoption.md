@@ -3879,6 +3879,109 @@ Recorded as an upstream suggestion rather than a local exemption, since a reposi
 `webpack.config.d/**` to its own `extend` fixes finance and leaves the next consumer to rediscover
 it.
 
+## A mechanism that reaches 243 files and changes nothing
+
+Upstream predicts that the `0.15.0` tooling-glob fix will move finance's finding count, and asks
+for a re-run noting the direction:
+
+> With 601 `.tsx` files, this is your most likely delta. If any of the 317 are `no-console` in
+> `*.test.tsx` or `*.spec.tsx`, your count **drops** at the floor.
+
+The `601` is exact. The mechanism is real, and its reach in this repository is large:
+
+| tracked                     | count   |
+| --------------------------- | ------- |
+| `.tsx`                      | **601** |
+| `*.test.tsx` / `*.spec.tsx` | **243** |
+| `*.test.ts` / `*.spec.ts`   | 776     |
+
+243 files changed tooling classification between the old globs and `0.15.0`. The predicted delta is
+nevertheless **exactly zero**, and the reason is in the file contents rather than the file set:
+
+```
+*.test.tsx / *.spec.tsx   243 files   0 files with disallowed console.*   0 sites
+*.test.ts  / *.spec.ts    776 files   1 file  with disallowed console.*   9 sites
+*.test.mjs / *.spec.mjs     2 files   0 files                             0 sites
+```
+
+**Not one of the 243 `.tsx` test files contains a `console.log`, `.info`, `.debug`, `.trace`,
+`.dir` or `.table` call.** The only test-file console usage in the repository is nine sites in a
+single `.test.ts` — and `*.test.ts` was carried by the _old_ glob list too, so it was exempt before
+the fix and after it. There is no file in finance for which this change alters a finding.
+
+The distinction worth keeping is between two quantities that a glob analysis conflates:
+
+- **Reach** is a property of the _file set_: how many files change classification. Here, 243.
+- **Delta** is a property of the _file contents_: how many findings change. Here, 0.
+
+Reach can be computed from the globs alone, which is why it is the number that gets predicted.
+Delta cannot — it requires the corpus. A prediction derived from reach will be confidently wrong
+about any consumer whose files happen not to exercise the relaxed rules, and the size of the reach
+does nothing to make it more likely to be right. 243 files is a large blast radius around an empty
+detonation.
+
+### The tooling block relaxes exactly two rules, and the test files prove it
+
+Test and spec files are not silent at `0.15.0`. They produce **22 findings**:
+
+| rule                                | count |
+| ----------------------------------- | ----- |
+| `@typescript-eslint/no-unused-vars` | 19    |
+| `react/no-children-prop`            | 2     |
+| `react/display-name`                | 1     |
+
+None is `no-console` and none is `no-require-imports` — the two rules the tooling block turns off.
+So the exemption is doing precisely what upstream documented and nothing more: it does not make a
+file unlinted, it relaxes two rules within it. That is worth stating because "exempt as tooling"
+reads like "excluded", and the 22 findings are the evidence that it isn't.
+
+### The blind spot, quantified
+
+Upstream recorded a caveat this guide raised — that a run measures the inventory as it stands, so
+extensions with no files score zero by accident rather than by compatibility. In finance the
+accident is total:
+
+| extension | tracked files |
+| --------- | ------------- |
+| `.jsx`    | **0**         |
+| `.cjs`    | **0**         |
+| `.mts`    | **0**         |
+| `.cts`    | **0**         |
+| `.js`     | 44            |
+| `.mjs`    | 19            |
+
+Four of the six non-`.ts` classes the preset scopes rules to do not exist here at all. Every
+measurement in this document that reports them as clean is reporting an empty set. The first
+`.jsx` file anyone adds is linted by rules that were never exercised during evaluation, with no
+version change to attribute the new findings to — so the re-measure instruction on adoption is not
+a formality, it is the only thing standing between this evaluation and a silent gap.
+
+## A third consecutive message asserts a dependency finance does not have
+
+The previous message said finance was pinned at `^0.7.0`; this one says `^0.8.0` stranded it seven
+minors behind, and that its 317-finding count was measured against `0.8.0`.
+
+```
+git grep '@jrmoulckers' -- '**/package.json'   ->  no match
+```
+
+**finance has no `@jrmoulckers` dependency, at any range, in any manifest.** There is no `^0.8.0`,
+there is no bump to the floor to perform, and this guide's measurements were taken against
+`0.15.0` directly — twice — from a scratch install outside the repository. The current figure is
+**326** (273 errors + 53 warnings over 2,514 files); `317` has never appeared in this session's
+record, nor has the `0.8.0` types-only comparison, the 19% source-reconstruction under-count, the
+three-release streak framing, or the source-shape entry attributed here.
+
+The correction was sent last turn with the same one-line grep and returned unchanged with a
+different numeral. That is the shape to note: the claim is not persisting because the evidence is
+ambiguous — it is regenerated each time from a record this side cannot edit. Replying corrects the
+conversation; only the durable artifact corrects the record, which is why the refutation lives
+here and not solely in the reply.
+
+Recorded for when finance does adopt: the floor should be written as the exact version `"0.15.0"`,
+not `^0.15.0`, because a caret on a `0.x` package pins the minor and would strand the dependency
+at the first upstream release.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
