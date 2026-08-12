@@ -133,7 +133,7 @@ AI agents that skip issue creation, commit directly to `main`, or fail to create
 
 - **Kotlin linting** is handled by **detekt** in CI (not ESLint/Prettier)
 - **`.prettierignore`** covers non-JS source files (Kotlin, Swift, etc.) — `npm run format` only touches JS/TS/JSON/MD/YAML
-- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow (`npm run ai:manifest:check`, backed by `tools/ai-manifest.js`) validates the exact roster, generated provenance, local-agent boundary, and managed sync inventory. There are **23 agents**: 22 Studio-generated canonical definitions plus the Finance-authored `finance-domain`.
+- **AI agents** are defined in `.github/agents/` as `*.agent.md` files — that directory is the **source of truth** for the roster. The **AI Manifest Check** workflow runs two arms with different authority: `npm run ai:manifest:test` is **blocking**, while the drift arm (`npm run ai:manifest:check`, backed by `tools/check-ai-manifest.js`) is **warn-only** — it reports the roster, generated provenance, local-agent boundary, and managed sync inventory, but cannot fail the build. A green check therefore means the digest rules hold, **not** that drift is absent; read the step output for that. There are **23 agents**: 22 Studio-generated canonical definitions plus the Finance-authored `finance-domain`.
 
 ## AI Agent Configuration
 

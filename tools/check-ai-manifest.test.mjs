@@ -29,6 +29,9 @@ const {
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
   CANON_CITATIONS,
+  ENFORCEMENT_WORKFLOW,
+  driftEnforcement,
+  enforcementFindings,
   METRICS,
   HELP_TEXT,
   EXPECTED_AGENTS,
@@ -626,6 +629,43 @@ test('the corpus yields the claims it yielded before, not merely more than zero'
   assert.equal(total, 4, 'the declared corpus carries four count claims');
 });
 
+// --- #4233: what a green check actually asserts ---------------------------------------------//
+// The drift step runs with STRICT: '0'. It prints findings and exits 0, so "AI Manifest Check ✅"
+// in the PR list is compatible with drift being present. The workflow discloses this in its own
+// comments; the reader deciding to merge sees the check name. Disclosure one click from the
+// decision is the same shape as a real disagreement printed above an exit 0 (#4210).
+
+test('the docs describe the enforcement the workflow actually applies', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, ENFORCEMENT_WORKFLOW), 'utf8');
+  const doc = fs.readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8');
+  assert.deepEqual(enforcementFindings(workflow, doc), []);
+  // PREMISE: the mode was really read, not defaulted. Asserting [] above is satisfied by an
+  // unreadable workflow only if driftEnforcement fails open -- it does not, and this pins that.
+  assert.equal(driftEnforcement(workflow).mode, 'warn-only', 'drift is warn-only today');
+});
+
+test('a renamed or unreadable drift step is a finding, not a clean read', () => {
+  assert.ok(driftEnforcement('jobs:\n  steps:\n    - name: Something else\n').error);
+  assert.equal(
+    driftEnforcement('- name: Check for drift\n  run: node tool.js\n').error !== undefined,
+    true,
+  );
+  const findings = enforcementFindings('- name: Renamed\n', 'AI Manifest Check is warn-only');
+  assert.equal(findings.length, 1, 'an unreadable workflow must report, not pass');
+  assert.match(findings[0], /cannot read drift enforcement/);
+});
+
+test('prose and workflow must move together in both directions', () => {
+  const warnOnly = "- name: Check for drift\n  env:\n    STRICT: '0'\n  run: node tool.js\n";
+  const blocking = "- name: Check for drift\n  env:\n    STRICT: '1'\n  run: node tool.js\n";
+  const saysWarn = 'The AI Manifest Check drift arm is warn-only.';
+  const saysNothing = 'The AI Manifest Check workflow validates the roster.';
+  assert.deepEqual(enforcementFindings(warnOnly, saysWarn), [], 'agreement is clean');
+  assert.deepEqual(enforcementFindings(blocking, saysNothing), [], 'agreement is clean');
+  assert.match(enforcementFindings(warnOnly, saysNothing)[0], /do not say the check is warn-only/);
+  assert.match(enforcementFindings(blocking, saysWarn)[0], /now blocks/);
+});
+
 test('--help reaches this tool, rather than exiting inside a require', () => {
   // HELP_TEXT was unreachable: ai-manifest.js called process.exit(0) at module scope whenever
   // --help appeared in argv, so requiring it killed the process at line 7 and the drift checker
@@ -886,4 +926,18 @@ test('the walk names its exclusions rather than dropping them silently', () => {
       `WALK_SKIP excludes a directory the lock delivers into: ${skipped}`,
     );
   }
+});
+
+test('the report states CI enforcement, not just this invocation mode (#4233)', () => {
+  // The whole finding is that the deciding reader never opens the workflow. Asserting the constant
+  // would repeat #4230's vacuous test, so this asserts by execution.
+  const out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
+  assert.match(
+    out,
+    /CI drift enforcement \(\.github\/workflows\/ai-manifest-check\.yml\): warn-only/,
+  );
+  assert.ok(
+    out.indexOf('CI drift enforcement') < out.indexOf('Canonical runtime activation:'),
+    'enforcement disclosure must precede the verdict it qualifies',
+  );
 });
