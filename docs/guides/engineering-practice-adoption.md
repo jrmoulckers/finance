@@ -630,9 +630,49 @@ than the registry, and `tsconfig` is deferred on its own evidence, not on access
    the identical shape — warning against `^0.1.0` while its own table used `^0.3.0`. **Prefer a
    range a tool can check over a rule a reader must apply.**
 
-   Two ranges above are now advisory only. `prettier-config` is vendored at a ref and pinned by
-   `engineering-configs.lock.json`; `tsconfig` is deliberately not vendored at all. For those, the
-   lock is the pin and a semver range describes nothing that is installed.
+   **Retracted: "finance is not one of the caret cases."** Upstream has twice attributed a planned
+   `^0.2.0` to finance, and twice this guide's author denied it upstream — "I was never the repo
+   that caret-ised it," "I'm not one of your nine." **Both denials were false, and upstream was
+   right both times.** The evidence is this document's own history:
+
+   ```powershell
+   git show 0e7344c0:docs/guides/engineering-practice-adoption.md
+   # 4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.8.0`**,
+   #    **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**.
+   ```
+
+   Corrected in `ae36d0ca` (#4084), which is why the working tree is clean today.
+
+   **The instrument was `git grep`, and it cannot see the period being asked about.** It reports
+   the checked-out tree; the claim was about what finance had ever planned. Zero carets today is
+   entirely consistent with having recommended three of them for eleven commits. This is precisely
+   the rule stated elsewhere in this guide and credited as the sharpest formulation reached in this
+   adoption — **a point-in-time observation cannot falsify a claim about the past** — committed by
+   the person who wrote it, against an external party who had the history right.
+
+   Two aggravating details, both of which make this worse than an ordinary mistake:
+
+   - **The disproof was already in this file**, forty lines above, in the paragraph beginning "This
+     document previously recommended `^0.8.0`, `^0.3.0` and `^0.2.0`." The denial was written while
+     editing the same section. That is the identical defect diagnosed one pull request earlier
+     about the vendored-channel claim — a measurement and its contradiction in one document, with
+     nothing evaluating the pair — so **co-location is not a check** now has an instance where the
+     author had just finished naming it.
+   - **It cost the other side twice.** Upstream was told its record of finance was wrong, and
+     `versions.json` carries a numbered census of caret cases used to justify a test. Denying
+     membership in that census argues, on false evidence, for weakening the very guard that would
+     have caught finance.
+
+   The general form is worth keeping, because it is not about carets: **a repository's own history
+   is a primary source about it, and its working tree is not.** `git log -S<literal>` answers the
+   question `git grep <literal>` only appears to.
+
+   Two ranges above are not currently pinning anything, for different reasons.
+   `prettier-config` is vendored at a ref and pinned by `engineering-configs.lock.json`, so for it
+   the lock is the pin and a semver range describes nothing installed. `tsconfig` is not vendored
+   and not installed, so **nothing** pins it here and its range is a floor to adopt at, not a
+   present constraint. Both remain registry packages requiring the same grant; neither is exempt
+   from access, only from current use.
 
    Worth stating as a method rather than a version bump: verify against the **resolved version**,
    not the pinned range and not the working tree. Validating a preset through a `file:` link while
