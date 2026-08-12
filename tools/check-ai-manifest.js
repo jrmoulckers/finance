@@ -473,11 +473,8 @@ function validateSyncLock() {
   // to reproduce is a finding, so it leaves through the verdict rather than through stdout.
   // The old line labelled every unreproduced entry "(#4190)" unconditionally, which would
   // have attributed the next, unrelated failure to an issue that had nothing to do with it.
-  for (const entry of source.knownUnreproduced) {
-    process.stdout.write(
-      `  [source] not reproducible from delivered bytes: ${entry} ` +
-        `(${KNOWN_UNREPRODUCED[entry].issue}, known and pinned)\n`,
-    );
+  for (const line of sourceDisclosureLines(source.knownUnreproduced)) {
+    process.stdout.write(`${line}\n`);
   }
   return findings;
 }
@@ -804,6 +801,39 @@ const KNOWN_UNREPRODUCED = {
   },
 };
 
+// Both hashes, as an exported decision rather than an inline conjunction.
+//
+// The digest half was unpinnable where it stood. `digest` is derived from the delivered bytes
+// of `vendor/@jrm/tokens/css/default/tokens.css` -- the one file in this repo that must not be
+// modified or regenerated -- so every test able to reach this comparison could only vary the
+// OTHER half, the recorded hash. Two tests do exactly that, and one of them is *named* for
+// pinning both. Dropping `known.reproduces === digest` left the suite 37/37 green (#4222).
+//
+// A conjunction whose second conjunct no test can vary is a conjunction in name only. Taking
+// the decision out of the loop makes it answerable from arguments instead of from bytes, so
+// all four quadrants become reachable without touching the file the exemption is about.
+//
+// What the dropped half actually protects: `recorded` alone pins the exemption to a corrupt
+// RECORD, while `reproduces` pins it to the corrupt BYTES. Without the second, the exemption
+// absorbs any future corruption of this path whose record happens to still read 343e10b1 --
+// which is precisely the "second corruption is not inherited" promise made at KNOWN_UNREPRODUCED.
+function exemptionMatches(entry, recordedSource, digest) {
+  const known = KNOWN_UNREPRODUCED[entry];
+  if (!known) return false;
+  return known.recorded === recordedSource && known.reproduces === digest;
+}
+
+// The disclosure the prose promises: one line per path, never a count. Returned rather than
+// written so the promise is assertable -- as a loop inside main() it was reachable by no test,
+// and emptying it left the suite green (#4222). A count cannot grow unnoticed into a set.
+function sourceDisclosureLines(knownUnreproduced) {
+  return knownUnreproduced.map(
+    (entry) =>
+      `  [source] not reproducible from delivered bytes: ${entry} ` +
+      `(${KNOWN_UNREPRODUCED[entry].issue}, known and pinned)`,
+  );
+}
+
 function verifySourceReproduction(lock) {
   const findings = [];
   const unreproduced = [];
@@ -843,8 +873,7 @@ function verifySourceReproduction(lock) {
       reproducedEntries.add(entry);
       continue;
     }
-    const known = KNOWN_UNREPRODUCED[entry];
-    if (known && known.recorded === metadata.sourceSha256 && known.reproduces === digest) {
+    if (exemptionMatches(entry, metadata.sourceSha256, digest)) {
       knownUnreproduced.push(entry);
       continue;
     }
@@ -1079,4 +1108,6 @@ module.exports = {
   commentFamily,
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
+  exemptionMatches,
+  sourceDisclosureLines,
 };
