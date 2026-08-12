@@ -4621,6 +4621,124 @@ at exactly two sites — `apps/web/src/pages/HouseholdPage.tsx` (**2**) and
 `const { x } = useHook()` and misses `return { x: useHook().x }`, so a clean run is not proof
 of absence.
 
+### Testing the pin checker: one guard holds, one is built for a different file
+
+Upstream shipped `scripts/check-pins.mjs`, runnable without a registry token, and named two
+defects it deliberately avoids. Both were tested rather than taken, along with the claim about
+this repository's pins.
+
+#### finance has no pins to check, and the tool says so correctly
+
+The message opens _"you reported being on `^0.8.0`."_ Across all **6** tracked manifests,
+`@jrmoulckers` appears **zero** times — in `dependencies`, `devDependencies`,
+`peerDependencies`, and `optionalDependencies` alike. Adoption here is staged, not landed; the
+only reference anywhere is a comment at `eslint.config.mjs` L105 describing the vendored
+directory. The checker agrees:
+
+```
+no @jrmoulckers/* packages declared in .\package.json — nothing to check
+EXIT=0
+```
+
+`^0.8.0` belongs to the five repos that pinned it, not to this one. The follow-on request —
+_"your 317 should move once you re-pin"_ — therefore has no referent, and **317 was retired for
+326 one message earlier**. The re-appearance is itself the evidence for why: a correction
+travels in a reply, a number travels in a table, and the table is what gets quoted.
+
+#### The two stated guards, tested
+
+| Case                         | Stated behaviour    | Measured                   |           |
+| ---------------------------- | ------------------- | -------------------------- | --------- |
+| unparseable range (`latest`) | `unknown`, non-zero | `unknown`, **exit 1**      | **holds** |
+| unreadable manifest          | **exit 2**          | uncaught throw, **exit 1** | **fails** |
+| stale range (`^0.8.0`)       | —                   | `STALE`, exit 1            | correct   |
+| satisfiable range            | —                   | `ok`, exit 0               | correct   |
+
+The first guard is real and well-built: `unknown` counts toward a non-zero exit, and the output
+says _"Unrecognised is not the same as fine."_
+
+#### The exit-2 guard exists — for the other file
+
+The whole of the script's error handling:
+
+```js
+101  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));   // <- outside
+...
+105  try {
+106    versions = await loadVersions(versionsAt);
+107  } catch (err) {
+108    console.error(`could not read ${versionsAt}: ${err.message}`);
+109    process.exitCode = 2;
+110  }
+```
+
+There is exactly **one** `try` and **one** `catch` in the file, and they wrap the **remote**
+`versions.json` fetch. The **local manifest** read-and-parse on L101 sits outside them and runs
+first. So `exit 2` means "could not read versions.json", while the guarantee was stated about
+the manifest.
+
+Measured consequences, both **exit 1**:
+
+```
+malformed manifest -> SyntaxError: Expected property name ... at check-pins.mjs:101:18
+missing manifest   -> Error: ENOENT ... at check-pins.mjs:101:24
+```
+
+This is the relocated-subject failure recorded earlier in this document, in its cleanest form:
+a guard was built, it works, and it protects a different subject than the sentence describing
+it. The property was never located — the mechanism expected to provide it was.
+
+The consequence is not the one the design feared. The worry was a broken input reporting
+_clean_; what actually happens is a broken input reporting **exit 1, indistinguishable from a
+real stale pin**. A typo'd path (`./pacakge.json`) produces a finding-shaped failure, so
+`check-pins || open-a-pin-bump-PR` would act on a file it cannot read. Failing closed is the
+right instinct; failing _as a different diagnosis_ is the defect.
+
+#### Zero matching dependencies exits 0, the same as all-current
+
+| Manifest                   | Output             | Exit  |
+| -------------------------- | ------------------ | ----- |
+| all ranges satisfiable     | `ok …`             | **0** |
+| no `@jrmoulckers/*` at all | `nothing to check` | **0** |
+
+The human-facing half is right — _"nothing to check"_ is honest and does not claim a pass. But
+the **machine-facing** half cannot distinguish "our pins are current" from "we have no pins",
+and a CI gate reads the exit code. This is rung one of the ladder recorded earlier: **empty
+scope passes every check of that scope.** Worth separating from the exit-2 finding, because
+here the message is correct and only the signal is lossy — the reverse of a defect, and it
+should probably be exit 0 with a distinct marker rather than a third code.
+
+#### The documented invocation is outside the letter of ENG-SEC-002 and inside its rationale
+
+The published usage is:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jrmoulckers/engineering/main/scripts/check-pins.mjs \
+  | node - ./package.json
+```
+
+It works — verified end to end, including argument passing through `node -` (`pkgPath` comes
+from `process.argv.slice(2)` at L25–29, which survives reading the script from stdin). It also
+fetches from **`main`**, a mutable ref, and executes the result unverified.
+
+`ENG-SEC-002` _Verified supply chain_ (Ratified) states: _"…pin external build actions
+immutably…"_, with evidence _"external actions use immutable revisions."_ A pedantic reading
+confines that to CI actions and lets a piped script through. The **rationale** does not:
+
+> Build dependencies and automation execute with the product's trust even when application
+> code does not call them directly.
+
+A `curl | node` of a mutable ref is exactly automation executing with the product's trust. So
+the invocation sits outside the statement's wording and inside the rationale's scope — which is
+a finding about the **principle**, not just the tool: `ENG-SEC-002`'s statement is narrower than
+its own rationale, and the gap is where remote script execution lives.
+
+The remedy already runs here for the vendored citation checker: a pinned ref in
+`engineering-configs.lock.json` plus `vendor-configs.mjs --check` asserting byte-identity. The
+same treatment applies to this script, and the check is cheap — the fetched copy was confirmed
+**byte-identical** to `origin/main:scripts/check-pins.mjs` (5,699 bytes, matching SHA-256)
+before it was run here. That comparison is the whole of the missing step.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
