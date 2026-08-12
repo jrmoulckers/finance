@@ -6672,6 +6672,63 @@ recovery state is unhashed orphans that `--check` cannot see. The error text doe
 files", so it is documented rather than hidden — but a flag whose safe use requires a manual second
 step will eventually be used without it.
 
+## A maximum over a subset, and the coincidence that hid it
+
+The engineering repo advised resolving the newest ref by **sorting releases by date**. Measured
+against its own data, that advice is correct — and unfalsifiable there:
+
+```
+date-sort highest    v0.136.0
+numeric-sort highest v0.136.0
+```
+
+They agree because `jrmoulckers/engineering` maintains exactly one release line, so creation order
+and version order coincide. The advice fails the moment a repository backports: a maintenance wave
+publishes newest-major first and oldest-major last, so a date sort returns the _oldest_ maintained
+line as the frontier. finance resolves numerically for that reason and does not date-sort even as a
+tiebreak.
+
+The diagnosis attached to that advice was also inverted. It held that `v0.16.4` "sorts high under
+naive semver but is old". Numeric semver ranks it correctly — `16 < 136`. What ranks it wrongly is a
+**lexical string sort**, and a lexical sort over the live tag set does not return `v0.16.4` either:
+
+| ordering        | answer over 173 live semver tags    |
+| --------------- | ----------------------------------- |
+| numeric semver  | `v0.136.0`                          |
+| lexical string  | `v0.99.0`                           |
+| by publish date | `v0.136.0` (coincidence, see above) |
+
+`v0.16.4` ranks **118th of 173** lexically. So the named remedy is the broken one, the accused
+mechanism is the sound one, and the cited symptom belongs to neither.
+
+### The defect this turned up here
+
+Checking the claim against finance's own resolver found that it asked for `tags?per_page=100` and
+read the first page only. Upstream had **174 tags**. It had been computing a maximum over a subset.
+
+It returned the right answer anyway, which is the part worth keeping. Not because the subset was
+harmless, but because GitHub orders tags by _creation recency_ and this repository creates tags in
+ascending version order, so the newest 100 contained the maximum. Neither side guarantees that, and
+it inverts on precisely the backport case above: a wave creates low-version tags last, so page one
+would hold the oldest maintained lines.
+
+This is the tool's own thesis one layer down. A truncated page is a valid `200` with no marker in the
+body — "the whole list" and "the first hundred" are the same bytes to a caller. The resolver now
+follows `Link: rel="next"`, and a partial walk returns a **reason** rather than a smaller answer
+wearing an authoritative shape:
+
+```
+tag list exceeded 30 pages; refusing to report a maximum over a subset
+```
+
+Writing the tests surfaced a second one: when _both_ sources failed, only the release reason was
+printed. A truncated tag walk masked by an unrelated `HTTP 500` read as a plain outage. Both reasons
+are now joined.
+
+**The rule:** an off-by-one in a page size is invisible until the population crosses it, and the
+crossing is an upstream event no local gate observes. 20 tests, 8 of 8 mutants killed, calibrated on
+the unmutated tree first.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

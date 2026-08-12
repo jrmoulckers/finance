@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { apiHeaders, highestSemver, latestRef } from './vendor-configs.mjs';
+import {
+  apiHeaders,
+  highestSemver,
+  latestRef,
+  MAX_TAG_PAGES,
+  nextPageUrl,
+} from './vendor-configs.mjs';
 
 /** Stubs global fetch with a map of URL substring -> response descriptor. */
 function stubFetch(routes) {
@@ -152,4 +158,82 @@ test('both sources are queried, so a release-less tag cannot hide', async (t) =>
     stub.calls.some((c) => c.url.includes('/tags')),
     true,
   );
+});
+
+test('nextPageUrl finds the next link among several relations', () => {
+  const header =
+    '<https://api.github.com/repositories/1/tags?page=3>; rel="next", ' +
+    '<https://api.github.com/repositories/1/tags?page=9>; rel="last"';
+  assert.equal(nextPageUrl(header), 'https://api.github.com/repositories/1/tags?page=3');
+});
+
+test('nextPageUrl returns null on the last page and on a missing header', () => {
+  assert.equal(nextPageUrl('<https://api.github.com/x?page=1>; rel="prev"'), null);
+  assert.equal(nextPageUrl(null), null);
+  assert.equal(nextPageUrl(undefined), null);
+});
+
+test('the highest tag is found when it sits beyond the first page', async (t) => {
+  // The live failure this guards: upstream passed 100 tags while the tool asked
+  // for a single 100-entry page. It stayed correct only because GitHub returns
+  // tags newest-created first and this repo tags in ascending order. A repo that
+  // backports creates low versions last, putting the frontier on a later page.
+  const stub = stubFetch({
+    'tags?per_page=100': {
+      status: 200,
+      body: tagBody(['v0.9.0', 'v0.8.0']),
+      headers: { link: '<https://api.github.com/repos/x/y/tags?page=2>; rel="next"' },
+    },
+    'tags?page=2': { status: 200, body: tagBody(['v0.136.0', 'v0.135.0']) },
+    'releases/latest': { status: 200, body: releaseBody('v0.100.0') },
+  });
+  t.after(stub.restore);
+  assert.deepEqual(await latestRef(), { ref: 'v0.136.0', reason: null });
+  assert.ok(stub.calls.some((call) => call.url.includes('page=2')));
+});
+
+test('a later page failing does not yield a maximum over the pages that loaded', async (t) => {
+  // Returning v0.9.0 here would be a smaller answer wearing an authoritative
+  // shape -- the exact silence this tool exists to remove, one layer down.
+  const stub = stubFetch({
+    'tags?per_page=100': {
+      status: 200,
+      body: tagBody(['v0.9.0']),
+      headers: { link: '<https://api.github.com/repos/x/y/tags?page=2>; rel="next"' },
+    },
+    'tags?page=2': { status: 403, headers: { 'x-ratelimit-remaining': '0' } },
+    'releases/latest': { status: 500 },
+  });
+  t.after(stub.restore);
+  const result = await latestRef();
+  assert.equal(result.ref, null);
+  assert.match(result.reason, /rate limit exhausted/);
+  assert.match(result.reason, /HTTP 500/);
+});
+
+test('an endless next chain stops at the cap and names it', async (t) => {
+  const stub = stubFetch({
+    tags: {
+      status: 200,
+      body: tagBody(['v0.1.0']),
+      headers: { link: '<https://api.github.com/repos/x/y/tags?page=2>; rel="next"' },
+    },
+    'releases/latest': { status: 404 },
+  });
+  t.after(stub.restore);
+  const result = await latestRef();
+  assert.equal(result.ref, null);
+  assert.match(result.reason, /exceeded 30 pages/);
+  assert.match(result.reason, /HTTP 404/);
+  assert.equal(stub.calls.filter((call) => call.url.includes('tags')).length, MAX_TAG_PAGES);
+});
+
+test('a single-page tag list issues exactly one tag request', async (t) => {
+  const stub = stubFetch({
+    'tags?per_page=100': { status: 200, body: tagBody(['v0.2.0', 'v0.10.0']) },
+    'releases/latest': { status: 200, body: releaseBody('v0.2.0') },
+  });
+  t.after(stub.restore);
+  assert.deepEqual(await latestRef(), { ref: 'v0.10.0', reason: null });
+  assert.equal(stub.calls.filter((call) => call.url.includes('tags')).length, 1);
 });
