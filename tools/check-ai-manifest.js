@@ -538,7 +538,17 @@ function main() {
   }
 
   if (driftedCounts.length === 0 && activationFindings.length === 0) {
-    process.stdout.write('✅ No drift detected.\n');
+    // Name the axis in the success line, not just in the detail lines above it.
+    // "No drift detected" is true and reads as "this repo is in good order" -- and nothing
+    // here can distinguish those. Every managed file can be provably unmodified since sync
+    // while being an arbitrarily stale copy of canon: `targetSha256` hashes member-local
+    // content and is self-contained, but currency needs canon's CURRENT hash, which no
+    // member-side run can obtain (#4174, and .github#582 for the fleet-wide measurement).
+    // The more accurate this check gets, the more confidently the wrong inference is drawn.
+    process.stdout.write(
+      '✅ No drift detected — counts, activation, and managed content are consistent ' +
+        'with the last sync. Currency against canon is out of scope here (#4174).\n',
+    );
     process.exit(0);
   }
   const result =
