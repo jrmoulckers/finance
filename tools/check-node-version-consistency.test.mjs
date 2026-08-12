@@ -5,10 +5,14 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  RANGE_MARKER,
   enginesAdmitsAbove,
+  exercisedMajorsAbove,
+  findRangeExerciseViolations,
   findNodeVersionMismatches,
   findNodeVersionPins,
   parseNvmrc,
+  majorSatisfiesEngines,
   pinMajor,
 } from './check-node-version-consistency.mjs';
 
@@ -105,4 +109,80 @@ test('the real workflow tree agrees with .nvmrc, and a mutated copy does not', (
     .find((text) => findNodeVersionPins(text).some((pin) => pin.kind === 'literal'))
     .replace(/node-version:\s*['"]?\d+/, 'node-version: 18');
   assert.ok(findNodeVersionMismatches('mutated.yml', mutated, expected).length > 0);
+});
+
+const marked = (version) =>
+  `      - uses: actions/setup-node@abc\n        with:\n          node-version: '${version}' # ${RANGE_MARKER}\n`;
+
+test('a marked literal is exempt from the .nvmrc equality rule', () => {
+  assert.deepEqual(findNodeVersionMismatches('nightly.yml', marked('24'), '22'), []);
+});
+
+test('an unmarked literal of the same value is still a mismatch', () => {
+  const text = marked('24').replace(` # ${RANGE_MARKER}`, '');
+  assert.equal(findNodeVersionMismatches('nightly.yml', text, '22').length, 1);
+});
+
+test('findNodeVersionPins records the marker only when present', () => {
+  assert.equal(findNodeVersionPins(marked('24'))[0].exercisesRange, true);
+  const bare = marked('24').replace(` # ${RANGE_MARKER}`, '');
+  assert.equal(findNodeVersionPins(bare)[0].exercisesRange, false);
+});
+
+test('majorSatisfiesEngines honours both bounds and stays undecided when unreadable', () => {
+  assert.equal(majorSatisfiesEngines('24', '>=22.0.0'), true);
+  assert.equal(majorSatisfiesEngines('20', '>=22.0.0'), false);
+  assert.equal(majorSatisfiesEngines('26', '>=22.0.0 <25'), false);
+  assert.equal(majorSatisfiesEngines('24', '>=22.0.0 <25'), true);
+  assert.equal(majorSatisfiesEngines('24', 'lts/*'), null);
+  assert.equal(majorSatisfiesEngines(null, '>=22.0.0'), null);
+});
+
+test('a marker on the .nvmrc major is fatal because it exercises nothing', () => {
+  const found = findRangeExerciseViolations('nightly.yml', marked('22'), '22', '>=22.0.0');
+  assert.equal(found.length, 1);
+  assert.match(found[0], /exercises nothing/);
+});
+
+test('a marker outside the declared range is fatal', () => {
+  const found = findRangeExerciseViolations('nightly.yml', marked('20'), '22', '>=22.0.0');
+  assert.equal(found.length, 1);
+  assert.match(found[0], /outside engines\.node/);
+});
+
+test('a marker on an unreadable version is fatal rather than silently exempt', () => {
+  const found = findRangeExerciseViolations(
+    'nightly.yml',
+    marked('${{ matrix.node }}'),
+    '22',
+    '>=22.0.0',
+  );
+  assert.equal(found.length, 1);
+  assert.match(found[0], /cannot be read/);
+});
+
+test('a valid marker produces no violation', () => {
+  assert.deepEqual(findRangeExerciseViolations('nightly.yml', marked('24'), '22', '>=22.0.0'), []);
+});
+
+test('exercisedMajorsAbove reports marked majors above the declared one only', () => {
+  const files = [
+    { file: 'a.yml', text: marked('24') },
+    { file: 'b.yml', text: marked('24').replace(` # ${RANGE_MARKER}`, '') },
+  ];
+  assert.deepEqual(exercisedMajorsAbove(files, '22'), ['24']);
+  assert.deepEqual(exercisedMajorsAbove([{ file: 'c.yml', text: marked('22') }], '22'), []);
+});
+
+test('the repository declares a range and exercises it', () => {
+  const engines = JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')).engines;
+  const expected = parseNvmrc(readFileSync(join(repositoryRoot, '.nvmrc'), 'utf8'));
+  if (!enginesAdmitsAbove(engines.node, expected)) return;
+  const files = readdirSync(workflowDirectory)
+    .filter((name) => /\.ya?ml$/.test(name))
+    .map((file) => ({ file, text: readFileSync(join(workflowDirectory, file), 'utf8') }));
+  assert.ok(
+    exercisedMajorsAbove(files, expected).length > 0,
+    'engines.node claims majors above .nvmrc but no workflow runs one',
+  );
 });

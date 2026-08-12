@@ -450,3 +450,39 @@ jobs:
         if: always()
         working-directory: services/api
         run: docker compose down -v
+  # ---------------------------------------------------------------------------
+  # engines.node range exercise
+  # ---------------------------------------------------------------------------
+  # package.json declares `engines.node: ">=22.0.0"`, which claims every major
+  # from 22 upward, while all 36 workflow pins run 22. That left the upper half of
+  # the claim asserted and never executed -- the same defect the browser matrices
+  # above exist to prevent for a different support surface.
+  #
+  # The version is a literal, not a matrix expression, so the pin checker can read
+  # it and confirm the marked value really is inside the declared range.
+  #
+  # Nightly rather than per-PR: this exercises a claim, it does not gate a change.
+  engines-range:
+    name: engines.node range (Node 24)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24' # exercises-engines-range
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Repository tooling suites
+        run: |
+          npm run workflow:security:test
+          npm run node:version:test
+          npm run ai:manifest:test
+      - name: Repository checks
+        run: |
+          npm run workflow:security:check
+          npm run encoding:check
+          npm run eng:citations

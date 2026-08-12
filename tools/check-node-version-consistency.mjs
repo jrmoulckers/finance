@@ -43,7 +43,12 @@ export function findNodeVersionPins(text) {
   for (const [index, line] of lines.entries()) {
     const literal = line.match(/^\s*(?:-\s*)?node-version:\s*['"]?([^\s'"#]+)/);
     if (literal) {
-      pins.push({ kind: 'literal', value: literal[1], line: index + 1 });
+      pins.push({
+        kind: 'literal',
+        value: literal[1],
+        line: index + 1,
+        exercisesRange: line.includes(`# ${RANGE_MARKER}`),
+      });
       continue;
     }
     const fromFile = line.match(/^\s*(?:-\s*)?node-version-file:\s*['"]?([^\s'"#]+)/);
@@ -54,10 +59,85 @@ export function findNodeVersionPins(text) {
   return pins;
 }
 
+/**
+ * Marker that opts a literal out of the `.nvmrc` equality rule.
+ *
+ * A repository that declares `engines.node: ">=22.0.0"` claims 22, 24 and every
+ * later major. Pinning every job to `.nvmrc` exercises the floor and leaves the
+ * rest asserted, which is how a support claim rots without any file changing.
+ * Marked literals deliberately run a different major to exercise that claim.
+ */
+export const RANGE_MARKER = 'exercises-engines-range';
+
 /** Extracts the major from a `setup-node` version literal such as `22.11.0`. */
 export function pinMajor(value) {
   const match = String(value ?? '').match(/^v?(\d+)/);
   return match ? match[1] : null;
+}
+
+/**
+ * True when `major` falls inside an `engines.node` range.
+ *
+ * Understands the lower/upper bound forms this repository uses. An unparseable
+ * range returns `null` -- undecided, never a violation, so a form the check
+ * cannot read stays silent instead of failing a tree it cannot judge.
+ */
+export function majorSatisfiesEngines(major, range) {
+  if (!major || !range) return null;
+  const lower = String(range).match(/>=?\s*v?(\d+)/);
+  if (!lower) return null;
+  const upper = String(range).match(/<=?\s*v?(\d+)/);
+  const value = Number(major);
+  if (value < Number(lower[1])) return false;
+  if (upper && value > Number(upper[1])) return false;
+  return true;
+}
+
+/**
+ * Reports marked literals that do not do the job the marker claims.
+ *
+ * The marker is the only way past the `.nvmrc` rule, so it is constrained from
+ * both sides: a marked literal must sit inside the declared range (otherwise it
+ * exercises a version the manifest never claimed) and must differ from `.nvmrc`
+ * (otherwise it exercises nothing and the marker only hides drift). Both are
+ * caused by a local edit, so both are fatal.
+ */
+export function findRangeExerciseViolations(file, text, expectedMajor, range) {
+  const violations = [];
+  for (const pin of findNodeVersionPins(text)) {
+    if (pin.kind !== 'literal' || !pin.exercisesRange) continue;
+    const major = pinMajor(pin.value);
+    if (major === null) {
+      violations.push(
+        `${file}:${pin.line} is marked ${RANGE_MARKER} but its version cannot be read`,
+      );
+      continue;
+    }
+    if (major === expectedMajor) {
+      violations.push(
+        `${file}:${pin.line} is marked ${RANGE_MARKER} but pins ${pin.value}, the same major as .nvmrc; it exercises nothing`,
+      );
+    }
+    if (majorSatisfiesEngines(major, range) === false) {
+      violations.push(
+        `${file}:${pin.line} is marked ${RANGE_MARKER} but Node ${pin.value} is outside engines.node "${range}"`,
+      );
+    }
+  }
+  return violations;
+}
+
+/** Majors above `.nvmrc` that some marked literal actually runs. */
+export function exercisedMajorsAbove(files, expectedMajor) {
+  const majors = new Set();
+  for (const { text } of files) {
+    for (const pin of findNodeVersionPins(text)) {
+      if (pin.kind !== 'literal' || !pin.exercisesRange) continue;
+      const major = pinMajor(pin.value);
+      if (major !== null && Number(major) > Number(expectedMajor)) majors.add(major);
+    }
+  }
+  return [...majors].sort((a, b) => Number(a) - Number(b));
 }
 
 /**
@@ -66,13 +146,15 @@ export function pinMajor(value) {
  * A `node-version-file` pin is single-sourced and never reported. A literal
  * whose major cannot be read (`lts/*`, an expression) is left undecided rather
  * than reported, so an unparsed form stays silent instead of failing a tree the
- * check cannot judge.
+ * check cannot judge. A literal marked `exercises-engines-range` is judged by
+ * `findRangeExerciseViolations` instead.
  */
 export function findNodeVersionMismatches(file, text, expectedMajor) {
   if (!expectedMajor) return [];
   const violations = [];
   for (const pin of findNodeVersionPins(text)) {
     if (pin.kind !== 'literal') continue;
+    if (pin.exercisesRange) continue;
     const major = pinMajor(pin.value);
     if (major === null) continue;
     if (major !== expectedMajor) {
@@ -107,26 +189,34 @@ function main() {
   }
 
   const files = readdirSync(workflowDirectory).filter((name) => /\.ya?ml$/.test(name));
+  const engines = JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')).engines;
   const violations = [];
+  const loaded = [];
   let literalCount = 0;
   let fileCount = 0;
+  let markedCount = 0;
 
   for (const file of files) {
     const text = readFileSync(join(workflowDirectory, file), 'utf8');
+    loaded.push({ file, text });
     for (const pin of findNodeVersionPins(text)) {
-      if (pin.kind === 'literal') literalCount += 1;
-      else fileCount += 1;
+      if (pin.kind !== 'literal') fileCount += 1;
+      else if (pin.exercisesRange) markedCount += 1;
+      else literalCount += 1;
     }
     violations.push(...findNodeVersionMismatches(file, text, expectedMajor));
+    violations.push(...findRangeExerciseViolations(file, text, expectedMajor, engines?.node));
+  }
+
+  const exercised = exercisedMajorsAbove(loaded, expectedMajor);
+  if (enginesAdmitsAbove(engines?.node, expectedMajor) && exercised.length === 0) {
+    violations.push(
+      `package.json engines.node is "${engines.node}", which claims majors above ${expectedMajor}, but no workflow runs one. ` +
+        `Either narrow the range to what CI exercises, or mark a job's node-version with "# ${RANGE_MARKER}".`,
+    );
   }
 
   const notices = [];
-  const engines = JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')).engines;
-  if (enginesAdmitsAbove(engines?.node, expectedMajor)) {
-    notices.push(
-      `package.json engines.node is "${engines.node}", which admits majors above ${expectedMajor}; it cannot express the runtime CI uses.`,
-    );
-  }
   const runningMajor = process.versions.node.split('.')[0];
   if (runningMajor !== expectedMajor) {
     notices.push(
@@ -135,7 +225,7 @@ function main() {
   }
 
   if (violations.length > 0) {
-    console.error('Node runtime pins disagree with .nvmrc:\n');
+    console.error('Node runtime pin check failed:\n');
     for (const violation of violations) console.error(`  - ${violation}`);
     process.exitCode = 1;
     return;
@@ -144,6 +234,11 @@ function main() {
   console.log(
     `Node runtime pins agree with .nvmrc (${expectedMajor}): ${literalCount} literal, ${fileCount} via node-version-file, across ${files.length} workflow file(s).`,
   );
+  if (markedCount > 0) {
+    console.log(
+      `engines.node "${engines.node}" is exercised above ${expectedMajor} at Node ${exercised.join(', ')} by ${markedCount} marked pin(s).`,
+    );
+  }
   for (const notice of notices) console.log(`Notice: ${notice}`);
 }
 

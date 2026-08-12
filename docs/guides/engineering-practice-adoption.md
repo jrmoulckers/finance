@@ -6398,6 +6398,90 @@ Five other workflows (`ci-android`, `ci-shared`, `ci-security`, `release-platfor
 Line-tip lag is a better proxy, not a measurement of the real thing: it counts _a release you do not
 have_, not _a fix you need_. It over-reports, which is the safe direction for a gate.
 
+## An asserted range is a claim nothing runs
+
+A sibling session found that its repo declares `engines.node: ">=20"` while every CI job pins 20 —
+the floor exercised, the rest asserted — and that the same repo had already written the postmortem
+for that exact defect fifteen lines above, about a different dependency. finance has the same shape,
+and worse: the notice was already being printed.
+
+```
+engines.node   ">=22.0.0"        claims 22, 24, 26, ...
+.nvmrc          22
+workflow pins   36 literals, every one 22
+```
+
+`npm run node:version:check` has emitted _"engines.node is `>=22.0.0`, which admits majors above 22"_
+on every run since it was added. It was a notice, so it scrolled past — a control that reports into a
+stream nobody consumes is indistinguishable from one that reports nothing.
+
+### finance's version is sharper than theirs
+
+The idiom for exercising a declared support surface is not merely present here, it is routine:
+
+| declared surface         | values exercised              |
+| ------------------------ | ----------------------------- |
+| browsers (`nightly.yml`) | **6**                         |
+| browsers (`ci-web.yml`)  | 4                             |
+| Android API levels       | 1                             |
+| **Node majors**          | **1, of an open-ended range** |
+
+Six browsers get a matrix. The runtime range in the repository's own manifest got one point.
+
+### Two correct controls, colliding again
+
+The obvious fix — run a job on Node 24 — is _forbidden_ by the checker added in #4225, which is
+fatal on any literal disagreeing with `.nvmrc`. That is the same deadlock shape recorded earlier in
+this document, this time caused by a control this repository added itself, and it argues that the
+pattern is not a coincidence of two unlucky rules. **A control that pins a value forbids the job that
+tests a different one, unless it is taught the difference between drift and an experiment.**
+
+Resolved with an explicit marker rather than an exemption list:
+
+```yaml
+node-version: '24' # exercises-engines-range
+```
+
+The marker is constrained from both sides so it cannot become a way to silence drift:
+
+| marked literal                                       | verdict                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------- |
+| inside `engines.node`, different major from `.nvmrc` | exempt — this is the intended use                       |
+| same major as `.nvmrc`                               | **fatal** — exercises nothing, so the marker only hides |
+| outside `engines.node` (e.g. 20)                     | **fatal** — the manifest never claimed it               |
+| unreadable (`${{ matrix.node }}`)                    | **fatal** — cannot be judged, so must not be exempt     |
+
+You can only exempt a version the manifest already claims to support, which is why the escape hatch
+cannot widen the thing it escapes.
+
+The unexercised range itself is now **fatal**, not a notice, and it passes the discriminator that
+governs the rest of these gates: _can something outside this tree, with no change here, turn it red?_
+It cannot — a new Node release does not flip it; only editing `engines`, `.nvmrc`, or the workflows
+does. So both remedies stay open and both are correct: exercise the range, or narrow the claim to
+what CI runs.
+
+The job lives in `nightly.yml` with a literal rather than a one-value matrix, so the checker can read
+the version and confirm it. It exercises a claim; it does not gate a change.
+
+### The fabricated SHA
+
+Writing that job, I pinned `actions/setup-node@48b55a01f5c6b6d0a1f0b8b4d6f7c1e6c4a5b1e6`. The real
+pin is `48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e`. I had measured the real one earlier, remembered
+its opening characters, and typed the rest.
+
+**Eight identical leading characters, then invention** — the sibling reported the identical error one
+message earlier with ten. Reading a message about a failure mode, then committing it inside the hour,
+while writing the fix for a different instance of "asserted rather than checked."
+
+What makes it worth recording is where it would have stopped. `check-workflow-security.mjs` validates
+that a ref is 40 hex characters; it cannot validate that the object exists, because it does not touch
+the network. A fabricated SHA of the right shape **passes every local gate** and fails only when a
+runner tries to resolve the action. The pin check answers "is this pinned", which reads like "is this
+right".
+
+The fix is not vigilance: read the value out of the file. Both SHAs in that job were extracted from
+`ci-lint.yml` by pattern, never retyped.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
