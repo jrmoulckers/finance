@@ -2614,20 +2614,78 @@ The checker already draws the distinction needed to avoid that, and it is measur
 So the step blocks on 1 and warns on 2. A local defect is finance's problem and must stop the
 merge; an upstream incident is not, and must not.
 
-Three assumptions in that step were load-bearing, so all three were tested rather than reasoned
-about:
+The policy lives in `scripts/eng-citations-gate.mjs` rather than inline shell, so the three cases can
+be executed locally instead of argued about. All three were:
 
-- **`npm run` preserves the distinction.** Wrappers commonly normalise a child's status to 1, which
-  would have collapsed both cases into "blocking" and coupled finance's merge queue to upstream
-  availability. Measured: `npm run eng:citations` exits **2** on an unreachable index and **1** on a
-  bogus ID.
-- **The branch logic is right.** Executed under `bash` against statuses 0, 2, 1 and 3: pass, warn,
-  block, block. The last case matters — an exit code nobody anticipated falls through to blocking,
-  which is the safe direction for a gate.
+| Case                                              | Gate exit                   | Effect        |
+| ------------------------------------------------- | --------------------------- | ------------- |
+| Clean tree                                        | 0                           | merge allowed |
+| A tracked file citing an ID absent from the index | **1**                       | merge blocked |
+| Index URL 404s                                    | **0**, with a `::warning::` | merge allowed |
+
+Two assumptions underneath were also tested rather than reasoned about:
+
+- **The exit codes are distinguishable at all.** Wrappers commonly normalise a child's status to 1,
+  which would collapse both cases into "blocking" and couple finance's merge queue to upstream
+  availability. Measured: the checker exits **2** on an unreachable index and **1** on a bogus ID,
+  and `spawnSync` reports both faithfully. An unanticipated code falls through to blocking, which is
+  the safe direction for a gate.
 - **No credential is involved.** The existing job passes no token and the index resolves anonymously
   in CI, so the gatekeeper behaves identically. Had a token been required and absent, the step would
   have exited 2 and warned green forever — which is this document's recurring failure, and it would
   have been introduced by the commit that added the guard against it.
+
+### Three local validators passed a workflow file GitHub rejected
+
+The first attempt at the step above put the exit-code policy in an inline shell block. It was
+committed, pushed, and **broke `ci-security.yml` outright**: GitHub reported `Invalid workflow file
+... You have an error in your yaml syntax`, produced no jobs, and therefore never reported the
+required `Required Checks Gatekeeper` context. The PR sat at `BLOCKED` for forty minutes.
+
+The failure mode is worth recording because of how it presents. **A workflow that fails to parse
+does not show a red check — it shows a missing one.** `gh pr checks` listed no failures, because the
+jobs were never created. The run appears in `gh run list` identified by _path_ rather than by name,
+which is the visible tell:
+
+```
+CI — Lint                            completed  success
+.github/workflows/ci-security.yml    completed  failure
+```
+
+Diagnosing it needed the run page, because `gh api .../check-runs/<id>/annotations` returns 404 for
+a run with no jobs — the same shape as the private-repo billing-hold failures a peer repository
+reported, where logs and summaries are all empty.
+
+**Every local check passed on the broken file:**
+
+| Validator                                           | Verdict on the file GitHub rejected |
+| --------------------------------------------------- | ----------------------------------- |
+| `js-yaml` parse                                     | OK                                  |
+| `js-yaml` structural read (11 steps, correct order) | OK                                  |
+| `prettier --check .`                                | OK                                  |
+| `npm run workflow:security:check` / `:test`         | OK                                  |
+
+Byte-level checks were clean too: no BOM, no tabs, LF endings, no trailing space after `run: |`. I
+could not identify the offending token, and I want to state that plainly rather than invent a
+cause — **the honest finding is that finance has no local validator that agrees with GitHub's
+workflow parser**, and three that disagree with it silently.
+
+The fix does not depend on knowing the token. Moving the policy out of inline shell into
+`scripts/eng-citations-gate.mjs` reduced the workflow change to a single `run:` line, which is
+better independently: the exit-code policy is now executable locally, and its three cases are
+tested above rather than asserted. That is the right response to a construct you cannot validate —
+stop emitting the construct.
+
+Two smaller things the attempt exposed, both from writing YAML through PowerShell:
+
+- A double-quoted here-string ate a backtick-escaped word, turning `` `eng-citations` `` into
+  `ng-citations` in a comment. Prettier, ESLint and the YAML parsers were all happy with it. Line
+  arrays and `WriteAllLines` avoid the class entirely.
+- `npm run` scripts here reject `console.*` under `no-console`; the repo idiom is
+  `process.stdout.write` / `process.stderr.write`, as in `scripts/vendor-configs.mjs`. The gate
+  script was rewritten to match, and **its three cases were re-tested after that rewrite** rather
+  than assumed to have survived it, since the change touched the same statements that carry the exit
+  codes.
 
 ## Worth hoisting up
 
