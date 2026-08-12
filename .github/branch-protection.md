@@ -142,9 +142,16 @@ file-level changes effective.
 > **One-command option:** a maintainer with admin rights can apply all of the
 > settings in this section by running
 > [`tools/setup-branch-protection.sh`](../tools/setup-branch-protection.sh)
-> (`gh` must be authenticated with admin scope). It is idempotent and prompts for
-> confirmation. AI agents must **not** run it — repo-settings changes are
-> human-gated. The manual checklist below mirrors what the script applies.
+> (`gh` must be authenticated with admin scope). It prints a diff of the current
+> vs. proposed configuration and prompts for confirmation before writing.
+> It is **not** idempotent with respect to live state: the call fully replaces
+> the branch's protection config, so it reverts anything applied out-of-band and
+> applies this section's _entire_ pending policy (2 approvals, code-owner review,
+> "Include administrators") — not just the status-check list. Read the diff, and
+> note that the review/admin settings above currently conflict with the agent
+> self-merge autonomy described in `AGENTS.md` Category 2. AI agents must **not**
+> run it — repo-settings changes are human-gated. The manual checklist below
+> mirrors what the script applies.
 
 - [ ] **Add required status check:** `Required Checks Gatekeeper` (the single
       always-on gate). Optionally also add `ESLint & Prettier` and
