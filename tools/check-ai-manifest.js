@@ -365,9 +365,15 @@ function validateSyncLock() {
   const source = verifySourceReproduction(lock);
   findings.push(...source.findings);
   const total = source.reproduced + source.unreproduced.length;
+  // The unobserved count is printed rather than subtracted away. Reporting only "N of M"
+  // over the evaluable population lets the ratio read as coverage of everything recorded,
+  // when a recorded-but-absent target was never attempted at all (#4197).
+  const unobserved = source.unobserved.length;
   process.stdout.write(
     `  [source] ${source.reproduced} of ${total} managed targets unstamp to their ` +
-      `recorded canon source\n`,
+      `recorded canon source` +
+      (unobserved ? `; ${unobserved} recorded targets not evaluable and unobserved` : '') +
+      `\n`,
   );
   // States only what was computed. The earlier wording asserted "cause unknown", which was
   // false once the engine documented this entry (copier.mjs:494-499) and would be unfounded
@@ -553,10 +559,19 @@ function unstampSource(entryPath, text) {
 // construction. This proves delivery fidelity, NOT currency -- it shows canon said this at
 // sync time, never that canon still says it.
 //
-// Unreproduced entries are disclosed by path rather than raised as findings. One exists
-// today (#4190) and its cause is unknown; asserting corruption on evidence that does not
-// establish it would make the check red on a file that must not be deleted. Listing each
-// path means the set cannot grow unnoticed, which is the property a bare count lacks.
+// Unreproduced entries are disclosed by path rather than raised as findings. Asserting
+// corruption on evidence that does not establish it would make the check red on a file
+// that must not be deleted. Listing each path means the set cannot grow unnoticed, which
+// is the property a bare count lacks.
+//
+// Absent targets are counted, not dropped. A recorded target that is not on disk cannot be
+// evaluated, but excluding it silently shrinks the denominator and lets the ratio read as
+// broader coverage than was actually attempted (#4197). It matters here rather than in the
+// abstract: nine of the thirteen absent entries share the exact `syncedAt` of the sole
+// residue, so that residue is plausibly one visible member of a ten-entry cohort rather
+// than an isolated anomaly. The conservation assertion in the suite -- reproduced plus
+// unreproduced plus unobserved equals every entry carrying a `sourceSha256` -- is what
+// keeps a future exclusion from reappearing as a quietly smaller number.
 //
 // For `vendor/@jrm/tokens/css/default/tokens.css` specifically, the engine documents the
 // cause at `copier.mjs:494-499`: an overlapping run reverted that entry to the hash and
@@ -567,15 +582,25 @@ function unstampSource(entryPath, text) {
 function verifySourceReproduction(lock) {
   const findings = [];
   const unreproduced = [];
+  const unobserved = [];
   let reproduced = 0;
   for (const [entry, metadata] of Object.entries(lock.entries || {})) {
     if (!metadata || !metadata.sourceSha256) continue;
     const absolute = path.join(ROOT, entry);
-    if (!fs.existsSync(absolute)) continue;
+    if (!fs.existsSync(absolute)) {
+      unobserved.push(entry);
+      continue;
+    }
     const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
-    if (managedRegion(text) !== null) continue;
+    if (managedRegion(text) !== null) {
+      unobserved.push(entry);
+      continue;
+    }
     const source = unstampSource(entry, text);
-    if (source.status === 'no-stamp') continue;
+    if (source.status === 'no-stamp') {
+      unobserved.push(entry);
+      continue;
+    }
     if (source.status === 'unknown') {
       unreproduced.push(entry);
       continue;
@@ -589,7 +614,7 @@ function verifySourceReproduction(lock) {
   if (reproduced === 0) {
     findings.push('no lock entry unstamped to its canon source — check is not observing');
   }
-  return { findings, reproduced, unreproduced };
+  return { findings, reproduced, unreproduced, unobserved };
 }
 
 function verifyManagedContent(lock) {
