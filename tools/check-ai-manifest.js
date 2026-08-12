@@ -422,8 +422,16 @@ function verifyManagedContent(lock) {
   // Report what was verified, not only what was skipped. A run that verifies nothing must
   // be distinguishable at a glance from one that verifies everything -- otherwise the
   // check can stop observing while still reading as success.
+  //
+  // The wording is deliberate: this asserts "unmodified since sync", NOT "current with
+  // canon". targetSha256 records what was delivered; sourceSha256 records what canon
+  // looked like at sync time and is canon-side content -- measured unmatched by anything
+  // local for all 68 present entries. Canon can therefore move arbitrarily far ahead
+  // while every check here stays green, and a stale file defeats detection by existing.
+  // Closing that requires comparing against the backbone at runtime, which is the open
+  // owner-gated question in #4141. Until then this line must not imply currency.
   process.stdout.write(
-    `  [content] ${verified} managed targets verified against the lock` +
+    `  [content] ${verified} managed targets unmodified since sync` +
       (pending.length ? `; ${pending.length} awaiting the next sync run` : '') +
       '\n',
   );
