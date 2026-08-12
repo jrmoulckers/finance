@@ -83,6 +83,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-konan-
 
+      # The wrapper fetches the distribution with no retry and a 10s network
+      # timeout, so a transient reset from services.gradle.org fails the build
+      # step before a single line is compiled. Fetching here keeps the retry
+      # scoped to the download: a build failure still fails on the first attempt.
+      - name: Prefetch Gradle distribution
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then exit 0; fi
+            echo "Gradle distribution fetch failed (attempt ${attempt}/3)"
+            sleep $(( attempt * 15 ))
+          done
+          echo "::error::Gradle distribution unavailable after 3 attempts"
+          exit 1
       - name: Build shared packages
         id: build
         run: |

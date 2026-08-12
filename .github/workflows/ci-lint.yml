@@ -125,6 +125,9 @@ jobs:
       - name: Workflow Node pins agree with .nvmrc
         run: npm run node:version:check
 
+      - name: Gradle jobs prefetch the distribution
+        run: npm run gradle:prefetch:check
+
   pr-title:
     name: Semantic PR Title
     needs: changes
