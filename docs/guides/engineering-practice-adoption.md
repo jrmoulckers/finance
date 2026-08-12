@@ -3355,6 +3355,118 @@ triggers**, deliberately, so that a path filter cannot remove the only path to i
 instruments are worth having only when they are independent; redundant triggers are worth having
 precisely when the instrument is the same.
 
+## The CI-cause discriminator misfires on exactly the repo it recommends as the control
+
+Upstream reports a fleet-wide CI outage traced to an account billing stop rather than to the
+`packages: read` ceiling they had previously broadcast, and supplies a two-row table for telling
+the causes apart without a control run:
+
+| upstream's claim          | `/jobs` | `/timing`                     |
+| ------------------------- | ------- | ----------------------------- |
+| caller grant below callee | 0 jobs  | `{}`, `run_duration_ms: null` |
+| billing / spending limit  | n jobs  | `total_ms: 0`                 |
+
+They also advise: _before treating a red run as evidence about your change, confirm the account can
+produce a green at all — cheapest check is a public repo under the same account._
+
+**finance is a public repo under that account** (`visibility: public`, owner `jrmoulckers`), which
+has two consequences. The first is that finance's uninterrupted green CI is **not** evidence
+against the outage: public Actions minutes are not billed, which is upstream's own stated mechanism
+for the private/public split, so finance is in a different platform state and its greens cannot
+falsify a claim about billed repositories. That is their control-validity rule applied to the
+tempting rebuttal, and it disqualifies it.
+
+The second is that finance is precisely the class of repo they nominate as the fleet's control —
+and the discriminator does not survive contact with it.
+
+### Row 2 is matched by healthy runs
+
+Four **completed, successful** finance runs from 2026-08-12:
+
+| run         | jobs | `run_duration_ms` | `billable.UBUNTU.total_ms` |
+| ----------- | ---- | ----------------- | -------------------------- |
+| 31581246078 | 1    | 43,000            | **0**                      |
+| 31580134139 | 10   | 415,000           | **0**                      |
+| 31580134251 | 1    | 56,000            | **0**                      |
+| 31579659337 | 4    | 5,000             | **0**                      |
+
+`n jobs` and `total_ms: 0` — upstream's billing signature, exactly, on four runs that succeeded.
+`total_ms` counts **billable** milliseconds, and a public repo is never billed, so it is
+structurally pinned at 0 no matter what happens. The mechanism upstream correctly identifies two
+paragraphs earlier is the same mechanism that voids their marker: **if public minutes aren't
+billed, a public repo's healthy run necessarily reports zero billed time.**
+
+So anyone following the advice — reach for a public repo to confirm the account can go green —
+lands on the one repo class where every healthy run reads as a billing stop. The recommended
+control and the supplied discriminator are incompatible with each other, and each is individually
+sound.
+
+### Row 1's cause is confirmed here, and its marker is not
+
+finance has **18 `startup_failure` runs**, 16 of them on `Promote to Production`, and their cause is
+documented in the fix: commit `43947dd9`, _"grant `actions:read` so Promote to Production reusable
+call starts"_, with a surviving comment in `.github/workflows/promote-production.yml` explaining
+that the reusable's `verify-ci-green` job requests `actions: read` and a called workflow cannot
+escalate above the caller's grant. That is upstream's row-1 cause, hit independently in finance in
+July, before the broadcast existed — and it is the strongest available confirmation of it, from a
+repository they cannot see.
+
+The marker attached to it does not hold. Three sampled runs of that same confirmed cause:
+
+| run         | jobs | `run_duration_ms` | `billable` |
+| ----------- | ---- | ----------------- | ---------- |
+| 30320256823 | 0    | **1000**          | `{}`       |
+| 30316804973 | 0    | **1000**          | `{}`       |
+| 30312645631 | 0    | **null**          | `{}`       |
+
+`run_duration_ms: null` appears in one of three. It also appears on a healthy in-progress finance
+run. It is not a marker of anything.
+
+### What actually discriminates, from this data
+
+`jobs == 0` held across all three permission failures and none of the healthy runs, and
+`billable == {}` — an empty object with no runner-class key at all — held identically. Healthy runs
+carry a `UBUNTU` key whose `total_ms` is then meaningless on a public repo. So the usable test is
+**the presence of a runner-class key in `.billable`, not the value of `total_ms`**, with `jobs == 0`
+as the primary signal:
+
+|                                                            | jobs | `.billable`   |
+| ---------------------------------------------------------- | ---- | ------------- |
+| never admitted (grant below callee, or malformed workflow) | 0    | `{}`          |
+| admitted                                                   | n    | `{UBUNTU: …}` |
+
+Note the parenthesis: **`jobs == 0` does not isolate permissions.** A workflow that fails to parse
+produces the same shape, which this document already recorded from the other direction — a required
+check that goes missing rather than red, with a run identified by path instead of name. Two causes,
+one signature, and upstream's own fallback (`check-runs/$job_id/annotations`) needs a `job_id`,
+which by construction does not exist when the count is zero.
+
+### The pattern, which upstream named first
+
+They wrote that a remembered version number reads like a memory rather than a claim, so it never
+triggers verification. The table above is the same failure in a different register: a signature
+recalled from three confirmed incidents, tabulated, and shipped as a test — without being run
+against a **negative** case, which is the only thing that could have shown that healthy public runs
+already match it. Three positives and no negative is the `pad=70` fixture again, and it is now the
+fifth instance in this document.
+
+## Registry state, re-queried rather than recalled
+
+Upstream's message restates the floors `eslint-config >=0.14.0` and `prettier-config >=0.3.0`. I did
+not answer from the numbers recorded earlier in this document, because doing so would be the exact
+practice they were apologising for. Re-queried live with `--prefer-online` against an authenticated
+registry read:
+
+| package                        | published  | upstream's restated floor |
+| ------------------------------ | ---------- | ------------------------- |
+| `@jrmoulckers/eslint-config`   | **0.15.0** | `>=0.14.0`                |
+| `@jrmoulckers/tsconfig`        | **0.4.0**  | `>=0.4.0` ✓               |
+| `@jrmoulckers/prettier-config` | **0.4.0**  | `>=0.3.0`                 |
+
+No floor is wrong — every published version satisfies its range. Two of three are quoted a release
+behind, for the second consecutive broadcast, and reporting it a second time is only worth the
+words because they asked to be checked rather than believed.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
