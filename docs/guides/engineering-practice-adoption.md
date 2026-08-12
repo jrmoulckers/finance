@@ -5788,6 +5788,114 @@ is skipped.
 Reported upstream as a defect in the engineering repo rather than worked around here: the fix is to
 resolve the principle root from the lock or a flag, not from `import.meta.url`.
 
+## A zero that accuses, and a deadlock whose cost never materialised
+
+A sibling session sent a correction to a line of mine, plus a claim about its own repository. Both
+were checkable. Checking them produced one confirmation, one correction, one failed hypothesis of
+my own, and one instrument defect that would have been far more damaging than the vacuous passes
+catalogued above.
+
+### The instrument defect: a false zero that refutes rather than reassures
+
+To verify their pin table I counted `uses:` refs in the two upstream workflows. The first run
+returned:
+
+```
+=== validate.yml : 0 uses ===
+=== publish.yml : 0 uses ===
+```
+
+Zero. Against a message that had just tabulated nine. Had I reported that number, I would have
+accused a correct counterpart of fabricating a table — the strongest possible claim, from the
+weakest possible evidence.
+
+The cause was mundane: my regex was `^\s*uses:` and every ref in those files is a list item,
+`- uses:`. The pattern was well-formed, matched nothing, and said so confidently.
+
+This is the same defect class as every vacuous pass in this document — an instrument reporting an
+empty result it never earned — but with the sign flipped, and the flip matters:
+
+| false zero                    | reads as    | social cost                        |
+| ----------------------------- | ----------- | ---------------------------------- |
+| in a checker (`0 violations`) | reassurance | silent, unbounded, nobody looks    |
+| in a verification (`0 uses`)  | refutation  | immediate, loud, aimed at a person |
+
+A vacuous pass costs you a defect you never find. A vacuous _refutation_ costs you the
+counterparty's credibility, and it is the version that gets acted on, because a zero that
+contradicts someone is interesting and a zero that agrees with everyone is not.
+
+The rule the whole document has been building toward, restated for this direction: **a zero is a
+claim about the instrument before it is a claim about the world** — and when the zero contradicts a
+specific person, that ordering is not optional.
+
+Corrected pattern (`^\s*-?\s*uses:`), re-run:
+
+| file           | refs                                           | all 40-char SHA |
+| -------------- | ---------------------------------------------- | --------------- |
+| `validate.yml` | 4× `actions/checkout`, 2× `actions/setup-node` | yes             |
+| `publish.yml`  | 2× `actions/checkout`, 1× `actions/setup-node` | yes             |
+
+Their table was exact, down to the per-file counts. Verified against remote `main` via the API
+rather than against a local checkout, so the comparison is with the ref they were describing.
+
+### The correction: the deadlock's cost did not compound
+
+Their argument was that finance's two-control deadlock "compounds toward insecurity because the
+pins it was refreshing go stale," while their own repo reaches the same end state silently. The
+first half is measurable, and it did not happen.
+
+| repo        | update bot | dominant pin                      | latest upstream | gap          |
+| ----------- | ---------- | --------------------------------- | --------------- | ------------ |
+| engineering | none       | `checkout` v4.4.0 (9 of 9 refs)   | v7.0.1          | **3 majors** |
+| finance     | dependabot | `checkout` v7.0.0 (71 of 75 refs) | v7.0.1          | **1 patch**  |
+| finance     | dependabot | `setup-node` v6.4.0 (36 refs)     | v7.0.0          | 1 major      |
+
+So the directional claim holds — stuck silently is worse than stuck loudly — but the magnitude
+attributed to finance is inverted. The deadlock blocked **one** PR for four days; it did not make
+finance's pins stale, because it never covered the refs that were being rotated. A control that
+deadlocks on a narrow surface does not degrade the surfaces it does not touch, and "compounds"
+should not be asserted without measuring what it compounded over.
+
+### My own hypothesis, tested and wrong
+
+Seeing 4 of 75 refs still at `checkout` v6.0.3, I predicted they would be the frozen, reviewed
+workflows — the deadlock's residue, precisely localised. They are not:
+
+```
+ai-eval.yml, ai-manifest-check.yml, ai-metrics.yml, migration-reversal-check.yml
+```
+
+None is a reviewed reusable workflow; the two files under content review
+(`reusable-detect-changes.yml`, `reusable-release-smoke-test.yml`) hold no stale ref at all. The
+stragglers are four unrelated workflows the bot has simply not reached. Recorded because a
+hypothesis that fails against the tree is worth exactly as much as one that survives, and only one
+of the two gets written down by default.
+
+### Elimination is not authorisation
+
+Their sharpest point was procedural. A statement that neither party asserted — that #72 was mine to
+close — arrived by attrition: repeated mutual disclaimers narrowed the field until an obligation
+appeared to land on the last party standing.
+
+Measured, in the searchable record of this session:
+
+| phrase               | in messages received | in my responses |
+| -------------------- | -------------------- | --------------- |
+| `not mine to act on` | 5 (turns 80–85)      | 0               |
+| `yours to close`     | —                    | 0               |
+| `#72` (any mention)  | present              | 0               |
+
+**Stated gap:** this search ranges over my assistant responses only. Outbound cross-session
+messages are tool-call arguments, which the local store does not carry and the cloud store timed
+out on, so the channel most likely to contain such a line is the one I cannot search. The result is
+therefore "no evidence in the part I can read," not an acquittal — the same denominator discipline
+applied to a claim about myself, where the temptation to stop at the favourable half is strongest.
+
+The hazard generalises past this instance: **an obligation nobody accepted can still be assigned by
+repetition, because each individual disclaimer is true and only the sequence creates the
+inference.** No single message is wrong, so no single message is challengeable. The remedy is to
+name the owner positively rather than to decline in turn.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
