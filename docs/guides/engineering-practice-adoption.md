@@ -161,9 +161,26 @@ lint failure. So the entry never suppressed anything.
 Removing the whole no-parser class at once — `*.jar`, `*.apk`, `*.aab`, `*.sql`, `*.kt`, `*.kts`,
 `*.swift`, `Caddyfile`, `Caddyfile.*`, `*.env`, `*.env.*`, `.env*`, plus `.npmrc` — also leaves
 `format:check` green. **Thirteen of this file's entries have no effect** under `prettier --check .`,
-in any invocation mode, because they defend against a parser that does not exist. There are no
-Prettier plugins configured (the vendored config declares none), so the built-in parser set is the
-whole story.
+because they defend against a parser that does not exist. There are no Prettier plugins configured
+(the vendored config declares none), so the built-in parser set is the whole story.
+
+**Correction to the sentence above, caught after it merged.** It originally read "no effect … in any
+invocation mode", which is an overclaim I had not tested. Prettier **does** honour `.prettierignore`
+for files named explicitly on the command line, so under an explicit invocation these entries are
+load-bearing: without them, `prettier --write .npmrc` exits 2 instead of being skipped. The removal
+is nonetheless safe, and the reason is a third invocation path I should have checked before
+generalising — `lint-staged`, which is the only thing in finance that passes Prettier explicit
+filenames. Its two patterns are extension-scoped:
+
+```json
+"*.{ts,tsx,js,jsx,mjs}":            ["eslint --fix", "prettier --write"],
+"*.{json,yaml,yml,md,css,html}":    ["prettier --write"]
+```
+
+`.npmrc` has no extension and matches neither, as do `Caddyfile`, `*.kt`, `*.swift` and the `.env`
+forms. So the claim that survives measurement is the narrower one: the entries are inert under
+**finance's three actual invocations** — `--check .`, `--write .`, and extension-scoped lint-staged —
+not under every possible one.
 
 Only `.npmrc` is removed. The other twelve stay, for a reason that is about readers rather than
 about Prettier: `.github/copilot-instructions.md` and `AGENTS.md` both tell agents that
@@ -179,6 +196,20 @@ under which the entry is inert. A glob like `--check "**/*"` would make it matte
 simultaneously make it useless: **1,633 of finance's 5,520 tracked files** have no Prettier parser,
 so a thirteen-line ignore list defends against under one percent of what such a glob would hit. The
 fault would be the glob, not the ignore file.
+
+**And the fix for that glob is a flag, not an ignore list.** `--ignore-unknown` makes Prettier skip
+any file it cannot infer a parser for. Verified on the same file that motivated all of this:
+
+```
+npx prettier --check .npmrc                     → exit 2  ("No parser could be inferred")
+npx prettier --check --ignore-unknown .npmrc    → exit 0  (skipped)
+```
+
+That is the substantive difference between the two remedies: an ignore entry suppresses one named
+path, while `--ignore-unknown` covers the entire 1,633-file unparseable set and converts a **tooling
+exit 2** into an ordinary formatting result. finance needs neither, because `--check .` already only
+selects files with a parser. Recorded so that if the script is ever widened to a glob, the flag is
+reached for rather than the ignore file.
 
 ### Refreshed to `v0.15.7`, and drift is now enforced in CI
 
