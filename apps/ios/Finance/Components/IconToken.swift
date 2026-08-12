@@ -50,7 +50,7 @@ enum IconToken: String, CaseIterable, Hashable, Sendable {
     case download
     case upload
     case export
-    case import
+    case `import`
     case filter
     case sort
     case scan
