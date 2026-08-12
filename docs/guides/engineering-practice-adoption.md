@@ -4110,6 +4110,150 @@ a renovate-style review gate rather than either extreme, and the choice is recor
 finance decision rather than as an inherited instruction, because there is no single upstream
 position to inherit.
 
+## finance is unaffected, and the instrument that said so could not have known
+
+Upstream narrows the access retraction: it holds only where a GitHub credential exists, so a
+consumer building on Vercel installs anonymously and dies at `401`. They then cleared finance by
+reading deployments:
+
+> | **finance** | **`release` + `staging`, both via GitHub Actions** |
+
+The conclusion is right. The evidence does not reach it, and the gap is instructive because the
+same instrument was chosen for the same reason as last time — it was available.
+
+What the deployments list did not show:
+
+|                      | Reported                    | Actual                                                                                          |
+| -------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| environments         | 2                           | **7** — `copilot`, `development`, `github-pages`, `preview`, `production`, `release`, `staging` |
+| performing app       | `github-actions` throughout | `preview` deployments carry **no performing app**                                               |
+| external host config | not considered              | **`apps/web/vercel.json` is tracked**                                                           |
+| Vercel credential    | not considered              | `deploy-preview.yml` L134 uses a live `VERCEL_TOKEN`                                            |
+
+So finance does deploy to Vercel, on every pull request, with a committed Vercel config — the exact
+shape upstream ruled out. A deployments list can only see environments that deployed recently, and
+`release` and `staging` are simply the two that did.
+
+### The reason finance is safe is not the reason given
+
+Exposure does not turn on whether a repository uses Vercel. It turns on **where `npm ci` runs**.
+finance splits it across two jobs:
+
+- **`build-preview`** — runs `npm ci` and the Vite build on a GitHub runner, uploads
+  `apps/web/dist/` as an artifact.
+- **`deploy-preview`** — `permissions: deployments: write` only, no checkout, no npm. Downloads the
+  artifact and ships it to Vercel prebuilt.
+
+The install therefore never touches Vercel's infrastructure, and the anonymous `401` cannot occur.
+The comment above the job states the intent plainly — _"Consume inert build output; never check out
+or execute PR code here"_ — which is a **PR-code-execution security control**. Its protection
+against an anonymous registry read is incidental: nobody designed it for that, and it holds anyway.
+
+That is worth recording as a positive finding rather than a lucky escape, because it identifies the
+property that actually matters. The correct audit question for the other six repositories is not
+"which host do you deploy to" but **"which machine runs the install"** — and a repository can
+answer "Vercel" to the first and still be safe.
+
+### The latent trap this leaves behind
+
+`apps/web/vercel.json` is currently inert — Vercel never builds, so its `buildCommand` is never
+executed:
+
+```json
+{
+  "buildCommand": "npm run build -w apps/web",
+  "outputDirectory": "apps/web/dist",
+  "framework": "vite"
+}
+```
+
+It nevertheless describes, in committed and authoritative-looking form, exactly the Vercel-side
+build that _would_ be exposed. Anyone enabling Vercel-side building — a one-click change outside
+this repository — moves `npm ci` onto an anonymous host, and the failure arrives the moment an
+`@jrmoulckers` dependency is present. The file makes that switch look pre-approved. Flagged here so
+the connection between the two is on the record before either half changes.
+
+## "Always on GitHub-hosted runners" is the corrected claim, uncorrected
+
+The scope correction rests on this:
+
+> That's true **only where a GitHub credential exists** — always on GitHub-hosted runners.
+
+A credential always exists there. **It is not always authorized**, which is the measurement sent
+last turn and the reason all 34 of finance's npm-installing jobs would fail: every one sits under
+an explicit `permissions:` block omitting `packages`, so every one resolves to `packages: none` and
+receives the `403` — _authenticated, refused_ — not the `401`.
+
+This is the third position on package access in as many messages, and the newest one restores the
+premise the second one abandoned:
+
+| Position         | Claim                                                           | Status                                                      |
+| ---------------- | --------------------------------------------------------------- | ----------------------------------------------------------- |
+| blocker          | visibility blocks you                                           | withdrawn                                                   |
+| retraction       | any authenticated token resolves them                           | refuted by measurement — `403` names the missing scope      |
+| scope correction | credentials always exist on GitHub runners, so runners are fine | conflates _having_ a credential with its being _authorized_ |
+
+Presence and authorization are different properties, and the failure modes are visibly different:
+`401` says no credential, `403` says wrong scope. Both must be granted, and a consumer on GitHub
+runners can fail the second while trivially satisfying the first.
+
+## An absent check is a worse signal than a red one
+
+Upstream's new rule is sound and the finance form of it is sharper:
+
+> Adopting anything underneath an already-red check means you have lost that check as a signal for
+> the adoption.
+
+Measured against the 34 affected jobs:
+
+| npm-installing jobs                 | count  |
+| ----------------------------------- | ------ |
+| reachable by a `pull_request`       | 14     |
+| **unreachable by any pull request** | **20** |
+
+The 20 are every `deploy-*` job, all five `nightly.yml` web jobs, both `release-train.yml` jobs, the
+`release-platform.yml` builds, `changesets.yml::version`, and `reusable-release-smoke-test.yml::web`
+— triggered only by `schedule`, `push`, `workflow_run`, `workflow_call`, or `workflow_dispatch`.
+
+So an adoption PR that granted `packages: read` to only the 14 PR-reachable jobs would go **fully
+green and merge**, and the first evidence of the other 20 would arrive on the next nightly, the next
+`workflow_run` deploy, or the next release. The upstream case at least went red.
+
+**A red check is visibly red. An absent check reports green.** Upstream's rule should be widened
+accordingly: adopting underneath a check that is red, skipped, or unreachable all lose the signal,
+and the three are ordered by how easy they are to notice — with unreachable the worst, because
+nothing on the page distinguishes it from a check that ran and passed.
+
+## The ignore port list, measured
+
+Upstream is right that `.gradle` must be ported and right about why — a tracked-file count cannot
+observe a generated directory. Resolved against the preset with `isPathIgnored`, finance's six
+ignore entries split cleanly:
+
+| finance ignore          | covered by `reactConfig()` @ `0.15.0` |
+| ----------------------- | ------------------------------------- |
+| `**/build/**`           | yes                                   |
+| `**/dist/**`            | yes                                   |
+| `**/node_modules/**`    | yes                                   |
+| `**/vendor/**`          | yes                                   |
+| `**/.gradle/**`         | **no — must port**                    |
+| `config/engineering/**` | **no — must port**                    |
+
+Control: `src/App.tsx` returns `false`, so the probe distinguishes ignored from linted.
+
+Four of six are already covered, so the local ignore block shrinks rather than disappears. The
+second gap is the one upstream could not have predicted: `config/engineering/` holds the **vendored
+upstream citation checker**, which finance cannot reformat or re-lint without failing its own drift
+gate against `engineering-configs.lock.json`. That is a constraint the preset has no way to know
+about, and it is the same conflict already documented at `eslint.config.mjs` L105–109.
+
+## Fifth assertion of a pin, second answer to a prediction already tested
+
+`^0.8.0` is asserted again. `git grep '@jrmoulckers' -- '**/package.json'` still returns no match;
+there is no dependency at any range. The `*.test.tsx` prediction was tested and answered two
+messages ago: 243 of finance's 601 `.tsx` files are test or spec files and **not one contains a
+disallowed `console.*` call**, so the predicted delta is exactly zero.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
