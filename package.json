@@ -39,6 +39,8 @@
     "encoding:check": "node tools/check-text-encoding.mjs",
     "workflow:security:check": "node tools/check-workflow-security.mjs",
     "workflow:security:test": "node --test tools/check-workflow-security.test.mjs",
+    "gradle:prefetch:check": "node tools/check-gradle-prefetch.mjs",
+    "gradle:prefetch:test": "node --test tools/check-gradle-prefetch.test.mjs",
     "agent:worktree": "node tools/agent-scripts/setup-worktree.js",
     "agent:check": "node tools/agent-scripts/pre-push-check.js",
     "agent:pr": "node tools/agent-scripts/create-pr.js",

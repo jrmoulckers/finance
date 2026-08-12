@@ -6482,6 +6482,92 @@ right".
 The fix is not vigilance: read the value out of the file. Both SHAs in that job were extracted from
 `ci-lint.yml` by pattern, never retyped.
 
+## A sweep is not a control, and hand enumeration is not a census
+
+The Gradle distribution fetch has no retry and a 10-second network timeout, so a transient reset
+from `services.gradle.org` fails a job before anything compiles. One site was fixed earlier; this
+generalises it. The interesting part is not the retry — it is that every step of _finding_ the
+sites by hand was wrong, in the same direction, three times.
+
+### Three undercounts, all from encoding a formatting assumption
+
+The manual pass grepped `^\s*\.?/?gradlew` across the workflow directory and reported **8 jobs in
+5 files**. A checker that parses jobs into steps and asks whether any step invokes the wrapper
+reported **9 unguarded of 10 total**:
+
+| missed job                                            | why the grep missed it                                                                |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `ci-security.yml` / `codeql-java-kotlin`              | `run: ./gradlew clean compileKotlinJvm` — inline, so the wrapper is not at line start |
+| `release-platform.yml` / `build-platform` second call | the hand scan stopped at the first hit per job                                        |
+
+The pattern was not wrong about `gradlew`. It was wrong about **`run: |` versus `run:`** — an
+assumption about YAML style that was never stated, never tested, and silently excluded 11% of the
+population. This is the same defect as an `^`-anchored pattern against a joined blob, and it is the
+third time in this adoption that a hand-built enumeration has been corrected by a parser.
+
+The rule that generalises: **an enumeration is only as good as the least-stated assumption in its
+pattern, and patterns do not report their own assumptions.** The remedy is not a better regex; it
+is to make the check the artefact and let the sweep fall out of it. Which is why this landed as
+`tools/check-gradle-prefetch.mjs` and not as nine edits.
+
+### A sweep silently regresses; a check does not
+
+Nine hand-applied steps are correct on the day they merge and unenforced thereafter — the tenth
+Gradle job added next month gets none, and nothing says so. Adding the checker first, then letting
+it name its own targets, converts a one-time correction into an invariant. It was calibrated on the
+real defect before the fix existed: exit 1 naming all nine, then exit 0.
+
+### The checker's own hole, found by the fix it generated
+
+`release-platform.yml` / `build-platform` is a matrix job with **two** wrapper steps, each guarded
+on a different leg:
+
+```yaml
+- name: Build Android artifacts
+  if: matrix.platform == 'android'
+- name: Build Windows artifacts
+  if: matrix.platform == 'windows'
+```
+
+The generated prefetch inherited the _first_ step's condition, so the Windows leg fetched unwarmed —
+**and the checker passed**, because "a prefetch before the first wrapper call" is satisfied. Per-job
+ordering is the wrong granularity when steps are conditional: the job is guarded, and one of its
+legs is not.
+
+Fixed both sides. The condition became the disjunction `setup-java` in the same job already uses,
+and the checker gained `findUncoveredConditions`, which requires each later wrapper step's condition
+to appear verbatim in the prefetch's. It does not evaluate matrix expressions — it under-decides,
+flagging only what it can read, in keeping with _a checker must under-decide, never over-report_.
+
+> **A control validated only against the shape that motivated it inherits that shape's blind spots.**
+> The nine simple jobs all passed. The one structurally different job passed too, and should not
+> have.
+
+### A test that failed because the checker was wrong
+
+`stepCondition` read `/^\s+if:/`, matching `if:` as a _following_ key but not as a step's _leading_
+one (`- if: ...`). Both are valid YAML. A guarded step written the second way reported "no
+condition" — which, in `findUncoveredConditions`, turns a **covered** leg into a **false
+violation**. The failing test was fixed in the checker, not in the fixture.
+
+### Mutation results, and an equivalent mutant reported as equivalent
+
+7 mutants, **6 killed**, scorer calibrated on the unmutated tree first. The survivor —
+`.slice(prefetchIndex + 1)` → `.slice(prefetchIndex)` — is **equivalent, not a coverage gap**:
+including the prefetch step in its own scan compares `guard.includes(guard)`, which is always true,
+so the step filters itself out. Forcing this to 7/7 would require a test that cannot exist. Reported
+as equivalent rather than rounded up, because a mutation score inflated by one unkillable mutant is
+the same failure as a coverage number that counts unreachable lines.
+
+### The drift baseline fired, correctly
+
+`workflow:security:check` rejected the edit to `reusable-release-smoke-test.yml` — a reviewed local
+fork whose content is hash-pinned, with action-pin rotations normalised out so only substantive
+changes trip it. That is the control working: the diff was reviewed (28 added lines, purely
+additive) and the baseline updated. Worth recording because most controls in this adoption have
+been found _missing_; this one was present and did its job on the first substantive change since it
+was written.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

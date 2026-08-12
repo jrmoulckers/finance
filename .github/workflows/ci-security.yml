@@ -64,6 +64,20 @@ jobs:
               - '**/build.gradle*'
               - 'gradle/**'
               - 'settings.gradle*'
+      # The wrapper fetches the distribution with no retry and a 10s network
+      # timeout, so a transient reset from services.gradle.org fails the build
+      # step before a single line is compiled. Fetching here keeps the retry
+      # scoped to the download: a build failure still fails on the first attempt.
+      - name: Prefetch Gradle distribution
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then exit 0; fi
+            echo "Gradle distribution fetch failed (attempt ${attempt}/3)"
+            sleep $(( attempt * 15 ))
+          done
+          echo "::error::Gradle distribution unavailable after 3 attempts"
+          exit 1
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
         with:
@@ -346,6 +360,20 @@ jobs:
             exit 1
           fi
 
+      # The wrapper fetches the distribution with no retry and a 10s network
+      # timeout, so a transient reset from services.gradle.org fails the build
+      # step before a single line is compiled. Fetching here keeps the retry
+      # scoped to the download: a build failure still fails on the first attempt.
+      - name: Prefetch Gradle distribution
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then exit 0; fi
+            echo "Gradle distribution fetch failed (attempt ${attempt}/3)"
+            sleep $(( attempt * 15 ))
+          done
+          echo "::error::Gradle distribution unavailable after 3 attempts"
+          exit 1
       - name: Verify Gradle dependency checksums
         run: |
           ./gradlew dependencies --configuration runtimeClasspath --no-daemon 2>&1 | tee gradle-deps.txt || true
@@ -516,6 +544,7 @@ jobs:
         run: |
           npm run workflow:security:test
           npm run workflow:security:check
+          npm run gradle:prefetch:check
 
       # Always-on lint + format gate (ci-lint.yml is path-filtered and may be
       # skipped, so we re-run the essentials here to guarantee coverage).
