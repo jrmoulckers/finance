@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
 
 import {
   CITATION,
@@ -128,4 +132,37 @@ test('exempting one line does not exempt its neighbours', () => {
   assert.equal(found.length, 1);
   assert.equal(found[0].id, 'ENG-SEC-002');
   assert.equal(countExemptions(text), 1);
+});
+
+// -- scope on the failure path ---------------------------------------------
+// The green path printed scanned AND exempted; the red path printed scanned
+// only. The missing bucket is the one that can HIDE a violation, since an
+// exempted line is one this check chose not to see.
+
+const enumToolDirectory = dirname(fileURLToPath(import.meta.url));
+const ENUM_TOOL = join(enumToolDirectory, 'check-citation-enumerations.mjs');
+const enumRepositoryRoot = resolve(enumToolDirectory, '..');
+
+test('a failing run states both the scanned and the exempted bucket', () => {
+  const probe = join(enumRepositoryRoot, 'docs', '_scope_probe_fixture.md');
+  // enumeration-fixture -- this literal IS a violation, which is the point: a
+  // test for an enumeration checker cannot avoid containing an enumeration as
+  // data. The exclusion is structural, not a temporary narrowing.
+  const violatingLine = 'ENG-TEST-004 requires type, lint, build, format, and security checks.\n'; // enumeration-fixture
+  writeFileSync(probe, violatingLine, 'utf8');
+  let result;
+  try {
+    result = spawnSync(process.execPath, [ENUM_TOOL], { encoding: 'utf8' });
+  } finally {
+    unlinkSync(probe);
+  }
+  assert.equal(result.status, 1, 'the probe must actually fail, or this asserts nothing');
+  const output = `${result.stdout}${result.stderr}`;
+  assert.match(output, /\d+ across \d+ scanned file\(s\), with \d+ line\(s\) exempted/);
+});
+
+test('a passing run states the same two buckets', () => {
+  const result = spawnSync(process.execPath, [ENUM_TOOL], { encoding: 'utf8' });
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\d+ file\(s\) scanned, \d+ line\(s\) exempted/);
 });
