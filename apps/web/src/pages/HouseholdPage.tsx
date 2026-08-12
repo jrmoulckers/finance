@@ -3549,6 +3549,7 @@ export default HouseholdPage;
  */
 function useOptionalAuthUser(): { id: string; email: string; name?: string } | null {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return useAuth().user;
   } catch {
     return null;
@@ -3567,6 +3568,7 @@ function useOptionalAuthUser(): { id: string; email: string; name?: string } | n
  */
 function useOptionalToast(): ReturnType<typeof useToast> | null {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return useToast();
   } catch {
     return null;
@@ -3576,6 +3578,7 @@ function useOptionalToast(): ReturnType<typeof useToast> | null {
 /** Read budget data without crashing if no DatabaseProvider is mounted. */
 function useOptionalBudgets(): Pick<UseBudgetsResult, 'budgets'> {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return { budgets: useBudgets().budgets };
   } catch {
     return { budgets: [] };
@@ -3585,6 +3588,7 @@ function useOptionalBudgets(): Pick<UseBudgetsResult, 'budgets'> {
 /** Read account data without crashing if no DatabaseProvider is mounted. */
 function useOptionalAccounts(): Pick<UseAccountsResult, 'accounts'> {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return { accounts: useAccounts().accounts };
   } catch {
     return { accounts: [] };
@@ -3593,6 +3597,7 @@ function useOptionalAccounts(): Pick<UseAccountsResult, 'accounts'> {
 
 function useOptionalGoals(): Pick<UseGoalsResult, 'goals' | 'createGoal'> {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     const { goals, createGoal } = useGoals();
     return { goals, createGoal };
   } catch {
@@ -3605,6 +3610,7 @@ function useOptionalTransactions(): Pick<
   'transactions' | 'updateTransaction'
 > {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     const { transactions, updateTransaction } = useTransactions({ type: 'EXPENSE' });
     return { transactions, updateTransaction };
   } catch {
@@ -3614,6 +3620,7 @@ function useOptionalTransactions(): Pick<
 
 function useOptionalCategories(): Pick<UseCategoriesResult, 'categories'> {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return { categories: useCategories().categories };
   } catch {
     return { categories: [] };

@@ -44,6 +44,71 @@ const moneyTemplateRule = {
   },
 };
 
+// react-hooks/rules-of-hooks detects a hook called inside `try` only when the
+// call is a destructuring declaration. Measured against a fixture matrix, one
+// case per file, with `if` as the known-positive control:
+//
+//   if  / const / return / destructure / bare-call  -> all FIRE
+//   try / destructuring declaration                 -> FIRES
+//   try / simple const, return-member, bare call    -> silent
+//
+// The consequence is not a missed edge case, it is a false denominator:
+// apps/web/src/pages/HouseholdPage.tsx has five structurally identical
+// `useOptional*` try/catch hook wrappers and the upstream rule reports two of
+// them. Fixing those two turns the file green over three surviving instances
+// of the same defect. The coverage of a rule this repository does not own is
+// not something this repository can widen, so the claim is relocated to a rule
+// it does own: any `use*` call lexically inside a `try` block is reported here,
+// independent of the syntactic form the call happens to take.
+const hookInTryRule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Disallow React hook calls inside a try block; hook order must not depend on control flow.',
+    },
+    schema: [],
+    messages: {
+      hookInTry:
+        'React Hook "{{name}}" is called inside a try block, so its execution depends on control flow. Hooks must run unconditionally; use a provider default instead of catching a missing provider.',
+    },
+  },
+  create(context) {
+    const filename = context.filename ?? context.getFilename?.() ?? '';
+    const normalized = filename.replace(/\\/g, '/');
+    const isTestFile =
+      /\.test\.[cm]?[jt]sx?$/.test(normalized) || normalized.includes('/__tests__/');
+
+    function hookName(callee) {
+      if (callee?.type === 'Identifier') return callee.name;
+      if (callee?.type === 'MemberExpression' && callee.property?.type === 'Identifier') {
+        return callee.property.name;
+      }
+      return null;
+    }
+
+    return {
+      CallExpression(node) {
+        if (isTestFile) return;
+        const name = hookName(node.callee);
+        if (name == null || !/^use[A-Z]/.test(name)) return;
+
+        // Only the `try` block itself is conditional in the sense that matters:
+        // a hook in `catch`/`finally` is reported too, since neither runs on
+        // every render either. Walking ancestors keeps this independent of how
+        // deeply the call is nested inside the block.
+        const ancestors = context.sourceCode.getAncestors(node);
+        for (let i = ancestors.length - 1; i > 0; i -= 1) {
+          if (ancestors[i].type === 'TryStatement') {
+            context.report({ node, messageId: 'hookInTry', data: { name } });
+            return;
+          }
+        }
+      },
+    };
+  },
+};
+
 const dateLocaleRule = {
   meta: {
     type: 'problem',
@@ -136,6 +201,7 @@ export default [
         rules: {
           'no-money-template-interpolation': moneyTemplateRule,
           'no-hardcoded-date-locale': dateLocaleRule,
+          'no-hook-call-in-try': hookInTryRule,
         },
       },
     },
@@ -170,10 +236,17 @@ export default [
   //
   // Only the rules that are already at zero violations are enabled. The
   // remaining 7 of the plugin's 17 recommended-latest rules are NOT enabled;
-  // measured counts across 2,326 linted files are recorded in
+  // re-measured across 2,301 linted files (was 2,326) and recorded in
   // docs/guides/engineering-practice-adoption.md and tracked as follow-up work:
   //   set-state-in-effect 98, exhaustive-deps 34, preserve-manual-memoization 21,
-  //   refs 15, rules-of-hooks 3, immutability 2, purity 2.
+  //   refs 15, immutability 2, purity 2, rules-of-hooks 2.
+  //
+  // Every count above is a tool output, not a population, and rules-of-hooks
+  // shows how far those two can diverge: it reports 2, while the number of
+  // hooks actually called inside a `try` block in the same tree is 14 across 7
+  // files. Read as a deferral budget, "2" understates the work by 7x. The gap
+  // is a syntactic blind spot, not a severity choice -- see finance/no-hook-call-in-try
+  // above -- so this list is safe to use for sequencing and unsafe to use for sizing.
   {
     files: ['apps/web/src/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
@@ -188,6 +261,7 @@ export default [
       'react-hooks/unsupported-syntax': 'warn',
       'react-hooks/use-memo': 'error',
       'react-hooks/void-use-memo': 'error',
+      'finance/no-hook-call-in-try': 'error',
     },
   },
   {
