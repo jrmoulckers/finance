@@ -80,6 +80,46 @@ const repoRoot = (() => {
 })();
 
 /**
+ * Git's hash algorithm for this repository, read from the repository itself.
+ *
+ * The `blob <len>\0<content>` construction in `blobOid` is identical under both
+ * formats — only the digest differs — so the identity check is portable and it
+ * is solely the algorithm that must not be assumed. Hardcoding `sha1` here
+ * would give a repository created with `--object-format=sha256` a **100%**
+ * false-positive rate: every tracked file would be reported as not hashing to
+ * its own entry, naming content when the fault is configuration.
+ *
+ * Read once, at startup, from the repository the walk actually covers, so the
+ * algorithm and the OIDs it is compared against always come from the same
+ * place. Older git predates `--show-object-format` and exits non-zero; sha1 is
+ * the correct fallback because it is the only format such a git can produce.
+ *
+ * @returns {{ algorithm: string, emptyBlob: string }} Digest name and the
+ *   published empty-blob OID for that format.
+ */
+const objectFormat = (() => {
+  const result = spawnSync('git', ['rev-parse', '--show-object-format'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  const name = result.status === 0 ? result.stdout.trim() : 'sha1';
+  const known = {
+    sha1: { algorithm: 'sha1', emptyBlob: 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391' },
+    sha256: {
+      algorithm: 'sha256',
+      emptyBlob: '473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813',
+    },
+  };
+  if (!Object.hasOwn(known, name)) {
+    console.error(
+      `::error::encoding guard cannot verify object identity: unknown git object format ${name}.`,
+    );
+    process.exit(1);
+  }
+  return known[name];
+})();
+
+/**
  * Lists every tracked entry at HEAD as a `{ mode, oid, path }` triple.
  *
  * `-s` is what makes the read downstream safe. It emits the index entry's object
@@ -190,10 +230,13 @@ function readIndexBytes(entries) {
  * OID exactly when — and only when — the bytes are the ones that entry names.
  *
  * @param {Buffer} bytes File contents.
- * @returns {string} The 40-character blob OID.
+ * @returns {string} The blob OID: 40 hex characters under sha1, 64 under sha256.
  */
 function blobOid(bytes) {
-  return createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+  return createHash(objectFormat.algorithm)
+    .update(`blob ${bytes.length}\0`)
+    .update(bytes)
+    .digest('hex');
 }
 
 /**
@@ -267,15 +310,40 @@ function selfTest() {
     }
   }
 
-  // The identity check is only as good as the hash construction behind it. Git's
-  // empty blob is a fixed, published OID, so this pins the `blob <len>\0` prefix
-  // without shelling out. Get the prefix wrong and every file would mismatch —
-  // this names the cause instead of reporting 5,520 corrupt files.
-  const EMPTY_BLOB = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
+  // The identity check is only as good as the hash construction behind it: both
+  // the `blob <len>\0` prefix and the digest algorithm must match what git used.
+  //
+  // The reference OID is asked of git rather than hardcoded, for the same reason
+  // the read moved to object IDs: a self-test whose expected value comes from
+  // the same table as the value under test moves in lockstep with it and cannot
+  // fail. A hardcoded sha1 empty blob compared against a hardcoded sha1
+  // algorithm passes happily in a sha256 repository, and every one of the
+  // thousands of files that follows is then reported as corrupt — which is the
+  // exact mass false positive this self-test exists to prevent.
+  const oracle = spawnSync('git', ['hash-object', '-t', 'blob', '--stdin'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    input: '',
+  });
+  if (oracle.status !== 0) {
+    console.error('::error::encoding guard self-test failed: `git hash-object` did not run.');
+    process.exit(1);
+  }
+  const expectedEmpty = oracle.stdout.trim();
   const actualEmpty = blobOid(Buffer.alloc(0));
-  if (actualEmpty !== EMPTY_BLOB) {
+  if (actualEmpty !== expectedEmpty) {
     console.error(
-      `::error::encoding guard self-test failed: empty blob hashed to ${actualEmpty}, expected ${EMPTY_BLOB}.`,
+      `::error::encoding guard self-test failed: empty blob hashed to ${actualEmpty}, but git ` +
+        `reports ${expectedEmpty} for object format ${objectFormat.algorithm}. Identity checks ` +
+        'are disabled rather than reporting every file as corrupt.',
+    );
+    process.exit(1);
+  }
+  // Belt and braces: the published constant for this format must agree with git.
+  if (expectedEmpty !== objectFormat.emptyBlob) {
+    console.error(
+      `::error::encoding guard self-test failed: git reports empty blob ${expectedEmpty}, which ` +
+        `does not match the published ${objectFormat.algorithm} constant ${objectFormat.emptyBlob}.`,
     );
     process.exit(1);
   }
