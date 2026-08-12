@@ -2305,8 +2305,9 @@ was never real. The exemption had also propagated into a **metric definition** �
 `workflow-metrics.md` excluded type failures from avoidable-CI-failure rate on its authority, so the
 false claim was quietly improving a number finance reports on itself.
 
-**What this changes for adoption.** `ENG-TEST-004` (Distinct static signals) requires format, lint
-and type-check to report independently. finance's `ci:check` satisfies the structure, but a
+**What this changes for adoption.** `ENG-TEST-004` (Distinct static signals) is the principle at
+stake; read the signals it names at the ID rather than from this paragraph. finance's `ci:check`
+satisfies the structure, but a
 documented exemption that stops anyone running one of the three signals defeats it just as
 thoroughly as merging them would. The exemption is withdrawn; PP-0018 is marked withdrawn rather
 than deleted, so the corpus keeps the lesson.
@@ -7102,6 +7103,98 @@ was real. It was caught only because a later line crashed on `undefined`. Had th
 happened the run would have printed a clean, false, confirming answer. Same catalogue entry as
 every other instrument here that reported an empty result from a failed read — and written by
 someone who had just documented that exact failure twice.
+
+## Existence is not correctness: an enumeration that lost two of five
+
+The vendored citation checker ends every run with "Existence is not correctness — re-run with
+`--review`." It had said that on every run of this adoption and had never been taken up. Run for
+the first time this turn:
+
+```
+171 citations · 43 of 66 principles · 4692 files · 0 unknown · 0 badLinks · 0 badAnchors · 0 badTitles
+```
+
+Every ID resolves, every title matches, every anchor lands. And one of the 171 is wrong.
+
+`AGENTS.md` said: "`ENG-TEST-004` (distinct static signals) requires lint, format, type-check, and <!-- enumeration-fixture -->
+tests to report independently." The principle's statement names **five** — type, lint, **build**,
+format, and **security**. The restatement dropped two.
+
+The interesting part is the direction of the error. finance's CI _does_ report build and security
+as independent signals: `Build`, `Build & Test`, three CodeQL analyses, `Secret Scan (gitleaks)`,
+`Secret Detection`, `npm Audit`, `Dependency Review`, `Gradle Dependency Check`, `detekt Analysis`,
+`License Compliance`. So the defect **understated finance's own compliance**. It was not a gap
+between what finance does and what the principle demands; it was a gap between what finance does
+and what finance _said about itself_. A compliance audit reading the prose would have found finance
+less compliant than it is.
+
+ADR-0003 says no authority may copy another's normative text into its own source tree — reference
+by link or ID only. A paraphrase is the softer version of the same move, and an enumeration is its
+most fragile form: a list has a fixed arity, so it can lose an item while every word that remains
+stays true. Nothing in a citation checker can see that, because the ID exists and the title matches.
+
+Both sites are fixed by deleting the enumeration rather than correcting it to five. The remedy for
+restated normative text is not a better restatement.
+
+### The control, and the four times measurement overruled preference
+
+`tools/check-citation-enumerations.mjs` fires on the _shape_ — an obligation verb attributed to an
+`ENG-*` ID on a line that also contains an enumeration — and never compares the list against the
+principle, because deciding whether two lists mean the same thing is exactly the judgement citing
+was supposed to avoid. Four design choices, each decided by running the variant over the real
+corpus:
+
+| Variant                            | Measured                       | Taken                      |
+| ---------------------------------- | ------------------------------ | -------------------------- |
+| Multi-line sentence reconstruction | +0 true, +1 false              | rejected                   |
+| Two-item lists (no comma)          | +0 true, +2 false              | rejected                   |
+| Closing "and"/"or" optional        | +0 true, +0 false, wider reach | **taken**                  |
+| Serial comma required              | blind to one real instance     | kept, and pinned by a test |
+
+The last row is the honest one. The adoption guide's own instance read "requires format, lint and
+type-check" — three items, no serial comma — and the check cannot see it. That one was fixed by
+hand. A test now pins the blind spot so it cannot be mistaken for coverage.
+
+### Three failures in the method, found while building the instrument
+
+**The test file matched its own needle.** First run after widening: five violations, all fixtures in
+the checker's own tests. The catalogued failure — a probe containing its search needle — reproduced
+by the probe written to catch it.
+
+**The corpus was stale, and stale reads exactly like correct.** The widening had been measured as
+"costing nothing" against a citation census captured _before_ the test file existed. The corpus
+could not have contained the thing the widening would fire on. The measurement was not wrong; its
+referent had moved. This is the parent session's _as of when, on which ref_ applied to a corpus
+rather than a status line, and it is the second time this session that a number was true and its
+subject had changed underneath it.
+
+**A test passed for a reason unrelated to what it claimed.** The two-item test used comma-less prose
+("budgets and Lighthouse"), which fails the pattern whether the floor is two or three. It asserted
+nothing about the floor, and a mutant lowering the floor survived it. Only mutation testing
+distinguished a passing test from a testing test — a green produced by a property of the fixture
+rather than by the thing under test, which is the same mechanism as every other item in the
+catalogue, now in the assertion rather than the instrument.
+
+Final: **15 tests, 9 of 10 mutants killed**, the survivor (`\r?\n` → `\n`) adjudicated equivalent by
+showing line numbers and both output fields are byte-identical on CRLF input. The survivor list is
+the artifact; the ratio would have been 10/10 by deleting it.
+
+### Exemption by marker, not by path
+
+The fixtures opt out with a trailing `// enumeration-fixture`, the same shape as the
+`# exercises-engines-range` marker on the Node-version check. Per line, visible at the site,
+greppable, and unable to grow silently the way an ignored directory would — a test asserts that
+exempting one line does not exempt its neighbour. The clean run prints the count (`17 line(s)
+exempted`), because a narrowing that is not reported is a narrowing that can widen unobserved.
+
+### A refuted hypothesis
+
+The `ENG Citations` CI job runs with no token against a private repository, so it looked like a
+candidate for the failure this adoption has hit twice — a green produced by reading nothing.
+Tested rather than assumed: `raw.githubusercontent.com/.../principles/index.json` returns **HTTP
+200** unauthenticated, while the GitHub **API** returns **403**. Raw content and API auth are
+different surfaces. The job genuinely validates. Recorded because a refuted hypothesis is evidence
+and the record otherwise fills only with confirmed ones.
 
 ## Worth hoisting up
 

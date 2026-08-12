@@ -41,9 +41,12 @@ ID via
 The principles above are finance's own product obligations and are additional to, not a
 restatement of, the ratified set.
 
-Notably, `ENG-TEST-004` (distinct static signals) requires lint, format, type-check, and tests
-to report independently — which is why `ci:check` chains them as separate scripts rather than
-collapsing them into one command.
+Notably, `ENG-TEST-004` (distinct static signals) is why `ci:check` chains its checks as
+separate scripts rather than collapsing them into one command, and why the build and the
+security scans report as their own CI checks rather than folding into a single green. Read
+the obligation at the ID, not here: this sentence used to enumerate the signals itself and
+had silently dropped two of the five the principle names, understating what finance already
+does. `npm run citations:enumerations:check` now fails on that shape.
 
 ## ⚠️ MANDATORY: Pre-Push Lint & Format (NEVER skip)
 
