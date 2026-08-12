@@ -5348,6 +5348,66 @@ Reverted. finance stays at `v0.86.0`: the three vendored files are byte-identica
 the `v0.112.0` declaration floor concerns `index.d.ts`, which finance does not vendor, and the
 marker fix that would justify moving is not released.
 
+## A required check can be green and cancelled at the same time, and the rollup shows only the green one
+
+PR #4208 sat at `MERGEABLE` / `BLOCKED` for nine polling cycles while `gh pr checks` reported
+**zero failures**: `SUCCESS=20, NEUTRAL=1 (CodeQL), SKIPPED=12`. Every documented remedy for a
+green-but-blocked PR points at `--admin`, which `AGENTS.md` Category 2 permits on an
+agent-authored PR once local gates are verified. All local gates were verified. The override was
+one command away and would have been wrong.
+
+The block was real and visible, but not in the rollup. On the same head SHA:
+
+| Source                     | Total check-runs | `cancelled` | `ESLint & Prettier` entries            |
+| -------------------------- | ---------------- | ----------- | -------------------------------------- |
+| `gh pr checks 4208`        | 33               | **0**       | (one, green)                           |
+| `commits/<sha>/check-runs` | **38**           | **1**       | **2 — one `success`, one `cancelled`** |
+
+`ESLint & Prettier` is one of the seven required contexts. Two workflow runs
+(`31604747956`, `31604747970`) both produced a check-run of that name on commit `c9502316`; one
+finished, one was cancelled by concurrency. Branch protection saw a required context that was
+not satisfied. The rollup saw a green one and said so.
+
+**What is measured, and what is not.** The rollup is not the set protection evaluates — that much
+is certain, because 33 ≠ 38 and the missing row is the one that matters. But the rule producing
+33 is _not_ name-deduplication either: the SHA carries 27 distinct names, so 33 is neither the
+raw set nor the deduplicated set. Six names were duplicated (`changes / Detect relevant changes`
+×6, `Build & Test` ×3, and four pairs), and eleven rows are surplus to the distinct count while
+only five are dropped. **I do not know the selection rule and am not going to guess it** — this
+document already carries two retractions where the outcome was right and the mechanism invented,
+and the mechanism is the part a reader generalises.
+
+The counterfactual holds. Rebasing onto `main` produced head `d04239f7` with **33 check-runs, 0
+cancelled, and exactly one `ESLint & Prettier`** — `CLEAN` on the next poll, merged without
+`--admin`.
+
+Three things worth keeping:
+
+- **`gh pr checks` is a diagnostic, not the gate.** A zero-failure rollup is consistent with an
+  unsatisfiable required context. When `BLOCKED` contradicts a green rollup, the rollup is the
+  thing to distrust, and `commits/<sha>/check-runs` is where the contradiction resolves.
+- **The omission licenses the bypass.** This is the sharp edge: the tool's silence is not neutral,
+  it actively supplies the premise (`no failures`) that makes `--admin` look like the correct and
+  policy-compliant next step. A diagnostic that under-reports on a gate is worse than no
+  diagnostic, because it converts a blocked merge into an apparently-justified override.
+- **Duplicate check-run names are normal here.** Six names duplicate on an ordinary push, because
+  reusable jobs report under the caller's name. So "a required name appears twice" is not itself
+  the anomaly; a required name appearing twice with _disagreeing conclusions_ is.
+
+## My `v0.116.0` refutation went stale inside a single session
+
+Earlier in this adoption I recorded that upstream's `v0.116.0` did not exist — `git/refs/tags/v0.116.0`
+returned 404 and `releases/latest` returned `v0.115.0`. That was correctly measured and is now
+false: `releases/latest` returns `v0.116.0`, and `vendor-configs.mjs --check` reports the tag as
+available. The tag was published between the measurement and the merge of the PR that recorded it.
+
+The lesson is one this document already states in the other direction — a sound measurement against
+a stale tree is still wrong — and it is worth noting that the _refutation_ ages exactly like the
+claim. "That version does not exist" has a shelf life measured in hours when upstream ships
+daily; "that version is not what I am pinned to" does not. **Prefer the durable form.** finance
+remains pinned at `v0.86.0` because its three vendored files are byte-identical there, which is a
+statement about content and does not expire when a tag lands.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
