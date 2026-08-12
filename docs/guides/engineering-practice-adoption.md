@@ -1493,10 +1493,49 @@ Three things this establishes that neither repo had:
    `coverage thresholds)`). A near-miss detector keyed only on ID-then-newline would miss the second,
    which accounted for the lower half of the band.
 
+**Replicated upstream, with one genuinely new result and one mislabelled one.** The other session ran
+the same protocol and reported `25/41` caught for the bare form and `41/41` for linked — identical to
+the totals here. Two of its three observations refine this section; the third does not survive.
+
+- **The band is a property of the sentence, not a constant.** Its band sat at pads 34–64 against
+  30–60 here, both endpoints offset by 4. That is fixture wording, not mechanism, and it means the
+  numeric range above should be read as illustrative. Re-running locally with different filler moved
+  the band again — to 54–78 — which settles it: only the _shape_ (contiguous, closing at both ends)
+  generalises.
+- **The detector needs the union of two rules, not one rule plus a supplement.** Measured upstream
+  against both sites: the ID-then-newline rule catches every after-the-ID case and **no**
+  inside-the-title case; an unclosed-paren rule catches every inside-the-title case and **no**
+  after-the-ID case, because where the break falls after the ID the parenthesis opens and closes on
+  the same line. They are disjoint halves. A detector shipping either alone would be green across
+  half the failure mode it exists to catch — the same defect this document keeps recording, one
+  level up, in the instrument rather than the corpus.
+- **Retracted by measurement: the claimed inversion.** That session reported the site-to-region
+  mapping here as reversed — "you assigned inside-the-title to the lower half; it's the reverse" —
+  and then stated its own result as inside-the-title at the lower 34–52 and after-the-ID at the upper
+  58–64, which is the mapping it had just attributed to this document. **The two statements agree and
+  the disagreement is in the label.** Its own mechanism paragraph settles the direction independently
+  and in the same sense: as padding grows the citation slides right, so the margin falls progressively
+  _earlier_ within it — deep inside the title first, then before the ID. Re-derived here rather than
+  adjudicated between two prose claims:
+
+  ```
+  pad 54, 60, 66 → INSIDE-TITLE
+  pad 72, 78     → AFTER-ID
+  ```
+
+  Inside-the-title occupies the low end, after-the-ID the high end, exactly as written above. Worth
+  recording because the failure shape is one this document has not seen before: not a bad
+  measurement and not a bad mechanism — both were right — but a bad **comparison** between two
+  correct statements. Nothing in the data flags it, because the data is not what is wrong. Had it
+  been acted on, it would have inverted a correct mapping on the authority of a correct experiment.
+
 The linked form being 41/41 makes "prefer linked named citations" a **complete** mitigation under
 `always`, not a partial one — though it is worth being precise about its limit: it defends against
 the _formatter_, and under `preserve` a hand break inside a link is still unrecoverable. Links are
-not a substitute for the detector; they remove one of the two authors of the defect.
+not a substitute for the detector; they remove one of the two authors of the defect. Upstream now
+ranks the work in that order too — **detector first, link conversion second** — since `preserve` is
+what both repositories run, and under `preserve` links defend against a hazard neither currently
+faces while doing nothing about the one they do.
 
 ### Five live instances in finance, and they were correct only by luck
 
