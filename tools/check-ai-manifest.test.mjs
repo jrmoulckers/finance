@@ -16,6 +16,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const {
   toLF,
+  PROVENANCE_LINE,
   managedRegion,
   managedDigest,
   verifyLockCoverage,
@@ -48,6 +49,88 @@ test('the whole-file rule strips nothing', () => {
   assert.equal(managedRegion(text), null);
   assert.equal(managedDigest(text), sha(text));
   assert.notEqual(managedDigest(text), sha(text.trim()));
+});
+
+test('lock coverage observes the non-Markdown corpus, not just .github Markdown', () => {
+  // This check spent its whole life blind to 23 of 81 lock entries -- the vendored token tree
+  // -- behind three independent filters: a .github-only root list, a `.mdx?` extension filter,
+  // and a stamp regex matching one origin in one comment syntax. Measured as a 2^3 lattice,
+  // every single-filter removal was a provable no-op (54 observed in all four of the 000/100/
+  // 010/001 cells); only lifting all three moved it, to 64. So no single-variable audit could
+  // have found it, and the pair that surfaced one file invites an explanation rather than an
+  // audit (#4204). These assertions are over the delivered corpus, not a fixture.
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const recorded = Object.keys(lock.entries || {});
+  const nonMarkdown = recorded.filter((entry) => !/\.mdx?$/.test(entry));
+
+  // PREMISE: if the lock ever holds only Markdown, this test proves nothing and should say so
+  // rather than pass. The engine delivers CSS, Kotlin, Swift and TypeScript to this repo.
+  assert.ok(nonMarkdown.length > 0, 'PREMISE: the lock must record non-Markdown targets');
+
+  const present = nonMarkdown.filter((entry) => fs.existsSync(path.join(ROOT, entry)));
+  assert.ok(present.length > 0, 'PREMISE: at least one non-Markdown target must be on disk');
+
+  // The stamp on those files is a different origin AND a different comment syntax than the
+  // canon stamp. Matching only the canon form is what made filter 3 load-bearing.
+  const stamped = present.filter((entry) =>
+    PROVENANCE_LINE.test(fs.readFileSync(path.join(ROOT, entry), 'utf8')),
+  );
+  assert.ok(
+    stamped.length > 0,
+    `no on-disk non-Markdown target matches PROVENANCE_LINE; the walk is blind again (${present.length} present)`,
+  );
+
+  // And the walk must actually reach them: a clean result from a walk that never entered
+  // vendor/ is the failure this issue was about.
+  assert.deepEqual(verifyLockCoverage(lock), [], 'baseline must stay clean over the wider walk');
+});
+
+test('lock coverage counts each file once when roots nest', () => {
+  // The lock contributes `.github` as a root, which contains all four MANAGED_BASES, so every
+  // managed file is reachable twice. Without dedupe the walk double-reports; the stamped-
+  // unrecorded control caught exactly that as `2 !== 1` while this change was being written.
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const dir = path.join(ROOT, '.github/skills/__nesting_probe__');
+  const file = path.join(dir, 'SKILL.md');
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      file,
+      '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->\n\n# probe\n',
+    );
+    const findings = verifyLockCoverage(lock);
+    assert.equal(findings.length, 1, `a file reachable by nested roots must report once`);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  assert.deepEqual(verifyLockCoverage(lock), [], 'probe must leave no residue');
+});
+
+test('the two-sided premise guard fires when the walk observes only Markdown', () => {
+  // Disabling this guard alone leaves the suite green, because it never fires against the real
+  // corpus. It is nonetheless what kills the three filter mutants -- restoring any one of the
+  // original filters drops non-Markdown observation to zero and this clause turns that into a
+  // loud finding. So it is load-bearing in conjunction and invisible in isolation, which is
+  // the exact shape that let #4204 survive. This test exercises it directly, on a synthetic
+  // lock rather than by degrading the checker.
+  const real = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const markdownOnly = Object.fromEntries(
+    Object.entries(real.entries).filter(([entry]) => /\.mdx?$/.test(entry)),
+  );
+
+  // PREMISE: the synthetic lock must still record Markdown, or the first clause fires instead
+  // and this test would pass for the wrong reason.
+  assert.ok(Object.keys(markdownOnly).length > 0, 'PREMISE: synthetic lock must record Markdown');
+
+  const findings = verifyLockCoverage({ entries: markdownOnly });
+  assert.ok(
+    findings.some((f) => f.includes('observed only Markdown')),
+    `the Markdown-only guard must fire; got ${JSON.stringify(findings.slice(0, 3))}`,
+  );
+  assert.ok(
+    !findings.some((f) => f.includes('check is not observing')),
+    'the zero-observation clause must NOT fire; Markdown was observed',
+  );
 });
 
 test('CRLF input digests identically to LF, for both shapes', () => {
