@@ -3269,6 +3269,92 @@ quoted as current in the same message that apologises for unverified version cla
 worth naming rather than silently correcting. `eslint-config` is likewise at **0.15.0**, one minor
 above the stated `>=0.14.0`.
 
+## A required check can be satisfied by not running
+
+The sibling session checked the enforcement link against `jrmoulckers/engineering` and found it
+fails there completely — no ruleset, no branch protection, and all four of `validate.yml`'s checks
+reporting `isRequired: null`. Their generalisation is right and sharper than the version recorded
+above: not-in-CI is the empty scope, in-CI-but-unrequired is full scope and zero authority, and
+**an unprotected branch is that condition for every check at once** — the cheapest of all to miss,
+because it is a property of the repository that no workflow file mentions.
+
+finance passes that test. `gh api repos/jrmoulckers/finance/branches/main/protection` returns
+**7 required contexts**, with `strict: true`, linear history required, and force-push and deletion
+both disabled. (`required_approving_review_count: 0` and `enforce_admins: false` — consistent with
+the agent self-merge policy, which relies on required checks rather than on a human reviewer.)
+
+Applying the test to a real merged PR rather than to the settings, though, produces something the
+settings do not show. On **#4161**, which is this document's own last change:
+
+|                                           | count      |
+| ----------------------------------------- | ---------- |
+| check-runs reported                       | 33         |
+| distinct check names                      | 27         |
+| required contexts, all of which reported  | 7          |
+| advisory — ran, carried no authority      | 20         |
+| **required check-runs that were SKIPPED** | **5 of 9** |
+
+`ESLint & Prettier`, `Build`, and `Build & Test` (three times) are all **required** and all
+reported `SKIPPED`. Only four required check-runs actually executed. The PR merged.
+
+This is deliberate, and finance documents it: `.github/workflows/ci-lint.yml` L50–58 carries an
+explicit guardrail — _do NOT add `paths:` to this workflow's `on:` triggers; a required check whose
+workflow is filtered out never reports its status, leaving PRs stuck in BLOCKED; gate inside the
+workflow via the `changes` detector (skip-with-success) instead._ That comment is the earlier
+path-filter finding, already landed. The design is correct.
+
+The hazard is what the design implies rather than what it does wrong: **"required" does not mean
+"ran".** A skipped job reports a conclusion that satisfies branch protection, so the strongest
+statement available about a merged finance PR is not "the required checks passed" but "the
+required checks either passed or declined to run, and the two are not distinguished at the merge
+gate." That is a fifth presentation of the enforcement link, and unlike the other four it is not a
+misconfiguration — it is the intended behaviour of the mechanism.
+
+### The instrument that reported it was mine
+
+`gh pr checks <n>` filtered for `fail|pending` returns nothing here, and I wrote **ALL GREEN** on
+that basis — four times this session, including on the PR measured above, where **16 of 33
+check-runs were skipped**. The polling loop I have used all engagement to verify every one of the
+sixty-six merged PRs counts a skip as a pass, silently, because a skip is neither a failure nor
+pending.
+
+This is the same defect this document has now catalogued in a vendored checker's `checksRun`
+literal, in a fixture that could not fail, and in a probe that measured a feature being off. The
+difference is only that the previous four were someone else's. **A check that reports the absence
+of bad news is not reporting good news**, and the verification instrument is the last place anyone
+thinks to apply that.
+
+## Two hypotheses refuted in the same pass
+
+Both arose from the measurement above and both looked like findings.
+
+**The unexpanded matrix names are not a defect.** `gh pr checks` returns two check names containing
+literal, uninterpolated `${{ matrix.browser }}` and `${{ matrix.shard }}`. The obvious reading is a
+job `name:` referencing a matrix key that is not in scope. It is not: `ci-web.yml` L121–124
+declares `matrix: shard: [1, 2, 3, 4]` correctly. The literal is simply how GitHub renders a
+**skipped** matrix job — one check-run bearing the template text, because no matrix value was ever
+bound. An odd-looking string is not evidence of the defect it resembles.
+
+**There is no markdown formatting hole.** The `changes` filter in `ci-lint.yml` L62–85 enumerates
+`.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.json`, `.css`, `.html`, `.yaml`, `.yml` and several
+paths — and **no `**/*.md`** — while the job it gates ends in `npx prettier --check .`, which does
+check markdown (verified against a deliberately malformed file: exit 1). A markdown-only PR
+therefore skips the job that would have checked its formatting, and #4161 was a markdown-only PR
+whose first draft was Prettier-dirty. That reads exactly like a hole through which unformatted
+documentation merges.
+
+It is not one. `ci-security.yml` L522–523 runs `npx prettier --check .` a second time, inside the
+**required** `gatekeeper` job, under `if: always()`. Markdown formatting is enforced on every PR
+regardless of paths; the skippable copy is redundancy, not the only coverage.
+
+That redundancy is worth distinguishing from the kind the sibling session correctly dismissed.
+Four YAML validators that all passed a file GitHub rejected were **redundant instruments sharing
+one parser** — one confirmation reported four times, and the shared dependency is invisible in the
+count. finance's two Prettier invocations are the opposite shape: **one instrument on two
+triggers**, deliberately, so that a path filter cannot remove the only path to it. Redundant
+instruments are worth having only when they are independent; redundant triggers are worth having
+precisely when the instrument is the same.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
