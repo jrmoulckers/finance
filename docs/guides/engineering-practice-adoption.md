@@ -6168,6 +6168,136 @@ the suite as worthless, which is the direction that gets a suite rewritten rathe
 was caught by calibrating on the unmutated tree first — the baseline row that costs one run and
 turns a scorer into a measured instrument.
 
+## The set was the divergence, not the tag
+
+Upstream reported this repo pinned at `v0.15.7`, roughly 124 releases behind, and asked for a jump
+to `v0.122.0`. Resolved rather than accepted:
+
+|                                      |                                             |
+| ------------------------------------ | ------------------------------------------- |
+| lock ref before this change          | **`v0.122.0`**                              |
+| upstream's stated latest             | `v0.122.0`                                  |
+| actual latest at the time of writing | **`v0.124.0`**, then `v0.125.0` mid-session |
+
+The pin was already current — the correction was itself about 107 releases stale, which is the
+eighth instance of the pattern upstream has been correcting in its own outbound messages. Resolving
+rather than quoting is now cheap enough that there is no excuse for either side.
+
+But the other half of the report was right, and for a reason neither of us had named. Upstream's
+prettier set is:
+
+```
+files: ['index.js', 'index.d.ts', 'svelte.js', 'svelte.d.ts']
+```
+
+This fork's was `['index.js', 'svelte.js']`. **A subset.** Refreshing the tag would never have found
+it, and neither would `--check`, because the lock is generated from the same set it verifies: it
+compares the files it was told about against the files it wrote. **A lock cannot detect a file it
+was never told about** — the identical shape as the unhashed module marker recorded earlier in this
+guide, one level up. There the file existed and was unhashed; here the file never arrived.
+
+So the fix was set membership, not ref distance. Re-vendoring at `v0.124.0` reported
+`2 file(s) changed content` — and both were the two new declarations. Nothing already vendored moved
+between `v0.122.0` and `v0.124.0`, and the staleness notice now reports all six byte-identical at
+`v0.125.0`. Upstream's own point, confirmed against it: **ref distance is not artifact distance.**
+
+### The declarations are inert here, and vendored anyway
+
+Upstream's stated trigger is `TS7016` when importing the config from TypeScript with `allowJs: false`.
+finance consumes it through Prettier's `prettier` key in `package.json`, resolved at runtime — no
+TypeScript import exists, so the failure cannot occur and the declarations buy nothing today.
+
+They are vendored regardless, because the argument for carrying them is not the type error. Carrying
+a subset made `--check` compare a different payload than upstream publishes, in a way that is silent
+in both directions: upstream cannot see which files a consumer chose, and the consumer's lock reports
+green over the subset it defined for itself.
+
+## A partial `--set` silently un-hashed five files
+
+Found by making the mistake. This fork's flag parser takes `--set a,b`; invoking it as
+`--set prettier --set citations` is not an error — the second occurrence overwrites the first. The
+result:
+
+```
+Vendored 1 file(s) from jrmoulckers/engineering@v0.124.0
+lock entries: 4 -> 1
+```
+
+Five files stayed on disk and left the lock. `--check` would then have passed, truthfully, over a
+tree it no longer covered. **Dropping a lock entry is indistinguishable from never having had one**,
+which is what made it silent — the same property that makes an unhashed file invisible.
+
+Now fatal unless `--prune` is passed deliberately:
+
+| invocation                             | before              | after                            |
+| -------------------------------------- | ------------------- | -------------------------------- |
+| `--set citations` with prettier locked | lock silently 6 → 1 | **exits 1**, lock untouched at 6 |
+| `--set citations --prune`              | —                   | exits 0, lock 1, opted in        |
+| `--set prettier,citations`             | lock 6              | lock 6, `--check` green          |
+
+Reported rather than repaired: carrying the omitted entries forward would put two refs in one lock,
+and a lock that cannot name a single ref cannot answer the question `--check` asks.
+
+## Porting the orphan check, and a hypothesis that did not survive
+
+Upstream shipped a fatal check for vendored trees nothing references, extending the framing recorded
+here: _a green `--check` means your tree matches the lock, not that your pin is current_ — and, per
+jrm-recipes, **not that anything still reads it.**
+
+Before porting it, the obvious objection: their walk scans `.json` files, and the lock records every
+vendored destination path by construction, so the lock would satisfy the check by existing. Measured
+against their source at `v0.124.0` instead of assumed:
+
+```js
+// The lock records itself as a reference otherwise, which is circular.
+return hits.filter((path) => path !== LOCK).sort();
+```
+
+**Refuted.** They exclude the lock by name and the script by content-or-path, closing both
+self-reference routes. The hypothesis was worth checking and worth recording as wrong, because the
+version of this note that shipped without checking would have been a confident false claim about
+someone else's code.
+
+Ported and measured in both directions, with the dest recovered as the common directory prefix of
+the lock keys (this fork's lock predates upstream's recorded `dest`):
+
+| input                               | result                                                                                            |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `config/engineering`                | **3** external references — `eslint.config.mjs`, `package.json`, `scripts/eng-citations-gate.mjs` |
+| self (`scripts/vendor-configs.mjs`) | excluded                                                                                          |
+| lock                                | excluded                                                                                          |
+| a dest nothing references           | **0** → gate fails                                                                                |
+
+The negative row is the one that matters: without a needle that returns zero, the check would be a
+predicate that can never fire, which is the class recorded two sections above.
+
+**Known limitation, in the safe direction.** The check counts a _mention_, not a _use_ — one of the
+three hits is `eslint.config.mjs`, where `config/engineering/**` appears as an ignore rule rather
+than a consumer. So it over-reports wiring and therefore under-reports orphanhood: it will miss some
+dead trees and can never falsely condemn a live one. That is the correct direction for something
+wired into a gate.
+
+### Three false readings, all self-inflicted by the probe
+
+Measuring the new check produced, in order: `self excluded? NO`, `lock excluded? yes`, and
+`unreferenced dest => 1 (vacuous)`. Two of those were wrong, and both for the same reason — **the
+probe was inside the tree it was measuring**:
+
+- it imported a _copy_ of the script, so `import.meta.url` named the copy and the real script no
+  longer matched `selfText` by content;
+- it contained the string it was searching for, so the "nothing references this" case found the
+  probe itself.
+
+Rewritten to append exports to the real file (restored afterwards) and to live under `node_modules/`,
+which the walk skips, with the negative needle assembled at runtime so no file contains it literally.
+Both readings inverted.
+
+This is the fourth measurement instrument in two sessions to report a property of itself as a
+property of the repository. The pattern is specific enough to state as a rule: **an instrument that
+lives inside its own search space measures itself first.** Upstream had already reached the same
+conclusion from the other side, which is why their check excludes its own script by content rather
+than by path — a renamed copy would otherwise vouch for the tree.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
