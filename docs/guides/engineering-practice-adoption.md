@@ -4254,6 +4254,125 @@ there is no dependency at any range. The `*.test.tsx` prediction was tested and 
 messages ago: 243 of finance's 601 `.tsx` files are test or spec files and **not one contains a
 disallowed `console.*` call**, so the predicted delta is exactly zero.
 
+## The count that can block is shape-dependent; the floor is one unconditional job
+
+The sibling session ranks the two repositories on gate strength:
+
+> finance's 5-of-9-skipped is strictly better than engineering's 4-of-4-unrequired, because 5
+> skipped required checks still means 4 that can block, and engineering's number that can block is
+> zero.
+
+Every factual claim in that checks out. finance's protection, read from the API:
+
+```
+strict           true
+linear history   true
+enforce_admins   false
+required reviews 0
+required contexts (7)
+  ESLint & Prettier
+  Secret Detection
+  CodeQL Analysis (javascript-typescript)
+  CodeQL Analysis (java-kotlin)
+  Build
+  Build & Test
+  Required Checks Gatekeeper
+```
+
+And the outcome on three consecutive documentation-only pull requests is identical each time:
+
+| required context               | #4177      | #4180      | #4185      |
+| ------------------------------ | ---------- | ---------- | ---------- |
+| ESLint & Prettier              | SKIPPED    | SKIPPED    | SKIPPED    |
+| Build                          | SKIPPED    | SKIPPED    | SKIPPED    |
+| Build & Test                   | SKIPPED ×3 | SKIPPED ×3 | SKIPPED ×3 |
+| Secret Detection               | ran        | ran        | ran        |
+| CodeQL (javascript-typescript) | ran        | ran        | ran        |
+| CodeQL (java-kotlin)           | ran        | ran        | ran        |
+| Required Checks Gatekeeper     | ran        | ran        | ran        |
+
+**4 ran, 3 skipped.** The ranking is right and the number is right.
+
+### Two figures, one state, and the difference is the instrument
+
+The protection lists **7 contexts**; those 7 resolve to **9 check-runs**, because `Build & Test` is
+matrixed three ways. Counting runs gives 5 skipped and 4 passed — the earlier figure recorded in
+this guide — and counting contexts gives 3 skipped and 4 passed. Both describe the same pull
+request. A skip count is therefore only meaningful with its unit attached, and the two units differ
+by however many matrix legs a context happens to expand into. The passing count is stable at 4 under
+both, which is a coincidence of this configuration rather than a property.
+
+### The reason the ranking holds is not the reason given
+
+"4 that can block" is not a constant. It is the value of a function whose input is the pull
+request's file paths, and every one of the three skips above was produced by a path filter. A count
+of blocking checks describes one shape of change; a different shape yields a different count.
+
+Of the 4 that did run, three — `Secret Detection` and both CodeQL analyses — are security scanners.
+They will not observe a lint regression, a formatting regression, or a broken build. The only
+required context on a documentation-only pull request that can observe a correctness defect is
+**`Required Checks Gatekeeper`**, and what makes it reliable is not that it is one of four. It is
+this, at `ci-security.yml` L493:
+
+```yaml
+if: always()
+```
+
+with no `paths:` filter on the workflow, and these steps in its body:
+
+```
+npm run workflow:security:check
+npx prettier --check .
+npx eslint . --max-warnings 0
+```
+
+It re-invokes the gates independently, so the path filter that skips `ESLint & Prettier` cannot
+sever the only route to them. **finance's floor is not four checks, it is one unconditional check —
+and the floor is what the ranking actually rests on.** A repository with forty required contexts,
+all path-filtered, has a floor of zero and would still score well on any count.
+
+### finance already suffered this defect, and the fix is documented in the file
+
+This is not a hypothetical refinement. The comment above the job records the history:
+
+> independently runs lint + format + a secret scan so the required check is never "missing" on
+> path-filtered PRs (**which is what previously let changes merge without ever running these
+> gates**)
+
+So the count-based arrangement is the one that failed here, and the unconditional job is the remedy
+that replaced it. The sibling's ranking is correct today precisely because finance already stopped
+relying on the property the ranking is stated in terms of.
+
+The generalizable form, which extends the ladder rather than replacing it:
+
+| Question                                   | Answer type            | Robust?                                        |
+| ------------------------------------------ | ---------------------- | ---------------------------------------------- |
+| How many required contexts are there?      | count                  | no — says nothing about execution              |
+| How many can block _this_ PR?              | count, shape-dependent | no — a different diff gives a different answer |
+| **Is any required context unconditional?** | **yes/no**             | **yes — invariant across diffs**               |
+
+## A repository with no gate passes every audit of its gates
+
+The sibling's own finding is the rung beneath everything this guide has recorded on the subject:
+
+> engineering can't exhibit skip-satisfies-required because nothing is required. Your defect needs
+> branch protection to exist in order to be fooled by it.
+
+That completes the sequence: empty scope → full scope with zero authority → no authority for
+anything → authority present with execution absent → **and beneath all of them, nothing to audit,
+which returns clean.** The last is the most dangerous of the set because it is the only one whose
+audit output is indistinguishable from a healthy result. A skipped check at least leaves the word
+`SKIPPED` on the page.
+
+The corollary they add to the independence axis is worth keeping verbatim, because it converts a
+judgement into a test:
+
+> Independent instruments defend against _the instrument being wrong_; redundant triggers defend
+> against _the instrument not being reached_. A duplicate that can't name its threat is decoration.
+
+finance's two Prettier invocations pass that test: the second exists to defend against the first not
+being reached, which is exactly what the `if: always()` gatekeeper comment says in prose.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
