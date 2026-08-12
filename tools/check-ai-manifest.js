@@ -93,13 +93,60 @@ const METRICS = [
   },
 ];
 
+// A prose paragraph is the only construct markdown formatters re-wrap, so it is the only
+// construct whose line breaks may not be assumed. Blocks holding a fence, list marker, table
+// row, blockquote, heading, or indented code are left exactly as written.
+const STRUCTURED_LINE = /^(\s*([-*+]|\d+\.)\s|\s*[|>#]|\s*```|\s{4,}\S)/;
+
+/**
+ * Split text into logical lines, joining wrapped prose paragraphs back into one entry.
+ *
+ * Pinned phrases and `<number> <noun>` metric claims are asserted against text that no
+ * formatter promises to leave hard-wrapped where it is today. Matching physical lines makes
+ * every such assertion depend on wrap position: a re-wrap silently drops metric matches and
+ * splits the roster statement, which reports as missing content rather than as a format change.
+ * Whitespace is never the content being asserted, so collapsing it inside a paragraph weakens
+ * nothing — a genuinely absent phrase or wrong number still fails.
+ *
+ * @param {string} text Raw document or section text.
+ * @returns {{ text: string, line: number }[]} Logical lines with their 1-based start line.
+ */
+function logicalLines(text) {
+  const physical = text.split(/\r?\n/);
+  const out = [];
+  let block = [];
+  let blockStart = 0;
+
+  const flush = () => {
+    if (!block.length) return;
+    if (block.some((line) => STRUCTURED_LINE.test(line))) {
+      block.forEach((line, offset) => out.push({ text: line, line: blockStart + offset + 1 }));
+    } else {
+      out.push({ text: block.map((line) => line.trim()).join(' '), line: blockStart + 1 });
+    }
+    block = [];
+  };
+
+  physical.forEach((line, index) => {
+    if (line.trim() === '') {
+      flush();
+      return;
+    }
+    if (!block.length) blockStart = index;
+    block.push(line);
+  });
+  flush();
+  return out;
+}
+
 function scanDoc(relPath, counts) {
   const abs = path.join(ROOT, relPath);
   if (!fs.existsSync(abs)) return { missing: true, findings: [] };
 
-  const lines = fs.readFileSync(abs, 'utf8').split(/\r?\n/);
+  const lines = logicalLines(fs.readFileSync(abs, 'utf8'));
   const findings = [];
-  lines.forEach((line, index) => {
+  lines.forEach((entry) => {
+    const line = entry.text;
     const normalized = line.replace(/[*`_]+/g, ' ');
     for (const metric of METRICS) {
       metric.regex.lastIndex = 0;
@@ -109,7 +156,7 @@ function scanDoc(relPath, counts) {
         const actual = counts[metric.key];
         findings.push({
           file: relPath,
-          line: index + 1,
+          line: entry.line,
           metric: metric.label,
           claimed,
           actual,
@@ -186,9 +233,11 @@ function validateActivationDoc() {
     return [`${ACTIVATION_DOC} is missing the bounded canonical runtime roster section`];
   }
 
-  const section = content.slice(start, end);
+  const section = logicalLines(content.slice(start, end))
+    .map((entry) => entry.text)
+    .join('\n');
   const rosterLine = section
-    .split(/\r?\n/)
+    .split('\n')
     .find((line) => line.startsWith('The generated canonical roster is:'));
   const documented = rosterLine
     ? [...rosterLine.matchAll(/`([^`]+)`/g)].map((match) => match[1]).sort()
