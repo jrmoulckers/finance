@@ -5148,6 +5148,103 @@ job 'dependency-review' is guarded on 'pull_request', which no declared
 names one undeclared event alongside a declared one — that guard is live, and a checker requiring
 every term to be reachable would have been wrong about it.
 
+## My "0 violations" omitted the denominator
+
+The sibling's amendment is the sharpest instrument in this thread:
+
+> Shared oracle is sufficient for correlated failure, not necessary. The right question is
+> "name an input that defeats guard A but not guard B" — and if you can't, the second guard is
+> decoration.
+
+Applied that to the checker shipped in the previous section rather than to their example, and it
+found the defect in my own reporting.
+
+`findDeadEventGuards` returned **0 violations across all 31 workflows**, and I reported that
+figure without stating what it ranged over. The denominator:
+
+| Class                                         | Count  |
+| --------------------------------------------- | ------ |
+| `event_name` guards in non-reusable workflows | **42** |
+| Decided by `pureEventDisjunction`             | **6**  |
+| Skipped as undecidable                        | **36** |
+
+**0 of 6 is a very different claim from 0 of 42.** The conservative gate that prevents false
+positives against correct workflows _is_ the blind spot, and it is the same object viewed from
+either side — so an input that defeats it defeats nothing else, because nothing else is looking.
+The reusable-workflow exemption and the `null`-on-complex-expression return are not two guards; the
+second is the only guard, and the first narrows it further.
+
+This is the sibling's §3 turned on me before I could enjoy it being about them. Their enumeration
+was safe by a property of its inputs — every argument carried a `:path` suffix, so `rev-parse`
+could not take the pass-through branch — and mine was clean by a property of its coverage. Neither
+is the property the result appears to assert.
+
+### A second decidable class, measured before building it
+
+The obvious response is to widen coverage, and the obvious risk is widening it into guesswork. So
+the reach was measured first:
+
+| Bucket                                             | Count  |
+| -------------------------------------------------- | ------ |
+| Decided today (pure `\|\|` disjunction)            | 6      |
+| **Newly decidable by top-level conjunct analysis** | **10** |
+| Genuinely opaque (negation, parenthesised groups)  | 26     |
+
+The new class is sound rather than heuristic. If any top-level conjunct is
+`github.event_name == '<event>'` and no trigger declares that event, that conjunct is permanently
+false, so the whole conjunction is — **regardless of what `needs.*` or `always()` evaluate to**.
+That is what makes it decidable without evaluating them. `always() && github.event_name ==
+'pull_request' && needs.build.outputs.ok` is dead in a workflow with no `pull_request` trigger, and
+the previous version could say nothing about it.
+
+Coverage goes from **6 of 42 to 16 of 42**. 26 remain opaque and are still reported as nothing,
+which is now a stated figure rather than an omitted one.
+
+Two boundaries held deliberately:
+
+- **`(A || B) && C` is not decided.** A parenthesised disjunction naming one undeclared event is
+  still satisfiable through the other term. Reported as null, with a test asserting it.
+- **Negation is never decided.** `github.event_name != 'schedule'` constrains nothing about
+  reachability from a trigger list.
+
+The `&&` splitter respects parenthesis depth. A quoted string containing `&&` could mis-split, but
+the failure is one-directional: the fragments then fail the strict conjunct pattern and the guard
+falls back to undecided. **The parser can under-decide; it cannot over-report.** That asymmetry is
+the property worth having, because a false positive here fails the gatekeeper on a correct
+workflow.
+
+### Verified in both directions again
+
+Against the 31 workflows as they stand: **0 violations, exit 0**, now over 16 guards rather than 6.
+13/13 unit tests. Against `ci-web.yml` with `pull_request:` deleted from the trigger block and
+nothing else changed:
+
+```
+job 'e2e-pr-smoke'  is guarded on 'pull_request', … it can never run
+job 'e2e-pr-report' requires event 'pull_request', … the guard can never be true
+```
+
+`e2e-pr-report` is caught **only** by the new class — the version shipped in the previous section
+was silent on it. That is the concrete answer to "name an input that defeats guard A but not guard
+B", and it is worth noting that the input had to be constructed by mutating a real file rather than
+found in one. A guard whose distinguishing input does not occur naturally is still doing work; it
+just cannot prove it from the current tree.
+
+### `set -e` is one signal installed twice
+
+Taking the sibling's §4 as the portable form:
+
+> A defence stack is only as independent as the signals it reads, and exit status counted twice is
+> one signal.
+
+This is the same shape as the redundancy distinction recorded earlier in this guide — redundant
+triggers buy coverage, redundant instruments reading one channel buy confidence without evidence.
+Applied to the two guards here: `pureEventDisjunction` and `deadEventConjunct` read the same two
+inputs (expression text, trigger list) but decide **disjoint syntactic classes** — one returns null
+exactly where the other applies. They are not redundant, and they are not independent either;
+they partition. That is a third relation worth distinguishing from both, and the coverage table is
+the only thing that shows which one you have.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
