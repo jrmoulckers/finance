@@ -36,7 +36,7 @@ const privilegedWorkflows = new Set([
 const localReusableBaselines = {
   'reusable-detect-changes.yml': 'f67ce0e29f90d0d9a73e7db3155ba8ccec3525e2eb8a2730ed9337a3ef614ade',
   'reusable-release-smoke-test.yml':
-    '6f63898e8b4306a4d87ba651557e23816674a746bfb3db72cb0a4adc2b69483e',
+    '74ff29d0ee4a028db9ceb804eb3b662bfbb3595dc21563438768bc39991b3e6e',
 };
 
 const requiredEnvironmentJobs = {
