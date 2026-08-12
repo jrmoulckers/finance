@@ -369,8 +369,12 @@ function validateSyncLock() {
     `  [source] ${source.reproduced} of ${total} managed targets unstamp to their ` +
       `recorded canon source\n`,
   );
+  // States only what was computed. The earlier wording asserted "cause unknown", which was
+  // false once the engine documented this entry (copier.mjs:494-499) and would be unfounded
+  // for any future path landing here -- the line cannot know the cause of an entry it has
+  // just met. Causes belong in the docblock and the issue, not in a per-entry verdict.
   for (const entry of source.unreproduced) {
-    process.stdout.write(`  [source] not reproducible, cause unknown: ${entry} (#4190)\n`);
+    process.stdout.write(`  [source] not reproducible from delivered bytes: ${entry} (#4190)\n`);
   }
   return findings;
 }
@@ -481,27 +485,58 @@ function walkFiles(dir) {
 const PROVENANCE_STAMP_LINE =
   /^(<!--|\/\*|#|\/\/)\s*(generated \+ )?synced from jrmoulckers\/(\.github|studio)\b/;
 
-// Returns the candidate pre-stamp bodies for a delivered file. At least two stampers exist
-// and they differ in shape: the canon-docs path (provenance.mjs:69-72) writes the stamp
-// alone after frontmatter but `${stamp}\n\n${content}` without it, while the studio token
-// path writes `${stamp}\n${content}` with no blank. Only the first has source I have read,
-// so rather than guess a per-asset-kind rule this returns both strips and the caller accepts
-// a hash match under either.
+// The engine injects its stamp with a shape chosen by the target's comment syntax, so the
+// inverse is a switch on file extension rather than a guess. Documented upstream in
+// `sync/README.md` and implemented at `provenance.mjs:57-73`:
 //
-// That is not a weakening. Reproducing a recorded sha256 under either strip is cryptographic
-// proof that the delivered bytes are canon's source plus a stamp; a wrong-strip false accept
-// needs a collision. The rules that WERE guessed here got measured first and refuted: a
-// unified "strip the blank line if present" reproduces 14 of 65, because content after
-// frontmatter legitimately begins with a blank line.
-function unstampCandidates(text) {
+//   hash   `# note\n`     + content -> strip 1   .toml .yml .sh .gitattributes
+//   block  `/* note */\n` + content -> strip 1   .css .js .ts .kt .swift
+//   html   `<!-- note -->\n\n` + content -> strip 2   .md .html
+//   html + frontmatter: spliced after the closing `---` -> strip 1
+//   none   content unchanged -> never stamped, so never reaches this
+//
+// Frontmatter is an exception *inside* the html family, not the top-level variable. This
+// tool previously inferred the latter and scored 55 of 65 -- right about `.md`, accidentally
+// right elsewhere -- then hedged with a disjunction that offered both strips and accepted a
+// match under either.
+//
+// The switch replaces that hedge and is a tightening, not a rename. Both score 64 of 65 on
+// the corpus (html+frontmatter 50/50, html+plain 5/5, hash 1/1, block 8/9), but a disjunction
+// also accepts a match under the WRONG strip: for an html file with no frontmatter whose body
+// legitimately begins blank, the one-line strip yields a body differing from canon only by a
+// leading blank, and nothing in the result distinguishes that from a correct recovery. The
+// switch fails closed instead (#4194).
+const HASH_EXTENSIONS = new Set(['.toml', '.yml', '.yaml', '.sh', '.gitattributes', '.gitignore']);
+const BLOCK_EXTENSIONS = new Set(['.css', '.js', '.mjs', '.cjs', '.ts', '.kt', '.kts', '.swift']);
+const HTML_EXTENSIONS = new Set(['.md', '.markdown', '.html']);
+
+function commentFamily(entryPath) {
+  const base = path.basename(entryPath);
+  // A dotfile with no further dot IS its own extension: path.extname('.gitattributes') is ''.
+  const extension =
+    base.startsWith('.') && !base.slice(1).includes('.') ? base : path.extname(base);
+  if (HASH_EXTENSIONS.has(extension)) return 'hash';
+  if (BLOCK_EXTENSIONS.has(extension)) return 'block';
+  if (HTML_EXTENSIONS.has(extension)) return 'html';
+  return null;
+}
+
+// Returns { status: 'no-stamp' } for a file the engine never stamped, { status: 'unknown' }
+// for a stamped file whose extension is unclassified, and { status: 'ok', body } otherwise.
+//
+// 'unknown' is a distinct status rather than a skip on purpose. Skipping a stamped entry
+// would shrink the denominator with nothing saying so, which is the silent-channel defect
+// this tool already corrected twice (#4190, #4191). The caller discloses it by path.
+function unstampSource(entryPath, text) {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   const index = lines.findIndex((line) => PROVENANCE_STAMP_LINE.test(line));
-  if (index === -1) return [];
-  return [1, 2].map((count) => {
-    const copy = lines.slice();
-    copy.splice(index, count);
-    return copy.join('\n');
-  });
+  if (index === -1) return { status: 'no-stamp' };
+  const family = commentFamily(entryPath);
+  if (family === null) return { status: 'unknown' };
+  const hasFrontmatter = lines[0].trim() === '---';
+  const copy = lines.slice();
+  copy.splice(index, family === 'html' && !hasFrontmatter ? 2 : 1);
+  return { status: 'ok', body: copy.join('\n') };
 }
 
 // Verifies the lock's sourceSha256 against local bytes. The tool previously recorded this
@@ -522,6 +557,13 @@ function unstampCandidates(text) {
 // today (#4190) and its cause is unknown; asserting corruption on evidence that does not
 // establish it would make the check red on a file that must not be deleted. Listing each
 // path means the set cannot grow unnoticed, which is the property a bare count lacks.
+//
+// For `vendor/@jrm/tokens/css/default/tokens.css` specifically, the engine documents the
+// cause at `copier.mjs:494-499`: an overlapping run reverted that entry to the hash and
+// timestamp of an older revision and the lock was later hand-repaired, so `targetSha256`
+// was corrected to match the bytes while `sourceSha256` and `syncedAt` stayed stale. That
+// makes it an internally inconsistent entry, not a stamping question -- the strip rule is
+// exact for its family, and the recorded source simply belongs to different bytes.
 function verifySourceReproduction(lock) {
   const findings = [];
   const unreproduced = [];
@@ -532,12 +574,14 @@ function verifySourceReproduction(lock) {
     if (!fs.existsSync(absolute)) continue;
     const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
     if (managedRegion(text) !== null) continue;
-    const candidates = unstampCandidates(text);
-    if (candidates.length === 0) continue;
-    const matched = candidates.some(
-      (body) => crypto.createHash('sha256').update(body).digest('hex') === metadata.sourceSha256,
-    );
-    if (matched) reproduced += 1;
+    const source = unstampSource(entry, text);
+    if (source.status === 'no-stamp') continue;
+    if (source.status === 'unknown') {
+      unreproduced.push(entry);
+      continue;
+    }
+    const digest = crypto.createHash('sha256').update(source.body).digest('hex');
+    if (digest === metadata.sourceSha256) reproduced += 1;
     else unreproduced.push(entry);
   }
   // Premise guard, for the same reason the claim this replaces was wrong: a population of
@@ -713,6 +757,7 @@ module.exports = {
   managedRegion,
   managedDigest,
   verifyLockCoverage,
-  unstampCandidates,
+  unstampSource,
+  commentFamily,
   verifySourceReproduction,
 };
