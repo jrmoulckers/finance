@@ -168,6 +168,19 @@ async function check() {
 
   process.stdout.write(`${entries.length} vendored file(s) match ${LOCK} at ${lock.ref}.\n`);
 
+  const unloadable = await missingModuleMarkers(
+    await Promise.all(
+      entries.map(async ([dest]) => [dest, await readFile(dest, 'utf8').catch(() => '')]),
+    ),
+  );
+  if (unloadable.length > 0) {
+    fail(
+      `${unloadable.length} vendored ESM file(s) lack a "type": "module" marker:\n  ${unloadable.join('\n  ')}`,
+      'Add a package.json containing {"type":"module"} beside each. Without it, ' +
+        'Node below 22.7 cannot import the file, and no other gate detects this.',
+    );
+  }
+
   const latest = await latestRef();
   if (latest && latest !== lock.ref) {
     // A newer tag is not the same claim as newer content, and conflating the two
@@ -201,6 +214,47 @@ async function check() {
       );
     }
   }
+}
+
+/**
+ * Vendored `.js` files that use ESM syntax but sit in a directory with no
+ * `{"type":"module"}` marker.
+ *
+ * This is deliberately outside the SHA-256 drift check, because it asks a
+ * question hashes cannot: every byte can match the lock, every file can be
+ * individually correct, and the directory still not be a loadable package.
+ *
+ * The window is real rather than theoretical. Node enabled module syntax
+ * detection by default in 22.7.0, but this repo declares
+ * `engines.node: ">=22.0.0"` and `.nvmrc: 22`, so 22.0–22.6 are permitted and
+ * `import()` fails outright there without the marker. Measured with
+ * `--no-experimental-detect-module`: import succeeds with the marker and fails
+ * with `ERR_REQUIRE_CYCLE_MODULE` without it.
+ *
+ * Nothing else in the repository would notice. Prettier loads its config
+ * through its own resolver, so `format:check` passes either way — the gate
+ * stays green while the file is unimportable.
+ *
+ * `.mjs` is skipped: its extension already declares the module system.
+ */
+async function missingModuleMarkers(files) {
+  const offenders = [];
+  for (const [dest, text] of files) {
+    if (!dest.endsWith('.js')) continue;
+    if (!/^\s*(export\s+(default|const|function|class|\{)|import\s)/m.test(text)) continue;
+    const marker = join(dirname(dest), 'package.json');
+    let declared;
+    try {
+      declared = JSON.parse(await readFile(marker, 'utf8')).type;
+    } catch {
+      offenders.push(`${dest}: no ${marker}`);
+      continue;
+    }
+    if (declared !== 'module') {
+      offenders.push(`${dest}: ${marker} declares type '${declared ?? 'commonjs'}', not 'module'`);
+    }
+  }
+  return offenders;
 }
 
 /**

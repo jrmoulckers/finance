@@ -5245,6 +5245,109 @@ exactly where the other applies. They are not redundant, and they are not indepe
 they partition. That is a third relation worth distinguishing from both, and the coverage table is
 the only thing that shows which one you have.
 
+## The marker is load-bearing, and no gate in this repo would notice its removal
+
+Upstream reported the `"type": "module"` gap fixed in `vendor-configs.mjs` and told finance it could
+drop its workaround file. Both halves needed checking, and checking them corrected one of my own
+claims mid-investigation.
+
+### First, a correction to something I asserted this turn
+
+I searched for the workaround with `git ls-files | Select-String 'vendor.*package\.json'` and
+reported that finance had none. That pattern requires the literal string `vendor` in the path. The
+file is at `config/engineering/prettier/package.json`. **The search returned clean because it was
+looking in the wrong place**, which is the exact failure mode recorded earlier in this guide about
+remedies phrased as "look in your config" — and I produced it while responding to that very item.
+
+The marker is tracked, and `git log` names the commit: `3a423b13`, PR **#4077**, "adopt vendored
+@jrmoulckers/prettier-config at v0.15.1". I added it myself, and it is **not** in the lock's file
+list — the lock records 3 files and the marker is not one of them.
+
+### The instruction to drop it is wrong for finance, measured
+
+The first measurement said it was safe to drop. On Node 24.3.0, with and without the marker, the
+config resolves identically (`printWidth: 96`, `proseWrap: preserve` for `.md`) and `import()`
+succeeds. That measurement was sound and the conclusion did not follow, because **the runtime I
+measured on is not the runtime the repo declares**:
+
+| Source         | Node         |
+| -------------- | ------------ |
+| My shell       | 24.3.0       |
+| `.nvmrc`       | 22           |
+| `engines.node` | **>=22.0.0** |
+| CI (36 refs)   | 22           |
+
+Node enabled module syntax detection by default in **22.7.0**. `engines` permits 22.0–22.6, and
+`.nvmrc: 22` can resolve there. Re-measured with `--no-experimental-detect-module` to simulate that
+window:
+
+| State          | `import()` of the vendored config     |
+| -------------- | ------------------------------------- |
+| With marker    | ok, `printWidth = 100`                |
+| Without marker | **FAILED `ERR_REQUIRE_CYCLE_MODULE`** |
+
+**The marker is load-bearing inside the range this repository's own manifest permits.** My first
+test could not have found that, because it ran above the floor. A compatibility hedge tested on one
+runtime tells you nothing about the floor it hedges.
+
+### The part that makes it worth a gate
+
+With the marker removed _and_ detection disabled, `npx prettier --check` still **passes, exit 0**.
+Prettier loads its config through its own resolver, so `format:check` is not a proxy for
+loadability. Deleting the marker would have produced a fully green repository containing a config
+that Node cannot import at the declared engines floor.
+
+That is upstream's own point about hashes — every byte matching the lock, every file individually
+correct, the directory still not a loadable package — with one addition: **the marker was outside
+the lock entirely**, so `--check` was not silent about it by accident, it had nothing to say.
+
+### The fix
+
+`scripts/vendor-configs.mjs --check` now also verifies module markers. For each vendored `.js`
+using ESM syntax, a sibling `package.json` must declare `"type": "module"`. `.mjs` is skipped — its
+extension already declares the module system.
+
+Verified in three directions:
+
+| State                               | Result                                |
+| ----------------------------------- | ------------------------------------- |
+| As-is                               | 3 files match, **exit 0**             |
+| Marker deleted                      | **exit 1**, both ESM files named      |
+| Marker present, declares `commonjs` | **exit 1**, reports the declared type |
+
+The third case matters because upstream is right that a marker stating the wrong type is worse than
+none: it _overrides_ detection, converting a runtime that would have coped into one that cannot.
+Checking only for presence would have passed it.
+
+This runs in CI already — `ci-lint.yml` invokes it at L117 and L288 — so no new wiring was needed.
+
+### Do not re-pin yet, and why the re-pin was tested rather than reasoned about
+
+Upstream reports `v0.116.0` merged as #217. It does not exist:
+`git/refs/tags/v0.116.0` → **404**, and `releases/latest` → **`v0.115.0`**. Upstream's own advice in
+the same message — _re-resolve rather than copying the literal out of this message_ — is what
+caught it. A version number stated before it is published is the same class as `versions.json`
+recording registry state and being unable to lead a publish.
+
+Vendoring at the real latest was then run rather than argued about, and produced a result no
+reasoning would have predicted:
+
+```
+Vendored 9 file(s) from jrmoulckers/engineering@v0.115.0
+Ref moved v0.86.0 -> v0.115.0; 6 file(s) changed content.
+```
+
+`git diff --stat` showed **only the lock file changed** — because the six were _untracked_, and
+`git diff` does not show untracked files. The set had silently grown from 3 to 9, adding six
+`config/engineering/tsconfig/*.json` files that finance deliberately defers (2,691 diagnostics, and
+0 of 6 manifests declare `@types/node`). By upstream's own §4 — _vendor in the change that adopts_ —
+vendoring configs nothing extends is the anti-pattern, and re-pinning would have committed exactly
+that.
+
+Reverted. finance stays at `v0.86.0`: the three vendored files are byte-identical at `v0.115.0`,
+the `v0.112.0` declaration floor concerns `index.d.ts`, which finance does not vendor, and the
+marker fix that would justify moving is not released.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
