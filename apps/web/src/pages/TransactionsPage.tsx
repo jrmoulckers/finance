@@ -284,6 +284,7 @@ function flattenTransactionGroups(
 
 function useOptionalToast(): ReturnType<typeof useToast> | null {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return useToast();
   } catch {
     return null;

@@ -7421,6 +7421,84 @@ adding a path exclusion, so the narrowing stays one line wide and stays counted.
 
 5 mutants killed across the three gates; suites now 20, 17, and 29 tests.
 
+## A rule can be silent about a defect it names, depending on how the line is written
+
+`react-hooks/rules-of-hooks` was one of seven rules deferred when the plugin was
+adopted, recorded in `eslint.config.mjs` with a measured count of 3 violations.
+Re-measuring on the parent session's request found 2 — a small drift, and not the
+interesting part.
+
+The interesting part is that the count is not a count of the defect. Measured with a
+fixture matrix, one case per file, using `if` as a known-positive control:
+
+| guard | form                                           | detected |
+| ----- | ---------------------------------------------- | -------- |
+| `if`  | const, return, destructure, bare call          | all 4    |
+| `try` | destructuring declaration                      | yes      |
+| `try` | simple const, return-member, bare call, nested | no       |
+
+Under `if` every form is caught. Under `try` only the destructuring form is. The
+rule's message — _"React Hooks must be called in the exact same order in every
+render"_ — is equally true of all of them.
+
+`apps/web/src/pages/HouseholdPage.tsx` shows the consequence directly. It holds seven
+hook calls inside `try` blocks, five of them structurally identical `useOptional*`
+provider-tolerance wrappers. The rule reports two. Fixing those two would turn the
+file green over five surviving instances of the same defect, and the green would be
+the evidence that nothing remained.
+
+Repo-wide, forcing the rule on reports 2 findings in 1 file. A local rule that asks
+the question directly — is a `use*` call lexically inside a `try` block — reports **14
+across 7 files**. Read as a deferral budget, the recorded number understates the work
+by 7x.
+
+Three things generalise.
+
+**The population here is a set of syntactic forms, not a set of files.** Every earlier
+instance in this adoption narrowed over paths: files excluded, workspaces missing,
+steps not reached. This one narrows over _shapes_, inside files that were all scanned,
+by a rule that was correctly configured and correctly scoped. Printing a denominator
+would not have exposed it — the denominator was right. Only a differential against an
+instrument that asks the question a different way separates them.
+
+**The useful instrument was the one not built for the question.** The local rule was
+written to close the gap, so it is not independent evidence. The evidence is that the
+same tree yields 2 and 14 depending only on how the question is phrased, and the
+fixture matrix — five forms of one violation, one per file so attribution is not
+inferred — is what makes the divergence attributable to form rather than to scope.
+
+**Where coverage is not yours, relocate the claim.** The plugin's detection cannot be
+widened from here. What can be done here is to state the obligation in a rule this
+repository owns, at the granularity the repository actually cares about. That is the
+same move as moving a version assertion out of `engines` and into a check: not a
+second opinion on the same question, but the same claim relocated to a field where it
+can be made true.
+
+Two smaller notes from the same measurement, both corrections to things this document
+previously carried forward:
+
+- The claim that finance's 601 `.tsx` files load **zero** React rules is false and has
+  been since it was written. The same change that measured the gap also closed part of
+  it: 10 of the plugin's 17 rules have been enabled since. The finding was carried
+  forward and the fix was not — the defect the parent session named, occurring here.
+- `eslint-plugin-react` (peer `^9.7`) and `eslint-plugin-jsx-a11y` (peer `^9`) still
+  exclude ESLint 10, re-verified against installed 10.6.0. `eslint-plugin-react-hooks`
+  at 7.1.1 now admits `^10.0.0`, which is why the hooks rules could be adopted and the
+  other two still cannot. That half of the gap is real and unchanged.
+
+## Re-check carried-forward items at send time, not at discovery time
+
+Three separate items in this adoption have now been re-broadcast after they were
+closed, twice by the parent session and once here. The failure is not carelessness; it
+is that a finding and its fix are recorded at different moments and only the finding is
+carried in the running summary.
+
+The correction is cheap and belongs at the boundary: before restating a standing claim,
+re-run the measurement that produced it. In this document that means every claim stated
+as current carries the command that would refute it, so re-checking costs one
+invocation rather than a re-derivation. The `.tsx` claim above survived many restatements
+precisely because it read as a conclusion and not as a measurement.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

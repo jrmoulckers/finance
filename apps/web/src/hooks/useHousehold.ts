@@ -3114,6 +3114,7 @@ export function useHousehold(): UseHouseholdResult {
  */
 function useOptionalAuthUser(): { id: string; email: string; name?: string } | null {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return useAuth().user;
   } catch {
     return null;
@@ -3133,6 +3134,7 @@ function useOptionalAuthUser(): { id: string; email: string; name?: string } | n
  */
 function useOptionalDatabase(): AsyncDb | null {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return useDatabase();
   } catch {
     return null;

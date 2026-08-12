@@ -37,6 +37,7 @@ import {
  */
 function useOptionalDatabase() {
   try {
+    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
     return useDatabase();
   } catch {
     return null;
