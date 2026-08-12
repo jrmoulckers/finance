@@ -291,7 +291,16 @@ jobs:
       # "kept nowhere" -- and a local copy declaring the same TOOL_VERSION as a
       # newer upstream one is how finance ran a checker missing a whole check.
       - name: Verify vendored tooling matches the lock
+        # GITHUB_TOKEN raises the API limit from 60/hour per IP to 5000/hour per
+        # repo. Without it the staleness half of this check is rate-limited off
+        # on shared runner IPs, and until it named that gap the skip printed the
+        # same green line as a successful check.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run eng:vendor:check
+
+      - name: Vendoring staleness resolution tests
+        run: npm run eng:vendor:test
 
       - name: Check ENG-* citations
         run: npm run eng:citations

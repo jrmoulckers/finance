@@ -136,23 +136,82 @@ function parseArgs(argv) {
   return { positional, flags };
 }
 
+/** Authenticated when a token is available. Unauthenticated GitHub API calls are
+ * limited to 60/hour *per IP*, and Actions runners share IPs, so the anonymous
+ * path is rate-limited far more often than it is offline. Measured while writing
+ * this: the anonymous call returned 403 with `x-ratelimit-remaining: 0`. */
+export function apiHeaders() {
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  return {
+    accept: 'application/vnd.github+json',
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+/** Highest semver tag, compared numerically. Deliberately not by publish date:
+ * a backport wave releases newest-major first and oldest-major last, so a
+ * date sort returns the *oldest* maintained line as the frontier — perfectly
+ * anti-correlated rather than noisily wrong, and freshly computed either way. */
+export function highestSemver(tags) {
+  const parsed = tags
+    .map((tag) => ({ tag, parts: /^v(\d+)\.(\d+)\.(\d+)$/.exec(tag) }))
+    .filter((entry) => entry.parts !== null)
+    .map(({ tag, parts }) => ({ tag, key: parts.slice(1, 4).map(Number) }));
+  if (parsed.length === 0) return null;
+  return parsed.reduce((best, entry) => {
+    for (let i = 0; i < 3; i += 1) {
+      if (entry.key[i] !== best.key[i]) return entry.key[i] > best.key[i] ? entry : best;
+    }
+    return best;
+  }).tag;
+}
+
 /**
- * Report whether a newer release exists. Never throws and never fails the
- * caller: a tag pushed upstream must not turn an unrelated PR red. Returns null
- * when the answer cannot be determined, which is treated the same as "fine" —
- * an offline or rate-limited runner is not a staleness signal.
+ * Resolve the newest upstream ref, and say how the answer was reached.
+ *
+ * `releases/latest` does not compute a maximum — it reads a `make_latest` flag a
+ * maintainer sets, over the *release* population. Tags pushed without a release
+ * are invisible to it. Measured on 2026-08-12: upstream had 172 tags and 143
+ * releases, and the highest tag `v0.134.0` had no release, so the declared
+ * answer was one release behind the actual frontier. So ask both and prefer the
+ * higher, rather than trusting either alone.
+ *
+ * Never throws and never fails the caller: a tag pushed upstream must not turn
+ * an unrelated PR red. But it always returns a `reason` when it cannot answer,
+ * because a staleness check that goes quiet is indistinguishable from one that
+ * checked and found nothing — and that silence is the failure this had.
  */
-async function latestRef() {
-  try {
-    const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
-      headers: { accept: 'application/vnd.github+json' },
-    });
-    if (!response.ok) return null;
-    const body = await response.json();
-    return typeof body.tag_name === 'string' ? body.tag_name : null;
-  } catch {
-    return null;
-  }
+export async function latestRef() {
+  const read = async (path, pick) => {
+    try {
+      const response = await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+        headers: apiHeaders(),
+      });
+      if (!response.ok) {
+        const limited = response.headers.get('x-ratelimit-remaining') === '0';
+        return {
+          value: null,
+          reason: limited
+            ? `GitHub API rate limit exhausted (HTTP ${response.status}); set GITHUB_TOKEN to raise it`
+            : `GitHub API returned HTTP ${response.status} for ${path}`,
+        };
+      }
+      return { value: pick(await response.json()), reason: null };
+    } catch (error) {
+      return { value: null, reason: `could not reach the GitHub API (${error.message})` };
+    }
+  };
+
+  const release = await read('releases/latest', (body) =>
+    typeof body.tag_name === 'string' ? body.tag_name : null,
+  );
+  const tags = await read('tags?per_page=100', (body) =>
+    highestSemver(Array.isArray(body) ? body.map((entry) => entry.name) : []),
+  );
+
+  const best = highestSemver([release.value, tags.value].filter(Boolean));
+  if (best) return { ref: best, reason: null };
+  return { ref: null, reason: release.reason ?? tags.reason ?? 'no semver tag or release found' };
 }
 
 /**
@@ -292,7 +351,17 @@ async function check() {
     );
   }
 
-  const latest = await latestRef();
+  const { ref: latest, reason: staleReason } = await latestRef();
+  if (staleReason) {
+    // Naming the gap is the whole point. A silent skip prints the same green
+    // line as a successful check, so "matches the lock" reads as "and is
+    // current" -- a claim this never made and, on a rate-limited runner, could
+    // not have made. Still not fatal: an unreachable API is not a defect here.
+    process.stdout.write(
+      `\nStaleness not checked: ${staleReason}.\n` +
+        `This says nothing about whether ${lock.ref} is current.\n`,
+    );
+  }
   if (latest && latest !== lock.ref) {
     // A newer tag is not the same claim as newer content, and conflating the two
     // makes this notice a false alarm most of the time. Measured on 2026-08-12:
@@ -608,11 +677,16 @@ async function main() {
   process.stdout.write(`Recorded ref and SHA-256 of each file in ${LOCK}. Commit both.\n`);
 }
 
-try {
-  await main();
-} catch (error) {
-  if (!(error instanceof VendorError)) throw error;
-  process.stderr.write(`error: ${error.message}\n`);
-  if (error.hint) process.stderr.write(`       ${error.hint}\n`);
-  process.exitCode = 1;
+// Guarded so the module can be imported without running the tool. Without this
+// it had one export and no tests, not because it was untestable but because
+// importing it executed a network-touching CLI.
+if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+  try {
+    await main();
+  } catch (error) {
+    if (!(error instanceof VendorError)) throw error;
+    process.stderr.write(`error: ${error.message}\n`);
+    if (error.hint) process.stderr.write(`       ${error.hint}\n`);
+    process.exitCode = 1;
+  }
 }

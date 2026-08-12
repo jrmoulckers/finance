@@ -481,6 +481,7 @@ jobs:
           npm run workflow:security:test
           npm run node:version:test
           npm run gradle:prefetch:test
+          npm run eng:vendor:test
           npm run ai:manifest:test
       - name: Repository checks
         run: |

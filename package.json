@@ -27,6 +27,7 @@
     "eng:citations": "node config/engineering/citations/check-citations.mjs .",
     "eng:citations:review": "node config/engineering/citations/check-citations.mjs . --review",
     "eng:vendor:check": "node scripts/vendor-configs.mjs --check",
+    "eng:vendor:test": "node --test scripts/vendor-configs.test.mjs",
     "i18n:validate": "node scripts/i18n/validate-locale-catalogs.js && node scripts/i18n/validate-glossary.js",
     "ci:check": "npm run format:check && npm run lint && npm run type-check",
     "ci:check:quick": "node tools/ci-check-quick.js",

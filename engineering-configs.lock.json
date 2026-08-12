@@ -1,7 +1,7 @@
 {
   "repository": "jrmoulckers/engineering",
-  "ref": "v0.124.0",
-  "fetchedAt": "2026-08-12T17:49:23.152Z",
+  "ref": "v0.134.0",
+  "fetchedAt": "2026-08-12T19:27:28.303Z",
   "refresh": "node scripts/vendor-configs.mjs <newer-ref>",
   "files": {
     "config/engineering/prettier/index.js": {
@@ -26,7 +26,7 @@
     },
     "config/engineering/citations/check-citations.mjs": {
       "source": "scripts/check-citations.mjs",
-      "sha256": "f5f3998b277dad0c3c576eef7ef65a4a308f9bb605aff717c16e0154ca52d24a"
+      "sha256": "9fcd3bd8465e4e5ad8dc72d355ffdb51c7b4d4c34d637ddab5043ca4dfc3fc3c"
     }
   }
 }
