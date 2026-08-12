@@ -374,7 +374,7 @@ function validateSyncLock() {
   findings.push(...verifyLockCoverage(lock));
   const source = verifySourceReproduction(lock);
   findings.push(...source.findings);
-  const total = source.reproduced + source.unreproduced.length;
+  const total = source.reproduced + source.unreproduced.length + source.knownUnreproduced.length;
   // The unobserved count is printed rather than subtracted away. Reporting only "N of M"
   // over the evaluable population lets the ratio read as coverage of everything recorded,
   // when a recorded-but-absent target was never attempted at all (#4197).
@@ -383,14 +383,20 @@ function validateSyncLock() {
     `  [source] ${source.reproduced} of ${total} managed targets unstamp to their ` +
       `recorded canon source` +
       (unobserved ? `; ${unobserved} recorded targets not evaluable and unobserved` : '') +
+      (source.unstated.length
+        ? `; ${source.unstated.length} recorded targets state no source hash`
+        : '') +
       `\n`,
   );
-  // States only what was computed. The earlier wording asserted "cause unknown", which was
-  // false once the engine documented this entry (copier.mjs:494-499) and would be unfounded
-  // for any future path landing here -- the line cannot know the cause of an entry it has
-  // just met. Causes belong in the docblock and the issue, not in a per-entry verdict.
-  for (const entry of source.unreproduced) {
-    process.stdout.write(`  [source] not reproducible from delivered bytes: ${entry} (#4190)\n`);
+  // Only entries carrying a pinned exemption are reported here. Everything else that fails
+  // to reproduce is a finding, so it leaves through the verdict rather than through stdout.
+  // The old line labelled every unreproduced entry "(#4190)" unconditionally, which would
+  // have attributed the next, unrelated failure to an issue that had nothing to do with it.
+  for (const entry of source.knownUnreproduced) {
+    process.stdout.write(
+      `  [source] not reproducible from delivered bytes: ${entry} ` +
+        `(${KNOWN_UNREPRODUCED[entry].issue}, known and pinned)\n`,
+    );
   }
   return findings;
 }
@@ -666,13 +672,40 @@ function unstampSource(entryPath, text) {
 // was corrected to match the bytes while `sourceSha256` and `syncedAt` stayed stale. That
 // makes it an internally inconsistent entry, not a stamping question -- the strip rule is
 // exact for its family, and the recorded source simply belongs to different bytes.
+// The single entry the sync engine is known to have left internally inconsistent (#4190).
+// The #4062 run wrote a syncedAt OLDER than the one already recorded, rolling ten token
+// entries back to their 08-07 values while the delivered bytes stayed at the 08-09 render.
+// A consumer cannot repair it: the lock is engine-owned, and hand-repairing one field of
+// this entry is what turned a uniformly stale record into a mixed one in the first place.
+//
+// So it is tolerated -- but as this exact state, never as a class. Both hashes are pinned,
+// so a second corruption of the same file does not inherit the exemption, and no other
+// entry inherits it at all. And an exemption whose entry has started reproducing again is
+// itself a finding: a tolerance that outlives the defect it was written for is a permanent,
+// silent downgrade of the only check that would notice the next one.
+const KNOWN_UNREPRODUCED = {
+  'vendor/@jrm/tokens/css/default/tokens.css': {
+    recorded: '343e10b1ac7914f2a3d1255cfc6ffad1930ac1a17da9eb5aa5551e6e4f67062c',
+    reproduces: '658721d427c18960232d1ecb45dbed3e54fcccd7e6efdd088d6b5fd47f5401bb',
+    issue: '#4190',
+  },
+};
+
 function verifySourceReproduction(lock) {
   const findings = [];
   const unreproduced = [];
+  const knownUnreproduced = [];
   const unobserved = [];
-  let reproduced = 0;
+  // #4207: entries carrying no sourceSha256 were skipped by a bare `continue`, leaving them
+  // absent from every bucket. The population is 0 today, which is exactly why it is worth a
+  // name -- a vacuous exclusion is indistinguishable from a correct one until it isn't.
+  const unstated = [];
+  const reproducedEntries = new Set();
   for (const [entry, metadata] of Object.entries(lock.entries || {})) {
-    if (!metadata || !metadata.sourceSha256) continue;
+    if (!metadata || !metadata.sourceSha256) {
+      unstated.push(entry);
+      continue;
+    }
     const absolute = path.join(ROOT, entry);
     if (!fs.existsSync(absolute)) {
       unobserved.push(entry);
@@ -689,19 +722,62 @@ function verifySourceReproduction(lock) {
       continue;
     }
     if (source.status === 'unknown') {
-      unreproduced.push(entry);
+      unreproduced.push({ entry, recorded: metadata.sourceSha256, digest: null });
       continue;
     }
     const digest = crypto.createHash('sha256').update(source.body).digest('hex');
-    if (digest === metadata.sourceSha256) reproduced += 1;
-    else unreproduced.push(entry);
+    if (digest === metadata.sourceSha256) {
+      reproducedEntries.add(entry);
+      continue;
+    }
+    const known = KNOWN_UNREPRODUCED[entry];
+    if (known && known.recorded === metadata.sourceSha256 && known.reproduces === digest) {
+      knownUnreproduced.push(entry);
+      continue;
+    }
+    unreproduced.push({ entry, recorded: metadata.sourceSha256, digest });
+  }
+  // Lock keys are unique, so set size is the count; deriving it removes the possibility of
+  // a counter and a collection disagreeing about the same population.
+  const reproduced = reproducedEntries.size;
+  // An unreproduced entry is a delivery-integrity failure and must reach the verdict. It
+  // previously reached stdout only, so --strict passed a lock whose recorded source and
+  // delivered bytes disagreed -- and would have passed the next one identically (#4209).
+  for (const item of unreproduced) {
+    findings.push(
+      `delivered bytes do not reproduce the recorded canon source: ${item.entry} ` +
+        `(bytes unstamp to ${item.digest ? item.digest.slice(0, 12) : '<unstampable>'}, ` +
+        `lock records ${item.recorded.slice(0, 12)})`,
+    );
+  }
+  for (const [entry, known] of Object.entries(KNOWN_UNREPRODUCED)) {
+    if (!reproducedEntries.has(entry)) continue;
+    findings.push(
+      `stale reproduction exemption: ${entry} now reproduces its recorded source, so ` +
+        `${known.issue} appears repaired — delete the exemption rather than carrying it`,
+    );
+  }
+  // A conservation law rather than a pinned count: every recorded entry lands in exactly one
+  // bucket. Counts decay with the corpus; the partition does not.
+  const recorded = Object.keys(lock.entries || {}).length;
+  const partitioned =
+    reproduced +
+    unreproduced.length +
+    knownUnreproduced.length +
+    unobserved.length +
+    unstated.length;
+  if (partitioned !== recorded) {
+    findings.push(
+      `source reproduction accounting lost ${recorded - partitioned} of ${recorded} ` +
+        `recorded entries — a population was excluded without being named`,
+    );
   }
   // Premise guard, for the same reason the claim this replaces was wrong: a population of
   // zero would make this pass unconditionally and read as confirmation of delivery fidelity.
   if (reproduced === 0) {
     findings.push('no lock entry unstamped to its canon source — check is not observing');
   }
-  return { findings, reproduced, unreproduced, unobserved };
+  return { findings, reproduced, unreproduced, knownUnreproduced, unobserved, unstated };
 }
 
 function verifyManagedContent(lock) {
@@ -874,4 +950,5 @@ module.exports = {
   unstampSource,
   commentFamily,
   verifySourceReproduction,
+  KNOWN_UNREPRODUCED,
 };

@@ -23,6 +23,7 @@ const {
   unstampSource,
   commentFamily,
   verifySourceReproduction,
+  KNOWN_UNREPRODUCED,
 } = require('./check-ai-manifest.js');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -319,9 +320,17 @@ test('managed targets unstamp to their recorded canon source', () => {
 
 test('every recorded source is accounted for, not silently excluded', () => {
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
-  const recorded = Object.values(lock.entries || {}).filter((m) => m && m.sourceSha256).length;
+  // The denominator is now every recorded entry, not just those carrying a sourceSha256.
+  // Filtering the denominator by the same predicate the function skips on made the law
+  // unable to see that skip at all -- it cancelled on both sides (#4207).
+  const recorded = Object.keys(lock.entries || {}).length;
   const result = verifySourceReproduction(lock);
-  const accounted = result.reproduced + result.unreproduced.length + result.unobserved.length;
+  const accounted =
+    result.reproduced +
+    result.unreproduced.length +
+    result.knownUnreproduced.length +
+    result.unobserved.length +
+    result.unstated.length;
   // Conservation law rather than a scan for today's instance. The defect it pins (#4197) was
   // an early `continue` that dropped absent targets, which shrank the denominator with
   // nothing in the output saying so -- the printed ratio then read as coverage of everything
@@ -333,4 +342,104 @@ test('every recorded source is accounted for, not silently excluded', () => {
     `${recorded - accounted} recorded sources fell out of the accounting`,
   );
   assert.ok(recorded > 0, 'lock records no source hashes; conservation would be vacuous');
+});
+
+// --- #4209: an unreproducible source must reach the verdict, and the one pinned exemption
+// must not generalise to a class, to a different corruption, or to its own obsolescence.
+
+const REAL_LOCK = () =>
+  JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+
+// A lock holding exactly one entry, over a file that really exists on disk, so the walk
+// reaches it and the digest is computed from delivered bytes rather than from a fixture.
+const lockOf = (entry, metadata) => ({ entries: { [entry]: metadata } });
+
+const KNOWN_ENTRY = Object.keys(KNOWN_UNREPRODUCED)[0];
+
+test('the known-unreproducible entry is tolerated, and is the only one', () => {
+  const result = verifySourceReproduction(REAL_LOCK());
+  assert.deepEqual(
+    result.knownUnreproduced,
+    [KNOWN_ENTRY],
+    'the pinned exemption should absorb exactly the entry it names',
+  );
+  assert.deepEqual(
+    result.unreproduced,
+    [],
+    'no other entry should be failing to reproduce right now',
+  );
+  assert.deepEqual(result.findings, [], 'a tolerated known entry must not fail --strict');
+  // Without this the test passes just as well on a walk that observed nothing at all.
+  assert.ok(result.reproduced > 0, 'nothing reproduced; the check is not observing');
+});
+
+test('an unreproducible entry that is not the pinned one is a blocking finding', () => {
+  // Take a healthy entry and corrupt only its recorded hash: the bytes are untouched and
+  // real, so this is precisely "delivered bytes disagree with the record" and nothing else.
+  const real = REAL_LOCK();
+  const healthy = Object.entries(real.entries).find(
+    ([entry, m]) =>
+      entry !== KNOWN_ENTRY &&
+      m &&
+      m.sourceSha256 &&
+      fs.existsSync(path.join(ROOT, entry)) &&
+      verifySourceReproduction(lockOf(entry, m)).reproduced === 1,
+  );
+  assert.ok(healthy, 'no reproducing entry available to corrupt; the premise is gone');
+  const [entry, metadata] = healthy;
+  const result = verifySourceReproduction(
+    lockOf(entry, { ...metadata, sourceSha256: 'f'.repeat(64) }),
+  );
+  assert.equal(result.unreproduced.length, 1);
+  assert.equal(result.knownUnreproduced.length, 0, 'the exemption must not generalise');
+  assert.ok(
+    result.findings.some((f) => f.includes(entry) && f.includes('do not reproduce')),
+    `expected a blocking finding for ${entry}, got ${JSON.stringify(result.findings)}`,
+  );
+});
+
+test('the exemption is pinned to both hashes, so a second corruption is not inherited', () => {
+  // Same path, same real bytes, but a recorded hash that is neither correct nor the one the
+  // exemption names. Path-only pinning would swallow this; that is the mutant it kills.
+  const result = verifySourceReproduction(
+    lockOf(KNOWN_ENTRY, {
+      ...REAL_LOCK().entries[KNOWN_ENTRY],
+      sourceSha256: 'a'.repeat(64),
+    }),
+  );
+  assert.equal(result.knownUnreproduced.length, 0, 'exemption matched a state it does not name');
+  assert.equal(result.unreproduced.length, 1);
+  assert.ok(result.findings.some((f) => f.includes('do not reproduce')));
+});
+
+test('the exemption self-liquidates: it is a finding once the entry reproduces again', () => {
+  // The repaired future. `reproduces` is what the delivered bytes actually unstamp to, so
+  // recording it is exactly what a sync run re-rendering this target would write.
+  const result = verifySourceReproduction(
+    lockOf(KNOWN_ENTRY, {
+      ...REAL_LOCK().entries[KNOWN_ENTRY],
+      sourceSha256: KNOWN_UNREPRODUCED[KNOWN_ENTRY].reproduces,
+    }),
+  );
+  assert.equal(result.reproduced, 1, 'the repaired state should reproduce');
+  assert.ok(
+    result.findings.some((f) => f.includes('stale reproduction exemption')),
+    `a tolerance outliving its defect must announce itself, got ${JSON.stringify(result.findings)}`,
+  );
+});
+
+test('an entry stating no source hash is named rather than silently skipped', () => {
+  // #4207. The population is 0 in the real lock, so this is the only place the bucket can
+  // be exercised non-vacuously -- and an unexercised partition proves nothing.
+  const result = verifySourceReproduction(lockOf('AGENTS.md', { targetSha256: 'x'.repeat(64) }));
+  assert.deepEqual(result.unstated, ['AGENTS.md']);
+  assert.equal(
+    result.reproduced + result.unreproduced.length + result.unobserved.length,
+    0,
+    'the entry must land in exactly one bucket',
+  );
+  assert.ok(
+    result.findings.every((f) => !f.includes('accounting lost')),
+    'conservation must hold with the entry accounted for',
+  );
 });
