@@ -206,7 +206,50 @@ export const MAX_TAG_PAGES = 30;
  * an unrelated PR red. But it always returns a `reason` when it cannot answer,
  * because a staleness check that goes quiet is indistinguishable from one that
  * checked and found nothing — and that silence is the failure this had.
+ *
+ * Taking the higher of the two is right for this consumer — we vendor files at a
+ * git ref, and the ref exists the instant the tag does. But the maximum is the
+ * one reduction that discards the *disagreement*, and the disagreement is the
+ * signal: upstream's publish workflow is triggered by the tag and creates the
+ * release from a job gated on `needs: publish`, so a tag ahead of the release is
+ * the normal state for the duration of every publish. It is also what a failed
+ * publish leaves behind permanently. So the two values are returned as a
+ * `notice` when they differ, rather than silently collapsed.
+ *
+ * The notice does not weight those causes evenly, because they are not evenly
+ * likely. Measured on 2026-08-12 over the full upstream history: 181 semver
+ * tags, 154 releases, 27 releaseless tags — and all 27 are a *contiguous prefix*
+ * (v0.1.0 … v0.10.0) predating the release era, with **zero** above
+ * `releases/latest`. In 154 release-era tags the permanent-failure case has
+ * never occurred. Naming it as an equal possibility would be an accusation the
+ * evidence does not support; naming it as the rarer one is what the data says.
  */
+/**
+ * Describe a disagreement between the declared answer (`releases/latest`) and the
+ * derived one (the highest tag), or null when they agree.
+ *
+ * Returns prose rather than a boolean because the two directions mean different
+ * things and a caller cannot recover which from a flag.
+ */
+export function divergenceNotice(releaseRef, tagRef) {
+  if (!releaseRef || !tagRef || releaseRef === tagRef) return null;
+  const higher = highestSemver([releaseRef, tagRef]);
+  if (higher === tagRef) {
+    return (
+      `tag ${tagRef} is ahead of releases/latest ${releaseRef}. ` +
+      'Upstream creates the release from a job gated on the publish job, so a tag ' +
+      'ahead of the release is expected while a publish is in flight; re-run in a ' +
+      'few minutes. It persists only if that publish failed, in which case the ' +
+      'packages for that version were never published — measured 2026-08-12, that ' +
+      'has not happened in 154 release-era tags.'
+    );
+  }
+  return (
+    `releases/latest ${releaseRef} is ahead of the highest tag ${tagRef}. ` +
+    'A release always has a tag, so this means the tag walk did not see it — ' +
+    'treat the tag list as incomplete rather than the release as wrong.'
+  );
+}
 export async function latestRef() {
   const read = async (path, pick) => {
     try {
@@ -267,7 +310,7 @@ export async function latestRef() {
   const tags = await readAllTags();
 
   const best = highestSemver([release.value, tags.value].filter(Boolean));
-  if (best) return { ref: best, reason: null };
+  if (best) return { ref: best, reason: null, notice: divergenceNotice(release.value, tags.value) };
   // Both failed for possibly different causes. Reporting only the first hides
   // the other, which is the same silence at a smaller scale -- a truncated tag
   // walk masked by an unrelated 500 reads as a plain outage.
@@ -275,6 +318,7 @@ export async function latestRef() {
   return {
     ref: null,
     reason: reasons.length > 0 ? reasons.join('; ') : 'no semver tag or release found',
+    notice: null,
   };
 }
 
@@ -415,7 +459,14 @@ async function check() {
     );
   }
 
-  const { ref: latest, reason: staleReason } = await latestRef();
+  const { ref: latest, reason: staleReason, notice: refNotice } = await latestRef();
+  if (refNotice) {
+    // Deliberately not folded into staleReason. That field means "could not
+    // check"; this means "checked, and the two sources disagreed" -- a different
+    // claim with a different remedy, and rendering them identically is the same
+    // collapse this notice exists to undo.
+    process.stdout.write(`\nUpstream refs disagree: ${refNotice}\n`);
+  }
   if (staleReason) {
     // Naming the gap is the whole point. A silent skip prints the same green
     // line as a successful check, so "matches the lock" reads as "and is

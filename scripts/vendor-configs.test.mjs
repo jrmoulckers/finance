@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   apiHeaders,
   highestSemver,
+  divergenceNotice,
   latestRef,
   MAX_TAG_PAGES,
   nextPageUrl,
@@ -78,7 +79,9 @@ test('a tag newer than releases/latest wins, which is the live upstream case', a
     tags: { status: 200, body: tagBody(['v0.134.0', 'v0.133.0']) },
   });
   t.after(stub.restore);
-  assert.deepEqual(await latestRef(), { ref: 'v0.134.0', reason: null });
+  const { ref, reason, notice } = await latestRef();
+  assert.deepEqual({ ref, reason }, { ref: 'v0.134.0', reason: null });
+  assert.equal(typeof notice === 'string' || notice === null, true);
 });
 
 test('the release flag wins when tags lag, so neither source is trusted alone', async (t) => {
@@ -131,7 +134,9 @@ test('one source failing does not suppress the other', async (t) => {
     tags: { status: 200, body: tagBody(['v3.1.4']) },
   });
   t.after(stub.restore);
-  assert.deepEqual(await latestRef(), { ref: 'v3.1.4', reason: null });
+  const { ref, reason, notice } = await latestRef();
+  assert.deepEqual({ ref, reason }, { ref: 'v3.1.4', reason: null });
+  assert.equal(typeof notice === 'string' || notice === null, true);
 });
 
 test('a successful answer never carries a reason, so callers cannot print both', async (t) => {
@@ -188,7 +193,9 @@ test('the highest tag is found when it sits beyond the first page', async (t) =>
     'releases/latest': { status: 200, body: releaseBody('v0.100.0') },
   });
   t.after(stub.restore);
-  assert.deepEqual(await latestRef(), { ref: 'v0.136.0', reason: null });
+  const { ref, reason, notice } = await latestRef();
+  assert.deepEqual({ ref, reason }, { ref: 'v0.136.0', reason: null });
+  assert.equal(typeof notice === 'string' || notice === null, true);
   assert.ok(stub.calls.some((call) => call.url.includes('page=2')));
 });
 
@@ -234,6 +241,48 @@ test('a single-page tag list issues exactly one tag request', async (t) => {
     'releases/latest': { status: 200, body: releaseBody('v0.2.0') },
   });
   t.after(stub.restore);
-  assert.deepEqual(await latestRef(), { ref: 'v0.10.0', reason: null });
+  const { ref, reason, notice } = await latestRef();
+  assert.deepEqual({ ref, reason }, { ref: 'v0.10.0', reason: null });
+  assert.equal(typeof notice === 'string' || notice === null, true);
   assert.equal(stub.calls.filter((call) => call.url.includes('tags')).length, 1);
+});
+
+test('agreement between the declared and derived ref produces no notice', () => {
+  assert.equal(divergenceNotice('v1.2.3', 'v1.2.3'), null);
+});
+
+test('a missing side produces no notice, because there is no disagreement to report', () => {
+  assert.equal(divergenceNotice(null, 'v1.2.3'), null);
+  assert.equal(divergenceNotice('v1.2.3', null), null);
+  assert.equal(divergenceNotice(null, null), null);
+});
+
+test('a tag ahead of the release names the in-flight publish as the likely cause', () => {
+  const notice = divergenceNotice('v0.143.0', 'v0.144.0');
+  assert.match(notice, /tag v0\.144\.0 is ahead of releases\/latest v0\.143\.0/);
+  assert.match(notice, /in flight/);
+});
+
+test('a tag ahead of the release still names the permanent cause, as the rarer one', () => {
+  // Both causes must appear: a notice that named only the benign one would be a
+  // reassurance rather than a report. The ordering carries the base rate.
+  const notice = divergenceNotice('v0.143.0', 'v0.144.0');
+  assert.match(notice, /never published/);
+  assert.ok(notice.indexOf('in flight') < notice.indexOf('never published'));
+});
+
+test('a release ahead of the highest tag is reported as an incomplete tag walk', () => {
+  // A release cannot exist without its tag, so this direction is evidence about
+  // the tag read, not about the release. Blaming the release would send the
+  // reader to the wrong system.
+  const notice = divergenceNotice('v0.144.0', 'v0.143.0');
+  assert.match(notice, /tag list as incomplete/);
+  assert.doesNotMatch(notice, /in flight/);
+});
+
+test('the notice compares by semver, not by string order', () => {
+  // 'v0.9.0' > 'v0.10.0' lexically. If the direction were decided by string
+  // comparison this would render the in-flight wording backwards.
+  const notice = divergenceNotice('v0.9.0', 'v0.10.0');
+  assert.match(notice, /tag v0\.10\.0 is ahead/);
 });

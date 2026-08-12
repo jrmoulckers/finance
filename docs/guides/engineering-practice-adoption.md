@@ -6996,6 +6996,113 @@ peers, **the preset cannot install in any ESLint 10 consumer**. This is not spec
 finance and is not something a consumer can work around locally — the upstream plugins cap
 below `^10`. It is a prerequisite for the `./react` entry point being adoptable here at all.
 
+## The disagreement is the signal, and `max()` is the reduction that discards it
+
+Upstream's §3: `latestRef()` asks two sources for the newest ref and takes the numeric
+maximum, so a disagreement between them is collapsed before any caller sees it. Correct, and
+it was this repository's code doing it:
+
+    const best = highestSemver([release.value, tags.value].filter(Boolean));
+    if (best) return { ref: best, reason: null };
+
+Both values are in hand on that line and only one survives it.
+
+### Verifying their premise before adopting their fix
+
+Measured against the live upstream repository rather than accepted:
+
+| measurement                                  | value                     |
+| -------------------------------------------- | ------------------------- |
+| tags                                         | 182 (181 semver)          |
+| releases                                     | 154                       |
+| `releases/latest`                            | v0.144.0                  |
+| highest tag                                  | v0.144.0                  |
+| divergent right now                          | **no**                    |
+| releaseless semver tags                      | 27                        |
+| releaseless tags **above** `releases/latest` | **0**                     |
+| contiguous releaseless prefix                | **27** — v0.1.0 … v0.10.0 |
+
+Their contiguity claim holds exactly: every releaseless tag is in an unbroken block at the
+bottom of history, and the block ends where the release era begins. Nothing is releaseless
+above it.
+
+### Where the measurement changes their fix
+
+Their §3 gives the divergence two causes — publish in flight (minutes) and publish failed
+(permanent) — and argues the second is why the signal matters. The second is real, but the
+data says it is not equally likely: **in 154 release-era tags there is not one instance of
+it.** Every releaseless tag predates releases entirely.
+
+That matters for wording, not for whether to report. A notice that presents both causes
+evenly reads as "this version may never have been published" — an accusation against a
+release the evidence says is almost certainly mid-publish. The standing rule here is that an
+instrument must under-decide and never render as an accusation. So the notice names both
+causes, in base-rate order, and says which one has never been observed:
+
+> tag v0.144.0 is ahead of releases/latest v0.143.0. Upstream creates the release from a job
+> gated on the publish job, so a tag ahead of the release is expected while a publish is in
+> flight; re-run in a few minutes. It persists only if that publish failed, in which case the
+> packages for that version were never published — measured 2026-08-12, that has not happened
+> in 154 release-era tags.
+
+A test asserts the ordering, because the ordering is the base rate and a reordering would
+silently invert the emphasis while every other assertion still passed.
+
+### The other direction is not the same claim
+
+`releases/latest` ahead of the highest tag cannot mean a publish is in flight — a release
+cannot exist without its tag. It means the tag walk did not see it. Reporting that direction
+with the same prose would send the reader to the wrong system, so it gets its own sentence
+naming the tag read as the suspect.
+
+The notice is returned as a third field rather than folded into `reason`. `reason` means
+_could not check_; this means _checked, and the two sources disagreed_. Rendering them
+identically is the same collapse the notice exists to undo.
+
+`divergenceNotice()` is covered by 6 tests and **5/5 mutants killed**, including a
+string-comparison mutant — `'v0.9.0' > 'v0.10.0'` lexically, so a sort-based implementation
+renders the direction backwards while agreeing on every fixture whose versions happen not to
+straddle a digit boundary.
+
+### A misattribution I owe upstream
+
+I reported `--prune` to them as an upstream defect whose safe use needs a manual second step.
+They checked six versions and `main` and found no such flag. They are right, and the check
+here is one line:
+
+    git log -S"'--prune'" -- scripts/vendor-configs.mjs
+    c0ea1fb9  chore(config): vendor the prettier declarations … (#4228)
+
+**`--prune` is this repository's flag. I added it.** `scripts/vendor-configs.mjs` is a fork
+that has diverged from upstream's, and I read a local addition as inherited behaviour and
+reported it back to its supposed author.
+
+This exchange therefore contains the same error in both directions within one message: they
+attributed a `>=0.8.0 <0.9.0` pin to finance that finance does not have, and I attributed a
+`--prune` flag to them that they do not have. Both of us were reasoning about a shared
+artifact from a local copy without checking which side the detail came from. The general
+form: **a fork makes provenance a property you have to measure, not one you can read off the
+filename** — the file has the same path and the same name on both sides.
+
+Their handling of it is worth copying too. They wrote "I can't locate the thing it's about"
+rather than "you're describing a tool you didn't read," and said explicitly that they had no
+basis for the second rendering. A report of an absence has an accusatory rendering and a
+neutral one that carry identical information, and only the neutral one survives being wrong.
+
+### My own probe, failing the way I keep cataloguing
+
+The first attempt at the measurement above ran unauthenticated against a private repo, got
+HTTP 403 on both reads, and printed:
+
+    releaseless : 0
+    releases/latest : undefined
+
+A zero produced by reading nothing, in a script written specifically to check whether a zero
+was real. It was caught only because a later line crashed on `undefined`. Had the crash not
+happened the run would have printed a clean, false, confirming answer. Same catalogue entry as
+every other instrument here that reported an empty result from a failed read — and written by
+someone who had just documented that exact failure twice.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
