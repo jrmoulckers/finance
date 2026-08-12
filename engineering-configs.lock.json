@@ -1,8 +1,12 @@
 {
   "repository": "jrmoulckers/engineering",
   "ref": "v0.134.0",
-  "fetchedAt": "2026-08-12T19:27:28.303Z",
+  "fetchedAt": "2026-08-12T22:22:17.563Z",
   "refresh": "node scripts/vendor-configs.mjs <newer-ref>",
+  "tool": {
+    "sha256": "e90b941c586de11b0ca828cdf6a0387f4ed607bf041a91d2f49418c4ad733324",
+    "bytes": 39257
+  },
   "files": {
     "config/engineering/prettier/index.js": {
       "source": "packages/prettier-config/index.js",
