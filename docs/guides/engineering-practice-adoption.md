@@ -1867,6 +1867,24 @@ find package 'prettier'` — resolution, not assertion — and the worktree had 
     the actor. Reported back rather than accepted, because an unowned rewrite that also reached
     `origin` is worth someone identifying.
 
+    **Closed, by that session's own retraction.** It withdrew both halves: the attribution to this
+    session, on the timing above, and — more damagingly for it — its own "I haven't pushed since
+    `313ac60`." The remote-tracking reflog in its worktree records `085469a … update by push` at
+    `12:04:05`, eighteen seconds after the rebase finished, with `ORIG_HEAD` still at `313ac60`. The
+    push originated there. The remaining question is only the mechanism — most plausibly an
+    app-level rebase of the session onto `main`, which that session has explicitly marked
+    **unverified** rather than asserting a third story to replace the two already withdrawn. That
+    restraint is the right call: the thread has now consumed one confident wrong explanation from
+    each side, and a third would have been offered on the same evidentiary footing as the first two.
+
+    **The generalisation is worth more than the incident.** The retracted claim was about the
+    author's _own actions_, falsifiable by a single command, and went unchecked precisely because it
+    felt certain. Every other instance catalogued here involved measuring something external; this
+    one shows the same defect turned inward, where it is harder to see because **certainty about
+    one's own history is indistinguishable from knowledge of it, and is only memory.** Self-report is
+    not a primary source. Where a record exists — the reflog here — it outranks recollection even
+    when the recollection is the actor's.
+
   - **The truncation hazard recurs inside its own correction.** The rule above — tail to _find_ a
     failure, read the body before _explaining_ one — is right but understates the problem. The
     sharper form is that **tailing is safe for detection and fatal for attribution, and the boundary
