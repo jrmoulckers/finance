@@ -5047,6 +5047,107 @@ they put it, and the reason is that a fabricated column inherits the shape of th
 than the shape of the data. A genuine enumeration of a file across 153 tags produces collisions,
 because content repeats; only a fabricated one is perfectly distinct.
 
+## A dead guard is a permanently green security check, and it is one deletion away
+
+Upstream retracted a figure it had published for finance — `(7,1)` — on the grounds that it was
+never measured here but borrowed from an undercount of mine and reformatted into upstream's own
+notation. That retraction is correct and the general form is worth more than the correction:
+
+> A borrowed value laundered through someone else's notation reads as independent confirmation.
+
+It collided with a real defect on this side. My probe returned `(7,1)` because its normaliser
+stripped trailing parentheticals and collapsed `CodeQL (javascript-typescript)` and
+`CodeQL (java-kotlin)` onto one identity. Agreement between the two figures was therefore not
+evidence: one was my undercount, and the other was my undercount wearing different units. The
+true pair is `(7,4)`, caught only because three earlier sections of this guide record 4 ran /
+3 skipped on docs-only PRs — a contradiction with observed run counts, not a better probe.
+
+Worth recording that the instrument survived the error inside it. `(7,1)` and `(7,4)` are both
+non-vacuous, so the ranking against a repo with `(0,—)` never depended on which was right. The
+predicate it replaced — _is any required context unconditional?_ — would have returned `true` for
+both and hidden that one of us was wrong by a factor of four.
+
+### Tautology is a property of the guard against its trigger set
+
+Upstream's sharpening is right and it is the actionable part: an `if:` cannot be classified by
+reading it. `github.event_name == 'push'` is live, dead, or tautological depending entirely on the
+`on:` block — a different part of the file, which never mentions the job, and which changes
+independently.
+
+Classified every guard in the 31 workflows on that basis. 81 jobs carry an `if:`; 33 reference
+`github.event_name`. Of the guards decidable from the trigger set alone:
+
+| Workflow / job                           | Guard covers | Declared triggers | State     | Margin to DEAD |
+| ---------------------------------------- | ------------ | ----------------- | --------- | -------------- |
+| `ci-security.yml` / `codeql-java-kotlin` | 4 of 4       | 4                 | TAUTOLOGY | 4              |
+| `housekeeping.yml` / `add-to-project`    | 2 of 4       | 4                 | LIVE      | 2              |
+| `ci-web.yml` / `e2e-pr-smoke`            | 1 of 2       | 2                 | LIVE      | **1**          |
+| `ci-security.yml` / `dependency-review`  | 1 of 4       | 4                 | LIVE      | **1**          |
+
+**0 DEAD guards exist today.** That zero is what makes the next part a ratchet rather than a
+migration.
+
+### The loop closes on the gatekeeper
+
+`ci-security.yml`'s `Required Checks Gatekeeper` was built to defeat skip-satisfies-required at
+the branch-protection level: it runs `if: always()`, takes 8 security jobs as `needs:`, and fails
+if any of them failed or was cancelled. That aggregation is correct.
+
+But at L603–606 it accepts `skipped` as passing, and the comment at L597–599 says why:
+`dependency-review` only runs on pull requests, so on every push it is legitimately skipped.
+Making `skipped` fail would break every push. **The skip tolerance is forced.**
+
+So delete `pull_request:` from that `on:` block — one line, in a block that never names
+`dependency-review` — and the job is skipped on every event forever. The gatekeeper reports
+success, correctly by its own rules, and nothing in the repository can tell the difference between
+a job that is correctly skipped and one that can never run again.
+
+This is the same shape recorded earlier in this guide one level down. A `paths:`-filtered
+`pull_request` trigger makes a required check _never report_, which blocks the PR forever; the
+only remedy is trigger-always/skip-inside, which yields `SKIPPED`, which satisfies the
+requirement. The mandatory remedy for one trap manufactures the exact condition of the other — and
+the mechanism built to contain the consequence reproduces it at the level above.
+
+### The ratchet
+
+`tools/check-workflow-security.mjs` now exports `findDeadEventGuards`, wired into
+`scanWorkflowSecurity`, so the gatekeeper's own security check fails any workflow carrying a guard
+no declared trigger can satisfy.
+
+Three design constraints, each from a failure this guide already records:
+
+**It decides only what it can decide.** `pureEventDisjunction` returns the accepted events only
+for a plain `||` chain of `github.event_name == '<event>'`, and `null` for anything containing
+`&&`, `!`, or parentheses. 29 of the 33 event-referencing guards mix in `needs.*` outputs,
+`always()`, or `github.ref`, and their reachability is not a function of the trigger list. A
+checker that guessed at those would report violations against correct workflows.
+
+**Reusable workflows are exempt.** Inside a `workflow_call` target, `github.event_name` is the
+_caller's_ event, so the callee's own trigger list says nothing about which values are reachable.
+This is not hypothetical: `reusable-detect-changes.yml` declares `on: workflow_call:` and nothing
+else, and carries `if: github.event_name == 'pull_request'` at L65. The first draft flagged it.
+The file is correct; the checker was wrong. 3 workflows declare `workflow_call`.
+
+**It uses the real parser.** The file previously imported only node builtins, and matching that
+would have meant hand-rolling a folded-scalar parser — 22 of the guards are written as `if: >-`
+or `if: |`, including the tautological one. A bespoke parser would have silently skipped exactly
+the cases with the most room to hide. `js-yaml` is already a direct dependency at `^4.3.1`.
+
+Verified both directions. Against the 31 workflows as they stand: **0 violations, exit 0**.
+Against `ci-security.yml` with `pull_request:` removed from the trigger block and nothing else
+changed:
+
+```
+job 'codeql-java-kotlin' step 2 is guarded on 'pull_request', which no declared
+  trigger (push, schedule, workflow_dispatch) can satisfy — it can never run
+job 'dependency-review' is guarded on 'pull_request', which no declared
+  trigger (push, schedule, workflow_dispatch) can satisfy — it can never run
+```
+
+11/11 unit tests pass, including the reusable-workflow exemption and the case where a disjunction
+names one undeclared event alongside a declared one — that guard is live, and a checker requiring
+every term to be reachable would have been wrong about it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

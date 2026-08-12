@@ -3,11 +3,81 @@ import test from 'node:test';
 
 import {
   extractJob,
+  findDeadEventGuards,
   findInheritingJobs,
   findMutableReferenceViolations,
   findRunExpressionViolations,
+  pureEventDisjunction,
   scanWorkflowSecurity,
 } from './check-workflow-security.mjs';
+
+test('findDeadEventGuards flags a guard no declared trigger can satisfy', () => {
+  const workflow = `
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    steps:
+      - run: echo hi
+`;
+
+  const violations = findDeadEventGuards('ci-security.yml', workflow);
+  assert.equal(violations.length, 1);
+  assert.match(violations[0], /job 'dependency-review'/);
+  assert.match(violations[0], /can never run/);
+});
+
+test('findDeadEventGuards accepts a guard one declared trigger satisfies', () => {
+  const workflow = `
+on:
+  push:
+  pull_request:
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    steps:
+      - if: github.event_name == 'push' || github.event_name == 'schedule'
+        run: echo hi
+`;
+
+  // The job guard is live. The step guard names 'schedule', which is not
+  // declared, but 'push' is — a disjunction needs only one reachable term.
+  assert.deepEqual(findDeadEventGuards('ci.yml', workflow), []);
+});
+
+test('findDeadEventGuards exempts reusable workflows, where event_name is the caller\u2019s', () => {
+  const workflow = `
+on:
+  workflow_call:
+jobs:
+  detect:
+    steps:
+      - if: github.event_name == 'pull_request'
+        run: echo hi
+`;
+
+  assert.deepEqual(findDeadEventGuards('reusable-detect-changes.yml', workflow), []);
+});
+
+test('pureEventDisjunction decides only plain disjunctions', () => {
+  assert.deepEqual(pureEventDisjunction("github.event_name == 'push'"), ['push']);
+  assert.deepEqual(
+    pureEventDisjunction("${{ github.event_name == 'push' || github.event_name == 'schedule' }}"),
+    ['push', 'schedule'],
+  );
+  // Undecidable from the trigger list alone, so not decided at all.
+  assert.equal(
+    pureEventDisjunction("github.event_name == 'push' && needs.changes.outputs.web"),
+    null,
+  );
+  assert.equal(pureEventDisjunction("always() && github.event_name == 'push'"), null);
+  assert.equal(pureEventDisjunction("github.event_name != 'pull_request'"), null);
+  assert.equal(pureEventDisjunction(undefined), null);
+});
 
 test('findRunExpressionViolations finds direct input-to-shell interpolation', () => {
   const workflow = `
