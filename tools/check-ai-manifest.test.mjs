@@ -18,7 +18,8 @@ const {
   managedRegion,
   managedDigest,
   verifyLockCoverage,
-  unstampCandidates,
+  unstampSource,
+  commentFamily,
 } = require('./check-ai-manifest.js');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -111,26 +112,41 @@ const CANON_STAMP = '<!-- synced from jrmoulckers/.github — canonical source; 
 // Coverage regression guard. The first implementation matched one literal -- HTML comment,
 // canon message -- and silently skipped 11 present entries stamped `#`, `/* */`, or with the
 // studio "generated + synced" wording. It reported 54 and read as complete.
-test('unstampCandidates recognizes every comment syntax and both messages', () => {
+test('unstampSource recognizes every comment syntax and both messages', () => {
   const forms = [
-    CANON_STAMP,
-    '# synced from jrmoulckers/.github — canonical source; do not edit here',
-    '/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */',
-    '<!-- generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here -->',
+    ['a.md', CANON_STAMP],
+    ['agency.toml', '# synced from jrmoulckers/.github — canonical source; do not edit here'],
+    ['t.css', '/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */'],
+    ['r.md', '<!-- generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here -->'],
   ];
-  for (const stamp of forms) {
-    assert.equal(unstampCandidates(`${stamp}\nbody\n`).length, 2, `not recognized: ${stamp}`);
+  for (const [file, stamp] of forms) {
+    assert.equal(unstampSource(file, `${stamp}\nbody\n`).status, 'ok', `not recognized: ${stamp}`);
   }
-  assert.deepEqual(unstampCandidates('# Local file\nnot synced\n'), []);
+  assert.equal(unstampSource('a.md', '# Local file\nnot synced\n').status, 'no-stamp');
 });
 
-// The caller accepts a match under either strip, so both must be offered. A single-strip
-// implementation would reproduce one stamper's shape and silently drop the other's.
-test('unstampCandidates offers both the one-line and two-line strip', () => {
-  const noBlank = `${CANON_STAMP}\nbody\n`;
-  const blank = `${CANON_STAMP}\n\nbody\n`;
-  assert.deepEqual(unstampCandidates(noBlank), ['body\n', 'body\n'.replace('body\n', '')]);
-  assert.ok(unstampCandidates(blank).includes('body\n'));
+// The strip depth is decided by comment family, with frontmatter as an exception inside the
+// html family only. An earlier version keyed on frontmatter alone and scored 55 of 65 by
+// being right about `.md` and accidentally right elsewhere.
+test('unstampSource strips the depth the engine injected, per family', () => {
+  const cases = [
+    ['x.md', `${CANON_STAMP}\n\nbody\n`, 'body\n'],
+    ['x.md', `---\ntitle: t\n---\n${CANON_STAMP}\nbody\n`, '---\ntitle: t\n---\nbody\n'],
+    ['x.toml', '# synced from jrmoulckers/.github — x\nbody\n', 'body\n'],
+    ['x.css', '/* generated + synced from jrmoulckers/studio — x */\nbody\n', 'body\n'],
+  ];
+  for (const [file, delivered, expected] of cases) {
+    assert.equal(unstampSource(file, delivered).body, expected, `wrong strip for ${file}`);
+  }
+});
+
+// A stamped file whose extension is unclassified must be reported, never skipped. Skipping
+// shrinks the denominator with nothing saying so -- the silent-channel defect this tool has
+// already corrected twice.
+test('an unclassified stamped file is surfaced rather than skipped', () => {
+  assert.equal(unstampSource('weird.xyz', `${CANON_STAMP}\nbody\n`).status, 'unknown');
+  assert.equal(commentFamily('weird.xyz'), null);
+  assert.equal(commentFamily('.gitattributes'), 'hash', 'a dotfile is its own extension');
 });
 
 // The assertion the tool previously called impossible. The original measurement hashed each
@@ -141,22 +157,28 @@ test('managed targets unstamp to their recorded canon source', () => {
   let reproduced = 0;
   let asDelivered = 0;
   let corruptedReproduced = 0;
+  const families = new Set();
   for (const [entry, metadata] of Object.entries(lock.entries || {})) {
     if (!metadata || !metadata.sourceSha256) continue;
     const absolute = path.join(ROOT, entry);
     if (!fs.existsSync(absolute)) continue;
     const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
     if (managedRegion(text) !== null) continue;
-    const candidates = unstampCandidates(text);
-    if (candidates.length === 0) continue;
-    if (candidates.some((body) => sha(body) === metadata.sourceSha256)) reproduced += 1;
+    const source = unstampSource(entry, text);
+    if (source.status !== 'ok') continue;
+    families.add(commentFamily(entry));
+    if (sha(source.body) === metadata.sourceSha256) reproduced += 1;
     if (sha(text) === metadata.sourceSha256) asDelivered += 1;
-    // Corruption control: an edited body must reproduce under NEITHER candidate. Without
-    // this the disjunction could be accepting far more than it should and still count 64.
-    const corrupted = unstampCandidates(`${text}\n/* edited */\n`);
-    if (corrupted.some((body) => sha(body) === metadata.sourceSha256)) corruptedReproduced += 1;
+    // Corruption control: an edited body must not reproduce. Without this the strip could be
+    // accepting far more than it should and still count 64.
+    const corrupted = unstampSource(entry, `${text}\n/* edited */\n`);
+    if (corrupted.status === 'ok' && sha(corrupted.body) === metadata.sourceSha256) {
+      corruptedReproduced += 1;
+    }
   }
   assert.ok(reproduced > 0, 'corpus contains no stamped entry to verify');
   assert.equal(asDelivered, 0, 'delivered form should never match a pre-stamp hash');
-  assert.equal(corruptedReproduced, 0, 'a corrupted body must not reproduce under either strip');
+  assert.equal(corruptedReproduced, 0, 'a corrupted body must not reproduce');
+  // Breadth guard: a corpus exercising one family would certify the switch on a third of it.
+  assert.ok(families.size >= 2, `switch exercised on only ${families.size} comment family`);
 });
