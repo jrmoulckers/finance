@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { managedRegion, managedDigest } = require('./check-ai-manifest.js');
+const { managedRegion, managedDigest, verifyLockCoverage } = require('./check-ai-manifest.js');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const sha = (text) => crypto.createHash('sha256').update(text).digest('hex');
@@ -40,6 +40,46 @@ test('the whole-file rule strips nothing', () => {
   assert.equal(managedRegion(text), null);
   assert.equal(managedDigest(text), sha(text));
   assert.notEqual(managedDigest(text), sha(text.trim()));
+});
+
+test('lock coverage: baseline is zero, and a stamped unrecorded file is caught', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+
+  // BASELINE, printed before the treatment is read: a control that cannot show its baseline
+  // cannot be distinguished from one that is not running.
+  const baseline = verifyLockCoverage(lock);
+  assert.deepEqual(baseline, [], `expected clean baseline, got ${JSON.stringify(baseline)}`);
+
+  const dir = path.join(ROOT, '.github/skills/__coverage_probe__');
+  const file = path.join(dir, 'SKILL.md');
+  const stamp = '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->';
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+
+    // Treatment A: stamped and unrecorded -> engine-written but not in the lock. Must fire.
+    fs.writeFileSync(file, `${stamp}\n\n# probe\n`);
+    const stamped = verifyLockCoverage(lock);
+    assert.equal(stamped.length, 1, 'a stamped unrecorded file must be reported');
+    assert.match(stamped[0], /__coverage_probe__/);
+
+    // Treatment B: unrecorded but UNSTAMPED -> indistinguishable from a Finance-authored
+    // file without canon's inventory. Must NOT fire. This pins the documented limitation as
+    // a deliberate boundary rather than an accident, so narrowing it later is a visible change.
+    fs.writeFileSync(file, '# probe\n');
+    assert.deepEqual(verifyLockCoverage(lock), [], 'an unstamped file must not be reported');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
+  assert.deepEqual(verifyLockCoverage(lock), [], 'fixture must be fully removed');
+});
+
+test('PREMISE: lock coverage fails loudly if it stops observing managed files', () => {
+  // Guards the vacuity of the test above: with an empty lock nothing is recorded, so every
+  // stamped file becomes a finding and the premise guard fires. A walk that silently reached
+  // no files would return [] here and read exactly like the healthy baseline.
+  const findings = verifyLockCoverage({ entries: {} });
+  assert.ok(findings.length > 0, 'an empty lock must not read as complete coverage');
 });
 
 test('every present managed target still verifies against the lock', () => {
