@@ -3467,6 +3467,138 @@ No floor is wrong — every published version satisfies its range. Two of three 
 behind, for the second consecutive broadcast, and reporting it a second time is only worth the
 words because they asked to be checked rather than believed.
 
+## A blended message is harder than a misrouted one
+
+The upstream session sent a message crediting this session with five findings. One of them is
+ours. The other four are not, and the true one is what made the false ones read as ours.
+
+| Attributed finding                                              | Ours?   | Evidence                                                             |
+| --------------------------------------------------------------- | ------- | -------------------------------------------------------------------- |
+| `strictTypeChecked` = 2,093 findings across 45 rules            | **yes** | measured here; recorded as the reason type-aware linting is deferred |
+| 744 findings, removed by a `toolingFiles` fix                   | no      | never measured here; our figure is 314                               |
+| 317 from artifact vs 266 from source, a 19% under-count         | no      | our counts are 525 listed / 121 active                               |
+| `0.5.0` vs `0.6.0` tarball hashing, `next.js` exposure          | no      | this session never installed or examined `0.5.0`                     |
+| `toolingFiles` accretion diagnosis (`test` vs `spec` asymmetry) | no      | reported to us as ours; we had not looked at those globs             |
+
+This is the third misrouted message in the engagement, and it is the most difficult of the three,
+because the previous two were wholly foreign and this one is not. A message that is entirely
+another repo's findings is disproved by its first sentence. A message that opens with a figure we
+did produce establishes that the sender has our context, and every later attribution inherits that
+credibility. **The true half authenticates the false half.** Correcting it required checking five
+claims individually rather than rejecting the message once.
+
+The practical rule that follows: **attribution has to be checked per claim, not per message.** A
+sender who is demonstrably talking to the right session may still be wrong about which findings
+are that session's.
+
+## The deletion in our worktree did not happen here
+
+The message states that `.presettrial/` — 2,661 files, 38.7 MB — was deleted from
+`C:\Users\jrmou\src\copilot-worktrees\finance\jrmoulckers-automatic-bassoon`, and that `HEAD` is
+`7e345a74`. That path is ours. Checked:
+
+```
+HEAD actual                     0ebf7599   (== origin/main)
+tracked files                   5,522
+git status --porcelain          (empty)
+.presettrial present            False
+git ls-files .presettrial       (empty)
+git log --all -- .presettrial   0 commits
+```
+
+Nothing was lost. `.presettrial/` never existed in this worktree and was never tracked; this
+session's scratch installs have always lived in `$env:TEMP\presettrial9\` and `\presettrial10\`,
+outside the repository entirely.
+
+**The quoted SHA is the interesting part, because it resolves.**
+
+```
+git cat-file -t 7e345a74                       -> commit
+git merge-base --is-ancestor 7e345a74 main     -> exit 1
+git rev-list --count 7e345a74..origin/main     -> 10
+```
+
+`7e345a74` is `fix(ci): block new jobs from inheriting workflow-level permissions (#4029)` — our
+own issue, our own subject matter. It is a **pre-rebase revision of this branch**, orphaned by one
+of the force-pushes that squash-merging requires, ten commits behind, and not an ancestor of
+`main`. The sender was reading a real snapshot of this branch, taken before those rebases.
+
+Worth keeping, because it defeats the obvious check: **a SHA that resolves is not a SHA that is
+current.** `git cat-file -t` succeeds on any object the repository still holds, including commits
+no branch points at. The question "is this the state I am looking at" is answered by
+`merge-base --is-ancestor`, not by whether the object exists. Verifying existence and reporting
+agreement is the same shape as a control that cannot fail.
+
+## The re-measurement was already run against the fixed artifact
+
+The request was to re-measure `reactConfig()` on `0.15.0`. That measurement already exists in this
+document — and because published versions are immutable, the `0.15.0` measured earlier is
+necessarily the same artifact that carries the fixes now being announced. Confirmed in the
+installed copy rather than assumed:
+
+```
+version   0.15.0
+exports   . ./base ./svelte ./react ./next ./ignores
+ignores.js present, toolingFiles exported, 24 globs
+  test    cjs js jsx mjs ts tsx
+  spec    cjs js jsx mjs ts tsx
+  config  cjs js mjs ts
+```
+
+So the announced fixes are present in the artifact this session measured, and the finance figures
+stand unchanged: **525 rules listed, 121 active, 314 findings (267 errors + 47 warnings) across
+137 of 2,301 files.** They are not 317 and there is no 744 to have disappeared.
+
+**A near-miss in that check is worth recording.** The first pass filtered the glob list with
+`startsWith('scripts')` and `startsWith('tools')`, got nothing, and was one sentence away from
+reporting that the announced `scripts/**` and `tools/**` additions had not shipped. Both had — as
+`**/scripts/**/*.ts` and `**/tools/**/*.ts`. The filter tested for a leading literal against globs
+that are `**/`-prefixed by construction. **An absence produced by a filter is a property of the
+filter until the unfiltered list has been read.**
+
+## What the tooling globs are actually worth to finance
+
+This is the part that is genuinely ours to measure. Effective configuration under
+`reactConfig()` at `0.15.0`, printed per file:
+
+| file                                | `no-console` | `no-require-imports` |
+| ----------------------------------- | ------------ | -------------------- |
+| `scripts/eng-citations-gate.mjs`    | `off`        | `off`                |
+| `tools/check-workflow-security.mjs` | `off`        | `off`                |
+
+Both of finance's local gate scripts are covered by the shared preset, so finance's hand-written
+`scripts/**` and `tools/**` console and CommonJS overrides become redundant on adoption. That is a
+deletion from `eslint.config.mjs`, which is the acceptance test this adoption set itself.
+
+The upstream session flagged `services/**` as the case it deliberately declined to put in the
+shared preset, and built the `toolingFiles` export for consumers like finance to handle locally.
+Measured, finance does not need it:
+
+```
+services/** tracked .ts/.tsx/.js/.mjs      127
+  containing console.*                      10
+  matched by toolingFiles (test/spec)         2
+  not exempt                                  8
+  of those, sites the rule actually flags     5   in 3 files
+```
+
+`no-console` in the preset is `warn` with `allow: ['warn','error']`, so `console.warn` and
+`console.error` — 15 of the 20 call sites — never fire. **finance's blanket `no-console: off` for
+`services/**` exists to suppress five `console.log`/`console.error`-adjacent calls in three
+files**, all of them warnings. The exemption is roughly twenty-five times wider than the thing it
+exempts. The right response is to fix or narrowly disable five sites, not to import a directory
+exemption into the new config.
+
+The upstream decision to keep `services/**` out of the shared preset is therefore correct, and
+correct for a second reason it did not claim: the consumer it was reserved for does not need it.
+
+**One more can't-fail control, caught in the act.** The first `services/**` probe sampled
+`services/api/monitoring/alerts.test.ts` and reported `no-console: off` — apparently confirming
+that `services/**` was exempt. That file matches `**/*.test.ts`. It was being classified as
+tooling, not as services, so the probe was reading the preset's test-file rule and reporting it as
+a services-directory result. Sampling the first element of a list is only safe when the list is
+homogeneous with respect to the thing being measured, and this one was not.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
