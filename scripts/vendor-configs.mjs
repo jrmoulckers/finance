@@ -54,6 +54,16 @@ const SETS = {
     from: 'packages/prettier-config',
     files: ['index.js', 'svelte.js'],
   },
+  // Not a config — the ENG-* citation checker. It is vendored rather than copied
+  // because upstream owns it and its header says it is "fetched over the network
+  // and kept nowhere", which is exactly how finance ended up running a private
+  // copy from a temp directory for fifteen pull requests. Content-hashing it here
+  // is what catches the drift its own printed version number does not: the local
+  // copy and `main` both declared v9 while differing by 2 KB.
+  citations: {
+    from: 'scripts',
+    files: ['check-citations.mjs'],
+  },
 };
 
 class VendorError extends Error {
@@ -224,6 +234,13 @@ function assertPayload(path, text) {
   if (text.trim() === '') {
     fail(`${path} came back empty`, 'The ref may exist but not contain this file.');
   }
+  // An executable is a legitimate payload that exports nothing. Keyed on the
+  // shebang rather than on a per-set `kind` flag because the drift check fetches
+  // by lock entry and has no set to consult — plumbing a kind through would have
+  // made every executable throw there, and that path swallows throws and reports
+  // "no signal", which would have disabled drift detection for the config files
+  // too. No HTML error page begins with `#!`.
+  if (text.startsWith('#!')) return;
   if (path.endsWith('.json')) {
     let parsed;
     try {

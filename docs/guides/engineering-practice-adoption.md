@@ -1442,7 +1442,7 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
    profiling, the practice that would explain how is web-shaped, and there is no native area to
    host the obligation in the first place. Requesting an `ENG-NATIVE-*` (or `ENG-APP-*`) area.
 
-7. **`scripts/check-citations.mjs` does not expand ID ranges.** (**Closed upstream in checker
+7. **`check-citations.mjs` does not expand ID ranges.** (**Closed upstream in checker
    `v9`** — verified below.) The checker resolves literal IDs
    only, so a citation written as `` `ENG-OBS-001`–`ENG-OBS-007` `` is scanned as exactly two
    citations and the five in between are never verified. That is precisely where a
@@ -1670,9 +1670,102 @@ name(s) match` — the clause **disappears from the output entirely**, so a file
 
 ## Citation audit
 
-Verified with `scripts/check-citations.mjs --review` at `v0.2.11`, run over all 804 markdown
+Verified with the upstream checker (then run from a temp directory; see below) at `v0.2.11`, run over all 804 markdown
 files: **every ID valid, and every principle's true title matching the claim made about it.** The
 wrong-meaning defect reported elsewhere in the org did not reach finance.
+
+### The checker was never in this repository
+
+Every citation audit above, and the evidence line on roughly fifteen merged PRs, was produced by a
+copy of upstream's checker living in `$env:TEMP`. finance had **no** `check-citations.mjs`, no npm
+script, and no CI job. The guide cited a path — `scripts/check-citations.mjs` — that had never
+existed here. Nobody else could reproduce a single one of those results, and CI had never once run
+the check.
+
+This is the failure this guide catalogues, committed by this guide. An absent verifier and a
+passing verifier emit the same signal — nothing — and fifteen green PRs are exactly what both look
+like. The reason it survived is that the check kept **passing**, so it never produced the one
+output that would have exposed it.
+
+Now vendored and wired:
+
+|                |                                                              |
+| -------------- | ------------------------------------------------------------ |
+| Vendored to    | `config/engineering/citations/check-citations.mjs`           |
+| Pinned at      | `v0.86.0`, content-hashed in `engineering-configs.lock.json` |
+| Local commands | `npm run eng:citations`, `npm run eng:citations:review`      |
+| CI job         | `ci-lint.yml` → **ENG Citations**                            |
+
+**Vendored, not copied.** The script's own header says it is fetched over the network and "kept
+nowhere". Pasting it into `scripts/` would fork it silently — the vendored-workflow anti-pattern
+this repo already documents for reusable workflows. It goes through the existing vendor-by-ref +
+content-lock mechanism instead, so `npm run eng:vendor:check` fails if anyone edits it.
+
+#### `TOOL_VERSION` did not distinguish two different released checkers
+
+The temp copy declared `TOOL_VERSION = '9'`. The current upstream one declares `TOOL_VERSION = '9'`.
+They differ by **2,057 bytes and one whole function** — `contextWindow()`, which supplies the ±2-line
+window used by both the adjacency check and the range-member check. The old copy was running with
+two checks structurally unable to fire.
+
+This is not a branch-versus-tag artifact. Two _released_ tags disagree:
+
+| Ref       | `TOOL_VERSION` | `contextWindow()` | bytes  |
+| --------- | -------------- | ----------------- | ------ |
+| `v0.66.0` | `9`            | absent            | 20,642 |
+| `v0.86.0` | `9`            | present           | 22,699 |
+
+A declared version number is an assertion by the author; a content hash is a property of the bytes.
+Only the second one caught this. That is the same distinction as [the version numeral is not a
+ref](#the-version-numeral-is-not-a-ref--the-misattribution-ran-in-reverse) — the identifier agreed while the artifact did not.
+
+> **Upstream suggestion:** `versions.json` gets machine-checked publication, but
+> `check-citations.mjs` — the thing that verifies everyone's citations — has no equivalent
+> guarantee. Either bump `TOOL_VERSION` on every behavioural change, or publish a hash alongside it.
+> Consumers currently cannot tell two different checkers apart.
+
+#### Retraction: the missing function was not "unreleased"
+
+While investigating, this guide was about to record that `contextWindow()` existed only on `main`
+and in no tag. That was wrong, and the way it went wrong is worth keeping.
+
+The claim rested on a sibling session's report that the latest tag was **`v0.66.0`**. That was true
+when written and stale by the time it was used. The tags were then sampled across `v0.57.0`–
+`v0.66.0` — a genuine, correctly-executed search — which found no `contextWindow()`, because the
+newest tag is **`v0.86.0`** and the search never reached it. Twenty releases sat outside a range
+chosen from a second-hand number.
+
+The measurement was sound and the bound was borrowed. Sampling within a range inherited from
+someone else's report tests the range, not reality, and returns a confident negative either way.
+The `git fetch --tags` guard already recorded here applies to ranges, not just to single refs: **an
+upper bound taken on report is an unverified premise even when everything inside it is measured.**
+
+#### Both gates were proven able to fail
+
+`ENG-TEST-008` — a check that has never failed has not been shown to work. Neither gate was
+shipped on the strength of a green run:
+
+| Control            | Injected                                     | Exit                           | Reverted |
+| ------------------ | -------------------------------------------- | ------------------------------ | -------- |
+| Citation check     | a well-formed SEC ID in the unused 900 block | **1**, naming file and line    | 0        |
+| Vendor drift check | one appended comment line                    | **1**, naming the drifted file | 0        |
+
+The fixture ID is described rather than quoted above, because the checker reads any well-formed
+ID in any markdown file as a citation and cannot tell a citation from a description of one — a
+negative-control fixture written literally would fail the very gate it certifies.
+
+Shipping an unproven gate here would have replaced a checker nobody ran with a checker that could
+not fail — a strictly worse outcome, and indistinguishable in CI.
+
+#### The job is deliberately not path-filtered
+
+Every other job in `ci-lint.yml` is gated on the `changes` detector. This one is not, and the
+asymmetry is the point: the other jobs check finance's files against finance's rules, so "nothing
+relevant changed" really does mean "nothing to check". This job checks finance's citations against
+**another repository's** index, which moves independently. An upstream rename can invalidate a
+citation on a PR that touches nothing at all — so a path filter would remove the check exactly when
+it is the only thing that could catch the breakage. It runs on every PR, with no `npm ci` (the
+script has no dependencies), and **throws** rather than passing when the index cannot be fetched.
 
 ### Re-audited under machine-verified names (`v0.16.5`)
 
@@ -1683,7 +1776,7 @@ the index before being capitalised, and **all 35 were already correct** — no w
 existed to find. They are now machine-verified rather than merely right:
 
 ```powershell
-node scripts/check-citations.mjs docs --index <pinned-index> --review
+node config/engineering/citations/check-citations.mjs docs --index <pinned-index> --review
 # 66 citation(s) across 34 principle(s) in 441 file(s); all IDs exist, and 31 stated name(s) match.
 ```
 
