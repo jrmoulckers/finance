@@ -1,7 +1,7 @@
 {
   "repository": "jrmoulckers/engineering",
-  "ref": "v0.15.7",
-  "fetchedAt": "2026-08-11T15:52:47.244Z",
+  "ref": "v0.86.0",
+  "fetchedAt": "2026-08-12T04:12:35.679Z",
   "refresh": "node scripts/vendor-configs.mjs <newer-ref>",
   "files": {
     "config/engineering/prettier/index.js": {
@@ -11,6 +11,10 @@
     "config/engineering/prettier/svelte.js": {
       "source": "packages/prettier-config/svelte.js",
       "sha256": "6901f8eb670b4ce68ecac86fd7da37ec7f81227ad55e99df13106f54d521332f"
+    },
+    "config/engineering/citations/check-citations.mjs": {
+      "source": "scripts/check-citations.mjs",
+      "sha256": "4bc850401c2fa188a80cb7597d873ffd27311940030e51c4eedf006d13b19dd4"
     }
   }
 }

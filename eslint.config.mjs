@@ -102,7 +102,19 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ['**/build/**', '**/dist/**', '**/node_modules/**', '**/.gradle/**', '**/vendor/**'],
+    // `config/engineering/**` is vendored verbatim from jrmoulckers/engineering
+    // at a pinned tag and content-hashed in engineering-configs.lock.json. Its
+    // style is upstream's to decide, and any local "fix" would be reverted by
+    // the next re-vendor and fail `npm run eng:vendor:check` in the meantime.
+    // Correctness there is enforced by the lock, not by this config.
+    ignores: [
+      '**/build/**',
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/.gradle/**',
+      '**/vendor/**',
+      'config/engineering/**',
+    ],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.mjs', '**/*.js'],

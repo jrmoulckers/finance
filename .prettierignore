@@ -78,3 +78,10 @@ Caddyfile.*
 *.env
 *.env.*
 .env*
+
+# Vendored verbatim from jrmoulckers/engineering at a pinned tag and
+# content-hashed in engineering-configs.lock.json. `npm run format` is
+# `prettier --write`, so without this entry a re-vendor of upstream content
+# that is not Prettier-conformant would be rewritten in place and silently
+# break the lock. It happens to conform today; this keeps that from mattering.
+config/engineering/
