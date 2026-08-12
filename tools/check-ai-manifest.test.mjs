@@ -20,6 +20,7 @@ const {
   verifyLockCoverage,
   unstampSource,
   commentFamily,
+  verifySourceReproduction,
 } = require('./check-ai-manifest.js');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -181,4 +182,22 @@ test('managed targets unstamp to their recorded canon source', () => {
   assert.equal(corruptedReproduced, 0, 'a corrupted body must not reproduce');
   // Breadth guard: a corpus exercising one family would certify the switch on a third of it.
   assert.ok(families.size >= 2, `switch exercised on only ${families.size} comment family`);
+});
+
+test('every recorded source is accounted for, not silently excluded', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const recorded = Object.values(lock.entries || {}).filter((m) => m && m.sourceSha256).length;
+  const result = verifySourceReproduction(lock);
+  const accounted = result.reproduced + result.unreproduced.length + result.unobserved.length;
+  // Conservation law rather than a scan for today's instance. The defect it pins (#4197) was
+  // an early `continue` that dropped absent targets, which shrank the denominator with
+  // nothing in the output saying so -- the printed ratio then read as coverage of everything
+  // recorded. Any future exclusion, on any axis, breaks this equality instead of quietly
+  // producing a smaller and more flattering number.
+  assert.equal(
+    accounted,
+    recorded,
+    `${recorded - accounted} recorded sources fell out of the accounting`,
+  );
+  assert.ok(recorded > 0, 'lock records no source hashes; conservation would be vacuous');
 });
