@@ -27,6 +27,8 @@ const {
   commentFamily,
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
+  CANON_CITATIONS,
+  citationFindings,
   exemptionMatches,
   sourceDisclosureLines,
   DOC_FILES,
@@ -496,6 +498,68 @@ test('the disclosure names every path and never collapses to a count', () => {
     );
   }
   assert.deepEqual(sourceDisclosureLines([]), [], 'no exemptions discloses nothing, not a zero');
+});
+
+// --- #4226: citations that decay in another repository ------------------------------------
+//
+// Six claims about the engine were pinned by line number. Two had rotted by 11 and 17 lines,
+// and nothing here could notice: the file that moved is in a repository this check never reads.
+// The claims were still TRUE -- only the coordinates were wrong -- so the durable half is the
+// symbol and the fragile half is the offset.
+//
+// The guard is narrower than the claim on purpose. Whether the engine still behaves as
+// described needs the network at check time (#4141, owner-gated). What is checkable offline is
+// that no citation reverts to a coordinate and that every registered row is complete.
+
+test('this file cites engine symbols, never engine line numbers', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'tools', 'check-ai-manifest.js'), 'utf8');
+  assert.deepEqual(
+    citationFindings(source),
+    [],
+    'a line number in another repo decays silently; cite the symbol instead',
+  );
+});
+
+test('the coordinate rule catches a citation, including in its own historical record', () => {
+  // PREMISE: the pattern must actually fire, or the test above passes vacuously over a rule
+  // that matches nothing -- the failure mode this whole exchange keeps producing.
+  const findings = citationFindings('see lock.mjs:57 for the hashing rule');
+  assert.equal(findings.length, 1, 'the rule must fire on a bare coordinate');
+  assert.ok(findings[0].includes('lock.mjs:57'), 'the finding must name the offending citation');
+  // And the SHA-pinned form the registry uses must NOT fire, because a measurement fixed at a
+  // commit does not decay. This is the distinction the fix rests on, so it is asserted.
+  assert.deepEqual(
+    citationFindings('at 79faef3a, `hashText` sits at line 68'),
+    [],
+    'a measurement pinned to a commit is not a decaying citation',
+  );
+});
+
+test('the citation registry is complete and non-empty', () => {
+  assert.deepEqual(citationFindings('', CANON_CITATIONS), [], 'every row needs file, symbol, sha');
+  assert.ok(CANON_CITATIONS.length > 0, 'PREMISE: rows exist to be checked');
+  const empty = citationFindings('', []);
+  assert.ok(
+    empty.some((f) => f.includes('not observing')),
+    'an empty registry must be a finding, not a clean result',
+  );
+  const incomplete = citationFindings('', [{ file: 'sync/lib/lock.mjs', symbol: 'hashText' }]);
+  assert.ok(
+    incomplete.some((f) => f.includes('incomplete')),
+    'a row without a verification commit must be reported',
+  );
+});
+
+test('every registered citation names a symbol this file actually mentions', () => {
+  // Otherwise the registry drifts the other way: rows outliving the comments that motivated
+  // them, which is the stale-exemption shape (#4190) pointed at documentation.
+  const source = fs.readFileSync(path.join(ROOT, 'tools', 'check-ai-manifest.js'), 'utf8');
+  for (const row of CANON_CITATIONS) {
+    assert.ok(
+      source.includes(`\`${row.symbol}\``),
+      `CANON_CITATIONS names ${row.symbol}, but no comment in this file cites it`,
+    );
+  }
 });
 
 test('an entry stating no source hash is named rather than silently skipped', () => {
