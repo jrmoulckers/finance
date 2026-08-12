@@ -64,9 +64,18 @@ unauthenticated: User cannot be authenticated with the token provided`, which po
 
 As of engineering `v0.15.1` the delivery model split (upstream ADR-0001):
 `@jrmoulckers/prettier-config` and `@jrmoulckers/tsconfig` are **vendored at a ref** rather than
-installed, so they need no registry, no token, and no `read:packages` grant.
-`@jrmoulckers/eslint-config` stays on the registry because it owns four runtime dependencies that
-consumers must not re-choose. **finance has adopted the Prettier half.**
+installed. `@jrmoulckers/eslint-config` stays on the registry because it owns four runtime
+dependencies that consumers must not re-choose. **finance has adopted the Prettier half.**
+
+> **Retracted:** this paragraph previously added "so they need no registry, no token, and no
+> `read:packages` grant," attributing that to an upstream `channel: vendored` field. **All three
+> packages are and always have been published to the registry, and all three require a token** —
+> upstream's `versions.json` now says so in terms ("THEY WERE RIGHT AND THIS FILE WAS WRONG").
+> What makes finance's Prettier adoption work is **transport, not channel**: `vendor-configs.mjs`
+> fetches `raw.githubusercontent.com/<repo>/<ref>/<path>`, which is unauthenticated repository
+> content and has nothing to do with GitHub Packages. That distinction is the load-bearing one and
+> it survives the retraction unchanged. See _Blocker 1_ for how finance's own measurement had
+> already falsified the claim.
 
 ```powershell
 node scripts/vendor-configs.mjs v0.15.1 --set prettier --dest config/engineering
@@ -356,6 +365,33 @@ curl -s -o pkgs.html -w '%{http_code}\n' https://github.com/jrmoulckers/engineer
 grep -q 'Get started with GitHub Packages' pkgs.html && echo 'no packages visible'
 ```
 
+**The version counts above are the falsifying evidence for a claim recorded elsewhere in this same
+document.** A package with 3 and 2 published versions is, necessarily, published. Yet the Prettier
+section asserted for several revisions that `tsconfig` and `prettier-config` were `channel:
+vendored` and therefore needed no token — copied from upstream and never reconciled against the
+probe two hundred lines earlier. Upstream has since retracted it: all three are `private: false`
+in name only, `publish.yml` publishes every directory under `packages/` without consulting
+`channel`, and all three are gated on the same visibility grant. Upstream's own words are "THEY
+WERE RIGHT AND THIS FILE WAS WRONG," and finance was one of the three repositories that reported
+it.
+
+The lesson is not "check upstream claims" — that was already the practice, and is how the probe
+came to exist. It is that **finance held the measurement and the contradicting claim in one
+document and the adjacency did nothing.** Co-location is not a check. Two statements only conflict
+when something evaluates them together, and nothing here did; the probe answered "is it visible?"
+while the claim answered "must it be installed?", and no reader had cause to put them side by
+side. This is the same defect upstream names about its own file — an explanation sitting next to a
+value checks nothing unless something checks the value — and it is the reason the range table now
+carries the URL it was read from rather than the value alone.
+
+What survives unchanged is the operative fact, because it never depended on `channel`:
+`vendor-configs.mjs` fetches `raw.githubusercontent.com/<repo>/<ref>/<path>`. That is
+**unauthenticated repository content, not the registry**, which is why vendoring succeeds today
+while `npm view @jrmoulckers/eslint-config` returns `E401` from this machine. Vendoring was chosen
+for ref-pinning and drift detection, before access was understood to be a constraint at all; it
+turns out to be the only auth-free path to any of the three, which makes the decision more right
+than the reasoning that produced it.
+
 **Correction: a token on this machine does carry `read:packages`.** This guide previously recorded
 that no available token had the scope. That was wrong, and the cause is worth recording because it
 is silent: `gh` holds two accounts here, and an environment-supplied `GH_TOKEN` **masks** the
@@ -480,9 +516,10 @@ including `jsx-key`. Bisecting the config would have cost one more probe than ac
 
 ### To unblock
 
-**Scope note: this section now applies to `@jrmoulckers/eslint-config` alone.** Since `v0.15.1`,
-`prettier-config` and `tsconfig` are vendored at a ref and need none of the steps below. Prettier
-is adopted; tsconfig is deferred on its own evidence, not on access.
+**Scope note: this section now applies to `@jrmoulckers/eslint-config` alone** — but for a reason
+that has been corrected. All three packages are on the registry and all three need the same token;
+`prettier-config` is nonetheless adopted because vendoring fetches raw repository content rather
+than the registry, and `tsconfig` is deferred on its own evidence, not on access.
 
 1. Grant this repository read access to the packages from the `jrmoulckers/engineering`
    package settings, **or** create a classic PAT with `read:packages` and store it as the
@@ -529,13 +566,16 @@ is adopted; tsconfig is deferred on its own evidence, not on access.
    recommended first. See
    [`docs/ops/workflow-reuse-assessment.md`](../ops/workflow-reuse-assessment.md).
 
-4. Depend on the current floors as **ranges, not carets**:
+4. Depend on the current floors as **ranges, not carets**. Values below were read from
+   `https://raw.githubusercontent.com/jrmoulckers/engineering/main/versions.json` — the URL is
+   recorded beside them deliberately, because a version written into a document ages and a reader
+   needs the way to re-derive it, not just the value:
 
-   | Package                        | Range             | Note                                               |
-   | ------------------------------ | ----------------- | -------------------------------------------------- |
-   | `@jrmoulckers/eslint-config`   | `>=0.12.0 <1.0.0` | plus three plugins in `devDependencies`, see below |
-   | `@jrmoulckers/tsconfig`        | `>=0.4.0 <1.0.0`  | vendored channel — range is advisory only          |
-   | `@jrmoulckers/prettier-config` | `>=0.3.0 <1.0.0`  | vendored here; pinned by ref + lock instead        |
+   | Package                        | Range             | Note                                                    |
+   | ------------------------------ | ----------------- | ------------------------------------------------------- |
+   | `@jrmoulckers/eslint-config`   | `>=0.12.0 <1.0.0` | plus three plugins in `devDependencies`, see below      |
+   | `@jrmoulckers/tsconfig`        | `>=0.4.0 <1.0.0`  | registry channel; not installed here — deferred on cost |
+   | `@jrmoulckers/prettier-config` | `>=0.3.0 <1.0.0`  | registry channel; vendored here by ref + lock instead   |
 
    The React preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s
    reversal to `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on
@@ -543,6 +583,32 @@ is adopted; tsconfig is deferred on its own evidence, not on access.
    rules at all. `0.7.0` and `0.8.0` are both no-ops for finance — see below — but are taken as the
    floor anyway, because there is no cost to either and a stale floor is a liability the moment a
    later fix lands.
+
+   **A latent break the same read exposed: finance's TypeScript caret outruns the preset's peer.**
+   `versions.json` publishes each package's `peerDependencies`, and reading it needs no registry
+   token — which is the whole point, since `npm view` answers `E401` from this machine and could
+   not have produced this. finance resolves TypeScript **6.0.3**, declared `^6.0.3` in
+   `apps/web/package.json` (the only declaration in the tree; there is no root one):
+
+   | Preset                       | `typescript` peer                | 6.0.3 today | Permitted by `^6.0.3` but rejected by the peer |
+   | ---------------------------- | -------------------------------- | ----------- | ---------------------------------------------- |
+   | `@jrmoulckers/eslint-config` | `>=5.5.0 <6.1.0`                 | satisfied   | **`6.1.0`, `6.4.0`, `6.9.9`**                  |
+   | `@jrmoulckers/tsconfig`      | `^5.5.0 \|\| ^6.0.0 \|\| ^7.0.0` | satisfied   | none                                           |
+
+   So adoption is safe **today** and breaks on the next TypeScript minor: `^6.0.3` will pick up
+   `6.1.0` on any fresh install, and `eslint-config`'s peer refuses it. That refusal is now
+   enforced rather than advisory, because `0.12.0` restored the framework plugins as real
+   `peerDependencies` and npm version-checks ranges again. The failure would arrive as a broken
+   install on an unrelated dependency bump, far from any change to linting.
+
+   **The two presets also disagree with each other**, which is an upstream question rather than a
+   finance one: `tsconfig` accepts all of TypeScript 6.x and 7.x, `eslint-config` stops at
+   `<6.1.0`. A consumer adopting both is silently governed by the narrower cap. Either the cap is
+   deliberate — in which case `tsconfig` is over-permissive and a suite that is supposed to be
+   adopted together does not agree on its own supported compiler — or it is a stale upper bound
+   that has not been widened since TypeScript 6 shipped. Flagged upstream; finance takes no local
+   workaround, because pinning TypeScript to dodge a peer cap would trade a loud install failure
+   for a silent version freeze.
 
    **This document previously recommended `^0.8.0`, `^0.3.0` and `^0.2.0`, and that was wrong.**
    On a `0.x` package a caret permits patch updates only: `^0.8.0` resolves to `>=0.8.0 <0.9.0-0`
@@ -1896,6 +1962,37 @@ the failure it was built to detect. Had the pipeline form been trusted, the conc
 been that the link check is broken — a false report about upstream's tool, from finance, for the
 third time in this adoption. The tell is the same one every time: the reading was _accurate about
 something_, just not about the question asked.
+
+### A cached read fails silently, and the correction about it arrived carrying the error
+
+Upstream retracted its own instruction to run `git show origin/main:versions.json`. That command
+reads the **local** remote-tracking ref: without a preceding fetch it returns whatever was last
+downloaded, with no error and no signal, and a stale read is byte-identical to a fresh one. The
+replacement holds no state and needs no auth:
+
+```bash
+curl -s https://raw.githubusercontent.com/jrmoulckers/engineering/main/versions.json
+```
+
+**finance had no exposure to the stale-read defect and worse exposure to the underlying one.** No
+tracked file cites `versions.json` at all — every version fact in this guide arrived through chat
+messages, which cannot be re-read, cannot be diffed, and carry no ref. A stale cached read is at
+least reproducible; an unattributed assertion is not. Upstream's remedy — record the URL next to
+any value you copy out — is adopted above, in the range table.
+
+**And the correction itself repeats the claim it retracts.** The message recommending the fresh
+read presents `prettier-config` and `tsconfig` as `channel: vendored`; the file it points at
+records all three as `channel: registry` with `requiresRegistryAuth: true`, and its comment block
+retracts the vendored claim explicitly. So the fresh-read instruction was correct and the table
+beside it was written from memory. This is not a gotcha — it is the strongest available argument
+for the instruction, because it demonstrates that knowing about staleness does not protect you
+from it. The defect is not ignorance of the fix; it is that a remembered value and a read value
+are indistinguishable once written down.
+
+Which is also the answer to why finance propagated it: **the claim was never checked against the
+evidence finance already held.** See _Blocker 1_ — the visibility probe reported `tsconfig` with 3
+published versions and `prettier-config` with 2, in this document, two hundred lines from the
+assertion that neither was published. Nothing evaluated the pair.
 
 ## Worth hoisting up
 
