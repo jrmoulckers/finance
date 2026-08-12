@@ -2,6 +2,7 @@
 
 import js from '@eslint/js';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 const moneyTemplateRule = {
@@ -161,6 +162,32 @@ export default [
     files: ['apps/web/**/*.{ts,tsx}'],
     rules: {
       'finance/no-hardcoded-date-locale': 'error',
+    },
+  },
+  // React Hooks rules (ENG-WEB-004). Scoped to apps/web/src: apps/web/e2e is
+  // Playwright, whose `use()` fixture callback is name-matched by
+  // react-hooks/rules-of-hooks even though it is not React's `use` hook.
+  //
+  // Only the rules that are already at zero violations are enabled. The
+  // remaining 7 of the plugin's 17 recommended-latest rules are NOT enabled;
+  // measured counts across 2,326 linted files are recorded in
+  // docs/guides/engineering-practice-adoption.md and tracked as follow-up work:
+  //   set-state-in-effect 98, exhaustive-deps 34, preserve-manual-memoization 21,
+  //   refs 15, rules-of-hooks 3, immutability 2, purity 2.
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/config': 'error',
+      'react-hooks/error-boundaries': 'error',
+      'react-hooks/gating': 'error',
+      'react-hooks/globals': 'error',
+      'react-hooks/incompatible-library': 'warn',
+      'react-hooks/set-state-in-render': 'error',
+      'react-hooks/static-components': 'error',
+      'react-hooks/unsupported-syntax': 'warn',
+      'react-hooks/use-memo': 'error',
+      'react-hooks/void-use-memo': 'error',
     },
   },
   {
