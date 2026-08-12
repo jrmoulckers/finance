@@ -3122,6 +3122,153 @@ This does not change the standing decision to defer the tsconfig adoption on cos
 its basis from an estimated finding count to an enumerated list of three losses and ten gains,
 and it means the deferral is now a decision rather than a guess.
 
+## The cost of adopting the React preset, measured
+
+The original brief's first item — diff finance's ESLint config against the shared preset and
+enumerate exactly what would be gained or lost — was unanswerable for most of this engagement
+because the registry read was failing. It is now answered, against a real installation of
+`@jrmoulckers/eslint-config@0.15.0` linting finance's actual source.
+
+**Rule-level diff**, comparing the effective config for `apps/web/src/App.tsx`:
+
+|                 | finance today | `reactConfig()` |
+| --------------- | ------------- | --------------- |
+| listed          | 93            | 525             |
+| active          | 71            | 121             |
+| `react/*`       | 0             | 18              |
+| `jsx-a11y/*`    | 0             | 31              |
+| `react-hooks/*` | 0             | 2               |
+
+**+52 gained, −2 lost, 1 severity change.** The two lost are `no-unexpected-multiline` (switched
+off by `eslint-config-prettier`, which is deliberate) and `finance/no-hardcoded-date-locale`. The
+second custom rule, `finance/no-money-template-interpolation`, is absent from that particular
+comparison only because `App.tsx` is outside its `files` globs; both must be re-added through the
+preset's `extend`/`rules` options. The severity change is
+`@typescript-eslint/no-unused-vars`, `warn` → `error`.
+
+> **Correction.** When first reporting that severity change I noted a caveat: that finance
+> configures the rule with `argsIgnorePattern`/`varsIgnorePattern` of `^_`, and that those options
+> would be silently lost alongside the severity. **That caveat is wrong.** The preset configures
+> `{argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_'}` — the same
+> two patterns finance sets, plus one finance does not. Nothing is lost; one thing is gained. I
+> raised the caveat from the shape of the diff — a severity-only comparison _can_ hide an options
+> change — without checking whether it did here. A hazard that is real in general is not thereby
+> present in the instance, which is the same error this document has now recorded three times.
+
+**Adoption cost, measured across all 2,301 files under `apps/web/src`:**
+
+|                                 | count        |
+| ------------------------------- | ------------ |
+| errors                          | 267          |
+| warnings                        | 47           |
+| files with at least one finding | 137 of 2,301 |
+| auto-fixable                    | 13           |
+
+That headline number is misleading, and the reason is the most useful thing in this measurement.
+
+### 171 of the 314 findings are a rule that is wrong about finance
+
+`jsx-a11y/no-redundant-roles` accounts for **171 findings — 54% of the total — across 50 files**.
+Every one is the same shape: `The element ul has an implicit role of list. Defining this
+explicitly is redundant and should be avoided.`
+
+It is not redundant. Safari strips list semantics from any `<ul>` carrying `list-style: none`, so
+VoiceOver does not announce it as a list; the standard remedy is an explicit `role="list"`.
+finance has **105 `list-style: none` declarations across 159 CSS files** and **303 `role="list"`
+attributes in `.tsx`** — the workaround is applied systematically, not incidentally, and the 171
+flagged sites are exactly the `<ul>` subset of it. The largest single source of adoption cost is
+a rule firing on correct accessibility code, in a repository whose stated obligation is WCAG 2.2
+AA.
+
+Excluding it, the real cost is **96 errors + 47 warnings across 98 files**:
+
+| count | rule                                              |
+| ----- | ------------------------------------------------- |
+| 34    | `react-hooks/exhaustive-deps`                     |
+| 27    | `jsx-a11y/no-noninteractive-element-interactions` |
+| 25    | `@typescript-eslint/no-unused-vars`               |
+| 15    | `jsx-a11y/no-noninteractive-tabindex`             |
+| 13    | unused `eslint-disable` directives                |
+| 8     | `jsx-a11y/label-has-associated-control`           |
+| 7     | `react/no-unescaped-entities`                     |
+| 2     | `react-hooks/rules-of-hooks`                      |
+| 11    | eleven further rules at ≤3 each                   |
+
+All 25 `no-unused-vars` are a legacy `import React from 'react'` under the new JSX transform — a
+mechanical sweep, not judgement. The 2 `rules-of-hooks` are the only findings that may indicate a
+real defect rather than a lint debt.
+
+**This is upstream-actionable.** `@jrmoulckers/eslint-config`'s React layer should disable or
+downgrade `jsx-a11y/no-redundant-roles`. Any consumer that applies the Safari workaround gets
+flooded by it, and the pressure a `--max-warnings 0` gate then applies is pressure to _remove_
+working assistive-technology support. A preset whose default configuration penalises the
+accessible option is worse than no preset for that rule.
+
+### The preset does not install on ESLint 10, and the incompatibility is not real
+
+finance runs ESLint **10.6.0**. A default `npm install` of `@jrmoulckers/eslint-config@0.15.0`
+fails `ERESOLVE`:
+
+| plugin                      | highest ESLint peer accepted                                  |
+| --------------------------- | ------------------------------------------------------------- |
+| `eslint-plugin-jsx-a11y`    | `^9` — no published version, 6.7.1 through 6.10.2, accepts 10 |
+| `eslint-plugin-react`       | `^9.7`                                                        |
+| `eslint-plugin-react-hooks` | `^10` ✓                                                       |
+
+The preset itself declares `eslint: ^9.0.0 || ^10.0.0`. That declaration is honourable in intent
+and unresolvable in practice, because two of its own required peers contradict it.
+
+**But installed with `--legacy-peer-deps` on 10.6.0 the preset works.** `jsx-a11y/alt-text` fires
+on a real `<img>` with no `alt`, exit 1, a genuine finding rather than a crash — and the
+2,301-file run above _is_ that installation. So the wall is a **stale peer declaration in two
+third-party plugins**, not an incompatibility, and the correct consumer remedy is an npm
+`overrides` block rather than `--legacy-peer-deps`, which suppresses every peer check in the tree
+rather than the two that are wrong.
+
+This is the same defect class as the `checksRun` literal recorded above: **a declaration asserted
+rather than derived, believed because it is machine-readable.** There it over-claimed capability;
+here it under-claims compatibility. Both are answered only by running the thing.
+
+One residual: `eslint-plugin-react` warns `React version not specified` on every run. That is the
+consequence of upstream avoiding the ESLint 10 `version: 'detect'` crash by omitting the setting
+entirely, so any consumer must set `settings.react.version` itself.
+
+### Standing decision
+
+Adoption is **staged, not deferred and not immediate**. The 171-finding rule must be settled
+upstream first, because adopting around it locally would mean either disabling a shared rule in
+finance — re-creating exactly the divergence this engagement exists to remove — or deleting
+correct accessibility markup. The remaining 143 findings are a reasonable single-PR sweep once
+that is resolved, and the `react-hooks` rules alone justify the adoption.
+
+## Three upstream items, checked rather than filed
+
+**`.js` was never broken, and the mechanism is one this document already reached.** Upstream
+corrected its own account of the `strictTypeChecked` crash: the fix landed in `0.6.0`, not
+`0.12.0`, and `strictTypeChecked` and the `.js` disable block **arrived in the same release**, so
+no published version ever exposed the `.js` case. `.svelte` was the half actually broken. Their
+diagnosis — the disable blocks were written by **enumerating extensions**, and an enumeration
+silently omits whatever it does not name — is the same finding recorded above under the
+paraphrase analysis, reached independently from the other direction. Two derivations, one
+mechanism; that is the strongest form this document has for believing a structural claim.
+
+**A verification probe that cannot fail.** Upstream reports that another consumer verified the
+`.js` fix by linting a plain `.js` file through a `svelteConfig()` that does not pass
+`strictTypeChecked`, and got exit 0. Run against `0.5.0` — which predates the entire mechanism —
+it also gives exit 0. Without the option the type-checked sets are never applied, so nothing can
+abort on any version. The probe measures that type-aware linting is **off** and reports it as
+proof that a type-aware crash is **fixed**: an all-clear whose failure mode also renders as an
+all-clear. This is the third instance in this document, after the `pad=70` fixture and the
+inert `ENG-PERF-001..004` range, and they now form a single rule: **a control that has never been
+observed to go red has not been shown to be a control.**
+
+**The restated `prettier-config` floor is stale.** Upstream's current broadcast repeats
+`@jrmoulckers/prettier-config >=0.3.0 <1.0.0`. The registry, queried with a credential that can
+actually read it, publishes **0.4.0**. The floor is not wrong — 0.4.0 satisfies it — but it is
+quoted as current in the same message that apologises for unverified version claims, which is
+worth naming rather than silently correcting. `eslint-config` is likewise at **0.15.0**, one minor
+above the stated `>=0.14.0`.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
