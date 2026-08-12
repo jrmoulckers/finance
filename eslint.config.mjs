@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import js from '@eslint/js';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 const moneyTemplateRule = {
@@ -189,19 +190,12 @@ export default [
     ],
     languageOptions: {
       globals: {
-        console: 'readonly',
-        process: 'readonly',
-        require: 'readonly',
-        module: 'readonly',
+        // Sourced from the runtime rather than hand-listed: a maintained list drifts
+        // silently as Node adds globals, and the drift is invisible to a rule-by-rule
+        // config diff because it lives in `languageOptions`. `config` is a genuine
+        // local global (Kotlin/JS `webpack.config.d`) with no Node equivalent.
+        ...globals.node,
         config: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        Buffer: 'readonly',
-        fetch: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
       },
     },
     rules: {
