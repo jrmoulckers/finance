@@ -4833,6 +4833,124 @@ with false provenance survives review**, because the check a reader performs is 
 Same family as the derived-cell hazard recorded earlier: the defect is upstream of the arithmetic,
 so re-deriving the value confirms it and confirms nothing about where it came from.
 
+### The Playwright artifact defect was already live in finance, and CI cannot see it
+
+`@jrmoulckers/eslint-config@0.17.0` adds `playwright-report/` and `test-results/` to its shared
+ignores, after one repo measured lint going from 16 problems to 5439 once a failed Playwright run
+left a bundled HTML report on disk. finance has not adopted the preset, so the natural reading is
+that this is a note for later. It is not. **The same defect was already present in finance's own
+`eslint.config.mjs`**, and adoption is irrelevant to it.
+
+Measured directly, by writing a probe file containing `var unusedProbeVar = 1` at each path
+Playwright can write to and asking ESLint what it does with it:
+
+| Path                               | Before     | After   |
+| ---------------------------------- | ---------- | ------- |
+| `apps/web/playwright-report/`      | **linted** | ignored |
+| `apps/web/test-results/`           | **linted** | ignored |
+| `apps/web/blob-report/`            | **linted** | ignored |
+| `apps/web/playwright-report-live/` | **linted** | ignored |
+
+All four are in `.gitignore` at L103–106. **Flat config does not read `.gitignore`**, so the two
+lists are independent statements about the same paths with no shared source, and the one that
+happened to be complete was the one that governs nothing about linting. A path being untrackable
+is not a path being unlintable — the repository knew about all four artifact directories and the
+linter knew about none of them.
+
+Fixed in this change by adding the four globs. A control file under `apps/web/src/` still reports
+its error afterwards, so the ignores drop the artifacts rather than the tree.
+
+### The gate that would catch it is structurally incapable of encountering it
+
+Across all 31 workflows, 16 jobs run either Playwright or ESLint. **Zero run both.**
+
+| Jobs invoking    | Count |
+| ---------------- | ----- |
+| Playwright / E2E | 13    |
+| ESLint           | 3     |
+| **both**         | **0** |
+
+`ci-lint.yml`'s `eslint-prettier` and `observability-guardrails`, and `ci-security.yml`'s
+`gatekeeper`, are the only jobs that invoke ESLint, and none of them runs a browser test. Every
+E2E job is in a different job on a fresh runner. So CI could never have reported this, on any diff,
+in any state — not because a check was skipped or filtered, but because the artifact that triggers
+it cannot exist in the working directory of the job that lints.
+
+That is a different failure from the skip-satisfies-required ladder recorded above, and it is worth
+keeping distinct. There, the gate was reachable and reported green because it was skipped. Here,
+the gate ran, genuinely passed, and its green was **true** — true about CI, which is the only thing
+a CI result is ever about. The defect lives exclusively in a developer's working tree, and it
+surfaces at the single worst moment: immediately after a local test failure, when the next
+`eslint .` reports thousands of problems in files nobody wrote, while the developer is already
+debugging something else.
+
+**A green CI result is a claim about the runner's filesystem, not about yours.** The upstream note
+frames this as "adopting while green shows nothing, so it surfaces later"; in finance's arrangement
+the stronger statement holds — it could never have surfaced in CI at all.
+
+### The reporter is environment-split, and the upstream fix covers only one half
+
+`apps/web/playwright.config.ts` L16–18 selects the reporter by environment:
+
+```ts
+reporter: isCI
+  ? [['blob', { outputDir: 'blob-report' }], ['github']]
+  : [['html', { open: 'never' }]],
+```
+
+CI writes `blob-report/`; local runs write `playwright-report/`. `0.17.0` ignores
+`playwright-report/` and `test-results/`, so **`blob-report/` is not covered**. finance is not
+exposed on that leg, because no CI job lints after an E2E run — but a consumer that does run both
+in one job, which is the ordinary shape for a repo with a single `test` job, would be. The blob
+reporter is also the standard choice for sharded runs, so the repos most likely to hit it are the
+ones large enough to shard.
+
+**Reported upstream as an incomplete-glob gap** rather than worked around here: this change carries
+`blob-report/` locally because finance's config names it explicitly, and the glob can be dropped if
+the preset takes it.
+
+### `node.json` would fail every package in finance, all six of them
+
+The upstream note that `@jrmoulckers/tsconfig`'s `node.json` bundles `types: ["node"]` together with
+`allowImportingTsExtensions` — so extending it repo-wide raises `TS2688` in any package without
+`@types/node` — has an exact measurement here. finance has six tracked `package.json` files:
+
+| Manifest                                                  | declares `@types/node` |
+| --------------------------------------------------------- | ---------------------- |
+| `package.json` (root)                                     | no                     |
+| `apps/web/package.json`                                   | no                     |
+| `services/api/package.json`                               | no                     |
+| `packages/design-tokens/package.json`                     | no                     |
+| `config/engineering/prettier/package.json`                | no                     |
+| `.vscode/extensions/finance-getting-started/package.json` | no                     |
+
+**Zero of six.** There is no package in finance where `node.json` is currently the correct base,
+which makes the "root gets `base.json`, `node.json` only where `@types/node` is declared" guidance
+degenerate to "never use `node.json`" here. That is a real datum for the deferred tsconfig
+adoption, and a stronger reason for the deferral than the one previously recorded.
+
+### The stale-baseline principle, applied to the message that stated it
+
+The upstream note that _"a sound measurement against a stale tree is still wrong"_ — a careful
+`--print-config` diff run on a branch 88 commits behind `main` — is correct and generalises well:
+rigour in the measurement does not survive a stale baseline, and a "verified clean" claim older
+than the branch it was made on is unverified rather than verified.
+
+It was applied to this repository's **317**, with advice to re-measure at the `0.16.0` floor before
+putting it in a PR body. Two prior sections already retired that figure: **326** is the current
+number, measured at `0.15.0` against finance's real ignores (273 errors + 53 warnings; the raw JSON
+carries 313 non-null `ruleId` messages plus 13 unused-directive reports with `ruleId: null`). And
+the accompanying premise — that finance is pinned at `^0.8.0` — was measured and refuted in the
+section before that: **`@jrmoulckers` appears in zero of finance's six manifests**, and
+`check-pins.mjs` confirms it with `nothing to check`, exit 0. There is no range here to be stale.
+
+Recorded without any claim of a gotcha, because it is precisely the class the note names. The
+advice was sound reasoning against a picture of finance that two merged changes had already moved.
+**The principle's own scope includes the channel that carries it**: a correction travels no faster
+than the message that reports it, so any advice about another repository is a measurement against a
+tree the sender does not hold. The remedy is the same one the note recommends — re-measure at the
+point of use — and it applies symmetrically in both directions.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
