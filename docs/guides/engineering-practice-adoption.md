@@ -6568,6 +6568,110 @@ additive) and the baseline updated. Worth recording because most controls in thi
 been found _missing_; this one was present and did its job on the first substantive change since it
 was written.
 
+## Three silent failures in a row, and a green check over 3,890 unread files
+
+The vendoring staleness check had never worked. Not "worked and was ignored" — the earlier defect
+in this document, where a notice printed every run and nobody read it. This one produced **no output
+at all**, and the absence was indistinguishable from success.
+
+### The chain
+
+```
+fetch(api.github.com/...)      unauthenticated
+  -> HTTP 403, x-ratelimit-remaining: 0
+  -> latestRef() returns null
+  -> `if (latest && ...)` is skipped
+  -> --check prints "6 vendored file(s) match ... at v0.124.0."  exit 0
+```
+
+Every link is individually defensible. Not failing on an unreachable API is right — a tag pushed
+upstream must not turn an unrelated PR red. Returning `null` when the answer is unknown is right.
+The defect is that **the green line for "checked, and current" and the green line for "could not
+check" are the same bytes.** Unauthenticated GitHub API calls are capped at 60/hour _per IP_, and
+Actions runners share IPs, so on CI the anonymous path is rate-limited far more often than it is
+offline. The check most likely never ran there.
+
+The remedy is not to fail. It is to **name the gap**:
+
+```
+Staleness not checked: GitHub API rate limit exhausted (HTTP 403); set GITHUB_TOKEN to raise it.
+This says nothing about whether v0.124.0 is current.
+```
+
+### `releases/latest` is a declaration, not a maximum
+
+Even authenticated, the endpoint was the wrong instrument. It does not compute anything — it reads a
+`make_latest` flag a maintainer sets, over the **release** population. Measured upstream:
+
+| population                  | count          |
+| --------------------------- | -------------- |
+| tags                        | 172            |
+| releases                    | 143            |
+| semver tags with no release | 28             |
+| `releases/latest`           | `v0.133.0`     |
+| **highest tag**             | **`v0.134.0`** |
+
+The highest tag had no release, so the declared answer was **one release behind the actual
+frontier, live**. Preferring a maintainer's declaration over a derived maximum is usually right, and
+is right about _ordering_ — a backport wave publishes newest-major first, so sorting releases by
+date returns the **oldest** maintained line as the frontier, perfectly anti-correlated rather than
+noisily wrong. But a declaration has a failure mode a computation does not: **it can be absent.** So
+ask both and take the higher, and never sort by date.
+
+### What the silence was hiding
+
+Pinned at `v0.124.0`; upstream at `v0.134.0`. The vendored citation checker was **v9 against
+upstream's v10**, and v10's change was the extension set — v9 opened prose files only.
+
+|                 | v9      | v10       |
+| --------------- | ------- | --------- |
+| files scanned   | **806** | **4,696** |
+| citations found | 141     | 170       |
+| extensions      | 7       | 27        |
+
+**29 citations lived in `.ts`, `.kt`, `.mjs` and similar and were never checked** — in a repository
+that is Kotlin Multiplatform and React, i.e. almost entirely the file types v9 skipped. `eng:citations`
+had been exiting 0 over 3,890 files it never opened. All 29 turned out valid, which is luck, not a
+control: the same "clean by a property of the input" this document keeps recording.
+
+### It is the same defect the CI comment already describes
+
+`ci-lint.yml` carries this, written earlier in this adoption:
+
+> a local copy declaring the same `TOOL_VERSION` as a newer upstream one is how finance ran a checker
+> missing a whole check
+
+That is exactly what happened again — same repository, same file, same mechanism — because the
+control built to prevent the recurrence was silently disabled by an unrelated rate limit. **A
+postmortem does not prevent a recurrence; only a control that can be observed to run does.**
+
+### One export, no tests, because importing it ran it
+
+`scripts/vendor-configs.mjs` is ~560 lines with a single export and no test file. Not because it was
+untestable — because it called `await main()` at module scope, so importing it executed a
+network-touching CLI. Adding the standard entry guard took it to 14 tests and **8 of 8 mutants
+killed**, with stubbed responses covering the rate-limited, 404, unreachable, and release-less-tag
+paths that cannot be reproduced on demand against a live API.
+
+> A hypothesis that failed, recorded because only the surviving kind gets written down: I expected
+> the `new URL('file://' + process.argv[1])` guard to be fragile on Windows and to have silently
+> disabled the other checkers. Tested all three invocation forms — forward slash, backslash, and
+> absolute. All three resolve correctly. The guard is sound and the concern was unfounded.
+
+### And a scope widening I caused while fixing this
+
+Refreshing with `node scripts/vendor-configs.mjs v0.134.0` and no `--set` defaults to **all** sets,
+which silently took the lock from 6 files to 12 by adding the `tsconfig` set that nothing in this
+repository `extends`. That is precisely the orphan case the tool's own wiring check exists to
+prevent — but the check asks whether anything references the destination _directory_, so a new
+orphaned set inside an already-referenced directory passes. Re-vendored with an explicit
+`--set prettier,citations --prune`.
+
+Worth noting for upstream: `--prune` drops entries from the lock but leaves the files on disk, so the
+recovery state is unhashed orphans that `--check` cannot see. The error text does say "and delete the
+files", so it is documented rather than hidden — but a flag whose safe use requires a manual second
+step will eventually be used without it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

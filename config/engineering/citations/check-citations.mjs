@@ -77,7 +77,7 @@ function contextWindow(lines, i, span = 2) {
 }
 
 const CITATION = /\bENG-[A-Z]+-\d{3}\b/g;
-// `ENG-X-001 (Thin typed adapters)`. Parentheses only, and the content must
+// `ENG-INT-001 (Thin typed adapters)`. Parentheses only, and the content must
 // start with a capital — a title is a proper name. An em dash is ordinary prose
 // punctuation ("per ENG-SEC-008 — never a real record") and reading it as a
 // naming claim produced false positives, which is how a checker gets disabled.
@@ -97,9 +97,53 @@ const DEFAULT_INDEX =
 // copy is otherwise indistinguishable from a current one — a consumer reported
 // a missing check that had shipped several releases earlier, having run an old
 // copy that could not tell them so.
-const TOOL_VERSION = '9';
-const TEXT_EXT = new Set(['.md', '.mdx', '.markdown', '.txt', '.yml', '.yaml', '.json']);
+const TOOL_VERSION = '10';
+// Citations live in source comments as often as in prose. A consumer filed two
+// wrong citations against themselves in `.ts` files, then ran this tool over
+// that repository and got `41 citations, all IDs exist`, exit 0 -- because the
+// scanner never opened either file.
+//
+// That is worse than the silent-check failures recorded elsewhere in this
+// repository. Those produced an absent signal; this produced an affirmative
+// green over the exact defect it was written to find. So the extension set is
+// wide, and the summary prints it: a count of files scanned is not a claim
+// about the repository unless you can see what "files" meant.
+const TEXT_EXT = new Set([
+  '.md',
+  '.mdx',
+  '.markdown',
+  '.txt',
+  '.yml',
+  '.yaml',
+  '.json',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.svelte',
+  '.vue',
+  '.go',
+  '.py',
+  '.rs',
+  '.java',
+  '.kt',
+  '.rb',
+  '.sh',
+  '.sql',
+  '.css',
+  '.scss',
+  '.html',
+  '.toml',
+]);
 const SKIP_DIR = new Set(['node_modules', '.git', 'dist', 'build', '.svelte-kit', 'vendor']);
+// Opt a single file out of citation scanning. Intended for files that build
+// citation fixtures, not for files whose citations are inconvenient.
+// Assembled from fragments so this file does not match its own pragma: the
+// first version of this check silently excluded the checker itself.
+const PRAGMA_TEXT = 'citations-check' + ': ignore-file';
+const IGNORE_PRAGMA = new RegExp(PRAGMA_TEXT.replace(': ', ':\\s*'));
 // Words that scope one ID against another. Their absence around adjacent IDs is
 // what turns a pair of citations into an implied equivalence claim.
 const CONNECTIVE =
@@ -248,6 +292,19 @@ function resolvePrincipleFile(link) {
   return path.resolve(path.dirname(link.file), link.target);
 }
 
+// The scan's scope is part of its verdict. Printing the file count alone let a
+// consumer read `102 files ... all IDs exist` as a statement about their
+// repository when two wrong citations sat in files the walker never opened.
+function reportScope(ignoredFiles) {
+  console.log(`scanned extensions: ${[...TEXT_EXT].sort().join(' ')}`);
+  if (ignoredFiles.length > 0) {
+    console.log(
+      `${ignoredFiles.length} file(s) skipped via "${PRAGMA_TEXT}": ` +
+        ignoredFiles.map((f) => path.relative(process.cwd(), f)).join(', '),
+    );
+  }
+}
+
 async function collectFiles(target) {
   const info = await stat(target);
   if (info.isFile()) return [target];
@@ -273,7 +330,14 @@ async function scanFile(file) {
   const hits = [];
   const links = [];
   const titled = [];
-  const lines = (await readFile(file, 'utf8')).split(/\r?\n/);
+  const raw = await readFile(file, 'utf8');
+  // A file that builds citation fixtures contains IDs that are wrong on
+  // purpose. The opt-out is a pragma in the file itself rather than a filename
+  // convention, because a convention silently covers files nobody chose, and a
+  // silent skip is how this checker returned green over the two wrong citations
+  // that prompted widening the extension set. Skips are counted and printed.
+  if (IGNORE_PRAGMA.test(raw)) return { hits, links, titled, ignored: true };
+  const lines = raw.split(/\r?\n/);
   lines.forEach((text, i) => {
     for (const [, label, href] of text.matchAll(ID_LINK)) {
       const id = label.match(/\bENG-[A-Z]+-\d{3}\b/)?.[0];
@@ -378,8 +442,13 @@ async function main() {
   const citations = [];
   const links = [];
   const titled = [];
+  const ignoredFiles = [];
   for (const file of files) {
     const scanned = await scanFile(file);
+    if (scanned.ignored) {
+      ignoredFiles.push(file);
+      continue;
+    }
     citations.push(...scanned.hits);
     links.push(...scanned.links);
     titled.push(...scanned.titled);
@@ -459,6 +528,7 @@ async function main() {
 
   if (citations.length === 0) {
     console.log(`No ENG-* citations found in ${files.length} file(s).`);
+    reportScope(ignoredFiles);
     return 0;
   }
 
@@ -631,6 +701,7 @@ async function main() {
       (titled.length > 0 ? `, and ${titled.length} stated name(s) match` : '') +
       '.',
   );
+  reportScope(ignoredFiles);
   console.log(
     `checker v${TOOL_VERSION}; checks run: IDs, stated names, range members` +
       (opts.links ? ', link paths, link anchors' : ' (link paths SKIPPED via --no-links)') +
