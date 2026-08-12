@@ -18,7 +18,7 @@ const {
   managedRegion,
   managedDigest,
   verifyLockCoverage,
-  unstampProvenance,
+  unstampCandidates,
 } = require('./check-ai-manifest.js');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -106,63 +106,57 @@ test('every present managed target still verifies against the lock', () => {
   assert.ok(whole > 0, 'corpus contains no whole-file entry to verify');
 });
 
-const STAMP = '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->';
+const CANON_STAMP = '<!-- synced from jrmoulckers/.github — canonical source; do not edit here -->';
 
-// The two-shape split is load-bearing, not incidental. Either single rule reproduces one
-// group and corrupts the other, and the engine picks by position (provenance.mjs:69-72).
-test('unstampProvenance inverts both injection shapes', () => {
-  const withFm = `---\napplyTo: '**'\n---\n${STAMP}\nbody\n`;
-  const noFm = `${STAMP}\n\n# Title\nbody\n`;
-
-  assert.equal(unstampProvenance(withFm), "---\napplyTo: '**'\n---\nbody\n");
-  assert.equal(unstampProvenance(noFm), '# Title\nbody\n');
-
-  // Controls: each single rule must FAIL on the shape it does not serve. Without these the
-  // split could be collapsed to one branch and every assertion above would still pass on
-  // the majority shape -- which is exactly how the `.trim()` near-miss survived.
-  const stripFixed = (text, n) => {
-    const lines = text.split('\n');
-    lines.splice(lines.indexOf(STAMP), n);
-    return lines.join('\n');
-  };
-  assert.notEqual(
-    stripFixed(noFm, 1),
-    unstampProvenance(noFm),
-    'always-one must corrupt no-frontmatter',
-  );
-  assert.notEqual(
-    stripFixed(withFm, 2),
-    unstampProvenance(withFm),
-    'always-two must corrupt frontmatter',
-  );
+// Coverage regression guard. The first implementation matched one literal -- HTML comment,
+// canon message -- and silently skipped 11 present entries stamped `#`, `/* */`, or with the
+// studio "generated + synced" wording. It reported 54 and read as complete.
+test('unstampCandidates recognizes every comment syntax and both messages', () => {
+  const forms = [
+    CANON_STAMP,
+    '# synced from jrmoulckers/.github — canonical source; do not edit here',
+    '/* generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here */',
+    '<!-- generated + synced from jrmoulckers/studio @jrm/tokens — do not edit here -->',
+  ];
+  for (const stamp of forms) {
+    assert.equal(unstampCandidates(`${stamp}\nbody\n`).length, 2, `not recognized: ${stamp}`);
+  }
+  assert.deepEqual(unstampCandidates('# Local file\nnot synced\n'), []);
 });
 
-test('unstampProvenance returns null when there is no stamp', () => {
-  assert.equal(unstampProvenance('# Local file\nnot synced\n'), null);
+// The caller accepts a match under either strip, so both must be offered. A single-strip
+// implementation would reproduce one stamper's shape and silently drop the other's.
+test('unstampCandidates offers both the one-line and two-line strip', () => {
+  const noBlank = `${CANON_STAMP}\nbody\n`;
+  const blank = `${CANON_STAMP}\n\nbody\n`;
+  assert.deepEqual(unstampCandidates(noBlank), ['body\n', 'body\n'.replace('body\n', '')]);
+  assert.ok(unstampCandidates(blank).includes('body\n'));
 });
 
-// Real-corpus sweep. This is the assertion the tool previously called impossible: the
-// original measurement hashed each delivered file AS DELIVERED and matched 0 of 56, which
-// could not have come out otherwise, since sourceSha256 hashes canon before the stamp
-// exists. The as-delivered control is kept below so that reading stays visible.
-test('every stamped whole-file entry unstamps to its recorded canon source', () => {
+// The assertion the tool previously called impossible. The original measurement hashed each
+// file AS DELIVERED and matched 0 of 65 -- which could not have come out otherwise, since
+// sourceSha256 hashes canon before the stamp exists. That control is pinned below.
+test('managed targets unstamp to their recorded canon source', () => {
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
   let reproduced = 0;
   let asDelivered = 0;
+  let corruptedReproduced = 0;
   for (const [entry, metadata] of Object.entries(lock.entries || {})) {
     if (!metadata || !metadata.sourceSha256) continue;
     const absolute = path.join(ROOT, entry);
     if (!fs.existsSync(absolute)) continue;
     const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
     if (managedRegion(text) !== null) continue;
-    const source = unstampProvenance(text);
-    if (source === null) continue;
+    const candidates = unstampCandidates(text);
+    if (candidates.length === 0) continue;
+    if (candidates.some((body) => sha(body) === metadata.sourceSha256)) reproduced += 1;
     if (sha(text) === metadata.sourceSha256) asDelivered += 1;
-    assert.equal(sha(source), metadata.sourceSha256, `${entry} does not unstamp to canon source`);
-    reproduced += 1;
+    // Corruption control: an edited body must reproduce under NEITHER candidate. Without
+    // this the disjunction could be accepting far more than it should and still count 64.
+    const corrupted = unstampCandidates(`${text}\n/* edited */\n`);
+    if (corrupted.some((body) => sha(body) === metadata.sourceSha256)) corruptedReproduced += 1;
   }
-  // Vacuity guard: zero entries would pass every assertion above by never running one.
-  assert.ok(reproduced > 0, 'corpus contains no stamped whole-file entry to verify');
-  // Pins the original error: the delivered form matches nothing, by construction.
+  assert.ok(reproduced > 0, 'corpus contains no stamped entry to verify');
   assert.equal(asDelivered, 0, 'delivered form should never match a pre-stamp hash');
+  assert.equal(corruptedReproduced, 0, 'a corrupted body must not reproduce under either strip');
 });
