@@ -571,6 +571,75 @@ plugin failing to load — made a config-level cause look like a package-level o
 remedy that follows from the wrong diagnosis (drop the plugin) would have cost 18 working rules
 including `jsx-key`. Bisecting the config would have cost one more probe than accepting the trace.
 
+#### Second commission: I refuted a claim about #4057 with a present-tense grep
+
+Upstream reported that finance carried `@jrmoulckers/eslint-config@^0.4.0`, naming **#4057**. I
+swept the working tree, found carets only inside retraction prose, and replied that the claim was
+stale. The sweep was accurate and the reply was wrong in method.
+
+`git log -S` settles it:
+
+| Commit     | PR        | Event                                         |
+| ---------- | --------- | --------------------------------------------- |
+| `4a0f456b` | **#4057** | **added** `@jrmoulckers/eslint-config@^0.4.0` |
+| `59890ae2` | #4061     | removed it                                    |
+
+**Upstream was right about #4057.** finance held that caret, at exactly the PR named. The claim is
+stale — corrected four PRs later — but it was never false, and "stale" and "wrong" required
+different replies.
+
+The instrument is the failure. `git grep` reports the checked-out tree; the claim was about a named
+commit. **A point-in-time observation cannot falsify a claim about the past** — which is stated at
+line 789 of this same file, credited there as the sharpest formulation reached in this adoption, and
+recorded there because I had _already made this exact mistake once_, against the same party, about
+the same package.
+
+So this is the second commission of a defect this document names, and the aggravating detail is the
+same one: the disproof was in the file the whole time. Writing a rule down, even prominently, even
+with a retraction attached, does not cause the rule to fire when the matching situation arrives.
+The remedy has to be an instrument — `git log -S` before any "we never had that" — because the
+recognition step is what fails.
+
+**What is true today, by the instruments that answer the present-tense question:**
+
+| Check                                         | Result     |
+| --------------------------------------------- | ---------- |
+| `git grep '@jrmoulckers/' -- '*package.json'` | no matches |
+| `npm ls @jrmoulckers/eslint-config`           | `(empty)`  |
+
+finance has **no pin at all** — nothing is installed, blocked on package access — so there is
+currently no range to be stale. That is a narrower claim than the one I made last time, and it is
+the only one a present-tense check supports.
+
+#### Why finance keeps reading as caret-bearing to a scanner
+
+The recurrence has a mechanism, and it is one this guide already hit from the other side. The only
+`^0.x` strings left in the repository are these two lines, inside a fenced `git show` quotation of
+the superseded advice:
+
+```
+# HISTORICAL AND RETRACTED -- quoted from a superseded commit, not finance's pins.
+# 4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.8.0`**,
+#    **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**.
+```
+
+That marker line was not in the first draft of this section. Writing the paragraph below — about
+quoting a bad value reproducing the hazard — reproduced it, in the same commit, four lines above
+the sentence describing it. The check that caught it was mechanical (enumerate every `@^0.` hit,
+assert each is within four lines of a marker), not a re-reading. **Prose lines are self-contexting
+because the sentence around the value is on the same line; a fenced block is not, which is exactly
+why the fence is the part that needs the marker.**
+
+A scan for `@jrmoulckers/[a-z-]*@\^0\.` returns exactly those two lines. **A retraction that quotes
+the value it retracts is indistinguishable, to any scanner, from the configuration it describes** —
+the identical defect that made this repository's own citation gate reject a documented fixture ID,
+because the checker could not tell a citation from a description of one.
+
+Two observers, two tools, same blind spot: **quoting a bad value preserves the evidence and
+reproduces the hazard.** The evidence is worth keeping, so the fence below now carries an explicit
+historical marker rather than being defused — a scanner still matches it, but anything that reports
+the line also reports what it is.
+
 #### The anti-caret correction arrived without its upper bound
 
 Upstream re-sent the floors on 2026-08-11 as **`>=0.13.0` / `>=0.4.0` / `>=0.3.0`**. The values in
@@ -780,6 +849,8 @@ than the registry, and `tsconfig` is deferred on its own evidence, not on access
 
    ```powershell
    git show 0e7344c0:docs/guides/engineering-practice-adoption.md
+   # HISTORICAL AND RETRACTED -- the two lines below are quoted from a superseded
+   # commit. They are NOT finance's pins. Current values are in the range table above.
    # 4. Depend on the current floors: **`@jrmoulckers/eslint-config@^0.8.0`**,
    #    **`@jrmoulckers/tsconfig@^0.3.0`**, **`@jrmoulckers/prettier-config@^0.2.0`**.
    ```
