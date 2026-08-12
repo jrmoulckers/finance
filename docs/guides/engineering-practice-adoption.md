@@ -4373,6 +4373,124 @@ judgement into a test:
 finance's two Prettier invocations pass that test: the second exists to defend against the first not
 being reached, which is exactly what the `if: always()` gatekeeper comment says in prose.
 
+### A guard that rejects your own mistake first
+
+The upstream session independently enumerated the vendored checker's history and confirmed
+every figure published here: 153 tags, 141 carrying the file, 14 distinct blobs, the
+`v0.70.0`/`v0.71.0` boundary between `baa18e599cb4` (21,967 bytes, 14 tags) and
+`02df2659c0b6` (22,699 bytes, 45 tags), and `f7b1bd6f5565` at 28,326 bytes on `main` in no
+tag. Re-measured here under two guards rather than restated:
+
+| Guard                          | Tags with the file | Distinct blobs |
+| ------------------------------ | ------------------ | -------------- |
+| exit code `-eq 0`              | **141**            | **14**         |
+| value matches `^[0-9a-f]{40}$` | **141**            | 14             |
+| neither (truthiness only)      | 153                | **26**         |
+
+The two guards disagree on nothing. They are independent in the sense established earlier
+in this document: the exit code is a property of the _process_, the shape is a property of
+the _value_, and neither is derived from the other.
+
+#### The mechanism was not the one diagnosed, and the defence it implies does not work
+
+Upstream reported the same `26` and attributed it to PowerShell binding an **error record**
+to the variable, an object that is truthy merely by existing. Measured here on
+PowerShell 7.6.4, that is not what happens:
+
+```
+$Error.Clear(); $s = git rev-parse "v0.1.0:does/not/exist" 2>$null
+$Error.Count   -> 0            # no error record is produced at all
+$s.GetType()   -> String       # a genuine string, not an ErrorRecord
+$s             -> "v0.1.0:does/not/exist"
+stderr         -> "fatal: path 'does/not/exist' does not exist in 'v0.1.0'"
+$LASTEXITCODE  -> 128
+```
+
+`git rev-parse` **echoes its unparseable argument to stdout** and writes `fatal:` to stderr.
+The variable holds an ordinary `String`, indistinguishable by type, by nullity, and by
+truthiness from a valid result.
+
+This matters because the wrong mechanism licenses a wrong defence. Against an `ErrorRecord`,
+the natural guards are type inspection (`$s -is [string]`), or
+`$ErrorActionPreference = 'Stop'`. **Both are useless here** — the value really is a string,
+and no error record exists to trap. The exit code is the only signal that separates the two
+cases, which is what makes the correct fix correct for a reason other than the one given.
+
+Same shape as the retraction recorded earlier in this document: a true observation about an
+outcome, and a false account of the mechanism producing it, where the account is what a
+reader would generalise from.
+
+#### The count is plausible; the rows are not
+
+Upstream noted that nothing in the output looked wrong, and that the only tell was on the
+stderr they had redirected away. Measured, that is true of the _count_ and false of the
+_rows_. The 12 fabricated identities:
+
+```
+archive/publ   v0.1.0:scrip   v0.2.0:scrip   v0.2.1:scrip   v0.2.2:scrip  ...
+```
+
+**12 of 12 are visibly non-hexadecimal.** In a column of blob hashes they are unmistakable.
+The number `26` is unremarkable; the list that produces it is self-evidently corrupt. The
+tell survived the stderr redirect intact — it was destroyed by aggregation, not by
+redirection.
+
+That is a more portable lesson than the redirect, because it applies wherever a summary is
+published in place of the sample: **an aggregate cannot carry a shape violation.** The
+12 bad rows and the 14 good ones are distinguishable individually and indistinguishable
+once counted.
+
+One honest limit on the shape guard: 1 of the 153 tag names begins with a hex character
+(`archive/public-consumption`). A _prefix_ test would have admitted it. The guard works
+because it requires the full 40-character shape, not because tag names never look like
+hashes.
+
+#### The guard's first act was to reject this session's own error
+
+The hardened enumeration was first run against `config/engineering/citations/check-citations.mjs`
+— finance's **vendored** path, which does not exist anywhere in the upstream tree, where the
+file lives at `scripts/check-citations.mjs`. Both guards returned zero and the run was
+visibly wrong. What the truthiness version reports for that same mistake:
+
+| Path probed                    | Unguarded result                | Exit-guarded | Hex-guarded |
+| ------------------------------ | ------------------------------- | ------------ | ----------- |
+| `scripts/…` (correct)          | 153 with file, 26 distinct      | **141 / 14** | 141 / 14    |
+| `config/engineering/…` (wrong) | **153 with file, 153 distinct** | **0**        | **0**       |
+
+A path present in **zero** tags yields "153 tags have the file, 153 distinct blobs" — a table
+with no true rows whatsoever. And it is the _most_ plausible-looking output of the four:
+153/153 reads as "every release carries it", which is exactly the tidy result an enumeration
+is hoping to find.
+
+The failure is therefore not proportionate to the mistake. A wrong path and a partially
+absent file produce output of the same shape and the same apparent quality; only the
+distinct-count differs, and there is no prior that says 26 is right and 153 is wrong.
+
+#### Accepted: the hash instrument is sound in one direction only
+
+Upstream's correction to the ladder is taken. A hash **equality** is conclusive — identical
+bytes cannot behave differently, so `02df2659c0b6` appearing both in the vendor lock and at
+`v0.115.0` genuinely settles that question. A hash **difference** is nearly uninformative
+about behaviour: the 732 bytes between `baa18e599cb4` and `02df2659c0b6` are real, correctly
+detected, and behaviourally inert against the range check both sides probed.
+
+The consequence to hold onto: **14 distinct blobs is not 14 distinct behaviours**, and the
+number must not be allowed to drift into that claim. It is an upper bound on behaviours and
+nothing more.
+
+#### Two columns labelled "hash" are two different claims
+
+The near-miss worth recording: upstream's identities are git blob SHA-1 over
+`blob <len>\0` + content; the lockfile's are SHA-256 over content alone. Different functions
+over different preimages. They cannot agree and their disagreement means nothing. What
+actually corroborates across the two is the **byte counts** — 21,967 and 22,699 — which are
+unit-bearing and comparable.
+
+Unlike a wrong unit, this defect cannot be caught by re-measuring either side, because both
+sides are correct. It is visible only if provenance travels attached to the value. Same
+class as the derived-cell hazard recorded earlier, one level of abstraction up: there, a cell
+whose origin was forgotten; here, a column whose _function_ was forgotten.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
