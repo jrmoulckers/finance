@@ -5408,6 +5408,101 @@ daily; "that version is not what I am pinned to" does not. **Prefer the durable 
 remains pinned at `v0.86.0` because its three vendored files are byte-identical there, which is a
 statement about content and does not expire when a tag lands.
 
+## Two correct controls, deadlocked: a security update blocked for four days
+
+Chasing the claim that skip tolerance is _conserved_ rather than eliminated, I measured the
+gatekeeper's dependency set and then its actual outcomes. The tolerance question resolved
+immediately and unremarkably; the outcome tally did not.
+
+**The tolerance is forced for two of eight.** Of the gatekeeper's 8 `needs:`, only
+`codeql-java-kotlin` and `dependency-review` carry an `if:` at all. The other six —
+`codeql-javascript`, `secret-scanning`, `gitleaks`, `npm-audit`, `gradle-dependency-check`,
+`license-check` — are unconditional, and across 40 runs every one of them concluded `success`
+40/40. So blanket `success|skipped` tolerance is load-bearing for 25% of the set and pure slack
+for the rest. That is a real if minor widening, and it is _not_ what the runs were failing on.
+
+**A 12/12 coincidence that wasn't a correlation.** `Dependency Review` was `skipped` 12 times and
+`Required Checks Gatekeeper` failed 12 times, which looked like the documented tolerance not
+working. Crosstabulating refuted it outright: `dr=skipped → gk=success` ×11 (all `push`), and all
+12 gatekeeper failures were `pull_request` runs where dependency-review **succeeded**. The
+tolerance does exactly what its comment claims. Two equal counts, zero overlap — worth recording
+because the matching totals were the entire basis for suspecting it.
+
+**What the failures actually were.** All 8 required checks green, gatekeeper red. The failing step
+is a different one in the same job:
+
+```
+Workflow security regression check failed:
+- reusable-detect-changes.yml: reviewed local reusable drifted
+    (expected f67ce0e2…, found 642d6e29…)
+- reusable-release-smoke-test.yml: reviewed local reusable drifted
+    (expected 74ff29d0…, found bba5f8f3…)
+```
+
+10 of the 12 failures are the **same pull request** — #4012, a Dependabot bump of 12 actions
+across 28 workflow files, open since 2026-08-08 and still failing on the most recent run in the
+sample. The other two were transient and self-healed on the next push.
+
+### The deadlock
+
+`tools/check-workflow-security.mjs` freezes two privileged `workflow_call` targets to a reviewed
+SHA-256 of their **whole file** (`localReusableBaselines`, added in `517d0116` / #4025 — this
+predates the engineering-practice adoption and is not something this work introduced).
+`GH-ACT-003` requires every `uses:` to be pinned to a full 40-character commit SHA. Dependabot's
+entire function is to rotate those pins. Both files contain pinned actions.
+
+So: the pinning rule mandates the pins, Dependabot updates the pins, and the freeze reads a pin
+update as an unreviewed edit to a privileged workflow. Each control is correct in isolation and
+neither can yield to the other. The result is that **a security-relevant dependency update is
+blocked by a security control**, and the longer it stays blocked the staler the pins it was
+trying to refresh — the failure mode compounds in the direction of less security, not more.
+
+This is the sibling session's structural finding in a second instance, and a stronger one: there
+the mandatory remedy for one trap _manufactured the condition_ of another. Here two mandatory
+controls manufacture a deadlock with no third position available.
+
+### The fix, and precisely what it gives up
+
+`normalizeReviewedPins()` elides an already-pinned reference before the baseline hash is taken,
+so the baseline tracks a workflow's **logic** rather than the specific SHAs it pins:
+
+```
+uses: actions/checkout@11bd71901bbe…  # v4.2.2   →   uses: actions/checkout@<PINNED>
+```
+
+Four properties, each held by a test:
+
+- **`owner/repo` is preserved.** Repointing a step at a different action still drifts. Verified by
+  mutating a real pin to `attacker/evil` — exit 1.
+- **Only a full 40-hex reference is elided.** A pin replaced by `@v4` does not match, so it drifts
+  here _and_ is independently reported by `findMutableReferenceViolations`, which runs over every
+  workflow at L416 and requires a 40-hex SHA on every `uses:`.
+- **The trailing `# vX.Y.Z` comment is elided with the reference,** because Dependabot rewrites it
+  in the same edit. Leaving it in would have reintroduced exactly the drift being removed — the
+  normalisation would have looked right and changed nothing.
+- **Non-`uses:` lines are untouched,** so a SHA appearing in a `run:` is still hashed.
+
+Residual risk, stated plainly: an in-place rotation of a valid 40-hex SHA on an
+**already-trusted `owner/repo`** is no longer caught by _this_ control. That is the exact change
+Dependabot makes, which is why the deadlock existed. It remains covered by the 40-hex pin
+requirement, by dependency-review and CodeQL on the same PR, and by the canonical-comparison
+assertion these two files also carry.
+
+### Verified against the real failing input, not an analogue
+
+The raw hashes computed locally reproduce the CI log **exactly** — `f67ce0e2…` expected /
+`642d6e29…` found, and `74ff29d0…` / `bba5f8f3…` — so this was measured on the input that failed
+rather than a reconstruction of it. Under normalisation, `main` and #4012 produce an identical
+hash for both files, which also establishes that the entire delta in those files was pin
+rotation and nothing structural.
+
+Six directions checked end to end: `main` → 0; #4012's content → **0** (deadlock resolved);
+injected job → 1; restored → 0; repointed action → 1; final → 0. 17/17 unit tests.
+
+**The portable form:** a content freeze over a file that a bot is _required_ to edit is a deadlock
+with a delay fuse. It passes review, passes CI, and passes every run until the bot's first edit —
+and the component that finally reports red is neither of the two controls that conflict.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

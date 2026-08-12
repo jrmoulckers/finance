@@ -36,9 +36,9 @@ const privilegedWorkflows = new Set([
 ]);
 
 const localReusableBaselines = {
-  'reusable-detect-changes.yml': 'f67ce0e29f90d0d9a73e7db3155ba8ccec3525e2eb8a2730ed9337a3ef614ade',
+  'reusable-detect-changes.yml': '73a26b45af9ff6254e6982b63b336dc4a9a2bdd785d7ffbdaae4094d2ae90697',
   'reusable-release-smoke-test.yml':
-    '74ff29d0ee4a028db9ceb804eb3b662bfbb3595dc21563438768bc39991b3e6e',
+    '170107646a35e855dbfc9b95aaa395da41ccab84cad70f1bdc559448e8c603df',
 };
 
 const requiredEnvironmentJobs = {
@@ -137,6 +137,30 @@ function normalize(text) {
 
 function sha256(text) {
   return createHash('sha256').update(normalize(text)).digest('hex');
+}
+
+/**
+ * Elide already-pinned action references so the reviewed-reusable baseline tracks a
+ * workflow's logic rather than the specific SHAs it pins.
+ *
+ * Only a full 40-hex reference is elided, and only the reference itself — `owner/repo`
+ * is preserved, so repointing a step at a different action still drifts the baseline.
+ * A pin replaced by a tag or branch does not match, so it drifts here and is reported
+ * separately by findMutableReferenceViolations, which requires a 40-hex SHA on every
+ * `uses:` in every workflow (ENG-SEC-004, GH-ACT-003).
+ *
+ * The trailing `# vX.Y.Z` comment is elided with the reference because Dependabot
+ * rewrites it in the same edit; leaving it in the hash would reintroduce the drift
+ * this normalisation exists to remove.
+ *
+ * @param {string} text Raw workflow source.
+ * @returns {string} Source with pinned references reduced to `owner/repo@<PINNED>`.
+ */
+export function normalizeReviewedPins(text) {
+  return normalize(text).replace(
+    /^(\s*(?:-\s*)?uses:\s*)([^@\s]+)@[0-9a-f]{40}[^\n]*$/gm,
+    '$1$2@<PINNED>',
+  );
 }
 
 export function extractJob(workflow, jobName) {
@@ -528,11 +552,13 @@ export function scanWorkflowSecurity(workflows, productionCompose = '') {
     if (!workflow.includes(`Canonical comparison: jrmoulckers/.github@${canonicalWorkflowSha}`)) {
       report(file, `must document canonical comparison at ${canonicalWorkflowSha}`);
     }
-    const actualHash = sha256(workflow);
+    const actualHash = sha256(normalizeReviewedPins(workflow));
     if (actualHash !== expectedHash) {
       report(
         file,
-        `reviewed local reusable drifted (expected ${expectedHash}, found ${actualHash})`,
+        `reviewed local reusable drifted (expected ${expectedHash}, found ${actualHash}); ` +
+          'action pin rotations are excluded from this baseline, so this reflects a change ' +
+          'to the workflow itself and needs review',
       );
     }
   }

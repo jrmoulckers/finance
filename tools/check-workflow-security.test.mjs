@@ -8,6 +8,7 @@ import {
   findInheritingJobs,
   findMutableReferenceViolations,
   findRunExpressionViolations,
+  normalizeReviewedPins,
   pureEventDisjunction,
   scanWorkflowSecurity,
 } from './check-workflow-security.mjs';
@@ -210,4 +211,35 @@ test('scanWorkflowSecurity does not flag jobs recorded in the inheritance baseli
     errors.some((error) => /omits permissions:/.test(error)),
     false,
   );
+});
+
+test('normalizeReviewedPins elides a pinned reference and its version comment', () => {
+  const before = '      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2';
+  const after = '      - uses: actions/checkout@50b1a1e0dc63b1bbecac6b0c8a1a1e3a30e6f4b1 # v5.0.0';
+  assert.equal(normalizeReviewedPins(before), normalizeReviewedPins(after));
+  assert.equal(normalizeReviewedPins(before), '      - uses: actions/checkout@<PINNED>');
+});
+
+test('normalizeReviewedPins preserves owner/repo so repointing an action still drifts', () => {
+  const genuine =
+    '      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2';
+  const swapped =
+    '      - uses: attacker/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2';
+  assert.notEqual(normalizeReviewedPins(genuine), normalizeReviewedPins(swapped));
+});
+
+test('normalizeReviewedPins leaves unpinned references intact so they still drift', () => {
+  const tagged = '      - uses: actions/checkout@v4';
+  assert.equal(normalizeReviewedPins(tagged), tagged);
+  assert.equal(
+    findMutableReferenceViolations(`${tagged}\n`).some((violation) =>
+      /not pinned by full SHA/.test(violation.reason),
+    ),
+    true,
+  );
+});
+
+test('normalizeReviewedPins does not elide a non-uses line that contains a SHA', () => {
+  const line = '      run: echo 11bd71901bbe5b1630ceea73d27597364c9af683';
+  assert.equal(normalizeReviewedPins(line), line);
 });
