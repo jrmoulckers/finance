@@ -2687,6 +2687,46 @@ Two smaller things the attempt exposed, both from writing YAML through PowerShel
   than assumed to have survived it, since the change touched the same statements that carry the exit
   codes.
 
+### Enforcement verified by log, not by YAML
+
+The previous change wired the citation gate into the required `Gatekeeper` job. That established
+the gate _should_ run. It did not establish that it _did_ — the same gap that makes a capability
+banner a claim rather than a report. Reading the workflow file to confirm a step executes is
+reading a description of the thing instead of the thing.
+
+Observation, from the `Gatekeeper` job log on the merged head:
+
+| Step | Name                               | Conclusion |
+| ---- | ---------------------------------- | ---------- |
+| 7    | ESLint                             | success    |
+| 8    | ENG citation check                 | success    |
+| 9    | Text encoding check (U+FFFD)       | success    |
+| 12   | Aggregate required security checks | success    |
+
+And the step body, which is the part that distinguishes a run from a no-op:
+
+- `132 citation(s) across 39 principle(s) in 806 file(s); all IDs exist, and 42 stated name(s) match.`
+- `checker v9; checks run: IDs, stated names, range members, link paths.`
+
+Three things follow. The counts are **identical to the local run**, so CI and the developer
+machine are looking at the same corpus at the same scope — the scope link and the invocation link
+are both closed by measurement rather than by argument. The step sits at index 8, ahead of the
+aggregate at index 12, so a non-zero exit fails the job that branch protection actually requires.
+And the run is on a job whose name resolves — a workflow that fails to parse produces no jobs at
+all, so the presence of a named job is itself evidence the file is valid.
+
+**The banner is still a claim.** `checker v9` in the CI log is the same field that read `checker v3`
+unchanged for a day in another repo. What makes the CI binary trustworthy here is not the banner
+but `eng:vendor:check`, which compares the three vendored files against the pinned ref by content
+hash. CI checks out the same tree that check validates, so the binary link is closed by content
+and the banner is corroboration, not evidence.
+
+**What is still unobserved:** the gate has never _blocked_ in CI. Its failure path is proven only
+locally, where a bogus ID produced exit 1 and an `::error::` annotation. A gate that has only ever
+passed is compatible with a correct gate and with one that cannot fail, and no amount of green
+distinguishes them. The honest statement is that the block path is verified on the developer
+machine and unverified in the environment that enforces it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
