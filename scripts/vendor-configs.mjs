@@ -29,9 +29,10 @@
  * else. Provenance lives in the lock file instead.
  */
 
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, access, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { join, dirname, basename } from 'node:path';
+import { join, dirname, basename, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const REPO = 'jrmoulckers/engineering';
 const LOCK = 'engineering-configs.lock.json';
@@ -52,7 +53,13 @@ const SETS = {
   },
   prettier: {
     from: 'packages/prettier-config',
-    files: ['index.js', 'svelte.js'],
+    // The declarations ship beside the modules they describe. finance imports
+    // this config through Prettier's `prettier` key in package.json rather than
+    // from TypeScript, so TS7016 cannot occur here and the declarations buy
+    // nothing today. They are vendored anyway because the set is upstream's to
+    // define: carrying a subset made `--check` compare a different payload than
+    // upstream publishes, and that divergence is silent in both directions.
+    files: ['index.js', 'index.d.ts', 'svelte.js', 'svelte.d.ts'],
     // These files are ESM, and upstream says so via `"type": "module"` in the
     // package it publishes. Vendoring copies the files and leaves that behind,
     // so in a consumer whose root package.json has no `type` field they are
@@ -93,6 +100,16 @@ function fail(message, hint) {
   throw new VendorError(message, hint);
 }
 
+/** True when a path is readable. Used to tell a dropped lock entry from a deleted file. */
+async function exists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function parseArgs(argv) {
   const positional = [];
   const flags = {};
@@ -105,10 +122,12 @@ function parseArgs(argv) {
       i += 1;
     } else if (arg === '--check') {
       flags.check = true;
+    } else if (arg === '--prune') {
+      flags.prune = true;
     } else if (arg.startsWith('--')) {
       fail(
         `unknown option ${arg}`,
-        'Usage: vendor-configs.mjs <ref> [--dest <dir>] [--set a,b] | vendor-configs.mjs --check',
+        'Usage: vendor-configs.mjs <ref> [--dest <dir>] [--set a,b] [--prune] | vendor-configs.mjs --check',
       );
     } else {
       positional.push(arg);
@@ -146,6 +165,74 @@ async function latestRef() {
  * build pressures the next person into bumping the ref without deciding to
  * accept the change, which is the property pinning exists to protect.
  */
+/** Longest shared directory prefix of a set of lock keys, without a trailing slash. */
+function commonDirPrefix(paths) {
+  if (paths.length === 0) return '';
+  const split = paths.map((path) => path.split('/').slice(0, -1));
+  const shared = [];
+  for (let i = 0; i < split[0].length; i += 1) {
+    const segment = split[0][i];
+    if (!split.every((parts) => parts[i] === segment)) break;
+    shared.push(segment);
+  }
+  return shared.join('/');
+}
+
+/**
+ * Files outside the vendored tree that mention it.
+ *
+ * A green `--check` means the tree matches the lock — not that the pin is
+ * current, and not that anything still reads it. Ported from upstream, which
+ * shipped it after jrm-recipes extended the framing. Both self-reference paths
+ * are excluded, because either one would let the check vouch for the tree it is
+ * auditing: this script carries the default dest as a literal, and the lock
+ * records every dest path by construction.
+ */
+async function wiringReferences(dest) {
+  const needle = String(dest).replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/+$/, '');
+  if (needle === '' || needle === '.') return [];
+
+  const selfPath = resolve(fileURLToPath(import.meta.url));
+  const selfText = await readFile(selfPath, 'utf8').catch(() => null);
+
+  const SKIP = new Set([
+    'node_modules',
+    '.git',
+    'dist',
+    'build',
+    'coverage',
+    '.next',
+    '.turbo',
+    'out',
+  ]);
+  const EXT = /\.(json|jsonc|js|mjs|cjs|ts|mts|cts|ya?ml|toml)$/i;
+  const MAX_BYTES = 512 * 1024;
+  const hits = [];
+
+  async function walk(dir, depth) {
+    if (depth > 6) return;
+    const items = await readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const item of items) {
+      const path = dir === '.' ? item.name : `${dir}/${item.name}`;
+      if (item.isDirectory()) {
+        if (SKIP.has(item.name)) continue;
+        // The vendored tree references itself; only outside references count.
+        if (path === needle) continue;
+        await walk(path, depth + 1);
+      } else if (item.isFile() && EXT.test(item.name)) {
+        const text = await readFile(path, 'utf8').catch(() => null);
+        if (text === null) continue;
+        const isSelf = selfText === null ? resolve(path) === selfPath : text === selfText;
+        if (isSelf) continue;
+        if (text.length <= MAX_BYTES && text.includes(needle)) hits.push(path);
+      }
+    }
+  }
+
+  await walk('.', 0);
+  return hits.filter((path) => path !== LOCK).sort();
+}
+
 async function check() {
   let lock;
   try {
@@ -188,6 +275,20 @@ async function check() {
       `${unloadable.length} vendored ESM file(s) lack a "type": "module" marker:\n  ${unloadable.join('\n  ')}`,
       'Add a package.json containing {"type":"module"} beside each. Without it, ' +
         'Node below 22.7 cannot import the file, and no other gate detects this.',
+    );
+  }
+
+  // Upstream records `dest` in the lock; this fork's lock predates that, so the
+  // dest is recovered as the common directory prefix of every locked key. That
+  // is exact for a single-dest lock and degrades to a shorter prefix rather than
+  // a wrong one if a second dest is ever added.
+  const destPrefix = commonDirPrefix(entries.map(([dest]) => dest));
+  const wired = await wiringReferences(destPrefix);
+  if (wired.length === 0) {
+    fail(
+      `nothing outside ${destPrefix}/ references it.`,
+      'A green --check would keep saying the tree matches a lock nothing reads. ' +
+        'Restore the reference, or drop the set with --prune and delete the files.',
     );
   }
 
@@ -469,6 +570,28 @@ async function main() {
     previous = JSON.parse(await readFile(LOCK, 'utf8'));
   } catch {
     // No previous lock: this is a first vendor.
+  }
+
+  // A partial `--set` rewrites the whole lock, so any previously locked file
+  // outside the chosen sets drops out of it while staying on disk. `--check`
+  // then passes over a tree it no longer covers, which is the unhashed-file
+  // hazard the lock exists to remove — and it happens silently, because
+  // dropping an entry looks identical to never having had one.
+  //
+  // Reported rather than repaired: carrying the old entries forward would put
+  // two refs in one lock, and a lock that cannot name a single ref cannot
+  // answer the question `--check` asks.
+  const droppedFromLock = [];
+  for (const key of Object.keys(previous?.files ?? {})) {
+    if (lock.files[key]) continue;
+    if (await exists(key)) droppedFromLock.push(key);
+  }
+  if (droppedFromLock.length > 0 && !flags.prune) {
+    fail(
+      `vendoring only [${names.join(', ')}] would drop ${droppedFromLock.length} locked file(s) that are still on disk:\n` +
+        droppedFromLock.map((key) => `  - ${key}`).join('\n'),
+      'Re-run with every set the lock covers, or pass --prune to drop them deliberately (and delete the files).',
+    );
   }
 
   await writeFile(LOCK, `${JSON.stringify(lock, null, 2)}\n`, 'utf8');

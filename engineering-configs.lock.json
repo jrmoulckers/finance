@@ -1,16 +1,24 @@
 {
   "repository": "jrmoulckers/engineering",
-  "ref": "v0.122.0",
-  "fetchedAt": "2026-08-12T16:58:24.150Z",
+  "ref": "v0.124.0",
+  "fetchedAt": "2026-08-12T17:49:23.152Z",
   "refresh": "node scripts/vendor-configs.mjs <newer-ref>",
   "files": {
     "config/engineering/prettier/index.js": {
       "source": "packages/prettier-config/index.js",
       "sha256": "0cda065a2e3d88526f8e8b986145b14e823f8c987238f1435b850b82329d181b"
     },
+    "config/engineering/prettier/index.d.ts": {
+      "source": "packages/prettier-config/index.d.ts",
+      "sha256": "5ed5a00e2e493e9be4c1d233d157d127419bfb4f8813f8bf1e05209e7223de85"
+    },
     "config/engineering/prettier/svelte.js": {
       "source": "packages/prettier-config/svelte.js",
       "sha256": "6901f8eb670b4ce68ecac86fd7da37ec7f81227ad55e99df13106f54d521332f"
+    },
+    "config/engineering/prettier/svelte.d.ts": {
+      "source": "packages/prettier-config/svelte.d.ts",
+      "sha256": "66b85b7572f5c81c594583851ddde8d365bfe70bec11d3ac2ccf8a892172406f"
     },
     "config/engineering/prettier/package.json": {
       "source": "packages/prettier-config/package.json#type",
