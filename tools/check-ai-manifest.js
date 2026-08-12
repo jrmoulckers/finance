@@ -479,7 +479,66 @@ function validateSyncLock() {
   return findings;
 }
 
-// The engine hashes LF-normalized text (`hashText`, lock.mjs:57). Naming it here rather
+// --- Cross-repo citations ---------------------------------------------------------------
+//
+// This file makes claims about jrmoulckers/.github's engine. Every such claim used to carry a
+// line number, and a line number in another repository decays with every PR merged there --
+// silently, because nothing on this side can notice. Measured at backbone `79faef3a`:
+//
+//   `hashText`          cited at line 57, actually at line 68     11 lines stale
+//   `canonicalizeInner` cited at line 165, actually at line 181   17 lines stale
+//   `planFile`, the `apply` drift branch, `inject`, `isUnstampedCanon`   still accurate
+//
+// Those rows are measurements pinned to a commit, not citations: their truth is fixed at
+// `79faef3a` forever, which is exactly why they may state offsets when live citations may not.
+//
+// In both stale cases the CLAIM was true and only the COORDINATE had rotted, which is the
+// property worth designing around: the durable half is the symbol, the fragile half is the
+// offset. So citations name symbols, and the registry records the commit each was verified
+// against. A reader can re-verify any row with one read-only call:
+//
+//   gh api repos/jrmoulckers/.github/contents/sync/lib/<file> --jq .content | base64 -d
+//
+// The guard is deliberately narrower than the claim. Whether the engine still behaves as
+// described cannot be checked from here -- that needs the network at check time, which is
+// owner-gated (#4141). What IS checkable offline is that no citation reverts to a bare
+// coordinate and that every registered row names a symbol and a verification commit. Pinning
+// what is reachable beats asserting what is not (#4222).
+const CANON_CITATIONS = [
+  { file: 'sync/lib/lock.mjs', symbol: 'hashText', verifiedAt: '79faef3a' },
+  { file: 'sync/lib/basemerge.mjs', symbol: 'canonicalizeInner', verifiedAt: '79faef3a' },
+  { file: 'sync/lib/copier.mjs', symbol: 'planFile', verifiedAt: '79faef3a' },
+  { file: 'sync/lib/copier.mjs', symbol: 'apply', verifiedAt: '79faef3a' },
+  { file: 'sync/lib/copier.mjs', symbol: 'isUnstampedCanon', verifiedAt: '79faef3a' },
+  { file: 'sync/lib/provenance.mjs', symbol: 'inject', verifiedAt: '79faef3a' },
+];
+
+// A bare `<file>.mjs:<line>` reference to engine source. Scoped to .mjs because this repo's own
+// files are .js/.ts and self-references are stable -- they move with the edit that moves them.
+const BARE_COORDINATE = /\b[a-z][a-z0-9-]*\.mjs:\d+/g;
+
+// Pure so the rule is assertable over arbitrary text rather than only over the file that
+// happens to be on disk.
+function citationFindings(text, citations = CANON_CITATIONS) {
+  const findings = [];
+  for (const match of text.match(BARE_COORDINATE) || []) {
+    findings.push(
+      `cites engine source by line number, which decays unnoticed: ${match} — ` +
+        `name the symbol and register it in CANON_CITATIONS instead`,
+    );
+  }
+  if (!citations.length) {
+    findings.push('no canon citations registered — the registry is not observing');
+  }
+  for (const row of citations) {
+    if (!row.file || !row.symbol || !row.verifiedAt) {
+      findings.push(`citation row is incomplete: ${JSON.stringify(row)}`);
+    }
+  }
+  return findings;
+}
+
+// The engine hashes LF-normalized text (`hashText` in `lock.mjs`). Naming it here rather
 // than spelling `.replace(/\r\n/g, '\n')` at each call site keeps one word for one rule:
 // three inline spellings is what made this normalization impossible to cite accurately,
 // and impossible to notice was untested (#4201).
@@ -504,7 +563,7 @@ function managedRegion(text) {
 // single rule verifies one group and reports false drift on the other:
 //   marker-managed -> sha256 of the region body, TRAILING whitespace stripped, markers excluded
 //   whole-file     -> sha256 of the whole file, LF-normalized, not stripped
-// The engine is `toLF(inner).replace(/\s+$/, '')` (basemerge.mjs:165, canonicalizeInner).
+// The engine is `toLF(inner).replace(/\s+$/, '')` (`canonicalizeInner` in `basemerge.mjs`).
 // `.trim()` is the natural external guess and is wrong: it strips the leading end too, so the
 // two rules agree on every region body that does not begin with whitespace and diverge on
 // every one that does. This repo's 68 present lock entries contain no instance of that input
@@ -528,7 +587,7 @@ function managedDigest(text) {
 // already run (the lock's generatedAt is that run's output); these paths are absent because
 // the frozen copies were deliberately deleted in #4066/#4076 so the next run repopulates
 // them. Absence is the one state the engine's local-modification guard does not block --
-// copier.mjs:248 plans `add` unconditionally for a missing path -- so the tolerance
+// `planFile` in `copier.mjs` plans `add` unconditionally for a missing path -- so the tolerance
 // self-discharges on the next successful run. Deriving it from the path rather than pinning
 // a count is what makes that automatic, and any other missing managed target -- a deleted
 // skill, prompt, instruction, or root doc -- is reported rather than silently skipped.
@@ -542,7 +601,8 @@ const PENDING_SYNC = /(^|\/)vendor\/@jrm\/tokens\//;
 
 // The inverse of verifyManagedContent: that asks "entry present, is the file there?", this
 // asks "file present, is it recorded?". A lock-iterating check cannot reach a canon target
-// that never became an entry, and the engine can produce one -- copier.mjs:94 leaves the lock
+// that never became an entry, and the engine can produce one -- the `drift` branch of `apply`
+// in `copier.mjs` leaves the lock
 // untouched on drift, so a member file that already differed from canon at first sync is
 // never recorded and is thereafter invisible to every check either side runs.
 //
@@ -696,7 +756,7 @@ const PROVENANCE_STAMP_LINE =
 
 // The engine injects its stamp with a shape chosen by the target's comment syntax, so the
 // inverse is a switch on file extension rather than a guess. Documented upstream in
-// `sync/README.md` and implemented at `provenance.mjs:57-73`:
+// `sync/README.md` and implemented by `inject` in `provenance.mjs`:
 //
 //   hash   `# note\n`     + content -> strip 1   .toml .yml .sh .gitattributes
 //   block  `/* note */\n` + content -> strip 1   .css .js .ts .kt .swift
@@ -777,7 +837,8 @@ function unstampSource(entryPath, text) {
 // keeps a future exclusion from reappearing as a quietly smaller number.
 //
 // For `vendor/@jrm/tokens/css/default/tokens.css` specifically, the engine documents the
-// cause at `copier.mjs:494-499`: an overlapping run reverted that entry to the hash and
+// cause in the `isUnstampedCanon` docblock of `copier.mjs`: an overlapping run reverted that
+// entry to the hash and
 // timestamp of an older revision and the lock was later hand-repaired, so `targetSha256`
 // was corrected to match the bytes while `sourceSha256` and `syncedAt` stayed stale. That
 // makes it an internally inconsistent entry, not a stamping question -- the strip rule is
@@ -1108,6 +1169,9 @@ module.exports = {
   commentFamily,
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
+  CANON_CITATIONS,
+  citationFindings,
+  BARE_COORDINATE,
   exemptionMatches,
   sourceDisclosureLines,
 };
