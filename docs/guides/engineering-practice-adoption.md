@@ -6887,6 +6887,115 @@ Node runtime pins agree with .nvmrc (22): 37 pin(s) = 36 literal + 1 marked exer
 A denominator names how many; the metric names of what; and a partition has to
 sum, or one of its parts is invisible.
 
+## A lint that could not fail: 601 `.tsx` files, zero React rules
+
+Upstream sent a `--print-config` probe with the principle that _a passing lint is evidence
+about the rules that ran, not the rules that should have_. Run against finance it found
+something larger than the case it was written for.
+
+### The premise correction first
+
+The message opened "your deliberate `>=0.8.0 <0.9.0` pin is now costing you more than it
+saves." finance has **zero `@jrmoulckers/*` declarations** — none in `package.json`, none in
+any workspace manifest, none in `package-lock.json`, no range to widen. The pin belongs to a
+different consumer. The advice about the `[0.9.0, 0.12.0)` window is correct and was verified
+against the published manifests; it is simply addressed to the wrong repository.
+
+### What the probe found
+
+| measurement                   | value |
+| ----------------------------- | ----- |
+| `.tsx` files in the repo      | 601   |
+| rules loaded on a `.tsx` file | 93    |
+| `react/*` rules               | 0     |
+| `react-hooks/*` rules         | 0     |
+| `jsx-a11y/*` rules            | 0     |
+
+Rule counts by tier — apps/web 93, services 92, tools/root 87 — are strict subsets of each
+other, so the tiering is deliberate and has no accidental holes. The React coverage is not a
+hole in the tiering; the plugins were never installed.
+
+### The binding constraint is a peer range, not a token
+
+The standing description of this blocker in earlier sections of this document — "171
+`jsx-a11y/no-redundant-roles` errors, gated on a `read:packages` grant" — is **stale**. It was
+measured before finance moved to ESLint 10. Re-measured today against `eslint@10.8.1`:
+
+| plugin                      | latest | peer `eslint`    | installs?         |
+| --------------------------- | ------ | ---------------- | ----------------- |
+| `eslint-plugin-react`       | 7.37.5 | `… \|\| ^9.7`    | **no** — ERESOLVE |
+| `eslint-plugin-jsx-a11y`    | 6.10.2 | `… \|\| ^9`      | **no** — ERESOLVE |
+| `eslint-plugin-react-hooks` | 7.1.1  | `… \|\| ^10.0.0` | yes               |
+
+Those error counts are unreachable: the rules cannot be loaded at all. The blocker changed
+identity while the description of it did not — which is upstream's own stale-denominator
+lesson applied to this document.
+
+### What landed
+
+`eslint-plugin-react-hooks@7.1.1` is the one plugin that supports ESLint 10. Its
+`recommended-latest` config declares **17 rules** (an earlier note in this document said 29;
+that was the plugin's total rule export, not the recommended set). Measured across 2,326
+linted files:
+
+| partition                | count                         |
+| ------------------------ | ----------------------------- |
+| rules at zero violations | 10 — **enabled**              |
+| rules with violations    | 7 — not enabled, counts below |
+
+    set-state-in-effect            98
+    exhaustive-deps                34
+    preserve-manual-memoization    21
+    refs                           15
+    rules-of-hooks                  3
+    immutability                    2
+    purity                          2
+
+The 10 clean rules are enabled as `error`/`warn` at their upstream severities and `apps/web`
+lints at `--max-warnings 0` with exit 0. The 7 are listed in `eslint.config.mjs` itself with
+their counts, because a narrowing that is not stated in the artifact becomes a ratchet nobody
+can audit.
+
+### Two findings from the rules that were not enabled
+
+**A false positive from name shape.** `apps/web/e2e/fixtures.ts:298` is flagged by
+`rules-of-hooks` for calling `use`. It is Playwright's fixture callback, not React's `use`
+hook — the rule matches an identifier, and an identifier is a shape, not a referent. This is
+the same class as a 40-hex string that parses as a SHA and resolves to nothing. The plugin is
+therefore scoped to `apps/web/src/**`, not `apps/web/**`, and the scope carries a comment
+saying why.
+
+**Two real conditional hooks.** `apps/web/src/pages/HouseholdPage.tsx:3596` and `:3608` call
+`useGoals()` and `useTransactions()` inside `try { } catch { }`. A hook that can throw partway
+through render breaks React's hook ordering for every subsequent hook in the component. These
+are genuine latent defects, found by a rule that has never run in this repository, in a file
+of 3,600+ lines. Fixing them is a design change to the underlying hooks and is filed as
+follow-up rather than bundled into an adoption change.
+
+So of the 3 `rules-of-hooks` hits, 1 is a false positive and 2 are real bugs — a 67% true
+positive rate on a rule that was worth turning on for exactly that reason.
+
+### A correction to last turn's lock diagnosis
+
+Last turn attributed the pruning of the nested
+`git-raw-commits/node_modules/conventional-commits-parser@6.4.0` entry to
+`npm install --package-lock-only`. That was wrong. A plain `npm install --save-dev` pruned it
+identically this turn. The variable is not the flag, it is the **npm version**: local is npm
+11.16.0 on Node 24, CI resolves `node-version: 22`. The repository already prints this
+mismatch as a notice on every run.
+
+The remedy is unchanged and is now confirmed as the general one: let npm generate the lock,
+then restore the pruned block verbatim from `origin/main` and require the diff against `main`
+to show **zero removed entries** before pushing. This turn: 51 lines added, 0 removed,
+`npm ci` exit 0.
+
+### For the engineering repo
+
+If `@jrmoulckers/eslint-config` declares `eslint-plugin-react` or `eslint-plugin-jsx-a11y` as
+peers, **the preset cannot install in any ESLint 10 consumer**. This is not specific to
+finance and is not something a consumer can work around locally — the upstream plugins cap
+below `^10`. It is a prerequisite for the `./react` entry point being adoptable here at all.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
