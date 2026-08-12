@@ -1080,22 +1080,55 @@ line is the technique that bounds line length without taxing edits, and Prettier
 it — but `always` actively undoes it, while `preserve` is the setting that permits it. `preserve`
 is therefore not better in itself; it is the only value under which the convention can survive.
 
-**The merge-conflict axis does not discriminate between the two live options** and should not be
-cited in either direction. Measured directly — two branches, each editing one sentence of a shared
-paragraph, then `git merge`:
+**Retracted: the merge-conflict axis _does_ discriminate.** This section previously concluded that
+conflict behaviour is "governed by line granularity, not wrapping policy" and that the axis should
+not be cited in either direction. That conclusion was wrong, and the experiment behind it could not
+have produced any other answer.
 
-| Regime                         | Edits far apart | Edits adjacent |
-| ------------------------------ | --------------- | -------------- |
-| `always`                       | clean           | CONFLICT       |
-| `preserve`, one long paragraph | **CONFLICT**    | CONFLICT       |
-| `preserve` + semantic breaks   | clean           | CONFLICT       |
+The original test edited **lines** of the already-formatted file. Editing a formatted line directly
+means Prettier never re-runs, and reflow is the only behaviour `proseWrap: 'always'` has — so the
+setting under test had been removed from the test. Re-run holding the **prose** edit constant
+instead (one word into sentence 1 on one branch, one word into sentence 4 on the other, each branch
+re-formatted with real Prettier under its own regime, then merged), sweeping the size of the edit:
 
-Conflict behaviour is governed by **line granularity, not wrapping policy**. `always` and semantic
-breaks both produce roughly sentence-length lines and behave identically. Unbroken single-line
-paragraphs are the genuinely bad case, because every concurrent edit collides on one line.
-Adjacent edits conflict under every regime, since git needs an unchanged context line between
-changes. So finance's original "`always` manufactures conflicts" argument was wrong, and so is the
-converse — the real cost of `always` is the one above.
+| Words inserted into sentence 1 | `always` lines touched | `always` merge | semantic lines touched | semantic merge |
+| ------------------------------ | ---------------------- | -------------- | ---------------------- | -------------- |
+| 1                              | 4                      | **CONFLICT**   | 1                      | clean          |
+| 2                              | 4                      | **CONFLICT**   | 1                      | clean          |
+| 3–12                           | 5                      | **CONFLICT**   | 1                      | clean          |
+
+**8 of 8 conflict under `always`; 0 of 8 under semantic breaks.** The earlier verdict is withdrawn.
+
+**But the mechanism is narrower than "reflow expands every edit to paragraph scope."** Holding the
+regime at `always` and varying only the character-length delta of a single-word substitution:
+
+| Edit to sentence 1       | Δ chars | Lines touched | Merge vs. sentence-4 edit |
+| ------------------------ | ------- | ------------- | ------------------------- |
+| `every` → `each`         | −1      | 1             | clean                     |
+| `every` → `those`        | 0       | 1             | clean                     |
+| `every` → `all of the`   | +5      | 4             | **CONFLICT**              |
+| `every` → `every single` | +7      | 4             | **CONFLICT**              |
+
+Reflow escalates an edit to paragraph scope **only when the length delta pushes a word across a
+wrap boundary**. Below that threshold `always` touches one line and merges clean. This makes the
+cost harder to reason about, not easier: under `always`, whether two authors collide depends on the
+character count of a word, which is invisible at authoring time and differs between two edits a
+human would call identical. Under semantic breaks the footprint is one line unconditionally. The
+axis therefore discriminates on **predictability** as much as on conflict count, and it now supports
+`preserve` rather than being neutral toward it.
+
+Two findings survive unchanged: unbroken single-line paragraphs are the genuinely bad case, since
+every concurrent edit collides on one line; and **adjacent edits conflict under every regime**,
+because git needs an unchanged context line between changes and no wrapping policy can supply one.
+That last row is non-discriminating and should not be cited by anyone.
+
+> **The method note is the transferable part.** If a setting's whole function is to transform the
+> artifact, an experiment that edits the artifact's _post-transform_ shape has quietly removed the
+> setting from the experiment. Worth recording that finance's first attempt to _refute_ the
+> correction repeated the defect in a second form: a single substitution (`every` → `each`) that
+> landed in the sub-threshold region above, measured correctly, and read as a regime-level result.
+> Both the original claim and its first rebuttal were single-condition experiments generalised to a
+> policy. The sweep is what separates them.
 
 **Convention: semantic line breaks.** One sentence per line in new and substantially-edited prose.
 Not enforced, not retrofitted, and not a reason to reflow existing files.
