@@ -16,9 +16,10 @@
  * do not fail the check.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import semver from 'semver';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workflowDirectory = join(repositoryRoot, '.github', 'workflows');
@@ -78,19 +79,22 @@ export function pinMajor(value) {
 /**
  * True when `major` falls inside an `engines.node` range.
  *
- * Understands the lower/upper bound forms this repository uses. An unparseable
- * range returns `null` -- undecided, never a violation, so a form the check
- * cannot read stays silent instead of failing a tree it cannot judge.
+ * This previously read the first `>=` and the first `<` out of the string, which
+ * was correct for every form the repository then used and silently wrong for the
+ * first one it didn't: given `>=22.23.0 <23 || >=24` it took the bound from the
+ * first alternative and the ceiling from the second, and rejected Node 24. A
+ * control validated only against the shape that motivated it inherits that
+ * shape's blind spots, so range logic is delegated to `semver` rather than
+ * approximated here.
+ *
+ * An unparseable range returns `null` -- undecided, never a violation, so a form
+ * the check cannot read stays silent instead of failing a tree it cannot judge.
  */
 export function majorSatisfiesEngines(major, range) {
   if (!major || !range) return null;
-  const lower = String(range).match(/>=?\s*v?(\d+)/);
-  if (!lower) return null;
-  const upper = String(range).match(/<=?\s*v?(\d+)/);
-  const value = Number(major);
-  if (value < Number(lower[1])) return false;
-  if (upper && value > Number(upper[1])) return false;
-  return true;
+  const text = String(range);
+  if (!semver.validRange(text)) return null;
+  return semver.intersects(`${Number(major)}.x`, text);
 }
 
 /**
@@ -175,11 +179,95 @@ export function findNodeVersionMismatches(file, text, expectedMajor) {
  */
 export function enginesAdmitsAbove(range, expectedMajor) {
   if (!range || !expectedMajor) return false;
-  const lowerBoundOnly = /^\s*>=?\s*v?\d+/.test(range);
-  const hasUpperBound = /<\s*v?\d+/.test(range);
-  return lowerBoundOnly && !hasUpperBound;
+  const text = String(range);
+  if (!semver.validRange(text)) return false;
+  // Not "has no upper bound": `>=22.23.0 <23 || >=24` has one and still admits
+  // 24. Reading the ceiling off the first alternative would answer "no majors
+  // above", silently retiring the requirement that some job exercise them.
+  const base = Number(expectedMajor);
+  for (let major = base + 1; major <= base + 20; major += 1) {
+    if (semver.intersects(`${major}.x`, text)) return true;
+  }
+  return false;
 }
 
+/**
+ * Node versions worth probing for a range claim.
+ *
+ * A declared range is only ever wrong at a boundary some package states, so the
+ * probe set is every literal version appearing in a dependency's own range, plus
+ * each major boundary. Sampling a fixed grid instead would step over exactly the
+ * `>=22.22.1` style bound that makes the claim false.
+ */
+export function probeVersions(dependencyRanges, lowMajor = 18, highMajor = 30) {
+  const versions = new Set();
+  for (let major = lowMajor; major <= highMajor; major += 1) versions.add(`${major}.0.0`);
+  for (const range of dependencyRanges) {
+    for (const match of String(range).matchAll(/(\d+)\.(\d+)\.(\d+)/g)) {
+      versions.add(`${match[1]}.${match[2]}.${match[3]}`);
+    }
+  }
+  return [...versions].filter((version) => semver.valid(version));
+}
+
+/**
+ * Versions the declared range admits but an installed dependency rejects.
+ *
+ * `engines` is advisory in npm's default configuration -- `EBADENGINE` is a
+ * warning and the install proceeds -- so a false range produces no failure
+ * anywhere until a consumer sets `engine-strict`. That makes this the one place
+ * the claim can be checked against something other than itself.
+ */
+export function findAdmittedIncompatibilities(declared, dependencies) {
+  if (!declared || !semver.validRange(declared)) return [];
+  const usable = dependencies.filter((dep) => dep.range && semver.validRange(dep.range));
+  const admitted = [];
+  for (const version of probeVersions(usable.map((dep) => dep.range))) {
+    if (!semver.satisfies(version, declared)) continue;
+    const failing = usable.filter((dep) => !semver.satisfies(version, dep.range));
+    if (failing.length > 0) {
+      admitted.push({
+        version,
+        count: failing.length,
+        ranges: [...new Set(failing.map((dep) => dep.range))].sort().slice(0, 3),
+      });
+    }
+  }
+  return admitted.sort((a, b) => semver.compare(a.version, b.version));
+}
+
+/** Every installed dependency that states an `engines.node`, walked from disk. */
+export function collectDependencyEngines(root, depth = 0) {
+  const found = [];
+  if (depth > 4 || !existsSync(root)) return found;
+  let entries;
+  try {
+    entries = readdirSync(root, { withFileTypes: true });
+  } catch {
+    return found;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const full = join(root, entry.name);
+    if (entry.name === 'node_modules') {
+      found.push(...collectDependencyEngines(full, depth + 1));
+      continue;
+    }
+    if (entry.name.startsWith('@')) {
+      found.push(...collectDependencyEngines(full, depth));
+      continue;
+    }
+    try {
+      const manifest = JSON.parse(readFileSync(join(full, 'package.json'), 'utf8'));
+      const range = manifest?.engines?.node;
+      if (typeof range === 'string') found.push({ name: manifest.name ?? entry.name, range });
+    } catch {
+      /* not a package, or unreadable -- neither is this check's business */
+    }
+    found.push(...collectDependencyEngines(join(full, 'node_modules'), depth + 1));
+  }
+  return found;
+}
 function main() {
   const expectedMajor = parseNvmrc(readFileSync(join(repositoryRoot, '.nvmrc'), 'utf8'));
   if (!expectedMajor) {
@@ -217,6 +305,27 @@ function main() {
   }
 
   const notices = [];
+  const modules = join(repositoryRoot, 'node_modules');
+  if (!existsSync(modules)) {
+    // Never silently skip: an absent tree and a clean one are the same exit code.
+    notices.push('node_modules is absent, so engines.node was not checked against dependencies.');
+  } else {
+    const dependencies = collectDependencyEngines(modules);
+    const admitted = findAdmittedIncompatibilities(engines?.node, dependencies);
+    if (admitted.length > 0) {
+      const worst = admitted[0];
+      violations.push(
+        `package.json engines.node is "${engines.node}", which admits Node ${worst.version}, ` +
+          `but ${worst.count} installed dependenc(ies) declare themselves incompatible there ` +
+          `(e.g. ${worst.ranges.join(', ')}). ${admitted.length} admitted version(s) fail this way. ` +
+          `Narrow engines.node to what the dependency tree actually supports.`,
+      );
+    } else {
+      notices.push(
+        `engines.node "${engines?.node}" admits no version rejected by any of ${dependencies.length} dependency declaration(s).`,
+      );
+    }
+  }
   const runningMajor = process.versions.node.split('.')[0];
   if (runningMajor !== expectedMajor) {
     notices.push(

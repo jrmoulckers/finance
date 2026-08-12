@@ -6729,6 +6729,87 @@ are now joined.
 crossing is an upstream event no local gate observes. 20 tests, 8 of 8 mutants killed, calibrated on
 the unmutated tree first.
 
+## The hole in the middle of an open-ended range
+
+An upstream session argued that a declared `engines.node` cannot be repaired by the declaring
+repository, because npm treats the field as advisory: `EBADENGINE` is a warning, the install
+proceeds, and `engine-strict` belongs to the _consumer_. Their conclusion — **a severity you do not
+own cannot be promoted** — is correct for a publisher. It does not hold here, because finance is the
+consumer of its own manifest.
+
+Their narrowing suggestion does not survive either. `^20` is not "the same claim, honestly bounded":
+
+| range  | 20.0.0 | 22.0.0    | 24.3.0    |
+| ------ | ------ | --------- | --------- |
+| `>=20` | true   | true      | true      |
+| `^20`  | true   | **false** | **false** |
+
+`^20` is `>=20.0.0 <21.0.0`. It excludes two majors rather than narrowing a claim about them.
+
+### What measuring the field actually found
+
+finance declared `engines.node: ">=22.0.0"`. Checking that against the `engines` its own 451
+dependency declarations state:
+
+| probed      | dependencies rejecting it |
+| ----------- | ------------------------- |
+| 22.0.0      | **49**                    |
+| 22.11.0     | 48                        |
+| 22.12.0     | 14                        |
+| **22.23.0** | **0**                     |
+| **23.9.0**  | **20**                    |
+| 24.0.0      | 0                         |
+
+Two separate falsehoods, in opposite directions from the one being discussed:
+
+1. **The floor was below the real floor.** `>=22.22.1` and `^22.13.0` bounds put the true minimum at
+   **22.23.0**, not 22.0.0.
+2. **The range has a hole.** Twenty packages declare `^20.19.0 || ^22.13.0 || >=24.0.0`, skipping
+   Node 23 entirely — it is an odd, non-LTS line. An open-ended `>=22.0.0` claims 23 works. It does
+   not, and nothing above it is monotonic: 23 fails while 24 is clean.
+
+The thread until now had treated a range as an interval with a tested floor and an asserted top. This
+one is **discontinuous**, and neither "exercise the top" nor "narrow to what you tested" describes the
+defect. Corrected to `>=22.23.0 <23 || >=24`.
+
+None of it was visible because every workflow pins `node-version: 22`, which resolves to the latest
+22.x. The floor is never installed at its own boundary.
+
+### The check broke the checker
+
+Applying the corrected range immediately failed `node:version:check` with _"Node 24 is outside
+`>=22.23.0 <23 || >=24`"_. Both range predicates in that tool were hand-rolled: they read the first
+`>=` and the first `<` out of the string, so on a `||` range they took the bound from one alternative
+and the ceiling from another. `enginesAdmitsAbove` had the mirror bug — it asked "is there no upper
+bound", answered "no majors above", and would have **silently retired** the requirement that a job
+exercise them.
+
+This is the rule coined earlier in this adoption, recurring in the tool that coined it: _a control
+validated only against the shape that motivated it inherits that shape's blind spots._ The comment
+above the function said it "understands the forms this repository uses" — accurate, and precisely the
+defect. Range logic is now delegated to `semver`, added as an explicit devDependency rather than
+reached for transitively.
+
+### What was deliberately not done
+
+`engine-strict=true` in `.npmrc` would make finance's own declaration binding on finance, which is
+the promotion the upstream session said was unavailable. It was measured and declined:
+
+```
+latest Node 22 = v22.23.2      declared floor = 22.23.0      margin = 2 patch releases
+```
+
+Enabling it makes every install depend on the runner resolving `22` to a patch level above a floor it
+clears by two releases — an upstream event no local gate observes, which is the exact failure class
+this PR removed elsewhere. The severity was promoted instead in the place finance actually owns: from
+a warning npm prints and discards to a **fatal repository check** that compares the declaration
+against the dependency tree on every run.
+
+**The rule:** an advisory field is not checkable against itself, but it is checkable against the tree
+it describes. 31 tests, 9 of 10 mutants killed; the survivor is reported below as equivalent —
+`semver.satisfies` returns `false` rather than throwing on an invalid range, so the `validRange`
+guard has no observable effect and is retained for intent.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

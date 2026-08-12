@@ -5,15 +5,17 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
-  RANGE_MARKER,
   enginesAdmitsAbove,
   exercisedMajorsAbove,
-  findRangeExerciseViolations,
+  findAdmittedIncompatibilities,
   findNodeVersionMismatches,
   findNodeVersionPins,
-  parseNvmrc,
+  findRangeExerciseViolations,
   majorSatisfiesEngines,
+  parseNvmrc,
   pinMajor,
+  probeVersions,
+  RANGE_MARKER,
 } from './check-node-version-consistency.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -185,4 +187,85 @@ test('the repository declares a range and exercises it', () => {
     exercisedMajorsAbove(files, expected).length > 0,
     'engines.node claims majors above .nvmrc but no workflow runs one',
   );
+});
+
+test('majorSatisfiesEngines reads every alternative, not the first bound it sees', () => {
+  // The regression: reading the first `>=` and the first `<` out of
+  // `>=22.23.0 <23 || >=24` took the ceiling from the wrong alternative and
+  // rejected Node 24, which is the major the range exists to admit.
+  const range = '>=22.23.0 <23 || >=24';
+  assert.equal(majorSatisfiesEngines('24', range), true);
+  assert.equal(majorSatisfiesEngines('22', range), true);
+  assert.equal(majorSatisfiesEngines('23', range), false);
+  assert.equal(majorSatisfiesEngines('20', range), false);
+});
+
+test('majorSatisfiesEngines stays undecided on a range it cannot parse', () => {
+  assert.equal(majorSatisfiesEngines('22', 'lts/*'), null);
+  assert.equal(majorSatisfiesEngines('22', ''), null);
+  assert.equal(majorSatisfiesEngines(null, '>=22'), null);
+});
+
+test('enginesAdmitsAbove is not "has no upper bound"', () => {
+  assert.equal(enginesAdmitsAbove('>=22.23.0 <23 || >=24', '22'), true);
+  assert.equal(enginesAdmitsAbove('>=22.0.0 <23', '22'), false);
+  assert.equal(enginesAdmitsAbove('>=22.0.0', '22'), true);
+  assert.equal(enginesAdmitsAbove('lts/*', '22'), false);
+});
+
+test('probeVersions samples the bounds dependencies actually state', () => {
+  const versions = probeVersions(['>=22.22.1', '^20.19.0 || ^22.13.0 || >=24']);
+  // A fixed grid of major boundaries steps straight over 22.22.1, which is the
+  // bound that makes the claim false.
+  assert.ok(versions.includes('22.22.1'));
+  assert.ok(versions.includes('20.19.0'));
+  assert.ok(versions.includes('24.0.0'));
+});
+
+test('findAdmittedIncompatibilities names a version the range admits and a dependency rejects', () => {
+  const admitted = findAdmittedIncompatibilities('>=22.0.0', [
+    { name: 'a', range: '>=22.22.1' },
+    { name: 'b', range: '>=22.0.0' },
+  ]);
+  assert.ok(admitted.length > 0);
+  assert.equal(admitted[0].version, '22.0.0');
+  assert.equal(admitted[0].count, 1);
+  assert.deepEqual(admitted[0].ranges, ['>=22.22.1']);
+});
+
+test('findAdmittedIncompatibilities reports the lowest failing version first', () => {
+  const admitted = findAdmittedIncompatibilities('>=20.0.0', [{ name: 'a', range: '>=24.0.0' }]);
+  assert.equal(admitted[0].version, '20.0.0');
+  assert.ok(admitted.every((entry, i) => i === 0 || entry.version >= admitted[0].version));
+});
+
+test('findAdmittedIncompatibilities is silent when the range is honest', () => {
+  assert.deepEqual(
+    findAdmittedIncompatibilities('>=22.23.0 <23 || >=24', [
+      { name: 'a', range: '>=22.22.1' },
+      { name: 'b', range: '^20.19.0 || ^22.13.0 || >=24' },
+    ]),
+    [],
+  );
+});
+
+test('findAdmittedIncompatibilities ignores unreadable inputs rather than throwing', () => {
+  assert.deepEqual(findAdmittedIncompatibilities('lts/*', [{ name: 'a', range: '>=24' }]), []);
+  assert.deepEqual(findAdmittedIncompatibilities(undefined, [{ name: 'a', range: '>=24' }]), []);
+  // A dependency whose range is unparseable cannot accuse the declaration.
+  assert.deepEqual(
+    findAdmittedIncompatibilities('>=22.0.0', [{ name: 'a', range: 'garbage' }]),
+    [],
+  );
+});
+test('findAdmittedIncompatibilities sorts by version, not by probe order', () => {
+  // Probing walks the major grid first and appends dependency-stated bounds
+  // after it, so an unsorted result reports 22.22.1 last -- below every version
+  // printed before it. The caller shows admitted[0] as "the lowest that fails".
+  const admitted = findAdmittedIncompatibilities('>=22.0.0', [
+    { name: 'a', range: '>=22.22.1' },
+    { name: 'b', range: '>=30.0.0' },
+  ]);
+  assert.equal(admitted[0].version, '22.0.0');
+  assert.equal(admitted[1].version, '22.22.1');
 });

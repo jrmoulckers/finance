@@ -84,7 +84,7 @@
     "url": "https://github.com/jrmoulckers/finance.git"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.23.0 <23 || >=24"
   },
   "packageManager": "npm@10.9.4",
   "overrides": {
@@ -124,6 +124,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "prettier": "^3.9.1",
+    "semver": "^7.7.4",
     "turbo": "^2.10.0",
     "typescript-eslint": "^8.62.0"
   },
