@@ -128,6 +128,9 @@ jobs:
       - name: Gradle jobs prefetch the distribution
         run: npm run gradle:prefetch:check
 
+      - name: Tooling imports are declared
+        run: npm run tool:imports:check
+
   pr-title:
     name: Semantic PR Title
     needs: changes

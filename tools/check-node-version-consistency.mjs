@@ -340,8 +340,12 @@ function main() {
     return;
   }
 
+  // The three buckets partition every pin found, so the summary states the
+  // total and its parts together. Reporting only the plain literals read as a
+  // census while silently excluding the marked pin, which is how a figure stays
+  // true and becomes wrong to quote.
   console.log(
-    `Node runtime pins agree with .nvmrc (${expectedMajor}): ${literalCount} literal, ${fileCount} via node-version-file, across ${files.length} workflow file(s).`,
+    `Node runtime pins agree with .nvmrc (${expectedMajor}): ${literalCount + markedCount + fileCount} pin(s) = ${literalCount} literal + ${markedCount} marked ${RANGE_MARKER} + ${fileCount} via node-version-file, across ${files.length} workflow file(s).`,
   );
   if (markedCount > 0) {
     console.log(

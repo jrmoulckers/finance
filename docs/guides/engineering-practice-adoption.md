@@ -6810,6 +6810,83 @@ it describes. 31 tests, 9 of 10 mutants killed; the survivor is reported below a
 `semver.satisfies` returns `false` rather than throwing on an invalid range, so the `validRange`
 guard has no observable effect and is retained for intent.
 
+## A dependency with no declaration, found by a second instrument
+
+`tools/check-workflow-security.mjs` imports `js-yaml`. Nothing in this
+repository declared it. It resolved because three transitive providers --
+`@changesets/parse`, `cosmiconfig` and `read-yaml-file` -- each depend on it,
+so npm hoists a copy into the root `node_modules`.
+
+The interesting failure is not that the import might stop resolving. If it did,
+the tool would crash loudly and CI would fail. The failure is quieter: **no
+range in this repository constrains the version.** The security gate parses
+workflow YAML with whatever major its incidental providers happen to hoist. A
+provider moving to a `js-yaml` with different `load` semantics would change how
+this repository's security check reads its own workflows, with no file here
+changing and nothing to review.
+
+That is the same shape as a pin with no canonical source: the reference is
+satisfiable and uncompared. Declaring the dependency is what gives it a
+referent.
+
+### The sweep, and its denominator
+
+Across the 49 top-level modules in `tools/` and `scripts/` there are 150 module
+references. **One** was undeclared. A single instance is not worth a tool; the
+class is, because nothing in the repository could previously state the
+requirement. So the fix is `tools/check-tool-imports.mjs`, run in CI as
+`npm run tool:imports:check`, and the declaration is generated from it.
+
+The checker reads five forms -- `import ... from`, side-effect `import`,
+`export ... from`, dynamic `import()` and `require()` -- and declines anything
+computed. A specifier it cannot read is left undecided rather than reported: a
+gate's tolerable error is the one that reads as "nothing found", never one that
+reads as an accusation.
+
+### The checker reported its own fixtures
+
+On its first run against the real tree it failed with six violations, all in
+its own test file: `export-from-pkg`, `dynamic-pkg`, `require-pkg`, `alpha`,
+`ghost-pkg`, `@ghost/scope`. A test for an import checker must contain import
+statements as _data_, and the checker read them as code.
+
+This is the third instance in this adoption of an instrument that lives inside
+its own search space measuring itself first, and the first where the collision
+was structural rather than accidental -- a test for this checker cannot avoid
+containing its own needles. The population now excludes test files, and the
+summary states how many were excluded rather than leaving the denominator
+implied:
+
+```
+Tooling imports are declared: 127 module reference(s) across 44 file(s) in tools, scripts; 7 test file(s) excluded.
+```
+
+### A census line that was true and wrong to quote
+
+Cross-checking the workflow scan against a YAML parser -- `js-yaml`, walking
+`jobs[].steps[].with` -- produced exact agreement at **37** `node-version`
+keys across 121 jobs and 530 steps in 31 files. The regex and the parser are
+independent instruments and they agree, which is worth more here than in a
+small tree: an unanchored pattern that agrees on two files agrees by a property
+of the input, while one that agrees across 530 steps has met the shapes that
+break it.
+
+But `npm run node:version:check` printed `36 literal, 0 via node-version-file`.
+Both figures are true. The population is 37: the third bucket, the one pin
+marked `exercises-engines-range`, appeared only on a **conditional** second
+line. The first line reads as a census and is not one, and this repository's
+own reports quoted "36 pins" as a standing fact.
+
+The three buckets partition every pin found, so the summary now states the
+total and its parts together:
+
+```
+Node runtime pins agree with .nvmrc (22): 37 pin(s) = 36 literal + 1 marked exercises-engines-range + 0 via node-version-file, across 31 workflow file(s).
+```
+
+A denominator names how many; the metric names of what; and a partition has to
+sum, or one of its parts is invisible.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
