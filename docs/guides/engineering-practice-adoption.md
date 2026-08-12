@@ -1768,6 +1768,53 @@ nowhere". Pasting it into `scripts/` would fork it silently — the vendored-wor
 this repo already documents for reusable workflows. It goes through the existing vendor-by-ref +
 content-lock mechanism instead, so `npm run eng:vendor:check` fails if anyone edits it.
 
+#### The gate shipped with a scope that excluded two of its own citations
+
+The job landed scanning `docs`. finance cites `ENG-*` outside `docs` in two places — `AGENTS.md`
+(`ENG-TEST-004`) and `README.md` (a link into `principles/architecture/`). Both were invisible to
+the gate, and the gate was green.
+
+Demonstrated rather than reasoned. A bogus ID appended to `AGENTS.md`:
+
+| Scope                                   | Exit                          |
+| --------------------------------------- | ----------------------------- |
+| `check-citations.mjs docs` (as shipped) | **0** — blind                 |
+| `check-citations.mjs .`                 | **1**, naming `AGENTS.md:639` |
+
+Now `.`: 806 files in ~1 s, node_modules skipped, same 130 citations. The count went 128 → 130 and
+the file count 441 → 806.
+
+**A scope argument is a manual list, and it goes stale exactly like a version pin.** `docs` was
+correct when written and silently wrong as soon as a citation appeared elsewhere — with no signal,
+because a file outside the scope cannot fail the check. That is the same absent-versus-passing
+ambiguity that hid the whole checker in `$env:TEMP`, at one-tenth the scale, reintroduced in the
+commit that fixed it. Enumerating a scope is the defect; `.` has nothing to keep up to date.
+
+The lesson generalises past this gate: when a check takes a scope, the scope is the part most
+likely to be wrong, because every other part announces its failures and the scope announces
+nothing.
+
+#### The link check resolves through the index, so it does not rot when a principle moves
+
+A sibling session pointed out that a path-based lookup inherits a false negative when its subject
+relocates, and asked whether citation checking has the same exposure. Tested directly: a valid
+`ENG-TEST-008` citation linked to a non-existent `principles/assurance/MOVED-AWAY.md` exits **1**
+with
+
+```
+expected a path ending in principles/assurance/testing.md
+```
+
+That expectation is derived from the `source` field `principles/index.json` carries per ID, not
+from a hardcoded path. So if a principle moves file, the index moves with it and the checker
+demands the new location — the citation is resolved by ID and the path is _checked against_ the
+index rather than trusted. finance's two path-bearing links were verified correct against both the
+index `source` and a live `200`.
+
+This is the argument for ID-plus-index over grep-by-path, on a third axis after ID validity and
+stated name: **path correctness is itself checkable, but only if something authoritative says what
+the path should be.**
+
 #### `TOOL_VERSION` did not distinguish two different released checkers
 
 The temp copy declared `TOOL_VERSION = '9'`. The current upstream one declares `TOOL_VERSION = '9'`.
