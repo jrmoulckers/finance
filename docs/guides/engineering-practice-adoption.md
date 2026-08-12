@@ -4951,6 +4951,102 @@ than the message that reports it, so any advice about another repository is a me
 tree the sender does not hold. The remedy is the same one the note recommends — re-measure at the
 point of use — and it applies symmetrically in both directions.
 
+### The independent pair is jointly defeated, and the standard remedy does not fix it
+
+The previous section endorsed a two-guard pair for `git rev-parse` — exit code (a property of the
+process) and full 40-hex shape (a property of the value) — on the grounds that neither is derived
+from the other. A sibling session accepted that and added that the two would fail differently: a
+command exiting 0 while printing garbage defeats the exit guard alone, and one exiting non-zero
+while echoing something hex-shaped defeats the shape guard alone.
+
+Both of us were wrong about the second arm, and the correct version is worse. Measured:
+
+| Input                        | exit  | 40-hex? | object exists? | exit guard | shape guard |
+| ---------------------------- | ----- | ------- | -------------- | ---------- | ----------- |
+| `deadbeef…` ×5 (nonexistent) | **0** | **yes** | **no**         | passes     | passes      |
+| `v9.9.9-does-not-exist`      | 128   | no      | no             | catches    | catches     |
+
+`git rev-parse` does not verify that a full-length hex argument names an existing object. It
+accepts it as already-resolved and echoes it, **exiting 0**. So the failure is not "one guard or
+the other" — it is both at once, on the single most natural input for a SHA-checking probe.
+
+Independence of _derivation_ does not imply disjointness of _failure sets_. The two guards really
+are computed from unrelated things, and they still admit exactly the same wrong value, because the
+input class that breaks one is the input class that satisfies the other: a string shaped like the
+answer is passed through as the answer. **Two guards are only redundant if their failure sets
+differ, and that is a claim about inputs, not about derivations.** This corrects the endorsement
+made a section earlier, which reasoned about how the guards were computed and not about what could
+satisfy both.
+
+And the obvious remedy is insufficient:
+
+| Command on a nonexistent 40-hex         | exit                 |
+| --------------------------------------- | -------------------- |
+| `git rev-parse <sha>`                   | 0                    |
+| `git rev-parse --verify <sha>`          | **0**                |
+| `git rev-parse --verify <sha>^{commit}` | **128**              |
+| `git rev-parse --short <sha>`           | 0, prints `deadbeef` |
+
+`--verify` is what most guidance recommends and it does not close this. Only peeling to an object
+type — `^{commit}`, `^{object}` — or an explicit `git cat-file -e` actually tests existence. The
+`--short` row is the sibling's tidiness observation at eight characters instead of forty: the
+output is a well-formed abbreviated SHA of an object that is not there.
+
+### Finance's nine call sites, and the invariant three of them rest on
+
+| Workflow                 | Line     | Form                                        | Safe because                      |
+| ------------------------ | -------- | ------------------------------------------- | --------------------------------- |
+| `deploy-production.yml`  | 243, 783 | `--verify --quiet "$VERSION^{commit}"`      | **peels**                         |
+| `deploy-production.yml`  | 957      | `-q --verify "refs/tags/v…"`                | ref path, never hex               |
+| `deploy-staging.yml`     | 79       | `--verify "${TARGET_SHA}^"`                 | `^` peels to parent               |
+| `rc-branch-tag.yml`      | 178      | `--verify "origin/${BRANCH}"`               | ref path, never hex               |
+| `deploy-progressive.yml` | 154      | `git rev-parse "$VERSION"`                  | input is `vX.Y.Z`, never hex      |
+| `rc-branch-tag.yml`      | 242      | `git rev-parse "$RC_TAG"` as existence test | input is `vX.Y.Z-rc.N`, never hex |
+| `release-train.yml`      | 426      | `git rev-parse "$TAG"` as existence test    | input is `vX.Y.Z`, never hex      |
+| `deploy-staging.yml`     | 101      | `git rev-parse --short "$TARGET_SHA"`       | upstream invariant, below         |
+
+The two existence tests are the interesting ones. `if git rev-parse "$TAG" >/dev/null 2>&1` is a
+correct existence test **only for arguments that are not full hex** — it would report "exists" for
+any 40-hex string whatsoever. Version tags are never 40-hex, so both sites are correct. They are
+correct because of a property of their inputs, not because of a property of the check, which is
+the same shape as the `apps/web/vercel.json` trap recorded earlier in this document: inert only
+while an external convention holds, with nothing local that would notice if it stopped.
+
+`deploy-staging.yml` L101 is the one that takes a variable literally named `TARGET_SHA`, and it is
+also safe — but not by any local mechanism. L75 sets it from `workflow_run.head_sha` or
+`github.sha`, and L70 checks out that exact ref, so the object is present by construction. Nothing
+at L101 would detect a violation of that invariant.
+
+**No change is made here.** These are production deploy workflows, the invariant holds, and
+hardening a non-bug on a release path is the kind of widening this document has declined
+elsewhere. The finding is recorded so that a future change to how `TARGET_SHA` is sourced is
+understood to be load-bearing.
+
+### `set -euo pipefail` cannot fire on a command that succeeds while being wrong
+
+`deploy-staging.yml` L77 sets `set -euo pipefail`, and it is reasonable to read L101 as protected
+by it. It is not, and cannot be: the failure mode under discussion **exits 0**. `set -e` is a
+guard on exit status, so it is defeated by exactly the class of defect where the exit status is
+the thing that is wrong.
+
+That is the same structure as the two guards above, one level up. A repository can hold three
+apparently distinct protections — `set -e`, an exit-code check, and a shape check — and have all
+three admit the same value, because all three are satisfied by a command that confidently returns
+a well-formed answer about an object that does not exist.
+
+### The tidiness signature has a detector
+
+The sibling's formulation — **real data is ragged; fabricated data is tidy** — is right, and the
+mechanism supplies a test. When `git rev-parse` fabricates, it echoes its argument, so the output
+column becomes a copy of the input list. If the inputs are distinct (tags, paths), the outputs are
+distinct too, and `distinct == rows` follows necessarily.
+
+So `distinct == rows == length(inputs)` is the signature of total fabrication, and it is exactly
+the result that reads as a clean sweep. The corruption is inversely legible to its severity, as
+they put it, and the reason is that a fabricated column inherits the shape of the query rather
+than the shape of the data. A genuine enumeration of a file across 153 tags produces collisions,
+because content repeats; only a fabricated one is perfectly distinct.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
