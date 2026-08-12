@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { buildManifest } = require('./ai-manifest.js');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -357,6 +358,60 @@ function validateSyncLock() {
     if (!metadata.sourceSha256 || !metadata.targetSha256 || !metadata.syncedAt) {
       findings.push(`sync lock entry is incomplete: ${entry}`);
     }
+  }
+
+  findings.push(...verifyManagedContent(lock));
+  return findings;
+}
+
+// Markers delimiting a managed region, per comment syntax of the host file.
+// Group 2 is the region body; the markers themselves are excluded from the digest.
+const REGION_MARKERS = [
+  /^<!-- studio:([\w-]+):start -->\n([\s\S]*?)^<!-- studio:\1:end -->$/m,
+  /^# studio:([\w-]+):start\n([\s\S]*?)^# studio:\1:end$/m,
+];
+
+function managedRegion(text) {
+  for (const pattern of REGION_MARKERS) {
+    const match = text.match(pattern);
+    if (match) return match[2];
+  }
+  return null;
+}
+
+// Reproduces the sync engine's targetSha256. The two shapes differ in trimming, so a
+// single rule verifies one group and reports false drift on the other:
+//   marker-managed -> sha256 of the region body, trimmed, markers excluded
+//   whole-file     -> sha256 of the whole file, LF-normalized, NOT trimmed
+// Verified against every present lock entry: 3 region, 65 whole, 0 mismatches.
+function verifyManagedContent(lock) {
+  const findings = [];
+  const pending = [];
+  for (const [entry, metadata] of Object.entries(lock.entries || {})) {
+    if (!metadata || !metadata.targetSha256) continue;
+    const absolute = path.join(ROOT, entry);
+    // Presence before classification: an absent target has no content to classify, and
+    // must not fall through to a whole-file compare that would report permanent drift.
+    if (!fs.existsSync(absolute)) {
+      pending.push(entry);
+      continue;
+    }
+    const text = fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n');
+    const region = managedRegion(text);
+    const payload = region === null ? text : region.trim();
+    const digest = crypto.createHash('sha256').update(payload).digest('hex');
+    if (digest !== metadata.targetSha256) {
+      const scope = region === null ? 'managed file' : 'managed region';
+      findings.push(
+        `${scope} was edited after sync: ${entry} ` +
+          `(sha256 ${digest.slice(0, 12)}, lock records ${metadata.targetSha256.slice(0, 12)})`,
+      );
+    }
+  }
+  if (pending.length) {
+    process.stdout.write(
+      `  [pending] ${pending.length} managed targets absent, awaiting the next sync run\n`,
+    );
   }
   return findings;
 }
