@@ -531,11 +531,11 @@ is adopted; tsconfig is deferred on its own evidence, not on access.
 
 4. Depend on the current floors as **ranges, not carets**:
 
-   | Package                        | Range            | Note                                               |
-   | ------------------------------ | ---------------- | -------------------------------------------------- |
-   | `@jrmoulckers/eslint-config`   | `>=0.9.0 <1.0.0` | plus three plugins in `devDependencies`, see below |
-   | `@jrmoulckers/tsconfig`        | `>=0.4.0 <1.0.0` | vendored channel — range is advisory only          |
-   | `@jrmoulckers/prettier-config` | `>=0.3.0 <1.0.0` | vendored here; pinned by ref + lock instead        |
+   | Package                        | Range             | Note                                               |
+   | ------------------------------ | ----------------- | -------------------------------------------------- |
+   | `@jrmoulckers/eslint-config`   | `>=0.12.0 <1.0.0` | plus three plugins in `devDependencies`, see below |
+   | `@jrmoulckers/tsconfig`        | `>=0.4.0 <1.0.0`  | vendored channel — range is advisory only          |
+   | `@jrmoulckers/prettier-config` | `>=0.3.0 <1.0.0`  | vendored here; pinned by ref + lock instead        |
 
    The React preset and `vite-react.json` first shipped in `0.2.0`, as did `prettier-config`'s
    reversal to `proseWrap: 'preserve'`; `eslint-config@0.4.0` is the first release installable on
@@ -606,19 +606,49 @@ that npm does not implement:
 +  "frameworkPlugins": { ... the five, relocated ... }
 ```
 
-**What that is for.** `peerDependenciesMeta.optional: true` suppresses the _error_ for a missing
-peer; it does not stop npm ≥7 auto-installing one it can resolve. So every consumer was installing
-every framework's toolchain. Measured here, one scratch project, bare preset only:
+**What that is for — and the stated mechanism is false.** This document previously carried upstream's
+explanation verbatim: that `peerDependenciesMeta.optional: true` suppresses the _error_ for a missing
+peer but "does not stop npm ≥7 auto-installing one it can resolve." **Upstream has retracted that**
+(`eslint-config@0.12.0`, repo `v0.43.0`) after testing tarball installs into a bare consumer on npm
+7, npm 11, pnpm 11, and pnpm with `auto-install-peers=true` — optional peers were installed in none
+of the four. Required peers _are_ auto-installed, which is the asymmetry the false claim generalised
+from. The sentence was wrong upstream and it was wrong here, having been copied rather than derived.
+
+**But the retraction does not reconcile with the measurement below, and that is unresolved.** All
+five framework plugins were already `optional: true` at `0.8.0` — verified against the published
+manifest in the engineering history, `40cf05d^`:
+
+```
+peerDependenciesMeta:  @next/eslint-plugin-next optional=true, eslint-plugin-jsx-a11y optional=true,
+                       eslint-plugin-react optional=true, eslint-plugin-react-hooks optional=true,
+                       eslint-plugin-svelte optional=true
+```
+
+So "required peers auto-install" cannot explain a Svelte plugin appearing in a React consumer's
+`0.8.0` tree, and neither can a transitive path: `0.8.0`'s regular `dependencies` are exactly
+`@eslint/js`, `eslint-config-prettier`, `globals`, and `typescript-eslint`, none of which reach
+`eslint-plugin-svelte` or `@next/eslint-plugin-next`. **Under the corrected mechanism, a bare
+`0.8.0` install should have measured near the 36.7 MB bare-preset figure, not 75.0 MB.**
+
+Measured here at the time, one scratch project:
 
 | Install                                 | Size        | Svelte plugin | Next plugin |
 | --------------------------------------- | ----------- | ------------- | ----------- |
 | `eslint-config@0.8.0`, React consumer   | **75.0 MB** | present       | present     |
 | `eslint-config@0.9.0` + 3 React plugins | **71.7 MB** | absent        | absent      |
 
-75.0 MB reproduces upstream's figure exactly. The saving for finance is **3.3 MB, 4.4%** — not the
-75 → 36.6 MB headline, because 36.6 MB is the bare preset with no framework plugins, a state no
-consumer can lint from. The dead weight removed is real; its size is an order of magnitude smaller
-than advertised for anyone who then installs their own stack.
+**Status: the numbers stand as recorded, the "present" attribution does not, and the conflict cannot
+be closed from here.** The scratch project is gone and the registry now returns `E401` for this
+session — package read access is the standing blocker (#4038) — so the install is not re-runnable
+until that clears. Applying upstream's own rule to this table: **a measurement is evidence for the
+number, not for the cause.** `75.0 MB` and `71.7 MB` were read off `du`; "present" and "absent" were
+the interpretation laid over them, and it is the interpretation that the corrected mechanism
+contradicts. Recorded as an open question for whoever has registry access, rather than quietly
+deleted — a row that disagrees with the explanation is the most informative thing on the page.
+
+The one downstream claim that does not depend on the disputed rows: the saving for finance was
+**3.3 MB, 4.4%**, not the 75 → 36.6 MB headline, because 36.6 MB is a bare preset no consumer can
+lint from. That arithmetic holds whatever the cause turns out to be.
 
 **Why the original finding was wrong.** The probe harness was
 `import(...).catch(e => console.log(e.code))`, which catches the rejection and lets node exit 0. I
@@ -635,7 +665,7 @@ records about lint evidence, turned on its author: **a probe reports the exit co
 not of the thing under test.** Where an exit code is the finding, it has to be taken from the real
 tool.
 
-**What finance must do.** Pin `>=0.9.0 <1.0.0` and declare the plugins the React preset imports at
+**What finance must do.** Pin `>=0.12.0 <1.0.0` and declare the plugins the React preset imports at
 module scope in `devDependencies`. There are **three**, not two:
 
 ```jsonc
@@ -651,13 +681,26 @@ the authority. Verified both ways — two plugins → `Cannot find package 'esli
 three → `LOADED OK, entries=14`. The Next row omits `jsx-a11y` and that is also correct: the Next
 entry point loads clean with exactly the two it lists.
 
-**One consequence still stands.** The peer range was the only machine-checkable statement of the
-ESLint 10 constraint in Blocker 2 — `eslint-plugin-react: ^7.37.0`, whose own peer caps at
-`eslint: … || ^9.7`, is what let npm refuse an unsatisfiable tree at install time. Moving it to an
-inert field means npm no longer checks it. Under `0.9.0` that obligation transfers to the consumer,
-which is the stated intent: finance now owns the `eslint-plugin-react` version directly and can
-hold it if a future release regresses on ESLint 10. Worth recording as a transfer of
-responsibility, not a loss.
+**One consequence stood, and has now reversed.** The peer range was the only machine-checkable
+statement of the ESLint 10 constraint in Blocker 2 — `eslint-plugin-react: ^7.37.0`, whose own peer
+caps at `eslint: … || ^9.7`, is what let npm refuse an unsatisfiable tree at install time. Moving it
+to an inert field meant npm no longer checked it, and under `0.9.0`–`0.11.0` that obligation
+transferred to the consumer. **`0.12.0` restores the five as optional `peerDependencies` and deletes
+the bespoke `frameworkPlugins` key, so npm version-checks the ranges again** and the obligation
+transfers back. Install size is unchanged either way, because the optional peers were never being
+auto-installed — which is the whole content of the retraction above.
+
+Upstream warns that anyone who pinned one of the five outside its supported range _during_ the
+unchecked window will now get an install failure rather than silent mis-linting. **finance is not
+exposed on either count.** Nothing is installed — `git grep '@jrmoulckers/' -- '*package.json'`
+still returns zero — and the three ranges this document proposes are each inside the published
+supported range:
+
+| finance proposes                                | supported                        | inside |
+| ----------------------------------------------- | -------------------------------- | ------ |
+| `eslint-plugin-react: ^7.37.0`                  | `^7.37.0`                        | yes    |
+| `eslint-plugin-react-hooks: ^5 \|\| ^6 \|\| ^7` | `^5.0.0 \|\| ^6.0.0 \|\| ^7.0.0` | yes    |
+| `eslint-plugin-jsx-a11y: ^6.10.0`               | `^6.10.0`                        | yes    |
 
 Every preset measurement in this document is stated against a **resolved version** already —
 `0.5.0`, `0.6.0`, `0.7.0`, `0.8.0` — because each was run against a specific published tarball
@@ -1244,7 +1287,7 @@ desktop|Kotlin|Swift|multiplatform` returns a single incidental match. finance s
     installs the three plugins it needs, the real figure is **75.0 → 71.7 MB, 4.4%**; and the
     broadcast named two React plugins where three are required, `eslint-plugin-jsx-a11y` being a
     static import at `react.js` line 3. The `docs/adopting.md` table is right; only the broadcast
-    was short. Finance pins `>=0.9.0 <1.0.0`.
+    was short. Finance pins `>=0.12.0 <1.0.0`.
 
 17. **`--dest` writes the lock to the repo root but keys it by the destination path, so a trial
     vendoring disarms the drift gate while reporting success.** Vendoring into a scratch directory
