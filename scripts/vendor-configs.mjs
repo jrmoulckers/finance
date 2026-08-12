@@ -167,6 +167,32 @@ export function highestSemver(tags) {
 }
 
 /**
+ * The `next` URL from a GitHub `Link` header, or null on the last page.
+ *
+ * Pagination on this API is opt-in and silent when ignored — a truncated page
+ * is a valid 200 with no marker in the body. Upstream passed 100 tags while
+ * this tool asked for one page of 100, so it was already computing a maximum
+ * over a subset. It returned the right answer anyway, but only because GitHub
+ * orders tags by creation recency and this repository happens to create them in
+ * ascending version order. That coincidence is not a property either side
+ * guarantees, and it inverts outright on a repository that backports: a
+ * maintenance wave creates low-version tags last, so page one would hold the
+ * *oldest* maintained lines.
+ */
+export function nextPageUrl(linkHeader) {
+  if (typeof linkHeader !== 'string') return null;
+  for (const part of linkHeader.split(',')) {
+    const match = /<([^>]+)>\s*;\s*rel="next"/.exec(part.trim());
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/** Room for 3,000 tags. A cap that is reached is reported rather than treated
+ * as the end of the list, since those are the same bytes to a caller. */
+export const MAX_TAG_PAGES = 30;
+
+/**
  * Resolve the newest upstream ref, and say how the answer was reached.
  *
  * `releases/latest` does not compute a maximum — it reads a `make_latest` flag a
@@ -184,34 +210,72 @@ export function highestSemver(tags) {
 export async function latestRef() {
   const read = async (path, pick) => {
     try {
-      const response = await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+      const url = path.startsWith('https://')
+        ? path
+        : `https://api.github.com/repos/${REPO}/${path}`;
+      const response = await fetch(url, {
         headers: apiHeaders(),
       });
       if (!response.ok) {
         const limited = response.headers.get('x-ratelimit-remaining') === '0';
         return {
           value: null,
+          link: null,
           reason: limited
             ? `GitHub API rate limit exhausted (HTTP ${response.status}); set GITHUB_TOKEN to raise it`
             : `GitHub API returned HTTP ${response.status} for ${path}`,
         };
       }
-      return { value: pick(await response.json()), reason: null };
+      return {
+        value: pick(await response.json()),
+        link: response.headers.get('link'),
+        reason: null,
+      };
     } catch (error) {
-      return { value: null, reason: `could not reach the GitHub API (${error.message})` };
+      return {
+        value: null,
+        link: null,
+        reason: `could not reach the GitHub API (${error.message})`,
+      };
     }
+  };
+
+  /** Walks every page before taking a maximum. A partial read yields a reason,
+   * never a smaller answer that would read as authoritative. */
+  const readAllTags = async () => {
+    const names = [];
+    let path = 'tags?per_page=100';
+    for (let page = 0; page < MAX_TAG_PAGES; page += 1) {
+      const result = await read(path, (body) =>
+        Array.isArray(body) ? body.map((entry) => entry.name) : [],
+      );
+      if (result.reason) return { value: null, reason: result.reason };
+      names.push(...result.value);
+      const next = nextPageUrl(result.link);
+      if (!next) return { value: highestSemver(names), reason: null };
+      path = next;
+    }
+    return {
+      value: null,
+      reason: `tag list exceeded ${MAX_TAG_PAGES} pages; refusing to report a maximum over a subset`,
+    };
   };
 
   const release = await read('releases/latest', (body) =>
     typeof body.tag_name === 'string' ? body.tag_name : null,
   );
-  const tags = await read('tags?per_page=100', (body) =>
-    highestSemver(Array.isArray(body) ? body.map((entry) => entry.name) : []),
-  );
+  const tags = await readAllTags();
 
   const best = highestSemver([release.value, tags.value].filter(Boolean));
   if (best) return { ref: best, reason: null };
-  return { ref: null, reason: release.reason ?? tags.reason ?? 'no semver tag or release found' };
+  // Both failed for possibly different causes. Reporting only the first hides
+  // the other, which is the same silence at a smaller scale -- a truncated tag
+  // walk masked by an unrelated 500 reads as a plain outage.
+  const reasons = [...new Set([release.reason, tags.reason].filter(Boolean))];
+  return {
+    ref: null,
+    reason: reasons.length > 0 ? reasons.join('; ') : 'no semver tag or release found',
+  };
 }
 
 /**
