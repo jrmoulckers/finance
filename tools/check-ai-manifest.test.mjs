@@ -24,6 +24,10 @@ const {
   commentFamily,
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
+  DOC_FILES,
+  scanDoc,
+  scanDocs,
+  countCoverageFindings,
 } = require('./check-ai-manifest.js');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -442,4 +446,88 @@ test('an entry stating no source hash is named rather than silently skipped', ()
     result.findings.every((f) => !f.includes('accounting lost')),
     'conservation must hold with the entry accounted for',
   );
+});
+
+// --- #4212: the count-claim arm must not certify a corpus it did not read ---------------------
+//
+// The success line asserts "counts ... are consistent". It was gated on zero DRIFTED claims, and
+// zero drifted is byte-identical to zero INSPECTED. Rewriting `**23** agents` as `twenty-three
+// agents` retires the claim, matches no METRIC, leaves AGENTS.md's managed region untouched, and
+// the tool exits 0 having read no claim at all. These pin the judgement rather than the printout.
+
+test('an empty claim set is a finding, not a clean result', () => {
+  const findings = countCoverageFindings({ claimCount: 0, missing: [] });
+  assert.equal(findings.length, 1);
+  assert.match(findings[0], /not observing/);
+});
+
+test('a missing declared document is a finding, not a printed skip', () => {
+  const findings = countCoverageFindings({ claimCount: 4, missing: ['docs/INDEX.md'] });
+  assert.deepEqual(findings, ['count-claim document is missing: docs/INDEX.md']);
+});
+
+test('every declared document missing reports absence AND non-observation', () => {
+  const findings = countCoverageFindings({ claimCount: 0, missing: [...DOC_FILES] });
+  // Both axes must be named: which documents vanished, and that nothing was measured. Reporting
+  // only the absences would leave the reader to infer the second, which is the inference this
+  // whole issue is about.
+  assert.equal(findings.length, DOC_FILES.length + 1);
+  assert.match(findings.at(-1), /not observing/);
+});
+
+test('claims present with nothing missing yields no finding', () => {
+  assert.deepEqual(countCoverageFindings({ claimCount: 1, missing: [] }), []);
+});
+
+test('a document present but contributing no claims is inert, not missing', () => {
+  // docs/INDEX.md is in this state today. It must not fail the build, and it must not be
+  // silently folded into the inspected count as though it had contributed something.
+  const scan = scanDocs({ agents: 0, skills: 0, instructions: 0, mcpServers: 0 }, [
+    'docs/INDEX.md',
+  ]);
+  assert.deepEqual(scan.missing, []);
+  assert.deepEqual(scan.inert, ['docs/INDEX.md']);
+  assert.equal(scan.inspected, 1);
+});
+
+test('the declared corpus is really observing right now', () => {
+  // The premise the guard rests on: this repo's documents do carry count claims. If this test
+  // ever fails, the guard above is the thing that stopped the tool certifying nothing.
+  const counts = { agents: 23, skills: 20, instructions: 14, mcpServers: 7 };
+  const scan = scanDocs(counts);
+  assert.deepEqual(scan.missing, []);
+  assert.ok(scan.claims.length > 0, 'declared corpus matched no count claims');
+  assert.deepEqual(scan.findings, []);
+});
+
+test('a retired claim is detected as non-observation, not as agreement', () => {
+  // The reproduction itself, at the seam: a document whose claims no longer match any METRIC
+  // yields the same empty set as a document with no drift. Only the guard separates them.
+  const real = scanDocs({ agents: 23, skills: 20, instructions: 14, mcpServers: 7 });
+  const retired = scanDocs({ agents: 23, skills: 20, instructions: 14, mcpServers: 7 }, [
+    'docs/INDEX.md',
+  ]);
+  assert.ok(real.claims.length > 0);
+  assert.equal(retired.claims.length, 0);
+  assert.deepEqual(real.findings, []);
+  assert.match(retired.findings.join('\n'), /not observing/);
+});
+
+test('scanDoc reports absence rather than throwing', () => {
+  const result = scanDoc('docs/does-not-exist-4212.md', { agents: 0 });
+  assert.equal(result.missing, true);
+  assert.deepEqual(result.findings, []);
+});
+test('inspected counts documents actually read, not documents declared', () => {
+  // Mutation D survived the first harness: `inspected` is printed in the passing summary and no
+  // test constrained it, so it could have reported the declared total while a document was
+  // absent -- a number in the report that nothing measures, which is the defect this issue is
+  // about, one level up in the fix for it.
+  const scan = scanDocs({ agents: 23, skills: 20, instructions: 14, mcpServers: 7 }, [
+    'docs/INDEX.md',
+    'docs/does-not-exist-4212.md',
+  ]);
+  assert.deepEqual(scan.missing, ['docs/does-not-exist-4212.md']);
+  assert.equal(scan.declared, 2);
+  assert.equal(scan.inspected, 1);
 });

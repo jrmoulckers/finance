@@ -202,6 +202,63 @@ function scanDoc(relPath, counts) {
   return { missing: false, findings };
 }
 
+// Scans the whole declared corpus and reports what it observed, not only what it objected to.
+//
+// The count arm is the first thing this tool advertises in `--help`, and its success line asserts
+// that counts are consistent. That line was gated on `driftedCounts.length === 0`, and zero
+// drifted claims is byte-identical to zero INSPECTED claims -- so rewriting `**23** agents` as
+// `twenty-three agents` retires the claim, matches no METRIC, and the tool certifies counts it
+// never read (#4212). The claims sit outside AGENTS.md's studio:base managed region, so
+// managedDigest is unchanged and verifyManagedContent raises nothing either.
+//
+// Zero matched claims is not a legitimate state: the corpus is repo-authored documentation that
+// exists to carry these claims, so an empty match set means the arm stopped observing rather than
+// that the repo is clean. It fails closed, the same way verifyLockCoverage's premise guard does
+// (#4204) -- that guard's vocabulary already existed in this file and this arm never got it.
+//
+// A document that is present but yields no claims is a different state and is NOT a finding:
+// docs/INDEX.md is in that state today. It is named in the report instead, because "3 documents
+// inspected" and "3 documents contributing claims" are different numbers and the gap is the
+// interesting one.
+function countCoverageFindings({ claimCount, missing }) {
+  const findings = [];
+  for (const doc of missing) {
+    // Previously printed as `not found (skipped)` with no finding. AGENTS.md is incidentally
+    // covered because it is a lock entry; docs/ai/README.md and docs/INDEX.md are not managed
+    // targets, so nothing at all observed their absence.
+    findings.push(`count-claim document is missing: ${doc}`);
+  }
+  if (claimCount === 0) {
+    findings.push(
+      'count-claim scan matched no claims in any document — the count check is not observing (#4212)',
+    );
+  }
+  return findings;
+}
+
+function scanDocs(counts, docs = DOC_FILES) {
+  const claims = [];
+  const missing = [];
+  const inert = [];
+  for (const doc of docs) {
+    const result = scanDoc(doc, counts);
+    if (result.missing) {
+      missing.push(doc);
+      continue;
+    }
+    if (!result.findings.length) inert.push(doc);
+    claims.push(...result.findings);
+  }
+  return {
+    findings: countCoverageFindings({ claimCount: claims.length, missing }),
+    claims,
+    missing,
+    inert,
+    inspected: docs.length - missing.length,
+    declared: docs.length,
+  };
+}
+
 function difference(left, right) {
   return left.filter((value) => !right.includes(value));
 }
@@ -835,18 +892,25 @@ function main() {
   );
   process.stdout.write(`Mode: ${STRICT ? 'STRICT (blocking)' : 'informational (warn-only)'}\n\n`);
 
-  let countFindings = [];
-  for (const doc of DOC_FILES) {
-    const { missing, findings } = scanDoc(doc, counts);
-    if (missing) process.stdout.write(`- ${doc}: not found (skipped)\n`);
-    countFindings = countFindings.concat(findings);
-  }
+  const scan = scanDocs(counts);
+  const countFindings = scan.claims;
   const driftedCounts = countFindings.filter((finding) => finding.drift);
   const activationFindings = [
+    ...scan.findings,
     ...validateAgentRoster(manifest.agents),
     ...validateActivationDoc(),
     ...validateSyncLock(),
   ];
+  for (const doc of scan.missing) process.stdout.write(`- ${doc}: not found\n`);
+  // Printed unconditionally, in both the passing and the failing branch. The old report emitted
+  // the "Detected count claims:" section only when the set was non-empty, so the sole trace of a
+  // zero was a section that did not appear -- and an absent section is not a report (#4212).
+  process.stdout.write(
+    `Count claims: ${countFindings.length} claim(s) across ` +
+      `${scan.inspected} of ${scan.declared} declared document(s)` +
+      (scan.inert.length ? `; no claims in ${scan.inert.join(', ')}` : '') +
+      '\n',
+  );
 
   process.stdout.write('Canonical runtime activation:\n');
   if (activationFindings.length === 0) {
@@ -944,6 +1008,11 @@ if (require.main === module) {
 module.exports = {
   toLF,
   PROVENANCE_LINE,
+  DOC_FILES,
+  METRICS,
+  scanDoc,
+  scanDocs,
+  countCoverageFindings,
   managedRegion,
   managedDigest,
   verifyLockCoverage,
