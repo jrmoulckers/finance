@@ -398,7 +398,7 @@ function validateActivationDoc() {
 
 function validateSyncLock() {
   const findings = [];
-  const lock = readJson('.studio-sync.lock.json', findings);
+  const lock = readJson(SYNC_LOCK, findings);
   if (!lock) return findings;
   if (lock.version !== 1) findings.push(`sync lock version is ${lock.version}; expected 1`);
   if (lock.backbone !== 'jrmoulckers/.github') {
@@ -571,6 +571,7 @@ function citationFindings(text, citations = CANON_CITATIONS) {
 // does rewriting the sentence without flipping STRICT.
 const ENFORCEMENT_WORKFLOW = '.github/workflows/ai-manifest-check.yml';
 const ENFORCEMENT_STEP = 'Check for drift';
+const SYNC_LOCK = '.studio-sync.lock.json';
 
 /**
  * Determine whether the drift step blocks, by reading the workflow rather than believing prose.
@@ -615,6 +616,77 @@ function enforcementFindings(workflowText, docText) {
   }
   if (read.mode === 'blocking' && saysWarn) {
     findings.push('the drift step now blocks, but the docs still describe it as warn-only');
+  }
+  return findings;
+}
+
+/**
+ * Parse the workflow's `pull_request.paths` trigger globs.
+ *
+ * Fails closed: an unparseable or absent trigger is an error, not an empty list, because an
+ * empty list would read as "nothing is excluded" — the inverse of the truth.
+ *
+ * @param {string} workflowText Contents of the manifest-check workflow.
+ * @returns {{globs: string[]}|{error: string}}
+ */
+function triggerPaths(workflowText) {
+  const at = workflowText.indexOf('pull_request:');
+  if (at < 0) return { error: 'no pull_request trigger' };
+  const rest = workflowText.slice(at);
+  const pathsAt = rest.indexOf('paths:');
+  if (pathsAt < 0) return { error: 'pull_request trigger declares no paths filter' };
+  const globs = [...rest.slice(pathsAt).matchAll(/^\s+- '([^']+)'/gm)].map((m) => m[1]);
+  if (globs.length === 0) return { error: 'paths filter is empty' };
+  return { globs };
+}
+
+/**
+ * Does a trigger glob cover this repository-relative path?
+ *
+ * @param {string[]} globs Trigger globs.
+ * @param {string} file Repository-relative path.
+ * @returns {boolean}
+ */
+function triggerCovers(globs, file) {
+  return globs.some((glob) =>
+    glob.endsWith('/**') ? file.startsWith(`${glob.slice(0, -3)}/`) : glob === file,
+  );
+}
+
+/**
+ * Report inputs this check reads that its own trigger cannot fire on.
+ *
+ * A path-filtered check is only as good as its filter: an edit outside the filter produces no run
+ * at all, which renders in the PR list as an absent check rather than a failing one — and an
+ * absent section is not a report (#4212). The self-referential case is the sharp one:
+ * `enforcementFindings` above reads the workflow to catch prose/workflow disagreement, so a
+ * workflow-only edit is precisely the change that guard exists to catch and precisely the change
+ * that cannot trigger it (#4251).
+ *
+ * @param {string} workflowText Contents of the manifest-check workflow.
+ * @param {string[]} managedKeys Managed entry paths from the sync lock.
+ * @returns {string[]} Findings; empty when every input is covered.
+ */
+function triggerFindings(workflowText, managedKeys) {
+  const read = triggerPaths(workflowText);
+  if (read.error) return [`cannot read the trigger: ${read.error}`];
+
+  const findings = [];
+  // Read by validateEnforcementDoc and validateSyncLock respectively. Named explicitly because
+  // neither is a managed entry, so neither appears in the lock walk below.
+  for (const file of [ENFORCEMENT_WORKFLOW, SYNC_LOCK]) {
+    if (!triggerCovers(read.globs, file)) {
+      findings.push(`${file} is read by this check but cannot trigger it`);
+    }
+  }
+
+  const uncovered = managedKeys.filter((key) => !triggerCovers(read.globs, key));
+  if (uncovered.length > 0) {
+    const groups = [...new Set(uncovered.map((key) => key.split('/').slice(0, 2).join('/')))];
+    findings.push(
+      `${uncovered.length} of ${managedKeys.length} managed entries cannot trigger this check ` +
+        `(${groups.join(', ')})`,
+    );
   }
   return findings;
 }
@@ -1120,6 +1192,15 @@ function readEnforcementMode() {
   return read.error ? `unreadable (${read.error})` : read.mode;
 }
 
+function validateTriggerCoverage() {
+  const workflowPath = path.join(ROOT, ENFORCEMENT_WORKFLOW);
+  const lockPath = path.join(ROOT, SYNC_LOCK);
+  if (!fs.existsSync(workflowPath)) return [`missing workflow: ${ENFORCEMENT_WORKFLOW}`];
+  if (!fs.existsSync(lockPath)) return [`missing ${SYNC_LOCK}`];
+  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  return triggerFindings(fs.readFileSync(workflowPath, 'utf8'), Object.keys(lock.entries ?? lock));
+}
+
 /**
  * Compare the workflow's real drift enforcement with how AGENTS.md describes it.
  *
@@ -1162,6 +1243,7 @@ function main() {
     ...validateActivationDoc(),
     ...validateSyncLock(),
     ...validateEnforcementDoc(),
+    ...validateTriggerCoverage(),
   ];
   for (const doc of scan.missing) process.stdout.write(`- ${doc}: not found\n`);
   // Printed unconditionally, in both the passing and the failing branch. The old report emitted
@@ -1289,6 +1371,10 @@ module.exports = {
   ENFORCEMENT_WORKFLOW,
   driftEnforcement,
   enforcementFindings,
+  SYNC_LOCK,
+  triggerPaths,
+  triggerCovers,
+  triggerFindings,
   HELP_TEXT,
   EXPECTED_AGENTS,
   MANAGED_COUNTS,
