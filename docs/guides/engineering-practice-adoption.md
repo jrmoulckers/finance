@@ -6066,6 +6066,108 @@ it.
 under `npm ci`, it is correct for the paths where the lock is not authoritative, and aligning with
 upstream is worth more than defending a form whose practical difference here is near zero.
 
+## The runtime nothing reads
+
+A sibling session reported running Node 24 against CI's Node 20 all session, with no `.nvmrc` to
+consult — only `engines: { node: ">=20" }`, which its runtime satisfies. Its corollary is the
+finding: **a repo with no runtime pin cannot be mismatched, and that is not the same as being
+matched.** A constraint you can violate is worth more than one you cannot state.
+
+finance was cited there as the repo where the pin existed and made the diagnosis a one-step
+comparison. Measuring that claim rather than accepting the compliment:
+
+|                                        | finance                           | sibling |
+| -------------------------------------- | --------------------------------- | ------- |
+| `.nvmrc`                               | `22`                              | absent  |
+| `engines.node`                         | `>=22.0.0`                        | `>=20`  |
+| workflow `node-version:` literals      | **36**, all `22`, across 20 files | —       |
+| workflows reading `node-version-file:` | **0**                             | —       |
+| local runtime                          | Node 24                           | Node 24 |
+
+The pin exists and CI agrees with it — and **nothing connects the two**. There are 36 independent
+restatements of the major and one `.nvmrc`, and they agree by maintenance rather than by
+construction. Editing `.nvmrc` to `24` leaves all 36 literals at `22`, produces no diff to any of
+them, and turns nothing red.
+
+So the inversion runs the other way from the compliment. The sibling's runtime divergence is
+**unrepresentable** — there is no pin to disagree with. finance's is **representable and
+unchecked** — there are two pins and no comparison. Both arrive at "nothing verifies the runtime";
+one has no artifact to check, the other has one nobody reads. `engines.node` closes neither, because
+`>=22.0.0` is satisfied by Node 24 and so cannot express the runtime CI uses.
+
+### Exposure is not exhibition
+
+The sibling checked its lockfile for the specific construct behind the npm-major trap recorded
+earlier in this guide, and found none — clean by a property of its dependency graph rather than by
+any control. The same measurement here:
+
+|                                       | finance | sibling |
+| ------------------------------------- | ------- | ------- |
+| lockfile entries                      | 838     | 140     |
+| `optional: true` **and** `peer: true` | **1**   | 0       |
+
+The one is `node_modules/git-raw-commits/node_modules/conventional-commits-parser` — the exact
+entry npm 11 prunes and npm 10 keeps. finance is not exposed-but-clean; it is **exhibiting**, which
+is why the trap cost real CI runs here and cannot fire there today. Neither repo has a control; only
+one has a dependency graph that makes the absence visible.
+
+### The control, and what it may not do
+
+`tools/check-node-version-consistency.mjs` makes the disagreement expressible.
+
+**Fatal** — a workflow literal whose major differs from `.nvmrc`. Only a local edit creates this,
+so failing on it can never redden a build that nobody here changed.
+
+**Notice, exit 0** — an `engines.node` range that admits majors above `.nvmrc`, and a running
+runtime whose major differs from it. Both are true of this repo right now, and neither is a defect:
+the range is deliberate and the developer runtime is not CI's to dictate. This is the same split
+`--check` applies to drift versus staleness, under the same discriminator — _can something outside
+this tree turn it red?_ — and the same asymmetry: **under-decide, never over-report.** A literal
+whose major cannot be read (`lts/*`) is left undecided rather than flagged, for the same reason.
+
+The second notice reproduces, as a standing check, the observation that cost four CI runs: it says
+`this runtime is Node 24 but .nvmrc declares 22` on every local run.
+
+### A negative row that passed for the wrong reason
+
+The sibling's other finding was that a control row protects against a predicate that over-matches
+and never against one that under-matches. Both classes appeared while building this, in the same
+hour.
+
+Mutation testing the new checker killed four of five mutants. The survivor deleted the guard
+exempting `node-version-file` pins — and the test named _"never flags a node-version-file pin"_ kept
+passing, because its input was `.nvmrc`, whose leading character is not a digit, so the
+unparsed-literal guard caught it instead. **Two guards, one input, and the test could not say which
+one it was exercising** — the _duplicated_ relation from the coverage table, now in a suite written
+by someone who had already written that table down.
+
+The fix was not to delete a guard but to construct the separating input: `node-version-file:
+20/.nvmrc`, a path whose first character parses as a major. It does not occur in this tree and does
+not need to — the standard settled earlier is **constructible and reachable, not naturally
+occurring**. With that row the mutant dies and both guards are independently observable.
+
+### Four zeros, four instruments
+
+Every zero this turn was a property of the instrument before it was a property of the repo:
+
+| reported                                | actual       | defect in the instrument                                       |
+| --------------------------------------- | ------------ | -------------------------------------------------------------- |
+| 3 of 4 checker predicates match nothing | 3 of 4 match | `^`-anchored patterns tested against a joined blob without `m` |
+| 0 of 239 action refs are 40-hex         | 236 of 239   | PowerShell consumed the `$` anchor inside a double-quoted `-e` |
+| 3 unpinned action refs                  | 0            | unanchored `uses:` matched commented-out examples              |
+| 5 of 5 mutants survived                 | 1 of 5       | scorer grepped `# fail` where the runner prints `ℹ fail`       |
+
+Two under-reported and two over-reported, and **the third is the one that would have been published**
+— an unpinned-action finding is exactly the shape a reviewer accepts without re-deriving. It was
+caught only because the real checker disagreed, and the real checker was right: it anchors
+`^\s*(?:-\s*)?uses:`, so a line beginning `#` cannot reach the key. The ad-hoc probe written to audit
+it was weaker than the thing being audited.
+
+The fourth is the sharpest. A mutation scorer whose failure mode is "everything survived" reports
+the suite as worthless, which is the direction that gets a suite rewritten rather than trusted. It
+was caught by calibrating on the unmutated tree first — the baseline row that costs one run and
+turns a scorer into a measured instrument.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

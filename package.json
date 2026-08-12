@@ -56,7 +56,9 @@
     "powersync:logs": "node tools/powersync-local.mjs logs",
     "prepare": "husky",
     "changeset": "changeset",
-    "version": "changeset version"
+    "version": "changeset version",
+    "node:version:check": "node tools/check-node-version-consistency.mjs",
+    "node:version:test": "node --test tools/check-node-version-consistency.test.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs}": [
