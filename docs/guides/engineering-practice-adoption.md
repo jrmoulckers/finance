@@ -1889,16 +1889,17 @@ the path should be.**
 #### `TOOL_VERSION` did not distinguish two different released checkers
 
 The temp copy declared `TOOL_VERSION = '9'`. The current upstream one declares `TOOL_VERSION = '9'`.
-They differ by **2,057 bytes and one whole function** — `contextWindow()`, which supplies the ±2-line
-window used by both the adjacency check and the range-member check. The old copy was running with
-two checks structurally unable to fire.
+They differ by **732 bytes and one whole function** — `contextWindow()`, which supplies the ±2-line
+window shown around a finding in the report.
 
 This is not a branch-versus-tag artifact. Two _released_ tags disagree:
 
-| Ref       | `TOOL_VERSION` | `contextWindow()` | bytes  |
-| --------- | -------------- | ----------------- | ------ |
-| `v0.66.0` | `9`            | absent            | 20,642 |
-| `v0.86.0` | `9`            | present           | 22,699 |
+| Ref       | `TOOL_VERSION` | `contextWindow()` | bytes  | SHA-256 (first 12) |
+| --------- | -------------- | ----------------- | ------ | ------------------ |
+| `v0.57.0` | `9`            | absent            | 21,967 | `1ae0dda13974`     |
+| `v0.66.0` | `9`            | absent            | 21,967 | `1ae0dda13974`     |
+| `v0.76.0` | `9`            | present           | 22,699 | `4bc850401c2f`     |
+| `v0.86.0` | `9`            | present           | 22,699 | `4bc850401c2f`     |
 
 A declared version number is an assertion by the author; a content hash is a property of the bytes.
 Only the second one caught this. That is the same distinction as [the version numeral is not a
@@ -2534,11 +2535,13 @@ runs, and at 14073 in `v0.66.0` — as a string literal inside the output array:
 checksRun: ['ids', 'statedNames', 'rangeMembers', ...(opts.links ? ['linkPaths'] : [])],
 ```
 
-Three of the four entries are hardcoded. Only `linkPaths` is derived from runtime state. And the
-consequence is measurable: `v0.66.0` contains no `contextWindow` function (0 occurrences, against 3
-in the current copy), which is what the range-member check needs — yet `v0.66.0` declares
-`rangeMembers` in both its human banner and its machine-readable `--json` output. The banner text
-is byte-identical across a version that implements the check and one that does not.
+Three of the four entries are hardcoded. Only `linkPaths` is derived from runtime state. `v0.66.0`
+contains no `contextWindow` function (0 occurrences, against 3 in the current copy) yet declares
+`rangeMembers` in both its human banner and its machine-readable `--json` output, and the banner
+text is byte-identical across the two.
+
+**This paragraph previously drew a false conclusion from those true facts. See the retraction
+below.**
 
 **The conditional element is what makes the literals credible.** A wholly hardcoded list reads as a
 label and invites no trust. A list where one element visibly responds to a flag reads as
@@ -2558,6 +2561,75 @@ finance's own gate emits the unearned claim on every run.
 One thing deliberately not repeated: the peer also reported the adjacency check as non-functional in
 `v0.66.0`. `adjacen` occurs 3 times in both versions and I did not verify what those occurrences do,
 so that half is unmeasured here and is not asserted.
+
+**That caution was load-bearing, and the peer has since measured it: all three occurrences are
+comments — two explanatory, one a hint string in a log call.** None is the implementation, so the
+count was a count of prose. Declining to relay it avoided restating a claim that turned out to be
+false in the same way, and for the same reason, as the half that was relayed.
+
+#### Retraction: a true finding about the mechanism licensed a false finding about the instance
+
+Everything above about `checksRun` stands. What was built on top of it does not.
+
+This guide asserted that `contextWindow()` is _what the range-member check needs_, and, quoting a
+peer, that `v0.66.0` ran "with two checks structurally unable to fire". Both are **false**, and the
+peer who originally reported it has since retracted it as well.
+
+The control is two-armed, because a one-armed control is what produced the error. A fixture citing
+a PERF range whose endpoints both exist must **pass**; a fixture citing a range extending past the
+highest PERF principle must **fail**. Run against both binaries:
+
+| Binary                         | All members exist | Members absent         |
+| ------------------------------ | ----------------- | ---------------------- |
+| `v0.66.0` (no `contextWindow`) | exit 0            | **exit 1, 21 unknown** |
+| current (3× `contextWindow`)   | exit 0            | **exit 1, 21 unknown** |
+
+Identical, including the first offender named. `v0.66.0`'s range-member check fires. Reading the
+source confirms why: the range guard is present in both, and `contextWindow()` is a **refactor** —
+the older copy builds the same window inline at two call sites — and the window is _display_
+context for the report, not an input to any decision.
+
+**The shape of the error is the part worth keeping.** The reasoning was sound given a real defect.
+`checksRun` genuinely is an unearned assertion. From there it follows that the declaration _could_
+be false in a build lacking an implementation — and a checker that hardcodes its capability list is
+exactly where a false declaration would live. But the hardcoded list happens to be **accurate in
+both versions**. The defect is real; the instance deduced from it does not exist.
+
+> **A true finding about a mechanism does not license a finding about any particular instance of
+> it.** The mechanism supplies the plausibility, and the plausibility is precisely what suppresses
+> the ten-second control.
+
+Three real facts composed into a conclusion none of them supported: `TOOL_VERSION` identical across
+both, `contextWindow` present in only one, `checksRun` known to be unearned. Each was measured. The
+conjunction was not.
+
+The remedy is stronger than "ask what binary ran", which this guide had already adopted and which
+would not have caught this:
+
+> **A capability question is answered by running the check against a fixture that must fail —
+> not by reading the binary's self-description, and not by diffing its source.** Source-diffing
+> feels like the rigorous option and is the one that failed here, because it answers "what changed"
+> when the question was "what does it do".
+
+#### One row of a measurement table was arithmetic
+
+Correcting the above surfaced a second defect in the same section. The byte column previously read
+`20,642` for `v0.66.0` against `22,699` for `v0.86.0`, a delta of `2,057`.
+
+Measured directly from the tags: `v0.66.0` is **21,967** bytes and `v0.86.0` is **22,699**, a delta
+of **732**. The method is not in doubt — it reproduces the `v0.86.0` row exactly, and the hash it
+yields matches the ref pinned in `engineering-configs.lock.json`.
+
+Note that `22,699 − 2,057 = 20,642`. The row was **derived by subtraction from the claimed delta**
+and printed in a column headed `bytes`, alongside rows that were measured.
+
+> **A derived number is indistinguishable from a measured one once it is in the table.** A column
+> header is a claim about provenance that the cells cannot individually support.
+
+The table now carries content hashes rather than sizes alone, because a hash cannot be arrived at
+by arithmetic on another row. It also shows that `v0.57.0` and `v0.66.0` are byte-identical, as are
+`v0.76.0` and `v0.86.0` — so the function landed between `v0.66.0` and `v0.76.0`, and four releases
+collapse into two distinct artifacts, all four declaring `TOOL_VERSION = 9`.
 
 ### Enforcement is a fourth link, and finance's was broken
 
