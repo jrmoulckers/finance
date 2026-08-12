@@ -2559,6 +2559,76 @@ One thing deliberately not repeated: the peer also reported the adjacency check 
 `v0.66.0`. `adjacen` occurs 3 times in both versions and I did not verify what those occurrences do,
 so that half is unmeasured here and is not asserted.
 
+### Enforcement is a fourth link, and finance's was broken
+
+A peer repository found its citation gate correct in scope, correct in content, and **wired into no
+CI job at all** — defined, invoked by nothing. It proposed the chain: scope, binary version, and
+invocation are each silent on failure, and a green result is compatible with any link being broken.
+
+Turning that on finance found a fourth link the chain does not name.
+
+**Invocation here is sound, and I checked it by observation rather than by reading YAML.** On PR
+#4146 the job ran, in 14 seconds, and its log reports numbers identical to the local run:
+
+```
+132 citation(s) across 39 principle(s) in 806 file(s); all IDs exist, and 42 stated name(s) match.
+```
+
+That equality matters beyond invocation: a soft-failed index fetch would have exited 2, and a
+partial index would have changed the principle count. Matching numbers are evidence the fetch
+genuinely resolved.
+
+**Then the link that was broken.** `ENG Citations` is not in `main`'s required contexts:
+
+```
+ESLint & Prettier, Secret Detection, CodeQL Analysis (javascript-typescript),
+CodeQL Analysis (java-kotlin), Build, Build & Test, Required Checks Gatekeeper
+```
+
+Nor is it aggregated by `Required Checks Gatekeeper`, which lives in a different workflow file and
+so cannot reach it through `needs:`. **The gate ran, was correct, and could not block anything.**
+
+This is worth stating precisely, because it is close to something already claimed here and is not
+the same claim. When the gate shipped, this guide recorded that both its failure modes had been
+_proven to fail_. That was true. **Proving a check can fail is not proving a failure blocks** —
+they are different links, and the first is the one that feels like diligence.
+
+#### The fix, and why it is not simply "make it required"
+
+Adding a required context is a branch-protection change and human-gated. But finance already built
+the mechanism for exactly this problem: the gatekeeper is the one required check, and it
+independently re-runs lint and format precisely because the path-filtered workflow that owns them
+may be skipped. The citation check now runs there too — a workflow change, not a settings change.
+
+That introduces a hazard the existing gatekeeper steps do not have: every prior step is local, and
+this one fetches an index from another repository. Making a required check depend on an external
+fetch means an upstream outage blocks every merge in finance.
+
+The checker already draws the distinction needed to avoid that, and it is measured, not assumed:
+
+| Condition                                | Exit  |
+| ---------------------------------------- | ----- |
+| Citation names an ID that does not exist | **1** |
+| Upstream index unreachable               | **2** |
+
+So the step blocks on 1 and warns on 2. A local defect is finance's problem and must stop the
+merge; an upstream incident is not, and must not.
+
+Three assumptions in that step were load-bearing, so all three were tested rather than reasoned
+about:
+
+- **`npm run` preserves the distinction.** Wrappers commonly normalise a child's status to 1, which
+  would have collapsed both cases into "blocking" and coupled finance's merge queue to upstream
+  availability. Measured: `npm run eng:citations` exits **2** on an unreachable index and **1** on a
+  bogus ID.
+- **The branch logic is right.** Executed under `bash` against statuses 0, 2, 1 and 3: pass, warn,
+  block, block. The last case matters — an exit code nobody anticipated falls through to blocking,
+  which is the safe direction for a gate.
+- **No credential is involved.** The existing job passes no token and the index resolves anonymously
+  in CI, so the gatekeeper behaves identically. Had a token been required and absent, the step would
+  have exited 2 and warned green forever — which is this document's recurring failure, and it would
+  have been introduced by the commit that added the guard against it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

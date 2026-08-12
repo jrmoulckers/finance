@@ -525,6 +525,33 @@ jobs:
       - name: ESLint
         run: npx eslint . --max-warnings 0
 
+      # Always-on ENG-* citation gate. The ng-citations job in ci-lint.yml
+      # runs this too, but that job is not a required context, so a red result
+      # there does not block a merge. Running it here puts it behind the one
+      # check branch protection requires.
+      #
+      # Exit 1 and exit 2 are deliberately treated differently. Exit 1 is a
+      # local defect -- a citation naming an ENG-* ID that does not exist, or
+      # restating a principle's title wrongly -- and must block. Exit 2 means
+      # the upstream index could not be fetched, which is an outage in another
+      # repository; failing on it would let an upstream incident block every
+      # merge in finance. Verified 2026-08-12: a bogus ID exits 1, an
+      # unreachable index exits 2.
+      - name: ENG citation check (blocking on citation defects only)
+        run: |
+          set +e
+          npm run eng:citations
+          status=$?
+          set -e
+          if [ "$status" = "0" ]; then
+            echo "✅ Citations verified."
+          elif [ "$status" = "2" ]; then
+            echo "::warning::Upstream principles index unreachable; citation content was not verified. Not blocking."
+          else
+            echo "::error::ENG-* citation check failed (exit $status)."
+            exit 1
+          fi
+
       # Always-on text-encoding gate (#4090). U+FFFD in a committed file means a
       # character was already lost before the bytes arrived; mojibake is valid
       # UTF-8, so only a byte-level scan detects it.
