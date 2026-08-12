@@ -1910,6 +1910,11 @@ ref](#the-version-numeral-is-not-a-ref--the-misattribution-ran-in-reverse) — t
 > guarantee. Either bump `TOOL_VERSION` on every behavioural change, or publish a hash alongside it.
 > Consumers currently cannot tell two different checkers apart.
 
+> **Extended (2026-08-12).** The four rows above are a sample. Enumerated across all 153 tags, the
+> file has **14 distinct blobs**, and `TOOL_VERSION = '9'` covers **four** of them spanning 84 tags
+> plus an untagged `main` — an 8,171-byte spread, not 732. See
+> [`TOOL_VERSION` understated its own finding](#tool_version-understated-its-own-finding-by-a-factor-of-eleven).
+
 #### Retraction: the missing function was not "unreleased"
 
 While investigating, this guide was about to record that `contextWindow()` existed only on `main`
@@ -3598,6 +3603,125 @@ that `services/**` was exempt. That file matches `**/*.test.ts`. It was being cl
 tooling, not as services, so the probe was reading the preset's test-file rule and reporting it as
 a services-directory result. Sampling the first element of a list is only safe when the list is
 homogeneous with respect to the thing being measured, and this one was not.
+
+## `TOOL_VERSION` understated its own finding by a factor of eleven
+
+The table above sampled four tags and found two artifacts under one version numeral. A sibling
+session corrected it to five tags and two artifacts, adding `v0.90.0`. Both are samples, and this
+document already records why that matters — [an upper bound taken on report is an unverified
+premise](#retraction-the-missing-function-was-not-unreleased). Accepting a fifth row would have
+repeated the error the section beside it was written to prevent.
+
+Enumerated instead, over every tag in the engineering repository:
+
+```
+153 tags total
+141 contain scripts/check-citations.mjs
+ 14 distinct blobs
+```
+
+| blob (git, first 12) | bytes  | tags | range                  |
+| -------------------- | ------ | ---- | ---------------------- |
+| `15618223e3c9`       | 6,297  | 1    | `v0.2.10`              |
+| `3c9dad266239`       | 6,866  | 6    | `v0.2.11` – `v0.2.16`  |
+| `cd1a6647ef8e`       | 6,800  | 12   | `v0.2.17` – `v0.13.0`  |
+| `1ef575fca962`       | 9,479  | 14   | `v0.14.0` – `v0.16.4`  |
+| `af5ed014d33f`       | 11,783 | 13   | `v0.16.5` – `v0.21.0`  |
+| `8c3a2eb70e2b`       | 12,719 | 1    | `v0.21.1`              |
+| `e15b3cbd02a6`       | 13,860 | 1    | `v0.22.0`              |
+| `02a5b2502094`       | 14,693 | 1    | `v0.23.0`              |
+| `c47ace846f2a`       | 16,566 | 1    | `v0.24.0`              |
+| `817e623c77b6`       | 17,124 | 4    | `v0.25.0` – `v0.28.0`  |
+| `91cbe1ffa376`       | 18,321 | 3    | `v0.29.0` – `v0.31.0`  |
+| `ea0b32b54573`       | 20,155 | 25   | `v0.32.0` – `v0.56.0`  |
+| `baa18e599cb4`       | 21,967 | 14   | `v0.57.0` – `v0.70.0`  |
+| `02df2659c0b6`       | 22,699 | 45   | `v0.71.0` – `v0.115.0` |
+
+The two artifacts in the original table are the last two rows. They span **59 tags**, not four and
+not five. And the transition is exact: the 732-byte change landed between **`v0.70.0` and
+`v0.71.0`**, not in the `(v0.66.0, v0.76.0]` window both sessions had settled on — a window ten
+releases wider than the fact.
+
+### The version numeral was maintained, then abandoned
+
+Reading `TOOL_VERSION` out of each distinct blob rather than out of each sampled tag:
+
+| blobs                                          | `TOOL_VERSION`                                    |
+| ---------------------------------------------- | ------------------------------------------------- |
+| first five                                     | absent                                            |
+| `8c3a2eb70e2b` → `91cbe1ffa376` (7 artifacts)  | `3`, `4`, `5`, `6`, `7`, `8`, `9` — one bump each |
+| `ea0b32b54573`, `baa18e599cb4`, `02df2659c0b6` | `9`, `9`, `9`                                     |
+
+For seven consecutive artifacts the numeral tracked the content exactly. Then it stopped. The
+three artifacts that follow all declare `9`, and they span **84 tags** and **20,155 → 22,699
+bytes**.
+
+There is a fourth. `origin/main` carries a **fifteenth blob**, `f7b1bd6f5565`, in no tag at all:
+**28,326 bytes, +147 / −13 lines** against `v0.115.0`, and it declares `TOOL_VERSION = '9'`.
+
+So the finding as originally filed — _two released checkers, 732 bytes apart, one version numeral_
+— was right in kind and low by an order of magnitude in degree:
+
+|                       | filed  | measured             |
+| --------------------- | ------ | -------------------- |
+| artifacts sharing `9` | 2      | **4**                |
+| refs affected         | 4 tags | **84 tags + `main`** |
+| byte spread           | 732    | **8,171**            |
+
+The upstream suggestion recorded above stands unchanged in substance and considerably strengthened
+in evidence: a consumer cannot distinguish four different checkers, one of which is only reachable
+from an untagged branch.
+
+### Two independent instruments agree, and this time the independence is real
+
+finance's vendored copy hashes to `02df2659c0b6` — byte-identical to the newest tagged upstream
+artifact. That is corroborated twice over, by instruments that share nothing:
+
+| instrument                      | function                            | retrieval                    | result         |
+| ------------------------------- | ----------------------------------- | ---------------------------- | -------------- |
+| `git rev-parse <tag>:<path>`    | SHA-1 over `blob <len>\0` + content | local object store           | `02df2659c0b6` |
+| `engineering-configs.lock.json` | SHA-256 over content                | network fetch of the release | `4bc850401c2f` |
+
+Different hash function, different retrieval path, same conclusion. This is the property that the
+four YAML validators lacked when they agreed on a file GitHub rejected: they shared `js-yaml`, so
+four agreements were one agreement repeated. Here the agreement is worth its arithmetic.
+
+`node scripts/vendor-configs.mjs --check` exits 0 and reports the distinction precisely:
+
+```
+3 vendored file(s) match engineering-configs.lock.json at v0.86.0.
+Notice: pinned at v0.86.0; newest release is v0.115.0, but all 3 vendored file(s)
+are byte-identical there. No action needed — refreshing the ref would produce no diff.
+```
+
+Twenty-nine releases separate the pinned ref from the newest one and **not one byte of vendored
+content differs**, because `v0.86.0` and `v0.115.0` are both inside the `02df2659c0b6` run. The
+check reports a stale _ref_ without claiming stale _content_, which is the whole reason it
+distinguishes the two.
+
+### Three levels, and the hash is not the top one
+
+The progression this thread has been climbing is now visible end to end:
+
+1. **A declared version numeral** is an assertion by the author. It failed here across four
+   artifacts and 84 tags.
+2. **A content hash** is a property of the bytes. It caught what the numeral missed, and it cannot
+   be produced by subtraction, by a length function, or by any instrument not reading the actual
+   bytes — a byte count has near-misses, a hash has none.
+3. **A fixture** is the only thing that answers what the code _does_.
+
+Level 3 is not decoration on level 2, and this file is the proof. The 732-byte difference between
+`baa18e599cb4` and `02df2659c0b6` — the difference the hash correctly detected and the numeral
+missed — was [shown by a two-armed fixture to be behaviourally
+inert](#retraction-a-true-finding-about-the-mechanism-licensed-a-false-finding-about-the-instance):
+both artifacts fire the
+range-member check identically, and `contextWindow()` is a refactor of display context, not a
+change in any decision.
+
+**So a hash difference is not a behaviour difference, in exactly the way a token count is not a
+behaviour claim.** The hash is the right instrument for _provenance_ and the wrong one for
+_capability_. Ranking it above the numeral is correct; treating it as the end of the ladder is the
+same substitution one rung higher.
 
 ## Worth hoisting up
 
