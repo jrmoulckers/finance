@@ -289,6 +289,7 @@ export function measure(options = {}) {
   return {
     tools: tools.length - skippedRed.length,
     allTools,
+    measured: tools,
     caught,
     survivors,
     unmeasurable,
@@ -347,7 +348,42 @@ export function wiredTools(fsImpl = fs) {
     for (const match of body.matchAll(/tools\/([\w.-]+\.(?:mjs|js))/g)) wired.add(match[1]);
   }
   for (const match of workflows.matchAll(/tools\/([\w.-]+\.(?:mjs|js))/g)) wired.add(match[1]);
+  // `[\w.-]+` admits dots, so `node --test tools/x.test.mjs` registered the test file as a wired
+  // tool. A test file is not a tool; it inflated the wired set by 5 without adding a measurable.
+  for (const name of [...wired]) if (name.endsWith('.test.mjs')) wired.delete(name);
   return wired;
+}
+
+/**
+ * Classify wired tools that produced no row in the per-tool table.
+ *
+ * The table is keyed by mutated site, so a tool with no report sites never enters it. That is
+ * indistinguishable in the output from a tool that was measured and scored well -- three distinct
+ * situations rendered as one silence. Naming them is the only way a reader can tell which.
+ *
+ * @param {Set<string>} wired Tools invoked by a workflow.
+ * @param {Set<string>} scored Tool filenames that produced at least one measured site.
+ * @param {string[]} measured Tool filenames the sweep actually mutated (those with a test file).
+ * @param {string[]} [skippedRed] Tool filenames skipped for a red baseline.
+ * @returns {{tool: string, reason: string}[]} One entry per absent wired tool, sorted by name.
+ */
+export function absentWiredTools(wired, scored, measured, skippedRed = []) {
+  const inPopulation = new Set(measured);
+  const red = new Set(skippedRed);
+  const out = [];
+  for (const tool of wired) {
+    if (scored.has(tool)) continue;
+    if (!tool.endsWith('.mjs')) {
+      out.push({ tool, reason: 'CommonJS -- outside the measured population' });
+    } else if (red.has(tool)) {
+      out.push({ tool, reason: 'red baseline -- skipped, every mutant would look caught' });
+    } else if (inPopulation.has(tool)) {
+      out.push({ tool, reason: 'zero report sites -- nothing to mutate' });
+    } else {
+      out.push({ tool, reason: 'no colocated test file -- never mutated' });
+    }
+  }
+  return out.sort((a, b) => a.tool.localeCompare(b.tool));
 }
 
 /**
@@ -363,7 +399,7 @@ export function wiredTools(fsImpl = fs) {
  * @param {Set<string>} wired Tools invoked by a workflow.
  * @returns {string[]} Report lines.
  */
-export function perToolLines(result, wired) {
+export function perToolLines(result, wired, measured = []) {
   const per = new Map();
   const tally = (labels, key) => {
     for (const label of labels) {
@@ -396,9 +432,10 @@ export function perToolLines(result, wired) {
   }
   const quadrant = (isWired, isAsserted) =>
     rows.filter((r) => r.wired === isWired && r.pct >= 50 === isAsserted).length;
+  const wiredRows = rows.filter((r) => r.wired).length;
   lines.push(
     '',
-    'wiring x assertion (asserted = >=50% of sites):',
+    `wiring x assertion (asserted = >=50% of sites; wired denominator ${wiredRows}):`,
     `  gate,  asserted    ${quadrant(true, true)}`,
     `  gate,  unasserted  ${quadrant(true, false)}`,
     `  inert, asserted    ${quadrant(false, true)}`,
@@ -406,6 +443,17 @@ export function perToolLines(result, wired) {
     'A populated off-diagonal means these are independent properties, not one judgement:',
     'a tool can be well-tested and never run, or run on every push and assert nothing.',
   );
+  const absent = absentWiredTools(wired, new Set(per.keys()), measured, result.skippedRed ?? []);
+  if (absent.length > 0) {
+    lines.push(
+      '',
+      `${absent.length} wired tool(s) produced no row above and are in no quadrant.`,
+      'Absence here is not a score. Each is named with why it could not be measured:',
+      ...absent.map((a) => `  ${a.tool.padEnd(38)}${a.reason}`),
+      `The wired denominator ${wiredRows} therefore excludes these; a table that omitted them`,
+      'silently would report the same quadrants while describing a smaller population.',
+    );
+  }
   return lines;
 }
 
@@ -455,7 +503,7 @@ function main() {
   for (const line of scopeLines(result)) console.log(line);
   console.log('');
   console.log(elapsedLine(Date.now() - started));
-  for (const line of perToolLines(result, wiredTools())) console.log(line);
+  for (const line of perToolLines(result, wiredTools(), result.measured)) console.log(line);
   for (const line of survivorLines(result.survivors)) console.log(line);
 }
 
