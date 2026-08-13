@@ -1327,6 +1327,116 @@ test('the scanned population is derived from the surface, not narrowed to a samp
   );
 });
 
+/**
+ * Parse the single-line runner bodies out of `activationRunners`' production source.
+ *
+ * Fails closed: a body this cannot parse is reported rather than skipped, so reformatting the
+ * registry cannot silently empty the population.
+ */
+function runnerBodies(source) {
+  const start = source.indexOf('function activationRunners(');
+  assert.notEqual(start, -1, 'PREMISE: activationRunners must be locatable in production source');
+  const region = source.slice(start, source.indexOf('\n}', start));
+  const bodies = new Map();
+  for (const line of region.split('\n')) {
+    const parsed = /^ {4}(\w+): \(\) => (.+),$/.exec(line);
+    if (parsed) bodies.set(parsed[1], parsed[2]);
+  }
+  return bodies;
+}
+
+/**
+ * Report every wired runner that does not delegate to the validator its id names.
+ *
+ * Shared by the assertion and its control, so weakening it reddens the control too (.github#953).
+ */
+function delegationFindings(source, ids) {
+  const bodies = runnerBodies(source);
+  const findings = [];
+  const precomputedBy = new Map();
+  for (const id of ids) {
+    const body = bodies.get(id);
+    if (body === undefined) {
+      findings.push(`runner ${id} has no parsable body`);
+      continue;
+    }
+    if (body.includes(`validate${id[0].toUpperCase()}${id.slice(1)}(`)) continue;
+    const precomputed = /context\.(\w+)\.findings/.exec(body);
+    if (precomputed) {
+      const prior = precomputedBy.get(precomputed[1]);
+      if (prior !== undefined)
+        findings.push(`runners ${prior} and ${id} both read context.${precomputed[1]}.findings`);
+      precomputedBy.set(precomputed[1], id);
+      continue;
+    }
+    findings.push(`runner ${id} delegates to nothing: ${body}`);
+  }
+  return findings;
+}
+
+test('every wired runner delegates to the validator its id names (#4314)', () => {
+  // #4278 made the advertised set and the wired set one object, so a validator cannot be dropped
+  // or added silently. That proves WIRING. Measured against behaviour: replacing each runner body
+  // with `() => []` one at a time left 6 of 8 unnoticed by the whole suite -- every survivor has
+  // thorough DIRECT-CALL unit tests that never execute the path production reaches it by, and the
+  // only two kills are the two validators with a test that spawns the tool (.github#970).
+  //
+  // `syncLock` is the sharp one: gutting it MOVED the production output and still survived. And
+  // `envInputs` shipped one PR earlier with three new tests, so the newest guard in the file was
+  // unreached-tested. On a healthy tree every validator finds nothing, so a gutted runner and a
+  // working one usually print byte-identical reports -- output comparison cannot separate them.
+  //
+  // The population is the PRODUCTION object's own keys, not VALIDATORS and not a table written
+  // here; a hand-written probe list would be this same defect one level up (#4287, .github#977).
+  const ids = Object.keys(activationRunners({}));
+  assert.ok(ids.length > 5, 'PREMISE: the runner registry must be non-degenerate');
+  const source = fs.readFileSync(TOOL, 'utf8');
+  assert.deepEqual(delegationFindings(source, ids), [], 'every wired runner must delegate');
+
+  const gutted = source.replace(
+    '    envInputs: () => validateEnvInputs(),',
+    '    envInputs: () => [],',
+  );
+  assert.notEqual(gutted, source, 'PREMISE: the control must construct a different source');
+  assert.deepEqual(
+    delegationFindings(gutted, ids),
+    ['runner envInputs delegates to nothing: []'],
+    'a gutted runner must be reported',
+  );
+
+  // The fail-closed branch was LATENT: every body in this tree parses, so "no parsable body" could
+  // never fire and dropping it survived the sweep. Pinning "all bodies parse" would freeze an
+  // accident of the current formatting, so the state is CONSTRUCTED instead (#4300, .github#880).
+  const wrapped = source.replace(
+    '    envInputs: () => validateEnvInputs(),',
+    '    envInputs: () =>\n      validateEnvInputs(),',
+  );
+  assert.notEqual(wrapped, source, 'PREMISE: the control must construct a different source');
+  assert.deepEqual(
+    delegationFindings(wrapped, ids),
+    ['runner envInputs has no parsable body'],
+    'a body this cannot read must be reported, never skipped',
+  );
+
+  // Lower bound, stated rather than left to be inferred: this pins that each runner delegates to
+  // the validator its id names. It does not pin that the validator is correct -- the behavioural
+  // anchor stays the tests that spawn the tool and read its report.
+});
+
+test("every wired runner's findings reach the report (#4314)", () => {
+  const ids = Object.keys(activationRunners({}));
+  for (const id of ids) {
+    const runners = Object.fromEntries(ids.map((key) => [key, () => []]));
+    runners[id] = () => [`SENTINEL-${id}`];
+    const dispatched = dispatchValidators(runners);
+    assert.equal(dispatched.ran, ids.length, `${id}: every wired runner must be counted as run`);
+    assert.ok(
+      dispatched.findings.includes(`SENTINEL-${id}`),
+      `${id}: a wired runner's findings must arrive in the report`,
+    );
+  }
+});
+
 test('every route into the corpus is exercised by a claimant that uses only that route (#4309)', () => {
   // The #4270 cross-check filters git's index through BACKBONE_CLAIM -- the walk's own pattern --
   // so narrowing the pattern shrinks both enumerations identically and they go on agreeing. It
