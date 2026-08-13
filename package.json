@@ -70,6 +70,8 @@
     "node:version:test": "node --test tools/check-node-version-consistency.test.mjs",
     "citations:context:test": "node --test tools/citations-context.test.mjs",
     "test:independence:check": "node tools/check-test-independence.mjs",
+    "tools:test": "node tools/run-tool-tests.mjs",
+    "gate:enforcement": "node tools/check-gate-enforcement.mjs",
     "docs:links:check": "node tools/check-doc-links.mjs",
     "docs:links:test": "node --test tools/check-doc-links.test.mjs"
   },

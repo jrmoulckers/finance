@@ -8710,6 +8710,107 @@ reasons are mechanical: it rewrites source files in place, and it runs for 31 se
 to start on a dirty `tools/` tree, restores every file in a `finally`, and requires a green
 baseline per tool before mutating, because a red baseline makes every mutant look caught.
 
+## The census chose its population by naming convention
+
+The finding two sections up -- _Four gates were invoked by nothing_ -- was produced by a hand
+census of the **14** `package.json` scripts ending in `:check`. Three things were wrong with it,
+and the third is the one that matters.
+
+### The population was a proxy
+
+The root `package.json` has **62** scripts. Selecting the 14 ending in `:check` is selecting by
+naming convention, which is a proxy for gate-ness -- and the proxy has a known exception inside
+this very document: the documented gate list's **first entry is `eng:citations`**, which does not
+end in `:check` and was therefore never in the census population. `type-check`, a required status
+check, was excluded the same way.
+
+Two populations, "scripts ending in `:check`" and "things this guide calls gates", were used
+interchangeably for six sections without ever being reconciled.
+
+### Absence was resolved by one route, so it was unfalsifiable
+
+The matcher looked for `npm run <name>`. One false positive was already corrected in prose
+(`ai:manifest:check` is enforced by path). The upstream session then hit the same class from the
+other side: their matcher missed `npm test`, a **bare npm lifecycle**, which briefly implied their
+repository ran no tests in CI. This repository has the identical construct at `ci-web.yml:144`.
+
+Both false positives were caught by **collision with prior knowledge** -- one of us recognised an
+orphan we knew was enforced. That is not a control. It is available only to a reader who already
+knows the answer, which is precisely the reader who does not need the census.
+
+`tools/check-gate-enforcement.mjs` resolves five routes and **reports which one matched**, so a
+"reached" verdict carries its own evidence:
+
+```
+scripts in package.json     62
+  invoked by a workflow     26
+  same command runs, but     5
+    not via the script
+  reached by nothing        31
+```
+
+### An unreached script is not an unenforced check
+
+This is the distinction the original finding collapsed. CI runs `npx eslint . --max-warnings 0
+--cache` and `npx prettier --check .` **directly** -- never `npm run lint` or `npm run
+format:check`. So those scripts are genuinely unreached _and_ the checks they perform are
+genuinely enforced, by the required `ESLint & Prettier` context. Hence the third bucket.
+
+The naive reading of the residue is also wrong. `lint` is `turbo run lint && npx eslint .
+--max-warnings 0`, and `turbo run lint` appears in **zero** workflows, which looks like a gap in
+package-level linting. It is not: root `npx eslint .` lints **2,301** files under `apps/web/src`,
+so the turbo half is redundant rather than missing. Verified by counting the files ESLint actually
+reports on, not by reading the config.
+
+## The gate was enforced; the gate's correctness was not
+
+Running the corrected census over test files rather than scripts produced the worse finding.
+
+| tool tests                | count |
+| ------------------------- | ----- |
+| in `tools/`               | 472   |
+| reachable from a workflow | 202   |
+| reachable from nothing    | 270   |
+
+No workflow ran the tools suite -- `node --test` appeared **zero** times outside individual script
+bodies. A test file was enforced only if someone registered a `package.json` script _and_ added a
+matching workflow step, so a new suite **defaults to unenforced**, and the default held for eight
+of thirteen suites.
+
+Among the unreachable: `check-doc-links.test.mjs`, 66 tests, whose checker `docs:links:check` is a
+required gate wired at `ci-lint.yml:144`. The gate ran on every PR. Nothing verified the gate was
+still correct. The slugger defects found earlier -- three of them, in one function -- are exactly
+the class of regression those 66 tests exist to catch, and CI could not have caught a reintroduction.
+
+Every **"468/468 tests pass"** reported to the sibling session was, for 270 of those tests, a
+purely local result. Same shape as their finding that engineering's own citation checker is run by
+no workflow in the repository that publishes it, and same shape as this guide's earlier discovery
+that its scope lines were all on the green path: the claim was true, and enforcement of it was not
+where the claim implied.
+
+### The fix is structural, not a list of steps
+
+Adding eight workflow steps would close today's gap and restore the default tomorrow. Instead
+`tools/run-tool-tests.mjs` enumerates `tools/*.test.mjs` **from disk** and runs all of them in one
+step, so a new suite is enforced by existing rather than by remembering.
+
+The population is enumerated rather than passed as a shell glob deliberately: a glob that matches
+nothing exits zero, and a green step over an empty population is indistinguishable from a passing
+one -- the decoy pattern flagged in the sibling's `pins:check`. `assertPopulation` throws instead.
+
+After wiring: **512 tool tests, 512 reachable, 0 unreachable.**
+
+### One failure the suite step found and this section cannot explain
+
+The first whole-suite run reported `pass 511, fail 1`. Four subsequent runs reported `512 / 0`, and
+the failing test's identity was not captured before the output was overwritten.
+
+Recorded as observed and unreproduced rather than fixed, because that is what is known. It does
+argue for the step on its own: fifteen files run concurrently exercise cross-file interactions that
+fifteen separate per-file runs cannot, and no per-file run had ever produced a failure. The
+`test:independence:check` gate checks that a test does not reimplement its tool; nothing was
+checking that a test does not interfere with another test.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
