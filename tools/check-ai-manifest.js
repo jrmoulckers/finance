@@ -784,6 +784,18 @@ function citationFindings(text, citations = CANON_CITATIONS, isLocallyOwned = ()
 // So the population is DERIVED from the same property that makes a file subject to the rule --
 // mentioning the backbone -- rather than written down beside it. A file that starts citing the
 // backbone tomorrow is scanned tomorrow, with nothing to update (#4270).
+//
+// The PATTERN, though, is still hand-written, and the #4270 cross-check filters git's index
+// through it. Both enumerations therefore share it: narrowing this regex shrinks both sides
+// identically and they go on agreeing. The cross-check pins how files were FOUND, not what counts
+// as a CLAIM. Measured: appending `\)` to the last alternative took the corpus from 73 to 8 while
+// staying above the floor, keeping the named .prettierignore control satisfied, and leaving the
+// enumeration test green (#4309, .github#953).
+//
+// The alternatives are not equally load-bearing, and the imbalance is the exposure: the repo
+// mention is the SOLE reason 70 of 73 claimants are scanned, while the five engine-file
+// alternatives are the sole reason for none of them. Each route is therefore exercised by a
+// constructed probe that uses only that route, because a shared enumeration cannot.
 const BACKBONE_CLAIM =
   /(sync\/lib\/|copier\.mjs|provenance\.mjs|basemerge\.mjs|lock\.mjs|jrmoulckers\/\.github)/;
 // The corpus gate is a PROPERTY OF THE FILE, not an extension allowlist. An allowlist is a
