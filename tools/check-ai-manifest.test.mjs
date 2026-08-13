@@ -521,9 +521,36 @@ test('the disclosure names every path and never collapses to a count', () => {
   // The prose at KNOWN_UNREPRODUCED promises "listing each path means the set cannot grow
   // unnoticed, which is the property a bare count lacks". As a loop inside main() that promise
   // was unreachable by any test, and emptying it left the suite green (#4222).
-  const lines = sourceDisclosureLines(Object.keys(KNOWN_UNREPRODUCED));
-  assert.equal(lines.length, Object.keys(KNOWN_UNREPRODUCED).length, 'one line per exemption');
-  for (const entry of Object.keys(KNOWN_UNREPRODUCED)) {
+  //
+  // The population is a CONSTRUCTED register, not the live one. Driven from KNOWN_UNREPRODUCED
+  // both sides of `lines.length === keys.length` moved together, so the assertion could not fail
+  // by that register emptying -- and it is designed to empty, since an exemption register succeeds
+  // by draining. The five tests that currently catch an empty register are fixtures built on
+  // `Object.keys(KNOWN_UNREPRODUCED)[0]`, so they get repaired in the same edit that drains it:
+  // the cover and the covered fail together (#4297).
+  const register = {
+    'a/first.css': { issue: '#1111' },
+    'b/second.md': { issue: '#2222' },
+  };
+  const built = sourceDisclosureLines(Object.keys(register), register);
+  assert.equal(built.length, 2, 'one line per exemption, never a single summarising count');
+  for (const [entry, meta] of Object.entries(register)) {
+    assert.ok(
+      built.some((l) => l.includes(entry) && l.includes(meta.issue)),
+      `every exemption must be disclosed by path and issue; ${entry} was not`,
+    );
+  }
+  assert.ok(
+    !built.some((l) => /\b2 (exemptions|entries|paths)\b/.test(l)),
+    'a count is exactly what this disclosure must not collapse to',
+  );
+
+  // The live register too, with its premise stated: it may legitimately be empty, and on that day
+  // this arm proves nothing and the constructed arm above is what still holds the property.
+  const live = Object.keys(KNOWN_UNREPRODUCED);
+  const lines = sourceDisclosureLines(live);
+  assert.equal(lines.length, live.length, 'one line per exemption');
+  for (const entry of live) {
     assert.ok(
       lines.some((l) => l.includes(entry) && l.includes(KNOWN_UNREPRODUCED[entry].issue)),
       `every exemption must be disclosed by path and issue; ${entry} was not`,
@@ -1140,6 +1167,19 @@ test('every classified extension starts with a dot, which is why the first opera
   // only while every classified extension is dot-led, so that invariant is what gets pinned.
   // Add an extension-less name (`Caddyfile`) to any family and this test fires, which is the
   // signal that the operand has become load-bearing and now needs a behavioural test.
+  // The premise is stated PER FAMILY, not over the union. `[...A, ...B, ...C].length > 0` is
+  // satisfied while any one family is empty, so it cannot see a member go to zero and the
+  // invariant silently stops covering it. Measured: emptying each family in turn left this test
+  // green 3 of 3, and the state was caught only by bystanders (#4297). Non-emptiness of a family
+  // is a corpus fact, so this asserts only that each family HAS members -- never which ones.
+  const families = {
+    HASH_EXTENSIONS,
+    BLOCK_EXTENSIONS,
+    HTML_EXTENSIONS,
+  };
+  for (const [name, family] of Object.entries(families)) {
+    assert.ok(family.size > 0, `PREMISE: ${name} must be non-empty or its members go unchecked`);
+  }
   const all = [...HASH_EXTENSIONS, ...BLOCK_EXTENSIONS, ...HTML_EXTENSIONS];
   assert.ok(all.length > 0);
   for (const extension of all) {

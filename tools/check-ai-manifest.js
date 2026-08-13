@@ -1401,11 +1401,16 @@ function exemptionMatches(entry, recordedSource, digest) {
 // The disclosure the prose promises: one line per path, never a count. Returned rather than
 // written so the promise is assertable -- as a loop inside main() it was reachable by no test,
 // and emptying it left the suite green (#4222). A count cannot grow unnoticed into a set.
-function sourceDisclosureLines(knownUnreproduced) {
+// The register is a parameter, not a closed-over constant, for the reason stated above about
+// conjunctions: this function took the population as an argument and read its CONTENT from the
+// module constant, so a test could vary WHICH paths are disclosed and never WHAT they disclose.
+// The live register holds one row and is designed to drain -- an exemption register succeeds by
+// emptying -- so a property proved only against it stops being proved on the day it works (#4297).
+function sourceDisclosureLines(knownUnreproduced, register = KNOWN_UNREPRODUCED) {
   return knownUnreproduced.map(
     (entry) =>
       `  [source] not reproducible from delivered bytes: ${entry} ` +
-      `(${KNOWN_UNREPRODUCED[entry].issue}, known and pinned)`,
+      `(${register[entry].issue}, known and pinned)`,
   );
 }
 
