@@ -8,6 +8,7 @@ import {
   enginesAdmitsAbove,
   exercisedMajorsAbove,
   findAdmittedIncompatibilities,
+  findExcludedCompatibilities,
   findNodeVersionMismatches,
   findNodeVersionPins,
   findRangeExerciseViolations,
@@ -268,4 +269,69 @@ test('findAdmittedIncompatibilities sorts by version, not by probe order', () =>
   ]);
   assert.equal(admitted[0].version, '22.0.0');
   assert.equal(admitted[1].version, '22.22.1');
+});
+
+test('reports a version every dependency accepts but the range excludes', () => {
+  // Mirrors the real tree: something rejects 23, so the only disagreement left
+  // is the patch-level floor. Without that, 23.0.0 is also reported -- see below.
+  const deps = [{ range: '>=22.22.1 <23 || >=24' }, { range: '>=20' }];
+  const found = findExcludedCompatibilities('>=22.23.0 <23 || >=24', deps);
+  assert.deepEqual(
+    found.map((f) => f.version),
+    ['22.22.1'],
+  );
+});
+
+test('the excluded direction is invisible to the admitted direction', () => {
+  // findAdmittedIncompatibilities opens with `if (!satisfies) continue`, so the
+  // excluded version is discarded before anything is asked about it. This is
+  // the asymmetry the second function exists to close, and asserting both on
+  // the same input is what makes it a measurement rather than a claim.
+  // Mirrors the real tree: something rejects 23, so the only disagreement left
+  // is the patch-level floor. Without that, 23.0.0 is also reported -- see below.
+  const deps = [{ range: '>=22.22.1 <23 || >=24' }, { range: '>=20' }];
+  assert.equal(findAdmittedIncompatibilities('>=22.23.0 <23 || >=24', deps).length, 0);
+  assert.equal(findExcludedCompatibilities('>=22.23.0 <23 || >=24', deps).length, 1);
+});
+
+test('a range that excludes nothing acceptable reports nothing', () => {
+  // Mirrors the real tree: something rejects 23, so the only disagreement left
+  // is the patch-level floor. Without that, 23.0.0 is also reported -- see below.
+  const deps = [{ range: '>=22.22.1 <23 || >=24' }, { range: '>=20' }];
+  assert.equal(findExcludedCompatibilities('>=22.22.1 <23 || >=24', deps).length, 0);
+});
+
+test('a version rejected by one dependency is not reported as excluded', () => {
+  // Excluding a version some dependency rejects is correct, not a defect.
+  const deps = [{ range: '>=22.22.1' }, { range: '>=24' }];
+  assert.equal(findExcludedCompatibilities('>=24', deps).length, 0);
+});
+
+test('an unparseable declared range yields no excluded findings', () => {
+  assert.deepEqual(findExcludedCompatibilities('not a range', [{ range: '>=20' }]), []);
+});
+
+test('no dependencies means nothing is claimed in either direction', () => {
+  // Without a population, "every dependency accepts it" is vacuously true and
+  // would report every probe version as wrongly excluded.
+  assert.deepEqual(findExcludedCompatibilities('>=24', []), []);
+});
+
+test('excluded findings are sorted by version', () => {
+  const deps = [{ range: '>=20.1.0 || >=22.5.0' }];
+  const found = findExcludedCompatibilities('>=24', deps).map((f) => f.version);
+  assert.deepEqual(
+    found,
+    [...found].sort((a, b) => (a < b ? -1 : 1)),
+  );
+});
+
+test('a deliberately excluded odd major is reported when nothing rejects it', () => {
+  // Not a false positive, and worth pinning rather than suppressing. Odd Node
+  // majors never reach LTS, so excluding one is usually intentional -- but the
+  // function measures "every dependency accepts this", not "you should support
+  // it". Encoding the behaviour here keeps the notice readable as a fact.
+  const permissive = [{ range: '>=20' }];
+  const found = findExcludedCompatibilities('>=22.22.1 <23 || >=24', permissive);
+  assert.ok(found.some((f) => f.version === '23.0.0'));
 });

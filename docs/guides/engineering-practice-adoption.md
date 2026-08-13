@@ -6764,7 +6764,9 @@ dependency declarations state:
 Two separate falsehoods, in opposite directions from the one being discussed:
 
 1. **The floor was below the real floor.** `>=22.22.1` and `^22.13.0` bounds put the true minimum at
-   **22.23.0**, not 22.0.0.
+   **22.22.1**, not 22.0.0. _(Corrected. This sentence originally concluded **22.23.0** — one patch
+   above the `>=22.22.1` it names as the binding constraint, in the same sentence. See
+   "The falsifying value was inside the argument" below.)_
 2. **The range has a hole.** Twenty packages declare `^20.19.0 || ^22.13.0 || >=24.0.0`, skipping
    Node 23 entirely — it is an odd, non-LTS line. An open-ended `>=22.0.0` claims 23 works. It does
    not, and nothing above it is monotonic: 23 fails while 24 is clean.
@@ -7678,6 +7680,69 @@ A fifth error occurred while tabulating, in the shell rather than the tool: a ne
 `product` instead of `16 of 22`, which is the more flattering number and the wrong one.
 Regex state that is global to the scope is the same defect class as `lastIndex` on a shared
 `RegExp`, and it is why the tool resets `BLOB.lastIndex` per line rather than trusting it.
+
+## A range can be wrong in two directions and only one was ever measured
+
+`check-node-version-consistency.mjs` verifies `engines.node` against the 452 `engines.node`
+declarations in the installed tree, and it passed. It checked one direction:
+
+```js
+for (const version of probeVersions(...)) {
+  if (!semver.satisfies(version, declared)) continue;   // <- everything excluded, discarded here
+```
+
+Versions the range **admits** are compared against the dependencies. Versions the range
+**excludes** are dropped on the first line of the loop, so no question is ever asked about
+them. That is not a sampling gap. `22.22.1` was already in the probe set — `probeVersions`
+harvests literal versions out of dependency ranges, and `lint-staged` declares `>=22.22.1`.
+The falsifying version was in the population and the filter threw it away.
+
+Measured against the real tree, the declared `>=22.23.0 <23 || >=24` excluded Node
+**22.22.1**, which all 452 declarations accept. A dense patch sweep puts the excluded run at
+`22.22.1`–`22.22.6`; the check reports only `22.22.1`, because it probes versions some package
+names rather than every version that exists, and it now says so.
+
+The two directions are different defects and it is worth being precise about which is which:
+
+| direction        | what it claims                                  | who it hurts                                                     |
+| ---------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
+| over-permissive  | support for a runtime installed packages reject | a consumer, who is told it works                                 |
+| over-restrictive | no support for a runtime every package accepts  | a contributor, whose working environment is declared unsupported |
+
+Only the first was measured, and the second is the one this repository had. Corrected to
+`>=22.22.1 <23 || >=24`; both directions now read zero, and both are printed even when clean,
+because _"admits no bad version"_ reads as _"the range is right"_ and is half the claim.
+
+### The falsifying value was inside the argument
+
+The floor came from this repository's own earlier work, which recorded its reasoning as:
+
+> `>=22.22.1` and `^22.13.0` bounds put the true minimum at **22.23.0**, not 22.0.0.
+
+The premise names `>=22.22.1`. The conclusion says `22.23.0`. They are one patch apart, in one
+sentence, and it survived review, a checker, and several later re-readings of the same
+paragraph.
+
+This is a harder case than a version missing from a probe set. There the instrument could not
+see the counterexample; here the counterexample is **quoted in the evidence for the claim it
+refutes**. No widening of a population would have helped, because the population was not the
+problem — the step from evidence to conclusion was, and nothing in the toolchain reads that
+step. What caught it was recomputing the floor from the tree instead of re-reading the
+sentence, which is the same distinction as _reading a control tells you what it says; only
+running it tells you which way it fails_, applied to prose.
+
+### The odd major is a fact about Node, not about this tree
+
+The excluded direction reports any version all dependencies accept, including Node 23 when
+nothing happens to reject it. That is not a false positive and it is not suppressed. Odd Node
+majors never reach LTS, so mature packages write `18 || 20 || >=22` and skip them by cadence,
+which means **the expected shape of a correct `engines.node` is non-contiguous** and a
+contiguous one is more likely wrong than right. Measured here: of the 20 declarations that
+reject Node 23, **4 of 4 distinct ranges use `||` alternation**, and they come from unrelated
+maintainers — the `@eslint/*` family, `@asamuzakjp/*`, `whatwg-url`, `data-urls`,
+`@exodus/bytes`. The check therefore states a fact — _every dependency accepts this and you
+exclude it_ — and leaves intent to the reader, rather than demanding a contiguous range that
+would be wrong.
 
 ## Worth hoisting up
 
