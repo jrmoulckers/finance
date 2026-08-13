@@ -8180,6 +8180,73 @@ docstring and printed output after the probe had been retracted and its defect
 identified. The summary is the artifact with no checker; that has been recorded here
 before, and it recurred inside the change that recorded it.
 
+## Specificity is a property of the claim, not of the instrument
+
+A sibling session retracted its own claim that content moving between files -- while both
+paths stay valid -- is unreachable by any checker. An **anchor** check sees a subset of it:
+when the citing link names a section, renaming that heading breaks the fragment.
+
+That retraction exposes an axis distinct from the three used elsewhere in this guide. _Which
+files_, _which point in time_, and _which direction_ are all scope of **measurement**. This
+one is scope of the **claim**, and it sits upstream of all of them: a link naming only a file
+asserts "this file is relevant", which almost no content change falsifies. No improvement to
+any instrument reaches an assertion that vague -- the only fix is to write a more specific
+link.
+
+Measured over finance:
+
+|                                        | count | share     |
+| -------------------------------------- | ----- | --------- |
+| relative `.md` links                   | 3353  |           |
+| naming only a file                     | 3095  | **92.3%** |
+| naming a section                       | 246   | 7.3%      |
+| pointing at a file that does not exist | 12    | 0.4%      |
+
+finance is materially less specific than the sibling repository (92.3% fragmentless against
+81%), and before this change the 7.3% that was checkable-in-principle was checked by nothing.
+Three anchors were stale, each the exact case the sibling had called invisible:
+
+1. A heading renamed (`npm run ci:check` dropped from a pain-point title).
+2. A document dropping its section numbering.
+3. `docs/legal/ccpa-notice.md` pointing at `privacy-policy.md#10-data-retention` after
+   retention moved to section 8. Section 10 still exists -- it is now "Your privacy rights" --
+   so the link is not obviously wrong to a reader skimming the source, and a CCPA notice
+   directing someone to the wrong section of a privacy policy is the one instance here with
+   consequences outside the repository.
+
+### The instrument was wrong three times before the documents were wrong once
+
+The probe reported **95** stale anchors, then **6**, then **3**. Both corrections were to the
+slugger, not to the docs:
+
+- **`\s+` against `\s`.** GitHub replaces each space individually, so removing an em dash
+  leaves the two spaces around it and renders a _double_ hyphen. Collapsing runs mis-slugged
+  **89** valid links. This surfaced only because the first case checked by hand was linked
+  from its own target file's table of contents -- the target was asserting the anchor that the
+  probe called stale.
+- **U+FE0F.** GitHub strips a warning-sign glyph from a heading but keeps the variation
+  selector, so the real anchor begins with an invisible character. Stripping it cost a
+  further **3**.
+
+96.8% of the first number was instrument error. The general form is worth recording: **an
+anchor checker is exactly as good as its slugger's agreement with the renderer, and a wrong
+slugger does not look wrong.** It emits real file paths and plausible anchors, and every entry
+survives a skim. Both cases are now pinned by tests and killed as mutants, because neither is
+recoverable by reading the code.
+
+### What the check now prints
+
+`tools/check-doc-links.mjs` verifies anchors and prints the specificity split on both the
+passing and the failing path. The split is published deliberately: a green result that does
+not state that 92.3% of links assert nothing checkable reads as "the documentation is
+verified", which is a stronger claim than the evidence supports. `STALE_ANCHOR_BASELINE` is
+empty and asserted in tests as a literal rather than as its own length -- a ratchet phrased in
+terms of itself moves when the constant moves.
+
+Both failure axes are reported before the process exits, rather than the first one found.
+Failing on broken paths alone would let them mask every stale anchor; the reader would repoint
+the paths, see green, and conclude the anchors had been checked all along.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

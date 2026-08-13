@@ -144,7 +144,7 @@ We keep personal information only for as long as reasonably necessary for the pu
 | Optional analytics and crash reporting  | Collected only if you opt in; retention depends on the specific feature or provider; **final schedule: [TBD before publication]**                                      |
 | Web storage and browser caches          | May remain until cleared by you, the browser, or the app, subject to technical limits                                                                                  |
 
-For more detail, see [Data Retention](./privacy-policy.md#10-data-retention) in the main Privacy Policy.
+For more detail, see [Data Retention](./privacy-policy.md#8-data-retention) in the main Privacy Policy.
 
 ## 13. Contact for California Requests
 

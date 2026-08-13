@@ -106,7 +106,7 @@ Metrics are NOT used to evaluate individual agent "performance." They measure sy
 
 **Target:** < 5%
 
-**Why it matters:** Avoidable CI failures waste time and indicate agents are skipping the pre-push checklist. Directly related to [PP-0002](pain-points.md#pp-0002-agents-skip-npm-run-cicheck-before-pushing).
+**Why it matters:** Avoidable CI failures waste time and indicate agents are skipping the pre-push checklist. Directly related to [PP-0002](pain-points.md#pp-0002-agents-skip-pre-push-workflow-before-pushing).
 
 ---
 
