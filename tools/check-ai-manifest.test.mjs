@@ -34,6 +34,9 @@ const {
   enforcementFindings,
   BREADTH_FLOOR,
   corpusBreadth,
+  HASH_EXTENSIONS,
+  BLOCK_EXTENSIONS,
+  HTML_EXTENSIONS,
   validateSyncLock,
   SYNC_LOCK,
   triggerPaths,
@@ -1064,4 +1067,61 @@ test('validateSyncLock still reports a degenerate corpus (#4256)', () => {
       /every corpus assertion is vacuous/.test(finding),
     ),
   );
+});
+
+// --- #4264: an operand is not pinned just because its expression is -----------------------
+//
+// Every two-operand conjunction in the tool was mutated one operand at a time. Most died, but
+// the `--strict` term died in NEITHER expression that mentions it, and `commentFamily`'s
+// second operand died in neither direction. An expression can be well covered while one of its
+// terms is carried entirely by the other.
+
+test('the drift step is read as blocking via the --strict flag, not only via STRICT (#4264)', () => {
+  const step = (run, env) =>
+    ['      - name: Check for drift (informational)', env, `        run: ${run}`]
+      .filter(Boolean)
+      .join('\n');
+  const env0 = "        env:\n          STRICT: '0'";
+
+  // The flag alone must read as blocking. Dropping the flag term from the `blocking` disjunction
+  // reports warn-only for a step that genuinely fails the build -- #4233 inside its own fix.
+  assert.deepEqual(driftEnforcement(step('node tools/check-ai-manifest.js --strict', null)), {
+    mode: 'blocking',
+  });
+  // The flag must also win over a STRICT that says otherwise: the process exits non-zero.
+  assert.deepEqual(driftEnforcement(step('node tools/check-ai-manifest.js --strict', env0)), {
+    mode: 'blocking',
+  });
+  // And the flag alone must not read as "declares neither" -- the other unpinned mention.
+  assert.deepEqual(driftEnforcement(step('node tools/check-ai-manifest.js', env0)), {
+    mode: 'warn-only',
+  });
+  const neither = driftEnforcement(step('node tools/check-ai-manifest.js', null));
+  assert.match(neither.error, /declares neither/, 'a step declaring no mode fails closed');
+});
+
+test('a dotfile carrying a real extension is classified by that extension (#4264)', () => {
+  // `.prettierrc.yml` is hash-commented; classifying the whole basename as the extension loses
+  // it. 54 of 144 synthetic paths change family when this operand is dropped.
+  assert.equal(commentFamily('a/.prettierrc.yml'), 'hash');
+  assert.equal(commentFamily('.gitattributes.md'), 'html');
+  // The recorded shape still holds: a dotfile with no further dot IS its own extension.
+  assert.equal(commentFamily('.gitattributes'), 'hash');
+  assert.equal(commentFamily('x/AGENTS.md'), 'html');
+});
+
+test('every classified extension starts with a dot, which is why the first operand is dead (#4264)', () => {
+  // DISCLOSURE: dropping `base.startsWith('.')` produced 0 differences across 144 synthetic
+  // paths -- an equivalent mutant, unpinnable because it currently decides nothing. It is dead
+  // only while every classified extension is dot-led, so that invariant is what gets pinned.
+  // Add an extension-less name (`Caddyfile`) to any family and this test fires, which is the
+  // signal that the operand has become load-bearing and now needs a behavioural test.
+  const all = [...HASH_EXTENSIONS, ...BLOCK_EXTENSIONS, ...HTML_EXTENSIONS];
+  assert.ok(all.length > 0);
+  for (const extension of all) {
+    assert.ok(
+      extension.startsWith('.'),
+      `${extension} is not dot-led; the dead operand is now live`,
+    );
+  }
 });
