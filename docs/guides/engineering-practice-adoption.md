@@ -9087,6 +9087,57 @@ a tool, with two traversals in one file and only one guarded. finance does not h
 `headingSlugs` and `collectLinks` both consume the shared `markFences`. Recorded as a negative
 rather than reshaped into a symmetric finding.
 
+## Whether a check runs and whether its report is checked are independent properties
+
+A sentinel mutation sweep over the 15 tools in `tools/` that have a colocated test file — replace
+each interpolated value in a report line with a sentinel, re-run that tool's tests, record whether
+anything fails — scored **103 of 305 interpolation sites asserted**. Crossed against whether a
+workflow invokes the tool, all four quadrants are populated:
+
+|                | asserted (>=50%)                                                                                                  | unasserted (<50%)                                                                                                                                                                                                                          |
+| -------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **runs in CI** | `check-doc-links` 100%, `check-test-independence` 71%, `check-gate-enforcement` 64%, `check-assertion-bounds` 50% | `check-workflow-security` 35%, `run-tool-tests` 33%, `check-tool-imports` 25%, `check-node-version-consistency` 18%, `check-gradle-prefetch` 18%, `check-upstream-refs` 14%, `verify-required-checks` 0%, `check-citation-enumerations` 0% |
+| **inert**      | `citations-context` 100%, `check-report-assertions` 81%                                                           | `check-workflow-pin-history` 9%                                                                                                                                                                                                            |
+
+The two best-asserted tools in the repository are both unwired. Two required gates score zero. So
+"inert" — which this repository has used as a single summary judgement — is two claims wearing one
+word, and they have different remedies: an unwired tool needs a workflow step, an unasserted one
+needs a callable report surface. `gate:enforcement` measures the first axis and nothing measured
+the second, so a tool could be fixed on the axis that was watched and stay broken on the axis that
+was not.
+
+### The tool that measures this withheld the data that shows it
+
+`check-report-assertions.mjs` printed an aggregate ratio and a flat list of survivors. It did not
+print the caught list — so **its own output could not be decomposed per tool**, and building the
+table above required a bespoke probe against the exported `measure()`. The aggregate 34% is
+compatible with every tool sitting near 34% and with the actual distribution, which is bimodal and
+has two zeroes in it. A report that publishes a ratio while withholding its components cannot
+support the finding it exists to produce, and here the specific finding it suppressed was that the
+two axes do not correlate.
+
+This is the scope-line rule turned one notch further. A scope line discloses the population a
+number was computed over. It does not disclose that the number is an average over a population
+whose _variance_ is the whole story.
+
+### Both zeroes were structural, and neither was a weak test
+
+`verify-required-checks.mjs` exported two predicates and built all 35 of its sentences inline in an
+async polling loop that reaches the GitHub API. `check-citation-enumerations.mjs` exported its
+predicates and wrote its report straight to `process.stdout` from a function that walks the real
+tree. Neither scored 0% because someone wrote a lax assertion — they scored 0% because **there was
+no callable surface to assert**. Extraction is the precondition for assertion; the earlier note in
+this guide that extraction is not itself a remedy remains true, and both halves are needed: the
+extraction here bought nothing until a test read the interpolated values.
+
+Both are worth asserting for the same reason. `verify-required-checks` is the deploy gate: its
+lines are the durable record of _why_ a SHA was promoted or refused, and an unasserted report can
+degrade to naming the wrong SHA or the wrong conclusion while the exit code stays correct.
+`check-citation-enumerations` reports a three-bucket partition whose third bucket — exempted lines
+— is the only one that can hide a violation.
+
+Cites `ENG-TEST-004`, `ENG-OBS-005`.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

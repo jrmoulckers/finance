@@ -188,6 +188,100 @@ async function fetchCheckRuns({ repo, sha, token }) {
 
 const sleep = (seconds) => new Promise((done) => setTimeout(done, seconds * 1000));
 
+/*
+ * Report builders.
+ *
+ * These were inline template literals inside `run()`. A sentinel mutation sweep (issue #4303)
+ * found 0 of this tool's 35 interpolation sites asserted by any test -- not because the tests
+ * were weak, but because `run()` is an async polling loop that reaches the network, so no test
+ * could call the code that produces the sentences. Extraction is the precondition for assertion;
+ * it does not by itself supply one, so each builder below has a test that reads its values.
+ *
+ * These sentences are the durable record of why a deploy was permitted or refused. An unasserted
+ * deploy-gate report can degrade to naming the wrong SHA, the wrong check, or the wrong
+ * conclusion while the gate still exits with the correct status.
+ */
+
+/**
+ * Build the three startup lines describing what the gate is about to wait for.
+ *
+ * @param {{checkName: string, repo: string, sha: string, allowed: string[],
+ *   timeoutSeconds: number, intervalSeconds: number}} config Resolved configuration.
+ * @returns {string[]} Startup lines.
+ */
+export function startupLines(config) {
+  return [
+    `Verifying required check "${config.checkName}" on ${config.repo}@${config.sha.slice(0, 12)}`,
+    `Allowed conclusions: ${config.allowed.join(', ')}`,
+    `Wait budget: ${config.timeoutSeconds}s, poll interval: ${config.intervalSeconds}s`,
+  ];
+}
+
+/**
+ * Build the terminal line for a completed gatekeeper run.
+ *
+ * @param {'pass' | 'fail'} decision Classification from `classifyGatekeeper`.
+ * @param {{checkName: string, conclusion: string | null, sha: string}} context Reporting context.
+ * @returns {string} The pass or fail sentence.
+ */
+export function decisionLine(decision, context) {
+  if (decision === 'pass') {
+    return `✅ "${context.checkName}" completed with conclusion "${context.conclusion}" — gate passed.`;
+  }
+  return (
+    `❌ "${context.checkName}" completed with disallowed conclusion "${context.conclusion}" — ` +
+    `refusing to deploy ${context.sha.slice(0, 12)}.`
+  );
+}
+
+/**
+ * Build the line printed on each poll while the gate is still undecided.
+ *
+ * @param {{decision: string, checkName: string, status: string | null,
+ *   conclusion: string | null, total: number, intervalSeconds: number,
+ *   remainingSeconds: number}} state Poll state.
+ * @returns {string} The waiting sentence.
+ */
+export function waitingLine(state) {
+  const tail = `Retrying in ${state.intervalSeconds}s (${state.remainingSeconds}s left).`;
+  if (state.decision === 'missing') {
+    return (
+      `⏳ "${state.checkName}" check-run not created yet (it is produced after the ` +
+      `security/CodeQL jobs). ${state.total} check-run(s) on SHA so far. ${tail}`
+    );
+  }
+  const conclusion = state.conclusion ? ` (${state.conclusion})` : '';
+  return `⏳ "${state.checkName}" is ${state.status}${conclusion} — waiting for completion. ${tail}`;
+}
+
+/**
+ * Build the fail-closed line printed when the wait budget is exhausted.
+ *
+ * The three branches are distinguished because they call for different actions: a gatekeeper that
+ * never appeared alongside other checks points at the producing workflow, no check-runs at all
+ * points at CI not running, and a found-but-incomplete gatekeeper points at a stuck job.
+ *
+ * @param {{everSawGatekeeper: boolean, sawAnyCheckRuns: boolean, checkName: string,
+ *   sha: string, timeoutSeconds: number}} state Terminal state.
+ * @returns {string} The timeout sentence.
+ */
+export function timeoutLine(state) {
+  const prefix = `❌ Timed out after ${state.timeoutSeconds}s: "${state.checkName}"`;
+  const shaShort = state.sha.slice(0, 12);
+  if (state.everSawGatekeeper) {
+    return (
+      `${prefix} was found but never completed on ${shaShort}. ` +
+      'Refusing to deploy an ungated commit.'
+    );
+  }
+  return (
+    `${prefix} check-run was never found on ${shaShort}. ` +
+    (state.sawAnyCheckRuns
+      ? 'Other checks ran but the required gatekeeper did not — did ci-security.yml execute for this commit?'
+      : 'No check-runs were found at all — CI may not have run for this commit.')
+  );
+}
+
 async function run() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
@@ -200,11 +294,8 @@ async function run() {
 
   const config = resolveConfig(opts);
   const deadline = Date.now() + config.timeoutSeconds * 1000;
-  const shaShort = config.sha.slice(0, 12);
 
-  console.log(`Verifying required check "${config.checkName}" on ${config.repo}@${shaShort}`);
-  console.log(`Allowed conclusions: ${config.allowed.join(', ')}`);
-  console.log(`Wait budget: ${config.timeoutSeconds}s, poll interval: ${config.intervalSeconds}s`);
+  for (const line of startupLines(config)) console.log(line);
 
   let everSawGatekeeper = false;
   let sawAnyCheckRuns = false;
@@ -227,15 +318,11 @@ async function run() {
     const { decision, conclusion } = classifyGatekeeper(gatekeeper, config.allowed);
 
     if (decision === 'pass') {
-      console.log(
-        `✅ "${config.checkName}" completed with conclusion "${conclusion}" — gate passed.`,
-      );
+      console.log(decisionLine('pass', { ...config, conclusion }));
       return 0;
     }
     if (decision === 'fail') {
-      console.error(
-        `❌ "${config.checkName}" completed with disallowed conclusion "${conclusion}" — refusing to deploy ${shaShort}.`,
-      );
+      console.error(decisionLine('fail', { ...config, conclusion }));
       return 1;
     }
 
@@ -244,35 +331,22 @@ async function run() {
     }
 
     const remaining = Math.round((deadline - Date.now()) / 1000);
-    if (decision === 'missing') {
-      const total = allRuns.length;
-      console.log(
-        `⏳ "${config.checkName}" check-run not created yet (it is produced after the security/CodeQL jobs). ` +
-          `${total} check-run(s) on SHA so far. Retrying in ${config.intervalSeconds}s (${remaining}s left).`,
-      );
-    } else {
-      console.log(
-        `⏳ "${config.checkName}" is ${gatekeeper.status}${conclusion ? ` (${conclusion})` : ''} — waiting for completion. ` +
-          `Retrying in ${config.intervalSeconds}s (${remaining}s left).`,
-      );
-    }
+    console.log(
+      waitingLine({
+        decision,
+        checkName: config.checkName,
+        status: gatekeeper?.status ?? null,
+        conclusion,
+        total: allRuns.length,
+        intervalSeconds: config.intervalSeconds,
+        remainingSeconds: remaining,
+      }),
+    );
     await sleep(config.intervalSeconds);
   }
 
   // Fail closed: never promote a SHA whose required gate did not demonstrably pass.
-  if (!everSawGatekeeper) {
-    console.error(
-      `❌ Timed out after ${config.timeoutSeconds}s: "${config.checkName}" check-run was never found on ${shaShort}. ` +
-        (sawAnyCheckRuns
-          ? 'Other checks ran but the required gatekeeper did not — did ci-security.yml execute for this commit?'
-          : 'No check-runs were found at all — CI may not have run for this commit.'),
-    );
-  } else {
-    console.error(
-      `❌ Timed out after ${config.timeoutSeconds}s: "${config.checkName}" was found but never completed on ${shaShort}. ` +
-        'Refusing to deploy an ungated commit.',
-    );
-  }
+  console.error(timeoutLine({ ...config, everSawGatekeeper, sawAnyCheckRuns }));
   return 1;
 }
 

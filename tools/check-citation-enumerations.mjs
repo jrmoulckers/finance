@@ -146,6 +146,64 @@ async function* walk(directory) {
   }
 }
 
+/*
+ * Report builders.
+ *
+ * Extracted from `main()` (issue #4303). A sentinel mutation sweep found 0 of this tool's 7
+ * interpolation sites asserted, because `main()` walks a real directory tree and writes straight
+ * to stdout -- no test could obtain a sentence to compare. The predicates below it were already
+ * well covered; the report was not covered at all, and the two facts were indistinguishable from
+ * the outside because the suite was green either way.
+ */
+
+/**
+ * Build the failing report for restated enumerations.
+ *
+ * The exemption count appears on this path as well as the green one. A failure reporting
+ * "1 across 3161 scanned file(s)" states two of three buckets, and the missing one is the only
+ * bucket that can hide a violation -- an exempted line is one this check chose not to see. A
+ * partition has to sum, or one of its parts is invisible.
+ *
+ * @param {{file: string, line: number, id: string, enumeration: string, text: string}[]} violations Findings.
+ * @param {number} scanned Files read.
+ * @param {number} exempted Lines skipped via the exemption marker.
+ * @returns {string[]} Report lines, newline-free.
+ */
+export function violationLines(violations, scanned, exempted) {
+  const lines = [
+    `Restated principle enumeration(s) — ${violations.length} across ${scanned} scanned ` +
+      `file(s), with ${exempted} line(s) exempted via the "${EXEMPTION}" marker:`,
+  ];
+  for (const v of violations) {
+    lines.push(
+      `  ${v.file}:${v.line}  ${v.id}`,
+      `    enumerates: ${v.enumeration}`,
+      `    ${v.text}`,
+    );
+  }
+  lines.push(
+    'An enumeration copied from a principle drifts by losing an item while every',
+    'remaining word stays true. Cite the ID and describe what finance does; let the',
+    'principle state what it requires. See ADR-0003 (four-authority topology).',
+  );
+  return lines;
+}
+
+/**
+ * Build the passing report.
+ *
+ * @param {number} scanned Files read.
+ * @param {number} exempted Lines skipped via the exemption marker.
+ * @returns {string} The clean-result sentence.
+ */
+export function cleanLine(scanned, exempted) {
+  return (
+    `No principle enumeration is restated as an obligation. ${scanned} file(s) scanned, ` +
+    `${exempted} line(s) exempted via the "${EXEMPTION}" marker. Read one line at a ` +
+    'time, so a list wrapped across a line break is not seen.'
+  );
+}
+
 export async function main(root) {
   const violations = [];
   let scanned = 0;
@@ -160,34 +218,12 @@ export async function main(root) {
   }
 
   if (violations.length > 0) {
-    process.stdout.write(
-      // The exemption count belongs here, not only on the green path. A failure
-      // reporting "1 across 3161 scanned file(s)" states two of three buckets,
-      // and the missing one is the only bucket that can HIDE a violation --
-      // an exempted line is one this check chose not to see. A partition has
-      // to sum, or one of its parts is invisible.
-      `\nRestated principle enumeration(s) — ${violations.length} across ${scanned} scanned ` +
-        `file(s), with ${exempted} line(s) exempted via the "${EXEMPTION}" marker:\n\n`,
-    );
-    for (const v of violations) {
-      process.stdout.write(`  ${v.file}:${v.line}  ${v.id}\n`);
-      process.stdout.write(`    enumerates: ${v.enumeration}\n`);
-      process.stdout.write(`    ${v.text}\n\n`);
-    }
-    process.stdout.write(
-      'An enumeration copied from a principle drifts by losing an item while every\n' +
-        'remaining word stays true. Cite the ID and describe what finance does; let the\n' +
-        'principle state what it requires. See ADR-0003 (four-authority topology).\n',
-    );
+    process.stdout.write(`\n${violationLines(violations, scanned, exempted).join('\n')}\n`);
     process.exitCode = 1;
     return;
   }
 
-  process.stdout.write(
-    `No principle enumeration is restated as an obligation. ${scanned} file(s) scanned, ` +
-      `${exempted} line(s) exempted via the "${EXEMPTION}" marker. Read one line at a ` +
-      'time, so a list wrapped across a line break is not seen.\n',
-  );
+  process.stdout.write(`${cleanLine(scanned, exempted)}\n`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
