@@ -8101,6 +8101,85 @@ The pattern is the one already recorded here in the other direction: a figure th
 crosses a repository boundary keeps its value and loses its subject, and the subject was
 the only part that made it true.
 
+## A duration is silent about shape
+
+The workflow pin history reported 89 non-compliant commits of 209 (42.6%), then --
+after an earlier finding that a count cannot distinguish seven minutes from four days
+-- 62d 19h of 160d 6h (39.2%). Both figures are correct and both are silent about the
+same thing.
+
+**finance has three non-compliant episodes, not 89.** Five state transitions, and one
+episode holding 83% of all exposure:
+
+| Episode                  | Duration   | Share of exposure |
+| ------------------------ | ---------- | ----------------- |
+| 2026-03-05 -> 2026-03-08 | 2d 10h     | 3.8%              |
+| 2026-06-10 -> 2026-06-16 | 6d 0h      | 9.6%              |
+| 2026-06-17 -> 2026-08-09 | **52d 6h** | **83.2%**         |
+
+Ninety regressions and three episodes have opposite implications for the decision the
+number is consulted for -- whether a gate is warranted, or whether one already worked --
+and neither the count nor the duration separates them. The episode count does.
+
+This was reported to the engineering session as "89 scattered across 209". The word
+_scattered_ was a claim about shape, made by an instrument that measured only count and
+time. It was wrong: the distribution is the opposite of scattered. Nothing in the
+existing output would have contradicted it, which is the whole problem -- **an
+instrument may only accuse in the vocabulary it actually measured**, and _scattered_ was
+not in its vocabulary.
+
+The compliant streak is now printed for a related reason: a low transition count invites
+"the practice stuck", and finance's streak is 4d 0h against a 52d lapse. The tool also
+states what it cannot see -- whether a streak reflects enforcement or habit. Here it is
+enforcement (`workflow:security:check` gates every pull request), but the tool has no
+way to know that and does not infer it.
+
+### Two latent regex defects, one masking the other
+
+Reconciling a scratch probe against the shipped tool produced a one-commit disagreement
+-- 90 against 89 -- and both programs turned out to be wrong:
+
+- The probe over-matched **`statuses: read`**, because `statuses:` ends in the literal
+  `uses:` and the pattern had no word boundary.
+- The shipped tool had the _same_ missing boundary, and was protected from it only
+  because it also required an `@`. That requirement was itself a defect: a `uses:` with
+  no ref at all resolves to the action's default branch and is the **most** unpinned form
+  there is, and the tool could not report it at any severity.
+
+Neither defect had ever produced a wrong answer, because each was masking the other.
+There are 0 real ref-less `uses:` entries in this repository's history, so closing both
+changes no count -- 89 and 62d 19h are unchanged after the fix, which is the evidence
+that the fix was to the instrument and not to the verdict.
+
+### Dead code is dead relative to the checks around it
+
+This file already carried a note that the `./` guard for local reusable workflows was
+removed after mutation testing showed nothing failed without it. That finding was sound:
+those paths carry no `@`, so the old pattern skipped them anyway.
+
+Counting a missing `@` **revived the guard**. There are 8 local reusable calls at HEAD,
+and without the exclusion every one would now be reported as an unpinned action. A
+mutation result is evidence about the suite and the surrounding logic _as they stood_,
+not a permanent property of the line -- so a later change in strictness can turn dead
+code live again, and nothing re-runs the old reasoning to notice.
+
+### The same illustration-versus-test failure, twice in one function
+
+The new boundary was first written `[\s-]`, to admit the `- uses:` form, with a test
+that looked like it covered the dash. Mutation testing removed the `-` and the test
+still passed: there is always a space between the dash and the keyword, so `\s` had been
+doing the work. That is precisely the failure the file already documents about the `./`
+guard, recurring in the same function two revisions later. The test now says explicitly
+what it does _not_ establish.
+
+### A retracted probe's figures survived in prose
+
+Both numbers in this section's first draft came from the over-matching probe -- "ninety
+non-compliant commits" and "86% of all exposure" -- and stayed in the tool's own
+docstring and printed output after the probe had been retracted and its defect
+identified. The summary is the artifact with no checker; that has been recorded here
+before, and it recurred inside the change that recorded it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
