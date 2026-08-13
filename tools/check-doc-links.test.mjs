@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   STALE_ANCHOR_BASELINE,
   UNRESOLVED_BASELINE,
+  UNRESOLVED_ENTRIES,
   census,
   collectLinks,
   headingSlugs,
@@ -410,7 +411,7 @@ test('occurrences and distinct targets are not interchangeable in the report', (
   const verdict = lines.at(-1);
   assert.equal(
     verdict,
-    '1 recorded gap(s) remain across 2 link(s), where the target names a document this repository has never contained.',
+    '1 recorded gap(s) remain across 2 link(s). 0 moved and are repointable; 0 name a document this repository has never contained; 1 carry no recorded reason.',
   );
 });
 
@@ -896,9 +897,43 @@ test('the disclaimer no longer claims non-markdown links are unmeasured (#4301)'
 });
 
 test('the unresolved baseline separates never-true targets from moved ones (#4301)', () => {
-  // fire-calculator.ts reads like a rename of fire-planning.ts. Repointing it there would
-  // have turned the gate green while making the citing sentence false: calculateFINumber
-  // and calculateCoastFI exist nowhere in this repository.
-  const neverBuilt = UNRESOLVED_BASELINE.filter((e) => e.includes('fire-calculator.ts'));
-  assert.equal(neverBuilt.length, 2);
+  // Rewritten in #4327. The original asserted `length === 2` over entries matching
+  // fire-calculator.ts, under a test name claiming it separated never-true from moved. That
+  // assertion is satisfied by either classification, so the property in the name was never
+  // checked -- and when the entries were finally verified against git history, both turned
+  // out to be *moved*, the opposite of what the surrounding comment said.
+  const classified = UNRESOLVED_ENTRIES.filter((e) => /^(moved|never written):/.test(e.reason));
+  assert.equal(classified.length, UNRESOLVED_ENTRIES.length);
+  const fire = UNRESOLVED_ENTRIES.filter((e) => e.target.includes('fire-calculator.ts'));
+  assert.equal(fire.length, 2);
+  for (const entry of fire) assert.match(entry.reason, /^moved:/);
+});
+
+test('every baselined target carries a reason (#4327)', () => {
+  for (const entry of UNRESOLVED_ENTRIES) {
+    assert.equal(typeof entry.reason, 'string', `${entry.target} has no reason`);
+    assert.match(entry.reason, /[a-z]/, `${entry.target} reason has no prose`);
+    // unsourced-bound: 40 characters is a judgement, not a measurement -- it is long enough
+    // to require a clause rather than a word, and short enough that no current reason is near
+    // it. Its purpose is to reject `reason: 'legacy'`, not to certify anything above it.
+    assert.ok(entry.reason.length >= 40, `${entry.target} reason is too thin to check`);
+  }
+});
+
+test('a reason is attached to an entry, not to a position in the list', () => {
+  // The defect this replaced: prose above the array said "the last two entries" are the
+  // never-true kind. Those entries sat at positions 9 and 10 of 11, because the array is
+  // sorted and the author appended mentally rather than positionally. Sorting the entries
+  // must not change any reason's subject.
+  const sorted = [...UNRESOLVED_ENTRIES].sort((a, b) => a.target.localeCompare(b.target));
+  const shuffled = [...UNRESOLVED_ENTRIES].reverse();
+  const pairs = (list) => list.map((e) => `${e.target}::${e.reason}`).sort();
+  assert.deepEqual(pairs(sorted), pairs(shuffled));
+});
+
+test('the derived baseline cannot drift from the reason-bearing entries', () => {
+  assert.deepEqual(
+    UNRESOLVED_BASELINE,
+    UNRESOLVED_ENTRIES.map((e) => e.target),
+  );
 });

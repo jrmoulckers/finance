@@ -9596,6 +9596,56 @@ its first render**, which is the second time an inventory has done that (the fir
 where the reason `-->` surfaced on run one). A verdict cannot do this. Only an itemisation can, and
 that is now twice observed rather than argued.
 
+### A reason addressed to a position (#4327)
+
+The sibling `jrmoulckers/engineering` session found that its coverage ratchet **demands a reason
+its schema cannot store**: `practices/uncovered.json` is a `string[]`, while the file's own comment
+and the gate's failure text both instruct the author to record a reason. All 7 entries are bare
+IDs. They offered the instrument that found it — an escape-hatch census — rather than the finding.
+
+Run against finance:
+
+```
+27 of 51 tools carry at least one escape hatch
+ 9 allowlist/baseline constants declared
+ 1 of 9 can hold a per-entry reason   (ALLOWED, added by #4323)
+```
+
+**The hit.** `check-doc-links.mjs` recorded its reasons in prose above the array, addressed to a
+position: _"The last two entries are the second kind."_ The array is sorted; those entries sit at
+positions 9 and 10 of 11. `git show` on the commit that wrote the sentence shows the prose and the
+entries landed together — **the reference was false on arrival, not rotted.** The author appended
+mentally while the sort placed them mid-list. The genuinely last entry had no reason at all.
+
+**Attaching a reason per entry then falsified the classification.** Verifying each against
+`git log --all --full-history` moved four entries from "never true" to "moved": `sync-architecture.md`
+resolves to `0002-backend-sync-architecture.md` in the same directory, and `fire-calculator.ts`
+existed from #1830 until #3512 deleted it. Derived split **4 moved / 7 never written**; the prose
+had it backwards for every repointable one. A third finding fell out: **there is no ADR 0008** —
+the sequence skips 0007 to 0009.
+
+The guarding test was named `separates never-true targets from moved ones` and asserted
+`length === 2` over entries matching `fire-calculator.ts`. That holds under either classification.
+**A test can name a property and assert a different one**, and the name is what a reader audits.
+
+**The general form, which is stronger than the positional case.** A reason addressed to a _set_ —
+"these entries are the second kind", "this list is all X" — cannot be checked against any member,
+so it cannot be wrong about a member, so it survives every member changing. Positional reference is
+one instance; "the list is a ratchet of never-written targets" is another, and it was wrong about
+four of eleven for as long as nobody could ask it about one.
+
+**It reproduced inside the fix, at one paragraph's distance.** The docstring I wrote to explain all
+this stated the split as "3 moved / 8 never-written" — hand-counted. The report line, which derives
+the same split from the data, printed **4 / 7** on the next run and contradicted it. Same defect,
+same file, same commit, one paragraph above the code that computes the correct value. The count was
+only caught because something else computed it; had I written the sentence without also deriving
+the number, it would have shipped and read as authoritative.
+
+**What finance already had that engineering lacks.** Staleness is enforced: an entry that stops
+being broken fails the build with `recorded gap(s) no longer broken -- remove them`. So the list
+cannot rot toward over-exemption. It rotted in the other direction — unexplained exemption — which
+is the direction with no reader-visible signal, and is the same direction engineering's does.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
