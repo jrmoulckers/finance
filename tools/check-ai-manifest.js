@@ -86,6 +86,94 @@ const MANAGED_COUNTS = {
 // transcribed, because a hand-written number here decays exactly when the surface it describes
 // changes -- and this file is not in DOC_FILES, so the count arm it advertises never read it.
 // Correctness by construction; the test then pins that the construction is still a derivation.
+//
+// That reasoning covered the NUMBERS inside the sentence and not the sentence. The list of what
+// this tool validates was transcribed prose, and three validators added in #4233, #4251 and
+// #4270 never reached it: each shipped past a green test named for this very text, because that
+// test pins the two counts and says nothing about the capability list. Measured before the fix:
+// 7 advertised phrases, 7 validators wired into the report, 3 of them unadvertised.
+//
+// So the list is DERIVED from the same registry `main` dispatches over. The advertisement and
+// the behaviour are now one object: a validator with no row is reported, a row with no validator
+// is reported, and neither can be added silently (#4278).
+const VALIDATORS = [
+  { id: 'docCounts', label: 'filesystem count claims across the declared documents' },
+  {
+    id: 'agentRoster',
+    label:
+      `the exact ${EXPECTED_AGENTS.length}-agent activated roster, its generated provenance, ` +
+      'the sole local finance-domain agent, and retired-role absence',
+  },
+  { id: 'activationDoc', label: 'canonical runtime documentation' },
+  {
+    id: 'syncLock',
+    label:
+      `the ${MANAGED_COUNTS.total}-entry Studio sync inventory, its source reproduction, ` +
+      'and its corpus breadth',
+  },
+  { id: 'enforcementDoc', label: 'the CI drift-enforcement mode against the prose describing it' },
+  { id: 'triggerCoverage', label: "this check's own trigger coverage" },
+  { id: 'citations', label: 'cross-repo citation of another repository by line number' },
+];
+
+/**
+ * Run every wired validator and report any disagreement with what `--help` advertises.
+ *
+ * Runs the union rather than the advertised set: an unadvertised validator is a documentation
+ * defect, and dropping its findings would convert that into a silently missing check.
+ *
+ * @param {Record<string, () => string[]>} runners Validator implementations, keyed by id.
+ * @returns {{findings: string[], advertised: number, ran: number, disclosure: string}} Findings,
+ *   the two populations, and the report line stating them — emitted here rather than by the
+ *   caller so that bypassing this function loses the disclosure instead of forging it.
+ */
+function dispatchValidators(runners) {
+  const advertised = VALIDATORS.map((validator) => validator.id);
+  const wired = Object.keys(runners);
+  const findings = [];
+  for (const id of advertised) {
+    if (!wired.includes(id)) findings.push(`validator advertised by --help but never run: ${id}`);
+  }
+  for (const id of wired) {
+    if (!advertised.includes(id))
+      findings.push(`validator runs but --help never mentions it: ${id}`);
+  }
+  const ordered = [
+    ...advertised.filter((id) => wired.includes(id)),
+    ...wired.filter((id) => !advertised.includes(id)),
+  ];
+  for (const id of ordered) findings.push(...runners[id]());
+  return {
+    findings,
+    advertised: advertised.length,
+    ran: ordered.length,
+    disclosure: `Validators: ${advertised.length} advertised, ${ordered.length} run\n`,
+  };
+}
+
+/**
+ * The validators `main` actually dispatches, as a named value rather than an inline literal.
+ *
+ * This exists so the registry can be checked against an INDEPENDENT enumeration. Every test
+ * that built its expectation from `VALIDATORS` was blind to `VALIDATORS` shrinking -- deleting
+ * a row survived the whole suite at zero failures, because the population and the expectation
+ * were the same object. The runner keys come from the call site instead (#4278).
+ *
+ * @param {object} context Values the runners close over; not read until a runner is invoked.
+ * @returns {Record<string, () => string[]>} Validator implementations, keyed by id.
+ */
+function activationRunners(context) {
+  return {
+    docCounts: () => context.scan.findings,
+    agentRoster: () => validateAgentRoster(context.manifest.agents),
+    activationDoc: () => validateActivationDoc(),
+    syncLock: () => validateSyncLock(),
+    enforcementDoc: () => validateEnforcementDoc(),
+    triggerCoverage: () => validateTriggerCoverage(),
+    citations: () => context.citations.findings,
+  };
+}
+
 const HELP_TEXT = `
 AI Manifest Drift Check — Finance monorepo
 
@@ -94,9 +182,8 @@ Usage:
   node tools/check-ai-manifest.js --strict   # blocking (exit 1 on drift)
   STRICT=1 node tools/check-ai-manifest.js   # blocking (exit 1 on drift)
 
-Validates filesystem counts, the exact ${EXPECTED_AGENTS.length}-agent activated roster, generated
-provenance, the sole local finance-domain agent, retired-role absence, canonical
-runtime documentation, and the ${MANAGED_COUNTS.total}-entry Studio sync inventory.
+Validates:
+${VALIDATORS.map((validator) => `  - ${validator.label}`).join('\n')}
 `;
 
 if (args.includes('--help') || args.includes('-h')) {
@@ -1390,15 +1477,12 @@ function main() {
   const scan = scanDocs(counts);
   const countFindings = scan.claims;
   const driftedCounts = countFindings.filter((finding) => finding.drift);
-  const activationFindings = [
-    ...scan.findings,
-    ...validateAgentRoster(manifest.agents),
-    ...validateActivationDoc(),
-    ...validateSyncLock(),
-    ...validateEnforcementDoc(),
-    ...validateTriggerCoverage(),
-    ...citations.findings,
-  ];
+  const activation = dispatchValidators(activationRunners({ scan, manifest, citations }));
+  const activationFindings = activation.findings;
+  // Disclosed unconditionally for the reason the citation population is (#4270): the agreement
+  // between what runs and what is advertised is invisible while it holds, so it is stated. The
+  // line is BUILT BY the dispatch, so bypassing the dispatch loses it rather than reproducing it.
+  process.stdout.write(activation.disclosure);
   for (const doc of scan.missing) process.stdout.write(`- ${doc}: not found\n`);
   // Printed unconditionally, in both the passing and the failing branch. The old report emitted
   // the "Detected count claims:" section only when the set was non-empty, so the sole trace of a
@@ -1536,6 +1620,9 @@ module.exports = {
   triggerCovers,
   triggerFindings,
   HELP_TEXT,
+  VALIDATORS,
+  dispatchValidators,
+  activationRunners,
   EXPECTED_AGENTS,
   MANAGED_COUNTS,
   citationFindings,
