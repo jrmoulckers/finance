@@ -69,26 +69,103 @@ export const STALE_ANCHOR_BASELINE = [];
  *
  * The distinction this list encodes is between a target that *moved* and one that was
  * *never true*, which any resolver reports identically and only the first of which is a
- * regression. The last two entries are the second kind and are the reason it is worth
- * stating: `fire-calculator.ts` reads like a rename of `fire-planning.ts`, and repointing
- * it there would have turned the gate green while making the citing sentence false --
- * `calculateFINumber` and `calculateCoastFI` exist nowhere in this repository. The design
- * document specifies a web reference implementation that was never built. A link that is
- * red because the thing does not exist is doing its job.
+ * regression. That distinction used to be recorded as prose naming "the last two entries",
+ * and it was false the moment it was written (#4327): the two entries it described were
+ * inserted into an alphabetically sorted array at positions 9 and 10 of 11, so they were
+ * never last, and the entry that genuinely was last carried no reason at all.
+ *
+ * Attaching a reason to each entry then falsified the classification itself. Verified
+ * against `git log --all --full-history`, the split is 4 moved / 7 never-written, and the
+ * prose had it backwards for most of the list -- `./sync-architecture.md` resolves to
+ * `0002-backend-sync-architecture.md` in the same directory, and `fire-calculator.ts`
+ * existed from #1830 until #3512 deleted it. Both were describable as "never true" for as
+ * long as the description named no entry. **A reason addressed to a position, or to a set,
+ * cannot be checked against any member of it.**
+ *
+ * The 4/7 split above is stated here only because the report derives it independently; the
+ * first draft of this sentence said 3/8, hand-counted, and the derived line contradicted it
+ * on the next run -- which is the same defect one paragraph up, at one paragraph's distance.
+ *
+ * @type {{target: string, reason: string}[]}
  */
-export const UNRESOLVED_BASELINE = [
-  'docs/architecture/0005-design-system-approach.md -> ./0002-cross-platform-framework-selection.md',
-  'docs/architecture/0006-cicd-strategy.md -> ./0002-cross-platform-framework-selection.md',
-  'docs/architecture/0009-legal-monetization-analysis.md -> ./0008-competitive-protection-strategy.md',
-  'docs/architecture/0018-offline-conflict-resolution.md -> ./sync-architecture.md',
-  'docs/architecture/overview.md -> ./sync-architecture.md',
-  'docs/business/marketing/marketing-plan-sprints-6-10.md -> growth-strategy-post-launch.md',
-  'docs/business/marketing/marketing-plan-sprints-6-10.md -> launch-retrospective-week-1.md',
-  'docs/business/marketing/marketing-plan-sprints-6-10.md -> review-strategy.md',
-  'docs/design/ios-fi-calculator-flow.md -> ../../apps/web/src/lib/investment/fire-calculator.ts',
-  'docs/design/ios-fire-results-goal-integration.md -> ../../apps/web/src/lib/investment/fire-calculator.ts',
-  'docs/guides/release-process.md -> ../audits/accessibility-checklist.md',
+export const UNRESOLVED_ENTRIES = [
+  {
+    target:
+      'docs/architecture/0005-design-system-approach.md -> ./0002-cross-platform-framework-selection.md',
+    reason:
+      'never written: no file of this name has ever been committed. The cross-platform ' +
+      'framework ADR is 0001-cross-platform-framework.md -- wrong number and wrong slug.',
+  },
+  {
+    target:
+      'docs/architecture/0006-cicd-strategy.md -> ./0002-cross-platform-framework-selection.md',
+    reason:
+      'never written: same wrong reference as 0005, pointing at a number and slug that ' +
+      'have never coexisted.',
+  },
+  {
+    target:
+      'docs/architecture/0009-legal-monetization-analysis.md -> ./0008-competitive-protection-strategy.md',
+    reason:
+      'never written: there is no ADR 0008 at all -- the sequence skips from 0007 to 0009. ' +
+      'The nearest surviving content is docs/marketing/competitive-positioning.md.',
+  },
+  {
+    target: 'docs/architecture/0018-offline-conflict-resolution.md -> ./sync-architecture.md',
+    reason:
+      'moved: resolves to 0002-backend-sync-architecture.md in the same directory. ' +
+      'Repointable, and the prose that called this list never-written was wrong about it.',
+  },
+  {
+    target: 'docs/architecture/overview.md -> ./sync-architecture.md',
+    reason: 'moved: same target as 0018, same resolution to 0002-backend-sync-architecture.md.',
+  },
+  {
+    target:
+      'docs/business/marketing/marketing-plan-sprints-6-10.md -> growth-strategy-post-launch.md',
+    reason:
+      'never written: docs/business/marketing/ holds three files and this is not among them; ' +
+      'zero commits have ever touched this path.',
+  },
+  {
+    target:
+      'docs/business/marketing/marketing-plan-sprints-6-10.md -> launch-retrospective-week-1.md',
+    reason: 'never written: planned companion document, zero commits against this path.',
+  },
+  {
+    target: 'docs/business/marketing/marketing-plan-sprints-6-10.md -> review-strategy.md',
+    reason: 'never written: planned companion document, zero commits against this path.',
+  },
+  {
+    target:
+      'docs/design/ios-fi-calculator-flow.md -> ../../apps/web/src/lib/investment/fire-calculator.ts',
+    reason:
+      'moved: the file existed from #1830 until #3512 deleted it, consolidating the FIRE ' +
+      'engines. calculateFINumber and calculateCoastFI occur zero times in the tree today, ' +
+      'so repointing at fire-planning.ts would green the gate while making the citing ' +
+      'sentence false.',
+  },
+  {
+    target:
+      'docs/design/ios-fire-results-goal-integration.md -> ../../apps/web/src/lib/investment/fire-calculator.ts',
+    reason: 'moved: same deleted file as ios-fi-calculator-flow.md, deleted by #3512.',
+  },
+  {
+    target: 'docs/guides/release-process.md -> ../audits/accessibility-checklist.md',
+    reason:
+      'never written: zero commits against this path. This is the entry the positional ' +
+      'prose left unexplained -- it was last, and the prose that said "the last two ' +
+      'entries" named two others.',
+  },
 ];
+
+/**
+ * Baseline targets, derived from the reason-bearing entries.
+ *
+ * Derived rather than maintained separately: a second literal list would let the two drift,
+ * and the drift would be invisible because only this one is consumed.
+ */
+export const UNRESOLVED_BASELINE = UNRESOLVED_ENTRIES.map((e) => e.target);
 
 /**
  * Slugify a heading the way GitHub's renderer does.
@@ -421,6 +498,16 @@ export function reportLines(result, options = {}) {
   const staleBaseline = options.staleBaseline ?? STALE_ANCHOR_BASELINE;
 
   const baselineSet = new Set(baseline);
+  // Derived from the baseline actually in use, not from the module default: an injected
+  // baseline must not be described by the real list's classification. An entry with no
+  // recorded reason is counted as unclassified rather than silently folded into either kind.
+  const reasonFor = new Map(
+    (options.entries ?? UNRESOLVED_ENTRIES).map((e) => [e.target, e.reason]),
+  );
+  const kindOf = (target) => (reasonFor.get(target) ?? '').split(':')[0];
+  const moved = baseline.filter((t) => kindOf(t) === 'moved').length;
+  const neverWritten = baseline.filter((t) => kindOf(t) === 'never written').length;
+  const unclassified = baseline.length - moved - neverWritten;
   const unexpected = broken.filter((b) => !baselineSet.has(b));
   const fixed = [...baselineSet].filter((b) => !broken.includes(b));
   const unexpectedAnchors = staleAnchors.filter((a) => !staleBaseline.includes(a));
@@ -471,7 +558,7 @@ export function reportLines(result, options = {}) {
   );
   lines.push(...scopeLines(result));
   lines.push(
-    `${distinctBroken} recorded gap(s) remain across ${broken.length} link(s), where the target names a document this repository has never contained.`,
+    `${distinctBroken} recorded gap(s) remain across ${broken.length} link(s). ${moved} moved and are repointable; ${neverWritten} name a document this repository has never contained${unclassified > 0 ? `; ${unclassified} carry no recorded reason` : ''}.`,
   );
   if (fixed.length > 0) {
     lines.push('');
