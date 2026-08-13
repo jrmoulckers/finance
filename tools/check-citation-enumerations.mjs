@@ -161,6 +161,36 @@ export function fencedSuppressions(text) {
 }
 
 /**
+ * Decide whether a line carries a usable exemption marker.
+ *
+ * Generalised from `check-assertion-bounds.mjs` (#4313), where the same three defects were found
+ * and fixed for the `unsourced-bound:` marker -- and not carried across to this one. All three
+ * reproduced here unchanged: a bare marker with no reason excused a line, a marker appearing
+ * inside a string literal excused the line containing it, and a passing mention of the marker in
+ * prose excused whatever else was on that line. **A fix documented in a comment describes the
+ * instance that was fixed and reads as describing the class**, which is how one hardened marker
+ * and one unhardened marker sat in the same tree for two PRs.
+ *
+ * A reason is required for the same reason it is required there: an exemption is a claim that
+ * this line is a fixture, and a claim with no argument cannot be reviewed.
+ *
+ * @param {string} line The line.
+ * @returns {boolean} True when the marker is present, outside a string literal, and carries a reason.
+ */
+export function hasExemption(line) {
+  // Strip string literals first: the marker as *data* is a mention, not a claim.
+  const outsideLiterals = line.replace(/'[^']*'|"[^"]*"|`[^`]*`/g, '');
+  const at = outsideLiterals.indexOf(EXEMPTION);
+  if (at === -1) return false;
+  // Drop a trailing comment terminator before looking for a reason. `<!-- enumeration-fixture -->`
+  // otherwise reads as marker + separator + `->`, so the closing punctuation of the comment that
+  // carries the marker satisfies the requirement that the marker be justified. Found by the
+  // inventory added in the same change, on its first run.
+  const rest = outsideLiterals.slice(at + EXEMPTION.length).replace(/(?:-->|\*\/)\s*$/, '');
+  return /^\s*[:-]+\s*[A-Za-z]/.test(rest);
+}
+
+/**
  * Test one line, independent of any fence or file-type decision.
  *
  * Extracted so the included and excluded populations are decided by the *same* predicate. Two
@@ -172,7 +202,7 @@ export function fencedSuppressions(text) {
  * @returns {{line: number, id: string, enumeration: string, text: string}|null} A hit, or null.
  */
 export function enumerationOnLine(line, index) {
-  if (line.includes(EXEMPTION)) return null;
+  if (hasExemption(line)) return null;
   const id = CITATION.exec(line);
   if (!id) return null;
   if (!OBLIGATION.test(line)) return null;
@@ -186,9 +216,36 @@ export function isFenceAware(filePath) {
   return path.extname(filePath).toLowerCase() === '.md';
 }
 
-/** How many lines opted out via the marker. Reported so an exemption cannot grow unseen. */
+/**
+ * List the lines whose exemption marker actually suppressed a violation.
+ *
+ * Counts what the exclusion *removed*, not how often the marker appears -- the rule this file
+ * already applies to `fencedSuppressions` a hundred lines above, and did not apply here. Measured
+ * before the change: 22 marker occurrences, of which **10** suppressed a real hit. The other 12
+ * were prose describing the marker, comments describing the marker, and markers on lines that
+ * were never violations. A count that is 55% not-an-exemption cannot serve its stated purpose of
+ * letting an exemption grow unseen, because one real exemption can be added while one decorative
+ * one is deleted and the total does not move.
+ *
+ * Returned as an inventory rather than a number so composition is visible, not just magnitude.
+ *
+ * @param {string} text File contents.
+ * @returns {number[]} One-based line numbers where the marker suppressed a hit.
+ */
+export function exemptedSuppressions(text) {
+  const lines = text.split(/\r?\n/);
+  const suppressed = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!hasExemption(lines[i])) continue;
+    const withoutMarker = lines[i].split(EXEMPTION).join('');
+    if (enumerationOnLine(withoutMarker, i)) suppressed.push(i + 1);
+  }
+  return suppressed;
+}
+
+/** How many lines opted out via the marker, counting only those that suppressed a hit. */
 export function countExemptions(text) {
-  return text.split(/\r?\n/).filter((line) => line.includes(EXEMPTION)).length;
+  return exemptedSuppressions(text).length;
 }
 
 async function* walk(directory) {
@@ -270,15 +327,39 @@ export function cleanLine(scanned, exempted, fenced) {
   );
 }
 
+/**
+ * Name every line the exemption marker excused.
+ *
+ * A count says an exemption did not grow; an inventory says which ones they are. The sibling
+ * repository's citation checker prints every skip by name, and that disclosure is the only reason
+ * the blast radius of a defect in its pragma could be characterised rather than guessed at. This
+ * checker printed a bare number, so a wrongly-placed exemption was invisible at any total.
+ *
+ * @param {{file: string, lines: number[]}[]} entries Per-file suppressed lines.
+ * @returns {string[]} Inventory lines, empty when nothing was excused.
+ */
+export function exemptionInventory(entries) {
+  const used = entries.filter((e) => e.lines.length > 0);
+  if (used.length === 0) return [];
+  return [
+    '',
+    `exempted via the "${EXEMPTION}" marker:`,
+    ...used.map((e) => `  ${e.file}:${e.lines.join(',')}`),
+  ];
+}
+
 export async function main(root) {
   const violations = [];
+  const exemptions = [];
   let scanned = 0;
   let exempted = 0;
   let fenced = 0;
   for await (const file of walk(root)) {
     scanned += 1;
     const text = await readFile(file, 'utf8');
-    exempted += countExemptions(text);
+    const lines = exemptedSuppressions(text);
+    exempted += lines.length;
+    if (lines.length > 0) exemptions.push({ file: path.relative(root, file), lines });
     const fenceAware = isFenceAware(file);
     if (fenceAware) fenced += fencedSuppressions(text).length;
     for (const hit of findRestatedEnumerations(text, { fenceAware })) {
@@ -286,13 +367,17 @@ export async function main(root) {
     }
   }
 
+  const inventory = exemptionInventory(exemptions);
+
   if (violations.length > 0) {
-    process.stdout.write(`\n${violationLines(violations, scanned, exempted, fenced).join('\n')}\n`);
+    process.stdout.write(
+      `\n${[...violationLines(violations, scanned, exempted, fenced), ...inventory].join('\n')}\n`,
+    );
     process.exitCode = 1;
     return;
   }
 
-  process.stdout.write(`${cleanLine(scanned, exempted, fenced)}\n`);
+  process.stdout.write(`${[cleanLine(scanned, exempted, fenced), ...inventory].join('\n')}\n`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
