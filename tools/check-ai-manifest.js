@@ -534,11 +534,15 @@ function validateAgentRoster(runtimeAgents) {
   return findings;
 }
 
-function validateActivationDoc() {
+// `contentOverride` exists only so a test can construct a violating document and observe that this
+// function still reports it. Blinding this validator to `return []` survived the whole suite: the
+// real doc always complies, and a rule only ever run against a clean corpus is not checked
+// (#4325, .github#996).
+function validateActivationDoc(contentOverride = null) {
   const abs = path.join(ROOT, ACTIVATION_DOC);
-  if (!fs.existsSync(abs)) return [`${ACTIVATION_DOC} is missing`];
+  if (contentOverride === null && !fs.existsSync(abs)) return [`${ACTIVATION_DOC} is missing`];
 
-  const content = fs.readFileSync(abs, 'utf8');
+  const content = contentOverride === null ? fs.readFileSync(abs, 'utf8') : contentOverride;
   const start = content.indexOf('### Canonical Runtime Roster');
   const end = content.indexOf('### Supported AI Tools', start);
   if (start === -1 || end === -1) {
@@ -1726,16 +1730,23 @@ function validateTriggerCoverage() {
 /**
  * Compare the workflow's real drift enforcement with how AGENTS.md describes it.
  *
+ * The two overrides exist only so a test can construct a disagreeing pair and observe that this
+ * function still reports it; blinding it to `return []` survived the whole suite, because the real
+ * workflow and the real prose agree (#4325, .github#996).
+ *
+ * @param {string|null} workflowOverride Workflow text to use instead of reading the file.
+ * @param {string|null} docOverride AGENTS.md text to use instead of reading the file.
  * @returns {string[]} Findings; empty when prose and workflow agree.
  */
-function validateEnforcementDoc() {
+function validateEnforcementDoc(workflowOverride = null, docOverride = null) {
   const workflowPath = path.join(ROOT, ENFORCEMENT_WORKFLOW);
   const docPath = path.join(ROOT, 'AGENTS.md');
-  if (!fs.existsSync(workflowPath)) return [`missing workflow: ${ENFORCEMENT_WORKFLOW}`];
-  if (!fs.existsSync(docPath)) return ['missing AGENTS.md'];
+  if (workflowOverride === null && !fs.existsSync(workflowPath))
+    return [`missing workflow: ${ENFORCEMENT_WORKFLOW}`];
+  if (docOverride === null && !fs.existsSync(docPath)) return ['missing AGENTS.md'];
   return enforcementFindings(
-    fs.readFileSync(workflowPath, 'utf8'),
-    fs.readFileSync(docPath, 'utf8'),
+    workflowOverride === null ? fs.readFileSync(workflowPath, 'utf8') : workflowOverride,
+    docOverride === null ? fs.readFileSync(docPath, 'utf8') : docOverride,
   );
 }
 
@@ -1881,6 +1892,11 @@ if (require.main === module) {
 
 module.exports = {
   toLF,
+  validateAgentRoster,
+  validateActivationDoc,
+  validateEnforcementDoc,
+  GENERATED_AGENTS,
+  ACTIVATION_DOC,
   ENV_INPUTS,
   reachableEnvVars,
   validateEnvInputs,

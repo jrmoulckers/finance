@@ -18,6 +18,10 @@ import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
 const {
   toLF,
+  validateAgentRoster,
+  validateActivationDoc,
+  validateEnforcementDoc,
+  GENERATED_AGENTS,
   reachableEnvVars,
   validateEnvInputs,
   PROVENANCE_LINE,
@@ -1373,6 +1377,83 @@ function delegationFindings(source, ids) {
   }
   return findings;
 }
+
+test('the roster rule reports a corrupted roster, not just a clean one (#4325)', () => {
+  // Blinding this validator to `return []` survived the whole suite. It runs on every invocation
+  // against a corpus that always complies, and a rule only ever run against a clean corpus is not
+  // checked (.github#996). #4314 proves production REACHES the validator; this proves the
+  // validator DETECTS. Neither half implies the other, and both were needed.
+  assert.deepEqual(
+    validateAgentRoster(EXPECTED_AGENTS),
+    [],
+    'PREMISE: the declared roster must be clean, or the constructions below prove nothing',
+  );
+  assert.match(
+    validateAgentRoster(EXPECTED_AGENTS.slice(1)).join('\n'),
+    /runtime roster misses: /,
+    'a roster missing a declared role must be reported',
+  );
+  assert.match(
+    validateAgentRoster([...EXPECTED_AGENTS, 'invented-role']).join('\n'),
+    /runtime roster has unknown roles: invented-role/,
+    'a roster carrying an undeclared role must be reported',
+  );
+});
+
+test('the activation-doc rule reports a disagreeing document (#4325)', () => {
+  assert.deepEqual(
+    validateActivationDoc(),
+    [],
+    'PREMISE: the real document must comply, or the construction below proves nothing',
+  );
+  const narrowed = [
+    '### Canonical Runtime Roster',
+    '',
+    `The generated canonical roster is: \`${GENERATED_AGENTS[0]}\``,
+    '',
+    '### Supported AI Tools',
+  ].join('\n');
+  const findings = validateActivationDoc(narrowed).join('\n');
+  assert.match(
+    findings,
+    new RegExp(`documented generated roster has 1 roles; expected ${GENERATED_AGENTS.length}`),
+    'a document naming fewer roles than the runtime has must be reported',
+  );
+  assert.match(
+    findings,
+    /active runtime count statement is missing/,
+    'a document with no count statement must be reported, not silently accepted',
+  );
+});
+
+test('the enforcement rule reports prose that disagrees with the workflow (#4325)', () => {
+  assert.deepEqual(
+    validateEnforcementDoc(),
+    [],
+    'PREMISE: prose and workflow must agree today, or the constructions below prove nothing',
+  );
+  const workflow = fs.readFileSync(path.join(ROOT, ENFORCEMENT_WORKFLOW), 'utf8');
+  const mode = driftEnforcement(workflow).mode;
+  assert.ok(mode === 'warn-only' || mode === 'blocking', `PREMISE: readable mode, got ${mode}`);
+
+  const agreeing = mode === 'warn-only' ? 'AI Manifest Check is warn-only' : 'AI Manifest Check';
+  const disagreeing = mode === 'warn-only' ? 'AI Manifest Check' : 'AI Manifest Check warn-only';
+  assert.deepEqual(
+    validateEnforcementDoc(workflow, agreeing),
+    [],
+    'prose matching the workflow must stay silent',
+  );
+  assert.equal(
+    validateEnforcementDoc(workflow, disagreeing).length,
+    1,
+    'prose contradicting the workflow must be reported',
+  );
+  assert.match(
+    validateEnforcementDoc(workflow, 'no mention of the check at all').join('\n'),
+    /runtime docs no longer describe the AI Manifest Check workflow/,
+    'docs that stop describing the check must be reported',
+  );
+});
 
 test('every wired runner delegates to the validator its id names (#4314)', () => {
   // #4278 made the advertised set and the wired set one object, so a validator cannot be dropped
