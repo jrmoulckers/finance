@@ -129,15 +129,85 @@ export function isExistence(comparison) {
 }
 
 /**
- * True when the marker appears on the line or close enough above it to be about this bound.
+ * The reason recorded after the marker on one line, or `null` when the line carries no marker.
+ *
+ * Literals are stripped first, for the same reason {@link comparisons} strips them: the marker
+ * inside a string is *data*, not an annotation. Test fixtures in this repository contain the
+ * marker text as sample input, and without this the fixture would silently annotate any real
+ * bound within the lookbehind. The checker stated that principle in one direction -- who it
+ * accuses -- and did not apply it to the other -- who it lets through.
+ *
+ * Lengths are preserved by {@link stripLiterals}, so the index found in the stripped line is the
+ * index in the original, and the reason is read from the original to keep its text intact.
+ *
+ * @param {string} line Source line.
+ * @returns {string|null} The trimmed reason, `''` when the marker is bare, `null` when absent.
+ */
+export function markerReason(line) {
+  const at = stripLiterals(line).indexOf(UNSOURCED_MARKER);
+  if (at === -1) return null;
+  return line.slice(at + UNSOURCED_MARKER.length).trim();
+}
+
+/**
+ * True when a marker *with a reason* covers this bound.
+ *
+ * A bare `unsourced-bound:` is not an annotation. The whole purpose of the marker is to make the
+ * author record which artifact they looked for and failed to find; an empty one discharges the
+ * obligation while recording nothing, which is exactly the rubber stamp this file argues an
+ * over-reporting checker produces. Emptiness is an existence check, so requiring a reason invents
+ * no threshold and cannot trip this checker's own rule.
  *
  * @param {string[]} lines All lines of the file.
  * @param {number} index Zero-based index of the line carrying the bound.
- * @returns {boolean} Whether an `unsourced-bound:` note covers it.
+ * @returns {boolean} Whether a reasoned `unsourced-bound:` note covers it.
  */
 export function hasMarker(lines, index) {
   const start = Math.max(0, index - MARKER_LOOKBEHIND);
-  return lines.slice(start, index + 1).some((line) => line.includes(UNSOURCED_MARKER));
+  return lines.slice(start, index + 1).some((line) => {
+    const reason = markerReason(line);
+    return reason !== null && reason.length > 0;
+  });
+}
+
+/**
+ * True when a bare marker -- present but with no reason -- covers this bound.
+ *
+ * Reported as its own class rather than folded into the unsourced count, because the two call for
+ * different actions: an unsourced bound needs its source found, a bare marker needs its sentence
+ * finished.
+ *
+ * @param {string[]} lines All lines of the file.
+ * @param {number} index Zero-based index of the line carrying the bound.
+ * @returns {boolean} Whether a reasonless marker covers it.
+ */
+export function hasBareMarker(lines, index) {
+  const start = Math.max(0, index - MARKER_LOOKBEHIND);
+  return lines.slice(start, index + 1).some((line) => markerReason(line) === '');
+}
+
+/**
+ * Comparisons whose right operand is an expression rather than a literal.
+ *
+ * This is the *recommended fix* -- the constant moves with its source, so the two artifacts can
+ * disagree. It was previously invisible: the report asserted that such bounds "never enter this
+ * population" and never counted them, so a green run was equally consistent with every bound being
+ * derived and with none of them being. A checker that measures only the population it rejects
+ * cannot say whether its own advice is ever taken.
+ *
+ * The lookarounds exclude `=>`, `>=`/`<=` already captured by the operator alternation, and the
+ * `!==`/`===` families. Without the `=` lookbehind an arrow function reads as a comparison, which
+ * inflated the first measurement of this population from 6 to 45.
+ *
+ * @param {string} line Source line.
+ * @returns {string[]} The derived comparison tokens found.
+ */
+export function derivedComparisons(line) {
+  const found = [];
+  const pattern = /(?<![=!<>])(>=|<=|>|<)(?![=>])\s*([A-Za-z_$][\w.$]*)/g;
+  let match;
+  while ((match = pattern.exec(stripLiterals(line))) !== null) found.push(`${match[1]}${match[2]}`);
+  return found;
 }
 
 /**
@@ -159,19 +229,22 @@ export function isJudged(line) {
  *
  * @param {string} file Path to the file.
  * @param {string} source Its contents.
- * @returns {{bounds: object[], existence: number, reversed: object[]}} What the file contains.
+ * @returns {{bounds: object[], existence: number, derived: number, reversed: object[]}} What the
+ *   file contains.
  */
 export function censusFile(file, source) {
   const lines = source.split('\n');
   const bounds = [];
   const reversed = [];
   let existence = 0;
+  let derived = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.trimStart().startsWith('*') || line.trimStart().startsWith('//')) continue;
     if (!isJudged(line)) continue;
 
+    derived += derivedComparisons(line).length;
     for (const token of reversedComparisons(line)) {
       reversed.push({ file, line: i + 1, token, text: lines[i].trim() });
     }
@@ -185,11 +258,12 @@ export function censusFile(file, source) {
         line: i + 1,
         token: comparison.token,
         annotated: hasMarker(lines, i),
+        bare: hasBareMarker(lines, i),
         text: lines[i].trim(),
       });
     }
   }
-  return { bounds, existence, reversed };
+  return { bounds, existence, derived, reversed };
 }
 
 /**
@@ -225,20 +299,23 @@ export function assertPopulation(population, what) {
  * Run the census across every source file.
  *
  * @param {string[]} [files] Override for tests.
- * @returns {{bounds: object[], existence: number, reversed: object[], files: number}} The census.
+ * @returns {{bounds: object[], existence: number, derived: number, reversed: object[],
+ *   files: number}} The census.
  */
 export function census(files = sourceFiles()) {
   assertPopulation(files, 'no tool sources found to scan for bounds');
   const bounds = [];
   const reversed = [];
   let existence = 0;
+  let derived = 0;
   for (const file of files) {
     const result = censusFile(path.basename(file), readFileSync(file, 'utf8'));
     bounds.push(...result.bounds);
     reversed.push(...result.reversed);
     existence += result.existence;
+    derived += result.derived;
   }
-  return { bounds, existence, reversed, files: files.length };
+  return { bounds, existence, derived, reversed, files: files.length };
 }
 
 /**
@@ -248,15 +325,26 @@ export function census(files = sourceFiles()) {
  * line is emitted on both the passing and failing paths -- a scope line only on the green path
  * describes the run nobody needs described.
  *
+ * The annotated/derived split is printed on both paths too, and for the same reason one step
+ * further in: the derived count is the one that says whether the *recommended fix* is used. Only
+ * ever reporting the rejected population lets a checker be green whether its advice is followed or
+ * ignored, and the green sentence still claims both categories exist.
+ *
  * @param {ReturnType<typeof census>} result The census.
  * @returns {{lines: string[], ok: boolean}} Report lines and the verdict.
  */
 export function report(result) {
+  const { derived } = result;
   const unannotated = result.bounds.filter((bound) => !bound.annotated);
+  const bare = unannotated.filter((bound) => bound.bare);
+  const invented = unannotated.filter((bound) => !bound.bare);
+  const annotated = result.bounds.length - unannotated.length;
   const lines = [
     `Scanned ${result.files} tool source file(s): ` +
       `${result.bounds.length} numeric bound(s), ${result.existence} existence check(s), ` +
       `${result.reversed.length} reversed comparison(s).`,
+    `Bounds by form: ${derived} derived from an expression, ${annotated} annotated ` +
+      `\`${UNSOURCED_MARKER}\`, ${unannotated.length} neither.`,
   ];
 
   for (const item of result.reversed) {
@@ -264,23 +352,33 @@ export function report(result) {
   }
 
   if (unannotated.length === 0) {
-    lines.push(
-      `Every bound is annotated or derived. ${result.bounds.length} annotated invented ` +
-        `constant(s); a bound compared against an expression never enters this population.`,
-    );
+    lines.push(`Every bound is annotated or derived.`);
     return { lines, ok: true };
   }
 
-  lines.push(
-    `${unannotated.length} of ${result.bounds.length} bound(s) invent a number with no source:`,
-  );
-  for (const bound of unannotated) {
-    lines.push(`  ${bound.file}:${bound.line}  ${bound.token}  ${bound.text.slice(0, 100)}`);
+  if (bare.length > 0) {
+    lines.push(`${bare.length} bound(s) carry a marker with no reason after it:`);
+    for (const bound of bare) {
+      lines.push(`  ${bound.file}:${bound.line}  ${bound.token}  ${bound.text.slice(0, 100)}`);
+    }
+    lines.push(
+      `A bare \`${UNSOURCED_MARKER}\` records nothing. Finish the sentence: which artifact did ` +
+        `you look for, and why does none commit to this number?`,
+    );
   }
-  lines.push(
-    `Fix by comparing against the artifact that already commits to the number, or record ` +
-      `\`${UNSOURCED_MARKER} <why nothing commits to one>\` within ${MARKER_LOOKBEHIND} lines above.`,
-  );
+
+  if (invented.length > 0) {
+    lines.push(
+      `${invented.length} of ${result.bounds.length} bound(s) invent a number with no source:`,
+    );
+    for (const bound of invented) {
+      lines.push(`  ${bound.file}:${bound.line}  ${bound.token}  ${bound.text.slice(0, 100)}`);
+    }
+    lines.push(
+      `Fix by comparing against the artifact that already commits to the number, or record ` +
+        `\`${UNSOURCED_MARKER} <why nothing commits to one>\` within ${MARKER_LOOKBEHIND} lines above.`,
+    );
+  }
   return { lines, ok: false };
 }
 
