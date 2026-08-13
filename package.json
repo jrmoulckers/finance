@@ -24,8 +24,8 @@
     "format": "npx prettier --write .",
     "format:check": "npx prettier --check .",
     "i18n:validate-glossary": "node scripts/i18n/validate-glossary.js",
-    "eng:citations": "node config/engineering/citations/check-citations.mjs .",
-    "eng:citations:review": "node config/engineering/citations/check-citations.mjs . --review",
+    "eng:citations": "node tools/run-citations-check.mjs .",
+    "eng:citations:review": "node tools/run-citations-check.mjs . --review",
     "eng:vendor:check": "node scripts/vendor-configs.mjs --check",
     "eng:vendor:test": "node --test scripts/vendor-configs.test.mjs",
     "i18n:validate": "node scripts/i18n/validate-locale-catalogs.js && node scripts/i18n/validate-glossary.js",
@@ -67,7 +67,8 @@
     "changeset": "changeset",
     "version": "changeset version",
     "node:version:check": "node tools/check-node-version-consistency.mjs",
-    "node:version:test": "node --test tools/check-node-version-consistency.test.mjs"
+    "node:version:test": "node --test tools/check-node-version-consistency.test.mjs",
+    "citations:context:test": "node --test tools/citations-context.test.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs}": [

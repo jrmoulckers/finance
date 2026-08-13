@@ -7744,6 +7744,65 @@ maintainers — the `@eslint/*` family, `@asamuzakjp/*`, `whatwg-url`, `data-url
 exclude it_ — and leaves intent to the reader, rather than demanding a contiguous range that
 would be wrong.
 
+## A control that omits its resolution source cannot implicate itself
+
+The vendored citation checker prints its version and the index URL it resolved against on
+the passing path, and prints neither on the failing path. An unknown-ID failure is
+therefore ambiguous between two readings — the ID is wrong, or the index this repository
+resolves against is stale — and the output only supports the first. The suppressed reading
+accuses the instrument, which is one of the two suspects every time.
+
+That is not a hypothetical here. Three facts were looked up rather than assumed:
+
+- the vendored checker reports `--version` **10**; the current upstream release reports **11**
+- `engineering-configs.lock.json` pins the vendored files at **v0.134.0**, and the newest
+  release is **v0.145.0**
+- of the six vendored files, the **one** that differs between those releases is
+  `check-citations.mjs` itself
+
+So the instrument is a version behind, and the failing path is the one place a reader would
+act on that fact without being told it.
+
+The disambiguating information already existed in this repository. `npm run eng:vendor:check`
+prints the pin, the newest release, and the differing files unconditionally — it is simply a
+different control, which a reader chasing a citation failure has no reason to run. The
+defect was never missing knowledge; it was knowledge printed somewhere the reader is not.
+
+`tools/run-citations-check.mjs` wraps the vendored checker without diverging it. It adds no
+check and changes no verdict: it passes arguments through, streams the checker's output
+unmodified, exits with the checker's status, and on a non-zero exit appends what the checker
+resolved against.
+
+Two decisions in that wrapper are worth stating, because both were forced by evidence:
+
+- **It asks for the version rather than reading it.** `--version` is a lookup; a regex over
+  the source is a name. The index URL cannot be obtained that way, so the scraper refuses to
+  guess — it reports how many URL candidates it found and returns one only when the count is
+  exactly one. Zero or many is reported as an instrument fault, not silently resolved.
+- **It names the ref, and the ref moves.** The index URL points at
+  `.../engineering/main/principles/index.json`. Reading an authority from a branch means the
+  set of valid IDs can change with no diff in this repository, so two runs over an identical
+  tree can legitimately disagree. The warning is emitted only while the ref is mutable, so a
+  repository that later pins the index by SHA stops being told about a problem it has fixed.
+
+Two things went wrong while building it, and both are the failure this repository keeps
+finding rather than new ones.
+
+The first probe of two other gates reported them **green**, and the probes had not fired:
+`upstream:refs:check` reads _tracked_ markdown and the probe file was untracked, and the
+undeclared-import probe named a package that is already declared. A control that never ran
+reported as a control that passed. Re-probed with tampers that bite, both gates print their
+scope on the failing path — but that is now a measurement rather than the recollection it
+would otherwise have been.
+
+The second is sharper. `refMutability` read the ref from the wrong URL segment, and the test
+covering the real branch URL **passed anyway**, because the segment it wrongly read
+(`principles`) is also not a forty-character SHA. Only the pinned-SHA case could tell the two
+apart. The test that failed was the one asserting the warning _disappears_, which is the
+assertion that had no reason to exist except that a repository which fixed the problem should
+stop being told it has it. A test suite where every case expects the same verdict cannot
+distinguish a correct implementation from one that always returns that verdict.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
