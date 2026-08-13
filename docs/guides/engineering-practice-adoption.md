@@ -9179,23 +9179,73 @@ cases and distinguishing the two, because they call for different actions.
 A cleanup that depends on the process reaching a later line is not a cleanup, and `finally` is a
 later line.
 
-## A citation in a failure message is not a binding
+## A citation in a failure message is not a binding — and the retraction that followed
 
-`check-assertion-bounds.mjs` requires every numeric bound to name where its number came from, or to
-carry an explicit `unsourced-bound:` marker admitting that nothing does. It enforces that by
-searching the 4 lines above the assertion for the marker — and it **never reads the artifact a
-sourced bound names**. So a bound whose message says `docs claim 18` passes whether the docs say
-18, 99, or nothing at all.
+A sibling session retracted a claim that `jrmoulckers/engineering`'s bounded assertions "source
+their expected value from an artifact that already committed to one." They _transcribe_ it:
+mutating the cited doc to claim 99 left the suite at 402/402, exit 0. The general rule stated here
+— _when you don't know the expected value, find the artifact that already asserts one_ — needs a
+second clause: **and re-derive it from that artifact at check time**, or the citation is decoration
+on a hardcoded constant.
 
-The number is _transcribed_ at authoring time, not _read_ at test time. That is the same defect as
-a test reimplementing the rule it checks, with the artifacts swapped: in both cases the two things
-being compared cannot disagree, so the comparison has no content. And a transcribed number is the
-more dangerous form, because naming a source is what makes a reader — including the author —
-stop checking whether the source is consulted.
+**This section previously recorded that the same defect reproduced in
+`tools/check-assertion-bounds.mjs`. That claim was wrong and is withdrawn.** Probed directly rather
+than reasoned about:
 
-The general rule this repository had been applying was _when you don't know the expected value,
-find the artifact that already asserts one_. It needs a second clause: **and re-derive it from that
-artifact at check time**, or the citation is decoration on a hardcoded constant.
+```
+citation-in-message, no marker         bounds=1 flagged=1
+citation in comment above, no marker   bounds=1 flagged=1
+```
+
+Both are flagged. The checker has no "sourced literal" acceptance path at all. Its only non-marker
+acceptance is comparing against an _expression_, which removes the literal and therefore genuinely
+binds. I had read the report's advice — "compare against the artifact that already commits to the
+number" — as describing a category the tool recognises, when it describes the shape that leaves the
+population entirely. The failure was assuming a defect reproduced because the two tools share a
+subject, which is the same mistake as assuming two instruments agree because they share a method.
+
+## A checker's escape hatches are the part nobody tests
+
+Probing the **acceptance** path instead found three real defects, all of which had passed since the
+tool was written:
+
+```
+marker only inside a string literal    annotated=1   <-- data excused a real bound
+marker in the assert message itself    annotated=1
+bare marker, nothing after it          annotated=1   <-- recorded nothing, discharged the duty
+```
+
+1. A bare `unsourced-bound:` was accepted. The file's own docstring says the annotation "forces the
+   author to record which artifact they looked for and failed to find"; an empty one satisfies the
+   grep and records nothing — the rubber stamp the same file warns an over-reporting checker
+   produces.
+2. `comparisons()` strips literals because "a syntactic pattern is not a semantic class."
+   `hasMarker()` did not. So the marker appearing as _fixture data_ annotated any bound within four
+   lines. The tool applied its own stated principle in one direction only.
+3. The recommended fix was never counted. The green line read _"Every bound is annotated or
+   derived"_ and then printed only the annotated count. Derived bounds were asserted to exist and
+   never measured, so the sentence read identically whether every bound derived its constant or
+   none did. Measured: **6 derived against 10 marker-annotated** — the escape hatch is used more
+   often than the fix, and no output said so.
+
+The unifying property is that all three are on the path where the tool says yes. Considerable care
+had gone into who it accuses — stripping literals, exempting existence and sign checks, surfacing
+unparsed forms rather than skipping them, all to avoid a false accusation that would turn the
+annotations into rubber stamps. None of that care was applied to who it excuses, because **a
+passing case emits no output, so nothing about the tree ever looks wrong.** A false accusation is
+visible to the person accused; a false excuse is visible to nobody.
+
+The fix requires the marker to carry a non-empty reason and to survive literal-stripping — both
+existence checks, so it invents no threshold and cannot trip this checker's own rule — and prints
+the derived/annotated/neither split on both the passing and failing paths.
+
+One detail worth keeping. The first measurement of the derived population reported **45**; the real
+count is **6**. The detector's `>` matched the `>` in `=>`, so every `(f) => f.x` read as a
+comparison against an identifier. It was caught by a control asserting the detector must _not_ fire
+on an arrow function, which is the cheapest possible check and was written only because a previous
+instrument in this session had already reported `0 of 24` and `tests=0`. A 7.5x inflated population
+would have been published as a finding otherwise, and unlike those two it was not absurd enough to
+notice on sight.
 
 Cites `ENG-TEST-002`, `ENG-TEST-004`.
 
