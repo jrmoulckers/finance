@@ -8314,6 +8314,97 @@ So the population of that glob is not "my scratch files" but "anything whose nam
 start with two z's, in any case, on a shared machine". The correct claim names the files
 created and removed, not a pattern.
 
+## A test that recomputes its rule reports agreement about a question nobody asked
+
+A sibling session found a coverage test whose expected values were the checker's
+own expressions — one written `known.has(id)`, the other
+`baseline.uncovered.includes(id)`. Both files agreed, the suite was green, and
+changing the rule in the checker would have left the test computing the old rule
+and passing.
+
+Finance has ten tool/test pairs. Measured:
+
+|                                  |       |
+| -------------------------------- | ----- |
+| tool/test pairs examined         | 10    |
+| lines sharing a normalised shape | 4     |
+| input construction               | 4     |
+| **rule reimplementation**        | **0** |
+
+The four are a `readdirSync(...).filter(...).sort().map(...)` chain that two test
+files use to load workflows before calling the real scanner. Duplicated input
+construction is cheap and honest; the defect is a duplicated _decision_.
+
+`tools/check-test-independence.mjs` gates it. Four things it taught, none of
+which were the result:
+
+**A length threshold excluded the shape it was written to find.** The first
+probe skipped shapes under 22 characters as noise, and the sibling's pair
+normalises to a 19-character shape. Its self-test asserted
+`shapeOf(a) === shapeOf(b)` and passed — while the pipeline dropped both lines
+before they ever reached that comparison. The assertion tested a _function_; the
+claim was about a _pipeline_. An instrument's self-test has to run the
+instrument, not its components.
+
+**The classifier's population was the line; the decision was the statement.**
+`classify()` looked for a filesystem read on the matched line and called
+everything else a reimplemented rule. Method chains put the read on one line and
+the traversal on the next, so two of four matches were reported as rules when
+both were continuations of a `readdirSync`. Note the polarity: a _disclaimer_
+that shrinks is a false-assurance error, but a _classifier_ that over-reports is
+a false accusation. Both are wrong-population errors and they fail in opposite
+directions.
+
+**A normaliser needs a matched pair of assertions.** The identifier regex
+originally wrote `[\w$.]*`, which swallowed the dot and consumed
+`uncovered.filter` as one token — so the keep-word list never fired for a method
+call and `filter` and `map` shared a shape. Excluding the dot fixed that and
+immediately broke the sibling's pair, because `known` and `baseline.uncovered`
+stopped matching. Both properties have to be asserted together:
+`() => ''` satisfies every must-match test, `identity` satisfies every
+must-differ test, and neither is a normaliser.
+
+**The symmetric fixture came back one PR later.** A mutant swapping the input
+and rule counts survived, because the fixture held exactly one of each.
+[The previous section](#the-printed-sentence-is-the-half-with-no-assertion)
+records the same defect, and the fixture was rebuilt in the same shape while
+that text was in the repo. Knowing a defect class does not prevent instantiating
+it: the symmetric fixture is the one that looks careful.
+
+## Four gates were invoked by nothing
+
+Wiring the new checker meant reading how the others were wired, which produced a
+worse finding than the checker did. Of fourteen `*:check` scripts, a census of
+workflow invocations returned:
+
+|                      |     |
+| -------------------- | --- |
+| `*:check` scripts    | 14  |
+| named in a workflow  | 7   |
+| named in no workflow | 7   |
+
+Three of the seven are explainable — `format:check` runs inside `lint`,
+`ci:check` is a local aggregate, `agent:check` is a pre-push helper. One was a
+false positive: `ai:manifest:check` **is** enforced, by its own workflow calling
+`tools/check-ai-manifest.js` by path, which a matcher looking for `npm run` could
+not see.
+
+That leaves two real ones: `upstream:refs:check` and `docs:links:check` — both
+built here, both described in six successive reports as gates, and neither run
+by any workflow. Every "all gates green" statement in those reports was a claim
+about _running them locally_, not about enforcement, and the distinction was
+never stated because it was never noticed.
+
+This is the sibling's own finding — a checker its owning repo never executes —
+arriving in this tree by the same route: the script exists, `npm run` proves it
+passes, and nothing distinguishes _passes_ from _is required to pass_. All three
+are now steps in `ci-lint.yml`.
+
+The general form is worth keeping: **a gate is a workflow step, not a script.**
+Registering a `package.json` entry produces something that behaves identically
+to a gate every time a human runs it, and identically to nothing the rest of the
+time.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
