@@ -1271,7 +1271,21 @@ function commentFamily(entryPath) {
 // So the judgement lives here, in production, where a mutation is observable by a named test
 // and the degenerate states can be constructed rather than waited for. It reports rather than
 // throws: a narrowed corpus is a real change in what the green check means, not a broken tool.
-const BREADTH_FLOOR = { families: 2, rootLevel: 1 };
+//
+// #4296: `families` was 2 for a switch this file states is three-way, and the number 3 was
+// derivable four lines up. A corpus that lost an entire family passed the guard meant to catch
+// exactly that -- measured, all three drops reported nothing. So the floor is now taken from the
+// artifact that already commits to the number (the family sets themselves) rather than restated.
+// An inequality is only as good as the source of its constant; a restated constant has none.
+const FAMILY_SETS = [HASH_EXTENSIONS, BLOCK_EXTENSIONS, HTML_EXTENSIONS];
+const FAMILY_EXTENSION_COUNT = FAMILY_SETS.reduce((sum, set) => sum + set.size, 0);
+const BREADTH_FLOOR = {
+  families: FAMILY_SETS.length,
+  // unsourced-bound: nothing in the repository commits to a nesting depth, so this floor is
+  // invented and says only that the walk-reaches-root assertion is not vacuous. Recorded rather
+  // than dressed up as derived -- per #4296 the absence of a source is itself the finding.
+  rootLevel: 1,
+};
 
 /**
  * Report when the recorded corpus is too narrow for the suite's per-family and per-depth
@@ -1290,9 +1304,9 @@ function corpusBreadth(lock) {
 
   if (families.size < BREADTH_FLOOR.families) {
     findings.push(
-      `corpus exercises ${families.size} comment family/families ` +
+      `corpus exercises ${families.size} of ${BREADTH_FLOOR.families} comment families ` +
         `(${[...families].sort().join(', ') || 'none'}); the unstamp switch has ` +
-        `${HASH_EXTENSIONS.size + BLOCK_EXTENSIONS.size + HTML_EXTENSIONS.size} extensions across 3, ` +
+        `${FAMILY_EXTENSION_COUNT} extensions across ${FAMILY_SETS.length}, ` +
         'so a passing family assertion would certify a fraction of it',
     );
   }
@@ -1755,6 +1769,7 @@ module.exports = {
   driftEnforcement,
   enforcementFindings,
   BREADTH_FLOOR,
+  FAMILY_SETS,
   corpusBreadth,
   HASH_EXTENSIONS,
   BLOCK_EXTENSIONS,

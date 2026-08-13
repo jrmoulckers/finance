@@ -17,6 +17,8 @@ test('testFiles returns a sorted list', () => {
 });
 
 test('testFiles finds this repository real suites', () => {
+  // unsourced-bound: no artifact commits to how many tool test files exist -- that is the
+  // point of enumerating from disk. A floor only excludes a silently emptied glob (#4296).
   assert.ok(testFiles().length >= 10);
 });
 

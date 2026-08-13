@@ -64,6 +64,8 @@ test('a very short shape still reaches a match', () => {
   // comparator alone is what let the filter hide.
   const impl = 'const a = rows\n  .sort()\n  .filter((r) => r.ok);';
   const spec = "test('x', () => {\n  const b = rows\n    .sort()\n    .filter((r) => r.ok);\n});";
+  // unsourced-bound: asserts the shape is a short normalised token rather than the input; no
+  // artifact states a length, and the exact value would pin an implementation detail (#4296).
   assert.ok(shapeOf('  .sort()').length < 10);
   const matches = censusPair(impl, spec);
   assert.ok(
@@ -212,6 +214,8 @@ test('every live match is input construction', () => {
   // `census()` enumerates with `git ls-files`, and both new files were still
   // untracked: the instrument was outside its own population until committed.
   const result = census((file) => readFileSync(file, 'utf8'));
+  // unsourced-bound: pair count grows with the fixture; nothing declares it. 11 was the count
+  // when written and is a floor so adding a case does not fail the test (#4296).
   assert.ok(result.pairs >= 11, `pairs: ${result.pairs}`);
   const { lines } = reportLines(result);
   assert.ok(

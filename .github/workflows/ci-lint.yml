@@ -155,6 +155,12 @@ jobs:
 
       - name: Every script is reachable, or reported unreached
         run: npm run gate:enforcement
+
+      # A bound compared against a bare number can never be contradicted: it excludes some values
+      # and names no source. This requires every numeric threshold in tools/ to be either derived
+      # from the artifact that already commits to the number, or annotated with why none does.
+      - name: Every numeric bound names its source
+        run: npm run bounds:check
   pr-title:
     name: Semantic PR Title
     needs: changes
