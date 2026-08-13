@@ -173,12 +173,11 @@ test('an empty population is refused rather than passed', () => {
 // --- the real tree -----------------------------------------------------------------------------
 
 test('every bound in this repository is annotated or derived', () => {
-  const result = census();
-  const unannotated = result.bounds.filter((bound) => !bound.annotated);
-  assert.deepEqual(
-    unannotated.map((bound) => `${bound.file}:${bound.line} ${bound.token}`),
-    [],
-  );
+  // Ask the tool for its verdict rather than recomputing it. The first version of this test
+  // filtered `!bound.annotated` itself, which is the same expression `report()` uses -- a test
+  // that decides the answer cannot notice the rule changing, and the independence gate said so.
+  const verdict = report(census());
+  assert.equal(verdict.ok, true, verdict.lines.join('\n'));
 });
 
 test('PREMISE: the population is not empty, or the check proves nothing', () => {
@@ -190,12 +189,20 @@ test('PREMISE: the population is not empty, or the check proves nothing', () => 
 });
 
 test('sourceFiles enumerates from disk, not from a glob', () => {
-  const listed = sourceFiles().map((file) => path.basename(file));
-  const onDisk = fs
-    .readdirSync(TOOLS_DIR)
-    .filter((name) => name.endsWith('.mjs') || name.endsWith('.js'));
-  assert.equal(listed.length, onDisk.length);
-  assert.ok(listed.includes('check-assertion-bounds.mjs'), 'the checker must scan itself');
+  // Asserted by properties rather than by rerunning the same extension filter: a test that
+  // recomputes the selection agrees with itself whatever the selection becomes.
+  const listed = sourceFiles();
+  assert.ok(listed.length > 0, 'PREMISE: the directory is not empty');
+  assert.deepEqual(listed, [...listed].sort(), 'a stable order, so reports are diffable');
+  for (const file of listed) {
+    assert.equal(path.dirname(file), TOOLS_DIR, `escaped the tools directory: ${file}`);
+    assert.ok(fs.statSync(file).isFile(), `not a file: ${file}`);
+  }
+  const names = listed.map((file) => path.basename(file));
+  assert.ok(names.includes('check-assertion-bounds.mjs'), 'the checker must scan itself');
+  // Real negatives that live in this directory: neither is JavaScript.
+  assert.ok(!names.includes('README.md'));
+  assert.ok(!names.includes('setup-branch-protection.sh'));
 });
 
 // --- the verdict actually refuses --------------------------------------------------------------

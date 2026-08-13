@@ -8910,6 +8910,74 @@ Nine bounds now carry an annotation naming what was looked for and not found. Th
 is the honest record of an invented number, which is the most this rule can ask for when nothing in
 the tree commits to one.
 
+### "All 16 gates green" was a claim over a population that excluded the new files
+
+The commit passed all sixteen gates locally and failed `test:independence:check` in CI, which
+flagged two lines of the new test file as reimplementing the tool they verify:
+
+```
+UNCLASSIFIED check-assertion-bounds.test.mjs:177 ~ check-assertion-bounds.mjs:255
+  const unannotated = result.bounds.filter((bound) => !bound.annotated);
+UNCLASSIFIED check-assertion-bounds.test.mjs:196 ~ check-assertion-bounds.mjs:205
+  .filter((name) => name.endsWith('.mjs') || name.endsWith('.js'));
+```
+
+Both are real. The first recomputes the expression `report()` uses to reach its verdict, so the test
+decides the answer and cannot notice the rule changing. The second reruns the extension filter it is
+supposed to be checking.
+
+The reason the local run disagreed is the interesting half. `check-test-independence.mjs` discovers
+its input with `git ls-files tools/*.mjs`, and at the moment the sixteen-gate loop ran, both new
+files were **untracked**. The gate could not see the only files that could have failed it.
+
+This is precisely the finding the sibling session reported several rounds earlier — _any tool that
+discovers its input from version control is blind to itself during exactly the window it is being
+written in_ — which was acknowledged here, written into the guide, and then walked into anyway. The
+local green and the CI red were both correct readings of different populations, and only one was the
+question being asked.
+
+So the report "all 16 gates green" was true and useless, in the same way "both checkers pass, exit
+0" was. A gate run against a population that excludes the change under test measures the tree as it
+was before the work started. The cheap correction is to `git add` before running gates rather than
+after, which costs nothing and moves the untracked window to before the measurement instead of
+after it.
+
+The fixes are the ones the gate asked for: the verdict test now calls `report()` and asserts its
+`ok`, and the enumeration test asserts properties — sorted, inside the directory, all real files,
+includes itself, excludes `README.md` and `setup-branch-protection.sh` — rather than rerunning the
+selection. A test that recomputes the selection agrees with itself whatever the selection becomes.
+
+### The unexplained suite failure, now characterised
+
+Last round recorded a single whole-suite run reporting `pass 511, fail 1` that four subsequent runs
+did not reproduce, with the failing test's identity uncaptured. Recorded then as observed and
+unreproduced. It reproduced this round at **1 run in 4**, and it is:
+
+```
+✖ a passing run states the scope   (check-workflow-security.test.mjs:403)
+  AssertionError: The input did not match /\d+ workflow\(s\) scanned in /. Input: ''
+  status: 0
+```
+
+Exit **0** with an **empty** stdout. Three things rule out the obvious explanations: the tool's CLI
+guard is the robust `resolve(process.argv[1]) === fileURLToPath(import.meta.url)` form, not the
+template-literal one that had just silently disabled a different tool; its exit path sets
+`process.exitCode` rather than calling `process.exit`, so stdout is flushed on a natural exit; and
+**40 isolated spawns produced 0 empty captures**. It only appears under the concurrent whole-suite
+run, on Windows. That localises it to `spawnSync` pipe capture under heavy concurrent process
+creation — a harness flake, not a tool defect, and one CI has not exhibited on `ubuntu-latest`.
+
+It is not retried. A silent retry would convert a visible 1-in-4 into an invisible 1-in-16 and
+report the same green either way. What was added instead is a `detail` string carrying `status`,
+`signal`, `error`, stdout length and stderr, attached to every assertion in the test — so the next
+occurrence explains itself rather than requiring the whole diagnosis to be re-derived from a bare
+regex mismatch.
+
+The general point is about what an unreproduced observation is worth. Last round the honest options
+were to drop it or record it; recording it cost one sentence and made this round's reproduction
+recognisable within seconds instead of being greeted as new. **An intermittent failure you have
+written down is a different object from one you have not**, even while both remain unexplained.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

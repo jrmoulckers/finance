@@ -402,10 +402,21 @@ const SECURITY_TOOL = resolve(testRoot, 'tools', 'check-workflow-security.mjs');
 
 test('a passing run states the scope', () => {
   const result = spawnSync(process.execPath, [SECURITY_TOOL], { encoding: 'utf8' });
-  assert.equal(result.status, 0);
-  assert.match(result.stdout, /\d+ workflow\(s\) scanned in /);
-  assert.match(result.stdout, /\d+ of \d+ named assertion target\(s\) present/);
-  assert.match(result.stdout, /\d+ covered by the universal checks only/);
+  // Diagnostics, not decoration (#4296): under the concurrent whole-suite run this assertion
+  // failed roughly 1 run in 4 on Windows with status 0 and an EMPTY stdout, while 40 isolated
+  // spawns produced 0 empty captures. The tool's CLI guard is the robust resolve/fileURLToPath
+  // form and its exit path uses process.exitCode, so stdout is flushed on a natural exit. That
+  // points at spawnSync pipe capture under heavy concurrent process creation -- a harness flake
+  // rather than a tool defect. Not silently retried: a retry would hide it. These fields make
+  // the next occurrence self-describing instead of a mystery to re-derive.
+  const detail =
+    `status=${result.status} signal=${result.signal} error=${result.error} ` +
+    `stdout=${result.stdout.length}b stderr=${JSON.stringify(String(result.stderr).slice(0, 200))}`;
+  assert.equal(result.error, undefined, detail);
+  assert.equal(result.status, 0, detail);
+  assert.match(result.stdout, /\d+ workflow\(s\) scanned in /, detail);
+  assert.match(result.stdout, /\d+ of \d+ named assertion target\(s\) present/, detail);
+  assert.match(result.stdout, /\d+ covered by the universal checks only/, detail);
 });
 
 test('the failure branch emits the scope before returning', () => {
