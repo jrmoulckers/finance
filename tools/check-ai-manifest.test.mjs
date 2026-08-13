@@ -1512,12 +1512,16 @@ test('the PRODUCTION walk, not a test list, supplies the corpus population (#428
   const probeDir = path.join(ROOT, 'docs', 'ops');
   const probe = path.join(probeDir, 'PROBE-4287.md');
   assert.ok(fs.existsSync(probeDir), 'PREMISE: the probe directory exists');
-  assert.ok(!fs.existsSync(probe), 'PREMISE: the probe path is free');
 
   const before = activationRunners({}).triggerCoverage();
   const corpusBefore = before.find((f) => f.includes('citation corpus'));
 
-  fs.writeFileSync(probe, '# probe\n\nA claim about jrmoulckers/.github and copier.mjs.\n');
+  // `wx` makes creation itself the existence check. Asserting the path is free and then writing
+  // it is a genuine TOCTOU race (CodeQL js/file-system-race) — the same finding `citationCorpus`
+  // resolved by taking one descriptor — and here it would also silently clobber a real file.
+  fs.writeFileSync(probe, '# probe\n\nA claim about jrmoulckers/.github and copier.mjs.\n', {
+    flag: 'wx',
+  });
   try {
     const after = activationRunners({}).triggerCoverage();
     const corpusAfter = after.find((f) => f.includes('citation corpus'));
