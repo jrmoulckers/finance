@@ -11,10 +11,76 @@ import {
   ENUMERATION,
   OBLIGATION,
   SCANNED_EXTENSIONS,
+  cleanLine,
   countExemptions,
   findRestatedEnumerations,
   isScannedFile,
+  violationLines,
 } from './check-citation-enumerations.mjs';
+
+// Report-line tests (#4303).
+//
+// The predicates above were well covered while the report was not covered at all, and from the
+// outside the two states were indistinguishable: the suite was green either way. A sentinel sweep
+// scored this tool 0/7. The tests below read the interpolated counts, because the counts are the
+// whole content -- a report that names the right violation with the wrong denominator is worse
+// than no report, since the denominator is what a reader uses to judge whether the scan was broad.
+
+const VIOLATION = {
+  file: 'docs/guides/x.md',
+  line: 42,
+  id: 'ENG-SEC-008',
+  enumeration: 'accounts, balances, and transactions',
+  text: 'finance requires accounts, balances, and transactions to be redacted.',
+};
+
+test('violationLines states all three buckets of the partition', () => {
+  const [header] = violationLines([VIOLATION], 3161, 4);
+  assert.match(header, /— 1 across 3161 scanned file\(s\)/);
+  assert.match(header, /with 4 line\(s\) exempted/);
+  assert.ok(header.includes(`"${EXEMPTION}"`), 'the marker name must be named, not described');
+});
+
+test('violationLines counts violations, not scanned files, in the first bucket', () => {
+  const [header] = violationLines([VIOLATION, { ...VIOLATION, line: 43 }], 10, 0);
+  assert.match(header, /— 2 across 10 scanned file\(s\)/);
+});
+
+test('violationLines emits file, line, id, enumeration and source text per finding', () => {
+  const lines = violationLines([VIOLATION], 1, 0);
+  assert.ok(lines.includes('  docs/guides/x.md:42  ENG-SEC-008'), lines.join('\n'));
+  assert.ok(lines.includes('    enumerates: accounts, balances, and transactions'));
+  assert.ok(lines.some((l) => l.includes(VIOLATION.text)));
+});
+
+test('violationLines closes with the remedy and cites ADR-0003', () => {
+  const lines = violationLines([VIOLATION], 1, 0);
+  assert.match(lines.at(-1), /ADR-0003 \(four-authority topology\)/);
+  assert.ok(lines.some((l) => l.includes('drifts by losing an item')));
+});
+
+test('violationLines line count scales by three per finding', () => {
+  const one = violationLines([VIOLATION], 1, 0).length;
+  const two = violationLines([VIOLATION, VIOLATION], 1, 0).length;
+  assert.equal(two - one, 3);
+});
+
+test('cleanLine reports both the scanned and exempted counts', () => {
+  const line = cleanLine(3161, 4);
+  assert.match(line, /3161 file\(s\) scanned/);
+  assert.match(line, /4 line\(s\) exempted/);
+  assert.match(line, /No principle enumeration is restated as an obligation\./);
+});
+
+test('cleanLine discloses the line-at-a-time limitation that makes a wrapped list invisible', () => {
+  assert.match(cleanLine(1, 0), /Read one line at a time, so a list wrapped across a line break/);
+});
+
+test('a zero-exemption green result still names the exemption bucket', () => {
+  // Omitting the bucket when it is empty would make "0 exempted" and "not measured"
+  // render identically -- the failure mode this tool's own comment warns about.
+  assert.match(cleanLine(3161, 0), /0 line\(s\) exempted/);
+});
 
 test('the defect this was written for is caught', () => {
   const text =

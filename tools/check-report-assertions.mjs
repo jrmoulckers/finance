@@ -252,6 +252,93 @@ export function refuseReason() {
 }
 
 /**
+ * Determine which tools are invoked by a workflow, directly or via an npm script.
+ *
+ * Wiring and assertion coverage are independent properties (#4303). Measured across finance's 15
+ * tested tools, all four quadrants of the cross are populated: the two best-asserted tools are
+ * both unwired, and two required gates score 0%. Treating "inert" as a single summary judgement
+ * covering both conflates a tool nothing runs with a tool nothing checks, and the remedies differ
+ * -- the first needs a workflow step, the second needs a callable report surface.
+ *
+ * @param {typeof fs} [fsImpl] Injectable filesystem.
+ * @returns {Set<string>} Tool filenames referenced by at least one workflow.
+ */
+export function wiredTools(fsImpl = fs) {
+  const scripts = JSON.parse(fsImpl.readFileSync('package.json', 'utf8')).scripts ?? {};
+  const dir = '.github/workflows';
+  const workflows = fsImpl
+    .readdirSync(dir)
+    .map((f) => fsImpl.readFileSync(path.join(dir, f), 'utf8'))
+    .join('\n');
+  const wired = new Set();
+  for (const [name, body] of Object.entries(scripts)) {
+    if (!workflows.includes(`npm run ${name}`)) continue;
+    for (const match of body.matchAll(/tools\/([\w.-]+\.(?:mjs|js))/g)) wired.add(match[1]);
+  }
+  for (const match of workflows.matchAll(/tools\/([\w.-]+\.(?:mjs|js))/g)) wired.add(match[1]);
+  return wired;
+}
+
+/**
+ * Render the per-tool breakdown, crossed against gate wiring.
+ *
+ * An earlier version of this report printed the aggregate ratio and the survivor list only. It
+ * withheld the caught list, so its own output could not be decomposed per tool -- producing the
+ * table below required a bespoke probe against `measure()`. A report that publishes a ratio while
+ * withholding its components cannot support the finding it exists to produce, and the specific
+ * finding it suppressed was that wiring and assertion do not correlate.
+ *
+ * @param {{caught: string[], survivors: string[]}} result Measurement.
+ * @param {Set<string>} wired Tools invoked by a workflow.
+ * @returns {string[]} Report lines.
+ */
+export function perToolLines(result, wired) {
+  const per = new Map();
+  const tally = (labels, key) => {
+    for (const label of labels) {
+      const tool = label.split(':')[0];
+      const entry = per.get(tool) ?? { asserted: 0, total: 0 };
+      entry.total += 1;
+      if (key === 'asserted') entry.asserted += 1;
+      per.set(tool, entry);
+    }
+  };
+  tally(result.caught, 'asserted');
+  tally(result.survivors, 'unasserted');
+
+  const rows = [...per.entries()]
+    .map(([tool, c]) => ({
+      tool,
+      ...c,
+      pct: Math.round((c.asserted / c.total) * 100),
+      wired: wired.has(tool),
+    }))
+    .sort((a, b) => b.pct - a.pct || b.total - a.total);
+
+  const lines = ['', 'per tool:', `  ${'tool'.padEnd(38)}${'asserted'.padEnd(11)}rate   gate`];
+  for (const r of rows) {
+    lines.push(
+      `  ${r.tool.padEnd(38)}${`${r.asserted}/${r.total}`.padEnd(11)}${`${r.pct}%`.padEnd(7)}${
+        r.wired ? 'yes' : 'no'
+      }`,
+    );
+  }
+  const quadrant = (isWired, isAsserted) =>
+    rows.filter((r) => r.wired === isWired && r.pct >= 50 === isAsserted).length;
+  lines.push(
+    '',
+    'wiring x assertion (asserted = >=50% of sites):',
+    `  gate,  asserted    ${quadrant(true, true)}`,
+    `  gate,  unasserted  ${quadrant(true, false)}`,
+    `  inert, asserted    ${quadrant(false, true)}`,
+    `  inert, unasserted  ${quadrant(false, false)}`,
+    'A populated off-diagonal means these are independent properties, not one judgement:',
+    'a tool can be well-tested and never run, or run on every push and assert nothing.',
+  );
+  return lines;
+}
+
+/**
  * Render the unasserted-site list.
  *
  * @param {string[]} survivors Site labels.
@@ -297,6 +384,7 @@ function main() {
   for (const line of scopeLines(result)) console.log(line);
   console.log('');
   console.log(elapsedLine(Date.now() - started));
+  for (const line of perToolLines(result, wiredTools())) console.log(line);
   for (const line of survivorLines(result.survivors)) console.log(line);
 }
 

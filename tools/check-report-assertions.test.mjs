@@ -5,6 +5,7 @@ import {
   DEFAULT_SENTINEL,
   measure,
   mutateSite,
+  perToolLines,
   reportLines,
   elapsedLine,
   refusalLine,
@@ -12,7 +13,92 @@ import {
   scopeLines,
   survivorLines,
   toolsWithTests,
+  wiredTools,
 } from './check-report-assertions.mjs';
+
+// Cross-reporting tests (#4303).
+
+const CROSS = {
+  caught: ['a.mjs:1 ${x}', 'a.mjs:2 ${y}', 'b.mjs:1 ${z}'],
+  survivors: ['b.mjs:2 ${w}', 'b.mjs:3 ${v}', 'b.mjs:4 ${u}', 'c.mjs:1 ${t}'],
+};
+
+test('perToolLines decomposes the aggregate the survivor list alone cannot', () => {
+  const lines = perToolLines(CROSS, new Set(['a.mjs'])).join('\n');
+  // a: 2 caught / 0 survivors = 2/2. b: 1 caught / 3 survivors = 1/4. c: 0/1.
+  assert.match(lines, /a\.mjs\s+2\/2\s+100%/);
+  assert.match(lines, /b\.mjs\s+1\/4\s+25%/);
+  assert.match(lines, /c\.mjs\s+0\/1\s+0%/);
+});
+
+test('perToolLines marks only tools present in the wired set as gates', () => {
+  const lines = perToolLines(CROSS, new Set(['a.mjs'])).join('\n');
+  assert.match(lines, /a\.mjs.*\byes$/m);
+  assert.match(lines, /b\.mjs.*\bno$/m);
+  assert.match(lines, /c\.mjs.*\bno$/m);
+});
+
+test('perToolLines counts all four quadrants and they sum to the tool count', () => {
+  const lines = perToolLines(CROSS, new Set(['a.mjs', 'c.mjs']));
+  const read = (label) => Number(lines.find((l) => l.includes(label)).match(/(\d+)$/)[1]);
+  assert.equal(read('gate,  asserted'), 1); // a: wired, 100%
+  assert.equal(read('gate,  unasserted'), 1); // c: wired, 0%
+  assert.equal(read('inert, asserted'), 0);
+  assert.equal(read('inert, unasserted'), 1); // b: inert, 25%
+  const total =
+    read('gate,  asserted') +
+    read('gate,  unasserted') +
+    read('inert, asserted') +
+    read('inert, unasserted');
+  assert.equal(total, 3, 'every tool lands in exactly one quadrant');
+});
+
+test('perToolLines places a tool at exactly the 50% boundary on the asserted side', () => {
+  const half = { caught: ['h.mjs:1 ${a}'], survivors: ['h.mjs:2 ${b}'] };
+  const lines = perToolLines(half, new Set()).join('\n');
+  assert.match(lines, /h\.mjs\s+1\/2\s+50%/);
+  assert.match(lines, /inert, asserted {4}1/);
+});
+
+test('perToolLines sorts by rate so the worst-asserted tools are last', () => {
+  const rows = perToolLines(CROSS, new Set())
+    .filter((l) => /\.mjs/.test(l))
+    .map((l) => l.trim().split(/\s+/)[0]);
+  assert.deepEqual(rows, ['a.mjs', 'b.mjs', 'c.mjs']);
+});
+
+test('wiredTools discriminates: it must not return every tool in the directory', () => {
+  const wired = wiredTools();
+  assert.ok(wired.size > 0, 'at least one tool is invoked by a workflow');
+  const all = toolsWithTests('tools');
+  const unwired = all.filter((t) => !wired.has(t));
+  // A detector that reports everything as wired would make the cross vacuous and the
+  // off-diagonal empty by construction rather than by measurement.
+  assert.ok(unwired.length > 0, `expected some unwired tools; got ${JSON.stringify(all)}`);
+});
+
+test('wiredTools resolves a tool reached indirectly through an npm script', () => {
+  const fake = {
+    readFileSync: (p) =>
+      String(p).endsWith('package.json')
+        ? JSON.stringify({ scripts: { 'x:check': 'node tools/check-x.mjs --strict' } })
+        : 'jobs:\n  a:\n    steps:\n      - run: npm run x:check\n',
+    readdirSync: () => ['ci.yml'],
+  };
+  const wired = wiredTools(fake);
+  assert.ok(wired.has('check-x.mjs'), [...wired].join(','));
+});
+
+test('wiredTools does not mark a script that no workflow invokes', () => {
+  const fake = {
+    readFileSync: (p) =>
+      String(p).endsWith('package.json')
+        ? JSON.stringify({ scripts: { 'y:check': 'node tools/check-y.mjs' } })
+        : 'jobs:\n  a:\n    steps:\n      - run: npm test\n',
+    readdirSync: () => ['ci.yml'],
+  };
+  assert.equal(wiredTools(fake).has('check-y.mjs'), false);
+});
 
 test('reportSites finds interpolations in console calls', () => {
   const src = ['console.log(`count ${n}`);'].join('\n');
