@@ -9138,6 +9138,67 @@ degrade to naming the wrong SHA or the wrong conclusion while the exit code stay
 
 Cites `ENG-TEST-004`, `ENG-OBS-005`.
 
+## The run that leaks a fixture passes; the next run inherits a red suite and a wrong diagnosis
+
+Three untracked files — `PROBE-4300-text.md`, `PROBE-4300-binary.md`, `PROBE-4300-oversize.md` —
+were found at the repository root. With them present the tool suite is **586/591 with 5 failures**;
+delete them and it is **591/591**. They are fixtures created by `check-ai-manifest.test.mjs`.
+
+The fixtures were created with `{ flag: 'wx' }` (exclusive create) **outside** the `try` whose
+`finally` deletes them. `finally` survives an exception but not process termination, so a run
+killed between the writes and the cleanup leaves them behind — and on the next run the `wx` write
+throws `EEXIST` _before_ control enters `try`, so the cleanup can never run again. Two consecutive
+runs produced byte-identical `93 tests / 88 pass / 5 fail` with the files still present after each.
+**Only a manual delete exits the state.**
+
+Two properties make this worse than an ordinary flake.
+
+**The polarity is inverted.** The run that leaks exits green. Every subsequent run fails. So the
+signal arrives at the party with the least information — someone who pulled, ran the suite, and
+changed nothing — and never reaches the party who caused it.
+
+**The diagnosis names the wrong thing.** The five failures are assertions about citation-ownership
+rules (`the PRODUCTION predicate ... distinguishes owned from received`). Nothing in the output
+mentions a stray file. A reader debugging that output is reading about the tool's semantics while
+the cause is three bytes of filesystem state.
+
+### Making the latch impossible removes a signal, so the signal has to be added back deliberately
+
+The fix gives each fixture a per-process name (`pid` + timestamp), moves the writes inside the
+`try`, and cleans up with `rmSync({ force: true })`. Verified: with all four _old_ fixed names
+planted at the root, `check-ai-manifest.test.mjs` is now **93/93** where it was 88/93.
+
+But that is exactly the point worth recording. A leaked file used to be loud — wrongly attributed,
+but loud. Unique names make it silent: it now sits in the tree affecting nothing. So the same
+change that removes the latch also removes the only thing that ever reported it, and the honest
+response is not to celebrate the green but to add the report that was missing.
+`run-tool-tests.mjs` now runs `leakedArtifacts()` **before and after** the suite: it refuses to
+start on an inherited leak, and it **fails the run that creates one**, naming the files in both
+cases and distinguishing the two, because they call for different actions.
+
+A cleanup that depends on the process reaching a later line is not a cleanup, and `finally` is a
+later line.
+
+## A citation in a failure message is not a binding
+
+`check-assertion-bounds.mjs` requires every numeric bound to name where its number came from, or to
+carry an explicit `unsourced-bound:` marker admitting that nothing does. It enforces that by
+searching the 4 lines above the assertion for the marker — and it **never reads the artifact a
+sourced bound names**. So a bound whose message says `docs claim 18` passes whether the docs say
+18, 99, or nothing at all.
+
+The number is _transcribed_ at authoring time, not _read_ at test time. That is the same defect as
+a test reimplementing the rule it checks, with the artifacts swapped: in both cases the two things
+being compared cannot disagree, so the comparison has no content. And a transcribed number is the
+more dangerous form, because naming a source is what makes a reader — including the author —
+stop checking whether the source is consulted.
+
+The general rule this repository had been applying was _when you don't know the expected value,
+find the artifact that already asserts one_. It needs a second clause: **and re-derive it from that
+artifact at check time**, or the citation is decoration on a hardcoded constant.
+
+Cites `ENG-TEST-002`, `ENG-TEST-004`.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
