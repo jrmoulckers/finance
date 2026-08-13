@@ -1547,8 +1547,11 @@ const KNOWN_UNREPRODUCED = {
 // RECORD, while `reproduces` pins it to the corrupt BYTES. Without the second, the exemption
 // absorbs any future corruption of this path whose record happens to still read 343e10b1 --
 // which is precisely the "second corruption is not inherited" promise made at KNOWN_UNREPRODUCED.
-function exemptionMatches(entry, recordedSource, digest) {
-  const known = KNOWN_UNREPRODUCED[entry];
+// The register is a parameter for the same reason `sourceDisclosureLines` takes one, and the
+// reason is now measured rather than anticipated: draining the live register to `{}` -- its
+// designed success state -- turned five tests RED, each asking for the exemption back (#4331).
+function exemptionMatches(entry, recordedSource, digest, register = KNOWN_UNREPRODUCED) {
+  const known = register[entry];
   if (!known) return false;
   return known.recorded === recordedSource && known.reproduces === digest;
 }
@@ -1569,7 +1572,7 @@ function sourceDisclosureLines(knownUnreproduced, register = KNOWN_UNREPRODUCED)
   );
 }
 
-function verifySourceReproduction(lock) {
+function verifySourceReproduction(lock, register = KNOWN_UNREPRODUCED) {
   const findings = [];
   const unreproduced = [];
   const knownUnreproduced = [];
@@ -1608,7 +1611,7 @@ function verifySourceReproduction(lock) {
       reproducedEntries.add(entry);
       continue;
     }
-    if (exemptionMatches(entry, metadata.sourceSha256, digest)) {
+    if (exemptionMatches(entry, metadata.sourceSha256, digest, register)) {
       knownUnreproduced.push(entry);
       continue;
     }
@@ -1627,7 +1630,7 @@ function verifySourceReproduction(lock) {
         `lock records ${item.recorded.slice(0, 12)})`,
     );
   }
-  for (const [entry, known] of Object.entries(KNOWN_UNREPRODUCED)) {
+  for (const [entry, known] of Object.entries(register)) {
     if (!reproducedEntries.has(entry)) continue;
     findings.push(
       `stale reproduction exemption: ${entry} now reproduces its recorded source, so ` +
