@@ -29,7 +29,7 @@
  * so a tool scanning documents that happen to contain no fenced example never learns it needs the
  * guard. Nobody decides the rule is narrow; the rule is simply never observed to fail.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -207,7 +207,16 @@ export function collectScripts(root) {
     for (const entry of entries.sort()) {
       if (entry === 'node_modules' || entry.startsWith('.')) continue;
       const full = path.join(dir, entry);
-      if (statSync(full).isDirectory()) walk(full);
+      // lstat, not stat: statSync(junction).isDirectory() is true, so the ordinary walker descends
+      // through a Windows junction into whatever it targets. This worktree has three from
+      // node_modules/@finance/* back into tracked source, and a statSync walk of them yields 3720
+      // files against lstat's 3. It is the mechanism that deleted 2,825 tracked files here (#4349).
+      //
+      // The node_modules skip above made this safe by accident rather than by construction: the
+      // junctions live inside a directory excluded by name. A link anywhere else was followed.
+      const stat = lstatSync(full);
+      if (stat.isSymbolicLink()) continue;
+      if (stat.isDirectory()) walk(full);
       else if (isScannedFile(entry)) out.push(full);
       else if (/\.test\.(mjs|cjs|js)$/.test(entry)) skippedTests.push(full);
     }

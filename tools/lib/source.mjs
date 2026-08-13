@@ -128,6 +128,106 @@ function looksLikeRegexStart(text, index) {
 }
 
 /**
+ * Whole-file spans that are not executable code: strings, comments, and regex literals.
+ *
+ * Distinct from {@link literalSpans}, which takes a **single line** and deliberately omits regex
+ * spans because its callers ask "is this quote character data?" and a regex body is implementation.
+ * A caller asking "is this token a call site?" needs the opposite: a `statSync(` written inside a
+ * regex, a block comment, or a docstring is a description of a call, not a call.
+ *
+ * Block comments are the reason this exists. `literalSpans` returns on `//` and tracks nothing
+ * across lines, so a docstring line containing `statSync(x).isDirectory()` reads as code to every
+ * line-wise caller. The first run of `check-walk-safety` flagged its own docstring three times,
+ * which is the cheapest possible demonstration that a detector for an idiom must not be fooled by
+ * prose about the idiom (#4349).
+ *
+ * @param {string} source Whole file text.
+ * @returns {[number, number][]} Ascending, non-overlapping offsets.
+ */
+export function maskedSpans(source) {
+  const text = String(source);
+  const spans = [];
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (ch === '/' && next === '*') {
+      const close = text.indexOf('*/', i + 2);
+      const end = close === -1 ? text.length : close + 2;
+      spans.push([i, end]);
+      i = end;
+      continue;
+    }
+    if (ch === '/' && next === '/') {
+      let end = text.indexOf('\n', i);
+      if (end === -1) end = text.length;
+      spans.push([i, end]);
+      i = end;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      const end = closeDelimited(text, i, ch, false);
+      spans.push([i, end]);
+      i = end;
+      continue;
+    }
+    if (ch === '/' && opensRegex(text, i)) {
+      const end = closeDelimited(text, i, '/', true);
+      spans.push([i, end]);
+      i = end;
+      continue;
+    }
+    i += 1;
+  }
+  return spans;
+}
+
+/**
+ * Offset just past the closing delimiter of a literal opening at `start`.
+ *
+ * @param {string} text Whole file text.
+ * @param {number} start Offset of the opening delimiter.
+ * @param {string} delim Closing delimiter.
+ * @param {boolean} regex Whether character classes must be skipped.
+ * @returns {number} Offset just past the close, or the end of input.
+ */
+function closeDelimited(text, start, delim, regex) {
+  let i = start + 1;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '\\') {
+      i += 2;
+      continue;
+    }
+    if (regex && ch === '[') {
+      const close = text.indexOf(']', i + 1);
+      i = close === -1 ? text.length : close + 1;
+      continue;
+    }
+    // An unterminated string does not run to the end of the file; it ends at the newline. Without
+    // this, one stray apostrophe in a comment would mask the remainder of the file from every
+    // caller, turning a detector silently into a no-op.
+    if (!regex && delim !== '`' && ch === '\n') return i;
+    if (ch === delim) return i + 1;
+    i += 1;
+  }
+  return text.length;
+}
+
+/**
+ * Whether a `/` at `index` opens a regex literal, scanning a whole file rather than a line.
+ *
+ * @param {string} text Whole file text.
+ * @param {number} index Offset of the candidate `/`.
+ * @returns {boolean} Whether to treat it as a regex opener.
+ */
+function opensRegex(text, index) {
+  const before = text.slice(0, index).replace(/\s+$/, '');
+  if (before === '') return true;
+  return /[(,=:[!&|?{};+\-*%~^<>]$/.test(before) || /\breturn$/.test(before);
+}
+
+/**
  * True when `index` falls strictly within one of `spans`.
  *
  * The opening delimiter is treated as outside, so a match that starts at the quote itself -- an

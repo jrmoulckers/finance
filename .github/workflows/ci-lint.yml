@@ -169,6 +169,15 @@ jobs:
       - name: One definition of a markdown fence
         run: npm run markdown:primitives:check
 
+      # statSync reports a Windows junction as a directory and lstatSync does not, so the ordinary
+      # walker descends through a link. This worktree carries three from node_modules/@finance/*
+      # back into tracked source; a cleanup that enumerated through one deleted node_modules plus
+      # 2,825 tracked files. Every individual delete was by name. The walk that produced the names
+      # was not. The exposure is also invisible to PowerShell, which stops at a junction, so it
+      # cannot be found by the tool this repository's agents verify cleanliness with (#4349).
+      - name: A directory test does not follow a link
+        run: npm run walk:safety:check
+
       # `gate:enforcement` answers whether a gate is wired, which is a property of the workflow
       # files and readable. It cannot answer whether the invoked program can fail, which is
       # behavioural: check-gate-enforcement.mjs was itself wired here and had no exit code at all

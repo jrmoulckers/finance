@@ -936,7 +936,9 @@ test('a recorded target the walk cannot reach is reported as unvisited', () => {
   // name that cannot hold a probe. The predicate has to match the thing the walk skips.
   const skipped = [...WALK_SKIP].find((name) => {
     const candidate = path.join(ROOT, name);
-    return fs.existsSync(candidate) && fs.statSync(candidate).isDirectory();
+    // lstat: the probe has to live *in* this directory, and statSync would accept a junction
+    // whose target is elsewhere entirely (#4349).
+    return fs.existsSync(candidate) && fs.lstatSync(candidate).isDirectory();
   });
   assert.ok(skipped, 'PREMISE: at least one excluded directory exists to hide a file behind');
   const rel = `${skipped}/__unvisited_probe_4217__.md`;

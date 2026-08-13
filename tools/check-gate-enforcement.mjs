@@ -197,6 +197,9 @@ export const CLAIMED_GATES = [
   // Wired at ci-lint.yml:123 since long before this census existed, and absent from it until
   // #4347 derived the population from the tree instead of reading the list.
   'i18n:validate-glossary',
+  // statSync reports a junction as a directory; the ordinary walker therefore follows a link.
+  // Wired at ci-lint.yml:179 (#4349).
+  'walk:safety:check',
 ];
 
 /**
