@@ -3,7 +3,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { censusHistory, unpinnedRefs } from './check-workflow-pin-history.mjs';
+import {
+  censusHistory,
+  exposure,
+  humanDuration,
+  unpinnedRefs,
+} from './check-workflow-pin-history.mjs';
 
 const SHA = 'a'.repeat(40);
 
@@ -63,8 +68,23 @@ test('quoted refs are handled', () => {
 });
 
 function fakeGit(log, grepBySha) {
+  // git now emits "<sha> <unix> <short-date>". Stubs written against the older
+  // two-field form stay valid: the epoch is derived from the date they already
+  // state, so no existing case silently changes meaning.
+  const normalized =
+    log === ''
+      ? ''
+      : log
+          .split('\n')
+          .map((line) => {
+            const [sha, ...rest] = line.split(' ');
+            if (rest.length >= 2) return line;
+            const date = rest[0];
+            return `${sha} ${Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000)} ${date}`;
+          })
+          .join('\n');
   return (args) => {
-    if (args[0] === 'log') return log;
+    if (args[0] === 'log') return normalized;
     if (args[0] === 'grep') {
       const sha = args[4];
       if (!(sha in grepBySha)) throw new Error('no match');
@@ -135,4 +155,124 @@ test('an empty history reports zero rather than throwing', () => {
   assert.equal(result.examined, 0);
   assert.equal(result.dirty, 0);
   assert.equal(result.lastDirty, null);
+});
+
+const DAY = 86400;
+const T0 = 1_800_000_000;
+
+test('exposure charges each state until the next newer commit', () => {
+  // newest first: b clean from T0+DAY to now(T0+2*DAY); a dirty for one day
+  const { dirtySeconds, spanSeconds } = exposure(
+    [
+      { at: T0 + DAY, bad: false },
+      { at: T0, bad: true },
+    ],
+    T0 + 2 * DAY,
+  );
+  assert.equal(dirtySeconds, DAY);
+  assert.equal(spanSeconds, 2 * DAY);
+});
+
+test('exposure runs the newest state to now, not to its own timestamp', () => {
+  const { dirtySeconds } = exposure([{ at: T0, bad: true }], T0 + 3 * DAY);
+  assert.equal(dirtySeconds, 3 * DAY, 'an unrepaired head is still accruing');
+});
+
+test('exposure charges nothing when the newest state is clean', () => {
+  const { dirtySeconds, spanSeconds } = exposure(
+    [
+      { at: T0 + DAY, bad: false },
+      { at: T0, bad: false },
+    ],
+    T0 + 2 * DAY,
+  );
+  assert.equal(dirtySeconds, 0);
+  assert.equal(spanSeconds, 2 * DAY);
+});
+
+test('exposure distinguishes many brief lapses from one long one', () => {
+  const briefStates = [
+    { at: T0 + 300, bad: false },
+    { at: T0 + 200, bad: true },
+    { at: T0 + 100, bad: true },
+    { at: T0, bad: true },
+  ];
+  const longStates = [
+    { at: T0 + 300, bad: false },
+    { at: T0, bad: true },
+  ];
+  const brief = exposure(briefStates, T0 + 400);
+  const long = exposure(longStates, T0 + 400);
+
+  assert.equal(brief.dirtySeconds, 300);
+  assert.equal(long.dirtySeconds, 300);
+
+  // Identical duration, different counts. Neither figure alone separates three
+  // short lapses from one sustained one, which is why the report prints both.
+  const briefCount = briefStates.filter((s) => s.bad).length;
+  const longCount = longStates.filter((s) => s.bad).length;
+  assert.equal(briefCount, 3);
+  assert.equal(longCount, 1);
+  assert.notEqual(briefCount, longCount);
+});
+
+test('exposure is zero over an empty history rather than NaN', () => {
+  assert.deepEqual(exposure([], T0), { dirtySeconds: 0, spanSeconds: 0 });
+});
+
+test('exposure never charges negative time for out-of-order timestamps', () => {
+  const { dirtySeconds } = exposure(
+    [
+      { at: T0, bad: true },
+      { at: T0 + DAY, bad: true },
+    ],
+    T0,
+  );
+  assert.ok(dirtySeconds >= 0, 'a clock skew must not subtract exposure');
+});
+
+test('humanDuration reports days and hours', () => {
+  assert.equal(humanDuration(2 * DAY + 3 * 3600), '2d 3h');
+});
+
+test('humanDuration drops the day field under a day', () => {
+  assert.equal(humanDuration(5 * 3600), '5h');
+});
+
+test('humanDuration floors rather than rounds up', () => {
+  assert.equal(humanDuration(3599), '0h', 'never imply an hour that did not elapse');
+});
+
+test('humanDuration handles zero and nonsense without inventing a number', () => {
+  assert.equal(humanDuration(0), '0h');
+  assert.equal(humanDuration(-1), '0h');
+  assert.equal(humanDuration(NaN), '0h');
+});
+
+test('census reports duration alongside the commit count', () => {
+  const git = fakeGit(
+    `aaa ${T0 + 2 * DAY} 2026-01-03\nbbb ${T0 + DAY} 2026-01-02\nccc ${T0} 2026-01-01`,
+    {
+      aaa: `      - uses: actions/checkout@${SHA}`,
+      bbb: '      - uses: actions/stale@v9',
+      ccc: `      - uses: actions/checkout@${SHA}`,
+    },
+  );
+  const result = censusHistory(git, 'origin/main', T0 + 3 * DAY);
+  assert.equal(result.dirty, 1, 'one commit');
+  assert.equal(result.dirtySeconds, DAY, 'held for exactly one day');
+  assert.equal(result.spanSeconds, 3 * DAY);
+});
+
+test('a commit declaring no actions holds a clean state rather than vanishing', () => {
+  // git grep exits non-zero with no matches. Treating that as "skip" would drop
+  // the interval from the span; treating it as clean keeps the partition summing.
+  const git = fakeGit(`aaa ${T0 + DAY} 2026-01-02\nbbb ${T0} 2026-01-01`, {
+    bbb: '      - uses: actions/stale@v9',
+  });
+  const result = censusHistory(git, 'origin/main', T0 + 2 * DAY);
+  assert.equal(result.examined, 2);
+  assert.equal(result.dirty, 1);
+  assert.equal(result.dirtySeconds, DAY, 'the unmatched commit ended the exposure');
+  assert.equal(result.spanSeconds, 2 * DAY);
 });

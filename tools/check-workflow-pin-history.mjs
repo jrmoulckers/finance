@@ -55,13 +55,18 @@ export function unpinnedRefs(text) {
  *
  * @param {(args: string[]) => string} git Runner returning git stdout.
  * @param {string} ref Git ref to walk.
- * @returns {{examined: number, dirty: number, refs: Map<string, string>, lastDirty: object | null, headClean: boolean}}
+ * @param {number} nowSeconds Unix seconds treated as "now" for the open interval at HEAD.
+ * @returns {{examined: number, dirty: number, refs: Map<string, string>, lastDirty: object | null, headClean: boolean, dirtySeconds: number, spanSeconds: number}}
  *   `refs` maps each unpinned `action@ref` to the oldest commit that carried it.
  */
-export function censusHistory(git, ref = 'origin/main') {
+export function censusHistory(
+  git,
+  ref = 'origin/main',
+  nowSeconds = Math.floor(Date.now() / 1000),
+) {
   const listed = git([
     'log',
-    '--format=%H %ad',
+    '--format=%H %at %ad',
     '--date=short',
     ref,
     '--',
@@ -73,15 +78,21 @@ export function censusHistory(git, ref = 'origin/main') {
   let dirty = 0;
   let lastDirty = null;
   let headClean = true;
+  /** @type {{at: number, bad: boolean}[]} */
+  const states = [];
 
-  for (const [sha, date] of commits) {
+  for (const [sha, at, date] of commits) {
     let text;
     try {
       text = git(['grep', '-h', '-E', 'uses:', sha, '--', '.github/workflows']);
     } catch {
-      continue;
+      // git grep exits non-zero when nothing matches, which means this tree
+      // declares no actions at all. That is a clean state, not an absent one --
+      // dropping it here would silently remove its interval from the span.
+      text = '';
     }
     const bad = unpinnedRefs(text);
+    states.push({ at: Number(at), bad: bad.size > 0 });
     if (bad.size === 0) continue;
     dirty += 1;
     if (lastDirty === null) lastDirty = { sha: sha.slice(0, 8), date, refs: [...bad] };
@@ -97,7 +108,48 @@ export function censusHistory(git, ref = 'origin/main') {
     }
   }
 
-  return { examined: commits.length, dirty, refs, lastDirty, headClean };
+  const { dirtySeconds, spanSeconds } = exposure(states, nowSeconds);
+
+  return { examined: commits.length, dirty, refs, lastDirty, headClean, dirtySeconds, spanSeconds };
+}
+
+/**
+ * Convert a reverse-chronological list of branch states into elapsed time.
+ *
+ * A count of non-compliant commits is complete over commits and silent about
+ * duration: seven of them may be seven minutes or four days. Only commits that
+ * touch the workflow directory change the branch's pinning state, so each one's
+ * state holds until the next newer such commit -- and the newest holds until now.
+ *
+ * @param {{at: number, bad: boolean}[]} states Newest first.
+ * @param {number} nowSeconds
+ * @returns {{dirtySeconds: number, spanSeconds: number}}
+ */
+export function exposure(states, nowSeconds) {
+  if (states.length === 0) return { dirtySeconds: 0, spanSeconds: 0 };
+  let dirtySeconds = 0;
+  for (let i = 0; i < states.length; i += 1) {
+    const until = i === 0 ? nowSeconds : states[i - 1].at;
+    const held = Math.max(0, until - states[i].at);
+    if (states[i].bad) dirtySeconds += held;
+  }
+  const spanSeconds = Math.max(0, nowSeconds - states[states.length - 1].at);
+  return { dirtySeconds, spanSeconds };
+}
+
+/**
+ * Render a duration in whole days and hours, so a report never implies a
+ * precision it does not have.
+ *
+ * @param {number} seconds
+ * @returns {string}
+ */
+export function humanDuration(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0h';
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  if (days === 0) return `${hours}h`;
+  return `${days}d ${hours}h`;
 }
 
 function main() {
@@ -105,7 +157,10 @@ function main() {
   const git = (args) =>
     execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 
-  const { examined, dirty, refs, lastDirty, headClean } = censusHistory(git, ref);
+  const { examined, dirty, refs, lastDirty, headClean, dirtySeconds, spanSeconds } = censusHistory(
+    git,
+    ref,
+  );
 
   if (examined === 0) {
     console.log(`No commits touching .github/workflows found on ${ref}.`);
@@ -113,10 +168,14 @@ function main() {
   }
 
   const percent = ((dirty / examined) * 100).toFixed(1);
+  const timePercent = spanSeconds > 0 ? ((dirtySeconds / spanSeconds) * 100).toFixed(1) : '0.0';
   console.log(`Workflow pin history for ${ref}:`);
   console.log(`  commits examined            ${examined}`);
   console.log(`  commits with >=1 unpinned   ${dirty} (${percent}%)`);
   console.log(`  distinct unpinned refs      ${refs.size}`);
+  console.log(
+    `  time in a non-compliant state ${humanDuration(dirtySeconds)} of ${humanDuration(spanSeconds)} (${timePercent}%)`,
+  );
   console.log(`  working tree at ${ref}      ${headClean ? 'clean' : 'UNPINNED REFS PRESENT'}`);
   if (lastDirty) {
     console.log(`  most recent occurrence      ${lastDirty.sha} ${lastDirty.date}`);
@@ -126,6 +185,11 @@ function main() {
   console.log('This is a history report, not a gate. A clean working tree means the');
   console.log('violations were repaired, not that they never happened; the pinning gate');
   console.log('cannot distinguish those two and does not claim to.');
+  console.log('');
+  console.log('A count of commits is complete over commits and silent about duration --');
+  console.log('the same seven lapses may be seven minutes or four days of exposure. The');
+  console.log('time figures close that gap, and are measured against wall-clock now, so');
+  console.log('the final interval grows until the next commit touching this directory.');
 }
 
 if (process.argv[1] && process.argv[1].endsWith('check-workflow-pin-history.mjs')) {

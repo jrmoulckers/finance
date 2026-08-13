@@ -7803,6 +7803,53 @@ assertion that had no reason to exist except that a repository which fixed the p
 stop being told it has it. A test suite where every case expects the same verdict cannot
 distinguish a correct implementation from one that always returns that verdict.
 
+## A count of commits is complete over commits and silent about duration
+
+The pin-history census reported that 89 of 209 commits touching `.github/workflows`
+carried at least one unpinned action ref. That figure is complete over commits and says
+nothing about how long the branch actually sat in a non-compliant state. The same 89
+lapses could be 89 minutes or most of the repository's life, and no percentage of commits
+can tell those apart.
+
+Only commits touching the workflow directory change the branch's pinning state, so each
+one's state holds until the next newer such commit, and the newest holds until now. That
+makes duration computable from the same walk:
+
+```
+commits examined              209
+commits with >=1 unpinned     89 (42.6%)
+time in a non-compliant state 62d 19h of 160d 4h (39.2%)
+```
+
+The two figures nearly agree, which means the lapses were close to average length. That is
+worth stating precisely because it was **not** predictable: had a single long-lived lapse
+dominated, the same 42.6% would have sat beside a time figure two or three times larger.
+The count was a good proxy here, and the only way to learn that was to stop using it as one.
+
+Three decisions in `exposure()` were forced by cases the count never had to answer:
+
+- **The newest state runs to wall-clock now, not to its own timestamp.** An unrepaired HEAD
+  is still accruing exposure, and a report that ended the interval at the last commit would
+  show a currently-broken branch as having stopped being broken the moment nobody touched it.
+  The report says so, because that final interval grows between runs with no diff.
+- **A commit whose tree declares no actions holds a _clean_ state rather than vanishing.**
+  `git grep` exits non-zero when nothing matches, and the previous code treated that as a
+  commit to skip. Skipping it silently removed its interval from the span — the partition
+  stopped summing, in the one direction where the total is the denominator.
+- **Elapsed time is floored at zero per interval.** Git timestamps are author dates and can
+  run backwards; without the floor, one skewed commit subtracts exposure and the total
+  understates.
+
+The stub for the git runner was widened rather than rewritten. It now derives the new epoch
+field from the short date the existing cases already stated, so none of the sixteen prior
+tests silently changed meaning while the format changed underneath them.
+
+One test in the first draft asserted `notEqual(3, 1)` — two literals compared to each other,
+written directly beneath a comment explaining that counts and durations measure different
+things. It would have passed against any implementation, including one that returned a
+constant. It now derives both counts from the same fixtures it measures the durations from,
+so the assertion fails if the fixtures stop illustrating the claim.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
