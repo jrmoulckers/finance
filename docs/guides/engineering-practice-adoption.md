@@ -10059,6 +10059,53 @@ orphaned directories** had accumulated, while the tool reported clean removal ea
 population of directories created is not the population of dirnames written -- a population error
 of the same shape as the `tools\*.mjs` glob, in the cleanup rather than the census.
 
+## Do not reimplement a format the tool that owns it will answer for you
+
+`generatedAllowances()` parsed `.gitignore` to decide which allowlist keys name an untracked path.
+That is a reimplementation of a format with negation, globs, anchoring, and per-directory files,
+and it was wrong in two ways at once.
+
+`.gitignore:85` is `!tools/windows/dev-cert/.gitkeep` -- a **re-inclusion**. The parser dropped
+comments and glob lines, so the `!` line entered the set of declared exclusions with its sign
+inverted. No allowlist key could equal the whole string, so it never produced a wrong verdict.
+**Unexercised rather than absent** is the harder kind to find: nothing failed, nothing looked
+wrong, and no test could have caught it because the defect had no reachable consequence.
+
+Separately, every line containing `*` was discarded, so a key excluded only by a pattern such as
+`*.swp` was reported tracked. That one is a live functional gap, not a latent one.
+
+The fix is `git check-ignore --stdin`. It answers the same question with the semantics git
+actually uses, and needs no parser. This is the previous round's lesson applied one level up: _if
+the property is "what does this program do," run the program_ -- where the program is `git`, and
+the property is its own exclusion rules.
+
+A status other than 0 or 1 is treated as no verdict. Outside a repository git exits 128, and
+returning "nothing is excluded" there would assert every key is tracked, which the function has no
+basis to claim.
+
+### The name asserted a criterion the mechanism does not test
+
+The docstring described `.gitignore` as "the tree's own record of what it generates". Of finance's
+48 literal entries: **9** build output, **6** secrets, **4** editor or OS files, **29**
+unclassified. Skipping all of them is the right action -- an untracked file's presence depends on
+the machine whatever the reason -- but only nine are generated, and the reason is printed to a
+reader. Renamed to `untrackedAllowances`.
+
+Second time in three rounds that a claim was broader than the matcher inside the same file, after
+`bounds:check`. The pattern is specific enough to name: **a function's docstring tends to describe
+the motivating case, while the code implements the mechanism, and nothing compares them.**
+
+### The exclusion a declared record cannot contain
+
+Git excludes `.git` unconditionally rather than through an ignore rule, so `check-ignore` reports
+it as tracked. Nothing here is wrong today, because allowlist keys name source files and no key
+can be `.git`.
+
+It is recorded because the shape generalises: **a record of declared exclusions cannot contain the
+exclusion nobody ever had to declare.** Any verdict derived from such a record inherits a blind
+spot located exactly at its most certain content -- the entry that is true in every tree, every
+checkout, and every build state is the one that never had to be written down.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
