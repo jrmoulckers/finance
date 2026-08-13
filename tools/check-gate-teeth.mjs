@@ -45,9 +45,11 @@
  */
 
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmdirSync,
   unlinkSync,
   writeFileSync,
@@ -73,9 +75,13 @@ const LIB = ['tools/lib/markdown.mjs', 'tools/lib/source.mjs'];
  *
  * `files` is written into a throwaway directory alongside a copy of the gate. `expect` is a
  * substring the report must contain; without it a fixture that failed to scaffold would count as
- * a pass. Every fixture here runs with no git repository and no `node_modules`, verified
- * deterministic across repeated passes -- a fixture that needs either is a fixture whose result
- * depends on the machine.
+ * a pass. `repo: true` initialises a git repository and stages the files, for gates that
+ * enumerate their population through git rather than the filesystem.
+ *
+ * No fixture here uses `node_modules`. An earlier round linked one in and `git add -A` ingested
+ * it, changing the tracked population between runs; the cleanup that followed traversed the link
+ * and deleted through it. Fixtures stay dependency-free so that both the result and the removal
+ * are bounded by what this file wrote.
  */
 export const PROVEN = {
   'tool:imports:check': {
@@ -110,6 +116,28 @@ export const PROVEN = {
     },
     expect: 'Prefetch Gradle distribution',
   },
+  'encoding:check': {
+    script: 'tools/check-text-encoding.mjs',
+    repo: true,
+    files: { 'lost.txt': 'hi\uFFFD\n' },
+    expect: 'U+FFFD replacement character',
+  },
+  'docs:links:check': {
+    script: 'tools/check-doc-links.mjs',
+    repo: true,
+    files: { 'docs/a.md': '# A\n\nSee [gone](./nowhere-at-all.md).\n' },
+    expect: './nowhere-at-all.md',
+  },
+  'gate:enforcement': {
+    script: 'tools/check-gate-enforcement.mjs',
+    repo: true,
+    files: {
+      'package.json': '{"name":"fixture","scripts":{"bounds:check":"node tools/x.mjs"}}\n',
+      '.github/workflows/ci.yml':
+        'name: CI\non: [push]\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n',
+    },
+    expect: 'reached by no workflow',
+  },
 };
 
 /**
@@ -118,42 +146,50 @@ export const PROVEN = {
  * These are open, not excused. The criterion is what a reader checks to decide whether the entry
  * still belongs; none of them is "nobody has written it yet," which would be a state and would
  * silently stop being true.
+ *
+ * `tested` records whether the criterion was executed or reasoned from reading the gate. The
+ * distinction is here because the first version of this table reasoned all twelve and three were
+ * wrong: `encoding:check`, `docs:links:check`, and `gate:enforcement` each named a git repository
+ * as the obstacle, and a fixture can be one (#4343). A criterion that has never been run is a
+ * claim about behaviour with no execution behind it, which is the defect this whole file exists
+ * to catch -- so an untested criterion says so rather than reading like a measurement.
  */
 export const UNPROVEN = {
   'eng:citations': {
+    tested: false,
     criterion: 'scans the whole repository, so a fixture large enough to trigger it is the tree',
   },
   'eng:vendor:check': {
+    tested: false,
     criterion: 'compares against a vendored upstream tree, which a fixture would have to vendor',
   },
   'ai:manifest:check': {
+    tested: false,
     criterion: 'requires a signed manifest whose stamp a fixture would have to forge',
   },
-  'encoding:check': {
-    criterion: 'enumerates tracked files via git, so the fixture needs a repository and an index',
-  },
   'workflow:security:check': {
+    tested: false,
     criterion: 'imports js-yaml, so the fixture depends on an installed node_modules',
   },
   'upstream:refs:check': {
+    tested: false,
     criterion: 'resolves references against sibling repositories that a fixture cannot supply',
   },
   'citations:enumerations:check': {
+    tested: false,
     criterion: 'already executed with a non-zero assertion by check-citation-enumerations.test.mjs',
   },
   'node:version:check': {
+    tested: false,
     criterion: 'imports semver, so the fixture depends on an installed node_modules',
   },
-  'docs:links:check': {
-    criterion: 'enumerates tracked files via git, so the fixture needs a repository and an index',
-  },
   'test:independence:check': {
-    criterion: 'pairs tools with tests via git-tracked paths, so the fixture needs an index',
-  },
-  'gate:enforcement': {
-    criterion: 'reads package.json scripts and workflow files together, so its fixture is a repo',
+    tested: true,
+    criterion:
+      'a git-backed fixture pairing a tool and test on an identical object literal did not trigger it, so the shape it detects is narrower than a shared literal',
   },
   'gate:teeth': {
+    tested: false,
     criterion:
       'its fixture would need a copy of every gate it proves, so the fixture is the repository',
   },
@@ -185,18 +221,61 @@ function writeFixtureFile(root, rel, content) {
  * @param {string} root Fixture root.
  * @returns {void}
  */
+/**
+ * Every file under a directory, without following links.
+ *
+ * `git init` creates several hundred entries this file did not write, so removal by remembered
+ * name is not enough for a repo-backed fixture. Recursion stops at a symlink or junction: an
+ * earlier round enumerated through one and deleted the files it pointed at (#4340).
+ *
+ * @param {string} dir Directory to walk.
+ * @returns {{files: string[], dirs: string[]}} Absolute paths, directories deepest last.
+ */
+function walkFixture(dir) {
+  const files = [];
+  const dirs = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) {
+      files.push(full);
+      continue;
+    }
+    if (entry.isDirectory()) {
+      dirs.push(full);
+      const nested = walkFixture(full);
+      files.push(...nested.files);
+      dirs.push(...nested.dirs);
+      continue;
+    }
+    files.push(full);
+  }
+  return { files, dirs };
+}
+
 function removeFixture(files, root) {
-  for (const file of files) {
+  let all = files;
+  let dirs = [...new Set(files.map((file) => path.dirname(file)))];
+  try {
+    const walked = walkFixture(root);
+    all = [...new Set([...files, ...walked.files])];
+    dirs = [...new Set([...dirs, ...walked.dirs])];
+  } catch {
+    /* root already gone */
+  }
+  for (const file of all) {
     try {
       unlinkSync(file);
     } catch {
-      /* already gone */
+      try {
+        // git writes its object and pack files read-only.
+        chmodSync(file, 0o666);
+        unlinkSync(file);
+      } catch {
+        /* already gone */
+      }
     }
   }
-  const dirs = [...new Set(files.map((file) => path.dirname(file)))].sort(
-    (a, b) => b.length - a.length,
-  );
-  for (const dir of [...dirs, root]) {
+  for (const dir of [...dirs.sort((a, b) => b.length - a.length), root]) {
     try {
       rmdirSync(dir);
     } catch {
@@ -226,6 +305,22 @@ export function proveTeeth(name, spec, repoRoot = REPO_ROOT) {
     }
     for (const [rel, content] of Object.entries(spec.files)) {
       written.push(writeFixtureFile(root, rel, content));
+    }
+    if (spec.repo) {
+      const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+      git('init', '-q');
+      git('config', 'user.email', 'fixture@example.invalid');
+      git('config', 'user.name', 'fixture');
+      const staged = git('add', '-A');
+      if (staged.status !== 0) {
+        return {
+          name,
+          status: staged.status,
+          named: false,
+          ok: false,
+          first: 'fixture could not stage files, so the gate never ran',
+        };
+      }
     }
     const result = spawnSync(process.execPath, [path.join(root, spec.script)], {
       cwd: root,
