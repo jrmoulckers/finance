@@ -9923,6 +9923,72 @@ The sibling's probe skipped hidden directories. Mine treats `.git` as absent bec
 a worktree. Two independent instruments, the same wrong answer about the same entry, from unrelated
 causes -- and in both cases in the direction that made the finding look stronger.
 
+## Wired is not the same as able to fail
+
+`check-gate-enforcement.mjs` proves every declared gate is a real workflow step. It cannot prove
+any of them can fail. A gate that is wired, resolves, and returns zero on every input is
+indistinguishable from a working one by everything the repo previously ran. `gate:teeth`
+(`tools/check-gate-teeth.mjs`) closes that: it executes each proven gate against a minimal
+violating fixture and requires **both** a non-zero exit **and** a report containing a declared
+substring naming the violation.
+
+The second requirement is the load-bearing one. Four fixtures exited non-zero for reasons that
+had nothing to do with the defect they contained -- no git repository, no `package.json`, and one
+that tripped the scan-root assertion added in an earlier change. An exit code is a verdict on
+whichever question the program actually asked; only the report says which question that was.
+
+Four gates are proven (`tool:imports:check`, `markdown:primitives:check`, `bounds:check`,
+`gradle:prefetch:check`). Twelve are recorded as unproven, each with the criterion that blocks it
+-- most need a dependency (`js-yaml`, `semver`) or a whole-tree population a fixture cannot
+supply. The table is asserted against the declared-gate list, so a gate added without a decision
+fails the check rather than silently defaulting to unproven.
+
+### Detectors that were wrong, and how each was caught
+
+Five predictions about this repository's own tools were refuted, all by execution:
+
+1. A `tools\*.mjs` glob missed 2 of 15 gates -- `ai:manifest:check` runs a `.js` file and
+   `eng:vendor:check` lives in `scripts/`. Enumerate from the declared list, never a glob.
+2. A `process.exit(1)` matcher missed `process.exit(result.ok ? 0 : 1)` in
+   `check-assertion-bounds.mjs` -- a ternary is a third syntactic form of the same semantics.
+3. A predicted Windows path defect in `check-gradle-prefetch.mjs` (``new URL(`file://${argv[1]}`)``)
+   does not exist; WHATWG `URL` normalises the drive letter.
+4. Accepting any non-zero exit produced false teeth, as above.
+5. A comment in `check-tool-imports.test.mjs` claimed the new literal guard ignores comments. It
+   does not: `literalSpans` ends a line at `//`, so line comments are excluded -- but block and
+   JSDoc comments are still read as code, because it tracks nothing across lines. The test now
+   pins the measured behaviour in both directions.
+
+The common shape: a regular expression answers _how is this program written_, which correlates
+with _what does this program do_ without being it. If the property is behavioural, run the
+program.
+
+### A gate can be correct and narrower than its own header
+
+`bounds:check` requires every invented numeric bound to name its source. Its header claimed the
+population was "precisely the set of invented numbers". The census extracts only
+`numericInequalities` and `reversedComparisons`, so `assert.equal(census.files, 68)` -- an
+invented number over a real-tree population -- is out of scope. Measured: **265
+equality-against-literal sites across 16 test files**, none in non-test tool files.
+
+Widening was rejected rather than deferred. Most of those sites are sound: a count asserted
+against a fixture the test just built is sourced by construction, and putting them under an
+annotation requirement would add noise proportional to the sound majority to reach a residue that
+is small and not separable by any available signal. The header was narrowed to "in a comparison"
+and the excluded class recorded in the file, so the gap is stated where a reader meets the claim.
+
+This is the failure mode that survives every check: wired, toothed, correct, and about less than
+its name implies. Nothing detects it except reading what the matcher compares.
+
+### An over-report found by its own fixture
+
+The `gate:teeth` fixture content tripped `check-tool-imports.mjs`, which counts `import` and
+`require` keywords appearing inside string literals -- violating its own stated contract,
+"under-decide, never over-report". Fixed with a literal-span guard keyed on the **keyword**
+position, not the specifier: a specifier is always inside a literal, so it cannot distinguish the
+two cases, whereas the keyword can. Reference count moved 164 to 169. The same guard corrected a
+pre-existing over-report at `tools/ai-manifest.js:39`, a `require` inside a line comment.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

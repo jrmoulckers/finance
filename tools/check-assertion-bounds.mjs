@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Every numeric bound must name where its number came from (#4296).
+ * Every numeric bound in a comparison must name where its number came from (#4296).
  *
  * A sibling session measured `jrmoulckers/engineering`'s bounded assertions and found the good
  * ones did not invent their constants -- they took them from an artifact that had already
@@ -23,9 +23,18 @@
  *
  * A bound compared against an *expression* never enters the population, because that is the fixed
  * form -- the constant then moves with its source. So the population is precisely the set of
- * invented numbers, and the annotation forces the author to record which artifact they looked for
- * and failed to find. Per the sibling's formulation: if nothing in the repo commits to a number,
- * that absence is itself the finding, and an inequality papers over it.
+ * invented numbers *in comparisons*, and the annotation forces the author to record which artifact
+ * they looked for and failed to find. Per the sibling's formulation: if nothing in the repo commits
+ * to a number, that absence is itself the finding, and an inequality papers over it.
+ *
+ * Out of scope, stated because the sentence above used to claim the population was every invented
+ * number and a reader would reasonably have believed it (#4340): equality against a bare numeric
+ * literal. `assert.equal(census.files, 68)` invents a number over a real-tree population and is not
+ * detected -- there are 265 such sites across 16 test files. Most are sound, because a count taken
+ * from a fixture the test just built is sourced by construction; the residue that rots is equality
+ * against a population the test did not create. Widening the matcher to all 265 would put the sound
+ * majority under an annotation requirement, so the narrower class is left open rather than papered
+ * over with a baseline.
  *
  * Usage: node tools/check-assertion-bounds.mjs
  */
