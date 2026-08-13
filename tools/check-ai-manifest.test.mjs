@@ -59,7 +59,6 @@ const {
   citationCorpus,
   validateCitationCoverage,
   BACKBONE_CLAIM,
-  CITATION_TEXT,
   MAX_CITATION_BYTES,
   exemptionMatches,
   sourceDisclosureLines,
@@ -1283,18 +1282,26 @@ test('the scanned population is derived from the surface, not narrowed to a samp
   // The one-line fix -- widen the pattern -- leaves the corpus free to shrink to anything
   // non-empty, which is the guard shape that is indistinguishable from no guard. So the
   // population is cross-checked against an INDEPENDENT enumeration: git's index, not the walk.
+  //
+  // "Independent" now means it shares NO NARROWING with the walk, not merely a different
+  // directory source. This filter used to apply the walk's own CITATION_TEXT, so narrowing that
+  // constant shrank both sides together and this assertion still passed: `/\.mdx?$/` dropped 8
+  // real claimants, left 64 -- above the floor -- and the suite stayed green (#4300). Only the
+  // claim predicate is shared now, because that predicate IS the rule: a claimant is a file that
+  // mentions the backbone. Everything else here is a property of the bytes.
   const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
     .split('\n')
     .filter(Boolean);
   const expected = tracked.filter((relPath) => {
-    if (!CITATION_TEXT.test(relPath) && relPath !== '.gitattributes') return false;
     // Same single-descriptor discipline as the production walk: stat-then-read is a TOCTOU race.
     let fd;
     try {
       fd = fs.openSync(path.join(ROOT, relPath), 'r');
       const stat = fs.fstatSync(fd);
       if (!stat.isFile() || stat.size > MAX_CITATION_BYTES) return false;
-      return BACKBONE_CLAIM.test(fs.readFileSync(fd, 'utf8'));
+      const buf = fs.readFileSync(fd);
+      if (buf.includes(0)) return false;
+      return BACKBONE_CLAIM.test(buf.toString('utf8'));
     } catch {
       return false;
     } finally {
@@ -1307,6 +1314,86 @@ test('the scanned population is derived from the surface, not narrowed to a samp
   assert.ok(expected.length > 5, 'PREMISE: git sees a non-trivial claimant population');
   for (const relPath of expected) {
     assert.ok(scanned.has(relPath), `citationCorpus omits a claimant file: ${relPath}`);
+  }
+  // The extension-less claimant the old allowlist reached only by a hand-cased exception. Named
+  // because it is the one file proving the gate is not an extension list; if it stops making a
+  // backbone claim this premise fails rather than the coverage assertion silently weakening.
+  assert.ok(
+    expected.includes('.prettierignore'),
+    'PREMISE: an extension-less claimant exists to prove the gate is not an allowlist',
+  );
+});
+
+test('the gate excludes bytes it cannot read as prose, and only those (#4300)', () => {
+  // Dropping the binary check changed no result: nothing binary in this tree happens to carry a
+  // backbone claim, so that guard was LATENT -- dead by an impoverished corpus, not by an
+  // invariant (.github#880). Pinning "no blob makes a claim" would freeze an accident, so the
+  // corpus is enriched instead: three probes with the SAME coordinate and the SAME extension,
+  // differing only in the property under test. The text probe is the control that makes the two
+  // absences mean something rather than reading as a bare zero.
+  //
+  // The oversize arm is here for a different reason. Dropping the size check ALSO changed no
+  // result -- but it survived this enrichment too, with a real 400001-byte claimant present. That
+  // is the diagnostic: a latent guard dies once the corpus can reach it, an equivalent one cannot.
+  // The size cap had two implementations and the fstat gate in citationCorpus always decided
+  // first, so the second could never fire. It was removed; this arm now mutation-covers the
+  // remaining owner.
+  const coordinate = at('sync/lib/copier.mjs', 410);
+  const text = path.join(ROOT, 'PROBE-4300-text.md');
+  const binary = path.join(ROOT, 'PROBE-4300-binary.md');
+  const oversize = path.join(ROOT, 'PROBE-4300-oversize.md');
+  fs.writeFileSync(text, `see ${coordinate}\n`, { flag: 'wx' });
+  fs.writeFileSync(
+    binary,
+    Buffer.concat([Buffer.from(`see ${coordinate}\n`), Buffer.from([0]), Buffer.from('tail\n')]),
+    { flag: 'wx' },
+  );
+  fs.writeFileSync(oversize, `see ${coordinate}\n`.padEnd(MAX_CITATION_BYTES + 1, 'x'), {
+    flag: 'wx',
+  });
+  try {
+    let out;
+    try {
+      out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
+    } catch (error) {
+      out = String(error.stdout || '');
+    }
+    assert.match(
+      out,
+      /PROBE-4300-text\.md: cites a file this repository does not own/,
+      'CONTROL: the same coordinate in readable prose must be reported',
+    );
+    assert.ok(!out.includes('PROBE-4300-binary.md'), 'a NUL-bearing blob is not prose');
+    assert.ok(!out.includes('PROBE-4300-oversize.md'), 'a file over the cap is not scanned');
+  } finally {
+    fs.unlinkSync(text);
+    fs.unlinkSync(binary);
+    fs.unlinkSync(oversize);
+  }
+});
+
+test('a claimant is scanned for what it contains, not for its extension (#4300)', () => {
+  // Behavioural arm. The enumeration above proves the corpus covers git's claimants; this proves
+  // the gate itself admits a file type the old allowlist excluded, by driving the whole tool.
+  // `.kt` is delivered into this repo by the backbone and was never in CITATION_TEXT.
+  const probe = path.join(ROOT, 'PROBE-4300.kt');
+  fs.writeFileSync(probe, `// engine detail at ${at('sync/lib/copier.mjs', 410)}\n`, {
+    flag: 'wx',
+  });
+  try {
+    let out;
+    try {
+      out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
+    } catch (error) {
+      out = String(error.stdout || '');
+    }
+    assert.match(
+      out,
+      /\[DRIFT\] PROBE-4300\.kt: cites a file this repository does not own/,
+      'a claimant with an excluded extension must still reach the report',
+    );
+  } finally {
+    fs.unlinkSync(probe);
   }
 });
 
