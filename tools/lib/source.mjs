@@ -142,9 +142,15 @@ function looksLikeRegexStart(text, index) {
  * prose about the idiom (#4349).
  *
  * @param {string} source Whole file text.
+ * @param {{comments?: boolean}} [options] `comments: false` masks only literals and regex bodies,
+ *   leaving comments visible. Callers asking "is this token a call site?" want comments masked;
+ *   callers reading an annotation the author wrote *in* a comment must not, or the annotation
+ *   disappears along with the prose. Both questions are legitimate and they are not the same
+ *   question, which is the distinction this file already draws between the two span functions.
  * @returns {[number, number][]} Ascending, non-overlapping offsets.
  */
-export function maskedSpans(source) {
+export function maskedSpans(source, options = {}) {
+  const { comments = true } = options;
   const text = String(source);
   const spans = [];
   let i = 0;
@@ -154,14 +160,14 @@ export function maskedSpans(source) {
     if (ch === '/' && next === '*') {
       const close = text.indexOf('*/', i + 2);
       const end = close === -1 ? text.length : close + 2;
-      spans.push([i, end]);
+      if (comments) spans.push([i, end]);
       i = end;
       continue;
     }
     if (ch === '/' && next === '/') {
       let end = text.indexOf('\n', i);
       if (end === -1) end = text.length;
-      spans.push([i, end]);
+      if (comments) spans.push([i, end]);
       i = end;
       continue;
     }
@@ -239,4 +245,31 @@ function opensRegex(text, index) {
  */
 export function insideLiteral(spans, index) {
   return spans.some(([start, end]) => index > start && index < end);
+}
+
+/**
+ * The source with masked spans blanked, preserving every offset and line break.
+ *
+ * Line-wise callers get whole-file correctness without changing shape: split the result and the
+ * line numbers still line up with the original, so a report can quote the untouched line while the
+ * detection runs against the masked one.
+ *
+ * The line-wise alternative is what this replaces. `stripLiterals` sees one line at a time, so a
+ * marker sitting inside a multi-line template literal is on a line with no quote on it and survives
+ * untouched -- which let a file excuse a real bound with text it never wrote as an annotation
+ * (#4353).
+ *
+ * @param {string} source Whole file text.
+ * @param {{comments?: boolean}} [options] Passed to {@link maskedSpans}.
+ * @returns {string} Same length as the input.
+ */
+export function maskSource(source, options = {}) {
+  const text = String(source);
+  const chars = [...text];
+  for (const [start, end] of maskedSpans(text, options)) {
+    for (let i = start; i < end && i < chars.length; i += 1) {
+      if (chars[i] !== '\n') chars[i] = ' ';
+    }
+  }
+  return chars.join('');
 }

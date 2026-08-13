@@ -10306,6 +10306,65 @@ added, and recorded only in a transcript. **A hand-verified property is a sessio
 decays, and nothing re-derives it.** Both defects above were introduced after the hand verification
 and neither was noticed, because nothing was still asking.
 
+## A masking pair: the first defect decides whether the second is observable
+
+An upstream session reported two defects in one checker and, after a two-arm fixture, found they
+were one ordered mechanism rather than two observations: the earlier one consumes the file, so
+the later one is not merely unfixed but _unmeasurable in exactly the population where it would
+matter_. That class reproduces in finance, in a gate this repository wrote itself.
+
+`bounds:check` requires every numeric bound in a test to be either derived or annotated with an
+`unsourced-bound:` marker. `markerReason` looked for the marker with the **line-wise**
+`stripLiterals`, so a line inside a multi-line template literal carries no quote, nothing is
+stripped, and text the author never wrote as an annotation is accepted as one.
+
+Two arms, identical invented bound `assert.ok(total() > 4173)`:
+
+| arm | marker                                   | exit | report                                 |
+| --- | ---------------------------------------- | ---- | -------------------------------------- |
+| A   | none                                     | 1    | names `armB.test.mjs:5 >4173`          |
+| B   | inside a template literal, 3 lines above | 0    | "Every bound is annotated or derived." |
+
+This is a **false negative** -- the dangerous direction. A false positive is noise a human
+resolves; a false negative is a green build that has excused the thing the gate exists to catch.
+
+The fix is whole-file masking: `censusFile` now detects against
+`maskSource(source, { comments: false })` rather than the raw lines, and reports text from the
+original so line numbers still point where a reader expects. `maskSource` blanks masked spans to
+spaces and preserves every newline, so a line-wise caller gets whole-file correctness without
+changing shape.
+
+### Why comments stay visible here, and only here
+
+`maskedSpans` masks comments by default, which is right for a caller asking _"is this token a
+call site?"_. It is wrong for a caller reading **an annotation the author deliberately wrote in a
+comment** -- masking would erase every annotation and turn the false negative into a total
+failure. Hence a `{ comments }` option on the one primitive rather than a second implementation,
+which `markdown:primitives:check` would flag as duplication in any case. Two callers can want
+opposite answers from the same primitive; that is a parameter, not a fork.
+
+### Direction, measured across the other call sites
+
+Seven call sites use the line-wise primitives (`check-assertion-bounds.mjs:105,125,155,217`,
+`check-citation-enumerations.mjs:185`, `check-markdown-primitives.mjs:181`,
+`check-tool-imports.mjs:114`). Only the marker one is a false negative; the rest over-count and
+so fail loudly. Only the marker path was changed. **Sharing a defective primitive does not mean
+sharing a defect of equal severity -- the direction depends on what the caller does with the
+answer**, and a blanket migration would have been a larger diff for no safety gain.
+
+### Two corrections owed
+
+- The first probe reported that `maskedSpans` lacks template-literal support. It does not.
+  PowerShell's backtick is an escape character and silently ate the template delimiters, so the
+  probe measured a different string than the one written. `maskedSpans` was correct all along;
+  the sole cause was `markerReason`'s line-wise call. **A harness that transforms its own input
+  produces a root cause about a program that was never run.**
+- The upstream defect itself -- a pragma tested against raw text, so a pragma inside a fence or a
+  literal excuses the file -- exists in finance **byte-identically**, in the vendored
+  `config/engineering/citations/check-citations.mjs`. It has **zero reach**: `citations-check:
+ignore-file` occurs 0 times in this repository. The vendored file must not diverge, so this is
+  an upstream report rather than a local patch -- an instance of _reach is not delta_.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
