@@ -9249,6 +9249,76 @@ notice on sight.
 
 Cites `ENG-TEST-002`, `ENG-TEST-004`.
 
+## Being importable is not being imported
+
+`markFences` -- the guard that stops a markdown scanner from reading a fenced code block as prose
+-- has lived in `tools/check-doc-links.mjs` for some time. It is exported. It is tested. Measured
+this turn, it had **zero external importers**.
+
+Two other scanners in the same tree did the job themselves:
+
+- `tools/check-upstream-refs.mjs` carried an independent inline reimplementation, with a comment
+  recording that it was written _after_ the check failed on the prose documenting the check.
+- `tools/check-citation-enumerations.mjs`, a **required gate**, had no guard at all and
+  false-accused a fenced illustration of the very violation it forbids. Demonstrated, not inferred.
+
+So the shared primitive already existed and the duplication happened anyway. That is a worse state
+than having no shared version, because the export makes the problem look solved to anyone
+grepping for one. **A shared primitive is the one that is used, not the one that could be** -- and
+the property to check is the importer count, which nothing was checking.
+
+The general remedy people reach for is "write a reusable extractor with the guard inside." Here the
+extractor existed and was reusable and was not reused, so writing one is not the remedy; being
+imported is. Extraction is a precondition for sharing, not sharing.
+
+## Count what the exclusion removed, not the excluded population
+
+Making the gate fence-aware adds an exclusion, and an exclusion that reports nothing is how a
+census silently changes its own denominator. The obvious number to print is _how many lines are
+fenced_. That number is nearly useless: it says how large the blind spot is, not whether the blind
+spot is hiding anything.
+
+What is printed instead is `fencedSuppressions()` -- the hits that **would have been reported but
+for the fence**. Measured today: **0**. A measured negative, recorded plainly: the guard removes
+nothing from the current verdict and exists to prevent a future false accusation. If it ever
+prints non-zero, the exclusion has started changing the answer and can be looked at.
+
+The two populations -- included and excluded -- are decided by the **same** predicate,
+`enumerationOnLine`. Two copies of a detector, one per branch, is exactly how a filter and its
+census come to disagree about what they were counting.
+
+Fence semantics are markdown's, so the guard is applied per-file and only to `.md`. A triple
+backtick in a `.mjs` file is inside a comment, not a delimiter; applying markdown fencing to source
+would blind the check to half a file at the first docstring that draws a box.
+
+## An unasserted report parameter, written minutes after measuring the same defect
+
+Adding a fourth `fenced` argument to `violationLines`/`cleanLine` left nine existing call sites
+passing the old arity. Both report paths then read `undefined markdown line(s) skipped inside
+fenced blocks`, and the full 66-test suite stayed green -- because no test asserted the count
+varied with its argument.
+
+This was written in the same session that had just cross-tabulated wiring against assertion across
+fifteen tools. Naming a defect class is not a control against it. The fix was to update the call
+sites _and_ assert that the printed count moves when the argument does.
+
+## A test in a subdirectory ran nowhere
+
+`run-tool-tests.mjs` discovered suites with a non-recursive `readdirSync`, so the new
+`tools/lib/markdown.test.mjs` would have been green, tracked, and reached by nothing -- the
+"reached" axis again, self-inflicted.
+
+Measured **before** changing discovery: **0** subdirectory test files existed. That makes recursion
+inert on today's tree, which is what makes it verifiable rather than merely plausible -- the
+discovered-file count had to be unchanged by the edit, and was (16 before, 16 after). It is now
+asserted twice: against a `withFileTypes` fake, and against the real tree, which must contain at
+least one nested suite or the recursion is untested against real files.
+
+Note the fake had to change too. It returned bare strings; discovery now reads `withFileTypes`, so
+a fake returning strings would have been testing a different function than the one that ships.
+
+Cites `ENG-TEST-002`, `ENG-TEST-004`, `ENG-ARCH-003`.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

@@ -78,18 +78,35 @@ export function leakLines(files, phase) {
 }
 
 /**
- * List every tool test file.
+ * List every tool test file, at any depth.
+ *
+ * Discovery was `readdirSync` on the top level only, so a test placed in a `tools/` subdirectory
+ * would run nowhere while looking exactly like a test that runs. Measured before changing it:
+ * **0** subdirectory test files existed, so recursion is inert on today's tree and the suite count
+ * must be unchanged by this edit -- which is what makes the change verifiable rather than merely
+ * plausible. The hazard it removes is prospective: the first shared module under `tools/lib/`
+ * arrives with this PR.
+ *
+ * `withFileTypes` rather than a stat per entry, and directories are walked in sorted order so the
+ * whole listing stays deterministic and therefore diffable.
  *
  * @param {string} [dir] Directory to scan.
  * @param {{readdirSync: Function}} [fsImpl] Injectable fs for tests.
- * @returns {string[]} Paths, sorted.
+ * @returns {string[]} Paths, sorted, depth-first.
  */
 export function testFiles(dir = TOOLS_DIR, fsImpl = fs) {
-  return fsImpl
-    .readdirSync(dir)
-    .filter((f) => f.endsWith('.test.mjs'))
-    .sort()
-    .map((f) => path.join(dir, f));
+  const entries = fsImpl.readdirSync(dir, { withFileTypes: true });
+  const found = [];
+  for (const entry of [...entries].sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      found.push(...testFiles(full, fsImpl));
+    } else if (entry.name.endsWith('.test.mjs')) {
+      found.push(full);
+    }
+  }
+  return found;
 }
 
 /**

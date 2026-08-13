@@ -22,8 +22,9 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { markFences } from './lib/markdown.mjs';
+
 const LINK = /\[[^\]]*\]\(([^)\s]+)\)/g;
-const FENCE = /^\s*(?:```|~~~)/;
 const INLINE_CODE = /`[^`]*`/g;
 
 /**
@@ -164,21 +165,11 @@ export function isRepoRelative(target) {
  * reported an elided example as a broken link, so this is measured rather than assumed:
  * the count of skipped links is printed.
  *
- * @param {string} text
- * @returns {{ line: string, fenced: boolean }[]}
+ * Re-exported from `lib/markdown.mjs`, where it now lives so other scanners can share it. It was
+ * exported from here for months with zero external importers while two other tools rediscovered
+ * the same guard; being importable is not the same as being imported.
  */
-export function markFences(text) {
-  let fenced = false;
-  return String(text)
-    .split('\n')
-    .map((line) => {
-      if (FENCE.test(line)) {
-        fenced = !fenced;
-        return { line, fenced: true };
-      }
-      return { line, fenced };
-    });
-}
+export { markFences };
 
 /**
  * Collect markdown links from one document: relative targets of any kind, and same-file
