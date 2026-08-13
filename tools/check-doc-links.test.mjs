@@ -9,6 +9,7 @@ import {
   census,
   collectLinks,
   headingSlugs,
+  isRepoRelative,
   markFences,
   reportLines,
   scopeLines,
@@ -45,9 +46,20 @@ test('a bare fragment is collected as a same-file anchor', () => {
   assert.equal(links[0].fragment, 'anchor');
 });
 
-test('non-markdown targets are out of scope', () => {
+test('non-markdown targets are collected and checked for existence (#4301)', () => {
+  // This test previously asserted `links.length === 0` under the name "non-markdown targets
+  // are out of scope". The scope it described was real -- `collectLinks` dropped them -- so
+  // the test passed for as long as the defect existed and would have kept passing forever.
+  //
+  // A test can only ever confirm that the code does what the code does. What made this one
+  // harmful was the *name*: "out of scope" reads as a considered boundary, so anyone
+  // wondering whether .kt and .swift links were checked found an authoritative-sounding no.
+  // 1,110 links, 22 of them broken, sat behind that sentence.
   const { links } = collectLinks('[x](./a.png) [y](./b.ts)');
-  assert.equal(links.length, 0);
+  assert.deepEqual(
+    links.map((l) => l.target),
+    ['./a.png', './b.ts'],
+  );
 });
 
 test('links inside a fenced block are skipped and counted', () => {
@@ -151,6 +163,8 @@ test('census returns an empty result for a repository with no markdown', () => {
     fragmentless: 0,
     checkedAnchors: 0,
     sameFileAnchors: 0,
+    nonMarkdown: 0,
+    repoRelative: 0,
   });
 });
 
@@ -176,7 +190,11 @@ test('the baseline holds distinct entries only', () => {
 
 test('every baseline entry is in the file -> href form the census emits', () => {
   for (const entry of UNRESOLVED_BASELINE) {
-    assert.match(entry, /^[^ ]+\.md -> \S+\.md$/, `malformed baseline entry: ${entry}`);
+    // The target side is no longer restricted to `.md`. It was, for as long as the census
+    // dropped every non-markdown link before counting it -- so this assertion agreed with
+    // the defect rather than detecting it, which is what a test written against a filtered
+    // population always does.
+    assert.match(entry, /^[^ ]+\.md -> \S+$/, `malformed baseline entry: ${entry}`);
   }
 });
 
@@ -322,7 +340,7 @@ test('scopeLines states the specificity split on both paths', () => {
     checkedAnchors: 2,
   });
   const specificity = lines.find((l) => l.startsWith('Specificity:'));
-  assert.match(specificity, /of 10 cross-file link\(s\), 7 name only a file \(70\.0%\)/);
+  assert.match(specificity, /of 10 cross-file link\(s\), 7 name only a markdown file \(70\.0%\)/);
   assert.match(specificity, /2 name a section/);
   assert.match(specificity, /1 point at a file that does not exist/);
 });
@@ -603,7 +621,7 @@ test('the specificity share is taken over cross-file links only', () => {
   // 3 of 4 cross-file links, not 3 of 10. Both the share and the residual must use the
   // cross-file denominator: over `total` the share reads 30.0% and the residual reads 6,
   // and 6 unclassified links is a plausible-looking number that names nothing real.
-  assert.match(lines[1], /of 4 cross-file link\(s\), 3 name only a file \(75\.0%\)/);
+  assert.match(lines[1], /of 4 cross-file link\(s\), 3 name only a markdown file \(75\.0%\)/);
   assert.match(lines[1], /0 point at a file that does not exist/);
   assert.doesNotMatch(lines[1], /30\.0%/);
   assert.match(lines[2], /6 link\(s\) of the form/);
@@ -687,4 +705,200 @@ test('scopeLines tolerates a census taken before same-file anchors existed', () 
   const lines = scopeLines({ files: 1, total: 4, fenced: 0, fragmentless: 3, checkedAnchors: 1 });
   assert.match(lines[1], /of 4 cross-file link\(s\)/);
   assert.match(lines[2], /Same-file anchors: 0 link\(s\)/);
+});
+
+// --- non-markdown targets, previously dropped before being counted (#4301) ---
+
+test('a link to a source file is collected, not dropped (#4301)', () => {
+  const { links } = collectLinks('See [aria](../apps/web/src/accessibility/aria.ts) here.');
+  assert.equal(links.length, 1);
+  assert.equal(links[0].target, '../apps/web/src/accessibility/aria.ts');
+  assert.equal(links[0].sameFile, false);
+  assert.equal(links[0].repoRelative, false);
+});
+
+test('a link to a directory is collected (#4301)', () => {
+  const { links } = collectLinks('See [fn](../../services/api/supabase/functions/x/) here.');
+  assert.equal(links.length, 1);
+  assert.equal(links[0].target, '../../services/api/supabase/functions/x/');
+});
+
+test('every non-markdown extension present in the corpus is collected (#4301)', () => {
+  // The dropped population was 470 .kt, 341 .swift, 126 directory, 68 .ts, 22 .tsx and
+  // eleven further extensions. Enumerated rather than sampled: a filter that dropped all
+  // of them was invisible precisely because no single case was ever asserted.
+  const extensions = [
+    '.kt',
+    '.swift',
+    '.ts',
+    '.tsx',
+    '.yml',
+    '.sql',
+    '.example',
+    '.yaml',
+    '.xml',
+    '.json',
+    '.ps1',
+    '.sh',
+    '.css',
+    '.mjs',
+    '.kts',
+    '.txt',
+    '.js',
+  ];
+  for (const ext of extensions) {
+    const { links } = collectLinks(`[x](../a/b${ext})`);
+    assert.equal(links.length, 1, `a link to a ${ext} file must be collected`);
+    assert.equal(links[0].target, `../a/b${ext}`);
+  }
+});
+
+test('a broken link to a source file fails the census (#4301)', () => {
+  const result = census(
+    () => 'a.md',
+    (p) => p === 'ok.ts',
+    () => '# T\n\n[good](ok.ts) [bad](gone.ts)\n',
+  );
+  assert.deepEqual(result.broken, ['a.md -> gone.ts']);
+  assert.equal(result.nonMarkdown, 1);
+});
+
+test('a non-markdown target with a fragment is not resolved as an anchor (#4301)', () => {
+  // There is no heading structure in a .ts file, so counting it as a checked anchor would
+  // overstate the anchor check's reach -- the figure whose whole purpose is to be honest
+  // about how little of the corpus it reaches.
+  const result = census(
+    () => 'a.md',
+    () => true,
+    () => '# T\n\n[x](y.ts#L40)\n',
+  );
+  assert.equal(result.checkedAnchors, 0);
+  assert.equal(result.nonMarkdown, 1);
+  assert.deepEqual(result.staleAnchors, []);
+});
+
+test('a directory target never reaches read(), which would throw EISDIR (#4301)', () => {
+  // exists() passing does not imply read() will succeed. Reading a directory throws, and
+  // an uncaught throw takes the whole gate down rather than reporting a finding.
+  const result = census(
+    () => 'a.md',
+    () => true,
+    (p) => {
+      if (p === 'sub') throw Object.assign(new Error('EISDIR'), { code: 'EISDIR' });
+      return '# T\n\n[x](sub#frag)\n';
+    },
+    (p) => p === 'sub',
+  );
+  assert.deepEqual(result.broken, []);
+  assert.equal(result.nonMarkdown, 1);
+});
+
+// --- GitHub repo-relative idiom (#4301) ---
+
+test('GitHub repo-relative targets are recognised (#4301)', () => {
+  for (const t of [
+    '../../issues/2609',
+    '../../pull/44',
+    '../../discussions/7',
+    '../../tree/main/apps',
+    '../../blob/main/a.ts',
+    '../../releases/tag/v1',
+  ]) {
+    assert.equal(isRepoRelative(t), true, `${t} is GitHub repo-relative`);
+  }
+});
+
+test('a path that merely contains a repo word is not repo-relative (#4301)', () => {
+  // Over-reporting and under-reporting are both wrong; this guards the direction that
+  // silently excuses a real broken link.
+  for (const t of ['../issues.md', '../a/issuesx/b.ts', '../pullover.ts', '../my-issues.png']) {
+    assert.equal(isRepoRelative(t), false, `${t} is an ordinary path`);
+  }
+});
+
+test('a repo-relative link is counted but not resolved (#4301)', () => {
+  // 40 such links exist here and an earlier census reported every one as broken -- 62
+  // against 22 real. A checker that cries wolf makes its own exemption a rubber stamp.
+  const result = census(
+    () => 'a.md',
+    () => false,
+    () => '# T\n\n[#2609](../../issues/2609)\n',
+  );
+  assert.deepEqual(result.broken, []);
+  assert.equal(result.repoRelative, 1);
+});
+
+// --- explicit HTML anchors (#4301) ---
+
+test('an explicit <a id> anchor is offered by the document (#4301)', () => {
+  const slugs = headingSlugs('# T\n\n<a id="spot"></a>\n');
+  assert.ok(slugs.has('spot'));
+  assert.ok(slugs.has('t'));
+});
+
+test('an explicit <a name> anchor is offered too (#4301)', () => {
+  assert.ok(headingSlugs('<a name="legacy"></a>').has('legacy'));
+});
+
+test('an explicit anchor is matched verbatim, not slugified (#4301)', () => {
+  // The author wrote the id the link has to match; GitHub does not transform it.
+  const slugs = headingSlugs('<a id="Mixed_Case-42"></a>');
+  assert.ok(slugs.has('Mixed_Case-42'));
+  assert.equal(slugs.has('mixed_case-42'), false);
+});
+
+test('an explicit anchor inside a fenced block is not offered (#4301)', () => {
+  assert.equal(headingSlugs('```html\n<a id="shown"></a>\n```\n').has('shown'), false);
+});
+
+test('a link to an explicit anchor is not reported stale (#4301)', () => {
+  // finance's corpus contains zero explicit anchors, so this defect was green over an
+  // empty population -- indistinguishable in the output from green over a checked one.
+  const result = census(
+    () => 'a.md',
+    () => true,
+    () => '# T\n\n<a id="spot"></a>\n\n[x](#spot)\n',
+  );
+  assert.deepEqual(result.staleAnchors, []);
+  assert.equal(result.sameFileAnchors, 1);
+});
+
+// --- the scope line has to widen with the reach (#4301) ---
+
+test('the scope line names the newly-checked populations (#4301)', () => {
+  const lines = scopeLines({
+    files: 1,
+    total: 10,
+    fenced: 0,
+    fragmentless: 4,
+    checkedAnchors: 1,
+    sameFileAnchors: 2,
+    nonMarkdown: 2,
+    repoRelative: 1,
+  });
+  assert.match(lines[1], /2 point at source or a directory and were checked for existence only/);
+  assert.match(lines[1], /1 are GitHub repo-relative/);
+  // 8 cross-file - 4 fragmentless - 1 anchor - 2 non-markdown - 1 repo-relative = 0
+  assert.match(lines[1], /0 point at a file that does not exist/);
+});
+
+test('the disclaimer no longer claims non-markdown links are unmeasured (#4301)', () => {
+  // A disclaimer is the one kind of prose that fails toward false assurance when stale:
+  // it under-claims, which reads as caution, so nothing about it invites a second look.
+  const lines = scopeLines({ files: 1, total: 1, fenced: 0, fragmentless: 1, checkedAnchors: 0 });
+  const notMeasured = lines.slice(3).join(' ');
+  assert.equal(
+    /links to non-markdown files/.test(notMeasured),
+    false,
+    'the "Not measured" note must not still disclaim a population that is now checked',
+  );
+  assert.match(notMeasured, /the contents of a non-markdown target/);
+});
+
+test('the unresolved baseline separates never-true targets from moved ones (#4301)', () => {
+  // fire-calculator.ts reads like a rename of fire-planning.ts. Repointing it there would
+  // have turned the gate green while making the citing sentence false: calculateFINumber
+  // and calculateCoastFI exist nowhere in this repository.
+  const neverBuilt = UNRESOLVED_BASELINE.filter((e) => e.includes('fire-calculator.ts'));
+  assert.equal(neverBuilt.length, 2);
 });

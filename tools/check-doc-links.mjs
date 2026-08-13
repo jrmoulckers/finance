@@ -27,6 +27,28 @@ const FENCE = /^\s*(?:```|~~~)/;
 const INLINE_CODE = /`[^`]*`/g;
 
 /**
+ * An explicit anchor a document offers outside its heading structure.
+ *
+ * `headingSlugs` once collected `#` headings and nothing else, which made every link to an
+ * `<a id>` target a reported stale anchor. finance's corpus contains zero of these, so the
+ * defect was invisible: the check was green because its population was empty, which reads
+ * in the output exactly like green because everything checked passed.
+ */
+const HTML_ANCHOR = /<a\s[^>]*?\b(?:id|name)\s*=\s*["']([^"']+)["']/gi;
+
+/**
+ * Link targets GitHub resolves against the *repository* rather than the file tree.
+ *
+ * `[#2609](../../issues/2609)` renders correctly and points at nothing on disk. Forty such
+ * links exist here, and an earlier census counted every one of them as broken -- 62 reported
+ * against 22 real. Reporting them would be a false accusation, and the cost of that is
+ * specific: it makes the exemption below a rubber stamp, so the next genuinely broken link
+ * gets waved through by an author who has learned the checker cries wolf.
+ */
+const GITHUB_REPO_RELATIVE =
+  /(?:^|\/)(?:issues|pull|discussions|commit|compare|releases|wiki|tree|blob|labels|milestone|projects)(?:\/|$)/;
+
+/**
  * Stale anchors this repository accepts. Empty, and it should stay that way: unlike
  * `UNRESOLVED_BASELINE`, a stale anchor is never a gap awaiting a document that does not
  * exist yet -- the target file is present and simply no longer has the heading. Every such
@@ -43,6 +65,15 @@ export const STALE_ANCHOR_BASELINE = [];
  * the docs rather than a stale path, so the fix is to write the document or drop the
  * reference -- neither of which this check should guess at. The list is a ratchet: it may
  * shrink, and any target not on it fails.
+ *
+ * The distinction this list encodes is between a target that *moved* and one that was
+ * *never true*, which any resolver reports identically and only the first of which is a
+ * regression. The last two entries are the second kind and are the reason it is worth
+ * stating: `fire-calculator.ts` reads like a rename of `fire-planning.ts`, and repointing
+ * it there would have turned the gate green while making the citing sentence false --
+ * `calculateFINumber` and `calculateCoastFI` exist nowhere in this repository. The design
+ * document specifies a web reference implementation that was never built. A link that is
+ * red because the thing does not exist is doing its job.
  */
 export const UNRESOLVED_BASELINE = [
   'docs/architecture/0005-design-system-approach.md -> ./0002-cross-platform-framework-selection.md',
@@ -53,6 +84,8 @@ export const UNRESOLVED_BASELINE = [
   'docs/business/marketing/marketing-plan-sprints-6-10.md -> growth-strategy-post-launch.md',
   'docs/business/marketing/marketing-plan-sprints-6-10.md -> launch-retrospective-week-1.md',
   'docs/business/marketing/marketing-plan-sprints-6-10.md -> review-strategy.md',
+  'docs/design/ios-fi-calculator-flow.md -> ../../apps/web/src/lib/investment/fire-calculator.ts',
+  'docs/design/ios-fire-results-goal-integration.md -> ../../apps/web/src/lib/investment/fire-calculator.ts',
   'docs/guides/release-process.md -> ../audits/accessibility-checklist.md',
 ];
 
@@ -94,7 +127,8 @@ export function slugify(heading) {
 }
 
 /**
- * Every anchor a document offers: one per heading, outside fenced blocks.
+ * Every anchor a document offers: one per heading outside fenced blocks, plus any explicit
+ * `<a id>` / `<a name>` target.
  *
  * @param {string} text
  * @returns {Set<string>}
@@ -105,8 +139,21 @@ export function headingSlugs(text) {
     if (fenced) continue;
     const match = line.match(/^#{1,6}\s+(.*?)\s*$/);
     if (match) slugs.add(slugify(match[1]));
+    // An explicit anchor is offered verbatim, not slugified: the author wrote the id the
+    // link has to match.
+    for (const anchor of line.matchAll(HTML_ANCHOR)) slugs.add(anchor[1]);
   }
   return slugs;
+}
+
+/**
+ * Whether a relative target is GitHub's repo-relative idiom rather than a filesystem path.
+ *
+ * @param {string} target
+ * @returns {boolean}
+ */
+export function isRepoRelative(target) {
+  return GITHUB_REPO_RELATIVE.test(target);
 }
 
 /**
@@ -134,7 +181,8 @@ export function markFences(text) {
 }
 
 /**
- * Collect markdown links from one document: relative `.md` targets, and same-file anchors.
+ * Collect markdown links from one document: relative targets of any kind, and same-file
+ * anchors.
  *
  * Same-file anchors (`[text](#section)`) were excluded here until they were counted. They
  * are the largest link class in this repository -- 2,799 against 246 cross-file fragments,
@@ -142,8 +190,15 @@ export function markFences(text) {
  * kind of link: a same-file anchor names a section and nothing else, so any rename or
  * renumber of that heading breaks it, with no path change to make the break visible.
  *
+ * Non-`.md` targets were excluded here too, by `if (!target.endsWith('.md')) continue`, and
+ * that exclusion was worse than the anchor one because it dropped links *before counting
+ * them*. 1,110 links -- 470 `.kt`, 341 `.swift`, 126 directory targets, 68 `.ts` -- appeared
+ * in no population, no scope line and no finding, while the scope line reported a total that
+ * silently excluded them. 22 were broken. A filter applied before the census is invisible to
+ * every number the census prints, including the ones whose purpose is to state its reach.
+ *
  * @param {string} text
- * @returns {{ links: {href: string, target: string, fragment: string, sameFile: boolean, line: number}[], skipped: number }}
+ * @returns {{ links: {href: string, target: string, fragment: string, sameFile: boolean, repoRelative: boolean, line: number}[], skipped: number }}
  */
 export function collectLinks(text) {
   const links = [];
@@ -164,6 +219,7 @@ export function collectLinks(text) {
           target: '',
           fragment: href.slice(1).trim(),
           sameFile: true,
+          repoRelative: false,
           line: i + 1,
         });
         continue;
@@ -171,13 +227,20 @@ export function collectLinks(text) {
       if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) continue;
       const hash = href.indexOf('#');
       const target = (hash === -1 ? href : href.slice(0, hash)).trim();
-      if (!target.endsWith('.md')) continue;
+      if (!target) continue;
       if (marked[i].fenced) {
         skipped += 1;
         continue;
       }
       const fragment = hash === -1 ? '' : href.slice(hash + 1).trim();
-      links.push({ href, target, fragment, sameFile: false, line: i + 1 });
+      links.push({
+        href,
+        target,
+        fragment,
+        sameFile: false,
+        repoRelative: isRepoRelative(target),
+        line: i + 1,
+      });
     }
   }
   return { links, skipped };
@@ -191,7 +254,7 @@ export function collectLinks(text) {
  * @param {(p: string) => string} read
  * @returns {{files: number, total: number, fenced: number, broken: string[], staleAnchors: string[], fragmentless: number, checkedAnchors: number}}
  */
-export function census(git, exists, read) {
+export function census(git, exists, read, isDirectory = () => false) {
   const files = git(['ls-files', '*.md']).trim().split('\n').filter(Boolean);
   const broken = [];
   const staleAnchors = [];
@@ -201,6 +264,8 @@ export function census(git, exists, read) {
   let fragmentless = 0;
   let checkedAnchors = 0;
   let sameFileAnchors = 0;
+  let nonMarkdown = 0;
+  let repoRelative = 0;
 
   const anchorsOf = (p) => {
     if (!anchorCache.has(p)) anchorCache.set(p, headingSlugs(read(p)));
@@ -231,11 +296,25 @@ export function census(git, exists, read) {
         continue;
       }
 
+      if (link.repoRelative) {
+        // GitHub renders these against the repository. They point at nothing on disk and
+        // are correct as written, so they are counted and not resolved.
+        repoRelative += 1;
+        continue;
+      }
+
       const resolved = path.posix.normalize(
         path.posix.join(path.posix.dirname(file.split(path.sep).join('/')), link.target),
       );
       if (!exists(resolved)) {
         broken.push(`${file} -> ${link.href}`);
+        continue;
+      }
+      if (!link.target.endsWith('.md')) {
+        // Existence is the whole claim a link to source or to a directory can make. There
+        // is no heading structure to resolve a fragment against, so counting it as a
+        // checked anchor would overstate the anchor check's reach.
+        nonMarkdown += 1;
         continue;
       }
       if (!link.fragment) {
@@ -252,6 +331,13 @@ export function census(git, exists, read) {
         // A fragment that is not valid percent-encoding is compared as written rather
         // than reported as stale; the renderer does not decode it either.
       }
+      if (isDirectory(resolved)) {
+        // Unreachable for a `.md` target in practice, but `exists` passing does not imply
+        // `read` will succeed, and reading a directory throws EISDIR -- which would take
+        // the whole gate down rather than report a finding.
+        nonMarkdown += 1;
+        continue;
+      }
       if (!anchorsOf(resolved).has(slugify(decoded))) {
         staleAnchors.push(`${file}:${link.line} -> ${link.href}`);
       }
@@ -266,6 +352,8 @@ export function census(git, exists, read) {
     fragmentless,
     checkedAnchors,
     sameFileAnchors,
+    nonMarkdown,
+    repoRelative,
   };
 }
 
@@ -286,7 +374,13 @@ export function census(git, exists, read) {
  * would improve the ratio this paragraph exists to disclose -- a scope line that gets
  * flattered by a fix is not measuring what it claims to.
  *
- * @param {{files: number, total: number, fenced: number, fragmentless: number, checkedAnchors: number, sameFileAnchors?: number}} scope
+ * `Not measured` once read "links to non-markdown files". That sentence was true when
+ * written and became false the moment those 1,110 links were checked. A disclaimer is the
+ * one kind of prose that fails toward *false assurance* when it goes stale -- it under-claims,
+ * which reads as caution -- so it has to be edited in the same commit that widens the reach
+ * it disclaims.
+ *
+ * @param {{files: number, total: number, fenced: number, fragmentless: number, checkedAnchors: number, sameFileAnchors?: number, nonMarkdown?: number, repoRelative?: number}} scope
  * @returns {string[]}
  */
 export function scopeLines({
@@ -296,16 +390,18 @@ export function scopeLines({
   fragmentless,
   checkedAnchors,
   sameFileAnchors = 0,
+  nonMarkdown = 0,
+  repoRelative = 0,
 }) {
   const cross = total - sameFileAnchors;
   const share = cross === 0 ? '0.0' : ((100 * fragmentless) / cross).toFixed(1);
-  const unresolved = cross - fragmentless - checkedAnchors;
+  const unresolved = cross - fragmentless - checkedAnchors - nonMarkdown - repoRelative;
   return [
     `Scope: ${total} markdown link(s) across ${files} tracked file(s); ${fenced} inside fenced blocks were skipped.`,
-    `Specificity: of ${cross} cross-file link(s), ${fragmentless} name only a file (${share}%); ${checkedAnchors} name a section and had their anchor resolved; ${unresolved} point at a file that does not exist and were not classified.`,
+    `Specificity: of ${cross} cross-file link(s), ${fragmentless} name only a markdown file (${share}%); ${checkedAnchors} name a section and had their anchor resolved; ${nonMarkdown} point at source or a directory and were checked for existence only; ${repoRelative} are GitHub repo-relative (issues, pull requests) and resolve against the repository rather than the tree; ${unresolved} point at a file that does not exist and were not classified.`,
     `Same-file anchors: ${sameFileAnchors} link(s) of the form [text](#section), every one resolved against its own document's headings.`,
-    'Not measured: URL targets, links to non-markdown files, or whether a target still',
-    'contains the content the citing text claims. A file that keeps its name while its',
+    'Not measured: URL targets, the contents of a non-markdown target, or whether a target',
+    'still contains the content the citing text claims. A file that keeps its name while its',
     'content moves elsewhere stays green here unless the link named the section that moved.',
   ];
 }
@@ -403,8 +499,15 @@ function main() {
   const root = process.cwd();
   const exists = (p) => fs.existsSync(path.join(root, p));
   const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
+  const isDirectory = (p) => {
+    try {
+      return fs.statSync(path.join(root, p)).isDirectory();
+    } catch {
+      return false;
+    }
+  };
 
-  const result = census(git, exists, read);
+  const result = census(git, exists, read, isDirectory);
   const { lines, failed } = reportLines(result);
   const write = failed ? console.error : console.log;
   for (const line of lines) write(line);

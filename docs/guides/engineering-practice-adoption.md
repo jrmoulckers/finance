@@ -8978,6 +8978,115 @@ were to drop it or record it; recording it cost one sentence and made this round
 recognisable within seconds instead of being greeted as new. **An intermittent failure you have
 written down is a different object from one you have not**, even while both remain unexplained.
 
+## A filter applied before the census is invisible to every number the census prints
+
+`check-doc-links.mjs` is a required check. Its link collector opened with:
+
+```js
+if (!target.endsWith('.md')) continue;
+```
+
+Every relative link to a non-markdown file was dropped **before it was counted**. Not excluded
+from resolution — excluded from the population. It appeared in no total, no scope line, no
+finding, and no disclaimer. Measured:
+
+```
+counted .md links (the reported total)   3353
+DROPPED non-.md relative links           1110
+  .kt 470   .swift 341   (dir/none) 126   .ts 68   .tsx 22
+  .yml 17   .sql 14   .example 10  .yaml 8   .xml 8   and eight more
+```
+
+**22 were broken.** The gate had never been able to see them, and had been green for months.
+
+The scope line is the part worth dwelling on. This tool prints its population deliberately, on
+both the passing and the failing path, because a control that reports its reach only when it
+passes cannot be distinguished from one that measured nothing. That machinery worked exactly as
+designed and reported `3353 markdown link(s)` — a true sentence about a population that a filter
+three functions upstream had already halved. **A scope line is computed from what the census
+saw, so it cannot disclose what was removed before the census began.** Every honest-reporting
+discipline in this file was downstream of the dishonesty.
+
+### The test asserted the defect, and its name is what did the damage
+
+```js
+test('non-markdown targets are out of scope', () => {
+  const { links } = collectLinks('[x](./a.png) [y](./b.ts)');
+  assert.equal(links.length, 0);
+});
+```
+
+Green from the day it was written. A test can only ever confirm that the code does what the code
+does, and this one did that faithfully.
+
+What made it harmful was the **name**. "Out of scope" is the vocabulary of a considered boundary
+— a decision someone weighed and recorded. Anyone asking whether the 470 `.kt` and 341 `.swift`
+links were checked would have found this test and read an authoritative no. It converted an
+unexamined `continue` into a documented policy, and it did so in the one artifact a reader trusts
+most, because a passing assertion sits next to it.
+
+The general form: **a test name is a claim about intent, and nothing checks it.** The assertion
+is verified continuously; the sentence describing why is verified never. When the two drift, the
+sentence wins every argument, because it is the one a human reads.
+
+### 62 reported, 22 real — and the 40 are why precision is not a nicety
+
+The first census said 62 broken. Forty of those were GitHub's repo-relative idiom:
+
+```
+[#2609](../../issues/2609)     [#44](../../pull/44)     ../../tree/main/apps
+```
+
+GitHub resolves these against the repository, not the file tree. They are correct as written, and
+reporting them would be a false accusation at a 65% rate.
+
+That is not merely noisy. The fix for a false positive is an exemption — a baseline entry, an
+annotation, an ignore comment — and an author who has learned the checker cries wolf writes the
+exemption without reading the finding. **A checker's precision is what keeps its own escape hatch
+meaningful**, so an over-reporting gate degrades into a rubber stamp and takes its true positives
+with it.
+
+### Moved, versus never true
+
+The 22 split three ways, and the third class is the interesting one:
+
+| class                                                                            | n   | fix      |
+| -------------------------------------------------------------------------------- | --- | -------- |
+| off by one `../` — target exists at repo root                                    | 16  | repoint  |
+| `account-deletion/` — removed in `087b812c` as deprecated, now `account-delete/` | 4   | repoint  |
+| `fire-calculator.ts` — **never existed**                                         | 2   | baseline |
+
+`fire-calculator.ts` reads exactly like a rename of the neighbouring `fire-planning.ts`, and
+repointing it there would have turned the gate green in one keystroke. It would also have been
+false: `calculateFINumber` and `calculateCoastFI`, the functions the citing tables describe, exist
+nowhere in this repository. The design document specifies a web reference implementation that was
+never built.
+
+Any resolver reports _moved_ and _never true_ identically, and only the first is a regression.
+The second is a claim that was false when written, which is a different defect with a different
+fix — and the tempting repair is the one that destroys the evidence. **A link that is red because
+the thing does not exist is doing its job**; the correct response is the baseline, which records
+the gap without pretending it is closed.
+
+### The disclaimer had to move with the reach
+
+The scope line ended with `Not measured: URL targets, links to non-markdown files, ...`. True
+when written, false the moment those 1,110 links were checked.
+
+A stale disclaimer fails toward **false assurance**: it under-claims, which reads as caution, so
+nothing about it invites a second look. That is the opposite polarity from a stale finding, and it
+is why the disclaimer is now asserted — a test fails if the sentence still disclaims a population
+the tool checks. Prose that describes coverage has to be edited in the same commit that changes
+coverage, and the only way to make that reliable is to let it fail the build.
+
+### Measured negative
+
+The upstream session found its own link probe skipped fenced blocks when collecting **headings**
+but not when collecting **links** — fence-blindness as a property of a _traversal_ rather than of
+a tool, with two traversals in one file and only one guarded. finance does not have this:
+`headingSlugs` and `collectLinks` both consume the shared `markFences`. Recorded as a negative
+rather than reshaped into a symmetric finding.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
