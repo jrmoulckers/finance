@@ -467,8 +467,16 @@ test('collectScripts excludes a linked script and does not descend a linked dire
     );
   } finally {
     for (const [name, type] of links) {
-      if (type === 'junction') rmdirSync(name);
-      else unlinkSync(name);
+      // Ask the filesystem what exists rather than trusting the type requested: the third
+      // argument to symlinkSync is Windows-only, so 'junction' yields a plain symlink on Linux and
+      // rmdir fails ENOTDIR. Keying cleanup on the constant passed in rather than on the state
+      // produced is the same error this test exists to document (#4355).
+      void type;
+      try {
+        unlinkSync(name);
+      } catch {
+        rmdirSync(name);
+      }
     }
     for (const full of made) unlinkSync(full);
     dirs.push(path.join(root, 'tools'), root, outside);

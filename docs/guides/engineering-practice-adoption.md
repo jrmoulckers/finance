@@ -10432,6 +10432,23 @@ predicate, and the test says so in as many words: **a guard knowingly kept and k
 unfalsifiable is honest; one assumed to be load-bearing is not.** A test that fails when you
 delete dead code is asserting an implementation, not a property.
 
+### The fixture failed in CI for the reason the test is about
+
+Both link tests passed locally and the `ESLint & Prettier` job failed on Linux:
+
+```
+error: "ENOTDIR: not a directory, rmdir '/tmp/mdlink-CSibbT/tools/linkeddir'"
+```
+
+`symlinkSync`'s third argument is **Windows-only**. On Linux `'junction'` is ignored and a plain
+symlink is created, so `rmdir` is the wrong call. The cleanup branched on the type I _requested_
+rather than on what the filesystem actually produced -- which is the same error the test exists
+to document, committed in the test's own teardown. It now tries `unlink` and falls back.
+
+Worth stating alongside the Node 24-local / 22-CI gap already recorded here: **"passes locally"
+is weaker than it sounds in exactly the areas where a platform decides semantics**, and link
+handling is the clearest of them.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

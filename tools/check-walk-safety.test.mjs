@@ -245,8 +245,14 @@ test('readSources excludes a linked source and a linked directory, measured', ()
     );
   } finally {
     for (const [name, type] of links) {
-      if (type === 'junction') fs.rmdirSync(name);
-      else fs.unlinkSync(name);
+      // symlinkSync's type argument is Windows-only, so 'junction' yields a plain symlink on
+      // Linux and rmdir fails ENOTDIR. Ask the filesystem, do not trust the requested type.
+      void type;
+      try {
+        fs.unlinkSync(name);
+      } catch {
+        fs.rmdirSync(name);
+      }
     }
     for (const full of made) fs.unlinkSync(full);
     for (const dir of [path.join(root, 'tools'), root, outside]) {
