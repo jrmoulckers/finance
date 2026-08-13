@@ -170,3 +170,58 @@ test('a passing run states the same scope, so the two branches agree', () => {
   assert.match(result.stdout, /\d+ module reference\(s\) across \d+ file\(s\)/);
   assert.match(result.stdout, /\d+ test file\(s\) excluded/);
 });
+
+// An over-report is forbidden by findModuleReferences's own contract, and it
+// shipped one: a tool that embeds example source as data had its embedded
+// `import` read as code (#4340). check-gate-teeth.mjs is that tool -- its
+// fixtures are literally undeclared imports -- so the checker reported the
+// fixture whose purpose is to be a fixture.
+
+test('an import inside a string literal is data, not a statement', () => {
+  const refs = findModuleReferences('const fixture = "import x from \'embedded-pkg\';";\n');
+  assert.deepEqual(
+    refs.map((r) => r.specifier),
+    [],
+    'the keyword sits inside a quote, so it is text the file contains rather than code it runs',
+  );
+});
+
+test('a real import is still found when the file also embeds a quoted one', () => {
+  const source =
+    "import real from 'real-pkg';\nconst fixture = \"import fake from 'fake-pkg';\";\n";
+  assert.deepEqual(
+    findModuleReferences(source).map((r) => r.specifier),
+    ['real-pkg'],
+  );
+});
+
+test('a quoted require in a comment is excluded, and a block comment is not', () => {
+  assert.deepEqual(
+    findModuleReferences("// calling require('./thing.js') here would exit\n").map(
+      (r) => r.specifier,
+    ),
+    [],
+    'tools/ai-manifest.js:39 is exactly this shape',
+  );
+  // Stated because the line above could be mistaken for comment awareness. It
+  // is not: literalSpans ends a line at `//`, and tracks nothing across lines,
+  // so a block comment or a JSDoc body is still read as code. Measured, not
+  // assumed -- the first version of this test asserted the opposite and the
+  // run disagreed.
+  assert.deepEqual(
+    findModuleReferences('/* example: import x from "pkg-in-block" */\n').map((r) => r.specifier),
+    ['pkg-in-block'],
+  );
+  assert.deepEqual(
+    findModuleReferences(' * example: import x from "pkg-in-jsdoc"\n').map((r) => r.specifier),
+    ['pkg-in-jsdoc'],
+  );
+});
+
+test('a dynamic import inside a template is left alone rather than guessed at', () => {
+  assert.deepEqual(
+    findModuleReferences("const m = await import('real-dynamic');\n").map((r) => r.specifier),
+    ['real-dynamic'],
+    'the specifier is a literal but the keyword is not, so the guard must not fire',
+  );
+});

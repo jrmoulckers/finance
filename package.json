@@ -72,6 +72,7 @@
     "test:independence:check": "node tools/check-test-independence.mjs",
     "tools:test": "node tools/run-tool-tests.mjs",
     "gate:enforcement": "node tools/check-gate-enforcement.mjs",
+    "gate:teeth": "node tools/check-gate-teeth.mjs",
     "bounds:check": "node tools/check-assertion-bounds.mjs",
     "markdown:primitives:check": "node tools/check-markdown-primitives.mjs",
     "docs:links:check": "node tools/check-doc-links.mjs",

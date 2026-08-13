@@ -20,6 +20,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinModules } from 'node:module';
 
+import { insideLiteral, literalSpans } from './lib/source.mjs';
+
 const BUILTINS = new Set(builtinModules);
 
 /** Directories whose top-level scripts run from the repository root. */
@@ -78,11 +80,38 @@ export function findModuleReferences(text) {
   ];
   for (const pattern of patterns) {
     for (const match of source.matchAll(pattern)) {
+      if (keywordIsQuoted(source, match)) continue;
       const line = source.slice(0, match.index).split('\n').length;
       references.push({ specifier: match[1], line });
     }
   }
   return references.sort((a, b) => a.line - b.line || a.specifier.localeCompare(b.specifier));
+}
+
+/**
+ * True when the `import`/`export`/`require` keyword of a match is itself inside a string literal.
+ *
+ * A tool that embeds example source as data -- a fixture, a docstring, a generated file -- contains
+ * import statements that are text, not code. Reading them as code is an over-report, which the
+ * contract above forbids and which this checker did against `check-gate-teeth.mjs` (#4340): a
+ * fixture whose whole purpose is an undeclared import was reported as an undeclared import.
+ *
+ * The specifier cannot be used to make this decision, because a specifier is always a literal. The
+ * keyword can: in real code it sits at statement level, and in embedded text it sits inside a
+ * quote. `literalSpans` is escape-aware, so a quote inside a fixture does not end the span early.
+ *
+ * @param {string} source Whole file.
+ * @param {RegExpMatchArray} match A match from one of the reference patterns.
+ * @returns {boolean} Whether this match is embedded text rather than a statement.
+ */
+function keywordIsQuoted(source, match) {
+  const keyword = /\b(?:import|export|require)\b/.exec(match[0]);
+  if (!keyword) return false;
+  const absolute = match.index + keyword.index;
+  const lineStart = source.lastIndexOf('\n', absolute - 1) + 1;
+  const newline = source.indexOf('\n', absolute);
+  const lineText = source.slice(lineStart, newline === -1 ? source.length : newline);
+  return insideLiteral(literalSpans(lineText), absolute - lineStart);
 }
 
 /** Reports references to packages absent from the declared dependency set. */

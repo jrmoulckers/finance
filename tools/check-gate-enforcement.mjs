@@ -180,6 +180,7 @@ export const CLAIMED_GATES = [
   'bounds:check',
   'markdown:primitives:check',
   'gate:enforcement',
+  'gate:teeth',
 ];
 
 /**

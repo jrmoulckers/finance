@@ -168,6 +168,15 @@ jobs:
       # implementations instead, which needs no extraction to have happened first.
       - name: One definition of a markdown fence
         run: npm run markdown:primitives:check
+
+      # `gate:enforcement` answers whether a gate is wired, which is a property of the workflow
+      # files and readable. It cannot answer whether the invoked program can fail, which is
+      # behavioural: check-gate-enforcement.mjs was itself wired here and had no exit code at all
+      # until #4333, and was found by hand. This executes each gate against a violating fixture and
+      # requires the report to name the violation, because a fixture that fails to scaffold also
+      # exits non-zero.
+      - name: Every declared gate can fail
+        run: npm run gate:teeth
   pr-title:
     name: Semantic PR Title
     needs: changes
