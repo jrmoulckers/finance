@@ -412,21 +412,76 @@ const lockOf = (entry, metadata) => ({ entries: { [entry]: metadata } });
 
 const KNOWN_ENTRY = Object.keys(KNOWN_UNREPRODUCED)[0];
 
+// A constructed exemption register over a REAL on-disk entry, so the property below survives the
+// live register draining to `{}` -- the state an exemption register exists to reach. Measured
+// rather than anticipated: draining it turned five tests red, three of them with a TypeError on
+// `KNOWN_UNREPRODUCED[undefined]`, and the failure text asked for the exemption back (#4331).
+//
+// The bytes are untouched and real, so the digest is computed from delivered bytes exactly as in
+// production; only the RECORD is corrupt. That is the shape of the live row, built from arguments.
+const constructedExemption = () => {
+  const real = REAL_LOCK();
+  const healthy = Object.entries(real.entries).filter(
+    ([entry, m]) =>
+      m &&
+      m.sourceSha256 &&
+      fs.existsSync(path.join(ROOT, entry)) &&
+      verifySourceReproduction(lockOf(entry, m), {}).reproduced === 1,
+  );
+  // One entry to exempt, one to keep reproducing. The bound is the number of roles the lock
+  // below actually fills, so it moves with the construction rather than being asserted at it.
+  const ROLES = ['subject', 'witness'];
+  assert.ok(
+    healthy.length >= ROLES.length,
+    `PREMISE: a ${ROLES.join(' and a ')} entry are needed to build a lock`,
+  );
+  const [[entry, metadata], witness] = healthy;
+  const corrupt = 'a'.repeat(64);
+  return {
+    entry,
+    metadata,
+    corrupt,
+    // A healthy neighbour, because a lock whose every entry is exempted reproduces nothing, and
+    // production correctly reports that as "check is not observing". The exemption is the subject;
+    // the witness is what keeps the walk observably alive.
+    witness,
+    // `reproduces` is what the delivered bytes actually unstamp to, which for a healthy entry is
+    // its recorded hash. Naming a corrupt record and the true digest is a well-formed exemption.
+    register: {
+      [entry]: { recorded: corrupt, reproduces: metadata.sourceSha256, issue: '#9999' },
+    },
+  };
+};
+
 test('the known-unreproducible entry is tolerated, and is the only one', () => {
+  const { entry, metadata, corrupt, witness, register } = constructedExemption();
+  const built = verifySourceReproduction(
+    {
+      entries: { [entry]: { ...metadata, sourceSha256: corrupt }, [witness[0]]: witness[1] },
+    },
+    register,
+  );
+  assert.deepEqual(
+    built.knownUnreproduced,
+    [entry],
+    'the exemption should absorb the entry it names',
+  );
+  assert.deepEqual(built.unreproduced, [], 'an absorbed entry must not also be reported');
+  assert.deepEqual(built.findings, [], 'a tolerated known entry must not fail --strict');
+  assert.equal(built.reproduced, 1, 'the witness must still reproduce, or nothing was observed');
+
+  // The live register, with its premise stated rather than enforced: it may legitimately be
+  // empty, and on that day this arm proves nothing while the constructed arm above still holds
+  // the property. A floor here would assert the register is non-empty -- which is the defect.
+  const live = Object.keys(KNOWN_UNREPRODUCED);
   const result = verifySourceReproduction(REAL_LOCK());
-  assert.deepEqual(
-    result.knownUnreproduced,
-    [KNOWN_ENTRY],
-    'the pinned exemption should absorb exactly the entry it names',
-  );
-  assert.deepEqual(
-    result.unreproduced,
-    [],
-    'no other entry should be failing to reproduce right now',
-  );
-  assert.deepEqual(result.findings, [], 'a tolerated known entry must not fail --strict');
+  assert.deepEqual(result.knownUnreproduced, live, 'every live exemption, and nothing else');
   // Without this the test passes just as well on a walk that observed nothing at all.
   assert.ok(result.reproduced > 0, 'nothing reproduced; the check is not observing');
+  if (live.length > 0) {
+    assert.deepEqual(result.unreproduced, [], 'no other entry should be failing to reproduce');
+    assert.deepEqual(result.findings, [], 'a tolerated known entry must not fail --strict');
+  }
 });
 
 test('an unreproducible entry that is not the pinned one is a blocking finding', () => {
@@ -457,11 +512,10 @@ test('an unreproducible entry that is not the pinned one is a blocking finding',
 test('the exemption is pinned to both hashes, so a second corruption is not inherited', () => {
   // Same path, same real bytes, but a recorded hash that is neither correct nor the one the
   // exemption names. Path-only pinning would swallow this; that is the mutant it kills.
+  const { entry, metadata, register } = constructedExemption();
   const result = verifySourceReproduction(
-    lockOf(KNOWN_ENTRY, {
-      ...REAL_LOCK().entries[KNOWN_ENTRY],
-      sourceSha256: 'a'.repeat(64),
-    }),
+    lockOf(entry, { ...metadata, sourceSha256: 'c'.repeat(64) }),
+    register,
   );
   assert.equal(result.knownUnreproduced.length, 0, 'exemption matched a state it does not name');
   assert.equal(result.unreproduced.length, 1);
@@ -469,14 +523,10 @@ test('the exemption is pinned to both hashes, so a second corruption is not inhe
 });
 
 test('the exemption self-liquidates: it is a finding once the entry reproduces again', () => {
-  // The repaired future. `reproduces` is what the delivered bytes actually unstamp to, so
-  // recording it is exactly what a sync run re-rendering this target would write.
-  const result = verifySourceReproduction(
-    lockOf(KNOWN_ENTRY, {
-      ...REAL_LOCK().entries[KNOWN_ENTRY],
-      sourceSha256: KNOWN_UNREPRODUCED[KNOWN_ENTRY].reproduces,
-    }),
-  );
+  // The repaired future, constructed rather than borrowed: the record now holds what the bytes
+  // actually unstamp to, which is exactly what a sync re-rendering this target would write.
+  const { entry, metadata, register } = constructedExemption();
+  const result = verifySourceReproduction(lockOf(entry, metadata), register);
   assert.equal(result.reproduced, 1, 'the repaired state should reproduce');
   assert.ok(
     result.findings.some((f) => f.includes('stale reproduction exemption')),
@@ -495,36 +545,41 @@ test('the exemption self-liquidates: it is a finding once the entry reproduces a
 // Answering the decision from arguments makes all four quadrants reachable without the bytes.
 
 test('the exemption matches on both hashes, exercised in all four quadrants', () => {
-  const known = KNOWN_UNREPRODUCED[KNOWN_ENTRY];
+  const { entry, corrupt, metadata, register } = constructedExemption();
+  const known = register[entry];
   const other = 'b'.repeat(64);
   assert.notEqual(known.recorded, other, 'PREMISE: the wrong value must really differ');
   assert.notEqual(known.reproduces, other, 'PREMISE: the wrong value must really differ');
+  assert.notEqual(corrupt, metadata.sourceSha256, 'PREMISE: record and digest must differ');
 
   assert.equal(
-    exemptionMatches(KNOWN_ENTRY, known.recorded, known.reproduces),
+    exemptionMatches(entry, known.recorded, known.reproduces, register),
     true,
     'the exact pinned state must be absorbed',
   );
   // The quadrant no in-place test could reach: the record still reads as the pinned corruption
   // while the BYTES have become something else. That is a second, different corruption of this
-  // path -- exactly what KNOWN_UNREPRODUCED promises not to inherit.
+  // path -- exactly what an exemption promises not to inherit.
   assert.equal(
-    exemptionMatches(KNOWN_ENTRY, known.recorded, other),
+    exemptionMatches(entry, known.recorded, other, register),
     false,
     'a second corruption of the same path must not inherit the exemption',
   );
   assert.equal(
-    exemptionMatches(KNOWN_ENTRY, other, known.reproduces),
+    exemptionMatches(entry, other, known.reproduces, register),
     false,
     'a record the exemption does not name must not be absorbed',
   );
-  assert.equal(exemptionMatches(KNOWN_ENTRY, other, other), false);
+  assert.equal(exemptionMatches(entry, other, other, register), false);
 });
 
 test('the exemption is pinned to a path, and generalises to none', () => {
-  const known = KNOWN_UNREPRODUCED[KNOWN_ENTRY];
+  const { entry, register } = constructedExemption();
+  const known = register[entry];
+  const unnamed = 'vendor/@jrm/tokens/js/index.js';
+  assert.notEqual(unnamed, entry, 'PREMISE: the probe path must not be the exempted one');
   assert.equal(
-    exemptionMatches('vendor/@jrm/tokens/js/index.js', known.recorded, known.reproduces),
+    exemptionMatches(unnamed, known.recorded, known.reproduces, register),
     false,
     'an unnamed path must not borrow the pinned hashes',
   );
