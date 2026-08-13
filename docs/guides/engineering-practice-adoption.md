@@ -10106,6 +10106,64 @@ exclusion nobody ever had to declare.** Any verdict derived from such a record i
 spot located exactly at its most certain content -- the entry that is true in every tree, every
 checkout, and every build state is the one that never had to be written down.
 
+## A census needs a failure path in both directions
+
+`check-gate-enforcement` asked whether every claimed gate reaches a workflow. It never asked
+whether every workflow-reached control is claimed. The first question is answered from a
+hand-maintained list, so the second is where the answer rots: a tool wired into CI and left out of
+`CLAIMED_GATES` was invisible to every check in the file, and the census kept reporting a complete
+set while covering less of the tree.
+
+It had already happened. Deriving the population from the tree instead -- npm scripts that resolve
+to a workflow route **and** execute a file under `tools/` or `scripts/` -- gives 28 members, of
+which 7 run test files and 21 are controls against 16 claimed. Four of the five unaccounted are
+correctly out of scope, and the fifth is not: **`i18n:validate-glossary` is a gate with teeth,
+wired at `ci-lint.yml:123`, that the census never contained.**
+
+Teeth proven by execution rather than asserted, and with the control that makes the result mean
+something:
+
+```
+baseline fixture (valid glossary)   EXIT=0
+one locale value removed            EXIT=1
+  Concept "Balance" is missing a non-blank value for locale "fr-FR".
+```
+
+The baseline passing is the whole proof. An empty fixture also exits 1, for staging reasons with
+no relation to the gate's subject, so an exit code alone would grade a broken fixture as a proven
+gate.
+
+### The classification is derived, because a name-based census has two error modes
+
+Test runners are excluded by what they execute, not by a `:test` suffix -- #4345 was a pattern that
+admitted a non-member on a substring and dropped three quarters of the real members at the same
+time. `build` and `type-check` fall out of the population because they run no repository tool,
+which stays true if either is renamed.
+
+That is not free of naming: the runner class still keys on `.test.mjs`. It is a load-bearing
+convention -- it is how `run-tool-tests.mjs` discovers what to run -- and the residual risk, a
+control that happens to match, is asserted against rather than assumed.
+
+### Fixing one route moved the defect onto another
+
+The population work exposed a second bug: `directRoute`'s file-path route matched when **any** file
+a script executes appeared in the corpus. `i18n:validate` runs two validators, only one is wired,
+and the resolver called the whole script reached.
+
+Measured before changing it: one partially-wired script, and **no claimed gate executes more than
+one file** -- so the over-credit could not yet produce a false verdict for a claimed gate.
+Unexercised rather than harmless, the same shape as #4345's inverted negation.
+
+Then the fix pushed `i18n:validate`'s false verdict onto `runsEquivalentCommand`, which had the
+identical any-vs-all form one route over. **The same defect sat in two places and the second was
+only visible once the first stopped hiding it** -- which is a specific argument for fixing a defect
+rather than only recording it, since a recorded one goes on masking its neighbour.
+
+### Recorded, not fixed
+
+`scripts/i18n/validate-locale-catalogs.js` has teeth and is executed by no workflow. Wiring it
+changes CI behaviour and deserves its own verification rather than being bundled here.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

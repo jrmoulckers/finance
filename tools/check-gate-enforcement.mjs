@@ -56,12 +56,18 @@ export function commandSegments(body) {
  *
  * Matching is by prefix, because a workflow commonly appends flags the script omits.
  *
+ * Every segment must appear, for the reason `directRoute` requires every executed path: a script
+ * chaining two commands is not enforced by a workflow running only the first. Fixing the file-path
+ * route alone moved `i18n:validate`'s false verdict onto this one, so the same defect sat in two
+ * routes and the second was only visible once the first stopped hiding it (#4347).
+ *
  * @param {string} body Script body.
  * @param {string} corpus Concatenated workflow text.
- * @returns {boolean} True when some command segment also runs directly in a workflow.
+ * @returns {boolean} True when every command segment also runs directly in a workflow.
  */
 export function runsEquivalentCommand(body, corpus) {
-  return commandSegments(body).some((segment) => corpus.includes(segment));
+  const segments = commandSegments(body);
+  return segments.length > 0 && segments.every((segment) => corpus.includes(segment));
 }
 
 /**
@@ -101,9 +107,16 @@ export function directRoute(name, body, corpus) {
   if (NPM_LIFECYCLES.includes(name) && new RegExp(`npm ${escaped}(?![\\w:-])`).test(corpus)) {
     return 'npm lifecycle';
   }
-  for (const p of scriptPaths(body)) {
-    if (corpus.includes(p)) return 'file path';
-  }
+  // Every executed file must appear, not merely one. A script chaining two validators is not
+  // gated by a workflow that runs only the first: the second can start failing with CI green.
+  // `i18n:validate` runs validate-locale-catalogs.js && validate-glossary.js and only the glossary
+  // half is wired, which the any-match form graded as fully reached (#4347).
+  //
+  // Measured before changing it: 1 script is partially wired, and no claimed gate executes more
+  // than one file -- so this could not yet produce a false verdict for a claimed gate. Unexercised
+  // rather than harmless, and cheaper to correct before something depends on it.
+  const paths = scriptPaths(body);
+  if (paths.length > 0 && paths.every((p) => corpus.includes(p))) return 'file path';
   return null;
 }
 
@@ -181,6 +194,9 @@ export const CLAIMED_GATES = [
   'markdown:primitives:check',
   'gate:enforcement',
   'gate:teeth',
+  // Wired at ci-lint.yml:123 since long before this census existed, and absent from it until
+  // #4347 derived the population from the tree instead of reading the list.
+  'i18n:validate-glossary',
 ];
 
 /**
@@ -222,6 +238,115 @@ export function staleExclusions(routes, excluded = NOT_GATES) {
     .filter((name) => (routes[name] ?? null) !== null)
     .map((name) => ({ name, route: routes[name] }));
 }
+
+/**
+ * Scripts reached by a workflow that execute a repository tool, and so could be controls.
+ *
+ * The claimed set is hand-maintained, so it has an omission direction with no failure path: a tool
+ * wired into CI and left out of `CLAIMED_GATES` is invisible to every check here, and the census
+ * keeps reporting a complete set while covering less of the tree. This derives the population from
+ * the tree instead, so membership cannot decay silently (#4347).
+ *
+ * `build`, `type-check` and the like are excluded by measurement rather than by name: they execute
+ * no file under `tools/` or `scripts/`.
+ *
+ * @param {Record<string, string>} scripts Script name to body.
+ * @param {Record<string, string | null>} routes Script name to matching route.
+ * @returns {string[]} Reached, tool-executing script names, ascending.
+ */
+export function toolBackedScripts(scripts, routes) {
+  return Object.keys(scripts)
+    .filter((name) => (routes[name] ?? null) !== null && ownedPaths(scripts[name]).length > 0)
+    .sort();
+}
+
+/**
+ * The files a script executes that this repository owns.
+ *
+ * @param {string} body Script body.
+ * @returns {string[]} Executed paths under `tools/` or `scripts/`.
+ */
+export function ownedPaths(body) {
+  return scriptPaths(body).filter((p) => p.startsWith('tools/') || p.startsWith('scripts/'));
+}
+
+/**
+ * Whether a script runs test files rather than asserting a repository invariant.
+ *
+ * Derived from what the script executes, not from a `:test` suffix. A name-based census has two
+ * independent error modes and neither is visible in its output -- #4345 admitted a non-member on a
+ * substring and dropped three quarters of the real ones in the same pattern.
+ *
+ * This is still partly a naming convention (`.test.mjs`), but a load-bearing one: it is how
+ * `run-tool-tests.mjs` discovers what to run. The residual risk is a control named `*.test.mjs`,
+ * which `runnerMisreadsControl` in the tests asserts does not happen.
+ *
+ * @param {string} body Script body.
+ * @returns {boolean} True when every owned path is a test file or the tool-test runner.
+ */
+export function isTestRunner(body) {
+  const owned = ownedPaths(body);
+  return (
+    owned.length > 0 &&
+    owned.every((p) => p.endsWith('.test.mjs') || p.endsWith('run-tool-tests.mjs'))
+  );
+}
+
+/**
+ * Controls reached by a workflow that no list accounts for.
+ *
+ * This is the failure path the claimed set never had. `unenforcedClaims` asks whether every claim
+ * is true; this asks whether every truth is claimed, which is the direction that rots without
+ * anyone editing a file.
+ *
+ * @param {Record<string, string>} scripts Script name to body.
+ * @param {Record<string, string | null>} routes Script name to matching route.
+ * @param {string[]} claimed Scripts asserted to be CI gates.
+ * @param {Record<string, object>} excluded Non-gates and their reasons.
+ * @returns {{name: string, route: string}[]} Unaccounted controls, ascending by name.
+ */
+export function unclaimedControls(
+  scripts,
+  routes,
+  claimed = CLAIMED_GATES,
+  excluded = NOT_GATES,
+  known = NOT_CONTROLS,
+) {
+  return toolBackedScripts(scripts, routes)
+    .filter((name) => !isTestRunner(scripts[name]))
+    .filter(
+      (name) =>
+        !claimed.includes(name) && !Object.hasOwn(excluded, name) && !Object.hasOwn(known, name),
+    )
+    .map((name) => ({ name, route: routes[name] }));
+}
+
+/**
+ * Reached, tool-executing scripts that are not controls, with what was checked rather than a label.
+ *
+ * Distinct from `NOT_GATES`: those are unreached by design, and `staleExclusions` fails if one ever
+ * becomes wired. These are *expected* to be reached -- they run in CI legitimately -- they simply
+ * assert no repository invariant, so the gate census is not the right instrument for them.
+ *
+ * Each reason is a criterion rather than a state, so it survives the tree changing (#4337).
+ */
+export const NOT_CONTROLS = {
+  'ai:manifest': {
+    criterion:
+      'generates the manifest; the control over it is ai:manifest:check, which is claimed. A ' +
+      'generator failing means it could not write, not that the tree violates an invariant',
+  },
+  'build:kmp': {
+    criterion:
+      'gradle build driver. Its failure reports a compile error, which the build job already ' +
+      'owns and reports better than a gate census could',
+  },
+  'test:kmp': {
+    criterion:
+      'gradle test driver. Its failure reports a failing test rather than a violated repository ' +
+      'invariant, the same distinction that keeps the tool-test runners out of the control set',
+  },
+};
 
 /**
  * Claimed gates that reach no workflow, so the claim is false rather than merely unverified.
@@ -288,6 +413,37 @@ export function claimedGateLines(routes, claimed = CLAIMED_GATES) {
       ...stale.map((s) => `  ${s.name}: now reached by ${s.route}`),
       'The exclusion rests on a sentence that has stopped holding. Either add it to CLAIMED_GATES,',
       'or restate why a workflow-reached script still is not a gate.',
+    );
+  }
+  return lines;
+}
+
+/**
+ * The omission direction, reported per script.
+ *
+ * @param {Record<string, string>} scripts Script name to body.
+ * @param {Record<string, string | null>} routes Script name to matching route.
+ * @returns {string[]} Report lines.
+ */
+export function unclaimedControlLines(scripts, routes) {
+  const population = toolBackedScripts(scripts, routes);
+  const runners = population.filter((n) => isTestRunner(scripts[n]));
+  const unclaimed = unclaimedControls(scripts, routes);
+  const lines = [
+    '',
+    `Workflow-reached scripts executing a repository tool: ${population.length}`,
+    `  ${runners.length} run test files rather than asserting an invariant, derived from what they`,
+    '  execute rather than from a name suffix.',
+    `  ${population.length - runners.length} are controls; each must be claimed or excluded with a`,
+    '  reason. This is the direction the census lacked: a tool wired into CI and left out of',
+    '  CLAIMED_GATES used to be invisible here (#4347).',
+  ];
+  if (unclaimed.length > 0) {
+    lines.push(
+      '',
+      'Workflow-reached control(s) accounted for by no list:',
+      ...unclaimed.map((u) => `  ${u.name}: reached by ${u.route}`),
+      'Either claim it as a gate, or record in NOT_CONTROLS what makes it not one.',
     );
   }
   return lines;
@@ -373,11 +529,19 @@ function main() {
   for (const line of scopeLines(routes, count)) console.log(line);
   for (const line of unreachedLines(routes)) console.log(line);
   for (const line of claimedGateLines(routes)) console.log(line);
+  for (const line of unclaimedControlLines(pkg.scripts ?? {}, routes)) console.log(line);
   // Until now this tool was itself wired and toothless: it printed a census and always exited 0, so
   // it satisfied "runs in CI" without being able to fail it. It now fails on exactly one claim --
   // that every declared gate can fail CI -- which is narrow enough to be true and checkable, and is
   // the claim whose prose version was wrong for fifteen rounds (#4333).
-  if (unenforcedClaims(routes).length > 0 || staleExclusions(routes).length > 0)
+  //
+  // #4347 adds the second direction: that every workflow-reached control is accounted for. The
+  // first claim can be true while the set it ranges over silently shrinks.
+  if (
+    unenforcedClaims(routes).length > 0 ||
+    staleExclusions(routes).length > 0 ||
+    unclaimedControls(pkg.scripts ?? {}, routes).length > 0
+  )
     process.exitCode = 1;
 }
 
