@@ -13,7 +13,10 @@ import {
   SCANNED_EXTENSIONS,
   cleanLine,
   countExemptions,
+  enumerationOnLine,
+  fencedSuppressions,
   findRestatedEnumerations,
+  isFenceAware,
   isScannedFile,
   violationLines,
 } from './check-citation-enumerations.mjs';
@@ -35,51 +38,54 @@ const VIOLATION = {
 };
 
 test('violationLines states all three buckets of the partition', () => {
-  const [header] = violationLines([VIOLATION], 3161, 4);
+  const [header] = violationLines([VIOLATION], 3161, 4, 0);
   assert.match(header, /— 1 across 3161 scanned file\(s\)/);
   assert.match(header, /with 4 line\(s\) exempted/);
   assert.ok(header.includes(`"${EXEMPTION}"`), 'the marker name must be named, not described');
 });
 
 test('violationLines counts violations, not scanned files, in the first bucket', () => {
-  const [header] = violationLines([VIOLATION, { ...VIOLATION, line: 43 }], 10, 0);
+  const [header] = violationLines([VIOLATION, { ...VIOLATION, line: 43 }], 10, 0, 0);
   assert.match(header, /— 2 across 10 scanned file\(s\)/);
 });
 
 test('violationLines emits file, line, id, enumeration and source text per finding', () => {
-  const lines = violationLines([VIOLATION], 1, 0);
+  const lines = violationLines([VIOLATION], 1, 0, 0);
   assert.ok(lines.includes('  docs/guides/x.md:42  ENG-SEC-008'), lines.join('\n'));
   assert.ok(lines.includes('    enumerates: accounts, balances, and transactions'));
   assert.ok(lines.some((l) => l.includes(VIOLATION.text)));
 });
 
 test('violationLines closes with the remedy and cites ADR-0003', () => {
-  const lines = violationLines([VIOLATION], 1, 0);
+  const lines = violationLines([VIOLATION], 1, 0, 0);
   assert.match(lines.at(-1), /ADR-0003 \(four-authority topology\)/);
   assert.ok(lines.some((l) => l.includes('drifts by losing an item')));
 });
 
 test('violationLines line count scales by three per finding', () => {
-  const one = violationLines([VIOLATION], 1, 0).length;
-  const two = violationLines([VIOLATION, VIOLATION], 1, 0).length;
+  const one = violationLines([VIOLATION], 1, 0, 0).length;
+  const two = violationLines([VIOLATION, VIOLATION], 1, 0, 0).length;
   assert.equal(two - one, 3);
 });
 
 test('cleanLine reports both the scanned and exempted counts', () => {
-  const line = cleanLine(3161, 4);
+  const line = cleanLine(3161, 4, 0);
   assert.match(line, /3161 file\(s\) scanned/);
   assert.match(line, /4 line\(s\) exempted/);
   assert.match(line, /No principle enumeration is restated as an obligation\./);
 });
 
 test('cleanLine discloses the line-at-a-time limitation that makes a wrapped list invisible', () => {
-  assert.match(cleanLine(1, 0), /Read one line at a time, so a list wrapped across a line break/);
+  assert.match(
+    cleanLine(1, 0, 0),
+    /Read one line at a time, so a list wrapped across a line break/,
+  );
 });
 
 test('a zero-exemption green result still names the exemption bucket', () => {
   // Omitting the bucket when it is empty would make "0 exempted" and "not measured"
   // render identically -- the failure mode this tool's own comment warns about.
-  assert.match(cleanLine(3161, 0), /0 line\(s\) exempted/);
+  assert.match(cleanLine(3161, 0, 0), /0 line\(s\) exempted/);
 });
 
 test('the defect this was written for is caught', () => {
@@ -231,4 +237,104 @@ test('a passing run states the same two buckets', () => {
   const result = spawnSync(process.execPath, [ENUM_TOOL], { encoding: 'utf8' });
   assert.equal(result.status, 0);
   assert.match(result.stdout, /\d+ file\(s\) scanned, \d+ line\(s\) exempted/);
+});
+
+// --- fence awareness (#4315) -------------------------------------------------------------------
+//
+// This gate false-accused a fenced *illustration* of the violation it exists to describe: prose
+// showing what a restated enumeration looks like was reported as a restated enumeration. Two other
+// scanners in this repository had already grown the same guard independently, and one of them
+// exported it -- with zero importers.
+
+// The fixture sentence is assembled rather than written out: this gate scans its own test file,
+// and a `.mjs` file has no fence semantics, so a literal restatement here is a real violation.
+// Assembling the ID keeps `CITATION` from matching the source line while the runtime value is
+// exactly what a document would contain. The alternative -- the `enumeration-fixture` marker --
+// cannot be used, because the marker also suppresses detection at runtime, so the fixture would
+// stop exercising the thing under test.
+const FIXTURE_ID = ['ENG', 'TEST', '004'].join('-');
+const RESTATEMENT = `\`${FIXTURE_ID}\` requires lint, format, and type-check.`;
+
+const FENCED_DOC = [
+  'Prose about the rule.',
+  '',
+  '```md',
+  RESTATEMENT,
+  '```',
+  '',
+  'That block illustrates the violation; it does not commit it.',
+].join('\n');
+
+test('a fenced illustration is not reported when fence semantics apply', () => {
+  assert.equal(findRestatedEnumerations(FENCED_DOC, { fenceAware: true }).length, 0);
+});
+
+test('CONTROL: the same line outside a fence is still reported', () => {
+  // Without this the test above would pass on a detector that finds nothing at all, which is the
+  // failure mode of every scope narrowing: the exclusion and a broken predicate look identical.
+  assert.equal(findRestatedEnumerations(RESTATEMENT, { fenceAware: true }).length, 1);
+});
+
+test('fence semantics are off by default, so source files are unaffected', () => {
+  assert.equal(
+    findRestatedEnumerations(FENCED_DOC).length,
+    1,
+    'a backtick run in .mjs is a comment',
+  );
+});
+
+test('isFenceAware selects markdown and nothing else', () => {
+  assert.equal(isFenceAware('docs/guides/x.md'), true);
+  assert.equal(isFenceAware('docs/guides/X.MD'), true);
+  assert.equal(isFenceAware('tools/x.mjs'), false);
+  assert.equal(isFenceAware('.github/workflows/ci.yml'), false);
+});
+
+test('the exclusion reports what it removed, not that it happened', () => {
+  const suppressed = fencedSuppressions(FENCED_DOC);
+  assert.equal(suppressed.length, 1);
+  assert.equal(suppressed[0].id, FIXTURE_ID);
+  assert.equal(suppressed[0].line, 4, 'the one-based line inside the fence');
+});
+
+test('fencedSuppressions counts nothing when nothing was excluded', () => {
+  assert.deepEqual(fencedSuppressions(RESTATEMENT), []);
+});
+
+test('both populations are decided by the same predicate', () => {
+  // Two copies of a detector, one per branch, is how a filter and its census come to disagree
+  // about what they were counting.
+  const direct = enumerationOnLine(RESTATEMENT, 0);
+  assert.equal(direct.id, FIXTURE_ID);
+  assert.deepEqual(findRestatedEnumerations(RESTATEMENT, { fenceAware: true }), [direct]);
+  assert.equal(fencedSuppressions(['```', RESTATEMENT, '```'].join('\n'))[0].id, direct.id);
+});
+
+test('the exemption marker still wins inside and outside a fence', () => {
+  const exempt = `${RESTATEMENT} <!-- ${EXEMPTION} -->`;
+  assert.equal(enumerationOnLine(exempt, 0), null);
+  assert.deepEqual(fencedSuppressions(['```', exempt, '```'].join('\n')), []);
+});
+
+// --- the fenced count is asserted, not merely printed -------------------------------------------
+
+test('the clean line states the fenced-skip count', () => {
+  // Added as a fourth argument, and every existing call site passed three. The reports read
+  // "undefined markdown line(s) skipped" and the whole suite stayed green -- an unasserted report
+  // parameter, reproduced in code written minutes earlier by someone who had just measured the
+  // same defect in fifteen other tools.
+  assert.match(cleanLine(3161, 4, 9), /9 markdown line\(s\) skipped inside fenced blocks/);
+  assert.doesNotMatch(cleanLine(3161, 4, 0), /undefined/);
+});
+
+test('the failing header states the fenced-skip count too', () => {
+  const [header] = violationLines([VIOLATION], 3161, 4, 9);
+  assert.match(header, /9 markdown line\(s\) skipped inside fenced blocks/);
+  assert.doesNotMatch(header, /undefined/);
+});
+
+test('the fenced count moves with its argument on both paths', () => {
+  // A count that never varies in a test is indistinguishable from a constant in the template.
+  assert.match(cleanLine(1, 0, 7), /7 markdown line/);
+  assert.match(violationLines([VIOLATION], 1, 0, 7)[0], /7 markdown line/);
 });

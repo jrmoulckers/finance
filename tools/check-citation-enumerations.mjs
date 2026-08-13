@@ -38,6 +38,8 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
+import { fencedLineNumbers } from './lib/markdown.mjs';
+
 /** Directories never scanned: build output, dependencies, and vendored upstream text. */
 export const SKIPPED_DIRECTORIES = new Set([
   'node_modules',
@@ -109,23 +111,79 @@ export function isScannedFile(filePath) {
 /**
  * Lines that attribute an enumerated obligation to a ratified principle.
  *
+ * Fenced blocks are skipped when `fenceAware` is set, which the walker does for markdown only: a
+ * triple backtick inside a `.mjs` file is a comment, not a delimiter, so applying markdown fence
+ * semantics to source would blind the check to half a file at the first docstring that draws a box.
+ *
+ * The guard is here because this gate false-accused a fenced *illustration* of the very violation
+ * it exists to describe. That is the over-report class, and it is the expensive one for a tool
+ * whose remedy is an opt-out marker: a check that flags correct prose teaches authors to reach for
+ * the exemption, and an exemption reached for by reflex stops being evidence of anything.
+ *
  * @param {string} text file contents
+ * @param {{fenceAware?: boolean}} [options] whether markdown fence semantics apply
  * @returns {{line: number, id: string, enumeration: string, text: string}[]}
  */
-export function findRestatedEnumerations(text) {
+export function findRestatedEnumerations(text, { fenceAware = false } = {}) {
   const found = [];
   const lines = text.split(/\r?\n/);
+  const fenced = fenceAware ? fencedLineNumbers(text) : null;
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (line.includes(EXEMPTION)) continue;
-    const id = CITATION.exec(line);
-    if (!id) continue;
-    if (!OBLIGATION.test(line)) continue;
-    const list = ENUMERATION.exec(line);
-    if (!list) continue;
-    found.push({ line: i + 1, id: id[0], enumeration: list[0], text: line.trim() });
+    if (fenced?.has(i + 1)) continue;
+    const hit = enumerationOnLine(lines[i], i);
+    if (hit) found.push(hit);
   }
   return found;
+}
+
+/**
+ * The hits the fence exclusion removed -- lines that would have been reported but for the fence.
+ *
+ * This is the number the scope line prints, and it is deliberately not "how many lines are fenced".
+ * A count of the excluded *population* says how big the blind spot is; a count of excluded *hits*
+ * says how much the exclusion changed the verdict, and only the second can be watched for growth.
+ * A pre-census filter reported by name rather than by effect is how an exclusion does unmeasured
+ * work for months.
+ *
+ * @param {string} text file contents
+ * @returns {{line: number, id: string, enumeration: string, text: string}[]} Suppressed hits.
+ */
+export function fencedSuppressions(text) {
+  const suppressed = [];
+  const lines = text.split(/\r?\n/);
+  const fenced = fencedLineNumbers(text);
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!fenced.has(i + 1)) continue;
+    const hit = enumerationOnLine(lines[i], i);
+    if (hit) suppressed.push(hit);
+  }
+  return suppressed;
+}
+
+/**
+ * Test one line, independent of any fence or file-type decision.
+ *
+ * Extracted so the included and excluded populations are decided by the *same* predicate. Two
+ * copies of a detector, one per branch, is how a filter and its census come to disagree about what
+ * they were counting.
+ *
+ * @param {string} line The line.
+ * @param {number} index Zero-based line index.
+ * @returns {{line: number, id: string, enumeration: string, text: string}|null} A hit, or null.
+ */
+export function enumerationOnLine(line, index) {
+  if (line.includes(EXEMPTION)) return null;
+  const id = CITATION.exec(line);
+  if (!id) return null;
+  if (!OBLIGATION.test(line)) return null;
+  const list = ENUMERATION.exec(line);
+  if (!list) return null;
+  return { line: index + 1, id: id[0], enumeration: list[0], text: line.trim() };
+}
+
+/** True when markdown fence semantics apply to a path. */
+export function isFenceAware(filePath) {
+  return path.extname(filePath).toLowerCase() === '.md';
 }
 
 /** How many lines opted out via the marker. Reported so an exemption cannot grow unseen. */
@@ -167,12 +225,14 @@ async function* walk(directory) {
  * @param {{file: string, line: number, id: string, enumeration: string, text: string}[]} violations Findings.
  * @param {number} scanned Files read.
  * @param {number} exempted Lines skipped via the exemption marker.
+ * @param {number} fenced Markdown lines skipped for being inside a fenced block.
  * @returns {string[]} Report lines, newline-free.
  */
-export function violationLines(violations, scanned, exempted) {
+export function violationLines(violations, scanned, exempted, fenced) {
   const lines = [
     `Restated principle enumeration(s) — ${violations.length} across ${scanned} scanned ` +
-      `file(s), with ${exempted} line(s) exempted via the "${EXEMPTION}" marker:`,
+      `file(s), with ${exempted} line(s) exempted via the "${EXEMPTION}" marker and ` +
+      `${fenced} markdown line(s) skipped inside fenced blocks:`,
   ];
   for (const v of violations) {
     lines.push(
@@ -192,14 +252,20 @@ export function violationLines(violations, scanned, exempted) {
 /**
  * Build the passing report.
  *
+ * The fenced count is printed on both paths, and it is a *count of what was removed* rather than a
+ * name for the decision. A scope line reading "fenced blocks are out of scope" asserts only that
+ * somebody decided; a number asserts how much the decision moved, and can be seen to grow.
+ *
  * @param {number} scanned Files read.
  * @param {number} exempted Lines skipped via the exemption marker.
+ * @param {number} fenced Markdown lines skipped for being inside a fenced block.
  * @returns {string} The clean-result sentence.
  */
-export function cleanLine(scanned, exempted) {
+export function cleanLine(scanned, exempted, fenced) {
   return (
     `No principle enumeration is restated as an obligation. ${scanned} file(s) scanned, ` +
-    `${exempted} line(s) exempted via the "${EXEMPTION}" marker. Read one line at a ` +
+    `${exempted} line(s) exempted via the "${EXEMPTION}" marker, ${fenced} markdown line(s) ` +
+    'skipped inside fenced blocks. Read one line at a ' +
     'time, so a list wrapped across a line break is not seen.'
   );
 }
@@ -208,22 +274,25 @@ export async function main(root) {
   const violations = [];
   let scanned = 0;
   let exempted = 0;
+  let fenced = 0;
   for await (const file of walk(root)) {
     scanned += 1;
     const text = await readFile(file, 'utf8');
     exempted += countExemptions(text);
-    for (const hit of findRestatedEnumerations(text)) {
+    const fenceAware = isFenceAware(file);
+    if (fenceAware) fenced += fencedSuppressions(text).length;
+    for (const hit of findRestatedEnumerations(text, { fenceAware })) {
       violations.push({ ...hit, file: path.relative(root, file) });
     }
   }
 
   if (violations.length > 0) {
-    process.stdout.write(`\n${violationLines(violations, scanned, exempted).join('\n')}\n`);
+    process.stdout.write(`\n${violationLines(violations, scanned, exempted, fenced).join('\n')}\n`);
     process.exitCode = 1;
     return;
   }
 
-  process.stdout.write(`${cleanLine(scanned, exempted)}\n`);
+  process.stdout.write(`${cleanLine(scanned, exempted, fenced)}\n`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

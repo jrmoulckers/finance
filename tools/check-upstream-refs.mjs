@@ -43,6 +43,8 @@
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
+import { markFences } from './lib/markdown.mjs';
+
 // Recorded, not approved. Lower it whenever the real count drops; the tool
 // prints the new floor when it can. See docs/guides/engineering-practice-adoption.md.
 export const BASELINE = 23;
@@ -93,16 +95,16 @@ export function isFixtureFile(file) {
 /** Extract every jrmoulckers cross-repo link from one file's text. */
 export function collectRefs(text, file = '', { fenceAware = true } = {}) {
   const out = [];
-  let fenced = false;
+  // A link inside a fenced block is an illustration, not a reference this
+  // repository follows. Counting them made the check fail on the prose that
+  // documents the check -- the fix is scope, not a higher baseline.
+  //
+  // This used to be an inline fence walker. It is the shared one now: the same
+  // guard had been written independently here and in `check-doc-links.mjs`,
+  // and a third scanner that lacked it was false-accusing its own examples.
+  const marked = fenceAware ? markFences(text) : null;
   text.split(/\r?\n/).forEach((line, i) => {
-    // A link inside a fenced block is an illustration, not a reference this
-    // repository follows. Counting them made the check fail on the prose that
-    // documents the check -- the fix is scope, not a higher baseline.
-    if (fenceAware && /^\s*(```|~~~)/.test(line)) {
-      fenced = !fenced;
-      return;
-    }
-    if (fenced) return;
+    if (marked && marked[i]?.fenced) return;
     for (const pattern of [BLOB, RAW]) {
       pattern.lastIndex = 0;
       for (const [, repo, ref, path] of line.matchAll(pattern)) {

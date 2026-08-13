@@ -75,23 +75,59 @@ test('leakLines distinguishes an inherited leak from one this run created', () =
   assert.match(after, /The run that leaks is the run that must fail/);
 });
 
+// Dirent-like entries: discovery reads `withFileTypes`, so a fake that returns bare strings would
+// be testing a different function than the one that ships.
+const file = (name) => ({ name, isDirectory: () => false });
+const dir = (name) => ({ name, isDirectory: () => true });
+
 test('testFiles selects only test files', () => {
-  const fake = { readdirSync: () => ['a.mjs', 'a.test.mjs', 'b.test.mjs'] };
+  const fake = { readdirSync: () => [file('a.mjs'), file('a.test.mjs'), file('b.test.mjs')] };
   const files = testFiles('tools', fake);
   assert.equal(files.length, 2);
   assert.ok(files.every((f) => f.endsWith('.test.mjs')));
 });
 
 test('testFiles returns a sorted list', () => {
-  const fake = { readdirSync: () => ['z.test.mjs', 'a.test.mjs'] };
+  const fake = { readdirSync: () => [file('z.test.mjs'), file('a.test.mjs')] };
   const files = testFiles('tools', fake);
   assert.ok(files[0].endsWith('a.test.mjs'));
+});
+
+test('testFiles descends into subdirectories', () => {
+  // Discovery was top-level only, so a test in `tools/lib/` would have run nowhere while looking
+  // exactly like a test that runs -- green, and reached by nothing.
+  const fake = {
+    readdirSync: (target) =>
+      target === 'tools'
+        ? [dir('lib'), file('top.test.mjs')]
+        : [file('markdown.test.mjs'), file('markdown.mjs')],
+  };
+  const files = testFiles('tools', fake);
+  assert.equal(files.length, 2);
+  assert.ok(files.some((f) => f.endsWith(path.join('lib', 'markdown.test.mjs'))));
+});
+
+test('testFiles does not descend into node_modules or dot directories', () => {
+  const fake = {
+    readdirSync: (target) =>
+      target === 'tools'
+        ? [dir('node_modules'), dir('.cache'), file('top.test.mjs')]
+        : [file('vendored.test.mjs')],
+  };
+  assert.deepEqual(testFiles('tools', fake), [path.join('tools', 'top.test.mjs')]);
 });
 
 test('testFiles finds this repository real suites', () => {
   // unsourced-bound: no artifact commits to how many tool test files exist -- that is the
   // point of enumerating from disk. A floor only excludes a silently emptied glob (#4296).
   assert.ok(testFiles().length >= 10);
+});
+
+test('the real tree contains a subdirectory suite, so recursion is exercised', () => {
+  // Without this the recursion is asserted only against a fake. Measured before the change: zero
+  // subdirectory test files existed, so recursion was inert and unfalsifiable on the real tree.
+  const nested = testFiles().filter((f) => path.dirname(f) !== path.resolve('tools'));
+  assert.ok(nested.length > 0, 'no nested suite; recursion is untested against real files');
 });
 
 test('testFiles includes this very file, so the population contains its own checker', () => {
