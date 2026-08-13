@@ -396,9 +396,12 @@ function validateActivationDoc() {
   return findings;
 }
 
-function validateSyncLock() {
+// `lockOverride` exists only so a test can construct a degenerate corpus and observe that this
+// function still reports it. Without a seam, the breadth guard could be unwired from here and
+// no test would notice: the recorded lock is healthy, so the wiring is invisible against it.
+function validateSyncLock(lockOverride = null) {
   const findings = [];
-  const lock = readJson(SYNC_LOCK, findings);
+  const lock = lockOverride ?? readJson(SYNC_LOCK, findings);
   if (!lock) return findings;
   if (lock.version !== 1) findings.push(`sync lock version is ${lock.version}; expected 1`);
   if (lock.backbone !== 'jrmoulckers/.github') {
@@ -498,6 +501,7 @@ function validateSyncLock() {
   for (const line of sourceDisclosureLines(source.knownUnreproduced)) {
     process.stdout.write(`${line}\n`);
   }
+  findings.push(...corpusBreadth(lock));
   return findings;
 }
 
@@ -943,6 +947,49 @@ function commentFamily(entryPath) {
   return null;
 }
 
+// The suite's family-switch assertions certify `unstampSource` across comment families, and its
+// coverage assertions certify the walk across nesting depths. Both are only as strong as the
+// corpus that happens to be recorded: an assertion over one family certifies the switch on a
+// third of it, and an inline `assert.ok(x.length > 0)` premise cannot pin that, because
+// weakening the premise is invisible to the same suite that contains it (measured: five such
+// premises, all surviving `> 0` -> `>= 0` at 0 failures — #4256).
+//
+// So the judgement lives here, in production, where a mutation is observable by a named test
+// and the degenerate states can be constructed rather than waited for. It reports rather than
+// throws: a narrowed corpus is a real change in what the green check means, not a broken tool.
+const BREADTH_FLOOR = { families: 2, rootLevel: 1 };
+
+/**
+ * Report when the recorded corpus is too narrow for the suite's per-family and per-depth
+ * assertions to mean what they appear to mean.
+ *
+ * @param {object} lock Parsed sync lock.
+ * @returns {string[]} Findings; empty when the corpus supports the assertions made about it.
+ */
+function corpusBreadth(lock) {
+  const entries = Object.keys(lock?.entries ?? {});
+  if (entries.length === 0) return ['lock records no entries; every corpus assertion is vacuous'];
+
+  const families = new Set(entries.map(commentFamily).filter((family) => family !== null));
+  const rootLevel = entries.filter((entry) => !entry.includes('/'));
+  const findings = [];
+
+  if (families.size < BREADTH_FLOOR.families) {
+    findings.push(
+      `corpus exercises ${families.size} comment family/families ` +
+        `(${[...families].sort().join(', ') || 'none'}); the unstamp switch has ` +
+        `${HASH_EXTENSIONS.size + BLOCK_EXTENSIONS.size + HTML_EXTENSIONS.size} extensions across 3, ` +
+        'so a passing family assertion would certify a fraction of it',
+    );
+  }
+  if (rootLevel.length < BREADTH_FLOOR.rootLevel) {
+    findings.push(
+      'corpus records no root-level entries; the walk-reaches-root assertion would hold vacuously',
+    );
+  }
+  return findings;
+}
+
 // Returns { status: 'no-stamp' } for a file the engine never stamped, { status: 'unknown' }
 // for a stamped file whose extension is unclassified, and { status: 'ok', body } otherwise.
 //
@@ -1371,6 +1418,9 @@ module.exports = {
   ENFORCEMENT_WORKFLOW,
   driftEnforcement,
   enforcementFindings,
+  BREADTH_FLOOR,
+  corpusBreadth,
+  validateSyncLock,
   SYNC_LOCK,
   triggerPaths,
   triggerCovers,
