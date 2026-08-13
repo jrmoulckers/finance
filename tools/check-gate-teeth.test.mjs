@@ -221,3 +221,95 @@ test('an unproven criterion declares whether it was executed or reasoned', () =>
     assert.equal(typeof spec.tested, 'boolean', `${name} does not say whether it was tested`);
   }
 });
+
+// A subject whose exit depends on the fixture, so a control overlay can genuinely clear it.
+const CONDITIONAL =
+  "import { readFileSync } from 'node:fs';\n" +
+  'let bad = false;\n' +
+  "try { if (readFileSync('defect.txt', 'utf8').trim() === 'yes') { console.log('found the-actual-violation here'); bad = true; } } catch {}\n" +
+  "try { if (readFileSync('other.txt', 'utf8').trim() === 'yes') { console.log('an unrelated second failure'); bad = true; } } catch {}\n" +
+  'process.exit(bad ? 1 : 0);\n';
+
+test('a control that exits zero makes the failure attributable to the injected defect', () => {
+  withScript(CONDITIONAL, (root) => {
+    const result = proveTeeth(
+      'fake:gate',
+      {
+        script: 'tools/subject.mjs',
+        files: { 'defect.txt': 'yes\n' },
+        control: { 'defect.txt': 'no\n' },
+        expect: 'the-actual-violation',
+      },
+      root,
+    );
+    assert.equal(result.controlStatus, 0, 'the fixture is clean once the defect is removed');
+    assert.equal(result.ok, true);
+  });
+});
+
+test('a fixture that fails for two independent reasons is not proof', () => {
+  withScript(CONDITIONAL, (root) => {
+    const spec = {
+      script: 'tools/subject.mjs',
+      files: { 'defect.txt': 'yes\n', 'other.txt': 'yes\n' },
+      expect: 'the-actual-violation',
+    };
+    const withoutControl = proveTeeth('fake:gate', spec, root);
+    assert.equal(withoutControl.ok, true, 'exit code and substring alone accept it -- the defect');
+
+    const withControl = proveTeeth(
+      'fake:gate',
+      { ...spec, control: { 'defect.txt': 'no\n' } },
+      root,
+    );
+    assert.equal(withControl.status, 1, 'it still fails');
+    assert.equal(withControl.named, true, 'and still names the violation');
+    assert.equal(withControl.controlStatus, 1, 'but the control fails too');
+    assert.equal(withControl.ok, false, 'so the failure is not attributable');
+    assert.match(withControl.first, /not attributable/);
+  });
+});
+
+test('every expected string is required, not merely one of them', () => {
+  withScript("console.log('names only the first');\nprocess.exit(1);\n", (root) => {
+    const result = proveTeeth(
+      'fake:gate',
+      {
+        script: 'tools/subject.mjs',
+        files: {},
+        expect: ['names only the first', 'and the second'],
+      },
+      root,
+    );
+    assert.equal(result.named, false);
+    assert.equal(result.ok, false);
+    assert.match(result.first, /and the second/, 'the report says which one was missing');
+  });
+});
+
+test('every proven entry either carries a control or says why none can exist', () => {
+  for (const [name, spec] of Object.entries(PROVEN)) {
+    const hasControl = spec.control !== undefined;
+    const hasCriterion = typeof spec.controlCriterion === 'string';
+    assert.ok(hasControl !== hasCriterion, `${name} must declare exactly one of the two`);
+    if (hasCriterion) {
+      // A criterion, not a state: it must name the obstacle, so a reader can check whether the
+      // obstacle is still there rather than trust that nobody has got round to it. Tested by the
+      // same shape the UNPROVEN table uses, rather than by a length threshold -- a threshold is a
+      // number nothing commits to, and this file exists to reject exactly that kind of assertion.
+      assert.ok(spec.controlCriterion.length > 0, `${name} has an empty criterion`);
+      assert.ok(
+        !/\byet\b|\bnot written\b|\btodo\b/i.test(spec.controlCriterion),
+        `${name} states a condition that stops being true without anything noticing`,
+      );
+    }
+  }
+});
+
+test('the shipped controls all pass, so no shipped fixture is dirty', () => {
+  for (const [name, spec] of Object.entries(PROVEN)) {
+    if (!spec.control) continue;
+    const result = proveTeeth(name, spec);
+    assert.equal(result.controlStatus, 0, `${name} control must exit 0`);
+  }
+});

@@ -10263,6 +10263,49 @@ change never touched, and passed on re-run. Recorded as a flake in the Node 22 r
 diagnosed -- with the note that local verification here runs Node 24 while CI runs Node 22, so
 "passes locally" has been a weaker claim throughout this work than it sounded.
 
+## A control is the transferable form of an exact-diagnostic assertion
+
+`gate:teeth` graded a gate proven when it exited non-zero and its report named the violation. That
+rejects a fixture which failed to scaffold, and the `jrmoulckers/engineering` session pointed out
+that it does not reject a fixture failing for the injected defect _and_ something unrelated. Their
+prover asserts an exact diagnostic count, which forecloses the case by construction.
+
+The count does not transfer: finance's gates emit free-form prose with no enumerable diagnostic
+unit, and importing the criterion into a population it does not govern is its own error. The
+transferable form is the **control** -- the same fixture with the defect removed, required to exit 0. It reaches the same guarantee from the other side, because anything else wrong with the fixture
+also fails the control.
+
+Measured before and after, on one fixture with a second independent defect added:
+
+|        | `status` | `named` | `controlStatus` | `ok`      |
+| ------ | -------- | ------- | --------------- | --------- |
+| before | 1        | true    | --              | **true**  |
+| after  | 1        | true    | 1               | **false** |
+
+Wiring the controls found two more gates whose fixtures had been failing for two reasons, and both
+were already graded proven:
+
+- `check-doc-links.mjs` reported all 11 baseline entries as no-longer-broken, because their citing
+  documents are absent from a fixture.
+- `check-markdown-primitives.mjs` reported both allowances as matching no site, for the same reason.
+
+That is the defect fixed in `check-walk-safety.mjs` one round earlier, found there by hand and here
+by execution: **a gate whose staleness check is not scoped to the population it actually read cannot
+pass on any tree but the real one, so no clean fixture can prove it.** Both now scope staleness to
+scanned files. Real-tree behaviour is unchanged; each keeps one residual hole -- an entry naming a
+deleted file -- pinned by a named test rather than left to be rediscovered.
+
+One entry declares no control. `gate:enforcement` reads its population from `CLAIMED_GATES`, a
+constant compiled into its own source, so every fixture short of the repository reports the other
+gates as unreached. It carries a `controlCriterion` saying so, which is checked to exist and to
+name an obstacle. An entry that cannot be proven attributable should say which, rather than be
+quietly dropped to keep the table tidy.
+
+The general shape: the controls existed for every gate here, verified by hand when each entry was
+added, and recorded only in a transcript. **A hand-verified property is a session artifact -- it
+decays, and nothing re-derives it.** Both defects above were introduced after the hand verification
+and neither was noticed, because nothing was still asking.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

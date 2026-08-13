@@ -74,9 +74,20 @@ const LIB = ['tools/lib/markdown.mjs', 'tools/lib/source.mjs'];
  * Gates whose teeth are demonstrated by executing them against a fixture.
  *
  * `files` is written into a throwaway directory alongside a copy of the gate. `expect` is a
- * substring the report must contain; without it a fixture that failed to scaffold would count as
- * a pass. `repo: true` initialises a git repository and stages the files, for gates that
- * enumerate their population through git rather than the filesystem.
+ * substring -- or a list of them, all required -- that the report must contain; without it a
+ * fixture that failed to scaffold would count as a pass. `repo: true` initialises a git repository
+ * and stages the files, for gates that enumerate their population through git rather than the
+ * filesystem.
+ *
+ * `control` is an overlay applied over `files` that removes the injected defect, and it must exit
+ * **0**. It answers a question `expect` cannot: whether the fixture fails for the defect under test
+ * *and nothing else*. Measured before it existed -- adding a second, independent defect to a
+ * fixture left `status=1, named=true, ok=true`, so a fixture could prove less than it appeared to
+ * (#4351). The idea is the `jrmoulckers/engineering` prover's, which asserts an exact diagnostic
+ * count; that does not transfer to gates emitting free-form prose, but a control that must pass is
+ * the same guarantee reached from the other side.
+ *
+ * `controlCriterion` replaces `control` where a passing control is impossible, and says why.
  *
  * No fixture here uses `node_modules`. An earlier round linked one in and `git add -A` ingested
  * it, changing the tracked population between runs; the cleanup that followed traversed the link
@@ -90,6 +101,7 @@ export const PROVEN = {
       'package.json': '{"name":"fixture","version":"1.0.0"}\n',
       'tools/undeclared.mjs': "import x from 'totally-undeclared-package';\nexport default x;\n",
     },
+    control: { 'tools/undeclared.mjs': 'export default 1;\n' },
     expect: 'totally-undeclared-package',
   },
   'markdown:primitives:check': {
@@ -98,6 +110,7 @@ export const PROVEN = {
       'scripts/.keep': '',
       'tools/rogue.mjs': 'const FENCE = /^\\s*(```|~~~)/;\nexport { FENCE };\n',
     },
+    control: { 'tools/rogue.mjs': 'export const NOT_A_FENCE = 1;\n' },
     expect: 'rogue',
   },
   'bounds:check': {
@@ -105,6 +118,10 @@ export const PROVEN = {
     files: {
       'tools/invented.test.mjs':
         "import assert from 'node:assert/strict';\nassert.ok(total() >= 4173);\n",
+    },
+    control: {
+      'tools/invented.test.mjs':
+        "import assert from 'node:assert/strict';\nassert.ok(total() >= floor());\n",
     },
     expect: '4173',
   },
@@ -114,18 +131,24 @@ export const PROVEN = {
       '.github/workflows/unprefetched.yml':
         'name: unprefetched\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ./gradlew build\n',
     },
+    control: {
+      '.github/workflows/unprefetched.yml':
+        'name: unprefetched\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo no gradle here\n',
+    },
     expect: 'Prefetch Gradle distribution',
   },
   'encoding:check': {
     script: 'tools/check-text-encoding.mjs',
     repo: true,
     files: { 'lost.txt': 'hi\uFFFD\n' },
+    control: { 'lost.txt': 'hi\n' },
     expect: 'U+FFFD replacement character',
   },
   'docs:links:check': {
     script: 'tools/check-doc-links.mjs',
     repo: true,
     files: { 'docs/a.md': '# A\n\nSee [gone](./nowhere-at-all.md).\n' },
+    control: { 'docs/a.md': '# A\n\nSee [here](./a.md).\n' },
     expect: './nowhere-at-all.md',
   },
   'gate:enforcement': {
@@ -136,6 +159,12 @@ export const PROVEN = {
       '.github/workflows/ci.yml':
         'name: CI\non: [push]\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n',
     },
+    controlCriterion:
+      'No passing control exists. This gate reads its population from CLAIMED_GATES, a constant ' +
+      'compiled into its own source, so every fixture short of a copy of the real repository ' +
+      'reports the other claimed gates as unreached. The fixture can demonstrate the gate bites; ' +
+      'it cannot demonstrate the bite is attributable, and saying so is more honest than removing ' +
+      'the entry.',
     expect: 'reached by no workflow',
   },
   'i18n:validate-glossary': {
@@ -153,22 +182,33 @@ export const PROVEN = {
         '"terms":[{"concept":"Balance","en-US":"Balance","es-ES":"Saldo"}]}\n',
       'apps/web/src/lib/education/glossary.ts': 'export const glossary = [];\n',
     },
+    control: {
+      'config/i18n/glossary.json':
+        '{"description":"fixture","sourceLocale":"en-US","locales":["en-US","es-ES","fr-FR"],' +
+        '"terms":[{"concept":"Balance","en-US":"Balance","es-ES":"Saldo","fr-FR":"Solde"}]}\n',
+    },
     expect: 'missing a non-blank value for locale "fr-FR"',
   },
   'walk:safety:check': {
     script: 'tools/check-walk-safety.mjs',
     files: {
-      // A minimal walker whose only defect is the stat call. Verified against a baseline control
-      // that is byte-identical except for `lstatSync`, which exits 0 with "No unjustified
-      // link-following directory test found." -- so the non-zero exit is attributable to the
-      // injected defect rather than to the fixture, which is the distinction an exit code alone
-      // cannot draw (#4347). The expected substring names the offending file and line, so a gate
-      // that failed for an unrelated reason could not satisfy it.
       'tools/offender.mjs':
         "import { readdirSync, statSync } from 'node:fs';\n" +
         'export function walk(dir) {\n' +
         '  for (const entry of readdirSync(dir)) {\n' +
         '    if (statSync(`${dir}/${entry}`).isDirectory()) walk(`${dir}/${entry}`);\n' +
+        '  }\n' +
+        '}\n',
+    },
+    // Byte-identical except for the stat call, so a non-zero exit is attributable to the injected
+    // defect. This control was verified by hand when the entry was added and is wired here because
+    // a hand-verified property is a session artifact: it decays, and nothing re-derives it (#4351).
+    control: {
+      'tools/offender.mjs':
+        "import { readdirSync, lstatSync } from 'node:fs';\n" +
+        'export function walk(dir) {\n' +
+        '  for (const entry of readdirSync(dir)) {\n' +
+        '    if (lstatSync(`${dir}/${entry}`).isDirectory()) walk(`${dir}/${entry}`);\n' +
         '  }\n' +
         '}\n',
     },
@@ -321,15 +361,14 @@ function removeFixture(files, root) {
 }
 
 /**
- * Execute one gate against its fixture.
+ * Stage one fixture in a throwaway directory and run the gate in it.
  *
- * @param {string} name Gate name.
- * @param {{script: string, files: Record<string, string>, expect: string}} spec Fixture.
- * @param {string} [repoRoot] Source of the gate and its libraries.
- * @returns {{name: string, status: number|null, named: boolean, ok: boolean, first: string}} What
- *   happened.
+ * @param {{script: string, repo?: boolean}} spec Fixture.
+ * @param {Record<string, string>} files File contents to write.
+ * @param {string} repoRoot Source of the gate and its libraries.
+ * @returns {{status: number|null, output: string, staged: boolean}} What happened.
  */
-export function proveTeeth(name, spec, repoRoot = REPO_ROOT) {
+function runFixture(spec, files, repoRoot) {
   const root = mkdtempSync(path.join(tmpdir(), 'gate-teeth-'));
   const written = [];
   try {
@@ -339,7 +378,7 @@ export function proveTeeth(name, spec, repoRoot = REPO_ROOT) {
     for (const lib of LIB) {
       written.push(writeFixtureFile(root, lib, readFileSync(path.join(repoRoot, lib), 'utf8')));
     }
-    for (const [rel, content] of Object.entries(spec.files)) {
+    for (const [rel, content] of Object.entries(files)) {
       written.push(writeFixtureFile(root, rel, content));
     }
     if (spec.repo) {
@@ -347,34 +386,77 @@ export function proveTeeth(name, spec, repoRoot = REPO_ROOT) {
       git('init', '-q');
       git('config', 'user.email', 'fixture@example.invalid');
       git('config', 'user.name', 'fixture');
-      const staged = git('add', '-A');
-      if (staged.status !== 0) {
-        return {
-          name,
-          status: staged.status,
-          named: false,
-          ok: false,
-          first: 'fixture could not stage files, so the gate never ran',
-        };
+      if (git('add', '-A').status !== 0) {
+        return { status: null, output: '', staged: false };
       }
     }
     const result = spawnSync(process.execPath, [path.join(root, spec.script)], {
       cwd: root,
       encoding: 'utf8',
     });
-    const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
-    const named = output.includes(spec.expect);
-    const first = output.split('\n').find((line) => line.trim()) ?? '';
     return {
-      name,
       status: result.status,
-      named,
-      ok: result.status !== 0 && named,
-      first: first.trim(),
+      output: `${result.stdout ?? ''}${result.stderr ?? ''}`,
+      staged: true,
     };
   } finally {
     removeFixture(written, root);
   }
+}
+
+/**
+ * Execute one gate against its fixture, and against its control if it declares one.
+ *
+ * Three independent conditions have to hold. The gate must exit non-zero, its report must name
+ * every expected string, and the control -- the same fixture with the defect removed -- must exit
+ * zero. The third is the one an exit code cannot supply: without it a fixture that fails for the
+ * injected defect *and* something unrelated grades as proven, which was measured to happen here
+ * before this existed (#4351).
+ *
+ * @param {{script: string, files: Record<string, string>, expect: string|string[],
+ *   control?: Record<string, string>, controlCriterion?: string}} spec Fixture.
+ * @param {string} name Gate name.
+ * @param {string} [repoRoot] Source of the gate and its libraries.
+ * @returns {{name: string, status: number|null, named: boolean, controlStatus: number|null|
+ *   undefined, ok: boolean, first: string}} What happened.
+ */
+export function proveTeeth(name, spec, repoRoot = REPO_ROOT) {
+  const run = runFixture(spec, spec.files, repoRoot);
+  if (!run.staged) {
+    return {
+      name,
+      status: null,
+      named: false,
+      controlStatus: undefined,
+      ok: false,
+      first: 'fixture could not stage files, so the gate never ran',
+    };
+  }
+  const expected = Array.isArray(spec.expect) ? spec.expect : [spec.expect];
+  const missing = expected.filter((text) => !run.output.includes(text));
+  const named = missing.length === 0;
+
+  let controlStatus;
+  if (spec.control) {
+    const control = runFixture(spec, { ...spec.files, ...spec.control }, repoRoot);
+    controlStatus = control.staged ? control.status : null;
+  }
+  const controlOk = spec.control ? controlStatus === 0 : true;
+
+  const first = run.output.split('\n').find((line) => line.trim()) ?? '';
+  const reason = !named
+    ? `report did not name ${JSON.stringify(missing[0])}`
+    : !controlOk
+      ? 'control did not exit 0, so the failure is not attributable to the injected defect'
+      : first.trim();
+  return {
+    name,
+    status: run.status,
+    named,
+    controlStatus,
+    ok: run.status !== 0 && named && controlOk,
+    first: reason,
+  };
 }
 
 /**
@@ -417,9 +499,13 @@ export function report(proven = PROVEN, repoRoot = REPO_ROOT) {
       ? 'teeth'
       : result.status === 0
         ? 'NO TEETH (exited 0 over a violation)'
-        : 'FAILED FOR ANOTHER REASON (report did not name the violation)';
-    lines.push(`  ${result.name} -> exit ${result.status} ${verdict}`);
-    if (!result.ok) lines.push(`      first line: ${result.first}`);
+        : result.named
+          ? 'NOT ATTRIBUTABLE (the control failed too, so the fixture is dirty)'
+          : 'FAILED FOR ANOTHER REASON (report did not name the violation)';
+    const control =
+      result.controlStatus === undefined ? '' : `, control exit ${result.controlStatus}`;
+    lines.push(`  ${result.name} -> exit ${result.status}${control} ${verdict}`);
+    if (!result.ok) lines.push(`      ${result.first}`);
   }
 
   lines.push('');
