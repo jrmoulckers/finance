@@ -62,7 +62,7 @@ Recommended groups:
 
 ## Alerting Rules
 
-Reference: [docs/architecture/alerting-rules.md](../../../docs/architecture/alerting-rules.md)
+Reference: [docs/architecture/alerting-rules.md](../../docs/architecture/alerting-rules.md)
 
 | Severity | Response Time   | Escalation                                  |
 | -------- | --------------- | ------------------------------------------- |

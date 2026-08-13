@@ -617,9 +617,9 @@ val GAMIFICATION_CELEBRATIONS = FeatureFlagKey("gamification.celebrations.enable
 
 ## References
 
-- [ADR-0001: Cross-Platform Framework](../0001-cross-platform-framework.md) — KMP shared logic architecture
-- [ADR-0002: Backend & Sync Architecture](../0002-backend-sync-architecture.md) — PowerSync sync rules
-- [ADR-0004: Auth & Security Architecture](../0004-auth-security-architecture.md) — Household RBAC
+- [ADR-0001: Cross-Platform Framework](./0001-cross-platform-framework.md) — KMP shared logic architecture
+- [ADR-0002: Backend & Sync Architecture](./0002-backend-sync-architecture.md) — PowerSync sync rules
+- [ADR-0004: Auth & Security Architecture](./0004-auth-security-architecture.md) — Household RBAC
 - [ADR-0015: Premium Architecture](./0015-premium-architecture.md) — Premium tier integration
 - [Duolingo Engineering: Streak Mechanics](https://blog.duolingo.com/) — Streak design patterns
 - [Nir Eyal: Hooked](https://www.nirandfar.com/hooked/) — Behavioral design framework

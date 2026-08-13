@@ -68,7 +68,9 @@
     "version": "changeset version",
     "node:version:check": "node tools/check-node-version-consistency.mjs",
     "node:version:test": "node --test tools/check-node-version-consistency.test.mjs",
-    "citations:context:test": "node --test tools/citations-context.test.mjs"
+    "citations:context:test": "node --test tools/citations-context.test.mjs",
+    "docs:links:check": "node tools/check-doc-links.mjs",
+    "docs:links:test": "node --test tools/check-doc-links.test.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs}": [
