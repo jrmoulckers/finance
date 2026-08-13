@@ -71,9 +71,8 @@ const EXISTENCE = new Set(['>0', '>=1', '<1', '<=0', '>=0', '<0']);
  * @param {string} line Source line.
  * @returns {string} The line with literal contents replaced by spaces.
  */
-export function stripLiterals(line) {
-  return line.replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1/g, (match) => match[0].repeat(match.length));
-}
+export { stripLiterals } from './lib/source.mjs';
+import { stripLiterals } from './lib/source.mjs';
 
 /**
  * Extract every numeric-literal *inequality* from a line of source.

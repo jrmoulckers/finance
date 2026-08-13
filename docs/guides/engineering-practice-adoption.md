@@ -9646,6 +9646,94 @@ being broken fails the build with `recorded gap(s) no longer broken -- remove th
 cannot rot toward over-exemption. It rotted in the other direction — unexplained exemption — which
 is the direction with no reader-visible signal, and is the same direction engineering's does.
 
+## A true reason is not evidence of membership (#4330)
+
+A sibling session reported, three rounds running, that it had shipped a source-scanning detector
+with no string-literal handling — flagging the recurrence in the same message that retracted the
+previous one. Rather than accept that as their defect, we asked whether the tree here had it.
+
+It did, in three places, and the shape was worse than a missing feature.
+
+### The fail-open one
+
+`check-citation-enumerations.mjs` backs a required gate. #4321 hardened its exemption marker so
+that the marker appearing inside a string literal reads as a mention rather than a claim. It did
+so with `/'[^']*'|"[^"]*"|<backtick>[^<backtick>]*<backtick>/g`, which does not model escapes.
+Verified by execution:
+
+| input                                                          | `hasExemption`                  |
+| -------------------------------------------------------------- | ------------------------------- |
+| `const doc = 'enumeration-fixture: sample';`                   | `false` — the case #4321 tested |
+| `const doc = 'don\'t write enumeration-fixture: sample here';` | **`true`**                      |
+
+The literal terminates early at the escaped quote and its tail reads as code. #4321 closed the
+hole for literals it could parse, and the test that certified the hardening used one of those.
+
+The correct implementation was **already exported**, from `check-assertion-bounds.mjs`, in the same
+directory, when #4321 was written. Not missing — unimported. That is the exact inverse of the
+sibling's own result the same week, where `@jrmoulckers/eslint-config` ships two internal modules
+and _deliberately_ excludes them from its `exports` map, verified by `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+Both trees had a reachability question; theirs was answered on purpose.
+
+### The census could not see its own class
+
+`check-markdown-primitives.mjs` exists to find predicates re-derived instead of imported. It did
+not list literal-stripping among the predicates it looks for, so both divergent implementations
+were invisible to the gate built for exactly that failure. The scope is now a `PRIMITIVES` table —
+adding a predicate is a row, not a second tool.
+
+### The control that ruled out the weak form
+
+The census had a test named _CONTROL: a fence delimiter that is not used as a predicate is not
+reported_. It passed throughout. Its two inputs contain a bare delimiter and **no predicate
+construct at all**, so they could not have matched with or without literal handling. The adjacent,
+stronger case — a complete predicate held as data — was broken the whole time.
+
+> A control that excludes the weakest form of a defect reads, to anyone auditing the file, as
+> excluding the class.
+
+### The finding that outranks the fix
+
+The first draft of the literal-stripping signature matched any negated class over a single quote
+character. It reported two files:
+
+| file                                          | what it actually is               |
+| --------------------------------------------- | --------------------------------- |
+| `tools/security-scan.js:79`                   | a SQL-injection detection pattern |
+| `scripts/i18n/validate-locale-catalogs.js:44` | XML attribute parsing             |
+
+**Both are CommonJS.** So the allowlist reason every other entry in this gate uses — _"require()
+cannot load the ESM owner"_ — was available, true, and would have certified two files that are not
+members of the class at all.
+
+> An allowlist asks _why can this file not use the owner_. It never asks _is this file an
+> instance_. A true reason is therefore not evidence of membership, and an allowlist reviewed for
+> reason quality will pass a misclassification with full marks.
+
+The allowlist entry that remains records both facts separately: the blocker (CommonJS) and the
+evidence of membership (the same escape-aware construct). Tightening the detector was the fix;
+allowlisting would have written a correct sentence about a false classification.
+
+### Blanket stripping broke a detector
+
+The first fix stripped literals before matching. Three tests went red, and the reason was
+substantive rather than mechanical: `line.startsWith('<fence>')` is a fence predicate **whose
+evidence is a string literal**. Erasing literals erased a construct the census exists to find.
+
+The property is nesting, not presence — a match is data when it _begins_ inside a literal. And
+computing that with a regex failed too, because `'[^']*'` inside a _regex literal_ looks like a
+string to a regex-based scanner: the approximation broke on precisely the construct it was added to
+detect. `tools/lib/source.mjs` now carries a small lexer that tracks string delimiters, line
+comments, and regex literals with character classes, and states its own limits in prose that the
+tests assert.
+
+### Instrument disagreement, both directions
+
+An ad-hoc grep run before the gate existed reported nine files. The shipped census reported a
+different set: it missed nothing the grep found that was real, and it found
+`scripts/i18n/validate-glossary.js:150`, a genuine member, which the grep never saw. Neither
+instrument was a subset of the other.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
