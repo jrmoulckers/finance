@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { fencedLineNumbers } from './lib/markdown.mjs';
+import { stripLiterals } from './lib/source.mjs';
 
 /** Directories never scanned: build output, dependencies, and vendored upstream text. */
 export const SKIPPED_DIRECTORIES = new Set([
@@ -178,8 +179,10 @@ export function fencedSuppressions(text) {
  * @returns {boolean} True when the marker is present, outside a string literal, and carries a reason.
  */
 export function hasExemption(line) {
-  // Strip string literals first: the marker as *data* is a mention, not a claim.
-  const outsideLiterals = line.replace(/'[^']*'|"[^"]*"|`[^`]*`/g, '');
+  // Strip string literals first: the marker as *data* is a mention, not a claim. The shared
+  // primitive is escape-aware; the inline expression this replaced was not, so a literal containing
+  // an escaped quote leaked its tail and granted the exemption from data (#4330).
+  const outsideLiterals = stripLiterals(line);
   const at = outsideLiterals.indexOf(EXEMPTION);
   if (at === -1) return false;
   // Drop a trailing comment terminator before looking for a reason. `<!-- enumeration-fixture -->`

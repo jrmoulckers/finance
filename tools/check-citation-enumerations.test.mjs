@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, unlinkSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
@@ -412,4 +412,32 @@ test('the inventory names every exempted line by file and line', () => {
 test('the inventory is empty when nothing was excused', () => {
   // A report that prints a heading over an empty list claims an exclusion happened.
   assert.deepEqual(exemptionInventory([{ file: 'tools/c.mjs', lines: [] }]), []);
+});
+
+test('an escaped quote inside a literal does not grant an exemption (#4330)', () => {
+  // #4321 hardened the marker against the marker-as-data case and was verified against a literal
+  // with no escapes. The inline expression it used terminated at the escaped quote, so the tail of
+  // the literal read as code and the marker in it was honoured. Fail-open, and invisible to the
+  // test that certified the hardening, because that test used a literal the expression could parse.
+  const marker = `${EXEMPTION}: sample`;
+  assert.equal(hasExemption(`const doc = '${marker}';`), false, 'plain literal: still a mention');
+  assert.equal(
+    hasExemption(`const doc = 'don\\'t write ${marker} here';`),
+    false,
+    'a literal containing an escaped delimiter is still data, not a claim',
+  );
+  assert.equal(hasExemption(`// ${marker}`), true, 'a real exemption must still be honoured');
+});
+
+test('exemption detection uses the shared stripper rather than a local expression', () => {
+  // The regression above is only fixed while the shared owner is the one doing the work. A future
+  // edit that reintroduces an inline expression would pass the case above if it happened to model
+  // escapes, and diverge again on the next case nobody wrote. Asserting the import is the only
+  // check that survives the next divergence, because it does not depend on guessing which input
+  // exposes it.
+  const src = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), 'check-citation-enumerations.mjs'),
+    'utf8',
+  );
+  assert.match(src, /import \{ stripLiterals \} from '\.\/lib\/source\.mjs'/);
 });
