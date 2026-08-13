@@ -236,11 +236,42 @@ export function refuseReason() {
   return null;
 }
 
+/**
+ * Render the unasserted-site list.
+ *
+ * @param {string[]} survivors Site labels.
+ * @returns {string[]} Report lines, empty when nothing survived.
+ */
+export function survivorLines(survivors) {
+  if (survivors.length === 0) return [];
+  return ['', 'unasserted sites:', ...survivors.map((s) => `  ${s}`)];
+}
+
+/**
+ * Render the elapsed-time line.
+ *
+ * @param {number} ms Duration in milliseconds.
+ * @returns {string} Report line.
+ */
+export function elapsedLine(ms) {
+  return `elapsed                 ${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Render the refusal message.
+ *
+ * @param {string} reason Why the run was refused.
+ * @returns {string} Message written to stderr.
+ */
+export function refusalLine(reason) {
+  return `check-report-assertions: ${reason}`;
+}
+
 function main() {
   const sentinel = process.argv[2] ?? DEFAULT_SENTINEL;
   const reason = refuseReason();
   if (reason !== null) {
-    console.error(`check-report-assertions: ${reason}`);
+    console.error(refusalLine(reason));
     process.exitCode = 1;
     return;
   }
@@ -249,11 +280,9 @@ function main() {
   for (const line of reportLines(result)) console.log(line);
   console.log('');
   for (const line of scopeLines(result)) console.log(line);
-  console.log(`\nelapsed                 ${((Date.now() - started) / 1000).toFixed(1)}s`);
-  if (result.survivors.length > 0) {
-    console.log('\nunasserted sites:');
-    for (const s of result.survivors) console.log(`  ${s}`);
-  }
+  console.log('');
+  console.log(elapsedLine(Date.now() - started));
+  for (const line of survivorLines(result.survivors)) console.log(line);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('check-report-assertions.mjs')) {

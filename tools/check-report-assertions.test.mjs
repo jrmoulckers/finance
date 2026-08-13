@@ -6,8 +6,11 @@ import {
   measure,
   mutateSite,
   reportLines,
+  elapsedLine,
+  refusalLine,
   reportSites,
   scopeLines,
+  survivorLines,
   toolsWithTests,
 } from './check-report-assertions.mjs';
 
@@ -192,4 +195,31 @@ test('measure records the sentinel it was given', () => {
 test('measure defaults to the documented sentinel', () => {
   const result = measure({ dir: 'tools', run: () => false });
   assert.equal(result.sentinel, DEFAULT_SENTINEL);
+});
+
+test('survivorLines returns nothing when every site is asserted', () => {
+  assert.deepEqual(survivorLines([]), []);
+});
+
+test('survivorLines lists each survivor by value', () => {
+  const lines = survivorLines(['a.mjs:1  ${x}', 'b.mjs:2  ${y}']);
+  assert.ok(lines.includes('  a.mjs:1  ${x}'));
+  assert.ok(lines.includes('  b.mjs:2  ${y}'));
+});
+
+test('survivorLines heads the list so it is not read as report output', () => {
+  assert.equal(survivorLines(['a.mjs:1  ${x}'])[1], 'unasserted sites:');
+});
+
+test('elapsedLine reports seconds to one decimal', () => {
+  assert.equal(elapsedLine(30800), 'elapsed                 30.8s');
+});
+
+test('elapsedLine distinguishes durations that differ only below a second', () => {
+  assert.notEqual(elapsedLine(1100), elapsedLine(1900));
+  assert.equal(elapsedLine(1100), 'elapsed                 1.1s');
+});
+
+test('refusalLine names the tool and carries the reason verbatim', () => {
+  assert.equal(refusalLine('tree is dirty'), 'check-report-assertions: tree is dirty');
 });
