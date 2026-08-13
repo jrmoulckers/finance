@@ -223,3 +223,28 @@ test('elapsedLine distinguishes durations that differ only below a second', () =
 test('refusalLine names the tool and carries the reason verbatim', () => {
   assert.equal(refusalLine('tree is dirty'), 'check-report-assertions: tree is dirty');
 });
+
+test('reportSites finds interpolations in returned template literals', () => {
+  assert.deepEqual(
+    reportSites('  return `count ${n}`;').map((s) => s.expr),
+    ['n'],
+  );
+});
+
+test('reportSites finds interpolations in bare template array elements', () => {
+  const src = ['const lines = [', '  `a ${x}`,', '  `b ${y}`,', '];'].join('\n');
+  assert.deepEqual(
+    reportSites(src).map((s) => s.expr),
+    ['x', 'y'],
+  );
+});
+
+test('reportSites still ignores a template assigned to a variable', () => {
+  assert.deepEqual(reportSites('  const x = `${a}`;'), []);
+});
+
+test('reportSites counts a returned template and a logged one alike', () => {
+  const logged = reportSites('console.log(`${v}`);');
+  const returned = reportSites('  return `${v}`;');
+  assert.equal(logged.length, returned.length);
+});

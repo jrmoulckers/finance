@@ -25,6 +25,13 @@ export const TOOLS_DIR = 'tools';
 
 const PRINT_CALL = /console\.(?:log|error|warn)\(/;
 const PUSH_CALL = /\w+\.push\(`/;
+const RETURN_TEMPLATE = /return\s+`/;
+// A report line may also be a bare template literal used as an array element or a call argument,
+// e.g. `const lines = [`a ${x}`, `b ${y}`];`. Those carry the same values as a logged line and
+// were invisible to an earlier version of this detector that only looked at calls -- which meant
+// extracting a printer into a returning function removed its sites from the population instead of
+// making them asserted, improving the ratio for the wrong reason.
+const BARE_TEMPLATE = /^`/;
 
 /**
  * Find interpolation sites on lines that build report output.
@@ -38,7 +45,15 @@ export function reportSites(source) {
   for (let i = 0; i < lines.length; i++) {
     const text = lines[i];
     if (!text.includes('${')) continue;
-    if (!PRINT_CALL.test(text) && !PUSH_CALL.test(text)) continue;
+    const trimmed = text.trim();
+    if (
+      !PRINT_CALL.test(text) &&
+      !PUSH_CALL.test(text) &&
+      !RETURN_TEMPLATE.test(text) &&
+      !BARE_TEMPLATE.test(trimmed)
+    ) {
+      continue;
+    }
     for (const m of text.matchAll(/\$\{([^{}]+)\}/g)) {
       out.push({ line: i + 1, expr: m[1] });
     }
