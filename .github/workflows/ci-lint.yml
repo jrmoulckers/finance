@@ -161,6 +161,13 @@ jobs:
       # from the artifact that already commits to the number, or annotated with why none does.
       - name: Every numeric bound names its source
         run: npm run bounds:check
+
+      # A shared primitive is the one that is imported, and importer count cannot detect a fourth
+      # authoring: it reads green on a tree with nothing to import, and it reads a forced hand
+      # (CommonJS cannot load the ESM owner) as a decision not to reuse. This censuses independent
+      # implementations instead, which needs no extraction to have happened first.
+      - name: One definition of a markdown fence
+        run: npm run markdown:primitives:check
   pr-title:
     name: Semantic PR Title
     needs: changes
