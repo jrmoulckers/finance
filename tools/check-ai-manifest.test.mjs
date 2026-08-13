@@ -1327,6 +1327,46 @@ test('the scanned population is derived from the surface, not narrowed to a samp
   );
 });
 
+test('every route into the corpus is exercised by a claimant that uses only that route (#4309)', () => {
+  // The #4270 cross-check filters git's index through BACKBONE_CLAIM -- the walk's own pattern --
+  // so narrowing the pattern shrinks both enumerations identically and they go on agreeing. It
+  // pins how files were FOUND and says nothing about what counts as a CLAIM (.github#953).
+  //
+  // Measured: `jrmoulckers\/\.github` -> `jrmoulckers\/\.github\)` took the corpus from 73 to 8,
+  // stayed above the floor, kept the named `.prettierignore` control satisfied, and left the
+  // enumeration test green; the suite only reddened via two #4281 bystanders pinning a printed
+  // number. A single named control pins one mention FORM, so a narrowing can be crafted around it.
+  //
+  // Constructed rather than named: a probe cannot freeze an accident of the current tree the way
+  // a live file can. This one's SOLE admission route is the bare repository mention -- its
+  // coordinate names an engine file that no other alternative matches -- so any narrowing of that
+  // alternative, which is the sole reason 70 of 73 claimants are scanned, fails here by name.
+  const probe = path.join(ROOT, 'PROBE-4309-prose.md');
+  const coordinate = at('sync/index.mjs', 42);
+  const body = `The engine in jrmoulckers/.github moved that logic; see ${coordinate}.\n`;
+  assert.doesNotMatch(
+    body,
+    /sync\/lib\/|copier\.mjs|provenance\.mjs|basemerge\.mjs|lock\.mjs/,
+    'PREMISE: the probe must be admitted by the repository mention alone',
+  );
+  fs.writeFileSync(probe, body, { flag: 'wx' });
+  try {
+    let out;
+    try {
+      out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
+    } catch (error) {
+      out = String(error.stdout || '');
+    }
+    assert.match(
+      out,
+      /PROBE-4309-prose\.md: cites a file this repository does not own/,
+      'a prose-only claimant must still be scanned',
+    );
+  } finally {
+    fs.unlinkSync(probe);
+  }
+});
+
 test('the gate excludes bytes it cannot read as prose, and only those (#4300)', () => {
   // Dropping the binary check changed no result: nothing binary in this tree happens to carry a
   // backbone claim, so that guard was LATENT -- dead by an impoverished corpus, not by an
