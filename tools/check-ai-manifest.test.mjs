@@ -50,6 +50,7 @@ const {
   EXPECTED_AGENTS,
   MANAGED_COUNTS,
   citationFindings,
+  managedTargets,
   citationCorpus,
   validateCitationCoverage,
   BACKBONE_CLAIM,
@@ -538,10 +539,10 @@ test('the disclosure names every path and never collapses to a count', () => {
 // described needs the network at check time (#4141, owner-gated). What is checkable offline is
 // that no citation reverts to a coordinate and that every registered row is complete.
 
-test('no tracked file cites another repository by line number', () => {
+test('no tracked file cites a file this repository does not own by line number', () => {
   // Was: this one file. The rule now runs over every file that makes a backbone claim, with
-  // locality resolved against the walk, so a self-reference is exempt and a cross-repo
-  // coordinate is not (#4270).
+  // OWNERSHIP resolved against the walk and the lock, so a self-reference is exempt and a
+  // coordinate into a received target is not (#4270, narrowed in #4281).
   const { findings } = validateCitationCoverage();
   assert.deepEqual(
     findings,
@@ -1227,15 +1228,15 @@ test('a constructed cross-repo coordinate reaches the report, not just the funct
     } catch (error) {
       out = String(error.stdout || '');
     }
-    assert.match(out, /Cross-repo citations: 1 coordinate\(s\) in \d+ file\(s\)/);
-    assert.match(out, /\[DRIFT\] PROBE-4270\.md: cites another repository by line number/);
+    assert.match(out, /Unowned-file citations: 1 coordinate\(s\) in \d+ file\(s\)/);
+    assert.match(out, /\[DRIFT\] PROBE-4270\.md: cites a file this repository does not own/);
   } finally {
     fs.unlinkSync(probe);
   }
   const clean = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
-  assert.match(clean, /Cross-repo citations: 0 coordinate\(s\) in \d+ file\(s\)/);
+  assert.match(clean, /Unowned-file citations: 0 coordinate\(s\) in \d+ file\(s\)/);
   assert.ok(
-    clean.indexOf('Cross-repo citations:') < clean.indexOf('Canonical runtime activation:'),
+    clean.indexOf('Unowned-file citations:') < clean.indexOf('Canonical runtime activation:'),
     'the population must be stated before the verdict it qualifies',
   );
 });
@@ -1318,4 +1319,143 @@ test('the report states how many validators ran against how many it advertises (
   assert.ok(line, 'the report must disclose the validator populations');
   assert.equal(line[1], line[2], 'advertised and run must agree');
   assert.equal(Number(line[2]), Object.keys(activationRunners({})).length);
+});
+
+// --- #4281: the exemption is keyed to OWNERSHIP, not presence and not basename ----------------
+//
+// Every state below is CONSTRUCTED. The live corpus contains zero coordinates, so a test that
+// merely ran the corpus would pass under all of the mutations these pin -- the same concealing
+// zero that hid the narrow detector in #4270.
+const ownedOnly = (present, managed) => (cited) => present.has(cited) && !managed.has(cited);
+
+test('a coordinate into a received file is reported though the path is present here (#4281)', () => {
+  // The exemption's stated reason is that a self-reference moves with the edit that moves it.
+  // A managed target moves when the BACKBONE re-delivers it: present, but not owned.
+  const present = new Set(['AGENTS.md', 'agency.toml', 'tools/check-ai-manifest.js']);
+  const managed = new Set(['AGENTS.md', 'agency.toml']);
+  const findings = citationFindings(
+    `see ${at('AGENTS.md', 120)} and ${at('agency.toml', 14)}`,
+    CANON_CITATIONS,
+    ownedOnly(present, managed),
+  ).filter((f) => f.startsWith('cites a file'));
+  assert.equal(findings.length, 2, 'both received coordinates must be reported');
+  assert.ok(findings.some((f) => f.includes(at('AGENTS.md', 120))));
+  assert.ok(findings.some((f) => f.includes(at('agency.toml', 14))));
+});
+
+test('a coordinate is not exempted by a basename collision with an unrelated file (#4281)', () => {
+  // `sync/README.md` does not exist here at all. The old predicate exempted it because finance
+  // has files named README.md -- suppressing a coordinate into a path this repo does not contain,
+  // which is the literal case the function's docstring says it reports.
+  const present = new Set(['docs/README.md', 'apps/web/README.md']);
+  const findings = citationFindings(
+    `see ${at('sync/README.md', 12)}`,
+    CANON_CITATIONS,
+    ownedOnly(present, new Set()),
+  ).filter((f) => f.startsWith('cites a file'));
+  assert.equal(findings.length, 1, 'a basename match is not a path match');
+  assert.ok(findings[0].includes(at('sync/README.md', 12)));
+});
+
+test('a coordinate into a locally authored file stays exempt (#4281)', () => {
+  // The counter-state. Narrowing an exemption must not become deleting it: a self-reference
+  // really does move with the edit that moves it, and reporting it would be noise.
+  const present = new Set(['tools/check-ai-manifest.js', 'docs/ai/README.md']);
+  const managed = new Set(['AGENTS.md']);
+  const findings = citationFindings(
+    `see ${at('tools/check-ai-manifest.js', 100)} and ${at('docs/ai/README.md', 82)}`,
+    CANON_CITATIONS,
+    ownedOnly(present, managed),
+  ).filter((f) => f.startsWith('cites a file'));
+  assert.deepEqual(findings, [], 'owned self-references must not be reported');
+});
+
+test('the received set is read from the lock, not written down beside the rule (#4281)', () => {
+  // Independent enumeration, per #4278: the set the rule consults is compared against the lock
+  // on disk rather than against itself, so a hardcoded or emptied set is visible.
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
+  const recorded = Object.keys(lock.entries ?? lock);
+  const managed = managedTargets();
+  assert.ok(recorded.length > 20, 'PREMISE: the lock records a non-trivial delivered surface');
+  assert.equal(managed.size, recorded.length, 'every recorded target counts as received');
+  for (const entry of recorded)
+    assert.ok(managed.has(entry), `missing from received set: ${entry}`);
+});
+
+test('this tool states received paths without offsets, as its own rule requires (#4281)', () => {
+  // The two coordinates this comment block used as EXAMPLES were the only two the corpus ever
+  // contained, and the old exemption hid both. With the rule repaired they would be findings,
+  // so the prose names the files without offsets -- the tool complying with itself.
+  const source = fs.readFileSync(TOOL, 'utf8');
+  const managed = managedTargets();
+  const owned = (cited) => !managed.has(cited);
+  const findings = citationFindings(source, CANON_CITATIONS, owned).filter((f) =>
+    f.startsWith('cites a file'),
+  );
+  assert.deepEqual(findings, [], 'this tool must not cite a received file by line number');
+});
+
+test('the report states the received population the exemption depends on (#4281)', () => {
+  // The count of files scanned made a zero meaningful (#4270); the size of the exempted set is
+  // the other half, because a silently empty received set restores the defect at a clean zero.
+  const out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
+  const line = out.match(
+    /Unowned-file citations: (\d+) coordinate\(s\) in (\d+) file\(s\)[^;]*; (\d+) received/,
+  );
+  assert.ok(line, 'the report must state coordinates, corpus size and received-set size');
+  assert.ok(Number(line[2]) > 10, 'the corpus must be non-trivial');
+  assert.equal(Number(line[3]), managedTargets().size);
+  assert.ok(Number(line[3]) > 20, 'an empty received set would silently restore the exemption');
+});
+test('the PRODUCTION predicate, not a test copy, distinguishes owned from received (#4281)', () => {
+  // DISCLOSURE: the three tests above build their own `ownedOnly` and hand it in, so they pin the
+  // CONTRACT of citationFindings and say nothing about the predicate validateCitationCoverage
+  // actually constructs. Reverting that predicate -- restoring the basename widening, or dropping
+  // the ownership conjunct -- survived the whole suite at 0 failures. A test that re-implements
+  // the thing it is checking is the mutant-F hazard with the operands swapped.
+  //
+  // So this constructs the state on disk and runs the real walk: one coordinate into a RECEIVED
+  // target (present here, owned upstream) and one into a path this repo does not contain whose
+  // basename collides with local files. Both must be reported by the production code path.
+  const probe = path.join(ROOT, 'PROBE-4281.md');
+  // Non-dotfile, no `@`: the coordinate pattern begins on a word character, so a received target
+  // like `.github/agents/x.agent.md` is still REPORTED but with its leading dot trimmed from the
+  // message. That truncation is cosmetic and out of scope here; this test avoids depending on it.
+  const received = [...managedTargets()].find(
+    (entry) => entry.endsWith('.md') && !entry.startsWith('.') && !entry.includes('@'),
+  );
+  assert.ok(received, 'PREMISE: the lock records a received markdown target to cite');
+  assert.ok(
+    fs.existsSync(path.join(ROOT, received)),
+    'PREMISE: that target is PRESENT here, so only ownership can distinguish it',
+  );
+  const collides = 'sync/README.md';
+  assert.ok(!fs.existsSync(path.join(ROOT, collides)), 'PREMISE: the colliding path is absent');
+  assert.ok(
+    fs.existsSync(path.join(ROOT, 'README.md')),
+    'PREMISE: a file with the same basename exists, so the old widening would exempt it',
+  );
+  fs.writeFileSync(
+    probe,
+    `Backbone note: jrmoulckers/.github at ${at(received, 3)} and ${at(collides, 12)}.\n`,
+  );
+  try {
+    const { findings } = validateCitationCoverage();
+    const text = findings.join('\n');
+    assert.ok(
+      text.includes(at(received, 3)),
+      'a coordinate into a received target must be reported though the path is present',
+    );
+    assert.ok(
+      text.includes(at(collides, 12)),
+      'a basename collision must not exempt a path this repo does not contain',
+    );
+  } finally {
+    fs.unlinkSync(probe);
+  }
+  assert.deepEqual(
+    validateCitationCoverage().findings,
+    [],
+    'the tree is clean once the probe is gone',
+  );
 });
