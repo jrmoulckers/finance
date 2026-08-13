@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   DEFAULT_SENTINEL,
+  absentWiredTools,
   buildsReport,
   measure,
   mutateSite,
@@ -417,4 +418,81 @@ test('the disclosed residue moves with its input', () => {
 test('scopeLines says nothing about residue when there is none', () => {
   const lines = scopeLines({ ...baseResult, unclassified: 0 }).join('\n');
   assert.doesNotMatch(lines, /not classified/, 'a zero exclusion is not a caveat');
+});
+
+// Absent-wired-tool disclosure (#4324).
+
+test('absentWiredTools names a wired tool that produced no measured site', () => {
+  const absent = absentWiredTools(new Set(['a.mjs', 'z.mjs']), new Set(['a.mjs']), [
+    'a.mjs',
+    'z.mjs',
+  ]);
+  assert.deepEqual(
+    absent.map((a) => a.tool),
+    ['z.mjs'],
+  );
+  assert.match(absent[0].reason, /zero report sites/);
+});
+
+test('absentWiredTools separates the four reasons a wired tool can be missing', () => {
+  const absent = absentWiredTools(
+    new Set(['scored.mjs', 'zero.mjs', 'untested.mjs', 'red.mjs', 'legacy.js']),
+    new Set(['scored.mjs']),
+    ['scored.mjs', 'zero.mjs', 'red.mjs'],
+    ['red.mjs'],
+  );
+  const byTool = Object.fromEntries(absent.map((a) => [a.tool, a.reason]));
+  assert.equal(Object.keys(byTool).length, 4);
+  assert.match(byTool['zero.mjs'], /zero report sites/);
+  assert.match(byTool['untested.mjs'], /no colocated test file/);
+  assert.match(byTool['red.mjs'], /red baseline/);
+  assert.match(byTool['legacy.js'], /CommonJS/);
+});
+
+test('a wired tool with zero sites is distinguishable from a fully-asserted one', () => {
+  // The negative control. Before #4324 both rendered as absence from the table, so this pair of
+  // renders had to differ for the disclosure to carry any information at all.
+  const wired = new Set(['a.mjs', 'zero.mjs']);
+  const withZero = perToolLines(CROSS, wired, ['a.mjs', 'b.mjs', 'c.mjs', 'zero.mjs']).join('\n');
+  const withoutZero = perToolLines(CROSS, new Set(['a.mjs']), ['a.mjs', 'b.mjs', 'c.mjs']).join(
+    '\n',
+  );
+  assert.match(withZero, /zero\.mjs/);
+  assert.doesNotMatch(withoutZero, /zero\.mjs/);
+  assert.notEqual(withZero, withoutZero);
+});
+
+test('perToolLines states the wired denominator its quadrants used', () => {
+  const lines = perToolLines(CROSS, new Set(['a.mjs', 'c.mjs']), []).join('\n');
+  assert.match(lines, /wired denominator 2/);
+});
+
+test('perToolLines emits no disclosure block when every wired tool has a row', () => {
+  const lines = perToolLines(CROSS, new Set(['a.mjs', 'b.mjs']), ['a.mjs', 'b.mjs']).join('\n');
+  assert.doesNotMatch(lines, /produced no row above/);
+});
+
+test('the disclosure counts what it lists, so the number cannot drift from the names', () => {
+  const wired = new Set(['a.mjs', 'zero.mjs', 'legacy.js']);
+  const lines = perToolLines(CROSS, wired, ['a.mjs', 'zero.mjs']);
+  const header = lines.find((l) => /produced no row above/.test(l));
+  const stated = Number(header.match(/^(\d+) wired/)[1]);
+  const named = absentWiredTools(wired, new Set(['a.mjs', 'b.mjs', 'c.mjs']), [
+    'a.mjs',
+    'zero.mjs',
+  ]).length;
+  assert.equal(stated, named);
+});
+
+test('wiredTools excludes test files, which are not tools', () => {
+  const fake = {
+    readFileSync: (file) =>
+      file === 'package.json'
+        ? '{"scripts":{}}'
+        : 'run: node --test tools/check-x.test.mjs tools/check-x.mjs',
+    readdirSync: () => ['ci.yml'],
+  };
+  const wired = wiredTools(fake);
+  assert.equal(wired.has('check-x.mjs'), true);
+  assert.equal(wired.has('check-x.test.mjs'), false);
 });

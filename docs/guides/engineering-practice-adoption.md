@@ -9542,6 +9542,60 @@ written at authoring time rather than a round later.
 That is not a stronger statement of the lesson. It is the only kind of evidence the lesson admits:
 a fix appearing twice.
 
+### Absence is not a score (#4324)
+
+`tools/check-report-assertions.mjs` publishes a wiring x assertion cross-tabulation. Its per-tool
+table is keyed by mutated site, so a wired tool that produced no site never enters the map and
+appears in **no row and no quadrant** — rendered identically to a tool that was measured and
+scored well. The sibling `jrmoulckers/engineering` session found the same class by a different
+route: their report-site boundary excluded whole files, so three tools entered a per-tool ratio as
+`0/0`, one of them the most unambiguously wired tool in their repo.
+
+**Their transferable test, run against finance.** Are the omissions per-site or per-file? Measured
+against finance's actual pre-#4319 boundary:
+
+```
+old 457  new 463  delta +6
+files with sites: old 25, new 25
+per-file omissions (tool invisible under old defn):  0
+per-site omissions (file counted, sites missed):     4
+```
+
+**Measured negative.** finance's #4319 widening was purely per-site; no tool was ever invisible
+because of the site definition. The hole here has a different cause, and finding it required
+abandoning their diagnosis rather than confirming it.
+
+**The actual cause: two populations, different boundaries, silently joined.** `wiredTools()` spans
+`.mjs` and `.js`; the sweep measures `.mjs` files _that have a colocated test_. Of 24 wired tools,
+**11 produce no row**:
+
+| reason                                     | count |
+| ------------------------------------------ | ----- |
+| CommonJS — outside the measured population | 7     |
+| no colocated test file — never mutated     | 4     |
+
+The published quadrants had a wired denominator of **13**, not 24, and nothing in the output said
+so.
+
+**Four of them are instrument-independent findings.** `check-text-encoding.mjs`,
+`check-web-performance-budget.mjs`, `run-citations-check.mjs` and `verify-build-env.mjs` are wired
+into CI and have **no test file anywhere in the tree**. `check-text-encoding.mjs` backs the
+`encoding:check` gate. That needs no ratio, no site definition, and no sweep to state — which is
+why it survives every instrument failure above. A result that uses no population cannot be
+invalidated by the population being wrong.
+
+**The fix is the inventory discipline from #4320**, applied to the yes-branch rather than the
+no-branch: print every absent wired tool **by name with its reason**, and state the denominator
+the quadrants used. A count cannot be wrong in a way a reader can see; a name can.
+
+**Self-correction.** The issue filed for this work classified `run-citations-check.mjs` as
+"zero report sites". It is not — it has no test file and was never in the measured population at
+all. The misclassification came from my probe using `.mjs` non-test as the population while the
+sweep uses `.mjs`-with-tests. **The disclosure block corrected its author's own filed diagnosis on
+its first render**, which is the second time an inventory has done that (the first was #4321,
+where the reason `-->` surfaced on run one). A verdict cannot do this. Only an itemisation can, and
+that is now twice observed rather than argued.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
