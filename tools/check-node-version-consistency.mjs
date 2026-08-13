@@ -24,6 +24,14 @@ import semver from 'semver';
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workflowDirectory = join(repositoryRoot, '.github', 'workflows');
 
+/**
+ * A version far beyond any real release, used to ask whether a range bounds
+ * above at all. Any range that accepts this one accepts every version that will
+ * ever exist, which is the property that makes the over-restrictive direction
+ * unfalsifiable past the highest bound anyone states.
+ */
+export const UNREACHABLE_FUTURE_VERSION = '9999.0.0';
+
 /** Reads the major version declared by `.nvmrc` text, or null when absent. */
 export function parseNvmrc(text) {
   const match = String(text ?? '')
@@ -263,6 +271,65 @@ export function findExcludedCompatibilities(declared, dependencies) {
   }
   return excluded.sort((a, b) => semver.compare(a.version, b.version));
 }
+/**
+ * The population each direction was actually decided over, and whether the
+ * second one could have fired at all.
+ *
+ * Both verdicts above previously printed the *dependency count* beside them.
+ * That number decides neither: the probe set is 52 versions, of which the
+ * declared range admits 8 and excludes 44, so one verdict rests on 8 points and
+ * the other on 44 while both cite 452. A count is only a denominator for the
+ * question it enumerates, and `dependencies.length` enumerates declarations.
+ *
+ * The second field matters more, and its consequence is the opposite of the
+ * intuitive one. `findExcludedCompatibilities` reports versions every
+ * dependency accepts, and a dependency stating no upper bound accepts every
+ * version there will ever be -- so once all of them are open above, "every
+ * dependency accepts it" is automatically true past the highest bound anyone
+ * names. The direction does not go quiet up there; it fires for *anything* the
+ * declared range excludes, without consulting evidence, because the evidence is
+ * unanimous by construction. It has stopped testing the range against the tree
+ * and started restating the range's own upper bound back at you.
+ *
+ * The mirror of that is where a clean reading becomes worthless: a declared
+ * range left open above excludes nothing up there, so it has no population to
+ * test and returns empty whatever the tree looks like. Either way the upper end
+ * of `engines.node` is unfalsifiable from `engines` data; the only evidence for
+ * it is having run the thing.
+ */
+export function directionPopulations(declared, dependencies) {
+  const usable = dependencies.filter((dep) => dep.range && semver.validRange(dep.range));
+  const probes = probeVersions(usable.map((dep) => dep.range));
+  const valid = declared && semver.validRange(declared);
+  const admitted = valid ? probes.filter((version) => semver.satisfies(version, declared)) : [];
+  const excluded = valid ? probes.filter((version) => !semver.satisfies(version, declared)) : [];
+  const unboundedAbove = usable.filter((dep) =>
+    semver.satisfies(UNREACHABLE_FUTURE_VERSION, dep.range, { includePrerelease: true }),
+  );
+  let highestNamedMajor = 0;
+  for (const dep of usable) {
+    // Bare majors count. A range of `18 || 20 || >=22` names three majors and
+    // not one full `x.y.z`, so a triple-only regex reads it as naming nothing
+    // and puts the line lower than the tree actually states. That direction is
+    // not safe: the notice below claims everything past this line is
+    // unmeasurable, so understating it over-claims.
+    for (const match of String(dep.range).matchAll(/(\d+)(?:\.\d+(?:\.\d+)?)?/g)) {
+      highestNamedMajor = Math.max(highestNamedMajor, Number(match[1]));
+    }
+  }
+  return {
+    probes: probes.length,
+    admitted: admitted.length,
+    excluded: excluded.length,
+    unboundedAbove: unboundedAbove.length,
+    declarations: usable.length,
+    highestNamedMajor,
+    excludedAboveHighestNamed: excluded.filter(
+      (version) => semver.major(version) > highestNamedMajor,
+    ).length,
+  };
+}
+
 /** Every installed dependency that states an `engines.node`, walked from disk. */
 export function collectDependencyEngines(root, depth = 0) {
   const found = [];
@@ -295,6 +362,58 @@ export function collectDependencyEngines(root, depth = 0) {
   }
   return found;
 }
+/**
+ * The notices describing what each direction was decided over.
+ *
+ * Extracted from `main` so the rendered strings are testable. That matters more
+ * than it looks: the whole point of this change is *which number appears beside
+ * a verdict*, and a test of `directionPopulations` alone cannot see the text.
+ * Reverting the interpolation to the dependency count survived every unit test
+ * of the computation, because nothing read the sentence.
+ */
+export function directionNotices(declared, populations, admittedFindings, excludedFindings) {
+  const notices = [];
+  if (admittedFindings.length === 0) {
+    notices.push(
+      `engines.node "${declared}" admits no version rejected by any dependency, ` +
+        `over the ${populations.admitted} probe version(s) it admits.`,
+    );
+  }
+  if (excludedFindings.length > 0) {
+    notices.push(
+      `engines.node "${declared}" excludes Node ${excludedFindings
+        .map((entry) => entry.version)
+        .join(
+          ', ',
+        )}, which every one of ${populations.declarations} dependency declaration(s) accepts.`,
+    );
+  } else {
+    notices.push(
+      `engines.node excludes no version that every dependency accepts, ` +
+        `over the ${populations.excluded} probe version(s) it excludes.`,
+    );
+  }
+  // Both directions are named even when both are clean, because "admits no bad
+  // version" reads as "the range is right" and is only half the claim. Each
+  // verdict cites the population that decided it rather than the dependency
+  // count, which decided neither.
+  notices.push(
+    `scope: both directions checked over ${populations.probes} probe version(s) ` +
+      `(${populations.admitted} admitted, ${populations.excluded} excluded) ` +
+      `drawn from ${populations.declarations} dependency declaration(s).`,
+  );
+  if (populations.declarations > 0 && populations.unboundedAbove === populations.declarations) {
+    notices.push(
+      `not evidence: all ${populations.declarations} declaration(s) are unbounded above, so past Node ` +
+        `${populations.highestNamedMajor} "every dependency accepts it" is true by construction. ` +
+        `${populations.excludedAboveHighestNamed} probe version(s) sit there, and the verdict on them ` +
+        `restates engines.node's own upper bound rather than testing it. The upper end is ` +
+        `unfalsifiable from engines data; only running it is evidence.`,
+    );
+  }
+  return notices;
+}
+
 function main() {
   const expectedMajor = parseNvmrc(readFileSync(join(repositoryRoot, '.nvmrc'), 'utf8'));
   if (!expectedMajor) {
@@ -338,6 +457,7 @@ function main() {
     notices.push('node_modules is absent, so engines.node was not checked against dependencies.');
   } else {
     const dependencies = collectDependencyEngines(modules);
+    const populations = directionPopulations(engines?.node, dependencies);
     const admitted = findAdmittedIncompatibilities(engines?.node, dependencies);
     if (admitted.length > 0) {
       const worst = admitted[0];
@@ -347,33 +467,12 @@ function main() {
           `(e.g. ${worst.ranges.join(', ')}). ${admitted.length} admitted version(s) fail this way. ` +
           `Narrow engines.node to what the dependency tree actually supports.`,
       );
-    } else {
-      notices.push(
-        `engines.node "${engines?.node}" admits no version rejected by any of ${dependencies.length} dependency declaration(s).`,
-      );
     }
-    // The other direction. Reported as a notice because a dependency relaxing
-    // its own floor widens what is admissible without any local edit, and this
-    // check only fails on disagreements a local edit causes.
+    // The other direction is a notice because a dependency relaxing its own
+    // floor widens what is admissible without any local edit, and this check
+    // only fails on disagreements a local edit causes.
     const excluded = findExcludedCompatibilities(engines?.node, dependencies);
-    if (excluded.length > 0) {
-      notices.push(
-        `engines.node "${engines?.node}" excludes Node ${excluded
-          .map((entry) => entry.version)
-          .join(
-            ', ',
-          )}, which every one of ${dependencies.length} dependency declaration(s) accepts.`,
-      );
-    } else {
-      notices.push(
-        `engines.node excludes no version that all ${dependencies.length} dependency declaration(s) accept.`,
-      );
-    }
-    // Both directions are named even when both are clean, because "admits no
-    // bad version" reads as "the range is right" and is only half the claim.
-    notices.push(
-      'scope: both directions were checked, over versions named by some dependency range.',
-    );
+    notices.push(...directionNotices(engines?.node, populations, admitted, excluded));
   }
   const runningMajor = process.versions.node.split('.')[0];
   if (runningMajor !== expectedMajor) {

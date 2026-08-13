@@ -15,8 +15,11 @@ import {
   majorSatisfiesEngines,
   parseNvmrc,
   pinMajor,
+  directionNotices,
+  directionPopulations,
   probeVersions,
   RANGE_MARKER,
+  UNREACHABLE_FUTURE_VERSION,
 } from './check-node-version-consistency.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -334,4 +337,166 @@ test('a deliberately excluded odd major is reported when nothing rejects it', ()
   const permissive = [{ range: '>=20' }];
   const found = findExcludedCompatibilities('>=22.22.1 <23 || >=24', permissive);
   assert.ok(found.some((f) => f.version === '23.0.0'));
+});
+
+test('each direction reports the population that decided it, not the dependency count', () => {
+  // The defect this replaces: both verdicts printed `dependencies.length`, a
+  // number that decides neither. Asserting the three are distinct is what makes
+  // reintroducing the shared count fail here rather than read plausibly.
+  const dependencies = [{ range: '>=18' }, { range: '>=20.9.0' }, { range: '^18 || >=20' }];
+  const populations = directionPopulations('>=22.22.1 <23 || >=24', dependencies);
+  assert.equal(populations.probes, populations.admitted + populations.excluded);
+  assert.notEqual(populations.admitted, populations.declarations);
+  assert.notEqual(populations.excluded, populations.declarations);
+  assert.equal(populations.declarations, dependencies.length);
+});
+
+test('the partition sums even when the declared range admits nothing probed', () => {
+  const dependencies = [{ range: '>=18' }];
+  const populations = directionPopulations('>=90', dependencies);
+  assert.equal(populations.probes, populations.admitted + populations.excluded);
+  assert.equal(populations.admitted, 0);
+});
+
+test('a tree that is entirely unbounded above is reported as such', () => {
+  const dependencies = [{ range: '>=18' }, { range: '^18 || >=20' }, { range: '>=20.9.0' }];
+  const populations = directionPopulations('>=22.22.1 <23 || >=24', dependencies);
+  assert.equal(populations.unboundedAbove, dependencies.length);
+  // The consequence, which is the point of measuring it: nothing above the
+  // highest bound anyone names can ever be flagged as wrongly excluded, so a
+  // clean reading up there is vacuous rather than reassuring. Stated as a
+  // comparison between two measurements of this fixture -- an earlier draft
+  // asserted the literal 0, which was the real tree's value carried into a
+  // fixture that does not have it, and the test caught the transplant.
+  assert.ok(populations.excludedAboveHighestNamed > 0);
+  // And every one of them is reported, without the tree being consulted --
+  // which is the actual defect. Above the line "every dependency accepts it" is
+  // unanimous by construction, so the finding is the declared range's own upper
+  // bound handed back, not a measurement of it. An earlier draft asserted 0
+  // here on the theory that the direction goes quiet up there; it does the
+  // opposite, and only running it distinguished the two.
+  const aboveLine = findExcludedCompatibilities('>=22.22.1 <23 || >=24', dependencies).filter(
+    (entry) => Number(entry.version.split('.')[0]) > populations.highestNamedMajor,
+  );
+  assert.equal(aboveLine.length, populations.excludedAboveHighestNamed);
+});
+
+test('an open-ended declared range has no population above the line at all', () => {
+  // The mirror case, and the one this repository is in: nothing is excluded up
+  // there, so the clean verdict is guaranteed rather than earned.
+  // Shaped like this repository: the tree names a major the declared range is
+  // open above. A first draft put the declared floor *above* every major the
+  // deps name, which leaves a real excluded population and is the other case.
+  const dependencies = [{ range: '>=18' }, { range: '>=24.1.0' }];
+  const populations = directionPopulations('>=22.22.1 <23 || >=24', dependencies);
+  assert.equal(populations.unboundedAbove, dependencies.length);
+  assert.equal(populations.highestNamedMajor, 24);
+  assert.equal(populations.excludedAboveHighestNamed, 0);
+  assert.ok(populations.excluded > 0);
+});
+
+test('a bounded-above dependency is counted as bounded', () => {
+  // Discriminates the unbounded count from a constant: this range rejects the
+  // probe, so the tally must fall below the declaration count.
+  const dependencies = [{ range: '>=18' }, { range: '>=18 <24' }];
+  const populations = directionPopulations('>=22.22.1', dependencies);
+  assert.equal(populations.declarations, 2);
+  assert.equal(populations.unboundedAbove, 1);
+});
+
+test('the unreachable probe is above every major the tree names', () => {
+  // If this constant ever drifts below a real release, `unboundedAbove` starts
+  // undercounting silently and the vacuity notice stops appearing.
+  const dependencies = [{ range: '>=18' }, { range: '>=20.9.0 <21 || >=22' }];
+  const populations = directionPopulations('>=22', dependencies);
+  assert.ok(Number(UNREACHABLE_FUTURE_VERSION.split('.')[0]) > populations.highestNamedMajor);
+  assert.equal(populations.highestNamedMajor, 22);
+  // >=22 is a bare major with no minor or patch. A triple-only regex reads
+  // it as naming nothing, which puts the line at 20 and over-claims the
+  // unmeasurable region above it.
+});
+
+test('highestNamedMajor reads every literal in a range, not just the first', () => {
+  const dependencies = [{ range: '^18.18.0 || ^20.9.0 || >=21.1.0' }];
+  const populations = directionPopulations('>=22', dependencies);
+  assert.equal(populations.highestNamedMajor, 21);
+});
+test('the rendered notice cites the direction population, not the dependency count', () => {
+  // The unit test of directionPopulations cannot see this: swapping the
+  // interpolation back to the dependency count leaves every computation test
+  // green, because none of them read the sentence. This asserts against the
+  // measured populations rather than literals, so it tracks the fixture.
+  const dependencies = [{ range: '>=18' }, { range: '>=20.9.0' }, { range: '^18 || >=20' }];
+  const declared = '>=22.22.1 <23 || >=24';
+  const populations = directionPopulations(declared, dependencies);
+  const lines = directionNotices(declared, populations, [], []).join('\n');
+  assert.match(
+    lines,
+    new RegExp(`over the ${populations.admitted} probe version\\(s\\) it admits`),
+  );
+  assert.match(
+    lines,
+    new RegExp(`over the ${populations.excluded} probe version\\(s\\) it excludes`),
+  );
+  // And the two must be distinguishable from the count they used to print.
+  assert.notEqual(populations.admitted, populations.declarations);
+  assert.notEqual(populations.excluded, populations.declarations);
+});
+
+test('the scope line states a partition that sums to the probe set', () => {
+  // This fixture splits 7/9. The obvious two-dependency fixture splits 7/7,
+  // where printing the admitted count in both slots still sums to the probe
+  // set -- a fixture chosen for realism rather than for discriminating power.
+  const dependencies = [{ range: '^18.18.0 || ^20.9.0 || >=21.1.0' }, { range: '>=18' }];
+  const declared = '>=22.22.1 <23 || >=24';
+  const populations = directionPopulations(declared, dependencies);
+  const scope = directionNotices(declared, populations, [], []).find((line) =>
+    line.startsWith('scope:'),
+  );
+  const [, probes, admitted, excluded] = scope.match(
+    /over (\d+) probe version\(s\) \((\d+) admitted, (\d+) excluded\)/,
+  );
+  assert.equal(Number(admitted) + Number(excluded), Number(probes));
+  // Summing is not enough on its own: printing the admitted count in both
+  // slots still sums correctly whenever a fixture happens to split in half,
+  // and the first draft of this test used exactly such a fixture. Each half is
+  // therefore checked against the population it names, and the two are asserted
+  // to differ so the mutant cannot hide behind a symmetric split.
+  assert.equal(Number(admitted), populations.admitted);
+  assert.equal(Number(excluded), populations.excluded);
+  assert.notEqual(populations.admitted, populations.excluded);
+});
+
+test('the unfalsifiable-upper-end notice appears only when the tree is all open above', () => {
+  const declared = '>=22.22.1 <23 || >=24';
+  const open = [{ range: '>=18' }, { range: '>=24.1.0' }];
+  const closed = [{ range: '>=18' }, { range: '>=18 <26' }];
+  const marker = /not evidence: all \d+ declaration\(s\) are unbounded above/;
+  assert.match(
+    directionNotices(declared, directionPopulations(declared, open), [], []).join('\n'),
+    marker,
+  );
+  assert.doesNotMatch(
+    directionNotices(declared, directionPopulations(declared, closed), [], []).join('\n'),
+    marker,
+  );
+});
+
+test('an empty tree does not claim its zero declarations are all unbounded', () => {
+  // 0 === 0 would satisfy a naive equality and print the notice over nothing.
+  const declared = '>=22.22.1 <23 || >=24';
+  const populations = directionPopulations(declared, []);
+  assert.equal(populations.declarations, 0);
+  assert.equal(populations.unboundedAbove, 0);
+  assert.doesNotMatch(
+    directionNotices(declared, populations, [], []).join('\n'),
+    /not evidence: all \d+ declaration\(s\) are unbounded above/,
+  );
+});
+
+test('highestNamedMajor is the maximum, not the last literal read', () => {
+  // Every other fixture happens to list its literals in ascending order, so
+  // replacing Math.max with plain assignment passes all of them.
+  const populations = directionPopulations('>=22', [{ range: '>=24.0.0 || ^18.1.0' }]);
+  assert.equal(populations.highestNamedMajor, 24);
 });
