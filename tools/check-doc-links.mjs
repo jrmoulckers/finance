@@ -68,10 +68,19 @@ export const UNRESOLVED_BASELINE = [
  * 2. U+FE0F (variation selector) survives. GitHub strips the warning sign from a heading
  *    beginning with a warning emoji but keeps the selector, so the real anchor begins with
  *    an invisible character. Stripping it mis-slugged a further 3.
+ * 3. The trim happens **before** the strip, not after. GitHub trims the raw heading text,
+ *    so punctuation removed from the front leaves its space behind and the anchor begins
+ *    with a hyphen: `## 🚀 Getting Started` is `#-getting-started`. Trimming afterwards
+ *    swallows that hyphen and mis-slugged 7 valid links in `docs/INDEX.md`.
  *
  * 96.8% of the first reported stale count was this function disagreeing with the renderer,
  * and nothing about a wrong slugger looks wrong -- it names real files and plausible
- * anchors. Both cases are covered by tests for that reason.
+ * anchors. All three cases are covered by tests for that reason.
+ *
+ * Case 3 was written four lines below the note describing cases 1 and 2, and survived
+ * because the only links that exercise it are same-file anchors, which this checker did
+ * not read at all. A defect and the checked population can fail to intersect, and then a
+ * green result is evidence about that intersection rather than about the corpus.
  *
  * @param {string} heading
  * @returns {string}
@@ -79,8 +88,8 @@ export const UNRESOLVED_BASELINE = [
 export function slugify(heading) {
   return String(heading)
     .toLowerCase()
-    .replace(/[^\w\s\uFE0F-]/g, '')
     .trim()
+    .replace(/[^\w\s\uFE0F-]/g, '')
     .replace(/\s/g, '-');
 }
 
@@ -125,10 +134,16 @@ export function markFences(text) {
 }
 
 /**
- * Collect relative markdown-file links from one document.
+ * Collect markdown links from one document: relative `.md` targets, and same-file anchors.
+ *
+ * Same-file anchors (`[text](#section)`) were excluded here until they were counted. They
+ * are the largest link class in this repository -- 2,799 against 246 cross-file fragments,
+ * 11.4x -- and none of them had ever been resolved. They are also the *most* falsifiable
+ * kind of link: a same-file anchor names a section and nothing else, so any rename or
+ * renumber of that heading breaks it, with no path change to make the break visible.
  *
  * @param {string} text
- * @returns {{ links: {href: string, target: string, fragment: string, line: number}[], skipped: number }}
+ * @returns {{ links: {href: string, target: string, fragment: string, sameFile: boolean, line: number}[], skipped: number }}
  */
 export function collectLinks(text) {
   const links = [];
@@ -139,7 +154,21 @@ export function collectLinks(text) {
     const line = marked[i].line.replace(INLINE_CODE, (m) => ' '.repeat(m.length));
     for (const match of line.matchAll(LINK)) {
       const href = match[1];
-      if (/^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(href)) continue;
+      if (href.startsWith('#')) {
+        if (marked[i].fenced) {
+          skipped += 1;
+          continue;
+        }
+        links.push({
+          href,
+          target: '',
+          fragment: href.slice(1).trim(),
+          sameFile: true,
+          line: i + 1,
+        });
+        continue;
+      }
+      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) continue;
       const hash = href.indexOf('#');
       const target = (hash === -1 ? href : href.slice(0, hash)).trim();
       if (!target.endsWith('.md')) continue;
@@ -148,7 +177,7 @@ export function collectLinks(text) {
         continue;
       }
       const fragment = hash === -1 ? '' : href.slice(hash + 1).trim();
-      links.push({ href, target, fragment, line: i + 1 });
+      links.push({ href, target, fragment, sameFile: false, line: i + 1 });
     }
   }
   return { links, skipped };
@@ -171,6 +200,7 @@ export function census(git, exists, read) {
   let fenced = 0;
   let fragmentless = 0;
   let checkedAnchors = 0;
+  let sameFileAnchors = 0;
 
   const anchorsOf = (p) => {
     if (!anchorCache.has(p)) anchorCache.set(p, headingSlugs(read(p)));
@@ -182,6 +212,25 @@ export function census(git, exists, read) {
     fenced += skipped;
     for (const link of links) {
       total += 1;
+
+      if (link.sameFile) {
+        // A same-file anchor cannot have a broken path, so it goes straight to resolution.
+        // It is counted in its own population: folding it into `checkedAnchors` would let
+        // 2,799 newly-checked links inflate a figure whose whole purpose is to say how
+        // little of the corpus the anchor check reaches.
+        sameFileAnchors += 1;
+        let decodedSelf = link.fragment;
+        try {
+          decodedSelf = decodeURIComponent(link.fragment);
+        } catch {
+          // Compared as written; the renderer does not decode it either.
+        }
+        if (!anchorsOf(file.split(path.sep).join('/')).has(slugify(decodedSelf))) {
+          staleAnchors.push(`${file}:${link.line} -> ${link.href}`);
+        }
+        continue;
+      }
+
       const resolved = path.posix.normalize(
         path.posix.join(path.posix.dirname(file.split(path.sep).join('/')), link.target),
       );
@@ -208,7 +257,16 @@ export function census(git, exists, read) {
       }
     }
   }
-  return { files: files.length, total, fenced, broken, staleAnchors, fragmentless, checkedAnchors };
+  return {
+    files: files.length,
+    total,
+    fenced,
+    broken,
+    staleAnchors,
+    fragmentless,
+    checkedAnchors,
+    sameFileAnchors,
+  };
 }
 
 /**
@@ -223,15 +281,29 @@ export function census(git, exists, read) {
  * reaches the majority -- the only fix is to write a more specific link. Stating the split
  * keeps a green result from reading as "the docs are verified".
  *
- * @param {{files: number, total: number, fenced: number, fragmentless: number, checkedAnchors: number}} scope
+ * Same-file anchors are reported separately rather than added to `checkedAnchors`. They
+ * are the most falsifiable class here and the last one to be checked, so merging them
+ * would improve the ratio this paragraph exists to disclose -- a scope line that gets
+ * flattered by a fix is not measuring what it claims to.
+ *
+ * @param {{files: number, total: number, fenced: number, fragmentless: number, checkedAnchors: number, sameFileAnchors?: number}} scope
  * @returns {string[]}
  */
-export function scopeLines({ files, total, fenced, fragmentless, checkedAnchors }) {
-  const share = total === 0 ? '0.0' : ((100 * fragmentless) / total).toFixed(1);
-  const unresolved = total - fragmentless - checkedAnchors;
+export function scopeLines({
+  files,
+  total,
+  fenced,
+  fragmentless,
+  checkedAnchors,
+  sameFileAnchors = 0,
+}) {
+  const cross = total - sameFileAnchors;
+  const share = cross === 0 ? '0.0' : ((100 * fragmentless) / cross).toFixed(1);
+  const unresolved = cross - fragmentless - checkedAnchors;
   return [
-    `Scope: ${total} relative markdown link(s) across ${files} tracked file(s); ${fenced} inside fenced blocks were skipped.`,
-    `Specificity: ${fragmentless} link(s) name only a file (${share}%); ${checkedAnchors} name a section and had their anchor resolved; ${unresolved} point at a file that does not exist and were not classified.`,
+    `Scope: ${total} markdown link(s) across ${files} tracked file(s); ${fenced} inside fenced blocks were skipped.`,
+    `Specificity: of ${cross} cross-file link(s), ${fragmentless} name only a file (${share}%); ${checkedAnchors} name a section and had their anchor resolved; ${unresolved} point at a file that does not exist and were not classified.`,
+    `Same-file anchors: ${sameFileAnchors} link(s) of the form [text](#section), every one resolved against its own document's headings.`,
     'Not measured: URL targets, links to non-markdown files, or whether a target still',
     'contains the content the citing text claims. A file that keeps its name while its',
     'content moves elsewhere stays green here unless the link named the section that moved.',
@@ -257,7 +329,7 @@ export function scopeLines({ files, total, fenced, fragmentless, checkedAnchors 
  * @returns {{lines: string[], failed: boolean}}
  */
 export function reportLines(result, options = {}) {
-  const { broken, staleAnchors, checkedAnchors } = result;
+  const { broken, staleAnchors, checkedAnchors, sameFileAnchors = 0 } = result;
   const baseline = options.baseline ?? UNRESOLVED_BASELINE;
   const staleBaseline = options.staleBaseline ?? STALE_ANCHOR_BASELINE;
 
@@ -303,7 +375,13 @@ export function reportLines(result, options = {}) {
   }
 
   lines.push('All resolvable relative markdown links point at files that exist.');
-  lines.push(`All ${checkedAnchors} section-naming link(s) resolve to a heading that exists.`);
+  // Both anchor populations, named separately. `checkedAnchors` alone would report 246
+  // where 3,042 links were resolved, understating the check by a factor of twelve -- and
+  // an understated success line is the direction that reads as modest rather than wrong,
+  // so nothing about it invites a second look.
+  lines.push(
+    `All ${checkedAnchors} cross-file section-naming link(s) and ${sameFileAnchors} same-file anchor(s) resolve to a heading that exists.`,
+  );
   lines.push(...scopeLines(result));
   lines.push(
     `${distinctBroken} recorded gap(s) remain across ${broken.length} link(s), where the target names a document this repository has never contained.`,

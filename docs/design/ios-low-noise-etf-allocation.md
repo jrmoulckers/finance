@@ -40,7 +40,7 @@
 8. [Dynamic Type](#8-dynamic-type)
 9. [Privacy & Balance Hiding](#9-privacy--balance-hiding)
 10. [Empty, Stale & Error States](#10-empty-stale--error-states)
-11. [Test Plan](#11-test-plan)
+11. [Test Plan](#11-test-plan--smallest-tests-first)
 12. [Implementation readiness](#12-implementation-readiness)
 13. [Open Questions](#13-open-questions)
 
@@ -236,7 +236,7 @@ allocation rows in `InvestmentPortfolioView`.
   / `CurrencyLabel`, captions `.caption`. All scale through AX1–AX5.
 - **Reflow over truncation.** At `accessibility1`+ the donut shrinks and the rows stack as
   full-width label-over-value; the target-vs-actual **table becomes a stacked list** rather
-  than a horizontally-scrolling grid. Verified at AX5 in [§11](#11-test-plan).
+  than a horizontally-scrolling grid. Verified at AX5 in [§11](#11-test-plan--smallest-tests-first).
 - **"Other" stays meaningful at large sizes** — its row always shows count and combined
   percent so collapsing the tail never hides scale.
 
@@ -323,7 +323,7 @@ not implementation. This design and its iOS code are **buildable and testable no
   `InvestmentViewModel`/`InvestmentModels` additions — SwiftUI + `@Observable` + Swift
   concurrency, reusing `CurrencyLabel` / `EmptyStateView` / `ErrorStateView` /
   `OfflineBanner` / `ChartColorPalette`.
-- ✅ All unit + UI/a11y tests in [§11](#11-test-plan) in the iOS Simulator.
+- ✅ All unit + UI/a11y tests in [§11](#11-test-plan--smallest-tests-first) in the iOS Simulator.
 - ✅ On-device verification via **free Personal Team signing** (free Apple ID): 7-day
   expiry, ≤ 3 apps/device, no TestFlight/push — sufficient to verify this surface. See
   [ios-setup.md](../guides/ios-setup.md).

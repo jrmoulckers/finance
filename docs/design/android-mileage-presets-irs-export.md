@@ -10,7 +10,7 @@ This document specifies the **design** for reusable route/hotspot **presets**, *
 attachment**, free-text **notes**, and the **export / audit trail** needed to substantiate mileage
 deductions for the **IRS**. It is **design + breakdown only** — implementation is unblocked, but the
 _distribution_ tail is gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242) (see
-[Implementation Readiness](#implementation-readiness)).
+[Implementation Readiness](#12-implementation-readiness)).
 
 ---
 

@@ -6,7 +6,7 @@
 > person actually uses, with **safe defaults** and a **one-tap reset**.
 
 **Status:** PROPOSED — design only (native implementation gated, see
-[Implementation readiness](#11-implementation-readiness))
+[Implementation readiness](#12-implementation-readiness))
 **Issue:** [#2577](https://github.com/jrmoulckers/finance/issues/2577) — _Part of
 [#2122](https://github.com/jrmoulckers/finance/issues/2122)_
 **Platform:** iOS / iPadOS (SwiftUI · Swift Concurrency, iOS 17+)
@@ -35,7 +35,7 @@ this preference store)
 8. [Dynamic Type](#8-dynamic-type)
 9. [Privacy](#9-privacy)
 10. [Empty, Stale, Error & Reset States](#10-empty-stale-error--reset-states)
-11. [Test Plan](#11-test-plan)
+11. [Test Plan](#11-test-plan--smallest-tests-first)
 12. [Implementation readiness](#12-implementation-readiness)
 13. [Open Questions](#13-open-questions)
 
@@ -241,7 +241,7 @@ dashboard")`; state is announced as on/off by VoiceOver natively. Each carries a
   through AX1–AX5 by default.
 - **Toggle rows wrap, never truncate** module names/descriptions at large sizes; the toggle
   control stays right-aligned and reachable.
-- Verified at AX5 in [§11](#11-test-plan).
+- Verified at AX5 in [§11](#11-test-plan--smallest-tests-first).
 
 ---
 
@@ -329,7 +329,7 @@ not implementation. This design and its iOS code are **buildable and testable no
   and the `MainTabView` / `DashboardView` / `SettingsView` gating — SwiftUI + `@Observable`
   - an `actor` store over App-Group `UserDefaults`, reusing the existing `AppearanceSettings`
     preference pattern.
-- ✅ All unit + UI/a11y tests in [§11](#11-test-plan) in the iOS Simulator.
+- ✅ All unit + UI/a11y tests in [§11](#11-test-plan--smallest-tests-first) in the iOS Simulator.
 - ✅ On-device verification via **free Personal Team signing** (free Apple ID) — see
   [ios-setup.md](../guides/ios-setup.md). App-Group entitlements work under a Personal Team
   for local testing.

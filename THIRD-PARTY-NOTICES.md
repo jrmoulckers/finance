@@ -191,7 +191,7 @@ Last updated: 2026-03-08
 
 ## Special Attributions
 
-### SQLCipher (Zetetic) {#sqlcipher-zetetic}
+### SQLCipher (Zetetic)
 
 **License:** BSD 3-Clause
 **Used in:** `packages/models` (Android driver — `net.zetetic:sqlcipher-android:4.6.1`)

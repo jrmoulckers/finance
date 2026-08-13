@@ -918,7 +918,7 @@ This section covers the mandatory breach notification obligations under GDPR. Th
 3. Likely consequences
 4. Measures taken and recommended actions for the individual
 
-> See [§10.2](#102-user-breach-notification-email) for a ready-to-use email template.
+> See [§10.2](#102-user-breach-notification-email-article-34) for a ready-to-use email template.
 
 ### 7.3 Breach Notification Decision Flowchart
 

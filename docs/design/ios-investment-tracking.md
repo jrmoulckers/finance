@@ -22,7 +22,7 @@ This spec follows the wave-1 pilot structure established by [`ios-chart-accessib
 6. [Per-surface application map](#6-per-surface-application-map)
 7. [State coverage](#7-state-coverage)
 8. [Accessibility and non-color cues](#8-accessibility-and-non-color-cues)
-9. [Proposed shared additions (for @native-app-engineer)](#9-proposed-shared-additions-for-kmp-engineer)
+9. [Proposed shared additions (for @native-app-engineer)](#9-proposed-shared-additions-for-native-app-engineer)
 10. [Test plan](#10-test-plan)
 11. [Cross-references and resolved decisions](#11-cross-references-and-resolved-decisions)
 

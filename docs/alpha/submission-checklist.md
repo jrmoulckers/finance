@@ -15,7 +15,7 @@ deploying the web app.
 - [iOS — TestFlight](#ios--testflight)
 - [Android — Google Play Internal Testing](#android--google-play-internal-testing)
 - [Web — Vercel Deployment](#web--vercel-deployment)
-- [Windows — Sideloading](#windows--sideloading)
+- [Windows — Sideloading](#windows--sideloading-for-alpha)
 - [GitHub Secrets Summary](#github-secrets-summary)
 
 ---

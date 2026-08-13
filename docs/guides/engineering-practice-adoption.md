@@ -8456,7 +8456,7 @@ The report already said the final interval "grows until the next commit
 touching this directory." That sentence is true, it was written deliberately,
 and it is not the finding. It states the _mechanism_ and omits the
 _consequence_: that the percentage moves, and which way. This is the
-false-assurance polarity again — [a disclaimer that shrinks over-claims](#a-disclaimers-safe-direction-is-the-mirror-of-a-findings),
+false-assurance polarity again — [a disclaimer that shrinks over-claims](#a-disclaimer-and-a-finding-have-opposite-safe-directions),
 and so does one that explains a caveat without saying what it costs. The reader
 is told enough to trust the number and not enough to date it.
 
@@ -8499,6 +8499,116 @@ wiring: `assert.notEqual(closed, open)` passes for a mutant that never accrues
 closed time at all, because zero is also unequal to the open figure. **An
 inequality distinguishes a value from exactly one other value**, which is nearly
 the weakest claim an assertion can make while still looking like a check.
+
+## The largest link class in the repository was never checked
+
+A sibling session tested its anchor checker's slugger against GitHub's and found
+it wrong on 42 headings — while still returning a correct `0 stale`, because
+none of the 42 was a link target. Their conclusion: **a clean anchor result is
+evidence about the intersection of the instrument and the corpus, and neither
+factor appears in the output.**
+
+Running the same test here found the identical structure with the polarity
+reversed. `collectLinks` discarded every href beginning with `#`:
+
+```
+cross-file .md links (checked)   3353
+  with #fragment                  246
+same-file #anchors (SKIPPED)     2799   <- 11.4x the checked fragment population
+  unresolvable                     29
+```
+
+Same-file anchors are not a marginal class. They are the largest one, and they
+are the _most_ falsifiable kind of link in the repository: a `[text](#section)`
+link names a section and nothing else, so any rename or renumber breaks it with
+no path change to make the break visible. The checker skipped exactly the
+population its own scope note called the only kind worth resolving.
+
+### One of the 29 was mine, merged an hour earlier through 37 green checks
+
+```
+docs/guides/engineering-practice-adoption.md:8459
+  link    #a-disclaimers-safe-direction-is-the-mirror-of-a-findings
+  heading "A disclaimer and a finding have opposite safe directions"
+```
+
+Not a slugger fault. I wrote the anchor from the section's _concept_ rather than
+from its heading, never checked it — and then told a sibling session that this
+gate verified it. The claim and the defect were in the same message.
+
+### `slugify` had a third defect, of the family documented in its own header
+
+`.trim()` ran _after_ the punctuation strip. GitHub trims the raw heading, so
+punctuation removed from the front leaves its space behind:
+
+| heading                 | GitHub              | before            |
+| ----------------------- | ------------------- | ----------------- |
+| `## 🚀 Getting Started` | `#-getting-started` | `getting-started` |
+
+The header comment above that function already documented two defects of exactly
+this shape — the `\s+` collapse that mis-slugged 89 valid links, and the U+FE0F
+strip that mis-slugged 3 — and stated that both were covered by tests. The third
+was four lines below that note.
+
+It had never fired. The only links that exercise it are same-file anchors, which
+the checker did not read. **The defect and the checked population did not
+intersect**, so the instrument was wrong and the verdict was right, and nothing
+in the output distinguished that from being correct.
+
+### The split, once both were fixed
+
+```
+headings                    13097
+  slug differs under fix      164
+same-file anchors            2799
+  broken, CURRENT slugger       29
+  broken, FIXED slugger         22   <- genuinely stale
+  false positives retired        7   <- all docs/INDEX.md emoji headings
+```
+
+16 of the 22 were numbered-section anchors — `#11-test-plan`,
+`#implementation-readiness` — broken by _renumbering_, not renaming. That is the
+sharp end of the sibling's specificity ordering: `#11-test-plan` is more
+falsifiable than `#test-plan`, and therefore breaks more often, because the
+number it carries tracks a rendering artifact rather than an identifier under
+any versioning discipline. **More falsifiable is better only when the thing
+tracked is stable.** An `ENG-*` ID sits at the other end: equally specific, and
+stable by ratification.
+
+Two of the remaining six were not stale anchors at all but dead table-of-contents
+entries naming sections the document no longer contains — a link can be
+unresolvable because the _target_ moved or because the _citation_ was never true,
+and the checker cannot tell those apart.
+
+### The success sentence understated itself by a factor of twelve
+
+With all 22 fixed the green line read:
+
+```
+All 246 section-naming link(s) resolve to a heading that exists.
+```
+
+3,042 links had been resolved. The interpolated count was the old population,
+the sentence was newly written, and every test over it passed — the printed-half
+defect again, in a sentence ten minutes old.
+
+Worth naming the direction: an **understated** success line reads as modest.
+Nothing about "246" invites a second look, where "All 3,042" would have been
+checked by the first reader who thought it sounded high. The same asymmetry as a
+disclaimer that shrinks — see [A disclaimer and a finding have opposite safe directions](#a-disclaimer-and-a-finding-have-opposite-safe-directions)
+— and this repository has now produced it on the failing path, the scope path,
+and the passing path in three consecutive weeks.
+
+Both anchor populations are now named separately in the report and in
+`scopeLines`. Folding same-file anchors into `checkedAnchors` would have been the
+tidier code and would have moved the specificity ratio from 92.3% fragmentless to
+something far more flattering — **a scope line that improves when you fix
+something is not measuring what it claims to.**
+
+12 mutants, 12 killed. The two that initially survived were both in `scopeLines`,
+where the assertions checked the share and not the residual: over the wrong
+denominator the residual reads `6 point at a file that does not exist` instead of
+`0`, which is a plausible number naming nothing real.
 
 ## Worth hoisting up
 
