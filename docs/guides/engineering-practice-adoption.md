@@ -8001,6 +8001,106 @@ declaring support across LTS majors — appeared to name nothing. That put the l
 lower than the tree states, and since the notice claims everything past the line
 is not evidence, understating it over-claims.
 
+## A truthful scope line over the wrong population
+
+`tools/check-upstream-refs.mjs` printed `Scope: ref immutability only, read from the
+text of tracked markdown`. That sentence was accurate. The population it described
+was wrong, and the single most consequential reference in the repository sat outside
+it: the `DEFAULT_INDEX` constant in `config/engineering/citations/check-citations.mjs`,
+which resolves the engineering repo's `principles/index.json` from a branch. The
+`eng:citations` gate validates every `ENG-*` ID against that file, so the set of IDs
+this repository considers valid can change with no diff here at all.
+
+Printing scope was the remedy adopted after an earlier finding, and it worked as
+designed -- it tells a reader what was counted. It does not, and cannot, tell a reader
+whether what was counted is what should have been. Those are different questions and
+only the first has a mechanical answer.
+
+**It was missed for two independent reasons, either alone sufficient.** The file list
+was `git ls-files -- docs *.md`, so a `.mjs` file was never opened; and the extraction
+regex matched `github.com/.../blob/...` only, so a `raw.githubusercontent.com` URL was
+invisible even in a file that _was_ scanned. Fixing either one alone would have left
+the ref hidden while producing a diff that looked like the fix. This is the second
+time in this adoption that a defect had more causes than the first correct-looking
+explanation accounted for.
+
+The second cause also under-counted within the tool's own stated scope: one
+`raw.githubusercontent.com` link in this very guide was never counted, so the prose
+baseline moves 22 -> 23 with no new reference added.
+
+### Consequence is an axis, not a detail
+
+The two populations are reported apart and ratcheted apart:
+
+| Population             | Count | If a ref here is mutable                                       |
+| ---------------------- | ----- | -------------------------------------------------------------- |
+| Tracked markdown       | 23    | A reader opens a document newer than the sentence citing it.   |
+| Tracked executed files | 1     | A gate returns a different verdict tomorrow for the same tree. |
+
+A single baseline covering both would have put one number on two consequences, and the
+23 would have swamped the 1 -- the finding would have been arithmetically present and
+practically invisible. Population and consequence are independent axes; the four axes
+of scope recorded earlier in this guide (which files, which point in time, which
+direction, which duration) did not include it.
+
+### Fixtures are a source file's code fences
+
+A test asserting that `main` classifies as mutable has to contain a mutable ref. Scanning
+test files would report those assertions as the defect they assert about -- the same
+shape as a fenced block in prose. They are excluded, and **the exclusion is counted and
+printed**, because an exclusion nobody can see is indistinguishable from a population
+that had nothing in it.
+
+The first implementation of that exclusion matched `.test.{js,ts}` and not `.test.tsx`,
+so 259 React test files were scanned as executed code while the tool printed a fixture
+count claiming they were not. The verdict was unaffected -- those files contain no
+cross-repo refs today -- so no run would ever have revealed it. A unit test did. This is
+the case for testing a printed number that no verdict depends on: the number is the only
+part a human reads.
+
+### A ratchet whose tests are written in terms of itself
+
+Mutation testing found one survivor that no amount of additional assertion would have
+caught: raising `EXECUTED_BASELINE` from 1 to 9 passed the entire suite, because every
+baseline test was phrased as `EXECUTED_BASELINE + 1`. The fixtures moved with the
+constant. A ratchet expressed relative to its own setting cannot detect the setting
+being loosened -- the baselines are now asserted as literals.
+
+Three further survivors were all on the **failing** branch: the suite contained no case
+in which the gate fails, so a program that could only ever return green passed it. The
+verdict logic was extracted from `main()` into an exported `verdict()` for that reason.
+Related: a mutation run whose unmutated baseline is not verified green first reports a
+perfect score, because every mutant dies of the same syntax error. That happened here
+and produced a spurious `10/12` before the guard was added.
+
+### The remaining reference, and why it is recorded rather than pinned
+
+The one executed mutable ref is real but has not fired. Fetching `principles/index.json`
+at `v0.134.0`, at `v0.145.0`, and at `main` yields **66 IDs each, with 0 IDs, 0 titles
+and 0 paths differing**. The checker also fails _closed_: an unreachable index exits 2
+rather than passing vacuously.
+
+Pinning it via `--index` in `tools/run-citations-check.mjs` is the fix, and upstream's
+own `docs/adopting.md` documents that recipe. It is deliberately **not** done in this
+change, because a pin creates a staleness surface and `eng:vendor:check` covers only the
+vendored checker, not the index it reads. Trading a measured-zero-drift hazard for an
+ungated staleness hazard is not obviously an improvement, and this adoption has already
+shipped one silent-staleness defect. Pin and staleness gate should land together.
+
+### Two figures reported to the engineering session were wrong
+
+Both concerned this repository and were relayed upstream as facts about it:
+
+- ESLint is **10.6.0** here (declared `^10.6.0`), not `10.8.1`.
+- "601 `.tsx` files load zero React or a11y rules" is false. `eslint --print-config` on
+  `apps/web/src/App.tsx` reports **82 active rules**, including **10 `react-hooks` rules**
+  enabled earlier in this adoption. The true zeros are `jsx-a11y` (0) and `react/` (0);
+  the 601 file count is correct.
+
+The pattern is the one already recorded here in the other direction: a figure that
+crosses a repository boundary keeps its value and loses its subject, and the subject was
+the only part that made it true.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
