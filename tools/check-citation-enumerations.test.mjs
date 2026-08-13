@@ -19,6 +19,9 @@ import {
   isFenceAware,
   isScannedFile,
   violationLines,
+  exemptedSuppressions,
+  exemptionInventory,
+  hasExemption,
 } from './check-citation-enumerations.mjs';
 
 // Report-line tests (#4303).
@@ -90,7 +93,7 @@ test('a zero-exemption green result still names the exemption bucket', () => {
 
 test('the defect this was written for is caught', () => {
   const text =
-    'Notably, `ENG-TEST-004` (distinct static signals) requires lint, format, type-check, and tests'; // enumeration-fixture
+    'Notably, `ENG-TEST-004` (distinct static signals) requires lint, format, type-check, and tests'; // enumeration-fixture: input the detector must flag
   const found = findRestatedEnumerations(text);
   assert.equal(found.length, 1);
   assert.equal(found[0].id, 'ENG-TEST-004'); // enumeration-fixture
@@ -138,7 +141,7 @@ test('the closing conjunction is optional', () => {
   // Measured on the same 171 citations as the rejected widenings: allowing a
   // bare "a, b, c" adds reach at no false-positive cost. Pinned so that
   // narrowing it back to a required "and"/"or" fails here.
-  const found = findRestatedEnumerations('`ENG-SEC-001` requires alpha, beta, gamma'); // enumeration-fixture
+  const found = findRestatedEnumerations('`ENG-SEC-001` requires alpha, beta, gamma'); // enumeration-fixture: Oxford-comma-free list under test
   assert.equal(found.length, 1);
   assert.equal(found[0].id, 'ENG-SEC-001'); // enumeration-fixture
 });
@@ -154,19 +157,19 @@ test('a list without a serial comma is a known blind spot, not a pass', () => {
 });
 
 test('the line number is the line of the violation, not of the file', () => {
-  const text = ['first', 'second', '`ENG-SEC-001` requires a, b, and c'].join('\n'); // enumeration-fixture
+  const text = ['first', 'second', '`ENG-SEC-001` requires a, b, and c'].join('\n'); // enumeration-fixture: line number must be 3
   assert.equal(findRestatedEnumerations(text)[0].line, 3);
 });
 
 test('every violation on a line is reported once, not once per matching word', () => {
   const found = findRestatedEnumerations(
-    '`ENG-SEC-001` requires a, b, and c and mandates d, e, and f', // enumeration-fixture
+    '`ENG-SEC-001` requires a, b, and c and mandates d, e, and f', // enumeration-fixture: two enumerations on one line
   ); // enumeration-fixture
   assert.equal(found.length, 1);
 });
 
 test('CRLF input is split the same as LF', () => {
-  const text = 'x\r\n`ENG-SEC-001` requires a, b, and c\r\n'; // enumeration-fixture
+  const text = 'x\r\n`ENG-SEC-001` requires a, b, and c\r\n'; // enumeration-fixture: CRLF line numbering
   assert.equal(findRestatedEnumerations(text)[0].line, 2);
 });
 
@@ -187,7 +190,7 @@ test('only prose and source extensions are scanned', () => {
   assert.ok(SCANNED_EXTENSIONS.has('.md'));
 });
 test('a marked line is exempt and is counted', () => {
-  const text = '`ENG-SEC-001` requires a, b, and c // enumeration-fixture';
+  const text = '`ENG-SEC-001` requires a, b, and c // enumeration-fixture: fixture text'; // enumeration-fixture: marker inside the fixture string is data
   assert.deepEqual(findRestatedEnumerations(text), []);
   assert.equal(countExemptions(text), 1);
   assert.equal(EXEMPTION, 'enumeration-fixture');
@@ -197,8 +200,8 @@ test('exempting one line does not exempt its neighbours', () => {
   // The failure mode a path exclusion would have: one deliberate fixture
   // silently covering a real defect beside it.
   const text = [
-    '`ENG-SEC-001` requires a, b, and c // enumeration-fixture', // enumeration-fixture
-    '`ENG-SEC-002` requires d, e, and f', // enumeration-fixture
+    '`ENG-SEC-001` requires a, b, and c // enumeration-fixture: fixture text', // enumeration-fixture: exempt element beside a live one
+    '`ENG-SEC-002` requires d, e, and f', // enumeration-fixture: the live element of that pair
   ].join('\n');
   const found = findRestatedEnumerations(text);
   assert.equal(found.length, 1);
@@ -220,7 +223,7 @@ test('a failing run states both the scanned and the exempted bucket', () => {
   // enumeration-fixture -- this literal IS a violation, which is the point: a
   // test for an enumeration checker cannot avoid containing an enumeration as
   // data. The exclusion is structural, not a temporary narrowing.
-  const violatingLine = 'ENG-TEST-004 requires type, lint, build, format, and security checks.\n'; // enumeration-fixture
+  const violatingLine = 'ENG-TEST-004 requires type, lint, build, format, and security checks.\n'; // enumeration-fixture: the spawn test's input
   writeFileSync(probe, violatingLine, 'utf8');
   let result;
   try {
@@ -311,7 +314,7 @@ test('both populations are decided by the same predicate', () => {
 });
 
 test('the exemption marker still wins inside and outside a fence', () => {
-  const exempt = `${RESTATEMENT} <!-- ${EXEMPTION} -->`;
+  const exempt = `${RESTATEMENT} <!-- ${EXEMPTION}: illustration, not an obligation -->`;
   assert.equal(enumerationOnLine(exempt, 0), null);
   assert.deepEqual(fencedSuppressions(['```', exempt, '```'].join('\n')), []);
 });
@@ -337,4 +340,76 @@ test('the fenced count moves with its argument on both paths', () => {
   // A count that never varies in a test is indistinguishable from a constant in the template.
   assert.match(cleanLine(1, 0, 7), /7 markdown line/);
   assert.match(violationLines([VIOLATION], 1, 0, 7)[0], /7 markdown line/);
+});
+
+// --- the marker is hardened as a class, not as an instance (#4320) -----------------------------
+//
+// A sibling checker's marker was hardened against three acceptance defects one change earlier. The
+// fix was written as a comment on that marker, and the comment was completely accurate -- which is
+// exactly why it read as describing the class. All three defects survived untreated in this file.
+
+test('a bare marker does not excuse: an exemption must say why', () => {
+  assert.equal(hasExemption(`x // ${EXEMPTION}`), false);
+  assert.equal(hasExemption(`x // ${EXEMPTION}: fixture input`), true);
+  assert.equal(hasExemption(`x // ${EXEMPTION} - fixture input`), true);
+});
+
+test('the marker as string data does not excuse its own file', () => {
+  // The marker appearing as a value is a mention. Treating it as a claim lets any file excuse
+  // itself by quoting the pragma, which is how a checker comes to return green over real hits.
+  assert.equal(hasExemption(`const M = '${EXEMPTION}: not a real exemption';`), false);
+  assert.equal(
+    hasExemption(`const M = "${EXEMPTION}: x"; // ${EXEMPTION}: this one is real`),
+    true,
+  );
+});
+
+test('a comment terminator is not a reason', () => {
+  // `<!-- marker -->` parses as marker, separator `-`, then `->`. The closing punctuation of the
+  // comment carrying the marker satisfied the requirement that the marker be justified. Found by
+  // the inventory below on its first run, in a line that had been exempt for four changes.
+  assert.equal(hasExemption(`x <!-- ${EXEMPTION} -->`), false);
+  assert.equal(hasExemption(`x <!-- ${EXEMPTION}: the quotation under discussion -->`), true);
+  assert.equal(hasExemption(`x /* ${EXEMPTION} */`), false);
+});
+
+test('the marker in unrelated prose does not excuse a real hit', () => {
+  const prose = `${RESTATEMENT} and see the ${EXEMPTION} docs for how to exempt a line`;
+  assert.notEqual(enumerationOnLine(prose, 0), null, 'prose about the marker is not a marker');
+});
+
+test('exemptedSuppressions names what the marker removed, not where it appears', () => {
+  // countExemptions counted marker *occurrences*: 22 in this tree, of which 10 suppressed a real
+  // hit. A count that is 55% not-an-exemption cannot detect composition change, because one real
+  // exemption can be added while a decorative one is deleted. The rule -- count what the exclusion
+  // removed -- was written into fencedSuppressions a hundred lines above, in the same file, one
+  // change earlier, and was not applied here.
+  const text = [
+    `${RESTATEMENT} <!-- ${EXEMPTION}: real -->`,
+    `A sentence mentioning ${EXEMPTION} and nothing else.`,
+    `const M = '${EXEMPTION}';`,
+  ].join('\n');
+  assert.deepEqual(exemptedSuppressions(text), [1]);
+  assert.equal(countExemptions(text), 1, 'three occurrences, one suppression');
+});
+
+test('CONTROL: an exempted line is a line the detector would otherwise report', () => {
+  assert.equal(findRestatedEnumerations(RESTATEMENT).length, 1);
+  assert.deepEqual(exemptedSuppressions(RESTATEMENT), [], 'unmarked, so not an exemption');
+});
+
+test('the inventory names every exempted line by file and line', () => {
+  const lines = exemptionInventory([
+    { file: 'docs/a.md', lines: [7121] },
+    { file: 'tools/b.test.mjs', lines: [93, 141] },
+    { file: 'tools/c.mjs', lines: [] },
+  ]);
+  assert.match(lines.join('\n'), /docs\/a\.md:7121/);
+  assert.match(lines.join('\n'), /tools\/b\.test\.mjs:93,141/);
+  assert.doesNotMatch(lines.join('\n'), /c\.mjs/, 'a file with no exemptions is not listed');
+});
+
+test('the inventory is empty when nothing was excused', () => {
+  // A report that prints a heading over an empty list claims an exclusion happened.
+  assert.deepEqual(exemptionInventory([{ file: 'tools/c.mjs', lines: [] }]), []);
 });

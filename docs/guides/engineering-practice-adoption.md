@@ -7118,7 +7118,7 @@ the first time this turn:
 
 Every ID resolves, every title matches, every anchor lands. And one of the 171 is wrong.
 
-`AGENTS.md` said: "`ENG-TEST-004` (distinct static signals) requires lint, format, type-check, and <!-- enumeration-fixture -->
+`AGENTS.md` said: "`ENG-TEST-004` (distinct static signals) requires lint, format, type-check, and <!-- enumeration-fixture: the defective quotation this section is about -->
 tests to report independently." The principle's statement names **five** — type, lint, **build**,
 format, and **security**. The restatement dropped two.
 
@@ -9421,6 +9421,63 @@ Notably, the first line the new array shape matched was the comment _documenting
 warning has sat inside the visual field of the defect it describes.
 
 Cites `ENG-TEST-002`, `ENG-TEST-004`, `ENG-OBS-002`.
+
+## A fix documented in a comment describes the instance, and reads as the class
+
+One change ago the `unsourced-bound:` marker in `tools/check-assertion-bounds.mjs` was hardened
+against three ways a marker can excuse a line it should not: written bare with no reason, appearing
+inside a string literal, appearing in an assertion message. The fix was recorded in a comment on
+that marker, and the comment is completely accurate.
+
+It is also the reason the sibling marker went untreated. `enumeration-fixture`, in a **required
+gate** in the same `tools/` directory, had all three defects. Each reproduced on the first probe: a
+bare marker excused, a marker as string data excused, a marker in prose _about_ the marker excused.
+
+A true sentence about a narrow fix is indistinguishable, at a glance, from a sentence about a
+general one. The prose is not wrong and cannot be made right by editing it — what is missing is a
+second application. The only evidence that a fix generalised is the fix appearing twice.
+
+## The count was 55% not-an-exemption
+
+`countExemptions()` claimed in its docstring that "an exemption cannot grow unseen." It counted
+occurrences of the marker string:
+
+|                       | count |
+| --------------------- | ----- |
+| marker occurrences    | 22    |
+| suppressed a real hit | 10    |
+| decorative            | 12    |
+
+The twelve are prose about the marker, comments explaining the marker, and reflexive markers on
+lines that were never violations. A total that is more than half noise cannot detect composition
+change: a real exemption can be added while a decorative one is deleted, and the number does not
+move.
+
+The remedy already existed **a hundred lines above, in the same file**. `fencedSuppressions()`
+counts hits the exclusion removed, not the excluded population, and this guide carries a section
+arguing for exactly that. It was written one change earlier and was not applied to the adjacent
+function. Proximity is not transfer. The distance at which a lesson fails to travel is smaller than
+a file.
+
+## Print an inventory, not a verdict
+
+A false excuse is invisible because the passing case emits no output. A gate that excuses the wrong
+line reports a number one larger and stays green, and no reader can act on a number.
+
+The counter is to make the yes-branch emit an **inventory**: name every excused line by `file:line`.
+The sibling repository's citation checker does this for its skips, and that disclosure is the only
+reason a defect in its ignore-pragma could be characterised rather than guessed at — its blast
+radius was readable off the output.
+
+This gate now prints its exemptions by name, and the inventory paid for itself on its first run. It
+named `docs/guides/engineering-practice-adoption.md:7121`, a line whose reason was `-->`. The
+hardened check requires a separator and then a reason; `<!-- marker -->` supplies `-` and then `->`,
+so the closing punctuation of the comment carrying the marker satisfied the demand that the marker
+be justified. The line had been silently exempt, and the count that covered it had been correct
+every time it was printed.
+
+Reported exemptions fell from 22 to **10** — not because anything was removed, but because the
+number finally means what its name says.
 
 ## Worth hoisting up
 
