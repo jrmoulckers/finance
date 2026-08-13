@@ -139,7 +139,10 @@ export function censusHistory(
     }
   }
 
-  const { dirtySeconds, spanSeconds } = exposure(states, nowSeconds);
+  const { dirtySeconds, spanSeconds, closedDirtySeconds, closedSpanSeconds } = exposure(
+    states,
+    nowSeconds,
+  );
   const shape = episodes(states, nowSeconds);
 
   return {
@@ -150,6 +153,8 @@ export function censusHistory(
     headClean,
     dirtySeconds,
     spanSeconds,
+    closedDirtySeconds,
+    closedSpanSeconds,
     shape,
   };
 }
@@ -167,15 +172,64 @@ export function censusHistory(
  * @returns {{dirtySeconds: number, spanSeconds: number}}
  */
 export function exposure(states, nowSeconds) {
-  if (states.length === 0) return { dirtySeconds: 0, spanSeconds: 0 };
+  if (states.length === 0) {
+    return { dirtySeconds: 0, spanSeconds: 0, closedDirtySeconds: 0, closedSpanSeconds: 0 };
+  }
   let dirtySeconds = 0;
+  let closedDirtySeconds = 0;
   for (let i = 0; i < states.length; i += 1) {
     const until = i === 0 ? nowSeconds : states[i - 1].at;
     const held = Math.max(0, until - states[i].at);
-    if (states[i].bad) dirtySeconds += held;
+    if (states[i].bad) {
+      dirtySeconds += held;
+      // The closed figure stops at the newest commit instead of at the reading
+      // time, so the open interval at HEAD contributes to neither side.
+      if (i > 0) closedDirtySeconds += held;
+    }
   }
-  const spanSeconds = Math.max(0, nowSeconds - states[states.length - 1].at);
-  return { dirtySeconds, spanSeconds };
+  const oldest = states[states.length - 1].at;
+  return {
+    dirtySeconds,
+    spanSeconds: Math.max(0, nowSeconds - oldest),
+    closedDirtySeconds,
+    closedSpanSeconds: Math.max(0, states[0].at - oldest),
+  };
+}
+
+/**
+ * Percentage of a span spent non-compliant, and how fast that figure moves.
+ *
+ * The open figure is a function of the reading time, not only of the history.
+ * With a clean HEAD the numerator is frozen and the denominator grows, so the
+ * percentage falls while nobody does anything: measured on this repository it
+ * reads 39.2% today, 33.0% after thirty idle days and 12.0% after a year, on
+ * an unchanged history. With an unpinned HEAD it climbs instead.
+ *
+ * The report already said the final interval grows and never said the
+ * percentage moves or which way. A scope note that states a mechanism and
+ * omits its consequence is the false-assurance direction of the same error as
+ * a disclaimer that shrinks: the reader is told enough to trust the number and
+ * not enough to date it.
+ *
+ * @param {{dirtySeconds: number, spanSeconds: number, closedDirtySeconds: number,
+ *   closedSpanSeconds: number}} e Exposure totals.
+ * @param {boolean} headClean Whether the newest commit is compliant.
+ * @param {number} [idleSeconds] Idle interval to project the drift over.
+ * @returns {{open: number, closed: number, driftPoints: number, direction: string}}
+ */
+export function exposureDrift(e, headClean, idleSeconds = 30 * 86400) {
+  const pct = (n, d) => (d > 0 ? (n / d) * 100 : 0);
+  const open = pct(e.dirtySeconds, e.spanSeconds);
+  const later = pct(
+    headClean ? e.dirtySeconds : e.dirtySeconds + idleSeconds,
+    e.spanSeconds + idleSeconds,
+  );
+  return {
+    open,
+    closed: pct(e.closedDirtySeconds, e.closedSpanSeconds),
+    driftPoints: later - open,
+    direction: headClean ? 'falls' : 'climbs',
+  };
 }
 
 /**
@@ -269,8 +323,18 @@ function main() {
   const git = (args) =>
     execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 
-  const { examined, dirty, refs, lastDirty, headClean, dirtySeconds, spanSeconds, shape } =
-    censusHistory(git, ref);
+  const {
+    examined,
+    dirty,
+    refs,
+    lastDirty,
+    headClean,
+    dirtySeconds,
+    spanSeconds,
+    closedDirtySeconds: closedDirty,
+    closedSpanSeconds: closedSpan,
+    shape,
+  } = censusHistory(git, ref);
 
   if (examined === 0) {
     console.log(`No commits touching .github/workflows found on ${ref}.`);
@@ -279,6 +343,19 @@ function main() {
 
   const percent = ((dirty / examined) * 100).toFixed(1);
   const timePercent = spanSeconds > 0 ? ((dirtySeconds / spanSeconds) * 100).toFixed(1) : '0.0';
+  const drift = exposureDrift(
+    { dirtySeconds, spanSeconds, closedDirtySeconds: closedDirty, closedSpanSeconds: closedSpan },
+    headClean,
+  );
+  const closedPercent = drift.closed.toFixed(1);
+  if (spanSeconds > 0 && closedSpan === 0 && examined > 1) {
+    // A closed span of zero across more than one commit is not a clean history,
+    // it is an unwired statistic. The first draft of this figure printed
+    // `0h of 0h (0.0%)` because censusHistory never returned the fields, and
+    // nothing distinguished that from a genuine zero.
+    throw new Error('closed exposure span is zero across multiple commits');
+  }
+  const asOf = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   console.log(`Workflow pin history for ${ref}:`);
   console.log(`  commits examined            ${examined}`);
   console.log(`  commits with >=1 unpinned   ${dirty} (${percent}%)`);
@@ -286,6 +363,13 @@ function main() {
   console.log(
     `  time in a non-compliant state ${humanDuration(dirtySeconds)} of ${humanDuration(spanSeconds)} (${timePercent}%)`,
   );
+  console.log(
+    `    closed history only         ${humanDuration(closedDirty)} of ${humanDuration(closedSpan)} (${closedPercent}%)`,
+  );
+  console.log(
+    `    open figure ${drift.direction} ${Math.abs(drift.driftPoints).toFixed(1)} pts per 30 idle days`,
+  );
+  console.log(`    as of                       ${asOf}`);
   console.log(`  working tree at ${ref}      ${headClean ? 'clean' : 'UNPINNED REFS PRESENT'}`);
   console.log(`  non-compliant episodes      ${shape.episodes.length}`);
   console.log(`  state transitions           ${shape.transitions}`);
@@ -315,6 +399,13 @@ function main() {
   console.log('the same seven lapses may be seven minutes or four days of exposure. The');
   console.log('time figures close that gap, and are measured against wall-clock now, so');
   console.log('the final interval grows until the next commit touching this directory.');
+  console.log('');
+  console.log('That makes the open percentage a function of the reading time as well as');
+  console.log('of the history: a clean HEAD freezes the numerator while the denominator');
+  console.log('grows, so the figure improves while nobody does anything, and an unpinned');
+  console.log('HEAD makes it worsen the same way. A difference between two runs of this');
+  console.log('tool is therefore not by itself evidence that anything changed. The closed');
+  console.log('figure stops at the newest commit and is a function of history alone.');
   console.log('');
   console.log('A duration is in turn silent about shape. Eighty-nine non-compliant');
   console.log('commits may be eighty-nine regressions or three episodes, and only the');

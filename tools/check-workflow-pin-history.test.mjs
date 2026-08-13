@@ -9,6 +9,7 @@ import {
   humanDuration,
   unpinnedRefs,
   episodes,
+  exposureDrift,
 } from './check-workflow-pin-history.mjs';
 
 const SHA = 'a'.repeat(40);
@@ -218,7 +219,12 @@ test('exposure distinguishes many brief lapses from one long one', () => {
 });
 
 test('exposure is zero over an empty history rather than NaN', () => {
-  assert.deepEqual(exposure([], T0), { dirtySeconds: 0, spanSeconds: 0 });
+  assert.deepEqual(exposure([], T0), {
+    dirtySeconds: 0,
+    spanSeconds: 0,
+    closedDirtySeconds: 0,
+    closedSpanSeconds: 0,
+  });
 });
 
 test('exposure never charges negative time for out-of-order timestamps', () => {
@@ -404,4 +410,136 @@ test('episode seconds sum to the exposure measured independently', () => {
   const total = episodes(states, 1100).episodes.reduce((s, e) => s + e.seconds, 0);
   assert.equal(total, exposure(states, 1100).dirtySeconds);
   assert.equal(total, 400);
+});
+
+// ---------------------------------------------------------------------------
+// The open figure is a function of the reading time, not only of the history.
+//
+// A sibling repository published this percentage twice with no commits between
+// the runs and a different value each time. Same cause here: the newest
+// interval and the span both end at "now", so a clean HEAD freezes the
+// numerator while the denominator grows.
+//
+// These are synthetic on purpose. The live tree cannot discriminate today --
+// its newest workflow commit landed minutes ago, so the closed and open spans
+// differ by 455 seconds and any error in either would be invisible. A tree is
+// a fixture nobody chose, and this one was made non-discriminating by the
+// commit that shipped the previous checker.
+// ---------------------------------------------------------------------------
+
+const IDLE_DAY = 86400;
+// newest first: clean at IDLE_DAY 10, dirty from IDLE_DAY 2 to IDLE_DAY 10, clean at IDLE_DAY 0.
+const CLEAN_HEAD = [
+  { at: 10 * IDLE_DAY, bad: false },
+  { at: 2 * IDLE_DAY, bad: true },
+  { at: 0, bad: false },
+];
+const DIRTY_HEAD = [
+  { at: 10 * IDLE_DAY, bad: true },
+  { at: 2 * IDLE_DAY, bad: true },
+  { at: 0, bad: false },
+];
+
+test('the open percentage falls as a clean tree idles', () => {
+  const early = exposure(CLEAN_HEAD, 11 * IDLE_DAY);
+  const late = exposure(CLEAN_HEAD, 40 * IDLE_DAY);
+  assert.equal(early.dirtySeconds, late.dirtySeconds, 'numerator must be frozen');
+  assert.ok(late.spanSeconds > early.spanSeconds, 'denominator must grow');
+  assert.ok(
+    late.dirtySeconds / late.spanSeconds < early.dirtySeconds / early.spanSeconds,
+    'a repaired tree improves its own score by waiting',
+  );
+});
+
+test('the open percentage climbs as an unpinned tree idles', () => {
+  const early = exposure(DIRTY_HEAD, 11 * IDLE_DAY);
+  const late = exposure(DIRTY_HEAD, 40 * IDLE_DAY);
+  assert.ok(late.dirtySeconds > early.dirtySeconds, 'numerator must grow');
+  assert.ok(
+    late.dirtySeconds / late.spanSeconds > early.dirtySeconds / early.spanSeconds,
+    'both directions must be exercised: only one of them flatters',
+  );
+});
+
+test('the closed figure does not move with the reading time', () => {
+  const early = exposure(CLEAN_HEAD, 11 * IDLE_DAY);
+  const late = exposure(CLEAN_HEAD, 400 * IDLE_DAY);
+  assert.equal(early.closedDirtySeconds, late.closedDirtySeconds);
+  assert.equal(early.closedSpanSeconds, late.closedSpanSeconds);
+  assert.equal(early.closedSpanSeconds, 10 * IDLE_DAY, 'closed span is newest commit minus oldest');
+});
+
+test('the closed figure differs from the open one once a tree idles', () => {
+  // Guards the wiring, not the arithmetic: the first draft printed
+  // `0h of 0h (0.0%)` because censusHistory never returned these fields, and
+  // a zero over an empty population renders exactly like a real zero.
+  //
+  // Asserted as exact values, not as `notEqual`. A mutant that never accrued
+  // closed time survived a notEqual here, because zero is also unequal to the
+  // open figure -- an inequality distinguishes a value from exactly one other.
+  const e = exposure(CLEAN_HEAD, 40 * IDLE_DAY);
+  assert.equal(e.closedDirtySeconds, 8 * IDLE_DAY, 'dirty ran day 2 to day 10');
+  assert.equal(e.closedSpanSeconds, 10 * IDLE_DAY);
+  assert.equal(e.dirtySeconds, 8 * IDLE_DAY);
+  assert.equal(e.spanSeconds, 40 * IDLE_DAY);
+});
+
+test('the closed figure excludes the open interval when HEAD is unpinned', () => {
+  // The discriminating case for the open/closed split: with a clean HEAD the
+  // open interval contributes nothing to the numerator either way, so a mutant
+  // charging it to the closed total is invisible.
+  const e = exposure(DIRTY_HEAD, 40 * IDLE_DAY);
+  assert.equal(e.closedDirtySeconds, 8 * IDLE_DAY, 'closed stops at the newest commit');
+  assert.equal(e.dirtySeconds, 38 * IDLE_DAY, 'open charges the 30 idle days too');
+});
+
+test('the drift report carries the closed figure, not the open one twice', () => {
+  const e = exposure(CLEAN_HEAD, 40 * IDLE_DAY);
+  const d = exposureDrift(e, true, 30 * IDLE_DAY);
+  assert.equal(d.closed.toFixed(1), '80.0', 'closed is 8 of 10 days');
+  assert.equal(d.open.toFixed(1), '20.0', 'open is 8 of 40 days');
+});
+
+test('closed span is never negative for out-of-order timestamps', () => {
+  const e = exposure(
+    [
+      { at: 0, bad: true },
+      { at: 5 * IDLE_DAY, bad: false },
+    ],
+    9 * IDLE_DAY,
+  );
+  assert.ok(e.closedSpanSeconds >= 0, `negative closed span: ${e.closedSpanSeconds}`);
+});
+
+test('drift is reported with a direction and it tracks head state', () => {
+  const e = exposure(CLEAN_HEAD, 11 * IDLE_DAY);
+  const clean = exposureDrift(e, true, 30 * IDLE_DAY);
+  const dirty = exposureDrift(e, false, 30 * IDLE_DAY);
+  assert.equal(clean.direction, 'falls');
+  assert.equal(dirty.direction, 'climbs');
+  assert.ok(clean.driftPoints < 0, `expected negative drift, got ${clean.driftPoints}`);
+  assert.ok(dirty.driftPoints > 0, `expected positive drift, got ${dirty.driftPoints}`);
+});
+
+test('drift over zero idle time is zero', () => {
+  const e = exposure(CLEAN_HEAD, 11 * IDLE_DAY);
+  assert.equal(exposureDrift(e, true, 0).driftPoints, 0);
+});
+
+test('an empty history yields all four totals rather than two', () => {
+  const e = exposure([], 100);
+  assert.deepEqual(e, {
+    dirtySeconds: 0,
+    spanSeconds: 0,
+    closedDirtySeconds: 0,
+    closedSpanSeconds: 0,
+  });
+});
+
+test('a single-commit history has a closed span of zero', () => {
+  // The only case where `0h of 0h` is honest, and the reason the report guards
+  // on `examined > 1` rather than on the span alone.
+  const e = exposure([{ at: 5 * IDLE_DAY, bad: true }], 9 * IDLE_DAY);
+  assert.equal(e.closedSpanSeconds, 0);
+  assert.ok(e.spanSeconds > 0);
 });

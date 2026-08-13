@@ -8431,6 +8431,75 @@ Registering a `package.json` entry produces something that behaves identically
 to a gate every time a human runs it, and identically to nothing the rest of the
 time.
 
+## A compliance percentage over an open interval improves while nobody acts
+
+A sibling session published its workflow-pinning exposure twice — `56.8% of
+5d 1.2h`, then `55.7% of 5d 4h` — with the same 17 commits, the same 7 dirty,
+and no push in between. The span had grown because the newest interval ends at
+the reading time.
+
+The same is true here, and finance has enough history to make it stark:
+
+| reading time   | exposure  | numerator moved | denominator moved |
+| -------------- | --------- | --------------- | ----------------- |
+| today          | **39.2%** | —               | —                 |
+| +30 idle days  | 33.0%     | no              | yes               |
+| +90 idle days  | 25.1%     | no              | yes               |
+| +365 idle days | **12.0%** | no              | yes               |
+
+Nothing happens in any of those rows. A clean HEAD freezes the numerator while
+the denominator grows, so **the repository improves its own compliance score by
+waiting** — and an unpinned HEAD makes the number worsen the same way, which is
+the direction everyone assumes it has.
+
+The report already said the final interval "grows until the next commit
+touching this directory." That sentence is true, it was written deliberately,
+and it is not the finding. It states the _mechanism_ and omits the
+_consequence_: that the percentage moves, and which way. This is the
+false-assurance polarity again — [a disclaimer that shrinks over-claims](#a-disclaimers-safe-direction-is-the-mirror-of-a-findings),
+and so does one that explains a caveat without saying what it costs. The reader
+is told enough to trust the number and not enough to date it.
+
+Three changes:
+
+- an explicit `as of <ISO>` stamp, so two runs are comparable and a difference
+  between them is not by itself evidence that anything changed;
+- a **closed** figure measured to the newest commit rather than to now, which is
+  a function of history alone and does not drift;
+- the drift itself, printed with a direction: `open figure falls 6.2 pts per
+30 idle days`.
+
+### The new statistic printed `0h of 0h` and nothing objected
+
+The first wiring returned the closed totals from `exposure()` but never
+propagated them through `censusHistory()`, so the report interpolated
+`undefined` as zero and printed `closed history only 0h of 0h (0.0%)`. A
+brand-new statistic reading exactly zero, rendered identically to a real zero,
+in a tool whose whole subject is figures that mislead. It now throws when a
+closed span is zero across more than one commit, because that is not a clean
+history — it is an unwired one.
+
+### The live tree could not have caught it
+
+The gap between the open and closed spans is currently **455 seconds**, because
+the newest commit touching `.github/workflows` is the PR that shipped the
+previous checker, minutes earlier. Any error in the closed span would be
+invisible against this tree today; the two figures converge right after a commit
+and diverge as the repository idles.
+
+So every discriminating assertion is synthetic, and that is not a compromise.
+The sibling's phrase for it is exact — **a tree is a fixture nobody chose** —
+and this one was made non-discriminating by the previous commit in this same
+session.
+
+Four mutants survived the first suite, all of them because the fixture had a
+clean HEAD, where the open interval contributes nothing to the numerator either
+way. One of the four survived an assertion written specifically to guard the
+wiring: `assert.notEqual(closed, open)` passes for a mutant that never accrues
+closed time at all, because zero is also unequal to the open figure. **An
+inequality distinguishes a value from exactly one other value**, which is nearly
+the weakest claim an assertion can make while still looking like a check.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
