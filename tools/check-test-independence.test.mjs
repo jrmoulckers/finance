@@ -204,10 +204,20 @@ test('the baseline is four literal entries', () => {
 });
 
 test('every live match is input construction', () => {
+  // Asserted through the report rather than by re-filtering `matches`.
+  //
+  // The first draft recomputed `matches.filter((m) => m.kind === 'rule')` --
+  // character-identical to the line in `reportLines` that owns that decision --
+  // and this checker failed itself in CI over it. It passed locally because
+  // `census()` enumerates with `git ls-files`, and both new files were still
+  // untracked: the instrument was outside its own population until committed.
   const result = census((file) => readFileSync(file, 'utf8'));
-  assert.ok(result.pairs >= 10);
-  const rules = result.matches.filter((match) => match.kind === 'rule');
-  assert.deepEqual(rules, [], 'a tool test now recomputes its own rule');
+  assert.ok(result.pairs >= 11, `pairs: ${result.pairs}`);
+  const { lines } = reportLines(result);
+  assert.ok(
+    lines.includes('  rule reimplementation       0'),
+    `a tool test now recomputes its own rule:\n${lines.join('\n')}`,
+  );
 });
 
 test('the live tree is clean against the literal baseline', () => {

@@ -8371,6 +8371,32 @@ records the same defect, and the fixture was rebuilt in the same shape while
 that text was in the repo. Knowing a defect class does not prevent instantiating
 it: the symmetric fixture is the one that looks careful.
 
+### The checker failed itself, and only in CI
+
+The first push was red. `check-test-independence` reported one reimplemented
+rule, in `check-test-independence.test.mjs`:
+
+```
+const rules = result.matches.filter((match) => match.kind === 'rule');
+```
+
+character-identical to the line in `reportLines()` that owns that decision. The
+test written to prove the tree had no reimplemented rules was one — the whole
+defect class, instantiated inside its own detector, on the first run that could
+see it.
+
+That qualifier is the second finding. It passed locally and failed in CI because
+`census()` enumerates with `git ls-files`, and both new files were untracked
+until the commit. **The instrument was outside its own population while being
+tested.** Local runs counted 10 pairs; CI counted 11. Nothing was wrong with
+either run — they were answers to different questions, and only one of them was
+the question.
+
+Any tool that discovers its input from version control is blind to itself until
+committed, which is precisely the window in which it is being written. The fix
+was to assert through `reportLines()` — using the tool's own classification
+rather than recomputing it — which is the remedy the tool exists to recommend.
+
 ## Four gates were invoked by nothing
 
 Wiring the new checker meant reading how the others were wired, which produced a
