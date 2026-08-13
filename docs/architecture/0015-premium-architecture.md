@@ -477,10 +477,10 @@ suspend fun onPurchaseValidated(engine: DefaultSyncEngine) {
 
 ## References
 
-- [ADR-0009: Legal & Monetization Analysis](../0009-legal-monetization-analysis.md)
-- [ADR-0010: V2 Architecture Vision](../0010-v2-architecture-vision.md)
-- [ADR-0004: Auth & Security Architecture](../0004-auth-security-architecture.md)
-- [ADR-0002: Backend & Sync Architecture](../0002-backend-sync-architecture.md)
+- [ADR-0009: Legal & Monetization Analysis](./0009-legal-monetization-analysis.md)
+- [ADR-0010: V2 Architecture Vision](./0010-v2-architecture-vision.md)
+- [ADR-0004: Auth & Security Architecture](./0004-auth-security-architecture.md)
+- [ADR-0002: Backend & Sync Architecture](./0002-backend-sync-architecture.md)
 - [Apple StoreKit 2 Documentation](https://developer.apple.com/storekit/)
 - [Google Play Billing Library](https://developer.android.com/google/play/billing)
 - [Stripe Subscriptions](https://stripe.com/docs/billing/subscriptions)

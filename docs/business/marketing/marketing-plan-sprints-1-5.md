@@ -5,7 +5,7 @@
 > **Owner:** Marketing Strategist
 > **Purpose:** Define marketing, GTM, and content tasks aligned with engineering milestones for the 5 sprints leading to v1.0 launch
 > **Preferred location:** `docs/business/marketing/marketing-plan-sprints-1-5.md` (create `docs/business/` directory and move this file)
-> **Related:** [Product Identity](../../design/product-identity.md) · [Store Metadata](../../guides/store-metadata.md) · [Beta Testing](../../guides/beta-testing.md) · [Launch Checklist](../../guides/launch-checklist.md) · [Onboarding Strategy](../../guides/onboarding-strategy.md) · [Launch Readiness Plan](launch-readiness-plan.md)
+> **Related:** [Product Identity](../../design/product-identity.md) · [Store Metadata](../../guides/store-metadata.md) · [Beta Testing](../../guides/beta-testing.md) · [Launch Checklist](../../guides/launch-checklist.md) · [Onboarding Strategy](../../guides/onboarding-strategy.md) · [Launch Readiness Plan](../../ops/launch-readiness-plan.md)
 
 > **Satisfies:** `PROD-PLAN-001`, `PROD-BUS-003` — Product obligations are defined in
 > [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the
@@ -712,7 +712,7 @@ All metrics come from platform-provided dashboards or aggregate opt-in analytics
 - [Beta Testing Program](../../guides/beta-testing.md) — Beta goals, recruitment, exit criteria
 - [Onboarding Strategy](../../guides/onboarding-strategy.md) — Onboarding flow and philosophy
 - [Launch Checklist](../../guides/launch-checklist.md) — Pre-launch requirements
-- [Launch Readiness Plan](launch-readiness-plan.md) — Launch day operations
+- [Launch Readiness Plan](../../ops/launch-readiness-plan.md) — Launch day operations
 - [Privacy Policy](../../legal/privacy-policy.md) — Data practices documentation
 - [ADR-0003: Local Storage](../../architecture/0003-local-storage-strategy.md) — SQLCipher encryption
 - [ADR-0004: Auth & Security](../../architecture/0004-auth-security-architecture.md) — Authentication architecture

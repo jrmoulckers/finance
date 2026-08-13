@@ -197,6 +197,6 @@ are in place for implemented UI. Re-audit after Windows reaches full parity.
 
 - [WCAG 2.2 Specification](https://www.w3.org/TR/WCAG22/)
 - [ARIA Authoring Practices Guide](https://www.w3.org/WAI/ARIA/apg/)
-- [Accessibility Guide](../../guides/accessibility.md)
-- [VPAT 2.5](../../compliance/vpat-2.5.md)
+- [Accessibility Guide](../guides/accessibility.md)
+- [VPAT 2.5](../compliance/vpat-2.5.md)
 - [Feature Parity Matrix](./feature-parity-matrix.md)

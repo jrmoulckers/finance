@@ -121,16 +121,16 @@ Type `@agent-name` in VS Code Copilot Chat:
 
 Key architecture decisions made during development, documented as ADRs:
 
-| ADR                                                           | Decision                 | Chosen                           |
-| ------------------------------------------------------------- | ------------------------ | -------------------------------- |
-| [0001](docs/architecture/0001-cross-platform-framework.md)    | Cross-platform framework | KMP (Kotlin Multiplatform)       |
-| [0002](docs/architecture/0002-backend-sync-architecture.md)   | Backend + sync           | Supabase + PowerSync             |
-| [0003](docs/architecture/0003-local-storage-strategy.md)      | Local storage            | SQLite + SQLDelight + SQLCipher  |
-| [0004](docs/architecture/0004-auth-security-architecture.md)  | Authentication           | Passkeys + OAuth 2.0/PKCE        |
-| [0005](docs/architecture/0005-design-system-approach.md)      | Design system            | Design tokens (DTCG) + native UI |
-| [0006](docs/architecture/0006-cicd-strategy.md)               | CI/CD                    | GitHub Actions + Turborepo       |
-| [0007](docs/architecture/0007-hosting-strategy.md)            | Hosting                  | Self-hosted VPS (~$10-20/mo)     |
-| [0009](docs/architecture/0009-legal-monetization-analysis.md) | Monetization             | Freemium + donations             |
+| ADR                                                         | Decision                 | Chosen                           |
+| ----------------------------------------------------------- | ------------------------ | -------------------------------- |
+| [0001](../architecture/0001-cross-platform-framework.md)    | Cross-platform framework | KMP (Kotlin Multiplatform)       |
+| [0002](../architecture/0002-backend-sync-architecture.md)   | Backend + sync           | Supabase + PowerSync             |
+| [0003](../architecture/0003-local-storage-strategy.md)      | Local storage            | SQLite + SQLDelight + SQLCipher  |
+| [0004](../architecture/0004-auth-security-architecture.md)  | Authentication           | Passkeys + OAuth 2.0/PKCE        |
+| [0005](../architecture/0005-design-system-approach.md)      | Design system            | Design tokens (DTCG) + native UI |
+| [0006](../architecture/0006-cicd-strategy.md)               | CI/CD                    | GitHub Actions + Turborepo       |
+| [0007](../architecture/0007-hosting-strategy.md)            | Hosting                  | Self-hosted VPS (~$10-20/mo)     |
+| [0009](../architecture/0009-legal-monetization-analysis.md) | Monetization             | Freemium + donations             |
 
 ## Common Patterns
 

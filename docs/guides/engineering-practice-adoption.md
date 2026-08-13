@@ -7850,6 +7850,74 @@ things. It would have passed against any implementation, including one that retu
 constant. It now derives both counts from the same fixtures it measures the durations from,
 so the assertion fails if the fixtures stop illustrating the claim.
 
+## The link filter was the publisher's, and finance matched none of it
+
+The vendored citation checker follows only links whose target sits under `principles/`.
+That filter was reported here as a property of the vendored copy. It is not: it is
+`scripts/check-citations.mjs` in `jrmoulckers/engineering`, live on `main`, one vendoring
+hop upstream. Every consumer inherits it silently.
+
+The attribution error is the more useful half. An earlier finding in this same file family
+assumed a behaviour was inherited when it was local; this one assumed local when it was
+inherited. Same fork, same file, opposite direction, within a few turns — so neither
+_assume upstream_ nor _assume local_ is the conservative guess. Provenance has no safe
+default, and the only way to settle it is to read the other tree.
+
+What the filter leaves unmeasured is larger here than upstream, because finance has no
+`principles/` directory at all:
+
+```
+tracked markdown files    593
+relative .md links       3353
+  matched by the checker     0
+  verified by nothing     3353
+targets that do not exist   35
+```
+
+Not 5 of 65 — **0 of 3353**. The filter does not narrow the coverage here, it eliminates it.
+
+### Seven of the thirty-five were mine
+
+`docs/architecture/0015-premium-architecture.md` and `0016-gamification-system.md` were
+moved out of `docs/architecture/adr/` up one level during the first adoption commit. Their
+internal links read `../0009-legal-monetization-analysis.md`, which was correct from the
+`adr/` subdirectory and resolves outside `docs/architecture/` from the new location. Checked
+rather than assumed — the pre-move blob carries those exact `../` paths, and the rename was
+recorded as `R100`/`R099`, so the content did not change and the meaning of the content did.
+
+That regression shipped in the first commit of this adoption and survived every subsequent
+one. Nothing in lint, format, type-check or any of the eight gates reads a link, so a rename
+is invisible to all of them: the citing document stays syntactically perfect and simply
+points at nothing.
+
+The remaining twenty-eight split into eight in `docs/guides/workflow-cheatsheet.md` that use
+repo-root paths from a subdirectory — introduced long before this work, verified by finding
+the commit that added them — and twenty that name documents this repository has never
+contained. Twenty-four of the thirty-five resolved to exactly one existing file by basename
+and were repointed. The rest are recorded as a named, shrinkable baseline, because the fix
+for a link to a document that was never written is to write it or drop the reference, and a
+checker should not guess which.
+
+### The check is fence-aware because the census that found the defect was not
+
+An illustrative link inside a fenced block is not a link. The upstream-side census that
+first measured this gap reported one broken link that turned out to be an elided example
+inside a fence, so this implementation skips fenced blocks _and prints how many it skipped_ —
+an exclusion that is not counted is indistinguishable from an exclusion that never happened.
+Inline code spans are blanked rather than removed, so masking a `[x](./a.md)` illustration
+cannot shift the line number reported for a real link on the same line.
+
+Two things this check deliberately does not do, both printed on every run: it does not
+resolve anchor fragments, and it cannot see a target that keeps its path while its content
+moves elsewhere. That second failure is the one that motivated the whole exchange, and no
+link checker can hold it — a file that keeps its name stays green while every claim about
+its contents goes stale.
+
+One reporting bug caught before merge: the first version printed `12 recorded gap(s)`
+against a nine-entry baseline, because three targets are linked from two places each. It was
+reporting occurrences under a name that says distinct targets — the same conflation this
+guide has documented twice, in output written to describe it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
