@@ -32,6 +32,9 @@ const {
   ENFORCEMENT_WORKFLOW,
   driftEnforcement,
   enforcementFindings,
+  BREADTH_FLOOR,
+  corpusBreadth,
+  validateSyncLock,
   SYNC_LOCK,
   triggerPaths,
   triggerCovers,
@@ -999,4 +1002,66 @@ test('uncovered managed entries are counted against the whole population (#4251)
   assert.match(findings[0], /2 of 3 managed entries/);
   assert.match(findings[0], /vendor\/@jrm/);
   assert.deepEqual(triggerFindings(globs, ['.github/agents/a.md']), []);
+});
+
+// --- #4256: a premise guard must live where a mutation can be seen -------------------------
+//
+// The suite asserts `unstampSource` across comment families and the walk across nesting depths.
+// Both are only as strong as the recorded corpus, and the inline `assert.ok(x.length > 0)`
+// premises that were supposed to protect them cannot: weakening `> 0` to `>= 0` is invisible to
+// the same suite that contains the assertion. Measured on df65452a -- five such premises, all
+// surviving at 0 failures. So the judgement moved into production, where these tests can
+// construct the degenerate states instead of waiting for them.
+
+test('an empty corpus is reported rather than passing vacuously (#4256)', () => {
+  assert.deepEqual(corpusBreadth({}), [
+    'lock records no entries; every corpus assertion is vacuous',
+  ]);
+  assert.equal(corpusBreadth({ entries: {} }).length, 1);
+  assert.equal(corpusBreadth(null).length, 1, 'a missing lock is not a broad corpus');
+});
+
+test('a single-family corpus cannot certify the unstamp switch (#4256)', () => {
+  const oneFamily = corpusBreadth({ entries: { 'AGENTS.md': {}, 'docs/x.md': {} } });
+  assert.equal(oneFamily.length, 1);
+  assert.match(oneFamily[0], /1 comment family/);
+  // Two families clears the floor; the root-level arm is satisfied by AGENTS.md.
+  assert.deepEqual(corpusBreadth({ entries: { 'AGENTS.md': {}, 'agency.toml': {} } }), []);
+});
+
+test('a corpus with no root-level entry is reported (#4256)', () => {
+  const nested = corpusBreadth({ entries: { 'x/a.md': {}, 'x/b.toml': {} } });
+  assert.equal(nested.length, 1);
+  assert.match(nested[0], /no root-level entries/);
+});
+
+test('the real corpus clears the floor, and the floor is not zero (#4256)', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, SYNC_LOCK), 'utf8'));
+  assert.deepEqual(
+    corpusBreadth(lock),
+    [],
+    'the recorded corpus should support its own assertions',
+  );
+  // A floor of zero would make the guard unfalsifiable -- the defect it exists to prevent.
+  assert.ok(BREADTH_FLOOR.families >= 2, 'one family cannot certify a three-way switch');
+  assert.ok(BREADTH_FLOOR.rootLevel >= 1);
+});
+
+test('validateSyncLock still reports a degenerate corpus (#4256)', () => {
+  // Pins the wiring, not the guard: with the recorded lock the guard is silent, so unwiring it
+  // from validateSyncLock is invisible unless a test supplies a corpus that should be reported.
+  const nested = validateSyncLock({
+    version: 1,
+    backbone: 'jrmoulckers/.github',
+    entries: { 'x/a.md': {} },
+  });
+  assert.ok(
+    nested.some((finding) => /no root-level entries/.test(finding)),
+    'the breadth guard must reach the verdict, not just exist',
+  );
+  assert.ok(
+    validateSyncLock({ version: 1, backbone: 'jrmoulckers/.github', entries: {} }).some((finding) =>
+      /every corpus assertion is vacuous/.test(finding),
+    ),
+  );
 });
