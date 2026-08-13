@@ -44,6 +44,9 @@ const {
   triggerFindings,
   METRICS,
   HELP_TEXT,
+  VALIDATORS,
+  dispatchValidators,
+  activationRunners,
   EXPECTED_AGENTS,
   MANAGED_COUNTS,
   citationFindings,
@@ -1235,4 +1238,84 @@ test('a constructed cross-repo coordinate reaches the report, not just the funct
     clean.indexOf('Cross-repo citations:') < clean.indexOf('Canonical runtime activation:'),
     'the population must be stated before the verdict it qualifies',
   );
+});
+
+// --- #4278: the advertisement was transcribed while the numbers inside it were derived --------
+//
+// `--help` is this tool's front door and it enumerated what the tool validates. The comment
+// above HELP_TEXT reasoned explicitly about the two COUNTS in that sentence -- interpolating
+// both so they could not decay -- and left the sentence itself hand-written. Three validators
+// added in #4233, #4251 and #4270 therefore never appeared in it, each shipping past a green
+// test whose name is about this exact text, because that test pins the counts and not the list.
+//
+// Measured before the fix: 7 advertised phrases, 7 validators wired, 3 of them unadvertised.
+// The list is now derived from the registry `main` dispatches over, so the two cannot diverge.
+
+test('every validator that runs is advertised, and every advertisement runs (#4278)', () => {
+  // The real registry against the real dispatch, by construction rather than by transcription.
+  const runners = Object.fromEntries(VALIDATORS.map((validator) => [validator.id, () => []]));
+  assert.deepEqual(dispatchValidators(runners).findings, [], 'registry and dispatch must agree');
+});
+
+test('a validator wired without an advertisement is reported (#4278)', () => {
+  // The state that actually occurred, three times, constructed rather than asserted about.
+  const runners = Object.fromEntries(VALIDATORS.map((validator) => [validator.id, () => []]));
+  runners.somethingNew = () => [];
+  const { findings } = dispatchValidators(runners);
+  assert.equal(findings.length, 1, 'exactly the unadvertised validator must be reported');
+  assert.match(findings[0], /--help never mentions it: somethingNew/);
+});
+
+test('an advertisement with no validator behind it is reported (#4278)', () => {
+  const runners = Object.fromEntries(VALIDATORS.map((validator) => [validator.id, () => []]));
+  const dropped = VALIDATORS.at(-1).id;
+  delete runners[dropped];
+  const { findings } = dispatchValidators(runners);
+  assert.equal(findings.length, 1, 'exactly the unbacked advertisement must be reported');
+  assert.match(findings[0], new RegExp(`advertised by --help but never run: ${dropped}`));
+});
+
+test('an unadvertised validator still contributes its findings (#4278)', () => {
+  // Reporting the documentation defect must not convert it into a missing check: running only
+  // the advertised set would drop a real finding to punish a missing label.
+  const runners = Object.fromEntries(VALIDATORS.map((validator) => [validator.id, () => []]));
+  runners.somethingNew = () => ['a real finding from an unlabelled validator'];
+  const { findings } = dispatchValidators(runners);
+  assert.ok(
+    findings.includes('a real finding from an unlabelled validator'),
+    'findings from an unadvertised validator must survive',
+  );
+});
+
+test('the printed help lists every validator, not a sentence about some of them (#4278)', () => {
+  // Asserted by EXECUTION, not over the constant: a derivation nothing prints is the defect
+  // one level up. The count claims are re-checked here because deriving the list must not
+  // quietly drop the interpolation the older test pins.
+  const out = execFileSync(process.execPath, [TOOL, '--help'], { encoding: 'utf8' });
+  assert.ok(VALIDATORS.length > 3, 'PREMISE: there is a non-trivial registry to advertise');
+  for (const validator of VALIDATORS) {
+    assert.ok(out.includes(validator.label), `--help omits a validator: ${validator.id}`);
+  }
+  assert.match(out, /23-agent/);
+  assert.match(out, /81-entry/);
+});
+test('the registry is checked against the dispatch, not against itself (#4278)', () => {
+  // DISCLOSURE: every test above builds its expectation FROM `VALIDATORS`, so deleting a row
+  // survived the entire suite at 0 failures -- the population and the expectation were the same
+  // object. This is the class reported to me and then reproduced inside my own fix for it.
+  // The independent enumeration is the dispatch `main` really passes: runner keys, not labels.
+  const wired = Object.keys(activationRunners({})).sort();
+  const advertised = VALIDATORS.map((validator) => validator.id).sort();
+  assert.ok(wired.length > 3, 'PREMISE: a non-trivial dispatch exists to compare against');
+  assert.deepEqual(advertised, wired, 'every dispatched validator needs a --help row, and back');
+});
+
+test('the report states how many validators ran against how many it advertises (#4278)', () => {
+  // Asserted by execution, and by the EQUALITY of the two printed numbers rather than by either
+  // one, so this survives legitimate growth of the registry while still failing on divergence.
+  const out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
+  const line = out.match(/Validators: (\d+) advertised, (\d+) run/);
+  assert.ok(line, 'the report must disclose the validator populations');
+  assert.equal(line[1], line[2], 'advertised and run must agree');
+  assert.equal(Number(line[2]), Object.keys(activationRunners({})).length);
 });
