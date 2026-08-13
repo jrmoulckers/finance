@@ -20,7 +20,7 @@ affordances, then saves through the existing repository.
 This is **design only** — the confirmation flow is **buildable now** in debug
 (`assembleDebug` sideload); only Play distribution is human-gated by
 [#1242](https://github.com/jrmoulckers/finance/issues/1242). See
-[Implementation readiness](#11-implementation-readiness) and
+[Implementation readiness](#12-implementation-readiness) and
 [`../ops/human-gated-prerequisites.md`](../ops/human-gated-prerequisites.md).
 
 ---

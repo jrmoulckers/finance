@@ -11,7 +11,7 @@ worker starts, pauses, resumes, and ends a work shift while tracking mileage, en
 a thumb. It defines the **state machine**, offline persistence expectations, and shortcut entry
 points. It is **design + breakdown only** — native implementation is unblocked, but the
 _distribution_ tail stays gated by [#1242](https://github.com/jrmoulckers/finance/issues/1242)
-(see [Implementation Readiness](#implementation-readiness)).
+(see [Implementation Readiness](#12-implementation-readiness)).
 
 ---
 

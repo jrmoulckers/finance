@@ -37,9 +37,12 @@ test('a protocol-relative URL is not treated as a file', () => {
   assert.equal(links.length, 0, 'a leading // is a URL, not a relative path');
 });
 
-test('a bare fragment is not treated as a file', () => {
+test('a bare fragment is collected as a same-file anchor', () => {
   const { links } = collectLinks('[x](#anchor)');
-  assert.equal(links.length, 0);
+  assert.equal(links.length, 1, 'same-file anchors were excluded until they were counted');
+  assert.equal(links[0].sameFile, true);
+  assert.equal(links[0].target, '');
+  assert.equal(links[0].fragment, 'anchor');
 });
 
 test('non-markdown targets are out of scope', () => {
@@ -147,12 +150,13 @@ test('census returns an empty result for a repository with no markdown', () => {
     staleAnchors: [],
     fragmentless: 0,
     checkedAnchors: 0,
+    sameFileAnchors: 0,
   });
 });
 
 test('scopeLines states the population on any branch that prints them', () => {
   const out = scopeLines({ files: 593, total: 3353, fenced: 2 }).join('\n');
-  assert.match(out, /3353 relative markdown link\(s\)/);
+  assert.match(out, /3353 markdown link\(s\)/);
   assert.match(out, /593 tracked file\(s\)/);
   assert.match(out, /2 inside fenced blocks/);
 });
@@ -318,7 +322,7 @@ test('scopeLines states the specificity split on both paths', () => {
     checkedAnchors: 2,
   });
   const specificity = lines.find((l) => l.startsWith('Specificity:'));
-  assert.match(specificity, /7 link\(s\) name only a file \(70\.0%\)/);
+  assert.match(specificity, /of 10 cross-file link\(s\), 7 name only a file \(70\.0%\)/);
   assert.match(specificity, /2 name a section/);
   assert.match(specificity, /1 point at a file that does not exist/);
 });
@@ -365,7 +369,10 @@ test('a clean census reports success and does not fail', () => {
   );
   assert.equal(failed, false);
   assert.equal(lines[0], 'All resolvable relative markdown links point at files that exist.');
-  assert.equal(lines[1], 'All 1 section-naming link(s) resolve to a heading that exists.');
+  assert.equal(
+    lines[1],
+    'All 1 cross-file section-naming link(s) and 0 same-file anchor(s) resolve to a heading that exists.',
+  );
 });
 
 test('occurrences and distinct targets are not interchangeable in the report', () => {
@@ -489,4 +496,195 @@ test('the failing verdict discounts baseline entries that are no longer broken',
     lines.at(-1),
     '2 broken occurrence(s) over 2 distinct target(s); 1 of those targets are recorded gaps where the document does not exist.',
   );
+});
+
+// ---------------------------------------------------------------------------
+// Same-file anchors, and the third slugger defect they were hiding.
+//
+// The trim-order bug lived four lines below a comment documenting two defects of
+// exactly its shape. It never fired because the only links that exercise it are
+// same-file anchors, and this checker discarded those before resolving anything.
+// A defect and the checked population can fail to intersect, and a green result
+// is then evidence about that intersection rather than about the corpus.
+// ---------------------------------------------------------------------------
+
+const SELF_DOC = ['# Doc', '', '## 🚀 Getting Started', '', 'See [start](#-getting-started).'].join(
+  '\n',
+);
+
+test('a leading emoji leaves a leading hyphen, because GitHub trims before stripping', () => {
+  assert.equal(slugify('🚀 Getting Started'), '-getting-started');
+});
+
+test('trimming after the strip would swallow that hyphen', () => {
+  const trimLast = (h) =>
+    String(h)
+      .toLowerCase()
+      .replace(/[^\w\s\uFE0F-]/g, '')
+      .trim()
+      .replace(/\s/g, '-');
+  assert.equal(trimLast('🚀 Getting Started'), 'getting-started');
+  assert.notEqual(trimLast('🚀 Getting Started'), slugify('🚀 Getting Started'));
+});
+
+test('a trailing emoji leaves a trailing hyphen for the same reason', () => {
+  assert.equal(slugify('Done ✅'), 'done-');
+});
+
+test('the two previously documented cases stay fixed under the new trim order', () => {
+  // Case 1: one-for-one space replacement, not a collapse.
+  assert.equal(slugify('Android distribution — Google Play'), 'android-distribution--google-play');
+  // Case 2: U+FE0F survives.
+  assert.equal(slugify('⚠️ Warning'), '\uFE0F-warning');
+});
+
+test('surrounding whitespace is still trimmed, just earlier', () => {
+  assert.equal(slugify('   Spaced Out   '), 'spaced-out');
+});
+
+test('census resolves a same-file anchor against its own headings', () => {
+  const result = census(
+    () => 'a.md\n',
+    () => true,
+    () => SELF_DOC,
+  );
+  assert.equal(result.sameFileAnchors, 1);
+  assert.deepEqual(result.staleAnchors, []);
+});
+
+test('census reports a same-file anchor that names no heading', () => {
+  const doc = ['# Doc', '', '## Real Heading', '', '[x](#imagined-heading)'].join('\n');
+  const result = census(
+    () => 'a.md\n',
+    () => true,
+    () => doc,
+  );
+  assert.equal(result.sameFileAnchors, 1);
+  assert.deepEqual(result.staleAnchors, ['a.md:5 -> #imagined-heading']);
+});
+
+test('a same-file anchor is not counted as a cross-file section-naming link', () => {
+  const result = census(
+    () => 'a.md\n',
+    () => true,
+    () => SELF_DOC,
+  );
+  assert.equal(result.checkedAnchors, 0, 'folding the two would flatter the specificity ratio');
+  assert.equal(result.sameFileAnchors, 1);
+  assert.equal(result.fragmentless, 0);
+});
+
+test('a same-file anchor inside a fenced block is skipped and counted', () => {
+  const doc = ['# Doc', '', '```md', '[x](#nowhere)', '```'].join('\n');
+  const result = census(
+    () => 'a.md\n',
+    () => true,
+    () => doc,
+  );
+  assert.equal(result.fenced, 1);
+  assert.equal(result.sameFileAnchors, 0);
+  assert.deepEqual(result.staleAnchors, []);
+});
+
+test('a same-file anchor in an inline code span is not a link', () => {
+  const { links } = collectLinks('Write `[x](#anchor)` to link.');
+  assert.equal(links.length, 0);
+});
+
+test('the specificity share is taken over cross-file links only', () => {
+  const lines = scopeLines({
+    files: 1,
+    total: 10,
+    fenced: 0,
+    fragmentless: 3,
+    checkedAnchors: 1,
+    sameFileAnchors: 6,
+  });
+  // 3 of 4 cross-file links, not 3 of 10. Both the share and the residual must use the
+  // cross-file denominator: over `total` the share reads 30.0% and the residual reads 6,
+  // and 6 unclassified links is a plausible-looking number that names nothing real.
+  assert.match(lines[1], /of 4 cross-file link\(s\), 3 name only a file \(75\.0%\)/);
+  assert.match(lines[1], /0 point at a file that does not exist/);
+  assert.doesNotMatch(lines[1], /30\.0%/);
+  assert.match(lines[2], /6 link\(s\) of the form/);
+});
+
+test('the residual counts links whose target is missing, not same-file anchors', () => {
+  const lines = scopeLines({
+    files: 1,
+    total: 9,
+    fenced: 0,
+    fragmentless: 2,
+    checkedAnchors: 1,
+    sameFileAnchors: 5,
+  });
+  // cross = 4; 2 fragmentless + 1 resolved leaves exactly 1 unresolved.
+  assert.match(lines[1], /of 4 cross-file link\(s\)/);
+  assert.match(lines[1], /1 point at a file that does not exist/);
+});
+
+test('the green report names both anchor populations', () => {
+  const { lines, failed } = reportLines(
+    {
+      files: 1,
+      total: 9,
+      fenced: 0,
+      broken: [],
+      staleAnchors: [],
+      fragmentless: 0,
+      checkedAnchors: 2,
+      sameFileAnchors: 7,
+    },
+    { baseline: [], staleBaseline: [] },
+  );
+  assert.equal(failed, false);
+  const claim = lines.find((l) => l.startsWith('All 2 cross-file'));
+  assert.ok(claim, 'the success line must name the count it verified');
+  assert.match(claim, /All 2 cross-file section-naming link\(s\) and 7 same-file anchor\(s\)/);
+});
+
+test('the green report does not report the same population twice', () => {
+  const { lines } = reportLines(
+    {
+      files: 1,
+      total: 9,
+      fenced: 0,
+      broken: [],
+      staleAnchors: [],
+      fragmentless: 0,
+      checkedAnchors: 2,
+      sameFileAnchors: 7,
+    },
+    { baseline: [], staleBaseline: [] },
+  );
+  const claim = lines.find((l) => l.startsWith('All 2 cross-file'));
+  // A mutant printing checkedAnchors for both halves reads as a plausible sentence.
+  assert.doesNotMatch(claim, /and 2 same-file/);
+  assert.doesNotMatch(claim, /All 7 cross-file/);
+});
+
+test('a stale same-file anchor fails the report on the same axis as a cross-file one', () => {
+  const { lines, failed } = reportLines(
+    {
+      files: 1,
+      total: 1,
+      fenced: 0,
+      broken: [],
+      staleAnchors: ['a.md:5 -> #imagined-heading'],
+      fragmentless: 0,
+      checkedAnchors: 0,
+      sameFileAnchors: 1,
+    },
+    { baseline: [], staleBaseline: [] },
+  );
+  assert.equal(failed, true);
+  assert.ok(lines.some((l) => l === '1 stale anchor(s):'));
+  // Scope prints on the red path too, so a failure still says what was measured.
+  assert.ok(lines.some((l) => l.startsWith('Same-file anchors: 1 link(s)')));
+});
+
+test('scopeLines tolerates a census taken before same-file anchors existed', () => {
+  const lines = scopeLines({ files: 1, total: 4, fenced: 0, fragmentless: 3, checkedAnchors: 1 });
+  assert.match(lines[1], /of 4 cross-file link\(s\)/);
+  assert.match(lines[2], /Same-file anchors: 0 link\(s\)/);
 });

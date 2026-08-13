@@ -41,7 +41,7 @@ preference store this preset writes through)
 8. [Dynamic Type](#8-dynamic-type)
 9. [Privacy & Balance Hiding](#9-privacy--balance-hiding)
 10. [Empty, Stale & Error States](#10-empty-stale--error-states)
-11. [Test Plan](#11-test-plan)
+11. [Test Plan](#11-test-plan--smallest-tests-first)
 12. [Implementation readiness](#12-implementation-readiness)
 13. [Open Questions](#13-open-questions)
 
@@ -243,7 +243,7 @@ Per [accessibility-patterns.md](./accessibility-patterns.md) and
   explainers `.footnote`/`.secondary`, disclaimer `.caption`. All scale AX1–AX5.
 - **Reflow over truncation.** Under the FIRE preset the dashboard remains a single scrolling
   column; at `accessibility1`+ the FI card's metric pair stacks vertically and the
-  explainer/disclaimer wrap fully. Verified at AX5 in [§11](#11-test-plan).
+  explainer/disclaimer wrap fully. Verified at AX5 in [§11](#11-test-plan--smallest-tests-first).
 - **Explainers never truncate** — they are the teaching content.
 
 ---
@@ -339,7 +339,7 @@ not implementation. This design and its iOS code are **buildable and testable no
   ordering/emphasis — SwiftUI + `@Observable`, reusing `ProgressRing` / `CurrencyLabel` /
   `EmptyStateView` / `ErrorStateView` / `OfflineBanner` and the
   [#2577 visibility store](./ios-module-visibility-preferences.md).
-- ✅ All unit + UI/a11y tests in [§11](#11-test-plan) in the iOS Simulator.
+- ✅ All unit + UI/a11y tests in [§11](#11-test-plan--smallest-tests-first) in the iOS Simulator.
 - ✅ On-device verification via **free Personal Team signing** (free Apple ID) — see
   [ios-setup.md](../guides/ios-setup.md).
 - ✅ Against `StubSwiftExportBridge` (preset fixture + `fireMetrics`/savings stub), the entire

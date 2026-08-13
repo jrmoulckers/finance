@@ -11,7 +11,7 @@ self-employed / gig worker configure their tax-reserve percentages, understand e
 disclaimers, and opt in to weekly reserve reminders. It is **design + breakdown only** — no native
 implementation ships while the Android _distribution_ tail is gated by
 [#1242](https://github.com/jrmoulckers/finance/issues/1242) (see
-[Implementation Readiness](#implementation-readiness)).
+[Implementation Readiness](#12-implementation-readiness)).
 
 ---
 

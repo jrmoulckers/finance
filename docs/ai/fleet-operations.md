@@ -16,7 +16,6 @@ This document describes how the AI agent fleet operates in parallel, including d
 - [CI Monitoring and Self-Healing](#ci-monitoring-and-self-healing)
 - [Merge Conflict Resolution](#merge-conflict-resolution)
 - [Fleet Coordination Rules](#fleet-coordination-rules)
-- [Autonomous Operation Procedures](#autonomous-operation-procedures)
 - [Human Handoff Points](#human-handoff-points)
 - [Fleet Health Monitoring](#fleet-health-monitoring)
 - [Post-Merge Cleanup](#post-merge-cleanup)
