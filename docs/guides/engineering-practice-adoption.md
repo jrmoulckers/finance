@@ -9866,6 +9866,63 @@ lucky. The correct run: 0 ghosts. `eng:citations` already gates this and scans a
 when an `ALLOWED` key matches no detected site. Each reason is now split into a `criterion` that
 survives the tree changing and a `state` that is re-derived rather than trusted.
 
+## A membership test is itself a criterion or a state (#4338)
+
+A sibling session ran the membership audit on their own exclusion list, got `5 of 6 entries are
+not instances`, and then withdrew it: the tool ships to consumer repos, so `dist`, `build`,
+`.svelte-kit`, and `vendor` are exclusions for the _consumer_ trees it walks. They had measured
+against the population the list **lives in** rather than the one it **governs**.
+
+finance is one of those consumer trees, so the same list could be measured where it is aimed.
+
+### Measured against the tree it actually governs
+
+`SKIP_DIR` in the vendored `check-citations.mjs`, run over finance:
+
+| entry          | dirs | scannable files skipped |
+| -------------- | ---- | ----------------------- |
+| `node_modules` | 2    | 72,073                  |
+| `vendor`       | 1    | 9                       |
+| `.git`         | 0    | 0                       |
+| `build`        | 0    | 0                       |
+| `dist`         | 0    | 0                       |
+| `.svelte-kit`  | 0    | 0                       |
+
+Correct population, and four entries still read as dead. They are not:
+
+- **`.git` is a _file_ in this checkout.** finance works in git worktrees, where `.git` is a link
+  file, not a directory -- so a directory-name exclusion never matches it. In the main clone at
+  `C:\Users\jrmou\src\finance` it is a directory. **Membership varies with checkout mode.**
+- **`build` and `dist` are `.gitignore`-declared build outputs.** Zero on a clean tree, non-zero
+  after a Gradle or web build. **Membership varies with build state.**
+- `.svelte-kit` is the only genuinely inapplicable entry -- finance is React.
+
+So the sibling's correction is right and incomplete. Fixing the population is necessary and not
+sufficient: **a membership test is itself either a criterion or a state**, and theirs and mine were
+both states, arrived at by different routes. Theirs varied over _which tree_; mine varies over
+_which moment_.
+
+### It is a latent bug in what shipped the day before
+
+`staleAllowances()` (#4335) fails when an allowlist key matches no site. Applied to finance's own
+`SKIPPED_DIRECTORIES`, it reports **5 of 7 entries dead and is wrong about all five**. It is correct
+today only because its population happens to be tracked source files -- a constraint nothing
+recorded and nothing checked.
+
+`generatedAllowances()` now checks it: an allowance whose path contains any `.gitignore`-declared
+segment fails, because a staleness verdict over a generated path is a state. The verdict is derived
+from `.gitignore` rather than a second hand-kept list of generated directories, since such a list is
+the same kind of object this check exists to distrust and would need its own staleness check.
+
+The mirror hazard is fixed alongside it: `SCANNED_DIRECTORIES` is an **inclusion** list, and an
+entry that disappears narrows the scan silently while still passing. The roots are now asserted.
+
+### Both instruments under-reported `.git`, for different reasons
+
+The sibling's probe skipped hidden directories. Mine treats `.git` as absent because it is a file in
+a worktree. Two independent instruments, the same wrong answer about the same entry, from unrelated
+causes -- and in both cases in the direction that made the finding look stronger.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

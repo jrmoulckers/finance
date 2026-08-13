@@ -24,6 +24,7 @@ import {
   isScannedFile,
   PRIMITIVES,
   predicateLines,
+  generatedAllowances,
   staleAllowances,
 } from './check-markdown-primitives.mjs';
 
@@ -305,4 +306,55 @@ test('every declared primitive allowance describes a file that exists on disk', 
       );
     }
   }
+});
+
+test('a staleness verdict over a generated path would be a state, so it is refused (#4338)', () => {
+  // The same membership test that is correct over tracked source files reports build/, dist/,
+  // .gradle/ and coverage/ dead on a clean tree and alive on a built one -- and .git dead in a
+  // worktree, where it is a file, alive in a clone. The precondition is checked, not asserted in a
+  // comment, because a comment stating a precondition is exactly the artifact this tool distrusts.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  assert.deepEqual(generatedAllowances(['tools/a.mjs'], repoRoot), []);
+  assert.deepEqual(generatedAllowances(['coverage/b.mjs', 'build/a.mjs'], repoRoot), [
+    'build/a.mjs',
+    'coverage/b.mjs',
+  ]);
+});
+
+test('a generated segment is detected anywhere in the path, not only at the root', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  assert.deepEqual(generatedAllowances(['apps/web/dist/x.js'], repoRoot), ['apps/web/dist/x.js']);
+});
+
+test('the generated set is derived from .gitignore rather than a second hand-kept list', () => {
+  // A hand-maintained list of generated directories is the same kind of object this check exists
+  // to distrust, and it would need its own staleness check.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const ignored = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
+  assert.match(ignored, /^\s*build\/?\s*$/m, '.gitignore is the source of the verdict');
+  assert.deepEqual(generatedAllowances(['build/x.mjs'], repoRoot), ['build/x.mjs']);
+  assert.deepEqual(
+    generatedAllowances(['build/x.mjs'], mkdtempSync(path.join(tmpdir(), 'ng-'))),
+    [],
+  );
+});
+
+test('every shipped allowance names a tracked path, so staleAllowances stays meaningful', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  for (const primitive of PRIMITIVES) {
+    assert.deepEqual(
+      generatedAllowances(Object.keys(primitive.allowed), repoRoot),
+      [],
+      `${primitive.label} allowances are all tracked paths`,
+    );
+  }
+});
+
+test('a scan root that does not exist is detectable rather than silently narrowing', () => {
+  // The mirror hazard: an inclusion list whose entry disappears covers less and still passes.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  for (const dir of SCANNED_DIRECTORIES) {
+    assert.ok(existsSync(path.join(repoRoot, dir)), `scan root ${dir} exists`);
+  }
+  assert.ok(!existsSync(path.join(repoRoot, 'no-such-scan-root')));
 });
