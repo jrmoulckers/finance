@@ -9479,6 +9479,69 @@ every time it was printed.
 Reported exemptions fell from 22 to **10** — not because anything was removed, but because the
 number finally means what its name says.
 
+## Importer count reads green on a tree with nothing to import
+
+Consolidating the fence guard into `tools/lib/markdown.mjs` fixed the three independent authorings
+that existed, and the metric that justified it was importer count: a shared primitive is not the
+one that _could_ be imported, it is the one that is. That metric cannot prevent a fourth authoring,
+for two reasons that only became visible when a sibling repository ran the same check.
+
+**It is a ratio whose denominator is "modules someone extracted."** A tree that never extracted
+anything scores perfectly while being maximally duplicated. The sibling measured 18 exporting
+modules, 10 exported to their own test and nothing else, and no shared directory at all — so the
+state "exported, tested, imported by nobody" could not arise there, because there was nothing
+anyone could have imported. The metric is only meaningful where extraction has already been
+attempted, and it reads as green where it has not.
+
+**It reads a forced hand as a free choice.** Measured here: 36 of the scripts under `tools/` and
+`scripts/` are CommonJS, and the shared primitive is ESM. `require()` cannot load it. Those files
+do not import the guard because they _cannot_, and an importer census records that as a decision
+not to reuse.
+
+The check that catches a fourth authoring is not "who imports the shared module" but **how many
+independent implementations of this predicate exist** — a duplication census, which needs no prior
+extraction and does not care why a file failed to import.
+
+## The census found one immediately, and my first census missed it
+
+Running it by hand found `tools/check-ai-manifest.js` — a **required gate** — carrying its own
+fence toggle at two sites, recognising ``` and not `~~~` where the shared definition recognises
+both. Tilde fences in the tree today: **0**. So the divergence is latent, and it is exactly the
+shape a second definition always has: correct until a document uses the delimiter the copy does not
+recognise, with no test failing in between.
+
+The first census I ran reported **zero**. It globbed `tools\*.mjs` and `tools\lib\*.mjs`, which
+silently excluded every `.js` file — the one extension the finding was in. That is the fourth
+consecutive round in which a pre-census filter went unstated, and this time it was in a number I
+had already reported as a clean result in the same message. The filter is never the interesting
+part, which is precisely why it is never disclosed.
+
+## A guard propagates along the corpus, not along the rule
+
+The causal account, which the sibling established and which holds here: each author of a fence
+guard either was corrected by their own fixture or was not. The tool scanning documents that
+contain fenced examples grows the guard; the tool scanning documents that happen not to, never
+learns it needs one. Nobody decides the rule is narrow — the rule is simply never observed to fail.
+
+So the guard's presence tracks the corpus, and the corpus is a fixture nobody chose. This also
+applies to _scope_, not just presence. Fence-awareness here is scoped by path — `.md` only, because
+a triple backtick in `.mjs` is a comment rather than a delimiter. Measured: non-`.md` scanned files
+containing a fence-opening line, **0**; markdown-variant extensions in the tree (`.mdx`,
+`.markdown`), **0**. The path scoping is exact — today, and because the corpus complies, not
+because anyone verified that it must. The rule's real applicability is "markdown that quotes
+markdown," which is a property of content that no file extension carries.
+
+## The second application is the evidence
+
+One change earlier the `enumeration-fixture` marker was hardened to require a reason, and the
+lesson recorded was that a fix documented in a comment describes the instance and reads as
+describing the class. The new census has an allowlist — `check-ai-manifest.js` cannot import the
+owner — and every allowlist entry is required to carry the reason it cannot, asserted by a test,
+written at authoring time rather than a round later.
+
+That is not a stronger statement of the lesson. It is the only kind of evidence the lesson admits:
+a fix appearing twice.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
