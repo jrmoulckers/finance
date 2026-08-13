@@ -635,9 +635,11 @@ const CANON_CITATIONS = [
 //   detector covered              .mjs
 //   overlap                       NONE
 //
-// So `AGENTS.md:120` or `agency.toml:14` -- a coordinate into a file this repo is SENT, and which
+// So a coordinate into `AGENTS.md` or `agency.toml` -- a file this repo is SENT, and which
 // therefore moves under it without warning -- was invisible, twice over: the extension was not
-// listed, and the leading `[a-z]` also excluded every capitalised basename.
+// listed, and the leading `[a-z]` also excluded every capitalised basename. (Those two paths are
+// named without offsets deliberately: this comment is inside the corpus the rule scans, and the
+// rule now reaches them, so stating them as coordinates would be the tool violating itself.)
 //
 // The expected count of this rule is zero, which is what hid it. A detector that matches nothing
 // and a corpus that contains nothing print the identical clean line, and on a prohibition that
@@ -645,21 +647,22 @@ const CANON_CITATIONS = [
 const COORDINATE = /\b[A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z][A-Za-z0-9]{0,9}:\d+(?:-\d+)?/g;
 
 /**
- * Report coordinate citations of files this repository does not contain.
+ * Report coordinate citations of files this repository does not own.
  *
  * @param {string} text Prose to inspect.
  * @param {object[]} citations Registry rows to validate.
- * @param {(p: string) => boolean} isLocal True when the cited path exists here. A self-reference
- *   moves with the edit that moves it, so only cross-repo coordinates decay unnoticed.
- * @returns {string[]} Findings; empty when no coordinate cites another repository.
+ * @param {(p: string) => boolean} isLocallyOwned True when the cited path is BOTH present here and
+ *   authored here. A self-reference moves with the edit that moves it; a coordinate into a file
+ *   this repo merely receives moves when the backbone re-delivers it, with no local edit (#4281).
+ * @returns {string[]} Findings; empty when no coordinate cites a file this repo does not own.
  */
-function citationFindings(text, citations = CANON_CITATIONS, isLocal = () => false) {
+function citationFindings(text, citations = CANON_CITATIONS, isLocallyOwned = () => false) {
   const findings = [];
   for (const match of text.match(COORDINATE) || []) {
-    if (isLocal(match.split(':')[0].replace(/^\.\//, ''))) continue;
+    if (isLocallyOwned(match.split(':')[0].replace(/^\.\//, ''))) continue;
     findings.push(
-      `cites another repository by line number, which decays unnoticed: ${match} — ` +
-        `name the symbol and register it in CANON_CITATIONS instead`,
+      `cites a file this repository does not own by line number, which decays unnoticed: ` +
+        `${match} — name the symbol and register it in CANON_CITATIONS instead`,
     );
   }
   if (!citations.length) {
@@ -719,14 +722,16 @@ function citationCorpus() {
  * Apply the coordinate rule across every claimant file, and state the population it covered.
  *
  * @param {{path: string, text: string}[]} corpus Claimant files.
- * @param {(p: string) => boolean} isLocal True when a cited path exists in this repository.
+ * @param {(p: string) => boolean} isLocallyOwned True when a cited path is present here AND
+ *   authored here, so the coordinate cannot move without a local edit.
  * @returns {{findings: string[], scanned: number}} Findings, and how many files were read.
  */
-function citationCoverage(corpus, isLocal) {
+function citationCoverage(corpus, isLocallyOwned) {
   const findings = [];
   for (const { path: relPath, text } of corpus) {
-    for (const finding of citationFindings(text, CANON_CITATIONS, isLocal)) {
-      if (finding.startsWith('cites another repository')) findings.push(`${relPath}: ${finding}`);
+    for (const finding of citationFindings(text, CANON_CITATIONS, isLocallyOwned)) {
+      if (finding.startsWith('cites a file this repository does not own'))
+        findings.push(`${relPath}: ${finding}`);
     }
   }
   // A zero here is only meaningful beside the number of files it was computed from. Emitted by
@@ -748,7 +753,30 @@ const ENFORCEMENT_STEP = 'Check for drift';
 const SYNC_LOCK = '.studio-sync.lock.json';
 
 /**
- * Run the coordinate rule over every claimant file, resolving locality against the walk.
+ * Paths this repository receives from the backbone rather than authors.
+ *
+ * Read from the lock at check time rather than listed here, so the set cannot drift from the
+ * delivered surface: a target added by a future sync is covered with nothing to update (#4281).
+ *
+ * @returns {Set<string>} Managed target paths; empty when the lock is absent or unreadable.
+ */
+function managedTargets() {
+  try {
+    const lock = JSON.parse(fs.readFileSync(path.join(ROOT, SYNC_LOCK), 'utf8'));
+    return new Set(Object.keys(lock.entries ?? lock));
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Run the coordinate rule over every claimant file, resolving OWNERSHIP against the walk.
+ *
+ * The exemption was keyed to presence and then widened to basename, while its stated reason was
+ * that a self-reference moves with the edit that moves it. Both widenings outran that reason:
+ * 81 managed targets are present but remotely owned, and a basename match exempted paths this
+ * repo does not contain at all (`sync/README.md:N` passed because finance has READMEs). Measured
+ * before the fix: 2 of 2 coordinates in the corpus were exempted, and both were managed (#4281).
  *
  * @returns {{findings: string[], scanned: number}} Findings and the population they came from.
  */
@@ -756,9 +784,9 @@ function validateCitationCoverage() {
   const present = new Set(
     walkFiles(ROOT).map((file) => path.relative(ROOT, file).split(path.sep).join('/')),
   );
-  const byBase = new Set([...present].map((relPath) => relPath.split('/').pop()));
-  const isLocal = (cited) => present.has(cited) || byBase.has(cited.split('/').pop());
-  return citationCoverage(citationCorpus(), isLocal);
+  const managed = managedTargets();
+  const isLocallyOwned = (cited) => present.has(cited) && !managed.has(cited);
+  return citationCoverage(citationCorpus(), isLocallyOwned);
 }
 
 /**
@@ -1470,8 +1498,9 @@ function main() {
   // the count of files scanned distinguishes them (#4270).
   const citations = validateCitationCoverage();
   process.stdout.write(
-    `Cross-repo citations: ${citations.findings.length} coordinate(s) in ` +
-      `${citations.scanned} file(s) making backbone claims\n\n`,
+    `Unowned-file citations: ${citations.findings.length} coordinate(s) in ` +
+      `${citations.scanned} file(s) making backbone claims; ` +
+      `${managedTargets().size} received target(s) count as unowned\n\n`,
   );
 
   const scan = scanDocs(counts);
@@ -1606,6 +1635,7 @@ module.exports = {
   verifySourceReproduction,
   KNOWN_UNREPRODUCED,
   CANON_CITATIONS,
+  managedTargets,
   ENFORCEMENT_WORKFLOW,
   driftEnforcement,
   enforcementFindings,
