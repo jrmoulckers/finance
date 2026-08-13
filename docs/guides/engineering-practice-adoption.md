@@ -9799,6 +9799,73 @@ impressive.
 change local behaviour for every human in the repo, which is a different decision from correcting a
 miscounted report, and only the second one is in scope here.
 
+## A reason can be a criterion or a state, and only one of them survives (#4335)
+
+A sibling session tested the rule that a claim addressed to a set cannot be wrong about a member,
+and found the first instance that had _not_ rotted. Their explanation is the useful part, and it
+corrects my version of the rule:
+
+> The distinguishing property isn't the scope of the address, it's whether the sentence names a
+> **criterion** or a **state**.
+
+"A cross-reference is not an implementation" stays true as members change. "The last two entries are
+the second kind" cannot. I had been attributing the durability to _who the sentence is about_; it is
+actually _what kind of sentence it is_.
+
+### Turned on the exclusion list shipped the day before
+
+`NOT_GATES` (#4333) records why `agent:check` is not a gate. The reason:
+
+> invoked by no workflow AND by no hook -- `.husky/pre-push` does not call it
+
+**A state.** Wire it tomorrow and that sentence is false, nobody has edited this file, and the
+exclusion persists -- so a script that is now a real gate sits permanently outside the checked gate
+set, justified by a claim that no longer holds. #4333 gave the _claimed_ set a failure path and left
+the _excluded_ set without one. Same defect, one column over, shipped in the same commit that fixed
+its neighbour.
+
+### Census of the class
+
+Eleven exclusion lists in `tools/`. Staleness enforcement:
+
+| list                                                         | staleness                                                 |
+| ------------------------------------------------------------ | --------------------------------------------------------- |
+| `check-doc-links.mjs` baselines                              | **enforced** -- "N recorded gap(s) no longer broken"      |
+| `check-upstream-refs.mjs` baselines                          | one direction; over-count fails, under-count only advises |
+| `check-gate-enforcement.mjs` `NOT_GATES`                     | none -- printed, never re-derived                         |
+| `check-markdown-primitives.mjs` `ALLOWED`, `LITERAL_ALLOWED` | none                                                      |
+
+The primitives case is the subtler one. `Object.hasOwn(allowed, site.file)` is a **one-way lookup**:
+it asks whether a detected site is permitted, never whether a permission still describes a site. An
+allowance for a deleted or rewritten file is not wrong -- it is _unfalsifiable_, because nothing
+reaches it. And an unfalsifiable allowance reads to the next author as evidence the class was
+considered here.
+
+### The first census pattern missed the list that motivated it
+
+`\b(?:const|let)\s+([A-Z][A-Z0-9_]*(?:ALLOWED|...|NOT_GATES|...))` reported **6** lists. The correct
+figure is **11**. `NOT_GATES` was missed because the leading `[A-Z]` consumes the `N`, leaving
+`OT_GATES`, which cannot match the `NOT_GATES` alternative -- so the pattern written _to find this
+list_ excluded it. The five it missed included two of the four defects.
+
+### And a probe that agreed with a known constant
+
+Checking finance for ghost IDs, `new Set(Object.keys(idx.principles))` printed **66** -- exactly the
+published count of ratified principles -- so I did not question it. `principles` is an **array**;
+`Object.keys` returns `"0".."65"`. The set was 66 wrong things, and every one of finance's 41 cited
+IDs read as a ghost. 41/41 was absurd enough to catch instantly; **66 was not, because it matched.**
+
+A validation that agrees with an independently known constant is the most convincing possible wrong
+answer, and an array's key count _is_ its length, so the coincidence is structural rather than
+lucky. The correct run: 0 ghosts. `eng:citations` already gates this and scans a wider extension set
+(44 principles across 4,719 files, vs. my probe's 41) -- my probe was both redundant and narrower.
+
+### Fix
+
+`staleExclusions()` fails when a `NOT_GATES` entry now resolves to a route; `staleAllowances()` fails
+when an `ALLOWED` key matches no detected site. Each reason is now split into a `criterion` that
+survives the tree changing and a `state` that is re-derived rather than trusted.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

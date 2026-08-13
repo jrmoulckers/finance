@@ -189,12 +189,38 @@ export const CLAIMED_GATES = [
  * disagree with the decision instead of trusting it.
  */
 export const NOT_GATES = {
-  'agent:check':
-    'developer pre-push helper. Runs tools/agent-scripts/pre-push-check.js, which is in gate form ' +
-    '(exit 1 on failure) but is invoked by no workflow AND by no hook -- .husky/pre-push does not ' +
-    'call it. Recorded rather than wired: wiring it would change local behaviour for humans, which ' +
-    'is a separate decision from correcting the reported gate set',
+  'agent:check': {
+    criterion:
+      'developer pre-push helper. Wiring it would change local behaviour for every human in the ' +
+      'repo, which is a separate decision from correcting the reported gate set',
+    state:
+      'runs tools/agent-scripts/pre-push-check.js, which is in gate form (exit 1 on failure) but ' +
+      'is invoked by no workflow AND by no hook -- .husky/pre-push does not call it',
+  },
 };
+
+/**
+ * Exclusions whose recorded state has stopped being true.
+ *
+ * The reason attached to an exclusion is either a criterion or a state, and only the criterion
+ * survives the tree changing. `agent:check`'s criterion -- gating it would change local behaviour
+ * for humans -- stays true whatever CI does. Its state -- reached by nothing -- becomes false the
+ * day somebody wires it, with nobody editing this file. At that moment a real gate would sit
+ * permanently outside the checked set, justified by a sentence that no longer holds.
+ *
+ * So the state half is re-derived here rather than trusted. #4333 gave the claimed set a failure
+ * path and left the exclusion list without one, which is the same defect one column over.
+ *
+ * @param {Record<string, string | null>} routes Script name to matching route.
+ * @param {Record<string, {criterion: string, state: string}>} excluded Non-gates and their reasons.
+ * @returns {{name: string, route: string}[]} Exclusions now reached by a workflow.
+ */
+export function staleExclusions(routes, excluded = NOT_GATES) {
+  return Object.keys(excluded)
+    .sort()
+    .filter((name) => (routes[name] ?? null) !== null)
+    .map((name) => ({ name, route: routes[name] }));
+}
 
 /**
  * Claimed gates that reach no workflow, so the claim is false rather than merely unverified.
@@ -239,14 +265,28 @@ export function claimedGateLines(routes, claimed = CLAIMED_GATES) {
   const excluded = Object.keys(NOT_GATES).sort();
   lines.push(
     `Gate-shaped scripts deliberately excluded: ${excluded.length === 0 ? 'none.' : ''}`,
-    ...excluded.flatMap((name) => [`  ${name}`, `    ${NOT_GATES[name]}`]),
+    ...excluded.flatMap((name) => [
+      `  ${name}`,
+      `    criterion: ${NOT_GATES[name].criterion}`,
+      `    state:     ${NOT_GATES[name].state}`,
+    ]),
   );
+  const stale = staleExclusions(routes);
   if (failing.length > 0) {
     lines.push(
       '',
       'Declared gate(s) that cannot fail CI:',
       ...failing.map((f) => `  ${f.name}: ${f.reason}`),
       'Either wire it into a workflow, or move it to NOT_GATES with the evidence.',
+    );
+  }
+  if (stale.length > 0) {
+    lines.push(
+      '',
+      'Excluded script(s) whose recorded state is no longer true:',
+      ...stale.map((s) => `  ${s.name}: now reached by ${s.route}`),
+      'The exclusion rests on a sentence that has stopped holding. Either add it to CLAIMED_GATES,',
+      'or restate why a workflow-reached script still is not a gate.',
     );
   }
   return lines;
@@ -336,7 +376,8 @@ function main() {
   // it satisfied "runs in CI" without being able to fail it. It now fails on exactly one claim --
   // that every declared gate can fail CI -- which is narrow enough to be true and checkable, and is
   // the claim whose prose version was wrong for fifteen rounds (#4333).
-  if (unenforcedClaims(routes).length > 0) process.exitCode = 1;
+  if (unenforcedClaims(routes).length > 0 || staleExclusions(routes).length > 0)
+    process.exitCode = 1;
 }
 
 if (process.argv[1] && process.argv[1].endsWith('check-gate-enforcement.mjs')) {
