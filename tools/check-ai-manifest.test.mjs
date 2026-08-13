@@ -1342,19 +1342,27 @@ test('the gate excludes bytes it cannot read as prose, and only those (#4300)', 
   // first, so the second could never fire. It was removed; this arm now mutation-covers the
   // remaining owner.
   const coordinate = at('sync/lib/copier.mjs', 410);
-  const text = path.join(ROOT, 'PROBE-4300-text.md');
-  const binary = path.join(ROOT, 'PROBE-4300-binary.md');
-  const oversize = path.join(ROOT, 'PROBE-4300-oversize.md');
-  fs.writeFileSync(text, `see ${coordinate}\n`, { flag: 'wx' });
-  fs.writeFileSync(
-    binary,
-    Buffer.concat([Buffer.from(`see ${coordinate}\n`), Buffer.from([0]), Buffer.from('tail\n')]),
-    { flag: 'wx' },
-  );
-  fs.writeFileSync(oversize, `see ${coordinate}\n`.padEnd(MAX_CITATION_BYTES + 1, 'x'), {
-    flag: 'wx',
-  });
+  // Per-process fixture names (#4308). These were fixed names created with `wx` OUTSIDE the try,
+  // so a run killed between the writes and the `finally` left them on disk -- and the next run's
+  // `wx` write threw EEXIST before entering `try`, meaning the cleanup could never run again. The
+  // suite latched red (586/591) until someone deleted the files by hand, and the five failures
+  // named citation-ownership rules rather than the stray files. A unique suffix makes the latch
+  // structurally impossible: a leaked file cannot collide with a later run.
+  const tag = `${process.pid}-${Date.now().toString(36)}`;
+  const text = path.join(ROOT, `PROBE-4300-text-${tag}.md`);
+  const binary = path.join(ROOT, `PROBE-4300-binary-${tag}.md`);
+  const oversize = path.join(ROOT, `PROBE-4300-oversize-${tag}.md`);
+  const named = (file) => path.basename(file).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   try {
+    fs.writeFileSync(text, `see ${coordinate}\n`, { flag: 'wx' });
+    fs.writeFileSync(
+      binary,
+      Buffer.concat([Buffer.from(`see ${coordinate}\n`), Buffer.from([0]), Buffer.from('tail\n')]),
+      { flag: 'wx' },
+    );
+    fs.writeFileSync(oversize, `see ${coordinate}\n`.padEnd(MAX_CITATION_BYTES + 1, 'x'), {
+      flag: 'wx',
+    });
     let out;
     try {
       out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
@@ -1363,15 +1371,14 @@ test('the gate excludes bytes it cannot read as prose, and only those (#4300)', 
     }
     assert.match(
       out,
-      /PROBE-4300-text\.md: cites a file this repository does not own/,
+      new RegExp(`${named(text)}: cites a file this repository does not own`),
       'CONTROL: the same coordinate in readable prose must be reported',
     );
-    assert.ok(!out.includes('PROBE-4300-binary.md'), 'a NUL-bearing blob is not prose');
-    assert.ok(!out.includes('PROBE-4300-oversize.md'), 'a file over the cap is not scanned');
+    assert.ok(!out.includes(path.basename(binary)), 'a NUL-bearing blob is not prose');
+    assert.ok(!out.includes(path.basename(oversize)), 'a file over the cap is not scanned');
   } finally {
-    fs.unlinkSync(text);
-    fs.unlinkSync(binary);
-    fs.unlinkSync(oversize);
+    // force: true so an already-absent file does not mask the real failure with ENOENT.
+    for (const file of [text, binary, oversize]) fs.rmSync(file, { force: true });
   }
 });
 
@@ -1379,11 +1386,12 @@ test('a claimant is scanned for what it contains, not for its extension (#4300)'
   // Behavioural arm. The enumeration above proves the corpus covers git's claimants; this proves
   // the gate itself admits a file type the old allowlist excluded, by driving the whole tool.
   // `.kt` is delivered into this repo by the backbone and was never in CITATION_TEXT.
-  const probe = path.join(ROOT, 'PROBE-4300.kt');
-  fs.writeFileSync(probe, `// engine detail at ${at('sync/lib/copier.mjs', 410)}\n`, {
-    flag: 'wx',
-  });
+  const tag = `${process.pid}-${Date.now().toString(36)}`;
+  const probe = path.join(ROOT, `PROBE-4300-${tag}.kt`);
   try {
+    fs.writeFileSync(probe, `// engine detail at ${at('sync/lib/copier.mjs', 410)}\n`, {
+      flag: 'wx',
+    });
     let out;
     try {
       out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
@@ -1392,11 +1400,11 @@ test('a claimant is scanned for what it contains, not for its extension (#4300)'
     }
     assert.match(
       out,
-      /\[DRIFT\] PROBE-4300\.kt: cites a file this repository does not own/,
+      new RegExp(`\\[DRIFT\\] ${path.basename(probe)}: cites a file this repository does not own`),
       'a claimant with an excluded extension must still reach the report',
     );
   } finally {
-    fs.unlinkSync(probe);
+    fs.rmSync(probe, { force: true });
   }
 });
 
@@ -1770,7 +1778,7 @@ test('the PRODUCTION walk, not a test list, supplies the corpus population (#428
   // lock keys alone and every unit test still passed. So this constructs a corpus file on disk,
   // in a directory the trigger globs do not cover, and asserts the real validator reports it.
   const probeDir = path.join(ROOT, 'docs', 'ops');
-  const probe = path.join(probeDir, 'PROBE-4287.md');
+  const probe = path.join(probeDir, `PROBE-4287-${process.pid}-${Date.now().toString(36)}.md`);
   assert.ok(fs.existsSync(probeDir), 'PREMISE: the probe directory exists');
 
   const before = activationRunners({}).triggerCoverage();
@@ -1779,10 +1787,12 @@ test('the PRODUCTION walk, not a test list, supplies the corpus population (#428
   // `wx` makes creation itself the existence check. Asserting the path is free and then writing
   // it is a genuine TOCTOU race (CodeQL js/file-system-race) — the same finding `citationCorpus`
   // resolved by taking one descriptor — and here it would also silently clobber a real file.
-  fs.writeFileSync(probe, '# probe\n\nA claim about jrmoulckers/.github and copier.mjs.\n', {
-    flag: 'wx',
-  });
+  // The name is per-process (#4308): a fixed `wx` name turns a killed run into a permanent latch,
+  // because the next run's exclusive create throws before its cleanup can be reached.
   try {
+    fs.writeFileSync(probe, '# probe\n\nA claim about jrmoulckers/.github and copier.mjs.\n', {
+      flag: 'wx',
+    });
     const after = activationRunners({}).triggerCoverage();
     const corpusAfter = after.find((f) => f.includes('citation corpus'));
     assert.ok(corpusAfter, 'the corpus population must be reported by the production validator');
@@ -1793,7 +1803,7 @@ test('the PRODUCTION walk, not a test list, supplies the corpus population (#428
     );
     assert.match(corpusAfter, /docs\/ops/);
   } finally {
-    fs.unlinkSync(probe);
+    fs.rmSync(probe, { force: true });
   }
   assert.deepEqual(
     activationRunners({}).triggerCoverage(),
