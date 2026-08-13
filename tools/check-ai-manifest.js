@@ -686,8 +686,32 @@ function citationFindings(text, citations = CANON_CITATIONS, isLocallyOwned = ()
 // backbone tomorrow is scanned tomorrow, with nothing to update (#4270).
 const BACKBONE_CLAIM =
   /(sync\/lib\/|copier\.mjs|provenance\.mjs|basemerge\.mjs|lock\.mjs|jrmoulckers\/\.github)/;
-const CITATION_TEXT = /\.(?:md|js|mjs|cjs|ts|json|ya?ml|toml)$/;
+// The corpus gate is a PROPERTY OF THE FILE, not an extension allowlist. An allowlist is a
+// second hand-written population beside the pattern, and fixing one never touches the other: the
+// #4270 cross-check filtered git's index through this same constant, so narrowing it shrank both
+// sides together and the subset assertion still passed. Measured: narrowing to `.mdx?` dropped 8
+// real claimants, left 64 -- above the floor -- and the suite stayed 90/90 green (#4300).
+//
+// It also needed a hand-cased exception (`.gitattributes`), which is the transcription shape
+// fixed in #4287. Reading every non-binary file under the cap costs 6.5s against 7.2s for the
+// allowlist walk, so the narrowing bought nothing it was blamed on.
 const MAX_CITATION_BYTES = 400000;
+
+/**
+ * True when a file's bytes are prose this rule can read, i.e. it carries no NUL byte.
+ *
+ * Size is deliberately NOT checked here. The cap has one owner -- the fstat gate in
+ * `citationCorpus`, which decides before the read rather than after it, so a huge blob is never
+ * pulled into memory. A buffer-length arm here duplicated that decision and could never fire:
+ * mutating it away killed nothing even with a real 400001-byte claimant constructed in the tree
+ * (#4300). Two guards on one property means one of them is untestable.
+ *
+ * @param {Buffer} buf Raw file contents, already known to be under the cap.
+ * @returns {boolean} Whether the bytes are readable prose rather than a binary blob.
+ */
+function isReadableText(buf) {
+  return !buf.includes(0);
+}
 
 /**
  * Files whose prose makes a claim about the backbone, and which are therefore subject to the
@@ -699,7 +723,6 @@ function citationCorpus() {
   const corpus = [];
   for (const file of walkFiles(ROOT)) {
     const relPath = path.relative(ROOT, file).split(path.sep).join('/');
-    if (!CITATION_TEXT.test(relPath) && relPath !== '.gitattributes') continue;
     let text;
     let fd;
     try {
@@ -707,7 +730,9 @@ function citationCorpus() {
       // TOCTOU race (CodeQL js/file-system-race) and the guard exists only to skip large blobs.
       fd = fs.openSync(file, 'r');
       if (fs.fstatSync(fd).size > MAX_CITATION_BYTES) continue;
-      text = fs.readFileSync(fd, 'utf8');
+      const buf = fs.readFileSync(fd);
+      if (!isReadableText(buf)) continue;
+      text = buf.toString('utf8');
     } catch {
       continue;
     } finally {
@@ -1791,7 +1816,6 @@ module.exports = {
   citationCoverage,
   validateCitationCoverage,
   BACKBONE_CLAIM,
-  CITATION_TEXT,
   MAX_CITATION_BYTES,
   COORDINATE,
   exemptionMatches,
