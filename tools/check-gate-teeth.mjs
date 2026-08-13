@@ -155,6 +155,25 @@ export const PROVEN = {
     },
     expect: 'missing a non-blank value for locale "fr-FR"',
   },
+  'walk:safety:check': {
+    script: 'tools/check-walk-safety.mjs',
+    files: {
+      // A minimal walker whose only defect is the stat call. Verified against a baseline control
+      // that is byte-identical except for `lstatSync`, which exits 0 with "No unjustified
+      // link-following directory test found." -- so the non-zero exit is attributable to the
+      // injected defect rather than to the fixture, which is the distinction an exit code alone
+      // cannot draw (#4347). The expected substring names the offending file and line, so a gate
+      // that failed for an unrelated reason could not satisfy it.
+      'tools/offender.mjs':
+        "import { readdirSync, statSync } from 'node:fs';\n" +
+        'export function walk(dir) {\n' +
+        '  for (const entry of readdirSync(dir)) {\n' +
+        '    if (statSync(`${dir}/${entry}`).isDirectory()) walk(`${dir}/${entry}`);\n' +
+        '  }\n' +
+        '}\n',
+    },
+    expect: 'tools/offender.mjs:4  statSync().isDirectory()',
+  },
 };
 
 /**

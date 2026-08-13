@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: BUSL-1.1
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 
 const PLACEHOLDERS = ['https://placeholder.supabase.co', 'placeholder-anon-key'];
@@ -66,7 +66,10 @@ console.log('Verified web build env: no Supabase placeholder values found.');
 function* walk(dir) {
   for (const entry of readdirSync(dir)) {
     const path = resolve(dir, entry);
-    const stats = statSync(path);
+    // lstat, not stat: statSync reports a junction as a directory, so this recursion would
+    // descend through node_modules/@finance/* back into tracked source (#4349).
+    const stats = lstatSync(path);
+    if (stats.isSymbolicLink()) continue;
     if (stats.isDirectory()) {
       yield* walk(path);
       continue;

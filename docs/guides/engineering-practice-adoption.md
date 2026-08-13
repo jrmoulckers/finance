@@ -10164,6 +10164,78 @@ rather than only recording it, since a recorded one goes on masking its neighbou
 `scripts/i18n/validate-locale-catalogs.js` has teeth and is executed by no workflow. Wiring it
 changes CI behaviour and deserves its own verification rather than being bundled here.
 
+## A directory test that follows a link
+
+`statSync(p).isDirectory()` is **true** for a Windows junction. `lstatSync(p).isDirectory()` is
+false. So the idiom everyone reaches for first --
+
+```js
+if (statSync(full).isDirectory()) walk(full);
+```
+
+-- descends through a junction into whatever it targets. This worktree carries three, pointing from
+`node_modules/@finance/*` back into tracked source, and the difference is not marginal:
+
+| instrument                      | files seen under `node_modules/@finance` |
+| ------------------------------- | ---------------------------------------- |
+| walk with `statSync`            | 3,720                                    |
+| walk with `lstatSync`           | 3                                        |
+| `Get-ChildItem -Recurse -Force` | 0                                        |
+
+The third row is why this became a gate rather than a note. Every cleanliness check in these
+sessions has been PowerShell, which stops at a junction and reports zero, so the safe tool returns
+a reassuring answer to a question it never asked. A probe carries its runtime's traversal
+semantics, and nobody states traversal semantics. The hazard is not hypothetical here: a cleanup
+enumerated through one of these junctions and deleted `node_modules` plus 2,825 tracked files.
+Every individual delete was by name and compliant. **The walk that produced the names was not.**
+
+### The census that motivated the gate was wrong six times out of six
+
+The first pass grepped `recursive:\s*true` and returned six production hits. All six were false
+positives -- five `mkdirSync(dir, { recursive: true })` and one `watch()`. Creating a directory
+tree and reading one share a spelling and nothing else. That is the fifth consecutive syntactic
+detector here corrected by execution, and the rule it keeps re-teaching is unchanged: _if the
+property is "what does this program do", run the program._
+
+### Three idioms, three different verdicts
+
+The gate's first real run returned four sites of three shapes, which is the finding worth keeping:
+
+| site                                     | shape                                       | resolution                        |
+| ---------------------------------------- | ------------------------------------------- | --------------------------------- |
+| `tools/verify-build-env.mjs`             | recursive walk gated by `statSync`          | fixed to `lstatSync` + skip links |
+| `tools/check-ai-manifest.test.mjs`       | one-shot predicate wanting a real directory | fixed to `lstatSync`              |
+| `tools/check-doc-links.mjs`              | classifies a link _target_                  | exempt, with criterion            |
+| `tools/check-web-performance-budget.mjs` | classifies an operator-supplied path        | exempt, with criterion            |
+
+A fourth idiom is safe and correctly unflagged: `readdirSync(dir, { withFileTypes: true })` yields
+a `Dirent` whose `isDirectory()` is lstat-semantics. Discriminating "recurses" from "merely
+tests" syntactically is the same inference that produced the 6/6 false positives, so the gate does
+not attempt it. It reports the idiom and demands a recorded criterion where following is intended
+-- deliberately **narrow in the opposite direction**: broader than its name, and honest about it.
+
+### The gate flagged its own docstring, and that was a real defect
+
+Its first run reported three violations, all inside its own block comment and regex literals.
+`literalSpans` is line-wise -- it returns on `//` and tracks nothing across lines -- and it
+deliberately omits regex spans, because its existing callers ask "is this quote data?" rather than
+"is this token a call?". Both properties made a file _describing_ an idiom read as one _committing_
+it. The fix added `maskedSpans` to `tools/lib/source.mjs`, covering strings, line comments,
+block comments, and regex literals. `check-tool-imports` shares the same blind spot and is now
+able to adopt it.
+
+### The baseline control caught a defect the violating fixture could not
+
+The `gate:teeth` fixture exited 1, which by exit code alone is a proven gate. Its control -- the
+byte-identical fixture with `lstatSync` -- also exited 1. The cause was in the gate, not the
+fixture: staleness was computed against _every_ exemption, so running anywhere but the real
+repository reported all of them stale. Staleness was rescoped to files actually scanned, which is
+the honest criterion (a justification can only stop applying to a file in scope), and the residual
+hole -- an exemption naming a deleted file -- is pinned by a test rather than pretended away.
+
+**The report separates error from violation; the control separates gate from fixture.** Both
+fixtures here exited 1, and only the control could tell them apart.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
