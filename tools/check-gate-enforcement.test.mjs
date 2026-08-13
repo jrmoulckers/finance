@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  CLAIMED_GATES,
+  NOT_GATES,
   NPM_LIFECYCLES,
   ROUTES,
+  claimedGateLines,
   commandSegments,
   directRoute,
   reportLines,
@@ -12,6 +15,7 @@ import {
   scopeLines,
   scriptDeps,
   scriptPaths,
+  unenforcedClaims,
   unreachedLines,
 } from './check-gate-enforcement.mjs';
 
@@ -173,4 +177,63 @@ test('unreachedLines names each unreached script', () => {
 
 test('unreachedLines returns nothing when everything is reached', () => {
   assert.deepEqual(unreachedLines({ a: 'npm run' }), []);
+});
+
+test('a claimed gate that reaches no workflow is a failure, not an omission (#4333)', () => {
+  // The defect this closes: `agent:check` was reported as a gate for fifteen rounds while being
+  // invoked by nothing. The prose version of the set could not fail, because prose has no failure
+  // path. Membership is now a claim the tool checks.
+  const routes = { 'a:check': 'npm run', 'b:check': null };
+  assert.deepEqual(unenforcedClaims(routes, ['a:check']), [], 'a wired claim passes');
+  assert.deepEqual(unenforcedClaims(routes, ['a:check', 'b:check']), [
+    { name: 'b:check', reason: 'claimed as a gate but reached by no workflow' },
+  ]);
+});
+
+test('a claimed gate that no longer exists fails differently from one that is unwired', () => {
+  // Two distinct ways the claim goes stale, and they need different fixes: a renamed script must be
+  // renamed here, an unwired one must be wired. A single message would send the reader to the wrong
+  // remedy in one of the two cases.
+  const [gone] = unenforcedClaims({ 'a:check': 'npm run' }, ['ghost:check']);
+  assert.match(gone.reason, /not defined in package\.json/);
+  const [unwired] = unenforcedClaims({ 'a:check': null }, ['a:check']);
+  assert.match(unwired.reason, /reached by no workflow/);
+  assert.notEqual(gone.reason, unwired.reason);
+});
+
+test('the claimed-gate census itemises the route per gate on the passing path', () => {
+  // A `15/15` line is true at the same moment the set is wrong, and a reader cannot check it
+  // against what they already know. A row per gate can be disagreed with.
+  const lines = claimedGateLines({ 'a:check': 'npm run', 'b:check': 'file path' }, [
+    'a:check',
+    'b:check',
+  ]);
+  assert.ok(lines.some((l) => l.includes('a:check') && l.includes('npm run')));
+  assert.ok(lines.some((l) => l.includes('b:check') && l.includes('file path')));
+  assert.ok(!lines.some((l) => l.includes('cannot fail CI')), 'no failure block when all resolve');
+});
+
+test('the failing census is distinguishable from the passing one and states both remedies', () => {
+  const lines = claimedGateLines({ 'a:check': 'npm run', 'b:check': null }, ['a:check', 'b:check']);
+  assert.ok(lines.some((l) => l.includes('Declared gate(s) that cannot fail CI')));
+  assert.ok(
+    lines.some((l) => l.includes('NO ROUTE')),
+    'the unwired gate is marked in the listing',
+  );
+  assert.ok(lines.some((l) => /wire it into a workflow, or move it to NOT_GATES/.test(l)));
+});
+
+test('every excluded gate-shaped script records evidence, not just a verdict', () => {
+  // A bare exclusion list records that someone decided. Naming what was checked lets the next
+  // reader disagree with the decision instead of trusting it.
+  for (const [name, reason] of Object.entries(NOT_GATES)) {
+    assert.ok(String(reason).trim().length > 0, `${name} states why it is not a gate`);
+    assert.ok(!CLAIMED_GATES.includes(name), `${name} cannot be both claimed and excluded`);
+  }
+});
+
+test('the declared set is named, distinct, and excludes the script that motivated it', () => {
+  assert.deepEqual([...new Set(CLAIMED_GATES)], CLAIMED_GATES, 'no duplicate claims');
+  assert.ok(!CLAIMED_GATES.includes('agent:check'), 'the fifteen-round miscount stays corrected');
+  assert.ok(Object.hasOwn(NOT_GATES, 'agent:check'), 'and is recorded rather than dropped');
 });

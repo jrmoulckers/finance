@@ -147,6 +147,112 @@ export function resolveRoutes(scripts, corpus) {
 }
 
 /**
+ * The scripts this repository *claims* are CI gates, and the evidence for scripts excluded (#4333).
+ *
+ * Until now the gate set existed only in prose -- "16/16 gates pass" appeared in every verification
+ * summary of this workstream, and nothing derived or checked that list. An aggregate a reader
+ * cannot check is one a reader cannot disagree with, so a member that never gated was undetectable.
+ *
+ * `agent:check` was in that reported set for fifteen rounds. It runs
+ * `tools/agent-scripts/pre-push-check.js`, which exits 1 on failure and 0 on success -- gate form --
+ * and is invoked by **nothing**. Not CI: two independent instruments (this tool's route resolution
+ * and a raw substring scan of the joined workflow corpus) agree it resolves to no route. Not the
+ * hook it is named for either: `.husky/pre-push` exists and runs `prettier --check`, `eslint`, and
+ * a secret scan, and never mentions it. The only two references in the tree are its own
+ * `package.json` entry and a guide paragraph.
+ *
+ * Membership here is a claim that a script must be able to fail CI. Adding a script to this list
+ * without wiring it fails this gate, which is the property the prose version could not have.
+ */
+export const CLAIMED_GATES = [
+  'eng:citations',
+  'eng:vendor:check',
+  'ai:manifest:check',
+  'encoding:check',
+  'workflow:security:check',
+  'upstream:refs:check',
+  'gradle:prefetch:check',
+  'tool:imports:check',
+  'citations:enumerations:check',
+  'node:version:check',
+  'docs:links:check',
+  'test:independence:check',
+  'bounds:check',
+  'markdown:primitives:check',
+  'gate:enforcement',
+];
+
+/**
+ * Scripts that look like gates and deliberately are not, with the evidence rather than the verdict.
+ *
+ * A bare exclusion list records that someone decided; naming what was checked lets the next reader
+ * disagree with the decision instead of trusting it.
+ */
+export const NOT_GATES = {
+  'agent:check':
+    'developer pre-push helper. Runs tools/agent-scripts/pre-push-check.js, which is in gate form ' +
+    '(exit 1 on failure) but is invoked by no workflow AND by no hook -- .husky/pre-push does not ' +
+    'call it. Recorded rather than wired: wiring it would change local behaviour for humans, which ' +
+    'is a separate decision from correcting the reported gate set',
+};
+
+/**
+ * Claimed gates that reach no workflow, so the claim is false rather than merely unverified.
+ *
+ * @param {Record<string, string | null>} routes Script name to matching route.
+ * @param {string[]} claimed Scripts asserted to be CI gates.
+ * @returns {{name: string, reason: string}[]} Failing claims, ascending by name.
+ */
+export function unenforcedClaims(routes, claimed = CLAIMED_GATES) {
+  const failing = [];
+  for (const name of [...claimed].sort()) {
+    if (!Object.hasOwn(routes, name)) {
+      failing.push({ name, reason: 'claimed as a gate but not defined in package.json' });
+    } else if (routes[name] === null) {
+      failing.push({ name, reason: 'claimed as a gate but reached by no workflow' });
+    }
+  }
+  return failing;
+}
+
+/**
+ * The claimed-gate census, itemised on both paths.
+ *
+ * Per gate with its route rather than `15/15`, because a count is true at the same moment the set
+ * is wrong, and a reader cannot check a count against what they already know.
+ *
+ * @param {Record<string, string | null>} routes Script name to matching route.
+ * @param {string[]} claimed Scripts asserted to be CI gates.
+ * @returns {string[]} Report lines.
+ */
+export function claimedGateLines(routes, claimed = CLAIMED_GATES) {
+  const failing = unenforcedClaims(routes, claimed);
+  const lines = [
+    '',
+    `Declared CI gates: ${claimed.length}. Each must resolve to a workflow route; the set is`,
+    '  checked here rather than stated in prose, because the reported set was wrong for fifteen',
+    '  rounds and nothing could detect it (#4333).',
+  ];
+  for (const name of [...claimed].sort()) {
+    lines.push(`  ${name.padEnd(30)} ${routes[name] ?? 'NO ROUTE'}`);
+  }
+  const excluded = Object.keys(NOT_GATES).sort();
+  lines.push(
+    `Gate-shaped scripts deliberately excluded: ${excluded.length === 0 ? 'none.' : ''}`,
+    ...excluded.flatMap((name) => [`  ${name}`, `    ${NOT_GATES[name]}`]),
+  );
+  if (failing.length > 0) {
+    lines.push(
+      '',
+      'Declared gate(s) that cannot fail CI:',
+      ...failing.map((f) => `  ${f.name}: ${f.reason}`),
+      'Either wire it into a workflow, or move it to NOT_GATES with the evidence.',
+    );
+  }
+  return lines;
+}
+
+/**
  * Summarise a census.
  *
  * @param {Record<string, string | null>} routes Script name to matching route.
@@ -225,6 +331,12 @@ function main() {
   console.log('');
   for (const line of scopeLines(routes, count)) console.log(line);
   for (const line of unreachedLines(routes)) console.log(line);
+  for (const line of claimedGateLines(routes)) console.log(line);
+  // Until now this tool was itself wired and toothless: it printed a census and always exited 0, so
+  // it satisfied "runs in CI" without being able to fail it. It now fails on exactly one claim --
+  // that every declared gate can fail CI -- which is narrow enough to be true and checkable, and is
+  // the claim whose prose version was wrong for fifteen rounds (#4333).
+  if (unenforcedClaims(routes).length > 0) process.exitCode = 1;
 }
 
 if (process.argv[1] && process.argv[1].endsWith('check-gate-enforcement.mjs')) {

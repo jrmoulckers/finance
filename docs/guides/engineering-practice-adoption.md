@@ -9734,6 +9734,71 @@ different set: it missed nothing the grep found that was real, and it found
 `scripts/i18n/validate-glossary.js:150`, a genuine member, which the grep never saw. Neither
 instrument was a subset of the other.
 
+## The gate set was prose, and it was wrong for fifteen rounds (#4333)
+
+A sibling session closed a nine-round-old finding by enumerating CI routes exhaustively, and
+narrowed its own claim on the way: not _"8 of 13 tools cannot fail CI"_ — mostly true of any repo
+with a `scripts/` directory — but _"three tools are **written as gates** and nothing runs them."_
+A mismatch between a tool's form and its wiring, which is checkable.
+
+Run against this tree, that class landed on the reporting rather than the tools.
+
+### `agent:check` was never a gate
+
+`agent:check` appeared in the phrase **"16/16 gates pass"** in every verification summary of this
+workstream. Two independent instruments agree it is reached by nothing:
+
+| instrument                                               | verdict                     |
+| -------------------------------------------------------- | --------------------------- |
+| `check-gate-enforcement.mjs` route resolution (5 routes) | `reached by no workflow`    |
+| raw substring scan of the joined 394 KB workflow corpus  | `byName=False byFile=False` |
+
+And it is worse than unwired. It runs `tools/agent-scripts/pre-push-check.js`, which exits 1 on
+failure and 0 on success — gate form — and is named for a hook that **exists and does not call
+it**: `.husky/pre-push` runs `prettier --check`, `eslint`, and a secret scan. The only two
+references in the whole tree are its own `package.json` entry and a paragraph in this guide.
+
+### The defect is the aggregate, not the script
+
+The sibling's §4 formulation — _a verdict can only be right or wrong about the question you asked;
+an itemisation can be right about a question you didn't ask_ — has a mechanism, which they supplied
+this round: an itemisation is checkable against a reader's independent knowledge, an aggregate is
+not. The reader is the second instrument, and they can only act as one if the output has the
+resolution to disagree with them.
+
+`16/16 gates pass` had no such resolution. It was true of a set that existed only in prose, so a
+member that never gated could not be detected by anything. `CLAIMED_GATES` is now a checked
+manifest: a script listed there that resolves to no route fails the build, and the report prints a
+row per gate with its matching route.
+
+```
+Declared CI gates: 15.
+  ai:manifest:check              file path
+  bounds:check                   npm run
+  ...
+Gate-shaped scripts deliberately excluded:
+  agent:check
+    developer pre-push helper ... invoked by no workflow AND by no hook
+```
+
+### The tool asserting this was itself toothless
+
+`check-gate-enforcement.mjs` is wired into CI and, until this change, **never set an exit code**. It
+satisfied _"runs in CI"_ without being able to fail it — a third variant of the form/wiring
+mismatch, and one neither tree had named: not unwired, not unwritten, but _wired and unable to
+fail_. It now fails on exactly one claim, which is narrow enough to be both true and checkable.
+
+### What is not claimed
+
+31 of 66 root scripts reach no workflow. That is not a finding — `format`, `clean`, `doctor`, and
+the `agent:*` helpers should not gate anything. Following the sibling's own restraint: the correct
+claim is the narrow one about **form/wiring mismatch**, not the larger number that sounds more
+impressive.
+
+`agent:check` is recorded in `NOT_GATES` rather than wired into `.husky/pre-push`. Wiring it would
+change local behaviour for every human in the repo, which is a different decision from correcting a
+miscounted report, and only the second one is in scope here.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
