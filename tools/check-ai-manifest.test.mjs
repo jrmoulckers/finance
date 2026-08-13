@@ -51,6 +51,7 @@ const {
   validateCitationCoverage,
   BACKBONE_CLAIM,
   CITATION_TEXT,
+  MAX_CITATION_BYTES,
   exemptionMatches,
   sourceDisclosureLines,
   DOC_FILES,
@@ -1190,15 +1191,18 @@ test('the scanned population is derived from the surface, not narrowed to a samp
     .filter(Boolean);
   const expected = tracked.filter((relPath) => {
     if (!CITATION_TEXT.test(relPath) && relPath !== '.gitattributes') return false;
-    const abs = path.join(ROOT, relPath);
-    let stat;
+    // Same single-descriptor discipline as the production walk: stat-then-read is a TOCTOU race.
+    let fd;
     try {
-      stat = fs.statSync(abs);
+      fd = fs.openSync(path.join(ROOT, relPath), 'r');
+      const stat = fs.fstatSync(fd);
+      if (!stat.isFile() || stat.size > MAX_CITATION_BYTES) return false;
+      return BACKBONE_CLAIM.test(fs.readFileSync(fd, 'utf8'));
     } catch {
       return false;
+    } finally {
+      if (fd !== undefined) fs.closeSync(fd);
     }
-    if (!stat.isFile() || stat.size > 400000) return false;
-    return BACKBONE_CLAIM.test(fs.readFileSync(abs, 'utf8'));
   });
   const scanned = new Set(citationCorpus().map((entry) => entry.path));
   assert.ok(expected.length > 5, 'PREMISE: git sees a non-trivial claimant population');
@@ -1211,7 +1215,7 @@ test('a constructed cross-repo coordinate reaches the report, not just the funct
   // Constructs the state the guard exists for, rather than asserting the premise inline. This
   // pins the whole chain at once: derivation, pattern, locality, the disclosure count, and the
   // wiring into the activation findings -- each of which is silent against the healthy tree.
-  const probe = path.join(ROOT, 'PROBE-4271.md');
+  const probe = path.join(ROOT, 'PROBE-4270.md');
   fs.writeFileSync(probe, `The engine at ${at('sync/lib/copier.mjs', 410)} does the hashing.\n`);
   try {
     let out;
@@ -1221,7 +1225,7 @@ test('a constructed cross-repo coordinate reaches the report, not just the funct
       out = String(error.stdout || '');
     }
     assert.match(out, /Cross-repo citations: 1 coordinate\(s\) in \d+ file\(s\)/);
-    assert.match(out, /\[DRIFT\] PROBE-4271\.md: cites another repository by line number/);
+    assert.match(out, /\[DRIFT\] PROBE-4270\.md: cites another repository by line number/);
   } finally {
     fs.unlinkSync(probe);
   }

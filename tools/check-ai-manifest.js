@@ -597,6 +597,7 @@ function citationFindings(text, citations = CANON_CITATIONS, isLocal = () => fal
 const BACKBONE_CLAIM =
   /(sync\/lib\/|copier\.mjs|provenance\.mjs|basemerge\.mjs|lock\.mjs|jrmoulckers\/\.github)/;
 const CITATION_TEXT = /\.(?:md|js|mjs|cjs|ts|json|ya?ml|toml)$/;
+const MAX_CITATION_BYTES = 400000;
 
 /**
  * Files whose prose makes a claim about the backbone, and which are therefore subject to the
@@ -610,11 +611,17 @@ function citationCorpus() {
     const relPath = path.relative(ROOT, file).split(path.sep).join('/');
     if (!CITATION_TEXT.test(relPath) && relPath !== '.gitattributes') continue;
     let text;
+    let fd;
     try {
-      if (fs.statSync(file).size > 400000) continue;
-      text = fs.readFileSync(file, 'utf8');
+      // One descriptor serves both the size guard and the read. stat-then-read is a genuine
+      // TOCTOU race (CodeQL js/file-system-race) and the guard exists only to skip large blobs.
+      fd = fs.openSync(file, 'r');
+      if (fs.fstatSync(fd).size > MAX_CITATION_BYTES) continue;
+      text = fs.readFileSync(fd, 'utf8');
     } catch {
       continue;
+    } finally {
+      if (fd !== undefined) fs.closeSync(fd);
     }
     if (BACKBONE_CLAIM.test(text)) corpus.push({ path: relPath, text });
   }
@@ -1537,6 +1544,7 @@ module.exports = {
   validateCitationCoverage,
   BACKBONE_CLAIM,
   CITATION_TEXT,
+  MAX_CITATION_BYTES,
   COORDINATE,
   exemptionMatches,
   sourceDisclosureLines,
