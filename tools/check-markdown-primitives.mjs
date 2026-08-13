@@ -233,6 +233,28 @@ export function classify(sites, owner = OWNER, allowed = ALLOWED) {
 }
 
 /**
+ * Allowances that no longer describe anything in the tree.
+ *
+ * `Object.hasOwn(allowed, site.file)` is a one-way lookup: it asks whether a detected site is
+ * permitted, never whether a permission still describes a site. An entry whose file was deleted, or
+ * which stopped implementing the primitive, is not wrong -- it is unfalsifiable, because nothing
+ * reaches it. It then reads to the next author as evidence the class was considered here.
+ *
+ * The reason strings are state-shaped ("require() cannot load the ESM owner"), and a state can stop
+ * being true with nobody editing this file (#4335).
+ *
+ * @param {{file: string}[]} sites Per-file predicate locations actually detected.
+ * @param {Record<string, string>} allowed File to the reason it may keep its own implementation.
+ * @returns {string[]} Allowed files matched by no site, ascending.
+ */
+export function staleAllowances(sites, allowed = ALLOWED) {
+  const seen = new Set(sites.map((site) => site.file));
+  return Object.keys(allowed)
+    .filter((file) => !seen.has(file))
+    .sort();
+}
+
+/**
  * The full census, named rather than counted, on both the passing and failing path.
  *
  * A gate that prints only on failure cannot be audited when it passes, and a wrongly-allowed
@@ -267,6 +289,19 @@ export function censusLines(groups, scanned, skippedTests = 0, primitive = PRIMI
   } else {
     lines.push('allowed: none.');
   }
+  const stale = staleAllowances(
+    [...groups.owner, ...groups.allowed, ...groups.unowned],
+    primitive.allowed,
+  );
+  if (stale.length > 0) {
+    lines.push(
+      '',
+      `Allowance(s) matching no ${primitive.label.toLowerCase()} site:`,
+      ...stale.map((file) => `  ${file}`),
+      'The permission describes nothing, so nothing can contradict it. Remove it, or restore the',
+      'implementation it was written for.',
+    );
+  }
   if (groups.unowned.length > 0) {
     lines.push(
       '',
@@ -296,6 +331,7 @@ export function main(root) {
     const groups = classify(sites, primitive.owner, primitive.allowed);
     out.push(...censusLines(groups, scripts.length, scripts.skippedTests.length, primitive), '');
     if (groups.unowned.length > 0) failed += 1;
+    if (staleAllowances(sites, primitive.allowed).length > 0) failed += 1;
   }
   process.stdout.write(`${out.join('\n')}\n`);
   if (failed > 0) process.exitCode = 1;

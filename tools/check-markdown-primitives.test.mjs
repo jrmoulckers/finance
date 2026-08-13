@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, rmdirSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  rmdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +24,7 @@ import {
   isScannedFile,
   PRIMITIVES,
   predicateLines,
+  staleAllowances,
 } from './check-markdown-primitives.mjs';
 
 // The fence delimiters below are assembled, for the same reason the tool assembles its own: a
@@ -264,5 +273,36 @@ test('each primitive detects its own owner, so a census cannot pass by seeing no
       predicateLines(source, primitive.signatures).length > 0,
       `${primitive.label}: the owner ${primitive.owner} must match its own signatures`,
     );
+  }
+});
+
+test('an allowance matching no detected site is a failure, not a survivor (#4335)', () => {
+  // `Object.hasOwn(allowed, site.file)` only ever asks whether a detected site is permitted. It
+  // never asks whether a permission still describes a site, so an entry for a deleted or rewritten
+  // file is unfalsifiable -- nothing reaches it -- while reading as evidence the class was handled.
+  const sites = [{ file: 'a.mjs', lines: [1] }];
+  assert.deepEqual(staleAllowances(sites, { 'a.mjs': 'reason' }), []);
+  assert.deepEqual(staleAllowances(sites, { 'gone.mjs': 'reason' }), ['gone.mjs']);
+});
+
+test('stale allowances are reported ascending and independently per primitive', () => {
+  const sites = [{ file: 'b.mjs', lines: [2] }];
+  assert.deepEqual(staleAllowances(sites, { 'z.mjs': 'r', 'a.mjs': 'r', 'b.mjs': 'r' }), [
+    'a.mjs',
+    'z.mjs',
+  ]);
+});
+
+test('every declared primitive allowance describes a file that exists on disk', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  // The shipped lists, not a fixture: an allowance naming a path no longer in the tree is the
+  // real-world form of the defect above.
+  for (const primitive of PRIMITIVES) {
+    for (const file of Object.keys(primitive.allowed)) {
+      assert.ok(
+        existsSync(path.join(repoRoot, file)),
+        `${primitive.label} allowance ${file} exists`,
+      );
+    }
   }
 });

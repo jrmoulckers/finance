@@ -15,6 +15,7 @@ import {
   scopeLines,
   scriptDeps,
   scriptPaths,
+  staleExclusions,
   unenforcedClaims,
   unreachedLines,
 } from './check-gate-enforcement.mjs';
@@ -236,4 +237,40 @@ test('the declared set is named, distinct, and excludes the script that motivate
   assert.deepEqual([...new Set(CLAIMED_GATES)], CLAIMED_GATES, 'no duplicate claims');
   assert.ok(!CLAIMED_GATES.includes('agent:check'), 'the fifteen-round miscount stays corrected');
   assert.ok(Object.hasOwn(NOT_GATES, 'agent:check'), 'and is recorded rather than dropped');
+});
+
+test('an exclusion that becomes workflow-reached is a failure, not a silent survivor (#4335)', () => {
+  // #4333 gave the claimed set a failure path and left the exclusion list without one. A reason
+  // that describes a state stops being true when the tree changes, with nobody editing this file.
+  const excluded = { 'x:check': { criterion: 'c', state: 's' } };
+  assert.deepEqual(
+    staleExclusions({ 'x:check': null }, excluded),
+    [],
+    'still unreached, still valid',
+  );
+  assert.deepEqual(staleExclusions({ 'x:check': 'npm run' }, excluded), [
+    { name: 'x:check', route: 'npm run' },
+  ]);
+});
+
+test('an exclusion missing from package.json is not reported as stale', () => {
+  // Deleted is not the same as wired. Only the second invalidates the recorded state, and
+  // conflating them would send the reader to add a deleted script to CLAIMED_GATES.
+  assert.deepEqual(staleExclusions({}, { 'x:check': { criterion: 'c', state: 's' } }), []);
+});
+
+test('every exclusion separates the durable criterion from the checked state', () => {
+  // The criterion survives the tree changing; the state is re-derived rather than trusted. Fusing
+  // them into one prose blob is what made neither checkable.
+  for (const [name, reason] of Object.entries(NOT_GATES)) {
+    assert.ok(reason.criterion?.trim(), `${name} states a criterion`);
+    assert.ok(reason.state?.trim(), `${name} states a checkable state`);
+    assert.notEqual(reason.criterion, reason.state);
+  }
+});
+
+test('the stale-exclusion report names the route and is distinct from the unenforced-claim block', () => {
+  const lines = claimedGateLines({ 'a:check': 'npm run' }, ['a:check']);
+  assert.ok(!lines.some((l) => l.includes('no longer true')), 'clean tree reports no staleness');
+  assert.ok(lines.some((l) => l.includes('criterion:')) && lines.some((l) => l.includes('state:')));
 });
