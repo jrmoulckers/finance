@@ -9319,6 +9319,109 @@ a fake returning strings would have been testing a different function than the o
 
 Cites `ENG-TEST-002`, `ENG-TEST-004`, `ENG-ARCH-003`.
 
+## A shared definition manufactures agreement
+
+Two sessions ran the same sweep over different trees and got 33% and 34%. The sibling flagged the
+agreement as suspicious rather than corroborating, which is the correct instinct, and named the
+reason precisely: **a shared numerator definition plus a shared denominator definition produces
+agreement whether or not the underlying trees agree.** Both sweeps inherited the same idea of what
+a "report site" is, and neither had validated it against any ground truth.
+
+So I validated it here, and it is wrong.
+
+```
+missed: process.stdout.write / stderr.write   2 sites
+missed: array-literal report builders         4 sites
+                       330 sites -> 337
+false positives among the original 4 shapes   0 of 330   (measured negative)
+residue never disclosed                      69 sites
+```
+
+Both missed `stdout.write` sites are in `check-citation-enumerations.mjs`, **written in the session
+that published the ratio**. The denominator omitted report lines the same author had added days
+earlier, and nothing about adding them suggested the instrument would not see them.
+
+## I claimed a direction, measured it, and it was backwards
+
+Writing the fix up, I reasoned: a site the regexes miss cannot be counted as unasserted, unasserted
+sites are the majority, therefore **every omission raises the published percentage** -- error biased
+toward the flattering answer. It went into the commit message, the issue, the tool's own scope
+line, and a test that asserted the phrase.
+
+It is wrong. A missed site cannot be counted as _asserted_ either. It is absent from numerator and
+denominator both, so the ratio simply describes a subset, and the direction of the error depends
+entirely on whether that subset's assertion rate differs from the whole -- which is not knowable
+without measuring.
+
+Measured, by isolating the definition change from the tree's own movement:
+
+```
+old definition, today's tree   144/331  43.5%
+new definition, today's tree   150/337  44.5%
+all 6 newly included sites      asserted
+```
+
+Every one of the six was asserted, so the old boundary had been **understating** the ratio by
+1.0pp. The opposite of what I claimed, in the one direction I had argued was structurally
+impossible.
+
+The error is exactly the one this tool exists to catch: **a sign asserted from a plausible argument
+instead of a measurement.** It survived because the argument was good -- it has a real premise, one
+valid inference, and a conclusion that feels forced -- and because it flattered nobody, which made
+it read as the rigorous, self-critical option. A claim that costs you something is not thereby true.
+
+The residual lesson stands in weaker form: an instrument's error usually does have a sign, and
+asking which way it pushes is the right question. What I got wrong was answering it from an
+armchair when a 310-second sweep could answer it from the tree.
+
+## Do not compare a ratio across a moving tree
+
+The sweep returned 44.5% where I had previously published 34%. The tempting sentence -- "validating
+the definition raised the measured ratio by ten points" -- is false. Four PRs landed between the
+two runs, adding tests that assert report lines. **Both the definition and the tree moved**, and a
+delta across two moving things is attributable to neither.
+
+The isolation above is the only honest comparison available: re-derive the _old_ definition's
+number on _today's_ tree, so exactly one thing differs. That turned a headline ten-point delta into
+a real one-point delta, and reversed its sign.
+
+Cites `ENG-TEST-002`, `ENG-OBS-002`.
+
+## Disclose the boundary, do not defend it
+
+Most of the 69 residual sites are legitimately not report output: regex construction, cache keys,
+error messages. The fix is therefore not to widen the definition until it is right -- it never will
+be -- but to **publish the size of what was declined**. The scope block now prints the residue and
+names the direction of the bias, so a reader can see how much of the file the ratio never looked at
+rather than inferring that the ratio looked at everything.
+
+The same rule as the fenced-hit count one section up, arriving from the other side: there, the
+exclusion's _effect_ was the number worth printing; here, the declined _population_ is, because the
+declined sites were never evaluated at all and so have no effect to measure. **Print the effect
+when the exclusion removed decided cases; print the population when it removed uninspected ones.**
+
+And print it without a claimed direction. The next section is what happened when I attached one.
+
+`buildsReport()` is the single predicate for both the counted and the declined set. Two copies --
+one per branch -- is how a filter and its census come to disagree about where the line was.
+
+## A detector I could not validate, not shipped
+
+I also tried to catch continuation lines of multi-line template literals, using backtick parity to
+track whether a line sits inside an open template. Backticks inside comments and regexes toggle the
+parity, so the classifier's output was mostly wrong -- it labelled ordinary lines as continuations,
+including three in the file implementing the parity check.
+
+It is not shipped. **A boundary I can disclose beats a detector I cannot validate**, and shipping
+the second while claiming the first is how a denominator acquires a defect that looks like rigour.
+The continuations stay in the residue, counted and visible, as a named limitation.
+
+Notably, the first line the new array shape matched was the comment _documenting_ the array shape
+-- the detector counting its own explanation. That is the fifth time in this session a written
+warning has sat inside the visual field of the defect it describes.
+
+Cites `ENG-TEST-002`, `ENG-TEST-004`, `ENG-OBS-002`.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

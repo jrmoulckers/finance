@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   DEFAULT_SENTINEL,
+  buildsReport,
   measure,
   mutateSite,
   perToolLines,
@@ -13,6 +14,7 @@ import {
   scopeLines,
   survivorLines,
   toolsWithTests,
+  unclassifiedSites,
   wiredTools,
 } from './check-report-assertions.mjs';
 
@@ -333,4 +335,86 @@ test('reportSites counts a returned template and a logged one alike', () => {
   const logged = reportSites('console.log(`${v}`);');
   const returned = reportSites('  return `${v}`;');
   assert.equal(logged.length, returned.length);
+});
+
+// --- site-definition validation (#4317) ---------------------------------------------------------
+// The published ratio's denominator is drawn by regexes that had never been checked against the
+// tree they measure. These cover both directions: shapes that are report output and were missed,
+// and prose that is not report output and would newly be counted.
+
+test('process.stdout.write is report output', () => {
+  const src = 'process.stdout.write(`${count} files\\n`);';
+  assert.equal(reportSites(src).length, 1, 'console.* is not the only way a tool prints');
+});
+
+test('process.stderr.write is report output', () => {
+  assert.equal(reportSites('process.stderr.write(`${n} failed`);').length, 1);
+});
+
+test('an array of report lines counts every element, not just the one starting the line', () => {
+  const src = "return ['', 'header:', ...xs.map((x) => `  ${x}`)];";
+  assert.equal(reportSites(src).length, 1);
+});
+
+test('an assigned array of report lines is counted', () => {
+  const src = "const lines = ['', 'per tool:', `  ${name}${rate}`];";
+  assert.equal(reportSites(src).length, 2);
+});
+
+test('a comment illustrating a report line is not a report line', () => {
+  // The first line the array shape newly matched was the comment documenting the array shape.
+  // A detector that counts its own explanation is measuring prose.
+  const src = '// e.g. `const lines = [`a ${x}`, `b ${y}`];` carries the same values';
+  assert.deepEqual(reportSites(src), []);
+});
+
+test('a jsdoc line mentioning an interpolation is not a report line', () => {
+  assert.deepEqual(reportSites(' * @returns {string} One entry per `${...}` on a line.'), []);
+});
+
+test('the comment guard does not suppress a real report line', () => {
+  // Negative control: the guard keys on the line's own start, so a trailing comment is harmless.
+  assert.equal(reportSites('console.log(`${n} done`); // tally').length, 1);
+});
+
+test('buildsReport is the single boundary both populations use', () => {
+  // Two copies of a detector -- one for what is counted, one for what is declined -- is how a
+  // filter and its census come to disagree about where the line was.
+  assert.equal(buildsReport('console.log(`${a}`);'), true);
+  assert.equal(buildsReport('const key = `${b}:${c}`;'), false);
+  assert.equal(buildsReport('// `${d}`'), false);
+  const src = ['console.log(`${a}`);', 'const key = `${b}:${c}`;', '// `${d}`'].join('\n');
+  assert.equal(reportSites(src).length, 1);
+  assert.equal(unclassifiedSites(src), 3, 'two key sites plus the commented one');
+});
+
+test('unclassifiedSites ignores lines with no interpolation', () => {
+  assert.equal(unclassifiedSites('const a = 1;\nconst b = `plain`;'), 0);
+});
+
+test('unclassifiedSites counts every site on a declined line, not the line', () => {
+  assert.equal(unclassifiedSites('const key = `${a}-${b}-${c}`;'), 3);
+});
+
+test('scopeLines discloses the residue rather than assuming it away', () => {
+  const line = scopeLines({ ...baseResult, unclassified: 57 }).join('\n');
+  assert.match(line, /57 interpolation site\(s\) were not classified/);
+  assert.match(
+    line,
+    /not knowable a priori/,
+    'the disclosure must not claim a direction; measurement showed the guessed one was backwards',
+  );
+});
+
+test('the disclosed residue moves with its input', () => {
+  // An unasserted report parameter prints a constant, or `undefined`, and stays green.
+  const a = scopeLines({ ...baseResult, unclassified: 1 }).join('\n');
+  const b = scopeLines({ ...baseResult, unclassified: 2 }).join('\n');
+  assert.notEqual(a, b);
+  assert.match(a, /\b1 interpolation site/);
+});
+
+test('scopeLines says nothing about residue when there is none', () => {
+  const lines = scopeLines({ ...baseResult, unclassified: 0 }).join('\n');
+  assert.doesNotMatch(lines, /not classified/, 'a zero exclusion is not a caveat');
 });

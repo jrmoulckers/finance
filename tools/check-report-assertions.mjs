@@ -32,6 +32,40 @@ const RETURN_TEMPLATE = /return\s+`/;
 // extracting a printer into a returning function removed its sites from the population instead of
 // making them asserted, improving the ratio for the wrong reason.
 const BARE_TEMPLATE = /^`/;
+// `process.stdout.write` is report output that `console.*` does not cover. Two such sites existed
+// in this tree, both written in the same session that published a coverage ratio computed without
+// them, so the ratio's denominator omitted report lines the same author had just added (#4317).
+const STREAM_WRITE = /process\.(?:stdout|stderr)\.write\(/;
+// An array of report lines built in one expression -- `return ['', 'header:', ...xs.map(...)]`.
+// The elements are report output; only those beginning a line were caught by BARE_TEMPLATE.
+const ARRAY_BUILDER = /(?:return|=)\s*\[/;
+// Prose is not output. This guard is required only by ARRAY_BUILDER, which is loose enough to
+// match a comment illustrating the shape -- measured: the four original shapes matched zero
+// comment lines across 330 sites, and the first line ARRAY_BUILDER newly matched was the comment
+// above documenting BARE_TEMPLATE. A detector that counts its own explanation is measuring prose.
+const COMMENT = /^(?:\/\/|\*|\/\*)/;
+
+/**
+ * Decide whether a line builds report output.
+ *
+ * One predicate, used by both `reportSites` and `unclassifiedSites`, so the counted and the
+ * declined populations cannot disagree about where the boundary is.
+ *
+ * @param {string} text Raw source line.
+ * @returns {boolean} True when the line builds report output.
+ */
+export function buildsReport(text) {
+  const trimmed = text.trim();
+  if (COMMENT.test(trimmed)) return false;
+  return (
+    PRINT_CALL.test(text) ||
+    PUSH_CALL.test(text) ||
+    RETURN_TEMPLATE.test(text) ||
+    STREAM_WRITE.test(text) ||
+    (ARRAY_BUILDER.test(text) && text.includes('`')) ||
+    BARE_TEMPLATE.test(trimmed)
+  );
+}
 
 /**
  * Find interpolation sites on lines that build report output.
@@ -45,20 +79,41 @@ export function reportSites(source) {
   for (let i = 0; i < lines.length; i++) {
     const text = lines[i];
     if (!text.includes('${')) continue;
-    const trimmed = text.trim();
-    if (
-      !PRINT_CALL.test(text) &&
-      !PUSH_CALL.test(text) &&
-      !RETURN_TEMPLATE.test(text) &&
-      !BARE_TEMPLATE.test(trimmed)
-    ) {
-      continue;
-    }
+    if (!buildsReport(text)) continue;
     for (const m of text.matchAll(/\$\{([^{}]+)\}/g)) {
       out.push({ line: i + 1, expr: m[1] });
     }
   }
   return out;
+}
+
+/**
+ * Count interpolation sites this detector declined to treat as report output.
+ *
+ * The ratio this tool publishes has a denominator drawn by six regexes, and a site those regexes
+ * miss is absent from *both* the numerator and the denominator -- so the percentage describes a
+ * subset, and is only trustworthy if that subset's assertion rate matches the whole. It need not.
+ *
+ * An earlier version of this comment claimed the omission "biases the percentage upward," on the
+ * reasoning that a missed site cannot be counted as unasserted. That reasoning is wrong: a missed
+ * site cannot be counted as *asserted* either. Measured when the boundary was widened, all six
+ * newly included sites turned out to be asserted, so the old boundary had been understating the
+ * ratio by 1.0pp -- the opposite of the claimed direction. Asserting a sign without measuring it
+ * is the same error this tool exists to find.
+ *
+ * Most of this residue is legitimately not report output -- regex construction, key building,
+ * error messages. The number is published as a magnitude to watch, not as a defect count.
+ *
+ * @param {string} source Full source text of a tool.
+ * @returns {number} Interpolation sites on non-report lines.
+ */
+export function unclassifiedSites(source) {
+  let count = 0;
+  for (const text of source.split('\n')) {
+    if (!text.includes('${') || buildsReport(text)) continue;
+    count += [...text.matchAll(/\$\{([^{}]+)\}/g)].length;
+  }
+  return count;
 }
 
 /**
@@ -130,7 +185,8 @@ export function reportLines(result) {
  * without tests contribute no sites and are therefore invisible in the ratio rather than counted
  * as unasserted -- the omission that would otherwise make the number look better than the tree.
  *
- * @param {{tools: number, allTools: number, skippedRed: string[], sentinel: string}} result Counts.
+ * @param {{tools: number, allTools: number, skippedRed: string[], sentinel: string,
+ *   unclassified?: number}} result Counts.
  * @returns {string[]} Scope lines.
  */
 export function scopeLines(result) {
@@ -147,6 +203,18 @@ export function scopeLines(result) {
     lines.push(
       `  ${result.skippedRed.length} tool(s) had a red baseline and were skipped; a red baseline makes every mutant look caught.`,
     );
+  }
+  if (result.unclassified > 0) {
+    lines.push(
+      `  ${result.unclassified} interpolation site(s) were not classified as report output and are outside`,
+    );
+    lines.push(
+      `  the ratio entirely -- absent from both numerator and denominator, so the percentage`,
+    );
+    lines.push(
+      `  describes a subset whose assertion rate need not match the whole. The direction of that`,
+    );
+    lines.push(`  error is not knowable a priori; this figure is how much the ratio never saw.`);
   }
   lines.push(`  Sentinel: ${result.sentinel}. Counts are stable across sentinel choice;`);
   lines.push(`  a site whose true value equals the sentinel is reported as unmeasurable.`);
@@ -187,6 +255,7 @@ export function measure(options = {}) {
   const survivors = [];
   const skippedRed = [];
   let unmeasurable = 0;
+  let unclassified = 0;
 
   for (const tool of tools) {
     const file = path.join(dir, tool);
@@ -195,6 +264,7 @@ export function measure(options = {}) {
       skippedRed.push(tool);
       continue;
     }
+    unclassified += unclassifiedSites(original);
     const lines = original.split('\n');
     try {
       for (const site of reportSites(original)) {
@@ -222,6 +292,7 @@ export function measure(options = {}) {
     caught,
     survivors,
     unmeasurable,
+    unclassified,
     skippedRed,
     sentinel,
   };
