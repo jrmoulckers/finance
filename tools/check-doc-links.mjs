@@ -238,6 +238,87 @@ export function scopeLines({ files, total, fenced, fragmentless, checkedAnchors 
   ];
 }
 
+/**
+ * The full report, as lines, for a given census.
+ *
+ * This is exported rather than inlined into `main()` because the numbers here are the
+ * half that testing usually misses. Every assertion in this file's suite covered the
+ * *computation*; none read the *sentence*. A count can be correct and still be
+ * interpolated into the wrong noun, and no test over `census()` can see that.
+ *
+ * The pair below is the specific hazard. `broken` counts occurrences and the baseline
+ * names distinct targets -- three targets here are linked from two places apiece, so the
+ * two numbers genuinely differ, and printing one as the other reports twelve gaps against
+ * a nine-entry list and invites exactly the wrong correction. That confusion is old enough
+ * to have been written into a comment, and it still had no assertion until now.
+ *
+ * @param {{files: number, total: number, fenced: number, broken: string[], staleAnchors: string[], fragmentless: number, checkedAnchors: number}} result
+ * @param {{baseline?: string[], staleBaseline?: string[]}} [options]
+ * @returns {{lines: string[], failed: boolean}}
+ */
+export function reportLines(result, options = {}) {
+  const { broken, staleAnchors, checkedAnchors } = result;
+  const baseline = options.baseline ?? UNRESOLVED_BASELINE;
+  const staleBaseline = options.staleBaseline ?? STALE_ANCHOR_BASELINE;
+
+  const baselineSet = new Set(baseline);
+  const unexpected = broken.filter((b) => !baselineSet.has(b));
+  const fixed = [...baselineSet].filter((b) => !broken.includes(b));
+  const unexpectedAnchors = staleAnchors.filter((a) => !staleBaseline.includes(a));
+  const distinctBroken = new Set(broken).size;
+
+  const lines = [];
+  let failed = false;
+
+  if (unexpected.length > 0) {
+    failed = true;
+    lines.push(`${unexpected.length} broken relative markdown link(s):`);
+    for (const b of unexpected) lines.push(`  ${b}`);
+    lines.push('');
+    lines.push('A moved or renamed file leaves the citing document syntactically intact,');
+    lines.push('so nothing in a lint or format pass notices. Repoint or remove the link.');
+    lines.push('');
+  }
+
+  if (unexpectedAnchors.length > 0) {
+    failed = true;
+    lines.push(`${unexpectedAnchors.length} stale anchor(s):`);
+    for (const a of unexpectedAnchors) lines.push(`  ${a}`);
+    lines.push('');
+    lines.push('The target file exists and the link is syntactically intact, but no heading');
+    lines.push('in it produces this anchor. The section was renamed, renumbered, or moved;');
+    lines.push('a reader following the link lands at the top of the document instead.');
+    lines.push('');
+  }
+
+  // Both axes report before the verdict. Failing on the first one found would let broken
+  // paths mask every stale anchor: the reader repoints the paths, sees green, and
+  // concludes the anchors had been checked all along.
+  if (failed) {
+    lines.push(...scopeLines(result));
+    lines.push(
+      `${broken.length} broken occurrence(s) over ${distinctBroken} distinct target(s); ${baselineSet.size - fixed.length} of those targets are recorded gaps where the document does not exist.`,
+    );
+    return { lines, failed };
+  }
+
+  lines.push('All resolvable relative markdown links point at files that exist.');
+  lines.push(`All ${checkedAnchors} section-naming link(s) resolve to a heading that exists.`);
+  lines.push(...scopeLines(result));
+  lines.push(
+    `${distinctBroken} recorded gap(s) remain across ${broken.length} link(s), where the target names a document this repository has never contained.`,
+  );
+  if (fixed.length > 0) {
+    lines.push('');
+    lines.push(
+      `${fixed.length} recorded gap(s) no longer broken -- remove them from the baseline:`,
+    );
+    for (const f of fixed) lines.push(`  ${f}`);
+    return { lines, failed: true };
+  }
+  return { lines, failed: false };
+}
+
 function main() {
   const git = (args) =>
     execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
@@ -245,68 +326,11 @@ function main() {
   const exists = (p) => fs.existsSync(path.join(root, p));
   const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
-  const { files, total, fenced, broken, staleAnchors, fragmentless, checkedAnchors } = census(
-    git,
-    exists,
-    read,
-  );
-  const baseline = new Set(UNRESOLVED_BASELINE);
-  const unexpected = broken.filter((b) => !baseline.has(b));
-  const fixed = [...baseline].filter((b) => !broken.includes(b));
-  // `broken` counts occurrences; the baseline names distinct targets, and three of
-  // them are linked from two places. Printing one as the other would report twelve
-  // gaps against a nine-entry list and invite exactly the wrong correction.
-  const distinctBroken = new Set(broken).size;
-  const scope = { files, total, fenced, fragmentless, checkedAnchors };
-  // Both axes are reported before exiting. Failing on the first one found would let a
-  // broken path mask every stale anchor, and the reader would fix the paths, see green,
-  // and conclude the anchors had been checked all along.
-  let failed = false;
-
-  if (unexpected.length > 0) {
-    failed = true;
-    console.error(`${unexpected.length} broken relative markdown link(s):`);
-    for (const b of unexpected) console.error(`  ${b}`);
-    console.error('');
-    console.error('A moved or renamed file leaves the citing document syntactically intact,');
-    console.error('so nothing in a lint or format pass notices. Repoint or remove the link.');
-    console.error('');
-  }
-
-  const unexpectedAnchors = staleAnchors.filter((a) => !STALE_ANCHOR_BASELINE.includes(a));
-  if (unexpectedAnchors.length > 0) {
-    failed = true;
-    console.error(`${unexpectedAnchors.length} stale anchor(s):`);
-    for (const a of unexpectedAnchors) console.error(`  ${a}`);
-    console.error('');
-    console.error('The target file exists and the link is syntactically intact, but no heading');
-    console.error('in it produces this anchor. The section was renamed, renumbered, or moved;');
-    console.error('a reader following the link lands at the top of the document instead.');
-    console.error('');
-  }
-
-  if (failed) {
-    for (const line of scopeLines(scope)) console.error(line);
-    console.error(
-      `${broken.length} broken occurrence(s) over ${distinctBroken} distinct target(s); ${baseline.size - fixed.length} of those targets are recorded gaps where the document does not exist.`,
-    );
-    process.exit(1);
-  }
-
-  console.log(`All resolvable relative markdown links point at files that exist.`);
-  console.log(`All ${checkedAnchors} section-naming link(s) resolve to a heading that exists.`);
-  for (const line of scopeLines(scope)) console.log(line);
-  console.log(
-    `${distinctBroken} recorded gap(s) remain across ${broken.length} link(s), where the target names a document this repository has never contained.`,
-  );
-  if (fixed.length > 0) {
-    console.log('');
-    console.log(
-      `${fixed.length} recorded gap(s) no longer broken -- remove them from the baseline:`,
-    );
-    for (const f of fixed) console.log(`  ${f}`);
-    process.exit(1);
-  }
+  const result = census(git, exists, read);
+  const { lines, failed } = reportLines(result);
+  const write = failed ? console.error : console.log;
+  for (const line of lines) write(line);
+  if (failed) process.exit(1);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('check-doc-links.mjs')) {
