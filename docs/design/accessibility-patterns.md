@@ -42,7 +42,7 @@ leaving the container. When the modal closes, focus returns to the
 previously focused element.
 
 **Implemented in:**
-[`apps/web/src/accessibility/aria.ts` → `useFocusTrap`](../apps/web/src/accessibility/aria.ts)
+[`apps/web/src/accessibility/aria.ts` → `useFocusTrap`](../../apps/web/src/accessibility/aria.ts)
 
 #### React (Web)
 
@@ -132,7 +132,7 @@ When the user navigates between routes (pages), focus must move to the
 main content area and the new page title must be announced.
 
 **Implemented in:**
-[`apps/web/src/components/layout/FocusManager.tsx`](../apps/web/src/components/layout/FocusManager.tsx)
+[`apps/web/src/components/layout/FocusManager.tsx`](../../apps/web/src/components/layout/FocusManager.tsx)
 
 #### React (Web)
 
@@ -195,9 +195,9 @@ A skip link allows keyboard users to bypass the navigation and jump
 directly to the main content area.
 
 **Implemented in:**
-[`apps/web/src/components/layout/SkipToContent.tsx`](../apps/web/src/components/layout/SkipToContent.tsx)
+[`apps/web/src/components/layout/SkipToContent.tsx`](../../apps/web/src/components/layout/SkipToContent.tsx)
 and
-[`apps/web/src/components/layout/AppLayout.tsx`](../apps/web/src/components/layout/AppLayout.tsx)
+[`apps/web/src/components/layout/AppLayout.tsx`](../../apps/web/src/components/layout/AppLayout.tsx)
 
 #### React (Web)
 
@@ -261,7 +261,7 @@ Follow the natural DOM order. Never use positive `tabindex` values. Focus
 indicators must be visible on all interactive elements.
 
 **Implemented in:**
-[`apps/web/src/theme/tokens.css`](../apps/web/src/theme/tokens.css)
+[`apps/web/src/theme/tokens.css`](../../apps/web/src/theme/tokens.css)
 
 ```css
 /* From: apps/web/src/theme/tokens.css */
@@ -304,7 +304,7 @@ WAI-ARIA roving tabindex pattern: only one item has `tabindex="0"`, the
 rest have `tabindex="-1"`. Arrow keys move focus between items.
 
 **Implemented in:**
-[`apps/web/src/accessibility/aria.ts` → `useArrowKeyNavigation`](../apps/web/src/accessibility/aria.ts)
+[`apps/web/src/accessibility/aria.ts` → `useArrowKeyNavigation`](../../apps/web/src/accessibility/aria.ts)
 
 #### React (Web)
 
@@ -362,7 +362,7 @@ fields. Shortcuts are skipped when modifier keys are held or when the
 target is an editable field.
 
 **Implemented in:**
-[`apps/web/src/hooks/useKeyboardShortcuts.ts`](../apps/web/src/hooks/useKeyboardShortcuts.ts)
+[`apps/web/src/hooks/useKeyboardShortcuts.ts`](../../apps/web/src/hooks/useKeyboardShortcuts.ts)
 
 ```tsx
 // From: apps/web/src/hooks/useKeyboardShortcuts.ts
@@ -513,7 +513,7 @@ Live regions announce dynamic content changes (balance updates, sync
 status, navigation) to screen readers without moving focus.
 
 **Implemented in:**
-[`apps/web/src/accessibility/aria.ts` → `announce`](../apps/web/src/accessibility/aria.ts)
+[`apps/web/src/accessibility/aria.ts` → `announce`](../../apps/web/src/accessibility/aria.ts)
 
 #### React (Web)
 
@@ -619,7 +619,7 @@ Every form field must have a programmatically associated label via the
 `<label>` element's `htmlFor`/`for` attribute or via `aria-labelledby`.
 
 **Implemented in:**
-[`apps/web/src/components/forms/TransactionForm.tsx`](../apps/web/src/components/forms/TransactionForm.tsx)
+[`apps/web/src/components/forms/TransactionForm.tsx`](../../apps/web/src/components/forms/TransactionForm.tsx)
 
 ```tsx
 // From: apps/web/src/components/forms/TransactionForm.tsx
@@ -768,7 +768,7 @@ All text and UI components must meet WCAG AA contrast ratios:
 | Focus indicators   | 3.0:1         | WCAG 2.4.7 / 2.4.11 |
 
 **Implemented in:**
-[`apps/android/.../WcagCompliance.kt`](../apps/android/src/main/kotlin/com/finance/android/ui/accessibility/WcagCompliance.kt)
+[`apps/android/.../WcagCompliance.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/accessibility/WcagCompliance.kt)
 
 ```kotlin
 // From: apps/android/.../WcagCompliance.kt
@@ -795,7 +795,7 @@ All colours come from design tokens. Platform components reference semantic
 tokens — never raw hex values. The system provides three theme variants:
 
 **Implemented in:**
-[`apps/web/src/theme/tokens.css`](../apps/web/src/theme/tokens.css)
+[`apps/web/src/theme/tokens.css`](../../apps/web/src/theme/tokens.css)
 
 | Theme           | Activation                                            | Token Override Layer             |
 | --------------- | ----------------------------------------------------- | -------------------------------- |
@@ -816,7 +816,7 @@ tokens — never raw hex values. The system provides three theme variants:
 ```
 
 **Android high-contrast theme:**
-[`apps/android/.../HighContrastTheme.kt`](../apps/android/src/main/kotlin/com/finance/android/ui/accessibility/HighContrastTheme.kt)
+[`apps/android/.../HighContrastTheme.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/accessibility/HighContrastTheme.kt)
 
 Both light and dark high-contrast variants target WCAG AAA (7:1) ratios
 wherever feasible.
@@ -955,7 +955,7 @@ relying on a minus sign that may be skipped by AT.
 #### React (Web)
 
 **Implemented in:**
-[`apps/web/src/components/common/CurrencyDisplay.tsx`](../apps/web/src/components/common/CurrencyDisplay.tsx)
+[`apps/web/src/components/common/CurrencyDisplay.tsx`](../../apps/web/src/components/common/CurrencyDisplay.tsx)
 
 ```tsx
 // From: apps/web/src/components/common/CurrencyDisplay.tsx
@@ -1025,9 +1025,9 @@ strategies:
 #### Strategy 1: IBM CVD-Safe Color Palette
 
 **Implemented in:**
-[`apps/web/src/components/charts/chart-palette.ts`](../apps/web/src/components/charts/chart-palette.ts)
+[`apps/web/src/components/charts/chart-palette.ts`](../../apps/web/src/components/charts/chart-palette.ts)
 and
-[`apps/ios/Finance/Charts/ChartColorPalette.swift`](../apps/ios/Finance/Charts/ChartColorPalette.swift)
+[`apps/ios/Finance/Charts/ChartColorPalette.swift`](../../apps/ios/Finance/Charts/ChartColorPalette.swift)
 
 ```tsx
 // From: apps/web/src/components/charts/chart-palette.ts
@@ -1200,7 +1200,7 @@ All interactive elements must meet minimum touch target requirements:
 | Windows  | 32 × 32 px   | Fluent Design (44px preferred) |
 
 **Implemented in:**
-[`apps/android/.../WcagCompliance.kt`](../apps/android/src/main/kotlin/com/finance/android/ui/accessibility/WcagCompliance.kt)
+[`apps/android/.../WcagCompliance.kt`](../../apps/android/src/main/kotlin/com/finance/android/ui/accessibility/WcagCompliance.kt)
 
 ```kotlin
 // From: apps/android/.../WcagCompliance.kt

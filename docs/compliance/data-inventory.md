@@ -458,7 +458,7 @@ the [CCPA Rights Verification](ccpa-verification.md) for US-specific rights.
 | ----------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | **Right of access**           | Art. 15      | Server-side data export Edge Function ([`data-export/index.ts`](../../services/api/supabase/functions/data-export/index.ts)) exports 9 tables in JSON or CSV. Client-side export exists in KMP but covers only 5 entity types. | ⚠️ Partial — missing `household_invitations`, `audit_log`, `sync_health_logs`, `webauthn_challenges` from server export |
 | **Right to rectification**    | Art. 16      | All financial and profile data is editable in-app. Changes sync via the mutation queue.                                                                                                                                        | ✅ Implemented                                                                                                          |
-| **Right to erasure**          | Art. 17      | Account deletion Edge Function ([`account-deletion/index.ts`](../../services/api/supabase/functions/account-deletion/index.ts)) with crypto-shredding design and deletion certificate.                                         | ⚠️ Partial — crypto-shredding is placeholder; client-side deletion not wired on any platform                            |
+| **Right to erasure**          | Art. 17      | Account deletion Edge Function ([`account-delete/index.ts`](../../services/api/supabase/functions/account-delete/index.ts)) with crypto-shredding design and deletion certificate.                                             | ⚠️ Partial — crypto-shredding is placeholder; client-side deletion not wired on any platform                            |
 | **Right to restriction**      | Art. 18      | Not explicitly implemented. Soft-delete pattern (`deleted_at`) could serve as a mechanism.                                                                                                                                     | ❌ Not implemented                                                                                                      |
 | **Right to data portability** | Art. 20      | JSON and CSV export via data-export Edge Function.                                                                                                                                                                             | ⚠️ Partial — same coverage gaps as right of access                                                                      |
 | **Right to object**           | Art. 21      | No profiling or automated decision-making exists. No direct marketing.                                                                                                                                                         | ✅ Not applicable (no processing to object to)                                                                          |
@@ -467,11 +467,11 @@ the [CCPA Rights Verification](ccpa-verification.md) for US-specific rights.
 
 ### Implementation References
 
-| Right                | Primary Code Path                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Access / Portability | [`services/api/supabase/functions/data-export/index.ts`](../../services/api/supabase/functions/data-export/index.ts)           |
-| Erasure              | [`services/api/supabase/functions/account-deletion/index.ts`](../../services/api/supabase/functions/account-deletion/index.ts) |
-| Rectification        | All repository CRUD operations in `apps/web/src/db/repositories/` and KMP model layer                                          |
+| Right                | Primary Code Path                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Access / Portability | [`services/api/supabase/functions/data-export/index.ts`](../../services/api/supabase/functions/data-export/index.ts)       |
+| Erasure              | [`services/api/supabase/functions/account-delete/index.ts`](../../services/api/supabase/functions/account-delete/index.ts) |
+| Rectification        | All repository CRUD operations in `apps/web/src/db/repositories/` and KMP model layer                                      |
 
 ---
 

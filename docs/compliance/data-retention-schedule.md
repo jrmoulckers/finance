@@ -141,11 +141,11 @@ Quick reference for all retention periods:
 
 ### User-Initiated Deletion
 
-| Mechanism              | Scope                                                         | Implementation                                                                                                                                                                    |
-| ---------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| In-app record deletion | Individual accounts, transactions, budgets, goals, categories | Soft-delete via `deleted_at` timestamp; hard-delete after 30-day grace period                                                                                                     |
-| Account deletion       | All user data across all tables                               | [`account-deletion` Edge Function](../../services/api/supabase/functions/account-deletion/index.ts) — cascading soft-delete with crypto-shredding intent and deletion certificate |
-| Data export            | Full data portability before deletion                         | [`data-export` Edge Function](../../services/api/supabase/functions/data-export/index.ts) — JSON/CSV export of user data                                                          |
+| Mechanism              | Scope                                                         | Implementation                                                                                                                                                                  |
+| ---------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| In-app record deletion | Individual accounts, transactions, budgets, goals, categories | Soft-delete via `deleted_at` timestamp; hard-delete after 30-day grace period                                                                                                   |
+| Account deletion       | All user data across all tables                               | [`account-deletion` Edge Function](../../services/api/supabase/functions/account-delete/index.ts) — cascading soft-delete with crypto-shredding intent and deletion certificate |
+| Data export            | Full data portability before deletion                         | [`data-export` Edge Function](../../services/api/supabase/functions/data-export/index.ts) — JSON/CSV export of user data                                                        |
 
 ### Automated Purge Jobs
 

@@ -61,6 +61,6 @@ attestation.
 - [`docs/architecture/privacy-audit-v1.md`](../architecture/privacy-audit-v1.md) — Comprehensive GDPR/CCPA compliance gap analysis
 - [`docs/guides/privacy-security.md`](../guides/privacy-security.md) — User-facing privacy and security guide
 - [`docs/audits/security-checklist.md`](../audits/security-checklist.md) — Security posture checklist
-- [`services/api/supabase/functions/account-deletion/`](../../services/api/supabase/functions/account-deletion/) — GDPR Art. 17 Right to Erasure implementation
+- [`services/api/supabase/functions/account-delete/`](../../services/api/supabase/functions/account-delete/) — GDPR Art. 17 Right to Erasure implementation
 - [`services/api/supabase/functions/data-export/`](../../services/api/supabase/functions/data-export/) — GDPR Art. 20 Data Portability implementation
 - [`docs/guides/trust-and-manual-entry.md`](../guides/trust-and-manual-entry.md) — Manual-first trust messaging guide
