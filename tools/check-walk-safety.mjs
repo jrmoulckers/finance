@@ -75,7 +75,7 @@ export const SOURCE_EXTENSIONS = ['.mjs', '.cjs', '.js'];
  * @type {Record<string, {criterion: string}>}
  */
 export const EXEMPT = {
-  'tools/check-doc-links.mjs:582': {
+  'tools/check-doc-links.mjs:590': {
     criterion:
       'Classifies a link *target*, not a step in a walk. A markdown link pointing at a symlinked ' +
       'directory resolves to a directory for every reader and every renderer, so lstat here would ' +

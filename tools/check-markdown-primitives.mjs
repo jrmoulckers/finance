@@ -262,12 +262,17 @@ export function classify(sites, owner = OWNER, allowed = ALLOWED) {
  *
  * @param {{file: string}[]} sites Per-file predicate locations actually detected.
  * @param {Record<string, string>} allowed File to the reason it may keep its own implementation.
+ * @param {string[]} [scanned] Files this run actually read. When given, an allowance naming a file
+ *   outside it is not judged: the run has no evidence either way, and calling it stale made the
+ *   gate fail in every tree but this one, so no clean fixture could pass it (#4351). The residual
+ *   hole, an allowance naming a deleted file, is pinned by a test.
  * @returns {string[]} Allowed files matched by no site, ascending.
  */
-export function staleAllowances(sites, allowed = ALLOWED) {
+export function staleAllowances(sites, allowed = ALLOWED, scanned = null) {
   const seen = new Set(sites.map((site) => site.file));
+  const inScope = scanned ? new Set(scanned) : null;
   return Object.keys(allowed)
-    .filter((file) => !seen.has(file))
+    .filter((file) => !seen.has(file) && (!inScope || inScope.has(file)))
     .sort();
 }
 
@@ -326,7 +331,13 @@ export function untrackedAllowances(keys, root) {
  * @param {number} scanned How many scripts were read.
  * @returns {string[]} Report lines.
  */
-export function censusLines(groups, scanned, skippedTests = 0, primitive = PRIMITIVES[0]) {
+export function censusLines(
+  groups,
+  scanned,
+  skippedTests = 0,
+  primitive = PRIMITIVES[0],
+  scannedFiles = null,
+) {
   const total = groups.owner.length + groups.allowed.length + groups.unowned.length;
   const lines = [
     `${primitive.label} census: ${total} implementation(s) across ${scanned} script(s) scanned, ` +
@@ -353,6 +364,7 @@ export function censusLines(groups, scanned, skippedTests = 0, primitive = PRIMI
   const stale = staleAllowances(
     [...groups.owner, ...groups.allowed, ...groups.unowned],
     primitive.allowed,
+    scannedFiles,
   );
   if (stale.length > 0) {
     lines.push(
@@ -404,9 +416,13 @@ export function main(root) {
       if (lines.length > 0) sites.push({ file: path.relative(root, file), lines });
     }
     const groups = classify(sites, primitive.owner, primitive.allowed);
-    out.push(...censusLines(groups, scripts.length, scripts.skippedTests.length, primitive), '');
+    const scannedFiles = sources.map(({ file }) => path.relative(root, file));
+    out.push(
+      ...censusLines(groups, scripts.length, scripts.skippedTests.length, primitive, scannedFiles),
+      '',
+    );
     if (groups.unowned.length > 0) failed += 1;
-    if (staleAllowances(sites, primitive.allowed).length > 0) failed += 1;
+    if (staleAllowances(sites, primitive.allowed, scannedFiles).length > 0) failed += 1;
     const untracked = untrackedAllowances(Object.keys(primitive.allowed), root);
     if (untracked.length > 0) {
       out.push(

@@ -413,6 +413,7 @@ export function census(git, exists, read, isDirectory = () => false) {
   }
   return {
     files: files.length,
+    scanned: files,
     total,
     fenced,
     broken,
@@ -509,7 +510,14 @@ export function reportLines(result, options = {}) {
   const neverWritten = baseline.filter((t) => kindOf(t) === 'never written').length;
   const unclassified = baseline.length - moved - neverWritten;
   const unexpected = broken.filter((b) => !baselineSet.has(b));
-  const fixed = [...baselineSet].filter((b) => !broken.includes(b));
+  // Staleness is judged only over files this run actually scanned. Without the scope a baseline
+  // entry reads as fixed wherever its citing document is simply absent, so the gate failed in
+  // every tree but this one -- and a gate that cannot pass on a clean fixture cannot be proven by
+  // one (#4351). The residual hole, an entry naming a document that has been deleted, is pinned
+  // by a test rather than left to be rediscovered.
+  const scanned = Array.isArray(result.scanned) ? new Set(result.scanned) : null;
+  const inScope = (entry) => !scanned || scanned.has(entry.split(' -> ')[0]);
+  const fixed = [...baselineSet].filter((b) => inScope(b) && !broken.includes(b));
   const unexpectedAnchors = staleAnchors.filter((a) => !staleBaseline.includes(a));
   const distinctBroken = new Set(broken).size;
 

@@ -394,3 +394,30 @@ test('a scan root that does not exist is detectable rather than silently narrowi
   }
   assert.ok(!existsSync(path.join(repoRoot, 'no-such-scan-root')));
 });
+
+test('an allowance is judged stale only over files this run actually scanned', () => {
+  const allowed = { 'tools/absent.mjs': 'reason' };
+  assert.deepEqual(
+    staleAllowances([], allowed, ['tools/other.mjs']),
+    [],
+    'a file outside the scanned population yields no evidence either way',
+  );
+  assert.deepEqual(
+    staleAllowances([], allowed, ['tools/absent.mjs']),
+    ['tools/absent.mjs'],
+    'scanned and matched by no site is stale',
+  );
+  assert.deepEqual(
+    staleAllowances([], allowed),
+    ['tools/absent.mjs'],
+    'with no scope given the judgement is unchanged, so injected populations still work',
+  );
+});
+
+test('the scope leaves one hole, and it is here rather than left to be rediscovered', () => {
+  // An allowance naming a file that has been deleted is never scanned, so it is never reported.
+  // The alternative -- reporting it -- is what made the gate fail on every clean fixture (#4351).
+  // The trade is deliberate: an allowance that describes nothing is inert, whereas a gate that
+  // cannot pass on a clean tree cannot be proven at all.
+  assert.deepEqual(staleAllowances([], { 'tools/deleted.mjs': 'reason' }, []), []);
+});

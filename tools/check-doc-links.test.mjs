@@ -157,6 +157,7 @@ test('census returns an empty result for a repository with no markdown', () => {
   );
   assert.deepEqual(result, {
     files: 0,
+    scanned: [],
     total: 0,
     fenced: 0,
     broken: [],
@@ -936,4 +937,42 @@ test('the derived baseline cannot drift from the reason-bearing entries', () => 
     UNRESOLVED_BASELINE,
     UNRESOLVED_ENTRIES.map((e) => e.target),
   );
+});
+
+test('a recorded gap is judged fixed only over files this run actually scanned', () => {
+  const entry = 'docs/a.md -> ./gone.md';
+  const base = { total: 0, fenced: 0, fragmentless: 0, checkedAnchors: 0, staleAnchors: [] };
+
+  const unscanned = reportLines(
+    { ...base, files: 1, scanned: ['docs/b.md'], broken: [] },
+    { baseline: [entry] },
+  );
+  assert.equal(unscanned.failed, false, 'the citing document was not read, so nothing was learned');
+
+  const scanned = reportLines(
+    { ...base, files: 1, scanned: ['docs/a.md'], broken: [] },
+    { baseline: [entry] },
+  );
+  assert.equal(scanned.failed, true, 'read and no longer broken is a fixed gap');
+
+  const unscopedNoScan = reportLines({ ...base, files: 1, broken: [] }, { baseline: [entry] });
+  assert.equal(unscopedNoScan.failed, true, 'with no scope given the judgement is unchanged');
+});
+
+test('a recorded gap still fails when it is broken in a scanned file', () => {
+  const entry = 'docs/a.md -> ./gone.md';
+  const { failed } = reportLines(
+    {
+      total: 1,
+      fenced: 0,
+      fragmentless: 1,
+      checkedAnchors: 0,
+      staleAnchors: [],
+      files: 1,
+      scanned: ['docs/a.md'],
+      broken: [entry],
+    },
+    { baseline: [entry] },
+  );
+  assert.equal(failed, false, 'a gap that is still a gap is the baseline doing its job');
 });
