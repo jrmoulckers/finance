@@ -136,6 +136,15 @@ jobs:
 
       - name: Enumeration checker tests
         run: npm run citations:enumerations:test
+
+      - name: Cross-repo refs are pinned
+        run: npm run upstream:refs:check
+
+      - name: Documentation links and anchors resolve
+        run: npm run docs:links:check
+
+      - name: Tool tests do not reimplement their tools
+        run: npm run test:independence:check
   pr-title:
     name: Semantic PR Title
     needs: changes
