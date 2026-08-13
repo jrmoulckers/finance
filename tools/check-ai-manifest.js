@@ -93,6 +93,14 @@ const MANAGED_COUNTS = {
 // test pins the two counts and says nothing about the capability list. Measured before the fix:
 // 7 advertised phrases, 7 validators wired into the report, 3 of them unadvertised.
 //
+// And THAT reasoning covered the Validates list and not the Usage block three lines above it, in
+// the same template literal. The tool read two environment variables and advertised one:
+// GITHUB_STEP_SUMMARY, which decides whether a run publishes a summary at all, appeared nowhere.
+// Reachability was never the protective property -- `--help` is executed by a test, exits 0, and
+// is read daily. Exhaustiveness over the WHOLE claim is, and each guard here was exhaustive over
+// a proper part of the text. A neighbouring rigorous check is the strongest available disguise
+// for an unchecked claim: the diligence is visible, its scope is not (#4306, .github#936).
+//
 // So the list is DERIVED from the same registry `main` dispatches over. The advertisement and
 // the behaviour are now one object: a validator with no row is reported, a row with no validator
 // is reported, and neither can be added silently (#4278).
@@ -114,6 +122,10 @@ const VALIDATORS = [
   { id: 'enforcementDoc', label: 'the CI drift-enforcement mode against the prose describing it' },
   { id: 'triggerCoverage', label: "this check's own trigger coverage" },
   { id: 'citations', label: 'cross-repo citation of another repository by line number' },
+  {
+    id: 'envInputs',
+    label: "this tool's environment inputs against the ones --help advertises",
+  },
 ];
 
 /**
@@ -171,7 +183,92 @@ function activationRunners(context) {
     enforcementDoc: () => validateEnforcementDoc(),
     triggerCoverage: () => validateTriggerCoverage(),
     citations: () => context.citations.findings,
+    envInputs: () => validateEnvInputs(),
   };
+}
+
+/**
+ * Environment variables this entry point reads, as a named registry with the purpose of each.
+ *
+ * Declared here and rendered into `--help` below, then checked in both directions against an
+ * INDEPENDENT enumeration derived by walking the import closure (`reachableEnvVars`). A variable
+ * the tool reads but does not declare is reported; a variable it declares but never reads is
+ * reported. Neither can be added silently (#4306).
+ *
+ * @type {{name: string, purpose: string}[]}
+ */
+const ENV_INPUTS = [
+  { name: 'STRICT', purpose: 'set to 1 to make drift blocking, as --strict does' },
+  { name: 'GITHUB_STEP_SUMMARY', purpose: 'when set, the run appends its report to that file' },
+];
+
+/**
+ * Environment variables reachable from an entry point, derived by walking its require closure.
+ *
+ * The population property is *reachable from this entry point*, not *present in the repository*.
+ * Widening it would be a second defect wearing the fix's clothes: 20 sibling tools under `tools/`
+ * read 30+ variables this file cannot reach, including `SUPABASE_DB_PASSWORD` and `GITHUB_TOKEN`,
+ * and a rule built on the wider population would demand this help text advertise them.
+ *
+ * Takes the entry path so a test can point it at a constructed tree rather than asserting a
+ * premise about this one. A dynamic `process.env[name]` read is out of reach of this scan and is
+ * therefore out of reach of the rule.
+ *
+ * @param {string} entryFile Absolute path to the entry module.
+ * @returns {string[]} Sorted variable names read anywhere in the closure.
+ */
+function reachableEnvVars(entryFile) {
+  const seen = new Set();
+  const names = new Set();
+  const stack = [path.resolve(entryFile)];
+  while (stack.length > 0) {
+    const file = stack.pop();
+    if (seen.has(file)) continue;
+    seen.add(file);
+    let source;
+    try {
+      source = fs.readFileSync(file, 'utf8');
+    } catch {
+      continue;
+    }
+    for (const match of source.matchAll(/process\.env\.([A-Z0-9_]+)/g)) names.add(match[1]);
+    for (const match of source.matchAll(/require\(\s*['"](\.[^'"]+)['"]\s*\)/g)) {
+      let resolved = path.resolve(path.dirname(file), match[1]);
+      if (!fs.existsSync(resolved)) {
+        for (const extension of ['.js', '.mjs', '.cjs', '.json']) {
+          if (fs.existsSync(resolved + extension)) {
+            resolved += extension;
+            break;
+          }
+        }
+      }
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) stack.push(resolved);
+    }
+  }
+  return [...names].sort();
+}
+
+/**
+ * Report any disagreement between the declared environment inputs and the ones actually read.
+ *
+ * @param {string[]} [declared] Names advertised by `--help`.
+ * @param {string[]} [reached] Names derived from the import closure.
+ * @returns {string[]} Findings, one per undocumented or unread variable.
+ */
+function validateEnvInputs(
+  declared = ENV_INPUTS.map((input) => input.name),
+  reached = reachableEnvVars(__filename),
+) {
+  const findings = [];
+  for (const name of reached) {
+    if (!declared.includes(name))
+      findings.push(`environment variable read but --help never mentions it: ${name}`);
+  }
+  for (const name of declared) {
+    if (!reached.includes(name))
+      findings.push(`environment variable advertised by --help but never read: ${name}`);
+  }
+  return findings;
 }
 
 const HELP_TEXT = `
@@ -181,6 +278,9 @@ Usage:
   node tools/check-ai-manifest.js            # warn-only (exit 0)
   node tools/check-ai-manifest.js --strict   # blocking (exit 1 on drift)
   STRICT=1 node tools/check-ai-manifest.js   # blocking (exit 1 on drift)
+
+Environment:
+${ENV_INPUTS.map((input) => `  ${input.name.padEnd(20)} ${input.purpose}`).join('\n')}
 
 Validates:
 ${VALIDATORS.map((validator) => `  - ${validator.label}`).join('\n')}
@@ -1769,6 +1869,9 @@ if (require.main === module) {
 
 module.exports = {
   toLF,
+  ENV_INPUTS,
+  reachableEnvVars,
+  validateEnvInputs,
   PROVENANCE_LINE,
   PROVENANCE_HINT,
   DOC_FILES,

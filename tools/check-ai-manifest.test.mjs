@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
@@ -17,6 +18,8 @@ import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
 const {
   toLF,
+  reachableEnvVars,
+  validateEnvInputs,
   PROVENANCE_LINE,
   managedRegion,
   managedDigest,
@@ -1483,6 +1486,77 @@ test('the printed help lists every validator, not a sentence about some of them 
   }
   assert.match(out, /23-agent/);
   assert.match(out, /81-entry/);
+});
+
+test('the printed help enumerates every environment input the tool reads (#4306)', () => {
+  // The three guards on this template literal all covered the Validates list. The Usage block
+  // three lines above it enumerated invocation modes and was covered by none of them, so
+  // GITHUB_STEP_SUMMARY -- which decides whether a run publishes a summary at all -- was read and
+  // never advertised. Asserted by EXECUTION against the derived set, not over the constant.
+  const out = execFileSync(process.execPath, [TOOL, '--help'], { encoding: 'utf8' });
+  const reached = reachableEnvVars(TOOL);
+  // unsourced-bound: no artifact commits to how many variables this entry point reads; 1 says
+  // only that a scan returning nothing cannot certify an enumeration.
+  assert.ok(reached.length > 1, 'PREMISE: the closure scan found variables to advertise');
+  for (const name of reached) {
+    assert.ok(out.includes(name), `--help omits an environment variable the tool reads: ${name}`);
+  }
+  assert.match(out, /^Environment:$/m, 'the enumeration needs a heading a reader can find');
+});
+
+test('the environment enumeration is checked in both directions, by construction (#4306)', () => {
+  // Both controls construct the violating state rather than asserting the healthy tree lacks it.
+  // The reverse direction needs this MORE: a healthy tree contains no advertised-but-unread
+  // variable, so that half has nothing keeping it honest and can be weakened to a no-op with
+  // nothing changing colour. Neither control re-implements the comparison it controls -- each
+  // passes a population to the production predicate and reads the production finding (.github#941).
+  assert.deepEqual(
+    validateEnvInputs(),
+    [],
+    'this tree is consistent, so the controls mean something',
+  );
+
+  const undocumented = validateEnvInputs(['STRICT'], ['STRICT', 'GITHUB_STEP_SUMMARY']);
+  assert.equal(undocumented.length, 1, 'a variable read but not advertised must be reported');
+  assert.match(undocumented[0], /read but --help never mentions it: GITHUB_STEP_SUMMARY/);
+
+  const unread = validateEnvInputs(['STRICT', 'CI'], ['STRICT']);
+  assert.equal(unread.length, 1, 'a variable advertised but never read must be reported');
+  assert.match(unread[0], /advertised by --help but never read: CI/);
+});
+
+test('the environment population is derived from reachability, not from the repository (#4306)', () => {
+  // NEGATIVE CONTROL on the derivation, not on the list. 20 sibling tools under tools/ read 30+
+  // variables this entry point cannot reach, including SUPABASE_DB_PASSWORD and GITHUB_TOKEN.
+  // Widening the population to "present in the repository" would demand this help text advertise
+  // them -- a second defect wearing the fix's clothes. Pinned so a widened walk fails here.
+  const reached = reachableEnvVars(TOOL);
+  for (const unreachable of ['SUPABASE_DB_PASSWORD', 'GITHUB_TOKEN', 'JAVA_HOME', 'NO_COLOR']) {
+    assert.ok(
+      !reached.includes(unreachable),
+      `the closure must not reach a sibling tool's variable: ${unreachable}`,
+    );
+  }
+
+  // The walk itself, proved on a constructed tree rather than on a premise about this one: it
+  // must follow a require edge, and collect from the file it lands on.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envscan-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'leaf.js'), 'process.env.DEEP_ONLY;\n');
+    fs.writeFileSync(path.join(dir, 'root.js'), "require('./leaf');\nprocess.env.ROOT_ONLY;\n");
+    assert.deepEqual(
+      reachableEnvVars(path.join(dir, 'root.js')),
+      ['DEEP_ONLY', 'ROOT_ONLY'],
+      'the scan must cross a require edge, not stop at the entry file',
+    );
+    assert.deepEqual(
+      reachableEnvVars(path.join(dir, 'leaf.js')),
+      ['DEEP_ONLY'],
+      'and must not reach a file that only requires IT',
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 test('the registry is checked against the dispatch, not against itself (#4278)', () => {
   // DISCLOSURE: every test above builds its expectation FROM `VALIDATORS`, so deleting a row
