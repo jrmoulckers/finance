@@ -7607,6 +7607,78 @@ oldest. The headline counts do not depend on attribution, so the scratch run was
 clean, correct, and wrong in a field nobody read. It was caught by writing the
 test, not by re-reading the code.
 
+## The pinning argument is about references, not about YAML
+
+`workflow:security:check` enforces `GH-ACT-003`: every `uses:` ref must be a 40-character
+commit SHA. The reason given is not specific to Actions. A mutable ref resolves today and
+silently means something else tomorrow, so a reference to a moving target is a reference
+whose meaning is not recorded anywhere.
+
+That argument is about **references**. Nothing in it is about YAML. But the enforcement is,
+so one directory away the same repository links to sibling authority repositories like this:
+
+```
+docs/guides/…:  https://github.com/jrmoulckers/engineering/blob/main/practices/testing.md
+```
+
+`main` is exactly the mutable ref the gate rejects, in a repository under active development.
+Measured across 593 tracked markdown files:
+
+| target repo               | 40-char SHA | mutable `main` |
+| ------------------------- | ----------- | -------------- |
+| `jrmoulckers/product`     | 16          | 6              |
+| `jrmoulckers/engineering` | 0           | 10             |
+| `jrmoulckers/.github`     | 0           | 6              |
+| **total**                 | **16**      | **22**         |
+
+The interesting number is not 22. It is **16**: this repository already knows the discipline
+and applies it in `docs/compliance/`, where every reference to the ratified compliance
+principles carries a full commit permalink. The same repository, the same kind of claim about
+the same kind of authority document, two different disciplines — and the difference tracks
+which directory the prose lives in rather than anything about the reference.
+
+`npm run upstream:refs:check` records this. It is a ratchet against a printed baseline of 22
+rather than a demand for zero, because a link that should track the latest guidance is a
+legitimate thing to write; what is not legitimate is writing one by default and never saying
+which kind it is.
+
+### The check states what it did not measure
+
+There are two questions about a cross-repo reference and they need different instruments:
+
+1. _Is the ref immutable?_ Answerable from the text alone, offline, in the pull-request gate.
+2. _Does the path exist upstream?_ Needs the sibling repository, so it cannot run in CI.
+
+The tool answers the first and **prints the second as unmeasured**. That is the same
+correction as the temporal-scope line on the pinning gate, applied before shipping rather
+than after: an instrument may only accuse in the vocabulary it actually measured, and the
+vocabulary here is `ref immutability`, not `link validity`.
+
+### The census that produced this failed accusatory first, for four different reasons
+
+The scratch census that started this began by resolving every referenced path against the
+sibling checkouts and reported **4 of 16 unresolvable**. All four were the instrument's fault,
+and no two shared a cause:
+
+| reported missing                  | actual                                                                             |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `principles/foo.md`               | a deliberately fictional example inside a comment in the vendored citation checker |
+| `principles/compliance.md`        | real, but in `jrmoulckers/product`; the census assumed one upstream repo           |
+| `reusable-detect-changes.yml`     | finance's **own** local workflow                                                   |
+| `reusable-release-smoke-test.yml` | finance's **own** local workflow                                                   |
+
+This is the third consecutive census in this guide whose first result was wrong in the
+direction of accusing the thing it measured. What is new is that the four false positives had
+four distinct causes, which is worth stating because it defeats the natural response to the
+first two — that a census can be made safe by handling _the_ edge case. There was no `the`.
+
+A fifth error occurred while tabulating, in the shell rather than the tool: a nested
+`-match` inside an `if` clobbered `$Matches`, so the repository name read empty and the
+`product,branch` bucket vanished. The published figure would have been `16 of 16 pinned` for
+`product` instead of `16 of 22`, which is the more flattering number and the wrong one.
+Regex state that is global to the scope is the same defect class as `lastIndex` on a shared
+`RegExp`, and it is why the tool resets `BLOB.lastIndex` per line rather than trusting it.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

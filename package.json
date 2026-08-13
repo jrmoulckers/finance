@@ -40,6 +40,8 @@
     "encoding:check": "node tools/check-text-encoding.mjs",
     "workflow:security:check": "node tools/check-workflow-security.mjs",
     "workflow:pin:history": "node tools/check-workflow-pin-history.mjs",
+    "upstream:refs:check": "node tools/check-upstream-refs.mjs",
+    "upstream:refs:test": "node --test tools/check-upstream-refs.test.mjs",
     "workflow:security:test": "node --test tools/check-workflow-security.test.mjs",
     "gradle:prefetch:check": "node tools/check-gradle-prefetch.mjs",
     "tool:imports:check": "node tools/check-tool-imports.mjs",
