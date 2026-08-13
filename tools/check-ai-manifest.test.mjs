@@ -52,6 +52,9 @@ const {
   MANAGED_COUNTS,
   citationFindings,
   managedTargets,
+  managedBasis,
+  lockEntries,
+  MANAGED_FLOOR,
   citationCorpus,
   validateCitationCoverage,
   BACKBONE_CLAIM,
@@ -1540,4 +1543,91 @@ test('the PRODUCTION walk, not a test list, supplies the corpus population (#428
     before,
     'the report returns once the probe is gone',
   );
+});
+
+// --- #4292: an unknown ownership basis is a finding, never a clean zero -----------------------
+//
+// `managedTargets` resolved the entry map as `Object.keys(lock.entries ?? lock)`. That fallback
+// degrades to the lock's own top-level keys, not to empty, so a renamed `entries` yielded four
+// plausible target names and every ownership verdict kept reporting confident numbers about the
+// wrong set. The exemption widens as the managed set shrinks, so the failure is SILENCE: measured
+// before the fix, 0 coordinates across 72 files while disclosing "4 received target(s)".
+
+test('a lock whose entry map is missing or misshapen is unverifiable, not empty (#4292)', () => {
+  assert.ok('error' in lockEntries({ version: 1, files: { 'AGENTS.md': {} } }), 'renamed key');
+  assert.ok('error' in lockEntries({ entries: null }), 'null entries');
+  assert.ok('error' in lockEntries({ entries: [] }), 'array entries');
+  assert.ok('error' in lockEntries(null), 'no lock at all');
+
+  // A NON-EMPTY array is the case that needs the Array.isArray arm specifically: an empty one is
+  // already refused by the floor, so testing only `[]` leaves the arm unexercised and it can be
+  // deleted with the suite green (survived a mutant that did exactly that). A populated array
+  // clears the floor and would otherwise hand back its indices as delivered target names.
+  const indexed = lockEntries({ entries: [{ targetSha256: 'a' }, { targetSha256: 'b' }] });
+  assert.ok('error' in indexed, 'a populated array clears the floor and must still be refused');
+  assert.ok(!('targets' in indexed), 'array indices must never be mistaken for delivered targets');
+
+  // The specific regression: the old `?? lock` fallback returned these four as target names.
+  const reshaped = lockEntries({ version: 1, backbone: 'x', generatedAt: 'y', files: {} });
+  assert.ok('error' in reshaped);
+  assert.ok(
+    !('targets' in reshaped),
+    'top-level meta keys must never be mistaken for delivered targets',
+  );
+});
+
+test('the managed population is a floor, not a pin on the current fleet (#4292)', () => {
+  assert.equal(MANAGED_FLOOR, 1, 'a floor above 1 would pin the check to a particular fleet size');
+
+  const below = lockEntries({ entries: {} });
+  assert.ok('error' in below);
+  assert.match(below.error, /below the floor/);
+
+  // The other direction, and the reason this is a floor: a one-entry lock MUST validate. Without
+  // this arm the floor can be tightened into a pin on today's 81 with the suite still green, and
+  // a pin gets reverted the first time the fleet legitimately shrinks — a reverted check is a
+  // deleted check (.github#834).
+  const minimal = lockEntries({ entries: { 'AGENTS.md': { targetSha256: 'a' } } });
+  assert.ok('targets' in minimal, 'a one-entry lock is a small fleet, not a broken basis');
+  assert.deepEqual([...minimal.targets], ['AGENTS.md']);
+});
+
+test('the PRODUCTION ownership rule refuses to report a zero it cannot justify (#4292)', () => {
+  // Unit tests on `lockEntries` say nothing about whether `validateCitationCoverage` consults it:
+  // the previous shape called `managedTargets()` and would pass every assertion above. So this
+  // constructs the state on disk and drives the real validators, restoring the engine-owned lock
+  // in `finally` and asserting byte-identical restoration afterwards.
+  const lockPath = path.join(ROOT, '.studio-sync.lock.json');
+  const original = fs.readFileSync(lockPath);
+  const real = JSON.parse(original.toString('utf8'));
+
+  const healthy = validateCitationCoverage();
+  assert.equal(healthy.findings.length, 0, 'PREMISE: the real basis is healthy');
+  assert.ok(healthy.scanned > 0, 'PREMISE: the real corpus is non-empty');
+
+  try {
+    // Valid JSON, every byte of data intact, one key renamed.
+    fs.writeFileSync(
+      lockPath,
+      JSON.stringify({ version: real.version, files: real.entries }, null, 2) + '\n',
+    );
+    const basis = managedBasis();
+    assert.ok('error' in basis, 'a renamed entry map must not resolve to targets');
+
+    const blind = validateCitationCoverage();
+    assert.equal(blind.findings.length, 1, 'silence is the failure mode, so it must be reported');
+    assert.match(blind.findings[0], /ownership is unverifiable/);
+    assert.equal(blind.scanned, 0, 'a population of 0 must not read as a clean sweep of 72');
+
+    const trigger = activationRunners({}).triggerCoverage();
+    assert.ok(
+      trigger.some((f) => f.includes('cannot establish the managed population')),
+      'the denominator is part of the claim, so it is reported rather than substituted',
+    );
+  } finally {
+    fs.writeFileSync(lockPath, original);
+  }
+
+  assert.deepEqual(fs.readFileSync(lockPath), original, 'the engine-owned lock is restored');
+  assert.deepEqual(validateCitationCoverage(), healthy, 'and the healthy verdict returns');
 });

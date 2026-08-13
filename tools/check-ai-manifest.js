@@ -752,21 +752,70 @@ const ENFORCEMENT_WORKFLOW = '.github/workflows/ai-manifest-check.yml';
 const ENFORCEMENT_STEP = 'Check for drift';
 const SYNC_LOCK = '.studio-sync.lock.json';
 
+// A managed population this small cannot be the real delivered surface, so treating it as one
+// would silently widen the ownership exemption to the whole repository. Deliberately a FLOOR and
+// not a pin on today's 81: a pin gets reverted the first time the fleet legitimately shrinks, and
+// a reverted check is a deleted check. The suite asserts a one-entry lock still validates, so
+// tightening this into a pin fails there (.github#834).
+const MANAGED_FLOOR = 1;
+
 /**
- * Paths this repository receives from the backbone rather than authors.
+ * Resolve the lock's entry map, treating an unexpected shape as unverifiable rather than as data.
+ *
+ * The previous read was `Object.keys(lock.entries ?? lock)`. That fallback does not degrade to
+ * empty — it degrades to the lock's own top-level keys, so a future engine that renames `entries`
+ * yields four plausible target names (`version`, `backbone`, `generatedAt`, ...) and every check
+ * built on ownership keeps reporting confident numbers about the wrong set. Nine other reads in
+ * this file already use `lock.entries || {}`; only the two that establish ownership and the
+ * trigger denominator used `?? lock` (#4292).
+ *
+ * @param {unknown} lock Parsed lock contents.
+ * @returns {{targets: Set<string>}|{error: string}} The recorded targets, or why they are unusable.
+ */
+function lockEntries(lock) {
+  const entries = lock && typeof lock === 'object' ? lock.entries : undefined;
+  if (entries === undefined) return { error: `${SYNC_LOCK} has no 'entries' map` };
+  if (entries === null || typeof entries !== 'object' || Array.isArray(entries)) {
+    return { error: `${SYNC_LOCK} 'entries' is not an object` };
+  }
+  const targets = new Set(Object.keys(entries));
+  if (targets.size < MANAGED_FLOOR) {
+    return {
+      error: `${SYNC_LOCK} records ${targets.size} targets, below the floor of ${MANAGED_FLOOR}`,
+    };
+  }
+  return { targets };
+}
+
+/**
+ * Paths this repository receives from the backbone rather than authors, with the basis stated.
  *
  * Read from the lock at check time rather than listed here, so the set cannot drift from the
  * delivered surface: a target added by a future sync is covered with nothing to update (#4281).
  *
- * @returns {Set<string>} Managed target paths; empty when the lock is absent or unreadable.
+ * @returns {{targets: Set<string>}|{error: string}} Managed targets, or why ownership is unknown.
+ */
+function managedBasis() {
+  let lock;
+  try {
+    lock = JSON.parse(fs.readFileSync(path.join(ROOT, SYNC_LOCK), 'utf8'));
+  } catch (error) {
+    return { error: `${SYNC_LOCK} is unreadable (${error.message})` };
+  }
+  return lockEntries(lock);
+}
+
+/**
+ * Managed target paths, empty when ownership cannot be established.
+ *
+ * Callers that must distinguish "nothing is managed" from "the basis is unknown" — which is every
+ * caller whose verdict gets quieter as this set shrinks — use `managedBasis` instead.
+ *
+ * @returns {Set<string>} Managed target paths.
  */
 function managedTargets() {
-  try {
-    const lock = JSON.parse(fs.readFileSync(path.join(ROOT, SYNC_LOCK), 'utf8'));
-    return new Set(Object.keys(lock.entries ?? lock));
-  } catch {
-    return new Set();
-  }
+  const basis = managedBasis();
+  return basis.error ? new Set() : basis.targets;
 }
 
 /**
@@ -778,14 +827,26 @@ function managedTargets() {
  * repo does not contain at all (`sync/README.md:N` passed because finance has READMEs). Measured
  * before the fix: 2 of 2 coordinates in the corpus were exempted, and both were managed (#4281).
  *
+ * The exemption widens as the managed set shrinks, so an unknown basis makes this rule quieter,
+ * not louder: measured with the lock's entry map renamed, it reported 0 coordinates across 72
+ * files and disclosed "4 received target(s)" — a precise, wrong number. A zero computed against
+ * an unknown owner set is not a result, so it is reported as a finding rather than printed as
+ * one (#4292).
+ *
  * @returns {{findings: string[], scanned: number}} Findings and the population they came from.
  */
 function validateCitationCoverage() {
+  const basis = managedBasis();
+  if (basis.error) {
+    return {
+      findings: [`ownership is unverifiable, so the coordinate rule cannot run: ${basis.error}`],
+      scanned: 0,
+    };
+  }
   const present = new Set(
     walkFiles(ROOT).map((file) => path.relative(ROOT, file).split(path.sep).join('/')),
   );
-  const managed = managedTargets();
-  const isLocallyOwned = (cited) => present.has(cited) && !managed.has(cited);
+  const isLocallyOwned = (cited) => present.has(cited) && !basis.targets.has(cited);
   return citationCoverage(citationCorpus(), isLocallyOwned);
 }
 
@@ -1494,12 +1555,13 @@ function readEnforcementMode() {
 
 function validateTriggerCoverage() {
   const workflowPath = path.join(ROOT, ENFORCEMENT_WORKFLOW);
-  const lockPath = path.join(ROOT, SYNC_LOCK);
   if (!fs.existsSync(workflowPath)) return [`missing workflow: ${ENFORCEMENT_WORKFLOW}`];
-  if (!fs.existsSync(lockPath)) return [`missing ${SYNC_LOCK}`];
-  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  const basis = managedBasis();
+  // The denominator is part of the claim: "34 of 81 cannot trigger" and "34 of 4" read the same
+  // to a scanner and only one is a measurement, so an unknown basis is reported, not substituted.
+  if (basis.error) return [`cannot establish the managed population: ${basis.error}`];
   const inputs = checkInputs(
-    Object.keys(lock.entries ?? lock),
+    [...basis.targets],
     citationCorpus().map((entry) => entry.path),
   );
   return triggerFindings(fs.readFileSync(workflowPath, 'utf8'), inputs);
@@ -1681,6 +1743,9 @@ module.exports = {
   KNOWN_UNREPRODUCED,
   CANON_CITATIONS,
   managedTargets,
+  managedBasis,
+  lockEntries,
+  MANAGED_FLOOR,
   ENFORCEMENT_WORKFLOW,
   driftEnforcement,
   enforcementFindings,
