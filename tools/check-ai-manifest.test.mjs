@@ -1389,7 +1389,11 @@ test('every wired runner delegates to the validator its id names (#4314)', () =>
   // The population is the PRODUCTION object's own keys, not VALIDATORS and not a table written
   // here; a hand-written probe list would be this same defect one level up (#4287, .github#977).
   const ids = Object.keys(activationRunners({}));
-  assert.ok(ids.length > 5, 'PREMISE: the runner registry must be non-degenerate');
+  assert.equal(
+    ids.length,
+    VALIDATORS.length,
+    'PREMISE: the runner registry must cover every advertised validator',
+  );
   const source = fs.readFileSync(TOOL, 'utf8');
   assert.deepEqual(delegationFindings(source, ids), [], 'every wired runner must delegate');
 
