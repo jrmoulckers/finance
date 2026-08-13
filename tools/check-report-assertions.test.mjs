@@ -399,7 +399,11 @@ test('unclassifiedSites counts every site on a declined line, not the line', () 
 test('scopeLines discloses the residue rather than assuming it away', () => {
   const line = scopeLines({ ...baseResult, unclassified: 57 }).join('\n');
   assert.match(line, /57 interpolation site\(s\) were not classified/);
-  assert.match(line, /biases the percentage upward/, 'the direction of the bias is the point');
+  assert.match(
+    line,
+    /not knowable a priori/,
+    'the disclosure must not claim a direction; measurement showed the guessed one was backwards',
+  );
 });
 
 test('the disclosed residue moves with its input', () => {

@@ -91,10 +91,15 @@ export function reportSites(source) {
  * Count interpolation sites this detector declined to treat as report output.
  *
  * The ratio this tool publishes has a denominator drawn by six regexes, and a site those regexes
- * miss is not counted as unasserted -- it disappears. Since unasserted sites are the majority,
- * every omission biases the published percentage *upward*, which is the flattering direction and
- * therefore the one nobody checks. Disclosing the residue does not make the boundary correct; it
- * makes the boundary visible, so a reader can see how much of the file the ratio never saw.
+ * miss is absent from *both* the numerator and the denominator -- so the percentage describes a
+ * subset, and is only trustworthy if that subset's assertion rate matches the whole. It need not.
+ *
+ * An earlier version of this comment claimed the omission "biases the percentage upward," on the
+ * reasoning that a missed site cannot be counted as unasserted. That reasoning is wrong: a missed
+ * site cannot be counted as *asserted* either. Measured when the boundary was widened, all six
+ * newly included sites turned out to be asserted, so the old boundary had been understating the
+ * ratio by 1.0pp -- the opposite of the claimed direction. Asserting a sign without measuring it
+ * is the same error this tool exists to find.
  *
  * Most of this residue is legitimately not report output -- regex construction, key building,
  * error messages. The number is published as a magnitude to watch, not as a defect count.
@@ -204,9 +209,12 @@ export function scopeLines(result) {
       `  ${result.unclassified} interpolation site(s) were not classified as report output and are outside`,
     );
     lines.push(
-      `  the ratio entirely. Omitting a site cannot count it as unasserted, so the boundary drawn here`,
+      `  the ratio entirely -- absent from both numerator and denominator, so the percentage`,
     );
-    lines.push(`  biases the percentage upward; this figure is how much of the file it never saw.`);
+    lines.push(
+      `  describes a subset whose assertion rate need not match the whole. The direction of that`,
+    );
+    lines.push(`  error is not knowable a priori; this figure is how much the ratio never saw.`);
   }
   lines.push(`  Sentinel: ${result.sentinel}. Counts are stable across sentinel choice;`);
   lines.push(`  a site whose true value equals the sentinel is reported as unmeasurable.`);
