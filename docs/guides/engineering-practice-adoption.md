@@ -7918,6 +7918,89 @@ against a nine-entry baseline, because three targets are linked from two places 
 reporting occurrences under a name that says distinct targets — the same conflation this
 guide has documented twice, in output written to describe it.
 
+## The number beside a verdict was from the wrong vocabulary
+
+Both directions of the `engines.node` check printed the same figure:
+
+```
+admits no version rejected by any of 452 dependency declaration(s).
+excludes no version that all 452 dependency declaration(s) accept.
+```
+
+`452` decides neither. The probe set is 52 versions; the declared range admits
+8 of them and excludes 44. So one verdict rests on 8 points, the other on 44,
+and the number offered as the scope of both is a count of a different thing
+entirely — declarations, not probes. Two verdicts, two populations, one number,
+and it is neither of them.
+
+This was written to satisfy the rule that a verdict must print its scope. It
+prints _a_ number, in a sentence that reads as a denominator, and the check
+passes a reader's eye precisely because 452 is large and real. A wrong
+denominator is worse than a missing one: absence prompts the question, and a
+plausible figure closes it.
+
+Both lines now name the population that decided them, and the scope line states
+a partition that sums:
+
+```
+admits no version rejected by any dependency, over the 8 probe version(s) it admits.
+excludes no version that every dependency accepts, over the 44 probe version(s) it excludes.
+scope: both directions checked over 52 probe version(s) (8 admitted, 44 excluded)
+       drawn from 452 dependency declaration(s).
+```
+
+### A direction that fires without consulting evidence
+
+All 452 installed declarations are unbounded above — none rejects Node 9999.
+That makes the over-restrictive direction degenerate past the highest major any
+dependency names, but not in the way it first appears. "Every dependency accepts
+this version" is _unanimous by construction_ up there, so the check reports every
+version the declared range excludes, without the tree contributing anything. It
+has stopped testing the range and started handing the range's own upper bound
+back.
+
+The mirror is where a clean reading becomes worthless: a range left open above
+excludes nothing up there, so it has no population and returns empty whatever
+the tree looks like. That is this repository's case — `>=22.22.1 <23 || >=24` is
+open above 24, the highest major the tree names, so **0** probe versions sit in
+the region, and the clean verdict there is guaranteed rather than earned.
+
+Either way the upper end of an `engines.node` range is unfalsifiable from
+`engines` data. The only evidence for it is having run it, which is why the
+marked CI job that actually executes Node 24 carries more weight than any number
+of probe points. The check now says so on every run.
+
+### The first draft of that reasoning was backwards, and a test caught it
+
+The initial notice claimed nothing above the line _could ever_ be flagged. A
+fixture returned 3, not 0. The direction is not silenced up there; it is made
+unanimous, which is the opposite failure and produces the opposite output. The
+assertion that caught it was a literal `0` transplanted from this repository's
+real tree into a fixture that does not have that shape — so a value carried
+across contexts failed for the right reason, which is the more useful half.
+
+Two further mutants survived the first pass and both were real:
+
+- Reverting the interpolation to `populations.declarations` left every unit test
+  green, because they all tested the computation and none read the sentence. The
+  defect being fixed is _which number appears in the text_, and no test looked at
+  text. The notice builder is now a separate exported function so the strings are
+  assertable.
+- `highestNamedMajor` used `Math.max`, and replacing it with plain assignment
+  passed everything — every fixture happened to list its literals in ascending
+  order. A fixture is realistic and discriminating for unrelated reasons.
+
+A third: asserting only that the partition _sums_ let a mutant printing the
+admitted count in both slots survive, because the natural two-dependency fixture
+splits 7/7. It now uses one that splits 7/9 and asserts each half against the
+population it names.
+
+One correctness fix fell out of the same pass. `highestNamedMajor` read only full
+`x.y.z` triples, so a range like `18 || 20 || >=22` — the canonical form for
+declaring support across LTS majors — appeared to name nothing. That put the line
+lower than the tree states, and since the notice claims everything past the line
+is not evidence, understating it over-claims.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
