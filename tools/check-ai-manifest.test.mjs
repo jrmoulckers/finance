@@ -47,6 +47,10 @@ const {
   EXPECTED_AGENTS,
   MANAGED_COUNTS,
   citationFindings,
+  citationCorpus,
+  validateCitationCoverage,
+  BACKBONE_CLAIM,
+  CITATION_TEXT,
   exemptionMatches,
   sourceDisclosureLines,
   DOC_FILES,
@@ -530,10 +534,13 @@ test('the disclosure names every path and never collapses to a count', () => {
 // described needs the network at check time (#4141, owner-gated). What is checkable offline is
 // that no citation reverts to a coordinate and that every registered row is complete.
 
-test('this file cites engine symbols, never engine line numbers', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'tools', 'check-ai-manifest.js'), 'utf8');
+test('no tracked file cites another repository by line number', () => {
+  // Was: this one file. The rule now runs over every file that makes a backbone claim, with
+  // locality resolved against the walk, so a self-reference is exempt and a cross-repo
+  // coordinate is not (#4270).
+  const { findings } = validateCitationCoverage();
   assert.deepEqual(
-    citationFindings(source),
+    findings,
     [],
     'a line number in another repo decays silently; cite the symbol instead',
   );
@@ -542,9 +549,13 @@ test('this file cites engine symbols, never engine line numbers', () => {
 test('the coordinate rule catches a citation, including in its own historical record', () => {
   // PREMISE: the pattern must actually fire, or the test above passes vacuously over a rule
   // that matches nothing -- the failure mode this whole exchange keeps producing.
-  const findings = citationFindings('see lock.mjs:57 for the hashing rule');
+  // The needle is ASSEMBLED rather than written, so this control is not itself a violation once
+  // the rule scans every claimant file. The alternative was exempting this file by name, which
+  // would have put the rule's own corpus back under a hand-written list (#4270).
+  const needle = `lock.mjs:${57}`;
+  const findings = citationFindings(`see ${needle} for the hashing rule`);
   assert.equal(findings.length, 1, 'the rule must fire on a bare coordinate');
-  assert.ok(findings[0].includes('lock.mjs:57'), 'the finding must name the offending citation');
+  assert.ok(findings[0].includes(needle), 'the finding must name the offending citation');
   // And the SHA-pinned form the registry uses must NOT fire, because a measurement fixed at a
   // commit does not decay. This is the distinction the fix rests on, so it is asserted.
   assert.deepEqual(
@@ -1124,4 +1135,100 @@ test('every classified extension starts with a dot, which is why the first opera
       `${extension} is not dot-led; the dead operand is now live`,
     );
   }
+});
+
+// --- #4270: a prohibition whose expected answer is zero cannot report its own blindness ------
+//
+// The coordinate rule had two independent narrowings, and a clean zero from both:
+//
+//   pattern   /\b[a-z][a-z0-9-]*\.mjs:\d+/   vs. 81 delivered entries -- overlap NONE
+//   corpus    1 file, named as a literal here  vs. 72 files making backbone claims -- 1.4%
+//
+// Live violations found after widening both: ZERO. So the corpus was never stale and there is
+// nothing to correct. That is luck, not hygiene: the instrument that would have said otherwise
+// was blind in two directions at once, and on a prohibition a zero reads as compliance.
+
+// Needles are ASSEMBLED, never written: this file is itself in the scanned corpus now, so a
+// literal coordinate here would be a violation of the rule these tests pin (#4270).
+const at = (file, line) => `${file}:${line}`;
+
+test('the coordinate rule sees the extensions this repo is actually sent (#4270)', () => {
+  // Every one of these is a file type the backbone DELIVERS here, so it is exactly the class
+  // that moves under this repo without warning. The old `.mjs`-only pattern matched none.
+  for (const needle of [
+    at('AGENTS.md', 120),
+    at('agency.toml', '14'),
+    at('JrmTokens.kt', '12-34'),
+    at('a/b.css', 9),
+  ]) {
+    const findings = citationFindings(`see ${needle} for the rule`);
+    assert.equal(findings.length, 1, `the rule must fire on ${needle}`);
+    assert.ok(findings[0].includes(needle), 'the finding must name the offending citation');
+  }
+  // And the SHA-pinned form still must not fire, or widening bought coverage with false alarms.
+  assert.deepEqual(citationFindings('at 79faef3a, `hashText` sits at line 68'), []);
+  assert.deepEqual(citationFindings('bumped to 1.2.3 in the manifest'), []);
+});
+
+test('a self-reference is exempt because it moves with the edit that moves it (#4270)', () => {
+  const local = (cited) => cited === 'tools/check-ai-manifest.js';
+  assert.deepEqual(
+    citationFindings(`see ${at('tools/check-ai-manifest.js', 44)}`, CANON_CITATIONS, local),
+    [],
+    'a coordinate into this repo is refactored by the same commit; it does not decay',
+  );
+  const cross = citationFindings(`see ${at('sync/lib/copier.mjs', 410)}`, CANON_CITATIONS, local);
+  assert.equal(cross.length, 1, 'a coordinate into another repository must still be reported');
+});
+
+test('the scanned population is derived from the surface, not narrowed to a sample (#4270)', () => {
+  // The one-line fix -- widen the pattern -- leaves the corpus free to shrink to anything
+  // non-empty, which is the guard shape that is indistinguishable from no guard. So the
+  // population is cross-checked against an INDEPENDENT enumeration: git's index, not the walk.
+  const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  const expected = tracked.filter((relPath) => {
+    if (!CITATION_TEXT.test(relPath) && relPath !== '.gitattributes') return false;
+    const abs = path.join(ROOT, relPath);
+    let stat;
+    try {
+      stat = fs.statSync(abs);
+    } catch {
+      return false;
+    }
+    if (!stat.isFile() || stat.size > 400000) return false;
+    return BACKBONE_CLAIM.test(fs.readFileSync(abs, 'utf8'));
+  });
+  const scanned = new Set(citationCorpus().map((entry) => entry.path));
+  assert.ok(expected.length > 5, 'PREMISE: git sees a non-trivial claimant population');
+  for (const relPath of expected) {
+    assert.ok(scanned.has(relPath), `citationCorpus omits a claimant file: ${relPath}`);
+  }
+});
+
+test('a constructed cross-repo coordinate reaches the report, not just the function (#4270)', () => {
+  // Constructs the state the guard exists for, rather than asserting the premise inline. This
+  // pins the whole chain at once: derivation, pattern, locality, the disclosure count, and the
+  // wiring into the activation findings -- each of which is silent against the healthy tree.
+  const probe = path.join(ROOT, 'PROBE-4271.md');
+  fs.writeFileSync(probe, `The engine at ${at('sync/lib/copier.mjs', 410)} does the hashing.\n`);
+  try {
+    let out;
+    try {
+      out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
+    } catch (error) {
+      out = String(error.stdout || '');
+    }
+    assert.match(out, /Cross-repo citations: 1 coordinate\(s\) in \d+ file\(s\)/);
+    assert.match(out, /\[DRIFT\] PROBE-4271\.md: cites another repository by line number/);
+  } finally {
+    fs.unlinkSync(probe);
+  }
+  const clean = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
+  assert.match(clean, /Cross-repo citations: 0 coordinate\(s\) in \d+ file\(s\)/);
+  assert.ok(
+    clean.indexOf('Cross-repo citations:') < clean.indexOf('Canonical runtime activation:'),
+    'the population must be stated before the verdict it qualifies',
+  );
 });
