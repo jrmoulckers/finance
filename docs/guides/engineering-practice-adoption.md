@@ -10236,6 +10236,33 @@ hole -- an exemption naming a deleted file -- is pinned by a test rather than pr
 **The report separates error from violation; the control separates gate from fixture.** Both
 fixtures here exited 1, and only the control could tell them apart.
 
+### A third instrument found a third defect, on the same walk
+
+CodeQL then flagged the gate's own walk as `js/file-system-race` (high). The first version listed
+a directory and then `lstatSync`-ed each entry: link-safe, and still a check-then-use. The fix is
+the idiom this same file already documents as safe -- `readdirSync(dir, { withFileTypes: true })`
+-- because a `Dirent` is lstat-semantics _and_ arrives with the listing, so there is no window
+between deciding what an entry is and acting on it.
+
+Worth recording rather than quietly fixing. The property I verified by execution was
+link-following, and I never asked the second question, so the tool that caught it was one I had not
+thought to consult. Three defects in this gate, each found by a different instrument -- its own
+first run, its baseline control, and a static analyser -- and **none of them by the instrument that
+found the previous one**. That is the same shape as the PowerShell result at the top of this
+section, arrived at three more times in a single change.
+
+### An honest negative, and a flake
+
+Live exposure in this repository today is **zero**. The one unguarded walk skipped anything named
+`node_modules`, and the junctions live inside one, so the hazard was latent rather than active.
+The detector is still worth more than the fix, because the idiom is the default and the next walk
+to be written would not have been so lucky.
+
+Two test files also failed CI once with `does not provide an export named`, on modules this
+change never touched, and passed on re-run. Recorded as a flake in the Node 22 runner rather than
+diagnosed -- with the note that local verification here runs Node 24 while CI runs Node 22, so
+"passes locally" has been a weaker claim throughout this work than it sounded.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

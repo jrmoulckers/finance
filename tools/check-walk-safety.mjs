@@ -93,9 +93,17 @@ export const EXEMPT = {
 /**
  * Read every scanned source file.
  *
- * Walks with `lstatSync` and refuses to descend into a link -- this file must not commit the defect
- * it detects, and a gate that traversed a junction to find traversals of junctions would be the
- * purest possible instance of it.
+ * Uses `readdirSync(dir, { withFileTypes: true })` rather than a stat per entry. That is the
+ * strictly better idiom on both counts this file cares about: a `Dirent` reports a junction as
+ * neither a directory nor a file, so the walk cannot follow a link, and the type arrives with the
+ * listing rather than from a second syscall, so there is no window between deciding what an entry
+ * is and acting on it.
+ *
+ * The first version stat-ed each entry with `lstatSync`, which was link-safe but still a
+ * check-then-use. CodeQL flagged it as `js/file-system-race`, correctly, and on the gate whose
+ * whole subject is unsafe traversal. Worth recording rather than quietly fixing: I verified the
+ * link-following property by execution and never asked the second question, so the tool that
+ * caught it was one I had not thought to consult.
  *
  * @param {string} root Repository root.
  * @returns {{file: string, text: string}[]} Scanned sources, ascending by path.
@@ -105,22 +113,24 @@ export function readSources(root) {
   const walk = (dir) => {
     let entries;
     try {
-      entries = fs.readdirSync(dir);
+      entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
       return;
     }
-    for (const entry of entries.sort()) {
-      if (entry === 'node_modules' || entry.startsWith('.')) continue;
-      const full = path.join(dir, entry);
-      const stat = fs.lstatSync(full);
-      if (stat.isSymbolicLink()) continue;
-      if (stat.isDirectory()) {
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      if (entry.isSymbolicLink()) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
         walk(full);
-      } else if (SOURCE_EXTENSIONS.includes(path.extname(entry))) {
-        out.push({
-          file: path.relative(root, full).replaceAll('\\', '/'),
-          text: fs.readFileSync(full, 'utf8'),
-        });
+      } else if (entry.isFile() && SOURCE_EXTENSIONS.includes(path.extname(entry.name))) {
+        let text;
+        try {
+          text = fs.readFileSync(full, 'utf8');
+        } catch {
+          continue;
+        }
+        out.push({ file: path.relative(root, full).replaceAll('\\', '/'), text });
       }
     }
   };

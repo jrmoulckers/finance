@@ -193,10 +193,17 @@ test('readSources reaches both scanned directories and finds real files', () => 
 
 test('readSources does not descend into a link', () => {
   // The gate must not commit the defect it detects. Junction creation needs privileges that are not
-  // guaranteed, so the assertion is on the walk's own directory test rather than on a fixture.
+  // guaranteed, so the assertion is on the walk's own idiom rather than on a fixture. withFileTypes
+  // is the stronger property than lstat: a Dirent is link-safe *and* carries no check-then-use
+  // window, which is what CodeQL flagged the lstat version for.
   const text = fs.readFileSync(path.join(ROOT, 'tools', 'check-walk-safety.mjs'), 'utf8');
-  assert.ok(text.includes('fs.lstatSync(full)'), 'readSources must stat with lstat');
-  assert.ok(text.includes('stat.isSymbolicLink()'), 'readSources must skip a link');
+  assert.match(
+    text,
+    /readdirSync\(dir, \{ withFileTypes: true \}\)/,
+    'readSources must use Dirent',
+  );
+  assert.match(text, /entry\.isSymbolicLink\(\)/, 'readSources must skip a link');
+  assert.ok(!/fs\.lstatSync\(/.test(text), 'readSources should not need a per-entry stat at all');
 });
 
 test('the real tree has no unjustified link-following directory test', () => {
