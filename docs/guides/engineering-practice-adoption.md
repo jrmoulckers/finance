@@ -8269,6 +8269,11 @@ The measurement is heuristic -- it matches literal fragments between a tool and 
 loosely defined is the decoy pattern this guide warns about elsewhere; the census establishes
 that the population is large, and that is all it is being asked to do.
 
+> **RETRACTED.** The `64 / 4 / 60` triple above is withdrawn in full. It is not a fact about
+> this repository. See _Two instruments sharing a defect agree perfectly_ below for the
+> replacement figure and the method that produced it. The paragraph is kept rather than edited
+> because the retraction is the finding.
+
 ### The hazard was documented in a comment and still had no test
 
 `check-doc-links.mjs` printed two verdicts carrying both an occurrence count and a
@@ -8609,6 +8614,101 @@ something is not measuring what it claims to.**
 where the assertions checked the share and not the residual: over the wrong
 denominator the residual reads `6 point at a file that does not exist` instead of
 `0`, which is a plausible number naming nothing real.
+
+## Two instruments sharing a defect agree perfectly
+
+The upstream engineering session ran our report-assertion heuristic on its own tree and got
+`64 / 4 / 60` -- digit for digit, over a **different population** (theirs was not restricted to
+`main()`). Three matching integers across two definitions is not corroboration. It is a property
+of the shared instrument.
+
+Their sensitivity sweep on the one arbitrary constant, the minimum fragment length, settles it:
+
+| min fragment | 4   | 8   | 12  | 16  | 20  |
+| ------------ | --- | --- | --- | --- | --- |
+| matched      | 8   | 5   | 4   | 2   | 0   |
+
+The published `4` was the value at 12, a threshold chosen while writing the script and never
+mentioned. **A metric whose numerator swings from 8 to 0 across a constant nobody chose has no
+numerator.** What literal-fragment matching detects is whether a test happens to quote a static
+_label prefix_, which is uncorrelated with whether it asserts the interpolated _value_.
+
+Re-running the heuristic here reproduced neither figure: 36 sites, matched 3 to 1 across the same
+sweep, against the published 64 and 4. So the denominator was not stable either.
+
+This is the failure mode that cross-checking structurally cannot catch. Every earlier round in
+this exchange worked _because_ the two instruments differed. Here they did not, and the result was
+maximally convincing: agreement is the evidence both parties had been treating as strongest.
+
+### The replacement is a direct measurement
+
+`tools/check-report-assertions.mjs`. For each interpolation site on a report-building line,
+substitute a sentinel for the interpolated expression and re-run that tool's own test file. A
+green run means no test reads that value. There is no threshold.
+
+It has its own arbitrary constant -- the sentinel -- so it gets the same treatment. Swept `${0}`,
+`${-1}`, `${"MUTANT"}`, `${undefined}`: the caught **set**, not merely its cardinality, is
+identical across all four. That sweep is what would detect a site whose true value coincides with
+the sentinel, and it found none.
+
+The first sweep was worthless and said so anyway. The `SENTINEL` constant was read from `argv`,
+printed in the report, and echoed a different value on each of five runs -- but the substitution
+line still used a hard-coded `${0}`, because the string replacement that was supposed to wire it
+up silently matched nothing. Five runs, five sentinels printed, one measurement performed. **A
+parameter echoed in the report is not a parameter used in the computation**, and echoing it is
+what made the run look audited.
+
+### The number, and why the first version of it was also wrong
+
+| tool                                 | sites | caught | unasserted | `console.log` |
+| ------------------------------------ | ----- | ------ | ---------- | ------------- |
+| `check-doc-links.mjs`                | 30    | **30** | 0          | 0             |
+| `citations-context.mjs`              | 5     | 5      | 0          | 0             |
+| `check-citation-enumerations.mjs`    | 7     | **0**  | 7          | **0**         |
+| `check-report-assertions.mjs`        | 16    | 13     | 3          | 7             |
+| `check-test-independence.mjs`        | 7     | 5      | 2          | 5             |
+| `check-workflow-security.mjs`        | 23    | 8      | 15         | 8             |
+| `check-tool-imports.mjs`             | 12    | 3      | 9          | 6             |
+| `check-gradle-prefetch.mjs`          | 17    | 3      | 14         | 4             |
+| `check-node-version-consistency.mjs` | 50    | 9      | 41         | 6             |
+| `check-upstream-refs.mjs`            | 37    | 5      | 32         | 24            |
+| `check-workflow-pin-history.mjs`     | 32    | 3      | 29         | 46            |
+| `verify-required-checks.mjs`         | 35    | 0      | 35         | 24            |
+| **total**                            | 271   | 84     | **187**    |               |
+
+The first run of this tool reported `80 / 19 / 61`. That was wrong by 3x, and the way it was
+caught matters more than the correction.
+
+After extracting three printers out of `main()` in this tool, the total dropped 85 to 82 while the
+caught count stayed at 21. The three sites had not become asserted -- they had **left the
+population**, because the site detector matched only `console.log(` and `.push(\``, not a template
+literal that is returned or used as an array element. Array-literal template entries alone
+outnumbered the entire counted population.
+
+So the metric improved when something was fixed, for a reason unrelated to the fix. That is the
+same defect as a scope line whose denominator shrinks when you repair the thing it measures, and
+it was found only because the _direction_ of the change was implausible: an extraction that makes
+a value assertable should move it from unasserted to caught, not delete it.
+
+### Extraction is a precondition, not a remedy
+
+The obvious reading of the table is that detection tracks report structure: you cannot assert a
+value inside `console.log` without capturing stdout, whereas a value in a returned array is
+trivially asserted. `check-doc-links.mjs` scores 30/30 with zero `console.log` calls because
+PR #4288 extracted `reportLines()`/`scopeLines()` and left `main()` a thin printer.
+
+`check-citation-enumerations.mjs` breaks it: **zero `console.log`, seven assertable sites, zero
+asserted.** Extraction makes assertion possible; it does not make it happen. The correct claim is
+that inline printing is a _hard_ barrier and extraction removes it, leaving an ordinary gap that
+someone still has to close.
+
+### Why this is reported and not gated
+
+Not for the reason the retracted census gave. That one said "heuristic, therefore report-only",
+which was true but is no longer the operative constraint -- this measurement is direct. The real
+reasons are mechanical: it rewrites source files in place, and it runs for 31 seconds. It refuses
+to start on a dirty `tools/` tree, restores every file in a `finally`, and requires a green
+baseline per tool before mutating, because a red baseline makes every mutant look caught.
 
 ## Worth hoisting up
 
