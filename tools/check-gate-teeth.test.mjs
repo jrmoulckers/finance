@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmdirSync, unlinkSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmdirSync, unlinkSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -175,5 +175,49 @@ test('the report itemises every gate rather than summarising a count', () => {
   const text = result.lines.join('\n');
   for (const gate of [...Object.keys(PROVEN), ...Object.keys(UNPROVEN)]) {
     assert.ok(text.includes(gate), `${gate} is absent from a report a reader must check by name`);
+  }
+});
+
+test('a repo-backed fixture leaves no directory behind', () => {
+  // Regression for a leak in the first version (#4340): cleanup enumerated
+  // dirname() of each written file, which never yields an intermediate
+  // directory created on the way to a nested one. The gradle fixture writes
+  // .github/workflows/x.yml, so .github survived every run and left the root
+  // non-empty -- 24 orphaned directories accumulated before anything counted
+  // them. The population of directories created is not the population of
+  // dirnames written.
+  const before = new Set(
+    readdirSync(tmpdir(), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && e.name.startsWith('gate-teeth-'))
+      .map((e) => e.name),
+  );
+  const repoBacked = Object.entries(PROVEN).filter(([, spec]) => spec.repo);
+  assert.ok(repoBacked.length > 0, 'no repo-backed fixture to exercise');
+  for (const [name, spec] of repoBacked) proveTeeth(name, spec);
+  const after = readdirSync(tmpdir(), { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name.startsWith('gate-teeth-'))
+    .map((e) => e.name)
+    .filter((n) => !before.has(n));
+  assert.deepEqual(after, [], 'a fixture directory outlived the run that made it');
+});
+
+test('a repo-backed fixture is actually a repository, so the gate is not passing by accident', () => {
+  // Without this, a gate that enumerates via git would report an empty
+  // population and exit 0, and the entry would look like a wrong criterion
+  // rather than a broken fixture.
+  for (const [name, spec] of Object.entries(PROVEN)) {
+    if (!spec.repo) continue;
+    const result = proveTeeth(name, spec);
+    assert.notEqual(result.status, 0, `${name} exited zero against its violation`);
+    assert.ok(result.named, `${name} failed without naming ${spec.expect}`);
+  }
+});
+
+test('an unproven criterion declares whether it was executed or reasoned', () => {
+  // Three of the original twelve criteria were reasoned from reading the tool
+  // and were false (#4343). A criterion is itself a claim about behaviour, so
+  // it carries the same burden as the prose this file exists to check.
+  for (const [name, spec] of Object.entries(UNPROVEN)) {
+    assert.equal(typeof spec.tested, 'boolean', `${name} does not say whether it was tested`);
   }
 });

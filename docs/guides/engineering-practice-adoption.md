@@ -9989,6 +9989,76 @@ position, not the specifier: a specifier is always inside a literal, so it canno
 two cases, whereas the keyword can. Reference count moved 164 to 169. The same guard corrected a
 pre-existing over-report at `tools/ai-manifest.js:39`, a `require` inside a line comment.
 
+## A recorded reason is a claim, and three of mine were false
+
+`gate:teeth` shipped with 12 gates marked unproven, each carrying a criterion naming what blocked
+a fixture from demonstrating its teeth. The criteria were written by reading the tools. **None was
+executed.**
+
+Three were wrong. `encoding:check`, `docs:links:check`, and `gate:enforcement` each named "the
+fixture needs a git repository and an index" as the obstacle -- accurate as a description of the
+requirement, and false as a blocker, because a fixture can be a repository. `git init` plus
+`git add` costs milliseconds. All three now prove teeth: exit 1, with the report naming the
+violation.
+
+`test:independence:check` was tested too and stays unproven -- a fixture pairing a tool and test
+on an identical object literal did not trigger it, so the shape it detects is narrower than a
+shared literal. That is recorded as an executed criterion rather than quietly left in the pile.
+
+The remaining entries now declare `tested: false`. A criterion is itself a claim about behaviour,
+so it carries exactly the burden this gate exists to enforce; one that has never been run should
+not read like a measurement. The distinction is asserted by a test, so a new entry must decide.
+
+### Unproven understates it: the enforcement is also unguarded
+
+Measured by mutation. Deleting `process.exit(1)` from `tools/check-upstream-refs.mjs`:
+
+```
+gate:teeth        EXIT=0
+gate:enforcement  EXIT=0
+the gate itself   EXIT=0
+full test suite   EXIT=0   (729 pass, 0 fail)
+```
+
+Nothing in the repository notices a gate losing its enforcement. The same mutation applied to
+each proven gate is caught (`EXIT=1` in every case). So proving teeth is not only documentation --
+it is the only thing standing between a gate and silent removal of its failure path. That is the
+argument for shrinking the unproven set rather than maintaining a tidy list of excuses.
+
+A test that re-derives its tool's logic cannot detect this, because there is no execution for a
+behavioural claim to attach to. Of 18 tool test files, 3 spawn a gate and assert its exit status.
+
+### A census that collides on a name
+
+The first pass at that count matched `.status` across the test files and reported 5. Two of those
+are `check-ai-manifest.test.mjs` asserting a _domain_ field named `status` -- nothing to do with an
+exit code. A name-based census has two independent error modes, over- and under-inclusion, and
+neither is visible in its output.
+
+### Deleting by name is not enough if the enumeration crossed a link
+
+During cleanup in the previous round, a scratch fixture directory contained a `node_modules`
+junction pointing into this worktree. The removal enumerated recursively, followed the junction,
+and deleted through it: `node_modules` plus **2,825 tracked files**. Everything was committed, so
+`git reset --hard` and `npm ci` restored it fully, and the anomaly surfaced because the file counts
+disagreed (412,014 enumerated against 68,669 deleted).
+
+The repository rule is to delete by name and never recursively. The incident names the part the
+rule leaves implicit: **deleting by name is only bounded if the enumeration that produced the names
+was bounded.** A recursive walk that crosses a reparse point produces names outside the tree you
+believe you are deleting, and every individual deletion then looks compliant.
+
+`walkFixture` in `check-gate-teeth.mjs` stops at a symlink or junction rather than descending.
+
+### The leak that the same walk fixed
+
+Adding it exposed an unrelated defect in the original cleanup, which removed `dirname()` of every
+file it wrote. An intermediate directory created on the way to a nested one is never any file's
+dirname, so the gradle fixture's `.github` survived every run and left its root non-empty. **24
+orphaned directories** had accumulated, while the tool reported clean removal each time. The
+population of directories created is not the population of dirnames written -- a population error
+of the same shape as the `tools\*.mjs` glob, in the cleanup rather than the census.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
