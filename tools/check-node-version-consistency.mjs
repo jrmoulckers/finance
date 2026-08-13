@@ -236,6 +236,33 @@ export function findAdmittedIncompatibilities(declared, dependencies) {
   return admitted.sort((a, b) => semver.compare(a.version, b.version));
 }
 
+/**
+ * Versions every installed dependency accepts but the declared range excludes.
+ *
+ * The complement of `findAdmittedIncompatibilities`, and it has to be written
+ * separately because that function cannot express this: its loop opens with
+ * `if (!semver.satisfies(version, declared)) continue`, so a version the range
+ * excludes is discarded before anything is asked about it. The blind spot is a
+ * direction, not a sample -- `22.22.1` was already in the probe set, harvested
+ * from `lint-staged`'s own `>=22.22.1`, and was skipped by that first line.
+ *
+ * The two directions are not the same defect. An over-permissive range claims
+ * support that installed packages reject, which misleads a consumer. An
+ * over-restrictive one refuses a runtime that every installed package accepts,
+ * which turns a working environment into an unsupported one. Only the first
+ * was ever measured here, and the second is what this repository had.
+ */
+export function findExcludedCompatibilities(declared, dependencies) {
+  if (!declared || !semver.validRange(declared)) return [];
+  const usable = dependencies.filter((dep) => dep.range && semver.validRange(dep.range));
+  if (usable.length === 0) return [];
+  const excluded = [];
+  for (const version of probeVersions(usable.map((dep) => dep.range))) {
+    if (semver.satisfies(version, declared)) continue;
+    if (usable.every((dep) => semver.satisfies(version, dep.range))) excluded.push({ version });
+  }
+  return excluded.sort((a, b) => semver.compare(a.version, b.version));
+}
 /** Every installed dependency that states an `engines.node`, walked from disk. */
 export function collectDependencyEngines(root, depth = 0) {
   const found = [];
@@ -325,6 +352,28 @@ function main() {
         `engines.node "${engines?.node}" admits no version rejected by any of ${dependencies.length} dependency declaration(s).`,
       );
     }
+    // The other direction. Reported as a notice because a dependency relaxing
+    // its own floor widens what is admissible without any local edit, and this
+    // check only fails on disagreements a local edit causes.
+    const excluded = findExcludedCompatibilities(engines?.node, dependencies);
+    if (excluded.length > 0) {
+      notices.push(
+        `engines.node "${engines?.node}" excludes Node ${excluded
+          .map((entry) => entry.version)
+          .join(
+            ', ',
+          )}, which every one of ${dependencies.length} dependency declaration(s) accepts.`,
+      );
+    } else {
+      notices.push(
+        `engines.node excludes no version that all ${dependencies.length} dependency declaration(s) accept.`,
+      );
+    }
+    // Both directions are named even when both are clean, because "admits no
+    // bad version" reads as "the range is right" and is only half the claim.
+    notices.push(
+      'scope: both directions were checked, over versions named by some dependency range.',
+    );
   }
   const runningMajor = process.versions.node.split('.')[0];
   if (runningMajor !== expectedMajor) {
