@@ -192,7 +192,7 @@ and the income/expense icon. Verify the reflowed layouts under Increase
 Contrast, Smart Invert, and Bold Text. This aligns with
 [Accessibility Patterns §5 Color & Contrast](./accessibility-patterns.md#5-color--contrast)
 and the larger-target guidance in
-[Cognitive Accessibility Mode](./cognitive-accessibility.md#7-touch-target-requirements).
+[Cognitive Accessibility Mode](./cognitive-accessibility.md#touch-target-requirements).
 
 ## 9. Privacy — balance hiding under reflow
 
