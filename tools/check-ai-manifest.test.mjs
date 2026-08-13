@@ -33,6 +33,7 @@ const {
   driftEnforcement,
   enforcementFindings,
   BREADTH_FLOOR,
+  FAMILY_SETS,
   corpusBreadth,
   HASH_EXTENSIONS,
   BLOCK_EXTENSIONS,
@@ -358,7 +359,13 @@ test('managed targets unstamp to their recorded canon source', () => {
   assert.equal(asDelivered, 0, 'delivered form should never match a pre-stamp hash');
   assert.equal(corruptedReproduced, 0, 'a corrupted body must not reproduce');
   // Breadth guard: a corpus exercising one family would certify the switch on a third of it.
-  assert.ok(families.size >= 2, `switch exercised on only ${families.size} comment family`);
+  // #4296: this read `>= 2` under a comment naming thirds. Derived from the family sets so the
+  // bound moves if a fourth family is ever added, instead of silently admitting a narrower corpus.
+  assert.equal(
+    families.size,
+    FAMILY_SETS.length,
+    `switch exercised on only ${families.size} of ${FAMILY_SETS.length} comment families`,
+  );
 });
 
 test('every recorded source is accounted for, not silently excluded', () => {
@@ -1078,13 +1085,25 @@ test('an empty corpus is reported rather than passing vacuously (#4256)', () => 
 test('a single-family corpus cannot certify the unstamp switch (#4256)', () => {
   const oneFamily = corpusBreadth({ entries: { 'AGENTS.md': {}, 'docs/x.md': {} } });
   assert.equal(oneFamily.length, 1);
-  assert.match(oneFamily[0], /1 comment family/);
-  // Two families clears the floor; the root-level arm is satisfied by AGENTS.md.
-  assert.deepEqual(corpusBreadth({ entries: { 'AGENTS.md': {}, 'agency.toml': {} } }), []);
+  assert.match(oneFamily[0], /1 of 3 comment families/);
+  // #4296: this line read `Two families clears the floor` and asserted []. It was true under a
+  // floor of 2 and it is the defect written down as expected behaviour -- the prose named the
+  // three-way switch while the assertion certified two thirds of it. Two families is now a
+  // finding, and only a corpus exercising all three is silent.
+  const twoFamilies = corpusBreadth({ entries: { 'AGENTS.md': {}, 'agency.toml': {} } });
+  assert.equal(twoFamilies.length, 1, 'two of three families is a narrowed corpus');
+  assert.match(twoFamilies[0], /2 of 3 comment families/);
+  assert.deepEqual(
+    corpusBreadth({ entries: { 'AGENTS.md': {}, 'agency.toml': {}, 'x.js': {} } }),
+    [],
+    'all three families with a root-level entry is the only silent case',
+  );
 });
 
 test('a corpus with no root-level entry is reported (#4256)', () => {
-  const nested = corpusBreadth({ entries: { 'x/a.md': {}, 'x/b.toml': {} } });
+  // Every family is present so the family arm stays silent and this isolates the depth arm --
+  // the old fixture was itself a 2-of-3 corpus, which the corrected floor now reports (#4296).
+  const nested = corpusBreadth({ entries: { 'x/a.md': {}, 'x/b.toml': {}, 'x/c.js': {} } });
   assert.equal(nested.length, 1);
   assert.match(nested[0], /no root-level entries/);
 });
@@ -1096,9 +1115,35 @@ test('the real corpus clears the floor, and the floor is not zero (#4256)', () =
     [],
     'the recorded corpus should support its own assertions',
   );
-  // A floor of zero would make the guard unfalsifiable -- the defect it exists to prevent.
-  assert.ok(BREADTH_FLOOR.families >= 2, 'one family cannot certify a three-way switch');
+  // #4296: this was `>= 2` against a message naming a three-way switch, and it passed. An
+  // inequality restating a constant cannot notice that the constant is wrong -- so assert the
+  // derivation instead. The floor is the family count or the guard admits a corpus missing a
+  // family, which is the exact narrowing it exists to report.
+  assert.equal(
+    BREADTH_FLOOR.families,
+    FAMILY_SETS.length,
+    'the floor must be the number of comment families, not a restatement of one',
+  );
   assert.ok(BREADTH_FLOOR.rootLevel >= 1);
+});
+
+test('dropping any whole comment family is reported (#4296)', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, SYNC_LOCK), 'utf8'));
+  const entries = Object.keys(lock.entries ?? {});
+  const families = [...new Set(entries.map(commentFamily).filter((family) => family !== null))];
+  // PREMISE: the recorded corpus exercises every family, so each drop is a real narrowing.
+  assert.equal(families.length, FAMILY_SETS.length, 'PREMISE: the corpus covers every family');
+
+  for (const dropped of families) {
+    const kept = entries.filter((entry) => commentFamily(entry) !== dropped);
+    const findings = corpusBreadth({
+      entries: Object.fromEntries(kept.map((entry) => [entry, {}])),
+    });
+    // Under the old floor of 2 every one of these returned []. That is the whole defect: a
+    // corpus certifying two thirds of a three-way switch was indistinguishable from a whole one.
+    assert.equal(findings.length, 1, `dropping '${dropped}' must be reported, not tolerated`);
+    assert.match(findings[0], /comment families/);
+  }
 });
 
 test('validateSyncLock still reports a degenerate corpus (#4256)', () => {
@@ -1257,6 +1302,8 @@ test('the scanned population is derived from the surface, not narrowed to a samp
     }
   });
   const scanned = new Set(citationCorpus().map((entry) => entry.path));
+  // unsourced-bound: nothing commits to how many files claim a citation; the number tracks the
+  // repo's prose and moves with every doc edit. 5 says only "more than a handful" (#4296).
   assert.ok(expected.length > 5, 'PREMISE: git sees a non-trivial claimant population');
   for (const relPath of expected) {
     assert.ok(scanned.has(relPath), `citationCorpus omits a claimant file: ${relPath}`);
@@ -1341,6 +1388,8 @@ test('the printed help lists every validator, not a sentence about some of them 
   // one level up. The count claims are re-checked here because deriving the list must not
   // quietly drop the interpolation the older test pins.
   const out = execFileSync(process.execPath, [TOOL, '--help'], { encoding: 'utf8' });
+  // unsourced-bound: the registry's size is not committed to anywhere; it is whatever
+  // validators exist. 3 says only that a one-entry registry cannot certify a dispatch (#4296).
   assert.ok(VALIDATORS.length > 3, 'PREMISE: there is a non-trivial registry to advertise');
   for (const validator of VALIDATORS) {
     assert.ok(out.includes(validator.label), `--help omits a validator: ${validator.id}`);
@@ -1355,6 +1404,7 @@ test('the registry is checked against the dispatch, not against itself (#4278)',
   // The independent enumeration is the dispatch `main` really passes: runner keys, not labels.
   const wired = Object.keys(activationRunners({})).sort();
   const advertised = VALIDATORS.map((validator) => validator.id).sort();
+  // unsourced-bound: mirrors the registry premise above; no artifact states a dispatch size.
   assert.ok(wired.length > 3, 'PREMISE: a non-trivial dispatch exists to compare against');
   assert.deepEqual(advertised, wired, 'every dispatched validator needs a --help row, and back');
 });
@@ -1424,6 +1474,8 @@ test('the received set is read from the lock, not written down beside the rule (
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, '.studio-sync.lock.json'), 'utf8'));
   const recorded = Object.keys(lock.entries ?? lock);
   const managed = managedTargets();
+  // unsourced-bound: the lock's entry count is the sync engine's output, and nothing declares
+  // an expected size. Pinning the current 81 would fail on every legitimate sync (#4296).
   assert.ok(recorded.length > 20, 'PREMISE: the lock records a non-trivial delivered surface');
   assert.equal(managed.size, recorded.length, 'every recorded target counts as received');
   for (const entry of recorded)
@@ -1451,8 +1503,12 @@ test('the report states the received population the exemption depends on (#4281)
     /Unowned-file citations: (\d+) coordinate\(s\) in (\d+) file\(s\)[^;]*; (\d+) received/,
   );
   assert.ok(line, 'the report must state coordinates, corpus size and received-set size');
+  // unsourced-bound: corpus size is discovered by a walk, not declared. The received-set size
+  // on the next line IS sourced -- from managedTargets() -- which is the contrast (#4296).
   assert.ok(Number(line[2]) > 10, 'the corpus must be non-trivial');
   assert.equal(Number(line[3]), managedTargets().size);
+  // unsourced-bound: guards against an emptied set; the exact size is asserted separately
+  // against managedTargets(), so this bound only has to exclude the degenerate case (#4296).
   assert.ok(Number(line[3]) > 20, 'an empty received set would silently restore the exemption');
 });
 test('the PRODUCTION predicate, not a test copy, distinguishes owned from received (#4281)', () => {

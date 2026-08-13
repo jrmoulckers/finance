@@ -8811,6 +8811,105 @@ fifteen separate per-file runs cannot, and no per-file run had ever produced a f
 `test:independence:check` gate checks that a test does not reimplement its tool; nothing was
 checking that a test does not interfere with another test.
 
+## A constant that restates a number cannot notice the number is wrong
+
+A sibling session measured `jrmoulckers/engineering`'s bounded assertions and reported a negative:
+138 of its 154 `assert.ok` calls are genuine boolean predicates, not thresholds. But it also found
+what made its ten real bounds good, and that part transfers:
+
+```js
+assert.ok(react.size >= 18, `docs claim 18 react/* rules; the preset enables ${react.size}`);
+```
+
+The number 18 was not invented. It came from **another artifact that had already committed to a
+number** — the documentation. That turns an inequality into a two-artifact consistency check: it
+can fail because the preset shrank _or_ because the docs went stale, and both are real defects. Its
+formulation of the rule is better than "avoid inequalities":
+
+> When you don't know the expected value, don't invent one; find the artifact that already asserts
+> one. If nothing in the repository commits to a number, that absence is the finding, and an
+> inequality papers over it.
+
+Applied here, the census came back similar in shape — 129 of 173 `assert.ok` calls are predicates,
+32 are existence checks, 12 are numeric bounds — and **all 12 bounds invented their number.** One of
+them had a source available in the same file and ignored it.
+
+### The defect
+
+`tools/check-ai-manifest.js` sorts files into three comment families. `corpusBreadth()` exists to
+report when the recorded corpus is too narrow to certify that three-way switch:
+
+```js
+const BREADTH_FLOOR = { families: 2, rootLevel: 1 };
+```
+
+Four lines above it, the rationale comment reads _"an assertion over one family certifies the switch
+on a third of it."_ The finding message hardcodes `across 3`. The floor is 2.
+
+Measured against the real lock (81 entries, all three families exercised):
+
+```
+drop 'hash'  -> families 2, findings 0
+drop 'html'  -> families 2, findings 0
+drop 'block' -> families 2, findings 0
+```
+
+**Deleting an entire comment family produced no finding.** The guard against certifying a fraction
+of the switch could not detect the loss of a third of it.
+
+Nothing caught this because everything that could have was self-consistent. The test pinning the
+floor read `assert.ok(BREADTH_FLOOR.families >= 2, 'one family cannot certify a three-way switch')`
+— a message naming three, a bound of two, and a pass. And one fixture was worse:
+
+```js
+// Two families clears the floor; the root-level arm is satisfied by AGENTS.md.
+assert.deepEqual(corpusBreadth({ entries: { 'AGENTS.md': {}, 'agency.toml': {} } }), []);
+```
+
+That is the defect written down as expected behaviour, in prose, and asserted. An inequality
+restating a constant cannot notice the constant is wrong, because the restatement is the only thing
+it is checked against.
+
+The fix is to derive: `families: FAMILY_SETS.length`. The bound now moves if a fourth family is ever
+added, and the test asserts the derivation rather than the value.
+
+### The general control, and its two wrong populations
+
+`tools/check-assertion-bounds.mjs` enforces the rule syntactically rather than judging whether a
+number is right, which no tool can do. A comparison against a bare numeric literal must be either an
+existence check or carry an `unsourced-bound:` note saying what source was looked for. A bound
+compared against an _expression_ never enters the population at all — that is the fixed form.
+
+Its first run reported **49 unsourced bounds**, of which 40 were semver ranges inside string
+arguments: `enginesAdmitsAbove('>=22.0.0 <23', '22')`. Data being handed to a parser, counted as a
+threshold someone chose. Its second reported **14**, still counting `assert.ok(dirtySeconds >= 0)` —
+a sign assertion, where zero is a boundary rather than a choice. The real number is **9**.
+
+Both errors are the same one this repository keeps making: **a syntactic pattern is not a semantic
+class.** The census that preceded this one picked its population by the `:check` suffix; this one
+picked it by a regex. And `49 of 49` was the most impressive-looking number of the three.
+
+The direction matters. A checker that over-reports is making a false accusation, and the specific
+cost is that the annotations it forces become rubber stamps — the author writes `unsourced-bound:`
+on a sign check, learns the marker is noise, and writes it on the next real one without looking.
+
+### The checker exited 0 having done nothing
+
+Its first invocation printed no report and exited 0. The CLI guard was
+
+```js
+import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`;
+```
+
+which yields `file://C:/...` where `import.meta.url` is `file:///C:/...`. Two slashes against three,
+so `main` never ran. **A green run over an empty population** — the exact decoy the file's own
+docblock argues against, manufactured by that file, and caught only because a report was expected
+and none appeared. The repository already had the correct form, `pathToFileURL`, in two other tools.
+
+Nine bounds now carry an annotation naming what was looked for and not found. That is not a fix; it
+is the honest record of an invented number, which is the most this rule can ask for when nothing in
+the tree commits to one.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
