@@ -138,6 +138,23 @@ export const PROVEN = {
     },
     expect: 'reached by no workflow',
   },
+  'i18n:validate-glossary': {
+    script: 'scripts/i18n/validate-glossary.js',
+    files: {
+      'config/i18n/locales.json':
+        '{"defaultPlatformResource":"config/i18n/locales.json","locales":{"en-US":{},"es-ES":{},"fr-FR":{}}}\n',
+      // Valid in every respect except one missing locale value, so a non-zero exit is attributable
+      // to the injected defect. Verified against a baseline of this fixture with "fr-FR":"Solde"
+      // restored, which exits 0. An empty fixture also exits 1, for staging reasons that have
+      // nothing to do with the gate's subject -- which is why the expected substring, not the exit
+      // code, is what separates a proven gate from a broken staging (#4347).
+      'config/i18n/glossary.json':
+        '{"description":"fixture","sourceLocale":"en-US","locales":["en-US","es-ES","fr-FR"],' +
+        '"terms":[{"concept":"Balance","en-US":"Balance","es-ES":"Saldo"}]}\n',
+      'apps/web/src/lib/education/glossary.ts': 'export const glossary = [];\n',
+    },
+    expect: 'missing a non-blank value for locale "fr-FR"',
+  },
 };
 
 /**

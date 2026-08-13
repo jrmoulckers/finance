@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import {
   CLAIMED_GATES,
+  NOT_CONTROLS,
   NOT_GATES,
   NPM_LIFECYCLES,
   ROUTES,
@@ -15,7 +17,13 @@ import {
   scopeLines,
   scriptDeps,
   scriptPaths,
+  isTestRunner,
+  ownedPaths,
+  readWorkflows,
   staleExclusions,
+  toolBackedScripts,
+  unclaimedControlLines,
+  unclaimedControls,
   unenforcedClaims,
   unreachedLines,
 } from './check-gate-enforcement.mjs';
@@ -273,4 +281,123 @@ test('the stale-exclusion report names the route and is distinct from the unenfo
   const lines = claimedGateLines({ 'a:check': 'npm run' }, ['a:check']);
   assert.ok(!lines.some((l) => l.includes('no longer true')), 'clean tree reports no staleness');
   assert.ok(lines.some((l) => l.includes('criterion:')) && lines.some((l) => l.includes('state:')));
+});
+
+// --- #4347: the omission direction -------------------------------------------------------------
+// `unenforcedClaims` asks whether every claim is true. Nothing asked whether every truth was
+// claimed, so a tool wired into CI and left out of CLAIMED_GATES was invisible. It had already
+// happened: i18n:validate-glossary was wired at ci-lint.yml:123 and uncensused.
+
+test('a wired, tool-executing script in no list is reported', () => {
+  const scripts = { 'rogue:check': 'node tools/check-rogue.mjs' };
+  const routes = { 'rogue:check': 'npm run' };
+  const unclaimed = unclaimedControls(scripts, routes, [], {}, {});
+  assert.deepEqual(
+    unclaimed.map((u) => u.name),
+    ['rogue:check'],
+  );
+  assert.equal(unclaimed[0].route, 'npm run', 'the verdict carries the route that produced it');
+});
+
+test('claiming, excluding, or being a test runner each account for a script', () => {
+  const scripts = {
+    'a:check': 'node tools/a.mjs',
+    'b:check': 'node tools/b.mjs',
+    'c:test': 'node --test tools/c.test.mjs',
+  };
+  const routes = { 'a:check': 'npm run', 'b:check': 'npm run', 'c:test': 'npm run' };
+  assert.deepEqual(unclaimedControls(scripts, routes, ['a:check'], { 'b:check': {} }, {}), []);
+});
+
+test('an unreached script is outside the population, so this cannot double-report an orphan', () => {
+  const scripts = { 'a:check': 'node tools/a.mjs' };
+  assert.deepEqual(unclaimedControls(scripts, { 'a:check': null }, [], {}, {}), []);
+});
+
+test('the population is derived from what a script executes, not from its name', () => {
+  // `build` and `type-check` are excluded because they run no repository tool, which stays true
+  // if either is renamed. A name-based census has two error modes and neither shows in its output.
+  const scripts = {
+    build: 'vite build',
+    'type-check': 'tsc --noEmit',
+    'a:check': 'node tools/a.mjs',
+  };
+  const routes = { build: 'npm run', 'type-check': 'npm run', 'a:check': 'npm run' };
+  assert.deepEqual(toolBackedScripts(scripts, routes), ['a:check']);
+  assert.deepEqual(ownedPaths('vite build'), []);
+  assert.deepEqual(ownedPaths('node scripts/i18n/validate-glossary.js'), [
+    'scripts/i18n/validate-glossary.js',
+  ]);
+});
+
+test('a control is never misread as a test runner', () => {
+  // The runner class is derived from `.test.mjs`, which is still a naming convention -- a
+  // load-bearing one, since it is how run-tool-tests.mjs discovers what to run. The residual risk
+  // is a control that happens to match, so it is asserted rather than assumed.
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const misread = CLAIMED_GATES.filter((n) => pkg.scripts[n] && isTestRunner(pkg.scripts[n]));
+  assert.deepEqual(misread, [], 'no claimed gate is classified as a test runner');
+  assert.ok(isTestRunner('node --test tools/x.test.mjs'), 'a runner is recognised');
+  assert.ok(!isTestRunner('node tools/check-x.mjs'), 'a control is not');
+  assert.ok(!isTestRunner('vite build'), 'a script running no repository tool is not a runner');
+});
+
+test('NOT_CONTROLS states a criterion, and its members are really reached', () => {
+  // A NOT_CONTROLS entry for an unreached script would be dead weight that reads like coverage.
+  // This is the mirror of staleExclusions: NOT_GATES members must stay unreached, these must not.
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const { corpus } = readWorkflows();
+  const routes = resolveRoutes(pkg.scripts, corpus);
+  for (const [name, reason] of Object.entries(NOT_CONTROLS)) {
+    assert.ok(reason.criterion?.trim(), `${name} states a criterion`);
+    assert.ok(Object.hasOwn(pkg.scripts, name), `${name} is a real script`);
+    assert.notEqual(routes[name], null, `${name} is reached, so excluding it is not dead weight`);
+    assert.ok(
+      !isTestRunner(pkg.scripts[name]),
+      `${name} is not already covered by the runner class`,
+    );
+  }
+});
+
+test('the real tree has no unaccounted control', () => {
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const { corpus } = readWorkflows();
+  const unclaimed = unclaimedControls(pkg.scripts, resolveRoutes(pkg.scripts, corpus));
+  assert.deepEqual(
+    unclaimed.map((u) => u.name),
+    [],
+  );
+});
+
+test('the report states the population and only names offenders when there are some', () => {
+  const clean = unclaimedControlLines(
+    { 'bounds:check': 'node tools/check-assertion-bounds.mjs' },
+    { 'bounds:check': 'npm run' },
+  );
+  assert.ok(!clean.some((l) => l.includes('accounted for by no list')));
+  const dirty = unclaimedControlLines({ 'z:check': 'node tools/z.mjs' }, { 'z:check': 'npm run' });
+  assert.ok(dirty.some((l) => l.includes('z:check')));
+});
+
+// --- #4347: the any-vs-all over-credit ----------------------------------------------------------
+// A script running two files was graded reached when one of them was wired. The defect sat in two
+// routes, and the second was only visible after fixing the first stopped hiding it.
+
+test('a file-path route requires every executed file, not one of them', () => {
+  const body = 'node scripts/a.js && node scripts/b.js';
+  assert.equal(directRoute('x', body, 'run: node scripts/a.js'), null, 'half-wired is not wired');
+  assert.equal(directRoute('x', body, 'node scripts/a.js\nnode scripts/b.js'), 'file path');
+  // The single-file case, which is every claimed gate, is unchanged.
+  assert.equal(directRoute('x', 'node tools/a.mjs', 'node tools/a.mjs'), 'file path');
+});
+
+test('an equivalent-command route requires every segment', () => {
+  const body = 'node scripts/a.js && node scripts/b.js';
+  assert.equal(runsEquivalentCommand(body, 'node scripts/a.js'), false);
+  assert.equal(runsEquivalentCommand(body, 'node scripts/a.js\nnode scripts/b.js'), true);
+  assert.equal(runsEquivalentCommand('', 'anything'), false, 'no segments is not a match');
+});
+
+test('i18n:validate-glossary is claimed, because it was wired long before it was censused', () => {
+  assert.ok(CLAIMED_GATES.includes('i18n:validate-glossary'));
 });
