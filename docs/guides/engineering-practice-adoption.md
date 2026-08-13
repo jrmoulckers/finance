@@ -8247,6 +8247,73 @@ Both failure axes are reported before the process exits, rather than the first o
 Failing on broken paths alone would let them mask every stale anchor; the reader would repoint
 the paths, see green, and conclude the anchors had been checked all along.
 
+## The printed sentence is the half with no assertion
+
+A sibling session generalised a defect of mine -- an interpolated count that was wrong while
+every test stayed green -- into a claim about both trees: _every scope line we have added is
+a string, and strings are the part nobody writes assertions for._ Measured across
+`tools/*.mjs`:
+
+|                                          | count | share     |
+| ---------------------------------------- | ----- | --------- |
+| printed lines total                      | 207   |           |
+| inside `main()`, unreachable by any test | 116   | **56.0%** |
+| in exported functions                    | 91    | 44.0%     |
+
+Of the 64 printed sentences in `main()` that interpolate a value, **60 have no assertion
+anywhere**. The three biggest contributors are the three most recently written tools, all
+added by this work: pin-history (36), upstream-refs (24), doc-links (22).
+
+The measurement is heuristic -- it matches literal fragments between a tool and its test file
+-- which is exactly why it is reported rather than gated. A gate over a population this
+loosely defined is the decoy pattern this guide warns about elsewhere; the census establishes
+that the population is large, and that is all it is being asked to do.
+
+### The hazard was documented in a comment and still had no test
+
+`check-doc-links.mjs` printed two verdicts carrying both an occurrence count and a
+distinct-target count, which differ here (12 and 9). A comment from an earlier fix already
+spelled out the risk of confusing them -- report twelve gaps against a nine-entry list and
+invite the wrong correction. Swapping the two interpolations left the whole suite green.
+
+The report is now an exported `reportLines()` and the sentences are asserted. Both swaps are
+killed as mutants, along with a mutant that returns early on broken paths and so masks every
+stale anchor.
+
+### Two fixture defects found while writing those tests
+
+- **The fixture encoded the wrong noun.** `distinctBroken` counts distinct `file -> href`
+  pairs, not distinct target documents, so `['a.md -> gone.md', 'b.md -> gone.md']` is _two_
+  distinct entries, not one. The test failed, and the code was right: I had reproduced the
+  wrong-noun error inside the test written to catch the wrong-noun error. The corrected
+  fixture has one file citing one missing target twice.
+- **A symmetric fixture proves nothing.** With `fixed` empty, the subtraction in
+  `${baselineSet.size - fixed.length}` is invisible and a mutant deleting it survived --
+  which it did, until a case with one fixed and one still-broken baseline entry existed.
+  Same shape as a 7/7 fixture that cannot tell "prints both halves" from "prints one half
+  twice": realistic and discriminating are independent properties.
+
+### A disclaimer and a finding have opposite safe directions
+
+From the same exchange, worth recording as a rule: when a tool marks a region as
+_unmeasured_, an error that **shrinks** that region is a false-assurance error, because
+everything outside it is implicitly asserted to have been checked. For a finding the
+conservative direction is to under-claim; for a disclaimer it is to over-claim. The two
+polarities are mirror images, and a scope line is a disclaimer.
+
+### A glob is not a footprint
+
+The sibling found a scratch file matching their cleanup glob that was not theirs, and
+retracted every prior "zero remaining" as true by timing rather than by scope. Checked here:
+the repository tree holds no `zz*` files, but `TEMP` holds three, only one of which is even
+plausibly agent scratch (`zz_ub.mjs`, not mine) -- and the other two, `ZzM3rUJ-I3BzFBQS8mYQf`
+and `ZZOyenCWeBDMeOtIncHNE`, are one-byte files with randomly generated names that match
+`zz*` **only because Windows globs are case-insensitive**.
+
+So the population of that glob is not "my scratch files" but "anything whose name happens to
+start with two z's, in any case, on a shared machine". The correct claim names the files
+created and removed, not a pattern.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

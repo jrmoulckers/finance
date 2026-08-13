@@ -10,6 +10,7 @@ import {
   collectLinks,
   headingSlugs,
   markFences,
+  reportLines,
   scopeLines,
   slugify,
 } from './check-doc-links.mjs';
@@ -338,5 +339,154 @@ test('scopeLines does not divide by zero on an empty tree', () => {
   assert.match(
     lines.find((l) => l.startsWith('Specificity:')),
     /\(0\.0%\)/,
+  );
+});
+
+// --- The printed report, read as a sentence (issue #4276) ---
+
+const emptyCensus = (over = {}) => ({
+  files: 1,
+  total: 0,
+  fenced: 0,
+  broken: [],
+  staleAnchors: [],
+  fragmentless: 0,
+  checkedAnchors: 0,
+  ...over,
+});
+
+test('a clean census reports success and does not fail', () => {
+  const { lines, failed } = reportLines(
+    emptyCensus({ total: 3, fragmentless: 2, checkedAnchors: 1 }),
+    {
+      baseline: [],
+      staleBaseline: [],
+    },
+  );
+  assert.equal(failed, false);
+  assert.equal(lines[0], 'All resolvable relative markdown links point at files that exist.');
+  assert.equal(lines[1], 'All 1 section-naming link(s) resolve to a heading that exists.');
+});
+
+test('occurrences and distinct targets are not interchangeable in the report', () => {
+  // Two occurrences of one target: the numbers differ, so a swap changes the text. With
+  // a fixture where they coincide, the assertion would pass either way -- the same
+  // symmetry defect that makes a 7/7 fixture unable to tell "both halves" from "one
+  // half twice".
+  // The same citing file links the same missing target twice, on two lines. That is
+  // what makes the two counts differ; two *different* citing files would be two
+  // distinct entries, which is the model this fixture originally got wrong.
+  const broken = ['a.md -> gone.md', 'a.md -> gone.md'];
+  const { lines, failed } = reportLines(emptyCensus({ broken, total: 2 }), {
+    baseline: ['a.md -> gone.md'],
+    staleBaseline: [],
+  });
+  assert.equal(failed, false);
+  const verdict = lines.at(-1);
+  assert.equal(
+    verdict,
+    '1 recorded gap(s) remain across 2 link(s), where the target names a document this repository has never contained.',
+  );
+});
+
+test('the failing verdict states occurrences before distinct targets', () => {
+  const broken = ['a.md -> gone.md', 'a.md -> gone.md', 'c.md -> other.md'];
+  const { lines, failed } = reportLines(emptyCensus({ broken, total: 3 }), {
+    baseline: ['a.md -> gone.md'],
+    staleBaseline: [],
+  });
+  assert.equal(failed, true);
+  assert.equal(
+    lines.at(-1),
+    '3 broken occurrence(s) over 2 distinct target(s); 1 of those targets are recorded gaps where the document does not exist.',
+  );
+});
+
+test('an unexpected broken link is named and counted', () => {
+  const { lines, failed } = reportLines(emptyCensus({ broken: ['a.md -> gone.md'], total: 1 }), {
+    baseline: [],
+    staleBaseline: [],
+  });
+  assert.equal(failed, true);
+  assert.equal(lines[0], '1 broken relative markdown link(s):');
+  assert.equal(lines[1], '  a.md -> gone.md');
+});
+
+test('an unexpected stale anchor is named and counted', () => {
+  const { lines, failed } = reportLines(
+    emptyCensus({ staleAnchors: ['a.md:1 -> b.md#gone'], total: 1, checkedAnchors: 1 }),
+    { baseline: [], staleBaseline: [] },
+  );
+  assert.equal(failed, true);
+  assert.equal(lines[0], '1 stale anchor(s):');
+  assert.equal(lines[1], '  a.md:1 -> b.md#gone');
+});
+
+test('broken paths do not suppress the stale-anchor section', () => {
+  // Reporting only the first failing axis would let a reader repoint paths, see green,
+  // and conclude the anchors had been checked.
+  const { lines } = reportLines(
+    emptyCensus({
+      broken: ['a.md -> gone.md'],
+      staleAnchors: ['a.md:1 -> b.md#gone'],
+      total: 2,
+      checkedAnchors: 1,
+    }),
+    { baseline: [], staleBaseline: [] },
+  );
+  const text = lines.join('\n');
+  assert.equal(text.includes('1 broken relative markdown link(s):'), true);
+  assert.equal(text.includes('1 stale anchor(s):'), true);
+});
+
+test('the scope lines appear on the failing path as well as the passing one', () => {
+  const red = reportLines(emptyCensus({ broken: ['a.md -> gone.md'], total: 1 }), {
+    baseline: [],
+    staleBaseline: [],
+  });
+  const green = reportLines(emptyCensus({ total: 1, fragmentless: 1 }), {
+    baseline: [],
+    staleBaseline: [],
+  });
+  for (const out of [red, green]) {
+    assert.equal(
+      out.lines.some((l) => l.startsWith('Specificity:')),
+      true,
+    );
+  }
+});
+
+test('a baseline entry that is no longer broken fails the run', () => {
+  const { lines, failed } = reportLines(emptyCensus({ total: 1, fragmentless: 1 }), {
+    baseline: ['a.md -> gone.md'],
+    staleBaseline: [],
+  });
+  assert.equal(failed, true);
+  assert.equal(lines.at(-1), '  a.md -> gone.md');
+  assert.equal(
+    lines.some((l) => l === '1 recorded gap(s) no longer broken -- remove them from the baseline:'),
+    true,
+  );
+});
+
+test('a stale anchor on the baseline is not reported', () => {
+  const { failed } = reportLines(emptyCensus({ staleAnchors: ['a.md:1 -> b.md#gone'] }), {
+    baseline: [],
+    staleBaseline: ['a.md:1 -> b.md#gone'],
+  });
+  assert.equal(failed, false);
+});
+test('the failing verdict discounts baseline entries that are no longer broken', () => {
+  // Without a fixed entry the subtraction is invisible, and a mutant dropping it
+  // survives -- which it did, until this case existed.
+  const broken = ['a.md -> gone.md', 'c.md -> other.md'];
+  const { lines, failed } = reportLines(emptyCensus({ broken, total: 2 }), {
+    baseline: ['a.md -> gone.md', 'b.md -> vanished.md'],
+    staleBaseline: [],
+  });
+  assert.equal(failed, true);
+  assert.equal(
+    lines.at(-1),
+    '2 broken occurrence(s) over 2 distinct target(s); 1 of those targets are recorded gaps where the document does not exist.',
   );
 });
