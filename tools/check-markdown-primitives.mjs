@@ -30,6 +30,7 @@
  * guard. Nobody decides the rule is narrow; the rule is simply never observed to fail.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { insideLiteral, literalSpans } from './lib/source.mjs';
@@ -262,30 +263,47 @@ export function staleAllowances(sites, allowed = ALLOWED) {
 }
 
 /**
- * Allowlist keys that name a generated path, so a staleness verdict over them would be a state.
+ * Allowlist keys git excludes, so a staleness verdict over them would be a state.
  *
- * An entry is disqualified when any of its path segments is declared in `.gitignore`, which is the
- * tree's own record of what it generates. Deriving it from `.gitignore` rather than a second
- * hand-maintained list matters: a hand-maintained list of generated directories is the same kind of
- * object this whole check exists to distrust.
+ * Asks git rather than parsing `.gitignore`. The parser this replaced reimplemented a format with
+ * negation, globs, anchoring, and per-directory files, then discarded every glob line and treated
+ * a leading `!` re-inclusion as an exclusion -- finance's `.gitignore:85` carries exactly one
+ * (`!tools/windows/dev-cert/.gitkeep`), which the parser kept with its sign inverted. It could not
+ * match any key, so the defect was unexercised rather than wrong, which is the harder kind to
+ * find. `git check-ignore` decides the same question with the semantics git actually uses.
+ *
+ * The criterion is "git excludes this", not "the tree generates this". The earlier name and
+ * docstring claimed the latter, and `.gitignore` does not record it: of finance's 48 literal
+ * entries, 9 are build output, 6 are secrets, and 4 are editor or OS files. Skipping all three is
+ * right -- an untracked file's presence depends on the machine either way -- but only one of them
+ * is generated, and the disqualification reason is printed to a reader.
+ *
+ * Not covered, and structurally so: git excludes `.git` unconditionally rather than by an ignore
+ * rule, so `check-ignore` reports it as not-ignored. Allowlist keys name tracked source files, so
+ * no key can be `.git`; this is recorded because the same derivation applied to a population of
+ * directory names would inherit the gap.
  *
  * @param {string[]} keys Allowlist keys to audit.
  * @param {string} root Repository root.
- * @returns {string[]} Keys naming generated paths, ascending.
+ * @returns {string[]} Keys git excludes, ascending.
  */
-export function generatedAllowances(keys, root) {
-  let ignored;
-  try {
-    ignored = new Set(
-      readFileSync(path.join(root, '.gitignore'), 'utf8')
-        .split('\n')
-        .map((line) => line.trim().replace(/^\/+|\/+$/g, ''))
-        .filter((line) => line && !line.startsWith('#') && !line.includes('*')),
-    );
-  } catch {
-    return [];
-  }
-  return keys.filter((key) => key.split(/[/\\]/).some((segment) => ignored.has(segment))).sort();
+export function untrackedAllowances(keys, root) {
+  if (keys.length === 0) return [];
+  const result = spawnSync('git', ['check-ignore', '--stdin'], {
+    cwd: root,
+    input: `${keys.join('\n')}\n`,
+    encoding: 'utf8',
+  });
+  // 0 = some path ignored, 1 = none ignored. Anything else (128 outside a repository, or git
+  // missing) is not a verdict, and returning [] there would assert every key is tracked.
+  if (result.status !== 0 && result.status !== 1) return [];
+  const excluded = new Set(
+    (result.stdout ?? '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean),
+  );
+  return keys.filter((key) => excluded.has(key)).sort();
 }
 
 /**
@@ -380,11 +398,11 @@ export function main(root) {
     out.push(...censusLines(groups, scripts.length, scripts.skippedTests.length, primitive), '');
     if (groups.unowned.length > 0) failed += 1;
     if (staleAllowances(sites, primitive.allowed).length > 0) failed += 1;
-    const generated = generatedAllowances(Object.keys(primitive.allowed), root);
-    if (generated.length > 0) {
+    const untracked = untrackedAllowances(Object.keys(primitive.allowed), root);
+    if (untracked.length > 0) {
       out.push(
-        `${primitive.label} allowance(s) naming a generated path: ${generated.join(', ')}.`,
-        'A staleness verdict over a generated path is a state -- it reads dead on a clean tree and',
+        `${primitive.label} allowance(s) naming a path git excludes: ${untracked.join(', ')}.`,
+        'A staleness verdict over an excluded path is a state -- it reads dead on a clean tree and',
         'alive on a built one. Move the allowance to a tracked path, or stop auditing it here.',
         '',
       );

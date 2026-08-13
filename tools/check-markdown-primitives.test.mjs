@@ -24,7 +24,7 @@ import {
   isScannedFile,
   PRIMITIVES,
   predicateLines,
-  generatedAllowances,
+  untrackedAllowances,
   staleAllowances,
 } from './check-markdown-primitives.mjs';
 
@@ -308,42 +308,78 @@ test('every declared primitive allowance describes a file that exists on disk', 
   }
 });
 
-test('a staleness verdict over a generated path would be a state, so it is refused (#4338)', () => {
+test('a staleness verdict over an excluded path would be a state, so it is refused (#4338)', () => {
   // The same membership test that is correct over tracked source files reports build/, dist/,
-  // .gradle/ and coverage/ dead on a clean tree and alive on a built one -- and .git dead in a
-  // worktree, where it is a file, alive in a clone. The precondition is checked, not asserted in a
-  // comment, because a comment stating a precondition is exactly the artifact this tool distrusts.
+  // .gradle/ and coverage/ dead on a clean tree and alive on a built one. The precondition is
+  // checked, not asserted in a comment, because a comment stating a precondition is exactly the
+  // artifact this tool distrusts.
+  //
+  // Not covered, structurally: git excludes .git unconditionally rather than by an ignore rule,
+  // so check-ignore reports it tracked. Allowlist keys name source files, so no key can be .git --
+  // but a derivation like this applied to directory names would inherit the gap, because a record
+  // of declared exclusions cannot contain the exclusion nobody ever had to declare.
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  assert.deepEqual(generatedAllowances(['tools/a.mjs'], repoRoot), []);
-  assert.deepEqual(generatedAllowances(['coverage/b.mjs', 'build/a.mjs'], repoRoot), [
+  assert.deepEqual(untrackedAllowances(['tools/a.mjs'], repoRoot), []);
+  assert.deepEqual(untrackedAllowances(['coverage/b.mjs', 'build/a.mjs'], repoRoot), [
     'build/a.mjs',
     'coverage/b.mjs',
   ]);
+  assert.deepEqual(untrackedAllowances(['.git/config'], repoRoot), []);
 });
 
-test('a generated segment is detected anywhere in the path, not only at the root', () => {
+test('an excluded segment is detected anywhere in the path, not only at the root', () => {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  assert.deepEqual(generatedAllowances(['apps/web/dist/x.js'], repoRoot), ['apps/web/dist/x.js']);
+  assert.deepEqual(untrackedAllowances(['apps/web/dist/x.js'], repoRoot), ['apps/web/dist/x.js']);
 });
 
-test('the generated set is derived from .gitignore rather than a second hand-kept list', () => {
-  // A hand-maintained list of generated directories is the same kind of object this check exists
-  // to distrust, and it would need its own staleness check.
+test('the verdict comes from git rather than a hand-kept list or a reimplemented parser', () => {
+  // A hand-maintained list of excluded directories is the same kind of object this check exists
+  // to distrust. Parsing .gitignore instead is the other trap: it reimplements negation, globs,
+  // anchoring and per-directory files, and the version this replaced got the negation backwards.
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const ignored = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
   assert.match(ignored, /^\s*build\/?\s*$/m, '.gitignore is the source of the verdict');
-  assert.deepEqual(generatedAllowances(['build/x.mjs'], repoRoot), ['build/x.mjs']);
+  assert.deepEqual(untrackedAllowances(['build/x.mjs'], repoRoot), ['build/x.mjs']);
+  // Outside a repository git cannot answer. Returning [] there asserts every key is tracked,
+  // which is a verdict this has no basis to give, so the caller sees no allowance rather than a
+  // wrong one.
   assert.deepEqual(
-    generatedAllowances(['build/x.mjs'], mkdtempSync(path.join(tmpdir(), 'ng-'))),
+    untrackedAllowances(['build/x.mjs'], mkdtempSync(path.join(tmpdir(), 'ng-'))),
     [],
   );
+});
+
+test('a re-inclusion is not read as an exclusion (#4345)', () => {
+  // .gitignore:85 carries `!tools/windows/dev-cert/.gitkeep`. The parser this replaced kept that
+  // line, sign inverted, as a declared exclusion. No key could match the whole string, so the
+  // defect never produced a wrong verdict -- it was unexercised rather than absent, which is why
+  // it survived review. git applies the negation, so the path is correctly reported as tracked.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const ignored = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
+  assert.match(
+    ignored,
+    /^\s*!tools\/windows\/dev-cert\/\.gitkeep\s*$/m,
+    'the negation still exists',
+  );
+  assert.deepEqual(untrackedAllowances(['tools/windows/dev-cert/.gitkeep'], repoRoot), []);
+});
+
+test('a glob-only exclusion is honoured, which the literal parser discarded', () => {
+  // The parser dropped every line containing `*`, so a key excluded only by a glob was reported
+  // tracked. git honours the pattern.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const ignored = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
+  const glob = ignored.split('\n').find((l) => l.trim().startsWith('*.') && !l.includes(' '));
+  assert.ok(glob, 'no glob pattern to exercise');
+  const sample = `sample${glob.trim().slice(1)}`;
+  assert.deepEqual(untrackedAllowances([sample], repoRoot), [sample]);
 });
 
 test('every shipped allowance names a tracked path, so staleAllowances stays meaningful', () => {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   for (const primitive of PRIMITIVES) {
     assert.deepEqual(
-      generatedAllowances(Object.keys(primitive.allowed), repoRoot),
+      untrackedAllowances(Object.keys(primitive.allowed), repoRoot),
       [],
       `${primitive.label} allowances are all tracked paths`,
     );
