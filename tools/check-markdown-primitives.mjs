@@ -29,7 +29,7 @@
  * so a tool scanning documents that happen to contain no fenced example never learns it needs the
  * guard. Nobody decides the rule is narrow; the rule is simply never observed to fail.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { insideLiteral, literalSpans } from './lib/source.mjs';
@@ -243,6 +243,13 @@ export function classify(sites, owner = OWNER, allowed = ALLOWED) {
  * The reason strings are state-shaped ("require() cannot load the ESM owner"), and a state can stop
  * being true with nobody editing this file (#4335).
  *
+ * Precondition, and it is not decorative: this test is only meaningful over a population that does
+ * not vary with build state or checkout mode. Run against a directory allowlist it reports
+ * `build`, `dist`, `.gradle`, and `coverage` as dead on a clean tree and alive on a built one, and
+ * `.git` as dead in a worktree -- where it is a file -- and alive in a clone. The test would be
+ * confidently wrong in whichever direction the moment of measurement happened to fall (#4338).
+ * `governedPopulation()` turns that precondition into a check rather than this paragraph.
+ *
  * @param {{file: string}[]} sites Per-file predicate locations actually detected.
  * @param {Record<string, string>} allowed File to the reason it may keep its own implementation.
  * @returns {string[]} Allowed files matched by no site, ascending.
@@ -252,6 +259,33 @@ export function staleAllowances(sites, allowed = ALLOWED) {
   return Object.keys(allowed)
     .filter((file) => !seen.has(file))
     .sort();
+}
+
+/**
+ * Allowlist keys that name a generated path, so a staleness verdict over them would be a state.
+ *
+ * An entry is disqualified when any of its path segments is declared in `.gitignore`, which is the
+ * tree's own record of what it generates. Deriving it from `.gitignore` rather than a second
+ * hand-maintained list matters: a hand-maintained list of generated directories is the same kind of
+ * object this whole check exists to distrust.
+ *
+ * @param {string[]} keys Allowlist keys to audit.
+ * @param {string} root Repository root.
+ * @returns {string[]} Keys naming generated paths, ascending.
+ */
+export function generatedAllowances(keys, root) {
+  let ignored;
+  try {
+    ignored = new Set(
+      readFileSync(path.join(root, '.gitignore'), 'utf8')
+        .split('\n')
+        .map((line) => line.trim().replace(/^\/+|\/+$/g, ''))
+        .filter((line) => line && !line.startsWith('#') && !line.includes('*')),
+    );
+  } catch {
+    return [];
+  }
+  return keys.filter((key) => key.split(/[/\\]/).some((segment) => ignored.has(segment))).sort();
 }
 
 /**
@@ -322,6 +356,20 @@ export function main(root) {
   const sources = scripts.map((file) => ({ file, text: readFileSync(file, 'utf8') }));
   let failed = 0;
   const out = [];
+  // An inclusion list whose entry disappears narrows the scan and still passes, so the census would
+  // report a clean tree it never looked at. Asserted here rather than assumed, for the same reason
+  // the allowlists are (#4338).
+  const missingRoots = SCANNED_DIRECTORIES.filter(
+    (dir) => !existsSync(path.join(root, dir)),
+  ).sort();
+  if (missingRoots.length > 0) {
+    out.push(
+      `Scan root(s) that do not exist: ${missingRoots.join(', ')}.`,
+      'The census would silently cover less than it claims. Fix SCANNED_DIRECTORIES.',
+      '',
+    );
+    failed += 1;
+  }
   for (const primitive of PRIMITIVES) {
     const sites = [];
     for (const { file, text } of sources) {
@@ -332,6 +380,16 @@ export function main(root) {
     out.push(...censusLines(groups, scripts.length, scripts.skippedTests.length, primitive), '');
     if (groups.unowned.length > 0) failed += 1;
     if (staleAllowances(sites, primitive.allowed).length > 0) failed += 1;
+    const generated = generatedAllowances(Object.keys(primitive.allowed), root);
+    if (generated.length > 0) {
+      out.push(
+        `${primitive.label} allowance(s) naming a generated path: ${generated.join(', ')}.`,
+        'A staleness verdict over a generated path is a state -- it reads dead on a clean tree and',
+        'alive on a built one. Move the allowance to a tracked path, or stop auditing it here.',
+        '',
+      );
+      failed += 1;
+    }
   }
   process.stdout.write(`${out.join('\n')}\n`);
   if (failed > 0) process.exitCode = 1;
