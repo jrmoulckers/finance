@@ -388,3 +388,40 @@ test('the CLI exits zero on the clean tree', () => {
   const out = execFileSync(process.execPath, [TOOL], { encoding: 'utf8' });
   assert.match(out, /Every bound is annotated or derived/);
 });
+
+// The marker is honoured in a comment and ignored in data. Written with fromCharCode so this file
+// does not itself contain a template literal carrying the marker, which is the very case under test.
+const BT = String.fromCharCode(96);
+
+test('a marker inside a multi-line template literal does not annotate a bound', () => {
+  const source =
+    'const doc = ' +
+    BT +
+    '\n' +
+    'unsourced-bound: this is data, not an annotation\n' +
+    BT +
+    ';\n' +
+    'assert.ok(total() > 4173);\n';
+  const result = censusFile('fixture.test.mjs', source);
+  assert.equal(result.bounds.length, 1, 'the bound is still found');
+  assert.equal(
+    result.bounds[0].annotated,
+    false,
+    'a line-wise strip sees no quote on the marker line and lets data excuse a real bound',
+  );
+});
+
+test('a marker in an ordinary comment still annotates, so the fix is not merely disabling it', () => {
+  const source =
+    '// unsourced-bound: nothing in the tree commits to this number\n' +
+    'assert.ok(total() > 4173);\n';
+  const result = censusFile('fixture.test.mjs', source);
+  assert.equal(result.bounds.length, 1);
+  assert.equal(result.bounds[0].annotated, true);
+});
+
+test('a comparison written inside a template literal is not counted as a bound', () => {
+  const source = 'const doc = ' + BT + '\n' + 'assert.ok(total() > 4173);\n' + BT + ';\n';
+  const result = censusFile('fixture.test.mjs', source);
+  assert.equal(result.bounds.length, 0, 'prose about a bound is not a bound');
+});

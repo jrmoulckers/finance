@@ -81,7 +81,7 @@ const EXISTENCE = new Set(['>0', '>=1', '<1', '<=0', '>=0', '<0']);
  * @returns {string} The line with literal contents replaced by spaces.
  */
 export { stripLiterals } from './lib/source.mjs';
-import { stripLiterals } from './lib/source.mjs';
+import { maskSource, stripLiterals } from './lib/source.mjs';
 
 /**
  * Extract every numeric-literal *inequality* from a line of source.
@@ -242,13 +242,18 @@ export function isJudged(line) {
  */
 export function censusFile(file, source) {
   const lines = source.split('\n');
+  // Detection runs against the source with string, template, and regex bodies blanked, while the
+  // report quotes the untouched line. Comments stay visible because the marker is written in one.
+  // Masking is whole-file: the line-wise primitive cannot see a template literal that spans lines,
+  // so a marker inside one excused a real bound (#4353).
+  const masked = maskSource(source, { comments: false }).split('\n');
   const bounds = [];
   const reversed = [];
   let existence = 0;
   let derived = 0;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = masked[i];
     if (line.trimStart().startsWith('*') || line.trimStart().startsWith('//')) continue;
     if (!isJudged(line)) continue;
 
@@ -265,8 +270,8 @@ export function censusFile(file, source) {
         file,
         line: i + 1,
         token: comparison.token,
-        annotated: hasMarker(lines, i),
-        bare: hasBareMarker(lines, i),
+        annotated: hasMarker(masked, i),
+        bare: hasBareMarker(masked, i),
         text: lines[i].trim(),
       });
     }
