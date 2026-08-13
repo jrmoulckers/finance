@@ -869,6 +869,36 @@ function triggerCovers(globs, file) {
   );
 }
 
+// Inputs named individually rather than counted, because each is a single self-referential file
+// whose wording carries the point: the guard reads the very file whose edit it cannot see.
+const NAMED_INPUTS = [ENFORCEMENT_WORKFLOW, SYNC_LOCK];
+
+/**
+ * Every repository path this check reads, composed from the validators that read it.
+ *
+ * Derived, not listed. The previous shape enumerated the two non-managed inputs by hand under a
+ * comment explaining that neither appears in the lock walk. That was true when written (#4251)
+ * and was outgrown three PRs later by the citation corpus (#4270), which walks the repository
+ * and reads 13 files that are neither managed entries nor named here — so the guard whose whole
+ * purpose is to notice unfireable inputs could not see ten of them (#4287).
+ *
+ * A hand list is correct on the day it is written and decays with no reader. Composing the set
+ * from its producers means a validator that starts reading new files is covered on arrival, with
+ * nothing to update and nothing to remember.
+ *
+ * @param {string[]} managedKeys Managed entry paths from the sync lock.
+ * @param {string[]} corpusPaths Repository-relative paths of the citation corpus.
+ * @returns {Map<string, string>} Path to the validator population that reads it.
+ */
+function checkInputs(managedKeys, corpusPaths) {
+  const inputs = new Map();
+  for (const key of managedKeys) inputs.set(key, 'managed entry');
+  // Read by validateEnforcementDoc and validateSyncLock respectively.
+  for (const file of NAMED_INPUTS) inputs.set(file, 'named input');
+  for (const file of corpusPaths) if (!inputs.has(file)) inputs.set(file, 'citation corpus');
+  return inputs;
+}
+
 /**
  * Report inputs this check reads that its own trigger cannot fire on.
  *
@@ -879,28 +909,39 @@ function triggerCovers(globs, file) {
  * workflow-only edit is precisely the change that guard exists to catch and precisely the change
  * that cannot trigger it (#4251).
  *
+ * Fails closed on an empty read-set: nothing to check and everything covered are the same verdict
+ * from a count alone, and only one of them is a report.
+ *
  * @param {string} workflowText Contents of the manifest-check workflow.
- * @param {string[]} managedKeys Managed entry paths from the sync lock.
+ * @param {Map<string, string>} inputs Read-set from `checkInputs`, path to population.
  * @returns {string[]} Findings; empty when every input is covered.
  */
-function triggerFindings(workflowText, managedKeys) {
+function triggerFindings(workflowText, inputs) {
   const read = triggerPaths(workflowText);
   if (read.error) return [`cannot read the trigger: ${read.error}`];
+  if (inputs.size === 0) return ['the read-set is empty, so trigger coverage is unverifiable'];
 
   const findings = [];
-  // Read by validateEnforcementDoc and validateSyncLock respectively. Named explicitly because
-  // neither is a managed entry, so neither appears in the lock walk below.
-  for (const file of [ENFORCEMENT_WORKFLOW, SYNC_LOCK]) {
-    if (!triggerCovers(read.globs, file)) {
+  const uncovered = [...inputs].filter(([file]) => !triggerCovers(read.globs, file));
+
+  for (const [file] of uncovered) {
+    if (NAMED_INPUTS.includes(file)) {
       findings.push(`${file} is read by this check but cannot trigger it`);
     }
   }
 
-  const uncovered = managedKeys.filter((key) => !triggerCovers(read.globs, key));
-  if (uncovered.length > 0) {
-    const groups = [...new Set(uncovered.map((key) => key.split('/').slice(0, 2).join('/')))];
+  const byPopulation = new Map();
+  for (const [file, population] of uncovered) {
+    if (NAMED_INPUTS.includes(file)) continue;
+    if (!byPopulation.has(population)) byPopulation.set(population, []);
+    byPopulation.get(population).push(file);
+  }
+
+  for (const [population, files] of byPopulation) {
+    const total = [...inputs.values()].filter((value) => value === population).length;
+    const groups = [...new Set(files.map((file) => file.split('/').slice(0, 2).join('/')))];
     findings.push(
-      `${uncovered.length} of ${managedKeys.length} managed entries cannot trigger this check ` +
+      `${files.length} of ${total} ${population} path(s) cannot trigger this check ` +
         `(${groups.join(', ')})`,
     );
   }
@@ -1457,7 +1498,11 @@ function validateTriggerCoverage() {
   if (!fs.existsSync(workflowPath)) return [`missing workflow: ${ENFORCEMENT_WORKFLOW}`];
   if (!fs.existsSync(lockPath)) return [`missing ${SYNC_LOCK}`];
   const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
-  return triggerFindings(fs.readFileSync(workflowPath, 'utf8'), Object.keys(lock.entries ?? lock));
+  const inputs = checkInputs(
+    Object.keys(lock.entries ?? lock),
+    citationCorpus().map((entry) => entry.path),
+  );
+  return triggerFindings(fs.readFileSync(workflowPath, 'utf8'), inputs);
 }
 
 /**
@@ -1649,6 +1694,7 @@ module.exports = {
   triggerPaths,
   triggerCovers,
   triggerFindings,
+  checkInputs,
   HELP_TEXT,
   VALIDATORS,
   dispatchValidators,

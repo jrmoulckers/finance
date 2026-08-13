@@ -42,6 +42,7 @@ const {
   triggerPaths,
   triggerCovers,
   triggerFindings,
+  checkInputs,
   METRICS,
   HELP_TEXT,
   VALIDATORS,
@@ -1001,10 +1002,14 @@ test('the workflow this check reads must be able to trigger it (#4251)', () => {
   const covering =
     "on:\n  pull_request:\n    paths:\n      - '.github/workflows/ai-manifest-check.yml'\n" +
     "      - '.studio-sync.lock.json'\n";
-  assert.deepEqual(triggerFindings(covering, []), [], 'fully covered inputs are not a finding');
+  assert.deepEqual(
+    triggerFindings(covering, checkInputs([], [])),
+    [],
+    'fully covered inputs are not a finding',
+  );
 
   const blind = "on:\n  pull_request:\n    paths:\n      - 'AGENTS.md'\n";
-  const findings = triggerFindings(blind, []);
+  const findings = triggerFindings(blind, checkInputs([], []));
   assert.equal(findings.length, 2);
   assert.ok(findings.some((f) => f.includes(ENFORCEMENT_WORKFLOW)));
   assert.ok(findings.some((f) => f.includes(SYNC_LOCK)));
@@ -1015,12 +1020,12 @@ test('uncovered managed entries are counted against the whole population (#4251)
     "on:\n  pull_request:\n    paths:\n      - '.github/workflows/ai-manifest-check.yml'\n" +
     "      - '.studio-sync.lock.json'\n      - '.github/agents/**'\n";
   const keys = ['.github/agents/a.md', 'vendor/@jrm/tokens/x.css', 'agency.toml'];
-  const findings = triggerFindings(globs, keys);
+  const findings = triggerFindings(globs, checkInputs(keys, []));
   assert.equal(findings.length, 1);
   // The denominator is the point: "2 uncovered" alone cannot be read without the population.
-  assert.match(findings[0], /2 of 3 managed entries/);
+  assert.match(findings[0], /2 of 3 managed entry path\(s\)/);
   assert.match(findings[0], /vendor\/@jrm/);
-  assert.deepEqual(triggerFindings(globs, ['.github/agents/a.md']), []);
+  assert.deepEqual(triggerFindings(globs, checkInputs(['.github/agents/a.md'], [])), []);
 });
 
 // --- #4256: a premise guard must live where a mutation can be seen -------------------------
@@ -1457,5 +1462,82 @@ test('the PRODUCTION predicate, not a test copy, distinguishes owned from receiv
     validateCitationCoverage().findings,
     [],
     'the tree is clean once the probe is gone',
+  );
+});
+
+// --- #4287: the read-set is composed from its producers, not enumerated -----------------------
+//
+// `triggerFindings` used to take the lock's managed keys plus two hand-named files. That list was
+// correct when written (#4251) and was outgrown by the citation corpus (#4270): ten files the
+// coordinate rule reads were neither managed nor named, so the guard whose purpose is to notice
+// unfireable inputs could not report them. These tests pin the composition, not the list.
+
+test('the read-set composes every producing population (#4287)', () => {
+  const inputs = checkInputs(['.github/agents/a.md'], ['README.md', '.github/agents/a.md']);
+  assert.equal(inputs.get('.github/agents/a.md'), 'managed entry', 'managed wins over corpus');
+  assert.equal(inputs.get('README.md'), 'citation corpus');
+  assert.equal(inputs.get(ENFORCEMENT_WORKFLOW), 'named input');
+  assert.equal(inputs.get(SYNC_LOCK), 'named input');
+});
+
+test('corpus files outside the trigger are reported against their own population (#4287)', () => {
+  const globs =
+    "on:\n  pull_request:\n    paths:\n      - '.github/workflows/ai-manifest-check.yml'\n" +
+    "      - '.studio-sync.lock.json'\n      - '.github/agents/**'\n";
+  // One corpus file covered, two not: the denominator must be the corpus, not the whole read-set,
+  // or a small uncovered count reads as reassuring against an inflated population.
+  const findings = triggerFindings(
+    globs,
+    checkInputs(['.github/agents/a.md'], ['.github/agents/a.md', 'README.md', 'PRODUCT.md']),
+  );
+  assert.equal(findings.length, 1);
+  assert.match(findings[0], /2 of 2 citation corpus path\(s\)/);
+  assert.match(findings[0], /README\.md/);
+});
+
+test('an empty read-set is unverifiable, never fully covered (#4287)', () => {
+  const globs = "on:\n  pull_request:\n    paths:\n      - 'AGENTS.md'\n";
+  const findings = triggerFindings(globs, new Map());
+  // Nothing to check and everything covered are the same verdict from a count alone. Only one of
+  // them is a report, so the empty case must not render as the clean one.
+  assert.equal(findings.length, 1);
+  assert.match(findings[0], /read-set is empty/);
+});
+
+test('the PRODUCTION walk, not a test list, supplies the corpus population (#4287)', () => {
+  // The call site is the claim. `checkInputs` accepting a corpus proves nothing about whether
+  // `validateTriggerCoverage` passes it one: the previous shape called triggerFindings with the
+  // lock keys alone and every unit test still passed. So this constructs a corpus file on disk,
+  // in a directory the trigger globs do not cover, and asserts the real validator reports it.
+  const probeDir = path.join(ROOT, 'docs', 'ops');
+  const probe = path.join(probeDir, 'PROBE-4287.md');
+  assert.ok(fs.existsSync(probeDir), 'PREMISE: the probe directory exists');
+
+  const before = activationRunners({}).triggerCoverage();
+  const corpusBefore = before.find((f) => f.includes('citation corpus'));
+
+  // `wx` makes creation itself the existence check. Asserting the path is free and then writing
+  // it is a genuine TOCTOU race (CodeQL js/file-system-race) — the same finding `citationCorpus`
+  // resolved by taking one descriptor — and here it would also silently clobber a real file.
+  fs.writeFileSync(probe, '# probe\n\nA claim about jrmoulckers/.github and copier.mjs.\n', {
+    flag: 'wx',
+  });
+  try {
+    const after = activationRunners({}).triggerCoverage();
+    const corpusAfter = after.find((f) => f.includes('citation corpus'));
+    assert.ok(corpusAfter, 'the corpus population must be reported by the production validator');
+    assert.notEqual(
+      corpusAfter,
+      corpusBefore,
+      'a new uncovered corpus file must move the production count',
+    );
+    assert.match(corpusAfter, /docs\/ops/);
+  } finally {
+    fs.unlinkSync(probe);
+  }
+  assert.deepEqual(
+    activationRunners({}).triggerCoverage(),
+    before,
+    'the report returns once the probe is gone',
   );
 });
