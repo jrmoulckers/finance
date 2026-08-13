@@ -8,6 +8,7 @@ import {
   exposure,
   humanDuration,
   unpinnedRefs,
+  episodes,
 } from './check-workflow-pin-history.mjs';
 
 const SHA = 'a'.repeat(40);
@@ -275,4 +276,132 @@ test('a commit declaring no actions holds a clean state rather than vanishing', 
   assert.equal(result.dirty, 1);
   assert.equal(result.dirtySeconds, DAY, 'the unmatched commit ended the exposure');
   assert.equal(result.spanSeconds, 2 * DAY);
+});
+
+// --- shape: episodes, transitions, streak -----------------------------------
+
+const S = (...pairs) => pairs.map(([at, bad]) => ({ at, bad }));
+
+test('a permissions key ending in uses: is not a step', () => {
+  // `statuses: read` ends with the literal `uses:`. A boundary-free pattern
+  // matched it; a scratch probe without the `@` requirement then reported 90
+  // dirty commits against this tool's 89, and the extra one was this line.
+  assert.equal(unpinnedRefs('  statuses: read').size, 0);
+  assert.equal(unpinnedRefs('  statuses: read@v1').size, 0);
+});
+
+test('a uses: with no ref at all is the most unpinned form there is', () => {
+  // Resolves to the action's default branch. The earlier pattern required an
+  // `@` in order to match, so it could not report this at any severity.
+  assert.deepEqual(
+    [...unpinnedRefs('      uses: actions/checkout')],
+    ['actions/checkout@<no ref>'],
+  );
+});
+
+test('a local reusable workflow is not an unpinned action', () => {
+  // Load-bearing again. This guard was correctly removed once -- nothing failed
+  // without it, because the old pattern needed an `@` these paths do not have.
+  // Counting a missing `@` revived it: there are 8 such calls at HEAD.
+  assert.equal(unpinnedRefs('      uses: ./.github/workflows/reusable-detect-changes.yml').size, 0);
+  assert.equal(unpinnedRefs('      uses: docker://alpine').size, 0);
+});
+
+test('a list-item uses: is still a step', () => {
+  // The boundary must admit the `- uses:` form at the start of a YAML step.
+  // Note what this does NOT establish: the dash. A first version of the pattern
+  // put `-` in the boundary character class for this case, and mutation testing
+  // removed it without failing here -- the space after the dash was matching.
+  assert.deepEqual([...unpinnedRefs('    - uses: actions/checkout@v4')], ['actions/checkout@v4']);
+  assert.deepEqual([...unpinnedRefs('- uses: actions/checkout@v4')], ['actions/checkout@v4']);
+});
+
+test('a sha-pinned action is still clean under the new pattern', () => {
+  const sha = 'a'.repeat(40);
+  assert.equal(unpinnedRefs(`      uses: actions/checkout@${sha}`).size, 0);
+});
+
+test('three lapses in a row are one episode, not three', () => {
+  // The whole point: contiguity, not count.
+  const states = S([400, false], [300, true], [200, true], [100, true]);
+  const r = episodes(states, 500);
+  assert.equal(r.episodes.length, 1);
+});
+
+test('lapses separated by a clean commit are separate episodes', () => {
+  const states = S([500, false], [400, true], [300, false], [200, true]);
+  const r = episodes(states, 600);
+  assert.equal(r.episodes.length, 2);
+});
+
+test('an episode spans from its first bad commit to the next clean one', () => {
+  const states = S([500, false], [400, true], [300, true]);
+  const [e] = episodes(states, 600).episodes;
+  assert.equal(e.from, 300);
+  assert.equal(e.to, 500);
+  assert.equal(e.seconds, 200);
+});
+
+test('an episode still open at HEAD runs to now, not to the last commit', () => {
+  // Otherwise a currently-broken branch reports its exposure as ending when it
+  // was last touched, which is the flattering direction.
+  const states = S([400, true], [300, false]);
+  const [e] = episodes(states, 1000).episodes;
+  assert.equal(e.to, 1000);
+});
+
+test('transitions count edges, not bad commits', () => {
+  // Three bad commits in a row is one transition in and one out.
+  const states = S([500, false], [400, true], [300, true], [200, true], [100, false]);
+  assert.equal(episodes(states, 600).transitions, 2);
+});
+
+test('a branch that was never clean has no transitions and one episode', () => {
+  const states = S([300, true], [200, true], [100, true]);
+  const r = episodes(states, 400);
+  assert.equal(r.transitions, 0);
+  assert.equal(r.episodes.length, 1);
+  assert.equal(r.bornCompliant, false);
+});
+
+test('born compliant reads the oldest commit, not the newest', () => {
+  // Survives a mutant reading states[0]: the newest commit here is clean and
+  // the oldest is not, so an index error inverts the answer.
+  assert.equal(episodes(S([300, false], [200, true], [100, true]), 400).bornCompliant, false);
+  assert.equal(episodes(S([300, true], [200, false], [100, false]), 400).bornCompliant, true);
+});
+
+test('the compliant streak measures back from now to the first clean commit', () => {
+  const r = episodes(S([300, false], [250, false], [200, true]), 400);
+  assert.equal(r.currentStreakSeconds, 400 - 250);
+});
+
+test('a branch dirty at HEAD has no compliant streak', () => {
+  // Not "a very short streak" -- zero. Reporting the gap since the last commit
+  // as a streak would credit a broken branch for the time it stayed broken.
+  assert.equal(episodes(S([300, true], [200, false]), 400).currentStreakSeconds, 0);
+});
+
+test('the longest episode is the maximum, not the most recent', () => {
+  // Survives a mutant taking the last element: the fixture is ordered so the
+  // newest episode is the shorter one.
+  const states = S([900, false], [850, true], [800, false], [400, true], [100, false]);
+  const r = episodes(states, 1000);
+  assert.equal(r.longestSeconds, 400);
+});
+
+test('an empty history has no shape rather than a zero-length one', () => {
+  const r = episodes([], 100);
+  assert.deepEqual(r.episodes, []);
+  assert.equal(r.transitions, 0);
+  assert.equal(r.bornCompliant, true);
+});
+
+test('episode seconds sum to the exposure measured independently', () => {
+  // Cross-check between the two functions. Asymmetric on purpose: an even
+  // split would pass a mutant that duplicated one half.
+  const states = S([1000, false], [900, true], [700, false], [400, true], [100, false]);
+  const total = episodes(states, 1100).episodes.reduce((s, e) => s + e.seconds, 0);
+  assert.equal(total, exposure(states, 1100).dirtySeconds);
+  assert.equal(total, 400);
 });
