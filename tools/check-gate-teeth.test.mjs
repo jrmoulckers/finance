@@ -313,3 +313,53 @@ test('the shipped controls all pass, so no shipped fixture is dirty', () => {
     assert.equal(result.controlStatus, 0, `${name} control must exit 0`);
   }
 });
+
+test('a gate that has stopped accepting valid input is diagnosed by its control', () => {
+  // Mutating a real gate to reject everything (#4357) produced exit 1 with a report naming
+  // nothing, and the verdict blamed the report -- sending a reader to the message text when the
+  // fact that mattered was that valid input had stopped passing. `named` is the symptom; the
+  // control is the cause, so the control is tested first.
+  const REJECT_ALL = "console.error('some unrelated complaint');\nprocess.exit(1);\n";
+  withScript(REJECT_ALL, (root) => {
+    const specs = {
+      'fake:gate': {
+        script: 'tools/subject.mjs',
+        files: { 'defect.txt': 'yes\n' },
+        control: { 'defect.txt': 'no\n' },
+        expect: 'the-actual-violation',
+      },
+    };
+    const { failed, lines } = report(specs, root);
+    assert.equal(failed, true);
+    const line = lines.find((entry) => entry.includes('fake:gate'));
+    assert.match(line, /NOT ATTRIBUTABLE/, 'the control failure is the diagnosis');
+    assert.ok(
+      !line.includes('FAILED FOR ANOTHER REASON'),
+      `the report naming must not outrank the control: ${line}`,
+    );
+    assert.match(line, /control exit 1/, 'and the control exit is shown');
+  });
+});
+
+test('a report that names nothing while the control passes still blames the report', () => {
+  // The other side of the precedence, so the reordering cannot silently swallow this case.
+  const WRONG_COMPLAINT =
+    "import { readFileSync } from 'node:fs';\n" +
+    'let bad = false;\n' +
+    "try { if (readFileSync('defect.txt', 'utf8').trim() === 'yes') { console.log('something else went wrong'); bad = true; } } catch {}\n" +
+    'process.exit(bad ? 1 : 0);\n';
+  withScript(WRONG_COMPLAINT, (root) => {
+    const specs = {
+      'fake:gate': {
+        script: 'tools/subject.mjs',
+        files: { 'defect.txt': 'yes\n' },
+        control: { 'defect.txt': 'no\n' },
+        expect: 'the-actual-violation',
+      },
+    };
+    const { lines } = report(specs, root);
+    const line = lines.find((entry) => entry.includes('fake:gate'));
+    assert.match(line, /FAILED FOR ANOTHER REASON/);
+    assert.match(line, /control exit 0/);
+  });
+});

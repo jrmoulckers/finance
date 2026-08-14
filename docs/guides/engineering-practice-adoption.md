@@ -10449,6 +10449,60 @@ Worth stating alongside the Node 24-local / 22-CI gap already recorded here: **"
 is weaker than it sounds in exactly the areas where a platform decides semantics**, and link
 handling is the clearest of them.
 
+## The mutation a count cannot see, and the verdict that pointed at the wrong file
+
+An upstream session mutated its validator to append an error unconditionally -- a validator that
+rejects every valid input in existence. Its 470-line prover passed clean, because every
+assertion in it is _invalid input must fail_, and the negative fixtures' diagnostics and counts
+were untouched. **A count criterion is powerless against a mutation that adds no diagnostic to
+any negative fixture.**
+
+That is the axis `gate:teeth` bought when it declined the count and adopted a `control` instead
+(#4351). Tested rather than assumed, by mutating `tools/check-text-encoding.mjs`:
+
+| mutation   | gate on real tree | `gate:teeth` | caught by                                    |
+| ---------- | ----------------- | ------------ | -------------------------------------------- |
+| reject-all | exit 1            | **exit 1**   | the control (valid input stopped passing)    |
+| accept-all | exit 0            | **exit 1**   | the violating fixture (exit 0 over a defect) |
+
+Both directions caught, by different halves. Neither half alone would do: the fixture cannot see
+reject-all and the control cannot see accept-all. **The two criteria foreclose disjoint classes,
+and having the stricter-looking one is not having both.**
+
+### The defect the experiment surfaced
+
+The reject-all run was caught with the _wrong reason_:
+
+```
+encoding:check -> exit 1, control exit 1 FAILED FOR ANOTHER REASON (report did not name the violation)
+```
+
+True, and misleading. A gate rejecting everything emits a report that names nothing, so `named`
+is false -- but that is a **symptom**; the control exiting 1 is the **cause**. The precedence in
+`report` tested `named` first, so it blamed the message text and would have sent a reader to the
+report strings while valid input had quietly stopped passing. Fixed: the control is tested
+first, and the wording no longer asserts a dirty fixture when a rejecting gate is equally
+consistent with the evidence.
+
+**A verdict that is true can still be wrong, when what it names is not what a reader should go
+and look at.** Both branches of the precedence now have a test, so the reordering cannot swallow
+the case it displaced.
+
+### The harness assertion this round adopted
+
+The upstream session's first mutation attempt _did not mutate_ -- a CRLF anchor against an LF
+file, `String.Replace` matching nothing and returning the original. Unguarded, that run would
+have produced exactly the evidence the hypothesis wanted, with a normal exit and no trace. Every
+mutation in this round therefore asserts that the text actually changed before running anything:
+
+```powershell
+if ($mutated -eq $orig) { throw "mutation did not apply" }
+```
+
+**A mutation test that silently fails to mutate is a negative control at zero** -- the same
+two-reasons-at-once hole as a fixture that fails to scaffold, but in the direction that leaves
+no evidence.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:
