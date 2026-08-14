@@ -10365,6 +10365,90 @@ answer**, and a blanket migration would have been a larger diff for no safety ga
 ignore-file` occurs 0 times in this repository. The vendored file must not diverge, so this is
   an upstream report rather than a local patch -- an instance of _reach is not delta_.
 
+## A surviving mutation does not mean a weak test
+
+An upstream session found that two independently sufficient guards are **mutually
+unfalsifiable**: remove either and every test stays green, so you cannot learn which layer you
+actually have. Their framing was that redundancy, usually described as defence in depth, is also
+the condition under which a guard is _misattributed_.
+
+Tested here by mutating the two link-safe walks and running both their tests and the gate:
+
+| walk             | mutation                          | tests    | `walk:safety:check` |
+| ---------------- | --------------------------------- | -------- | ------------------- |
+| `readSources`    | drop the `node_modules` name skip | pass     | pass                |
+| `readSources`    | drop `isSymbolicLink()`           | **fail** | pass                |
+| `collectScripts` | drop the `node_modules` name skip | pass     | pass                |
+| `collectScripts` | drop `isSymbolicLink()`           | pass     | pass                |
+| `collectScripts` | `lstatSync` -> `statSync`         | fail     | **fail**            |
+
+The claim reproduces. The one failure was a **source-text** match on `entry.isSymbolicLink()`,
+so it asserted that a line exists, not that a link is excluded.
+
+### The correction, which is the part worth carrying
+
+The obvious reading of a surviving mutation is "the test is weak." A fixture with a directory
+junction said otherwise -- removing the link skip changed nothing, because `lstat` already
+reports a junction as a non-directory. That reads as **dead code**, and I nearly recorded it as
+such. It was the wrong population. Adding a _file_ symlink:
+
+```
+shipped  []
+noLink   ["tools/filelink.mjs"]      <- the guard is load-bearing after all
+stat     ["tools/filelink.mjs", "tools/linked/leaked.mjs", "tools/linked/outside.mjs"]
+```
+
+**A surviving mutation is uninterpretable until you know the surviving population contains the
+case the guard is for.** Weak test and dead guard produce the identical signal, and they need
+opposite responses -- one is a test to write, the other is a line to delete.
+
+### Load-bearing is a property of a different line
+
+`Dirent` for a link reports `isFile=false, isDirectory=false, isSymbolicLink=true`. So a walk
+that gates recursion on `isDirectory()` **and** collection on `isFile()` excludes both hazards
+with no link skip at all.
+
+- `collectScripts` collects in an `else if (isScannedFile(entry))` branch with no positive type
+  test, so its skip is load-bearing.
+- `readSources` gates on `entry.isFile()`, so its skip is genuinely redundant.
+
+Same guard, same file shape, opposite verdicts, decided by the collection predicate. A census
+keyed on the guard cannot see this: asking which walks call `isSymbolicLink` flagged
+`scripts/vendor-configs.mjs`, `check-citation-enumerations.mjs`, and
+`check-node-version-consistency.mjs` -- **three false positives**, all three safe by `isFile()`
+gating. Adding the "missing" guard to each would have been three changes that fixed nothing and
+looked thorough.
+
+### What changed
+
+Both walks now have a behavioural test: a temp tree with a symlinked script and a linked
+directory, asserting the real file is still collected and nothing named `linked` is. The
+source-text assertion is gone. The mutation that previously survived now fails by name
+(`no link was followed: tools\\linked.mjs`), and swapping `readSources` off `Dirent` fails
+reporting both leaks including the one through the junction.
+
+`readSources` keeps its redundant skip as defence against a future change to the collection
+predicate, and the test says so in as many words: **a guard knowingly kept and knowingly
+unfalsifiable is honest; one assumed to be load-bearing is not.** A test that fails when you
+delete dead code is asserting an implementation, not a property.
+
+### The fixture failed in CI for the reason the test is about
+
+Both link tests passed locally and the `ESLint & Prettier` job failed on Linux:
+
+```
+error: "ENOTDIR: not a directory, rmdir '/tmp/mdlink-CSibbT/tools/linkeddir'"
+```
+
+`symlinkSync`'s third argument is **Windows-only**. On Linux `'junction'` is ignored and a plain
+symlink is created, so `rmdir` is the wrong call. The cleanup branched on the type I _requested_
+rather than on what the filesystem actually produced -- which is the same error the test exists
+to document, committed in the test's own teardown. It now tries `unlink` and falls back.
+
+Worth stating alongside the Node 24-local / 22-CI gap already recorded here: **"passes locally"
+is weaker than it sounds in exactly the areas where a platform decides semantics**, and link
+handling is the clearest of them.
+
 ## Worth hoisting up
 
 Finance-invented, generic, and absent from the shared layers:

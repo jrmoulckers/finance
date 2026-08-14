@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -192,18 +193,76 @@ test('readSources reaches both scanned directories and finds real files', () => 
 });
 
 test('readSources does not descend into a link', () => {
-  // The gate must not commit the defect it detects. Junction creation needs privileges that are not
-  // guaranteed, so the assertion is on the walk's own idiom rather than on a fixture. withFileTypes
-  // is the stronger property than lstat: a Dirent is link-safe *and* carries no check-then-use
-  // window, which is what CodeQL flagged the lstat version for.
+  // withFileTypes is the load-bearing property: a Dirent is link-safe *and* carries no
+  // check-then-use window, which is what CodeQL flagged the lstat version for.
   const text = fs.readFileSync(path.join(ROOT, 'tools', 'check-walk-safety.mjs'), 'utf8');
   assert.match(
     text,
     /readdirSync\(dir, \{ withFileTypes: true \}\)/,
     'readSources must use Dirent',
   );
-  assert.match(text, /entry\.isSymbolicLink\(\)/, 'readSources must skip a link');
   assert.ok(!/fs\.lstatSync\(/.test(text), 'readSources should not need a per-entry stat at all');
+});
+
+test('readSources excludes a linked source and a linked directory, measured', () => {
+  // This replaces an assertion that matched `entry.isSymbolicLink()` in the source text. That
+  // assertion was wrong in kind: readSources gates recursion on isDirectory() and collection on
+  // isFile(), and Dirent reports *both* false for a link, so the explicit skip here is dead code
+  // and a test that fails when you delete dead code is asserting an implementation, not a
+  // property. The skip is kept as defence against a future change to the collection predicate --
+  // and is knowingly unfalsifiable while that predicate stays positive (#4355).
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'walklink-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'walklink-out-'));
+  const made = [];
+  const links = [];
+  const write = (full, body) => {
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, body);
+    made.push(full);
+  };
+  try {
+    write(path.join(root, 'tools', 'real.mjs'), 'export const x = 1;\n');
+    write(path.join(outside, 'leaked.mjs'), 'export const leaked = 1;\n');
+
+    for (const [target, name, type] of [
+      [path.join(outside, 'leaked.mjs'), path.join(root, 'tools', 'linked.mjs'), 'file'],
+      [outside, path.join(root, 'tools', 'linkeddir'), 'junction'],
+    ]) {
+      try {
+        fs.symlinkSync(target, name, type);
+        links.push([name, type]);
+      } catch {
+        // Link creation is privileged on some Windows configurations; assert the arms that exist.
+      }
+    }
+    if (links.length === 0) return;
+
+    const files = readSources(root).map((source) => source.file);
+    assert.ok(files.includes('tools/real.mjs'), 'the real file is still read');
+    assert.ok(
+      !files.some((file) => file.includes('linked')),
+      `no link was followed: ${files.join(', ')}`,
+    );
+  } finally {
+    for (const [name, type] of links) {
+      // symlinkSync's type argument is Windows-only, so 'junction' yields a plain symlink on
+      // Linux and rmdir fails ENOTDIR. Ask the filesystem, do not trust the requested type.
+      void type;
+      try {
+        fs.unlinkSync(name);
+      } catch {
+        fs.rmdirSync(name);
+      }
+    }
+    for (const full of made) fs.unlinkSync(full);
+    for (const dir of [path.join(root, 'tools'), root, outside]) {
+      try {
+        fs.rmdirSync(dir);
+      } catch {
+        // Left for inspection rather than removed recursively.
+      }
+    }
+  }
 });
 
 test('the real tree has no unjustified link-following directory test', () => {

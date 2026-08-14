@@ -8,6 +8,8 @@ import {
   readFileSync,
   rmSync,
   rmdirSync,
+  symlinkSync,
+  unlinkSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -420,4 +422,70 @@ test('the scope leaves one hole, and it is here rather than left to be rediscove
   // The trade is deliberate: an allowance that describes nothing is inert, whereas a gate that
   // cannot pass on a clean tree cannot be proven at all.
   assert.deepEqual(staleAllowances([], { 'tools/deleted.mjs': 'reason' }, []), []);
+});
+
+test('collectScripts excludes a linked script and does not descend a linked directory', () => {
+  // Behavioural, not a source-text match. Removing the isSymbolicLink skip from collectScripts
+  // leaves every other test in this file green -- measured by mutation (#4355) -- because the
+  // collection branch is `else if (isScannedFile(entry))` with no positive type test. A walk that
+  // gated collection on isFile() would not need the skip at all, since Dirent.isFile() is false
+  // for a link. Whether the guard is load-bearing is a property of the collection line, not of
+  // the guard, so only behaviour can tell you which one you have.
+  const root = mkdtempSync(path.join(tmpdir(), 'mdlink-'));
+  const outside = mkdtempSync(path.join(tmpdir(), 'mdlink-out-'));
+  const made = [];
+  const links = [];
+  const dirs = [];
+  const write = (full, body) => {
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, body);
+    made.push(full);
+  };
+  try {
+    write(path.join(root, 'tools', 'real.mjs'), 'export const x = 1;\n');
+    write(path.join(outside, 'leaked.mjs'), 'export const leaked = 1;\n');
+
+    for (const [target, name, type] of [
+      [path.join(outside, 'leaked.mjs'), path.join(root, 'tools', 'linked.mjs'), 'file'],
+      [outside, path.join(root, 'tools', 'linkeddir'), 'junction'],
+    ]) {
+      try {
+        symlinkSync(target, name, type);
+        links.push([name, type]);
+      } catch {
+        // Link creation is privileged on some Windows configurations. The arms that could be
+        // created are still asserted; a skipped arm is better than a fixture that cannot run.
+      }
+    }
+    if (links.length === 0) return;
+
+    const names = collectScripts(root).map((file) => path.relative(root, file));
+    assert.ok(names.includes(path.join('tools', 'real.mjs')), 'the real file is still collected');
+    assert.ok(
+      !names.some((name) => name.includes('linked')),
+      `no link was followed: ${names.join(', ')}`,
+    );
+  } finally {
+    for (const [name, type] of links) {
+      // Ask the filesystem what exists rather than trusting the type requested: the third
+      // argument to symlinkSync is Windows-only, so 'junction' yields a plain symlink on Linux and
+      // rmdir fails ENOTDIR. Keying cleanup on the constant passed in rather than on the state
+      // produced is the same error this test exists to document (#4355).
+      void type;
+      try {
+        unlinkSync(name);
+      } catch {
+        rmdirSync(name);
+      }
+    }
+    for (const full of made) unlinkSync(full);
+    dirs.push(path.join(root, 'tools'), root, outside);
+    for (const dir of dirs) {
+      try {
+        rmdirSync(dir);
+      } catch {
+        // A directory that is not empty is left for inspection rather than removed recursively.
+      }
+    }
+  }
 });
