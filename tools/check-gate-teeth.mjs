@@ -495,12 +495,18 @@ export function report(proven = PROVEN, repoRoot = REPO_ROOT) {
 
   lines.push(`Executed ${results.length} gate(s) against a violating fixture:`);
   for (const result of results) {
+    // A failed control is tested before `named`, because it is the cause and `named` is a
+    // symptom. A gate mutated to reject everything exits 1 with a report that names nothing, and
+    // the earlier ordering blamed the report -- sending a reader to the message text when the
+    // fact that mattered was that valid input had stopped passing (#4357).
+    const controlFailed = result.controlStatus !== undefined && result.controlStatus !== 0;
     const verdict = result.ok
       ? 'teeth'
       : result.status === 0
         ? 'NO TEETH (exited 0 over a violation)'
-        : result.named
-          ? 'NOT ATTRIBUTABLE (the control failed too, so the fixture is dirty)'
+        : controlFailed
+          ? 'NOT ATTRIBUTABLE (the control failed too: a dirty fixture, or a gate that has ' +
+            'stopped accepting valid input)'
           : 'FAILED FOR ANOTHER REASON (report did not name the violation)';
     const control =
       result.controlStatus === undefined ? '' : `, control exit ${result.controlStatus}`;
