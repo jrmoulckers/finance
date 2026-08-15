@@ -97,7 +97,7 @@ const DEFAULT_INDEX =
 // copy is otherwise indistinguishable from a current one — a consumer reported
 // a missing check that had shipped several releases earlier, having run an old
 // copy that could not tell them so.
-const TOOL_VERSION = '10';
+const TOOL_VERSION = '11';
 // Citations live in source comments as often as in prose. A consumer filed two
 // wrong citations against themselves in `.ts` files, then ran this tool over
 // that repository and got `41 citations, all IDs exist`, exit 0 -- because the
@@ -330,13 +330,14 @@ async function scanFile(file) {
   const hits = [];
   const links = [];
   const titled = [];
+  const duplicated = [];
   const raw = await readFile(file, 'utf8');
   // A file that builds citation fixtures contains IDs that are wrong on
   // purpose. The opt-out is a pragma in the file itself rather than a filename
   // convention, because a convention silently covers files nobody chose, and a
   // silent skip is how this checker returned green over the two wrong citations
   // that prompted widening the extension set. Skips are counted and printed.
-  if (IGNORE_PRAGMA.test(raw)) return { hits, links, titled, ignored: true };
+  if (IGNORE_PRAGMA.test(raw)) return { hits, links, titled, duplicated, ignored: true };
   const lines = raw.split(/\r?\n/);
   lines.forEach((text, i) => {
     for (const [, label, href] of text.matchAll(ID_LINK)) {
@@ -408,8 +409,34 @@ async function scanFile(file) {
     for (const [, id, paren] of text.matchAll(TITLED)) {
       titled.push({ file, line: i + 1, id, claimed: paren.trim() });
     }
+
+    // The naming convention this checker encourages collides with a style it
+    // did not anticipate: a repository that already italicises principle names
+    // in prose ends up stating the name twice —
+    //
+    //   [`ENG-ARCH-003` (Durable decisions)](…) *Durable decisions* requires…
+    //
+    // Both halves are correct, so every existing check passes. An adopter found
+    // three of these, and they clustered on their highest-value citations,
+    // because prose emphasises a name exactly where the name is load-bearing.
+    // That is the shape worth catching: the convention did the most damage where
+    // the author had been most careful.
+    //
+    // Warned, not failed. The redundancy is a consequence of following advice
+    // given here, and failing a consumer's pipeline for complying with it would
+    // be the wrong end of the stick.
+    for (const match of text.matchAll(TITLED)) {
+      const name = match[2].trim();
+      const rest = text.slice(match.index + match[0].length, match.index + match[0].length + 200);
+      const emphasised = new RegExp(
+        `(\\*\\*?|__?)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\1`,
+      );
+      if (emphasised.test(rest)) {
+        duplicated.push({ file, line: i + 1, id: match[1], name });
+      }
+    }
   });
-  return { hits, links, titled };
+  return { hits, links, titled, duplicated };
 }
 
 // Compare loosely: case, surrounding punctuation and internal whitespace are
@@ -442,6 +469,7 @@ async function main() {
   const citations = [];
   const links = [];
   const titled = [];
+  const duplicatedNames = [];
   const ignoredFiles = [];
   for (const file of files) {
     const scanned = await scanFile(file);
@@ -452,6 +480,7 @@ async function main() {
     citations.push(...scanned.hits);
     links.push(...scanned.links);
     titled.push(...scanned.titled);
+    duplicatedNames.push(...scanned.duplicated);
   }
 
   const unknown = citations.filter((c) => !known.has(c.id));
@@ -701,9 +730,30 @@ async function main() {
       (titled.length > 0 ? `, and ${titled.length} stated name(s) match` : '') +
       '.',
   );
+
+  // Reported after the pass line, because it is not a correctness problem and
+  // must not read as one. It is a redundancy this repository's own convention
+  // introduces into prose that already emphasises principle names.
+  if (duplicatedNames.length > 0) {
+    console.log(
+      `\nRedundant: ${duplicatedNames.length} citation(s) state the principle name twice.\n`,
+    );
+    for (const d of duplicatedNames) {
+      console.log(
+        `  ${d.file}:${d.line}  ${d.id} — "${d.name}" is both parenthesised and emphasised`,
+      );
+    }
+    console.log(
+      '\nBoth halves are correct, which is why every other check here passes. This\n' +
+        'is not a failure and nothing is blocked. Drop whichever reads worse — the\n' +
+        'parenthesised name earns its place when the ID appears without prose around\n' +
+        'it. Expect these to cluster on your most important citations, since prose\n' +
+        'emphasises a name exactly where the name is load-bearing.',
+    );
+  }
   reportScope(ignoredFiles);
   console.log(
-    `checker v${TOOL_VERSION}; checks run: IDs, stated names, range members` +
+    `checker v${TOOL_VERSION}; checks run: IDs, stated names, duplicated names, range members` +
       (opts.links ? ', link paths, link anchors' : ' (link paths SKIPPED via --no-links)') +
       `. Index: ${opts.index}`,
   );
