@@ -1,7 +1,7 @@
 {
   "repository": "jrmoulckers/engineering",
-  "ref": "v0.134.0",
-  "fetchedAt": "2026-08-12T22:22:17.563Z",
+  "ref": "v0.145.0",
+  "fetchedAt": "2026-08-15T06:34:05.498Z",
   "refresh": "node scripts/vendor-configs.mjs <newer-ref>",
   "tool": {
     "sha256": "e90b941c586de11b0ca828cdf6a0387f4ed607bf041a91d2f49418c4ad733324",
@@ -30,7 +30,7 @@
     },
     "config/engineering/citations/check-citations.mjs": {
       "source": "scripts/check-citations.mjs",
-      "sha256": "9fcd3bd8465e4e5ad8dc72d355ffdb51c7b4d4c34d637ddab5043ca4dfc3fc3c"
+      "sha256": "9aae825e1d5cfa2563f92e0bda5d90972c7bbc61dc42405af2285f4cd6556cb2"
     }
   }
 }
