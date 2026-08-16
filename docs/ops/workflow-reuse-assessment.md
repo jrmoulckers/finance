@@ -29,7 +29,7 @@ $all | Where-Object { $_ -notmatch '@[0-9a-f]{40}$' -and $_ -notmatch '^\./' }
 
 ## Overlap with the backbone reusables
 
-The backbone publishes 8 reusables. Seven finance workflows overlap one.
+The backbone publishes 10 reusables. Seven finance workflows overlap one.
 
 | finance workflow                  | Lines | Backbone counterpart                                       | Verdict                            |
 | --------------------------------- | ----- | ---------------------------------------------------------- | ---------------------------------- |
@@ -39,7 +39,7 @@ The backbone publishes 8 reusables. Seven finance workflows overlap one.
 | `deploy-preview.yml`              | 394   | `reusable-deploy-preview.yml` + `reusable-perf-budget.yml` | **Divergent — partial candidate**  |
 | `deploy-pages.yml`                | 86    | `reusable-deploy-pages.yml`                                | **Closest candidate**              |
 | `reusable-detect-changes.yml`     | 64    | `reusable-change-detection.yml`                            | **Divergent — already reconciled** |
-| `reusable-release-smoke-test.yml` | 307   | `reusable-smoke-test.yml`                                  | **Divergent — do not migrate**     |
+| `reusable-release-smoke-test.yml` | 307   | `reusable-native-smoke-test.yml`                           | **Equivalent — migrate**           |
 
 ### Superset — migration would lose enforcement
 
@@ -69,14 +69,25 @@ prefixes and exact SHAs, while every finance required-check caller passes glob-b
 filters. Migration would change every caller's filter contract and is not parity-safe. **This is
 not a vendored copy** — it is a documented, deliberately different adapter. No action.
 
-**`reusable-release-smoke-test.yml`** — a 6-job per-platform release gate (Android, iOS, web,
-Windows, validate, summary). The backbone's `reusable-smoke-test.yml` is a single-artifact
-build-and-probe with an HTTP retry loop. Different shape entirely; not a substitute.
-
 **`deploy-preview.yml`** — 5 jobs. The `lighthouse` job overlaps `reusable-perf-budget.yml`
 (which takes `bundle-budget-kb`, `lhci-min-performance`, `lhci-min-accessibility`), and the
 build/upload half overlaps `reusable-deploy-preview.yml`. The PR-comment and cleanup jobs have
 no counterpart. A partial migration is plausible but touches a PR-visible surface.
+
+### Equivalent — migration sequenced
+
+**`reusable-release-smoke-test.yml`** — a 6-job per-platform release gate (Android, iOS, web,
+Windows, validate, summary). This row read "do not migrate" against the backbone's web-only
+`reusable-smoke-test.yml`, but that is no longer the comparison: canon ships
+`reusable-native-smoke-test.yml`, with the same shape — a `validate` job, one job per platform
+selected through a `platforms` input, and a `summary` job reducing the verdicts to a single
+gateable `result`. It is the same shape because it was promoted into canon **from this file**
+(jrmoulckers/.github#113), so the delta is zero and migrating drops no platform coverage.
+
+Migration is sequenced rather than settled: finance's `optIn.workflows` in the backbone
+`studio.config.json` is `[]` and the sync manifest fails validation on undeclared uses, so
+repointing the callers must wait for jrmoulckers/.github#118. The header was corrected under
+#4362; the migration itself is #4364.
 
 ### Best candidate
 

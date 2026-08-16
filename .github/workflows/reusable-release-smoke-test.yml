@@ -5,22 +5,29 @@
 # Runs quick sanity checks against built artifacts to verify they are functional
 # before promoting to production or advancing a staged rollout.
 #
-# This is a Finance-local reusable workflow (multi-platform: android/ios/web/
-# windows) and is intentionally NOT the canon `reusable-smoke-test.yml` defined
-# in jrmoulckers/.github (a generic single-job web-only smoke test). It was
-# renamed from `reusable-smoke-test.yml` to `reusable-release-smoke-test.yml`
-# to remove an accidental filename collision with that canon workflow — see
-# jrmoulckers/.github#60. Finance calls this file only via a relative
-# `uses: ./.github/workflows/...` path and does not consume the backbone
-# version under either name.
-# Canonical comparison: jrmoulckers/.github@97ff60ec21321563fa0fc7ba80015261e7dcd6fa
-# Finance delta: the canonical workflow is a single web smoke job; this workflow
-# validates four native-first platforms and therefore cannot migrate without
-# dropping Android, iOS, and Windows release coverage.
+# This is a Finance-local copy awaiting removal — not a defended deviation.
+# Canon now ships `reusable-native-smoke-test.yml` in jrmoulckers/.github with
+# the same shape as this file: a `validate` job, one job per platform selected
+# through a `platforms` input (android/ios/web/windows), and a `summary` job
+# reducing the per-platform verdicts to one gateable `result` output. It was
+# promoted into canon *from this workflow* (jrmoulckers/.github#113), so the
+# Finance delta is zero and migrating drops no platform coverage.
+#
+# The file was renamed from `reusable-smoke-test.yml` to
+# `reusable-release-smoke-test.yml` to clear a filename collision with canon's
+# unrelated web-only `reusable-smoke-test.yml` — see jrmoulckers/.github#60.
+# Finance still calls this copy only via a relative
+# `uses: ./.github/workflows/...` path and consumes no backbone version yet.
+#
+# Migration is sequenced, not settled: finance's `optIn.workflows` in the
+# backbone `studio.config.json` is `[]` and the sync manifest fails validation
+# on undeclared uses, so repointing rc-branch-tag.yml and release-train.yml at
+# the canonical workflow must wait for jrmoulckers/.github#118. Tracked by #4364.
+# Canonical comparison: jrmoulckers/.github@f0bacf77dbdf0f5394793031875700b515ac2a1d
 #
 # Called by: rc-branch-tag.yml, release-train.yml
 #
-# Issue: #1147, jrmoulckers/.github#60
+# Issue: #1147, #4362, jrmoulckers/.github#60
 # =============================================================================
 
 name: Reusable Release Smoke Test

@@ -37,9 +37,9 @@ import { execFileSync } from 'node:child_process';
  */
 export const DUPLICATION_BASELINE = [
   'check-node-version-consistency.test.mjs:107 ~ check-node-version-consistency.mjs:425',
-  'check-workflow-security.test.mjs:337 ~ check-workflow-security.mjs:608',
-  'check-workflow-security.test.mjs:338 ~ check-workflow-security.mjs:609',
-  'check-workflow-security.test.mjs:339 ~ check-workflow-security.mjs:610',
+  'check-workflow-security.test.mjs:337 ~ check-workflow-security.mjs:618',
+  'check-workflow-security.test.mjs:338 ~ check-workflow-security.mjs:619',
+  'check-workflow-security.test.mjs:339 ~ check-workflow-security.mjs:620',
 ];
 
 /** Operations whose presence makes a line a candidate for carrying a rule. */
