@@ -17,7 +17,6 @@ import { load as loadYaml } from 'js-yaml';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workflowDirectory = join(repositoryRoot, '.github', 'workflows');
-const canonicalWorkflowSha = '97ff60ec21321563fa0fc7ba80015261e7dcd6fa';
 const attestationActionSha = '4d101475d8b20a2381f78447822ac1eab6504dd8';
 const productionPowerSyncImage =
   'journeyapps/powersync-service:1.23.3@sha256:b6b22fa7d0d862f04bdff62846e656756d17bcf3dd6eca399a0633671051438b';
@@ -35,10 +34,21 @@ const privilegedWorkflows = new Set([
   'reusable-release-smoke-test.yml',
 ]);
 
+// Each local reusable is reviewed against canon independently, so the canonical comparison SHA is
+// per-file rather than global: `reusable-detect-changes.yml` is a defended deviation still measured
+// against the commit its adapter rationale was reviewed at, while `reusable-release-smoke-test.yml`
+// was re-checked under #4362 against a canon that has since absorbed it as
+// `reusable-native-smoke-test`. A shared constant would force one file's recheck to restamp the
+// other, which is exactly the unreviewed drift these baselines exist to catch.
 const localReusableBaselines = {
-  'reusable-detect-changes.yml': '73a26b45af9ff6254e6982b63b336dc4a9a2bdd785d7ffbdaae4094d2ae90697',
-  'reusable-release-smoke-test.yml':
-    'cb8de56b54292447ab67941b56e1f08c3c2fa0cfa3b8b533eddacc6fce5c9f02',
+  'reusable-detect-changes.yml': {
+    canonicalSha: '97ff60ec21321563fa0fc7ba80015261e7dcd6fa',
+    contentHash: '73a26b45af9ff6254e6982b63b336dc4a9a2bdd785d7ffbdaae4094d2ae90697',
+  },
+  'reusable-release-smoke-test.yml': {
+    canonicalSha: 'f0bacf77dbdf0f5394793031875700b515ac2a1d',
+    contentHash: '3c6a90f99e9a8cf7c08bec0ed825b583a48884068710ba3e028c15641aad3f05',
+  },
 };
 
 const requiredEnvironmentJobs = {
@@ -583,16 +593,16 @@ export function scanWorkflowSecurity(workflows, productionCompose = '') {
     report('deploy/docker-compose.yml', 'production container images must not use latest tags');
   }
 
-  for (const [file, expectedHash] of Object.entries(localReusableBaselines)) {
+  for (const [file, { canonicalSha, contentHash }] of Object.entries(localReusableBaselines)) {
     const workflow = workflows[file] ?? '';
-    if (!workflow.includes(`Canonical comparison: jrmoulckers/.github@${canonicalWorkflowSha}`)) {
-      report(file, `must document canonical comparison at ${canonicalWorkflowSha}`);
+    if (!workflow.includes(`Canonical comparison: jrmoulckers/.github@${canonicalSha}`)) {
+      report(file, `must document canonical comparison at ${canonicalSha}`);
     }
     const actualHash = sha256(normalizeReviewedPins(workflow));
-    if (actualHash !== expectedHash) {
+    if (actualHash !== contentHash) {
       report(
         file,
-        `reviewed local reusable drifted (expected ${expectedHash}, found ${actualHash}); ` +
+        `reviewed local reusable drifted (expected ${contentHash}, found ${actualHash}); ` +
           'action pin rotations are excluded from this baseline, so this reflects a change ' +
           'to the workflow itself and needs review',
       );
