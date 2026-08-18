@@ -6,9 +6,15 @@
  * Manages bank connections via Plaid and MX aggregators. Provides
  * link token creation, access token exchange, and connection management.
  *
- * Plaid is the reference implementation (real REST calls via fetch). MX
- * remains a documented stub behind the same interface until its credentials
- * and endpoints are provisioned.
+ * Plaid and MX are both real implementations (direct REST calls via fetch).
+ * TrueLayer and Finicity remain disabled placeholders in the provider registry
+ * and are never routed to.
+ *
+ * Provider credential models differ and are normalized behind this function:
+ *   - Plaid: `public_token` is exchanged for an `access_token` + `item_id`.
+ *   - MX: the connect widget returns a `member_guid`, which is paired with the
+ *     user's MX `user_guid` into one opaque credential (see `_shared/mx.ts`).
+ *     The client posts that `member_guid` as `public_token`.
  *
  * Endpoints:
  *   POST ?action=create_link_token  — Generate a link token for Plaid/MX
@@ -33,6 +39,7 @@
  *   PLAID_ENVIRONMENT         — Plaid environment (sandbox/development/production)
  *   MX_CLIENT_ID              — MX client ID
  *   MX_API_KEY                — MX API key
+ *   MX_ENVIRONMENT            — MX environment (sandbox/integration/production)
  *   BANK_ENCRYPTION_KEY       — AES-256 key for encrypting access tokens
  *   ALLOWED_ORIGINS           — Comma-separated allowed CORS origins
  */
@@ -51,10 +58,22 @@ import {
   getAccounts as plaidGetAccounts,
   plaidAccountTypeToInternal,
   PlaidApiError,
+  type InternalAccountType,
   type PlaidAccount,
   type PlaidConfig,
 } from '../_shared/plaid.ts';
 import {
+  createWidgetUrl as mxCreateWidgetUrl,
+  encodeMxCredential,
+  decodeMxCredential,
+  ensureUser as mxEnsureUser,
+  getAccounts as mxGetAccounts,
+  mxAccountTypeToInternal,
+  MxApiError,
+  type MxConfig,
+} from '../_shared/mx.ts';
+import {
+  ingestMxTransactions,
   ingestPlaidTransactions,
   type BankConnectionRow,
   type IngestionSummary,
@@ -129,11 +148,26 @@ function plaidConfigFromEnv(): PlaidConfig {
   };
 }
 
+/** Read MX credentials from the environment. Throws if unset. */
+function mxConfigFromEnv(): MxConfig {
+  const clientId = Deno.env.get('MX_CLIENT_ID');
+  const apiKey = Deno.env.get('MX_API_KEY');
+  if (!clientId || !apiKey) {
+    throw new Error('MX credentials not configured');
+  }
+  return {
+    clientId,
+    apiKey,
+    environment: Deno.env.get('MX_ENVIRONMENT') ?? 'sandbox',
+  };
+}
+
 /**
  * Create a link token via the provider's API.
  *
- * Plaid: real POST /link/token/create. MX: documented stub pending
- * credential provisioning.
+ * Plaid: POST /link/token/create, returning a Link token.
+ * MX: POST /users/{guid}/widget_urls, returning a connect-widget URL. Both are
+ * opaque to the client, which only forwards them to the provider's SDK.
  */
 async function createProviderLinkToken(
   provider: Provider,
@@ -143,40 +177,43 @@ async function createProviderLinkToken(
     return plaidCreateLinkToken(plaidConfigFromEnv(), userId);
   }
 
-  // MX stub — kept behind the same interface until MX is provisioned.
-  const clientId = Deno.env.get('MX_CLIENT_ID');
-  const apiKey = Deno.env.get('MX_API_KEY');
-  if (!clientId || !apiKey) {
-    throw new Error('MX credentials not configured');
-  }
-  return {
-    link_token: `link-${provider}-${crypto.randomUUID()}`,
-    expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-  };
+  const config = mxConfigFromEnv();
+  const userGuid = await mxEnsureUser(config, userId);
+  return mxCreateWidgetUrl(config, userGuid);
 }
 
 /**
- * Exchange a public token for an access token via the provider's API.
+ * Exchange the client's post-link handle for the stored provider credential.
  *
- * NEVER log the returned access token.
+ * Plaid: real POST /item/public_token/exchange.
+ * MX: the widget returns a `member_guid` (posted as `public_token`); it is
+ * paired with the user's MX `user_guid` into one opaque credential, because
+ * every MX data call needs both.
+ *
+ * NEVER log the returned credential.
  */
 async function exchangeProviderToken(
   provider: Provider,
   publicToken: string,
+  userId: string,
 ): Promise<{ access_token: string; item_id: string }> {
   if (provider === 'plaid') {
     return plaidExchangePublicToken(plaidConfigFromEnv(), publicToken);
   }
 
-  // MX stub — kept behind the same interface until MX is provisioned.
-  const clientId = Deno.env.get('MX_CLIENT_ID');
-  const apiKey = Deno.env.get('MX_API_KEY');
-  if (!clientId || !apiKey) {
-    throw new Error('MX credentials not configured');
-  }
+  const config = mxConfigFromEnv();
+  const userGuid = await mxEnsureUser(config, userId);
+  // The widget hands back only the member guid; tolerate a client that already
+  // sends the full pair so both widget integrations work.
+  const memberGuid = publicToken.includes(':')
+    ? decodeMxCredential(publicToken).memberGuid
+    : publicToken;
+
   return {
-    access_token: `access-${provider}-${crypto.randomUUID()}`,
-    item_id: `member-${crypto.randomUUID()}`,
+    access_token: encodeMxCredential(userGuid, memberGuid),
+    // `item_id` is the provider-side connection handle the webhook matches on.
+    // For MX that is the member guid (see bank-webhook's MX lookup).
+    item_id: memberGuid,
   };
 }
 
@@ -185,21 +222,65 @@ async function exchangeProviderToken(
 // ---------------------------------------------------------------------------
 
 /**
+ * A provider's external account, normalized to the fields account provisioning
+ * needs. Each provider maps its own payload (and its own account-type
+ * taxonomy) into this shape so the linking loop stays provider-agnostic.
+ */
+interface ExternalAccount {
+  externalId: string;
+  displayName: string;
+  internalType: InternalAccountType;
+  currencyCode: string;
+  balanceCents: number;
+  externalType: string | null;
+  externalSubtype: string | null;
+}
+
+/** Convert a possibly-absent major-unit balance to integer cents. */
+function toBalanceCents(balance: number | null | undefined): number {
+  return typeof balance === 'number' && Number.isFinite(balance) ? Math.round(balance * 100) : 0;
+}
+
+/** Normalize a Plaid account into the provider-agnostic shape. */
+function plaidAccountToExternal(account: PlaidAccount): ExternalAccount {
+  return {
+    externalId: account.account_id,
+    displayName: account.name ?? account.official_name ?? 'Account',
+    internalType: plaidAccountTypeToInternal(account.type, account.subtype),
+    currencyCode: account.balances?.iso_currency_code ?? 'USD',
+    balanceCents: toBalanceCents(account.balances?.current),
+    externalType: account.type,
+    externalSubtype: account.subtype,
+  };
+}
+
+/**
  * Discover the external accounts for a connection via the provider's API.
  *
- * Plaid: real POST /accounts/get. MX: documented stub (returns none) until its
- * backend adapter lands — mirrors the createLinkToken/exchangeToken dispatch.
+ * Plaid: POST /accounts/get. MX: GET /users/{u}/members/{m}/accounts.
  */
 async function discoverProviderAccounts(
   provider: Provider,
   accessToken: string,
-): Promise<PlaidAccount[]> {
+): Promise<ExternalAccount[]> {
   if (provider === 'plaid') {
     const { accounts } = await plaidGetAccounts(plaidConfigFromEnv(), accessToken);
-    return accounts;
+    return accounts.map(plaidAccountToExternal);
   }
-  // MX stub — no account discovery until MX is provisioned.
-  return [];
+
+  const config = mxConfigFromEnv();
+  const { userGuid, memberGuid } = decodeMxCredential(accessToken);
+  const { accounts } = await mxGetAccounts(config, userGuid, memberGuid);
+
+  return accounts.map((account) => ({
+    externalId: account.guid,
+    displayName: account.name ?? 'Account',
+    internalType: mxAccountTypeToInternal(account.type, account.subtype),
+    currencyCode: account.currency_code ?? 'USD',
+    balanceCents: toBalanceCents(account.balance),
+    externalType: account.type,
+    externalSubtype: account.subtype,
+  }));
 }
 
 /**
@@ -216,8 +297,7 @@ async function runInitialProviderSync(
   if (provider === 'plaid') {
     return ingestPlaidTransactions(supabase, connection, logger);
   }
-  // MX sync lands with its backend adapter; nothing to backfill yet.
-  return { added: 0, modified: 0, removed: 0 };
+  return ingestMxTransactions(supabase, connection, logger);
 }
 
 /**
@@ -246,23 +326,15 @@ async function provisionAndLinkAccounts(
   let linked = 0;
 
   for (const ext of externalAccounts) {
-    const currencyCode = ext.balances?.iso_currency_code ?? 'USD';
-    const displayName = ext.name ?? ext.official_name ?? 'Account';
-    const currentBalance = ext.balances?.current;
-    const balanceCents =
-      typeof currentBalance === 'number' && Number.isFinite(currentBalance)
-        ? Math.round(currentBalance * 100)
-        : 0;
-
     // 1. Provision an internal Finance account for this external account.
     const { data: account, error: accountError } = await supabase
       .from('accounts')
       .insert({
         household_id: params.householdId,
-        name: displayName,
-        type: plaidAccountTypeToInternal(ext.type, ext.subtype),
-        currency_code: currencyCode,
-        balance_cents: balanceCents,
+        name: ext.displayName,
+        type: ext.internalType,
+        currency_code: ext.currencyCode,
+        balance_cents: ext.balanceCents,
         is_active: true,
       })
       .select('id')
@@ -281,11 +353,11 @@ async function provisionAndLinkAccounts(
       bank_connection_id: params.connectionId,
       household_id: params.householdId,
       account_id: account.id,
-      external_account_id: ext.account_id,
-      external_name: displayName,
-      external_type: ext.type,
-      external_subtype: ext.subtype,
-      currency_code: currencyCode,
+      external_account_id: ext.externalId,
+      external_name: ext.displayName,
+      external_type: ext.externalType,
+      external_subtype: ext.externalSubtype,
+      currency_code: ext.currencyCode,
       is_linked: true,
     });
 
@@ -367,7 +439,7 @@ serve(async (req: Request): Promise<Response> => {
 
       const linkResult = await createProviderLinkToken(body.provider, user.id).catch(
         (err: unknown) => {
-          if (err instanceof PlaidApiError) {
+          if (err instanceof PlaidApiError || err instanceof MxApiError) {
             logger.warn('Provider link token failed', {
               provider: body.provider,
               errorCode: err.errorCode,
@@ -415,19 +487,21 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      // Exchange public token for access token — NEVER log the access token
-      const exchangeResult = await exchangeProviderToken(body.provider, body.public_token).catch(
-        (err: unknown) => {
-          if (err instanceof PlaidApiError) {
-            logger.warn('Provider token exchange failed', {
-              provider: body.provider,
-              errorCode: err.errorCode,
-            });
-            return null;
-          }
-          throw err;
-        },
-      );
+      // Exchange the client handle for the stored credential — NEVER log it.
+      const exchangeResult = await exchangeProviderToken(
+        body.provider,
+        body.public_token,
+        user.id,
+      ).catch((err: unknown) => {
+        if (err instanceof PlaidApiError || err instanceof MxApiError) {
+          logger.warn('Provider token exchange failed', {
+            provider: body.provider,
+            errorCode: err.errorCode,
+          });
+          return null;
+        }
+        throw err;
+      });
 
       if (!exchangeResult) {
         return errorResponse(req, 'Provider token exchange failed', 502);

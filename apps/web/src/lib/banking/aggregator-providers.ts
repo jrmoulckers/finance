@@ -12,8 +12,8 @@
  *
  * Routing eligibility is governed entirely by that synced directory: TrueLayer
  * and Finicity ship as **disabled placeholders** (see the Phase 3 seed) and are
- * therefore never selected until their backend adapters and credentials land —
- * the same posture as the MX backend stub.
+ * therefore never selected until their backend adapters and credentials land.
+ * Plaid and MX both have live backend adapters.
  *
  * @module lib/banking/aggregator-providers
  */
@@ -58,7 +58,7 @@ export class PlaidProvider extends BaseAggregatorProvider {
   }
 }
 
-/** MX — secondary US/CA aggregator (backend stub until credentials land). */
+/** MX — secondary US/CA aggregator (live via the MX Platform API). */
 export class MxProvider extends BaseAggregatorProvider {
   /**
    * @param transport - Edge transport for the banking functions.

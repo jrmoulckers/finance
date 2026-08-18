@@ -62,6 +62,10 @@ on:
         required: false
       MX_WEBHOOK_SECRET:
         required: false
+      MX_CLIENT_ID:
+        required: false
+      MX_API_KEY:
+        required: false
       PLAID_CLIENT_ID:
         required: false
       PLAID_SECRET:
@@ -543,7 +547,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
-      - name: Provision bank-connection env (Plaid) on server
+      - name: Provision bank-connection env (Plaid + MX) on server
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -554,6 +558,9 @@ jobs:
           PLAID_ENVIRONMENT: ${{ vars.PLAID_ENVIRONMENT || 'sandbox' }}
           PLAID_WEBHOOK_URL: ${{ vars.PLAID_WEBHOOK_URL || 'https://finance.jrmoulckers.com/functions/v1/bank-webhook?provider=plaid' }}
           BANK_ENCRYPTION_KEY: ${{ secrets.BANK_ENCRYPTION_KEY }}
+          MX_CLIENT_ID: ${{ secrets.MX_CLIENT_ID }}
+          MX_API_KEY: ${{ secrets.MX_API_KEY }}
+          MX_ENVIRONMENT: ${{ vars.MX_ENVIRONMENT || 'sandbox' }}
           MX_WEBHOOK_SECRET: ${{ secrets.MX_WEBHOOK_SECRET }}
         run: |
           if [ -z "$DEPLOY_HOST" ]; then
@@ -579,6 +586,9 @@ jobs:
             "PLAID_ENVIRONMENT=$PLAID_ENVIRONMENT" \
             "PLAID_WEBHOOK_URL=$PLAID_WEBHOOK_URL" \
             "BANK_ENCRYPTION_KEY=$BANK_ENCRYPTION_KEY" \
+            "MX_CLIENT_ID=$MX_CLIENT_ID" \
+            "MX_API_KEY=$MX_API_KEY" \
+            "MX_ENVIRONMENT=$MX_ENVIRONMENT" \
             "MX_WEBHOOK_SECRET=$MX_WEBHOOK_SECRET" \
             '# <<< plaid-managed <<<')
           BLOCK_B64=$(printf '%s' "$BLOCK" | base64 -w 0)

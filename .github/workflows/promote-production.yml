@@ -44,6 +44,8 @@ jobs:
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       MX_WEBHOOK_SECRET: ${{ secrets.MX_WEBHOOK_SECRET }}
+      MX_CLIENT_ID: ${{ secrets.MX_CLIENT_ID }}
+      MX_API_KEY: ${{ secrets.MX_API_KEY }}
       PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
       PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
       POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
