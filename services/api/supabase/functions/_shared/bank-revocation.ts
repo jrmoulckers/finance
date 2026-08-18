@@ -13,9 +13,10 @@
  *     disconnect / delete flow. A processor outage or missing credential
  *     must not block a user from disconnecting or deleting their account.
  *   - MUST NOT log or return the plaintext access token or key material.
- *   - Only Plaid has a real revocation path today (POST /item/remove). MX,
- *     TrueLayer, and Finicity are stubs and record a `skipped` outcome so the
- *     audit trail still shows revocation was attempted.
+ *   - Plaid revokes via POST /item/remove; MX revokes by deleting the member
+ *     (DELETE /users/{u}/members/{m}). TrueLayer and Finicity are disabled
+ *     placeholders and record a `skipped` outcome so the audit trail still
+ *     shows revocation was attempted.
  *
  * The result is returned to the caller so it can be written to an audit log
  * without exposing any secret.
@@ -23,6 +24,7 @@
 
 import { decryptToken } from './bank-crypto.ts';
 import { removeItem, PlaidApiError, type PlaidConfig } from './plaid.ts';
+import { decodeMxCredential, deleteMember, MxApiError, type MxConfig } from './mx.ts';
 
 /** Outcome of a best-effort revocation attempt. */
 export type TokenRevocationOutcome = 'revoked' | 'skipped' | 'failed';
@@ -53,6 +55,7 @@ export interface RevokeProviderTokenDeps {
   getEnv?: (key: string) => string | undefined;
   decrypt?: (envelope: string, keyMaterial: string) => Promise<string>;
   revokePlaid?: (config: PlaidConfig, accessToken: string) => Promise<unknown>;
+  revokeMx?: (config: MxConfig, userGuid: string, memberGuid: string) => Promise<unknown>;
 }
 
 /**
@@ -64,6 +67,12 @@ const ALREADY_INVALID_PLAID_CODES = new Set([
   'INVALID_ACCESS_TOKEN',
   'ITEM_NO_LONGER_SUPPORTED',
 ]);
+
+/**
+ * MX statuses that mean the member is already gone. A 404 carries no
+ * `error.status`, so the coarse HTTP code is matched too.
+ */
+const ALREADY_INVALID_MX_CODES = new Set(['HTTP_404', 'NOT_FOUND', 'RESOURCE_NOT_FOUND']);
 
 function defaultGetEnv(key: string): string | undefined {
   // Deno is the Edge runtime; guard so the module can be imported under other
@@ -85,19 +94,20 @@ export async function revokeProviderToken(
   const getEnv = deps.getEnv ?? defaultGetEnv;
   const decrypt = deps.decrypt ?? decryptToken;
   const revokePlaid = deps.revokePlaid ?? removeItem;
+  const revokeMx = deps.revokeMx ?? deleteMember;
 
   try {
     if (!params.encryptedAccessToken) {
       return { provider, outcome: 'skipped', detail: 'no stored token' };
     }
 
-    // Only Plaid supports revocation today. Other providers are stubs.
-    if (provider !== 'plaid') {
+    // TrueLayer/Finicity are disabled placeholders with no adapter yet.
+    if (provider !== 'plaid' && provider !== 'mx') {
       return { provider, outcome: 'skipped', detail: 'provider revocation not implemented' };
     }
 
-    const clientId = getEnv('PLAID_CLIENT_ID');
-    const secret = getEnv('PLAID_SECRET');
+    const clientId = getEnv(provider === 'plaid' ? 'PLAID_CLIENT_ID' : 'MX_CLIENT_ID');
+    const secret = getEnv(provider === 'plaid' ? 'PLAID_SECRET' : 'MX_API_KEY');
     if (!clientId || !secret) {
       return { provider, outcome: 'skipped', detail: 'provider credentials not configured' };
     }
@@ -113,6 +123,34 @@ export async function revokeProviderToken(
     } catch {
       // Do not surface the crypto error detail — it could echo ciphertext.
       return { provider, outcome: 'failed', detail: 'token decryption failed' };
+    }
+
+    if (provider === 'mx') {
+      let userGuid: string;
+      let memberGuid: string;
+      try {
+        ({ userGuid, memberGuid } = decodeMxCredential(accessToken));
+      } catch {
+        return { provider, outcome: 'failed', detail: 'stored credential malformed' };
+      }
+
+      const mxConfig: MxConfig = {
+        clientId,
+        apiKey: secret,
+        environment: getEnv('MX_ENVIRONMENT') ?? 'sandbox',
+      };
+
+      try {
+        await revokeMx(mxConfig, userGuid, memberGuid);
+        return { provider, outcome: 'revoked' };
+      } catch (err) {
+        if (err instanceof MxApiError && ALREADY_INVALID_MX_CODES.has(err.errorCode)) {
+          return { provider, outcome: 'revoked', detail: 'already invalid at provider' };
+        }
+        // MxApiError only carries a safe status code; never the raw body.
+        const detail = err instanceof MxApiError ? err.errorCode : 'revocation request failed';
+        return { provider, outcome: 'failed', detail };
+      }
     }
 
     const config: PlaidConfig = {

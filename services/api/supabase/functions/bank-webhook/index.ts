@@ -32,6 +32,9 @@
  *   PLAID_ENVIRONMENT         — Plaid environment (sandbox/development/production)
  *   BANK_ENCRYPTION_KEY       — AES-256 key for decrypting stored access tokens
  *   MX_WEBHOOK_SECRET         — MX HMAC verification secret
+ *   MX_CLIENT_ID              — MX client id (transaction pull)
+ *   MX_API_KEY                — MX API key (transaction pull)
+ *   MX_ENVIRONMENT            — MX environment (sandbox/integration/production)
  */
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
@@ -55,6 +58,7 @@ import { verifyWebhookSignature } from '../_shared/webhook-verify.ts';
 import { verifyPlaidWebhook } from '../_shared/plaid-webhook.ts';
 import { getWebhookVerificationKey, type PlaidConfig } from '../_shared/plaid.ts';
 import {
+  ingestMxTransactions,
   ingestPlaidTransactions,
   type BankConnectionRow,
   type IngestionSummary,
@@ -268,9 +272,11 @@ async function processPlaidEvent(
 }
 
 /**
- * Process an MX webhook event. MX transaction contents are not delivered in
- * the webhook payload, so we record intent and health (full MX pull is a
- * documented follow-up). NEVER logs raw financial data.
+ * Process an MX webhook event.
+ *
+ * MX does not deliver transaction contents in the webhook payload, so a
+ * transaction event triggers a real pull from the MX API (mirroring the Plaid
+ * path). NEVER logs raw financial data — only aggregate counts.
  */
 async function processMxEvent(
   supabase: AdminClient,
@@ -281,7 +287,7 @@ async function processMxEvent(
 
   const { data: connection } = await supabase
     .from('bank_connections')
-    .select('id, household_id')
+    .select('id, household_id, encrypted_access_token, metadata')
     .eq('provider', 'mx')
     .contains('metadata', { item_id: event.member_guid })
     .is('deleted_at', null)
@@ -292,12 +298,11 @@ async function processMxEvent(
     return;
   }
 
+  const conn = connection as BankConnectionRow;
+
   if (event.event_type === 'member_status_changed') {
-    await supabase
-      .from('bank_connections')
-      .update({ status: 'needs_reauth' })
-      .eq('id', connection.id);
-    await recordHealthEvent(supabase, connection, 'auth_expired', logger, {
+    await supabase.from('bank_connections').update({ status: 'needs_reauth' }).eq('id', conn.id);
+    await recordHealthEvent(supabase, conn, 'auth_expired', logger, {
       errorCategory: 'auth',
       errorDetail: event.event_type,
     });
@@ -305,17 +310,37 @@ async function processMxEvent(
   }
 
   if (event.event_type === 'transactions_added' || event.event_type === 'member_connected') {
+    let summary: IngestionSummary = { added: 0, modified: 0, removed: 0 };
+    let syncStatus = 'completed';
+    try {
+      summary = await ingestMxTransactions(supabase, conn, logger);
+    } catch (err) {
+      syncStatus = 'failed';
+      logger.error('MX ingestion failed', { errorMessage: (err as Error).message });
+    }
+
     await supabase.from('bank_sync_log').insert({
-      bank_connection_id: connection.id,
-      household_id: connection.household_id,
-      sync_type: 'webhook',
-      status: 'pending',
+      bank_connection_id: conn.id,
+      household_id: conn.household_id,
+      sync_type: event.event_type === 'member_connected' ? 'initial' : 'webhook',
+      status: syncStatus,
+      transactions_added: summary.added,
+      transactions_updated: summary.modified,
+      completed_at: new Date().toISOString(),
     });
-    await supabase
-      .from('bank_connections')
-      .update({ last_synced_at: new Date().toISOString() })
-      .eq('id', connection.id);
-    await recordHealthEvent(supabase, connection, 'healthy', logger);
+
+    await recordHealthEvent(
+      supabase,
+      conn,
+      syncStatus === 'failed' ? 'provider_down' : 'healthy',
+      logger,
+    );
+
+    logger.info('MX transactions processed', {
+      added: summary.added,
+      modified: summary.modified,
+      syncStatus,
+    });
   }
 }
 

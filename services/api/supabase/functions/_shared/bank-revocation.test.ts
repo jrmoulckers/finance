@@ -16,12 +16,16 @@ import {
   type RevokeProviderTokenDeps,
 } from './bank-revocation.ts';
 import { PlaidApiError, type PlaidConfig } from './plaid.ts';
+import { MxApiError } from './mx.ts';
 
 const FULL_ENV: Record<string, string> = {
   PLAID_CLIENT_ID: 'client',
   PLAID_SECRET: 'secret',
   BANK_ENCRYPTION_KEY: 'key-material',
   PLAID_ENVIRONMENT: 'sandbox',
+  MX_CLIENT_ID: 'mx-client',
+  MX_API_KEY: 'mx-key',
+  MX_ENVIRONMENT: 'sandbox',
 };
 
 function depsWith(
@@ -32,6 +36,7 @@ function depsWith(
     getEnv: (k: string) => env[k],
     decrypt: () => Promise.resolve('decrypted-token'),
     revokePlaid: () => Promise.resolve({ request_id: 'req-1' }),
+    revokeMx: () => Promise.resolve(undefined),
     ...overrides,
   };
 }
@@ -45,8 +50,8 @@ Deno.test('revokeProviderToken — skipped when no stored token', async () => {
   assertEquals(result.detail, 'no stored token');
 });
 
-Deno.test('revokeProviderToken — skipped for non-Plaid providers (stub)', async () => {
-  for (const provider of ['mx', 'truelayer', 'finicity']) {
+Deno.test('revokeProviderToken — skipped for providers with no adapter', async () => {
+  for (const provider of ['truelayer', 'finicity']) {
     const result = await revokeProviderToken(
       { provider, encryptedAccessToken: 'aes256gcm:iv:ct' },
       depsWith(FULL_ENV),
@@ -54,6 +59,64 @@ Deno.test('revokeProviderToken — skipped for non-Plaid providers (stub)', asyn
     assertEquals(result.outcome, 'skipped');
     assertEquals(result.detail, 'provider revocation not implemented');
   }
+});
+
+Deno.test('revokeProviderToken — revokes an MX member with the decoded guid pair', async () => {
+  let seen: { userGuid: string; memberGuid: string } | null = null;
+  const result = await revokeProviderToken(
+    { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
+    depsWith(FULL_ENV, {
+      decrypt: () => Promise.resolve('USR-1:MBR-2'),
+      revokeMx: (_config, userGuid, memberGuid) => {
+        seen = { userGuid, memberGuid };
+        return Promise.resolve(undefined);
+      },
+    }),
+  );
+  assertEquals(result.outcome, 'revoked');
+  assertEquals(seen, { userGuid: 'USR-1', memberGuid: 'MBR-2' });
+});
+
+Deno.test('revokeProviderToken — MX 404 counts as revoked (nothing left to revoke)', async () => {
+  const result = await revokeProviderToken(
+    { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
+    depsWith(FULL_ENV, {
+      decrypt: () => Promise.resolve('USR-1:MBR-2'),
+      revokeMx: () => Promise.reject(new MxApiError(404, 'HTTP_404')),
+    }),
+  );
+  assertEquals(result.outcome, 'revoked');
+  assertEquals(result.detail, 'already invalid at provider');
+});
+
+Deno.test('revokeProviderToken — MX failure surfaces only the safe code', async () => {
+  const result = await revokeProviderToken(
+    { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
+    depsWith(FULL_ENV, {
+      decrypt: () => Promise.resolve('USR-1:MBR-2'),
+      revokeMx: () => Promise.reject(new MxApiError(500, 'INTERNAL_ERROR')),
+    }),
+  );
+  assertEquals(result.outcome, 'failed');
+  assertEquals(result.detail, 'INTERNAL_ERROR');
+});
+
+Deno.test('revokeProviderToken — MX malformed stored credential fails safely', async () => {
+  const result = await revokeProviderToken(
+    { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
+    depsWith(FULL_ENV, { decrypt: () => Promise.resolve('not-a-pair') }),
+  );
+  assertEquals(result.outcome, 'failed');
+  assertEquals(result.detail, 'stored credential malformed');
+});
+
+Deno.test('revokeProviderToken — skipped when MX credentials missing', async () => {
+  const result = await revokeProviderToken(
+    { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
+    depsWith({ BANK_ENCRYPTION_KEY: 'key-material' }),
+  );
+  assertEquals(result.outcome, 'skipped');
+  assertEquals(result.detail, 'provider credentials not configured');
 });
 
 Deno.test('revokeProviderToken — skipped when Plaid credentials missing', async () => {
@@ -153,7 +216,7 @@ Deno.test('revokeProviderTokens — processes a batch of connections', async () 
   const results = await revokeProviderTokens(
     [
       { provider: 'plaid', encryptedAccessToken: 'aes256gcm:iv:ct' },
-      { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
+      { provider: 'truelayer', encryptedAccessToken: 'aes256gcm:iv:ct' },
       { provider: 'plaid', encryptedAccessToken: null },
     ],
     depsWith(FULL_ENV),
@@ -162,4 +225,18 @@ Deno.test('revokeProviderTokens — processes a batch of connections', async () 
   assertEquals(results[0].outcome, 'revoked');
   assertEquals(results[1].outcome, 'skipped');
   assertEquals(results[2].outcome, 'skipped');
+});
+
+Deno.test('revokeProviderTokens — revokes mixed Plaid and MX batches', async () => {
+  const results = await revokeProviderTokens(
+    [
+      { provider: 'plaid', encryptedAccessToken: 'aes256gcm:iv:ct' },
+      { provider: 'mx', encryptedAccessToken: 'aes256gcm:iv:ct' },
+    ],
+    depsWith(FULL_ENV, { decrypt: () => Promise.resolve('USR-1:MBR-2') }),
+  );
+  assertEquals(
+    results.map((r) => r.outcome),
+    ['revoked', 'revoked'],
+  );
 });
