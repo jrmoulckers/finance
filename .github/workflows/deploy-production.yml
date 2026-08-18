@@ -567,7 +567,7 @@ jobs:
             echo '::warning::DEPLOY_HOST not configured — skipping bank env provisioning'
             exit 0
           fi
-          if [ -z "$PLAID_CLIENT_ID" ] && [ -z "$MX_WEBHOOK_SECRET" ]; then
+          if [ -z "$PLAID_CLIENT_ID" ] && [ -z "$MX_CLIENT_ID" ] && [ -z "$MX_WEBHOOK_SECRET" ]; then
             echo '::notice::No bank credentials configured — leaving bank features dark'
             exit 0
           fi
@@ -608,7 +608,7 @@ jobs:
             mv "$tmp" "$ENV_FILE"
             chmod 600 "$ENV_FILE"
             echo "Bank env keys now present in deploy/.env:"
-            grep -E '^(PLAID_|MX_WEBHOOK_SECRET|BANK_ENCRYPTION_KEY)=' "$ENV_FILE" | sed -E 's/=.*/=<set>/' || true
+            grep -E '^(PLAID_|MX_|BANK_ENCRYPTION_KEY)=' "$ENV_FILE" | sed -E 's/=.*/=<set>/' || true
           REMOTE
 
           echo '### 🔐 Bank env provisioned on server' >> "$GITHUB_STEP_SUMMARY"
