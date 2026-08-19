@@ -221,12 +221,25 @@
 	}
 
 	# Access logging
+	#
+	# The MX webhook URL carries its shared secret in the `token` query
+	# parameter (MX does not sign webhook bodies), so `token` is redacted
+	# before the request URI is written to disk. Without this filter every
+	# MX delivery would persist MX_WEBHOOK_SECRET in plaintext for the
+	# retention window of the log.
 	log {
 		output file /data/access.log {
 			roll_size 10mb
 			roll_keep 5
 			roll_keep_for 168h
 		}
-		format json
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					replace token REDACTED
+				}
+			}
+		}
 	}
 }

@@ -12,12 +12,14 @@
  *   Plaid: TRANSACTIONS (SYNC_UPDATES_AVAILABLE, DEFAULT_UPDATE,
  *          INITIAL_UPDATE, HISTORICAL_UPDATE), ITEM (ERROR,
  *          PENDING_EXPIRATION, USER_PERMISSION_REVOKED)
- *   MX:    member_connected, member_status_changed, transactions_added
+ *   MX:    AGGREGATION (member_data_updated), CONNECTION_STATUS (CHANGED)
  *
  * Security:
  *   - Plaid webhooks are verified via the signed JWT in the
  *     `Plaid-Verification` header (ES256 JWS + request-body SHA-256).
- *   - MX webhooks are verified via HMAC-SHA256 of the raw body.
+ *   - MX does not sign webhook requests at all, so MX webhooks are
+ *     authenticated by a shared secret carried in the `token` query
+ *     parameter of the registered webhook URL (see `verifyMx`).
  *   - No user authentication — endpoints are public but cryptographically
  *     verified. Rate limited by IP.
  *   - Access tokens are decrypted only in memory for provider sync and are
@@ -31,7 +33,8 @@
  *   PLAID_SECRET              — Plaid secret (webhook key fetch + sync)
  *   PLAID_ENVIRONMENT         — Plaid environment (sandbox/development/production)
  *   BANK_ENCRYPTION_KEY       — AES-256 key for decrypting stored access tokens
- *   MX_WEBHOOK_SECRET         — MX HMAC verification secret
+ *   MX_WEBHOOK_SECRET         — Shared secret expected in the MX webhook
+ *                               URL's `token` query parameter
  *   MX_CLIENT_ID              — MX client id (transaction pull)
  *   MX_API_KEY                — MX API key (transaction pull)
  *   MX_ENVIRONMENT            — MX environment (sandbox/integration/production)
@@ -54,9 +57,10 @@ import {
   jsonResponse,
   methodNotAllowedResponse,
 } from '../_shared/response.ts';
-import { verifyWebhookSignature } from '../_shared/webhook-verify.ts';
+import { timingSafeEqual } from '../_shared/crypto.ts';
 import { verifyPlaidWebhook } from '../_shared/plaid-webhook.ts';
 import { getWebhookVerificationKey, type PlaidConfig } from '../_shared/plaid.ts';
+import { classifyMxWebhookEvent, type MxWebhookEvent } from '../_shared/mx.ts';
 import {
   ingestMxTransactions,
   ingestPlaidTransactions,
@@ -96,17 +100,32 @@ async function verifyPlaid(body: string, headers: Headers): Promise<boolean> {
 }
 
 /**
- * Verify an MX webhook via HMAC-SHA256 of the raw body. MX sends the
- * signature in the `mx-signature` header as `sha256=<hex>`.
+ * Verify an MX webhook.
+ *
+ * MX does **not** sign webhook requests. Its published verification guidance
+ * offers only transport/endpoint-level options (HTTP Basic, mTLS, OAuth2) and
+ * documents no body-signing header — an earlier revision of this function
+ * required an `mx-signature` header that MX never sends, which rejected every
+ * real delivery with 401.
+ *
+ * Authenticity is therefore established with a shared secret carried in the
+ * `token` query parameter of the webhook URL registered in the MX dashboard.
+ * The comparison is constant time so a wrong token cannot be refined one
+ * character at a time from response latency.
+ *
+ * Defense in depth: `processMxEvent` never trusts payload contents. It uses
+ * `member_guid` only to look up a connection we already own and then pulls the
+ * data from MX's authenticated API, so a forged event cannot inject financial
+ * data — at worst it triggers a redundant sync.
  */
-async function verifyMx(body: string, headers: Headers): Promise<boolean> {
+async function verifyMx(url: URL): Promise<boolean> {
   const mxSecret = Deno.env.get('MX_WEBHOOK_SECRET');
   if (!mxSecret) return false;
 
-  const signature = headers.get('mx-signature');
-  if (!signature) return false;
+  const token = url.searchParams.get('token');
+  if (!token) return false;
 
-  return verifyWebhookSignature(body, signature, mxSecret);
+  return timingSafeEqual(token, mxSecret);
 }
 
 // ---------------------------------------------------------------------------
@@ -120,12 +139,6 @@ interface PlaidWebhookEvent {
   error?: { error_code: string; error_message: string };
   new_transactions?: number;
   removed_transactions?: string[];
-}
-
-interface MxWebhookEvent {
-  event_type: string;
-  member_guid: string;
-  user_guid: string;
 }
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -283,7 +296,12 @@ async function processMxEvent(
   event: MxWebhookEvent,
   logger: FunctionLogger,
 ): Promise<void> {
-  logger.info('Processing MX event', { eventType: event.event_type });
+  logger.info('Processing MX event', { mxType: event.type, mxAction: event.action });
+
+  if (!event.member_guid) {
+    logger.warn('MX event has no member_guid', { mxType: event.type, mxAction: event.action });
+    return;
+  }
 
   const { data: connection } = await supabase
     .from('bank_connections')
@@ -299,17 +317,23 @@ async function processMxEvent(
   }
 
   const conn = connection as BankConnectionRow;
+  const disposition = classifyMxWebhookEvent(event);
 
-  if (event.event_type === 'member_status_changed') {
+  // MX only emits CONNECTION_STATUS when a member enters an actionable state
+  // (CHALLENGED, DENIED, EXPIRED, IMPAIRED, IMPEDED, LOCKED, PREVENTED,
+  // REJECTED) — all of which require the user to revisit the connection.
+  // `connection_status_message` is deliberately not logged: it embeds the
+  // institution name.
+  if (disposition === 'needs_reauth') {
     await supabase.from('bank_connections').update({ status: 'needs_reauth' }).eq('id', conn.id);
     await recordHealthEvent(supabase, conn, 'auth_expired', logger, {
       errorCategory: 'auth',
-      errorDetail: event.event_type,
+      errorDetail: event.connection_status ?? 'unknown',
     });
     return;
   }
 
-  if (event.event_type === 'transactions_added' || event.event_type === 'member_connected') {
+  if (disposition === 'ingest') {
     let summary: IngestionSummary = { added: 0, modified: 0, removed: 0 };
     let syncStatus = 'completed';
     try {
@@ -322,7 +346,7 @@ async function processMxEvent(
     await supabase.from('bank_sync_log').insert({
       bank_connection_id: conn.id,
       household_id: conn.household_id,
-      sync_type: event.event_type === 'member_connected' ? 'initial' : 'webhook',
+      sync_type: 'webhook',
       status: syncStatus,
       transactions_added: summary.added,
       transactions_updated: summary.modified,
@@ -341,7 +365,17 @@ async function processMxEvent(
       modified: summary.modified,
       syncStatus,
     });
+    return;
   }
+
+  // Falling through means MX sent a category we do not handle. Log it loudly:
+  // silently returning 200 on an unrecognized shape is what hid the earlier
+  // `event_type` contract mismatch, because MX treats 200 as delivered and
+  // never retries.
+  logger.warn('Unhandled MX webhook event category', {
+    mxType: event.type,
+    mxAction: event.action,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -380,14 +414,12 @@ serve(async (req: Request): Promise<Response> => {
       return errorResponse(req, 'provider query parameter must be plaid or mx', 400);
     }
 
-    // Verify webhook signature BEFORE parsing/processing.
+    // Verify the webhook BEFORE parsing/processing.
     const verified =
-      provider === 'plaid'
-        ? await verifyPlaid(body, req.headers)
-        : await verifyMx(body, req.headers);
+      provider === 'plaid' ? await verifyPlaid(body, req.headers) : await verifyMx(url);
 
     if (!verified) {
-      logger.warn('Webhook signature verification failed', { provider });
+      logger.warn('Webhook verification failed', { provider });
       return errorResponse(req, 'Invalid webhook signature', 401);
     }
 

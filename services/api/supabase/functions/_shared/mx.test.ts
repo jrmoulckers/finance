@@ -17,6 +17,7 @@ import { assertEquals, assertThrows } from 'https://deno.land/std@0.208.0/testin
 
 import {
   buildWidgetUrlRequest,
+  classifyMxWebhookEvent,
   decodeMxCredential,
   encodeMxCredential,
   mxAccountTypeToInternal,
@@ -25,6 +26,7 @@ import {
   mxHeaders,
   mxTransactionToRecord,
   type MxTransaction,
+  type MxWebhookEvent,
 } from './mx.ts';
 
 // ---------------------------------------------------------------------------
@@ -214,3 +216,78 @@ Deno.test(
     assertEquals(record.date, '2026-05-05');
   },
 );
+
+// ---------------------------------------------------------------------------
+// Webhook event classification (#4377)
+// ---------------------------------------------------------------------------
+//
+// Regression guard. The handler previously branched on an `event_type` field
+// and the values `member_connected` / `member_status_changed` /
+// `transactions_added` — none of which MX sends. Real deliveries matched no
+// branch, returned 200, and MX (which treats 200 as delivered) never retried,
+// so the failure was completely silent.
+
+Deno.test('classifyMxWebhookEvent routes an AGGREGATION event to ingestion', () => {
+  // Verbatim shape from MX's aggregation webhook documentation.
+  const event: MxWebhookEvent = {
+    action: 'member_data_updated',
+    type: 'AGGREGATION',
+    member_guid: 'MBR-48d9a481',
+    user_guid: 'USR-eaf4ac68',
+    transactions_created_count: 3,
+    transactions_updated_count: 2,
+  };
+  assertEquals(classifyMxWebhookEvent(event), 'ingest');
+});
+
+Deno.test('classifyMxWebhookEvent routes a CONNECTION_STATUS event to re-auth', () => {
+  // Verbatim shape from MX's connection-status webhook documentation.
+  const event: MxWebhookEvent = {
+    action: 'CHANGED',
+    connection_status: 'CHALLENGED',
+    member_guid: 'MBR-48d9a481',
+    type: 'CONNECTION_STATUS',
+    user_guid: 'USR-eaf4ac68',
+  };
+  assertEquals(classifyMxWebhookEvent(event), 'needs_reauth');
+});
+
+Deno.test('classifyMxWebhookEvent treats every actionable connection status as re-auth', () => {
+  // MX emits CONNECTION_STATUS only for states needing user attention.
+  for (const status of [
+    'CHALLENGED',
+    'DENIED',
+    'EXPIRED',
+    'IMPAIRED',
+    'IMPEDED',
+    'LOCKED',
+    'PREVENTED',
+    'REJECTED',
+  ]) {
+    assertEquals(
+      classifyMxWebhookEvent({
+        type: 'CONNECTION_STATUS',
+        action: 'CHANGED',
+        connection_status: status,
+      }),
+      'needs_reauth',
+      `expected ${status} to require re-auth`,
+    );
+  }
+});
+
+Deno.test('classifyMxWebhookEvent reports the retired event_type shape as unhandled', () => {
+  // The exact payload the old code expected. It must NOT resolve to a real
+  // disposition, so the handler logs it instead of pretending it succeeded.
+  assertEquals(
+    classifyMxWebhookEvent({ event_type: 'transactions_added' } as MxWebhookEvent),
+    'unhandled',
+  );
+});
+
+Deno.test('classifyMxWebhookEvent reports unknown and empty payloads as unhandled', () => {
+  assertEquals(classifyMxWebhookEvent({}), 'unhandled');
+  assertEquals(classifyMxWebhookEvent({ type: 'MEMBER', action: 'created' }), 'unhandled');
+  // Category matching is exact — MX sends upper-case category names.
+  assertEquals(classifyMxWebhookEvent({ type: 'aggregation' }), 'unhandled');
+});

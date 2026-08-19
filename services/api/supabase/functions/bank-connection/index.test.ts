@@ -163,15 +163,20 @@ Deno.test('Plaid webhook event structure', () => {
 });
 
 Deno.test('MX webhook event structure', () => {
+  // MX dispatches on `type` + `action`. There is no `event_type` field — see
+  // classifyMxWebhookEvent in _shared/mx.ts (#4377).
   const event = {
-    event_type: 'transactions_added',
+    action: 'member_data_updated',
+    type: 'AGGREGATION',
     member_guid: 'MBR-123',
     user_guid: 'USR-123',
   };
 
-  assertExists(event.event_type);
+  assertExists(event.type);
+  assertExists(event.action);
   assertExists(event.member_guid);
   assertExists(event.user_guid);
+  assertEquals('event_type' in event, false);
 });
 
 // ---------------------------------------------------------------------------

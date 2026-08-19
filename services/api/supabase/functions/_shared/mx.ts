@@ -463,3 +463,56 @@ export function mxTransactionToRecord(txn: MxTransaction, target: IngestTarget):
     provider_transaction_id: txn.guid,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Webhook contract
+// ---------------------------------------------------------------------------
+
+/**
+ * An MX webhook payload.
+ *
+ * MX dispatches on a `type` (event category) plus an `action` within that
+ * category. It sends **no** `event_type` field — an earlier revision of the
+ * webhook handler declared one, so every real delivery matched no branch,
+ * returned 200, and was never retried.
+ *
+ * Every field is optional because the payload is attacker-influenced input:
+ * the handler must degrade rather than throw on an unexpected shape.
+ */
+export interface MxWebhookEvent {
+  /** Event category, e.g. `AGGREGATION` or `CONNECTION_STATUS`. */
+  type?: string;
+  /** Action within the category, e.g. `member_data_updated` or `CHANGED`. */
+  action?: string;
+  member_guid?: string;
+  user_guid?: string;
+  /** Present on CONNECTION_STATUS events, e.g. `CHALLENGED`, `EXPIRED`. */
+  connection_status?: string;
+  transactions_created_count?: number;
+  transactions_updated_count?: number;
+}
+
+/** What the webhook handler should do with an MX event. */
+export type MxWebhookDisposition = 'ingest' | 'needs_reauth' | 'unhandled';
+
+/**
+ * Decide how to handle an MX webhook event.
+ *
+ * MX only emits `CONNECTION_STATUS` when a member enters an actionable state
+ * (CHALLENGED, DENIED, EXPIRED, IMPAIRED, IMPEDED, LOCKED, PREVENTED,
+ * REJECTED), all of which require the user to revisit the connection — so the
+ * category alone is sufficient to mark the connection as needing re-auth.
+ *
+ * Anything else is `unhandled`, which the caller must log rather than silently
+ * accept: MX treats a 200 as delivered and never retries.
+ */
+export function classifyMxWebhookEvent(event: MxWebhookEvent): MxWebhookDisposition {
+  switch (event.type) {
+    case 'AGGREGATION':
+      return 'ingest';
+    case 'CONNECTION_STATUS':
+      return 'needs_reauth';
+    default:
+      return 'unhandled';
+  }
+}

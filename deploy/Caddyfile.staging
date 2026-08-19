@@ -121,12 +121,22 @@
 	}
 
 	# Access logging
+	#
+	# `token` is redacted because the MX webhook URL carries its shared
+	# secret there — see the production Caddyfile for the full rationale.
 	log {
 		output file /data/access.log {
 			roll_size 5mb
 			roll_keep 3
 			roll_keep_for 72h
 		}
-		format json
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					replace token REDACTED
+				}
+			}
+		}
 	}
 }

@@ -53,12 +53,14 @@ Production runs at `https://finance.jrmoulckers.com`, served by Caddy with an au
 Let's Encrypt certificate. Both providers post to the same edge function, distinguished by the
 `provider` query parameter:
 
-| Provider | Webhook URL                                                                |
-| -------- | -------------------------------------------------------------------------- |
-| Plaid    | `https://finance.jrmoulckers.com/functions/v1/bank-webhook?provider=plaid` |
-| MX       | `https://finance.jrmoulckers.com/functions/v1/bank-webhook?provider=mx`    |
+| Provider | Webhook URL                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------- |
+| Plaid    | `https://finance.jrmoulckers.com/functions/v1/bank-webhook?provider=plaid`                        |
+| MX       | `https://finance.jrmoulckers.com/functions/v1/bank-webhook?provider=mx&token=<MX_WEBHOOK_SECRET>` |
 
-A request with a missing or unrecognised `provider` is rejected with `400`.
+A request with a missing or unrecognised `provider` is rejected with `400`. An MX request whose
+`token` is missing or does not match `MX_WEBHOOK_SECRET` is rejected with `401`. The MX URL
+therefore contains a live secret — see [security notes](#security-notes).
 
 ### Request path
 
@@ -94,7 +96,7 @@ secrets. They are declared optional in
 | `MX_CLIENT_ID`        | environment secret   | MX API auth                                   |
 | `MX_API_KEY`          | environment secret   | MX API auth                                   |
 | `MX_ENVIRONMENT`      | environment variable | `sandbox` or `production`                     |
-| `MX_WEBHOOK_SECRET`   | environment secret   | HMAC secret for verifying inbound MX webhooks |
+| `MX_WEBHOOK_SECRET`   | environment secret   | Shared secret in the MX webhook URL's `token` |
 | `BANK_ENCRYPTION_KEY` | environment secret   | AES-256 key for stored access tokens          |
 
 Record names and scopes only — never commit or paste the values.
@@ -151,10 +153,13 @@ production.
 ### MX
 
 1. Sign in to the MX Client Dashboard, then go to **Developers → Webhooks**.
-2. Create a webhook for each type Finance consumes — at minimum **Aggregation**, **Members** and
-   **Connection Status**.
-3. Set the destination URL to the MX URL above, including the `?provider=mx` query string.
-4. Configure the security option — see [open risks](#open-risks) before assuming HMAC signing.
+2. Create a webhook for the types Finance consumes: **Aggregation** and **Connection Status**. Any
+   other type is accepted and logged as an unhandled category, so enable only these two.
+3. Set the destination URL to the MX URL above, including **both** the `?provider=mx` and
+   `&token=<MX_WEBHOOK_SECRET>` query parameters. Copy the secret from the `production` GitHub
+   environment; a URL without a matching `token` is rejected with `401`.
+4. Leave MX's own security options (HTTP Basic, mutual TLS, OAuth 2) unset — Finance authenticates
+   on the `token` parameter, because MX does not sign webhook bodies.
 5. Save, then repeat for the production environment separately from development.
 
 Some webhook types are not offered in the dashboard by default and must be requested from MX Support
@@ -202,27 +207,19 @@ Plaid honours `Retry-After` on `429`; MX re-queues on `429`.
 
 ## Open risks
 
-Two issues are **not** resolved by configuration and need code follow-up. Both would cause the
-silent freeze described above, for MX only. The Plaid path is unaffected.
+Plaid documents its webhook URL format as `http(s)://(www.)domain.com/` and does not state whether
+query strings are preserved. Finance relies on `?provider=plaid`, so confirm with a sandbox
+`fire_webhook` that the query string arrives intact before trusting it in production. The same
+caveat applies with more force to MX, whose URL carries the shared secret as well as the provider.
 
-1. **MX event names do not match the code.** `bank-webhook` reads `event.event_type` and compares it
-   against `member_connected`, `member_status_changed` and `transactions_added`. MX's documented
-   payloads carry no `event_type` field — they use `action` plus `type`, for example
-   `action: "member_data_updated"` with `type: "AGGREGATION"` for a completed aggregation, and
-   `action: "updated"` on the Members webhook. As written, real MX payloads would match none of the
-   three branches and be accepted with `200` while doing nothing.
-2. **`mx-signature` is not in MX's public documentation.** The code requires an `mx-signature` header
-   and verifies it as HMAC-SHA256 over the raw body, formatted `sha256=<hex>`. MX publicly documents
-   three inbound-authentication options — HTTP Basic, mutual TLS, and OAuth 2 client credentials —
-   and no body-signing header. If MX does not send `mx-signature`, every MX webhook is rejected with
-   `401`.
+The two MX defects previously listed here — the `event_type` mismatch and the non-existent
+`mx-signature` header — were fixed in #4377. MX event handling now dispatches on `type`, and an
+unrecognised category is logged as a warning rather than silently accepted, so a future contract
+drift is visible in the logs instead of presenting as a silent freeze.
 
-Confirm both against a real MX delivery in the integration environment before enabling MX in
-production.
-
-Separately, Plaid documents its webhook URL format as `http(s)://(www.)domain.com/` and does not
-state whether query strings are preserved. Finance relies on `?provider=plaid`, so confirm with a
-sandbox `fire_webhook` that the query string arrives intact before trusting it in production.
+MX endpoint paths and response field names in `_shared/mx.ts` were written from the API reference and
+have still never been exercised against a live MX response. Validate them in the integration
+environment before enabling MX in production.
 
 ## Certificate renewal
 
@@ -233,9 +230,13 @@ delivery, because both providers require a valid certificate. The TLS-expiry mon
 
 ## Security notes
 
-- The endpoint is intentionally unauthenticated but cryptographically verified: Plaid via the ES256
-  JWT in `Plaid-Verification` (key fetched from `/webhook_verification_key/get`), MX via HMAC. It is
+- The endpoint is intentionally unauthenticated at the platform layer but verified per provider:
+  Plaid via the ES256 JWT in `Plaid-Verification` (key fetched from `/webhook_verification_key/get`),
+  MX via the shared secret in the `token` query parameter, compared in constant time. It is
   additionally rate limited per IP.
+- **The MX webhook URL is itself a secret**, because it embeds `MX_WEBHOOK_SECRET`. Treat it like a
+  credential: never paste it into an issue, PR, log, or screenshot, and rotate `MX_WEBHOOK_SECRET`
+  (then update the MX dashboard) if it is exposed.
 - Verification runs **before** the payload is parsed or processed.
 - Do not probe the production webhook endpoint to check whether it is up — unverified requests are
   rejected and recorded as security events. Use `/health` instead.
