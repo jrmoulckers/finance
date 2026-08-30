@@ -70,6 +70,7 @@ stakes), anomaly detection (safety feature).
 | Budget recommendations | Premium    | Hard gate    | User taps "Get Recommendations"  |
 | Receipt scanning       | Premium    | Hard gate    | User taps camera icon            |
 | Bank connections       | Premium    | Hard gate    | User taps "Connect Bank"         |
+| 3rd bank connection    | Premium    | Soft limit   | Household has 2 live connections |
 | Report builder         | Premium    | Hard gate    | User taps "New Report"           |
 | Financial health score | Premium    | Soft preview | User sees score but not details  |
 | Scheduled exports      | Premium    | Hard gate    | User taps "Schedule Export"      |
@@ -91,6 +92,32 @@ prompt with feature benefit explanation.
 **Soft Preview:** Feature is partially visible. User sees a teaser (blurred
 prediction, summary without details) that creates desire to unlock. Tap
 triggers upgrade flow with specific feature highlighted.
+
+### 1.3.1 Bank connection allowance (#4379)
+
+Bank connections are the only gated feature with a **recurring per-unit cost**.
+Each live connection is one aggregator Item, billed monthly for as long as it
+exists, so the allowance is a margin constraint rather than a packaging choice —
+see [`docs/business/revenue/aggregator-cost-strategy.md`](../revenue/aggregator-cost-strategy.md).
+
+| Tier             | Live connections included                 |
+| ---------------- | ----------------------------------------- |
+| Free             | 0 — import and manual accounts only       |
+| Premium          | 2, plus additional Items at $0.99/mo each |
+| Family/Household | 4, shared across all members              |
+
+Two is the break-even ceiling: a third Item on mobile consumes ~31% of net ARPU.
+The paid add-on, not a higher included count, is what serves users with more
+than two institutions; CSV/OFX import remains unlimited on every tier, so no
+user is locked out of tracking an account they cannot auto-sync.
+
+> **Current implementation state.** The server enforces a **flat cap of 2 for
+> every household**, not the tier table above, because no server-side
+> entitlement record exists to resolve a user's tier
+> (`_shared/bank-entitlements.ts`, `resolveConnectionCap`). This bounds the cost
+> exposure but does **not** yet make bank connections Premium-only — a free user
+> can currently create 2 connections. Closing that gap requires an entitlement
+> source of truth and is tracked separately from the cap.
 
 ### 1.4 Gate UI Guidelines
 

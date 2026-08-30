@@ -3,9 +3,17 @@
 **Issue:** #4380
 **Related:** #4379 (P0 — bank connections have no entitlement gate or cap)
 **Priority:** P1 — High
-**Status:** Complete — pending decision on the Item cap value
-**Document Owner:** Business Analysis
-**Date:** 2026-08-23
+**Status:** Complete — Item cap decided (2 per household); enforced in #4379
+
+> **Decision (2026-08-23):** the allowance proposed in §4 Option F was adopted —
+> **Free 0 Items, Premium 2 plus a $0.99/Item/month add-on, Family 4 shared.** The
+> recommendation to stay on Plaid was accepted; no provider migration is planned.
+> The server-side enforcement shipped as a **flat cap of 2 for every household**,
+> because no entitlement record exists to resolve tier — so the cost exposure in §3
+> is now bounded, but bank connections are not yet Premium-only. See
+> `docs/business/pricing/premium-strategy-conversion-funnel.md` §1.3.1.
+> **Document Owner:** Business Analysis
+> **Date:** 2026-08-23
 
 > **Satisfies:** `PROD-BUS-003` — Product obligations are defined in
 > [jrmoulckers/product](https://github.com/jrmoulckers/product). This document is the local

@@ -45,6 +45,7 @@
  */
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { validateEnv } from '../_shared/env.ts';
@@ -52,6 +53,11 @@ import { createLogger } from '../_shared/logger.ts';
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import { encryptToken } from '../_shared/bank-crypto.ts';
 import { ensureCanManageHousehold } from '../_shared/bank-authorization.ts';
+import {
+  checkConnectionCap,
+  connectionCapMessage,
+  resolveConnectionCap,
+} from '../_shared/bank-entitlements.ts';
 import {
   createLinkToken as plaidCreateLinkToken,
   exchangePublicToken as plaidExchangePublicToken,
@@ -376,6 +382,53 @@ async function provisionAndLinkAccounts(
 }
 
 // ---------------------------------------------------------------------------
+// Connection cap
+// ---------------------------------------------------------------------------
+
+/**
+ * Reject the request when the household has no remaining connection allowance.
+ *
+ * Returns the rejection `Response`, or `null` when the caller may proceed.
+ *
+ * Enforced on BOTH `create_link_token` and `exchange_token`. The link-token
+ * check is a courtesy so the user is not sent through a provider Link flow that
+ * cannot succeed; the exchange check is the authoritative one, because that is
+ * the call that creates the billable Item and a client can skip straight to it.
+ *
+ * Fails closed — if the count cannot be established we do not create an Item we
+ * would be unable to account for.
+ *
+ * Uses 409 rather than 403 so a client can distinguish "household is full" from
+ * the 403 returned for insufficient household permissions.
+ */
+async function enforceConnectionCap(
+  supabase: SupabaseClient,
+  householdId: string,
+  req: Request,
+  logger: FunctionLogger,
+): Promise<Response | null> {
+  const capCheck = await checkConnectionCap(supabase, householdId, resolveConnectionCap());
+
+  if (capCheck.status === 'error') {
+    logger.error('Failed to count household bank connections', {
+      errorMessage: capCheck.message,
+    });
+    return internalErrorResponse(req);
+  }
+
+  if (capCheck.status === 'at_cap') {
+    logger.warn('Bank connection cap reached', {
+      current: capCheck.current,
+      cap: capCheck.cap,
+      httpStatus: 409,
+    });
+    return errorResponse(req, connectionCapMessage(capCheck.cap), 409);
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
@@ -437,6 +490,9 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
+      const linkCapRejection = await enforceConnectionCap(supabase, body.household_id, req, logger);
+      if (linkCapRejection) return linkCapRejection;
+
       const linkResult = await createProviderLinkToken(body.provider, user.id).catch(
         (err: unknown) => {
           if (err instanceof PlaidApiError || err instanceof MxApiError) {
@@ -486,6 +542,16 @@ serve(async (req: Request): Promise<Response> => {
           403,
         );
       }
+
+      // Authoritative cap check — this is the call that creates the billable
+      // Item, and a client can reach it without ever requesting a link token.
+      const exchangeCapRejection = await enforceConnectionCap(
+        supabase,
+        body.household_id,
+        req,
+        logger,
+      );
+      if (exchangeCapRejection) return exchangeCapRejection;
 
       // Exchange the client handle for the stored credential — NEVER log it.
       const exchangeResult = await exchangeProviderToken(
