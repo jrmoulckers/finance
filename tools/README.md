@@ -236,6 +236,19 @@ npm run workflow:security:check
 node tools/check-workflow-security.mjs --help
 ```
 
+### `check-citation-exclusions.mjs` - Citation exclusion gate
+
+Runs the vendored ENG citation checker, replays its output, and fails when the checker reports a
+skipped file that is not listed in `DECLARED_EXCLUSIONS` with a non-empty reason. Keep that
+declaration empty unless a narrowly justified fixture must be excluded; an exclusion printed by a
+successful citation run is otherwise treated as a failed gate.
+
+```bash
+npm run citations:exclusions:test
+npm run citations:exclusions:check
+node tools/check-citation-exclusions.mjs --help
+```
+
 ### `ci-health-dashboard.js` - CI/CD health metrics
 
 Queries GitHub Actions via gh CLI for workflow success rates, build times, and flaky test detection.

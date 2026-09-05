@@ -362,3 +362,6 @@ jobs:
 
       - name: Check ENG-* citations
         run: npm run eng:citations
+
+      - name: Citation exclusions are explicitly justified
+        run: npm run citations:exclusions:check

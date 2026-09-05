@@ -10361,9 +10361,9 @@ answer**, and a blanket migration would have been a larger diff for no safety ga
   produces a root cause about a program that was never run.**
 - The upstream defect itself -- a pragma tested against raw text, so a pragma inside a fence or a
   literal excuses the file -- exists in finance **byte-identically**, in the vendored
-  `config/engineering/citations/check-citations.mjs`. It has **zero reach**: `citations-check:
-ignore-file` occurs 0 times in this repository. The vendored file must not diverge, so this is
-  an upstream report rather than a local patch -- an instance of _reach is not delta_.
+  `config/engineering/citations/check-citations.mjs`. It has **zero reach**: the citation
+  `ignore-file` pragma occurs 0 times in this repository. The vendored file must not diverge, so
+  this is an upstream report rather than a local patch -- an instance of _reach is not delta_.
 
 ## A surviving mutation does not mean a weak test
 
