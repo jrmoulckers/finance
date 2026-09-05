@@ -14,6 +14,11 @@
  */
 
 import type { Logger } from './logger.ts';
+import {
+  directOutboundTransport,
+  OutboundDestinationError,
+  type OutboundHttpTransport,
+} from './outbound-destination.ts';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -124,6 +129,50 @@ export async function signWebhookPayload(payload: string, secret: string): Promi
 /** Delivery timeout in milliseconds (10 seconds). */
 const DELIVERY_TIMEOUT_MS = 10_000;
 
+class WebhookDeliveryTimeoutError extends Error {
+  constructor(readonly timeoutMs: number) {
+    super(`Webhook delivery exceeded ${timeoutMs}ms`);
+    this.name = 'WebhookDeliveryTimeoutError';
+  }
+}
+
+async function sendWithDeadline(
+  transport: OutboundHttpTransport,
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  let didTimeout = false;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+      reject(new WebhookDeliveryTimeoutError(timeoutMs));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      transport.send(url, {
+        ...init,
+        signal: controller.signal,
+      }),
+      timeout,
+    ]);
+  } catch (error) {
+    // Abort-aware sends can reject before the timeout promise wins the race.
+    if (didTimeout && !(error instanceof WebhookDeliveryTimeoutError)) {
+      throw new WebhookDeliveryTimeoutError(timeoutMs);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Deliver a webhook event to an endpoint via HTTP POST.
  *
@@ -134,12 +183,16 @@ const DELIVERY_TIMEOUT_MS = 10_000;
  * @param endpoint The webhook endpoint to deliver to.
  * @param event The webhook event to send.
  * @param logger Logger instance (NEVER logs secrets or payload contents).
+ * @param transport Validated outbound transport. Injectable for tests or a future egress proxy.
+ * @param deliveryTimeoutMs Complete transport deadline. Injectable for deterministic tests.
  * @returns The delivery result with success/failure status and timing.
  */
 export async function deliverWebhook(
   endpoint: WebhookEndpoint,
   event: WebhookEvent,
   logger: Logger,
+  transport: OutboundHttpTransport = directOutboundTransport,
+  deliveryTimeoutMs = DELIVERY_TIMEOUT_MS,
 ): Promise<WebhookDeliveryResult> {
   const startTime = performance.now();
   const deliveryId = crypto.randomUUID();
@@ -149,24 +202,23 @@ export async function deliverWebhook(
   try {
     const signature = await signWebhookPayload(body, endpoint.secret);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
-
     try {
-      const response = await fetch(endpoint.url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Webhook-Signature': signature,
-          'X-Webhook-Event': event.type,
-          'X-Webhook-Delivery': deliveryId,
-          'X-Webhook-Timestamp': timestamp,
+      const response = await sendWithDeadline(
+        transport,
+        endpoint.url,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Webhook-Signature': signature,
+            'X-Webhook-Event': event.type,
+            'X-Webhook-Delivery': deliveryId,
+            'X-Webhook-Timestamp': timestamp,
+          },
+          body,
         },
-        body,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
+        deliveryTimeoutMs,
+      );
 
       const durationMs = Math.round(performance.now() - startTime);
       const success = response.status >= 200 && response.status < 300;
@@ -187,15 +239,16 @@ export async function deliverWebhook(
         ...(success ? {} : { error: `HTTP ${response.status}` }),
       };
     } catch (fetchError) {
-      clearTimeout(timeoutId);
-
       const durationMs = Math.round(performance.now() - startTime);
 
       // Distinguish timeout from network error
-      const isTimeout = fetchError instanceof DOMException && fetchError.name === 'AbortError';
+      const isTimeout = fetchError instanceof WebhookDeliveryTimeoutError;
+      const isDestinationRejection = fetchError instanceof OutboundDestinationError;
       const errorMessage = isTimeout
-        ? `Timeout after ${DELIVERY_TIMEOUT_MS}ms`
-        : `Network error: ${(fetchError as Error).message}`;
+        ? `Timeout after ${fetchError.timeoutMs}ms`
+        : isDestinationRejection
+          ? 'Webhook destination rejected'
+          : `Network error: ${(fetchError as Error).message}`;
 
       logger.warn('Webhook delivery failed', {
         endpointId: endpoint.id,
