@@ -27,8 +27,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useAuth } from '../auth/auth-context';
-import { useDatabase } from '../db/DatabaseProvider';
+import { useOptionalAuth } from '../auth/auth-context';
+import { useOptionalDatabase } from '../db/DatabaseProvider';
 import { readHouseholdValue, writeHouseholdValue } from '../db/repositories/householdData';
 import { ensureSyncedHouseholdMembership } from '../db/repositories/household';
 import type { AsyncDb } from '../db/async-db';
@@ -1223,10 +1223,9 @@ function generateInviteCode(): string {
 export function useHousehold(): UseHouseholdResult {
   // Issue #1931: capture the current authenticated user so we can stamp
   // the owner member's displayName at creation time (and avoid showing
-  // the raw user UUID).  `useAuth` may throw if a provider is absent
-  // (e.g. some isolated unit tests that don't mount AuthProvider), so we
-  // guard with a try/catch and degrade gracefully to anonymous behaviour.
-  const authUser = useOptionalAuthUser();
+  // the raw user UUID). Provider absence intentionally degrades to anonymous
+  // behavior for isolated and local-first render paths.
+  const authUser = useOptionalAuth()?.user ?? null;
 
   // Household data is persisted in the encrypted SQLite/OPFS database (issue
   // #3378). Access the database defensively: if the household screen is ever
@@ -3100,43 +3099,4 @@ export function useHousehold(): UseHouseholdResult {
     linkChildCollegeFundGoal,
     refresh,
   };
-}
-
-/**
- * Read the current auth user without throwing when no AuthProvider is mounted.
- *
- * The auth context throws by design (so misuse is caught early), but the
- * household hook is also exercised in unit tests that intentionally mount
- * components in isolation.  We swallow that error and return `null` rather
- * than forcing every test to wrap children in `<AuthProvider>`.
- *
- * Issue #1931.
- */
-function useOptionalAuthUser(): { id: string; email: string; name?: string } | null {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useAuth().user;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Access the encrypted SQLite database without crashing if the household screen
- * is mounted outside a `DatabaseProvider`.
- *
- * `useDatabase` throws when no provider is mounted. The household feature keeps
- * all persistence behind this guard (mirroring the optional account/budget
- * reads on {@link ../pages/HouseholdPage}) so the hook degrades to in-memory
- * state — never throwing — in isolated tests or provider-less render paths.
- *
- * Issue #3378.
- */
-function useOptionalDatabase(): AsyncDb | null {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useDatabase();
-  } catch {
-    return null;
-  }
 }

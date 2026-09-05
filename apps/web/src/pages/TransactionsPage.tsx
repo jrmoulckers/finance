@@ -19,7 +19,7 @@ import {
   NoResultsEmptyState,
   ReadAloudButton,
   SyncIndicator,
-  useToast,
+  useOptionalToast,
   Button,
 } from '../components/common';
 import { SkipLink } from '../components/common/SkipLink';
@@ -280,15 +280,6 @@ function flattenTransactionGroups(
       transactionPosition: ++transactionPosition,
     })),
   ]);
-}
-
-function useOptionalToast(): ReturnType<typeof useToast> | null {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useToast();
-  } catch {
-    return null;
-  }
 }
 
 function PlusIcon() {

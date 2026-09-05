@@ -7,7 +7,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ToastProvider, useToast, type ToastOptions } from './Toast';
+import { ToastProvider, useOptionalToast, useToast, type ToastOptions } from './Toast';
 
 /** Test helper that renders a button wired to `showToast`. */
 function TestConsumer(props: {
@@ -44,6 +44,12 @@ function BatchConsumer({ toasts }: { toasts: ToastOptions[] }) {
   );
 }
 
+function OptionalToastProbe() {
+  return (
+    <span data-testid="optional-toast">{useOptionalToast() ? 'available' : 'unavailable'}</span>
+  );
+}
+
 /** Read the current text of a canonical announcer live region. */
 function announcerText(politeness: 'polite' | 'assertive'): string {
   return document.querySelector(`[data-announcer="${politeness}"]`)?.textContent ?? '';
@@ -54,6 +60,22 @@ afterEach(() => {
 });
 
 describe('ToastProvider + useToast', () => {
+  it('returns the unavailable default outside ToastProvider', () => {
+    render(<OptionalToastProbe />);
+
+    expect(screen.getByTestId('optional-toast')).toHaveTextContent('unavailable');
+  });
+
+  it('returns the provider value when ToastProvider is present', () => {
+    render(
+      <ToastProvider>
+        <OptionalToastProbe />
+      </ToastProvider>,
+    );
+
+    expect(screen.getByTestId('optional-toast')).toHaveTextContent('available');
+  });
+
   it('throws when useToast is called outside a provider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => render(<TestConsumer />)).toThrow('useToast must be used within a ToastProvider');

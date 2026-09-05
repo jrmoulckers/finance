@@ -11,7 +11,7 @@ import {
   LoadingSpinner,
   ReadAloudButton,
   SortableList,
-  useToast,
+  useOptionalToast,
 } from '../components/common';
 import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
 import { SharedGoalBadge } from '../components/goals/SharedGoalContributions';
@@ -148,15 +148,6 @@ function saveDismissedNudges(value: readonly string[]): void {
     localStorage.setItem(DISMISSED_NUDGES_STORAGE_KEY, JSON.stringify(value));
   } catch {
     // Ignore storage failures in local-only mode.
-  }
-}
-
-function useOptionalToast(): ReturnType<typeof useToast> | null {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useToast();
-  } catch {
-    return null;
   }
 }
 

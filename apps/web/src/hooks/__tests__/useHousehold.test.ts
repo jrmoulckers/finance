@@ -84,6 +84,19 @@ async function renderHouseholdHook() {
 // ---------------------------------------------------------------------------
 
 describe('useHousehold', () => {
+  it('uses in-memory state when auth and database providers are absent', async () => {
+    const { result } = renderHook(() => useHousehold());
+    await act(async () => {});
+
+    act(() => {
+      result.current.createHousehold({ name: 'Provider-free household' });
+    });
+
+    expect(result.current.household?.name).toBe('Provider-free household');
+    expect(result.current.members).toHaveLength(1);
+    expect(householdStore.size).toBe(0);
+  });
+
   it('returns null household when none exists', async () => {
     const { result } = await renderHouseholdHook();
 

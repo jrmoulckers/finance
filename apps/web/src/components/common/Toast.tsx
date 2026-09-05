@@ -93,6 +93,16 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
+/**
+ * Access toast actions on surfaces where notifications are a soft enhancement.
+ *
+ * Returns `null` outside a {@link ToastProvider}; callers should use
+ * {@link useToast} when a provider is required.
+ */
+export function useOptionalToast(): ToastContextValue | null {
+  return useContext(ToastContext);
+}
+
 /* --------------------------------------------------------------------------
  * Provider
  * -------------------------------------------------------------------------- */

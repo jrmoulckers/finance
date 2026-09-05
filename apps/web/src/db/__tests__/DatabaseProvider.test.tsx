@@ -3,7 +3,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { DatabaseProvider, useDatabase, useStorageDiagnostics } from '../DatabaseProvider';
+import {
+  DatabaseProvider,
+  useDatabase,
+  useOptionalDatabase,
+  useStorageDiagnostics,
+} from '../DatabaseProvider';
 import {
   StorageError,
   _resetInitSingletonForTesting,
@@ -61,6 +66,11 @@ function DiagnosticsConsumer() {
   return <div data-testid="diag-backend">{diag.backend}</div>;
 }
 
+function OptionalDbConsumer() {
+  const db = useOptionalDatabase();
+  return <div data-testid="optional-db">{db ? 'Database ready' : 'No database'}</div>;
+}
+
 describe('DatabaseProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -103,6 +113,23 @@ describe('DatabaseProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('db-ready')).toHaveTextContent('Database ready');
+    });
+  });
+
+  it('provides the database to optional consumers when init succeeds', async () => {
+    (initDatabaseWithDiagnostics as Mock).mockResolvedValue({
+      db: mockDb,
+      diagnostics: mockDiagnostics,
+    });
+
+    render(
+      <DatabaseProvider>
+        <OptionalDbConsumer />
+      </DatabaseProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('optional-db')).toHaveTextContent('Database ready');
     });
   });
 
@@ -321,6 +348,12 @@ describe('DatabaseProvider', () => {
 });
 
 describe('useDatabase', () => {
+  it('returns null from useOptionalDatabase outside DatabaseProvider', () => {
+    render(<OptionalDbConsumer />);
+
+    expect(screen.getByTestId('optional-db')).toHaveTextContent('No database');
+  });
+
   it('throws when used outside DatabaseProvider', () => {
     function Orphan() {
       useDatabase();

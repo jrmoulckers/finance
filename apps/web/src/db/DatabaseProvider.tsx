@@ -508,6 +508,16 @@ export function useDatabase(): AsyncDb {
   return context.db;
 }
 
+/**
+ * Access the database on surfaces that intentionally support provider absence.
+ *
+ * Prefer {@link useDatabase} when the database is required. This optional
+ * variant exposes the context's `null` default without relying on exceptions.
+ */
+export function useOptionalDatabase(): AsyncDb | null {
+  return useContext(DatabaseContext)?.db ?? null;
+}
+
 /** Access storage diagnostics from the initialization. */
 export function useStorageDiagnostics(): StorageDiagnostics | null {
   const context = useContext(DatabaseContext);

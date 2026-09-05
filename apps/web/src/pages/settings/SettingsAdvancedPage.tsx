@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react';
 
 import { DangerZone, SettingInfoWidget } from '../../components/settings';
 import { Checkbox } from '../../components/common/Checkbox';
-import { useDatabase } from '../../db/DatabaseProvider';
+import { useOptionalDatabase } from '../../db/DatabaseProvider';
 import { eraseAllMoodTags } from '../../db/repositories/transactions';
 import { clearMoodJournalEntries } from '../../lib/mood';
 import {
@@ -13,15 +13,6 @@ import {
   MOOD_TAGS_SYNC_ENABLED_KEY,
   setMoodTagPreference,
 } from '../../lib/mood-tags';
-
-function useOptionalDatabase() {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useDatabase();
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Advanced sub-page — experimental feature flags and developer-leaning preferences.
