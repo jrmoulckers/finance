@@ -1144,6 +1144,17 @@ export function useAuth(): AuthContextValue {
   return context;
 }
 
+/**
+ * Access auth state when an AuthProvider is optional for the current surface.
+ *
+ * Prefer {@link useAuth} for routes that require authentication. Isolated or
+ * local-first surfaces can use this hook to intentionally treat provider
+ * absence as an anonymous user without catching render-time errors.
+ */
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext);
+}
+
 // ---------------------------------------------------------------------------
 // Protected Route Wrapper
 // ---------------------------------------------------------------------------

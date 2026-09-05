@@ -15,6 +15,7 @@ import {
   parseBetaAllowedEmails,
   ProtectedRoute,
   useAuth,
+  useOptionalAuth,
   type AuthProviderConfig,
 } from './auth-context';
 import { clearTokens } from './token-storage';
@@ -48,6 +49,19 @@ function AuthProbe() {
     </div>
   );
 }
+
+function OptionalAuthProbe() {
+  const auth = useOptionalAuth();
+  return <span data-testid="optional-auth">{auth?.user?.email ?? 'anonymous'}</span>;
+}
+
+describe('useOptionalAuth', () => {
+  it('returns the anonymous default outside AuthProvider', () => {
+    render(<OptionalAuthProbe />);
+
+    expect(screen.getByTestId('optional-auth')).toHaveTextContent('anonymous');
+  });
+});
 
 describe('beta email allowlist', () => {
   it('allows everyone when the allowlist is empty or unset', () => {
@@ -127,6 +141,28 @@ describe('AuthProvider refresh restoration', () => {
       email: 'fresh@example.com',
     });
     expect(onUnauthenticated).not.toHaveBeenCalled();
+  });
+
+  it('returns the provider value when AuthProvider is present', async () => {
+    const token = makeToken({
+      sub: 'user-optional',
+      email: 'optional@example.com',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ access_token: token, expires_in: 3600 })),
+    );
+
+    render(
+      <AuthProvider config={config}>
+        <OptionalAuthProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('optional-auth')).toHaveTextContent('optional@example.com'),
+    );
   });
 
   it('shows the beta access required screen when a restored user is not allowlisted', async () => {

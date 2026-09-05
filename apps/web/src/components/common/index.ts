@@ -64,7 +64,7 @@ export { Skeleton, AccountsSkeleton, TransactionsSkeleton, DashboardSkeleton } f
 export type { SkeletonProps, SkeletonVariant, PageSkeletonProps } from './Skeleton';
 
 // Toast notifications
-export { ToastProvider, useToast } from './Toast';
+export { ToastProvider, useOptionalToast, useToast } from './Toast';
 export type {
   ToastType,
   Toast,

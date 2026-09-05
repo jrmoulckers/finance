@@ -43,7 +43,7 @@ const { auth } = vi.hoisted(() => ({
 }));
 
 vi.mock('../../auth/auth-context', () => ({
-  useAuth: () => ({ user: auth.user }),
+  useOptionalAuth: () => ({ user: auth.user }),
 }));
 
 const INVITATIONS_KEY = 'finance-household-invitations';

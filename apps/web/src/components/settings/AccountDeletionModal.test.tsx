@@ -10,6 +10,7 @@ const {
   getHouseholdDeletionImpactMock,
   logoutMock,
   markStepUpAuthenticatedMock,
+  optionalDatabaseMock,
   wipeLocalDataMock,
 } = vi.hoisted(() => ({
   appendSecurityAuditEventMock: vi.fn(),
@@ -18,6 +19,7 @@ const {
   getHouseholdDeletionImpactMock: vi.fn(),
   logoutMock: vi.fn(),
   markStepUpAuthenticatedMock: vi.fn(),
+  optionalDatabaseMock: vi.fn(),
   wipeLocalDataMock: vi.fn(),
 }));
 
@@ -30,7 +32,7 @@ vi.mock('../../auth/auth-context', () => ({
 }));
 
 vi.mock('../../db/DatabaseProvider', () => ({
-  useDatabase: () => ({ close: closeDatabaseMock }),
+  useOptionalDatabase: optionalDatabaseMock,
 }));
 
 vi.mock('../../lib/account/account-deletion', () => ({
@@ -68,6 +70,7 @@ function TestHost() {
 describe('AccountDeletionModal receipt flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    optionalDatabaseMock.mockReturnValue({ close: closeDatabaseMock });
     getHouseholdDeletionImpactMock.mockReturnValue({
       soloOwnedHouseholds: 0,
       memberHouseholds: 0,
@@ -146,5 +149,15 @@ describe('AccountDeletionModal receipt flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /continue to login/i }));
     await waitFor(() => expect(logoutMock).toHaveBeenCalledTimes(1));
     expect(assignSpy).toHaveBeenCalledWith('/login');
+  });
+
+  it('opens without a DatabaseProvider and requests the local-only household impact', async () => {
+    optionalDatabaseMock.mockReturnValue(null);
+
+    render(<TestHost />);
+    fireEvent.click(screen.getByRole('button', { name: /^delete account$/i }));
+
+    expect(await screen.findByLabelText(/type delete to confirm/i)).toBeInTheDocument();
+    expect(getHouseholdDeletionImpactMock).toHaveBeenCalledWith(null, 'user-1');
   });
 });

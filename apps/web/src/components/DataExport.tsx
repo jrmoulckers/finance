@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useDatabase } from '../db/DatabaseProvider';
+import { useOptionalDatabase } from '../db/DatabaseProvider';
 import { useFocusTrap } from '../accessibility/aria';
 import { Checkbox } from './common/Checkbox';
 import type { AsyncDb } from '../db/async-db';
@@ -85,15 +85,6 @@ async function gatherExportData(db: AsyncDb, includeMoodTags: boolean): Promise<
     goals: await getAllGoals(db),
     categories: await getAllCategories(db),
   };
-}
-
-function useExportDatabase(): AsyncDb | null {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useDatabase();
-  } catch {
-    return null;
-  }
 }
 
 function readLocalStorageRecords(prefix: string): ExportRecord[] {
@@ -274,7 +265,7 @@ export const DataExport: React.FC<DataExportProps> = ({
   investmentExport,
   showFinanceExports = true,
 }) => {
-  const db = useExportDatabase();
+  const db = useOptionalDatabase();
   const [status, setStatus] = useState<ExportStatus>('idle');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [includeProtectedCategories, setIncludeProtectedCategories] = useState(false);

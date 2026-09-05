@@ -14,11 +14,12 @@ import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { AppIcon } from '../components/icons';
 
-import { useAuth } from '../auth/auth-context';
+import { useOptionalAuth } from '../auth/auth-context';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { CurrencyDisplay } from '../components/common/CurrencyDisplay';
 import { Checkbox } from '../components/common/Checkbox';
-import { useToast } from '../components/common/Toast';
+import { useOptionalToast } from '../components/common/Toast';
+import { useOptionalDatabase } from '../db/DatabaseProvider';
 import {
   ALLOWANCE_DAY_OPTIONS,
   buildChildFinanceRollup,
@@ -143,6 +144,57 @@ const ALLOWANCE_DAY_LABELS = Object.fromEntries(
 // ---------------------------------------------------------------------------
 
 export function HouseholdPage() {
+  const db = useOptionalDatabase();
+
+  return db ? <HouseholdPageWithDatabase /> : <HouseholdPageWithoutDatabase />;
+}
+
+interface HouseholdPageDataProps {
+  readonly budgetData: Pick<UseBudgetsResult, 'budgets'>;
+  readonly accountData: Pick<UseAccountsResult, 'accounts'>;
+  readonly goalData: Pick<UseGoalsResult, 'goals' | 'createGoal'>;
+  readonly transactionData: Pick<UseTransactionsResult, 'transactions' | 'updateTransaction'>;
+  readonly categoryData: Pick<UseCategoriesResult, 'categories'>;
+}
+
+const EMPTY_HOUSEHOLD_PAGE_DATA: HouseholdPageDataProps = {
+  budgetData: { budgets: [] },
+  accountData: { accounts: [] },
+  goalData: { goals: [], createGoal: async () => null },
+  transactionData: { transactions: [], updateTransaction: async () => null },
+  categoryData: { categories: [] },
+};
+
+function HouseholdPageWithDatabase() {
+  const budgetData = useBudgets();
+  const accountData = useAccounts();
+  const goalData = useGoals();
+  const expenseFilters = useMemo(() => ({ type: 'EXPENSE' as const }), []);
+  const transactionData = useTransactions(expenseFilters);
+  const categoryData = useCategories();
+
+  return (
+    <HouseholdPageContent
+      budgetData={budgetData}
+      accountData={accountData}
+      goalData={goalData}
+      transactionData={transactionData}
+      categoryData={categoryData}
+    />
+  );
+}
+
+function HouseholdPageWithoutDatabase() {
+  return <HouseholdPageContent {...EMPTY_HOUSEHOLD_PAGE_DATA} />;
+}
+
+function HouseholdPageContent({
+  budgetData,
+  accountData,
+  goalData,
+  transactionData,
+  categoryData,
+}: HouseholdPageDataProps) {
   const {
     household,
     members,
@@ -196,21 +248,10 @@ export function HouseholdPage() {
 
   // Issue #1931: pull the auth user as a fallback for the owner's display name
   // (so the user's own entry never shows a raw UUID).
-  const authUser = useOptionalAuthUser();
+  const authUser = useOptionalAuth()?.user ?? null;
 
   // Issue #1933: copy the full invite URL on click and confirm via toast.
   const toast = useOptionalToast();
-
-  // Issue #2188: scorecard pace uses live budgets when available and falls
-  // back to deterministic demo snapshots for local-first households.
-  const budgetData = useOptionalBudgets();
-  const accountData = useOptionalAccounts();
-
-  // Issue #2191: child finance rollups combine existing child profiles with
-  // local transactions and savings goals.
-  const goalData = useOptionalGoals();
-  const transactionData = useOptionalTransactions();
-  const categoryData = useOptionalCategories();
 
   // Issues #3375/#3376: resolve real account/budget/goal names for household
   // sharing surfaces and reconciliation labels instead of hardcoded demo maps.
@@ -3534,98 +3575,6 @@ export default HouseholdPage;
 // ---------------------------------------------------------------------------
 // Local helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Read the auth user without throwing if no AuthProvider is mounted.
- *
- * `useAuth()` is intentionally strict (throws on misuse) so production
- * callers fail loudly, but a handful of unit tests render the page
- * without wrapping it in `<AuthProvider>`.  We swallow that error and
- * fall back to `null`; the display-name resolver handles a missing
- * profile gracefully by falling back to `member.displayName` /
- * truncated UUID.
- *
- * Issue #1931.
- */
-function useOptionalAuthUser(): { id: string; email: string; name?: string } | null {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useAuth().user;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Read the toast API without throwing if no ToastProvider is mounted.
- *
- * Same rationale as {@link useOptionalAuthUser}: we don't want to force
- * every test render to wrap children in `<ToastProvider>`, and a missing
- * toast is a soft degradation (clipboard write still succeeds; the user
- * just doesn't see the confirmation).
- *
- * Issue #1933.
- */
-function useOptionalToast(): ReturnType<typeof useToast> | null {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useToast();
-  } catch {
-    return null;
-  }
-}
-
-/** Read budget data without crashing if no DatabaseProvider is mounted. */
-function useOptionalBudgets(): Pick<UseBudgetsResult, 'budgets'> {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return { budgets: useBudgets().budgets };
-  } catch {
-    return { budgets: [] };
-  }
-}
-
-/** Read account data without crashing if no DatabaseProvider is mounted. */
-function useOptionalAccounts(): Pick<UseAccountsResult, 'accounts'> {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return { accounts: useAccounts().accounts };
-  } catch {
-    return { accounts: [] };
-  }
-}
-
-function useOptionalGoals(): Pick<UseGoalsResult, 'goals' | 'createGoal'> {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    const { goals, createGoal } = useGoals();
-    return { goals, createGoal };
-  } catch {
-    return { goals: [], createGoal: () => Promise.resolve(null) };
-  }
-}
-
-function useOptionalTransactions(): Pick<
-  UseTransactionsResult,
-  'transactions' | 'updateTransaction'
-> {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    const { transactions, updateTransaction } = useTransactions({ type: 'EXPENSE' });
-    return { transactions, updateTransaction };
-  } catch {
-    return { transactions: [], updateTransaction: () => Promise.resolve(null) };
-  }
-}
-
-function useOptionalCategories(): Pick<UseCategoriesResult, 'categories'> {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return { categories: useCategories().categories };
-  } catch {
-    return { categories: [] };
-  }
-}
 
 function dollarsToCents(amount: number): number {
   return Math.round(amount * 100);

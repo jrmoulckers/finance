@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from '../../accessibility/aria';
 
 import { useAuth } from '../../auth/auth-context';
-import { useDatabase } from '../../db/DatabaseProvider';
+import { useOptionalDatabase } from '../../db/DatabaseProvider';
 import {
   clearLocalAccountData,
   getHouseholdDeletionImpact,
@@ -31,18 +31,6 @@ import {
   type LocalWipeArea,
   type LocalWipeReceipt,
 } from '../../lib/security/local-wipe-verification';
-
-/**
- * Tolerate missing DatabaseProvider (e.g. in some test harnesses).
- */
-function useOptionalDatabase() {
-  try {
-    // eslint-disable-next-line finance/no-hook-call-in-try -- provider-tolerance pattern, tracked in #4248
-    return useDatabase();
-  } catch {
-    return null;
-  }
-}
 
 interface AccountDeletionReceiptState {
   readonly receipt: DeletionReceipt & { readonly verificationHash: string };

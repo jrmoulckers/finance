@@ -3,8 +3,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useAuth } from '../auth/auth-context';
-import { useToast } from '../components/common/Toast';
+import { useOptionalAuth as useAuth } from '../auth/auth-context';
+import { useOptionalToast as useToast } from '../components/common/Toast';
+import { useOptionalDatabase } from '../db/DatabaseProvider';
 import {
   applyChildWeeklyProcessing,
   buildChildFinanceRollup,
@@ -65,11 +66,15 @@ vi.mock('../hooks/useCategories', () => ({
 }));
 
 vi.mock('../auth/auth-context', () => ({
-  useAuth: vi.fn(),
+  useOptionalAuth: vi.fn(),
 }));
 
 vi.mock('../components/common/Toast', () => ({
-  useToast: vi.fn(),
+  useOptionalToast: vi.fn(),
+}));
+
+vi.mock('../db/DatabaseProvider', () => ({
+  useOptionalDatabase: vi.fn(),
 }));
 
 const mockedUseHousehold = vi.mocked(useHousehold);
@@ -80,6 +85,7 @@ const mockedUseTransactions = vi.mocked(useTransactions);
 const mockedUseCategories = vi.mocked(useCategories);
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedUseToast = vi.mocked(useToast);
+const mockedUseOptionalDatabase = vi.mocked(useOptionalDatabase);
 
 function mockBudgetsResult(overrides: Partial<UseBudgetsResult> = {}): UseBudgetsResult {
   return {
@@ -498,6 +504,9 @@ describe('HouseholdPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedUseOptionalDatabase.mockReturnValue(
+      {} as NonNullable<ReturnType<typeof useOptionalDatabase>>,
+    );
     // Default: no signed-in user.  Tests that exercise the OAuth-fallback
     // path override this with a more specific value.
     mockedUseAuth.mockReturnValue({
@@ -553,6 +562,37 @@ describe('HouseholdPage', () => {
     expect(screen.getByText('Create Your Household')).toBeInTheDocument();
     expect(screen.getByLabelText(/household name/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create household/i })).toBeInTheDocument();
+  });
+
+  it('uses stable empty supplemental data when DatabaseProvider is absent', () => {
+    mockedUseOptionalDatabase.mockReturnValue(null);
+    mockedUseHousehold.mockReturnValue(
+      mockHouseholdResult({
+        household: makeHousehold(),
+        members: [makeOwnerMember()],
+      }),
+    );
+
+    render(<HouseholdPage />);
+
+    expect(screen.getByText('Smith Family')).toBeInTheDocument();
+    expect(mockedUseBudgets).not.toHaveBeenCalled();
+    expect(mockedUseAccounts).not.toHaveBeenCalled();
+    expect(mockedUseGoals).not.toHaveBeenCalled();
+    expect(mockedUseTransactions).not.toHaveBeenCalled();
+    expect(mockedUseCategories).not.toHaveBeenCalled();
+  });
+
+  it('loads supplemental household data when DatabaseProvider is present', () => {
+    mockedUseHousehold.mockReturnValue(mockHouseholdResult());
+
+    render(<HouseholdPage />);
+
+    expect(mockedUseBudgets).toHaveBeenCalledOnce();
+    expect(mockedUseAccounts).toHaveBeenCalledOnce();
+    expect(mockedUseGoals).toHaveBeenCalledOnce();
+    expect(mockedUseTransactions).toHaveBeenCalledWith({ type: 'EXPENSE' });
+    expect(mockedUseCategories).toHaveBeenCalledOnce();
   });
 
   it('mentions privacy-by-default in creation form', () => {

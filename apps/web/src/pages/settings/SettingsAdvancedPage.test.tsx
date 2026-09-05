@@ -9,6 +9,10 @@ import { MOOD_JOURNAL_STORAGE_KEY } from '../../lib/mood';
 import { MOOD_TAGS_ENABLED_KEY, MOOD_TAGS_SYNC_ENABLED_KEY } from '../../lib/mood-tags';
 import { eraseAllMoodTags } from '../../db/repositories/transactions';
 
+const { optionalDatabaseMock } = vi.hoisted(() => ({
+  optionalDatabaseMock: vi.fn(),
+}));
+
 vi.mock('../../components/settings', () => ({
   SettingInfoWidget: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DangerZone: ({ children, description }: { children: ReactNode; description: ReactNode }) => (
@@ -20,7 +24,7 @@ vi.mock('../../components/settings', () => ({
 }));
 
 vi.mock('../../db/DatabaseProvider', () => ({
-  useDatabase: () => ({ name: 'mock-db' }),
+  useOptionalDatabase: optionalDatabaseMock,
 }));
 
 vi.mock('../../db/repositories/transactions', () => ({
@@ -29,6 +33,8 @@ vi.mock('../../db/repositories/transactions', () => ({
 
 describe('SettingsAdvancedPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    optionalDatabaseMock.mockReturnValue({ name: 'mock-db' });
     localStorage.clear();
     localStorage.setItem(MOOD_TAGS_ENABLED_KEY, 'true');
     localStorage.setItem(MOOD_TAGS_SYNC_ENABLED_KEY, 'true');
@@ -45,6 +51,18 @@ describe('SettingsAdvancedPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /erase all mood data/i }));
 
     expect(eraseAllMoodTags).toHaveBeenCalledWith({ name: 'mock-db' });
+    expect(localStorage.getItem(MOOD_JOURNAL_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(MOOD_TAGS_ENABLED_KEY)).toBe('false');
+    expect(localStorage.getItem(MOOD_TAGS_SYNC_ENABLED_KEY)).toBe('false');
+  });
+
+  it('erases local mood preferences without database access when the provider is absent', () => {
+    optionalDatabaseMock.mockReturnValue(null);
+    render(<SettingsAdvancedPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /erase all mood data/i }));
+
+    expect(eraseAllMoodTags).not.toHaveBeenCalled();
     expect(localStorage.getItem(MOOD_JOURNAL_STORAGE_KEY)).toBeNull();
     expect(localStorage.getItem(MOOD_TAGS_ENABLED_KEY)).toBe('false');
     expect(localStorage.getItem(MOOD_TAGS_SYNC_ENABLED_KEY)).toBe('false');

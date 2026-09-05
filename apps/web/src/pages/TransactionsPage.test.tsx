@@ -146,7 +146,7 @@ vi.mock('../components/common', () => ({
   ExplainThis: () => null,
   LoadingSpinner: ({ label }: { label: string }) => <div>{label}</div>,
   SyncIndicator: () => null,
-  useToast: () => null,
+  useOptionalToast: () => null,
 }));
 vi.mock('../components/common/SwipeableRow', () => ({
   SwipeableRow: ({ children }: { children: ReactNode }) => <>{children}</>,
