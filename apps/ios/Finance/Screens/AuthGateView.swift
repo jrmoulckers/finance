@@ -46,10 +46,19 @@ struct AuthGateView: View {
     )
 
     @MainActor
+    init() {
+        self.init(
+            authService: AuthenticationService(),
+            deepLinkHandler: DeepLinkHandler(),
+            networkMonitor: NetworkMonitor()
+        )
+    }
+
+    @MainActor
     init(
-        authService: AuthenticationService = AuthenticationService(),
-        deepLinkHandler: DeepLinkHandler = DeepLinkHandler(),
-        networkMonitor: NetworkMonitor = NetworkMonitor()
+        authService: AuthenticationService,
+        deepLinkHandler: DeepLinkHandler,
+        networkMonitor: NetworkMonitor
     ) {
         _authService = State(initialValue: authService)
         self.deepLinkHandler = deepLinkHandler

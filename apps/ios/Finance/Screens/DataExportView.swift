@@ -16,7 +16,12 @@ struct DataExportView: View {
     @State private var viewModel: DataExportViewModel
 
     @MainActor
-    init(viewModel: DataExportViewModel = DataExportViewModel()) {
+    init() {
+        self.init(viewModel: DataExportViewModel())
+    }
+
+    @MainActor
+    init(viewModel: DataExportViewModel) {
         _viewModel = State(initialValue: viewModel)
     }
 
