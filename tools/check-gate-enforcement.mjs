@@ -187,6 +187,7 @@ export const CLAIMED_GATES = [
   'gradle:prefetch:check',
   'tool:imports:check',
   'citations:enumerations:check',
+  'citations:exclusions:check',
   'node:version:check',
   'docs:links:check',
   'test:independence:check',

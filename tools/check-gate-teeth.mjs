@@ -214,6 +214,19 @@ export const PROVEN = {
     },
     expect: 'tools/offender.mjs:4  statSync().isDirectory()',
   },
+  'citations:exclusions:check': {
+    script: 'tools/check-citation-exclusions.mjs',
+    files: {
+      'config/engineering/citations/check-citations.mjs':
+        "const pragma = ['citations-check', ': ignore-file'].join('');\n" +
+        'console.log(`1 file(s) skipped via "${pragma}": docs/hidden.md`);\n',
+    },
+    control: {
+      'config/engineering/citations/check-citations.mjs':
+        "console.log('1 citation(s) checked in 1 file(s)');\n",
+    },
+    expect: ['Undeclared citation exclusion', 'docs/hidden.md'],
+  },
 };
 
 /**
