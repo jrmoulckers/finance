@@ -353,7 +353,7 @@ struct HouseholdView: View {
             VStack(spacing: 24) {
                 Image(systemName: "person.badge.plus")
                     .font(.system(size: 48))
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
                     .accessibilityHidden(true)
 
                 Text(String(localized: "Share this code"))

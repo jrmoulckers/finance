@@ -241,7 +241,7 @@ struct HealthScoreView: View {
                 benchmarkStat(
                     label: String(localized: "Your Percentile"),
                     value: "\(benchmark.percentile)th",
-                    color: .accent
+                    color: .accentColor
                 )
 
                 Divider()

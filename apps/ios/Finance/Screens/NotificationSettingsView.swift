@@ -64,7 +64,7 @@ struct NotificationSettingsView: View {
         Section {
             HStack {
                 Image(systemName: "bell.badge")
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
                     .accessibilityHidden(true)
                 Text(viewModel.stateSummary)
                     .font(.subheadline)
@@ -140,7 +140,7 @@ struct NotificationSettingsView: View {
         HStack(spacing: 12) {
             Image(systemName: schedule.type.systemImage)
                 .font(.body)
-                .foregroundStyle(.accent)
+                .foregroundStyle(Color.accentColor)
                 .frame(width: 28, height: 28)
                 .accessibilityHidden(true)
 
