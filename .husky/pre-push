@@ -2,7 +2,7 @@
 #
 # pre-push hook (#2860) — fast local pre-flight before pushing.
 #
-# Runs: prettier format:check + eslint + a secret scan. These are a FAST
+# Runs: Node version + prettier format:check + eslint + a secret scan. These are a FAST
 # pre-flight only; the AUTHORITATIVE gate is server-side CI (ci-security.yml /
 # ci-lint.yml required status checks). A local bypass therefore cannot land an
 # unverified change on `main`.
@@ -38,14 +38,17 @@ run_check() {
   fi
 }
 
-# --- 1. Formatting -----------------------------------------------------------
+# --- 1. Node runtime ---------------------------------------------------------
+run_check "Node version (.nvmrc)" node tools/check-runtime-node-version.mjs
+
+# --- 2. Formatting -----------------------------------------------------------
 # `--no` avoids any network auto-install so the hook stays fast + non-interactive.
 run_check "Prettier format:check" npx --no -- prettier --check .
 
-# --- 2. Lint -----------------------------------------------------------------
+# --- 3. Lint -----------------------------------------------------------------
 run_check "ESLint" npx --no -- eslint . --max-warnings 0 --cache --cache-location .eslintcache
 
-# --- 3. Secret scan (#2877) --------------------------------------------------
+# --- 4. Secret scan (#2877) --------------------------------------------------
 echo "▶ Secret scan"
 SECRET_HIT=0
 if command -v gitleaks >/dev/null 2>&1; then

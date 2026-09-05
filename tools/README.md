@@ -77,7 +77,7 @@ not**:
   missing or stale (reusing the same lockfile-hash logic as `dev-full.mjs`, so a
   plain `git checkout` does not trigger a redundant reinstall).
 - **Detects but never force-installs** the system tools that need elevation or a
-  reboot — Node.js (≥ the `engines.node` floor), a **JDK 21** (checks `PATH` then
+  reboot — Node.js (the major pinned by `.nvmrc`), a **JDK 21** (checks `PATH` then
   falls back to `$JAVA_HOME/bin`), and Docker — printing the exact fix for each.
 - Stays **quiet when healthy** (a single confirmation line) and never interrupts
   opening the folder: a merely-missing system tool is advisory (exit 0). It exits
@@ -95,6 +95,11 @@ node tools/check-devenv.mjs --quiet     # print only when action is needed (sile
 node tools/check-devenv.mjs --dry-run   # report what it would do; never installs
 node tools/check-devenv.mjs --help
 ```
+
+The same exact-major Node check runs in both pre-push entry points before
+formatting and linting. A mismatch fails the push with `nvm use` / `fnm use` /
+`volta pin` guidance, preventing a newer npm major from rewriting a lockfile
+that the Node version pinned in `.nvmrc` rejects in CI.
 
 ### `gradle.js` — Cross-platform Gradle wrapper
 
