@@ -262,7 +262,7 @@ struct TransactionCreateView: View {
                     }
                 }
             }
-            Section(String(localized: "Date & time")) {
+            Section {
                 DatePicker(
                     String(localized: "Date & time"),
                     selection: $viewModel.date,
@@ -285,6 +285,8 @@ struct TransactionCreateView: View {
                         String(localized: "Recapture this transaction in your device's current timezone")
                     )
                 }
+            } header: {
+                Text(String(localized: "Date & time"))
             } footer: {
                 Text(
                     String(localized: "Saved as \(viewModel.localTimestampDescription). The local time and timezone are preserved so daily totals stay correct when you cross borders.")
