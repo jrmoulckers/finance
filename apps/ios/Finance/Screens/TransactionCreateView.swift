@@ -246,7 +246,7 @@ struct TransactionCreateView: View {
             if viewModel.moodTagsEnabled {
                 Section(String(localized: "Mood tag")) {
                     HStack {
-                        ForEach(viewModel.moodTagOptions, id: .self) { emoji in
+                        ForEach(viewModel.moodTagOptions, id: \.self) { emoji in
                             Button {
                                 viewModel.selectMoodTag(emoji)
                             } label: {
