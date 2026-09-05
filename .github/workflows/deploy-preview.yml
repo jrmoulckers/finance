@@ -152,8 +152,11 @@ jobs:
           fi
 
           if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error::VERCEL_TOKEN is required for trusted preview deployments"
-            exit 1
+            echo "::notice::VERCEL_TOKEN is not configured; skipping the optional preview deployment"
+            echo "### Preview deployment skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Vercel credentials are not configured for this repository." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
 
           npm install --global vercel@58.9.0
@@ -196,7 +199,7 @@ jobs:
   comment:
     name: PR Comment
     needs: deploy-preview
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && needs.deploy-preview.outputs.url != ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
