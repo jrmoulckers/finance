@@ -339,10 +339,7 @@ final class DataExportViewModel {
             ).post()
 
             Self.logger.info(
-                "Export completed: \(self.selectedFormat.rawValue, privacy: .public), "
-                + "\(filteredTransactions.count, privacy: .public) transactions, "
-                + "\(filteredAccounts.count, privacy: .public) accounts, "
-                + "GDPR export ID: \(metadata.exportId, privacy: .private)"
+                "Export completed: \(self.selectedFormat.rawValue, privacy: .public), \(filteredTransactions.count, privacy: .public) transactions, \(filteredAccounts.count, privacy: .public) accounts, GDPR export ID: \(metadata.exportId, privacy: .private)"
             )
         } catch {
             Self.logger.error(

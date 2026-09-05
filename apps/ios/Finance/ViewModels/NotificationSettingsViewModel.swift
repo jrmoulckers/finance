@@ -352,8 +352,7 @@ final class NotificationSettingsViewModel {
                 try await scheduler.scheduleNotification(schedule)
             } catch {
                 Self.logger.error(
-                    "Failed to schedule \(schedule.type.rawValue, privacy: .public): "
-                    + "\(error.localizedDescription, privacy: .public)"
+                    "Failed to schedule \(schedule.type.rawValue, privacy: .public): \(error.localizedDescription, privacy: .public)"
                 )
             }
         }

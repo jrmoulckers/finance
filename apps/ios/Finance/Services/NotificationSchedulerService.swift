@@ -109,8 +109,7 @@ actor NotificationSchedulerService: NotificationSchedulerProtocol {
         try await center.add(request)
 
         Self.logger.info(
-            "Scheduled \(schedule.type.rawValue, privacy: .public) notification: "
-            + "\(schedule.frequency.rawValue, privacy: .public) at \(schedule.scheduledHour, privacy: .public):\(schedule.scheduledMinute, privacy: .public)"
+            "Scheduled \(schedule.type.rawValue, privacy: .public) notification: \(schedule.frequency.rawValue, privacy: .public) at \(schedule.scheduledHour, privacy: .public):\(schedule.scheduledMinute, privacy: .public)"
         )
     }
 

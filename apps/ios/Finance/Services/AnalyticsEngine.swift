@@ -116,9 +116,7 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
         let resolvedPredictions = await predictions
 
         Self.logger.debug(
-            "Analytics summary computed: \(resolvedTrends.count, privacy: .public) categories, "
-            + "\(resolvedAnomalies.count, privacy: .public) anomalies, "
-            + "\(resolvedPredictions.count, privacy: .public) predictions"
+            "Analytics summary computed: \(resolvedTrends.count, privacy: .public) categories, \(resolvedAnomalies.count, privacy: .public) anomalies, \(resolvedPredictions.count, privacy: .public) predictions"
         )
 
         return AnalyticsSummary(

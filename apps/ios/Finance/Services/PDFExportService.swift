@@ -128,9 +128,7 @@ actor PDFExportService {
         }
 
         Self.logger.info(
-            "PDF report generated: \(fileURL.lastPathComponent, privacy: .public), "
-            + "\(accounts.count, privacy: .public) accounts, "
-            + "\(transactions.count, privacy: .public) transactions"
+            "PDF report generated: \(fileURL.lastPathComponent, privacy: .public), \(accounts.count, privacy: .public) accounts, \(transactions.count, privacy: .public) transactions"
         )
         return fileURL
     }
