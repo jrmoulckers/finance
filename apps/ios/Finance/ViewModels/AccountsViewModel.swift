@@ -43,9 +43,9 @@ final class AccountsViewModel {
 
         do {
             let allAccounts = try await repository.getAllAccounts()
-            let active = allAccounts.filter { !\$0.isArchived }
-            archivedAccounts = allAccounts.filter { \$0.isArchived }
-            let grouped = Dictionary(grouping: active) { \$0.type }
+            let active = allAccounts.filter { !$0.isArchived }
+            archivedAccounts = allAccounts.filter { $0.isArchived }
+            let grouped = Dictionary(grouping: active) { $0.type }
             accountGroups = AccountTypeUI.allCases.compactMap { type in
                 guard let items = grouped[type], !items.isEmpty else { return nil }
                 return AccountGroup(id: type.rawValue, type: type, accounts: items)
@@ -67,11 +67,11 @@ final class AccountsViewModel {
         }
         // Remove from local state for immediate UI feedback
         accountGroups = accountGroups.compactMap { group in
-            let filtered = group.accounts.filter { \$0.id != id }
+            let filtered = group.accounts.filter { $0.id != id }
             guard !filtered.isEmpty else { return nil }
             return AccountGroup(id: group.id, type: group.type, accounts: filtered)
         }
-        archivedAccounts.removeAll { \$0.id == id }
+        archivedAccounts.removeAll { $0.id == id }
     }
 
     func archiveAccount(id: String) async {
