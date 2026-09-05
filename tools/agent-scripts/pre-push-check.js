@@ -10,11 +10,12 @@
 //   node tools/agent-scripts/pre-push-check.js --fix     # fix, stage, and amend
 //
 // Steps:
-//   1. npm run format (--fix only)
-//   2. npx eslint . --fix (--fix only)
-//   3. npm run format:check
-//   4. npx eslint . --max-warnings 0
-//   5. If --fix and all pass: git add -A && git commit --amend --no-edit
+//   1. Verify the running Node major matches .nvmrc
+//   2. npm run format (--fix only)
+//   3. npx eslint . --fix (--fix only)
+//   4. npm run format:check
+//   5. npx eslint . --max-warnings 0
+//   6. If --fix and all pass: git add -A && git commit --amend --no-edit
 //
 // Exit codes: 0 = all pass, 1 = any failure
 // =============================================================================
@@ -53,6 +54,7 @@ ${fmt.bold('Usage:')}
   node tools/agent-scripts/pre-push-check.js --fix     ${fmt.dim('# fix + amend')}
 
 ${fmt.bold('Steps:')}
+  ${fmt.dim('(always)')}      node tools/check-runtime-node-version.mjs
   ${fmt.dim('(--fix only)')}  npm run format
   ${fmt.dim('(--fix only)')}  npx eslint . --fix
   ${fmt.dim('(always)')}      npm run format:check
@@ -125,6 +127,12 @@ console.log(`${'─'.repeat(48)}`);
 console.log(`  Mode: ${doFix ? fmt.cyan('fix + amend') : fmt.dim('check only')}\n`);
 
 let allPassed = true;
+
+console.log(fmt.bold('  Runtime phase:'));
+if (!step('Node version (.nvmrc)', 'node', ['tools/check-runtime-node-version.mjs'])) {
+  allPassed = false;
+}
+console.log('');
 
 // Fix steps (only with --fix)
 if (doFix) {

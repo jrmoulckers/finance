@@ -32,6 +32,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { dependencyState, recordInstall } from './lib/dev-env.mjs';
+import { compareNodeMajor } from './lib/node-runtime.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -121,20 +122,6 @@ function firstInt(s) {
   return m ? Number(m[1]) : null;
 }
 
-/**
- * Minimum required Node major version, read from package.json `engines.node`
- * so there is a single source of truth (falls back to 22).
- * @returns {number}
- */
-function requiredNodeMajor() {
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
-    return firstInt(pkg?.engines?.node || '') ?? 22;
-  } catch {
-    return 22;
-  }
-}
-
 /** @typedef {{ name: string, ok: boolean, detail: string, fix?: string }} Item */
 
 /** @type {Item[]} */
@@ -157,14 +144,20 @@ function record(name, ok, detail, fix) {
 // ── System tools (detect + guide; never auto-install) ────────────────────────
 
 function checkNode() {
-  const min = requiredNodeMajor();
   const cur = process.versions.node;
-  const ok = (firstInt(cur) ?? 0) >= min;
+  let nvmrc;
+  try {
+    nvmrc = fs.readFileSync(path.join(REPO_ROOT, '.nvmrc'), 'utf8');
+  } catch {
+    record('Node.js', false, 'could not read .nvmrc', 'Restore .nvmrc, then reopen the folder.');
+    return;
+  }
+  const result = compareNodeMajor(nvmrc, cur);
   record(
     'Node.js',
-    ok,
-    ok ? cur : `${cur} — need >= ${min}`,
-    ok ? undefined : `Update Node.js (>= ${min}): https://nodejs.org/`,
+    result.ok,
+    result.ok ? cur : result.message.replace(/\n/g, ' '),
+    result.ok ? undefined : 'Run `nvm use` (or `fnm use` / `volta pin`) and reopen the folder.',
   );
 }
 

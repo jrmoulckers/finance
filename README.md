@@ -208,7 +208,7 @@ You need the following installed before building:
 | Tool                            | Version  | Notes                                                                                   |
 | ------------------------------- | -------- | --------------------------------------------------------------------------------------- |
 | [Git](https://git-scm.com/)     | 2.40+    | Version control                                                                         |
-| [Node.js](https://nodejs.org/)  | 22+      | Build tooling, npm workspaces, MCP servers                                              |
+| [Node.js](https://nodejs.org/)  | `.nvmrc` | Build tooling, npm workspaces, MCP servers; run `nvm use` (or `fnm use` / `volta pin`)  |
 | [JDK 21](https://adoptium.net/) | 21 (LTS) | Kotlin Multiplatform compilation — [Eclipse Temurin](https://adoptium.net/) recommended |
 
 > **JDK auto-detection:** The build script `tools/gradle.js` automatically locates a JDK 21 installation on your system. Install Temurin to a standard location and the build will find it — no need to set `JAVA_HOME` manually.
@@ -230,7 +230,10 @@ These are only needed if you are building or testing for a specific platform:
 git clone https://github.com/jrmoulckers/finance.git
 cd finance
 
-# 2. One-command setup (validates prerequisites, installs deps, configures hooks, builds)
+# 2. Select the repository's Node major before npm can rewrite the lockfile
+nvm use
+
+# 3. One-command setup (validates prerequisites, installs deps, configures hooks, builds)
 npm run setup
 ```
 
