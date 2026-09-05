@@ -102,11 +102,7 @@ actor PersistentDataStore {
                 await seedFromMockData()
             } else {
                 Self.logger.info(
-                    "Loaded from disk: \(self.accounts.count) accounts, "
-                    + "\(self.transactions.count) transactions, "
-                    + "\(self.budgets.count) budgets, "
-                    + "\(self.goals.count) goals, "
-                    + "\(self.categories.count) categories"
+                    "Loaded from disk: \(self.accounts.count) accounts, \(self.transactions.count) transactions, \(self.budgets.count) budgets, \(self.goals.count) goals, \(self.categories.count) categories"
                 )
             }
 
@@ -159,11 +155,7 @@ actor PersistentDataStore {
             }
 
             Self.logger.info(
-                "PersistentDataStore seeded: \(self.accounts.count) accounts, "
-                + "\(self.transactions.count) transactions, "
-                + "\(self.budgets.count) budgets, "
-                + "\(self.goals.count) goals, "
-                + "\(self.categories.count) categories"
+                "PersistentDataStore seeded: \(self.accounts.count) accounts, \(self.transactions.count) transactions, \(self.budgets.count) budgets, \(self.goals.count) goals, \(self.categories.count) categories"
             )
         } catch {
             Self.logger.error(

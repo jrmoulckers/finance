@@ -54,9 +54,7 @@ actor LocalDataStore {
             for budget in mockBudgets { budgets[budget.id] = budget }
 
             Self.logger.info(
-                "Local data store seeded: \(self.accounts.count) accounts, "
-                + "\(self.transactions.count) transactions, "
-                + "\(self.budgets.count) budgets"
+                "Local data store seeded: \(self.accounts.count) accounts, \(self.transactions.count) transactions, \(self.budgets.count) budgets"
             )
         } catch {
             Self.logger.error(

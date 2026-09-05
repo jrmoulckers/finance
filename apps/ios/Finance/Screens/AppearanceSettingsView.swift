@@ -10,7 +10,7 @@ struct AppearanceSettingsView: View {
 
     var body: some View {
         Form {
-            Section(String(localized: "Theme")) {
+            Section {
                 Picker(String(localized: "Theme"), selection: $themePreferenceRaw) {
                     ForEach(AppThemePreference.allCases) { theme in
                         Text(theme.displayName).tag(theme.rawValue)
@@ -20,11 +20,13 @@ struct AppearanceSettingsView: View {
                 .accessibilityIdentifier("theme_picker")
                 .accessibilityLabel(String(localized: "App theme"))
                 .accessibilityHint(String(localized: "Choose System, Light, or Dark appearance"))
+            } header: {
+                Text(String(localized: "Theme"))
             } footer: {
                 Text(String(localized: "System follows your device's appearance. Light and Dark override it everywhere in Finance."))
             }
 
-            Section(String(localized: "Icon Style")) {
+            Section {
                 Picker(String(localized: "Icon Style"), selection: $selectedIconPackId) {
                     ForEach(IconPackID.allCases) { pack in
                         IconStylePickerRow(pack: pack, previewTokens: previewTokens)
@@ -33,6 +35,8 @@ struct AppearanceSettingsView: View {
                 }
                 .pickerStyle(.inline)
                 .accessibilityIdentifier("icon_style_picker")
+            } header: {
+                Text(String(localized: "Icon Style"))
             } footer: {
                 Text(String(localized: "Choose between Finance's cross-platform Standard Lucide icons and Apple's native SF Symbols."))
             }
