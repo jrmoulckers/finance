@@ -212,6 +212,7 @@ final class SettingsViewModel {
     private let budgetRepository: BudgetRepository
     private let goalRepository: GoalRepository
     private let exportService: DataExportService
+    private let pdfExportService: PDFExportService
     private let deletionService: DataDeletionManaging
 
     private static let logger = Logger(
@@ -236,6 +237,7 @@ final class SettingsViewModel {
         budgetRepository: BudgetRepository = MockBudgetRepository(),
         goalRepository: GoalRepository = MockGoalRepository(),
         exportService: DataExportService = DataExportService(),
+        pdfExportService: PDFExportService = PDFExportService(),
         deletionService: DataDeletionManaging? = nil,
         syncQueue: SyncQueueManager? = nil,
         defaults: UserDefaults = .standard
@@ -245,6 +247,7 @@ final class SettingsViewModel {
         self.budgetRepository = budgetRepository
         self.goalRepository = goalRepository
         self.exportService = exportService
+        self.pdfExportService = pdfExportService
         self.deletionService = deletionService ?? DataDeletionService(accountRepository: accountRepository, transactionRepository: transactionRepository, budgetRepository: budgetRepository, goalRepository: goalRepository, defaults: defaults)
         self.syncQueue = syncQueue ?? .shared
         self.defaults = defaults
@@ -364,7 +367,7 @@ final class SettingsViewModel {
     /// ``DataExportService``, and stores the resulting file URL so the
     /// view can present a share sheet.
     ///
-    /// - Parameter format: The desired export format (`.json` or `.csv`).
+    /// - Parameter format: The desired export format.
     func exportData(format: ExportFormat) async {
         isExporting = true
         defer { isExporting = false }
@@ -389,6 +392,18 @@ final class SettingsViewModel {
             case .csv:
                 let transactions = try await transactionRepository.getTransactions()
                 fileURL = try await exportService.exportCSV(transactions: transactions)
+
+            case .pdf:
+                async let accounts = accountRepository.getAccounts()
+                async let transactions = transactionRepository.getTransactions()
+                async let budgets = budgetRepository.getBudgets()
+
+                fileURL = try await pdfExportService.generateReport(
+                    accounts: accounts,
+                    transactions: transactions,
+                    budgets: budgets,
+                    metadata: .standard(isComplete: true)
+                )
             }
 
             exportedFileURL = fileURL

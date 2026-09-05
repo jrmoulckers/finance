@@ -10,6 +10,7 @@
 
 import Foundation
 import Observation
+import SwiftUI
 import os
 
 // MARK: - Export Progress Step
