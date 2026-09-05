@@ -231,7 +231,7 @@ struct FinanceQueryParser: Sendable {
         // 4. A vague category synonym.
         switch synonymCategory(in: normalized) {
         case .resolved(let value):
-            return .resolved(.category(value))
+            return .resolved(value)
         case .ambiguousCategory(let phrase, let options):
             return .ambiguousCategory(phrase: phrase, options: options)
         case .none:
