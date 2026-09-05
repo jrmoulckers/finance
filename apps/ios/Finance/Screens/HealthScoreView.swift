@@ -344,11 +344,13 @@ struct HealthScoreView: View {
     }
 }
 
+#if DEBUG
 #Preview("Health Score") {
     HealthScoreView(
-        accountRepository: StubAccountRepository(),
-        transactionRepository: StubTransactionRepository(),
-        budgetRepository: StubBudgetRepository(),
-        goalRepository: StubGoalRepository()
+        accountRepository: PreviewRepositories.account,
+        transactionRepository: PreviewRepositories.transaction,
+        budgetRepository: PreviewRepositories.budget,
+        goalRepository: PreviewRepositories.goal
     )
 }
+#endif

@@ -231,11 +231,11 @@ protocol SwiftExportFormatterModule: Sendable {
 
 /// Sync engine control operations bridged from KMP.
 protocol SwiftExportSyncModule: Sendable {
-    /// Whether the sync client has a valid authentication session.
-    var isAuthenticated: Bool { get }
+    /// Whether the actor-owned sync client has a valid authentication session.
+    var isAuthenticated: Bool { get async }
 
-    /// Number of local mutations pending push.
-    var pendingMutationCount: Int { get }
+    /// Number of actor-owned local mutations pending push.
+    var pendingMutationCount: Int { get async }
 
     /// Starts the real-time sync connection.
     func start() async
@@ -249,8 +249,8 @@ protocol SwiftExportSyncModule: Sendable {
     /// Signs out and clears sync session state.
     func signOut() async
 
-    /// Observes sync status changes as an async stream.
-    func observeSyncStatus() -> AsyncStream<KMPSyncStatus>
+    /// Observes sync status changes as an actor-created async stream.
+    func observeSyncStatus() async -> AsyncStream<KMPSyncStatus>
 }
 
 // MARK: - Bridge Error

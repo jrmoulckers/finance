@@ -326,9 +326,11 @@ struct AnalyticsView: View {
     }
 }
 
+#if DEBUG
 #Preview("Analytics View") {
     AnalyticsView(
-        transactionRepository: StubTransactionRepository(),
-        accountRepository: StubAccountRepository()
+        transactionRepository: PreviewRepositories.transaction,
+        accountRepository: PreviewRepositories.account
     )
 }
+#endif

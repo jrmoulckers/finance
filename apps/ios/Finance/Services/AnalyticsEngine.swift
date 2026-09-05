@@ -79,7 +79,7 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
         async let anomalies = detectAnomalies(transactions: filtered, period: period)
         async let predictions = predictSpending(transactions: filtered, monthsAhead: 3)
 
-        let monthlyGroups = groupByMonth(filtered, calendar: calendar)
+        let monthlyGroups = Self.groupByMonth(filtered, calendar: calendar)
         let monthCount = max(monthlyGroups.count, 1)
 
         let totalExpenses = filtered
@@ -135,12 +135,14 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
 
     // MARK: - Predictions (Linear Regression)
 
-    func predictSpending(
+    /// Stateless calculation that is safe to run concurrently with the actor's
+    /// other analytics work.
+    nonisolated func predictSpending(
         transactions: [TransactionItem],
         monthsAhead: Int
     ) -> [TrendPrediction] {
         let calendar = Calendar.current
-        let monthlyTotals = monthlyExpenseTotals(transactions, calendar: calendar)
+        let monthlyTotals = Self.monthlyExpenseTotals(transactions, calendar: calendar)
 
         guard monthlyTotals.count >= 2 else {
             Self.logger.debug("Insufficient data for prediction (\(monthlyTotals.count) months)")
@@ -192,7 +194,8 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
 
     // MARK: - Anomaly Detection
 
-    func detectAnomalies(
+    /// Stateless calculation that does not access actor-owned state.
+    nonisolated func detectAnomalies(
         transactions: [TransactionItem],
         period: AnalyticsPeriod
     ) -> [SpendingAnomaly] {
@@ -203,7 +206,10 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
         var anomalies: [SpendingAnomaly] = []
 
         for (category, categoryTransactions) in byCategory {
-            let monthlyAmounts = monthlyAmountsForTransactions(categoryTransactions, calendar: calendar)
+            let monthlyAmounts = Self.monthlyAmountsForTransactions(
+                categoryTransactions,
+                calendar: calendar
+            )
             guard monthlyAmounts.count >= 3 else { continue }
 
             let amounts = monthlyAmounts.map { Double(abs($0.amount)) }
@@ -233,7 +239,8 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
 
     // MARK: - Category Trends
 
-    func categoryTrends(
+    /// Stateless calculation that does not access actor-owned state.
+    nonisolated func categoryTrends(
         transactions: [TransactionItem],
         period: AnalyticsPeriod
     ) -> [CategoryTrend] {
@@ -242,7 +249,10 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
         let byCategory = Dictionary(grouping: expenses) { $0.category }
 
         return byCategory.compactMap { category, categoryTransactions in
-            let monthly = monthlyAmountsForTransactions(categoryTransactions, calendar: calendar)
+            let monthly = Self.monthlyAmountsForTransactions(
+                categoryTransactions,
+                calendar: calendar
+            )
             guard !monthly.isEmpty else { return nil }
 
             let totalAmount = monthly.reduce(Int64(0)) { $0 + abs($1.amount) }
@@ -288,7 +298,7 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
         let amount: Int64
     }
 
-    private func groupByMonth(
+    private static func groupByMonth(
         _ transactions: [TransactionItem],
         calendar: Calendar
     ) -> [Date: [TransactionItem]] {
@@ -297,12 +307,12 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
         }
     }
 
-    private func monthlyExpenseTotals(
+    private static func monthlyExpenseTotals(
         _ transactions: [TransactionItem],
         calendar: Calendar
     ) -> [MonthTotal] {
         let expenses = transactions.filter { $0.type == .expense }
-        let grouped = groupByMonth(expenses, calendar: calendar)
+        let grouped = Self.groupByMonth(expenses, calendar: calendar)
 
         return grouped.map { month, txns in
             MonthTotal(month: month, amount: txns.reduce(Int64(0)) { $0 + abs($1.amountMinorUnits) })
@@ -310,11 +320,11 @@ actor AnalyticsEngine: AnalyticsEngineProtocol {
         .sorted { $0.month < $1.month }
     }
 
-    private func monthlyAmountsForTransactions(
+    private static func monthlyAmountsForTransactions(
         _ transactions: [TransactionItem],
         calendar: Calendar
     ) -> [MonthTotal] {
-        let grouped = groupByMonth(transactions, calendar: calendar)
+        let grouped = Self.groupByMonth(transactions, calendar: calendar)
         return grouped.map { month, txns in
             MonthTotal(month: month, amount: txns.reduce(Int64(0)) { $0 + $1.amountMinorUnits })
         }

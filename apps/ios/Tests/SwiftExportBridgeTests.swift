@@ -397,15 +397,17 @@ struct StubFormatterModuleTests {
 struct StubSyncModuleTests {
 
     @Test("isAuthenticated returns false")
-    func notAuthenticated() {
-        let module = StubSyncModule()
-        #expect(!module.isAuthenticated)
+    func notAuthenticated() async {
+        let module: any SwiftExportSyncModule = StubSyncModule()
+        let isAuthenticated = await module.isAuthenticated
+        #expect(!isAuthenticated)
     }
 
     @Test("pendingMutationCount is zero")
-    func zeroPendingMutations() {
-        let module = StubSyncModule()
-        #expect(module.pendingMutationCount == 0)
+    func zeroPendingMutations() async {
+        let module: any SwiftExportSyncModule = StubSyncModule()
+        let pendingMutationCount = await module.pendingMutationCount
+        #expect(pendingMutationCount == 0)
     }
 
     @Test("syncNow returns success")
@@ -421,9 +423,10 @@ struct StubSyncModuleTests {
 
     @Test("observeSyncStatus emits idle then finishes")
     func observeSyncStatus() async {
-        let module = StubSyncModule()
+        let module: any SwiftExportSyncModule = StubSyncModule()
         var statuses: [KMPSyncStatus] = []
-        for await status in module.observeSyncStatus() {
+        let statusStream = await module.observeSyncStatus()
+        for await status in statusStream {
             statuses.append(status)
         }
         #expect(statuses.count == 1)
@@ -432,6 +435,54 @@ struct StubSyncModuleTests {
         } else {
             Issue.record("Expected idle status")
         }
+    }
+}
+
+@Suite("PowerSyncManager actor state")
+struct PowerSyncManagerActorStateTests {
+    private struct ReadOnlyKeychain: KeychainManaging {
+        let values: [String: Data]
+
+        func save(key: String, data: Data) throws {}
+
+        func load(key: String) -> Data? {
+            values[key]
+        }
+
+        func delete(key: String) throws {}
+    }
+
+    @Test("authentication and pending writes are read from actor-owned dependencies")
+    func actorOwnedState() async {
+        let keychain = ReadOnlyKeychain(values: [
+            "com.finance.auth.accessToken": Data([0x01]),
+        ])
+        let configuration = PowerSyncConfiguration(
+            powerSyncURL: "https://powersync.example.invalid",
+            supabaseURL: "https://supabase.example.invalid",
+            supabaseAnonKey: "test-placeholder"
+        )
+        let concreteManager = PowerSyncManager(
+            configuration: configuration,
+            keychain: keychain
+        )
+        let manager: any SwiftExportSyncModule = concreteManager
+
+        let isAuthenticated = await manager.isAuthenticated
+        let initialPendingCount = await manager.pendingMutationCount
+
+        #expect(isAuthenticated)
+        #expect(initialPendingCount == 0)
+
+        await concreteManager.enqueueMutation(OfflineMutation(
+            id: "preview-mutation",
+            type: .insert,
+            table: "transactions",
+            data: Data()
+        ))
+
+        let updatedPendingCount = await manager.pendingMutationCount
+        #expect(updatedPendingCount == 1)
     }
 }
 

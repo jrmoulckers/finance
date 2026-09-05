@@ -45,6 +45,7 @@ struct AuthGateView: View {
         category: "AuthGateView"
     )
 
+    @MainActor
     init(
         authService: AuthenticationService = AuthenticationService(),
         deepLinkHandler: DeepLinkHandler = DeepLinkHandler(),

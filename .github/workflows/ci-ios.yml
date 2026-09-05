@@ -104,27 +104,10 @@ jobs:
             -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
             2>&1 | tail -10
 
-      # TEMPORARY (#4125): the iOS app does not currently compile. This step
-      # reports the failure loudly but does not fail the job, because making it
-      # blocking before the build can be green would block all iOS work on a
-      # breakage none of those PRs introduced.
-      #
-      # This is DECLARED tolerance, not the accidental masking of #4122:
-      #   - the real exit status is read from PIPESTATUS, never from `tail`
-      #   - a `::error::` annotation fires on every failing run
-      #   - the full, deduplicated compiler error list is printed (not `tail`-truncated)
-      #   - the full log is uploaded as an artifact
-      #   - the tolerance is a single, greppable `exit 0` with a removal condition
-      #
-      # REMOVE the `set +e` / `exit 0` below the moment #4125 lands, restoring a
-      # hard-failing gate. Do not add new iOS code on top of a red build.
       - name: Build
         run: |
-          set +e
+          set -o pipefail
           cd apps/ios
-          # `tee` keeps the full log so the error extract below is not itself
-          # truncated by `tail` — the tail-truncated log is what made #4122
-          # hard to diagnose from CI output alone.
           xcodebuild build \
             -scheme FinanceApp \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
@@ -132,22 +115,12 @@ jobs:
             -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee .build-xcodebuild.log | tail -20
-          status=${PIPESTATUS[0]}
-          if [ "$status" -ne 0 ]; then
-            echo "::error::iOS build FAILED (xcodebuild exit $status) — known pre-existing breakage, tracked in #4125. This step is temporarily non-blocking."
-            echo "--- distinct compiler errors ---"
-            grep -E ': error: ' .build-xcodebuild.log | sed 's#.*/finance/##' | sort -u
-            echo "--- end ---"
-            echo "::warning::Build failure tolerated by #4125. Remove the temporary 'exit 0' in ci-ios.yml once the build is green."
-          fi
-          exit 0 # TEMPORARY — remove with #4125
 
-      # TEMPORARY (#4125): the test action has never successfully run, because the
-      # build does not compile. Same declared-tolerance contract as Build above.
       - name: Test
         run: |
-          set +e
+          set -o pipefail
           cd apps/ios
+          mkdir -p .build
           # The SPM-generated `<PackageName>-Package` scheme is the one that
           # contains the test targets; `FinanceApp` is a library product and is
           # "not currently configured for the test action".
@@ -160,13 +133,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath .build/TestResults.xcresult \
             2>&1 | tee .build-xcodebuild-test.log | tail -30
-          status=${PIPESTATUS[0]}
-          if [ "$status" -ne 0 ]; then
-            echo "::error::iOS tests FAILED (xcodebuild exit $status) — tracked in #4125. This step is temporarily non-blocking."
-            grep -E ': (error|failed): |XCTAssert' .build-xcodebuild-test.log | sed 's#.*/finance/##' | sort -u | head -50 || true
-            echo "::warning::Test failure tolerated by #4125."
-          fi
-          exit 0 # TEMPORARY — remove with #4125
 
       - name: Upload iOS build logs
         if: always()

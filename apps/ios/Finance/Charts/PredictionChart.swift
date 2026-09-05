@@ -269,29 +269,73 @@ private final class PredictionCurrencyFormatterCache: @unchecked Sendable {
     }
 }
 
+#if DEBUG
 #Preview("Prediction Chart") {
     let calendar = Calendar.current
     let today = Date.now
-    let historical: [TrendDataPoint] = (0..<6).map { i in
-        TrendDataPoint(
-            date: calendar.date(byAdding: .month, value: -5 + i, to: today)!,
-            value: 3_500 + Double.random(in: -400...400),
-            series: "Spending"
-        )
-    }
-    let predictions: [TrendPrediction] = (1...3).map { i in
-        TrendPrediction(
-            date: calendar.date(byAdding: .month, value: i, to: today)!,
-            predictedMinorUnits: Int64(380_000 + i * 10_000),
-            upperBoundMinorUnits: Int64(420_000 + i * 15_000),
-            lowerBoundMinorUnits: Int64(340_000 + i * 5_000),
-            confidencePercent: 95 - Double(i) * 5
-        )
-    }
 
     PredictionChart(
-        historicalData: historical,
-        predictions: predictions,
+        historicalData: predictionChartPreviewHistory(
+            calendar: calendar,
+            today: today
+        ),
+        predictions: predictionChartPreviewPredictions(
+            calendar: calendar,
+            today: today
+        ),
         currencyCode: "USD"
     )
 }
+
+private func predictionChartPreviewHistory(
+    calendar: Calendar,
+    today: Date
+) -> [TrendDataPoint] {
+    var points: [TrendDataPoint] = []
+
+    for index in 0..<6 {
+        let monthOffset: Int = -5 + index
+        let date: Date = calendar.date(
+            byAdding: .month,
+            value: monthOffset,
+            to: today
+        )!
+        let randomOffset: Double = Double.random(in: -400...400)
+        let value: Double = 3_500 + randomOffset
+        points.append(
+            TrendDataPoint(date: date, value: value, series: "Spending")
+        )
+    }
+
+    return points
+}
+
+private func predictionChartPreviewPredictions(
+    calendar: Calendar,
+    today: Date
+) -> [TrendPrediction] {
+    var points: [TrendPrediction] = []
+
+    for monthOffset in 1...3 {
+        let date: Date = calendar.date(
+            byAdding: .month,
+            value: monthOffset,
+            to: today
+        )!
+        let offset = Int64(monthOffset)
+        let predictedMinorUnits: Int64 = 380_000 + offset * 10_000
+        let upperBoundMinorUnits: Int64 = 420_000 + offset * 15_000
+        let lowerBoundMinorUnits: Int64 = 340_000 + offset * 5_000
+        let confidencePercent: Double = 95 - Double(monthOffset) * 5
+        points.append(TrendPrediction(
+            date: date,
+            predictedMinorUnits: predictedMinorUnits,
+            upperBoundMinorUnits: upperBoundMinorUnits,
+            lowerBoundMinorUnits: lowerBoundMinorUnits,
+            confidencePercent: confidencePercent
+        ))
+    }
+
+    return points
+}
+#endif

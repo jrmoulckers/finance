@@ -736,10 +736,3 @@ extension GoalItem: Codable {
 }
 
 extension GoalStatusUI: Codable {}
-
-// CategoryItem already has all stored properties as Codable types.
-extension CategoryItem: Codable {
-    enum CodingKeys: String, CodingKey {
-        case id, name, colorHex, icon, sortOrder
-    }
-}

@@ -363,7 +363,7 @@ struct StubSyncModule: SwiftExportSyncModule, Sendable {
 
     func signOut() async {}
 
-    func observeSyncStatus() -> AsyncStream<KMPSyncStatus> {
+    func observeSyncStatus() async -> AsyncStream<KMPSyncStatus> {
         AsyncStream { continuation in
             continuation.yield(.idle)
             continuation.finish()

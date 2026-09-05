@@ -372,7 +372,7 @@ final class NotificationSettingsViewModel {
 
             let (b, t, g) = try await (budgets, transactions, goals)
 
-            smartAlerts = await scheduler.generateSmartAlerts(
+            smartAlerts = scheduler.generateSmartAlerts(
                 budgets: b,
                 transactions: t,
                 goals: g

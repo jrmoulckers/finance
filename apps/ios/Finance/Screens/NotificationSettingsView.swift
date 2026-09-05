@@ -388,12 +388,14 @@ struct NotificationSettingsView: View {
     }
 }
 
+#if DEBUG
 #Preview("Notification Settings") {
     NavigationStack {
         NotificationSettingsView(
-            budgetRepository: StubBudgetRepository(),
-            transactionRepository: StubTransactionRepository(),
-            goalRepository: StubGoalRepository()
+            budgetRepository: PreviewRepositories.budget,
+            transactionRepository: PreviewRepositories.transaction,
+            goalRepository: PreviewRepositories.goal
         )
     }
 }
+#endif

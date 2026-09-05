@@ -403,6 +403,8 @@ struct HouseholdView: View {
     }
 }
 
+#if DEBUG
 #Preview("Household View") {
-    HouseholdView(repository: StubHouseholdRepository())
+    HouseholdView(repository: PreviewRepositories.household)
 }
+#endif

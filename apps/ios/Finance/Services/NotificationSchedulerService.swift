@@ -126,23 +126,25 @@ actor NotificationSchedulerService: NotificationSchedulerProtocol {
 
     // MARK: - Smart Alert Generation
 
-    func generateSmartAlerts(
+    /// Pure alert generation does not access the notification-center state
+    /// owned by this actor, so callers may safely run it on their executor.
+    nonisolated func generateSmartAlerts(
         budgets: [BudgetItem],
         transactions: [TransactionItem],
         goals: [GoalItem]
     ) -> [SmartAlert] {
         var alerts: [SmartAlert] = []
 
-        alerts.append(contentsOf: generateBudgetAlerts(budgets))
-        alerts.append(contentsOf: generateGoalAlerts(goals))
-        alerts.append(contentsOf: generateSpendingAlerts(transactions))
+        alerts.append(contentsOf: Self.generateBudgetAlerts(budgets))
+        alerts.append(contentsOf: Self.generateGoalAlerts(goals))
+        alerts.append(contentsOf: Self.generateSpendingAlerts(transactions))
 
         return alerts.sorted { $0.priority > $1.priority }
     }
 
     // MARK: - Budget Alerts
 
-    private func generateBudgetAlerts(_ budgets: [BudgetItem]) -> [SmartAlert] {
+    private static func generateBudgetAlerts(_ budgets: [BudgetItem]) -> [SmartAlert] {
         budgets.compactMap { budget -> SmartAlert? in
             let percent = budget.progress * 100
 
@@ -174,7 +176,7 @@ actor NotificationSchedulerService: NotificationSchedulerProtocol {
 
     // MARK: - Goal Alerts
 
-    private func generateGoalAlerts(_ goals: [GoalItem]) -> [SmartAlert] {
+    private static func generateGoalAlerts(_ goals: [GoalItem]) -> [SmartAlert] {
         goals.compactMap { goal -> SmartAlert? in
             let percent = goal.progress * 100
 
@@ -206,7 +208,7 @@ actor NotificationSchedulerService: NotificationSchedulerProtocol {
 
     // MARK: - Spending Alerts
 
-    private func generateSpendingAlerts(_ transactions: [TransactionItem]) -> [SmartAlert] {
+    private static func generateSpendingAlerts(_ transactions: [TransactionItem]) -> [SmartAlert] {
         let calendar = Calendar.current
         let now = Date.now
         let todayExpenses = transactions.filter {
