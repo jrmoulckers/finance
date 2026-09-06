@@ -872,11 +872,236 @@ components:
           type: string
           format: date-time
 
+    EntitlementBankConnections:
+      type: object
+      additionalProperties: false
+      required: [allowance, base_allowance, addon_allowance]
+      properties:
+        allowance:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Authoritative connections the resolved household may hold.
+        base_allowance:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Catalog base for the effective household tier (Free 0, Premium 2, Family 4).
+        addon_allowance:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Allowance above the catalog base, i.e. verified add-on capacity.
+
+    EntitlementValidity:
+      type: object
+      additionalProperties: false
+      required: [effective_at, expires_at, server_time, projection_version]
+      properties:
+        effective_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Server-issued bound. Clients never substitute their own clock.
+        server_time:
+          type: string
+          format: date-time
+        projection_version:
+          type: integer
+          format: int64
+          minimum: 1
+
+    EntitlementPendingDowngrade:
+      type: object
+      additionalProperties: false
+      required: [pending, effective_at, bank_connection_allowance]
+      properties:
+        pending:
+          type: boolean
+          description: A reduction is scheduled when the validity bound passes unrenewed.
+        effective_at:
+          type: string
+          format: date-time
+          nullable: true
+        bank_connection_allowance:
+          type: integer
+          format: int64
+          minimum: 0
+          description: >-
+            Allowance that applies after the bound without strictly newer
+            verified provider evidence.
+
+    MinimizedEntitlement:
+      type: object
+      additionalProperties: false
+      required:
+        - scope
+        - tier
+        - user_tier
+        - household_tier
+        - access_state
+        - lifecycle
+        - is_premium_sponsor
+        - is_family_bound
+        - bank_connections
+        - validity
+        - downgrade
+      properties:
+        scope:
+          type: string
+          enum: [user, household]
+          description: Subject that produces the effective tier.
+        tier:
+          type: string
+          enum: [free, plus, premium, family]
+        user_tier:
+          type: string
+          enum: [free, plus, premium]
+        household_tier:
+          type: string
+          nullable: true
+          enum: [free, premium, family]
+        access_state:
+          type: string
+          enum: [granted, not_entitled, lapsed]
+          description: >-
+            Lifecycle-derived state resolved at server time. `lapsed` is
+            explicitly non-authorizing and clients treat it as Free.
+        lifecycle:
+          type: string
+          nullable: true
+          enum:
+            - trialing
+            - active
+            - cancelled_paid_through
+            - past_due_grace
+            - paused_paid_through
+            - expired
+            - refunded
+            - chargeback
+          description: >-
+            Ratified normalized lifecycle vocabulary. Contract version 1 never
+            discloses it and always returns null.
+        is_premium_sponsor:
+          type: boolean
+          description: The authenticated caller sponsors the resolved household.
+        is_family_bound:
+          type: boolean
+          description: The resolved household holds a bound Family purchase.
+        bank_connections:
+          $ref: '#/components/schemas/EntitlementBankConnections'
+        validity:
+          $ref: '#/components/schemas/EntitlementValidity'
+        downgrade:
+          $ref: '#/components/schemas/EntitlementPendingDowngrade'
+
+    MinimizedEntitlementEnvelope:
+      type: object
+      additionalProperties: false
+      required: [contract_version, catalog_version, entitlement]
+      properties:
+        contract_version:
+          type: integer
+          enum: [1]
+        catalog_version:
+          type: integer
+          minimum: 1
+        entitlement:
+          $ref: '#/components/schemas/MinimizedEntitlement'
+
+    EntitlementError:
+      type: object
+      additionalProperties: false
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          description: Human-readable message that never carries provider or ledger detail.
+        code:
+          type: string
+          enum:
+            - method_not_allowed
+            - unauthenticated
+            - invalid_request
+            - forbidden
+            - rate_limited
+            - projection_unavailable
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
 paths:
+  /entitlements-v1:
+    get:
+      operationId: getMinimizedEntitlement
+      summary: Read the versioned minimized entitlement contract
+      description: >-
+        Returns the authenticated caller's effective entitlement, derived
+        solely from the authoritative Finance projection plus server-resolved
+        identity and household membership. Provider names and identifiers, raw
+        evidence, internal ledger identifiers, and other household members'
+        billing data are never disclosed. `household_id` is the only accepted
+        parameter and is independently re-authorized; any other parameter is
+        rejected. Malformed, unknown, stale, and unavailable projection states
+        are explicit and never authorize a cost-incurring action.
+      tags: [Billing]
+      security:
+        - BearerJWT: []
+      parameters:
+        - in: query
+          name: household_id
+          schema:
+            type: string
+            format: uuid
+          description: Optional household scope, re-authorized against active membership.
+      responses:
+        '200':
+          description: Current minimized entitlement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MinimizedEntitlementEnvelope'
+        '400':
+          description: Unsupported or malformed request parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementError'
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementError'
+        '403':
+          description: Active household membership required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementError'
+        '405':
+          description: The endpoint is read-only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementError'
+        '429':
+          description: Entitlement read rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementError'
+        '503':
+          description: The projection is unavailable or not understood; fails closed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementError'
+
   /stripe-checkout:
     post:
       operationId: createStripeCheckout

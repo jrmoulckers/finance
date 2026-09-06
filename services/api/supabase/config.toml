@@ -126,3 +126,10 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+# The minimized entitlement endpoint (#4403) is authenticated-only. Gateway JWT
+# verification stays enabled (the default) as defense in depth; the function
+# additionally resolves auth.uid() and re-authorizes household membership
+# inside the SECURITY DEFINER projection before returning anything.
+[functions.entitlements-v1]
+verify_jwt = true

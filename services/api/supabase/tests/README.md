@@ -138,6 +138,27 @@ named fixtures and therefore must only target a disposable local container:
   -Container <disposable-migrated-postgres-container>
 ```
 
+### 4. Minimized Entitlement API Contract Tests
+
+**Runtime:** PostgreSQL (requires local Supabase)
+
+`entitlement-api-contract.test.sql` pins the parts of `public.get_my_entitlements`
+that the `entitlements-v1` Edge Function depends on: its exact minimized return
+contract, its least-privilege grants (`authenticated` only, never `anon` or
+`PUBLIC`), fail-closed behavior for unauthenticated, cross-household, and
+removed-member reads, scope resolution between the user and household subjects,
+the ratified bank-connection allowances, and the tier projected for every one of
+the eight normalized lifecycles.
+
+```bash
+# From services/api/ with local Supabase running and libpq connection
+# variables set for the local database:
+npm run test:entitlement-api
+```
+
+The suite uses `ON_ERROR_STOP`, runs in one transaction, and rolls back all
+fixtures. It must never be pointed at staging or production.
+
 ## Adding New Tests
 
 ### Adding a contract test

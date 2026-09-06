@@ -280,6 +280,12 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
     keyPrefix: 'stripe-status',
     failMode: 'closed',
   },
+  'entitlements-v1': {
+    maxRequests: 60,
+    windowSeconds: 60,
+    keyPrefix: 'entitlements-v1',
+    failMode: 'closed',
+  },
 };
 
 // ---------------------------------------------------------------------------

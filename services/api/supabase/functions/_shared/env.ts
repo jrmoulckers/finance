@@ -110,6 +110,10 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'anomaly-detection': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'consent-management': [],
   'investment-sync': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'entitlements-v1': [
+    { name: 'ALLOWED_ORIGINS', type: 'csv' },
+    { name: 'SUPABASE_ANON_KEY', type: 'string' },
+  ],
   'revenuecat-webhook': [
     { name: 'REVENUECAT_WEBHOOK_AUTHORIZATION', type: 'string' },
     { name: 'REVENUECAT_WEBHOOK_SIGNATURE_SECRETS', type: 'csv' },
