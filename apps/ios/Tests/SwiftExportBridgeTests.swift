@@ -24,18 +24,18 @@ struct SwiftExportBridgeProviderTests {
     @Test("shared instance is available")
     func sharedInstanceAvailable() {
         let provider = SwiftExportBridgeProvider.shared
-        #expect(provider.bridge is StubSwiftExportBridge)
+        #expect(provider.bridge is LiveSwiftExportBridge)
     }
 
     @Test("all modules are accessible via provider")
     func allModulesAccessible() {
         let provider = SwiftExportBridgeProvider.shared
         // Verify each module is non-nil and of expected type
-        #expect(provider.accounts is StubAccountModule)
-        #expect(provider.transactions is StubTransactionModule)
-        #expect(provider.budgets is StubBudgetModule)
-        #expect(provider.goals is StubGoalModule)
-        #expect(provider.categories is StubCategoryModule)
+        #expect(provider.accounts is LiveAccountModule)
+        #expect(provider.transactions is LiveTransactionModule)
+        #expect(provider.budgets is LiveBudgetModule)
+        #expect(provider.goals is LiveGoalModule)
+        #expect(provider.categories is LiveCategoryModule)
         #expect(provider.aggregator is StubAggregatorModule)
         #expect(provider.formatter is StubFormatterModule)
         #expect(provider.sync is StubSyncModule)
@@ -45,6 +45,12 @@ struct SwiftExportBridgeProviderTests {
     func customBridgeInjection() {
         let stubBridge = StubSwiftExportBridge()
         let provider = SwiftExportBridgeProvider(bridge: stubBridge)
+        #expect(provider.bridge is StubSwiftExportBridge)
+        #expect(provider.accounts is StubAccountModule)
+        #expect(provider.transactions is StubTransactionModule)
+        #expect(provider.budgets is StubBudgetModule)
+        #expect(provider.goals is StubGoalModule)
+        #expect(provider.categories is StubCategoryModule)
         #expect(!provider.bridge.isKMPAvailable)
     }
 }

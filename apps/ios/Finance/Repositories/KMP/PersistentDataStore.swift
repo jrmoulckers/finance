@@ -64,6 +64,16 @@ actor PersistentDataStore {
     /// Whether the store has completed initialisation.
     private var isInitialised = false
 
+    /// In-flight initialisation shared by concurrent repository reads.
+    private var initialisationTask: Task<Void, Error>?
+
+    /// In-flight deletion shared by concurrent deletion requests and awaited
+    /// by repository operations before they initialise the store again.
+    private var deletionTask: Task<Void, Error>?
+
+    /// Invalidates stale initialisation callers after the store is deleted.
+    private var lifecycleGeneration = 0
+
     /// Whether the store has been seeded with initial data.
     private var isSeeded = false
 
@@ -76,10 +86,57 @@ actor PersistentDataStore {
     ///
     /// Loads data from disk if the database exists, or seeds from mock
     /// data on first launch. This is idempotent — safe to call multiple times.
-    func initialise() async {
-        guard !isInitialised else { return }
-        isInitialised = true
+    func initialise() async throws {
+        while true {
+            if let deletionTask {
+                try await deletionTask.value
+                continue
+            }
 
+            guard !isInitialised else { return }
+
+            let generation = lifecycleGeneration
+
+            if let initialisationTask {
+                do {
+                    try await initialisationTask.value
+                } catch {
+                    guard lifecycleGeneration == generation else { continue }
+                    throw error
+                }
+                guard lifecycleGeneration == generation else { continue }
+                return
+            }
+
+            let task = Task { try await self.executeInitialisation(generation: generation) }
+            initialisationTask = task
+            do {
+                try await task.value
+            } catch {
+                guard lifecycleGeneration == generation else { continue }
+                throw error
+            }
+            guard lifecycleGeneration == generation else { continue }
+            return
+        }
+    }
+
+    private func executeInitialisation(generation: Int) async throws {
+        do {
+            try await performInitialisation()
+        } catch {
+            if lifecycleGeneration == generation {
+                initialisationTask = nil
+            }
+            throw error
+        }
+
+        if lifecycleGeneration == generation {
+            initialisationTask = nil
+        }
+    }
+
+    private func performInitialisation() async throws {
         do {
             let disk = try await DiskPersistenceLayer()
             self.diskStore = disk
@@ -99,99 +156,116 @@ actor PersistentDataStore {
 
             if accounts.isEmpty && transactions.isEmpty {
                 Self.logger.info("Empty database detected — seeding with initial data")
-                await seedFromMockData()
+                try await seedFromMockData()
             } else {
                 Self.logger.info(
                     "Loaded from disk: \(self.accounts.count) accounts, \(self.transactions.count) transactions, \(self.budgets.count) budgets, \(self.goals.count) goals, \(self.categories.count) categories"
                 )
+                isSeeded = true
             }
-
-            isSeeded = true
         } catch {
             Self.logger.error(
                 "Failed to initialise PersistentDataStore: \(error.localizedDescription, privacy: .public)"
             )
             // Fall back to in-memory-only mode
-            await seedFromMockData()
-            isSeeded = true
+            clearInMemoryData()
+            diskStore = nil
+            try await seedFromMockData()
         }
+
+        isInitialised = true
     }
 
     /// Seeds the store from mock repositories (first launch path).
-    private func seedFromMockData() async {
+    private func seedFromMockData() async throws {
         guard !isSeeded else { return }
 
         Self.logger.info("Seeding PersistentDataStore from mock data")
 
         do {
             let mockAccounts = try await MockAccountRepository().getAllAccounts()
+            let mockTransactions = try await MockTransactionRepository().getTransactions()
+            let mockBudgets = try await MockBudgetRepository().getBudgets()
+            let mockGoals = try await MockGoalRepository().getGoals()
+            let mockCategories = try await MockCategoryRepository().getCategories()
+
             for a in mockAccounts {
                 accounts[a.id] = a
-                try? diskStore?.saveAccount(a)
+                try diskStore?.saveAccount(a)
             }
 
-            let mockTransactions = try await MockTransactionRepository().getTransactions()
             for t in mockTransactions {
                 transactions[t.id] = t
-                try? diskStore?.saveTransaction(t)
+                try diskStore?.saveTransaction(t)
             }
 
-            let mockBudgets = try await MockBudgetRepository().getBudgets()
             for b in mockBudgets {
                 budgets[b.id] = b
-                try? diskStore?.saveBudget(b)
+                try diskStore?.saveBudget(b)
             }
 
-            let mockGoals = try await MockGoalRepository().getGoals()
             for g in mockGoals {
                 goals[g.id] = g
-                try? diskStore?.saveGoal(g)
+                try diskStore?.saveGoal(g)
             }
 
-            let mockCategories = try await MockCategoryRepository().getCategories()
             for c in mockCategories {
                 categories[c.id] = c
-                try? diskStore?.saveCategory(c)
+                try diskStore?.saveCategory(c)
             }
 
             Self.logger.info(
                 "PersistentDataStore seeded: \(self.accounts.count) accounts, \(self.transactions.count) transactions, \(self.budgets.count) budgets, \(self.goals.count) goals, \(self.categories.count) categories"
             )
+            isSeeded = true
         } catch {
+            clearInMemoryData()
+            isSeeded = false
+            if diskStore != nil {
+                do {
+                    try DiskPersistenceLayer.deleteAllData()
+                } catch {
+                    Self.logger.error(
+                        "Failed to clean up partial seed data: \(error.localizedDescription, privacy: .public)"
+                    )
+                }
+                diskStore = nil
+            }
             Self.logger.error(
                 "Failed to seed: \(error.localizedDescription, privacy: .public)"
             )
+            throw error
         }
     }
 
     // MARK: - Accounts
 
     func getAccounts() async throws -> [AccountItem] {
-        await initialise()
+        try await initialise()
         return Array(accounts.values)
             .filter { !$0.isArchived }
             .sorted { $0.name < $1.name }
     }
 
     func getAllAccounts() async throws -> [AccountItem] {
-        await initialise()
+        try await initialise()
         return Array(accounts.values).sorted { $0.name < $1.name }
     }
 
     func getAccount(id: String) async throws -> AccountItem? {
-        await initialise()
+        try await initialise()
         return accounts[id]
     }
 
     func upsertAccount(_ account: AccountItem) async throws {
-        await initialise()
+        try await initialise()
         accounts[account.id] = account
         try? diskStore?.saveAccount(account)
         Self.logger.debug("Account upserted: \(account.id, privacy: .private)")
     }
 
     func archiveAccount(id: String) async throws {
-        await initialise()
+        try await initialise()
         guard let existing = accounts[id] else { return }
         let archived = AccountItem(
             id: existing.id, name: existing.name,
@@ -205,7 +279,7 @@ actor PersistentDataStore {
     }
 
     func unarchiveAccount(id: String) async throws {
-        await initialise()
+        try await initialise()
         guard let existing = accounts[id] else { return }
         let unarchived = AccountItem(
             id: existing.id, name: existing.name,
@@ -219,14 +293,14 @@ actor PersistentDataStore {
     }
 
     func deleteAccount(id: String) async throws {
-        await initialise()
+        try await initialise()
         accounts.removeValue(forKey: id)
         try? diskStore?.deleteAccount(id: id)
         Self.logger.debug("Account deleted: \(id, privacy: .private)")
     }
 
     func deleteAllAccounts() async throws {
-        await initialise()
+        try await initialise()
         accounts.removeAll()
         try? diskStore?.deleteAllAccounts()
         Self.logger.info("All accounts deleted")
@@ -235,7 +309,7 @@ actor PersistentDataStore {
     // MARK: - Transactions
 
     func getTransactions() async throws -> [TransactionItem] {
-        await initialise()
+        try await initialise()
         return Array(transactions.values).sorted { $0.date > $1.date }
     }
 
@@ -248,7 +322,7 @@ actor PersistentDataStore {
     }
 
     func getTransactions(forAccountId accountId: String) async throws -> [TransactionItem] {
-        await initialise()
+        try await initialise()
         let sorted = Array(transactions.values).sorted { $0.date > $1.date }
         return sorted.filter { txn in
             txn.accountName == accountId
@@ -262,28 +336,28 @@ actor PersistentDataStore {
     }
 
     func upsertTransaction(_ transaction: TransactionItem) async throws {
-        await initialise()
+        try await initialise()
         transactions[transaction.id] = transaction
         try? diskStore?.saveTransaction(transaction)
         Self.logger.debug("Transaction upserted: \(transaction.id, privacy: .private)")
     }
 
     func deleteTransaction(id: String) async throws {
-        await initialise()
+        try await initialise()
         transactions.removeValue(forKey: id)
         try? diskStore?.deleteTransaction(id: id)
         Self.logger.debug("Transaction deleted: \(id, privacy: .private)")
     }
 
     func deleteAllTransactions() async throws {
-        await initialise()
+        try await initialise()
         transactions.removeAll()
         try? diskStore?.deleteAllTransactions()
         Self.logger.info("All transactions deleted")
     }
 
     func eraseAllMoodTags() async throws {
-        await initialise()
+        try await initialise()
         let updated = transactions.mapValues { transaction in
             TransactionItem(
                 id: transaction.id,
@@ -313,19 +387,19 @@ actor PersistentDataStore {
     // MARK: - Budgets
 
     func getBudgets() async throws -> [BudgetItem] {
-        await initialise()
+        try await initialise()
         return Array(budgets.values).sorted { $0.name < $1.name }
     }
 
     func upsertBudget(_ budget: BudgetItem) async throws {
-        await initialise()
+        try await initialise()
         budgets[budget.id] = budget
         try? diskStore?.saveBudget(budget)
         Self.logger.debug("Budget upserted: \(budget.id, privacy: .private)")
     }
 
     func deleteAllBudgets() async throws {
-        await initialise()
+        try await initialise()
         budgets.removeAll()
         try? diskStore?.deleteAllBudgets()
         Self.logger.info("All budgets deleted")
@@ -334,19 +408,19 @@ actor PersistentDataStore {
     // MARK: - Goals
 
     func getGoals() async throws -> [GoalItem] {
-        await initialise()
+        try await initialise()
         return Array(goals.values).sorted { $0.name < $1.name }
     }
 
     func upsertGoal(_ goal: GoalItem) async throws {
-        await initialise()
+        try await initialise()
         goals[goal.id] = goal
         try? diskStore?.saveGoal(goal)
         Self.logger.debug("Goal upserted: \(goal.id, privacy: .private)")
     }
 
     func deleteAllGoals() async throws {
-        await initialise()
+        try await initialise()
         goals.removeAll()
         try? diskStore?.deleteAllGoals()
         Self.logger.info("All goals deleted")
@@ -355,24 +429,24 @@ actor PersistentDataStore {
     // MARK: - Categories
 
     func getCategories() async throws -> [CategoryItem] {
-        await initialise()
+        try await initialise()
         return Array(categories.values).sorted { $0.sortOrder < $1.sortOrder }
     }
 
     func getCategory(id: String) async throws -> CategoryItem? {
-        await initialise()
+        try await initialise()
         return categories[id]
     }
 
     func upsertCategory(_ category: CategoryItem) async throws {
-        await initialise()
+        try await initialise()
         categories[category.id] = category
         try? diskStore?.saveCategory(category)
         Self.logger.debug("Category upserted: \(category.id, privacy: .private)")
     }
 
     func deleteCategory(id: String) async throws {
-        await initialise()
+        try await initialise()
         categories.removeValue(forKey: id)
         try? diskStore?.deleteCategory(id: id)
         Self.logger.debug("Category deleted: \(id, privacy: .private)")
@@ -382,20 +456,65 @@ actor PersistentDataStore {
 
     /// Deletes all data from both memory and disk, and removes the encryption key.
     func deleteEverything() async throws {
+        if let deletionTask {
+            try await deletionTask.value
+            return
+        }
+
+        lifecycleGeneration += 1
+        let generation = lifecycleGeneration
+        let task = Task { try await self.executeDeletion(generation: generation) }
+        deletionTask = task
+        try await task.value
+    }
+
+    private func executeDeletion(generation: Int) async throws {
+        do {
+            try await performDeletion()
+        } catch {
+            if lifecycleGeneration == generation {
+                deletionTask = nil
+            }
+            throw error
+        }
+
+        if lifecycleGeneration == generation {
+            deletionTask = nil
+        }
+    }
+
+    private func performDeletion() async throws {
+        if let initialisationTask {
+            _ = await initialisationTask.result
+        }
+
+        do {
+            try DiskPersistenceLayer.deleteAllData()
+            try SQLCipherConfiguration.deleteDatabase()
+            try await DatabaseKeyManager.shared.deleteKey()
+        } catch {
+            resetAfterDeletion()
+            throw error
+        }
+
+        resetAfterDeletion()
+        Self.logger.info("PersistentDataStore: all data permanently deleted")
+    }
+
+    private func clearInMemoryData() {
         accounts.removeAll()
         transactions.removeAll()
         budgets.removeAll()
         goals.removeAll()
         categories.removeAll()
+    }
 
-        try? SQLCipherConfiguration.deleteDatabase()
-        try? await DatabaseKeyManager.shared.deleteKey()
-
+    private func resetAfterDeletion() {
+        clearInMemoryData()
         isInitialised = false
+        initialisationTask = nil
         isSeeded = false
         diskStore = nil
-
-        Self.logger.info("PersistentDataStore: all data permanently deleted")
     }
 }
 
@@ -421,17 +540,7 @@ final class DiskPersistenceLayer: @unchecked Sendable {
 
     init() async throws {
         let fileManager = FileManager.default
-        let appSupportURL = try fileManager.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-
-        self.baseDirectory = appSupportURL.appendingPathComponent(
-            "com.finance.data",
-            isDirectory: true
-        )
+        self.baseDirectory = try Self.dataDirectory()
 
         if !fileManager.fileExists(atPath: baseDirectory.path) {
             try fileManager.createDirectory(
@@ -548,7 +657,28 @@ final class DiskPersistenceLayer: @unchecked Sendable {
         try save(items, to: "categories.json")
     }
 
+    /// Removes every JSON table, including before the store is initialised.
+    static func deleteAllData() throws {
+        let fileManager = FileManager.default
+        let directory = try dataDirectory()
+        guard fileManager.fileExists(atPath: directory.path) else { return }
+        try fileManager.removeItem(at: directory)
+    }
+
     // MARK: - Generic I/O
+
+    private static func dataDirectory() throws -> URL {
+        let appSupportURL = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        return appSupportURL.appendingPathComponent(
+            "com.finance.data",
+            isDirectory: true
+        )
+    }
 
     private func save<T: Encodable>(_ items: [T], to filename: String) throws {
         let url = baseDirectory.appendingPathComponent(filename)

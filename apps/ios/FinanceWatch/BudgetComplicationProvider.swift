@@ -33,7 +33,9 @@ struct BudgetComplicationEntry: TimelineEntry {
         return Double(spentMinorUnits) / Double(budgetedMinorUnits)
     }
 
-    var isOverBudget: Bool { spentMinorUnits > budgetedMinorUnits }
+    var isOverBudget: Bool {
+        budgetedMinorUnits > 0 && spentMinorUnits > budgetedMinorUnits
+    }
 
     static let placeholder = BudgetComplicationEntry(
         date: .now,

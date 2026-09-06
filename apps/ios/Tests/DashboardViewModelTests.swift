@@ -40,6 +40,22 @@ final class DashboardViewModelTests: XCTestCase {
         )
     }
 
+    private func currentMonthTransaction(
+        id: String,
+        amountMinorUnits: Int64,
+        type: TransactionTypeUI
+    ) -> TransactionItem {
+        TransactionItem(
+            id: id,
+            payee: "Current Month",
+            category: "Test",
+            amountMinorUnits: amountMinorUnits,
+            currencyCode: "USD",
+            date: .now,
+            type: type
+        )
+    }
+
     // MARK: - Test: loadDashboard populates all sections
 
     @MainActor
@@ -63,37 +79,34 @@ final class DashboardViewModelTests: XCTestCase {
 
         await vm.loadDashboard()
 
-        // Aggregator treats creditCard and loan types as liabilities:
-        // checking (12_450_00) + savings (25_000_00) - creditCard (1_200_00)
-        // + investment (18_500_00) + savings (10_000_00) = 64_750_00
-        // Note: creditCard balance is -1_200_00, so aggregator subtracts it:
-        // non-CC/loan sum = 12_450_00 + 25_000_00 + 18_500_00 + 10_000_00 = 65_950_00
-        // CC sum subtracted = 65_950_00 - 1_200_00 = 64_750_00
-        // (the stub aggregator does: sum + balance for assets, sum - balance for liabilities)
-        // Since CC balance is -1_200_00, aggregator: sum - (-1_200_00) = sum + 1_200_00
-        // So: 12_450_00 + 25_000_00 + 18_500_00 + 10_000_00 + 1_200_00 = 67_150_00
-        //
-        // The StubFinancialAggregator sums non-archived accounts:
-        //   assets: sum + balance
-        //   creditCard/loan: sum - balance (balance is already negative = addition)
-        let netWorth = vm.netWorth
-        XCTAssertNotEqual(netWorth, 0,
-                           "Net worth should be non-zero with sample accounts")
+        XCTAssertEqual(
+            vm.netWorth,
+            64_750_00,
+            "Liabilities should reduce net worth regardless of their stored sign"
+        )
     }
 
     // MARK: - Test: monthly income sums only income transactions
 
     @MainActor
     func testMonthlyIncomeCalculation() async {
-        let vm = makeDashboardVM()
+        let transactions = [
+            currentMonthTransaction(
+                id: "current-income",
+                amountMinorUnits: 4_250_00,
+                type: .income
+            ),
+            currentMonthTransaction(
+                id: "current-expense",
+                amountMinorUnits: -125_00,
+                type: .expense
+            ),
+        ]
+        let vm = makeDashboardVM(transactions: transactions)
 
         await vm.loadDashboard()
 
-        // Only the income transaction (Payroll): 4_250_00
-        // Dashboard uses getRecentTransactions(limit: 5) which returns all 5 sorted by date
-        let incomeItems = vm.recentTransactions.filter { $0.type == .income }
-        let expected = incomeItems.reduce(Int64(0)) { $0 + $1.amountMinorUnits }
-        XCTAssertEqual(vm.monthlyIncome, expected,
+        XCTAssertEqual(vm.monthlyIncome, 4_250_00,
                        "Monthly income should sum only income-type transactions")
         XCTAssertTrue(vm.monthlyIncome > 0, "Monthly income should be positive")
     }
@@ -102,13 +115,23 @@ final class DashboardViewModelTests: XCTestCase {
 
     @MainActor
     func testMonthlyExpensesCalculation() async {
-        let vm = makeDashboardVM()
+        let transactions = [
+            currentMonthTransaction(
+                id: "current-income",
+                amountMinorUnits: 4_250_00,
+                type: .income
+            ),
+            currentMonthTransaction(
+                id: "current-expense",
+                amountMinorUnits: -146_39,
+                type: .expense
+            ),
+        ]
+        let vm = makeDashboardVM(transactions: transactions)
 
         await vm.loadDashboard()
 
-        let expenseItems = vm.recentTransactions.filter { $0.isExpense }
-        let expected = expenseItems.reduce(Int64(0)) { $0 + abs($1.amountMinorUnits) }
-        XCTAssertEqual(vm.monthlyExpenses, expected,
+        XCTAssertEqual(vm.monthlyExpenses, 146_39,
                        "Monthly expenses should sum expense amounts as positive values")
         XCTAssertTrue(vm.monthlyExpenses > 0, "Monthly expenses should be positive")
     }

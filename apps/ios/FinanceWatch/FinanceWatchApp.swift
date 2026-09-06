@@ -137,7 +137,9 @@ struct WatchBudgetStatus: Identifiable, Sendable {
         guard budgetedMinorUnits > 0 else { return 0 }
         return min(max(Double(spentMinorUnits) / Double(budgetedMinorUnits), 0), 1)
     }
-    var isOverBudget: Bool { spentMinorUnits > budgetedMinorUnits }
+    var isOverBudget: Bool {
+        budgetedMinorUnits > 0 && spentMinorUnits > budgetedMinorUnits
+    }
     init?(dictionary d: [String: Any]) {
         guard let id = d["id"] as? String, let name = d["name"] as? String,
               let sp = WatchConnectivityManager.parseInt64(d["spentMinorUnits"]),

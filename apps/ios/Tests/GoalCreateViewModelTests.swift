@@ -169,9 +169,9 @@ final class GoalCreateViewModelTests: XCTestCase {
         XCTAssertTrue(vm.isEditing, "Should be in edit mode")
         XCTAssertEqual(vm.name, "Emergency Fund",
                        "Name should be pre-filled")
-        XCTAssertEqual(vm.targetAmountText, "100000.00",
+        XCTAssertEqual(vm.targetAmountText, "10000.00",
                        "Target amount should be pre-filled from goal")
-        XCTAssertEqual(vm.currentAmountText, "75000.00",
+        XCTAssertEqual(vm.currentAmountText, "7500.00",
                        "Current amount should be pre-filled from goal")
         XCTAssertTrue(vm.hasTargetDate,
                       "Target date toggle should be on when goal has a date")

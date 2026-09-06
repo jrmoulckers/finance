@@ -328,7 +328,7 @@ private enum ComplicationTestHelpers {
             return Double(spent) / Double(budgeted)
         }
 
-        var isOverBudget: Bool { spent > budgeted }
+        var isOverBudget: Bool { budgeted > 0 && spent > budgeted }
     }
 
     struct SpendingEntry {
