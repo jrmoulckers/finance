@@ -247,6 +247,19 @@ describe('DataExport', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/not requested/i);
   });
 
+  it('does not gate export on a locally modified subscription value', () => {
+    localStorage.setItem(
+      'finance_subscription',
+      JSON.stringify({ tier: 'free', isActive: false, periodEnd: null }),
+    );
+
+    render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
+
+    expect(screen.getByRole('button', { name: /download all data \(json\)/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /download transactions \(csv\)/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /request my data package/i })).toBeEnabled();
+  });
+
   it('disables requests while the database is unavailable', () => {
     render(<DataExport />, { wrapper: createTestWrapper(null) });
 

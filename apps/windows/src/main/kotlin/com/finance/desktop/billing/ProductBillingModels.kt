@@ -2,6 +2,11 @@
 
 package com.finance.desktop.billing
 
+import com.finance.core.entitlement.EntitlementAccessState
+import com.finance.core.entitlement.EntitlementEnvelope
+import com.finance.core.entitlement.EntitlementResult
+import com.finance.core.entitlement.MinimizedEntitlementCodec
+
 /** Reviewed logical products accepted by the Finance checkout endpoint. */
 enum class BillingCatalogChoice(
     val wireValue: String,
@@ -21,62 +26,42 @@ enum class WindowsBillingChannel {
     MICROSOFT_STORE_FUTURE,
 }
 
-enum class UserEntitlementTier(
-    val wireValue: String,
-) {
-    FREE("free"),
-    PLUS("plus"),
-    PREMIUM("premium"),
-}
-
-enum class HouseholdEntitlementTier(
-    val wireValue: String,
-) {
-    FREE("free"),
-    PREMIUM("premium"),
-    FAMILY("family"),
-}
-
-data class ProductEntitlementProjection(
-    val userTier: UserEntitlementTier,
-    val householdTier: HouseholdEntitlementTier?,
-    val bankConnectionAllowance: Long,
-    val isPremiumSponsor: Boolean,
-    val isFamilyBound: Boolean,
-    val effectiveAt: String,
-    val expiresAt: String?,
-    val projectionVersion: Long,
-    val serverTime: String,
-) {
-    val confirmsPaidAccess: Boolean
-        get() = userTier != UserEntitlementTier.FREE ||
-            (householdTier != null && householdTier != HouseholdEntitlementTier.FREE)
-}
-
+/**
+ * UI state for Stripe operations and the shared Finance entitlement status.
+ *
+ * The projection is display-only. Checkout returns, session IDs, and this
+ * state never authorize server actions.
+ */
 sealed interface ProductBillingState {
-    val projection: ProductEntitlementProjection?
+    val projection: EntitlementEnvelope?
 
     data class Idle(
-        override val projection: ProductEntitlementProjection? = null,
+        override val projection: EntitlementEnvelope? = null,
     ) : ProductBillingState
 
     data class Pending(
-        override val projection: ProductEntitlementProjection? = null,
+        override val projection: EntitlementEnvelope? = null,
     ) : ProductBillingState
 
     data class Confirmed(
-        override val projection: ProductEntitlementProjection,
+        override val projection: EntitlementEnvelope,
     ) : ProductBillingState
 
     data class Error(
-        override val projection: ProductEntitlementProjection?,
+        override val projection: EntitlementEnvelope?,
         val message: String,
     ) : ProductBillingState
 }
 
+/**
+ * Interprets a browser return without trusting it.
+ *
+ * A query can only put the UI into pending. Confirmed display requires a
+ * complete shared envelope that says the server resolved a current grant.
+ */
 fun stateFromCheckoutReturn(
     query: String,
-    projection: ProductEntitlementProjection?,
+    projection: EntitlementEnvelope?,
 ): ProductBillingState {
     val returnedFromCheckout = query
         .removePrefix("?")
@@ -88,8 +73,16 @@ fun stateFromCheckoutReturn(
         .any { (key, value) -> key == "billing" && value == "pending" }
 
     return when {
-        projection?.confirmsPaidAccess == true -> ProductBillingState.Confirmed(projection)
+        projection.confirmsServerResolvedPaidDisplay() ->
+            ProductBillingState.Confirmed(requireNotNull(projection))
         returnedFromCheckout -> ProductBillingState.Pending(projection)
         else -> ProductBillingState.Idle(projection)
     }
+}
+
+internal fun EntitlementEnvelope?.confirmsServerResolvedPaidDisplay(): Boolean {
+    val envelope = this ?: return false
+    val validated = MinimizedEntitlementCodec.validate(envelope)
+    return validated is EntitlementResult.Available &&
+        envelope.entitlement.accessState == EntitlementAccessState.GRANTED
 }

@@ -37,8 +37,8 @@ val viewModelModule = module {
     single { HealthScoreViewModel(get(), get(), get(), get()) }
     single { ReportBuilderViewModel(get(), get(), get()) }
     single { BudgetNegotiationViewModel(get(), get()) }
-    single { EntitlementViewModel(get(), get(), get()) }
-    single { DirectStripeBillingViewModel(get()) }
+    single { EntitlementViewModel(get(), get(), get(), get()) }
+    single { DirectStripeBillingViewModel(get(), get(), get()) }
     single { TipsViewModel(get(), get(), get()) }
     single { GamificationViewModel(get(), get()) }
     single { CurrencyViewModel(get(), get()) }

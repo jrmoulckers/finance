@@ -13,6 +13,4 @@ interface ProductBillingRepository {
     suspend fun openPortal(): Result<String>
 
     suspend fun reconcile(): Result<Unit>
-
-    suspend fun loadProjection(householdId: String? = null): Result<ProductEntitlementProjection>
 }

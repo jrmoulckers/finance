@@ -11,7 +11,9 @@ import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
 import { NotificationsProvider, useNotificationCenter } from './contexts/NotificationsContext';
 import { NotificationInjectors } from './components/notifications/NotificationInjectors';
 import { SessionSecurityBoundary } from './components/SessionSecurityBoundary';
-import { useBudgets, useDocumentTitle } from './hooks';
+import { FeatureGateProvider } from './components/feature-gate';
+import { useAuth } from './auth/auth-context';
+import { useBudgets, useDocumentTitle, useHousehold } from './hooks';
 import { useHaptics } from './hooks/useHaptics';
 import { useMilestoneCheck } from './hooks/useMilestoneCheck';
 import { useSpendingPace } from './hooks/useSpendingPace';
@@ -283,6 +285,35 @@ const AuthenticatedShell: FC<{
   );
 };
 
+const EntitlementAwareAuthenticatedShell: FC<{
+  activePath: string;
+  pageTitle: string;
+}> = (props) => {
+  const { user, isAuthenticated } = useAuth();
+  const { household, refresh: refreshHousehold } = useHousehold();
+
+  useEffect(() => {
+    const refreshScope = () => refreshHousehold();
+    window.addEventListener('focus', refreshScope);
+    window.addEventListener('online', refreshScope);
+    const timer = window.setInterval(refreshScope, 60_000);
+    return () => {
+      window.removeEventListener('focus', refreshScope);
+      window.removeEventListener('online', refreshScope);
+      window.clearInterval(timer);
+    };
+  }, [refreshHousehold]);
+
+  return (
+    <FeatureGateProvider
+      principalId={isAuthenticated ? (user?.id ?? null) : null}
+      householdId={household?.id}
+    >
+      <AuthenticatedShell {...props} />
+    </FeatureGateProvider>
+  );
+};
+
 /**
  * Root application component.
  *
@@ -330,7 +361,7 @@ export const App: FC = () => {
       <ConsentDialog />
       <NotificationsProvider>
         <NotificationInjectors />
-        <AuthenticatedShell activePath={activePath} pageTitle={pageTitle} />
+        <EntitlementAwareAuthenticatedShell activePath={activePath} pageTitle={pageTitle} />
       </NotificationsProvider>
       <BudgetHapticNotifier />
     </PrivacyModeProvider>

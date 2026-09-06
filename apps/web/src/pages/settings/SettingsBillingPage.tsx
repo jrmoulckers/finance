@@ -2,11 +2,10 @@
 
 import React, { useCallback, useEffect } from 'react';
 
-import {
-  type ProductBillingCatalogChoice,
-  type ProductEntitlementProjection,
-} from '../../billing/productBilling';
+import { type ProductBillingCatalogChoice } from '../../billing/productBilling';
 import { useProductBilling } from '../../billing/useProductBilling';
+import { useOptionalFeatureGate } from '../../components/feature-gate';
+import { displayTierName, entitlementStatusText } from '../../entitlements';
 import { useHousehold } from '../../hooks/useHousehold';
 import './billing-settings.css';
 
@@ -37,18 +36,11 @@ const BILLING_OPTIONS: readonly BillingOption[] = [
   { name: 'Family', cadence: 'Yearly', choice: 'family_yearly', householdBound: true },
 ];
 
-function currentPlan(projection: ProductEntitlementProjection | null): string {
-  if (projection?.householdTier === 'family') return 'Family';
-  if (projection?.userTier === 'premium' || projection?.householdTier === 'premium') {
-    return 'Premium';
-  }
-  if (projection?.userTier === 'plus') return 'Plus';
-  return 'Free';
-}
-
 export const SettingsBillingPage: React.FC = () => {
   const { household } = useHousehold();
   const { state, startCheckout, refresh, reconcile, openPortal } = useProductBilling();
+  const entitlementContext = useOptionalFeatureGate();
+  const entitlement = entitlementContext?.entitlement;
   const householdId = household?.id;
   const busy = state.status === 'pending';
 
@@ -74,12 +66,22 @@ export const SettingsBillingPage: React.FC = () => {
     if (portalUrl) redirect(portalUrl);
   }, [openPortal, redirect]);
 
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refresh(householdId), entitlementContext?.refreshEntitlement()]);
+  }, [entitlementContext, householdId, refresh]);
+
+  const handleReconcile = useCallback(async () => {
+    await reconcile(householdId);
+    await entitlementContext?.refreshEntitlement();
+  }, [entitlementContext, householdId, reconcile]);
+
+  const displayedPlan = entitlement ? displayTierName(entitlement.displayTier) : 'Unavailable';
   const statusText =
     state.status === 'pending'
       ? 'Waiting for Finance to confirm trusted billing evidence.'
-      : state.status === 'confirmed'
-        ? `${currentPlan(state.projection)} access confirmed by Finance.`
-        : `${currentPlan(state.projection)} plan`;
+      : entitlement
+        ? entitlementStatusText(entitlement)
+        : 'Plan status is unavailable. Your local data and controls remain available.';
 
   return (
     <>
@@ -90,8 +92,12 @@ export const SettingsBillingPage: React.FC = () => {
             Current plan
           </h3>
           <div className="settings-item settings-item--static">
-            <span className="settings-item__label">{currentPlan(state.projection)}</span>
-            <span className="settings-item__value billing-settings__status" role="status">
+            <span className="settings-item__label">{displayedPlan}</span>
+            <span
+              className="settings-item__value billing-settings__status"
+              role="status"
+              aria-live="polite"
+            >
               {statusText}
             </span>
           </div>
@@ -110,7 +116,7 @@ export const SettingsBillingPage: React.FC = () => {
               className="form-button form-button--secondary"
               disabled={busy}
               onClick={() => {
-                void refresh(householdId);
+                void handleRefresh();
               }}
             >
               Refresh status
@@ -120,7 +126,7 @@ export const SettingsBillingPage: React.FC = () => {
               className="form-button form-button--secondary"
               disabled={busy}
               onClick={() => {
-                void reconcile(householdId);
+                void handleReconcile();
               }}
             >
               Restore purchases

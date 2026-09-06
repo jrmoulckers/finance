@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-export { FeatureGateProvider, useFeatureGate } from './FeatureGateProvider';
-export type { FeatureGateProviderProps } from './FeatureGateProvider';
+export { FeatureGateProvider, useFeatureGate, useOptionalFeatureGate } from './FeatureGateProvider';
+export type { FeatureGateContextValue, FeatureGateProviderProps } from './FeatureGateProvider';
 export { FeatureGate } from './FeatureGate';
 export type { FeatureGateProps } from './FeatureGate';
 export { UpgradePrompt } from './UpgradePrompt';
@@ -12,8 +12,6 @@ export {
   checkFeatureAccess,
   getAvailableFeatures,
   getPremiumFeatures,
-  loadSubscriptionState,
-  saveSubscriptionState,
   FEATURE_DEFINITIONS,
 } from './feature-gate-engine';
 export type {
@@ -22,5 +20,4 @@ export type {
   FeatureAccessResult,
   FeatureUsage,
   SubscriptionTier,
-  SubscriptionState,
 } from './feature-gate-engine';

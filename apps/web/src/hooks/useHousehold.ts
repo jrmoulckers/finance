@@ -695,6 +695,7 @@ export interface UseHouseholdResult {
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEY_HOUSEHOLD = 'finance-household';
+export const HOUSEHOLD_SCOPE_CHANGED_EVENT = 'finance:household-scope-changed';
 const STORAGE_KEY_MEMBERS = 'finance-household-members';
 const STORAGE_KEY_INVITATIONS = 'finance-household-invitations';
 const STORAGE_KEY_ACCOUNT_SHARINGS = 'finance-account-sharings';
@@ -1264,6 +1265,13 @@ export function useHousehold(): UseHouseholdResult {
     setRefreshToken((t) => t + 1);
   }, []);
 
+  useEffect(() => {
+    const handleHouseholdScopeChanged = () => refresh();
+    window.addEventListener(HOUSEHOLD_SCOPE_CHANGED_EVENT, handleHouseholdScopeChanged);
+    return () =>
+      window.removeEventListener(HOUSEHOLD_SCOPE_CHANGED_EVENT, handleHouseholdScopeChanged);
+  }, [refresh]);
+
   // -- Load data from storage on mount / refresh --
   useEffect(() => {
     setLoading(true);
@@ -1499,6 +1507,7 @@ export function useHousehold(): UseHouseholdResult {
         setShoppingBudgets([]);
         setReconciliationPlans([]);
         setReconciliationSnapshots([]);
+        window.dispatchEvent(new Event(HOUSEHOLD_SCOPE_CHANGED_EVENT));
         return newHousehold;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create household.');

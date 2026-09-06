@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * LimitBanner — Shows a warning when a user is near or at a feature limit.
+ * Legacy compatibility surface. Local capabilities no longer have plan limits,
+ * so this component intentionally renders nothing.
  *
  * Usage:
  * ```tsx
@@ -10,7 +11,6 @@
  */
 
 import React from 'react';
-import { useFeatureGate } from './FeatureGateProvider';
 import type { FeatureId, FeatureUsage } from './feature-gate-engine';
 import './feature-gate.css';
 
@@ -31,31 +31,11 @@ export const LimitBanner: React.FC<LimitBannerProps> = ({
   onUpgrade,
   className = '',
 }) => {
-  const { checkAccess } = useFeatureGate();
-  const access = checkAccess(feature, usage);
-
-  if (!access.atLimit || access.maxCount === null) {
-    return null;
-  }
-
-  return (
-    <div className={`limit-banner ${className}`.trim()} role="alert">
-      <span className="limit-banner__icon" aria-hidden="true">
-        ⚠️
-      </span>
-      <p className="limit-banner__text">{access.gateMessage}</p>
-      {onUpgrade && (
-        <button
-          type="button"
-          className="limit-banner__action"
-          onClick={onUpgrade}
-          aria-label="Upgrade to premium for unlimited access"
-        >
-          Upgrade
-        </button>
-      )}
-    </div>
-  );
+  void feature;
+  void usage;
+  void onUpgrade;
+  void className;
+  return null;
 };
 
 export default LimitBanner;

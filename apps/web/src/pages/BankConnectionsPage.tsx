@@ -25,6 +25,7 @@ import '../components/bank/bank-connections.css';
 import { useBankConnections } from '../hooks/useBankConnections';
 import { useConnectorPermissions } from '../hooks/useConnectorPermissions';
 import { useFeatureFlag, FlagKeys } from '../lib/feature-flags';
+import { useOptionalFeatureGate } from '../components/feature-gate';
 import { formatDate } from '../utils/formatDate';
 
 /**
@@ -111,6 +112,9 @@ export const BankConnectionsPage: React.FC = () => {
   } = useConnectorPermissions();
 
   const liveBankData = useFeatureFlag(FlagKeys.LIVE_BANK_DATA);
+  const entitlementContext = useOptionalFeatureGate();
+  const canRequestConnection =
+    entitlementContext?.canRequestBankConnection(connections.length) ?? false;
 
   const [activeTab, setActiveTab] = useState<BankTabId>('health');
   const [historyConnectionId, setHistoryConnectionId] = useState<string | null>(null);
@@ -267,9 +271,18 @@ export const BankConnectionsPage: React.FC = () => {
               <h2 className="section-title">Connection Health</h2>
               <div className="section-actions">
                 {liveBankData && (
-                  <Suspense fallback={null}>
-                    <ConnectBankButton onConnected={() => void reloadConnections()} />
-                  </Suspense>
+                  <>
+                    {canRequestConnection ? (
+                      <Suspense fallback={null}>
+                        <ConnectBankButton onConnected={() => void reloadConnections()} />
+                      </Suspense>
+                    ) : (
+                      <span role="status">
+                        Refresh plan status before connecting a bank. Finance verifies access again
+                        when the connection starts.
+                      </span>
+                    )}
+                  </>
                 )}
                 <button
                   type="button"
