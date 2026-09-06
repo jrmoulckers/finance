@@ -222,23 +222,28 @@ data class BankConnectionAllowance(
 /**
  * Whether a reduction boundary is known.
  *
+ * A "reduction" is the effective tier and/or the bank-connection allowance
+ * falling — Plus lapsing to Free counts just as a Family allowance falling to
+ * a Premium one does.
+ *
  * The minimized projection collapses the purchaser bound and the household
  * bound into the earliest of the two, so the bound only provably governs the
- * effective tier and allowance when a single grant contributes.
+ * reduction when a single grant contributes.
  */
 @Serializable(with = DowngradeStatusSerializer::class)
 enum class DowngradeStatus(val wireValue: String) {
-    /** There is no paid capacity that can reduce. */
+    /** The effective tier is already Free, or access is not granted. */
     NONE("none"),
 
     /** Exactly one paid grant contributes, so the bound governs the reduction. */
     SCHEDULED("scheduled"),
 
     /**
-     * A purchaser grant and a household grant both contribute. The earlier
-     * bound may belong to the weaker one — Plus lapsing tomorrow under a
-     * Family household that survives for a month — so no reduction instant is
-     * claimed and the client refreshes at the validity bound instead.
+     * A purchaser grant and a household grant both contribute. The collapsed
+     * bound may belong to the one that determines neither the effective tier
+     * nor the allowance — Plus lapsing tomorrow under a Family household that
+     * survives for a month — so no reduction instant is claimed and the client
+     * refreshes at [EntitlementValidity.refreshAfter] instead.
      */
     UNDETERMINED("undetermined"),
 
@@ -252,13 +257,7 @@ internal object DowngradeStatusSerializer : WireEnumSerializer<DowngradeStatus>(
     DowngradeStatus.UNKNOWN,
 )
 
-/**
- * The server-issued validity bound.
- *
- * [serverTime] is the server's clock at projection time. A client compares
- * against [expiresAt] only to bound *display*; it never treats its own clock
- * as evidence of entitlement.
- */
+/** Server-issued bounds. Clients never substitute their own clock. */
 @Serializable
 data class EntitlementValidity(
     @SerialName("effective_at") val effectiveAt: Instant,
@@ -266,12 +265,12 @@ data class EntitlementValidity(
      * The earliest instant at which any grant contributing to this response
      * lapses, so the response is guaranteed accurate only through it.
      *
-     * With [DowngradeStatus.SCHEDULED] this is exactly when the effective tier
-     * and allowance reduce. With [DowngradeStatus.UNDETERMINED] a contributing
-     * grant lapses then, but a stronger surviving grant may keep the effective
-     * tier — reaching it means "refresh required", not "entitlement ended".
+     * This is a **refresh deadline, not an authority claim**. Past it the
+     * snapshot may be stale in either direction, so a client re-reads rather
+     * than inferring anything. The authoritative reduction boundary, when the
+     * projection can prove one, is [PendingDowngrade.effectiveAt].
      */
-    @SerialName("expires_at") val expiresAt: Instant? = null,
+    @SerialName("refresh_after") val refreshAfter: Instant? = null,
     @SerialName("server_time") val serverTime: Instant,
     @SerialName("projection_version") val projectionVersion: Long,
 )
@@ -281,12 +280,13 @@ data class EntitlementValidity(
 data class PendingDowngrade(
     val status: DowngradeStatus,
     /**
-     * The instant the effective tier and allowance reduce, stated only when
-     * [status] is [DowngradeStatus.SCHEDULED].
+     * The authoritative instant the effective tier and allowance reduce,
+     * present only when [status] is [DowngradeStatus.SCHEDULED]. It is also
+     * the only bound a client may treat as display validity.
      *
-     * The contract states no post-boundary allowance: an expiring add-on
-     * leaves the Premium base in place, so any inferred value would be wrong.
-     * Clients re-read the projection at or after this instant.
+     * The contract states no post-boundary tier or allowance: an expiring
+     * add-on leaves the Premium base in place, so any inferred value would be
+     * wrong. Clients re-read the projection at or after this instant.
      */
     @SerialName("effective_at") val effectiveAt: Instant? = null,
 )
@@ -423,22 +423,22 @@ object MinimizedEntitlementCodec {
 
     private fun isConsistentValidity(entitlement: MinimizedEntitlement): Boolean {
         if (entitlement.validity.projectionVersion < 1) return false
-        val expiresAt = entitlement.validity.expiresAt
+        val refreshAfter = entitlement.validity.refreshAfter
         return when (entitlement.accessState) {
-            // Free carries no paid grant and therefore no trusted expiry.
+            // Free carries no paid grant and therefore no trusted bound.
             EntitlementAccessState.NOT_ENTITLED ->
-                entitlement.tier == EntitlementTier.FREE && expiresAt == null
+                entitlement.tier == EntitlementTier.FREE && refreshAfter == null
 
             // The server itself must have resolved the grant as still valid.
             EntitlementAccessState.GRANTED ->
                 entitlement.tier != EntitlementTier.FREE &&
-                    expiresAt != null &&
-                    expiresAt > entitlement.validity.serverTime
+                    refreshAfter != null &&
+                    refreshAfter > entitlement.validity.serverTime
 
             EntitlementAccessState.LAPSED ->
                 entitlement.tier != EntitlementTier.FREE &&
-                    expiresAt != null &&
-                    expiresAt <= entitlement.validity.serverTime
+                    refreshAfter != null &&
+                    refreshAfter <= entitlement.validity.serverTime
 
             EntitlementAccessState.UNKNOWN -> false
         }
@@ -446,25 +446,27 @@ object MinimizedEntitlementCodec {
 
     private fun isConsistentDowngrade(entitlement: MinimizedEntitlement): Boolean {
         val downgrade = entitlement.downgrade
-        val reducibleCapacity =
-            entitlement.accessState == EntitlementAccessState.GRANTED &&
-                entitlement.bankConnections.allowance > 0
-        // The projection's bound provably governs the reduction only when a
-        // single grant contributes. A purchaser grant alongside a household
-        // grant collapses to the earlier of the two, which may belong to the
-        // weaker one, so no instant may be claimed.
-        val boundGovernsCapacity = entitlement.userTier == EntitlementTier.FREE
+        val granted = entitlement.accessState == EntitlementAccessState.GRANTED
+        // The bound provably governs the reduction only when a single grant
+        // contributes. A purchaser grant alongside a household grant collapses
+        // to the earlier of the two, which may belong to the one that
+        // determines neither the effective tier nor the allowance.
+        val householdTier = entitlement.householdTier
+        val contributingGrants =
+            (if (entitlement.userTier == EntitlementTier.FREE) 0 else 1) +
+                (if (householdTier == null || householdTier == EntitlementTier.FREE) 0 else 1)
+        val boundIsProvable = contributingGrants <= 1
         return when (downgrade.status) {
-            DowngradeStatus.NONE -> !reducibleCapacity && downgrade.effectiveAt == null
+            DowngradeStatus.NONE -> !granted && downgrade.effectiveAt == null
 
             DowngradeStatus.SCHEDULED ->
-                reducibleCapacity &&
-                    boundGovernsCapacity &&
+                granted &&
+                    boundIsProvable &&
                     downgrade.effectiveAt != null &&
-                    downgrade.effectiveAt == entitlement.validity.expiresAt
+                    downgrade.effectiveAt == entitlement.validity.refreshAfter
 
             DowngradeStatus.UNDETERMINED ->
-                reducibleCapacity && !boundGovernsCapacity && downgrade.effectiveAt == null
+                granted && !boundIsProvable && downgrade.effectiveAt == null
 
             DowngradeStatus.UNKNOWN -> false
         }

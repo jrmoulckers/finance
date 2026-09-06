@@ -92,8 +92,21 @@ object EntitlementDisplayPolicy {
     /**
      * Whether a cached envelope may still drive paid-tier presentation.
      *
+     * Display ends only at an **authoritative** boundary — the server-proved
+     * reduction instant. When the server could not prove one
+     * ([DowngradeStatus.UNDETERMINED]) the snapshot has not been disproven, so
+     * it keeps displaying and the staleness is surfaced through
+     * [needsRefreshAt] instead of silently collapsing to Free. Dropping to
+     * Free at the collapsed refresh deadline would be a false expiry: a weaker
+     * grant lapsing under a surviving stronger one does not end the
+     * entitlement.
+     *
+     * None of this authorizes anything. Every paid server action re-reads the
+     * projection, so a stale or clock-manipulated snapshot can at most change
+     * what one device shows.
+     *
      * @param now the client's current instant, used only to stop displaying a
-     *   snapshot past its server-issued bound.
+     *   snapshot past a boundary the server itself proved.
      */
     fun isDisplayableAt(envelope: EntitlementEnvelope, now: Instant): Boolean {
         if (MinimizedEntitlementCodec.validate(envelope) !is EntitlementResult.Available) {
@@ -101,8 +114,8 @@ object EntitlementDisplayPolicy {
         }
         val entitlement = envelope.entitlement
         if (entitlement.accessState != EntitlementAccessState.GRANTED) return false
-        val expiresAt = entitlement.validity.expiresAt ?: return false
-        return now < expiresAt
+        val provenBoundary = entitlement.downgrade.effectiveAt ?: return true
+        return now < provenBoundary
     }
 
     /** Tier to display at [now]; Free once the server-issued bound has passed. */
@@ -112,15 +125,14 @@ object EntitlementDisplayPolicy {
     /**
      * The instant after which a cached snapshot must be re-read.
      *
-     * Reaching it does not mean the entitlement ended. When
-     * [DowngradeStatus.UNDETERMINED] applies, a stronger grant may well have
-     * survived the contributing grant that lapsed — the client cannot tell
-     * without refreshing, so it refreshes here rather than presenting Free
-     * indefinitely. `null` means the response carries no server-issued
-     * deadline, which is the Free case.
+     * This is a refresh deadline, not an expiry. Reaching it means the
+     * snapshot may be stale in either direction — a weaker grant may have
+     * lapsed under a surviving stronger one, or the reverse — so the client
+     * re-reads rather than inferring anything. `null` means the response
+     * carries no server-issued deadline, which is the Free case.
      */
     fun refreshAfter(envelope: EntitlementEnvelope): Instant? =
-        envelope.entitlement.validity.expiresAt
+        envelope.entitlement.validity.refreshAfter
 
     /** Whether a cached snapshot is past its server-issued bound at [now]. */
     fun needsRefreshAt(envelope: EntitlementEnvelope, now: Instant): Boolean {

@@ -98,20 +98,21 @@ export interface BankConnectionAllowance {
   addon_allowance: number;
 }
 
-/** Server-issued validity bound. Clients never substitute their own clock. */
+/** Server-issued bounds. Clients never substitute their own clock. */
 export interface EntitlementValidity {
   effective_at: string;
   /**
    * The earliest instant at which any grant contributing to this response
    * lapses, so the response is guaranteed accurate only through it.
    *
-   * When `downgrade.status` is `scheduled` this is exactly the instant the
-   * effective tier and allowance reduce. When it is `undetermined` a
-   * contributing grant lapses then, but a stronger surviving grant may keep
-   * the effective tier and allowance — the client refreshes rather than
-   * assuming a reduction.
+   * This is a **refresh deadline, not an authority claim**. The projection
+   * collapses the purchaser bound and the household bound with LEAST, so past
+   * this instant the snapshot may be stale in either direction: a weaker grant
+   * may have lapsed under a surviving stronger one, or the reverse. The
+   * authoritative reduction boundary, when the projection can prove one, is
+   * `downgrade.effective_at`.
    */
-  expires_at: string | null;
+  refresh_after: string | null;
   server_time: string;
   projection_version: number;
 }
@@ -119,25 +120,36 @@ export interface EntitlementValidity {
 /**
  * Whether a reduction boundary is known.
  *
- * - `none` — there is no paid capacity that can reduce.
- * - `scheduled` — exactly one paid grant contributes, so the projection's
- *   bound provably governs the effective tier and allowance.
- * - `undetermined` — a purchaser grant and a household grant both contribute.
- *   The projection collapses them into the *earliest* bound, which need not be
- *   the one that determines the effective tier or allowance, so no reduction
- *   instant is claimed.
+ * A "reduction" is the effective tier and/or the bank-connection allowance
+ * falling — Plus lapsing to Free is a reduction just as a Family allowance
+ * falling to a Premium one is.
+ *
+ * The minimized projection collapses the purchaser bound and the household
+ * bound into the earliest of the two, so the bound only provably governs the
+ * reduction when a single grant contributes.
  */
 export type DowngradeStatus = 'none' | 'scheduled' | 'undetermined';
 
 /** Reduction that takes effect when the governing grant lapses unrenewed. */
 export interface PendingDowngrade {
+  /**
+   * - `none` — the effective tier is already Free, or access is not granted,
+   *   so there is nothing to reduce.
+   * - `scheduled` — exactly one paid grant contributes, so the projection's
+   *   bound provably governs the reduction of the effective tier and any
+   *   allowance.
+   * - `undetermined` — a purchaser grant *and* a household grant contribute.
+   *   The collapsed bound may belong to the one that determines neither, so no
+   *   reduction instant is claimed.
+   */
   status: DowngradeStatus;
   /**
-   * The instant the effective tier and allowance reduce, stated only when
-   * [status] is `scheduled`.
+   * The authoritative instant the effective tier and allowance reduce, stated
+   * only when [status] is `scheduled`. It is also the only bound a client may
+   * treat as display validity.
    *
-   * The contract deliberately does **not** state the allowance that applies
-   * afterwards. The minimized projection carries no next-allowance, and
+   * The contract deliberately does **not** state the tier or allowance that
+   * applies afterwards. The minimized projection carries no next state, and
    * inferring one is wrong whenever a surviving grant keeps capacity — an
    * expiring add-on leaves the Premium base in place. Clients re-read the
    * projection at or after this instant instead.
@@ -311,19 +323,20 @@ export function toEnvelope(row: EntitlementProjectionRow): EntitlementEnvelope {
 
   // `expires_at` collapses the purchaser bound and the household bound with
   // LEAST whenever both grants exist, so it only provably governs the
-  // effective tier and allowance when a single grant contributes. With a
-  // purchaser grant *and* a household grant the earlier bound may belong to
-  // the weaker one — Plus lapsing tomorrow under a Family household that
-  // survives for a month — and claiming it as the reduction instant would be
-  // false. In that case the boundary stays undetermined and the client
-  // refreshes at `validity.expires_at`.
-  const reducibleCapacity = accessState === 'granted' && row.bank_connection_allowance > 0;
-  const boundGovernsCapacity = row.user_display_tier === 'free';
-  const downgradeStatus: DowngradeStatus = !reducibleCapacity
-    ? 'none'
-    : boundGovernsCapacity
-      ? 'scheduled'
-      : 'undetermined';
+  // reduction when a single grant contributes. With a purchaser grant *and* a
+  // household grant the earlier bound may belong to the one that determines
+  // neither the effective tier nor the allowance — Plus lapsing tomorrow under
+  // a Family household that survives for a month — and claiming it would be
+  // false in both directions. In that case the boundary stays undetermined and
+  // the client refreshes at `validity.refresh_after`.
+  const contributingGrants =
+    (row.user_display_tier === 'free' ? 0 : 1) +
+    (row.household_display_tier === null || row.household_display_tier === 'free' ? 0 : 1);
+  const boundIsProvable = contributingGrants <= 1;
+  // A reduction is any fall in the effective tier or allowance, so a
+  // purchaser-only Plus that lapses to Free is one too.
+  const downgradeStatus: DowngradeStatus =
+    accessState !== 'granted' ? 'none' : boundIsProvable ? 'scheduled' : 'undetermined';
 
   return {
     contract_version: ENTITLEMENT_CONTRACT_VERSION,
@@ -345,7 +358,7 @@ export function toEnvelope(row: EntitlementProjectionRow): EntitlementEnvelope {
       },
       validity: {
         effective_at: row.effective_at,
-        expires_at: row.expires_at,
+        refresh_after: row.expires_at,
         server_time: row.server_time,
         projection_version: row.projection_version,
       },

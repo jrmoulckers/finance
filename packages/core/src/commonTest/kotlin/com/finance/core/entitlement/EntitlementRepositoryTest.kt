@@ -52,7 +52,7 @@ class EntitlementRepositoryTest {
             },
             "validity": {
               "effective_at": "2033-05-18T03:33:20Z",
-              "expires_at": "2033-06-18T03:33:20Z",
+              "refresh_after": "2033-06-18T03:33:20Z",
               "server_time": "2033-05-18T03:33:21Z",
               "projection_version": 7
             },

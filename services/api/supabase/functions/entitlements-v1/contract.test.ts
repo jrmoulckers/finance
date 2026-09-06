@@ -55,10 +55,24 @@ Deno.test('contract — Plus is granted through the server-issued validity bound
   assertEquals(envelope.entitlement.tier, 'plus');
   assertEquals(envelope.entitlement.scope, 'user');
   assertEquals(envelope.entitlement.access_state, 'granted');
-  assertEquals(envelope.entitlement.validity.expires_at, '2033-06-18T03:33:20.000Z');
+  assertEquals(envelope.entitlement.validity.refresh_after, '2033-06-18T03:33:20.000Z');
   assertEquals(envelope.entitlement.validity.server_time, '2033-05-18T03:33:21.000Z');
-  // Plus carries no bank allowance, so there is nothing that can reduce.
-  assertEquals(envelope.entitlement.downgrade.status, 'none');
+  // A purchaser-only grant is the sole contributor, so its lapse to Free is a
+  // provable reduction even though Plus carries no bank allowance.
+  assertEquals(envelope.entitlement.downgrade, {
+    status: 'scheduled',
+    effective_at: '2033-06-18T03:33:20.000Z',
+  });
+});
+
+Deno.test('contract — a purchaser-only Premium reports its own lapse as the reduction', () => {
+  const envelope = toEnvelope(
+    parsed({ user_display_tier: 'premium', expires_at: '2033-06-18T03:33:20+00:00' }),
+  );
+  assertEquals(envelope.entitlement.tier, 'premium');
+  assertEquals(envelope.entitlement.bank_connections.allowance, 0);
+  assertEquals(envelope.entitlement.downgrade.status, 'scheduled');
+  assertEquals(envelope.entitlement.downgrade.effective_at, '2033-06-18T03:33:20.000Z');
 });
 
 Deno.test('contract — Premium add-ons are reported above the catalog base', () => {
@@ -141,7 +155,7 @@ Deno.test('contract — a weaker purchaser grant never dictates the household bo
   });
   // The bound is still disclosed — it is when the response stops being
   // guaranteed accurate, which is when the client refreshes.
-  assertEquals(envelope.entitlement.validity.expires_at, '2033-05-19T03:33:20.000Z');
+  assertEquals(envelope.entitlement.validity.refresh_after, '2033-05-19T03:33:20.000Z');
 });
 
 Deno.test('contract — an equal-rank purchaser grant also leaves the boundary undetermined', () => {

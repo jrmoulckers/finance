@@ -60,7 +60,7 @@ class MinimizedEntitlementContractTest {
             },
             "validity": {
               "effective_at": "2033-05-18T03:33:20Z",
-              "expires_at": ${quoteOrNull(expiresAt)},
+              "refresh_after": ${quoteOrNull(expiresAt)},
               "server_time": "$serverTime",
               "projection_version": $projectionVersion
             },
@@ -154,13 +154,32 @@ class MinimizedEntitlementContractTest {
                 userTier = "plus",
                 accessState = "granted",
                 expiresAt = expiry.toString(),
+                downgradeStatus = "scheduled",
+                downgradeEffectiveAt = expiry.toString(),
             ),
         )
         assertEquals(EntitlementTier.PLUS, envelope.entitlement.tier)
         assertEquals(EntitlementScope.USER, envelope.entitlement.scope)
-        assertEquals(expiry, envelope.entitlement.validity.expiresAt)
-        // Plus carries no bank allowance, so nothing can reduce.
-        assertEquals(DowngradeStatus.NONE, envelope.entitlement.downgrade.status)
+        assertEquals(expiry, envelope.entitlement.validity.refreshAfter)
+        // A purchaser-only grant is the sole contributor, so its lapse to Free
+        // is a provable reduction even though Plus carries no bank allowance.
+        assertEquals(DowngradeStatus.SCHEDULED, envelope.entitlement.downgrade.status)
+        assertEquals(expiry, envelope.entitlement.downgrade.effectiveAt)
+    }
+
+    @Test
+    fun `a purchaser-only tier that can lapse never reports nothing to reduce`() {
+        // `none` would deny that Plus lapses to Free at a known instant.
+        assertUnavailable(
+            payload(
+                tier = "plus",
+                userTier = "plus",
+                accessState = "granted",
+                expiresAt = expiry.toString(),
+                downgradeStatus = "none",
+            ),
+            EntitlementUnavailableReason.MALFORMED,
+        )
     }
 
     @Test
@@ -214,7 +233,7 @@ class MinimizedEntitlementContractTest {
         assertNull(entitlement.downgrade.effectiveAt)
         // The bound is still disclosed: it is when the response stops being
         // guaranteed accurate, which is when the client refreshes.
-        assertEquals(expiry, entitlement.validity.expiresAt)
+        assertEquals(expiry, entitlement.validity.refreshAfter)
     }
 
     @Test
@@ -343,6 +362,8 @@ class MinimizedEntitlementContractTest {
                     accessState = "granted",
                     lifecycle = lifecycle.wireValue,
                     expiresAt = expiry.toString(),
+                    downgradeStatus = "scheduled",
+                    downgradeEffectiveAt = expiry.toString(),
                 ),
             ).entitlement
             assertEquals(lifecycle, entitlement.lifecycle)

@@ -48,7 +48,7 @@ class EntitlementDisplayPolicyTest {
             bankConnections = BankConnectionAllowance(allowance, baseAllowance, addonAllowance),
             validity = EntitlementValidity(
                 effectiveAt = Instant.parse("2033-05-18T03:33:20Z"),
-                expiresAt = expiresAt,
+                refreshAfter = expiresAt,
                 serverTime = serverTime,
                 projectionVersion = 7,
             ),
@@ -123,6 +123,65 @@ class EntitlementDisplayPolicyTest {
         assertEquals(EntitlementTier.FAMILY, EntitlementDisplayPolicy.displayTier(mixed, serverTime))
         assertEquals(expiry, EntitlementDisplayPolicy.refreshAfter(mixed))
         assertTrue(EntitlementDisplayPolicy.needsRefreshAt(mixed, expiry))
+    }
+
+    @Test
+    fun `an undetermined boundary never expires the cache to Free`() {
+        // Plus lapsing under a surviving Family household. The collapsed
+        // refresh deadline passes, but the server proved no reduction
+        // boundary, so the snapshot must not silently become Free — that would
+        // be a false cache expiry. It stays displayable and is flagged stale.
+        val mixed = envelope(
+            userTier = EntitlementTier.PLUS,
+            downgradeStatus = DowngradeStatus.UNDETERMINED,
+            downgradeEffectiveAt = null,
+        )
+        assertTrue(EntitlementDisplayPolicy.isDisplayableAt(mixed, serverTime))
+        assertEquals(EntitlementTier.FAMILY, EntitlementDisplayPolicy.displayTier(mixed, serverTime))
+        assertEquals(4L, EntitlementDisplayPolicy.displayBankConnectionAllowance(mixed, serverTime))
+
+        // Crossing the refresh deadline requests a refresh...
+        assertEquals(expiry, EntitlementDisplayPolicy.refreshAfter(mixed))
+        assertTrue(EntitlementDisplayPolicy.needsRefreshAt(mixed, expiry))
+        // ...but does not falsely collapse the display, now or long after.
+        val muchLater = Instant.parse("2099-01-01T00:00:00Z")
+        assertTrue(EntitlementDisplayPolicy.isDisplayableAt(mixed, expiry))
+        assertEquals(EntitlementTier.FAMILY, EntitlementDisplayPolicy.displayTier(mixed, expiry))
+        assertEquals(EntitlementTier.FAMILY, EntitlementDisplayPolicy.displayTier(mixed, muchLater))
+        assertTrue(EntitlementDisplayPolicy.needsRefreshAt(mixed, muchLater))
+    }
+
+    @Test
+    fun `an equal-rank purchaser grant also never expires the cache to Free`() {
+        val equal = envelope(
+            scope = EntitlementScope.USER,
+            tier = EntitlementTier.PREMIUM,
+            userTier = EntitlementTier.PREMIUM,
+            householdTier = EntitlementTier.PREMIUM,
+            allowance = 2,
+            baseAllowance = 2,
+            downgradeStatus = DowngradeStatus.UNDETERMINED,
+            downgradeEffectiveAt = null,
+        )
+        assertEquals(
+            EntitlementTier.PREMIUM,
+            EntitlementDisplayPolicy.displayTier(equal, expiry),
+        )
+        assertTrue(EntitlementDisplayPolicy.needsRefreshAt(equal, expiry))
+    }
+
+    @Test
+    fun `a proven boundary still ends display exactly at that instant`() {
+        // The converse guarantee: when the server *did* prove a reduction, the
+        // client stops displaying the paid tier there.
+        val proven = envelope()
+        assertTrue(EntitlementDisplayPolicy.isDisplayableAt(proven, serverTime))
+        assertFalse(EntitlementDisplayPolicy.isDisplayableAt(proven, expiry))
+        assertEquals(EntitlementTier.FREE, EntitlementDisplayPolicy.displayTier(proven, expiry))
+        assertEquals(
+            0L,
+            EntitlementDisplayPolicy.displayBankConnectionAllowance(proven, expiry),
+        )
     }
 
     @Test

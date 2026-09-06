@@ -19,6 +19,7 @@
     "test:sync-contract": "deno test --allow-read supabase/tests/sync-contract.test.ts",
     "test:billing-entitlements": "psql -v ON_ERROR_STOP=1 -f supabase/tests/billing-entitlements-integration.test.sql",
     "test:entitlement-api": "psql -v ON_ERROR_STOP=1 -f supabase/tests/entitlement-api-contract.test.sql",
+    "test:entitlement-gateway": "powershell -NoProfile -ExecutionPolicy Bypass -File supabase/tests/entitlement-gateway.integration.test.ps1",
     "test:sync-integration": "psql postgresql://postgres:postgres@localhost:54322/postgres -f supabase/tests/sync-integration.test.sql"
   },
   "devDependencies": {

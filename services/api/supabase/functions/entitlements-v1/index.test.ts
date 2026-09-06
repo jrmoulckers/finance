@@ -280,8 +280,8 @@ Deno.test('entitlements-v1 — the served envelope is exactly the minimized cont
     'entitlement.user_tier',
     'entitlement.validity',
     'entitlement.validity.effective_at',
-    'entitlement.validity.expires_at',
     'entitlement.validity.projection_version',
+    'entitlement.validity.refresh_after',
     'entitlement.validity.server_time',
   ]);
 

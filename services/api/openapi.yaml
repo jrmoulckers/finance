@@ -901,21 +901,22 @@ components:
     EntitlementValidity:
       type: object
       additionalProperties: false
-      required: [effective_at, expires_at, server_time, projection_version]
+      required: [effective_at, refresh_after, server_time, projection_version]
       properties:
         effective_at:
           type: string
           format: date-time
-        expires_at:
+        refresh_after:
           type: string
           format: date-time
           nullable: true
           description: >-
             The earliest instant at which any grant contributing to this
             response lapses, so the response is guaranteed accurate only
-            through it. Clients never substitute their own clock. When
-            `downgrade.status` is `undetermined`, reaching it means "refresh
-            required", not "entitlement ended".
+            through it. This is a refresh deadline, not an authority claim:
+            past it the snapshot may be stale in either direction, so the
+            client re-reads. The authoritative reduction boundary, when the
+            projection can prove one, is `downgrade.effective_at`.
         server_time:
           type: string
           format: date-time
@@ -933,22 +934,24 @@ components:
           type: string
           enum: [none, scheduled, undetermined]
           description: >-
-            `none` — no paid capacity can reduce. `scheduled` — exactly one
-            paid grant contributes, so the validity bound provably governs the
-            reduction. `undetermined` — a purchaser grant and a household grant
-            both contribute, the projection collapses them to the earliest
-            bound, and that bound may belong to the weaker grant, so no
-            reduction instant is claimed.
+            Whether a reduction of the effective tier and/or allowance has a
+            provable instant. `none` — the effective tier is already Free or
+            access is not granted. `scheduled` — exactly one paid grant
+            contributes, so `refresh_after` provably governs the reduction.
+            `undetermined` — a purchaser grant and a household grant both
+            contribute and the collapsed bound may belong to the one that
+            determines neither, so no instant is claimed.
         effective_at:
           type: string
           format: date-time
           nullable: true
           description: >-
-            The instant the effective tier and allowance reduce, present only
-            when `status` is `scheduled`. The contract states no post-boundary
-            allowance: an expiring add-on leaves the Premium base in place, so
-            clients re-read the projection at or after this instant instead of
-            inferring one.
+            The authoritative instant the effective tier and allowance reduce,
+            present only when `status` is `scheduled`. It is also the only
+            bound a client may treat as display validity. The contract states
+            no post-boundary tier or allowance: an expiring add-on leaves the
+            Premium base in place, so clients re-read the projection at or
+            after this instant instead of inferring one.
 
     MinimizedEntitlement:
       type: object

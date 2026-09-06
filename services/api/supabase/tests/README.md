@@ -168,22 +168,34 @@ fixtures. It must never be pointed at staging or production.
 
 `supabase/functions/entitlements-v1/gateway.integration.test.ts` proves what a
 _deployed_ request receives, which handler-level unit tests cannot: that a
-missing, malformed, untrusted, or non-bearer credential reaches the function and
-receives the documented `unauthenticated` envelope with CORS headers and
-`Cache-Control: no-store`, that no anonymous read ever succeeds, and that the
-endpoint stays read-only. The tests are skipped unless
-`ENTITLEMENTS_GATEWAY_URL` is set.
+missing, malformed, untrusted, non-bearer, or **correctly signed but expired**
+credential reaches the function and receives the documented `unauthenticated`
+envelope with CORS headers and `Cache-Control: no-store`, that no anonymous or
+expired read ever succeeds, and that the endpoint stays read-only.
+
+`entitlement-gateway.integration.test.ps1` is the deterministic harness. It
+discovers the gateway URL and the local signing key from `supabase status`, so
+nothing is hard-coded and no credential is committed; the key is used only to
+mint an expired token against a disposable local stack. The harness refuses any
+non-loopback gateway, so it cannot be pointed at staging or production, and it
+fails fast with an actionable message when the endpoint answers `503` because
+the local deployment is missing `ALLOWED_ORIGINS`.
 
 ```bash
-# From services/api/, with the local stack running and functions served with an
-# ALLOWED_ORIGINS value:
+# From services/api/, with the local stack running and functions served:
 npx supabase start
 npx supabase functions serve --env-file <local-env-file>
 
-cd supabase/functions
-ENTITLEMENTS_GATEWAY_URL=http://127.0.0.1:54321/functions/v1/entitlements-v1 \
-  deno test --allow-env --allow-net --no-check entitlements-v1/gateway.integration.test.ts
+npm run test:entitlement-gateway
 ```
+
+The Deno suite self-skips when `ENTITLEMENTS_GATEWAY_URL` is unset, so a plain
+`deno test` run needs no infrastructure. The expired-token cases additionally
+require `ENTITLEMENTS_TEST_JWT_SECRET`, which the harness supplies.
+
+Like the other Supabase-dependent suites in this directory, it is a local and
+staging-validation tool rather than a CI job: it needs a full local stack, and
+`.github/workflows/**` is owned by `@devops-engineer`.
 
 ## Adding New Tests
 
