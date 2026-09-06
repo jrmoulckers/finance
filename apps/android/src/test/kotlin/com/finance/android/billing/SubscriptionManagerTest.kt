@@ -3,7 +3,10 @@
 package com.finance.android.billing
 
 import com.finance.core.entitlement.Tier
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -75,6 +78,41 @@ fun evidence(
         provider = PurchaseEvidenceProvider.REVENUECAT_GOOGLE,
         opaqueValue = token,
     )
+
+private class DelayedEntitlementTransport : AuthenticatedEntitlementTransport {
+    private val purchaseCalls = AtomicInteger()
+    private val firstStarted = CompletableDeferred<Unit>()
+    private val firstReleaseGate = CompletableDeferred<Unit>()
+
+    override suspend fun isAuthenticated(): Boolean = true
+
+    override suspend fun confirmPurchase(
+        request: FinanceEntitlementRequest,
+    ): FinanceServerConfirmation =
+        if (purchaseCalls.incrementAndGet() == 1) {
+            firstStarted.complete(Unit)
+            firstReleaseGate.await()
+            FinanceServerConfirmation.Confirmed(premiumProjection)
+        } else {
+            FinanceServerConfirmation.Confirmed(FinanceEntitlementProjection.FREE)
+        }
+
+    override suspend fun confirmRestore(
+        request: FinanceEntitlementRequest,
+    ): FinanceServerConfirmation = FinanceServerConfirmation.Confirmed(FinanceEntitlementProjection.FREE)
+
+    override suspend fun fetchProjection(
+        context: FinanceEntitlementContext,
+    ): FinanceServerConfirmation = FinanceServerConfirmation.Confirmed(FinanceEntitlementProjection.FREE)
+
+    suspend fun waitUntilFirstStarts() {
+        firstStarted.await()
+    }
+
+    fun releaseFirst() {
+        firstReleaseGate.complete(Unit)
+    }
+}
 
 class SubscriptionManagerTest {
     @Test
@@ -219,6 +257,27 @@ class SubscriptionManagerTest {
 
         assertEquals(PurchaseConfirmationPhase.CONFIRMED, manager.state.value.confirmation)
         assertEquals(Tier.FREE, manager.currentTier)
+    }
+
+    @Test
+    fun `older paid response cannot overwrite newer denial`() = runTest {
+        val adapter =
+            FakeRevenueCatPurchaseAdapter().apply {
+                purchaseResult = NativePurchaseResult.Verified(evidence())
+            }
+        val transport = DelayedEntitlementTransport()
+        val manager = SubscriptionManager(adapter, transport)
+
+        val older = async { manager.onPurchaseUpdated(evidence("older-operation")) }
+        transport.waitUntilFirstStarts()
+        val newer = async { manager.onPurchaseUpdated(evidence("newer-operation")) }
+        newer.await()
+        transport.releaseFirst()
+        older.await()
+
+        assertEquals(PurchaseConfirmationPhase.CONFIRMED, manager.state.value.confirmation)
+        assertEquals(Tier.FREE, manager.currentTier)
+        assertEquals(FinanceEntitlementProjection.FREE, manager.state.value.projection)
     }
 
     @Test

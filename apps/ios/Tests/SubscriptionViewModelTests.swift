@@ -16,6 +16,7 @@ private final class StubSubscriptionService: SubscriptionProviding, @unchecked S
     private let updateContinuation: AsyncStream<PurchaseConfirmationState>.Continuation
     var productsToReturn: [SubscriptionProductInfo] = []
     var purchaseState: PurchaseConfirmationState = .idle
+    var purchaseHandler: (@Sendable () async -> PurchaseConfirmationState)?
     var entitlementState: PurchaseConfirmationState = .idle
     var restoreState: PurchaseConfirmationState = .idle
     var restoreCalled = false
@@ -33,15 +34,21 @@ private final class StubSubscriptionService: SubscriptionProviding, @unchecked S
     }
 
     func purchase(productId _: String) async -> PurchaseConfirmationState {
-        purchaseState
+        if let purchaseHandler {
+            return await purchaseHandler()
+        }
+        updateContinuation.yield(purchaseState)
+        return purchaseState
     }
 
     func checkEntitlement() async -> PurchaseConfirmationState {
-        entitlementState
+        updateContinuation.yield(entitlementState)
+        return entitlementState
     }
 
     func restorePurchases() async -> PurchaseConfirmationState {
         restoreCalled = true
+        updateContinuation.yield(restoreState)
         return restoreState
     }
 
@@ -51,6 +58,33 @@ private final class StubSubscriptionService: SubscriptionProviding, @unchecked S
 
     func emit(_ state: PurchaseConfirmationState) {
         updateContinuation.yield(state)
+    }
+}
+
+private actor PurchaseGate {
+    private var started = false
+    private var startedContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+
+    func suspendPurchase() async {
+        started = true
+        startedContinuation?.resume()
+        startedContinuation = nil
+        await withCheckedContinuation { continuation in
+            releaseContinuation = continuation
+        }
+    }
+
+    func waitUntilStarted() async {
+        guard !started else { return }
+        await withCheckedContinuation { continuation in
+            startedContinuation = continuation
+        }
+    }
+
+    func release() {
+        releaseContinuation?.resume()
+        releaseContinuation = nil
     }
 }
 
@@ -198,6 +232,7 @@ struct SubscriptionViewModelTests {
         viewModel.selectedProductId = "synthetic.monthly"
 
         await viewModel.purchaseSelected()
+        await Task.yield()
 
         #expect(viewModel.isPremium)
         #expect(viewModel.successMessage != nil)
@@ -248,12 +283,14 @@ struct SubscriptionViewModelTests {
         let viewModel = SubscriptionViewModel(subscriptionService: service)
         viewModel.selectedProductId = "synthetic.monthly"
         await viewModel.loadSubscriptionData()
+        await Task.yield()
 
         service.purchaseState = PurchaseConfirmationState(
             phase: .cancelled,
             projection: premiumProjection
         )
         await viewModel.purchaseSelected()
+        await Task.yield()
         #expect(viewModel.isPremium)
         #expect(viewModel.confirmationState.phase == .cancelled)
 
@@ -262,6 +299,7 @@ struct SubscriptionViewModelTests {
             projection: premiumProjection
         )
         await viewModel.purchaseSelected()
+        await Task.yield()
         #expect(viewModel.isPremium)
         #expect(viewModel.confirmationState.phase == .retry)
     }
@@ -283,6 +321,48 @@ struct SubscriptionViewModelTests {
 
         #expect(viewModel.confirmationState.phase == .confirmed)
         #expect(viewModel.isPremium)
+    }
+
+    @Test("Streamed denial wins over older method result")
+    @MainActor
+    func streamedDenialWinsOverOlderResult() async {
+        let gate = PurchaseGate()
+        let service = StubSubscriptionService()
+        service.purchaseHandler = {
+            await gate.suspendPurchase()
+            return PurchaseConfirmationState(
+                phase: .confirmed,
+                projection: premiumProjection
+            )
+        }
+        let viewModel = SubscriptionViewModel(subscriptionService: service)
+        viewModel.selectedProductId = "synthetic.monthly"
+
+        service.emit(
+            PurchaseConfirmationState(
+                phase: .confirmed,
+                projection: premiumProjection
+            )
+        )
+        await Task.yield()
+        #expect(viewModel.isPremium)
+
+        let purchaseTask = Task { @MainActor in
+            await viewModel.purchaseSelected()
+        }
+        await gate.waitUntilStarted()
+        service.emit(
+            PurchaseConfirmationState(
+                phase: .confirmed,
+                projection: .free
+            )
+        )
+        await Task.yield()
+        await gate.release()
+        await purchaseTask.value
+
+        #expect(!viewModel.isPremium)
+        #expect(viewModel.entitlement.projection == .free)
     }
 
     @Test("Loads products and defaults to best value")

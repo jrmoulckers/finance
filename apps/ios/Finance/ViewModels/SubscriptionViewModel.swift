@@ -79,7 +79,7 @@ final class SubscriptionViewModel {
             let updates = await subscriptionService.confirmationUpdates()
             for await state in updates {
                 guard let self else { return }
-                self.apply(state)
+                self.applyStreamState(state)
             }
         }
     }
@@ -99,7 +99,7 @@ final class SubscriptionViewModel {
         async let currentEntitlement = subscriptionService.checkEntitlement()
 
         products = await loadedProducts
-        apply(await currentEntitlement)
+        applyOperationPhase((await currentEntitlement).phase)
 
         // Auto-select annual (best value) by default
         if selectedProductId == nil {
@@ -126,10 +126,10 @@ final class SubscriptionViewModel {
         defer { isPurchasing = false }
 
         let result = await subscriptionService.purchase(productId: productId)
-        apply(result)
+        applyOperationPhase(result.phase)
 
         switch result.phase {
-        case .confirmed where entitlement.isPremium:
+        case .confirmed where result.projection.authorizesNewCostIncurringActions:
             successMessage = String(localized: "Your purchase was confirmed by Finance.")
             Self.logger.info("Purchase confirmed")
         case .pending:
@@ -156,10 +156,10 @@ final class SubscriptionViewModel {
         defer { isRestoring = false }
 
         let result = await subscriptionService.restorePurchases()
-        apply(result)
+        applyOperationPhase(result.phase)
 
         switch result.phase {
-        case .confirmed where entitlement.isPremium:
+        case .confirmed where result.projection.authorizesNewCostIncurringActions:
             successMessage = String(localized: "Your purchases were confirmed by Finance.")
         case .pending:
             statusMessage = String(localized: "Your restored purchases are pending confirmation.")
@@ -176,11 +176,18 @@ final class SubscriptionViewModel {
 
     /// Refreshes entitlement status.
     func refreshEntitlement() async {
-        apply(await subscriptionService.checkEntitlement())
+        applyOperationPhase((await subscriptionService.checkEntitlement()).phase)
     }
 
-    private func apply(_ state: PurchaseConfirmationState) {
+    private func applyStreamState(_ state: PurchaseConfirmationState) {
         confirmationState = state
         entitlement = EntitlementState(projection: state.projection)
+    }
+
+    private func applyOperationPhase(_ phase: PurchaseConfirmationPhase) {
+        confirmationState = PurchaseConfirmationState(
+            phase: phase,
+            projection: entitlement.projection
+        )
     }
 }

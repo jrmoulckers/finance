@@ -4,6 +4,55 @@ import Foundation
 import Testing
 @testable import FinanceApp
 
+private actor DelayedEntitlementTransport: AuthenticatedEntitlementTransport {
+    private var purchaseCallCount = 0
+    private var firstStarted = false
+    private var firstStartedContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+
+    func isAuthenticated() async -> Bool { true }
+
+    func confirmPurchase(
+        _: FinanceEntitlementConfirmationRequest
+    ) async throws -> FinanceServerConfirmation {
+        purchaseCallCount += 1
+        if purchaseCallCount == 1 {
+            firstStarted = true
+            firstStartedContinuation?.resume()
+            firstStartedContinuation = nil
+            await withCheckedContinuation { continuation in
+                releaseContinuation = continuation
+            }
+            return .confirmed(premiumProjection)
+        }
+        return .confirmed(.free)
+    }
+
+    func confirmRestore(
+        _: FinanceEntitlementConfirmationRequest
+    ) async throws -> FinanceServerConfirmation {
+        .confirmed(.free)
+    }
+
+    func fetchProjection(
+        _: FinanceEntitlementContext
+    ) async throws -> FinanceServerConfirmation {
+        .confirmed(.free)
+    }
+
+    func waitUntilFirstStarts() async {
+        guard !firstStarted else { return }
+        await withCheckedContinuation { continuation in
+            firstStartedContinuation = continuation
+        }
+    }
+
+    func releaseFirst() {
+        releaseContinuation?.resume()
+        releaseContinuation = nil
+    }
+}
+
 @Suite("iOS Entitlement Confirmation Tests")
 struct EntitlementConfirmationTests {
     @Test("Verified StoreKit evidence remains pending and unfinished")
@@ -166,6 +215,35 @@ struct EntitlementConfirmationTests {
 
         #expect(update?.phase == .confirmed)
         #expect(update?.projection == premiumProjection)
+    }
+
+    @Test("Older paid response cannot overwrite newer denial")
+    func newerDenialWinsResponseRace() async {
+        let adapter = StubNativePurchaseAdapter()
+        adapter.purchaseResult = .verified(evidence())
+        let transport = DelayedEntitlementTransport()
+        let service = SubscriptionService(
+            purchaseAdapter: adapter,
+            transport: transport
+        )
+
+        let older = Task {
+            await service.purchase(productId: "synthetic.monthly")
+        }
+        await transport.waitUntilFirstStarts()
+        let newer = Task {
+            await service.purchase(productId: "synthetic.monthly")
+        }
+        _ = await newer.value
+        await transport.releaseFirst()
+        _ = await older.value
+
+        let updates = await service.confirmationUpdates()
+        var iterator = updates.makeAsyncIterator()
+        let current = await iterator.next()
+
+        #expect(current?.projection == .free)
+        #expect(current?.phase == .idle)
     }
 
     @Test("Unauthenticated purchaser cannot submit evidence")

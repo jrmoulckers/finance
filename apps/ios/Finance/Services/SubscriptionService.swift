@@ -29,6 +29,8 @@ actor SubscriptionService: SubscriptionProviding {
     private let transport: any AuthenticatedEntitlementTransport
     private let context: FinanceEntitlementContext
     private var projection: FinanceEntitlementProjection = .free
+    private var nextOperationGeneration: UInt64 = 0
+    private var latestProjectionGeneration: UInt64 = 0
     private var updateListenerTask: Task<Void, Never>?
     private var stateContinuations:
         [UUID: AsyncStream<PurchaseConfirmationState>.Continuation] = [:]
@@ -74,6 +76,7 @@ actor SubscriptionService: SubscriptionProviding {
 
     func purchase(productId: String) async -> PurchaseConfirmationState {
         ensureListeningForUpdates()
+        let generation = beginOperation()
         _ = publish(.pending)
         do {
             switch try await purchaseAdapter.purchase(productId: productId) {
@@ -84,7 +87,11 @@ actor SubscriptionService: SubscriptionProviding {
                 Self.logger.info("Purchase awaiting provider completion")
                 return publish(.pending)
             case .verified(let evidence):
-                return await confirm(evidence, operation: .purchase)
+                return await confirm(
+                    evidence,
+                    operation: .purchase,
+                    generation: generation
+                )
             }
         } catch {
             Self.logger.error("Purchase flow failed")
@@ -94,12 +101,16 @@ actor SubscriptionService: SubscriptionProviding {
 
     func checkEntitlement() async -> PurchaseConfirmationState {
         ensureListeningForUpdates()
+        let generation = beginOperation()
         guard await transport.isAuthenticated() else {
             return publish(.error)
         }
 
         do {
-            return apply(try await transport.fetchProjection(context))
+            return apply(
+                try await transport.fetchProjection(context),
+                generation: generation
+            )
         } catch {
             Self.logger.notice("Entitlement confirmation should be retried")
             return publish(.retry)
@@ -108,6 +119,7 @@ actor SubscriptionService: SubscriptionProviding {
 
     func restorePurchases() async -> PurchaseConfirmationState {
         ensureListeningForUpdates()
+        let generation = beginOperation()
         var latest = publish(.pending)
         do {
             let evidenceItems = try await purchaseAdapter.restoreEvidence()
@@ -116,7 +128,11 @@ actor SubscriptionService: SubscriptionProviding {
             }
 
             for evidence in evidenceItems {
-                latest = await confirm(evidence, operation: .restore)
+                latest = await confirm(
+                    evidence,
+                    operation: .restore,
+                    generation: generation
+                )
             }
             return latest
         } catch {
@@ -136,9 +152,18 @@ actor SubscriptionService: SubscriptionProviding {
         updateListenerTask = Task { [weak self] in
             for await evidence in purchaseAdapter.transactionUpdates() {
                 guard let self else { return }
-                _ = await self.confirm(evidence, operation: .purchase)
+                await self.confirmUpdate(evidence)
             }
         }
+    }
+
+    private func confirmUpdate(_ evidence: VerifiedPurchaseEvidence) async {
+        let generation = beginOperation()
+        _ = await confirm(
+            evidence,
+            operation: .purchase,
+            generation: generation
+        )
     }
 
     private func removeContinuation(_ id: UUID) {
@@ -147,7 +172,8 @@ actor SubscriptionService: SubscriptionProviding {
 
     private func confirm(
         _ evidence: VerifiedPurchaseEvidence,
-        operation: ConfirmationOperation
+        operation: ConfirmationOperation,
+        generation: UInt64
     ) async -> PurchaseConfirmationState {
         guard await transport.isAuthenticated() else {
             Self.logger.error("Purchase confirmation requires authentication")
@@ -169,7 +195,7 @@ actor SubscriptionService: SubscriptionProviding {
                 response = try await transport.confirmRestore(request)
             }
 
-            let confirmationState = apply(response)
+            let confirmationState = apply(response, generation: generation)
             if case .confirmed = response {
                 await evidence.finish()
                 Self.logger.info("Purchase evidence confirmed")
@@ -182,13 +208,17 @@ actor SubscriptionService: SubscriptionProviding {
     }
 
     private func apply(
-        _ response: FinanceServerConfirmation
+        _ response: FinanceServerConfirmation,
+        generation: UInt64
     ) -> PurchaseConfirmationState {
         switch response {
         case .pending:
             return publish(.pending)
         case .confirmed(let confirmedProjection):
-            projection = confirmedProjection
+            if generation >= latestProjectionGeneration {
+                latestProjectionGeneration = generation
+                projection = confirmedProjection
+            }
             return publish(.confirmed)
         case .error:
             return publish(.error)
@@ -197,6 +227,11 @@ actor SubscriptionService: SubscriptionProviding {
 
     private func state(_ phase: PurchaseConfirmationPhase) -> PurchaseConfirmationState {
         PurchaseConfirmationState(phase: phase, projection: projection)
+    }
+
+    private func beginOperation() -> UInt64 {
+        nextOperationGeneration += 1
+        return nextOperationGeneration
     }
 
     @discardableResult

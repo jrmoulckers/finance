@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 
 data class SubscriptionState(
@@ -42,6 +45,9 @@ class SubscriptionManager(
 
     private val _state = MutableStateFlow(SubscriptionState())
     val state: StateFlow<SubscriptionState> = _state.asStateFlow()
+    private val operationGeneration = AtomicLong()
+    private val projectionMutex = Mutex()
+    private var latestProjectionGeneration = 0L
 
     /** Safe tier derived only from a current, server-returned projection. */
     val currentTier: Tier
@@ -53,6 +59,7 @@ class SubscriptionManager(
             return
         }
 
+        val generation = beginOperation()
         _state.update {
             it.copy(
                 confirmation = PurchaseConfirmationPhase.PENDING,
@@ -66,7 +73,12 @@ class SubscriptionManager(
                 NativePurchaseResult.Cancelled -> updatePhase(PurchaseConfirmationPhase.CANCELLED)
                 NativePurchaseResult.Pending -> updatePhase(PurchaseConfirmationPhase.PENDING)
                 NativePurchaseResult.Error -> updatePhase(PurchaseConfirmationPhase.ERROR)
-                is NativePurchaseResult.Verified -> confirm(result.evidence, restore = false)
+                is NativePurchaseResult.Verified ->
+                    confirm(
+                        result.evidence,
+                        restore = false,
+                        generation = generation,
+                    )
             }
         } catch (_: PurchaseAdapterException) {
             Timber.w("Purchase flow unavailable")
@@ -77,6 +89,7 @@ class SubscriptionManager(
     }
 
     suspend fun restorePurchases() {
+        val generation = beginOperation()
         _state.update {
             it.copy(
                 confirmation = PurchaseConfirmationPhase.PENDING,
@@ -89,7 +102,13 @@ class SubscriptionManager(
             if (evidenceItems.isEmpty()) {
                 refreshEntitlement()
             } else {
-                evidenceItems.forEach { confirm(it, restore = true) }
+                evidenceItems.forEach {
+                    confirm(
+                        it,
+                        restore = true,
+                        generation = generation,
+                    )
+                }
             }
             Timber.d("Restore confirmation flow completed")
         } catch (_: PurchaseAdapterException) {
@@ -102,18 +121,20 @@ class SubscriptionManager(
 
     /** Handles a provider update without treating it as an entitlement. */
     suspend fun onPurchaseUpdated(evidence: VerifiedPurchaseEvidence) {
+        val generation = beginOperation()
         _state.update { it.copy(confirmation = PurchaseConfirmationPhase.PENDING) }
-        confirm(evidence, restore = false)
+        confirm(evidence, restore = false, generation = generation)
     }
 
     suspend fun refreshEntitlement() {
+        val generation = beginOperation()
         if (!transport.isAuthenticated()) {
             updatePhase(PurchaseConfirmationPhase.ERROR)
             return
         }
 
         try {
-            apply(transport.fetchProjection(context))
+            apply(transport.fetchProjection(context), generation)
         } catch (_: EntitlementTransportException) {
             Timber.w("Entitlement refresh should be retried")
             updatePhase(PurchaseConfirmationPhase.RETRY)
@@ -123,6 +144,7 @@ class SubscriptionManager(
     private suspend fun confirm(
         evidence: VerifiedPurchaseEvidence,
         restore: Boolean,
+        generation: Long,
     ) {
         if (!transport.isAuthenticated()) {
             updatePhase(PurchaseConfirmationPhase.ERROR)
@@ -143,7 +165,7 @@ class SubscriptionManager(
                 } else {
                     transport.confirmPurchase(request)
                 }
-            apply(response)
+            apply(response, generation)
 
             if (response is FinanceServerConfirmation.Confirmed) {
                 try {
@@ -160,24 +182,29 @@ class SubscriptionManager(
         }
     }
 
-    private fun apply(response: FinanceServerConfirmation) {
+    private suspend fun apply(
+        response: FinanceServerConfirmation,
+        generation: Long,
+    ) {
         val phase =
             when (response) {
                 is FinanceServerConfirmation.Pending -> PurchaseConfirmationPhase.PENDING
                 is FinanceServerConfirmation.Confirmed -> PurchaseConfirmationPhase.CONFIRMED
                 is FinanceServerConfirmation.Error -> PurchaseConfirmationPhase.ERROR
             }
-        _state.update { current ->
-            when (response) {
-                is FinanceServerConfirmation.Confirmed ->
-                    current.copy(
-                        projection = response.projection,
-                        confirmation = phase,
-                    )
-                is FinanceServerConfirmation.Pending,
-                is FinanceServerConfirmation.Error,
-                ->
-                    current.copy(confirmation = phase)
+        projectionMutex.withLock {
+            _state.update { current ->
+                when {
+                    response is FinanceServerConfirmation.Confirmed &&
+                        generation >= latestProjectionGeneration -> {
+                        latestProjectionGeneration = generation
+                        current.copy(
+                            projection = response.projection,
+                            confirmation = phase,
+                        )
+                    }
+                    else -> current.copy(confirmation = phase)
+                }
             }
         }
     }
@@ -185,4 +212,6 @@ class SubscriptionManager(
     private fun updatePhase(phase: PurchaseConfirmationPhase) {
         _state.update { it.copy(confirmation = phase) }
     }
+
+    private fun beginOperation(): Long = operationGeneration.incrementAndGet()
 }
