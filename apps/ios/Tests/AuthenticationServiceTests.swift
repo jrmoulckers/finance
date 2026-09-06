@@ -43,7 +43,7 @@ final class AuthenticationServiceTests: XCTestCase {
         await svc.checkExistingSession(); XCTAssertFalse(svc.isAuthenticated) }
     @MainActor func testRefreshUpdatesTokens() async {
         let kc = StubKeychainManager(); kc.store["com.finance.auth.refreshToken"] = Data("old".utf8)
-        let sb = StubSupabaseAuthClient(); sb.refreshSessionToReturn = AuthSession(accessToken: "new-at", refreshToken: "new-rt", expiresIn: 3600, tokenType: "bearer", user: AuthUserResponse(id: "u1", email: "e@e.com", createdAt: nil))
+        let sb = StubSupabaseAuthClient(); sb.refreshSessionToReturn = AuthSession(accessToken: "new-at", refreshToken: "new-rt", tokenType: "bearer", expiresIn: 3600, user: AuthUserResponse(id: "u1", email: "e@e.com", createdAt: nil))
         let svc = AuthenticationService(appleSignInManager: StubAppleSignInManager(), supabaseClient: sb, keychain: kc)
         await svc.refreshSession()
         XCTAssertEqual(kc.store["com.finance.auth.accessToken"].flatMap { String(data: $0, encoding: .utf8) }, "new-at") }
@@ -66,8 +66,10 @@ final class StubAppleSignInManager: AppleSignInManaging, @unchecked Sendable {
 final class StubSupabaseAuthClient: SupabaseAuthClientProtocol, @unchecked Sendable {
     var sessionToReturn: AuthSession?; var refreshSessionToReturn: AuthSession?; var errorToThrow: SupabaseAuthError?; var refreshError: SupabaseAuthError?; var signOutError: SupabaseAuthError?; var signOutCalled = false
     func signInWithApple(idToken: String, nonce: String?) async throws -> AuthSession { if let e = errorToThrow { throw e }; guard let s = sessionToReturn else { throw SupabaseAuthError.invalidResponse(statusCode: 500) }; return s }
+    func signInWithEmail(email: String, password: String) async throws -> AuthSession { if let e = errorToThrow { throw e }; guard let s = sessionToReturn else { throw SupabaseAuthError.invalidResponse(statusCode: 500) }; return s }
+    func signUpWithEmail(email: String, password: String) async throws -> AuthSession { if let e = errorToThrow { throw e }; guard let s = sessionToReturn else { throw SupabaseAuthError.invalidResponse(statusCode: 500) }; return s }
     func refreshToken(_ refreshToken: String) async throws -> AuthSession { if let e = refreshError { throw e }; guard let s = refreshSessionToReturn ?? sessionToReturn else { throw SupabaseAuthError.tokenRefreshFailed }; return s }
     func signOut(accessToken: String) async throws { signOutCalled = true; if let e = signOutError { throw e } }
 }
 enum StubAppleCredential { static let `default` = AppleSignInCredential(userID: "apple-user-001", fullName: { var c = PersonNameComponents(); c.givenName = "Test"; c.familyName = "User"; return c }(), email: "test@example.com", identityToken: "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.sig", authorizationCode: "auth-code-123", nonce: "test-nonce") }
-enum StubAuthSession { static let `default` = AuthSession(accessToken: "sb-at-123", refreshToken: "sb-rt-456", expiresIn: 3600, tokenType: "bearer", user: AuthUserResponse(id: "user-123", email: "test@example.com", createdAt: "2024-01-01T00:00:00Z")) }
+enum StubAuthSession { static let `default` = AuthSession(accessToken: "sb-at-123", refreshToken: "sb-rt-456", tokenType: "bearer", expiresIn: 3600, user: AuthUserResponse(id: "user-123", email: "test@example.com", createdAt: "2024-01-01T00:00:00Z")) }
