@@ -274,8 +274,12 @@ final class SettingsViewModelTests: XCTestCase {
 
         let vm = makeViewModel()
 
+        guard let restoredSyncInterval = vm.lastSyncDate?.timeIntervalSince1970 else {
+            XCTFail("Sync date should be restored from UserDefaults")
+            return
+        }
         XCTAssertEqual(
-            vm.lastSyncDate?.timeIntervalSince1970,
+            restoredSyncInterval,
             syncDate.timeIntervalSince1970,
             accuracy: 1.0,
             "Sync date should be restored from UserDefaults"
