@@ -608,7 +608,7 @@ extension AccountTypeUI: Codable {}
 extension TransactionItem: Codable {
     enum CodingKeys: String, CodingKey {
         case id, payee, category, accountName, amountMinorUnits
-        case currencyCode, date, type, status, notes, isRecurring
+        case currencyCode, date, type, status, notes, tagNames, moodTag, isRecurring, tags
         case timestamp, timeZoneIdentifier
     }
 
@@ -624,7 +624,10 @@ extension TransactionItem: Codable {
         self.type = try container.decodeIfPresent(TransactionTypeUI.self, forKey: .type) ?? .expense
         self.status = try container.decodeIfPresent(TransactionStatusUI.self, forKey: .status) ?? .cleared
         self.notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        self.tagNames = try container.decodeIfPresent([String].self, forKey: .tagNames) ?? []
+        self.moodTag = try container.decodeIfPresent(String.self, forKey: .moodTag)
         self.isRecurring = try container.decodeIfPresent(Bool.self, forKey: .isRecurring) ?? false
+        self.tags = try container.decodeIfPresent([Tag].self, forKey: .tags) ?? []
         self.timestamp = try container.decodeIfPresent(Date.self, forKey: .timestamp)
         self.timeZoneIdentifier = try container.decodeIfPresent(String.self, forKey: .timeZoneIdentifier)
         self.receiptData = nil // Receipt data is stored separately
@@ -642,7 +645,10 @@ extension TransactionItem: Codable {
         try container.encode(type, forKey: .type)
         try container.encode(status, forKey: .status)
         try container.encode(notes, forKey: .notes)
+        try container.encode(tagNames, forKey: .tagNames)
+        try container.encodeIfPresent(moodTag, forKey: .moodTag)
         try container.encode(isRecurring, forKey: .isRecurring)
+        try container.encode(tags, forKey: .tags)
         try container.encodeIfPresent(timestamp, forKey: .timestamp)
         try container.encodeIfPresent(timeZoneIdentifier, forKey: .timeZoneIdentifier)
     }
