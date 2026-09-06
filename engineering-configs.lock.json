@@ -1,13 +1,37 @@
 {
   "repository": "jrmoulckers/engineering",
   "ref": "v0.145.0",
-  "fetchedAt": "2026-08-15T06:34:05.498Z",
+  "fetchedAt": "2026-09-06T20:05:19.076Z",
   "refresh": "node scripts/vendor-configs.mjs <newer-ref>",
   "tool": {
     "sha256": "e90b941c586de11b0ca828cdf6a0387f4ed607bf041a91d2f49418c4ad733324",
     "bytes": 39257
   },
   "files": {
+    "config/engineering/tsconfig/base.json": {
+      "source": "packages/tsconfig/base.json",
+      "sha256": "987675faff4a89d5940a67c3dd16a8405e7ab3518090011f8a42adb28d03ef97"
+    },
+    "config/engineering/tsconfig/vite-app.json": {
+      "source": "packages/tsconfig/vite-app.json",
+      "sha256": "9a3a98589401a8ca720966d2ff0b5c3c71981afb84a6491b2bd06446cb6ce74e"
+    },
+    "config/engineering/tsconfig/vite-node.json": {
+      "source": "packages/tsconfig/vite-node.json",
+      "sha256": "b7c46cfaf1caf2f6906777eed5803a0029a08f79036422096f9f7293c488c437"
+    },
+    "config/engineering/tsconfig/vite-react.json": {
+      "source": "packages/tsconfig/vite-react.json",
+      "sha256": "dc485a98473297f694bfe904eb005721bd494168e153b6461145b410e3701d89"
+    },
+    "config/engineering/tsconfig/next.json": {
+      "source": "packages/tsconfig/next.json",
+      "sha256": "8f716e98321c3e30767ebca37514518b83ad1a3b60f4dc775da4b5265a9e5179"
+    },
+    "config/engineering/tsconfig/node.json": {
+      "source": "packages/tsconfig/node.json",
+      "sha256": "32ef87364d4fe9e56b1c240813d84ed2ef33abfd3ab4799db3c04c6460ee57c7"
+    },
     "config/engineering/prettier/index.js": {
       "source": "packages/prettier-config/index.js",
       "sha256": "0cda065a2e3d88526f8e8b986145b14e823f8c987238f1435b850b82329d181b"

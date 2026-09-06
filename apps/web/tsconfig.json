@@ -1,23 +1,17 @@
 {
+  "extends": "../../config/engineering/tsconfig/vite-react.json",
   "compilerOptions": {
     "ignoreDeprecations": "6.0",
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
-    "strict": true,
-    "noEmit": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
-    "baseUrl": ".",
+    "types": ["vite/client", "node", "vitest/globals", "@testing-library/jest-dom"],
     "paths": {
-      "@/*": ["src/*"]
-    }
+      "@/*": ["./src/*"]
+    },
+    "verbatimModuleSyntax": false,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "checkJs": false
   },
   "include": ["src", "e2e", "playwright.config.ts"],
   "exclude": ["node_modules", "dist"]

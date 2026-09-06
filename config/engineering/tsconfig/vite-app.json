@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "@jrmoulckers/tsconfig/vite-app",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "useDefineForClassFields": true,
+    "allowJs": true,
+    "checkJs": true,
+    "types": ["vite/client"]
+  }
+}
