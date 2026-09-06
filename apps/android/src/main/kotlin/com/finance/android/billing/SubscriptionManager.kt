@@ -16,12 +16,10 @@ data class SubscriptionState(
     val isPurchasing: Boolean = false,
 ) {
     val authorizesNewCostIncurringActions: Boolean
-        get() =
-            confirmation == PurchaseConfirmationPhase.CONFIRMED &&
-                projection.authorizesNewCostIncurringActions
+        get() = projection.authorizesNewCostIncurringActions
 
     val tier: Tier
-        get() = if (authorizesNewCostIncurringActions) projection.tier else Tier.FREE
+        get() = projection.authorizedTier
 }
 
 /**
@@ -35,13 +33,11 @@ class SubscriptionManager(
     private val purchaseAdapter: RevenueCatPurchaseAdapter = UnavailableRevenueCatPurchaseAdapter,
     private val transport: AuthenticatedEntitlementTransport = UnavailableEntitlementTransport,
     environment: FinanceClientEnvironment = FinanceClientEnvironment.DEVELOPMENT,
-    eligibleHouseholdIntent: String? = null,
 ) {
     private val context =
         FinanceEntitlementContext(
             application = FinanceApplication.FINANCE,
             environment = environment,
-            eligibleHouseholdIntent = eligibleHouseholdIntent,
         )
 
     private val _state = MutableStateFlow(SubscriptionState())
@@ -171,11 +167,18 @@ class SubscriptionManager(
                 is FinanceServerConfirmation.Confirmed -> PurchaseConfirmationPhase.CONFIRMED
                 is FinanceServerConfirmation.Error -> PurchaseConfirmationPhase.ERROR
             }
-        _state.update {
-            it.copy(
-                projection = response.projection,
-                confirmation = phase,
-            )
+        _state.update { current ->
+            when (response) {
+                is FinanceServerConfirmation.Confirmed ->
+                    current.copy(
+                        projection = response.projection,
+                        confirmation = phase,
+                    )
+                is FinanceServerConfirmation.Pending,
+                is FinanceServerConfirmation.Error,
+                ->
+                    current.copy(confirmation = phase)
+            }
         }
     }
 

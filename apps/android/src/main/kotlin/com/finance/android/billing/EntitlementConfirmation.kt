@@ -34,7 +34,6 @@ class VerifiedPurchaseEvidence internal constructor(
 data class FinanceEntitlementContext(
     val application: FinanceApplication,
     val environment: FinanceClientEnvironment,
-    val eligibleHouseholdIntent: String?,
 )
 
 /**

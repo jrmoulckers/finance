@@ -177,6 +177,13 @@ struct EntitlementState: Sendable, Equatable {
             String(localized: "Expired")
         }
     }
+
+    var accessValidityDescription: String? {
+        guard let validUntil = projection.validUntil else { return nil }
+        return String(
+            localized: "Access through \(validUntil.formatted(date: .abbreviated, time: .omitted))"
+        )
+    }
 }
 
 /// Shared logical confirmation states used by both native clients.
@@ -196,7 +203,7 @@ struct PurchaseConfirmationState: Sendable, Equatable {
     static let idle = PurchaseConfirmationState(phase: .idle, projection: .free)
 
     var authorizesNewCostIncurringActions: Bool {
-        phase == .confirmed && projection.authorizesNewCostIncurringActions
+        projection.authorizesNewCostIncurringActions
     }
 }
 

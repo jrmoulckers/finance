@@ -9,14 +9,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-private val premiumProjection =
+val premiumProjection =
     FinanceEntitlementProjection(
         tier = Tier.PREMIUM,
         status = FinanceProjectionStatus.CURRENT,
         isHouseholdBound = false,
     )
 
-private class FakeRevenueCatPurchaseAdapter : RevenueCatPurchaseAdapter {
+class FakeRevenueCatPurchaseAdapter : RevenueCatPurchaseAdapter {
     var purchaseResult: NativePurchaseResult = NativePurchaseResult.Pending
     var restoreEvidence: List<VerifiedPurchaseEvidence> = emptyList()
     var acknowledgementCount = 0
@@ -30,7 +30,7 @@ private class FakeRevenueCatPurchaseAdapter : RevenueCatPurchaseAdapter {
     }
 }
 
-private class FakeEntitlementTransport : AuthenticatedEntitlementTransport {
+class FakeEntitlementTransport : AuthenticatedEntitlementTransport {
     var authenticated = true
     var shouldThrow = false
     var purchaseResponse: FinanceServerConfirmation =
@@ -68,7 +68,7 @@ private class FakeEntitlementTransport : AuthenticatedEntitlementTransport {
     }
 }
 
-private fun evidence(
+fun evidence(
     token: String = "synthetic-provider-operation",
 ): VerifiedPurchaseEvidence =
     VerifiedPurchaseEvidence(
@@ -95,15 +95,15 @@ class SubscriptionManagerTest {
     }
 
     @Test
-    fun `pending state cannot authorize even with paid projection`() {
+    fun `pending operation preserves server confirmed paid projection`() {
         val state =
             SubscriptionState(
                 projection = premiumProjection,
                 confirmation = PurchaseConfirmationPhase.PENDING,
             )
 
-        assertFalse(state.authorizesNewCostIncurringActions)
-        assertEquals(Tier.FREE, state.tier)
+        assertTrue(state.authorizesNewCostIncurringActions)
+        assertEquals(Tier.PREMIUM, state.tier)
     }
 
     @Test
@@ -175,6 +175,53 @@ class SubscriptionManagerTest {
     }
 
     @Test
+    fun `paid projection survives cancelled and retry operations`() = runTest {
+        val adapter = FakeRevenueCatPurchaseAdapter()
+        val transport =
+            FakeEntitlementTransport().apply {
+                projectionResponse = FinanceServerConfirmation.Confirmed(premiumProjection)
+            }
+        val manager = SubscriptionManager(adapter, transport)
+        manager.refreshEntitlement()
+
+        adapter.purchaseResult = NativePurchaseResult.Verified(evidence())
+        transport.purchaseResponse =
+            FinanceServerConfirmation.Pending(FinanceEntitlementProjection.FREE)
+        manager.launchPurchase(Tier.PLUS)
+        assertEquals(PurchaseConfirmationPhase.PENDING, manager.state.value.confirmation)
+        assertEquals(Tier.PREMIUM, manager.currentTier)
+
+        adapter.purchaseResult = NativePurchaseResult.Cancelled
+        manager.launchPurchase(Tier.PLUS)
+        assertEquals(PurchaseConfirmationPhase.CANCELLED, manager.state.value.confirmation)
+        assertEquals(Tier.PREMIUM, manager.currentTier)
+
+        adapter.purchaseResult = NativePurchaseResult.Verified(evidence())
+        transport.shouldThrow = true
+        manager.launchPurchase(Tier.PLUS)
+        assertEquals(PurchaseConfirmationPhase.RETRY, manager.state.value.confirmation)
+        assertEquals(Tier.PREMIUM, manager.currentTier)
+    }
+
+    @Test
+    fun `newer confirmed denial replaces paid access`() = runTest {
+        val transport =
+            FakeEntitlementTransport().apply {
+                projectionResponse = FinanceServerConfirmation.Confirmed(premiumProjection)
+            }
+        val manager = SubscriptionManager(FakeRevenueCatPurchaseAdapter(), transport)
+        manager.refreshEntitlement()
+        assertEquals(Tier.PREMIUM, manager.currentTier)
+
+        transport.projectionResponse =
+            FinanceServerConfirmation.Confirmed(FinanceEntitlementProjection.FREE)
+        manager.refreshEntitlement()
+
+        assertEquals(PurchaseConfirmationPhase.CONFIRMED, manager.state.value.confirmation)
+        assertEquals(Tier.FREE, manager.currentTier)
+    }
+
+    @Test
     fun `unauthenticated purchaser cannot submit evidence`() = runTest {
         val adapter =
             FakeRevenueCatPurchaseAdapter().apply {
@@ -212,6 +259,8 @@ class SubscriptionManagerTest {
     @Test
     fun `confirmation request cannot carry client selected grants`() {
         val fieldNames = FinanceEntitlementRequest::class.java.declaredFields.map { it.name }.toSet()
+        val contextFieldNames =
+            FinanceEntitlementContext::class.java.declaredFields.map { it.name }.toSet()
         val forbidden =
             setOf(
                 "tier",
@@ -222,9 +271,12 @@ class SubscriptionManagerTest {
                 "customerId",
                 "providerAccountId",
                 "grantScope",
+                "eligibleHouseholdIntent",
+                "householdId",
             )
 
         assertTrue(fieldNames.intersect(forbidden).isEmpty())
+        assertTrue(contextFieldNames.intersect(forbidden).isEmpty())
     }
 
     @Test
@@ -237,7 +289,6 @@ class SubscriptionManagerTest {
                     FinanceEntitlementContext(
                         application = FinanceApplication.FINANCE,
                         environment = FinanceClientEnvironment.DEVELOPMENT,
-                        eligibleHouseholdIntent = null,
                     ),
                 provider = PurchaseEvidenceProvider.REVENUECAT_GOOGLE,
                 opaqueEvidence = token,

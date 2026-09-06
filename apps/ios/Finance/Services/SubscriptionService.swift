@@ -8,6 +8,7 @@ protocol SubscriptionProviding: Sendable {
     func purchase(productId: String) async -> PurchaseConfirmationState
     func checkEntitlement() async -> PurchaseConfirmationState
     func restorePurchases() async -> PurchaseConfirmationState
+    func confirmationUpdates() async -> AsyncStream<PurchaseConfirmationState>
 }
 
 /// Coordinates native purchase evidence with Finance's entitlement authority.
@@ -29,19 +30,19 @@ actor SubscriptionService: SubscriptionProviding {
     private let context: FinanceEntitlementContext
     private var projection: FinanceEntitlementProjection = .free
     private var updateListenerTask: Task<Void, Never>?
+    private var stateContinuations:
+        [UUID: AsyncStream<PurchaseConfirmationState>.Continuation] = [:]
 
     init(
         purchaseAdapter: any NativePurchaseProviding = StoreKitPurchaseAdapter(),
         transport: any AuthenticatedEntitlementTransport = UnavailableEntitlementTransport(),
-        environment: FinanceClientEnvironment = .development,
-        eligibleHouseholdIntent: String? = nil
+        environment: FinanceClientEnvironment = .development
     ) {
         self.purchaseAdapter = purchaseAdapter
         self.transport = transport
         self.context = FinanceEntitlementContext(
             application: .finance,
-            environment: environment,
-            eligibleHouseholdIntent: eligibleHouseholdIntent
+            environment: environment
         )
     }
 
@@ -56,55 +57,71 @@ actor SubscriptionService: SubscriptionProviding {
         return products
     }
 
+    func confirmationUpdates() async -> AsyncStream<PurchaseConfirmationState> {
+        let id = UUID()
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: PurchaseConfirmationState.self
+        )
+        stateContinuations[id] = continuation
+        continuation.yield(state(.idle))
+        continuation.onTermination = { [weak self] _ in
+            Task {
+                await self?.removeContinuation(id)
+            }
+        }
+        return stream
+    }
+
     func purchase(productId: String) async -> PurchaseConfirmationState {
         ensureListeningForUpdates()
+        _ = publish(.pending)
         do {
             switch try await purchaseAdapter.purchase(productId: productId) {
             case .cancelled:
                 Self.logger.info("Purchase cancelled")
-                return state(.cancelled)
+                return publish(.cancelled)
             case .pending:
                 Self.logger.info("Purchase awaiting provider completion")
-                return state(.pending)
+                return publish(.pending)
             case .verified(let evidence):
                 return await confirm(evidence, operation: .purchase)
             }
         } catch {
             Self.logger.error("Purchase flow failed")
-            return state(.error)
+            return publish(.error)
         }
     }
 
     func checkEntitlement() async -> PurchaseConfirmationState {
         ensureListeningForUpdates()
         guard await transport.isAuthenticated() else {
-            return state(.error)
+            return publish(.error)
         }
 
         do {
             return apply(try await transport.fetchProjection(context))
         } catch {
             Self.logger.notice("Entitlement confirmation should be retried")
-            return state(.retry)
+            return publish(.retry)
         }
     }
 
     func restorePurchases() async -> PurchaseConfirmationState {
         ensureListeningForUpdates()
+        var latest = publish(.pending)
         do {
             let evidenceItems = try await purchaseAdapter.restoreEvidence()
             guard !evidenceItems.isEmpty else {
                 return await checkEntitlement()
             }
 
-            var latest = state(.pending)
             for evidence in evidenceItems {
                 latest = await confirm(evidence, operation: .restore)
             }
             return latest
         } catch {
             Self.logger.error("Purchase restore failed")
-            return state(.error)
+            return publish(.error)
         }
     }
 
@@ -124,13 +141,17 @@ actor SubscriptionService: SubscriptionProviding {
         }
     }
 
+    private func removeContinuation(_ id: UUID) {
+        stateContinuations.removeValue(forKey: id)
+    }
+
     private func confirm(
         _ evidence: VerifiedPurchaseEvidence,
         operation: ConfirmationOperation
     ) async -> PurchaseConfirmationState {
         guard await transport.isAuthenticated() else {
             Self.logger.error("Purchase confirmation requires authentication")
-            return state(.error)
+            return publish(.error)
         }
 
         let request = FinanceEntitlementConfirmationRequest(
@@ -156,26 +177,35 @@ actor SubscriptionService: SubscriptionProviding {
             return confirmationState
         } catch {
             Self.logger.notice("Purchase confirmation should be retried")
-            return state(.retry)
+            return publish(.retry)
         }
     }
 
     private func apply(
         _ response: FinanceServerConfirmation
     ) -> PurchaseConfirmationState {
-        projection = response.projection
         switch response {
         case .pending:
-            return state(.pending)
-        case .confirmed:
-            return state(.confirmed)
+            return publish(.pending)
+        case .confirmed(let confirmedProjection):
+            projection = confirmedProjection
+            return publish(.confirmed)
         case .error:
-            return state(.error)
+            return publish(.error)
         }
     }
 
     private func state(_ phase: PurchaseConfirmationPhase) -> PurchaseConfirmationState {
         PurchaseConfirmationState(phase: phase, projection: projection)
+    }
+
+    @discardableResult
+    private func publish(_ phase: PurchaseConfirmationPhase) -> PurchaseConfirmationState {
+        let newState = state(phase)
+        for continuation in stateContinuations.values {
+            continuation.yield(newState)
+        }
+        return newState
     }
 }
 

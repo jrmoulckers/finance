@@ -45,7 +45,6 @@ struct VerifiedPurchaseEvidence: Sendable, CustomStringConvertible {
 struct FinanceEntitlementContext: Sendable {
     let application: FinanceApplication
     let environment: FinanceClientEnvironment
-    let eligibleHouseholdIntent: String?
 }
 
 /// The request deliberately has no tier, price, quantity, allowance, customer,

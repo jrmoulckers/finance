@@ -323,8 +323,8 @@ struct SubscriptionView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            if let expiry = viewModel.entitlement.projection.validUntil {
-                Text(String(localized: "Renews \(expiry.formatted(date: .abbreviated, time: .omitted))"))
+            if let validityDescription = viewModel.entitlement.accessValidityDescription {
+                Text(validityDescription)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -14,9 +14,11 @@ import Observation
 import os
 import SwiftUI
 
+@MainActor
 @Observable
 final class SubscriptionViewModel {
     private let subscriptionService: SubscriptionProviding
+    private var updateTask: Task<Void, Never>?
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -62,9 +64,7 @@ final class SubscriptionViewModel {
     func dismissSuccess() { successMessage = nil }
 
     /// Whether the user has an active premium subscription.
-    var isPremium: Bool {
-        confirmationState.authorizesNewCostIncurringActions
-    }
+    var isPremium: Bool { entitlement.isPremium }
 
     /// Checks if a specific premium feature is available.
     func isFeatureAvailable(_ feature: PremiumFeature) -> Bool {
@@ -75,6 +75,17 @@ final class SubscriptionViewModel {
 
     init(subscriptionService: SubscriptionProviding = SubscriptionService.shared) {
         self.subscriptionService = subscriptionService
+        updateTask = Task { [weak self, subscriptionService] in
+            let updates = await subscriptionService.confirmationUpdates()
+            for await state in updates {
+                guard let self else { return }
+                self.apply(state)
+            }
+        }
+    }
+
+    deinit {
+        updateTask?.cancel()
     }
 
     // MARK: - Data Loading

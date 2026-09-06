@@ -12,11 +12,21 @@ let premiumProjection = FinanceEntitlementProjection(
 )
 
 private final class StubSubscriptionService: SubscriptionProviding, @unchecked Sendable {
+    private let updateStream: AsyncStream<PurchaseConfirmationState>
+    private let updateContinuation: AsyncStream<PurchaseConfirmationState>.Continuation
     var productsToReturn: [SubscriptionProductInfo] = []
     var purchaseState: PurchaseConfirmationState = .idle
     var entitlementState: PurchaseConfirmationState = .idle
     var restoreState: PurchaseConfirmationState = .idle
     var restoreCalled = false
+
+    init() {
+        let updates = AsyncStream.makeStream(
+            of: PurchaseConfirmationState.self
+        )
+        updateStream = updates.stream
+        updateContinuation = updates.continuation
+    }
 
     func loadProducts() async -> [SubscriptionProductInfo] {
         productsToReturn
@@ -34,12 +44,30 @@ private final class StubSubscriptionService: SubscriptionProviding, @unchecked S
         restoreCalled = true
         return restoreState
     }
+
+    func confirmationUpdates() async -> AsyncStream<PurchaseConfirmationState> {
+        updateStream
+    }
+
+    func emit(_ state: PurchaseConfirmationState) {
+        updateContinuation.yield(state)
+    }
 }
 
 final class StubNativePurchaseAdapter: NativePurchaseProviding, @unchecked Sendable {
+    private let updateStream: AsyncStream<VerifiedPurchaseEvidence>
+    private let updateContinuation: AsyncStream<VerifiedPurchaseEvidence>.Continuation
     var products: [SubscriptionProductInfo] = []
     var purchaseResult: NativePurchaseResult = .pending
     var restoreResult: [VerifiedPurchaseEvidence] = []
+
+    init() {
+        let updates = AsyncStream.makeStream(
+            of: VerifiedPurchaseEvidence.self
+        )
+        updateStream = updates.stream
+        updateContinuation = updates.continuation
+    }
 
     func loadProducts() async -> [SubscriptionProductInfo] {
         products
@@ -54,7 +82,11 @@ final class StubNativePurchaseAdapter: NativePurchaseProviding, @unchecked Senda
     }
 
     func transactionUpdates() -> AsyncStream<VerifiedPurchaseEvidence> {
-        AsyncStream { $0.finish() }
+        updateStream
+    }
+
+    func emitUpdate(_ evidence: VerifiedPurchaseEvidence) {
+        updateContinuation.yield(evidence)
     }
 }
 
@@ -203,6 +235,54 @@ struct SubscriptionViewModelTests {
 
         #expect(viewModel.confirmationState.phase == .cancelled)
         #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test("Cancelled and retry operations preserve paid UI access")
+    @MainActor
+    func transientOperationsPreservePaidAccess() async {
+        let service = StubSubscriptionService()
+        service.entitlementState = PurchaseConfirmationState(
+            phase: .confirmed,
+            projection: premiumProjection
+        )
+        let viewModel = SubscriptionViewModel(subscriptionService: service)
+        viewModel.selectedProductId = "synthetic.monthly"
+        await viewModel.loadSubscriptionData()
+
+        service.purchaseState = PurchaseConfirmationState(
+            phase: .cancelled,
+            projection: premiumProjection
+        )
+        await viewModel.purchaseSelected()
+        #expect(viewModel.isPremium)
+        #expect(viewModel.confirmationState.phase == .cancelled)
+
+        service.purchaseState = PurchaseConfirmationState(
+            phase: .retry,
+            projection: premiumProjection
+        )
+        await viewModel.purchaseSelected()
+        #expect(viewModel.isPremium)
+        #expect(viewModel.confirmationState.phase == .retry)
+    }
+
+    @Test("Async server update reaches view model")
+    @MainActor
+    func asyncUpdateReachesViewModel() async {
+        let service = StubSubscriptionService()
+        let viewModel = SubscriptionViewModel(subscriptionService: service)
+        await Task.yield()
+
+        service.emit(
+            PurchaseConfirmationState(
+                phase: .confirmed,
+                projection: premiumProjection
+            )
+        )
+        await Task.yield()
+
+        #expect(viewModel.confirmationState.phase == .confirmed)
+        #expect(viewModel.isPremium)
     }
 
     @Test("Loads products and defaults to best value")
