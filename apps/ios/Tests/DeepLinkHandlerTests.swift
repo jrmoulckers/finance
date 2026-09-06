@@ -7,7 +7,7 @@
 // Refs #470
 
 import Testing
-@testable import Finance
+@testable import FinanceApp
 
 // MARK: - URL Parsing Tests
 
