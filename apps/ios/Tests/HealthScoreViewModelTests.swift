@@ -280,13 +280,13 @@ final class HealthGradeTests: XCTestCase {
             id: "t", name: "T", score: 85, maxScore: 100,
             weight: 0.1, description: "", systemImage: "star"
         )
-        XCTAssertEqual(green.color, .green)
+        XCTAssertEqual(green.color, FinanceColors.statusPositive)
 
         let red = HealthScoreComponent(
             id: "t", name: "T", score: 20, maxScore: 100,
             weight: 0.1, description: "", systemImage: "star"
         )
-        XCTAssertEqual(red.color, .red)
+        XCTAssertEqual(red.color, FinanceColors.statusNegative)
     }
 
     func testTipImpactProperties() {

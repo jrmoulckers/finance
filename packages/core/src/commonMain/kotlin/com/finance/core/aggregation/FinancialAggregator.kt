@@ -30,7 +30,12 @@ object FinancialAggregator {
             .filter { it.deletedAt == null && !it.isArchived }
             .sumOf { account ->
                 when (account.type) {
-                    AccountType.CREDIT_CARD, AccountType.LOAN -> -account.currentBalance.amount
+                    AccountType.CREDIT_CARD, AccountType.LOAN ->
+                        if (account.currentBalance.amount > 0) {
+                            -account.currentBalance.amount
+                        } else {
+                            account.currentBalance.amount
+                        }
                     else -> account.currentBalance.amount
                 }
             })
@@ -67,7 +72,12 @@ object FinancialAggregator {
         val activeAccounts = accounts.filter { it.deletedAt == null && !it.isArchived }
         for (account in activeAccounts) {
             val signed = when (account.type) {
-                AccountType.CREDIT_CARD, AccountType.LOAN -> -account.currentBalance.amount
+                AccountType.CREDIT_CARD, AccountType.LOAN ->
+                    if (account.currentBalance.amount > 0) {
+                        -account.currentBalance.amount
+                    } else {
+                        account.currentBalance.amount
+                    }
                 else -> account.currentBalance.amount
             }
             val from = account.currency

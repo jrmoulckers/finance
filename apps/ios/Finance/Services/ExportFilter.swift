@@ -77,7 +77,7 @@ enum ExportFilter {
             }
 
             // Account filter check
-            if !selectedNames.isEmpty, !selectedNames.contains(transaction.accountName) {
+            if !selectedAccountIDs.isEmpty, !selectedNames.contains(transaction.accountName) {
                 return false
             }
 

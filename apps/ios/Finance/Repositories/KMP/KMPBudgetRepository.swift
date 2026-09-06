@@ -21,22 +21,22 @@ struct KMPBudgetRepository: BudgetRepository {
     }
 
     func getBudgets() async throws -> [BudgetItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getBudgets()
     }
 
     func createBudget(_ budget: BudgetItem) async throws {
         Self.logger.info("Creating budget via KMP bridge")
-        await store.upsertBudget(budget)
+        try await store.upsertBudget(budget)
     }
 
     func updateBudget(_ budget: BudgetItem) async throws {
         Self.logger.info("Updating budget via KMP bridge")
-        await store.upsertBudget(budget)
+        try await store.upsertBudget(budget)
     }
 
     func deleteAllBudgets() async throws {
         Self.logger.info("Deleting all budgets via KMP bridge")
-        await store.deleteAllBudgets()
+        try await store.deleteAllBudgets()
     }
 }

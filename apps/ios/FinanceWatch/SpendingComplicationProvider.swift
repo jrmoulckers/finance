@@ -8,6 +8,7 @@
 // written by the iPhone app's WatchDataSender.
 // Refs #266
 
+#if os(watchOS)
 import SwiftUI
 import WidgetKit
 
@@ -287,3 +288,4 @@ struct SpendingComplicationView: View {
         )
     }
 }
+#endif

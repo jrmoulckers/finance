@@ -10,6 +10,14 @@
 
 import Foundation
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
+#if canImport(WatchKit)
+import WatchKit
+#endif
+
 // MARK: - Backup Manifest
 
 /// Metadata describing a local backup snapshot.

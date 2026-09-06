@@ -7,6 +7,7 @@
 // Displays the primary active goal's progress as a gauge.
 // Refs #266
 
+#if os(watchOS)
 import SwiftUI
 import WidgetKit
 
@@ -288,3 +289,4 @@ struct GoalComplicationView: View {
         )
     }
 }
+#endif

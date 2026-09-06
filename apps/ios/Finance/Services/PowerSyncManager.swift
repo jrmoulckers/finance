@@ -48,8 +48,9 @@ enum ConflictResolutionStrategy: String, Sendable {
 ///
 /// ```swift
 /// let manager = PowerSyncManager.shared
-/// await manager.start(accessToken: token)
-/// for await status in manager.observeSyncStatus() {
+/// await manager.start()
+/// let statuses = await manager.observeSyncStatus()
+/// for await status in statuses {
 ///     // Update UI
 /// }
 /// ```
@@ -90,15 +91,12 @@ actor PowerSyncManager: SwiftExportSyncModule {
 
     // MARK: - SwiftExportSyncModule Conformance
 
-    nonisolated var isAuthenticated: Bool {
-        // Check Keychain for access token (non-isolated for protocol conformance)
-        let keychain = KeychainManager.shared
+    var isAuthenticated: Bool {
         return keychain.load(key: "com.finance.auth.accessToken") != nil
     }
 
-    nonisolated var pendingMutationCount: Int {
-        // Approximate — actual count is actor-isolated
-        0
+    var pendingMutationCount: Int {
+        offlineQueue.count
     }
 
     // MARK: - Initialisation
@@ -216,7 +214,7 @@ actor PowerSyncManager: SwiftExportSyncModule {
     }
 
     /// Observes sync status changes.
-    func observeSyncStatus() -> AsyncStream<KMPSyncStatus> {
+    func observeSyncStatus() async -> AsyncStream<KMPSyncStatus> {
         AsyncStream { continuation in
             let id = UUID()
             statusContinuations[id] = continuation

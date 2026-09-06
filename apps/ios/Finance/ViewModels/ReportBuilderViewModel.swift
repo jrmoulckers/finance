@@ -115,7 +115,7 @@ final class ReportBuilderViewModel {
             }
 
             reportResult = result
-            Self.logger.info("Report generated: \(selectedReportType.rawValue, privacy: .public)")
+            Self.logger.info("Report generated: \(self.selectedReportType.rawValue, privacy: .public)")
         } catch {
             errorMessage = String(localized: "Failed to generate report. Please try again.")
             Self.logger.error("Report generation failed: \(error.localizedDescription, privacy: .public)")

@@ -353,7 +353,7 @@ struct HouseholdView: View {
             VStack(spacing: 24) {
                 Image(systemName: "person.badge.plus")
                     .font(.system(size: 48))
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
                     .accessibilityHidden(true)
 
                 Text(String(localized: "Share this code"))
@@ -403,6 +403,8 @@ struct HouseholdView: View {
     }
 }
 
+#if DEBUG
 #Preview("Household View") {
-    HouseholdView(repository: StubHouseholdRepository())
+    HouseholdView(repository: PreviewRepositories.household)
 }
+#endif

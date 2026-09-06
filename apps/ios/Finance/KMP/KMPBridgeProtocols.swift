@@ -189,7 +189,12 @@ enum KMPRepositoryError: Error, LocalizedError, Sendable {
 struct StubFinancialAggregator: KMPFinancialAggregatorProtocol {
     func netWorth(accounts: [KMPAccount]) -> Int64 {
         accounts.filter { $0.deletedAt == nil && !$0.isArchived }.reduce(0) { sum, a in
-            switch a.type { case .creditCard, .loan: sum - a.currentBalanceMinorUnits; default: sum + a.currentBalanceMinorUnits }
+            switch a.type {
+            case .creditCard, .loan:
+                sum + (a.currentBalanceMinorUnits > 0 ? -a.currentBalanceMinorUnits : a.currentBalanceMinorUnits)
+            default:
+                sum + a.currentBalanceMinorUnits
+            }
         }
     }
     func totalSpending(transactions: [KMPTransaction], from: DateComponents, to: DateComponents) -> Int64 {

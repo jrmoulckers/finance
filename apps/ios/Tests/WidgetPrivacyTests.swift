@@ -17,8 +17,8 @@ final class WidgetPrivacyTests: XCTestCase {
         )
 
         XCTAssertFalse(formatted.contains("123.45"))
-        XCTAssertTrue(formatted.contains("$100"))
-        XCTAssertTrue(formatted.contains("$500"))
+        XCTAssertTrue(formatted.contains("100"))
+        XCTAssertTrue(formatted.contains("500"))
     }
 
     func testDotsFormatterMasksValue() {

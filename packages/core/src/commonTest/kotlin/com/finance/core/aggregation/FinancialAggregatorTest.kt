@@ -35,6 +35,15 @@ class FinancialAggregatorTest {
     }
 
     @Test
+    fun netWorth_signedCreditCardDebt_remainsNegative() {
+        val accounts = listOf(
+            TestFixtures.createAccount(type = AccountType.CHECKING, currentBalance = Cents(100000)),
+            TestFixtures.createAccount(type = AccountType.CREDIT_CARD, currentBalance = Cents(-50000)),
+        )
+        assertEquals(Cents(50000), FinancialAggregator.netWorth(accounts))
+    }
+
+    @Test
     fun netWorth_loan_subtracted() {
         val accounts = listOf(
             TestFixtures.createAccount(type = AccountType.CHECKING, currentBalance = Cents(500000)),

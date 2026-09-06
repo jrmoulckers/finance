@@ -15,7 +15,13 @@ import SwiftUI
 struct DataExportView: View {
     @State private var viewModel: DataExportViewModel
 
-    init(viewModel: DataExportViewModel = DataExportViewModel()) {
+    @MainActor
+    init() {
+        self.init(viewModel: DataExportViewModel())
+    }
+
+    @MainActor
+    init(viewModel: DataExportViewModel) {
         _viewModel = State(initialValue: viewModel)
     }
 

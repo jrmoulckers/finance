@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // BalanceView.swift - Total balance at a glance. Refs #30, #649
+#if os(watchOS)
 import SwiftUI
 struct BalanceView: View {
     let manager: WatchConnectivityManager
@@ -28,3 +29,4 @@ struct BalanceView: View {
     }
 }
 #Preview("Balance View") { let m = WatchConnectivityManager(); BalanceView(manager: m) }
+#endif

@@ -104,8 +104,7 @@ actor PerformanceMonitor {
 
         if let threshold = thresholds[nameString], elapsed > threshold {
             logger.warning(
-                "Performance threshold exceeded: \(nameString, privacy: .public) "
-                + "took \(elapsed, privacy: .public)ms (threshold: \(threshold, privacy: .public)ms)"
+                "Performance threshold exceeded: \(nameString, privacy: .public) took \(elapsed, privacy: .public)ms (threshold: \(threshold, privacy: .public)ms)"
             )
         } else {
             logger.debug(

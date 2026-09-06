@@ -414,6 +414,7 @@ final class DeepLinkHandler {
     }
 
     private func clearAllState() {
+        selectedTab = nil
         isProcessingAuthCallback = false
         pendingInviteCode = nil
         pendingAccountId = nil

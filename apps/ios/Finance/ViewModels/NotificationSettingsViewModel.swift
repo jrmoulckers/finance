@@ -352,8 +352,7 @@ final class NotificationSettingsViewModel {
                 try await scheduler.scheduleNotification(schedule)
             } catch {
                 Self.logger.error(
-                    "Failed to schedule \(schedule.type.rawValue, privacy: .public): "
-                    + "\(error.localizedDescription, privacy: .public)"
+                    "Failed to schedule \(schedule.type.rawValue, privacy: .public): \(error.localizedDescription, privacy: .public)"
                 )
             }
         }
@@ -372,7 +371,7 @@ final class NotificationSettingsViewModel {
 
             let (b, t, g) = try await (budgets, transactions, goals)
 
-            smartAlerts = await scheduler.generateSmartAlerts(
+            smartAlerts = scheduler.generateSmartAlerts(
                 budgets: b,
                 transactions: t,
                 goals: g

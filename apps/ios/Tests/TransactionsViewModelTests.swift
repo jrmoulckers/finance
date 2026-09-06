@@ -37,6 +37,7 @@ final class TransactionsViewModelTests: XCTestCase {
         await vm.loadTransactions()
 
         vm.searchText = "Whole Foods"
+        try? await Task.sleep(for: .milliseconds(350))
 
         XCTAssertEqual(vm.filteredTransactions.count, 1,
                        "Should find exactly 1 transaction matching payee 'Whole Foods'")
@@ -54,6 +55,7 @@ final class TransactionsViewModelTests: XCTestCase {
         await vm.loadTransactions()
 
         vm.searchText = "Entertainment"
+        try? await Task.sleep(for: .milliseconds(350))
 
         XCTAssertEqual(vm.filteredTransactions.count, 1,
                        "Should find exactly 1 transaction in 'Entertainment' category")
@@ -122,6 +124,7 @@ final class TransactionsViewModelTests: XCTestCase {
         await vm.loadTransactions()
 
         vm.searchText = "Travel Card"
+        try? await Task.sleep(for: .milliseconds(350))
 
         XCTAssertEqual(vm.filteredTransactions.count, 2,
                        "Should find 2 transactions for 'Travel Card' account")
@@ -142,6 +145,7 @@ final class TransactionsViewModelTests: XCTestCase {
         await vm.loadTransactions()
 
         vm.searchText = "whole foods"
+        try? await Task.sleep(for: .milliseconds(350))
 
         XCTAssertEqual(vm.filteredTransactions.count, 1,
                        "Case-insensitive search should find 'Whole Foods'")

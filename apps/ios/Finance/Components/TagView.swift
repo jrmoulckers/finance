@@ -12,7 +12,7 @@ import SwiftUI
 // MARK: - Tag Model
 
 /// Represents a single tag that can be attached to a transaction.
-struct Tag: Identifiable, Hashable, Sendable {
+struct Tag: Identifiable, Hashable, Codable, Sendable {
     let id: String
     let name: String
 

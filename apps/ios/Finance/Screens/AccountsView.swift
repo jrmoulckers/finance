@@ -51,7 +51,7 @@ struct AccountsView: View {
                     .accessibilityHint(String(localized: "Opens a form to create a new account"))
                 }
             }
-            .sheet(isPresented: \$viewModel.showingAddAccount) { addAccountPlaceholder }
+            .sheet(isPresented: $viewModel.showingAddAccount) { addAccountPlaceholder }
             .refreshable { await viewModel.loadAccounts() }
             .task { await viewModel.loadAccounts() }
             .onAppear { handleAccountCreationRequest() }
@@ -60,7 +60,7 @@ struct AccountsView: View {
             }
             .alert(String(localized: "Error"), isPresented: Binding(
                 get: { viewModel.showError },
-                set: { if !\$0 { viewModel.dismissError() } }
+                set: { if !$0 { viewModel.dismissError() } }
             )) {
                 Button(String(localized: "Retry")) { Task { await viewModel.loadAccounts() } }
                 Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }

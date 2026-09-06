@@ -66,8 +66,7 @@ actor HealthScoreEngine: HealthScoreEngineProtocol {
         let benchmark = generateBenchmark(score: overallScore)
 
         Self.logger.debug(
-            "Health score computed: \(overallScore, privacy: .public) "
-            + "(\(components.map { "\($0.name):\($0.score)" }.joined(separator: ", "), privacy: .public))"
+            "Health score computed: \(overallScore, privacy: .public) (\(components.map { "\($0.name):\($0.score)" }.joined(separator: ", "), privacy: .public))"
         )
 
         return FinancialHealthScore(

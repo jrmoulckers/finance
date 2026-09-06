@@ -94,7 +94,9 @@ struct LogTransactionIntent: AppIntent {
         }
 
         Self.logger.info("Transaction logged via App Intent")
-        return .result(dialog: IntentDialog(String(localized: "Transaction logged.")))
+        return .result(
+            dialog: IntentDialog(stringLiteral: String(localized: "Transaction logged."))
+        )
     }
 
     /// Converts major currency units to integer minor units.

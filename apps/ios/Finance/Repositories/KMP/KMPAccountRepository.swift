@@ -21,42 +21,42 @@ struct KMPAccountRepository: AccountRepository {
     }
 
     func getAccounts() async throws -> [AccountItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getAccounts()
     }
 
     func getAllAccounts() async throws -> [AccountItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getAllAccounts()
     }
 
     func getAccount(id: String) async throws -> AccountItem? {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getAccount(id: id)
     }
 
     func updateAccount(_ account: AccountItem) async throws {
         Self.logger.info("Updating account via KMP bridge")
-        await store.upsertAccount(account)
+        try await store.upsertAccount(account)
     }
 
     func archiveAccount(id: String) async throws {
         Self.logger.info("Archiving account via KMP bridge")
-        await store.archiveAccount(id: id)
+        try await store.archiveAccount(id: id)
     }
 
     func unarchiveAccount(id: String) async throws {
         Self.logger.info("Unarchiving account via KMP bridge")
-        await store.unarchiveAccount(id: id)
+        try await store.unarchiveAccount(id: id)
     }
 
     func deleteAccount(id: String) async throws {
         Self.logger.info("Deleting account via KMP bridge")
-        await store.deleteAccount(id: id)
+        try await store.deleteAccount(id: id)
     }
 
     func deleteAllAccounts() async throws {
         Self.logger.info("Deleting all accounts via KMP bridge")
-        await store.deleteAllAccounts()
+        try await store.deleteAllAccounts()
     }
 }

@@ -80,19 +80,19 @@ struct KMPRepositoryErrorTests {
 struct KMPRepositoryFallbackTests {
     @Test("KMPAccountRepository falls back to mock data")
     @MainActor func accountFallback() async throws {
-        let repo = KMPAccountRepository()
+        let repo = KMPAccountRepository(store: LocalDataStore())
         let accounts = try await repo.getAccounts()
         #expect(!accounts.isEmpty)
     }
     @Test("KMPTransactionRepository paginated returns correct slice")
     @MainActor func txnPaginated() async throws {
-        let repo = KMPTransactionRepository()
+        let repo = KMPTransactionRepository(store: LocalDataStore())
         let page = try await repo.getTransactions(offset: 0, limit: 2)
         #expect(page.count <= 2)
     }
     @Test("KMPBudgetRepository falls back to mock data")
     @MainActor func budgetFallback() async throws {
-        let repo = KMPBudgetRepository()
+        let repo = KMPBudgetRepository(store: LocalDataStore())
         let budgets = try await repo.getBudgets()
         #expect(!budgets.isEmpty)
     }
@@ -101,5 +101,21 @@ struct KMPRepositoryFallbackTests {
         let repo = KMPGoalRepository()
         let goals = try await repo.getGoals()
         #expect(!goals.isEmpty)
+    }
+
+    @Test("concurrent repository reads await shared seeding")
+    @MainActor func concurrentRepositorySeeding() async throws {
+        let store = LocalDataStore()
+
+        async let accounts = KMPAccountRepository(store: store).getAccounts()
+        async let transactions = KMPTransactionRepository(store: store).getTransactions()
+        async let budgets = KMPBudgetRepository(store: store).getBudgets()
+
+        let (seededAccounts, seededTransactions, seededBudgets) =
+            try await (accounts, transactions, budgets)
+
+        #expect(!seededAccounts.isEmpty)
+        #expect(!seededTransactions.isEmpty)
+        #expect(!seededBudgets.isEmpty)
     }
 }

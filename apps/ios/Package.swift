@@ -93,7 +93,8 @@ let package = Package(
         .testTarget(
             name: "FinanceTests",
             dependencies: ["FinanceApp", "FinanceShared", "FinanceWidgets"],
-            path: "Tests"
+            path: "Tests",
+            exclude: ["UITests"]
         ),
     ]
 )

@@ -407,6 +407,8 @@ private struct CameraCaptureView: UIViewControllerRepresentable {
     }
 }
 
+#if DEBUG
 #Preview("Receipt Scan") {
-    ReceiptScanView(transactionRepository: StubTransactionRepository())
+    ReceiptScanView(transactionRepository: PreviewRepositories.transaction)
 }
+#endif

@@ -40,14 +40,17 @@ final class WatchDataSenderTests: XCTestCase {
         XCTAssertEqual(WatchDataSender.parseInt64(p["balance"]), 12_450_00 + 25_000_00 + (-1_200_00) + 18_500_00 + 10_000_00)
     }
     @MainActor func testFetchPayloadDefaultsUSD() async throws {
-        XCTAssertEqual(try await makeSender(accounts: []).fetchPayload()["currencyCode"] as? String, "USD")
+        let payload = try await makeSender(accounts: []).fetchPayload()
+        XCTAssertEqual(payload["currencyCode"] as? String, "USD")
     }
     @MainActor func testFetchPayloadLimitsTransactions() async throws {
         var m: [TransactionItem] = []; for i in 0..<8 { m.append(TransactionItem(id: "t\(i)", payee: "P", category: "G", amountMinorUnits: -100, currencyCode: "USD", date: Date(timeIntervalSince1970: Double(1_700_000_000 + i*86400)), type: .expense, status: .cleared)) }
-        XCTAssertEqual((try await makeSender(transactions: m).fetchPayload()["transactions"] as? [[String: Any]])?.count, 5)
+        let payload = try await makeSender(transactions: m).fetchPayload()
+        XCTAssertEqual((payload["transactions"] as? [[String: Any]])?.count, 5)
     }
     @MainActor func testFetchPayloadLimitsBudgets() async throws {
-        XCTAssertEqual((try await makeSender(budgets: SampleData.allBudgets).fetchPayload()["budgets"] as? [[String: Any]])?.count, 3)
+        let payload = try await makeSender(budgets: SampleData.allBudgets).fetchPayload()
+        XCTAssertEqual((payload["budgets"] as? [[String: Any]])?.count, 3)
     }
     @MainActor func testFetchPayloadThrowsOnError() async {
         do { _ = try await makeSender(accountError: TestError.simulated).fetchPayload(); XCTFail("Should throw") } catch { XCTAssertTrue(error is TestError) }
@@ -55,7 +58,8 @@ final class WatchDataSenderTests: XCTestCase {
     @MainActor func testParseInt64() { XCTAssertEqual(WatchDataSender.parseInt64(42 as Int), 42); XCTAssertNil(WatchDataSender.parseInt64(42.5)); XCTAssertNil(WatchDataSender.parseInt64(nil)) }
     @MainActor func testNegativeBalance() async throws {
         let cc = AccountItem(id: "cc", name: "C", balanceMinorUnits: -500_00, currencyCode: "USD", type: .creditCard, icon: "creditcard", isArchived: false)
-        XCTAssertEqual(WatchDataSender.parseInt64(try await makeSender(accounts: [cc], transactions: [], budgets: []).fetchPayload()["balance"]), -500_00)
+        let payload = try await makeSender(accounts: [cc], transactions: [], budgets: []).fetchPayload()
+        XCTAssertEqual(WatchDataSender.parseInt64(payload["balance"]), -500_00)
     }
     @MainActor func testExpenseFlag() {
         let txs = WatchDataSender.packageData(balance: 0, currencyCode: "USD", transactions: [SampleData.expenseTransaction, SampleData.incomeTransaction], budgets: [])["transactions"] as? [[String: Any]]
@@ -63,4 +67,3 @@ final class WatchDataSenderTests: XCTestCase {
         XCTAssertEqual(txs?.first { ($0["id"] as? String) == SampleData.incomeTransaction.id }?["isExpense"] as? Bool, false)
     }
 }
-

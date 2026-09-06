@@ -211,7 +211,7 @@ final class DashboardViewModel {
         return SavingsRateCalculator.savingsRate(incomeMinorUnits: income, spendingMinorUnits: spending)
     }
 
-    /// Recomputes cached aggregation values from the current `recentTransactions`.
+    /// Recomputes cached aggregation values from the complete transaction set.
     ///
     /// Called once after data loads instead of on every view body evaluation.
     /// Uses Swift-native Date types — the bridge handles KMP type mapping internally.
@@ -222,25 +222,25 @@ final class DashboardViewModel {
         let endOfMonth = cal.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth) ?? now
 
         monthlyIncome = aggregator.totalIncome(
-            transactions: recentTransactions,
+            transactions: savingsRateTransactions,
             from: startOfMonth,
             to: endOfMonth
         )
 
         monthlyExpenses = aggregator.totalSpending(
-            transactions: recentTransactions,
+            transactions: savingsRateTransactions,
             from: startOfMonth,
             to: endOfMonth
         )
 
         savingsRate = aggregator.savingsRate(
-            transactions: recentTransactions,
+            transactions: savingsRateTransactions,
             from: startOfMonth,
             to: endOfMonth
         )
 
         spendingByCategory = aggregator.spendingByCategory(
-            transactions: recentTransactions,
+            transactions: savingsRateTransactions,
             from: startOfMonth,
             to: endOfMonth
         )

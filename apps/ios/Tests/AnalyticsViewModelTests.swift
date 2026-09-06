@@ -247,7 +247,7 @@ final class AnalyticsEngineTests: XCTestCase {
         }
     }
 
-    func testPredictSpendingRequiresMinimumData() async {
+    func testPredictSpendingRequiresMinimumData() {
         let engine = AnalyticsEngine.shared
         let singleMonth = [
             TransactionItem(
@@ -257,7 +257,7 @@ final class AnalyticsEngineTests: XCTestCase {
             ),
         ]
 
-        let predictions = await engine.predictSpending(
+        let predictions = engine.predictSpending(
             transactions: singleMonth,
             monthsAhead: 3
         )
@@ -266,11 +266,11 @@ final class AnalyticsEngineTests: XCTestCase {
                        "Should return empty predictions with insufficient data")
     }
 
-    func testPredictSpendingReturnsCorrectCount() async {
+    func testPredictSpendingReturnsCorrectCount() {
         let engine = AnalyticsEngine.shared
         let transactions = makeTransactions(monthCount: 6)
 
-        let predictions = await engine.predictSpending(
+        let predictions = engine.predictSpending(
             transactions: transactions,
             monthsAhead: 3
         )
@@ -279,11 +279,11 @@ final class AnalyticsEngineTests: XCTestCase {
                        "Should return exactly 3 predictions")
     }
 
-    func testPredictionsHaveDecreasingConfidence() async {
+    func testPredictionsHaveDecreasingConfidence() {
         let engine = AnalyticsEngine.shared
         let transactions = makeTransactions(monthCount: 6)
 
-        let predictions = await engine.predictSpending(
+        let predictions = engine.predictSpending(
             transactions: transactions,
             monthsAhead: 3
         )
@@ -300,11 +300,11 @@ final class AnalyticsEngineTests: XCTestCase {
         )
     }
 
-    func testDetectAnomaliesWithNormalData() async {
+    func testDetectAnomaliesWithNormalData() {
         let engine = AnalyticsEngine.shared
         let transactions = makeTransactions(monthCount: 6, baseAmount: 100_00)
 
-        let anomalies = await engine.detectAnomalies(
+        let anomalies = engine.detectAnomalies(
             transactions: transactions,
             period: .sixMonths
         )
@@ -314,11 +314,11 @@ final class AnalyticsEngineTests: XCTestCase {
         XCTAssertNotNil(anomalies, "Anomalies result should not be nil")
     }
 
-    func testCategoryTrendsGroupByCategory() async {
+    func testCategoryTrendsGroupByCategory() {
         let engine = AnalyticsEngine.shared
         let transactions = makeTransactions(monthCount: 4)
 
-        let trends = await engine.categoryTrends(
+        let trends = engine.categoryTrends(
             transactions: transactions,
             period: .sixMonths
         )

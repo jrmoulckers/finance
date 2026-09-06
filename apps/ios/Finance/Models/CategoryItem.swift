@@ -45,6 +45,39 @@ struct CategoryItem: Identifiable, Hashable, Sendable {
     }
 }
 
+// MARK: - Persistence
+
+extension CategoryItem: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case id, name, colorHex, icon, sortOrder, isBiometricProtected
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(String.self, forKey: .id),
+            name: try container.decode(String.self, forKey: .name),
+            colorHex: try container.decode(String.self, forKey: .colorHex),
+            icon: try container.decode(String.self, forKey: .icon),
+            sortOrder: try container.decode(Int.self, forKey: .sortOrder),
+            isBiometricProtected: try container.decodeIfPresent(
+                Bool.self,
+                forKey: .isBiometricProtected
+            ) ?? false
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(colorHex, forKey: .colorHex)
+        try container.encode(icon, forKey: .icon)
+        try container.encode(sortOrder, forKey: .sortOrder)
+        try container.encode(isBiometricProtected, forKey: .isBiometricProtected)
+    }
+}
+
 // MARK: - Preset Colors
 
 enum CategoryColors {

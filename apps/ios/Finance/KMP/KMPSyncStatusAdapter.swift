@@ -20,7 +20,8 @@ final class SyncStatusObserver {
         observationTask = Task { [weak self] in
             // Prefer PowerSync manager if configured, fall back to KMP bridge sync client
             let syncModule: any SwiftExportSyncModule = PowerSyncManager.shared
-            for await s in syncModule.observeSyncStatus() {
+            let statusStream = await syncModule.observeSyncStatus()
+            for await s in statusStream {
                 guard !Task.isCancelled else { break }
                 self?.status = SyncStatusDisplay.fromKMP(s)
                 if case .error(let e) = s { self?.lastError = e.localizedDescription }

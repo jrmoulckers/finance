@@ -29,6 +29,7 @@ actor LocalDataStore {
     private var transactions: [String: TransactionItem] = [:]
     private var budgets: [String: BudgetItem] = [:]
     private var isSeeded = false
+    private var seedingTask: Task<Void, Error>?
 
     // MARK: - Seeding
 
@@ -37,32 +38,43 @@ actor LocalDataStore {
     /// This is a one-time operation; subsequent calls are no-ops.
     /// When the FinanceSync XCFramework is available, this will be
     /// replaced by reading from SQLDelight via the KMP data layer.
-    func seedIfNeeded() async {
+    func seedIfNeeded() async throws {
         guard !isSeeded else { return }
-        // Set early to prevent re-entrant seeding across await boundaries
-        isSeeded = true
-        Self.logger.info("Seeding local data store")
 
+        if let seedingTask {
+            try await seedingTask.value
+            return
+        }
+
+        let task = Task { try await self.performSeed() }
+        seedingTask = task
         do {
-            let mockAccounts = try await MockAccountRepository().getAllAccounts()
-            for account in mockAccounts { accounts[account.id] = account }
-
-            let mockTransactions = try await MockTransactionRepository().getTransactions()
-            for transaction in mockTransactions { transactions[transaction.id] = transaction }
-
-            let mockBudgets = try await MockBudgetRepository().getBudgets()
-            for budget in mockBudgets { budgets[budget.id] = budget }
-
-            Self.logger.info(
-                "Local data store seeded: \(self.accounts.count) accounts, "
-                + "\(self.transactions.count) transactions, "
-                + "\(self.budgets.count) budgets"
-            )
+            try await task.value
         } catch {
+            seedingTask = nil
             Self.logger.error(
                 "Failed to seed local data store: \(error.localizedDescription, privacy: .public)"
             )
+            throw error
         }
+        seedingTask = nil
+    }
+
+    private func performSeed() async throws {
+        Self.logger.info("Seeding local data store")
+
+        let mockAccounts = try await MockAccountRepository().getAllAccounts()
+        let mockTransactions = try await MockTransactionRepository().getTransactions()
+        let mockBudgets = try await MockBudgetRepository().getBudgets()
+
+        for account in mockAccounts { accounts[account.id] = account }
+        for transaction in mockTransactions { transactions[transaction.id] = transaction }
+        for budget in mockBudgets { budgets[budget.id] = budget }
+
+        isSeeded = true
+        Self.logger.info(
+            "Local data store seeded: \(self.accounts.count) accounts, \(self.transactions.count) transactions, \(self.budgets.count) budgets"
+        )
     }
 
     // MARK: - Accounts
@@ -79,12 +91,14 @@ actor LocalDataStore {
         accounts[id]
     }
 
-    func upsertAccount(_ account: AccountItem) {
+    func upsertAccount(_ account: AccountItem) async throws {
+        try await seedIfNeeded()
         accounts[account.id] = account
         Self.logger.debug("Account upserted: \(account.id, privacy: .private)")
     }
 
-    func archiveAccount(id: String) {
+    func archiveAccount(id: String) async throws {
+        try await seedIfNeeded()
         guard let existing = accounts[id] else { return }
         accounts[id] = AccountItem(
             id: existing.id, name: existing.name,
@@ -95,7 +109,8 @@ actor LocalDataStore {
         Self.logger.debug("Account archived: \(id, privacy: .private)")
     }
 
-    func unarchiveAccount(id: String) {
+    func unarchiveAccount(id: String) async throws {
+        try await seedIfNeeded()
         guard let existing = accounts[id] else { return }
         accounts[id] = AccountItem(
             id: existing.id, name: existing.name,
@@ -106,12 +121,14 @@ actor LocalDataStore {
         Self.logger.debug("Account unarchived: \(id, privacy: .private)")
     }
 
-    func deleteAccount(id: String) {
+    func deleteAccount(id: String) async throws {
+        try await seedIfNeeded()
         accounts.removeValue(forKey: id)
         Self.logger.debug("Account deleted: \(id, privacy: .private)")
     }
 
-    func deleteAllAccounts() {
+    func deleteAllAccounts() async throws {
+        try await seedIfNeeded()
         accounts.removeAll()
         Self.logger.info("All accounts deleted")
     }
@@ -143,22 +160,26 @@ actor LocalDataStore {
         Array(getTransactions().prefix(limit))
     }
 
-    func upsertTransaction(_ transaction: TransactionItem) {
+    func upsertTransaction(_ transaction: TransactionItem) async throws {
+        try await seedIfNeeded()
         transactions[transaction.id] = transaction
         Self.logger.debug("Transaction upserted: \(transaction.id, privacy: .private)")
     }
 
-    func deleteTransaction(id: String) {
+    func deleteTransaction(id: String) async throws {
+        try await seedIfNeeded()
         transactions.removeValue(forKey: id)
         Self.logger.debug("Transaction deleted: \(id, privacy: .private)")
     }
 
-    func deleteAllTransactions() {
+    func deleteAllTransactions() async throws {
+        try await seedIfNeeded()
         transactions.removeAll()
         Self.logger.info("All transactions deleted")
     }
 
-    func eraseAllMoodTags() {
+    func eraseAllMoodTags() async throws {
+        try await seedIfNeeded()
         transactions = transactions.mapValues { transaction in
             TransactionItem(
                 id: transaction.id,
@@ -187,12 +208,14 @@ actor LocalDataStore {
         Array(budgets.values).sorted { $0.name < $1.name }
     }
 
-    func upsertBudget(_ budget: BudgetItem) {
+    func upsertBudget(_ budget: BudgetItem) async throws {
+        try await seedIfNeeded()
         budgets[budget.id] = budget
         Self.logger.debug("Budget upserted: \(budget.id, privacy: .private)")
     }
 
-    func deleteAllBudgets() {
+    func deleteAllBudgets() async throws {
+        try await seedIfNeeded()
         budgets.removeAll()
         Self.logger.info("All budgets deleted")
     }

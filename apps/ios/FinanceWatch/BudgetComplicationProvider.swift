@@ -7,6 +7,7 @@
 // Displays the most critical budget (highest utilization) as a gauge.
 // Refs #266
 
+#if os(watchOS)
 import SwiftUI
 import WidgetKit
 
@@ -32,7 +33,9 @@ struct BudgetComplicationEntry: TimelineEntry {
         return Double(spentMinorUnits) / Double(budgetedMinorUnits)
     }
 
-    var isOverBudget: Bool { spentMinorUnits > budgetedMinorUnits }
+    var isOverBudget: Bool {
+        budgetedMinorUnits > 0 && spentMinorUnits > budgetedMinorUnits
+    }
 
     static let placeholder = BudgetComplicationEntry(
         date: .now,
@@ -279,3 +282,4 @@ struct BudgetComplicationView: View {
         )
     }
 }
+#endif

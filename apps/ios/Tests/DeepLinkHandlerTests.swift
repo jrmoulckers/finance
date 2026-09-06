@@ -6,8 +6,9 @@
 // Tests for DeepLinkHandler URL parsing and navigation state management.
 // Refs #470
 
+import Foundation
 import Testing
-@testable import Finance
+@testable import FinanceApp
 
 // MARK: - URL Parsing Tests
 

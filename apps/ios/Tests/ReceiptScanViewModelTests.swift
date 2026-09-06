@@ -88,7 +88,7 @@ final class ReceiptScanViewModelTests: XCTestCase {
         await vm.processImage(Data())
 
         XCTAssertEqual(vm.merchant, "Test Store")
-        XCTAssertEqual(vm.totalAmount, "0.43") // 42.50 / 100 = 0.42, but 4250 / 100 = 42.50
+        XCTAssertEqual(vm.totalAmount, "42.50")
         XCTAssertNotNil(vm.scannedReceipt)
         XCTAssertEqual(vm.selectedCategory, "Groceries")
         XCTAssertEqual(vm.currencyCode, "USD")

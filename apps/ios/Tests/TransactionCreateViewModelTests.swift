@@ -53,7 +53,7 @@ final class TransactionCreateViewModelTests: XCTestCase {
         XCTAssertFalse(vm.canAdvance,
                        "Should not advance on details step without amount, payee, and account")
 
-        vm.amountText = "50.00"
+        vm.amountCents = 5_000
         vm.payee = "Test Payee"
         vm.selectedAccountId = "a1"
         XCTAssertTrue(vm.canAdvance,
@@ -112,7 +112,7 @@ final class TransactionCreateViewModelTests: XCTestCase {
 
         await vm.loadData()
 
-        vm.amountText = "25.50"
+        vm.amountCents = 2_550
         vm.payee = "Coffee Shop"
         vm.selectedAccountId = "a1"
         vm.selectedCategoryId = "c1"
@@ -125,6 +125,7 @@ final class TransactionCreateViewModelTests: XCTestCase {
                        "Repository should have one created transaction")
 
         let created = transactionRepo.createdTransactions.first
+        XCTAssertEqual(created?.amountMinorUnits, -2_550)
         XCTAssertEqual(created?.payee, "Coffee Shop")
         XCTAssertEqual(created?.type, .expense)
         XCTAssertEqual(created?.status, .pending,

@@ -187,8 +187,7 @@ final class ConsentManager {
         consentDate = .now
 
         Self.logger.info(
-            "Consent \(granted ? "granted" : "withdrawn", privacy: .public) "
-            + "for \(purpose.rawValue, privacy: .public)"
+            "Consent \(granted ? "granted" : "withdrawn", privacy: .public) for \(purpose.rawValue, privacy: .public)"
         )
 
         // If tracking consent is granted, request ATT
