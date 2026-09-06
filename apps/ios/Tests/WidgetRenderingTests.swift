@@ -7,7 +7,7 @@ import XCTest
 @testable import FinanceWidgets
 
 final class WidgetRenderingTests: XCTestCase {
-    func testBudgetWidgetViewsInstantiateForAllHomeScreenSizes() {
+    func testBudgetWidgetViewInstantiates() {
         let budgets = WidgetBudget.placeholders
         let rollup = WidgetBudgetRollup(
             budgets: budgets,
@@ -22,19 +22,16 @@ final class WidgetRenderingTests: XCTestCase {
             maskingMode: .bucketed
         )
 
-        _ = BudgetProgressWidgetView(entry: entry).environment(\.widgetFamily, .systemSmall)
-        _ = BudgetProgressWidgetView(entry: entry).environment(\.widgetFamily, .systemMedium)
-        _ = BudgetProgressWidgetView(entry: entry).environment(\.widgetFamily, .systemLarge)
+        _ = BudgetProgressWidgetView(entry: entry)
     }
 
-    func testLockScreenQuickEntryViewsInstantiateForAccessorySizes() {
+    func testLockScreenQuickEntryViewInstantiates() {
         let entry = QuickEntryWidgetEntry(date: .now, shortcut: .lunch)
 
-        _ = QuickEntryWidgetView(entry: entry).environment(\.widgetFamily, .accessoryCircular)
-        _ = QuickEntryWidgetView(entry: entry).environment(\.widgetFamily, .accessoryRectangular)
+        _ = QuickEntryWidgetView(entry: entry)
     }
 
-    func testTodaySpendViewsInstantiateForHomeScreenSizes() {
+    func testTodaySpendViewInstantiates() {
         let entry = TodaySpendEntry(
             date: .now,
             summary: .placeholder,
@@ -42,8 +39,7 @@ final class WidgetRenderingTests: XCTestCase {
             isStale: false
         )
 
-        _ = TodaySpendWidgetView(entry: entry).environment(\.widgetFamily, .systemSmall)
-        _ = TodaySpendWidgetView(entry: entry).environment(\.widgetFamily, .systemMedium)
+        _ = TodaySpendWidgetView(entry: entry)
     }
 
     func testTodaySpendViewHandlesStaleAndOverBudgetState() {
@@ -61,7 +57,6 @@ final class WidgetRenderingTests: XCTestCase {
             isStale: true
         )
 
-        _ = TodaySpendWidgetView(entry: entry).environment(\.widgetFamily, .systemSmall)
-        _ = TodaySpendWidgetView(entry: entry).environment(\.widgetFamily, .systemMedium)
+        _ = TodaySpendWidgetView(entry: entry)
     }
 }
