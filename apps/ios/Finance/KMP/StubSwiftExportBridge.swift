@@ -67,42 +67,42 @@ struct StubAccountModule: SwiftExportAccountModule, Sendable {
     init(store: LocalDataStore) { self.store = store }
 
     func getAccounts() async throws -> [AccountItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getAccounts()
     }
 
     func getAllAccounts() async throws -> [AccountItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getAllAccounts()
     }
 
     func getAccount(id: String) async throws -> AccountItem? {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getAccount(id: id)
     }
 
     func createAccount(_ account: AccountItem) async throws {
-        await store.upsertAccount(account)
+        try await store.upsertAccount(account)
     }
 
     func updateAccount(_ account: AccountItem) async throws {
-        await store.upsertAccount(account)
+        try await store.upsertAccount(account)
     }
 
     func archiveAccount(id: String) async throws {
-        await store.archiveAccount(id: id)
+        try await store.archiveAccount(id: id)
     }
 
     func unarchiveAccount(id: String) async throws {
-        await store.unarchiveAccount(id: id)
+        try await store.unarchiveAccount(id: id)
     }
 
     func deleteAccount(id: String) async throws {
-        await store.deleteAccount(id: id)
+        try await store.deleteAccount(id: id)
     }
 
     func deleteAllAccounts() async throws {
-        await store.deleteAllAccounts()
+        try await store.deleteAllAccounts()
     }
 }
 
@@ -116,39 +116,39 @@ struct StubTransactionModule: SwiftExportTransactionModule, Sendable {
     init(store: LocalDataStore) { self.store = store }
 
     func getTransactions() async throws -> [TransactionItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getTransactions()
     }
 
     func getTransactions(offset: Int, limit: Int) async throws -> [TransactionItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getTransactions(offset: offset, limit: limit)
     }
 
     func getTransactions(forAccountId accountId: String) async throws -> [TransactionItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getTransactions(forAccountId: accountId)
     }
 
     func getRecentTransactions(limit: Int) async throws -> [TransactionItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getRecentTransactions(limit: limit)
     }
 
     func createTransaction(_ transaction: TransactionItem) async throws {
-        await store.upsertTransaction(transaction)
+        try await store.upsertTransaction(transaction)
     }
 
     func updateTransaction(_ transaction: TransactionItem) async throws {
-        await store.upsertTransaction(transaction)
+        try await store.upsertTransaction(transaction)
     }
 
     func deleteTransaction(id: String) async throws {
-        await store.deleteTransaction(id: id)
+        try await store.deleteTransaction(id: id)
     }
 
     func deleteAllTransactions() async throws {
-        await store.deleteAllTransactions()
+        try await store.deleteAllTransactions()
     }
 
     func validate(
@@ -186,20 +186,20 @@ struct StubBudgetModule: SwiftExportBudgetModule, Sendable {
     init(store: LocalDataStore) { self.store = store }
 
     func getBudgets() async throws -> [BudgetItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getBudgets()
     }
 
     func createBudget(_ budget: BudgetItem) async throws {
-        await store.upsertBudget(budget)
+        try await store.upsertBudget(budget)
     }
 
     func updateBudget(_ budget: BudgetItem) async throws {
-        await store.upsertBudget(budget)
+        try await store.upsertBudget(budget)
     }
 
     func deleteAllBudgets() async throws {
-        await store.deleteAllBudgets()
+        try await store.deleteAllBudgets()
     }
 
     func calculateStatus(

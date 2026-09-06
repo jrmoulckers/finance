@@ -21,47 +21,47 @@ struct KMPTransactionRepository: TransactionRepository {
     }
 
     func getTransactions() async throws -> [TransactionItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getTransactions()
     }
 
     func getTransactions(offset: Int, limit: Int) async throws -> [TransactionItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getTransactions(offset: offset, limit: limit)
     }
 
     func getTransactions(forAccountId accountId: String) async throws -> [TransactionItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getTransactions(forAccountId: accountId)
     }
 
     func getRecentTransactions(limit: Int) async throws -> [TransactionItem] {
-        await store.seedIfNeeded()
+        try await store.seedIfNeeded()
         return await store.getRecentTransactions(limit: limit)
     }
 
     func createTransaction(_ transaction: TransactionItem) async throws {
         Self.logger.info("Creating transaction via KMP bridge")
-        await store.upsertTransaction(transaction)
+        try await store.upsertTransaction(transaction)
     }
 
     func updateTransaction(_ transaction: TransactionItem) async throws {
         Self.logger.info("Updating transaction via KMP bridge")
-        await store.upsertTransaction(transaction)
+        try await store.upsertTransaction(transaction)
     }
 
     func deleteTransaction(id: String) async throws {
         Self.logger.info("Deleting transaction via KMP bridge")
-        await store.deleteTransaction(id: id)
+        try await store.deleteTransaction(id: id)
     }
 
     func deleteAllTransactions() async throws {
         Self.logger.info("Deleting all transactions via KMP bridge")
-        await store.deleteAllTransactions()
+        try await store.deleteAllTransactions()
     }
 
     func eraseAllMoodTags() async throws {
         Self.logger.info("Erasing mood tags via KMP bridge")
-        await store.eraseAllMoodTags()
+        try await store.eraseAllMoodTags()
     }
 }
