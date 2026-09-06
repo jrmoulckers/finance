@@ -3,12 +3,14 @@
 // SubscriptionViewModel.swift
 // Finance
 //
-// ViewModel for the premium subscription paywall and management screens.
-// Coordinates between StoreKit 2 and the UI layer.
+// ViewModel for the subscription paywall and management screen.
 //
-// Uses @Observable and structured concurrency.
+// The displayed plan comes from the minimized entitlement projection through
+// ``EntitlementStore``. StoreKit only reports what happened to an operation;
+// it never determines what the user is entitled to, and nothing here
+// authorizes a paid server action.
 //
-// References: #338
+// References: #338, #4403
 
 import Observation
 import os
@@ -17,7 +19,9 @@ import SwiftUI
 @MainActor
 @Observable
 final class SubscriptionViewModel {
-    private let subscriptionService: SubscriptionProviding
+    private let subscriptionService: any SubscriptionProviding
+    @ObservationIgnored
+    private let entitlementStore: EntitlementStore
     @ObservationIgnored
     private nonisolated(unsafe) var updateTask: Task<Void, Never>?
 
@@ -28,13 +32,10 @@ final class SubscriptionViewModel {
 
     // MARK: - Published State
 
-    /// Available subscription products.
+    /// Available store offers.
     var products: [SubscriptionProductInfo] = []
 
-    /// Current entitlement state.
-    var entitlement: EntitlementState = .free
-
-    /// Current server-confirmation phase.
+    /// Current server-confirmation phase of a purchase or restore.
     var confirmationState: PurchaseConfirmationState = .idle
 
     /// The product ID selected by the user.
@@ -64,19 +65,33 @@ final class SubscriptionViewModel {
     var showSuccess: Bool { successMessage != nil }
     func dismissSuccess() { successMessage = nil }
 
-    /// Whether the user has an active premium subscription.
-    var isPremium: Bool { entitlement.isPremium }
+    /// Display-only entitlement presentation, including its degraded states.
+    var entitlement: EntitlementDisplayState { entitlementStore.state }
 
-    /// Checks if a specific premium feature is available.
-    func isFeatureAvailable(_ feature: PremiumFeature) -> Bool {
-        isPremium || feature.isFreeTier
+    /// Plans as the ratified catalog states them.
+    var plans: [CatalogPlan] { PaywallCatalog.plans }
+
+    /// Whether the screen should present the paid-plan management section.
+    ///
+    /// Display only: the server re-reads its projection for any paid action.
+    var showsManagedSubscription: Bool {
+        entitlement.tier != .free
     }
+
+    /// Spoken and visible explanation of the current entitlement state.
+    var entitlementHeadline: String { EntitlementStatusMessages.headline(entitlement) }
+    var entitlementDetail: String { EntitlementStatusMessages.detail(entitlement) }
 
     // MARK: - Init
 
-    init(subscriptionService: SubscriptionProviding = SubscriptionService.shared) {
+    init(
+        subscriptionService: any SubscriptionProviding = SubscriptionService.shared,
+        entitlementStore: EntitlementStore = .shared
+    ) {
         self.subscriptionService = subscriptionService
-        updateTask = Task { [weak self, subscriptionService] in
+        self.entitlementStore = entitlementStore
+        updateTask = Task { [weak self, subscriptionService, entitlementStore] in
+            await subscriptionService.attachEntitlementRefresher(entitlementStore)
             let updates = await subscriptionService.confirmationUpdates()
             for await state in updates {
                 guard let self else { return }
@@ -91,16 +106,17 @@ final class SubscriptionViewModel {
 
     // MARK: - Data Loading
 
-    /// Loads products and checks current entitlement.
+    /// Loads store offers and the current entitlement projection.
     func loadSubscriptionData() async {
         isLoading = true
         defer { isLoading = false }
 
+        await entitlementStore.restoreCachedSnapshot()
         async let loadedProducts = subscriptionService.loadProducts()
-        async let currentEntitlement = subscriptionService.checkEntitlement()
+        async let refreshed: Void = entitlementStore.refresh()
 
         products = await loadedProducts
-        applyOperationPhase((await currentEntitlement).phase)
+        await refreshed
 
         // Auto-select annual (best value) by default
         if selectedProductId == nil {
@@ -109,6 +125,16 @@ final class SubscriptionViewModel {
         }
 
         Self.logger.debug("Subscription data loaded")
+    }
+
+    /// Re-reads the projection, e.g. when returning to the screen.
+    func refreshEntitlement() async {
+        await entitlementStore.refresh()
+    }
+
+    /// Re-evaluates server-issued bounds after a foreground transition.
+    func refreshEntitlementIfNeeded() async {
+        await entitlementStore.refreshIfNeeded()
     }
 
     // MARK: - Purchase
@@ -130,19 +156,21 @@ final class SubscriptionViewModel {
         applyOperationPhase(result.phase)
 
         switch result.phase {
-        case .confirmed where result.projection.authorizesNewCostIncurringActions:
+        case .confirmed:
             successMessage = String(localized: "Your purchase was confirmed by Finance.")
             Self.logger.info("Purchase confirmed")
         case .pending:
-            statusMessage = String(localized: "Your purchase is pending confirmation. Access has not changed yet.")
+            statusMessage = String(
+                localized: "Your purchase is pending confirmation. Access has not changed yet."
+            )
         case .retry:
-            statusMessage = String(localized: "Finance could not confirm the purchase yet. It will be retried.")
+            statusMessage = String(
+                localized: "Finance could not confirm the purchase yet. It will be retried."
+            )
         case .error:
             errorMessage = String(localized: "Finance could not confirm this purchase.")
-        case .cancelled:
+        case .cancelled, .idle:
             statusMessage = nil
-        case .confirmed, .idle:
-            break
         }
     }
 
@@ -160,35 +188,32 @@ final class SubscriptionViewModel {
         applyOperationPhase(result.phase)
 
         switch result.phase {
-        case .confirmed where result.projection.authorizesNewCostIncurringActions:
+        case .confirmed:
             successMessage = String(localized: "Your purchases were confirmed by Finance.")
         case .pending:
-            statusMessage = String(localized: "Your restored purchases are pending confirmation.")
+            statusMessage = String(
+                localized: "Your restored purchases are pending confirmation."
+            )
         case .retry:
-            statusMessage = String(localized: "Finance could not confirm restored purchases yet. It will be retried.")
+            statusMessage = String(
+                localized: """
+                Finance could not confirm restored purchases yet. It will be retried.
+                """
+            )
         case .error:
             errorMessage = String(localized: "Finance could not confirm restored purchases.")
-        case .cancelled, .confirmed, .idle:
+        case .cancelled, .idle:
             break
         }
 
         Self.logger.info("Restore flow completed")
     }
 
-    /// Refreshes entitlement status.
-    func refreshEntitlement() async {
-        applyOperationPhase((await subscriptionService.checkEntitlement()).phase)
-    }
-
     private func applyStreamState(_ state: PurchaseConfirmationState) {
         confirmationState = state
-        entitlement = EntitlementState(projection: state.projection)
     }
 
     private func applyOperationPhase(_ phase: PurchaseConfirmationPhase) {
-        confirmationState = PurchaseConfirmationState(
-            phase: phase,
-            projection: entitlement.projection
-        )
+        confirmationState = PurchaseConfirmationState(phase: phase)
     }
 }

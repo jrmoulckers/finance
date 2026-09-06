@@ -5,192 +5,117 @@ package com.finance.android.ui.paywall
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.finance.android.billing.PurchaseConfirmationPhase
-import com.finance.android.billing.SubscriptionState
 import com.finance.android.billing.SubscriptionManager
-import com.finance.core.entitlement.AccessResult
-import com.finance.core.entitlement.Feature
-import com.finance.core.entitlement.FeatureGate
-import com.finance.core.entitlement.Tier
-import com.finance.core.entitlement.UpgradePrompt
+import com.finance.android.billing.SubscriptionState
+import com.finance.android.entitlement.EntitlementCoordinator
+import com.finance.android.entitlement.EntitlementDisplayState
+import com.finance.core.entitlement.EntitlementTier
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import timber.log.Timber
 
 /**
- * Pricing info for display in the upgrade screen.
+ * A plan as the storefront presents it.
+ *
+ * The copy states only what commercial catalog version 1 ratifies: the
+ * reference price and the bank-connection capacity. Catalog version 1 assigns
+ * no other feature, limit, trial, or support promise to a tier, so this screen
+ * must not claim one.
  */
 data class TierPricing(
-    val tier: Tier,
+    val tier: EntitlementTier,
     val displayName: String,
     val monthlyPrice: String,
     val yearlyPrice: String,
-    val features: List<String>,
+    val bankConnections: String,
+    val notes: List<String>,
     val isCurrentTier: Boolean,
 )
 
 /**
  * UI state for the paywall / upgrade screen.
+ *
+ * [entitlement] is display-only. Manual entry, import, export, deletion,
+ * privacy and security controls, accessibility, and existing financial data
+ * are never gated by it.
  */
 data class PaywallUiState(
-    val currentTier: Tier = Tier.FREE,
-    val currentTierName: String = "Free",
-    val upgradePrompt: UpgradePrompt? = null,
+    val entitlement: EntitlementDisplayState = EntitlementDisplayState.PENDING,
     val tiers: List<TierPricing> = emptyList(),
     val isPurchasing: Boolean = false,
     val isLoading: Boolean = true,
     val confirmation: PurchaseConfirmationPhase = PurchaseConfirmationPhase.IDLE,
-)
+) {
+    val currentTier: EntitlementTier get() = entitlement.tier
+}
 
 /**
- * ViewModel for the freemium tier gating and upgrade flow (#337).
+ * ViewModel for the subscription upgrade flow (#337, #4403).
  *
- * Uses KMP [FeatureGate] to check feature access and generate
- * upgrade prompts. Delegates purchases to [SubscriptionManager].
+ * The displayed plan comes from the shared minimized entitlement contract via
+ * [EntitlementCoordinator]. Purchases and restores are delegated to
+ * [SubscriptionManager], whose confirmation phases describe an operation, not
+ * an entitlement.
  */
 class PaywallViewModel(
     private val subscriptionManager: SubscriptionManager,
+    private val entitlementCoordinator: EntitlementCoordinator,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PaywallUiState())
     val uiState: StateFlow<PaywallUiState> = _uiState.asStateFlow()
+    private var boundaryRefresh: Job? = null
 
     init {
         observeSubscriptionState()
+        observeEntitlementState()
         loadPaywall()
     }
 
-    /**
-     * Check if a feature is accessible at the user's current tier.
-     *
-     * @param feature The feature to check.
-     * @return The [AccessResult] from the KMP FeatureGate.
-     */
-    fun checkAccess(feature: Feature): AccessResult {
-        val tier = subscriptionManager.currentTier
-        return FeatureGate.checkAccess(feature, tier)
-    }
-
-    /**
-     * Check if a counted feature is within the tier's limit.
-     */
-    fun checkLimit(feature: Feature, currentCount: Int): AccessResult {
-        val tier = subscriptionManager.currentTier
-        return FeatureGate.checkLimit(feature, tier, currentCount)
-    }
-
-    /**
-     * Show an upgrade prompt for a specific feature.
-     */
-    fun showUpgradePrompt(feature: Feature) {
-        val tier = subscriptionManager.currentTier
-        val prompt = FeatureGate.upgradePrompt(feature, tier)
-        _uiState.update { it.copy(upgradePrompt = prompt) }
-        Timber.d("Upgrade prompt shown for feature: %s", feature.name)
-    }
-
-    /**
-     * Dismiss the current upgrade prompt.
-     */
-    fun dismissUpgradePrompt() {
-        _uiState.update { it.copy(upgradePrompt = null) }
-    }
-
-    /**
-     * Initiate a purchase for the given tier.
-     */
-    fun purchase(tier: Tier) {
+    /** Initiate a purchase for the offer matching [tier]. */
+    fun purchase(tier: EntitlementTier) {
         viewModelScope.launch {
             subscriptionManager.launchPurchase(tier)
         }
     }
 
-    /**
-     * Restore previous purchases.
-     */
+    /** Restore previous purchases. */
     fun restorePurchases() {
         viewModelScope.launch {
             subscriptionManager.restorePurchases()
         }
     }
 
+    /** Re-read the projection, e.g. after returning to the screen. */
+    fun refreshEntitlement() {
+        viewModelScope.launch {
+            entitlementCoordinator.refresh()
+        }
+    }
+
+    /** Re-evaluate server-issued bounds when the screen returns to the foreground. */
+    fun refreshEntitlementIfNeeded() {
+        viewModelScope.launch {
+            entitlementCoordinator.refreshIfNeeded()
+        }
+    }
+
     private fun loadPaywall() {
         viewModelScope.launch {
-            subscriptionManager.refreshEntitlement()
-            val currentTier = subscriptionManager.currentTier
-            val tierName = FeatureGate.tierDisplayName(currentTier)
-
-            val tiers = listOf(
-                TierPricing(
-                    tier = Tier.FREE,
-                    displayName = "Free",
-                    monthlyPrice = "$0",
-                    yearlyPrice = "$0",
-                    features = listOf(
-                        "3 accounts",
-                        "3 budgets",
-                        "2 savings goals",
-                        "Basic transaction tracking",
-                    ),
-                    isCurrentTier = currentTier == Tier.FREE,
-                ),
-                TierPricing(
-                    tier = Tier.PLUS,
-                    displayName = "Plus",
-                    monthlyPrice = "$4.99/mo",
-                    yearlyPrice = "$39.99/yr",
-                    features = listOf(
-                        "10 accounts & budgets",
-                        "5 savings goals",
-                        "Spending insights & trends",
-                        "CSV export",
-                        "Budget rollover",
-                        "All financial tips",
-                    ),
-                    isCurrentTier = currentTier == Tier.PLUS,
-                ),
-                TierPricing(
-                    tier = Tier.PREMIUM,
-                    displayName = "Premium",
-                    monthlyPrice = "$9.99/mo",
-                    yearlyPrice = "$79.99/yr",
-                    features = listOf(
-                        "Unlimited accounts & budgets",
-                        "Unlimited savings goals",
-                        "Financial health score",
-                        "Custom reports",
-                        "Full history export",
-                        "Custom themes",
-                    ),
-                    isCurrentTier = currentTier == Tier.PREMIUM,
-                ),
-                TierPricing(
-                    tier = Tier.FAMILY,
-                    displayName = "Family",
-                    monthlyPrice = "$14.99/mo",
-                    yearlyPrice = "$119.99/yr",
-                    features = listOf(
-                        "Everything in Premium",
-                        "Up to 6 household members",
-                        "Shared budgets & goals",
-                        "Family spending insights",
-                    ),
-                    isCurrentTier = currentTier == Tier.FAMILY,
-                ),
-            )
-
-            _uiState.update {
-                it.copy(
+            entitlementCoordinator.restoreCachedSnapshot()
+            entitlementCoordinator.refresh()
+            _uiState.update { current ->
+                current.copy(
                     isLoading = false,
-                    currentTier = currentTier,
-                    currentTierName = tierName,
-                    tiers = tiers,
+                    tiers = catalogTiers(current.currentTier),
                 )
             }
-
             Timber.d("Paywall loaded")
         }
     }
@@ -201,20 +126,50 @@ class PaywallViewModel(
         }
     }
 
+    private fun observeEntitlementState() {
+        viewModelScope.launch {
+            entitlementCoordinator.state.collect(::applyEntitlementState)
+        }
+    }
+
     private fun applySubscriptionState(subscriptionState: SubscriptionState) {
-        val currentTier = subscriptionState.tier
         _uiState.update { current ->
             current.copy(
-                currentTier = currentTier,
-                currentTierName = FeatureGate.tierDisplayName(currentTier),
-                tiers =
-                    current.tiers.map { pricing ->
-                        pricing.copy(isCurrentTier = pricing.tier == currentTier)
-                    },
                 isPurchasing = subscriptionState.isPurchasing,
-                isLoading = subscriptionState.isLoading,
                 confirmation = subscriptionState.confirmation,
             )
         }
     }
+
+    private fun applyEntitlementState(entitlement: EntitlementDisplayState) {
+        _uiState.update { current ->
+            current.copy(
+                entitlement = entitlement,
+                tiers = catalogTiers(entitlement.tier),
+            )
+        }
+        scheduleBoundaryRefresh(entitlement)
+    }
+
+    private fun scheduleBoundaryRefresh(entitlement: EntitlementDisplayState) {
+        boundaryRefresh?.cancel()
+        val boundary =
+            listOfNotNull(entitlement.refreshAfter, entitlement.downgradeAt).minOrNull()
+                ?: return
+        val delayMillis = boundary.toEpochMilliseconds() - Clock.System.now().toEpochMilliseconds()
+        if (delayMillis <= 0L) return
+        boundaryRefresh =
+            viewModelScope.launch {
+                delay(delayMillis)
+                entitlementCoordinator.refreshIfNeeded()
+            }
+    }
+
+    override fun onCleared() {
+        boundaryRefresh?.cancel()
+        super.onCleared()
+    }
+
+    private fun catalogTiers(currentTier: EntitlementTier): List<TierPricing> =
+        PaywallCatalog.plansFor(currentTier)
 }

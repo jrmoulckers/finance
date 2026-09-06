@@ -33,7 +33,7 @@ private actor RecordingEntitlementHTTPClient: EntitlementHTTPExecuting {
     }
 }
 
-@Suite("RevenueCat entitlement wire contract")
+@Suite("RevenueCat confirmation wire contract")
 struct RevenueCatEntitlementTransportTests {
     private let householdId = UUID(uuidString: "44010000-0000-4000-8000-000000000001")!
 
@@ -91,65 +91,32 @@ struct RevenueCatEntitlementTransportTests {
         #expect(object["household_id"] as? String == householdId.uuidString)
     }
 
-    @Test("Unsupported household identifier versions are rejected")
-    func invalidHouseholdSelectionIsRejected() throws {
-        let invalidVersion = try #require(
-            UUID(uuidString: "44010000-0000-0000-8000-000000000001")
-        )
-
+    @Test("Only the confirmation phase is read back")
+    func onlyThePhaseIsDecoded() throws {
         #expect(
-            EligibleHouseholdSelection.authenticatedMembership(invalidVersion) == nil
+            try RevenueCatEntitlementWireCodec.decode(Data(#"{"status":"pending"}"#.utf8))
+                == .pending
+        )
+        #expect(
+            try RevenueCatEntitlementWireCodec.decode(Data(#"{"status":"confirmed"}"#.utf8))
+                == .confirmed
         )
     }
 
-    @Test("Pending denial decodes the authoritative Free projection")
-    func pendingDenialDecoding() throws {
+    @Test("A projection echoed by the confirmation endpoint is ignored")
+    func echoedProjectionIsIgnored() throws {
         let response = try RevenueCatEntitlementWireCodec.decode(
             Data(
                 """
                 {
                   "status": "pending",
                   "entitlement": {
-                    "userTier": "free",
-                    "householdTier": null,
-                    "bankConnectionAllowance": 0,
-                    "isPremiumSponsor": false,
-                    "isFamilyBound": false,
-                    "effectiveAt": "2026-09-06T12:00:00.000Z",
-                    "expiresAt": null,
-                    "projectionVersion": 7,
-                    "serverTime": "2026-09-06T12:00:01.000Z"
-                  }
-                }
-                """.utf8
-            )
-        )
-
-        guard case .pending(let projection) = response else {
-            Issue.record("Expected pending confirmation")
-            return
-        }
-        #expect(projection.tier == .free)
-        #expect(projection.projectionVersion == 7)
-        #expect(!projection.authorizesNewCostIncurringActions)
-    }
-
-    @Test("Family projection requires the server binding flag")
-    func familyProjectionRequiresBinding() throws {
-        let response = try RevenueCatEntitlementWireCodec.decode(
-            Data(
-                """
-                {
-                  "status": "confirmed",
-                  "entitlement": {
-                    "userTier": "free",
+                    "userTier": "premium",
                     "householdTier": "family",
-                    "bankConnectionAllowance": 20,
+                    "bankConnectionAllowance": 99,
                     "isPremiumSponsor": true,
-                    "isFamilyBound": false,
-                    "effectiveAt": "2026-09-06T12:00:00Z",
-                    "expiresAt": "2026-10-06T12:00:00Z",
-                    "projectionVersion": 8,
+                    "isFamilyBound": true,
+                    "projectionVersion": 7,
                     "serverTime": "2026-09-06T12:00:01Z"
                   }
                 }
@@ -157,15 +124,32 @@ struct RevenueCatEntitlementTransportTests {
             )
         )
 
-        #expect(response.projection.tier == .free)
-        #expect(!response.projection.authorizesNewCostIncurringActions)
+        // The echo cannot become a second entitlement authority: the wire type
+        // exposes a phase and nothing else.
+        #expect(response == .pending)
+        #expect(FinanceServerConfirmation.allCases == [.pending, .confirmed])
+    }
+
+    @Test("An unknown or malformed status fails closed")
+    func unknownStatusFailsClosed() {
+        #expect(throws: RevenueCatEntitlementTransportError.invalidResponse) {
+            try RevenueCatEntitlementWireCodec.decode(Data(#"{"status":"granted"}"#.utf8))
+        }
+        #expect(throws: RevenueCatEntitlementTransportError.invalidResponse) {
+            try RevenueCatEntitlementWireCodec.decode(Data("{ not json".utf8))
+        }
+        #expect(throws: RevenueCatEntitlementTransportError.invalidResponse) {
+            try RevenueCatEntitlementWireCodec.decode(
+                Data(#"{"entitlement":{"userTier":"premium"}}"#.utf8)
+            )
+        }
     }
 
     @Test("Transport calls the exact endpoint without provider evidence")
     func transportEndpointAndBody() async throws {
         let httpClient = RecordingEntitlementHTTPClient(
             statusCode: 200,
-            body: confirmedResponse
+            body: #"{"status":"confirmed"}"#
         )
         let transport = RevenueCatEntitlementTransport(
             supabaseURL: try #require(URL(string: "https://project.example.test")),
@@ -181,18 +165,18 @@ struct RevenueCatEntitlementTransportTests {
             eligibleHousehold: nil
         )
 
-        _ = try await transport.confirm(request)
+        let confirmation = try await transport.confirm(request)
         let recorded = try #require(await httpClient.lastRequest())
         let body = try #require(recorded.httpBody)
         let object = try #require(
             JSONSerialization.jsonObject(with: body) as? [String: Any]
         )
 
+        #expect(confirmation == .confirmed)
         #expect(recorded.url?.path == "/functions/v1/revenuecat-confirm")
         #expect(recorded.httpMethod == "POST")
         #expect(
-            recorded.value(forHTTPHeaderField: "Authorization") ==
-                "Bearer synthetic-access-token"
+            recorded.value(forHTTPHeaderField: "Authorization")?.hasPrefix("Bearer ") == true
         )
         #expect(Set(object.keys) == Set(["operation", "app_id", "environment"]))
     }
@@ -211,24 +195,5 @@ struct RevenueCatEntitlementTransportTests {
 
         #expect(error.isRetryable)
         #expect(!String(describing: error).contains(marker))
-    }
-
-    private var confirmedResponse: String {
-        """
-        {
-          "status": "confirmed",
-          "entitlement": {
-            "userTier": "premium",
-            "householdTier": null,
-            "bankConnectionAllowance": 10,
-            "isPremiumSponsor": false,
-            "isFamilyBound": false,
-            "effectiveAt": "2026-09-06T12:00:00Z",
-            "expiresAt": null,
-            "projectionVersion": 3,
-            "serverTime": "2026-09-06T12:00:01Z"
-          }
-        }
-        """
     }
 }

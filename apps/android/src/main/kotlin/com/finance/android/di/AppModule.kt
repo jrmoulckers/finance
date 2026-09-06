@@ -10,6 +10,14 @@ import com.finance.android.billing.FinanceBillingEnvironment
 import com.finance.android.billing.RevenueCatEntitlementTransport
 import com.finance.android.billing.SubscriptionManager
 import com.finance.android.billing.UnavailableRevenueCatPurchaseAdapter
+import com.finance.android.entitlement.AuthenticatedEntitlementHouseholdScopeProvider
+import com.finance.android.entitlement.AuthenticatedEntitlementUserScopeProvider
+import com.finance.android.entitlement.EncryptedEntitlementSnapshotStore
+import com.finance.android.entitlement.EntitlementCoordinator
+import com.finance.android.entitlement.EntitlementSnapshotStore
+import com.finance.android.entitlement.EntitlementsV1Repository
+import com.finance.android.entitlement.KtorEntitlementHttpClient
+import com.finance.core.entitlement.EntitlementRepository
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
@@ -151,6 +159,40 @@ val appModule = module {
         MetricsCollector(consentProvider = { false })
     }
 
+    // ── Entitlement projection (display-only, #4403) ───────────────
+
+    /**
+     * Reads the authenticated caller's minimized entitlement from
+     * `entitlements-v1`. It is the only entitlement source the UI consults;
+     * store SDK state never substitutes for it, and nothing it returns
+     * authorizes a paid server action.
+     */
+    single<EntitlementRepository> {
+        EntitlementsV1Repository(
+            supabaseUrl = BuildConfig.SUPABASE_URL,
+            accessTokenProvider = {
+                get<com.finance.sync.auth.AuthManager>().currentSession.value?.accessToken
+            },
+            httpClient = KtorEntitlementHttpClient(get(named("auth"))),
+        )
+    }
+    single<EntitlementSnapshotStore> {
+        EncryptedEntitlementSnapshotStore(
+            com.finance.android.security.EncryptedPrefsProvider.get(
+                androidContext(),
+                "finance_entitlement_cache",
+            ),
+        )
+    }
+    single {
+        EntitlementCoordinator(
+            repository = get(),
+            snapshotStore = get(),
+            householdScopeProvider = AuthenticatedEntitlementHouseholdScopeProvider(get()),
+            userScopeProvider = AuthenticatedEntitlementUserScopeProvider(get()),
+        )
+    }
+
     // ── Billing entitlement confirmation ───────────────────────────
 
     single<EligibleHouseholdProvider> {
@@ -168,6 +210,7 @@ val appModule = module {
             purchaseAdapter = UnavailableRevenueCatPurchaseAdapter,
             transport = get(),
             eligibleHouseholdProvider = get(),
+            entitlementCoordinator = get(),
             appId = BuildConfig.REVENUECAT_APP_ID,
             environment =
                 if (BuildConfig.DEBUG) {

@@ -3,16 +3,18 @@
 // SubscriptionModels.swift
 // Finance
 //
-// Display models for subscription offers plus the server-authoritative
-// entitlement projection.
+// Display models for subscription offers plus the ratified commercial
+// catalog. What a user is entitled to comes from the minimized entitlement
+// projection (`entitlements-v1`) through ``EntitlementStore``; nothing in this
+// file claims access.
 //
-// References: #338
+// References: #338, #4403
 
 import SwiftUI
 
-// MARK: - Subscription Tier
+// MARK: - Store offers
 
-/// Billing periods presented by the existing iOS paywall.
+/// Billing periods presented by the paywall.
 ///
 /// These values select a StoreKit offer only. They never determine access.
 enum SubscriptionTier: String, CaseIterable, Sendable {
@@ -54,163 +56,84 @@ enum SubscriptionTier: String, CaseIterable, Sendable {
     }
 }
 
-// MARK: - Premium Feature
+// MARK: - Commercial catalog
 
-/// Features gated behind a premium subscription.
-enum PremiumFeature: String, CaseIterable, Sendable {
-    case unlimitedBudgets
-    case advancedInsights
-    case customCategories
-    case dataExport
-    case prioritySupport
-    case familySharing
+/// A plan exactly as commercial catalog version 1 ratifies it.
+///
+/// See `docs/business/pricing/subscription-entitlement-catalog.md`. Catalog
+/// version 1 allocates only bank-connection capacity and household scope to a
+/// paid plan; privacy, encryption, accessibility, export, deletion, and access
+/// to existing financial data are never paid entitlements, so no plan here may
+/// be described as unlocking them.
+struct CatalogPlan: Identifiable, Sendable, Equatable {
+    let tier: EntitlementTier
+    let monthlyPrice: String
+    let yearlyPrice: String
+    let bankConnections: String
+    let notes: [String]
 
-    var displayName: String {
-        switch self {
-        case .unlimitedBudgets: String(localized: "Unlimited Budgets")
-        case .advancedInsights: String(localized: "Advanced Insights")
-        case .customCategories: String(localized: "Custom Categories")
-        case .dataExport: String(localized: "Data Export")
-        case .prioritySupport: String(localized: "Priority Support")
-        case .familySharing: String(localized: "Family Sharing")
-        }
-    }
+    var id: String { tier.rawValue }
 
-    var description: String {
-        switch self {
-        case .unlimitedBudgets: String(localized: "Create unlimited budget categories to track every spending area")
-        case .advancedInsights: String(localized: "Spending predictions, anomaly detection, and trend analysis")
-        case .customCategories: String(localized: "Create and customize unlimited transaction categories")
-        case .dataExport: String(localized: "Export your data as CSV, PDF, or JSON for tax and accounting")
-        case .prioritySupport: String(localized: "Get faster responses from our support team")
-        case .familySharing: String(localized: "Share your subscription with up to 5 family members")
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .unlimitedBudgets: "chart.pie.fill"
-        case .advancedInsights: "chart.line.uptrend.xyaxis"
-        case .customCategories: "tag.fill"
-        case .dataExport: "square.and.arrow.up"
-        case .prioritySupport: "headphones"
-        case .familySharing: "person.3.fill"
-        }
-    }
-
-    /// Whether this feature is available in the free tier.
-    var isFreeTier: Bool {
-        switch self {
-        case .unlimitedBudgets, .advancedInsights, .dataExport,
-             .prioritySupport, .familySharing:
-            false
-        case .customCategories:
-            false
-        }
-    }
+    var displayName: String { EntitlementStatusMessages.planName(tier) }
 }
 
-// MARK: - Entitlement Projection
-
-/// Finance tiers returned by the server-authoritative entitlement projection.
-enum FinanceEntitlementTier: String, Sendable, Equatable {
-    case free
-    case plus
-    case premium
-    case family
-
-    var displayName: String {
-        switch self {
-        case .free: String(localized: "Free Plan")
-        case .plus: String(localized: "Plus")
-        case .premium: String(localized: "Premium")
-        case .family: String(localized: "Family")
-        }
-    }
+enum PaywallCatalog {
+    static let plans: [CatalogPlan] = [
+        CatalogPlan(
+            tier: .free,
+            monthlyPrice: "$0",
+            yearlyPrice: "$0",
+            bankConnections: String(localized: "No bank connections"),
+            notes: [
+                String(
+                    localized: """
+                    Manual entry, import, export, full history, deletion, privacy and \
+                    accessibility are always included
+                    """
+                ),
+            ]
+        ),
+        CatalogPlan(
+            tier: .plus,
+            monthlyPrice: "$4.99/mo",
+            yearlyPrice: "$39.99/yr",
+            bankConnections: String(localized: "No bank connections"),
+            notes: [String(localized: "Helps fund Finance without adding a bank connection")]
+        ),
+        CatalogPlan(
+            tier: .premium,
+            monthlyPrice: "$9.99/mo",
+            yearlyPrice: "$79.99/yr",
+            bankConnections: String(
+                localized: """
+                \(EntitlementCatalog.baseBankConnectionAllowance(.premium)) bank connections, \
+                plus $0.99 per added connection each month
+                """
+            ),
+            notes: [String(localized: "May sponsor one eligible household at a time")]
+        ),
+        CatalogPlan(
+            tier: .family,
+            monthlyPrice: "$14.99/mo",
+            yearlyPrice: "$119.99/yr",
+            bankConnections: String(
+                localized: """
+                \(EntitlementCatalog.baseBankConnectionAllowance(.family)) bank connections \
+                shared by one household
+                """
+            ),
+            notes: [String(localized: "Bound to the household that bought it")]
+        ),
+    ]
 }
 
-/// Freshness is decided by Finance, never by the device clock.
-enum FinanceProjectionStatus: String, Sendable, Equatable {
-    case current
-    case stale
-    case expired
-}
-
-/// Minimized projection returned by Finance after authenticated confirmation.
-struct FinanceEntitlementProjection: Sendable, Equatable {
-    let userTier: FinanceEntitlementTier
-    let householdTier: FinanceEntitlementTier?
-    let bankConnectionAllowance: Int64
-    let isPremiumSponsor: Bool
-    let isFamilyBound: Bool
-    let effectiveAt: Date
-    let expiresAt: Date?
-    let projectionVersion: Int64
-    let serverTime: Date
-    let status: FinanceProjectionStatus
-
-    static let free = FinanceEntitlementProjection(
-        userTier: .free,
-        householdTier: nil,
-        bankConnectionAllowance: 0,
-        isPremiumSponsor: false,
-        isFamilyBound: false,
-        effectiveAt: .distantPast,
-        expiresAt: nil,
-        projectionVersion: 0,
-        serverTime: .distantPast,
-        status: .current
-    )
-
-    var tier: FinanceEntitlementTier {
-        switch householdTier {
-        case .family where isFamilyBound:
-            .family
-        case .premium:
-            .premium
-        default:
-            userTier
-        }
-    }
-
-    /// Stale and expired projections cannot authorize new cost-incurring work.
-    var authorizesNewCostIncurringActions: Bool {
-        guard status == .current, tier != .free else { return false }
-        return tier != .family || isFamilyBound
-    }
-}
-
-/// Current access state, derived only from a Finance projection.
-struct EntitlementState: Sendable, Equatable {
-    let projection: FinanceEntitlementProjection
-
-    static let free = EntitlementState(projection: .free)
-
-    var isPremium: Bool {
-        projection.authorizesNewCostIncurringActions
-    }
-
-    var displayName: String {
-        switch projection.status {
-        case .current:
-            projection.tier.displayName
-        case .stale:
-            String(localized: "Confirmation Needed")
-        case .expired:
-            String(localized: "Expired")
-        }
-    }
-
-    var accessValidityDescription: String? {
-        guard let validUntil = projection.expiresAt else { return nil }
-        return String(
-            localized: "Access through \(validUntil.formatted(date: .abbreviated, time: .omitted))"
-        )
-    }
-}
+// MARK: - Confirmation phases
 
 /// Shared logical confirmation states used by both native clients.
-enum PurchaseConfirmationPhase: String, Sendable, Equatable {
+///
+/// A phase describes a purchase or restore **operation**. It never describes
+/// an entitlement: that comes only from the server projection.
+enum PurchaseConfirmationPhase: String, Sendable, Equatable, CaseIterable {
     case idle
     case pending
     case confirmed
@@ -219,21 +142,10 @@ enum PurchaseConfirmationPhase: String, Sendable, Equatable {
     case cancelled
 }
 
-struct PurchaseConfirmationState: Sendable, Equatable {
-    let phase: PurchaseConfirmationPhase
-    let projection: FinanceEntitlementProjection
-
-    static let idle = PurchaseConfirmationState(phase: .idle, projection: .free)
-
-    var authorizesNewCostIncurringActions: Bool {
-        projection.authorizesNewCostIncurringActions
-    }
-}
-
 // MARK: - Subscription Product Info
 
 /// Displayable product information for the paywall.
-struct SubscriptionProductInfo: Identifiable, Sendable {
+struct SubscriptionProductInfo: Identifiable, Sendable, Equatable {
     let id: String
     let tier: SubscriptionTier
     let displayPrice: String
