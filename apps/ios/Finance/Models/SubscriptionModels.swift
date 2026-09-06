@@ -138,22 +138,45 @@ enum FinanceProjectionStatus: String, Sendable, Equatable {
 
 /// Minimized projection returned by Finance after authenticated confirmation.
 struct FinanceEntitlementProjection: Sendable, Equatable {
-    let tier: FinanceEntitlementTier
+    let userTier: FinanceEntitlementTier
+    let householdTier: FinanceEntitlementTier?
+    let bankConnectionAllowance: Int64
+    let isPremiumSponsor: Bool
+    let isFamilyBound: Bool
+    let effectiveAt: Date
+    let expiresAt: Date?
+    let projectionVersion: Int64
+    let serverTime: Date
     let status: FinanceProjectionStatus
-    let validUntil: Date?
-    let isHouseholdBound: Bool
 
     static let free = FinanceEntitlementProjection(
-        tier: .free,
-        status: .current,
-        validUntil: nil,
-        isHouseholdBound: false
+        userTier: .free,
+        householdTier: nil,
+        bankConnectionAllowance: 0,
+        isPremiumSponsor: false,
+        isFamilyBound: false,
+        effectiveAt: .distantPast,
+        expiresAt: nil,
+        projectionVersion: 0,
+        serverTime: .distantPast,
+        status: .current
     )
+
+    var tier: FinanceEntitlementTier {
+        switch householdTier {
+        case .family where isFamilyBound:
+            .family
+        case .premium:
+            .premium
+        default:
+            userTier
+        }
+    }
 
     /// Stale and expired projections cannot authorize new cost-incurring work.
     var authorizesNewCostIncurringActions: Bool {
         guard status == .current, tier != .free else { return false }
-        return tier != .family || isHouseholdBound
+        return tier != .family || isFamilyBound
     }
 }
 
@@ -179,7 +202,7 @@ struct EntitlementState: Sendable, Equatable {
     }
 
     var accessValidityDescription: String? {
-        guard let validUntil = projection.validUntil else { return nil }
+        guard let validUntil = projection.expiresAt else { return nil }
         return String(
             localized: "Access through \(validUntil.formatted(date: .abbreviated, time: .omitted))"
         )

@@ -5,11 +5,32 @@ import Testing
 @testable import FinanceApp
 
 let premiumProjection = FinanceEntitlementProjection(
-    tier: .premium,
-    status: .current,
-    validUntil: nil,
-    isHouseholdBound: false
+    userTier: .premium,
+    householdTier: nil,
+    bankConnectionAllowance: 10,
+    isPremiumSponsor: false,
+    isFamilyBound: false,
+    effectiveAt: Date(timeIntervalSince1970: 1_700_000_000),
+    expiresAt: nil,
+    projectionVersion: 1,
+    serverTime: Date(timeIntervalSince1970: 1_700_000_001),
+    status: .current
 )
+
+func freeProjection(version: Int64 = 2) -> FinanceEntitlementProjection {
+    FinanceEntitlementProjection(
+        userTier: .free,
+        householdTier: nil,
+        bankConnectionAllowance: 0,
+        isPremiumSponsor: false,
+        isFamilyBound: false,
+        effectiveAt: Date(timeIntervalSince1970: 1_700_000_100),
+        expiresAt: nil,
+        projectionVersion: version,
+        serverTime: Date(timeIntervalSince1970: 1_700_000_101),
+        status: .current
+    )
+}
 
 private final class StubSubscriptionService: SubscriptionProviding, @unchecked Sendable {
     private let updateStream: AsyncStream<PurchaseConfirmationState>
@@ -130,6 +151,7 @@ final class StubEntitlementTransport: AuthenticatedEntitlementTransport, @unchec
     var restoreResponse: FinanceServerConfirmation = .pending(.free)
     var projectionResponse: FinanceServerConfirmation = .confirmed(.free)
     var shouldThrow = false
+    var transportError: RevenueCatEntitlementTransportError?
     var purchaseRequests: [FinanceEntitlementConfirmationRequest] = []
     var restoreRequests: [FinanceEntitlementConfirmationRequest] = []
 
@@ -137,25 +159,25 @@ final class StubEntitlementTransport: AuthenticatedEntitlementTransport, @unchec
         authenticated
     }
 
-    func confirmPurchase(
+    func confirm(
         _ request: FinanceEntitlementConfirmationRequest
     ) async throws -> FinanceServerConfirmation {
-        purchaseRequests.append(request)
+        switch request.operation {
+        case .confirm:
+            purchaseRequests.append(request)
+        case .restore:
+            restoreRequests.append(request)
+        }
+        if let transportError { throw transportError }
         if shouldThrow { throw SubscriptionError.confirmationUnavailable }
-        return purchaseResponse
-    }
-
-    func confirmRestore(
-        _ request: FinanceEntitlementConfirmationRequest
-    ) async throws -> FinanceServerConfirmation {
-        restoreRequests.append(request)
-        if shouldThrow { throw SubscriptionError.confirmationUnavailable }
-        return restoreResponse
+        return request.operation == .confirm ? purchaseResponse : restoreResponse
     }
 
     func fetchProjection(
-        _: FinanceEntitlementContext
+        _: FinanceEntitlementContext,
+        eligibleHousehold _: EligibleHouseholdSelection?
     ) async throws -> FinanceServerConfirmation {
+        if let transportError { throw transportError }
         if shouldThrow { throw SubscriptionError.confirmationUnavailable }
         return projectionResponse
     }
@@ -173,9 +195,8 @@ func evidence(
     token: String = "synthetic-provider-operation",
     recorder: FinishRecorder = FinishRecorder()
 ) -> VerifiedPurchaseEvidence {
-    VerifiedPurchaseEvidence(
-        provider: .revenueCatApple,
-        opaqueValue: token,
+    _ = token
+    return VerifiedPurchaseEvidence(
         finishAction: {
             await recorder.record()
         }

@@ -48,6 +48,13 @@ android {
             "SUPABASE_URL",
             "\"${project.findProperty("SUPABASE_URL") ?: "https://placeholder.supabase.co"}\"",
         )
+
+        // RevenueCat app ID is public configuration, never an SDK/API secret.
+        buildConfigField(
+            "String",
+            "REVENUECAT_APP_ID",
+            "\"${project.findProperty("REVENUECAT_APP_ID") ?: "YOUR_REVENUECAT_APP_ID"}\"",
+        )
     }
 
     // ── Release signing ─────────────────────────────────────────────

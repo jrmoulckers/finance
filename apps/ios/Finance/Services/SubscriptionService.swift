@@ -13,12 +13,24 @@ protocol SubscriptionProviding: Sendable {
 
 /// Coordinates native purchase evidence with Finance's entitlement authority.
 ///
-/// Verified store evidence is submitted through an authenticated transport.
-/// Transactions are finished only after Finance confirms them. Pending,
-/// unavailable, and failed confirmations remain unfinished so StoreKit can
-/// replay them safely.
+/// Verified store evidence triggers an authenticated server-side lookup but is
+/// never sent to Finance. Transactions are finished only after Finance confirms
+/// them. Pending, unavailable, and failed confirmations remain unfinished so
+/// StoreKit can replay them safely.
 actor SubscriptionService: SubscriptionProviding {
-    static let shared = SubscriptionService()
+    static let shared: SubscriptionService = {
+        guard let configuration = RevenueCatEntitlementConfiguration.bundled() else {
+            return SubscriptionService()
+        }
+        return SubscriptionService(
+            transport: RevenueCatEntitlementTransport(
+                supabaseURL: configuration.supabaseURL,
+                tokenProvider: KeychainEntitlementAccessTokenProvider()
+            ),
+            appId: configuration.appId,
+            environment: configuration.environment
+        )
+    }()
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -27,6 +39,7 @@ actor SubscriptionService: SubscriptionProviding {
 
     private let purchaseAdapter: any NativePurchaseProviding
     private let transport: any AuthenticatedEntitlementTransport
+    private let eligibleHouseholdProvider: any EligibleHouseholdProviding
     private let context: FinanceEntitlementContext
     private var projection: FinanceEntitlementProjection = .free
     private var nextOperationGeneration: UInt64 = 0
@@ -38,12 +51,15 @@ actor SubscriptionService: SubscriptionProviding {
     init(
         purchaseAdapter: any NativePurchaseProviding = StoreKitPurchaseAdapter(),
         transport: any AuthenticatedEntitlementTransport = UnavailableEntitlementTransport(),
-        environment: FinanceClientEnvironment = .development
+        eligibleHouseholdProvider: any EligibleHouseholdProviding = NoEligibleHouseholdProvider(),
+        appId: String = "YOUR_REVENUECAT_APP_ID",
+        environment: FinanceBillingEnvironment = .sandbox
     ) {
         self.purchaseAdapter = purchaseAdapter
         self.transport = transport
+        self.eligibleHouseholdProvider = eligibleHouseholdProvider
         self.context = FinanceEntitlementContext(
-            application: .finance,
+            appId: appId,
             environment: environment
         )
     }
@@ -88,7 +104,7 @@ actor SubscriptionService: SubscriptionProviding {
                 return publish(.pending)
             case .verified(let evidence):
                 return await confirm(
-                    evidence,
+                    [evidence],
                     operation: .purchase,
                     generation: generation
                 )
@@ -107,10 +123,21 @@ actor SubscriptionService: SubscriptionProviding {
         }
 
         do {
+            let eligibleHousehold = await eligibleHouseholdProvider.currentEligibleHousehold()
             return apply(
-                try await transport.fetchProjection(context),
+                try await transport.fetchProjection(
+                    context,
+                    eligibleHousehold: eligibleHousehold
+                ),
                 generation: generation
             )
+        } catch let error as RevenueCatEntitlementTransportError {
+            if error.isRetryable {
+                Self.logger.notice("Entitlement confirmation should be retried")
+                return publish(.retry)
+            }
+            Self.logger.error("Entitlement confirmation was rejected")
+            return publish(.error)
         } catch {
             Self.logger.notice("Entitlement confirmation should be retried")
             return publish(.retry)
@@ -123,17 +150,11 @@ actor SubscriptionService: SubscriptionProviding {
         var latest = publish(.pending)
         do {
             let evidenceItems = try await purchaseAdapter.restoreEvidence()
-            guard !evidenceItems.isEmpty else {
-                return await checkEntitlement()
-            }
-
-            for evidence in evidenceItems {
-                latest = await confirm(
-                    evidence,
-                    operation: .restore,
-                    generation: generation
-                )
-            }
+            latest = await confirm(
+                evidenceItems,
+                operation: .restore,
+                generation: generation
+            )
             return latest
         } catch {
             Self.logger.error("Purchase restore failed")
@@ -160,7 +181,7 @@ actor SubscriptionService: SubscriptionProviding {
     private func confirmUpdate(_ evidence: VerifiedPurchaseEvidence) async {
         let generation = beginOperation()
         _ = await confirm(
-            evidence,
+            [evidence],
             operation: .purchase,
             generation: generation
         )
@@ -171,7 +192,7 @@ actor SubscriptionService: SubscriptionProviding {
     }
 
     private func confirm(
-        _ evidence: VerifiedPurchaseEvidence,
+        _ evidenceItems: [VerifiedPurchaseEvidence],
         operation: ConfirmationOperation,
         generation: UInt64
     ) async -> PurchaseConfirmationState {
@@ -180,27 +201,33 @@ actor SubscriptionService: SubscriptionProviding {
             return publish(.error)
         }
 
+        let eligibleHousehold = await eligibleHouseholdProvider.currentEligibleHousehold()
         let request = FinanceEntitlementConfirmationRequest(
+            operation: switch operation {
+            case .purchase: .confirm
+            case .restore: .restore
+            },
             context: context,
-            provider: evidence.provider,
-            opaqueEvidence: evidence.opaqueValue
+            eligibleHousehold: eligibleHousehold
         )
 
         do {
-            let response: FinanceServerConfirmation
-            switch operation {
-            case .purchase:
-                response = try await transport.confirmPurchase(request)
-            case .restore:
-                response = try await transport.confirmRestore(request)
-            }
-
+            let response = try await transport.confirm(request)
             let confirmationState = apply(response, generation: generation)
             if case .confirmed = response {
-                await evidence.finish()
+                for evidence in evidenceItems {
+                    await evidence.finish()
+                }
                 Self.logger.info("Purchase evidence confirmed")
             }
             return confirmationState
+        } catch let error as RevenueCatEntitlementTransportError {
+            if error.isRetryable {
+                Self.logger.notice("Purchase confirmation should be retried")
+                return publish(.retry)
+            }
+            Self.logger.error("Purchase confirmation was rejected")
+            return publish(.error)
         } catch {
             Self.logger.notice("Purchase confirmation should be retried")
             return publish(.retry)
@@ -212,17 +239,26 @@ actor SubscriptionService: SubscriptionProviding {
         generation: UInt64
     ) -> PurchaseConfirmationState {
         switch response {
-        case .pending:
+        case .pending(let confirmedProjection):
+            acceptProjection(confirmedProjection, generation: generation)
             return publish(.pending)
         case .confirmed(let confirmedProjection):
-            if generation >= latestProjectionGeneration {
-                latestProjectionGeneration = generation
-                projection = confirmedProjection
-            }
+            acceptProjection(confirmedProjection, generation: generation)
             return publish(.confirmed)
-        case .error:
-            return publish(.error)
         }
+    }
+
+    private func acceptProjection(
+        _ confirmedProjection: FinanceEntitlementProjection,
+        generation: UInt64
+    ) {
+        let isNewerVersion = confirmedProjection.projectionVersion > projection.projectionVersion
+        let isCurrentVersionAndOperation =
+            confirmedProjection.projectionVersion == projection.projectionVersion &&
+            generation >= latestProjectionGeneration
+        guard isNewerVersion || isCurrentVersionAndOperation else { return }
+        latestProjectionGeneration = generation
+        projection = confirmedProjection
     }
 
     private func state(_ phase: PurchaseConfirmationPhase) -> PurchaseConfirmationState {

@@ -12,9 +12,12 @@ private actor DelayedEntitlementTransport: AuthenticatedEntitlementTransport {
 
     func isAuthenticated() async -> Bool { true }
 
-    func confirmPurchase(
-        _: FinanceEntitlementConfirmationRequest
+    func confirm(
+        _ request: FinanceEntitlementConfirmationRequest
     ) async throws -> FinanceServerConfirmation {
+        guard request.operation == .confirm else {
+            return .pending(.free)
+        }
         purchaseCallCount += 1
         if purchaseCallCount == 1 {
             firstStarted = true
@@ -25,19 +28,14 @@ private actor DelayedEntitlementTransport: AuthenticatedEntitlementTransport {
             }
             return .confirmed(premiumProjection)
         }
-        return .confirmed(.free)
-    }
-
-    func confirmRestore(
-        _: FinanceEntitlementConfirmationRequest
-    ) async throws -> FinanceServerConfirmation {
-        .confirmed(.free)
+        return .pending(freeProjection())
     }
 
     func fetchProjection(
-        _: FinanceEntitlementContext
+        _: FinanceEntitlementContext,
+        eligibleHousehold _: EligibleHouseholdSelection?
     ) async throws -> FinanceServerConfirmation {
-        .confirmed(.free)
+        .pending(freeProjection())
     }
 
     func waitUntilFirstStarts() async {
@@ -50,6 +48,14 @@ private actor DelayedEntitlementTransport: AuthenticatedEntitlementTransport {
     func releaseFirst() {
         releaseContinuation?.resume()
         releaseContinuation = nil
+    }
+}
+
+private struct FixedEligibleHouseholdProvider: EligibleHouseholdProviding {
+    let selection: EligibleHouseholdSelection?
+
+    func currentEligibleHousehold() async -> EligibleHouseholdSelection? {
+        selection
     }
 }
 
@@ -103,6 +109,8 @@ struct EntitlementConfirmationTests {
         #expect(state.phase == .confirmed)
         #expect(EntitlementState(projection: state.projection).isPremium)
         #expect(finishCount == 1)
+        #expect(transport.purchaseRequests.count == 1)
+        #expect(transport.purchaseRequests.first?.operation == .confirm)
     }
 
     @Test("Restore evidence cannot grant before confirmation")
@@ -124,6 +132,48 @@ struct EntitlementConfirmationTests {
         #expect(state.projection == .free)
         #expect(finishCount == 0)
         #expect(transport.restoreRequests.count == 1)
+        #expect(transport.restoreRequests.first?.operation == .restore)
+    }
+
+    @Test("Restore submits one server operation without local evidence")
+    func restoreWithoutEvidenceStillConfirms() async {
+        let transport = StubEntitlementTransport()
+        let service = SubscriptionService(
+            purchaseAdapter: StubNativePurchaseAdapter(),
+            transport: transport
+        )
+
+        let state = await service.restorePurchases()
+
+        #expect(state.phase == .pending)
+        #expect(transport.restoreRequests.count == 1)
+    }
+
+    @Test("Confirmed restore finishes all evidence after one server operation")
+    func confirmedRestoreFinishesAllEvidence() async {
+        let firstRecorder = FinishRecorder()
+        let secondRecorder = FinishRecorder()
+        let adapter = StubNativePurchaseAdapter()
+        adapter.restoreResult = [
+            evidence(token: "first", recorder: firstRecorder),
+            evidence(token: "second", recorder: secondRecorder),
+        ]
+        let transport = StubEntitlementTransport()
+        transport.restoreResponse = .confirmed(premiumProjection)
+        let service = SubscriptionService(
+            purchaseAdapter: adapter,
+            transport: transport
+        )
+
+        let state = await service.restorePurchases()
+        let firstFinishCount = await firstRecorder.count
+        let secondFinishCount = await secondRecorder.count
+
+        #expect(state.phase == .confirmed)
+        #expect(state.projection == premiumProjection)
+        #expect(transport.restoreRequests.count == 1)
+        #expect(firstFinishCount == 1)
+        #expect(secondFinishCount == 1)
     }
 
     @Test("Backend outage is retryable and preserves safe projection")
@@ -176,8 +226,8 @@ struct EntitlementConfirmationTests {
         #expect(retry.authorizesNewCostIncurringActions)
     }
 
-    @Test("Newer confirmed denial replaces paid access")
-    func confirmedDenialReplacesPaidAccess() async {
+    @Test("Newer server denial replaces paid access")
+    func serverDenialReplacesPaidAccess() async {
         let transport = StubEntitlementTransport()
         transport.projectionResponse = .confirmed(premiumProjection)
         let service = SubscriptionService(
@@ -186,13 +236,73 @@ struct EntitlementConfirmationTests {
         )
 
         let paid = await service.checkEntitlement()
-        transport.projectionResponse = .confirmed(.free)
+        transport.projectionResponse = .pending(freeProjection())
         let denied = await service.checkEntitlement()
 
         #expect(paid.authorizesNewCostIncurringActions)
-        #expect(denied.phase == .confirmed)
-        #expect(denied.projection == .free)
+        #expect(denied.phase == .pending)
+        #expect(denied.projection == freeProjection())
         #expect(!denied.authorizesNewCostIncurringActions)
+    }
+
+    @Test("Pending denial projection replaces paid access")
+    func pendingDenialReplacesPaidAccess() async {
+        let transport = StubEntitlementTransport()
+        transport.projectionResponse = .confirmed(premiumProjection)
+        let service = SubscriptionService(
+            purchaseAdapter: StubNativePurchaseAdapter(),
+            transport: transport
+        )
+        _ = await service.checkEntitlement()
+
+        transport.projectionResponse = .pending(freeProjection())
+        let denied = await service.checkEntitlement()
+
+        #expect(denied.phase == .pending)
+        #expect(denied.projection.projectionVersion == 2)
+        #expect(!denied.authorizesNewCostIncurringActions)
+    }
+
+    @Test("Server error preserves paid projection and is not reported as pending")
+    func serverErrorPreservesPaidProjection() async {
+        let adapter = StubNativePurchaseAdapter()
+        let transport = StubEntitlementTransport()
+        transport.projectionResponse = .confirmed(premiumProjection)
+        let service = SubscriptionService(
+            purchaseAdapter: adapter,
+            transport: transport
+        )
+        _ = await service.checkEntitlement()
+
+        adapter.purchaseResult = .verified(evidence())
+        transport.transportError = .householdAccessDenied
+        let rejected = await service.purchase(productId: "synthetic.monthly")
+
+        #expect(rejected.phase == .error)
+        #expect(rejected.projection == premiumProjection)
+        #expect(rejected.authorizesNewCostIncurringActions)
+    }
+
+    @Test("Eligible authenticated household is the only Family intent source")
+    func eligibleHouseholdIsInjected() async throws {
+        let household = try #require(
+            EligibleHouseholdSelection.authenticatedMembership(
+                UUID(uuidString: "44010000-0000-4000-8000-000000000001")!
+            )
+        )
+        let adapter = StubNativePurchaseAdapter()
+        adapter.purchaseResult = .verified(evidence())
+        let transport = StubEntitlementTransport()
+        transport.purchaseResponse = .pending(freeProjection())
+        let service = SubscriptionService(
+            purchaseAdapter: adapter,
+            transport: transport,
+            eligibleHouseholdProvider: FixedEligibleHouseholdProvider(selection: household)
+        )
+
+        _ = await service.purchase(productId: "synthetic.monthly")
+
+        #expect(transport.purchaseRequests.first?.eligibleHousehold == household)
     }
 
     @Test("StoreKit listener publishes server confirmation")
@@ -242,7 +352,7 @@ struct EntitlementConfirmationTests {
         var iterator = updates.makeAsyncIterator()
         let current = await iterator.next()
 
-        #expect(current?.projection == .free)
+        #expect(current?.projection == freeProjection())
         #expect(current?.phase == .idle)
     }
 
@@ -267,22 +377,40 @@ struct EntitlementConfirmationTests {
     @Test("Stale and expired projections do not authorize new paid actions")
     func staleProjectionDoesNotAuthorize() {
         let stale = FinanceEntitlementProjection(
-            tier: .premium,
-            status: .stale,
-            validUntil: nil,
-            isHouseholdBound: false
+            userTier: .premium,
+            householdTier: nil,
+            bankConnectionAllowance: 10,
+            isPremiumSponsor: false,
+            isFamilyBound: false,
+            effectiveAt: premiumProjection.effectiveAt,
+            expiresAt: nil,
+            projectionVersion: 2,
+            serverTime: premiumProjection.serverTime,
+            status: .stale
         )
         let expired = FinanceEntitlementProjection(
-            tier: .premium,
-            status: .expired,
-            validUntil: nil,
-            isHouseholdBound: false
+            userTier: .premium,
+            householdTier: nil,
+            bankConnectionAllowance: 10,
+            isPremiumSponsor: false,
+            isFamilyBound: false,
+            effectiveAt: premiumProjection.effectiveAt,
+            expiresAt: nil,
+            projectionVersion: 2,
+            serverTime: premiumProjection.serverTime,
+            status: .expired
         )
         let unboundFamily = FinanceEntitlementProjection(
-            tier: .family,
-            status: .current,
-            validUntil: nil,
-            isHouseholdBound: false
+            userTier: .free,
+            householdTier: .family,
+            bankConnectionAllowance: 10,
+            isPremiumSponsor: false,
+            isFamilyBound: false,
+            effectiveAt: premiumProjection.effectiveAt,
+            expiresAt: nil,
+            projectionVersion: 2,
+            serverTime: premiumProjection.serverTime,
+            status: .current
         )
 
         #expect(!stale.authorizesNewCostIncurringActions)
@@ -293,18 +421,19 @@ struct EntitlementConfirmationTests {
     @Test("Confirmation request cannot carry client-selected grants")
     func requestHasNoGrantInputs() {
         let request = FinanceEntitlementConfirmationRequest(
+            operation: .confirm,
             context: FinanceEntitlementContext(
-                application: .finance,
-                environment: .development
+                appId: "app_synthetic",
+                environment: .sandbox
             ),
-            provider: .revenueCatApple,
-            opaqueEvidence: "synthetic-provider-operation"
+            eligibleHousehold: nil
         )
         let fields = Set(Mirror(reflecting: request).children.compactMap(\.label))
         let forbidden = Set([
             "tier", "price", "allowance", "quantity", "validity",
             "customerId", "providerAccountId", "grantScope",
-            "eligibleHouseholdIntent", "householdId",
+            "eligibleHouseholdIntent", "householdId", "provider",
+            "opaqueEvidence", "operationReference",
         ])
         let contextFields = Set(
             Mirror(reflecting: request.context).children.compactMap(\.label)
@@ -319,12 +448,12 @@ struct EntitlementConfirmationTests {
         let token = "synthetic-secret-operation-reference"
         let purchaseEvidence = evidence(token: token)
         let request = FinanceEntitlementConfirmationRequest(
+            operation: .confirm,
             context: FinanceEntitlementContext(
-                application: .finance,
-                environment: .development
+                appId: "app_synthetic",
+                environment: .sandbox
             ),
-            provider: .revenueCatApple,
-            opaqueEvidence: token
+            eligibleHousehold: nil
         )
         let state = PurchaseConfirmationState(
             phase: .pending,
@@ -334,16 +463,21 @@ struct EntitlementConfirmationTests {
         #expect(!String(describing: purchaseEvidence).contains(token))
         #expect(!String(describing: request).contains(token))
         #expect(!String(describing: state).contains(token))
-        #expect(!String(describing: state).contains("revenueCatApple"))
     }
 
     @Test("Generic validity uses neutral access wording")
     func validityDescriptionIsNeutral() {
         let projection = FinanceEntitlementProjection(
-            tier: .premium,
-            status: .current,
-            validUntil: Date(timeIntervalSince1970: 1_900_000_000),
-            isHouseholdBound: false
+            userTier: .premium,
+            householdTier: nil,
+            bankConnectionAllowance: 10,
+            isPremiumSponsor: false,
+            isFamilyBound: false,
+            effectiveAt: premiumProjection.effectiveAt,
+            expiresAt: Date(timeIntervalSince1970: 1_900_000_000),
+            projectionVersion: 2,
+            serverTime: premiumProjection.serverTime,
+            status: .current
         )
         let description = EntitlementState(
             projection: projection

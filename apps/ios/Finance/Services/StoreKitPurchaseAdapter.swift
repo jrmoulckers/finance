@@ -89,8 +89,6 @@ actor StoreKitPurchaseAdapter: NativePurchaseProviding {
                 throw SubscriptionError.productNotFound
             }
             return VerifiedPurchaseEvidence(
-                provider: .appleStoreKit,
-                opaqueValue: result.jwsRepresentation,
                 finishAction: {
                     await transaction.finish()
                 }

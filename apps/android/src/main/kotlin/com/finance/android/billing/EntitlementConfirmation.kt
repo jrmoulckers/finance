@@ -2,48 +2,75 @@
 
 package com.finance.android.billing
 
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.core.entitlement.Tier
+import com.finance.models.types.SyncId
 
-enum class FinanceApplication {
-    FINANCE,
-}
-
-enum class FinanceClientEnvironment {
-    DEVELOPMENT,
-    STAGING,
+enum class FinanceBillingEnvironment {
+    SANDBOX,
     PRODUCTION,
 }
 
-enum class PurchaseEvidenceProvider {
-    GOOGLE_PLAY,
-    REVENUECAT_GOOGLE,
+enum class RevenueCatConfirmationOperation {
+    CONFIRM,
+    RESTORE,
 }
 
 /**
- * Verified provider evidence that is eligible for server transport.
+ * Verified provider evidence retained only for safe acknowledgement.
  *
- * The opaque value is never included in state or diagnostic descriptions.
+ * The opaque provider reference stays local and is never included in the
+ * Finance request, state, or diagnostic descriptions.
  */
 class VerifiedPurchaseEvidence internal constructor(
-    val provider: PurchaseEvidenceProvider,
-    internal val opaqueValue: String,
+    internal val opaqueProviderReference: String,
 ) {
     override fun toString(): String = "VerifiedPurchaseEvidence(redacted)"
 }
 
 data class FinanceEntitlementContext(
-    val application: FinanceApplication,
-    val environment: FinanceClientEnvironment,
+    val appId: String,
+    val environment: FinanceBillingEnvironment,
 )
+
+@JvmInline
+value class EligibleHouseholdSelection private constructor(
+    val value: String,
+) {
+    companion object {
+        private val uuidPattern =
+            Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
+
+        internal fun fromAuthenticatedMembership(id: SyncId): EligibleHouseholdSelection? =
+            id.value.takeIf(uuidPattern::matches)?.let(::EligibleHouseholdSelection)
+    }
+
+    override fun toString(): String = "EligibleHouseholdSelection(redacted)"
+}
+
+fun interface EligibleHouseholdProvider {
+    suspend fun currentEligibleHousehold(): EligibleHouseholdSelection?
+}
+
+class AuthenticatedHouseholdEligibilityProvider(
+    private val householdIdProvider: HouseholdIdProvider,
+) : EligibleHouseholdProvider {
+    override suspend fun currentEligibleHousehold(): EligibleHouseholdSelection? =
+        householdIdProvider.householdId.value?.let(
+            EligibleHouseholdSelection::fromAuthenticatedMembership,
+        )
+}
+
+internal val NoEligibleHouseholdProvider = EligibleHouseholdProvider { null }
 
 /**
  * Minimized confirmation request. Tier, price, allowance, quantity, validity,
- * provider account/customer IDs, and grant scope cannot be supplied.
+ * provider account/customer/reference IDs, receipt, and grant scope cannot be supplied.
  */
 class FinanceEntitlementRequest(
+    val operation: RevenueCatConfirmationOperation,
     val context: FinanceEntitlementContext,
-    val provider: PurchaseEvidenceProvider,
-    internal val opaqueEvidence: String,
+    val eligibleHousehold: EligibleHouseholdSelection?,
 ) {
     override fun toString(): String = "FinanceEntitlementRequest(redacted)"
 }
@@ -55,10 +82,25 @@ enum class FinanceProjectionStatus {
 }
 
 data class FinanceEntitlementProjection(
-    val tier: Tier,
+    val userTier: Tier,
+    val householdTier: Tier?,
+    val bankConnectionAllowance: Long,
+    val isPremiumSponsor: Boolean,
+    val isFamilyBound: Boolean,
+    val effectiveAt: String,
+    val expiresAt: String?,
+    val projectionVersion: Long,
+    val serverTime: String,
     val status: FinanceProjectionStatus,
-    val isHouseholdBound: Boolean,
 ) {
+    val tier: Tier
+        get() =
+            when {
+                householdTier == Tier.FAMILY && isFamilyBound -> Tier.FAMILY
+                householdTier == Tier.PREMIUM -> Tier.PREMIUM
+                else -> userTier
+            }
+
     /**
      * Freshness is server-derived. The device clock and cached tier ordinal
      * never authorize a new cost-incurring action.
@@ -67,7 +109,7 @@ data class FinanceEntitlementProjection(
         get() =
             status == FinanceProjectionStatus.CURRENT &&
                 tier != Tier.FREE &&
-                (tier != Tier.FAMILY || isHouseholdBound)
+                (tier != Tier.FAMILY || isFamilyBound)
 
     val authorizedTier: Tier
         get() = if (authorizesNewCostIncurringActions) tier else Tier.FREE
@@ -75,9 +117,16 @@ data class FinanceEntitlementProjection(
     companion object {
         val FREE =
             FinanceEntitlementProjection(
-                tier = Tier.FREE,
+                userTier = Tier.FREE,
+                householdTier = null,
+                bankConnectionAllowance = 0,
+                isPremiumSponsor = false,
+                isFamilyBound = false,
+                effectiveAt = "1970-01-01T00:00:00Z",
+                expiresAt = null,
+                projectionVersion = 0,
+                serverTime = "1970-01-01T00:00:00Z",
                 status = FinanceProjectionStatus.CURRENT,
-                isHouseholdBound = false,
             )
     }
 }
@@ -93,9 +142,6 @@ sealed interface FinanceServerConfirmation {
         override val projection: FinanceEntitlementProjection,
     ) : FinanceServerConfirmation
 
-    data class Error(
-        override val projection: FinanceEntitlementProjection,
-    ) : FinanceServerConfirmation
 }
 
 enum class PurchaseConfirmationPhase {
@@ -111,11 +157,12 @@ enum class PurchaseConfirmationPhase {
 interface AuthenticatedEntitlementTransport {
     suspend fun isAuthenticated(): Boolean
 
-    suspend fun confirmPurchase(request: FinanceEntitlementRequest): FinanceServerConfirmation
+    suspend fun confirm(request: FinanceEntitlementRequest): FinanceServerConfirmation
 
-    suspend fun confirmRestore(request: FinanceEntitlementRequest): FinanceServerConfirmation
-
-    suspend fun fetchProjection(context: FinanceEntitlementContext): FinanceServerConfirmation
+    suspend fun fetchProjection(
+        context: FinanceEntitlementContext,
+        eligibleHousehold: EligibleHouseholdSelection?,
+    ): FinanceServerConfirmation
 }
 
 sealed interface NativePurchaseResult {
@@ -145,24 +192,23 @@ interface RevenueCatPurchaseAdapter {
 
 class PurchaseAdapterException : Exception()
 
-class EntitlementTransportException : Exception()
+class EntitlementTransportException(
+    val retryable: Boolean = true,
+) : Exception("Finance entitlement transport failed")
 
 class PurchaseAcknowledgementException : Exception()
 
 internal object UnavailableEntitlementTransport : AuthenticatedEntitlementTransport {
     override suspend fun isAuthenticated(): Boolean = false
 
-    override suspend fun confirmPurchase(
+    override suspend fun confirm(
         request: FinanceEntitlementRequest,
-    ): FinanceServerConfirmation = FinanceServerConfirmation.Error(FinanceEntitlementProjection.FREE)
-
-    override suspend fun confirmRestore(
-        request: FinanceEntitlementRequest,
-    ): FinanceServerConfirmation = FinanceServerConfirmation.Error(FinanceEntitlementProjection.FREE)
+    ): FinanceServerConfirmation = throw EntitlementTransportException(retryable = false)
 
     override suspend fun fetchProjection(
         context: FinanceEntitlementContext,
-    ): FinanceServerConfirmation = FinanceServerConfirmation.Error(FinanceEntitlementProjection.FREE)
+        eligibleHousehold: EligibleHouseholdSelection?,
+    ): FinanceServerConfirmation = throw EntitlementTransportException(retryable = false)
 }
 
 internal object UnavailableRevenueCatPurchaseAdapter : RevenueCatPurchaseAdapter {

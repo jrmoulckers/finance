@@ -35,11 +35,13 @@ data class SubscriptionState(
 class SubscriptionManager(
     private val purchaseAdapter: RevenueCatPurchaseAdapter = UnavailableRevenueCatPurchaseAdapter,
     private val transport: AuthenticatedEntitlementTransport = UnavailableEntitlementTransport,
-    environment: FinanceClientEnvironment = FinanceClientEnvironment.DEVELOPMENT,
+    private val eligibleHouseholdProvider: EligibleHouseholdProvider = NoEligibleHouseholdProvider,
+    appId: String = "YOUR_REVENUECAT_APP_ID",
+    environment: FinanceBillingEnvironment = FinanceBillingEnvironment.SANDBOX,
 ) {
     private val context =
         FinanceEntitlementContext(
-            application = FinanceApplication.FINANCE,
+            appId = appId,
             environment = environment,
         )
 
@@ -59,6 +61,18 @@ class SubscriptionManager(
             return
         }
 
+        val eligibleHousehold =
+            if (targetTier == Tier.FAMILY) {
+                eligibleHouseholdProvider.currentEligibleHousehold()
+                    ?: run {
+                        _state.update {
+                            it.copy(confirmation = PurchaseConfirmationPhase.ERROR)
+                        }
+                        return
+                    }
+            } else {
+                null
+            }
         val generation = beginOperation()
         _state.update {
             it.copy(
@@ -75,8 +89,9 @@ class SubscriptionManager(
                 NativePurchaseResult.Error -> updatePhase(PurchaseConfirmationPhase.ERROR)
                 is NativePurchaseResult.Verified ->
                     confirm(
-                        result.evidence,
-                        restore = false,
+                        listOf(result.evidence),
+                        operation = RevenueCatConfirmationOperation.CONFIRM,
+                        eligibleHousehold = eligibleHousehold,
                         generation = generation,
                     )
             }
@@ -99,17 +114,12 @@ class SubscriptionManager(
 
         try {
             val evidenceItems = purchaseAdapter.restore()
-            if (evidenceItems.isEmpty()) {
-                refreshEntitlement()
-            } else {
-                evidenceItems.forEach {
-                    confirm(
-                        it,
-                        restore = true,
-                        generation = generation,
-                    )
-                }
-            }
+            confirm(
+                evidenceItems,
+                operation = RevenueCatConfirmationOperation.RESTORE,
+                eligibleHousehold = eligibleHouseholdProvider.currentEligibleHousehold(),
+                generation = generation,
+            )
             Timber.d("Restore confirmation flow completed")
         } catch (_: PurchaseAdapterException) {
             Timber.w("Restore flow unavailable")
@@ -123,7 +133,12 @@ class SubscriptionManager(
     suspend fun onPurchaseUpdated(evidence: VerifiedPurchaseEvidence) {
         val generation = beginOperation()
         _state.update { it.copy(confirmation = PurchaseConfirmationPhase.PENDING) }
-        confirm(evidence, restore = false, generation = generation)
+        confirm(
+            listOf(evidence),
+            operation = RevenueCatConfirmationOperation.CONFIRM,
+            eligibleHousehold = eligibleHouseholdProvider.currentEligibleHousehold(),
+            generation = generation,
+        )
     }
 
     suspend fun refreshEntitlement() {
@@ -134,16 +149,22 @@ class SubscriptionManager(
         }
 
         try {
-            apply(transport.fetchProjection(context), generation)
-        } catch (_: EntitlementTransportException) {
-            Timber.w("Entitlement refresh should be retried")
-            updatePhase(PurchaseConfirmationPhase.RETRY)
+            apply(
+                transport.fetchProjection(
+                    context,
+                    eligibleHouseholdProvider.currentEligibleHousehold(),
+                ),
+                generation,
+            )
+        } catch (error: EntitlementTransportException) {
+            updateTransportFailure(error, "Entitlement refresh failed")
         }
     }
 
     private suspend fun confirm(
-        evidence: VerifiedPurchaseEvidence,
-        restore: Boolean,
+        evidenceItems: List<VerifiedPurchaseEvidence>,
+        operation: RevenueCatConfirmationOperation,
+        eligibleHousehold: EligibleHouseholdSelection?,
         generation: Long,
     ) {
         if (!transport.isAuthenticated()) {
@@ -153,32 +174,28 @@ class SubscriptionManager(
 
         val request =
             FinanceEntitlementRequest(
+                operation = operation,
                 context = context,
-                provider = evidence.provider,
-                opaqueEvidence = evidence.opaqueValue,
+                eligibleHousehold = eligibleHousehold,
             )
 
         try {
-            val response =
-                if (restore) {
-                    transport.confirmRestore(request)
-                } else {
-                    transport.confirmPurchase(request)
-                }
+            val response = transport.confirm(request)
             apply(response, generation)
 
             if (response is FinanceServerConfirmation.Confirmed) {
-                try {
-                    purchaseAdapter.acknowledge(evidence)
-                } catch (_: PurchaseAcknowledgementException) {
-                    // Finance remains authoritative; the unacknowledged provider
-                    // item will be replayed and confirmed idempotently.
-                    Timber.w("Provider acknowledgement should be retried")
+                evidenceItems.forEach { evidence ->
+                    try {
+                        purchaseAdapter.acknowledge(evidence)
+                    } catch (_: PurchaseAcknowledgementException) {
+                        // Finance remains authoritative; the unacknowledged provider
+                        // item will be replayed and confirmed idempotently.
+                        Timber.w("Provider acknowledgement should be retried")
+                    }
                 }
             }
-        } catch (_: EntitlementTransportException) {
-            Timber.w("Purchase confirmation should be retried")
-            updatePhase(PurchaseConfirmationPhase.RETRY)
+        } catch (error: EntitlementTransportException) {
+            updateTransportFailure(error, "Purchase confirmation failed")
         }
     }
 
@@ -190,16 +207,20 @@ class SubscriptionManager(
             when (response) {
                 is FinanceServerConfirmation.Pending -> PurchaseConfirmationPhase.PENDING
                 is FinanceServerConfirmation.Confirmed -> PurchaseConfirmationPhase.CONFIRMED
-                is FinanceServerConfirmation.Error -> PurchaseConfirmationPhase.ERROR
             }
         projectionMutex.withLock {
             _state.update { current ->
+                val candidate = response.projection
+                val isNewerVersion =
+                    candidate.projectionVersion > current.projection.projectionVersion
+                val isCurrentVersionAndOperation =
+                    candidate.projectionVersion == current.projection.projectionVersion &&
+                        generation >= latestProjectionGeneration
                 when {
-                    response is FinanceServerConfirmation.Confirmed &&
-                        generation >= latestProjectionGeneration -> {
+                    isNewerVersion || isCurrentVersionAndOperation -> {
                         latestProjectionGeneration = generation
                         current.copy(
-                            projection = response.projection,
+                            projection = candidate,
                             confirmation = phase,
                         )
                     }
@@ -211,6 +232,20 @@ class SubscriptionManager(
 
     private fun updatePhase(phase: PurchaseConfirmationPhase) {
         _state.update { it.copy(confirmation = phase) }
+    }
+
+    private fun updateTransportFailure(
+        error: EntitlementTransportException,
+        message: String,
+    ) {
+        Timber.w(message)
+        updatePhase(
+            if (error.retryable) {
+                PurchaseConfirmationPhase.RETRY
+            } else {
+                PurchaseConfirmationPhase.ERROR
+            },
+        )
     }
 
     private fun beginOperation(): Long = operationGeneration.incrementAndGet()
