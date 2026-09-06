@@ -122,15 +122,14 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
 
   listIdentities(
     _environment: 'sandbox' | 'production',
-    afterIdentityId: string | null,
+    offset: number,
     limit: number,
   ): Promise<readonly RevenueCatIdentity[]> {
     this.identityPageRequests++;
     return Promise.resolve(
       this.identities
-        .filter((identity) => !afterIdentityId || identity.id > afterIdentityId)
         .sort((left, right) => left.id.localeCompare(right.id))
-        .slice(0, limit),
+        .slice(offset, offset + limit),
     );
   }
 

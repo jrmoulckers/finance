@@ -906,9 +906,34 @@ paths:
       tags: [Billing]
       security:
         - RevenueCatReconciliationAuthorization: []
+      parameters:
+        - in: query
+          name: cursor
+          schema:
+            type: string
+            pattern: '^v1:(0|[1-9][0-9]*)$'
+          description: Ordinal cursor returned by a prior partial response.
       responses:
         '200':
-          description: Reconciliation completed.
+          description: Bounded reconciliation batch completed or has a continuation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, reconciled, next_cursor]
+                properties:
+                  status:
+                    type: string
+                    enum: [partial, confirmed]
+                  reconciled:
+                    type: integer
+                    minimum: 0
+                  next_cursor:
+                    type: string
+                    nullable: true
+                    pattern: '^v1:(0|[1-9][0-9]*)$'
+        '400':
+          description: Continuation cursor is invalid.
         '401':
           description: Dedicated reconciliation credential is invalid.
         '503':

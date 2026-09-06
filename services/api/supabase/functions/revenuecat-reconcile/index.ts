@@ -27,13 +27,22 @@ interface ReconciliationDependencies {
   checkLimit: (request: Request) => Promise<Response | null>;
 }
 
-const IDENTITY_PAGE_SIZE = 100;
+const RECONCILIATION_BATCH_SIZE = 100;
 
 function json(body: Record<string, unknown>, status = 200, headers?: HeadersInit): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json', ...headers },
   });
+}
+
+function reconciliationOffset(request: Request): number | null {
+  const cursor = new URL(request.url).searchParams.get('cursor');
+  if (cursor === null) return 0;
+  const match = /^v1:(0|[1-9]\d*)$/.exec(cursor);
+  if (!match) return null;
+  const offset = Number(match[1]);
+  return Number.isSafeInteger(offset) ? offset : null;
 }
 
 export function createRevenueCatReconciliationHandler(dependencies: ReconciliationDependencies) {
@@ -52,33 +61,36 @@ export function createRevenueCatReconciliationHandler(dependencies: Reconciliati
     const limited = await dependencies.checkLimit(request);
     if (limited) return limited;
 
+    const offset = reconciliationOffset(request);
+    if (offset === null) {
+      return json({ status: 'error', error: 'invalid_request' }, 400);
+    }
+
     try {
       let reconciled = 0;
-      let afterIdentityId: string | null = null;
-      do {
-        const identities = await dependencies.store.listIdentities(
-          dependencies.config.environment,
-          afterIdentityId,
-          IDENTITY_PAGE_SIZE,
+      const identities = await dependencies.store.listIdentities(
+        dependencies.config.environment,
+        offset,
+        RECONCILIATION_BATCH_SIZE + 1,
+      );
+      const batch = identities.slice(0, RECONCILIATION_BATCH_SIZE);
+      for (const identity of batch) {
+        const events = await dependencies.client.getCustomerEvents(identity.customerId);
+        const result = await ingestRevenueCatEvents(
+          events,
+          dependencies.config,
+          dependencies.store,
+          { identity, expectedCustomerId: identity.customerId },
         );
-        for (const identity of identities) {
-          const events = await dependencies.client.getCustomerEvents(identity.customerId);
-          const result = await ingestRevenueCatEvents(
-            events,
-            dependencies.config,
-            dependencies.store,
-            { identity, expectedCustomerId: identity.customerId },
-          );
-          reconciled += result.recognized;
-        }
-        if (identities.length < IDENTITY_PAGE_SIZE) break;
-        const nextIdentityId = identities.at(-1)?.id ?? null;
-        if (!nextIdentityId || nextIdentityId === afterIdentityId) {
-          throw new RevenueCatStoreError();
-        }
-        afterIdentityId = nextIdentityId;
-      } while (afterIdentityId);
-      return json({ status: 'confirmed', reconciled });
+        reconciled += result.recognized;
+      }
+
+      const hasMore = identities.length > RECONCILIATION_BATCH_SIZE;
+      return json({
+        status: hasMore ? 'partial' : 'confirmed',
+        reconciled,
+        next_cursor: hasMore ? `v1:${offset + RECONCILIATION_BATCH_SIZE}` : null,
+      });
     } catch (error) {
       if (error instanceof RevenueCatUnavailableError || error instanceof RevenueCatStoreError) {
         return json({ status: 'error', error: 'temporarily_unavailable' }, 503, {

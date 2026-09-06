@@ -26,7 +26,6 @@ interface SubscriptionSnapshot {
   pending_changes?: unknown;
   product_id?: unknown;
   status?: unknown;
-  grace_period_ends_at?: unknown;
   store?: unknown;
   store_subscription_identifier?: unknown;
 }
@@ -42,7 +41,7 @@ async function stableReconciliationId(snapshot: SubscriptionSnapshot): Promise<s
     snapshot.status,
     snapshot.current_period_starts_at,
     snapshot.current_period_ends_at,
-    snapshot.grace_period_ends_at,
+    snapshot.gives_access,
     snapshot.environment,
     snapshot.store,
   ]);
@@ -53,26 +52,79 @@ async function stableReconciliationId(snapshot: SubscriptionSnapshot): Promise<s
   return `reconcile_${hex}`;
 }
 
-function eventShape(status: string): { type: string; cancelReason?: string } | null {
-  switch (status.toLowerCase()) {
+interface SnapshotEventShape {
+  type: string;
+  cancelReason?: string;
+  terminalAt: 'period_start' | 'period_end' | null;
+  graceEndsAtPeriodEnd?: boolean;
+}
+
+function eventShape(statusValue: unknown, givesAccess: unknown): SnapshotEventShape | null {
+  const status = String(statusValue ?? '').toLowerCase();
+  if (
+    [
+      'trialing',
+      'active',
+      'cancelled',
+      'canceled',
+      'in_grace_period',
+      'in_billing_retry',
+      'paused',
+      'expired',
+      'refunded',
+      'chargeback',
+    ].includes(status) &&
+    typeof givesAccess !== 'boolean'
+  ) {
+    throw new RevenueCatUnavailableError();
+  }
+
+  switch (status) {
     case 'trialing':
-      return { type: 'INITIAL_PURCHASE' };
+      return givesAccess
+        ? { type: 'INITIAL_PURCHASE', terminalAt: null }
+        : { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'active':
-      return { type: 'RENEWAL' };
+      return givesAccess
+        ? { type: 'RENEWAL', terminalAt: null }
+        : { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'cancelled':
     case 'canceled':
-      return { type: 'CANCELLATION', cancelReason: 'UNSUBSCRIBE' };
+      return givesAccess
+        ? {
+            type: 'CANCELLATION',
+            cancelReason: 'UNSUBSCRIBE',
+            terminalAt: null,
+          }
+        : { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'in_grace_period':
+      return givesAccess
+        ? {
+            type: 'BILLING_ISSUE',
+            terminalAt: null,
+            graceEndsAtPeriodEnd: true,
+          }
+        : { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'in_billing_retry':
-      return { type: 'BILLING_ISSUE' };
+      return { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'paused':
-      return { type: 'SUBSCRIPTION_PAUSED' };
+      return givesAccess
+        ? { type: 'SUBSCRIPTION_PAUSED', terminalAt: null }
+        : { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'expired':
-      return { type: 'EXPIRATION' };
+      return { type: 'EXPIRATION', terminalAt: 'period_end' };
     case 'refunded':
-      return { type: 'CANCELLATION', cancelReason: 'REFUND' };
+      return {
+        type: 'CANCELLATION',
+        cancelReason: 'REFUND',
+        terminalAt: 'period_end',
+      };
     case 'chargeback':
-      return { type: 'CANCELLATION', cancelReason: 'CHARGEBACK' };
+      return {
+        type: 'CANCELLATION',
+        cancelReason: 'CHARGEBACK',
+        terminalAt: 'period_end',
+      };
     default:
       return null;
   }
@@ -88,40 +140,53 @@ async function snapshotEvent(
   snapshot: SubscriptionSnapshot,
   config: RevenueCatConfig,
 ): Promise<RevenueCatEvent | null> {
-  const shape = eventShape(String(snapshot.status ?? ''));
+  if (
+    typeof snapshot.environment === 'string' &&
+    snapshot.environment.toLowerCase() !== config.environment
+  ) {
+    return null;
+  }
+  const shape = eventShape(snapshot.status, snapshot.gives_access);
+  if (!shape) return null;
+
   const periodStart = millis(snapshot.current_period_starts_at);
   const periodEnd = millis(snapshot.current_period_ends_at);
-  const graceEnd = millis(snapshot.grace_period_ends_at);
   const store = providerStore(snapshot.store);
   const product =
     typeof snapshot.product_id === 'string' ? config.products[snapshot.product_id] : undefined;
   const appId =
     store && product && config.apps[product.appId]?.store === store ? product.appId : null;
   if (
-    !shape ||
     typeof snapshot.id !== 'string' ||
     typeof snapshot.customer_id !== 'string' ||
     typeof snapshot.product_id !== 'string' ||
     typeof snapshot.environment !== 'string' ||
-    !periodStart ||
     !store ||
     !appId
   ) {
     return null;
   }
-
-  const isTerminal =
-    shape.type === 'EXPIRATION' ||
-    shape.cancelReason === 'REFUND' ||
-    shape.cancelReason === 'CHARGEBACK';
-  const effectiveAt = isTerminal ? periodEnd : periodStart;
-  if (!effectiveAt) return null;
+  if (!periodStart || (!periodEnd && shape.type !== 'EXPIRATION')) {
+    throw new RevenueCatUnavailableError();
+  }
+  const terminalAt =
+    shape.terminalAt === 'period_start'
+      ? periodStart
+      : shape.terminalAt === 'period_end'
+        ? periodEnd
+        : null;
+  if (shape.terminalAt && !terminalAt) throw new RevenueCatUnavailableError();
+  const effectiveAt = terminalAt ?? periodStart;
+  const accessEnd = shape.graceEndsAtPeriodEnd ? periodEnd : null;
+  if (shape.graceEndsAtPeriodEnd && !accessEnd) {
+    throw new RevenueCatUnavailableError();
+  }
 
   return {
     id: await stableReconciliationId(snapshot),
     type: shape.type,
     event_timestamp_ms: effectiveAt,
-    provider_order_ms: Math.max(periodStart, periodEnd ?? 0, graceEnd ?? 0),
+    provider_order_ms: Math.max(periodStart, periodEnd ?? 0),
     app_id: appId,
     app_user_id: snapshot.customer_id,
     original_app_user_id: snapshot.customer_id,
@@ -129,8 +194,8 @@ async function snapshotEvent(
     product_id: snapshot.product_id,
     period_type: String(snapshot.status).toLowerCase() === 'trialing' ? 'TRIAL' : 'NORMAL',
     purchased_at_ms: periodStart,
-    expiration_at_ms: periodEnd,
-    grace_period_expiration_at_ms: graceEnd,
+    expiration_at_ms: shape.type === 'EXPIRATION' ? terminalAt : periodEnd,
+    grace_period_expiration_at_ms: accessEnd,
     cancel_reason: shape.cancelReason,
     environment: snapshot.environment,
     store,
@@ -149,6 +214,7 @@ export class RevenueCatClient {
       `${this.config.apiBaseUrl}/projects/${encodeURIComponent(this.config.projectId)}` +
         `/customers/${encodeURIComponent(customerId)}/subscriptions`,
     );
+    firstPage.searchParams.set('environment', this.config.environment);
     let pageUrl: URL | null = firstPage;
     const visited = new Set<string>();
     const events: RevenueCatEvent[] = [];
@@ -184,10 +250,7 @@ export class RevenueCatClient {
         throw new RevenueCatUnavailableError();
       }
       const envelope = body as Record<string, unknown>;
-      if (
-        !Array.isArray(envelope.items) ||
-        (envelope.next_page !== null && typeof envelope.next_page !== 'string')
-      ) {
+      if (!Array.isArray(envelope.items)) {
         throw new RevenueCatUnavailableError();
       }
 
@@ -196,9 +259,16 @@ export class RevenueCatClient {
         if (event) events.push(event);
       }
 
-      if (envelope.next_page === null) {
+      if (
+        envelope.next_page === null ||
+        envelope.next_page === undefined ||
+        envelope.next_page === ''
+      ) {
         pageUrl = null;
         continue;
+      }
+      if (typeof envelope.next_page !== 'string' || !envelope.next_page.trim()) {
+        throw new RevenueCatUnavailableError();
       }
       const nextPage = new URL(envelope.next_page, firstPage);
       if (
@@ -209,6 +279,13 @@ export class RevenueCatClient {
       ) {
         throw new RevenueCatUnavailableError();
       }
+      if (
+        nextPage.searchParams.has('environment') &&
+        nextPage.searchParams.get('environment') !== this.config.environment
+      ) {
+        throw new RevenueCatUnavailableError();
+      }
+      nextPage.searchParams.set('environment', this.config.environment);
       pageUrl = nextPage;
     }
     return events;

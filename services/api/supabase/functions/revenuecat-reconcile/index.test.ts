@@ -10,8 +10,13 @@ import {
 import { createRevenueCatReconciliationHandler } from './index.ts';
 import type { RevenueCatIdentity } from '../_shared/revenuecat/store.ts';
 
-function request(authorization = TEST_REVENUECAT_CONFIG.reconciliationAuthorization): Request {
-  return new Request('https://finance.example.test/revenuecat-reconcile', {
+function request(
+  authorization = TEST_REVENUECAT_CONFIG.reconciliationAuthorization,
+  cursor?: string,
+): Request {
+  const url = new URL('https://finance.example.test/revenuecat-reconcile');
+  if (cursor) url.searchParams.set('cursor', cursor);
+  return new Request(url, {
     method: 'POST',
     headers: { Authorization: authorization },
   });
@@ -43,7 +48,11 @@ Deno.test(
     });
     const response = await handler(request());
     assertEquals(response.status, 200);
-    assertEquals(await response.json(), { status: 'confirmed', reconciled: 1 });
+    assertEquals(await response.json(), {
+      status: 'confirmed',
+      reconciled: 1,
+      next_cursor: null,
+    });
     assertEquals(store.appended.length, 1);
   },
 );
@@ -68,7 +77,7 @@ Deno.test('RevenueCat reconciliation surfaces provider outage without identifier
 });
 
 Deno.test(
-  'RevenueCat reconciliation traverses more than 500 identities including terminal state',
+  'RevenueCat reconciliation resumes bounded batches beyond 500 identities including terminal state',
   async () => {
     const store = new MemoryRevenueCatStore();
     store.identities.splice(0);
@@ -105,11 +114,25 @@ Deno.test(
       checkLimit: () => Promise.resolve(null),
     });
 
-    const response = await handler(request());
-    assertEquals(response.status, 200);
-    assertEquals(await response.json(), { status: 'confirmed', reconciled: 501 });
+    let cursor: string | undefined;
+    let totalReconciled = 0;
+    const statuses: string[] = [];
+    do {
+      const response = await handler(
+        request(TEST_REVENUECAT_CONFIG.reconciliationAuthorization, cursor),
+      );
+      assertEquals(response.status, 200);
+      const body = await response.json();
+      statuses.push(body.status);
+      totalReconciled += body.reconciled;
+      cursor = body.next_cursor ?? undefined;
+    } while (cursor);
+
+    assertEquals(statuses, ['partial', 'partial', 'partial', 'partial', 'partial', 'confirmed']);
+    assertEquals(totalReconciled, 501);
     assertEquals(store.identityPageRequests, 6);
     assertEquals(requestedCustomers.length, 501);
+    assertEquals(requestedCustomers[100], store.identities[100].customerId);
     assertEquals(requestedCustomers.at(-1), terminalCustomer);
     assertEquals(
       store.appended.some((event) => event.lifecycle === 'expired'),
@@ -117,3 +140,20 @@ Deno.test(
     );
   },
 );
+
+Deno.test('RevenueCat reconciliation rejects malformed continuation cursors', async () => {
+  const handler = createRevenueCatReconciliationHandler({
+    config: TEST_REVENUECAT_CONFIG,
+    client: { getCustomerEvents: () => Promise.resolve([]) },
+    store: new MemoryRevenueCatStore(),
+    checkLimit: () => Promise.resolve(null),
+  });
+  const response = await handler(
+    request(TEST_REVENUECAT_CONFIG.reconciliationAuthorization, 'not-a-cursor'),
+  );
+  assertEquals(response.status, 400);
+  assertEquals(await response.json(), {
+    status: 'error',
+    error: 'invalid_request',
+  });
+});

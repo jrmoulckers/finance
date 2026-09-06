@@ -2,6 +2,7 @@
 
 import { assertEquals, assertRejects } from 'std/testing/asserts.ts';
 import { RevenueCatClient, RevenueCatUnavailableError } from './client.ts';
+import { normalizeRevenueCatEvent } from './normalization.ts';
 import { TEST_REVENUECAT_CONFIG, TEST_USER_ID } from './test-support.ts';
 
 const PERIOD_START = Date.parse('2026-09-01T00:00:00Z');
@@ -61,7 +62,6 @@ Deno.test(
               store_subscription_identifier: 'store-terminal-synthetic',
             }),
           ],
-          next_page: null,
           object: 'list',
           url: url.pathname,
         }),
@@ -72,6 +72,12 @@ Deno.test(
     const second = await client.getCustomerEvents(TEST_USER_ID);
 
     assertEquals(requestedUrls.length, 4);
+    assertEquals(
+      requestedUrls.every(
+        (requestedUrl) => new URL(requestedUrl).searchParams.get('environment') === 'sandbox',
+      ),
+      true,
+    );
     assertEquals(
       requestedUrls[0].includes(
         `/projects/${TEST_REVENUECAT_CONFIG.projectId}/customers/${TEST_USER_ID}/subscriptions`,
@@ -102,6 +108,140 @@ Deno.test(
       first.map((event) => event.id),
       second.map((event) => event.id),
     );
+  },
+);
+
+Deno.test('RevenueCat treats null next_page as a valid terminal page', async () => {
+  const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+    Promise.resolve(
+      Response.json({
+        items: [subscription()],
+        next_page: null,
+        object: 'list',
+        url: '/subscriptions',
+      }),
+    ),
+  );
+  assertEquals((await client.getCustomerEvents(TEST_USER_ID)).length, 1);
+});
+
+Deno.test(
+  'RevenueCat ignores mixed-environment history after requesting configured scope',
+  async () => {
+    const productionConfig = {
+      ...TEST_REVENUECAT_CONFIG,
+      environment: 'production' as const,
+    };
+    let requestedEnvironment = '';
+    const client = new RevenueCatClient(productionConfig, (input) => {
+      requestedEnvironment = new URL(String(input)).searchParams.get('environment') ?? '';
+      return Promise.resolve(
+        Response.json({
+          items: [
+            subscription({ environment: 'sandbox' }),
+            subscription({
+              environment: 'production',
+              id: 'sub_production_synthetic',
+            }),
+          ],
+          next_page: null,
+          object: 'list',
+          url: '/subscriptions',
+        }),
+      );
+    });
+
+    const events = await client.getCustomerEvents(TEST_USER_ID);
+    assertEquals(requestedEnvironment, 'production');
+    assertEquals(events.length, 1);
+    assertEquals(events[0].environment, 'production');
+  },
+);
+
+Deno.test('RevenueCat v2 paused access is paid-through only when explicitly granted', async () => {
+  for (const [givesAccess, expectedLifecycle] of [
+    [true, 'paused_paid_through'],
+    [false, 'expired'],
+  ] as const) {
+    const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+      Promise.resolve(
+        Response.json({
+          items: [subscription({ status: 'paused', gives_access: givesAccess })],
+          next_page: null,
+          object: 'list',
+          url: '/subscriptions',
+        }),
+      ),
+    );
+    const events = await client.getCustomerEvents(TEST_USER_ID);
+    const normalized = normalizeRevenueCatEvent(events[0], TEST_REVENUECAT_CONFIG, null);
+    assertEquals(normalized.evidence?.lifecycle, expectedLifecycle);
+    assertEquals(
+      normalized.evidence?.currentPeriodEnd,
+      givesAccess ? new Date(PERIOD_END).toISOString() : null,
+    );
+    assertEquals(
+      normalized.evidence?.terminalAt,
+      givesAccess ? null : new Date(PERIOD_START).toISOString(),
+    );
+  }
+});
+
+Deno.test('RevenueCat v2 grace uses period end while billing retry denies access', async () => {
+  for (const [status, givesAccess, expectedLifecycle] of [
+    ['in_grace_period', true, 'past_due_grace'],
+    ['in_grace_period', false, 'expired'],
+    ['in_billing_retry', true, 'expired'],
+    ['in_billing_retry', false, 'expired'],
+  ] as const) {
+    const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+      Promise.resolve(
+        Response.json({
+          items: [subscription({ status, gives_access: givesAccess })],
+          next_page: null,
+          object: 'list',
+          url: '/subscriptions',
+        }),
+      ),
+    );
+    const events = await client.getCustomerEvents(TEST_USER_ID);
+    const normalized = normalizeRevenueCatEvent(events[0], TEST_REVENUECAT_CONFIG, null);
+    assertEquals(normalized.evidence?.lifecycle, expectedLifecycle);
+    if (status === 'in_grace_period' && givesAccess) {
+      assertEquals(normalized.evidence?.graceEnd, new Date(PERIOD_END).toISOString());
+      assertEquals(normalized.evidence?.terminalAt, null);
+    } else {
+      assertEquals(normalized.evidence?.graceEnd, null);
+      assertEquals(normalized.evidence?.terminalAt, new Date(PERIOD_START).toISOString());
+    }
+  }
+});
+
+Deno.test(
+  'RevenueCat v2 access-bearing states fail closed without explicit access or bound',
+  async () => {
+    for (const item of [
+      subscription({ status: 'paused', gives_access: undefined }),
+      subscription({ status: 'in_grace_period', gives_access: undefined }),
+      subscription({ status: 'in_billing_retry', gives_access: undefined }),
+      subscription({
+        status: 'in_grace_period',
+        gives_access: true,
+        current_period_ends_at: undefined,
+      }),
+    ]) {
+      const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+        Promise.resolve(
+          Response.json({
+            items: [item],
+            next_page: null,
+            object: 'list',
+            url: '/subscriptions',
+          }),
+        ),
+      );
+      await assertRejects(() => client.getCustomerEvents(TEST_USER_ID), RevenueCatUnavailableError);
+    }
   },
 );
 

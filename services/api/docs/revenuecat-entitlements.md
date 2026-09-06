@@ -48,9 +48,17 @@ verification.
   current RevenueCat state with the project-scoped API key, and feeds the same
   append/apply path. The provider client consumes RevenueCat v2 numeric
   millisecond period timestamps and lowercase store values, resolves the app
-  from the reviewed product/app maps, follows every scoped `next_page`, and
-  keyset-pages through every stored identity. Provider outages return a bounded
+  from the reviewed product/app maps, and follows every scoped `next_page`.
+  Each invocation processes at most 100 server-side identities; `partial`
+  responses carry an ordinal cursor for the next idempotent invocation
+  and never claim full completion early. Provider outages return a bounded
   `temporarily_unavailable` error with `Retry-After`.
+
+RevenueCat v2 `gives_access` is required for every recognized current-state
+subscription. Paused state maps to paid-through access only when that flag is
+explicitly true. Grace uses the documented current-period end as its access
+bound; billing-retry and access-false states normalize to denial. Missing
+access flags or required period bounds fail closed.
 
 Responses and logs exclude provider names and identifiers, receipts, customer
 attributes, raw payloads, signatures, secrets, internal ledger IDs, and other
