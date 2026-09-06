@@ -148,16 +148,6 @@ bucket_definitions:
         FROM recurring_transaction_templates
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
-      # Family plan subscriptions
-      - >
-        SELECT id, household_id, billing_owner_id, owner_id, plan_type,
-               status, price_cents, currency_code, billing_cycle,
-               max_members, current_members, started_at,
-               current_period_end, canceled_at, expires_at,
-               created_at, updated_at, deleted_at
-        FROM family_plan_subscriptions
-        WHERE household_id = bucket.household_id AND deleted_at IS NULL
-
       # Report configurations
       - >
         SELECT id, household_id, owner_id, name, report_type, config,

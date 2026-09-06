@@ -104,6 +104,40 @@ lines — that the database schema, RLS policies, and functions work correctly.
 Together they ensure the full sync path is sound without requiring a running
 PowerSync instance.
 
+### 3. Billing Entitlement Integration Tests
+
+**Runtime:** PostgreSQL (requires local Supabase)
+
+`billing-entitlements-integration.test.sql` validates the server-authoritative
+billing foundation: normalized constraints, append-only evidence, deterministic
+ordering, lifecycle transitions, RLS/execute permissions, sponsorship and
+membership behavior, non-stacking bank allowances, deletion semantics, and the
+minimized RPC response.
+
+```bash
+# From services/api/ with local Supabase running and libpq connection
+# variables set for the local database:
+npm run test:billing-entitlements
+```
+
+The suite uses `ON_ERROR_STOP`, runs in one transaction, and rolls back all
+fixtures. It must never be pointed at staging or production.
+
+`billing-entitlements-concurrency.test.ps1` adds real parallel-session coverage
+for different purchases on one account, apply versus rebuild, and concurrent
+attempts to bind one provider purchase to different billing accounts. It also
+covers concurrent authenticated reads by two Premium sponsors of one household
+and both membership-removal/sponsorship-selection commit orderings, including
+membership reactivation and stale expected-household clears. Test-only advisory
+gates plus `pg_stat_activity` lock observations coordinate the sessions; fixed
+startup sleeps are not used as evidence of contention. It commits uniquely
+named fixtures and therefore must only target a disposable local container:
+
+```powershell
+.\supabase\tests\billing-entitlements-concurrency.test.ps1 `
+  -Container <disposable-migrated-postgres-container>
+```
+
 ## Adding New Tests
 
 ### Adding a contract test

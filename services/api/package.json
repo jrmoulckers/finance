@@ -17,6 +17,7 @@
     "setup": "bash scripts/setup-local.sh",
     "setup:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-local.ps1",
     "test:sync-contract": "deno test --allow-read supabase/tests/sync-contract.test.ts",
+    "test:billing-entitlements": "psql -v ON_ERROR_STOP=1 -f supabase/tests/billing-entitlements-integration.test.sql",
     "test:sync-integration": "psql postgresql://postgres:postgres@localhost:54322/postgres -f supabase/tests/sync-integration.test.sql"
   },
   "devDependencies": {
