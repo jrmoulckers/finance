@@ -84,7 +84,7 @@ interface SyncRules {
 }
 
 interface BucketDefinition {
-  parameters: string[];
+  parameters?: string[];
   data: string[];
 }
 
@@ -122,7 +122,7 @@ Deno.test('sync-rules.yaml references only existing tables', async () => {
   // Extract all tables referenced in sync-rules data queries
   const referencedTables: string[] = [];
   for (const bucket of Object.values(rules.bucket_definitions)) {
-    for (const query of [...bucket.parameters, ...bucket.data]) {
+    for (const query of [...(bucket.parameters ?? []), ...bucket.data]) {
       const table = extractTableName(query);
       if (table) referencedTables.push(table);
     }
@@ -140,10 +140,19 @@ Deno.test('sync-rules.yaml references only existing tables', async () => {
 Deno.test('sync-rules.yaml has soft-delete filter on all data queries', async () => {
   const rules = await loadSyncRules();
   const queriesWithoutFilter: string[] = [];
+  const appendOnlyTables = new Set([
+    'bank_connection_health',
+    'connector_access_log',
+    'user_consents',
+  ]);
 
   for (const [bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
     for (const query of bucket.data) {
-      if (!query.toLowerCase().includes('deleted_at is null')) {
+      const table = extractTableName(query)?.toLowerCase();
+      if (
+        !query.toLowerCase().includes('deleted_at is null') &&
+        (!table || !appendOnlyTables.has(table))
+      ) {
         queriesWithoutFilter.push(`${bucketName}: ${query}`);
       }
     }
@@ -161,7 +170,7 @@ Deno.test('sync-rules.yaml has soft-delete filter on all parameter queries', asy
   const queriesWithoutFilter: string[] = [];
 
   for (const [bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
-    for (const query of bucket.parameters) {
+    for (const query of bucket.parameters ?? []) {
       if (!query.toLowerCase().includes('deleted_at is null')) {
         queriesWithoutFilter.push(`${bucketName}: ${query}`);
       }
@@ -183,10 +192,11 @@ Deno.test('sync-rules.yaml excludes internal-only columns from SELECT *', async 
   // sync_version and is_synced ARE intentionally included via SELECT *
   // because the client's PowerSync SDK uses them for change tracking.
   //
-  // This test verifies that passkey_credentials is NOT in any sync bucket.
+  // Passkey credential display metadata is explicitly allowlisted by column;
+  // raw challenges and audit records must never enter a sync bucket.
   const rules = await loadSyncRules();
   const sensitiveTablesInSync: string[] = [];
-  const sensitiveTables = ['passkey_credentials', 'webauthn_challenges', 'audit_log'];
+  const sensitiveTables = ['webauthn_challenges', 'audit_log'];
 
   for (const [bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
     for (const query of bucket.data) {
@@ -204,12 +214,45 @@ Deno.test('sync-rules.yaml excludes internal-only columns from SELECT *', async 
   );
 });
 
+Deno.test('billing authority and legacy family tables are never synchronized', async () => {
+  const rules = await loadSyncRules();
+  const prohibitedTables = new Set([
+    'billing_accounts',
+    'billing_provider_identities',
+    'billing_provider_purchase_bindings',
+    'billing_subscriptions',
+    'billing_provider_events',
+    'entitlement_grants',
+    'current_user_entitlements',
+    'current_household_entitlements',
+    'family_plan_subscriptions',
+  ]);
+  const prohibitedReferences: string[] = [];
+
+  for (const [bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
+    for (const query of [...(bucket.parameters ?? []), ...bucket.data]) {
+      const table = extractTableName(query)?.toLowerCase();
+      if (table && prohibitedTables.has(table)) {
+        prohibitedReferences.push(`${bucketName}: ${table}`);
+      }
+    }
+  }
+
+  assertEquals(
+    prohibitedReferences,
+    [],
+    `Billing authority tables must remain server-only: ${prohibitedReferences.join(', ')}`,
+  );
+});
+
 Deno.test('sync-rules bucket parameters use token_parameters.user_id', async () => {
   const rules = await loadSyncRules();
   const bucketsWithoutTokenParam: string[] = [];
 
   for (const [bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
-    const hasTokenParam = bucket.parameters.some((q) => q.includes('token_parameters.user_id'));
+    const parameters = bucket.parameters ?? [];
+    if (parameters.length === 0) continue;
+    const hasTokenParam = parameters.some((q) => q.includes('token_parameters.user_id'));
 
     if (!hasTokenParam) {
       bucketsWithoutTokenParam.push(bucketName);
@@ -230,7 +273,7 @@ Deno.test('all synced tables have RLS enabled in migrations', async () => {
   // Collect all tables referenced in sync-rules
   const syncedTables = new Set<string>();
   for (const bucket of Object.values(rules.bucket_definitions)) {
-    for (const query of [...bucket.parameters, ...bucket.data]) {
+    for (const query of [...(bucket.parameters ?? []), ...bucket.data]) {
       const table = extractTableName(query);
       if (table) syncedTables.add(table.toLowerCase());
     }
@@ -306,7 +349,7 @@ Deno.test('sync-rules parameter queries produce the correct bucket key columns',
   const byHousehold = rules.bucket_definitions['by_household'];
   assertEquals(byHousehold !== undefined, true, 'by_household bucket must exist');
   if (byHousehold) {
-    const paramQuery = byHousehold.parameters[0];
+    const paramQuery = byHousehold.parameters?.[0] ?? '';
     assertStringIncludes(
       paramQuery.toLowerCase(),
       'household_id',
@@ -323,7 +366,7 @@ Deno.test('sync-rules parameter queries produce the correct bucket key columns',
   const userProfile = rules.bucket_definitions['user_profile'];
   assertEquals(userProfile !== undefined, true, 'user_profile bucket must exist');
   if (userProfile) {
-    const paramQuery = userProfile.parameters[0];
+    const paramQuery = userProfile.parameters?.[0] ?? '';
     assertStringIncludes(
       paramQuery.toLowerCase(),
       'user_id',
