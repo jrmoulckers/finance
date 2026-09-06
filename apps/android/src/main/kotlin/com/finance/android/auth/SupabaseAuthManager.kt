@@ -69,6 +69,15 @@ class SupabaseAuthManager(
     val householdId: StateFlow<SyncId?> = _householdId.asStateFlow()
 
     /**
+     * Household membership asserted by the current auth response.
+     *
+     * Stored sessions do not retain the verified claim, so this remains
+     * `null` after cold start until authentication refreshes the session.
+     */
+    private val _verifiedHouseholdId = MutableStateFlow<SyncId?>(null)
+    val verifiedHouseholdId: StateFlow<SyncId?> = _verifiedHouseholdId.asStateFlow()
+
+    /**
      * In-flight PKCE code verifier for an active OAuth redirect.
      *
      * Stored in memory only — if the process is killed during the OAuth
@@ -123,6 +132,7 @@ class SupabaseAuthManager(
             _currentSession.value = null
             _isAuthenticated.value = false
             _householdId.value = null
+            _verifiedHouseholdId.value = null
             Timber.i("Local session cleared")
         }
     }
@@ -156,6 +166,7 @@ class SupabaseAuthManager(
             _currentSession.value = null
             _isAuthenticated.value = false
             _householdId.value = null
+            _verifiedHouseholdId.value = null
         }
     }
 
@@ -182,6 +193,7 @@ class SupabaseAuthManager(
             _currentSession.value = null
             _isAuthenticated.value = false
             _householdId.value = null
+            _verifiedHouseholdId.value = null
             Timber.i("Account deleted and local session cleared")
         }.onFailure { error ->
             Timber.e(error, "Account deletion failed")
@@ -409,8 +421,9 @@ class SupabaseAuthManager(
      * Parse a Supabase Auth token response into an [AuthSession].
      *
      * Also extracts the household ID from `user.app_metadata.household_id`
-     * (if present) and updates [_householdId]. When the custom claim is
-     * absent, the user's UUID is used as the household scope.
+     * (if present) and updates [_householdId] and [_verifiedHouseholdId].
+     * When the custom claim is absent, only [_householdId] falls back to the
+     * user's UUID.
      *
      * Expected shape:
      * ```json
@@ -453,6 +466,7 @@ class SupabaseAuthManager(
             ?.get("household_id")
             ?.jsonPrimitive
             ?.content
+        _verifiedHouseholdId.value = parsedHouseholdId?.let(::SyncId)
         _householdId.value = SyncId(parsedHouseholdId ?: userId)
 
         return AuthSession(

@@ -4,6 +4,8 @@ package com.finance.android.ui.paywall
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.billing.PurchaseConfirmationPhase
+import com.finance.android.billing.SubscriptionState
 import com.finance.android.billing.SubscriptionManager
 import com.finance.core.entitlement.AccessResult
 import com.finance.core.entitlement.Feature
@@ -13,6 +15,7 @@ import com.finance.core.entitlement.UpgradePrompt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -39,6 +42,7 @@ data class PaywallUiState(
     val tiers: List<TierPricing> = emptyList(),
     val isPurchasing: Boolean = false,
     val isLoading: Boolean = true,
+    val confirmation: PurchaseConfirmationPhase = PurchaseConfirmationPhase.IDLE,
 )
 
 /**
@@ -55,6 +59,7 @@ class PaywallViewModel(
     val uiState: StateFlow<PaywallUiState> = _uiState.asStateFlow()
 
     init {
+        observeSubscriptionState()
         loadPaywall()
     }
 
@@ -99,9 +104,7 @@ class PaywallViewModel(
      */
     fun purchase(tier: Tier) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isPurchasing = true) }
             subscriptionManager.launchPurchase(tier)
-            _uiState.update { it.copy(isPurchasing = false) }
         }
     }
 
@@ -109,11 +112,14 @@ class PaywallViewModel(
      * Restore previous purchases.
      */
     fun restorePurchases() {
-        subscriptionManager.restorePurchases()
+        viewModelScope.launch {
+            subscriptionManager.restorePurchases()
+        }
     }
 
     private fun loadPaywall() {
         viewModelScope.launch {
+            subscriptionManager.refreshEntitlement()
             val currentTier = subscriptionManager.currentTier
             val tierName = FeatureGate.tierDisplayName(currentTier)
 
@@ -185,7 +191,30 @@ class PaywallViewModel(
                 )
             }
 
-            Timber.d("Paywall loaded: current tier=%s", tierName)
+            Timber.d("Paywall loaded")
+        }
+    }
+
+    private fun observeSubscriptionState() {
+        viewModelScope.launch {
+            subscriptionManager.state.collect(::applySubscriptionState)
+        }
+    }
+
+    private fun applySubscriptionState(subscriptionState: SubscriptionState) {
+        val currentTier = subscriptionState.tier
+        _uiState.update { current ->
+            current.copy(
+                currentTier = currentTier,
+                currentTierName = FeatureGate.tierDisplayName(currentTier),
+                tiers =
+                    current.tiers.map { pricing ->
+                        pricing.copy(isCurrentTier = pricing.tier == currentTier)
+                    },
+                isPurchasing = subscriptionState.isPurchasing,
+                isLoading = subscriptionState.isLoading,
+                confirmation = subscriptionState.confirmation,
+            )
         }
     }
 }

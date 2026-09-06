@@ -58,6 +58,7 @@ class StreakViewModelTest {
         override val householdId: StateFlow<SyncId?> = MutableStateFlow(
             id?.let { SyncId(it) },
         ).asStateFlow()
+        override val verifiedHouseholdId: StateFlow<SyncId?> = householdId
     }
 
     // ── Tests ────────────────────────────────────────────────────────────

@@ -2,6 +2,14 @@
 
 package com.finance.android.di
 
+import com.finance.android.BuildConfig
+import com.finance.android.billing.AuthenticatedEntitlementTransport
+import com.finance.android.billing.AuthenticatedHouseholdEligibilityProvider
+import com.finance.android.billing.EligibleHouseholdProvider
+import com.finance.android.billing.FinanceBillingEnvironment
+import com.finance.android.billing.RevenueCatEntitlementTransport
+import com.finance.android.billing.SubscriptionManager
+import com.finance.android.billing.UnavailableRevenueCatPurchaseAdapter
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
@@ -52,6 +60,7 @@ import com.finance.android.ui.expertise.ExpertiseTierViewModel
 import com.finance.android.ui.learning.LearningPathViewModel
 import com.finance.android.ui.learning.LearningProgressRepository
 import com.finance.android.ui.nlp.NlpTransactionViewModel
+import com.finance.android.ui.paywall.PaywallViewModel
 import com.finance.android.ui.streak.StreakRepository
 import com.finance.android.ui.streak.StreakViewModel
 import com.finance.android.ui.streak.TransactionBackedStreakRepository
@@ -114,6 +123,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -139,6 +149,33 @@ val appModule = module {
      */
     single {
         MetricsCollector(consentProvider = { false })
+    }
+
+    // ── Billing entitlement confirmation ───────────────────────────
+
+    single<EligibleHouseholdProvider> {
+        AuthenticatedHouseholdEligibilityProvider(get())
+    }
+    single<AuthenticatedEntitlementTransport> {
+        RevenueCatEntitlementTransport(
+            supabaseUrl = BuildConfig.SUPABASE_URL,
+            authManager = get(),
+            httpClient = get(named("auth")),
+        )
+    }
+    single {
+        SubscriptionManager(
+            purchaseAdapter = UnavailableRevenueCatPurchaseAdapter,
+            transport = get(),
+            eligibleHouseholdProvider = get(),
+            appId = BuildConfig.REVENUECAT_APP_ID,
+            environment =
+                if (BuildConfig.DEBUG) {
+                    FinanceBillingEnvironment.SANDBOX
+                } else {
+                    FinanceBillingEnvironment.PRODUCTION
+                },
+        )
     }
 
     // ── Repositories ────────────────────────────────────────────────
@@ -360,6 +397,7 @@ val appModule = module {
 
     /** Multi-currency picker, conversion, and transaction currency support (#1130). */
     viewModelOf(::CurrencyViewModel)
+    viewModelOf(::PaywallViewModel)
 
     // ── Wave 6 (Sprints 24-33) ──────────────────────────────────────
 
