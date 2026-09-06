@@ -24,6 +24,7 @@ class MinimizedEntitlementContractTest {
 
     private fun payload(
         contractVersion: String = "1",
+        catalogVersion: String = "1",
         scope: String = "user",
         tier: String = "free",
         userTier: String = "free",
@@ -39,11 +40,10 @@ class MinimizedEntitlementContractTest {
         projectionVersion: Long = 3,
         downgradePending: Boolean = false,
         downgradeEffectiveAt: String = "null",
-        downgradeAllowance: Long = 0,
     ): String = """
         {
           "contract_version": $contractVersion,
-          "catalog_version": 1,
+          "catalog_version": $catalogVersion,
           "entitlement": {
             "scope": "$scope",
             "tier": "$tier",
@@ -66,8 +66,7 @@ class MinimizedEntitlementContractTest {
             },
             "downgrade": {
               "pending": $downgradePending,
-              "effective_at": ${quoteOrNull(downgradeEffectiveAt)},
-              "bank_connection_allowance": $downgradeAllowance
+              "effective_at": ${quoteOrNull(downgradeEffectiveAt)}
             }
           }
         }
@@ -159,7 +158,19 @@ class MinimizedEntitlementContractTest {
         assertEquals(2L, entitlement.bankConnections.baseAllowance)
         assertEquals(3L, entitlement.bankConnections.addonAllowance)
         assertEquals(expiry, entitlement.downgrade.effectiveAt)
-        assertEquals(0L, entitlement.downgrade.bankConnectionAllowance)
+    }
+
+    @Test
+    fun `a pending downgrade states its boundary and no post-boundary allowance`() {
+        val envelope = decodeAvailable(premiumHouseholdPayload())
+        assertTrue(envelope.entitlement.downgrade.pending)
+        // The boundary is the server-issued bound; nothing claims what capacity
+        // survives it, because a Premium base or a live sponsorship may.
+        assertEquals(expiry, envelope.entitlement.downgrade.effectiveAt)
+        assertFalse(
+            MinimizedEntitlementCodec.encode(envelope).contains("bank_connection_allowance"),
+            "the contract must not state a post-boundary allowance",
+        )
     }
 
     @Test
@@ -174,12 +185,28 @@ class MinimizedEntitlementContractTest {
     }
 
     @Test
-    fun `every catalog tier maps to the feature-gate tier`() {
-        assertEquals(Tier.FREE, EntitlementTier.FREE.toFeatureGateTier())
-        assertEquals(Tier.PLUS, EntitlementTier.PLUS.toFeatureGateTier())
-        assertEquals(Tier.PREMIUM, EntitlementTier.PREMIUM.toFeatureGateTier())
-        assertEquals(Tier.FAMILY, EntitlementTier.FAMILY.toFeatureGateTier())
-        assertNull(EntitlementTier.UNKNOWN.toFeatureGateTier())
+    fun `the minimized contract offers no bridge into the legacy feature matrix`() {
+        // Catalog version 1 states that privacy, encryption, accessibility,
+        // data export, data deletion, and access to existing financial data are
+        // never paid entitlements. The legacy FeatureGate matrix does gate
+        // export history and account count by tier, so this contract
+        // intentionally provides no conversion into it: its only outputs are a
+        // display tier and a bank-connection capacity.
+        val envelope = decodeAvailable(familyPayload())
+        assertEquals(
+            EntitlementTier.FAMILY,
+            EntitlementDisplayPolicy.displayTier(envelope, serverTime),
+        )
+        assertEquals(
+            4L,
+            EntitlementDisplayPolicy.displayBankConnectionAllowance(envelope, serverTime),
+        )
+        // Failing closed reduces only those two outputs.
+        val unavailable = EntitlementResult.Unavailable(EntitlementUnavailableReason.OFFLINE)
+        assertEquals(
+            EntitlementTier.FREE,
+            EntitlementDisplayPolicy.displayTier(unavailable, serverTime),
+        )
     }
 
     @Test
@@ -268,6 +295,32 @@ class MinimizedEntitlementContractTest {
     }
 
     @Test
+    fun `an unsupported catalog version is refused rather than read with v1 rules`() {
+        // The capacity checks below encode catalog version 1 exactly, so a
+        // later catalog must not be interpreted with them.
+        assertUnavailable(
+            payload(catalogVersion = "2"),
+            EntitlementUnavailableReason.UNSUPPORTED_CATALOG_VERSION,
+        )
+        assertUnavailable(
+            payload(
+                catalogVersion = "2",
+                scope = "household",
+                tier = "family",
+                householdTier = "family",
+                accessState = "granted",
+                isFamilyBound = true,
+                allowance = 4,
+                baseAllowance = 4,
+                expiresAt = expiry.toString(),
+                downgradePending = true,
+                downgradeEffectiveAt = expiry.toString(),
+            ),
+            EntitlementUnavailableReason.UNSUPPORTED_CATALOG_VERSION,
+        )
+    }
+
+    @Test
     fun `unknown enum values decode without throwing and then fail closed`() {
         assertUnavailable(payload(tier = "enterprise"), EntitlementUnavailableReason.MALFORMED)
         assertUnavailable(payload(scope = "org"), EntitlementUnavailableReason.MALFORMED)
@@ -349,6 +402,26 @@ class MinimizedEntitlementContractTest {
     }
 
     @Test
+    fun `Family capacity is fixed at exactly four and never accrues add-ons`() {
+        // Catalog version 1 makes add-ons Premium-only, so an over-allocated
+        // Family household is not a bigger entitlement — it is unreadable.
+        assertUnavailable(
+            familyPayload()
+                .replace("\"allowance\": 4", "\"allowance\": 6")
+                .replace("\"addon_allowance\": 0", "\"addon_allowance\": 2"),
+            EntitlementUnavailableReason.MALFORMED,
+        )
+        assertUnavailable(
+            familyPayload().replace("\"allowance\": 4", "\"allowance\": 3"),
+            EntitlementUnavailableReason.MALFORMED,
+        )
+        assertUnavailable(
+            familyPayload().replace("\"addon_allowance\": 0", "\"addon_allowance\": 1"),
+            EntitlementUnavailableReason.MALFORMED,
+        )
+    }
+
+    @Test
     fun `a granted state past its own server time is refused`() {
         assertUnavailable(
             payload(
@@ -389,16 +462,34 @@ class MinimizedEntitlementContractTest {
     }
 
     @Test
-    fun `a pending downgrade that does not reduce anything is refused`() {
+    fun `a pending downgrade that does not name its boundary is refused`() {
+        // Pending must name the server-issued bound exactly, and a non-pending
+        // downgrade must name nothing at all.
         assertUnavailable(
-            premiumHouseholdPayload().replace(
-                "\"bank_connection_allowance\": 0",
-                "\"bank_connection_allowance\": 5",
+            payload(
+                tier = "premium",
+                userTier = "premium",
+                householdTier = "premium",
+                accessState = "granted",
+                isPremiumSponsor = true,
+                allowance = 5,
+                baseAllowance = 2,
+                addonAllowance = 3,
+                expiresAt = expiry.toString(),
+                downgradePending = true,
+                downgradeEffectiveAt = "null",
             ),
             EntitlementUnavailableReason.MALFORMED,
         )
         assertUnavailable(
             premiumHouseholdPayload().replace("\"pending\": true", "\"pending\": false"),
+            EntitlementUnavailableReason.MALFORMED,
+        )
+        assertUnavailable(
+            premiumHouseholdPayload().replace(
+                "\"effective_at\": \"$expiry\"",
+                "\"effective_at\": \"2099-01-01T00:00:00Z\"",
+            ),
             EntitlementUnavailableReason.MALFORMED,
         )
     }

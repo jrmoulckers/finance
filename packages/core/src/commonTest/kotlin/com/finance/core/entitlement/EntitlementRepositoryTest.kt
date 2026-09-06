@@ -58,8 +58,7 @@ class EntitlementRepositoryTest {
             },
             "downgrade": {
               "pending": true,
-              "effective_at": "2033-06-18T03:33:20Z",
-              "bank_connection_allowance": 0
+              "effective_at": "2033-06-18T03:33:20Z"
             }
           }
         }

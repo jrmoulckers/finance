@@ -89,7 +89,7 @@ Deno.test('entitlements-v1 — an unauthenticated read is refused before any loo
   const handler = createEntitlementsHandler({
     authenticate: () =>
       Promise.reject(
-        new Response(JSON.stringify({ error: 'Authentication required' }), {
+        new Response(JSON.stringify({ error: 'Authentication required', trace: 'internal' }), {
           status: 401,
         }),
       ),
@@ -101,8 +101,16 @@ Deno.test('entitlements-v1 — an unauthenticated read is refused before any loo
       },
     },
   });
-  const response = await handler(new Request(BASE_URL));
+  const response = await handler(new Request(BASE_URL, { headers: { Origin: 'https://x.test' } }));
+  const body = await response.text();
   assertEquals(response.status, 401);
+  // The documented envelope and headers, not whatever the auth layer threw.
+  assertEquals(JSON.parse(body), { error: 'Authentication required', code: 'unauthenticated' });
+  assertEquals(response.headers.get('Content-Type'), 'application/json');
+  assertEquals(response.headers.get('Cache-Control'), 'no-store');
+  assertEquals(response.headers.get('Vary'), 'Origin');
+  assertEquals(response.headers.has('Access-Control-Allow-Origin'), true);
+  assertEquals(body.includes('trace'), false);
   assertEquals(recorded.householdIds.length, 0);
 });
 
@@ -260,7 +268,6 @@ Deno.test('entitlements-v1 — the served envelope is exactly the minimized cont
     'entitlement.bank_connections.allowance',
     'entitlement.bank_connections.base_allowance',
     'entitlement.downgrade',
-    'entitlement.downgrade.bank_connection_allowance',
     'entitlement.downgrade.effective_at',
     'entitlement.downgrade.pending',
     'entitlement.household_tier',

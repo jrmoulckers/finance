@@ -38,6 +38,12 @@ enum class EntitlementUnavailableReason {
     /** The server answered with a contract version this build cannot read. */
     UNSUPPORTED_CONTRACT_VERSION,
 
+    /**
+     * The server answered against a commercial catalog version this build
+     * does not implement, so its capacity semantics cannot be applied.
+     */
+    UNSUPPORTED_CATALOG_VERSION,
+
     /** The projection could not be reached at all. */
     OFFLINE,
 }

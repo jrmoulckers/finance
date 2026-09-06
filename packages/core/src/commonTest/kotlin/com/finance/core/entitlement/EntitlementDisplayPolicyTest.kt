@@ -52,7 +52,7 @@ class EntitlementDisplayPolicyTest {
                 serverTime = serverTime,
                 projectionVersion = 7,
             ),
-            downgrade = PendingDowngrade(downgradePending, downgradeEffectiveAt, 0),
+            downgrade = PendingDowngrade(downgradePending, downgradeEffectiveAt),
         ),
     )
 

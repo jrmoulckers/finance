@@ -46,7 +46,6 @@ Deno.test('contract — Free resolves to a non-entitled user scope', () => {
   assertEquals(envelope.entitlement.bank_connections.allowance, 0);
   assertEquals(envelope.entitlement.downgrade.pending, false);
   assertEquals(envelope.entitlement.downgrade.effective_at, null);
-  assertEquals(envelope.entitlement.downgrade.bank_connection_allowance, 0);
 });
 
 Deno.test('contract — Plus is granted through the server-issued validity bound', () => {
@@ -88,8 +87,50 @@ Deno.test('contract — Premium add-ons are reported above the catalog base', ()
   assertEquals(envelope.entitlement.downgrade, {
     pending: true,
     effective_at: '2033-06-18T03:33:20.000Z',
-    bank_connection_allowance: 0,
   });
+});
+
+Deno.test('contract — an expiring add-on states the boundary, never a next allowance', () => {
+  // The projection's expiry is already the earliest of the base and add-on
+  // bounds, so this is the instant the add-on capacity stops. Premium's base
+  // of two survives it, which is exactly why no post-boundary allowance is
+  // stated.
+  const envelope = toEnvelope(
+    parsed(
+      {
+        user_display_tier: 'premium',
+        household_display_tier: 'premium',
+        bank_connection_allowance: 5,
+        is_premium_sponsor: true,
+        expires_at: '2033-05-25T03:33:20+00:00',
+      },
+      true,
+    ),
+  );
+  assertEquals(envelope.entitlement.downgrade, {
+    pending: true,
+    effective_at: '2033-05-25T03:33:20.000Z',
+  });
+  assertEquals(Object.hasOwn(envelope.entitlement.downgrade, 'bank_connection_allowance'), false);
+});
+
+Deno.test('contract — an expiring Family bound states no retained allowance', () => {
+  // A live Premium sponsorship can survive a Family expiry and keep capacity,
+  // so inferring zero here would be wrong.
+  const envelope = toEnvelope(
+    parsed(
+      {
+        household_display_tier: 'family',
+        bank_connection_allowance: 4,
+        is_family_bound: true,
+        expires_at: '2033-06-18T03:33:20+00:00',
+      },
+      true,
+    ),
+  );
+  assertEquals(envelope.entitlement.downgrade.pending, true);
+  assertEquals(envelope.entitlement.downgrade.effective_at, '2033-06-18T03:33:20.000Z');
+  assertEquals(Object.hasOwn(envelope.entitlement.downgrade, 'bank_connection_allowance'), false);
 });
 
 Deno.test('contract — a sponsored Free member reports the household subject', () => {
@@ -131,7 +172,7 @@ Deno.test('contract — a passed validity bound lapses and never authorizes', ()
   );
   assertEquals(envelope.entitlement.access_state, 'lapsed');
   assertEquals(envelope.entitlement.downgrade.pending, false);
-  assertEquals(envelope.entitlement.downgrade.bank_connection_allowance, 0);
+  assertEquals(envelope.entitlement.downgrade.effective_at, null);
 });
 
 Deno.test('contract — contract version 1 never discloses provider lifecycle', () => {
@@ -180,31 +221,68 @@ Deno.test('contract — a projection scope mismatch is rejected in both directio
   );
 });
 
-Deno.test('contract — household allowances below the catalog base are rejected', () => {
-  assertEquals(
-    parseProjectionRow(
+Deno.test('contract — a household allowance outside its catalog capacity is rejected', () => {
+  const overAllocated: Array<[string, unknown]> = [
+    // Family is fixed at exactly four; it never accrues add-ons.
+    [
+      'family above the catalog capacity',
+      row({
+        household_display_tier: 'family',
+        bank_connection_allowance: 5,
+        expires_at: '2033-06-18T03:33:20+00:00',
+      }),
+    ],
+    [
+      'family below the catalog capacity',
       row({
         household_display_tier: 'family',
         bank_connection_allowance: 3,
         expires_at: '2033-06-18T03:33:20+00:00',
       }),
-      true,
-    ),
-    null,
-  );
-  assertEquals(
-    parseProjectionRow(
+    ],
+    [
+      'premium below its catalog base',
       row({
         household_display_tier: 'premium',
         bank_connection_allowance: 1,
         expires_at: '2033-06-18T03:33:20+00:00',
       }),
+    ],
+    [
+      'free household with capacity',
+      row({ household_display_tier: 'free', bank_connection_allowance: 2 }),
+    ],
+  ];
+  for (const [label, value] of overAllocated) {
+    assertEquals(parseProjectionRow(value, true), null, label);
+  }
+});
+
+Deno.test('contract — only Premium reports add-on capacity above its base', () => {
+  const family = toEnvelope(
+    parsed(
+      {
+        household_display_tier: 'family',
+        bank_connection_allowance: 4,
+        is_family_bound: true,
+        expires_at: '2033-06-18T03:33:20+00:00',
+      },
       true,
     ),
-    null,
   );
-  assertEquals(
-    parseProjectionRow(row({ household_display_tier: 'free', bank_connection_allowance: 2 }), true),
-    null,
+  assertEquals(family.entitlement.bank_connections.addon_allowance, 0);
+
+  const premium = toEnvelope(
+    parsed(
+      {
+        user_display_tier: 'premium',
+        household_display_tier: 'premium',
+        bank_connection_allowance: 7,
+        is_premium_sponsor: true,
+        expires_at: '2033-06-18T03:33:20+00:00',
+      },
+      true,
+    ),
   );
+  assertEquals(premium.entitlement.bank_connections.addon_allowance, 5);
 });

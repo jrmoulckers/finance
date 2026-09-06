@@ -886,12 +886,17 @@ components:
           type: integer
           format: int64
           minimum: 0
-          description: Catalog base for the effective household tier (Free 0, Premium 2, Family 4).
+          description: >-
+            Catalog base for the effective household tier. Catalog version 1
+            fixes these exactly: Free 0, Premium 2, Family 4.
         addon_allowance:
           type: integer
           format: int64
           minimum: 0
-          description: Allowance above the catalog base, i.e. verified add-on capacity.
+          description: >-
+            Verified add-on capacity above the catalog base. Add-ons are
+            Premium-only in catalog version 1, so this is always zero for any
+            other tier.
 
     EntitlementValidity:
       type: object
@@ -917,22 +922,22 @@ components:
     EntitlementPendingDowngrade:
       type: object
       additionalProperties: false
-      required: [pending, effective_at, bank_connection_allowance]
+      required: [pending, effective_at]
       properties:
         pending:
           type: boolean
-          description: A reduction is scheduled when the validity bound passes unrenewed.
+          description: A reduction boundary exists at `effective_at`.
         effective_at:
           type: string
           format: date-time
           nullable: true
-        bank_connection_allowance:
-          type: integer
-          format: int64
-          minimum: 0
           description: >-
-            Allowance that applies after the bound without strictly newer
-            verified provider evidence.
+            The earliest instant at which the current tier or allowance stops
+            being guaranteed. The contract states no post-boundary allowance:
+            an expiring add-on leaves the Premium base in place and an expiring
+            Family purchase over a live Premium sponsorship leaves the
+            sponsor's allowance in place, so clients re-read the projection at
+            or after this instant instead of inferring one.
 
     MinimizedEntitlement:
       type: object

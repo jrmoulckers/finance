@@ -62,6 +62,12 @@ internal open class WireEnumSerializer<T : Enum<T>>(
  *
  * Free, Plus, Premium, and Family are the complete catalog version 1 plan set.
  * [UNKNOWN] means the server named a tier this build does not understand.
+ *
+ * This type intentionally offers **no** conversion into the legacy
+ * [FeatureGate] matrix. That matrix gates data export, full history, and
+ * account count, which catalog version 1 states are never paid entitlements,
+ * so bridging the two would let the minimized contract silently withdraw a
+ * guaranteed capability.
  */
 @Serializable(with = EntitlementTierSerializer::class)
 enum class EntitlementTier(val wireValue: String) {
@@ -80,15 +86,6 @@ enum class EntitlementTier(val wireValue: String) {
             PREMIUM -> 2
             FAMILY -> 3
         }
-
-    /** Map to the feature-gate [Tier], or `null` when the tier is not understood. */
-    fun toFeatureGateTier(): Tier? = when (this) {
-        FREE -> Tier.FREE
-        PLUS -> Tier.PLUS
-        PREMIUM -> Tier.PREMIUM
-        FAMILY -> Tier.FAMILY
-        UNKNOWN -> null
-    }
 }
 
 internal object EntitlementTierSerializer : WireEnumSerializer<EntitlementTier>(
@@ -240,10 +237,19 @@ data class EntitlementValidity(
 /** Reduction that takes effect when the validity bound passes unrenewed. */
 @Serializable
 data class PendingDowngrade(
+    /** A reduction boundary exists at [effectiveAt]. */
     val pending: Boolean,
+    /**
+     * The earliest instant at which the current tier or allowance stops being
+     * guaranteed.
+     *
+     * The contract deliberately states no post-boundary allowance: an
+     * expiring add-on leaves the Premium base in place and an expiring Family
+     * purchase over a live Premium sponsorship leaves the sponsor's allowance
+     * in place, so any inferred value would be wrong. Clients re-read the
+     * projection at or after this instant.
+     */
     @SerialName("effective_at") val effectiveAt: Instant? = null,
-    /** Allowance that applies after [effectiveAt] without newer verified evidence. */
-    @SerialName("bank_connection_allowance") val bankConnectionAllowance: Long,
 )
 
 /** The complete minimized entitlement the server discloses. */
@@ -307,6 +313,14 @@ object MinimizedEntitlementCodec {
                 EntitlementUnavailableReason.UNSUPPORTED_CONTRACT_VERSION,
             )
         }
+        // The checks below enforce catalog version 1 semantics — fixed
+        // per-tier capacity and Premium-only add-ons — so a projection
+        // derived from a later catalog must not be interpreted with them.
+        if (envelope.catalogVersion != ENTITLEMENT_CATALOG_VERSION) {
+            return EntitlementResult.Unavailable(
+                EntitlementUnavailableReason.UNSUPPORTED_CATALOG_VERSION,
+            )
+        }
         val entitlement = envelope.entitlement
         val malformed = EntitlementResult.Unavailable(EntitlementUnavailableReason.MALFORMED)
 
@@ -352,14 +366,17 @@ object MinimizedEntitlementCodec {
         val bank = entitlement.bankConnections
         if (bank.allowance < 0 || bank.baseAllowance < 0 || bank.addonAllowance < 0) return false
         val householdTier = entitlement.householdTier
-        // Only a Premium-sponsored or Family household carries capacity, and
-        // add-ons are Premium-only in catalog version 1.
+        // Catalog version 1 fixes each household tier's capacity exactly: Free
+        // carries none, Family carries four, and only Premium accrues verified
+        // add-ons above its base of two.
         if (householdTier == null || householdTier == EntitlementTier.FREE) {
             return bank.allowance == 0L && bank.baseAllowance == 0L && bank.addonAllowance == 0L
         }
-        if (householdTier == EntitlementTier.FAMILY && bank.addonAllowance != 0L) return false
         val base = EntitlementCatalog.baseBankConnectionAllowance(householdTier)
         if (bank.baseAllowance != base) return false
+        if (householdTier == EntitlementTier.FAMILY) {
+            return bank.allowance == base && bank.addonAllowance == 0L
+        }
         if (bank.allowance < base) return false
         return bank.addonAllowance == bank.allowance - bank.baseAllowance
     }
@@ -389,11 +406,9 @@ object MinimizedEntitlementCodec {
 
     private fun isConsistentDowngrade(entitlement: MinimizedEntitlement): Boolean {
         val downgrade = entitlement.downgrade
-        if (downgrade.bankConnectionAllowance < 0) return false
         return if (downgrade.pending) {
             downgrade.effectiveAt != null &&
-                downgrade.effectiveAt == entitlement.validity.expiresAt &&
-                downgrade.bankConnectionAllowance < entitlement.bankConnections.allowance
+                downgrade.effectiveAt == entitlement.validity.expiresAt
         } else {
             downgrade.effectiveAt == null
         }

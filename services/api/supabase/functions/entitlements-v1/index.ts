@@ -89,8 +89,11 @@ export function createEntitlementsHandler(deps: HandlerDependencies = {}) {
     let user;
     try {
       user = await authenticate(request);
-    } catch (response) {
-      return response as Response;
+    } catch {
+      // The shared helper throws its own bare Response. Normalize it so every
+      // failure carries the documented code, CORS headers, and no-store, and
+      // so nothing from the auth layer leaks into the body.
+      return failure(request, 401, 'unauthenticated', 'Authentication required');
     }
 
     let householdId: string | null;

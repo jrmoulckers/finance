@@ -108,9 +108,23 @@ export interface EntitlementValidity {
 
 /** Reduction that takes effect when the validity bound passes unrenewed. */
 export interface PendingDowngrade {
+  /** A reduction boundary exists at [effective_at]. */
   pending: boolean;
+  /**
+   * The earliest instant at which the current tier or allowance stops being
+   * guaranteed. The projection's `expires_at` is already the earliest of the
+   * purchaser bound, the household base bound, and any add-on bound, so it is
+   * exactly that boundary.
+   *
+   * The contract deliberately does **not** state the allowance that applies
+   * after this instant. The minimized projection carries no next-allowance,
+   * and inferring one is wrong whenever a surviving grant keeps capacity —
+   * an expiring add-on leaves the Premium base in place, and an expiring
+   * Family purchase over a live Premium sponsorship leaves the sponsor's
+   * allowance in place. Clients re-read the projection at or after this
+   * instant instead.
+   */
   effective_at: string | null;
-  bank_connection_allowance: number;
 }
 
 /** The complete minimized entitlement a client receives. */
@@ -220,13 +234,16 @@ export function parseProjectionRow(
   // Catalog invariants. A projection that violates them is not understood and
   // must not authorize anything.
   if (resolvedHouseholdTier === null && allowance !== 0) return null;
-  if (
-    resolvedHouseholdTier !== null &&
-    allowance < HOUSEHOLD_BASE_ALLOWANCE[resolvedHouseholdTier]
-  ) {
+  // Catalog version 1 fixes each household tier's capacity exactly: Free
+  // carries none, Family carries four, and only Premium accrues verified
+  // add-ons above its base of two.
+  if (resolvedHouseholdTier === 'free' && allowance !== 0) return null;
+  if (resolvedHouseholdTier === 'family' && allowance !== HOUSEHOLD_BASE_ALLOWANCE.family) {
     return null;
   }
-  if (resolvedHouseholdTier === 'free' && allowance !== 0) return null;
+  if (resolvedHouseholdTier === 'premium' && allowance < HOUSEHOLD_BASE_ALLOWANCE.premium) {
+    return null;
+  }
   if (!householdRequested && (row.is_premium_sponsor || row.is_family_bound)) return null;
 
   const effectiveTier = resolveEffectiveTier(
@@ -267,6 +284,12 @@ export function toEnvelope(row: EntitlementProjectionRow): EntitlementEnvelope {
 
   const base =
     row.household_display_tier === null ? 0 : HOUSEHOLD_BASE_ALLOWANCE[row.household_display_tier];
+  // Only Premium accrues verified add-ons in catalog version 1, so no other
+  // tier can report capacity above its base.
+  const addon =
+    row.household_display_tier === 'premium'
+      ? Math.max(0, row.bank_connection_allowance - base)
+      : 0;
   const downgradePending = accessState === 'granted' && row.bank_connection_allowance > 0;
 
   return {
@@ -285,7 +308,7 @@ export function toEnvelope(row: EntitlementProjectionRow): EntitlementEnvelope {
       bank_connections: {
         allowance: row.bank_connection_allowance,
         base_allowance: base,
-        addon_allowance: Math.max(0, row.bank_connection_allowance - base),
+        addon_allowance: addon,
       },
       validity: {
         effective_at: row.effective_at,
@@ -295,10 +318,10 @@ export function toEnvelope(row: EntitlementProjectionRow): EntitlementEnvelope {
       },
       downgrade: {
         pending: downgradePending,
+        // The earliest instant the current capacity stops being guaranteed.
+        // The allowance that survives it is not inferable from the minimized
+        // projection and is deliberately not stated.
         effective_at: downgradePending ? row.expires_at : null,
-        // Without strictly newer verified provider evidence the household
-        // returns to the catalog Free allowance.
-        bank_connection_allowance: 0,
       },
     },
   };

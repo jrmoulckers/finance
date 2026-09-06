@@ -388,6 +388,47 @@ SELECT pg_temp.assert_true(
 );
 SELECT set_config('request.jwt.claim.sub', '', true);
 
+-- The projection's validity bound is the *earliest* reduction boundary, which
+-- is why the API reports it as the pending-downgrade instant and never claims
+-- the allowance that survives it. Add a shorter-lived add-on and confirm the
+-- bound moves to the add-on expiry while Premium's base capacity stays.
+SELECT public.apply_billing_provider_event(
+    public.record_billing_provider_event(
+        '44030000-0000-4000-b000-000000000002',
+        '44030000-0000-4000-c000-000000000002',
+        'stripe',
+        'sandbox',
+        'evt_4403_addon_short',
+        'sub_4403_2',
+        'si_4403_addon_short',
+        now(),
+        now() - interval '20 minutes',
+        3,
+        'activated',
+        'active',
+        'premium_bank_addon',
+        NULL,
+        1,
+        now() + interval '3 days',
+        NULL,
+        NULL,
+        NULL,
+        false
+    )
+);
+
+SELECT set_config('request.jwt.claim.sub', '44030000-0000-4000-8000-000000000002', true);
+SELECT pg_temp.assert_true(
+    (
+        SELECT bank_connection_allowance = 5
+           AND expires_at < now() + interval '4 days'
+           AND expires_at > server_time
+        FROM public.get_my_entitlements('44030000-0000-4000-9000-000000000001')
+    ),
+    'the validity bound must move to the earliest expiring add-on, not the base plan'
+);
+SELECT set_config('request.jwt.claim.sub', '', true);
+
 -- A Free member of that household inherits the household subject and never
 -- sees the sponsor as their own billing state.
 SELECT set_config('request.jwt.claim.sub', '44030000-0000-4000-8000-000000000021', true);
@@ -395,7 +436,7 @@ SELECT pg_temp.assert_true(
     (
         SELECT user_display_tier = 'free'
            AND household_display_tier = 'premium'
-           AND bank_connection_allowance = 4
+           AND bank_connection_allowance = 5
            AND NOT is_premium_sponsor
            AND NOT is_family_bound
         FROM public.get_my_entitlements('44030000-0000-4000-9000-000000000001')
