@@ -56,26 +56,11 @@ interface SnapshotEventShape {
   type: string;
   cancelReason?: string;
   terminalAt: 'period_start' | 'period_end' | null;
-  graceEndsAtPeriodEnd?: boolean;
 }
 
 function eventShape(statusValue: unknown, givesAccess: unknown): SnapshotEventShape | null {
   const status = String(statusValue ?? '').toLowerCase();
-  if (
-    [
-      'trialing',
-      'active',
-      'cancelled',
-      'canceled',
-      'in_grace_period',
-      'in_billing_retry',
-      'paused',
-      'expired',
-      'refunded',
-      'chargeback',
-    ].includes(status) &&
-    typeof givesAccess !== 'boolean'
-  ) {
+  if (typeof givesAccess !== 'boolean') {
     throw new RevenueCatUnavailableError();
   }
 
@@ -98,13 +83,8 @@ function eventShape(statusValue: unknown, givesAccess: unknown): SnapshotEventSh
           }
         : { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'in_grace_period':
-      return givesAccess
-        ? {
-            type: 'BILLING_ISSUE',
-            terminalAt: null,
-            graceEndsAtPeriodEnd: true,
-          }
-        : { type: 'EXPIRATION', terminalAt: 'period_start' };
+      if (givesAccess) throw new RevenueCatUnavailableError();
+      return { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'in_billing_retry':
       return { type: 'EXPIRATION', terminalAt: 'period_start' };
     case 'paused':
@@ -126,7 +106,8 @@ function eventShape(statusValue: unknown, givesAccess: unknown): SnapshotEventSh
         terminalAt: 'period_end',
       };
     default:
-      return null;
+      if (givesAccess) throw new RevenueCatUnavailableError();
+      return { type: 'EXPIRATION', terminalAt: 'period_start' };
   }
 }
 
@@ -156,15 +137,15 @@ async function snapshotEvent(
     typeof snapshot.product_id === 'string' ? config.products[snapshot.product_id] : undefined;
   const appId =
     store && product && config.apps[product.appId]?.store === store ? product.appId : null;
+  if (!store || !appId) return null;
   if (
     typeof snapshot.id !== 'string' ||
     typeof snapshot.customer_id !== 'string' ||
     typeof snapshot.product_id !== 'string' ||
     typeof snapshot.environment !== 'string' ||
-    !store ||
-    !appId
+    typeof snapshot.store_subscription_identifier !== 'string'
   ) {
-    return null;
+    throw new RevenueCatUnavailableError();
   }
   if (!periodStart || (!periodEnd && shape.type !== 'EXPIRATION')) {
     throw new RevenueCatUnavailableError();
@@ -177,10 +158,6 @@ async function snapshotEvent(
         : null;
   if (shape.terminalAt && !terminalAt) throw new RevenueCatUnavailableError();
   const effectiveAt = terminalAt ?? periodStart;
-  const accessEnd = shape.graceEndsAtPeriodEnd ? periodEnd : null;
-  if (shape.graceEndsAtPeriodEnd && !accessEnd) {
-    throw new RevenueCatUnavailableError();
-  }
 
   return {
     id: await stableReconciliationId(snapshot),
@@ -195,11 +172,11 @@ async function snapshotEvent(
     period_type: String(snapshot.status).toLowerCase() === 'trialing' ? 'TRIAL' : 'NORMAL',
     purchased_at_ms: periodStart,
     expiration_at_ms: shape.type === 'EXPIRATION' ? terminalAt : periodEnd,
-    grace_period_expiration_at_ms: accessEnd,
+    grace_period_expiration_at_ms: null,
     cancel_reason: shape.cancelReason,
     environment: snapshot.environment,
     store,
-    original_transaction_id: snapshot.id,
+    original_transaction_id: snapshot.store_subscription_identifier,
   };
 }
 

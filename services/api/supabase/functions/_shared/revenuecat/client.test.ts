@@ -3,7 +3,13 @@
 import { assertEquals, assertRejects } from 'std/testing/asserts.ts';
 import { RevenueCatClient, RevenueCatUnavailableError } from './client.ts';
 import { normalizeRevenueCatEvent } from './normalization.ts';
-import { TEST_REVENUECAT_CONFIG, TEST_USER_ID } from './test-support.ts';
+import { confirmRevenueCatPurchase, ingestRevenueCatEvents } from './service.ts';
+import {
+  MemoryRevenueCatStore,
+  TEST_REVENUECAT_CONFIG,
+  TEST_USER_ID,
+  testRevenueCatEvent,
+} from './test-support.ts';
 
 const PERIOD_START = Date.parse('2026-09-01T00:00:00Z');
 const PERIOD_END = Date.parse('2026-10-01T00:00:00Z');
@@ -104,6 +110,8 @@ Deno.test(
     );
     assertEquals(first[0].event_timestamp_ms, PERIOD_START);
     assertEquals(first[1].event_timestamp_ms, PERIOD_END + 1);
+    assertEquals(first[0].original_transaction_id, 'store-subscription-synthetic');
+    assertEquals(first[1].original_transaction_id, 'store-terminal-synthetic');
     assertEquals(
       first.map((event) => event.id),
       second.map((event) => event.id),
@@ -187,12 +195,37 @@ Deno.test('RevenueCat v2 paused access is paid-through only when explicitly gran
   }
 });
 
-Deno.test('RevenueCat v2 grace uses period end while billing retry denies access', async () => {
-  for (const [status, givesAccess, expectedLifecycle] of [
-    ['in_grace_period', true, 'past_due_grace'],
-    ['in_grace_period', false, 'expired'],
-    ['in_billing_retry', true, 'expired'],
-    ['in_billing_retry', false, 'expired'],
+Deno.test('RevenueCat v2 grace never invents a bound and billing retry denies access', async () => {
+  const graceClient = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+    Promise.resolve(
+      Response.json({
+        items: [subscription({ status: 'in_grace_period', gives_access: true })],
+        next_page: null,
+        object: 'list',
+        url: '/subscriptions',
+      }),
+    ),
+  );
+  const graceStore = new MemoryRevenueCatStore();
+  await assertRejects(
+    () =>
+      confirmRevenueCatPurchase(
+        TEST_USER_ID,
+        null,
+        'app_apple',
+        'sandbox',
+        TEST_REVENUECAT_CONFIG,
+        graceClient,
+        graceStore,
+      ),
+    RevenueCatUnavailableError,
+  );
+  assertEquals(graceStore.appended.length, 0);
+
+  for (const [status, givesAccess] of [
+    ['in_grace_period', false],
+    ['in_billing_retry', true],
+    ['in_billing_retry', false],
   ] as const) {
     const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
       Promise.resolve(
@@ -206,14 +239,9 @@ Deno.test('RevenueCat v2 grace uses period end while billing retry denies access
     );
     const events = await client.getCustomerEvents(TEST_USER_ID);
     const normalized = normalizeRevenueCatEvent(events[0], TEST_REVENUECAT_CONFIG, null);
-    assertEquals(normalized.evidence?.lifecycle, expectedLifecycle);
-    if (status === 'in_grace_period' && givesAccess) {
-      assertEquals(normalized.evidence?.graceEnd, new Date(PERIOD_END).toISOString());
-      assertEquals(normalized.evidence?.terminalAt, null);
-    } else {
-      assertEquals(normalized.evidence?.graceEnd, null);
-      assertEquals(normalized.evidence?.terminalAt, new Date(PERIOD_START).toISOString());
-    }
+    assertEquals(normalized.evidence?.lifecycle, 'expired');
+    assertEquals(normalized.evidence?.graceEnd, null);
+    assertEquals(normalized.evidence?.terminalAt, new Date(PERIOD_START).toISOString());
   }
 });
 
@@ -240,7 +268,125 @@ Deno.test(
           }),
         ),
       );
-      await assertRejects(() => client.getCustomerEvents(TEST_USER_ID), RevenueCatUnavailableError);
+      const store = new MemoryRevenueCatStore();
+      await assertRejects(
+        () =>
+          confirmRevenueCatPurchase(
+            TEST_USER_ID,
+            null,
+            'app_apple',
+            'sandbox',
+            TEST_REVENUECAT_CONFIG,
+            client,
+            store,
+          ),
+        RevenueCatUnavailableError,
+      );
+      assertEquals(store.appended.length, 0);
+    }
+  },
+);
+
+Deno.test(
+  'RevenueCat v2 unknown and incomplete access-false states revoke prior snapshot access',
+  async () => {
+    for (const status of ['unknown', 'incomplete']) {
+      const store = new MemoryRevenueCatStore();
+      const activeClient = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+        Promise.resolve(
+          Response.json({
+            items: [subscription()],
+            next_page: null,
+            object: 'list',
+            url: '/subscriptions',
+          }),
+        ),
+      );
+      await ingestRevenueCatEvents(
+        await activeClient.getCustomerEvents(TEST_USER_ID),
+        TEST_REVENUECAT_CONFIG,
+        store,
+      );
+
+      const denialClient = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+        Promise.resolve(
+          Response.json({
+            items: [subscription({ status, gives_access: false })],
+            next_page: null,
+            object: 'list',
+            url: '/subscriptions',
+          }),
+        ),
+      );
+      const result = await ingestRevenueCatEvents(
+        await denialClient.getCustomerEvents(TEST_USER_ID),
+        TEST_REVENUECAT_CONFIG,
+        store,
+      );
+      assertEquals(result.recognized, 1);
+      assertEquals(store.currentEvidence()?.lifecycle, 'expired');
+      assertEquals((await store.getProjection(TEST_USER_ID, null)).userTier, 'free');
+    }
+  },
+);
+
+Deno.test(
+  'RevenueCat v2 unknown access-bearing state fails without claiming completion',
+  async () => {
+    const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+      Promise.resolve(
+        Response.json({
+          items: [subscription({ status: 'future_status', gives_access: true })],
+          next_page: null,
+          object: 'list',
+          url: '/subscriptions',
+        }),
+      ),
+    );
+    await assertRejects(() => client.getCustomerEvents(TEST_USER_ID), RevenueCatUnavailableError);
+  },
+);
+
+Deno.test(
+  'RevenueCat reconciliation and webhook use one canonical store purchase identity',
+  async () => {
+    for (const cancelReason of ['REFUND', 'CHARGEBACK']) {
+      const store = new MemoryRevenueCatStore();
+      const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
+        Promise.resolve(
+          Response.json({
+            items: [subscription()],
+            next_page: null,
+            object: 'list',
+            url: '/subscriptions',
+          }),
+        ),
+      );
+      await ingestRevenueCatEvents(
+        await client.getCustomerEvents(TEST_USER_ID),
+        TEST_REVENUECAT_CONFIG,
+        store,
+      );
+      await ingestRevenueCatEvents(
+        [
+          testRevenueCatEvent({
+            id: `evt_${cancelReason.toLowerCase()}`,
+            type: 'CANCELLATION',
+            cancel_reason: cancelReason,
+            event_timestamp_ms: PERIOD_START + 1,
+            original_transaction_id: 'store-subscription-synthetic',
+          }),
+        ],
+        TEST_REVENUECAT_CONFIG,
+        store,
+      );
+
+      assertEquals(new Set(store.appended.map((event) => event.providerSubscriptionId)).size, 1);
+      assertEquals(
+        store.currentEvidence()?.lifecycle,
+        cancelReason === 'REFUND' ? 'refunded' : 'chargeback',
+      );
+      assertEquals((await store.getProjection(TEST_USER_ID, null)).userTier, 'free');
     }
   },
 );

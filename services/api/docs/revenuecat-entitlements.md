@@ -56,9 +56,18 @@ verification.
 
 RevenueCat v2 `gives_access` is required for every recognized current-state
 subscription. Paused state maps to paid-through access only when that flag is
-explicitly true. Grace uses the documented current-period end as its access
-bound; billing-retry and access-false states normalize to denial. Missing
-access flags or required period bounds fail closed.
+explicitly true. Billing-retry and access-false states normalize to denial.
+RevenueCat v2 does not expose a trustworthy future grace bound, so an
+access-bearing grace snapshot fails closed; webhook evidence may establish
+grace only when it carries the provider's explicit grace expiry. Unknown or
+future access-bearing statuses also fail closed rather than claiming
+reconciliation completed.
+
+The canonical purchase identity is RevenueCat v2's documented
+`store_subscription_identifier`, which is the same store purchase identifier
+carried as `original_transaction_id` by webhooks. Reconciliation and webhook
+evidence therefore converge on one ledger subscription and one immutable
+Family binding.
 
 Responses and logs exclude provider names and identifiers, receipts, customer
 attributes, raw payloads, signatures, secrets, internal ledger IDs, and other

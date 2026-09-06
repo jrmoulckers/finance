@@ -169,7 +169,9 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
   }
 
   getProjection(_ownerId: string, householdId: string | null): Promise<EntitlementProjection> {
-    const tier = this.current?.tier;
+    const grantsAccess =
+      this.current && !['expired', 'refunded', 'chargeback'].includes(this.current.lifecycle);
+    const tier = grantsAccess ? this.current?.tier : undefined;
     return Promise.resolve({
       userTier: !tier || tier === 'family' ? 'free' : tier,
       householdTier: householdId ? (tier === 'family' ? 'family' : 'free') : null,
