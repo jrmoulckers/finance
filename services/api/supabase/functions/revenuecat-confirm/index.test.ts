@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { assertEquals } from 'std/testing/asserts.ts';
-import { RevenueCatUnavailableError } from '../_shared/revenuecat/client.ts';
+import { RevenueCatClient, RevenueCatUnavailableError } from '../_shared/revenuecat/client.ts';
 import {
   MemoryRevenueCatStore,
   TEST_HOUSEHOLD_ID,
@@ -99,7 +99,29 @@ Deno.test(
 );
 
 Deno.test('authenticated status reads only the minimized Finance projection', async () => {
-  const response = await handler(new MemoryRevenueCatStore())(
+  const store = new MemoryRevenueCatStore();
+  await store.appendAndApply(store.identities[0], {
+    provider: 'revenuecat',
+    environment: 'sandbox',
+    providerEventId: 'evt_status',
+    providerSubscriptionId: 'txn_status',
+    revenueCatSubscriptionId: null,
+    storeTransactionIds: ['txn_status'],
+    providerSubscriptionItemId: null,
+    effectiveAt: '2026-09-06T12:00:00.000Z',
+    providerOrder: Date.parse('2026-09-06T12:00:00.000Z'),
+    eventType: 'activated',
+    lifecycle: 'active',
+    logicalProduct: 'base_plan',
+    tier: 'plus',
+    quantity: 1,
+    currentPeriodEnd: '2026-10-06T12:00:00.000Z',
+    graceEnd: null,
+    terminalAt: null,
+    boundHouseholdId: null,
+    trustedReactivation: false,
+  });
+  const response = await handler(store)(
     new Request(
       `https://finance.example.test/revenuecat-confirm?household_id=${TEST_HOUSEHOLD_ID}`,
       { headers: { Authorization: 'Bearer synthetic-jwt' } },
@@ -111,6 +133,86 @@ Deno.test('authenticated status reads only the minimized Finance projection', as
   assertEquals(body.status, 'confirmed');
   assertEquals('provider' in body.entitlement, false);
   assertEquals('subscriptionId' in body.entitlement, false);
+});
+
+Deno.test('denial-only confirmation applies revocation but remains pending', async () => {
+  const store = new MemoryRevenueCatStore();
+  await handler(store)(
+    request({
+      operation: 'confirm',
+      app_id: 'app_apple',
+      environment: 'sandbox',
+    }),
+  );
+
+  const providerClient = new RevenueCatClient(TEST_REVENUECAT_CONFIG, (input) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/transactions')) {
+      return Promise.resolve(
+        Response.json({
+          object: 'list',
+          items: [
+            {
+              object: 'subscription_transaction',
+              id: 'txn_synthetic',
+              purchased_at: Date.parse('2026-09-06T12:00:00Z'),
+              product_store_identifier: 'com.example.synthetic',
+              expiration_date: Date.parse('2026-10-06T12:00:00Z'),
+              effective_expiration_date: Date.parse('2026-10-06T12:00:00Z'),
+            },
+          ],
+          next_page: null,
+          url: url.pathname,
+        }),
+      );
+    }
+    return Promise.resolve(
+      Response.json({
+        object: 'list',
+        items: [
+          {
+            id: 'sub_denial',
+            customer_id: TEST_USER_ID,
+            current_period_starts_at: Date.parse('2026-10-06T12:00:00Z'),
+            current_period_ends_at: Date.parse('2026-11-06T12:00:00Z'),
+            environment: 'sandbox',
+            gives_access: false,
+            product_id: 'plus_monthly',
+            status: 'incomplete',
+            store: 'app_store',
+            store_subscription_identifier: 'txn_synthetic',
+          },
+        ],
+        next_page: null,
+        url: url.pathname,
+      }),
+    );
+  });
+  const response = await handler(store, (customerId) =>
+    providerClient.getCustomerEvents(customerId),
+  )(
+    request({
+      operation: 'confirm',
+      app_id: 'app_apple',
+      environment: 'sandbox',
+    }),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.status, 'pending');
+  assertEquals(body.entitlement.userTier, 'free');
+  assertEquals(store.currentEvidence()?.lifecycle, 'expired');
+});
+
+Deno.test('authenticated free status is pending', async () => {
+  const response = await handler(new MemoryRevenueCatStore())(
+    new Request('https://finance.example.test/revenuecat-confirm', {
+      headers: { Authorization: '******' },
+    }),
+  );
+  assertEquals(response.status, 200);
+  assertEquals((await response.json()).status, 'pending');
 });
 
 Deno.test('Family confirmation requires eligible household intent', async () => {

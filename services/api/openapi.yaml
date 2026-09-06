@@ -792,6 +792,9 @@ components:
         status:
           type: string
           enum: [pending, confirmed]
+          description: >-
+            Confirmed only when access-bearing evidence is reflected in the
+            authoritative Finance projection; Free or denial-only results remain pending.
         entitlement:
           $ref: '#/components/schemas/EntitlementProjection'
 

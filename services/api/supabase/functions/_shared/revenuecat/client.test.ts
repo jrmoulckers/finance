@@ -35,6 +35,46 @@ function subscription(overrides: Record<string, unknown> = {}): Record<string, u
   };
 }
 
+function transactionPage(
+  transactionIds: readonly string[],
+  nextPage: string | null = null,
+): Response {
+  return Response.json({
+    items: transactionIds.map((id, index) => ({
+      object: 'subscription_transaction',
+      id,
+      purchased_at: PERIOD_START + index,
+      product_store_identifier: 'com.example.synthetic',
+      expiration_date: PERIOD_END + index,
+      effective_expiration_date: PERIOD_END + index,
+    })),
+    next_page: nextPage,
+    object: 'list',
+    url: '/transactions',
+  });
+}
+
+function singleSubscriptionClient(
+  item: Record<string, unknown> = subscription(),
+  transactionIds: readonly string[] = [String(item.store_subscription_identifier)],
+  config = TEST_REVENUECAT_CONFIG,
+): RevenueCatClient {
+  return new RevenueCatClient(config, (input) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/transactions')) {
+      return Promise.resolve(transactionPage(transactionIds));
+    }
+    return Promise.resolve(
+      Response.json({
+        items: [item],
+        next_page: null,
+        object: 'list',
+        url: url.pathname,
+      }),
+    );
+  });
+}
+
 Deno.test(
   'RevenueCat consumes production-shaped v2 subscription pages and resolves reviewed apps',
   async () => {
@@ -44,6 +84,20 @@ Deno.test(
       const url = new URL(String(input));
       requestedUrls.push(url.href);
       authorizations.push(new Headers(init?.headers).get('Authorization') ?? '');
+      if (url.pathname.endsWith('/sub_synthetic/transactions')) {
+        if (!url.searchParams.has('starting_after')) {
+          return Promise.resolve(
+            transactionPage(
+              ['store-original-synthetic'],
+              `${url.origin}${url.pathname}?starting_after=store-original-synthetic`,
+            ),
+          );
+        }
+        return Promise.resolve(transactionPage(['store-subscription-synthetic']));
+      }
+      if (url.pathname.endsWith('/sub_terminal_synthetic/transactions')) {
+        return Promise.resolve(transactionPage(['store-terminal-synthetic']));
+      }
       if (!url.searchParams.has('starting_after')) {
         return Promise.resolve(
           Response.json({
@@ -77,11 +131,13 @@ Deno.test(
     const first = await client.getCustomerEvents(TEST_USER_ID);
     const second = await client.getCustomerEvents(TEST_USER_ID);
 
-    assertEquals(requestedUrls.length, 4);
+    assertEquals(requestedUrls.length, 10);
     assertEquals(
-      requestedUrls.every(
-        (requestedUrl) => new URL(requestedUrl).searchParams.get('environment') === 'sandbox',
-      ),
+      requestedUrls
+        .filter((requestedUrl) => requestedUrl.includes('/customers/'))
+        .every(
+          (requestedUrl) => new URL(requestedUrl).searchParams.get('environment') === 'sandbox',
+        ),
       true,
     );
     assertEquals(
@@ -110,8 +166,13 @@ Deno.test(
     );
     assertEquals(first[0].event_timestamp_ms, PERIOD_START);
     assertEquals(first[1].event_timestamp_ms, PERIOD_END + 1);
-    assertEquals(first[0].original_transaction_id, 'store-subscription-synthetic');
+    assertEquals(first[0].original_transaction_id, 'store-original-synthetic');
     assertEquals(first[1].original_transaction_id, 'store-terminal-synthetic');
+    assertEquals(first[0].revenuecat_subscription_id, 'sub_synthetic');
+    assertEquals(first[0].store_transaction_ids, [
+      'store-original-synthetic',
+      'store-subscription-synthetic',
+    ]);
     assertEquals(
       first.map((event) => event.id),
       second.map((event) => event.id),
@@ -120,16 +181,7 @@ Deno.test(
 );
 
 Deno.test('RevenueCat treats null next_page as a valid terminal page', async () => {
-  const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-    Promise.resolve(
-      Response.json({
-        items: [subscription()],
-        next_page: null,
-        object: 'list',
-        url: '/subscriptions',
-      }),
-    ),
-  );
+  const client = singleSubscriptionClient();
   assertEquals((await client.getCustomerEvents(TEST_USER_ID)).length, 1);
 });
 
@@ -141,17 +193,22 @@ Deno.test(
       environment: 'production' as const,
     };
     let requestedEnvironment = '';
+    const items = [
+      subscription({ environment: 'sandbox' }),
+      subscription({
+        environment: 'production',
+        id: 'sub_production_synthetic',
+      }),
+    ];
     const client = new RevenueCatClient(productionConfig, (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/transactions')) {
+        return Promise.resolve(transactionPage(['store-subscription-synthetic']));
+      }
       requestedEnvironment = new URL(String(input)).searchParams.get('environment') ?? '';
       return Promise.resolve(
         Response.json({
-          items: [
-            subscription({ environment: 'sandbox' }),
-            subscription({
-              environment: 'production',
-              id: 'sub_production_synthetic',
-            }),
-          ],
+          items,
           next_page: null,
           object: 'list',
           url: '/subscriptions',
@@ -171,15 +228,8 @@ Deno.test('RevenueCat v2 paused access is paid-through only when explicitly gran
     [true, 'paused_paid_through'],
     [false, 'expired'],
   ] as const) {
-    const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-      Promise.resolve(
-        Response.json({
-          items: [subscription({ status: 'paused', gives_access: givesAccess })],
-          next_page: null,
-          object: 'list',
-          url: '/subscriptions',
-        }),
-      ),
+    const client = singleSubscriptionClient(
+      subscription({ status: 'paused', gives_access: givesAccess }),
     );
     const events = await client.getCustomerEvents(TEST_USER_ID);
     const normalized = normalizeRevenueCatEvent(events[0], TEST_REVENUECAT_CONFIG, null);
@@ -196,15 +246,8 @@ Deno.test('RevenueCat v2 paused access is paid-through only when explicitly gran
 });
 
 Deno.test('RevenueCat v2 grace never invents a bound and billing retry denies access', async () => {
-  const graceClient = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-    Promise.resolve(
-      Response.json({
-        items: [subscription({ status: 'in_grace_period', gives_access: true })],
-        next_page: null,
-        object: 'list',
-        url: '/subscriptions',
-      }),
-    ),
+  const graceClient = singleSubscriptionClient(
+    subscription({ status: 'in_grace_period', gives_access: true }),
   );
   const graceStore = new MemoryRevenueCatStore();
   await assertRejects(
@@ -227,16 +270,7 @@ Deno.test('RevenueCat v2 grace never invents a bound and billing retry denies ac
     ['in_billing_retry', true],
     ['in_billing_retry', false],
   ] as const) {
-    const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-      Promise.resolve(
-        Response.json({
-          items: [subscription({ status, gives_access: givesAccess })],
-          next_page: null,
-          object: 'list',
-          url: '/subscriptions',
-        }),
-      ),
-    );
+    const client = singleSubscriptionClient(subscription({ status, gives_access: givesAccess }));
     const events = await client.getCustomerEvents(TEST_USER_ID);
     const normalized = normalizeRevenueCatEvent(events[0], TEST_REVENUECAT_CONFIG, null);
     assertEquals(normalized.evidence?.lifecycle, 'expired');
@@ -258,16 +292,7 @@ Deno.test(
         current_period_ends_at: undefined,
       }),
     ]) {
-      const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-        Promise.resolve(
-          Response.json({
-            items: [item],
-            next_page: null,
-            object: 'list',
-            url: '/subscriptions',
-          }),
-        ),
-      );
+      const client = singleSubscriptionClient(item);
       const store = new MemoryRevenueCatStore();
       await assertRejects(
         () =>
@@ -288,44 +313,30 @@ Deno.test(
 );
 
 Deno.test(
-  'RevenueCat v2 unknown and incomplete access-false states revoke prior snapshot access',
+  'RevenueCat confirmation stays pending after unknown or incomplete denial revokes access',
   async () => {
     for (const status of ['unknown', 'incomplete']) {
       const store = new MemoryRevenueCatStore();
-      const activeClient = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-        Promise.resolve(
-          Response.json({
-            items: [subscription()],
-            next_page: null,
-            object: 'list',
-            url: '/subscriptions',
-          }),
-        ),
-      );
+      const activeClient = singleSubscriptionClient();
       await ingestRevenueCatEvents(
         await activeClient.getCustomerEvents(TEST_USER_ID),
         TEST_REVENUECAT_CONFIG,
         store,
       );
 
-      const denialClient = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-        Promise.resolve(
-          Response.json({
-            items: [subscription({ status, gives_access: false })],
-            next_page: null,
-            object: 'list',
-            url: '/subscriptions',
-          }),
-        ),
-      );
-      const result = await ingestRevenueCatEvents(
-        await denialClient.getCustomerEvents(TEST_USER_ID),
+      const denialClient = singleSubscriptionClient(subscription({ status, gives_access: false }));
+      const result = await confirmRevenueCatPurchase(
+        TEST_USER_ID,
+        null,
+        'app_apple',
+        'sandbox',
         TEST_REVENUECAT_CONFIG,
+        denialClient,
         store,
       );
-      assertEquals(result.recognized, 1);
+      assertEquals(result.status, 'pending');
       assertEquals(store.currentEvidence()?.lifecycle, 'expired');
-      assertEquals((await store.getProjection(TEST_USER_ID, null)).userTier, 'free');
+      assertEquals(result.entitlement.userTier, 'free');
     }
   },
 );
@@ -333,15 +344,8 @@ Deno.test(
 Deno.test(
   'RevenueCat v2 unknown access-bearing state fails without claiming completion',
   async () => {
-    const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-      Promise.resolve(
-        Response.json({
-          items: [subscription({ status: 'future_status', gives_access: true })],
-          next_page: null,
-          object: 'list',
-          url: '/subscriptions',
-        }),
-      ),
+    const client = singleSubscriptionClient(
+      subscription({ status: 'future_status', gives_access: true }),
     );
     await assertRejects(() => client.getCustomerEvents(TEST_USER_ID), RevenueCatUnavailableError);
   },
@@ -352,20 +356,18 @@ Deno.test(
   async () => {
     for (const cancelReason of ['REFUND', 'CHARGEBACK']) {
       const store = new MemoryRevenueCatStore();
-      const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-        Promise.resolve(
-          Response.json({
-            items: [subscription()],
-            next_page: null,
-            object: 'list',
-            url: '/subscriptions',
-          }),
-        ),
+      const client = singleSubscriptionClient(
+        subscription({
+          product_id: 'family_monthly',
+          store_subscription_identifier: 'store-renewal-two',
+        }),
+        ['store-original-synthetic', 'store-renewal-one', 'store-renewal-two'],
       );
       await ingestRevenueCatEvents(
         await client.getCustomerEvents(TEST_USER_ID),
         TEST_REVENUECAT_CONFIG,
         store,
+        { householdIntent: '44010000-0000-4000-8000-000000000002' },
       );
       await ingestRevenueCatEvents(
         [
@@ -374,14 +376,29 @@ Deno.test(
             type: 'CANCELLATION',
             cancel_reason: cancelReason,
             event_timestamp_ms: PERIOD_START + 1,
-            original_transaction_id: 'store-subscription-synthetic',
+            product_id: 'family_monthly',
+            original_transaction_id: 'store-original-synthetic',
+            transaction_id: 'store-renewal-two',
           }),
         ],
         TEST_REVENUECAT_CONFIG,
         store,
+        { householdIntent: '44010000-0000-4000-8000-000000000002' },
       );
 
       assertEquals(new Set(store.appended.map((event) => event.providerSubscriptionId)).size, 1);
+      assertEquals(store.purchaseBindingCount(), 1);
+      assertEquals(
+        store.canonicalPurchaseId('revenuecat', 'sub_synthetic'),
+        'store-original-synthetic',
+      );
+      for (const transactionId of [
+        'store-original-synthetic',
+        'store-renewal-one',
+        'store-renewal-two',
+      ]) {
+        assertEquals(store.canonicalPurchaseId('store', transactionId), 'store-original-synthetic');
+      }
       assertEquals(
         store.currentEvidence()?.lifecycle,
         cancelReason === 'REFUND' ? 'refunded' : 'chargeback',
@@ -408,10 +425,26 @@ Deno.test(
   },
 );
 
-Deno.test('RevenueCat reconciliation outage is explicit and retryable', async () => {
-  const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, () =>
-    Promise.resolve(new Response('synthetic outage', { status: 503 })),
-  );
+Deno.test('RevenueCat requires the latest store identifier in authoritative history', async () => {
+  const client = singleSubscriptionClient(subscription(), ['store-original-synthetic']);
+  await assertRejects(() => client.getCustomerEvents(TEST_USER_ID), RevenueCatUnavailableError);
+});
+
+Deno.test('RevenueCat transaction-history outage is explicit and retryable', async () => {
+  const client = new RevenueCatClient(TEST_REVENUECAT_CONFIG, (input) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/transactions')) {
+      return Promise.resolve(new Response('synthetic outage', { status: 503 }));
+    }
+    return Promise.resolve(
+      Response.json({
+        items: [subscription()],
+        next_page: null,
+        object: 'list',
+        url: '/subscriptions',
+      }),
+    );
+  });
   await assertRejects(
     () => client.getCustomerEvents('synthetic-customer'),
     RevenueCatUnavailableError,

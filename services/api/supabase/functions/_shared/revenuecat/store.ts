@@ -68,13 +68,28 @@ export async function appendAndApplyRevenueCatEvent(
   identity: RevenueCatIdentity,
   evidence: NormalizedBillingEvidence,
 ): Promise<boolean> {
+  const binding = await client.rpc('resolve_revenuecat_purchase_binding', {
+    p_billing_account_id: identity.billingAccountId,
+    p_environment: evidence.environment,
+    p_revenuecat_subscription_id: evidence.revenueCatSubscriptionId,
+    p_canonical_store_transaction_id: evidence.providerSubscriptionId,
+    p_store_transaction_ids: evidence.storeTransactionIds,
+  });
+  if (
+    binding.error ||
+    typeof binding.data !== 'string' ||
+    binding.data !== evidence.providerSubscriptionId
+  ) {
+    throw new RevenueCatStoreError();
+  }
+
   const recorded = await client.rpc('record_billing_provider_event', {
     p_billing_account_id: identity.billingAccountId,
     p_provider_identity_id: identity.id,
     p_provider: 'revenuecat',
     p_environment: evidence.environment,
     p_provider_event_id: evidence.providerEventId,
-    p_provider_subscription_id: evidence.providerSubscriptionId,
+    p_provider_subscription_id: binding.data,
     p_provider_subscription_item_id: null,
     p_received_at: new Date().toISOString(),
     p_effective_at: evidence.effectiveAt,

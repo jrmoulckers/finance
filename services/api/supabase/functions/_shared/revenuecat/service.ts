@@ -12,7 +12,24 @@ import type { EntitlementProjection, RevenueCatIdentity, RevenueCatStore } from 
 export interface IngestionResult {
   recognized: number;
   applied: number;
+  accessBearingRecognized: number;
+  accessBearingApplied: number;
   ignored: number;
+}
+
+const ACCESS_BEARING_LIFECYCLES = new Set([
+  'trialing',
+  'active',
+  'cancelled_paid_through',
+  'past_due_grace',
+  'paused_paid_through',
+]);
+
+export function projectionGrantsAccess(projection: EntitlementProjection): boolean {
+  return (
+    projection.userTier !== 'free' ||
+    (projection.householdTier !== null && projection.householdTier !== 'free')
+  );
 }
 
 async function familyBinding(
@@ -46,6 +63,8 @@ export async function ingestRevenueCatEvents(
 ): Promise<IngestionResult> {
   let recognized = 0;
   let applied = 0;
+  let accessBearingRecognized = 0;
+  let accessBearingApplied = 0;
   let ignored = 0;
 
   for (const event of events) {
@@ -81,10 +100,15 @@ export async function ingestRevenueCatEvents(
     }
 
     recognized++;
-    if (await store.appendAndApply(identity, normalized.evidence)) applied++;
+    const accessBearing = ACCESS_BEARING_LIFECYCLES.has(normalized.evidence.lifecycle);
+    if (accessBearing) accessBearingRecognized++;
+    if (await store.appendAndApply(identity, normalized.evidence)) {
+      applied++;
+      if (accessBearing) accessBearingApplied++;
+    }
   }
 
-  return { recognized, applied, ignored };
+  return { recognized, applied, accessBearingRecognized, accessBearingApplied, ignored };
 }
 
 export interface ConfirmationResult {
@@ -115,8 +139,12 @@ export async function confirmRevenueCatPurchase(
     ownerId,
     householdIntent: householdId,
   });
+  const entitlement = await store.getProjection(ownerId, householdId);
   return {
-    status: result.recognized > 0 ? 'confirmed' : 'pending',
-    entitlement: await store.getProjection(ownerId, householdId),
+    status:
+      result.accessBearingRecognized > 0 && projectionGrantsAccess(entitlement)
+        ? 'confirmed'
+        : 'pending',
+    entitlement,
   };
 }

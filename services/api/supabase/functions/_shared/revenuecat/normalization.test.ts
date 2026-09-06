@@ -144,6 +144,27 @@ Deno.test('RevenueCat uses reviewed product mapping and immutable Family intent'
   assertEquals(bound.evidence?.quantity, 1);
 });
 
+Deno.test('RevenueCat retains only authoritative provider purchase aliases', () => {
+  const normalized = normalizeRevenueCatEvent(
+    event({
+      original_transaction_id: 'store_original',
+      transaction_id: 'store_renewal_latest',
+      revenuecat_subscription_id: 'sub_stable',
+      store_transaction_ids: ['store_original', 'store_renewal_one', 'store_renewal_latest'],
+    }),
+    config,
+    null,
+  );
+
+  assertEquals(normalized.evidence?.providerSubscriptionId, 'store_original');
+  assertEquals(normalized.evidence?.revenueCatSubscriptionId, 'sub_stable');
+  assertEquals(normalized.evidence?.storeTransactionIds, [
+    'store_original',
+    'store_renewal_latest',
+    'store_renewal_one',
+  ]);
+});
+
 Deno.test('RevenueCat defers product changes until effective purchase evidence arrives', () => {
   for (const change of [
     { product_id: 'plus_monthly', new_product_id: 'premium_monthly' },

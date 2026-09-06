@@ -41,14 +41,19 @@ verification.
 - `POST /revenuecat-confirm` accepts `confirm` or `restore`, the expected app
   and environment, and optional eligible `household_id`. It returns
   `pending`, `confirmed`, or `error` plus only the minimized Finance
-  projection.
+  projection. Denial-only provider evidence is still applied immediately but
+  returns `pending`; only access-bearing evidence backed by the resulting
+  authoritative projection returns `confirmed`.
 - `GET /revenuecat-confirm?household_id=...` returns the current minimized
-  Finance projection without contacting RevenueCat.
+  Finance projection without contacting RevenueCat. A Free projection is
+  reported as `pending`, never as a successful purchase confirmation.
 - `POST /revenuecat-reconcile` uses a distinct server credential, retrieves
   current RevenueCat state with the project-scoped API key, and feeds the same
   append/apply path. The provider client consumes RevenueCat v2 numeric
   millisecond period timestamps and lowercase store values, resolves the app
-  from the reviewed product/app maps, and follows every scoped `next_page`.
+  from the reviewed product/app maps, follows every scoped `next_page`, and
+  retrieves each App Store or Google Play subscription's documented
+  transaction history.
   Each invocation processes at most 100 server-side identities; `partial`
   responses carry an ordinal cursor for the next idempotent invocation
   and never claim full completion early. Provider outages return a bounded
@@ -63,17 +68,23 @@ grace only when it carries the provider's explicit grace expiry. Unknown or
 future access-bearing statuses also fail closed rather than claiming
 reconciliation completed.
 
-The canonical purchase identity is RevenueCat v2's documented
-`store_subscription_identifier`, which is the same store purchase identifier
-carried as `original_transaction_id` by webhooks. Reconciliation and webhook
-evidence therefore converge on one ledger subscription and one immutable
-Family binding.
+RevenueCat v2's `store_subscription_identifier` is the latest App Store
+transaction ID or Google renewal order ID and is not used directly as the
+ledger purchase key. Reconciliation retrieves the provider's documented
+transaction history, uses its earliest store transaction as the immutable
+purchase key, and binds the stable RevenueCat Subscription ID plus every
+returned store transaction ID to
+`billing_provider_purchase_bindings`. Signed webhooks bind their immutable
+`original_transaction_id` and current `transaction_id` through the same
+service-role-only resolver. Aliases are immutable and conflicts are rejected,
+so renewals, reconciliation, refunds, and chargebacks converge on one ledger
+subscription and one historical Family binding regardless of delivery order.
 
 Responses and logs exclude provider names and identifiers, receipts, customer
 attributes, raw payloads, signatures, secrets, internal ledger IDs, and other
 household billing data. Responses use `Cache-Control: no-store` where clients
 read entitlement status. Billing authority tables remain excluded from
-PowerSync.
+PowerSync and user data export, including the server-only purchase alias map.
 
 ## Data protection
 

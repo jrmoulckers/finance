@@ -14,8 +14,11 @@ Deno.test('RevenueCat duplicate provider event IDs are successful no-ops', async
   const first = await ingestRevenueCatEvents([event], TEST_REVENUECAT_CONFIG, store);
   const duplicate = await ingestRevenueCatEvents([event], TEST_REVENUECAT_CONFIG, store);
   assertEquals(first.recognized, 1);
+  assertEquals(first.accessBearingApplied, 1);
   assertEquals(duplicate.recognized, 1);
   assertEquals(duplicate.applied, 0);
+  assertEquals(duplicate.accessBearingRecognized, 1);
+  assertEquals(duplicate.accessBearingApplied, 0);
   assertEquals(store.appended.length, 1);
 });
 

@@ -94,12 +94,21 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
     },
   ];
   private readonly eventIds = new Set<string>();
+  private readonly purchaseAliases = new Map<string, string>();
   private current: NormalizedBillingEvidence | null = null;
   householdMember = true;
   identityPageRequests = 0;
 
   currentEvidence(): NormalizedBillingEvidence | null {
     return this.current;
+  }
+
+  canonicalPurchaseId(aliasKind: 'revenuecat' | 'store', alias: string): string | null {
+    return this.purchaseAliases.get(`${aliasKind}:${alias}`) ?? null;
+  }
+
+  purchaseBindingCount(): number {
+    return new Set(this.purchaseAliases.values()).size;
   }
 
   bindCustomer(
@@ -145,24 +154,47 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
     _identity: RevenueCatIdentity,
     evidence: NormalizedBillingEvidence,
   ): Promise<boolean> {
+    const aliasKeys = [
+      ...evidence.storeTransactionIds.map((alias) => `store:${alias}`),
+      ...(evidence.revenueCatSubscriptionId
+        ? [`revenuecat:${evidence.revenueCatSubscriptionId}`]
+        : []),
+    ];
+    const knownBindings = new Set(
+      aliasKeys
+        .map((alias) => this.purchaseAliases.get(alias))
+        .filter((binding): binding is string => Boolean(binding)),
+    );
+    if (knownBindings.size > 1) throw new Error('conflicting test purchase aliases');
+    const canonicalPurchaseId =
+      knownBindings.values().next().value ?? evidence.providerSubscriptionId;
+    if (canonicalPurchaseId !== evidence.providerSubscriptionId) {
+      throw new Error('conflicting test canonical purchase identity');
+    }
+    for (const alias of aliasKeys) this.purchaseAliases.set(alias, canonicalPurchaseId);
+
+    const canonicalEvidence = {
+      ...evidence,
+      providerSubscriptionId: canonicalPurchaseId,
+    };
     if (this.eventIds.has(evidence.providerEventId)) {
       return Promise.resolve(false);
     }
     this.eventIds.add(evidence.providerEventId);
-    this.appended.push(evidence);
+    this.appended.push(canonicalEvidence);
 
     const current = this.current;
-    const incomingTime = Date.parse(evidence.effectiveAt);
+    const incomingTime = Date.parse(canonicalEvidence.effectiveAt);
     const currentTime = current ? Date.parse(current.effectiveAt) : -1;
     const irreversible = current?.lifecycle === 'refunded' || current?.lifecycle === 'chargeback';
     const orderedAfter =
       incomingTime > currentTime ||
       (incomingTime === currentTime &&
-        (evidence.providerOrder > (current?.providerOrder ?? -1) ||
-          (evidence.providerOrder === current?.providerOrder &&
-            PRECEDENCE[evidence.lifecycle] > PRECEDENCE[current.lifecycle])));
+        (canonicalEvidence.providerOrder > (current?.providerOrder ?? -1) ||
+          (canonicalEvidence.providerOrder === current?.providerOrder &&
+            PRECEDENCE[canonicalEvidence.lifecycle] > PRECEDENCE[current.lifecycle])));
     if (!irreversible && orderedAfter) {
-      this.current = evidence;
+      this.current = canonicalEvidence;
       return Promise.resolve(true);
     }
     return Promise.resolve(false);

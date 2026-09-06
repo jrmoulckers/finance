@@ -26,6 +26,9 @@ export interface RevenueCatEvent {
   environment: string;
   store: string;
   original_transaction_id: string;
+  transaction_id?: unknown;
+  revenuecat_subscription_id?: unknown;
+  store_transaction_ids?: unknown;
 }
 
 export interface NormalizedBillingEvidence {
@@ -33,6 +36,8 @@ export interface NormalizedBillingEvidence {
   environment: BillingEnvironment;
   providerEventId: string;
   providerSubscriptionId: string;
+  revenueCatSubscriptionId: string | null;
+  storeTransactionIds: readonly string[];
   providerSubscriptionItemId: null;
   effectiveAt: string;
   providerOrder: number;
@@ -92,6 +97,30 @@ function getCustomerIds(event: RevenueCatEvent): string[] {
     ...(Array.isArray(event.aliases) ? event.aliases : []),
   ];
   return [...new Set(values.filter((value): value is string => typeof value === 'string'))];
+}
+
+function getPurchaseAliases(
+  event: RevenueCatEvent,
+  canonicalStoreTransactionId: string,
+): Pick<NormalizedBillingEvidence, 'revenueCatSubscriptionId' | 'storeTransactionIds'> {
+  const revenueCatSubscriptionId =
+    event.revenuecat_subscription_id === undefined
+      ? null
+      : requiredString(event.revenuecat_subscription_id);
+  const transactionIds = [
+    canonicalStoreTransactionId,
+    ...(event.transaction_id === undefined ? [] : [requiredString(event.transaction_id)]),
+  ];
+  if (event.store_transaction_ids !== undefined) {
+    if (!Array.isArray(event.store_transaction_ids)) {
+      throw new RevenueCatEvidenceError('invalid_payload');
+    }
+    transactionIds.push(...event.store_transaction_ids.map(requiredString));
+  }
+  return {
+    revenueCatSubscriptionId,
+    storeTransactionIds: [...new Set(transactionIds)],
+  };
 }
 
 export function parseRevenueCatWebhookBody(rawBody: Uint8Array): RevenueCatEvent {
@@ -159,6 +188,7 @@ export function normalizeRevenueCatEvent(
       ignoredReason: 'family_binding_required',
     };
   }
+  const providerSubscriptionId = requiredString(event.original_transaction_id);
 
   return {
     customerIds,
@@ -166,7 +196,8 @@ export function normalizeRevenueCatEvent(
       provider: 'revenuecat',
       environment,
       providerEventId: requiredString(event.id),
-      providerSubscriptionId: requiredString(event.original_transaction_id),
+      providerSubscriptionId,
+      ...getPurchaseAliases(event, providerSubscriptionId),
       providerSubscriptionItemId: null,
       effectiveAt: iso(lifecycle.effectiveAtMs),
       providerOrder: requiredMillis(event.provider_order_ms ?? event.event_timestamp_ms),

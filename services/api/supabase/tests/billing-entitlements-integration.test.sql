@@ -90,7 +90,7 @@ $$;
 
 SELECT pg_temp.assert_true(
     (
-        SELECT count(*) = 8
+        SELECT count(*) = 9
         FROM pg_class c
         JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'public'
@@ -98,6 +98,7 @@ SELECT pg_temp.assert_true(
               'billing_accounts',
               'billing_provider_identities',
               'billing_provider_purchase_bindings',
+              'billing_provider_purchase_aliases',
               'billing_subscriptions',
               'billing_provider_events',
               'entitlement_grants',
@@ -116,6 +117,16 @@ SELECT pg_temp.assert_true(
         'billing_provider_purchase_bindings',
         'SELECT'
     )
+    AND NOT has_table_privilege(
+        'authenticated',
+        'billing_provider_purchase_aliases',
+        'SELECT'
+    )
+    AND NOT has_table_privilege(
+        'service_role',
+        'billing_provider_purchase_aliases',
+        'INSERT'
+    )
     AND NOT has_table_privilege('authenticated', 'billing_provider_events', 'SELECT')
     AND NOT has_table_privilege('authenticated', 'entitlement_grants', 'SELECT')
     AND NOT has_table_privilege('authenticated', 'current_user_entitlements', 'SELECT')
@@ -125,6 +136,16 @@ SELECT pg_temp.assert_true(
 
 SELECT pg_temp.assert_true(
     NOT has_function_privilege('authenticated', 'apply_billing_provider_event(uuid)', 'EXECUTE')
+    AND NOT has_function_privilege(
+        'authenticated',
+        'resolve_revenuecat_purchase_binding(uuid,text,text,text,text[])',
+        'EXECUTE'
+    )
+    AND has_function_privilege(
+        'service_role',
+        'resolve_revenuecat_purchase_binding(uuid,text,text,text,text[])',
+        'EXECUTE'
+    )
     AND NOT has_function_privilege('authenticated', 'rebuild_billing_entitlements(uuid)', 'EXECUTE')
     AND NOT has_function_privilege(
         'authenticated',
@@ -152,6 +173,7 @@ SELECT pg_temp.assert_true(
         WHERE proname IN (
             'record_billing_provider_event',
             'apply_billing_provider_event',
+            'resolve_revenuecat_purchase_binding',
             'rebuild_billing_entitlements',
             'billing_purchase_lock_key',
             'lock_billing_accounts_internal',
@@ -173,7 +195,8 @@ SELECT pg_temp.assert_true(
         FROM pg_proc
         WHERE proname IN (
             'record_billing_provider_event',
-            'apply_billing_provider_event'
+            'apply_billing_provider_event',
+            'resolve_revenuecat_purchase_binding'
         )
           AND (
               strpos(prosrc, 'lock_billing_accounts_internal') = 0
@@ -487,6 +510,118 @@ SELECT pg_temp.assert_true(
         WHERE provider_event_id = 'evt_binding_conflict'
     ),
     'conflicting evidence must persist rejected without changing purchase ownership'
+);
+
+-- ---------------------------------------------------------------------------
+-- RevenueCat canonical purchase aliases
+-- ---------------------------------------------------------------------------
+
+INSERT INTO billing_provider_identities (
+    id,
+    billing_account_id,
+    provider,
+    environment,
+    provider_customer_id,
+    is_primary
+)
+VALUES
+    (
+        '44010000-0000-4000-c000-000000000001',
+        '44000000-0000-4000-b000-000000000001',
+        'revenuecat',
+        'sandbox',
+        'rc_customer_primary',
+        true
+    ),
+    (
+        '44010000-0000-4000-c000-000000000002',
+        '44000000-0000-4000-b000-000000000002',
+        'revenuecat',
+        'sandbox',
+        'rc_customer_conflict',
+        true
+    );
+
+SELECT pg_temp.assert_true(
+    public.resolve_revenuecat_purchase_binding(
+        '44000000-0000-4000-b000-000000000001',
+        'sandbox',
+        NULL,
+        'store_original_family',
+        ARRAY['store_original_family']
+    ) = 'store_original_family',
+    'signed webhook evidence must establish the immutable original purchase binding'
+);
+
+SELECT pg_temp.assert_true(
+    public.resolve_revenuecat_purchase_binding(
+        '44000000-0000-4000-b000-000000000001',
+        'sandbox',
+        'rc_subscription_family',
+        'store_original_family',
+        ARRAY[
+            'store_original_family',
+            'store_renewal_family_1',
+            'store_renewal_family_2',
+            'store_renewal_family_3'
+        ]
+    ) = 'store_original_family',
+    'later authoritative renewal aliases must preserve the immutable binding'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT count(DISTINCT purchase_binding_id) = 1
+           AND count(*) = 5
+        FROM billing_provider_purchase_aliases
+        WHERE provider = 'revenuecat'
+          AND environment = 'sandbox'
+    )
+    AND (
+        SELECT provider_subscription_id = 'store_original_family'
+           AND billing_account_id = '44000000-0000-4000-b000-000000000001'
+        FROM billing_provider_purchase_bindings
+        WHERE id = (
+            SELECT purchase_binding_id
+            FROM billing_provider_purchase_aliases
+            WHERE alias_kind = 'revenuecat_subscription_id'
+              AND provider_alias = 'rc_subscription_family'
+        )
+    ),
+    'all RevenueCat aliases must target the original store purchase binding'
+);
+
+SELECT pg_temp.expect_error(
+    $sql$
+        SELECT public.resolve_revenuecat_purchase_binding(
+            '44000000-0000-4000-b000-000000000002',
+            'sandbox',
+            'rc_subscription_conflict',
+            'store_original_conflict',
+            ARRAY['store_original_conflict', 'store_renewal_family_2']
+        )
+    $sql$,
+    '23514',
+    'an authoritative alias cannot be rebound to another billing account'
+);
+
+SELECT pg_temp.expect_error(
+    $sql$
+        UPDATE billing_provider_purchase_aliases
+        SET provider_alias = 'store_mutated'
+        WHERE provider_alias = 'store_renewal_family_1'
+    $sql$,
+    '23514',
+    'RevenueCat purchase aliases must be immutable'
+);
+
+SELECT pg_temp.expect_error(
+    $sql$
+        DELETE FROM billing_provider_purchase_aliases
+        WHERE provider_alias = 'store_renewal_family_1'
+    $sql$,
+    '23514',
+    'RevenueCat purchase aliases cannot be deleted'
 );
 
 -- A legacy row is compatibility data only and can never produce a grant.
@@ -2520,6 +2655,141 @@ SELECT pg_temp.assert_true(
         WHERE beneficiary_user_id = '44000000-0000-4000-8000-000000000001'
     ),
     'user grants/projection must cascade while purchaser evidence is pseudonymized and retained'
+);
+
+-- RevenueCat Family terminal evidence is isolated after the foundation suite
+-- because retained immutable subscriptions intentionally outlive users and
+-- households.
+INSERT INTO users (id, email, display_name)
+VALUES (
+    '44010000-0000-4000-8000-000000000005',
+    'billing-rc-family@example.invalid',
+    'Billing RevenueCat Family'
+);
+INSERT INTO households (id, name, created_by)
+VALUES (
+    '44010000-0000-4000-9000-000000000005',
+    'Billing RevenueCat Household',
+    '44010000-0000-4000-8000-000000000005'
+);
+INSERT INTO household_members (id, household_id, user_id, role)
+VALUES (
+    '44010000-0000-4000-a000-000000000005',
+    '44010000-0000-4000-9000-000000000005',
+    '44010000-0000-4000-8000-000000000005',
+    'owner'
+);
+INSERT INTO billing_accounts (id, owner_id)
+VALUES (
+    '44010000-0000-4000-b000-000000000005',
+    '44010000-0000-4000-8000-000000000005'
+);
+INSERT INTO billing_provider_identities (
+    id,
+    billing_account_id,
+    provider,
+    environment,
+    provider_customer_id,
+    is_primary
+)
+VALUES (
+    '44010000-0000-4000-c000-000000000003',
+    '44010000-0000-4000-b000-000000000005',
+    'revenuecat',
+    'sandbox',
+    'rc_customer_family',
+    true
+);
+
+SELECT pg_temp.assert_true(
+    public.resolve_revenuecat_purchase_binding(
+        '44010000-0000-4000-b000-000000000005',
+        'sandbox',
+        'rc_subscription_family_terminal',
+        'store_original_family_terminal',
+        ARRAY[
+            'store_original_family_terminal',
+            'store_renewal_family_terminal'
+        ]
+    ) = 'store_original_family_terminal',
+    'RevenueCat Family history must resolve to its immutable purchase binding'
+);
+
+SELECT pg_temp.assert_true(
+    public.apply_billing_provider_event(public.record_billing_provider_event(
+        '44010000-0000-4000-b000-000000000005',
+        '44010000-0000-4000-c000-000000000003',
+        'revenuecat',
+        'sandbox',
+        'rc_event_family_active',
+        'store_original_family_terminal',
+        NULL,
+        statement_timestamp(),
+        statement_timestamp() - interval '2 days',
+        1,
+        'activated',
+        'active',
+        'base_plan',
+        'family',
+        1,
+        statement_timestamp() + interval '28 days',
+        NULL,
+        NULL,
+        '44010000-0000-4000-9000-000000000005',
+        false
+    )),
+    'RevenueCat Family evidence must apply through the canonical purchase binding'
+);
+
+SELECT pg_temp.assert_true(
+    public.apply_billing_provider_event(public.record_billing_provider_event(
+        '44010000-0000-4000-b000-000000000005',
+        '44010000-0000-4000-c000-000000000003',
+        'revenuecat',
+        'sandbox',
+        'rc_event_family_chargeback',
+        'store_original_family_terminal',
+        NULL,
+        statement_timestamp(),
+        statement_timestamp() - interval '1 day',
+        2,
+        'chargeback',
+        'chargeback',
+        'base_plan',
+        'family',
+        1,
+        NULL,
+        NULL,
+        statement_timestamp() - interval '1 day',
+        '44010000-0000-4000-9000-000000000005',
+        false
+    )),
+    'RevenueCat Family chargeback must revoke the canonical subscription immediately'
+);
+
+SELECT pg_temp.assert_true(
+    (
+        SELECT count(*) = 1
+           AND bool_and(lifecycle = 'chargeback')
+           AND bool_and(historical_family_household_id =
+               '44010000-0000-4000-9000-000000000005')
+        FROM billing_subscriptions
+        WHERE provider = 'revenuecat'
+          AND environment = 'sandbox'
+          AND provider_subscription_id = 'store_original_family_terminal'
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM entitlement_grants
+        WHERE billing_account_id = '44010000-0000-4000-b000-000000000005'
+          AND source_event_id = (
+              SELECT id
+              FROM billing_provider_events
+              WHERE provider_event_id = 'rc_event_family_chargeback'
+          )
+          AND revoked_at IS NULL
+    ),
+    'RevenueCat terminal evidence must retain one Family subscription and revoke access'
 );
 
 ROLLBACK;

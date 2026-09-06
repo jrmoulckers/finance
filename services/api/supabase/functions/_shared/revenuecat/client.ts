@@ -30,11 +30,25 @@ interface SubscriptionSnapshot {
   store_subscription_identifier?: unknown;
 }
 
+interface SubscriptionTransaction {
+  id?: unknown;
+  object?: unknown;
+  purchased_at?: unknown;
+}
+
+interface StoreTransaction {
+  id: string;
+  purchasedAt: number;
+}
+
 function millis(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-async function stableReconciliationId(snapshot: SubscriptionSnapshot): Promise<string> {
+async function stableReconciliationId(
+  snapshot: SubscriptionSnapshot,
+  storeTransactionIds: readonly string[],
+): Promise<string> {
   const source = JSON.stringify([
     snapshot.id,
     snapshot.product_id,
@@ -44,6 +58,7 @@ async function stableReconciliationId(snapshot: SubscriptionSnapshot): Promise<s
     snapshot.gives_access,
     snapshot.environment,
     snapshot.store,
+    storeTransactionIds,
   ]);
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
   const hex = [...new Uint8Array(digest)]
@@ -120,6 +135,7 @@ function providerStore(value: unknown): 'APP_STORE' | 'PLAY_STORE' | null {
 async function snapshotEvent(
   snapshot: SubscriptionSnapshot,
   config: RevenueCatConfig,
+  getStoreTransactions: (subscriptionId: string) => Promise<readonly StoreTransaction[]>,
 ): Promise<RevenueCatEvent | null> {
   if (
     typeof snapshot.environment === 'string' &&
@@ -147,6 +163,19 @@ async function snapshotEvent(
   ) {
     throw new RevenueCatUnavailableError();
   }
+  const storeTransactions = await getStoreTransactions(snapshot.id);
+  const orderedTransactions = [...storeTransactions].sort(
+    (left, right) => left.purchasedAt - right.purchasedAt || left.id.localeCompare(right.id),
+  );
+  const storeTransactionIds = [
+    ...new Set(orderedTransactions.map((transaction) => transaction.id)),
+  ];
+  if (
+    storeTransactionIds.length === 0 ||
+    !storeTransactionIds.includes(snapshot.store_subscription_identifier)
+  ) {
+    throw new RevenueCatUnavailableError();
+  }
   if (!periodStart || (!periodEnd && shape.type !== 'EXPIRATION')) {
     throw new RevenueCatUnavailableError();
   }
@@ -160,7 +189,7 @@ async function snapshotEvent(
   const effectiveAt = terminalAt ?? periodStart;
 
   return {
-    id: await stableReconciliationId(snapshot),
+    id: await stableReconciliationId(snapshot, storeTransactionIds),
     type: shape.type,
     event_timestamp_ms: effectiveAt,
     provider_order_ms: Math.max(periodStart, periodEnd ?? 0),
@@ -176,7 +205,9 @@ async function snapshotEvent(
     cancel_reason: shape.cancelReason,
     environment: snapshot.environment,
     store,
-    original_transaction_id: snapshot.store_subscription_identifier,
+    original_transaction_id: storeTransactionIds[0],
+    revenuecat_subscription_id: snapshot.id,
+    store_transaction_ids: storeTransactionIds,
   };
 }
 
@@ -185,6 +216,93 @@ export class RevenueCatClient {
     private readonly config: RevenueCatConfig,
     private readonly fetchImpl: FetchLike = fetch,
   ) {}
+
+  private async requestJson(pageUrl: URL): Promise<Record<string, unknown>> {
+    let response: Response;
+    try {
+      response = await this.fetchImpl(pageUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.config.apiKey}`,
+          Accept: 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      throw new RevenueCatUnavailableError();
+    }
+    if (!response.ok) throw new RevenueCatUnavailableError();
+
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      throw new RevenueCatUnavailableError();
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      throw new RevenueCatUnavailableError();
+    }
+    return body as Record<string, unknown>;
+  }
+
+  private nextPage(value: unknown, firstPage: URL, environment?: string): URL | null {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value !== 'string' || !value.trim()) throw new RevenueCatUnavailableError();
+    const nextPage = new URL(value, firstPage);
+    if (
+      nextPage.origin !== firstPage.origin ||
+      nextPage.pathname !== firstPage.pathname ||
+      nextPage.username ||
+      nextPage.password
+    ) {
+      throw new RevenueCatUnavailableError();
+    }
+    if (environment) {
+      if (
+        nextPage.searchParams.has('environment') &&
+        nextPage.searchParams.get('environment') !== environment
+      ) {
+        throw new RevenueCatUnavailableError();
+      }
+      nextPage.searchParams.set('environment', environment);
+    }
+    return nextPage;
+  }
+
+  private async getStoreTransactions(subscriptionId: string): Promise<StoreTransaction[]> {
+    const firstPage = new URL(
+      `${this.config.apiBaseUrl}/projects/${encodeURIComponent(this.config.projectId)}` +
+        `/subscriptions/${encodeURIComponent(subscriptionId)}/transactions`,
+    );
+    firstPage.searchParams.set('limit', '100');
+    firstPage.searchParams.set('sort', 'purchased_at');
+    firstPage.searchParams.set('direction', 'asc');
+    let pageUrl: URL | null = firstPage;
+    const visited = new Set<string>();
+    const transactions: StoreTransaction[] = [];
+
+    while (pageUrl) {
+      if (visited.has(pageUrl.href)) throw new RevenueCatUnavailableError();
+      visited.add(pageUrl.href);
+      const envelope = await this.requestJson(pageUrl);
+      if (!Array.isArray(envelope.items)) throw new RevenueCatUnavailableError();
+
+      for (const item of envelope.items as SubscriptionTransaction[]) {
+        if (
+          item.object !== 'subscription_transaction' ||
+          typeof item.id !== 'string' ||
+          !item.id.trim() ||
+          item.id.length > 255 ||
+          !millis(item.purchased_at)
+        ) {
+          throw new RevenueCatUnavailableError();
+        }
+        transactions.push({ id: item.id, purchasedAt: item.purchased_at as number });
+      }
+      pageUrl = this.nextPage(envelope.next_page, firstPage);
+    }
+    return transactions;
+  }
 
   async getCustomerEvents(customerId: string): Promise<RevenueCatEvent[]> {
     const firstPage = new URL(
@@ -202,68 +320,19 @@ export class RevenueCatClient {
       }
       visited.add(pageUrl.href);
 
-      let response: Response;
-      try {
-        response = await this.fetchImpl(pageUrl, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.config.apiKey}`,
-            Accept: 'application/json',
-          },
-          signal: AbortSignal.timeout(10_000),
-        });
-      } catch {
-        throw new RevenueCatUnavailableError();
-      }
-      if (!response.ok) throw new RevenueCatUnavailableError();
-
-      let body: unknown;
-      try {
-        body = await response.json();
-      } catch {
-        throw new RevenueCatUnavailableError();
-      }
-      if (!body || typeof body !== 'object' || Array.isArray(body)) {
-        throw new RevenueCatUnavailableError();
-      }
-      const envelope = body as Record<string, unknown>;
+      const envelope = await this.requestJson(pageUrl);
       if (!Array.isArray(envelope.items)) {
         throw new RevenueCatUnavailableError();
       }
 
       for (const item of envelope.items as SubscriptionSnapshot[]) {
-        const event = await snapshotEvent(item, this.config);
+        const event = await snapshotEvent(item, this.config, (subscriptionId) =>
+          this.getStoreTransactions(subscriptionId),
+        );
         if (event) events.push(event);
       }
 
-      if (
-        envelope.next_page === null ||
-        envelope.next_page === undefined ||
-        envelope.next_page === ''
-      ) {
-        pageUrl = null;
-        continue;
-      }
-      if (typeof envelope.next_page !== 'string' || !envelope.next_page.trim()) {
-        throw new RevenueCatUnavailableError();
-      }
-      const nextPage = new URL(envelope.next_page, firstPage);
-      if (
-        nextPage.origin !== firstPage.origin ||
-        nextPage.pathname !== firstPage.pathname ||
-        nextPage.username ||
-        nextPage.password
-      ) {
-        throw new RevenueCatUnavailableError();
-      }
-      if (
-        nextPage.searchParams.has('environment') &&
-        nextPage.searchParams.get('environment') !== this.config.environment
-      ) {
-        throw new RevenueCatUnavailableError();
-      }
-      nextPage.searchParams.set('environment', this.config.environment);
-      pageUrl = nextPage;
+      pageUrl = this.nextPage(envelope.next_page, firstPage, this.config.environment);
     }
     return events;
   }

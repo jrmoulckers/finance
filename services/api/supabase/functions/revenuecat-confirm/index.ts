@@ -9,7 +9,10 @@ import { checkRateLimit, RATE_LIMITS, rateLimitResponse } from '../_shared/rate-
 import { RevenueCatClient, RevenueCatUnavailableError } from '../_shared/revenuecat/client.ts';
 import { readRevenueCatConfig, type RevenueCatConfig } from '../_shared/revenuecat/config.ts';
 import { RevenueCatEvidenceError } from '../_shared/revenuecat/normalization.ts';
-import { confirmRevenueCatPurchase } from '../_shared/revenuecat/service.ts';
+import {
+  confirmRevenueCatPurchase,
+  projectionGrantsAccess,
+} from '../_shared/revenuecat/service.ts';
 import {
   createRevenueCatStore,
   type RevenueCatStore,
@@ -109,9 +112,10 @@ export function createRevenueCatConfirmationHandler(dependencies: ConfirmationDe
             403,
           );
         }
+        const entitlement = await dependencies.store.getProjection(user.id, householdId);
         return confirmationResponse(request, {
-          status: 'confirmed',
-          entitlement: await dependencies.store.getProjection(user.id, householdId),
+          status: projectionGrantsAccess(entitlement) ? 'confirmed' : 'pending',
+          entitlement,
         });
       } catch {
         return confirmationResponse(
