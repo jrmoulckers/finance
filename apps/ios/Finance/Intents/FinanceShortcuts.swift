@@ -16,6 +16,8 @@ import AppIntents
 /// - Show suggested shortcuts on the Lock Screen and in Spotlight
 struct FinanceShortcuts: AppShortcutsProvider {
 
+    // Phrases may interpolate one AppEntity or AppEnum parameter; scalar and
+    // free-text parameters remain configurable in the Shortcuts editor.
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: AddExpenseIntent(),
@@ -23,8 +25,7 @@ struct FinanceShortcuts: AppShortcutsProvider {
                 "Add expense in \(.applicationName)",
                 "Log expense in \(.applicationName)",
                 "Record expense in \(.applicationName)",
-                "Add a \(\.$amount) expense in \(.applicationName)",
-                "Add \(\.$amount) \(\.$category) expense in \(.applicationName)",
+                "Add a \(\.$category) expense in \(.applicationName)",
             ],
             shortTitle: "Add Expense",
             systemImageName: "plus.circle"
@@ -35,8 +36,7 @@ struct FinanceShortcuts: AppShortcutsProvider {
             phrases: [
                 "Log transaction in \(.applicationName)",
                 "Record transaction in \(.applicationName)",
-                "Log \(\.$amount) in \(.applicationName)",
-                "Log \(\.$amount) \(\.$category) in \(.applicationName)",
+                "Log a \(\.$category) transaction in \(.applicationName)",
             ],
             shortTitle: "Log Transaction",
             systemImageName: "plus.square.on.square"
@@ -49,7 +49,6 @@ struct FinanceShortcuts: AppShortcutsProvider {
                 "Show my balance in \(.applicationName)",
                 "What's my balance in \(.applicationName)",
                 "Check balance in \(.applicationName)",
-                "Show \(\.$accountName) balance in \(.applicationName)",
             ],
             shortTitle: "Show Balance",
             systemImageName: "dollarsign.circle"
@@ -62,7 +61,6 @@ struct FinanceShortcuts: AppShortcutsProvider {
                 "How's my budget in \(.applicationName)",
                 "Check budget in \(.applicationName)",
                 "Show budget status in \(.applicationName)",
-                "\(\.$budgetName) budget status in \(.applicationName)",
             ],
             shortTitle: "Budget Status",
             systemImageName: "chart.pie"
@@ -75,7 +73,6 @@ struct FinanceShortcuts: AppShortcutsProvider {
                 "Show recent transactions in \(.applicationName)",
                 "What did I spend recently in \(.applicationName)",
                 "Last transactions in \(.applicationName)",
-                "Show last \(\.$count) transactions in \(.applicationName)",
             ],
             shortTitle: "Recent Transactions",
             systemImageName: "list.bullet.rectangle"
@@ -88,7 +85,6 @@ struct FinanceShortcuts: AppShortcutsProvider {
                 "How are my goals in \(.applicationName)",
                 "Check goals in \(.applicationName)",
                 "Show goal progress in \(.applicationName)",
-                "\(\.$goalName) goal progress in \(.applicationName)",
             ],
             shortTitle: "Goal Progress",
             systemImageName: "target"
