@@ -204,11 +204,15 @@ actor SubscriptionService: SubscriptionProviding {
         }
 
         let eligibleHousehold = await eligibleHouseholdProvider.currentEligibleHousehold()
+        let serverOperation: RevenueCatConfirmationOperation
+        switch operation {
+        case .purchase:
+            serverOperation = .confirm
+        case .restore:
+            serverOperation = .restore
+        }
         let request = FinanceEntitlementConfirmationRequest(
-            operation: switch operation {
-            case .purchase: .confirm
-            case .restore: .restore
-            },
+            operation: serverOperation,
             context: context,
             eligibleHousehold: eligibleHousehold
         )
