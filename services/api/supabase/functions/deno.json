@@ -24,7 +24,10 @@
       "investment-sync/**/*.test.ts",
       "detect-bills/**/*.test.ts",
       "generate-report/**/*.test.ts",
-      "transactions-list/**/*.test.ts"
+      "transactions-list/**/*.test.ts",
+      "revenuecat-webhook/**/*.test.ts",
+      "revenuecat-confirm/**/*.test.ts",
+      "revenuecat-reconcile/**/*.test.ts"
     ],
     "exclude": ["node_modules"]
   },
@@ -43,7 +46,8 @@
     "test:consent-management": "deno test --allow-env --allow-net=none --no-check consent-management/",
     "test:detect-bills": "deno test --allow-env --allow-net=none --no-check detect-bills/",
     "test:generate-report": "deno test --allow-env --allow-net=none --no-check generate-report/",
-    "test:transactions-list": "deno test --allow-env --allow-net=none --no-check transactions-list/"
+    "test:transactions-list": "deno test --allow-env --allow-net=none --no-check transactions-list/",
+    "test:revenuecat": "deno test --allow-env --allow-net=none --no-check _shared/revenuecat/ revenuecat-webhook/ revenuecat-confirm/ revenuecat-reconcile/"
   },
   "imports": {
     "std/testing/": "https://deno.land/std@0.208.0/testing/",

@@ -238,6 +238,24 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'anomaly-detection': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'anomaly-detection' },
   'consent-management': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'consent-management' },
   'investment-sync': { maxRequests: 20, windowSeconds: 60, keyPrefix: 'investment-sync' },
+  'revenuecat-webhook': {
+    maxRequests: 120,
+    windowSeconds: 60,
+    keyPrefix: 'revenuecat-webhook',
+    failMode: 'closed',
+  },
+  'revenuecat-confirm': {
+    maxRequests: 10,
+    windowSeconds: 60,
+    keyPrefix: 'revenuecat-confirm',
+    failMode: 'closed',
+  },
+  'revenuecat-reconcile': {
+    maxRequests: 5,
+    windowSeconds: 60,
+    keyPrefix: 'revenuecat-reconcile',
+    failMode: 'closed',
+  },
 };
 
 // ---------------------------------------------------------------------------
