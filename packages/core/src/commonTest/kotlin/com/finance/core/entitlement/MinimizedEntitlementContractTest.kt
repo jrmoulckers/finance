@@ -38,7 +38,7 @@ class MinimizedEntitlementContractTest {
         addonAllowance: Long = 0,
         expiresAt: String = "null",
         projectionVersion: Long = 3,
-        downgradePending: Boolean = false,
+        downgradeStatus: String = "none",
         downgradeEffectiveAt: String = "null",
     ): String = """
         {
@@ -65,7 +65,7 @@ class MinimizedEntitlementContractTest {
               "projection_version": $projectionVersion
             },
             "downgrade": {
-              "pending": $downgradePending,
+              "status": "$downgradeStatus",
               "effective_at": ${quoteOrNull(downgradeEffectiveAt)}
             }
           }
@@ -74,6 +74,7 @@ class MinimizedEntitlementContractTest {
 
     private fun quoteOrNull(value: String): String = if (value == "null") "null" else "\"$value\""
 
+    /** A purchaser who also sponsors their household: two contributing grants. */
     private fun premiumHouseholdPayload(): String = payload(
         scope = "user",
         tier = "premium",
@@ -85,7 +86,21 @@ class MinimizedEntitlementContractTest {
         baseAllowance = 2,
         addonAllowance = 3,
         expiresAt = expiry.toString(),
-        downgradePending = true,
+        downgradeStatus = "undetermined",
+    )
+
+    /** A sponsored member holds no purchaser grant, so the bound is provable. */
+    private fun sponsoredMemberPayload(): String = payload(
+        scope = "household",
+        tier = "premium",
+        userTier = "free",
+        householdTier = "premium",
+        accessState = "granted",
+        allowance = 5,
+        baseAllowance = 2,
+        addonAllowance = 3,
+        expiresAt = expiry.toString(),
+        downgradeStatus = "scheduled",
         downgradeEffectiveAt = expiry.toString(),
     )
 
@@ -99,7 +114,7 @@ class MinimizedEntitlementContractTest {
         allowance = 4,
         baseAllowance = 4,
         expiresAt = expiry.toString(),
-        downgradePending = true,
+        downgradeStatus = "scheduled",
         downgradeEffectiveAt = expiry.toString(),
     )
 
@@ -128,7 +143,7 @@ class MinimizedEntitlementContractTest {
         assertNull(envelope.entitlement.householdTier)
         assertNull(envelope.entitlement.lifecycle)
         assertEquals(0L, envelope.entitlement.bankConnections.allowance)
-        assertFalse(envelope.entitlement.downgrade.pending)
+        assertEquals(DowngradeStatus.NONE, envelope.entitlement.downgrade.status)
     }
 
     @Test
@@ -144,8 +159,8 @@ class MinimizedEntitlementContractTest {
         assertEquals(EntitlementTier.PLUS, envelope.entitlement.tier)
         assertEquals(EntitlementScope.USER, envelope.entitlement.scope)
         assertEquals(expiry, envelope.entitlement.validity.expiresAt)
-        // Plus carries no bank allowance, so no reduction is scheduled.
-        assertFalse(envelope.entitlement.downgrade.pending)
+        // Plus carries no bank allowance, so nothing can reduce.
+        assertEquals(DowngradeStatus.NONE, envelope.entitlement.downgrade.status)
     }
 
     @Test
@@ -157,19 +172,85 @@ class MinimizedEntitlementContractTest {
         assertEquals(5L, entitlement.bankConnections.allowance)
         assertEquals(2L, entitlement.bankConnections.baseAllowance)
         assertEquals(3L, entitlement.bankConnections.addonAllowance)
-        assertEquals(expiry, entitlement.downgrade.effectiveAt)
     }
 
     @Test
-    fun `a pending downgrade states its boundary and no post-boundary allowance`() {
-        val envelope = decodeAvailable(premiumHouseholdPayload())
-        assertTrue(envelope.entitlement.downgrade.pending)
-        // The boundary is the server-issued bound; nothing claims what capacity
-        // survives it, because a Premium base or a live sponsorship may.
+    fun `a scheduled downgrade states its boundary and no post-boundary allowance`() {
+        val envelope = decodeAvailable(sponsoredMemberPayload())
+        assertEquals(DowngradeStatus.SCHEDULED, envelope.entitlement.downgrade.status)
+        // A sponsored member holds no purchaser grant, so the bound provably
+        // governs the reduction. Nothing claims what capacity survives it,
+        // because the Premium base may.
         assertEquals(expiry, envelope.entitlement.downgrade.effectiveAt)
         assertFalse(
             MinimizedEntitlementCodec.encode(envelope).contains("bank_connection_allowance"),
             "the contract must not state a post-boundary allowance",
+        )
+    }
+
+    @Test
+    fun `a weaker purchaser grant never dictates the household boundary`() {
+        // Plus lapses tomorrow while the Family household survives for a
+        // month. The projection collapses both bounds, so the earlier one
+        // belongs to the grant that does not determine the effective tier or
+        // allowance and must not be claimed as the reduction instant.
+        val entitlement = decodeAvailable(
+            payload(
+                scope = "household",
+                tier = "family",
+                userTier = "plus",
+                householdTier = "family",
+                accessState = "granted",
+                isFamilyBound = true,
+                allowance = 4,
+                baseAllowance = 4,
+                expiresAt = expiry.toString(),
+                downgradeStatus = "undetermined",
+            ),
+        ).entitlement
+        assertEquals(EntitlementTier.FAMILY, entitlement.tier)
+        assertEquals(EntitlementScope.HOUSEHOLD, entitlement.scope)
+        assertEquals(DowngradeStatus.UNDETERMINED, entitlement.downgrade.status)
+        assertNull(entitlement.downgrade.effectiveAt)
+        // The bound is still disclosed: it is when the response stops being
+        // guaranteed accurate, which is when the client refreshes.
+        assertEquals(expiry, entitlement.validity.expiresAt)
+    }
+
+    @Test
+    fun `an equal-rank purchaser grant also leaves the boundary undetermined`() {
+        val entitlement = decodeAvailable(premiumHouseholdPayload()).entitlement
+        assertEquals(EntitlementTier.PREMIUM, entitlement.tier)
+        assertEquals(DowngradeStatus.UNDETERMINED, entitlement.downgrade.status)
+        assertNull(entitlement.downgrade.effectiveAt)
+    }
+
+    @Test
+    fun `a claimed boundary is refused when two grants contribute`() {
+        // The exact defect: a response that attributes the collapsed bound to
+        // the household while a purchaser grant also contributes.
+        assertUnavailable(
+            payload(
+                scope = "household",
+                tier = "family",
+                userTier = "plus",
+                householdTier = "family",
+                accessState = "granted",
+                isFamilyBound = true,
+                allowance = 4,
+                baseAllowance = 4,
+                expiresAt = expiry.toString(),
+                downgradeStatus = "scheduled",
+                downgradeEffectiveAt = expiry.toString(),
+            ),
+            EntitlementUnavailableReason.MALFORMED,
+        )
+        // And the converse: a provable single-grant bound may not be hidden.
+        assertUnavailable(
+            familyPayload()
+                .replace("\"status\": \"scheduled\"", "\"status\": \"undetermined\"")
+                .replace("\"effective_at\": \"$expiry\"", "\"effective_at\": null"),
+            EntitlementUnavailableReason.MALFORMED,
         )
     }
 
@@ -313,7 +394,7 @@ class MinimizedEntitlementContractTest {
                 allowance = 4,
                 baseAllowance = 4,
                 expiresAt = expiry.toString(),
-                downgradePending = true,
+                downgradeStatus = "scheduled",
                 downgradeEffectiveAt = expiry.toString(),
             ),
             EntitlementUnavailableReason.UNSUPPORTED_CATALOG_VERSION,
@@ -361,7 +442,7 @@ class MinimizedEntitlementContractTest {
                 allowance = 4,
                 baseAllowance = 4,
                 expiresAt = expiry.toString(),
-                downgradePending = true,
+                downgradeStatus = "scheduled",
                 downgradeEffectiveAt = expiry.toString(),
             ),
             EntitlementUnavailableReason.MALFORMED,
@@ -443,7 +524,7 @@ class MinimizedEntitlementContractTest {
     }
 
     @Test
-    fun `a lapsed state is decodable and reports no pending downgrade`() {
+    fun `a lapsed state is decodable and reports no reducible capacity`() {
         val entitlement = decodeAvailable(
             payload(
                 tier = "plus",
@@ -453,7 +534,7 @@ class MinimizedEntitlementContractTest {
             ),
         ).entitlement
         assertEquals(EntitlementAccessState.LAPSED, entitlement.accessState)
-        assertFalse(entitlement.downgrade.pending)
+        assertEquals(DowngradeStatus.NONE, entitlement.downgrade.status)
     }
 
     @Test
@@ -462,34 +543,40 @@ class MinimizedEntitlementContractTest {
     }
 
     @Test
-    fun `a pending downgrade that does not name its boundary is refused`() {
-        // Pending must name the server-issued bound exactly, and a non-pending
-        // downgrade must name nothing at all.
+    fun `a downgrade status that does not match its boundary is refused`() {
+        // `scheduled` must name the server-issued bound exactly.
         assertUnavailable(
-            payload(
-                tier = "premium",
-                userTier = "premium",
-                householdTier = "premium",
-                accessState = "granted",
-                isPremiumSponsor = true,
-                allowance = 5,
-                baseAllowance = 2,
-                addonAllowance = 3,
-                expiresAt = expiry.toString(),
-                downgradePending = true,
-                downgradeEffectiveAt = "null",
+            sponsoredMemberPayload().replace(
+                "\"effective_at\": \"$expiry\"",
+                "\"effective_at\": null",
             ),
             EntitlementUnavailableReason.MALFORMED,
         )
         assertUnavailable(
-            premiumHouseholdPayload().replace("\"pending\": true", "\"pending\": false"),
-            EntitlementUnavailableReason.MALFORMED,
-        )
-        assertUnavailable(
-            premiumHouseholdPayload().replace(
+            sponsoredMemberPayload().replace(
                 "\"effective_at\": \"$expiry\"",
                 "\"effective_at\": \"2099-01-01T00:00:00Z\"",
             ),
+            EntitlementUnavailableReason.MALFORMED,
+        )
+        // `none` may not be claimed while capacity can still reduce.
+        assertUnavailable(
+            sponsoredMemberPayload()
+                .replace("\"status\": \"scheduled\"", "\"status\": \"none\"")
+                .replace("\"effective_at\": \"$expiry\"", "\"effective_at\": null"),
+            EntitlementUnavailableReason.MALFORMED,
+        )
+        // `undetermined` may not carry an instant.
+        assertUnavailable(
+            premiumHouseholdPayload().replace(
+                "\"effective_at\": null",
+                "\"effective_at\": \"$expiry\"",
+            ),
+            EntitlementUnavailableReason.MALFORMED,
+        )
+        // An unknown status is not understood and never authorizes.
+        assertUnavailable(
+            sponsoredMemberPayload().replace("\"status\": \"scheduled\"", "\"status\": \"soon\""),
             EntitlementUnavailableReason.MALFORMED,
         )
     }

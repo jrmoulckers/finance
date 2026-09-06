@@ -525,6 +525,72 @@ END;
 $$;
 SELECT set_config('request.jwt.claim.sub', '', true);
 
+-- A weaker purchaser grant collapses into the same `expires_at` even though it
+-- does not determine the effective tier or allowance. This is exactly why the
+-- API leaves the reduction boundary undetermined whenever a purchaser grant and
+-- a household grant both contribute: Plus lapsing first would otherwise be
+-- reported as the Family household's reduction instant.
+INSERT INTO billing_accounts (id, owner_id)
+VALUES ('44030000-0000-4000-b000-000000000023', '44030000-0000-4000-8000-000000000023');
+
+INSERT INTO billing_provider_identities (
+    id,
+    billing_account_id,
+    provider,
+    environment,
+    provider_customer_id,
+    is_primary
+)
+VALUES (
+    '44030000-0000-4000-c000-000000000023',
+    '44030000-0000-4000-b000-000000000023',
+    'stripe',
+    'sandbox',
+    'cus_4403_relative',
+    true
+);
+
+SELECT public.apply_billing_provider_event(
+    public.record_billing_provider_event(
+        '44030000-0000-4000-b000-000000000023',
+        '44030000-0000-4000-c000-000000000023',
+        'stripe',
+        'sandbox',
+        'evt_4403_relative_plus',
+        'sub_4403_relative_plus',
+        NULL,
+        now(),
+        now() - interval '1 hour',
+        1,
+        'activated',
+        'active',
+        'base_plan',
+        'plus',
+        1,
+        now() + interval '1 day',
+        NULL,
+        NULL,
+        NULL,
+        false
+    )
+);
+
+SELECT set_config('request.jwt.claim.sub', '44030000-0000-4000-8000-000000000023', true);
+SELECT pg_temp.assert_true(
+    (
+        SELECT user_display_tier = 'plus'
+           AND household_display_tier = 'family'
+           AND bank_connection_allowance = 4
+           -- The bound is the Plus grant's, not the Family grant's, even
+           -- though Family determines both the effective tier and allowance.
+           AND expires_at < now() + interval '2 days'
+           AND expires_at > server_time
+        FROM public.get_my_entitlements('44030000-0000-4000-9000-000000000002')
+    ),
+    'a weaker purchaser grant still collapses into the shared validity bound'
+);
+SELECT set_config('request.jwt.claim.sub', '', true);
+
 -- ---------------------------------------------------------------------------
 -- Unauthenticated reads fail closed
 -- ---------------------------------------------------------------------------

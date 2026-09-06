@@ -109,6 +109,25 @@ object EntitlementDisplayPolicy {
     fun displayTier(envelope: EntitlementEnvelope, now: Instant): EntitlementTier =
         if (isDisplayableAt(envelope, now)) envelope.entitlement.tier else EntitlementTier.FREE
 
+    /**
+     * The instant after which a cached snapshot must be re-read.
+     *
+     * Reaching it does not mean the entitlement ended. When
+     * [DowngradeStatus.UNDETERMINED] applies, a stronger grant may well have
+     * survived the contributing grant that lapsed — the client cannot tell
+     * without refreshing, so it refreshes here rather than presenting Free
+     * indefinitely. `null` means the response carries no server-issued
+     * deadline, which is the Free case.
+     */
+    fun refreshAfter(envelope: EntitlementEnvelope): Instant? =
+        envelope.entitlement.validity.expiresAt
+
+    /** Whether a cached snapshot is past its server-issued bound at [now]. */
+    fun needsRefreshAt(envelope: EntitlementEnvelope, now: Instant): Boolean {
+        val bound = refreshAfter(envelope) ?: return false
+        return now >= bound
+    }
+
     /** Bank-connection capacity to display at [now]; zero once the bound has passed. */
     fun displayBankConnectionAllowance(envelope: EntitlementEnvelope, now: Instant): Long =
         if (isDisplayableAt(envelope, now)) envelope.entitlement.bankConnections.allowance else 0L

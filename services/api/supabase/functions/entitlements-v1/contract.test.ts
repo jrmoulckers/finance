@@ -44,7 +44,7 @@ Deno.test('contract — Free resolves to a non-entitled user scope', () => {
   assertEquals(envelope.entitlement.scope, 'user');
   assertEquals(envelope.entitlement.access_state, 'not_entitled');
   assertEquals(envelope.entitlement.bank_connections.allowance, 0);
-  assertEquals(envelope.entitlement.downgrade.pending, false);
+  assertEquals(envelope.entitlement.downgrade.status, 'none');
   assertEquals(envelope.entitlement.downgrade.effective_at, null);
 });
 
@@ -57,8 +57,8 @@ Deno.test('contract — Plus is granted through the server-issued validity bound
   assertEquals(envelope.entitlement.access_state, 'granted');
   assertEquals(envelope.entitlement.validity.expires_at, '2033-06-18T03:33:20.000Z');
   assertEquals(envelope.entitlement.validity.server_time, '2033-05-18T03:33:21.000Z');
-  // Plus carries no bank allowance, so no reduction is scheduled.
-  assertEquals(envelope.entitlement.downgrade.pending, false);
+  // Plus carries no bank allowance, so there is nothing that can reduce.
+  assertEquals(envelope.entitlement.downgrade.status, 'none');
 });
 
 Deno.test('contract — Premium add-ons are reported above the catalog base', () => {
@@ -84,34 +84,83 @@ Deno.test('contract — Premium add-ons are reported above the catalog base', ()
     addon_allowance: 3,
   });
   assertEquals(envelope.entitlement.is_premium_sponsor, true);
+  // A purchaser grant and a household grant both contribute, so the collapsed
+  // bound cannot be attributed to either.
   assertEquals(envelope.entitlement.downgrade, {
-    pending: true,
-    effective_at: '2033-06-18T03:33:20.000Z',
+    status: 'undetermined',
+    effective_at: null,
   });
 });
 
 Deno.test('contract — an expiring add-on states the boundary, never a next allowance', () => {
-  // The projection's expiry is already the earliest of the base and add-on
-  // bounds, so this is the instant the add-on capacity stops. Premium's base
-  // of two survives it, which is exactly why no post-boundary allowance is
-  // stated.
+  // A sponsored member holds no purchaser grant, so the projection's bound is
+  // the household bound alone — here the earliest add-on expiry. Premium's
+  // base of two survives it, which is exactly why no post-boundary allowance
+  // is stated.
   const envelope = toEnvelope(
     parsed(
       {
-        user_display_tier: 'premium',
         household_display_tier: 'premium',
         bank_connection_allowance: 5,
-        is_premium_sponsor: true,
         expires_at: '2033-05-25T03:33:20+00:00',
       },
       true,
     ),
   );
   assertEquals(envelope.entitlement.downgrade, {
-    pending: true,
+    status: 'scheduled',
     effective_at: '2033-05-25T03:33:20.000Z',
   });
   assertEquals(Object.hasOwn(envelope.entitlement.downgrade, 'bank_connection_allowance'), false);
+});
+
+Deno.test('contract — a weaker purchaser grant never dictates the household boundary', () => {
+  // Plus lapses tomorrow while the Family household survives for a month. The
+  // projection collapses both bounds with LEAST, so the earlier one belongs to
+  // the grant that does *not* determine the effective tier or allowance.
+  // Claiming it as the reduction instant would be false.
+  const envelope = toEnvelope(
+    parsed(
+      {
+        user_display_tier: 'plus',
+        household_display_tier: 'family',
+        bank_connection_allowance: 4,
+        is_family_bound: true,
+        expires_at: '2033-05-19T03:33:20+00:00',
+      },
+      true,
+    ),
+  );
+  assertEquals(envelope.entitlement.tier, 'family');
+  assertEquals(envelope.entitlement.scope, 'household');
+  assertEquals(envelope.entitlement.access_state, 'granted');
+  assertEquals(envelope.entitlement.bank_connections.allowance, 4);
+  assertEquals(envelope.entitlement.downgrade, {
+    status: 'undetermined',
+    effective_at: null,
+  });
+  // The bound is still disclosed — it is when the response stops being
+  // guaranteed accurate, which is when the client refreshes.
+  assertEquals(envelope.entitlement.validity.expires_at, '2033-05-19T03:33:20.000Z');
+});
+
+Deno.test('contract — an equal-rank purchaser grant also leaves the boundary undetermined', () => {
+  const envelope = toEnvelope(
+    parsed(
+      {
+        user_display_tier: 'premium',
+        household_display_tier: 'premium',
+        bank_connection_allowance: 2,
+        is_premium_sponsor: true,
+        expires_at: '2033-05-19T03:33:20+00:00',
+      },
+      true,
+    ),
+  );
+  assertEquals(envelope.entitlement.tier, 'premium');
+  assertEquals(envelope.entitlement.scope, 'user');
+  assertEquals(envelope.entitlement.downgrade.status, 'undetermined');
+  assertEquals(envelope.entitlement.downgrade.effective_at, null);
 });
 
 Deno.test('contract — an expiring Family bound states no retained allowance', () => {
@@ -128,7 +177,7 @@ Deno.test('contract — an expiring Family bound states no retained allowance', 
       true,
     ),
   );
-  assertEquals(envelope.entitlement.downgrade.pending, true);
+  assertEquals(envelope.entitlement.downgrade.status, 'scheduled');
   assertEquals(envelope.entitlement.downgrade.effective_at, '2033-06-18T03:33:20.000Z');
   assertEquals(Object.hasOwn(envelope.entitlement.downgrade, 'bank_connection_allowance'), false);
 });
@@ -171,7 +220,7 @@ Deno.test('contract — a passed validity bound lapses and never authorizes', ()
     ),
   );
   assertEquals(envelope.entitlement.access_state, 'lapsed');
-  assertEquals(envelope.entitlement.downgrade.pending, false);
+  assertEquals(envelope.entitlement.downgrade.status, 'none');
   assertEquals(envelope.entitlement.downgrade.effective_at, null);
 });
 

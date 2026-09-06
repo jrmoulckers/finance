@@ -910,7 +910,12 @@ components:
           type: string
           format: date-time
           nullable: true
-          description: Server-issued bound. Clients never substitute their own clock.
+          description: >-
+            The earliest instant at which any grant contributing to this
+            response lapses, so the response is guaranteed accurate only
+            through it. Clients never substitute their own clock. When
+            `downgrade.status` is `undetermined`, reaching it means "refresh
+            required", not "entitlement ended".
         server_time:
           type: string
           format: date-time
@@ -922,22 +927,28 @@ components:
     EntitlementPendingDowngrade:
       type: object
       additionalProperties: false
-      required: [pending, effective_at]
+      required: [status, effective_at]
       properties:
-        pending:
-          type: boolean
-          description: A reduction boundary exists at `effective_at`.
+        status:
+          type: string
+          enum: [none, scheduled, undetermined]
+          description: >-
+            `none` — no paid capacity can reduce. `scheduled` — exactly one
+            paid grant contributes, so the validity bound provably governs the
+            reduction. `undetermined` — a purchaser grant and a household grant
+            both contribute, the projection collapses them to the earliest
+            bound, and that bound may belong to the weaker grant, so no
+            reduction instant is claimed.
         effective_at:
           type: string
           format: date-time
           nullable: true
           description: >-
-            The earliest instant at which the current tier or allowance stops
-            being guaranteed. The contract states no post-boundary allowance:
-            an expiring add-on leaves the Premium base in place and an expiring
-            Family purchase over a live Premium sponsorship leaves the
-            sponsor's allowance in place, so clients re-read the projection at
-            or after this instant instead of inferring one.
+            The instant the effective tier and allowance reduce, present only
+            when `status` is `scheduled`. The contract states no post-boundary
+            allowance: an expiring add-on leaves the Premium base in place, so
+            clients re-read the projection at or after this instant instead of
+            inferring one.
 
     MinimizedEntitlement:
       type: object

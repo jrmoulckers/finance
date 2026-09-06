@@ -245,7 +245,26 @@ function json(
 
 const applicationHandler = createEntitlementsHandler();
 export const handler = (request: Request): Promise<Response> => {
+  // `validateEnv` returns its own bare Response. Normalize it so a
+  // misconfigured deployment still answers with the documented envelope, CORS
+  // headers, and no-store rather than a shape no client contract describes.
+  // A preflight is answered first so a misconfiguration cannot present as a
+  // CORS failure in the browser.
+  if (request.method === 'OPTIONS') {
+    return Promise.resolve(handleCorsPreflightRequest(request));
+  }
   const envError = validateEnv(FUNCTION_NAME, request);
-  return envError ? Promise.resolve(envError) : applicationHandler(request);
+  if (envError !== null) {
+    return Promise.resolve(
+      failure(
+        request,
+        503,
+        'projection_unavailable',
+        'Entitlement projection is temporarily unavailable',
+        { 'Retry-After': '30' },
+      ),
+    );
+  }
+  return applicationHandler(request);
 };
 if (import.meta.main) Deno.serve(handler);

@@ -5,6 +5,7 @@ import {
   createEntitlementsHandler,
   EntitlementRequestError,
   EntitlementUnavailableError,
+  handler,
 } from './index.ts';
 
 const USER_ID = '20000000-0000-4000-8000-000000000001';
@@ -256,7 +257,7 @@ Deno.test('entitlements-v1 — the served envelope is exactly the minimized cont
   assertEquals(envelope.entitlement.tier, 'premium');
   assertEquals(envelope.entitlement.access_state, 'granted');
   assertEquals(envelope.entitlement.bank_connections.addon_allowance, 2);
-  assertEquals(envelope.entitlement.downgrade.pending, true);
+  assertEquals(envelope.entitlement.downgrade.status, 'undetermined');
 
   assertEquals(collectKeys(envelope).sort(), [
     'catalog_version',
@@ -269,7 +270,7 @@ Deno.test('entitlements-v1 — the served envelope is exactly the minimized cont
     'entitlement.bank_connections.base_allowance',
     'entitlement.downgrade',
     'entitlement.downgrade.effective_at',
-    'entitlement.downgrade.pending',
+    'entitlement.downgrade.status',
     'entitlement.household_tier',
     'entitlement.is_family_bound',
     'entitlement.is_premium_sponsor',
@@ -315,3 +316,56 @@ Deno.test('entitlements-v1 — the served envelope is exactly the minimized cont
   assertEquals(body.includes(HOUSEHOLD_ID), false);
   assertStringIncludes(body, '"projection_version":3');
 });
+
+// ---------------------------------------------------------------------------
+// Exported handler — environment validation must use the same failure envelope
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  'entitlements-v1 — a misconfigured deployment fails closed with the documented envelope',
+  async () => {
+    const required = [
+      'SUPABASE_URL',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'SUPABASE_ANON_KEY',
+      'ALLOWED_ORIGINS',
+    ];
+    const saved = new Map(required.map((name) => [name, Deno.env.get(name)]));
+    for (const name of required) Deno.env.delete(name);
+    try {
+      const response = await handler(get());
+      const body = await response.text();
+      assertEquals(response.status, 503);
+      assertEquals(JSON.parse(body), {
+        error: 'Entitlement projection is temporarily unavailable',
+        code: 'projection_unavailable',
+      });
+      assertEquals(response.headers.get('Content-Type'), 'application/json');
+      assertEquals(response.headers.get('Cache-Control'), 'no-store');
+      assertEquals(response.headers.get('Retry-After'), '30');
+      assertEquals(response.headers.get('Vary'), 'Origin');
+      assertEquals(response.headers.has('Access-Control-Allow-Origin'), true);
+    } finally {
+      for (const [name, value] of saved) {
+        if (value !== undefined) Deno.env.set(name, value);
+      }
+    }
+  },
+);
+
+Deno.test(
+  'entitlements-v1 — preflight is answered even when the deployment is misconfigured',
+  async () => {
+    const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+    const saved = new Map(required.map((name) => [name, Deno.env.get(name)]));
+    for (const name of required) Deno.env.delete(name);
+    try {
+      const response = await handler(new Request(BASE_URL, { method: 'OPTIONS' }));
+      assertEquals(response.status, 204);
+    } finally {
+      for (const [name, value] of saved) {
+        if (value !== undefined) Deno.env.set(name, value);
+      }
+    }
+  },
+);

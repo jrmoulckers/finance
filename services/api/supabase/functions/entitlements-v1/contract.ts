@@ -101,28 +101,46 @@ export interface BankConnectionAllowance {
 /** Server-issued validity bound. Clients never substitute their own clock. */
 export interface EntitlementValidity {
   effective_at: string;
+  /**
+   * The earliest instant at which any grant contributing to this response
+   * lapses, so the response is guaranteed accurate only through it.
+   *
+   * When `downgrade.status` is `scheduled` this is exactly the instant the
+   * effective tier and allowance reduce. When it is `undetermined` a
+   * contributing grant lapses then, but a stronger surviving grant may keep
+   * the effective tier and allowance — the client refreshes rather than
+   * assuming a reduction.
+   */
   expires_at: string | null;
   server_time: string;
   projection_version: number;
 }
 
-/** Reduction that takes effect when the validity bound passes unrenewed. */
+/**
+ * Whether a reduction boundary is known.
+ *
+ * - `none` — there is no paid capacity that can reduce.
+ * - `scheduled` — exactly one paid grant contributes, so the projection's
+ *   bound provably governs the effective tier and allowance.
+ * - `undetermined` — a purchaser grant and a household grant both contribute.
+ *   The projection collapses them into the *earliest* bound, which need not be
+ *   the one that determines the effective tier or allowance, so no reduction
+ *   instant is claimed.
+ */
+export type DowngradeStatus = 'none' | 'scheduled' | 'undetermined';
+
+/** Reduction that takes effect when the governing grant lapses unrenewed. */
 export interface PendingDowngrade {
-  /** A reduction boundary exists at [effective_at]. */
-  pending: boolean;
+  status: DowngradeStatus;
   /**
-   * The earliest instant at which the current tier or allowance stops being
-   * guaranteed. The projection's `expires_at` is already the earliest of the
-   * purchaser bound, the household base bound, and any add-on bound, so it is
-   * exactly that boundary.
+   * The instant the effective tier and allowance reduce, stated only when
+   * [status] is `scheduled`.
    *
    * The contract deliberately does **not** state the allowance that applies
-   * after this instant. The minimized projection carries no next-allowance,
-   * and inferring one is wrong whenever a surviving grant keeps capacity —
-   * an expiring add-on leaves the Premium base in place, and an expiring
-   * Family purchase over a live Premium sponsorship leaves the sponsor's
-   * allowance in place. Clients re-read the projection at or after this
-   * instant instead.
+   * afterwards. The minimized projection carries no next-allowance, and
+   * inferring one is wrong whenever a surviving grant keeps capacity — an
+   * expiring add-on leaves the Premium base in place. Clients re-read the
+   * projection at or after this instant instead.
    */
   effective_at: string | null;
 }
@@ -290,7 +308,22 @@ export function toEnvelope(row: EntitlementProjectionRow): EntitlementEnvelope {
     row.household_display_tier === 'premium'
       ? Math.max(0, row.bank_connection_allowance - base)
       : 0;
-  const downgradePending = accessState === 'granted' && row.bank_connection_allowance > 0;
+
+  // `expires_at` collapses the purchaser bound and the household bound with
+  // LEAST whenever both grants exist, so it only provably governs the
+  // effective tier and allowance when a single grant contributes. With a
+  // purchaser grant *and* a household grant the earlier bound may belong to
+  // the weaker one — Plus lapsing tomorrow under a Family household that
+  // survives for a month — and claiming it as the reduction instant would be
+  // false. In that case the boundary stays undetermined and the client
+  // refreshes at `validity.expires_at`.
+  const reducibleCapacity = accessState === 'granted' && row.bank_connection_allowance > 0;
+  const boundGovernsCapacity = row.user_display_tier === 'free';
+  const downgradeStatus: DowngradeStatus = !reducibleCapacity
+    ? 'none'
+    : boundGovernsCapacity
+      ? 'scheduled'
+      : 'undetermined';
 
   return {
     contract_version: ENTITLEMENT_CONTRACT_VERSION,
@@ -317,11 +350,8 @@ export function toEnvelope(row: EntitlementProjectionRow): EntitlementEnvelope {
         projection_version: row.projection_version,
       },
       downgrade: {
-        pending: downgradePending,
-        // The earliest instant the current capacity stops being guaranteed.
-        // The allowance that survives it is not inferable from the minimized
-        // projection and is deliberately not stated.
-        effective_at: downgradePending ? row.expires_at : null,
+        status: downgradeStatus,
+        effective_at: downgradeStatus === 'scheduled' ? row.expires_at : null,
       },
     },
   };

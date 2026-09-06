@@ -31,7 +31,7 @@ class EntitlementDisplayPolicyTest {
         baseAllowance: Long = 4,
         addonAllowance: Long = 0,
         expiresAt: Instant? = expiry,
-        downgradePending: Boolean = true,
+        downgradeStatus: DowngradeStatus = DowngradeStatus.SCHEDULED,
         downgradeEffectiveAt: Instant? = expiry,
     ) = EntitlementEnvelope(
         contractVersion = contractVersion,
@@ -52,7 +52,7 @@ class EntitlementDisplayPolicyTest {
                 serverTime = serverTime,
                 projectionVersion = 7,
             ),
-            downgrade = PendingDowngrade(downgradePending, downgradeEffectiveAt),
+            downgrade = PendingDowngrade(downgradeStatus, downgradeEffectiveAt),
         ),
     )
 
@@ -86,7 +86,7 @@ class EntitlementDisplayPolicyTest {
         val lapsed = envelope(
             accessState = EntitlementAccessState.LAPSED,
             expiresAt = Instant.parse("2033-05-18T03:00:00Z"),
-            downgradePending = false,
+            downgradeStatus = DowngradeStatus.NONE,
             downgradeEffectiveAt = null,
         )
         // Even asked about an instant well before the expiry, a lapsed
@@ -101,6 +101,31 @@ class EntitlementDisplayPolicyTest {
     }
 
     @Test
+    fun `a cached snapshot names when it must be re-read`() {
+        val cached = envelope()
+        assertEquals(expiry, EntitlementDisplayPolicy.refreshAfter(cached))
+        assertFalse(EntitlementDisplayPolicy.needsRefreshAt(cached, serverTime))
+        assertTrue(EntitlementDisplayPolicy.needsRefreshAt(cached, expiry))
+    }
+
+    @Test
+    fun `an undetermined boundary still names a refresh instant rather than a reduction`() {
+        // Plus lapsing under a surviving Family household: the bound is when
+        // the response stops being guaranteed accurate, not when the
+        // entitlement ends. The client refreshes there instead of treating
+        // Free as the new truth.
+        val mixed = envelope(
+            userTier = EntitlementTier.PLUS,
+            downgradeStatus = DowngradeStatus.UNDETERMINED,
+            downgradeEffectiveAt = null,
+        )
+        assertTrue(EntitlementDisplayPolicy.isDisplayableAt(mixed, serverTime))
+        assertEquals(EntitlementTier.FAMILY, EntitlementDisplayPolicy.displayTier(mixed, serverTime))
+        assertEquals(expiry, EntitlementDisplayPolicy.refreshAfter(mixed))
+        assertTrue(EntitlementDisplayPolicy.needsRefreshAt(mixed, expiry))
+    }
+
+    @Test
     fun `a free snapshot never displays a paid tier`() {
         val free = envelope(
             scope = EntitlementScope.USER,
@@ -111,7 +136,7 @@ class EntitlementDisplayPolicyTest {
             allowance = 0,
             baseAllowance = 0,
             expiresAt = null,
-            downgradePending = false,
+            downgradeStatus = DowngradeStatus.NONE,
             downgradeEffectiveAt = null,
         )
         assertFalse(EntitlementDisplayPolicy.isDisplayableAt(free, serverTime))

@@ -57,7 +57,7 @@ class EntitlementRepositoryTest {
               "projection_version": 7
             },
             "downgrade": {
-              "pending": true,
+              "status": "scheduled",
               "effective_at": "2033-06-18T03:33:20Z"
             }
           }

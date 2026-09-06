@@ -220,6 +220,39 @@ data class BankConnectionAllowance(
 )
 
 /**
+ * Whether a reduction boundary is known.
+ *
+ * The minimized projection collapses the purchaser bound and the household
+ * bound into the earliest of the two, so the bound only provably governs the
+ * effective tier and allowance when a single grant contributes.
+ */
+@Serializable(with = DowngradeStatusSerializer::class)
+enum class DowngradeStatus(val wireValue: String) {
+    /** There is no paid capacity that can reduce. */
+    NONE("none"),
+
+    /** Exactly one paid grant contributes, so the bound governs the reduction. */
+    SCHEDULED("scheduled"),
+
+    /**
+     * A purchaser grant and a household grant both contribute. The earlier
+     * bound may belong to the weaker one — Plus lapsing tomorrow under a
+     * Family household that survives for a month — so no reduction instant is
+     * claimed and the client refreshes at the validity bound instead.
+     */
+    UNDETERMINED("undetermined"),
+
+    UNKNOWN(""),
+}
+
+internal object DowngradeStatusSerializer : WireEnumSerializer<DowngradeStatus>(
+    "com.finance.core.entitlement.DowngradeStatus",
+    DowngradeStatus.entries,
+    { it.wireValue },
+    DowngradeStatus.UNKNOWN,
+)
+
+/**
  * The server-issued validity bound.
  *
  * [serverTime] is the server's clock at projection time. A client compares
@@ -229,25 +262,31 @@ data class BankConnectionAllowance(
 @Serializable
 data class EntitlementValidity(
     @SerialName("effective_at") val effectiveAt: Instant,
+    /**
+     * The earliest instant at which any grant contributing to this response
+     * lapses, so the response is guaranteed accurate only through it.
+     *
+     * With [DowngradeStatus.SCHEDULED] this is exactly when the effective tier
+     * and allowance reduce. With [DowngradeStatus.UNDETERMINED] a contributing
+     * grant lapses then, but a stronger surviving grant may keep the effective
+     * tier — reaching it means "refresh required", not "entitlement ended".
+     */
     @SerialName("expires_at") val expiresAt: Instant? = null,
     @SerialName("server_time") val serverTime: Instant,
     @SerialName("projection_version") val projectionVersion: Long,
 )
 
-/** Reduction that takes effect when the validity bound passes unrenewed. */
+/** Reduction that takes effect when the governing grant lapses unrenewed. */
 @Serializable
 data class PendingDowngrade(
-    /** A reduction boundary exists at [effectiveAt]. */
-    val pending: Boolean,
+    val status: DowngradeStatus,
     /**
-     * The earliest instant at which the current tier or allowance stops being
-     * guaranteed.
+     * The instant the effective tier and allowance reduce, stated only when
+     * [status] is [DowngradeStatus.SCHEDULED].
      *
-     * The contract deliberately states no post-boundary allowance: an
-     * expiring add-on leaves the Premium base in place and an expiring Family
-     * purchase over a live Premium sponsorship leaves the sponsor's allowance
-     * in place, so any inferred value would be wrong. Clients re-read the
-     * projection at or after this instant.
+     * The contract states no post-boundary allowance: an expiring add-on
+     * leaves the Premium base in place, so any inferred value would be wrong.
+     * Clients re-read the projection at or after this instant.
      */
     @SerialName("effective_at") val effectiveAt: Instant? = null,
 )
@@ -330,6 +369,7 @@ object MinimizedEntitlementCodec {
         if (entitlement.householdTier == EntitlementTier.UNKNOWN) return malformed
         if (entitlement.accessState == EntitlementAccessState.UNKNOWN) return malformed
         if (entitlement.lifecycle == EntitlementLifecycle.UNKNOWN) return malformed
+        if (entitlement.downgrade.status == DowngradeStatus.UNKNOWN) return malformed
 
         if (!isConsistentScope(entitlement)) return malformed
         if (!isConsistentAllowance(entitlement)) return malformed
@@ -406,11 +446,27 @@ object MinimizedEntitlementCodec {
 
     private fun isConsistentDowngrade(entitlement: MinimizedEntitlement): Boolean {
         val downgrade = entitlement.downgrade
-        return if (downgrade.pending) {
-            downgrade.effectiveAt != null &&
-                downgrade.effectiveAt == entitlement.validity.expiresAt
-        } else {
-            downgrade.effectiveAt == null
+        val reducibleCapacity =
+            entitlement.accessState == EntitlementAccessState.GRANTED &&
+                entitlement.bankConnections.allowance > 0
+        // The projection's bound provably governs the reduction only when a
+        // single grant contributes. A purchaser grant alongside a household
+        // grant collapses to the earlier of the two, which may belong to the
+        // weaker one, so no instant may be claimed.
+        val boundGovernsCapacity = entitlement.userTier == EntitlementTier.FREE
+        return when (downgrade.status) {
+            DowngradeStatus.NONE -> !reducibleCapacity && downgrade.effectiveAt == null
+
+            DowngradeStatus.SCHEDULED ->
+                reducibleCapacity &&
+                    boundGovernsCapacity &&
+                    downgrade.effectiveAt != null &&
+                    downgrade.effectiveAt == entitlement.validity.expiresAt
+
+            DowngradeStatus.UNDETERMINED ->
+                reducibleCapacity && !boundGovernsCapacity && downgrade.effectiveAt == null
+
+            DowngradeStatus.UNKNOWN -> false
         }
     }
 }

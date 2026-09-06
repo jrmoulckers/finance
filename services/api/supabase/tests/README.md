@@ -147,8 +147,11 @@ that the `entitlements-v1` Edge Function depends on: its exact minimized return
 contract, its least-privilege grants (`authenticated` only, never `anon` or
 `PUBLIC`), fail-closed behavior for unauthenticated, cross-household, and
 removed-member reads, scope resolution between the user and household subjects,
-the ratified bank-connection allowances, and the tier projected for every one of
-the eight normalized lifecycles.
+the ratified bank-connection allowances, the tier projected for every one of the
+eight normalized lifecycles, and the two boundary properties the API's
+pending-downgrade contract rests on — that `expires_at` tracks the earliest
+expiring add-on, and that a weaker purchaser grant collapses into the same bound
+even when it does not determine the effective tier or allowance.
 
 ```bash
 # From services/api/ with local Supabase running and libpq connection
@@ -158,6 +161,29 @@ npm run test:entitlement-api
 
 The suite uses `ON_ERROR_STOP`, runs in one transaction, and rolls back all
 fixtures. It must never be pointed at staging or production.
+
+### 5. Minimized Entitlement Gateway Integration Tests
+
+**Runtime:** Deno against a running local Supabase gateway
+
+`supabase/functions/entitlements-v1/gateway.integration.test.ts` proves what a
+_deployed_ request receives, which handler-level unit tests cannot: that a
+missing, malformed, untrusted, or non-bearer credential reaches the function and
+receives the documented `unauthenticated` envelope with CORS headers and
+`Cache-Control: no-store`, that no anonymous read ever succeeds, and that the
+endpoint stays read-only. The tests are skipped unless
+`ENTITLEMENTS_GATEWAY_URL` is set.
+
+```bash
+# From services/api/, with the local stack running and functions served with an
+# ALLOWED_ORIGINS value:
+npx supabase start
+npx supabase functions serve --env-file <local-env-file>
+
+cd supabase/functions
+ENTITLEMENTS_GATEWAY_URL=http://127.0.0.1:54321/functions/v1/entitlements-v1 \
+  deno test --allow-env --allow-net --no-check entitlements-v1/gateway.integration.test.ts
+```
 
 ## Adding New Tests
 
