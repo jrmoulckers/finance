@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // RecentTransactionsView.swift - Recent transactions list. Refs #30, #649
+#if os(watchOS)
 import SwiftUI
 struct RecentTransactionsView: View {
     let manager: WatchConnectivityManager
@@ -40,3 +41,4 @@ struct RecentTransactionsView: View {
     private func formattedDate(_ date: Date) -> String { date.formatted(.relative(presentation: .named)) }
 }
 #Preview("Recent Transactions") { let m = WatchConnectivityManager(); RecentTransactionsView(manager: m) }
+#endif

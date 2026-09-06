@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // ComplicationProvider.swift - WidgetKit balance complication. Refs #30, #649
+#if os(watchOS)
 import SwiftUI
 import WidgetKit
 struct BalanceTimelineEntry: TimelineEntry { let date: Date; let balanceMinorUnits: Int64; let currencyCode: String }
@@ -61,4 +62,4 @@ struct BalanceComplicationView: View {
         let f = NumberFormatter(); f.numberStyle = .currency; f.currencyCode = entry.currencyCode; f.locale = .current; return f.currencySymbol ?? "$"
     }
 }
-
+#endif

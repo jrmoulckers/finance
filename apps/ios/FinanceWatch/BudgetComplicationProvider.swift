@@ -7,6 +7,7 @@
 // Displays the most critical budget (highest utilization) as a gauge.
 // Refs #266
 
+#if os(watchOS)
 import SwiftUI
 import WidgetKit
 
@@ -279,3 +280,4 @@ struct BudgetComplicationView: View {
         )
     }
 }
+#endif

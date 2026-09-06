@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+#if os(watchOS)
 import Foundation
 import WatchKit
 
@@ -25,3 +26,4 @@ enum WatchHapticFeedback {
             : defaults.bool(forKey: preferenceKey)
     }
 }
+#endif

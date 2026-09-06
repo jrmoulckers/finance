@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // BudgetStatusView.swift - Budget gauge rings. Refs #30, #649
+#if os(watchOS)
 import SwiftUI
 import WatchKit
 struct BudgetStatusView: View {
@@ -45,4 +46,4 @@ struct BudgetStatusView: View {
     }
 }
 #Preview("Budget Status") { let m = WatchConnectivityManager(); BudgetStatusView(manager: m) }
-
+#endif

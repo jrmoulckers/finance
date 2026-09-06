@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 // FinanceWatchApp.swift - watchOS companion app. Refs #30, #649
 
+#if os(watchOS)
 import os
 import SwiftUI
 import WatchConnectivity
@@ -145,3 +146,4 @@ struct WatchBudgetStatus: Identifiable, Sendable {
         self.id = id; self.name = name; self.spentMinorUnits = sp; self.budgetedMinorUnits = bu
     }
 }
+#endif
