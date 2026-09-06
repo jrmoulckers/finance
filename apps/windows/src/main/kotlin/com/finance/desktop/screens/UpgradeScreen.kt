@@ -37,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -48,6 +49,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.finance.desktop.di.koinGet
+import com.finance.desktop.billing.BillingCatalogChoice
+import com.finance.desktop.billing.DirectStripeBillingViewModel
+import com.finance.desktop.billing.ProductBillingState
+import com.finance.desktop.billing.openTrustedStripeUrl
 import com.finance.desktop.entitlement.PremiumFeature
 import com.finance.desktop.entitlement.SubscriptionTier
 import com.finance.desktop.theme.FinanceDesktopTheme
@@ -66,7 +71,16 @@ import com.finance.desktop.viewmodel.FeatureStatusUi
 @Composable
 fun UpgradeScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<EntitlementViewModel>()
+    val billingViewModel = koinGet<DirectStripeBillingViewModel>()
     val state by viewModel.uiState.collectAsState()
+    val billingState by billingViewModel.state.collectAsState()
+
+    LaunchedEffect(Unit) {
+        billingViewModel.refresh()
+    }
+    LaunchedEffect(billingState.projection?.projectionVersion) {
+        billingState.projection?.let(viewModel::applyBillingProjection)
+    }
 
     if (state.isLoading) {
         Box(
@@ -86,7 +100,13 @@ fun UpgradeScreen(modifier: Modifier = Modifier) {
     if (state.showUpgradeDialog && state.upgradeFeature != null) {
         UpgradeDialog(
             feature = state.upgradeFeature!!,
-            onUpgrade = { viewModel.handleUpgrade() },
+            onUpgrade = {
+                viewModel.dismissUpgradePrompt()
+                billingViewModel.startCheckout(
+                    choice = BillingCatalogChoice.PREMIUM_MONTHLY,
+                    openExternalUrl = ::openTrustedStripeUrl,
+                )
+            },
             onDismiss = { viewModel.dismissUpgradePrompt() },
         )
     }
@@ -118,14 +138,49 @@ fun UpgradeScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier.semantics { heading() },
                 )
             }
-            IconButton(
-                onClick = { viewModel.refresh() },
-                modifier = Modifier.semantics {
-                    contentDescription = "Refresh subscription"
-                },
-            ) {
-                Icon(Icons.Filled.Refresh, contentDescription = null)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    onClick = {
+                        billingViewModel.openPortal(::openTrustedStripeUrl)
+                    },
+                    enabled = billingState !is ProductBillingState.Pending,
+                ) {
+                    Text("Manage billing")
+                }
+                IconButton(
+                    onClick = {
+                        billingViewModel.refresh()
+                        viewModel.refresh()
+                    },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Refresh subscription"
+                    },
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = null)
+                }
             }
+        }
+
+        when (val currentBillingState = billingState) {
+            is ProductBillingState.Pending -> Text(
+                text = "Waiting for Finance to confirm trusted billing evidence.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            is ProductBillingState.Error -> Text(
+                text = currentBillingState.message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics {
+                    contentDescription = "Billing error: ${currentBillingState.message}"
+                },
+            )
+            is ProductBillingState.Confirmed -> Text(
+                text = "Paid access confirmed by Finance.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            is ProductBillingState.Idle -> Unit
         }
 
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
@@ -185,7 +240,7 @@ private fun PlanCard(
 ) {
     val isPremium = tier == SubscriptionTier.PREMIUM
     val title = if (isPremium) "Premium" else "Free"
-    val price = if (isPremium) "$4.99/mo" else "Free"
+    val price = if (isPremium) "Monthly or yearly" else "Free"
     val tagline = if (isPremium) "Everything, unlimited" else "Get started"
 
     ElevatedCard(
@@ -350,8 +405,8 @@ private fun UpgradeDialog(
                 )
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
                 Text(
-                    text = "Upgrade to Premium for \$4.99/month to unlock this " +
-                        "feature and all other premium capabilities.",
+                    text = "Continue to secure Stripe Checkout to choose the reviewed " +
+                        "Premium plan. Access starts only after Finance confirms payment.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -369,7 +424,7 @@ private fun UpgradeDialog(
         },
         modifier = Modifier.semantics {
             contentDescription = "Upgrade prompt for ${feature.displayName}. " +
-                "Upgrade to Premium for four dollars and ninety-nine cents per month."
+                "Continue to secure Stripe Checkout for Premium."
         },
     )
 }

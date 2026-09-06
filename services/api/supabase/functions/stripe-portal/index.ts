@@ -2,18 +2,12 @@
 
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
-import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { validateEnv } from '../_shared/env.ts';
+import { checkRateLimit, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import { StripeRestGateway } from '../stripe-common/client.ts';
 import { loadStripePortalConfig } from '../stripe-common/config.ts';
 import { findOwnedStripeIdentity } from '../stripe-common/store.ts';
 import { StripeRequestError, StripeServiceError } from '../stripe-common/types.ts';
-
-const PORTAL_RATE_LIMIT = {
-  maxRequests: 10,
-  windowSeconds: 60,
-  keyPrefix: 'stripe-portal',
-  failMode: 'closed' as const,
-};
 
 interface PortalService {
   create(ownerId: string): Promise<{ portalUrl: string }>;
@@ -70,7 +64,7 @@ function defaultPortalService(): PortalService {
     async create(ownerId) {
       const config = loadStripePortalConfig();
       const supabase = createAdminClient();
-      const rateLimit = await checkRateLimit(supabase, ownerId, PORTAL_RATE_LIMIT);
+      const rateLimit = await checkRateLimit(supabase, ownerId, RATE_LIMITS['stripe-portal']);
       if (!rateLimit.allowed) {
         throw new StripeRequestError(429, 'Too many billing portal requests');
       }
@@ -111,5 +105,9 @@ function json(
   });
 }
 
-export const handler = createStripePortalHandler();
+const applicationHandler = createStripePortalHandler();
+export const handler = (request: Request): Promise<Response> => {
+  const envError = validateEnv('stripe-portal', request);
+  return envError ? Promise.resolve(envError) : applicationHandler(request);
+};
 if (import.meta.main) Deno.serve(handler);

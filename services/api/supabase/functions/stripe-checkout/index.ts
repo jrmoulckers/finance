@@ -2,7 +2,8 @@
 
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
-import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { validateEnv } from '../_shared/env.ts';
+import { checkRateLimit, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import { isStripeCatalogChoice, resolveCatalogChoice } from '../stripe-common/catalog.ts';
 import { StripeRestGateway } from '../stripe-common/client.ts';
 import { loadStripeCheckoutConfig } from '../stripe-common/config.ts';
@@ -17,12 +18,6 @@ import {
   StripeServiceError,
 } from '../stripe-common/types.ts';
 
-const CHECKOUT_RATE_LIMIT = {
-  maxRequests: 10,
-  windowSeconds: 60,
-  keyPrefix: 'stripe-checkout',
-  failMode: 'closed' as const,
-};
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_BODY_KEYS = new Set(['catalog_choice', 'household_intent']);
 
@@ -117,7 +112,11 @@ function defaultCheckoutService(): CheckoutService {
       const config = loadStripeCheckoutConfig();
       const gateway = new StripeRestGateway(config.secretKey);
       const supabase = createAdminClient();
-      const rateLimit = await checkRateLimit(supabase, input.ownerId, CHECKOUT_RATE_LIMIT);
+      const rateLimit = await checkRateLimit(
+        supabase,
+        input.ownerId,
+        RATE_LIMITS['stripe-checkout'],
+      );
       if (!rateLimit.allowed) {
         throw new StripeRequestError(429, 'Too many checkout requests');
       }
@@ -184,5 +183,9 @@ function json(
   return new Response(JSON.stringify(body), { status, headers });
 }
 
-export const handler = createStripeCheckoutHandler();
+const applicationHandler = createStripeCheckoutHandler();
+export const handler = (request: Request): Promise<Response> => {
+  const envError = validateEnv('stripe-checkout', request);
+  return envError ? Promise.resolve(envError) : applicationHandler(request);
+};
 if (import.meta.main) Deno.serve(handler);

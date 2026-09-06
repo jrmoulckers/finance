@@ -36,6 +36,22 @@ const BASE_ENV_VARS: readonly EnvVarSpec[] = [
   { name: 'SUPABASE_SERVICE_ROLE_KEY', type: 'string' },
 ] as const;
 
+const STRIPE_BASE_ENV_VARS: readonly EnvVarSpec[] = [
+  { name: 'STRIPE_SECRET_KEY', type: 'string' },
+  { name: 'STRIPE_ACCOUNT_ID', type: 'string' },
+  { name: 'STRIPE_ENVIRONMENT', type: 'string' },
+] as const;
+
+const STRIPE_PRICE_ENV_VARS: readonly EnvVarSpec[] = [
+  { name: 'STRIPE_PRICE_PLUS_MONTHLY', type: 'string' },
+  { name: 'STRIPE_PRICE_PLUS_YEARLY', type: 'string' },
+  { name: 'STRIPE_PRICE_PREMIUM_MONTHLY', type: 'string' },
+  { name: 'STRIPE_PRICE_PREMIUM_YEARLY', type: 'string' },
+  { name: 'STRIPE_PRICE_FAMILY_MONTHLY', type: 'string' },
+  { name: 'STRIPE_PRICE_FAMILY_YEARLY', type: 'string' },
+  { name: 'STRIPE_PRICE_PREMIUM_BANK_ADDON_MONTHLY', type: 'string' },
+] as const;
+
 /** Per-function additional required env vars. */
 const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'auth-webhook': [{ name: 'AUTH_WEBHOOK_SECRET', type: 'string' }],
@@ -128,6 +144,32 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
     { name: 'REVENUECAT_ENVIRONMENT', type: 'string' },
     { name: 'REVENUECAT_API_KEY', type: 'string' },
     { name: 'REVENUECAT_RECONCILIATION_AUTHORIZATION', type: 'string' },
+  ],
+  'stripe-checkout': [
+    { name: 'ALLOWED_ORIGINS', type: 'csv' },
+    ...STRIPE_BASE_ENV_VARS,
+    { name: 'STRIPE_CHECKOUT_SUCCESS_URL', type: 'url' },
+    { name: 'STRIPE_CHECKOUT_CANCEL_URL', type: 'url' },
+    ...STRIPE_PRICE_ENV_VARS,
+  ],
+  'stripe-portal': [
+    { name: 'ALLOWED_ORIGINS', type: 'csv' },
+    ...STRIPE_BASE_ENV_VARS,
+    { name: 'STRIPE_PORTAL_RETURN_URL', type: 'url' },
+  ],
+  'stripe-reconcile': [
+    { name: 'ALLOWED_ORIGINS', type: 'csv' },
+    ...STRIPE_BASE_ENV_VARS,
+    ...STRIPE_PRICE_ENV_VARS,
+  ],
+  'stripe-status': [
+    { name: 'ALLOWED_ORIGINS', type: 'csv' },
+    { name: 'SUPABASE_ANON_KEY', type: 'string' },
+  ],
+  'stripe-webhook': [
+    ...STRIPE_BASE_ENV_VARS,
+    { name: 'STRIPE_WEBHOOK_SECRETS', type: 'csv' },
+    ...STRIPE_PRICE_ENV_VARS,
   ],
 };
 

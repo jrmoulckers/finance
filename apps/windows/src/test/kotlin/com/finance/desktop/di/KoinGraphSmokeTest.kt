@@ -8,6 +8,8 @@ import com.finance.db.EncryptionKeyProvider
 import com.finance.db.FinanceDatabase
 import com.finance.desktop.data.database.DesktopDatabaseManager
 import com.finance.desktop.data.repository.*
+import com.finance.desktop.billing.DirectStripeBillingViewModel
+import com.finance.desktop.billing.ProductBillingRepository
 import com.finance.desktop.notifications.DesktopNotificationManager
 import com.finance.desktop.notifications.EnhancedNotificationManager
 import com.finance.desktop.navigation.DeepLinkHandler
@@ -75,6 +77,7 @@ class KoinGraphSmokeTest {
             "TokenStorage" to { get<TokenStorage>() },
             "TokenManager" to { get<TokenManager>() },
             "AuthRepository" to { get<AuthRepository>() },
+            "ProductBillingRepository" to { get<ProductBillingRepository>() },
             "SyncConfig" to { get<SyncConfig>() },
             "SyncProvider" to { get<SyncProvider>() },
             "MutationQueue" to { get<MutationQueue>() },
@@ -120,6 +123,7 @@ class KoinGraphSmokeTest {
             "ReportBuilderViewModel" to { get<ReportBuilderViewModel>() },
             "BudgetNegotiationViewModel" to { get<BudgetNegotiationViewModel>() },
             "EntitlementViewModel" to { get<EntitlementViewModel>() },
+            "DirectStripeBillingViewModel" to { get<DirectStripeBillingViewModel>() },
             "TipsViewModel" to { get<TipsViewModel>() },
             "GamificationViewModel" to { get<GamificationViewModel>() },
             "CurrencyViewModel" to { get<CurrencyViewModel>() },

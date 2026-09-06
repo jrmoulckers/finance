@@ -1,0 +1,52 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.billing-settings__status {
+  font-weight: var(--font-weight-semibold);
+}
+
+.billing-settings__explanation,
+.billing-settings__store-note {
+  margin: 0;
+  padding: var(--spacing-3) var(--spacing-4);
+  color: var(--semantic-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.billing-settings__error {
+  margin: 0;
+  padding: var(--spacing-3) var(--spacing-4);
+  color: var(--semantic-status-error);
+  font-weight: var(--font-weight-medium);
+}
+
+.billing-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+}
+
+.billing-settings__plans {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.billing-settings__plan {
+  min-height: 48px;
+}
+
+@media (max-width: 480px) {
+  .billing-settings__plans {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-settings__actions {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .billing-settings__plan {
+    border-width: 2px;
+  }
+}

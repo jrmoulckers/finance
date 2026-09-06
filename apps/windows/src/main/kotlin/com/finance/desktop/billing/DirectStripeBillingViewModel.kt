@@ -22,8 +22,15 @@ class DirectStripeBillingViewModel(
         viewModelScope.launch {
             repository.startCheckout(choice, householdIntent)
                 .onSuccess { checkoutUrl ->
-                    _state.value = ProductBillingState.Pending(_state.value.projection)
-                    openExternalUrl(checkoutUrl)
+                    try {
+                        openExternalUrl(checkoutUrl)
+                        _state.value = ProductBillingState.Pending(_state.value.projection)
+                    } catch (_: Exception) {
+                        _state.value = ProductBillingState.Error(
+                            _state.value.projection,
+                            "Checkout could not be opened. Try again.",
+                        )
+                    }
                 }
                 .onFailure {
                     _state.value = ProductBillingState.Error(
@@ -67,5 +74,25 @@ class DirectStripeBillingViewModel(
         }
     }
 
-    suspend fun portalUrl(): String? = repository.openPortal().getOrNull()
+    fun openPortal(openExternalUrl: (String) -> Unit) {
+        viewModelScope.launch {
+            repository.openPortal()
+                .onSuccess { portalUrl ->
+                    try {
+                        openExternalUrl(portalUrl)
+                    } catch (_: Exception) {
+                        _state.value = ProductBillingState.Error(
+                            _state.value.projection,
+                            "Billing management could not be opened.",
+                        )
+                    }
+                }
+                .onFailure {
+                    _state.value = ProductBillingState.Error(
+                        _state.value.projection,
+                        "Billing management could not be opened.",
+                    )
+                }
+        }
+    }
 }

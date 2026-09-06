@@ -27,7 +27,13 @@
       "transactions-list/**/*.test.ts",
       "revenuecat-webhook/**/*.test.ts",
       "revenuecat-confirm/**/*.test.ts",
-      "revenuecat-reconcile/**/*.test.ts"
+      "revenuecat-reconcile/**/*.test.ts",
+      "stripe-common/**/*.test.ts",
+      "stripe-checkout/**/*.test.ts",
+      "stripe-portal/**/*.test.ts",
+      "stripe-reconcile/**/*.test.ts",
+      "stripe-status/**/*.test.ts",
+      "stripe-webhook/**/*.test.ts"
     ],
     "exclude": ["node_modules"]
   },
@@ -47,7 +53,8 @@
     "test:detect-bills": "deno test --allow-env --allow-net=none --no-check detect-bills/",
     "test:generate-report": "deno test --allow-env --allow-net=none --no-check generate-report/",
     "test:transactions-list": "deno test --allow-env --allow-net=none --no-check transactions-list/",
-    "test:revenuecat": "deno test --allow-env --allow-net=none --no-check _shared/revenuecat/ revenuecat-webhook/ revenuecat-confirm/ revenuecat-reconcile/"
+    "test:revenuecat": "deno test --allow-env --allow-net=none --no-check _shared/revenuecat/ revenuecat-webhook/ revenuecat-confirm/ revenuecat-reconcile/",
+    "test:stripe": "deno test --allow-env --allow-net=none --no-check stripe-common/ stripe-checkout/ stripe-portal/ stripe-reconcile/ stripe-status/ stripe-webhook/"
   },
   "imports": {
     "std/testing/": "https://deno.land/std@0.208.0/testing/",

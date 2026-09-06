@@ -25,6 +25,12 @@ const SETTINGS_SECTIONS: ReadonlyArray<{
     keywords: 'profile email sign out logout delete account identity',
   },
   {
+    to: 'billing',
+    label: 'Plan & Billing',
+    description: 'Plan, Checkout, billing portal',
+    keywords: 'plan billing subscription stripe checkout portal plus premium family',
+  },
+  {
     to: 'preferences',
     label: 'Preferences',
     description: 'Currency, theme, notifications, display',
@@ -74,6 +80,7 @@ const SETTINGS_SECTIONS: ReadonlyArray<{
  */
 const SIMPLIFIED_SETTINGS_SECTIONS = new Set([
   'account',
+  'billing',
   'preferences',
   'privacy',
   'security',

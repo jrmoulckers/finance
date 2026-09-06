@@ -109,3 +109,20 @@ verify_jwt = false
 
 [functions.revenuecat-reconcile]
 verify_jwt = false
+
+# Stripe web/direct-Windows endpoints verify authenticated requests inside the
+# function. Provider callbacks instead require Stripe's raw-body signature.
+[functions.stripe-checkout]
+verify_jwt = false
+
+[functions.stripe-portal]
+verify_jwt = false
+
+[functions.stripe-reconcile]
+verify_jwt = false
+
+[functions.stripe-status]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

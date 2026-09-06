@@ -2,19 +2,13 @@
 
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
-import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { validateEnv } from '../_shared/env.ts';
+import { checkRateLimit, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import { StripeRestGateway } from '../stripe-common/client.ts';
 import { loadStripeBaseConfig } from '../stripe-common/config.ts';
 import { normalizeReconciledSubscription } from '../stripe-common/normalize.ts';
 import { findOwnedStripeIdentity, recordAndApplyStripeEvidence } from '../stripe-common/store.ts';
 import { StripeRequestError, StripeServiceError } from '../stripe-common/types.ts';
-
-const RECONCILE_RATE_LIMIT = {
-  maxRequests: 6,
-  windowSeconds: 3_600,
-  keyPrefix: 'stripe-reconcile',
-  failMode: 'closed' as const,
-};
 
 interface ReconcileService {
   reconcile(ownerId: string): Promise<number>;
@@ -63,7 +57,7 @@ function defaultReconcileService(): ReconcileService {
     async reconcile(ownerId) {
       const config = loadStripeBaseConfig();
       const supabase = createAdminClient();
-      const rateLimit = await checkRateLimit(supabase, ownerId, RECONCILE_RATE_LIMIT);
+      const rateLimit = await checkRateLimit(supabase, ownerId, RATE_LIMITS['stripe-reconcile']);
       if (!rateLimit.allowed) {
         throw new StripeRequestError(429, 'Too many reconciliation requests');
       }
@@ -120,5 +114,9 @@ function json(
   });
 }
 
-export const handler = createStripeReconcileHandler();
+const applicationHandler = createStripeReconcileHandler();
+export const handler = (request: Request): Promise<Response> => {
+  const envError = validateEnv('stripe-reconcile', request);
+  return envError ? Promise.resolve(envError) : applicationHandler(request);
+};
 if (import.meta.main) Deno.serve(handler);

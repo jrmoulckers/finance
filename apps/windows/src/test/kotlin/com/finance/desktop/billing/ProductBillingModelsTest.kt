@@ -5,6 +5,7 @@ package com.finance.desktop.billing
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 
 class ProductBillingModelsTest {
     private val freeProjection = ProductEntitlementProjection(
@@ -43,6 +44,22 @@ class ProductBillingModelsTest {
     fun `direct distribution uses Stripe and Store remains deferred`() {
         assertEquals(WindowsBillingChannel.DIRECT_STRIPE, fakeRepository().channel)
         assertEquals("MICROSOFT_STORE_FUTURE", WindowsBillingChannel.MICROSOFT_STORE_FUTURE.name)
+    }
+
+    @Test
+    fun `external billing launcher accepts only Stripe HTTPS destinations`() {
+        var opened: String? = null
+        openTrustedStripeUrl("https://checkout.stripe.com/c/pay/placeholder") {
+            opened = it.toString()
+        }
+        assertEquals("https://checkout.stripe.com/c/pay/placeholder", opened)
+
+        assertFailsWith<IllegalArgumentException> {
+            openTrustedStripeUrl("https://example.test/checkout") {}
+        }
+        assertFailsWith<IllegalArgumentException> {
+            openTrustedStripeUrl("http://checkout.stripe.com/c/pay/placeholder") {}
+        }
     }
 
     private fun fakeRepository() = object : ProductBillingRepository {

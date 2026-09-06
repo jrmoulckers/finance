@@ -49,14 +49,14 @@ are also required by the authenticated endpoints.
 Tests use placeholder fixtures and no network:
 
 ```powershell
+Push-Location services\api\supabase\functions
 deno test --allow-env --allow-net=none --no-check `
-  services\api\supabase\functions\stripe-common `
-  services\api\supabase\functions\stripe-checkout `
-  services\api\supabase\functions\stripe-portal `
-  services\api\supabase\functions\stripe-reconcile `
-  services\api\supabase\functions\stripe-status `
-  services\api\supabase\functions\stripe-webhook
+  --frozen=true `
+  stripe-common stripe-checkout stripe-portal stripe-reconcile stripe-status stripe-webhook
+Pop-Location
 ```
+
+The shared Deno manifest also exposes `deno task test:stripe`.
 
 ## Human-gated work not performed
 

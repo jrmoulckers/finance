@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { createAdminClient } from '../_shared/auth.ts';
+import { validateEnv } from '../_shared/env.ts';
 import { StripeRestGateway } from '../stripe-common/client.ts';
 import { loadStripeWebhookConfig } from '../stripe-common/config.ts';
 import { normalizeStripeEvent, parseStripeEvent } from '../stripe-common/normalize.ts';
@@ -119,5 +120,9 @@ function json(
   });
 }
 
-export const handler = createStripeWebhookHandler();
+const applicationHandler = createStripeWebhookHandler();
+export const handler = (request: Request): Promise<Response> => {
+  const envError = validateEnv('stripe-webhook', request);
+  return envError ? Promise.resolve(envError) : applicationHandler(request);
+};
 if (import.meta.main) Deno.serve(handler);

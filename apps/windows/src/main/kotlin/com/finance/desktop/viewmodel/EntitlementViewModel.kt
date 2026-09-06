@@ -5,6 +5,7 @@ package com.finance.desktop.viewmodel
 import com.finance.desktop.data.repository.AccountRepository
 import com.finance.desktop.data.repository.BudgetRepository
 import com.finance.desktop.data.repository.CategoryRepository
+import com.finance.desktop.billing.ProductEntitlementProjection
 import com.finance.desktop.entitlement.EntitlementEngine
 import com.finance.desktop.entitlement.EntitlementResult
 import com.finance.desktop.entitlement.PremiumFeature
@@ -49,7 +50,6 @@ class EntitlementViewModel(
 
     private val householdId = SyncId("d1")
 
-    // In production, this would come from DPAPI-encrypted storage / server
     private var _tier = SubscriptionTier.FREE
 
     init {
@@ -90,14 +90,12 @@ class EntitlementViewModel(
         )
     }
 
-    fun handleUpgrade() {
-        // In production: launch Microsoft Store purchase flow
-        // For now, simulate upgrade
-        _tier = SubscriptionTier.PREMIUM
-        _uiState.value = _uiState.value.copy(
-            showUpgradeDialog = false,
-            upgradeFeature = null,
-        )
+    fun applyBillingProjection(projection: ProductEntitlementProjection) {
+        _tier = if (projection.confirmsPaidAccess) {
+            SubscriptionTier.PREMIUM
+        } else {
+            SubscriptionTier.FREE
+        }
         loadEntitlements()
     }
 

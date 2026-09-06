@@ -3,7 +3,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
-import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { validateEnv } from '../_shared/env.ts';
+import { checkRateLimit, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import {
   type BillingProjection,
   StripeRequestError,
@@ -11,13 +12,6 @@ import {
 } from '../stripe-common/types.ts';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const STATUS_RATE_LIMIT = {
-  maxRequests: 60,
-  windowSeconds: 60,
-  keyPrefix: 'stripe-status',
-  failMode: 'closed' as const,
-};
-
 interface StatusService {
   load(request: Request, ownerId: string, householdId: string | null): Promise<BillingProjection>;
 }
@@ -83,7 +77,11 @@ function defaultStatusService(): StatusService {
       if (!supabaseUrl || !anonKey || !authorization) {
         throw new StripeServiceError('Entitlement status is not configured', true);
       }
-      const rateLimit = await checkRateLimit(createAdminClient(), ownerId, STATUS_RATE_LIMIT);
+      const rateLimit = await checkRateLimit(
+        createAdminClient(),
+        ownerId,
+        RATE_LIMITS['stripe-status'],
+      );
       if (!rateLimit.allowed) {
         throw new StripeRequestError(429, 'Too many entitlement status requests');
       }
@@ -144,5 +142,9 @@ function json(
   });
 }
 
-export const handler = createStripeStatusHandler();
+const applicationHandler = createStripeStatusHandler();
+export const handler = (request: Request): Promise<Response> => {
+  const envError = validateEnv('stripe-status', request);
+  return envError ? Promise.resolve(envError) : applicationHandler(request);
+};
 if (import.meta.main) Deno.serve(handler);

@@ -2,6 +2,7 @@
 
 package com.finance.desktop.di
 
+import com.finance.desktop.billing.DirectStripeBillingViewModel
 import com.finance.desktop.viewmodel.*
 import org.koin.dsl.module
 
@@ -37,6 +38,7 @@ val viewModelModule = module {
     single { ReportBuilderViewModel(get(), get(), get()) }
     single { BudgetNegotiationViewModel(get(), get()) }
     single { EntitlementViewModel(get(), get(), get()) }
+    single { DirectStripeBillingViewModel(get()) }
     single { TipsViewModel(get(), get(), get()) }
     single { GamificationViewModel(get(), get()) }
     single { CurrencyViewModel(get(), get()) }

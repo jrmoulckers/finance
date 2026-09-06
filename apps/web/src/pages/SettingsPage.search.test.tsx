@@ -36,7 +36,8 @@ describe('SettingsPage search filter', () => {
     renderShell();
 
     const nav = screen.getByRole('navigation', { name: /settings sections/i });
-    expect(nav.querySelectorAll('a').length).toBe(7);
+    expect(nav.querySelectorAll('a').length).toBe(8);
+    expect(screen.getByRole('link', { name: /Plan & Billing/i })).toBeVisible();
   });
 
   it('filters sections by keyword match', () => {
@@ -85,6 +86,6 @@ describe('SettingsPage search filter', () => {
     fireEvent.change(search, { target: { value: '' } });
 
     const nav = screen.getByRole('navigation', { name: /settings sections/i });
-    expect(nav.querySelectorAll('a').length).toBe(7);
+    expect(nav.querySelectorAll('a').length).toBe(8);
   });
 });
