@@ -27,6 +27,8 @@ interface ReconciliationDependencies {
   checkLimit: (request: Request) => Promise<Response | null>;
 }
 
+const IDENTITY_PAGE_SIZE = 100;
+
 function json(body: Record<string, unknown>, status = 200, headers?: HeadersInit): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -51,18 +53,31 @@ export function createRevenueCatReconciliationHandler(dependencies: Reconciliati
     if (limited) return limited;
 
     try {
-      const identities = await dependencies.store.listIdentities(dependencies.config.environment);
       let reconciled = 0;
-      for (const identity of identities) {
-        const events = await dependencies.client.getCustomerEvents(identity.customerId);
-        const result = await ingestRevenueCatEvents(
-          events,
-          dependencies.config,
-          dependencies.store,
-          { identity, expectedCustomerId: identity.customerId },
+      let afterIdentityId: string | null = null;
+      do {
+        const identities = await dependencies.store.listIdentities(
+          dependencies.config.environment,
+          afterIdentityId,
+          IDENTITY_PAGE_SIZE,
         );
-        reconciled += result.recognized;
-      }
+        for (const identity of identities) {
+          const events = await dependencies.client.getCustomerEvents(identity.customerId);
+          const result = await ingestRevenueCatEvents(
+            events,
+            dependencies.config,
+            dependencies.store,
+            { identity, expectedCustomerId: identity.customerId },
+          );
+          reconciled += result.recognized;
+        }
+        if (identities.length < IDENTITY_PAGE_SIZE) break;
+        const nextIdentityId = identities.at(-1)?.id ?? null;
+        if (!nextIdentityId || nextIdentityId === afterIdentityId) {
+          throw new RevenueCatStoreError();
+        }
+        afterIdentityId = nextIdentityId;
+      } while (afterIdentityId);
       return json({ status: 'confirmed', reconciled });
     } catch (error) {
       if (error instanceof RevenueCatUnavailableError || error instanceof RevenueCatStoreError) {

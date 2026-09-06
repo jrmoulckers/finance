@@ -11,6 +11,7 @@ export interface RevenueCatEvent {
   id: string;
   type: string;
   event_timestamp_ms: number;
+  provider_order_ms?: unknown;
   app_id: string;
   app_user_id: string;
   original_app_user_id: string;
@@ -50,7 +51,8 @@ export interface NormalizedBillingEvidence {
 export interface NormalizationResult {
   customerIds: readonly string[];
   evidence: NormalizedBillingEvidence | null;
-  ignoredReason?: 'unknown_event' | 'unknown_product' | 'family_binding_required';
+  ignoredReason?:
+    'unknown_event' | 'unknown_product' | 'family_binding_required' | 'deferred_product_change';
 }
 
 function requiredString(value: unknown): string {
@@ -135,16 +137,20 @@ export function normalizeRevenueCatEvent(
 
   const lifecycle = lifecycleFor(event);
   if (!lifecycle) {
-    return { customerIds, evidence: null, ignoredReason: 'unknown_event' };
+    return {
+      customerIds,
+      evidence: null,
+      ignoredReason: event.type === 'PRODUCT_CHANGE' ? 'deferred_product_change' : 'unknown_event',
+    };
   }
 
-  const productId =
-    event.type === 'PRODUCT_CHANGE'
-      ? requiredString(event.new_product_id)
-      : requiredString(event.product_id);
+  const productId = requiredString(event.product_id);
   const product = config.products[productId];
   if (!product) {
     return { customerIds, evidence: null, ignoredReason: 'unknown_product' };
+  }
+  if (product.appId !== appId) {
+    throw new RevenueCatEvidenceError('invalid_source');
   }
   if (product.tier === 'family' && !familyHouseholdId) {
     return {
@@ -163,7 +169,7 @@ export function normalizeRevenueCatEvent(
       providerSubscriptionId: requiredString(event.original_transaction_id),
       providerSubscriptionItemId: null,
       effectiveAt: iso(lifecycle.effectiveAtMs),
-      providerOrder: requiredMillis(event.event_timestamp_ms),
+      providerOrder: requiredMillis(event.provider_order_ms ?? event.event_timestamp_ms),
       eventType: lifecycle.eventType,
       lifecycle: lifecycle.lifecycle,
       logicalProduct: product.logicalProduct,

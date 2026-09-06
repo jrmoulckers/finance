@@ -20,7 +20,11 @@ function validEnvironment(): Record<string, string> {
       },
     }),
     REVENUECAT_PRODUCT_MAP_JSON: JSON.stringify({
-      plus_monthly: { logicalProduct: 'base_plan', tier: 'plus' },
+      plus_monthly: {
+        appId: 'app_apple',
+        logicalProduct: 'base_plan',
+        tier: 'plus',
+      },
     }),
   };
 }
@@ -31,6 +35,7 @@ Deno.test('RevenueCat configuration validates reviewed project/account/app and p
   assertEquals(config.projectId, 'proj_synthetic');
   assertEquals(config.apps.app_apple.store, 'APP_STORE');
   assertEquals(config.products.plus_monthly.tier, 'plus');
+  assertEquals(config.products.plus_monthly.appId, 'app_apple');
   assertEquals(config.webhookSignatureSecrets.length, 2);
 });
 
@@ -48,10 +53,26 @@ Deno.test('RevenueCat configuration rejects malformed or authority-bearing produ
   for (const map of [
     '{malformed',
     JSON.stringify({
-      sku: { logicalProduct: 'base_plan', tier: 'enterprise' },
+      sku: {
+        appId: 'app_apple',
+        logicalProduct: 'base_plan',
+        tier: 'enterprise',
+      },
     }),
     JSON.stringify({
-      sku: { logicalProduct: 'base_plan', tier: 'premium', quantity: 99 },
+      sku: {
+        appId: 'unknown_app',
+        logicalProduct: 'base_plan',
+        tier: 'premium',
+      },
+    }),
+    JSON.stringify({
+      sku: {
+        appId: 'app_apple',
+        logicalProduct: 'base_plan',
+        tier: 'premium',
+        quantity: 99,
+      },
     }),
   ]) {
     const values = validEnvironment();

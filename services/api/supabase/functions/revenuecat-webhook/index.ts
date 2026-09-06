@@ -77,7 +77,9 @@ export function createRevenueCatWebhookHandler(dependencies: WebhookDependencies
         return json({ error: 'invalid_evidence' }, 400);
       }
       if (error instanceof RevenueCatStoreError) {
-        return json({ error: 'temporarily_unavailable' }, 503, { 'Retry-After': '60' });
+        return json({ error: 'temporarily_unavailable' }, 503, {
+          'Retry-After': '60',
+        });
       }
       return json({ error: 'internal_error' }, 500);
     }

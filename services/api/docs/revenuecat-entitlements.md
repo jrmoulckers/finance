@@ -35,7 +35,9 @@ verification.
 
 - `POST /revenuecat-webhook` accepts provider delivery. Unknown event or
   product mappings are acknowledged without a grant. Duplicate provider event
-  IDs are successful no-ops.
+  IDs are successful no-ops. `PRODUCT_CHANGE` notifications are deferred:
+  their `new_product_id` never changes access until later effective purchase
+  evidence confirms the product.
 - `POST /revenuecat-confirm` accepts `confirm` or `restore`, the expected app
   and environment, and optional eligible `household_id`. It returns
   `pending`, `confirmed`, or `error` plus only the minimized Finance
@@ -44,7 +46,10 @@ verification.
   Finance projection without contacting RevenueCat.
 - `POST /revenuecat-reconcile` uses a distinct server credential, retrieves
   current RevenueCat state with the project-scoped API key, and feeds the same
-  append/apply path. Provider outages return a bounded
+  append/apply path. The provider client consumes RevenueCat v2 numeric
+  millisecond period timestamps and lowercase store values, resolves the app
+  from the reviewed product/app maps, follows every scoped `next_page`, and
+  keyset-pages through every stored identity. Provider outages return a bounded
   `temporarily_unavailable` error with `Retry-After`.
 
 Responses and logs exclude provider names and identifiers, receipts, customer

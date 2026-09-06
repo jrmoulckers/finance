@@ -43,6 +43,34 @@ Deno.test(
   },
 );
 
+Deno.test('RevenueCat extension orders after cancellation by trusted event time', async () => {
+  const store = new MemoryRevenueCatStore();
+  const cancellation = testRevenueCatEvent({
+    id: 'evt_cancelled',
+    type: 'CANCELLATION',
+    cancel_reason: 'UNSUBSCRIBE',
+    event_timestamp_ms: Date.parse('2026-09-10T12:00:00Z'),
+    expiration_at_ms: Date.parse('2026-10-06T12:00:00Z'),
+  });
+  const extension = testRevenueCatEvent({
+    id: 'evt_extended',
+    type: 'SUBSCRIPTION_EXTENDED',
+    event_timestamp_ms: Date.parse('2026-09-11T12:00:00Z'),
+    purchased_at_ms: Date.parse('2026-09-01T12:00:00Z'),
+    expiration_at_ms: Date.parse('2026-10-20T12:00:00Z'),
+  });
+
+  const result = await ingestRevenueCatEvents(
+    [extension, cancellation],
+    TEST_REVENUECAT_CONFIG,
+    store,
+  );
+  assertEquals(result.recognized, 2);
+  assertEquals(result.applied, 1);
+  assertEquals(store.currentEvidence()?.providerEventId, 'evt_extended');
+  assertEquals(store.currentEvidence()?.currentPeriodEnd, '2026-10-20T12:00:00.000Z');
+});
+
 Deno.test('RevenueCat refund and chargeback cannot be resurrected', async () => {
   for (const cancelReason of ['REFUND', 'CHARGEBACK']) {
     const store = new MemoryRevenueCatStore();

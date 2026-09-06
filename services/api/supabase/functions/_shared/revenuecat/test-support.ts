@@ -29,9 +29,26 @@ export const TEST_REVENUECAT_CONFIG: RevenueCatConfig = {
     },
   },
   products: {
-    plus_monthly: { logicalProduct: 'base_plan', tier: 'plus' },
-    premium_monthly: { logicalProduct: 'base_plan', tier: 'premium' },
-    family_monthly: { logicalProduct: 'base_plan', tier: 'family' },
+    plus_monthly: {
+      appId: 'app_apple',
+      logicalProduct: 'base_plan',
+      tier: 'plus',
+    },
+    premium_monthly: {
+      appId: 'app_apple',
+      logicalProduct: 'base_plan',
+      tier: 'premium',
+    },
+    family_monthly: {
+      appId: 'app_apple',
+      logicalProduct: 'base_plan',
+      tier: 'family',
+    },
+    plus_google: {
+      appId: 'app_google',
+      logicalProduct: 'base_plan',
+      tier: 'plus',
+    },
   },
 };
 
@@ -79,6 +96,11 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
   private readonly eventIds = new Set<string>();
   private current: NormalizedBillingEvidence | null = null;
   householdMember = true;
+  identityPageRequests = 0;
+
+  currentEvidence(): NormalizedBillingEvidence | null {
+    return this.current;
+  }
 
   bindCustomer(
     ownerId: string,
@@ -98,8 +120,18 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
     );
   }
 
-  listIdentities(): Promise<readonly RevenueCatIdentity[]> {
-    return Promise.resolve(this.identities);
+  listIdentities(
+    _environment: 'sandbox' | 'production',
+    afterIdentityId: string | null,
+    limit: number,
+  ): Promise<readonly RevenueCatIdentity[]> {
+    this.identityPageRequests++;
+    return Promise.resolve(
+      this.identities
+        .filter((identity) => !afterIdentityId || identity.id > afterIdentityId)
+        .sort((left, right) => left.id.localeCompare(right.id))
+        .slice(0, limit),
+    );
   }
 
   verifyHouseholdMembership(): Promise<boolean> {

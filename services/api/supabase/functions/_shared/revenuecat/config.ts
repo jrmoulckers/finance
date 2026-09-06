@@ -11,6 +11,7 @@ export interface RevenueCatApp {
 }
 
 export interface RevenueCatProduct {
+  appId: string;
   logicalProduct: 'base_plan';
   tier: PaidTier;
 }
@@ -88,7 +89,10 @@ function parseApps(
   return apps;
 }
 
-function parseProducts(raw: string): Record<string, RevenueCatProduct> {
+function parseProducts(
+  raw: string,
+  apps: Readonly<Record<string, RevenueCatApp>>,
+): Record<string, RevenueCatProduct> {
   const entries = parseJsonObject(raw);
   const products: Record<string, RevenueCatProduct> = {};
 
@@ -98,13 +102,16 @@ function parseProducts(raw: string): Record<string, RevenueCatProduct> {
     }
     const product = value as Record<string, unknown>;
     if (
+      typeof product.appId !== 'string' ||
+      !apps[product.appId] ||
       product.logicalProduct !== 'base_plan' ||
       !['plus', 'premium', 'family'].includes(String(product.tier)) ||
-      Object.keys(product).some((key) => !['logicalProduct', 'tier'].includes(key))
+      Object.keys(product).some((key) => !['appId', 'logicalProduct', 'tier'].includes(key))
     ) {
       throw new RevenueCatConfigurationError();
     }
     products[productId] = {
+      appId: product.appId,
       logicalProduct: 'base_plan',
       tier: product.tier as PaidTier,
     };
@@ -142,6 +149,7 @@ export function readRevenueCatConfig(
   if (parsedApiBaseUrl.protocol !== 'https:' && parsedApiBaseUrl.hostname !== 'localhost') {
     throw new RevenueCatConfigurationError();
   }
+  const apps = parseApps(required(readEnv, 'REVENUECAT_APP_MAP_JSON'), accountId, projectId);
 
   return {
     webhookAuthorization: required(readEnv, 'REVENUECAT_WEBHOOK_AUTHORIZATION'),
@@ -152,7 +160,7 @@ export function readRevenueCatConfig(
     accountId,
     projectId,
     environment,
-    apps: parseApps(required(readEnv, 'REVENUECAT_APP_MAP_JSON'), accountId, projectId),
-    products: parseProducts(required(readEnv, 'REVENUECAT_PRODUCT_MAP_JSON')),
+    apps,
+    products: parseProducts(required(readEnv, 'REVENUECAT_PRODUCT_MAP_JSON'), apps),
   };
 }

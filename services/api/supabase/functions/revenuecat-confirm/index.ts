@@ -89,7 +89,14 @@ export function createRevenueCatConfirmationHandler(dependencies: ConfirmationDe
     if (request.method === 'GET') {
       const householdId = new URL(request.url).searchParams.get('household_id');
       if (householdId && !UUID_PATTERN.test(householdId)) {
-        return confirmationResponse(request, { status: 'error', error: 'invalid_request' }, 400);
+        return confirmationResponse(
+          request,
+          {
+            status: 'error',
+            error: 'invalid_request',
+          },
+          400,
+        );
       }
       try {
         if (
@@ -120,18 +127,39 @@ export function createRevenueCatConfirmationHandler(dependencies: ConfirmationDe
     try {
       const declaredLength = Number(request.headers.get('content-length') ?? 0);
       if (declaredLength > MAX_CONFIRMATION_BYTES) {
-        return confirmationResponse(request, { status: 'error', error: 'invalid_request' }, 413);
+        return confirmationResponse(
+          request,
+          {
+            status: 'error',
+            error: 'invalid_request',
+          },
+          413,
+        );
       }
       const rawBody = await request.text();
       if (!rawBody || new TextEncoder().encode(rawBody).byteLength > MAX_CONFIRMATION_BYTES) {
-        return confirmationResponse(request, { status: 'error', error: 'invalid_request' }, 413);
+        return confirmationResponse(
+          request,
+          {
+            status: 'error',
+            error: 'invalid_request',
+          },
+          413,
+        );
       }
       body = parseBody(JSON.parse(rawBody));
     } catch {
       body = null;
     }
     if (!body) {
-      return confirmationResponse(request, { status: 'error', error: 'invalid_request' }, 400);
+      return confirmationResponse(
+        request,
+        {
+          status: 'error',
+          error: 'invalid_request',
+        },
+        400,
+      );
     }
 
     try {
@@ -155,7 +183,14 @@ export function createRevenueCatConfirmationHandler(dependencies: ConfirmationDe
         );
       }
       if (error instanceof RevenueCatEvidenceError) {
-        return confirmationResponse(request, { status: 'error', error: 'invalid_evidence' }, 400);
+        return confirmationResponse(
+          request,
+          {
+            status: 'error',
+            error: 'invalid_evidence',
+          },
+          400,
+        );
       }
       if (error instanceof Error && error.message === 'household_access_denied') {
         return confirmationResponse(
@@ -164,7 +199,14 @@ export function createRevenueCatConfirmationHandler(dependencies: ConfirmationDe
           403,
         );
       }
-      return confirmationResponse(request, { status: 'error', error: 'invalid_request' }, 400);
+      return confirmationResponse(
+        request,
+        {
+          status: 'error',
+          error: 'invalid_request',
+        },
+        400,
+      );
     }
   };
 }

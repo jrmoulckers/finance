@@ -25,9 +25,21 @@ const config: RevenueCatConfig = {
     },
   },
   products: {
-    plus_monthly: { logicalProduct: 'base_plan', tier: 'plus' },
-    premium_monthly: { logicalProduct: 'base_plan', tier: 'premium' },
-    family_monthly: { logicalProduct: 'base_plan', tier: 'family' },
+    plus_monthly: {
+      appId: 'app_apple',
+      logicalProduct: 'base_plan',
+      tier: 'plus',
+    },
+    premium_monthly: {
+      appId: 'app_apple',
+      logicalProduct: 'base_plan',
+      tier: 'premium',
+    },
+    family_monthly: {
+      appId: 'app_apple',
+      logicalProduct: 'base_plan',
+      tier: 'family',
+    },
   },
 };
 
@@ -69,6 +81,7 @@ const lifecycleCases: Array<{
   },
   { type: 'INITIAL_PURCHASE', eventType: 'activated', lifecycle: 'active' },
   { type: 'RENEWAL', eventType: 'renewed', lifecycle: 'active' },
+  { type: 'SUBSCRIPTION_EXTENDED', eventType: 'renewed', lifecycle: 'active' },
   { type: 'UNCANCELLATION', eventType: 'reactivated', lifecycle: 'active' },
   {
     type: 'CANCELLATION',
@@ -99,12 +112,6 @@ const lifecycleCases: Array<{
     extra: { cancel_reason: 'CHARGEBACK' },
     eventType: 'chargeback',
     lifecycle: 'chargeback',
-  },
-  {
-    type: 'PRODUCT_CHANGE',
-    extra: { new_product_id: 'premium_monthly' },
-    eventType: 'quantity_changed',
-    lifecycle: 'active',
   },
 ];
 
@@ -137,21 +144,48 @@ Deno.test('RevenueCat uses reviewed product mapping and immutable Family intent'
   assertEquals(bound.evidence?.quantity, 1);
 });
 
-Deno.test('RevenueCat ignores provider quantity when applying a reviewed plan change', () => {
-  const result = normalizeRevenueCatEvent(
-    {
-      ...event({
-        type: 'PRODUCT_CHANGE',
-        new_product_id: 'premium_monthly',
-      }),
-      quantity: 999,
-    } as RevenueCatEvent,
-    config,
-    null,
-  );
-  assertEquals(result.evidence?.tier, 'premium');
-  assertEquals(result.evidence?.quantity, 1);
+Deno.test('RevenueCat defers product changes until effective purchase evidence arrives', () => {
+  for (const change of [
+    { product_id: 'plus_monthly', new_product_id: 'premium_monthly' },
+    { product_id: 'premium_monthly', new_product_id: 'plus_monthly' },
+    { product_id: 'premium_monthly', new_product_id: 'family_monthly' },
+  ]) {
+    const result = normalizeRevenueCatEvent(
+      {
+        ...event({
+          type: 'PRODUCT_CHANGE',
+          ...change,
+        }),
+        quantity: 999,
+      } as RevenueCatEvent,
+      config,
+      null,
+    );
+    assertEquals(result.evidence, null);
+    assertEquals(result.ignoredReason, 'deferred_product_change');
+  }
 });
+
+Deno.test(
+  'RevenueCat extension uses trusted event time and preserves extended paid-through',
+  () => {
+    const eventTime = NOW + 1_000;
+    const extendedEnd = END + 86_400_000;
+    const result = normalizeRevenueCatEvent(
+      event({
+        type: 'SUBSCRIPTION_EXTENDED',
+        event_timestamp_ms: eventTime,
+        purchased_at_ms: NOW - 86_400_000,
+        expiration_at_ms: extendedEnd,
+      }),
+      config,
+      null,
+    );
+    assertEquals(result.evidence?.effectiveAt, new Date(eventTime).toISOString());
+    assertEquals(result.evidence?.currentPeriodEnd, new Date(extendedEnd).toISOString());
+    assertEquals(result.evidence?.trustedReactivation, false);
+  },
+);
 
 Deno.test('RevenueCat rejects wrong app, store, environment, and authenticated subject', () => {
   for (const invalid of [

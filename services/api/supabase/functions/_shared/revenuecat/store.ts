@@ -33,7 +33,11 @@ export interface RevenueCatStore {
     customerIds: readonly string[],
     environment: BillingEnvironment,
   ): Promise<RevenueCatIdentity | null>;
-  listIdentities(environment: BillingEnvironment): Promise<readonly RevenueCatIdentity[]>;
+  listIdentities(
+    environment: BillingEnvironment,
+    afterIdentityId: string | null,
+    limit: number,
+  ): Promise<readonly RevenueCatIdentity[]>;
   verifyHouseholdMembership(ownerId: string, householdId: string): Promise<boolean>;
   findFamilyBinding(
     evidence: Pick<NormalizedBillingEvidence, 'environment' | 'providerSubscriptionId'>,
@@ -184,14 +188,17 @@ export function createRevenueCatStore(
       return rowIdentity(rows[0]);
     },
 
-    async listIdentities(environment) {
-      const result = await client
+    async listIdentities(environment, afterIdentityId, limit) {
+      let query = client
         .from('billing_provider_identities')
         .select('id, billing_account_id, provider_customer_id, environment')
         .eq('provider', 'revenuecat')
         .eq('environment', environment)
         .eq('is_primary', true)
-        .limit(500);
+        .order('id', { ascending: true })
+        .limit(limit);
+      if (afterIdentityId) query = query.gt('id', afterIdentityId);
+      const result = await query;
       if (result.error) throw new RevenueCatStoreError();
       return (result.data ?? []).map(rowIdentity);
     },

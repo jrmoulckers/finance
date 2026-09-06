@@ -67,7 +67,6 @@ export function lifecycleFor(event: RevenueCatEvent): LifecycleMapping | null {
         trustedReactivation: false,
       };
     case 'RENEWAL':
-    case 'SUBSCRIPTION_EXTENDED':
       if (!periodEnd) throw new RevenueCatEvidenceError('invalid_lifecycle');
       return {
         eventType: 'renewed',
@@ -77,6 +76,17 @@ export function lifecycleFor(event: RevenueCatEvent): LifecycleMapping | null {
         graceEndMs: null,
         terminalAtMs: null,
         trustedReactivation: true,
+      };
+    case 'SUBSCRIPTION_EXTENDED':
+      if (!periodEnd) throw new RevenueCatEvidenceError('invalid_lifecycle');
+      return {
+        eventType: 'renewed',
+        lifecycle: 'active',
+        effectiveAtMs: generatedAt,
+        currentPeriodEndMs: periodEnd,
+        graceEndMs: null,
+        terminalAtMs: null,
+        trustedReactivation: false,
       };
     case 'UNCANCELLATION':
     case 'REFUND_REVERSED':
@@ -160,16 +170,7 @@ export function lifecycleFor(event: RevenueCatEvent): LifecycleMapping | null {
       };
     }
     case 'PRODUCT_CHANGE':
-      if (!periodEnd) throw new RevenueCatEvidenceError('invalid_lifecycle');
-      return {
-        eventType: 'quantity_changed',
-        lifecycle: 'active',
-        effectiveAtMs: generatedAt,
-        currentPeriodEndMs: periodEnd,
-        graceEndMs: null,
-        terminalAtMs: null,
-        trustedReactivation: false,
-      };
+      return null;
     default:
       return null;
   }
