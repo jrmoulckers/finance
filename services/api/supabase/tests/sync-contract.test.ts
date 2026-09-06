@@ -28,6 +28,7 @@ const TEST_DIR = new URL('.', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '
 const SUPABASE_DIR = resolve(TEST_DIR, '..');
 const SYNC_RULES_PATH = resolve(SUPABASE_DIR, '..', 'powersync', 'sync-rules.yaml');
 const MIGRATIONS_DIR = resolve(SUPABASE_DIR, 'migrations');
+const DATA_EXPORT_PATH = resolve(SUPABASE_DIR, 'functions', 'data-export', 'index.ts');
 
 /** Normalise path separators for cross-platform compatibility. */
 function resolve(...parts: string[]): string {
@@ -214,36 +215,49 @@ Deno.test('sync-rules.yaml excludes internal-only columns from SELECT *', async 
   );
 });
 
-Deno.test('billing authority and legacy family tables are never synchronized', async () => {
-  const rules = await loadSyncRules();
-  const prohibitedTables = new Set([
-    'billing_accounts',
-    'billing_provider_identities',
-    'billing_provider_purchase_bindings',
-    'billing_subscriptions',
-    'billing_provider_events',
-    'entitlement_grants',
-    'current_user_entitlements',
-    'current_household_entitlements',
-    'family_plan_subscriptions',
-  ]);
-  const prohibitedReferences: string[] = [];
+Deno.test(
+  'billing authority and legacy family tables are never synchronized or exported',
+  async () => {
+    const rules = await loadSyncRules();
+    const exportSource = await Deno.readTextFile(DATA_EXPORT_PATH);
+    const prohibitedTables = new Set([
+      'billing_accounts',
+      'billing_provider_identities',
+      'billing_provider_purchase_bindings',
+      'billing_provider_purchase_aliases',
+      'billing_subscriptions',
+      'billing_provider_events',
+      'entitlement_grants',
+      'current_user_entitlements',
+      'current_household_entitlements',
+      'family_plan_subscriptions',
+    ]);
+    const prohibitedReferences: string[] = [];
 
-  for (const [bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
-    for (const query of [...(bucket.parameters ?? []), ...bucket.data]) {
-      const table = extractTableName(query)?.toLowerCase();
-      if (table && prohibitedTables.has(table)) {
-        prohibitedReferences.push(`${bucketName}: ${table}`);
+    for (const [bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
+      for (const query of [...(bucket.parameters ?? []), ...bucket.data]) {
+        const table = extractTableName(query)?.toLowerCase();
+        if (table && prohibitedTables.has(table)) {
+          prohibitedReferences.push(`${bucketName}: ${table}`);
+        }
       }
     }
-  }
 
-  assertEquals(
-    prohibitedReferences,
-    [],
-    `Billing authority tables must remain server-only: ${prohibitedReferences.join(', ')}`,
-  );
-});
+    assertEquals(
+      prohibitedReferences,
+      [],
+      `Billing authority tables must remain server-only: ${prohibitedReferences.join(', ')}`,
+    );
+    const exportedBillingTables = [...prohibitedTables].filter((table) =>
+      new RegExp(`name:\\s*['"]${table}['"]`).test(exportSource),
+    );
+    assertEquals(
+      exportedBillingTables,
+      [],
+      `Billing authority tables must remain outside user export: ${exportedBillingTables.join(', ')}`,
+    );
+  },
+);
 
 Deno.test('sync-rules bucket parameters use token_parameters.user_id', async () => {
   const rules = await loadSyncRules();

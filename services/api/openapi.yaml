@@ -55,6 +55,8 @@ tags:
     description: GDPR data portability — export and account deletion
   - name: Sync
     description: Sync engine health monitoring and diagnostics
+  - name: Billing
+    description: Server-authoritative subscription evidence and minimized projections
 
 # ---------------------------------------------------------------------------
 # Security Schemes
@@ -75,6 +77,20 @@ components:
       description: >-
         Shared secret configured in `AUTH_WEBHOOK_SECRET`.  Used exclusively
         by the Supabase Auth webhook; not intended for end-user clients.
+    RevenueCatWebhookAuthorization:
+      type: http
+      scheme: bearer
+      description: >-
+        Dedicated RevenueCat webhook credential. A valid timestamped
+        X-RevenueCat-Webhook-Signature is also required.
+    RevenueCatReconciliationAuthorization:
+      type: http
+      scheme: bearer
+      description: Dedicated server-only reconciliation credential.
+    CronSecret:
+      type: http
+      scheme: bearer
+      description: Dedicated credential for scheduled server tasks.
 
   # -------------------------------------------------------------------------
   # Reusable Schemas
@@ -706,11 +722,229 @@ components:
           description: Server timestamp when generation completed.
           example: '2026-03-23T02:00:00.000Z'
 
+    EntitlementProjection:
+      type: object
+      required:
+        - userTier
+        - householdTier
+        - bankConnectionAllowance
+        - isPremiumSponsor
+        - isFamilyBound
+        - effectiveAt
+        - expiresAt
+        - projectionVersion
+        - serverTime
+      properties:
+        userTier:
+          type: string
+          enum: [free, plus, premium]
+        householdTier:
+          type: string
+          nullable: true
+          enum: [free, premium, family]
+        bankConnectionAllowance:
+          type: integer
+          format: int64
+          minimum: 0
+        isPremiumSponsor:
+          type: boolean
+        isFamilyBound:
+          type: boolean
+        effectiveAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        projectionVersion:
+          type: integer
+          format: int64
+          minimum: 1
+        serverTime:
+          type: string
+          format: date-time
+
+    RevenueCatConfirmationRequest:
+      type: object
+      additionalProperties: false
+      required: [operation, app_id, environment]
+      properties:
+        operation:
+          type: string
+          enum: [confirm, restore]
+        app_id:
+          type: string
+          description: Expected reviewed RevenueCat app identifier.
+        environment:
+          type: string
+          enum: [sandbox, production]
+        household_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Eligible household intent required for a new Family binding.
+
+    RevenueCatConfirmationResponse:
+      type: object
+      required: [status, entitlement]
+      properties:
+        status:
+          type: string
+          enum: [pending, confirmed]
+          description: >-
+            Confirmation requires the server-selected purchase candidate to be
+            access-bearing and that exact canonical binding to have an active
+            authoritative Finance grant; Free or denial-only results remain pending.
+        entitlement:
+          $ref: '#/components/schemas/EntitlementProjection'
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
 paths:
+  /revenuecat-webhook:
+    post:
+      operationId: ingestRevenueCatWebhook
+      summary: Ingest RevenueCat evidence
+      description: >-
+        Authenticates the exact raw request body, validates the configured
+        account/project/app/environment and reviewed store-product aliases,
+        then records and applies normalized evidence. Unknown events grant
+        nothing.
+      tags: [Billing]
+      security:
+        - RevenueCatWebhookAuthorization: []
+      parameters:
+        - in: header
+          name: X-RevenueCat-Webhook-Signature
+          required: true
+          schema:
+            type: string
+          description: Timestamp and one or more v1 HMAC-SHA256 signatures.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              additionalProperties: true
+              properties:
+                event:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Delivery accepted, including duplicate or unknown evidence.
+        '400':
+          description: Evidence is malformed or from an unexpected source.
+        '401':
+          description: Authorization or signature verification failed.
+        '503':
+          description: Ledger is temporarily unavailable; delivery may be retried.
+
+  /revenuecat-confirm:
+    get:
+      operationId: getRevenueCatEntitlementStatus
+      summary: Read the current Finance entitlement projection
+      tags: [Billing]
+      security:
+        - BearerJWT: []
+      parameters:
+        - in: query
+          name: household_id
+          schema:
+            type: string
+            format: uuid
+          description: Optional household for a membership-scoped projection.
+      responses:
+        '200':
+          description: Current minimized projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueCatConfirmationResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Household membership required.
+        '503':
+          description: Projection is temporarily unavailable.
+    post:
+      operationId: confirmRevenueCatPurchase
+      summary: Confirm or restore Apple/Google purchase evidence
+      description: >-
+        Derives the provider customer lookup from auth.uid(). Caller-supplied
+        tiers, prices, validity, allowance, quantity, receipts, and provider
+        identifiers are rejected. A different active subscription cannot
+        confirm a denied purchase candidate.
+      tags: [Billing]
+      security:
+        - BearerJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevenueCatConfirmationRequest'
+      responses:
+        '200':
+          description: Provider check completed or remains pending.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueCatConfirmationResponse'
+        '400':
+          description: Invalid request or provider evidence.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Household membership required.
+        '503':
+          description: Provider or ledger unavailable; request may be retried.
+
+  /revenuecat-reconcile:
+    post:
+      operationId: reconcileRevenueCatSubscriptions
+      summary: Reconcile current RevenueCat state through the Finance ledger
+      tags: [Billing]
+      security:
+        - RevenueCatReconciliationAuthorization: []
+      parameters:
+        - in: query
+          name: cursor
+          schema:
+            type: string
+            pattern: '^v1:(0|[1-9][0-9]*)$'
+          description: Ordinal cursor returned by a prior partial response.
+      responses:
+        '200':
+          description: Bounded reconciliation batch completed or has a continuation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, reconciled, next_cursor]
+                properties:
+                  status:
+                    type: string
+                    enum: [partial, confirmed]
+                  reconciled:
+                    type: integer
+                    minimum: 0
+                  next_cursor:
+                    type: string
+                    nullable: true
+                    pattern: '^v1:(0|[1-9][0-9]*)$'
+        '400':
+          description: Continuation cursor is invalid.
+        '401':
+          description: Dedicated reconciliation credential is invalid.
+        '503':
+          description: Provider or ledger unavailable; request may be retried.
+
   # =========================================================================
   # Health Check
   # =========================================================================

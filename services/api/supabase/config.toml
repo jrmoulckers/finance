@@ -100,3 +100,12 @@ verify_jwt = false
 
 [functions.feedback]
 verify_jwt = false
+
+# RevenueCat authenticates provider callbacks with dedicated secrets. Native
+# confirmation keeps gateway JWT verification enabled (the default) and also
+# resolves auth.uid() in the function before any provider lookup.
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.revenuecat-reconcile]
+verify_jwt = false

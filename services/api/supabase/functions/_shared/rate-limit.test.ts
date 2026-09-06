@@ -476,6 +476,9 @@ Deno.test('RATE_LIMITS — has entries for all expected functions', () => {
     'anomaly-detection',
     'consent-management',
     'investment-sync',
+    'revenuecat-webhook',
+    'revenuecat-confirm',
+    'revenuecat-reconcile',
   ];
 
   for (const fn of expectedFunctions) {
