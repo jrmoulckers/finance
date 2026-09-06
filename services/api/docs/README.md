@@ -63,6 +63,19 @@ The canonical spec lives at [`services/api/openapi.yaml`](../openapi.yaml).
 | Billing | `GET` | `/stripe-status` | Bearer JWT | Read the minimized Finance entitlement projection |
 | Billing | `POST` | `/stripe-webhook` | Stripe proof | Ingest signed Stripe subscription evidence |
 
+| Tag     | Method | Path               | Auth       | Description                                            |
+| ------- | ------ | ------------------ | ---------- | ------------------------------------------------------ |
+| Billing | `GET`  | `/entitlements-v1` | Bearer JWT | Read the versioned minimized entitlement contract (v1) |
+
+`/entitlements-v1` is the contract all four platforms consume. It is backed
+solely by `public.get_my_entitlements` and server-resolved identity and
+household membership, and it discloses only the logical tier, the
+lifecycle-derived access state, the entitlement scope, the server-issued
+validity bound, the bank-connection allowance, and the pending downgrade.
+Provider names and identifiers, raw evidence, internal ledger identifiers, and
+other household members' billing data never appear in it. Shared client types
+live in `packages/core` under `com.finance.core.entitlement`.
+
 RevenueCat request/response, privacy, and human-gated setup details are in
 [`revenuecat-entitlements.md`](./revenuecat-entitlements.md).
 RevenueCat webhooks and reconciliation use separate bearer credentials, and

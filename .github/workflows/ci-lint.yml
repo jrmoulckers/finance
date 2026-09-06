@@ -210,6 +210,91 @@ jobs:
             perf
           requireScope: false
 
+  entitlement-gateway-changes:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-detect-changes.yml
+    with:
+      filters: |
+        relevant:
+          - 'services/api/supabase/functions/entitlements-v1/**'
+          - 'services/api/supabase/functions/_shared/**'
+          - 'services/api/supabase/tests/entitlement-gateway.integration.test.mjs'
+          - 'services/api/supabase/config.toml'
+          - 'services/api/package.json'
+          - '.github/workflows/ci-lint.yml'
+
+  # The `entitlements-v1` contract promises a stable `unauthenticated` envelope
+  # with CORS headers and no-store for a missing, malformed, or expired
+  # credential. Handler-level unit tests cannot prove that: the gateway decides
+  # whether a request reaches the function at all. This job stands up the real
+  # local stack and drives it, so a config change that lets the gateway answer
+  # first fails here instead of in production. Every prerequisite is mandatory —
+  # the suite fails loudly rather than skipping a case.
+  entitlement-gateway:
+    name: Entitlement Gateway Integration
+    needs: entitlement-gateway-changes
+    if: ${{ github.event_name != 'pull_request' || needs.entitlement-gateway-changes.outputs.relevant == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install the Supabase CLI
+        run: npm install --global supabase@2.116.0
+
+      - name: Start the local Supabase stack
+        working-directory: services/api
+        run: |
+          supabase start \
+            -x studio,imgproxy,logflare,vector,supavisor,mailpit,realtime,storage-api,inbucket
+
+      - name: Serve the Edge Functions
+        working-directory: services/api
+        # ALLOWED_ORIGINS is a plain local value, not a credential: the suite
+        # only ever talks to the loopback stack this job just created.
+        run: |
+          printf 'ALLOWED_ORIGINS=https://finance.example\n' > "$RUNNER_TEMP/entitlements.env"
+          supabase functions serve --env-file "$RUNNER_TEMP/entitlements.env" \
+            > "$RUNNER_TEMP/functions-serve.log" 2>&1 &
+          # Wait for 401 specifically. A 503 means the function is up but its
+          # environment is incomplete, which must not be mistaken for readiness.
+          for _ in $(seq 1 90); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              http://127.0.0.1:54321/functions/v1/entitlements-v1 || true)
+            if [ "$code" = "401" ]; then
+              echo "entitlements-v1 gateway is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::the entitlements-v1 gateway did not become ready"
+          cat "$RUNNER_TEMP/functions-serve.log"
+          exit 1
+
+      - name: Run the gateway integration suite
+        run: npm run test:entitlement-gateway -w services/api
+
+      - name: Edge function logs
+        if: failure()
+        run: cat "$RUNNER_TEMP/functions-serve.log" || true
+
+      - name: Stop the local Supabase stack
+        if: always()
+        working-directory: services/api
+        run: supabase stop --no-backup || true
+
   observability-guardrails:
     name: Observability Guardrails
     needs: changes

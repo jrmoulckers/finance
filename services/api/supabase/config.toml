@@ -126,3 +126,14 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+# The minimized entitlement endpoint (#4403) verifies authentication inside the
+# function so that a missing, malformed, or expired JWT still receives the
+# documented `unauthenticated` envelope with CORS headers and no-store, instead
+# of the gateway's own shape. Authorization is not weakened: `requireAuth`
+# validates the bearer token server-side before anything else runs, and
+# `public.get_my_entitlements` is SECURITY DEFINER, granted only to
+# `authenticated`, and binds every lookup to `auth.uid()` plus active household
+# membership.
+[functions.entitlements-v1]
+verify_jwt = false

@@ -483,6 +483,7 @@ Deno.test('RATE_LIMITS — has entries for all expected functions', () => {
     'stripe-portal',
     'stripe-reconcile',
     'stripe-status',
+    'entitlements-v1',
   ];
 
   for (const fn of expectedFunctions) {
@@ -566,6 +567,12 @@ Deno.test('RATE_LIMITS — Stripe user endpoints fail closed with bounded limits
     maxRequests: 60,
     windowSeconds: 60,
     keyPrefix: 'stripe-status',
+    failMode: 'closed',
+  });
+  assertEquals(RATE_LIMITS['entitlements-v1'], {
+    maxRequests: 60,
+    windowSeconds: 60,
+    keyPrefix: 'entitlements-v1',
     failMode: 'closed',
   });
 });

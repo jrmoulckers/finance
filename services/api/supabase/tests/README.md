@@ -138,6 +138,63 @@ named fixtures and therefore must only target a disposable local container:
   -Container <disposable-migrated-postgres-container>
 ```
 
+### 4. Minimized Entitlement API Contract Tests
+
+**Runtime:** PostgreSQL (requires local Supabase)
+
+`entitlement-api-contract.test.sql` pins the parts of `public.get_my_entitlements`
+that the `entitlements-v1` Edge Function depends on: its exact minimized return
+contract, its least-privilege grants (`authenticated` only, never `anon` or
+`PUBLIC`), fail-closed behavior for unauthenticated, cross-household, and
+removed-member reads, scope resolution between the user and household subjects,
+the ratified bank-connection allowances, the tier projected for every one of the
+eight normalized lifecycles, and the two boundary properties the API's
+pending-downgrade contract rests on — that `expires_at` tracks the earliest
+expiring add-on, and that a weaker purchaser grant collapses into the same bound
+even when it does not determine the effective tier or allowance.
+
+```bash
+# From services/api/ with local Supabase running and libpq connection
+# variables set for the local database:
+npm run test:entitlement-api
+```
+
+The suite uses `ON_ERROR_STOP`, runs in one transaction, and rolls back all
+fixtures. It must never be pointed at staging or production.
+
+### 5. Minimized Entitlement Gateway Integration Tests
+
+**Runtime:** Node against a running local Supabase gateway
+
+`entitlement-gateway.integration.test.mjs` proves what a _deployed_ request
+receives, which handler-level unit tests cannot: that a missing, malformed,
+untrusted, non-bearer, or **correctly signed but expired** credential reaches
+the function and receives the documented `unauthenticated` envelope with CORS
+headers and `Cache-Control: no-store`, that no anonymous or expired read ever
+succeeds, and that the endpoint stays read-only.
+
+It discovers the gateway port from `config.toml` and the signing and service
+credentials from the running containers, so nothing is hard-coded and no
+credential is committed. The service credential is used only to provision and
+delete a disposable local principal, so an expired token can be minted for a
+_real_ subject — that is what attributes the refusal to expiry rather than to an
+unverifiable subject. The suite refuses any non-loopback gateway, and **every
+prerequisite is mandatory**: a missing stack, signing key, or service credential
+fails the run rather than skipping a case.
+
+```bash
+# From services/api/, with the local stack running and functions served:
+supabase start
+supabase functions serve --env-file <local-env-file>
+
+npm run test:entitlement-gateway
+```
+
+The suite is not part of any fast unit run, so a developer without a local stack
+is unaffected. It runs automatically in the **Entitlement Gateway Integration**
+job in `.github/workflows/ci-lint.yml`, which stands up the stack, waits for the
+endpoint to answer `401` (not `503`), and then executes exactly this command.
+
 ## Adding New Tests
 
 ### Adding a contract test
