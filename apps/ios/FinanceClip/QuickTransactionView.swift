@@ -111,7 +111,10 @@ struct QuickTransactionView: View {
         guard isSaveEnabled, let category = selectedCategory else { return }
         let transaction = ClipTransaction(amountMinorUnits: parsedAmountMinorUnits, categoryId: category.id, payee: payeeText.trimmingCharacters(in: .whitespacesAndNewlines))
         let saved = store.save(transaction)
-        if saved { playSuccessHaptic(); View.announceForAccessibility(String(localized: "Expense saved")) }
+        if saved {
+            playSuccessHaptic()
+            AccessibilityNotification.Announcement(String(localized: "Expense saved")).post()
+        }
         else { playErrorHaptic() }
         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) { isSaved = true }
     }
