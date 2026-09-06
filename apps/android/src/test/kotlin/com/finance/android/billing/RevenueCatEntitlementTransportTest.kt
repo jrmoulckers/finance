@@ -2,7 +2,6 @@
 
 package com.finance.android.billing
 
-import com.finance.core.entitlement.Tier
 import com.finance.models.types.SyncId
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -80,19 +79,30 @@ class RevenueCatEntitlementTransportTest {
     }
 
     @Test
-    fun `pending denial decodes authoritative free projection`() {
+    fun `only the confirmation phase is read back`() {
+        assertEquals(
+            FinanceServerConfirmation.PENDING,
+            RevenueCatEntitlementWireCodec.decode("""{"status":"pending"}"""),
+        )
+        assertEquals(
+            FinanceServerConfirmation.CONFIRMED,
+            RevenueCatEntitlementWireCodec.decode("""{"status":"confirmed"}"""),
+        )
+    }
+
+    @Test
+    fun `a projection echoed by the confirmation endpoint is ignored`() {
         val response =
             RevenueCatEntitlementWireCodec.decode(
                 """
                 {
                   "status": "pending",
                   "entitlement": {
-                    "userTier": "free",
-                    "householdTier": null,
-                    "bankConnectionAllowance": 0,
-                    "isPremiumSponsor": false,
-                    "isFamilyBound": false,
-                    "effectiveAt": "2026-09-06T12:00:00Z",
+                    "userTier": "premium",
+                    "householdTier": "family",
+                    "bankConnectionAllowance": 99,
+                    "isPremiumSponsor": true,
+                    "isFamilyBound": true,
                     "expiresAt": null,
                     "projectionVersion": 7,
                     "serverTime": "2026-09-06T12:00:01Z"
@@ -101,59 +111,27 @@ class RevenueCatEntitlementTransportTest {
                 """.trimIndent(),
             )
 
-        assertTrue(response is FinanceServerConfirmation.Pending)
-        assertEquals(Tier.FREE, response.projection.tier)
-        assertEquals(7L, response.projection.projectionVersion)
-        assertFalse(response.projection.authorizesNewCostIncurringActions)
+        // The echo cannot become a second entitlement authority: the wire type
+        // exposes a phase and nothing else.
+        assertEquals(FinanceServerConfirmation.PENDING, response)
+        assertTrue(
+            FinanceServerConfirmation.entries.map { it.name }.containsAll(
+                listOf("PENDING", "CONFIRMED"),
+            ),
+        )
+        assertEquals(2, FinanceServerConfirmation.entries.size)
     }
 
     @Test
-    fun `family projection requires server binding flag`() {
-        val response =
-            RevenueCatEntitlementWireCodec.decode(
-                """
-                {
-                  "status": "confirmed",
-                  "entitlement": {
-                    "userTier": "free",
-                    "householdTier": "family",
-                    "bankConnectionAllowance": 20,
-                    "isPremiumSponsor": true,
-                    "isFamilyBound": false,
-                    "effectiveAt": "2026-09-06T12:00:00Z",
-                    "expiresAt": "2026-10-06T12:00:00Z",
-                    "projectionVersion": 8,
-                    "serverTime": "2026-09-06T12:00:01Z"
-                  }
-                }
-                """.trimIndent(),
-            )
-
-        assertEquals(Tier.FREE, response.projection.tier)
-        assertFalse(response.projection.authorizesNewCostIncurringActions)
-    }
-
-    @Test
-    fun `malformed projection fails closed`() {
+    fun `an unknown or malformed status fails closed`() {
         assertFailsWith<EntitlementTransportException> {
-            RevenueCatEntitlementWireCodec.decode(
-                """
-                {
-                  "status": "confirmed",
-                  "entitlement": {
-                    "userTier": "family",
-                    "householdTier": null,
-                    "bankConnectionAllowance": -1,
-                    "isPremiumSponsor": false,
-                    "isFamilyBound": false,
-                    "effectiveAt": "not-a-date",
-                    "expiresAt": null,
-                    "projectionVersion": 0,
-                    "serverTime": "not-a-date"
-                  }
-                }
-                """.trimIndent(),
-            )
+            RevenueCatEntitlementWireCodec.decode("""{"status":"granted"}""")
+        }
+        assertFailsWith<EntitlementTransportException> {
+            RevenueCatEntitlementWireCodec.decode("{ not json")
+        }
+        assertFailsWith<EntitlementTransportException> {
+            RevenueCatEntitlementWireCodec.decode("""{"entitlement":{"userTier":"premium"}}""")
         }
     }
 

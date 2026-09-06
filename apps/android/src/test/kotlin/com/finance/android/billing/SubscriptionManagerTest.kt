@@ -3,39 +3,25 @@
 package com.finance.android.billing
 
 import com.finance.android.auth.HouseholdIdProvider
-import com.finance.core.entitlement.Tier
+import com.finance.android.entitlement.EntitlementCoordinator
+import com.finance.android.entitlement.EntitlementDisplayStatus
+import com.finance.android.entitlement.EntitlementFixtures
+import com.finance.android.entitlement.InMemoryEntitlementSnapshotStore
+import com.finance.core.entitlement.EntitlementRepository
+import com.finance.core.entitlement.EntitlementResult
+import com.finance.core.entitlement.EntitlementTier
+import com.finance.core.entitlement.EntitlementUnavailableReason
+import com.finance.core.entitlement.MinimizedEntitlementCodec
 import com.finance.models.types.SyncId
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
-import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-
-val premiumProjection =
-    FinanceEntitlementProjection(
-        userTier = Tier.PREMIUM,
-        householdTier = null,
-        bankConnectionAllowance = 10,
-        isPremiumSponsor = false,
-        isFamilyBound = false,
-        effectiveAt = "2026-09-06T12:00:00Z",
-        expiresAt = null,
-        projectionVersion = 1,
-        serverTime = "2026-09-06T12:00:01Z",
-        status = FinanceProjectionStatus.CURRENT,
-    )
-
-fun freeProjection(version: Long = 2): FinanceEntitlementProjection =
-    FinanceEntitlementProjection.FREE.copy(
-        projectionVersion = version,
-        effectiveAt = "2026-09-06T13:00:00Z",
-        serverTime = "2026-09-06T13:00:01Z",
-    )
 
 class FakeRevenueCatPurchaseAdapter : RevenueCatPurchaseAdapter {
     var purchaseResult: NativePurchaseResult = NativePurchaseResult.Pending
@@ -43,7 +29,7 @@ class FakeRevenueCatPurchaseAdapter : RevenueCatPurchaseAdapter {
     var purchaseCount = 0
     var acknowledgementCount = 0
 
-    override suspend fun purchase(targetTier: Tier): NativePurchaseResult {
+    override suspend fun purchase(targetTier: EntitlementTier): NativePurchaseResult {
         purchaseCount += 1
         return purchaseResult
     }
@@ -58,15 +44,10 @@ class FakeRevenueCatPurchaseAdapter : RevenueCatPurchaseAdapter {
 class FakeEntitlementTransport : AuthenticatedEntitlementTransport {
     var authenticated = true
     var shouldThrow = false
-    var purchaseResponse: FinanceServerConfirmation =
-        FinanceServerConfirmation.Pending(FinanceEntitlementProjection.FREE)
-    var restoreResponse: FinanceServerConfirmation =
-        FinanceServerConfirmation.Pending(FinanceEntitlementProjection.FREE)
-    var projectionResponse: FinanceServerConfirmation =
-        FinanceServerConfirmation.Confirmed(FinanceEntitlementProjection.FREE)
+    var purchaseResponse: FinanceServerConfirmation = FinanceServerConfirmation.PENDING
+    var restoreResponse: FinanceServerConfirmation = FinanceServerConfirmation.PENDING
     val purchaseRequests = mutableListOf<FinanceEntitlementRequest>()
     val restoreRequests = mutableListOf<FinanceEntitlementRequest>()
-    val projectionHouseholds = mutableListOf<EligibleHouseholdSelection?>()
     var transportError: EntitlementTransportException? = null
 
     override suspend fun isAuthenticated(): Boolean = authenticated
@@ -85,15 +66,20 @@ class FakeEntitlementTransport : AuthenticatedEntitlementTransport {
             RevenueCatConfirmationOperation.RESTORE -> restoreResponse
         }
     }
+}
 
-    override suspend fun fetchProjection(
-        context: FinanceEntitlementContext,
-        eligibleHousehold: EligibleHouseholdSelection?,
-    ): FinanceServerConfirmation {
-        projectionHouseholds += eligibleHousehold
-        transportError?.let { throw it }
-        if (shouldThrow) throw EntitlementTransportException()
-        return projectionResponse
+/** Repository stand-in so the manager can be observed without a network. */
+class RecordingEntitlementRepository(
+    var result: EntitlementResult =
+        EntitlementResult.Unavailable(EntitlementUnavailableReason.OFFLINE),
+) : EntitlementRepository {
+    var reads = 0
+    val households = mutableListOf<String?>()
+
+    override suspend fun load(householdId: String?): EntitlementResult {
+        reads += 1
+        households += householdId
+        return result
     }
 }
 
@@ -112,41 +98,17 @@ fun evidence(
         opaqueProviderReference = token,
     )
 
-private class DelayedEntitlementTransport : AuthenticatedEntitlementTransport {
-    private val purchaseCalls = AtomicInteger()
-    private val firstStarted = CompletableDeferred<Unit>()
-    private val firstReleaseGate = CompletableDeferred<Unit>()
-
-    override suspend fun isAuthenticated(): Boolean = true
-
-    override suspend fun confirm(
-        request: FinanceEntitlementRequest,
-    ): FinanceServerConfirmation =
-        if (
-            request.operation == RevenueCatConfirmationOperation.CONFIRM &&
-            purchaseCalls.incrementAndGet() == 1
-        ) {
-            firstStarted.complete(Unit)
-            firstReleaseGate.await()
-            FinanceServerConfirmation.Confirmed(premiumProjection)
-        } else {
-            FinanceServerConfirmation.Pending(freeProjection())
-        }
-
-    override suspend fun fetchProjection(
-        context: FinanceEntitlementContext,
-        eligibleHousehold: EligibleHouseholdSelection?,
-    ): FinanceServerConfirmation =
-        FinanceServerConfirmation.Pending(freeProjection())
-
-    suspend fun waitUntilFirstStarts() {
-        firstStarted.await()
-    }
-
-    fun releaseFirst() {
-        firstReleaseGate.complete(Unit)
-    }
+private class FixedTestClock(private val instant: Instant) : Clock {
+    override fun now(): Instant = instant
 }
+
+private fun coordinator(repository: EntitlementRepository) =
+    EntitlementCoordinator(
+        repository = repository,
+        snapshotStore = InMemoryEntitlementSnapshotStore(),
+        userScopeProvider = { "user-a" },
+        clock = FixedTestClock(Instant.parse("2026-09-20T12:00:00Z")),
+    )
 
 class SubscriptionManagerTest {
     @Test
@@ -158,47 +120,75 @@ class SubscriptionManagerTest {
         val transport = FakeEntitlementTransport()
         val manager = SubscriptionManager(adapter, transport)
 
-        manager.launchPurchase(Tier.PREMIUM)
+        manager.launchPurchase(EntitlementTier.PREMIUM)
 
         assertEquals(PurchaseConfirmationPhase.PENDING, manager.state.value.confirmation)
-        assertEquals(Tier.FREE, manager.currentTier)
         assertEquals(0, adapter.acknowledgementCount)
         assertEquals(1, transport.purchaseRequests.size)
     }
 
     @Test
-    fun `pending operation preserves server confirmed paid projection`() {
-        val state =
-            SubscriptionState(
-                projection = premiumProjection,
-                confirmation = PurchaseConfirmationPhase.PENDING,
-            )
-
-        assertTrue(state.authorizesNewCostIncurringActions)
-        assertEquals(Tier.PREMIUM, state.tier)
-    }
-
-    @Test
-    fun `server confirmation grants then acknowledges`() = runTest {
+    fun `server confirmation acknowledges evidence and re-reads the projection`() = runTest {
         val adapter =
             FakeRevenueCatPurchaseAdapter().apply {
                 purchaseResult = NativePurchaseResult.Verified(evidence())
             }
         val transport =
             FakeEntitlementTransport().apply {
-                purchaseResponse = FinanceServerConfirmation.Confirmed(premiumProjection)
+                purchaseResponse = FinanceServerConfirmation.CONFIRMED
             }
-        val manager = SubscriptionManager(adapter, transport)
+        val repository =
+            RecordingEntitlementRepository(
+                MinimizedEntitlementCodec.decode(EntitlementFixtures.premium()),
+            )
+        val entitlements = coordinator(repository)
+        val manager =
+            SubscriptionManager(
+                purchaseAdapter = adapter,
+                transport = transport,
+                entitlementCoordinator = entitlements,
+            )
 
-        manager.launchPurchase(Tier.PREMIUM)
+        manager.launchPurchase(EntitlementTier.PREMIUM)
 
         assertEquals(PurchaseConfirmationPhase.CONFIRMED, manager.state.value.confirmation)
-        assertEquals(Tier.PREMIUM, manager.currentTier)
         assertEquals(1, adapter.acknowledgementCount)
+        assertEquals(1, repository.reads)
+        // The displayed tier came from `entitlements-v1`, not the confirmation.
+        assertEquals(EntitlementDisplayStatus.CURRENT, entitlements.state.value.status)
+        assertEquals(EntitlementTier.PREMIUM, entitlements.state.value.tier)
         assertEquals(
             RevenueCatConfirmationOperation.CONFIRM,
             transport.purchaseRequests.single().operation,
         )
+    }
+
+    @Test
+    fun `a confirmed purchase does not display access the projection denies`() = runTest {
+        val adapter =
+            FakeRevenueCatPurchaseAdapter().apply {
+                purchaseResult = NativePurchaseResult.Verified(evidence())
+            }
+        val transport =
+            FakeEntitlementTransport().apply {
+                purchaseResponse = FinanceServerConfirmation.CONFIRMED
+            }
+        val repository =
+            RecordingEntitlementRepository(
+                MinimizedEntitlementCodec.decode(EntitlementFixtures.free()),
+            )
+        val entitlements = coordinator(repository)
+        val manager =
+            SubscriptionManager(
+                purchaseAdapter = adapter,
+                transport = transport,
+                entitlementCoordinator = entitlements,
+            )
+
+        manager.launchPurchase(EntitlementTier.PREMIUM)
+
+        assertEquals(PurchaseConfirmationPhase.CONFIRMED, manager.state.value.confirmation)
+        assertEquals(EntitlementTier.FREE, entitlements.state.value.tier)
     }
 
     @Test
@@ -213,24 +203,12 @@ class SubscriptionManagerTest {
         manager.restorePurchases()
 
         assertEquals(PurchaseConfirmationPhase.PENDING, manager.state.value.confirmation)
-        assertEquals(Tier.FREE, manager.currentTier)
         assertEquals(0, adapter.acknowledgementCount)
         assertEquals(1, transport.restoreRequests.size)
         assertEquals(
             RevenueCatConfirmationOperation.RESTORE,
             transport.restoreRequests.single().operation,
         )
-    }
-
-    @Test
-    fun `restore submits one server operation without local evidence`() = runTest {
-        val transport = FakeEntitlementTransport()
-        val manager = SubscriptionManager(FakeRevenueCatPurchaseAdapter(), transport)
-
-        manager.restorePurchases()
-
-        assertEquals(1, transport.restoreRequests.size)
-        assertEquals(PurchaseConfirmationPhase.PENDING, manager.state.value.confirmation)
     }
 
     @Test
@@ -241,7 +219,7 @@ class SubscriptionManagerTest {
             }
         val transport =
             FakeEntitlementTransport().apply {
-                restoreResponse = FinanceServerConfirmation.Confirmed(premiumProjection)
+                restoreResponse = FinanceServerConfirmation.CONFIRMED
             }
         val manager = SubscriptionManager(adapter, transport)
 
@@ -249,20 +227,19 @@ class SubscriptionManagerTest {
 
         assertEquals(1, transport.restoreRequests.size)
         assertEquals(2, adapter.acknowledgementCount)
-        assertEquals(Tier.PREMIUM, manager.currentTier)
     }
 
     @Test
     fun `provider update cannot grant before server confirmation`() = runTest {
-        val manager = SubscriptionManager(
-            FakeRevenueCatPurchaseAdapter(),
-            FakeEntitlementTransport(),
-        )
+        val manager =
+            SubscriptionManager(
+                FakeRevenueCatPurchaseAdapter(),
+                FakeEntitlementTransport(),
+            )
 
         manager.onPurchaseUpdated(evidence())
 
         assertEquals(PurchaseConfirmationPhase.PENDING, manager.state.value.confirmation)
-        assertEquals(Tier.FREE, manager.currentTier)
     }
 
     @Test
@@ -275,119 +252,37 @@ class SubscriptionManagerTest {
             FakeEntitlementTransport().apply {
                 shouldThrow = true
             }
-        val manager = SubscriptionManager(adapter, transport)
+        val repository = RecordingEntitlementRepository()
+        val manager =
+            SubscriptionManager(
+                purchaseAdapter = adapter,
+                transport = transport,
+                entitlementCoordinator = coordinator(repository),
+            )
 
-        manager.launchPurchase(Tier.PREMIUM)
+        manager.launchPurchase(EntitlementTier.PREMIUM)
 
         assertEquals(PurchaseConfirmationPhase.RETRY, manager.state.value.confirmation)
-        assertEquals(Tier.FREE, manager.currentTier)
         assertEquals(0, adapter.acknowledgementCount)
+        assertEquals(0, repository.reads)
     }
 
     @Test
-    fun `paid projection survives cancelled and retry operations`() = runTest {
-        val adapter = FakeRevenueCatPurchaseAdapter()
-        val transport =
-            FakeEntitlementTransport().apply {
-                projectionResponse = FinanceServerConfirmation.Confirmed(premiumProjection)
-            }
-        val manager = SubscriptionManager(adapter, transport)
-        manager.refreshEntitlement()
-
-        adapter.purchaseResult = NativePurchaseResult.Verified(evidence())
-        transport.purchaseResponse =
-            FinanceServerConfirmation.Pending(FinanceEntitlementProjection.FREE)
-        manager.launchPurchase(Tier.PLUS)
-        assertEquals(PurchaseConfirmationPhase.PENDING, manager.state.value.confirmation)
-        assertEquals(Tier.PREMIUM, manager.currentTier)
-
-        adapter.purchaseResult = NativePurchaseResult.Cancelled
-        manager.launchPurchase(Tier.PLUS)
-        assertEquals(PurchaseConfirmationPhase.CANCELLED, manager.state.value.confirmation)
-        assertEquals(Tier.PREMIUM, manager.currentTier)
-
-        adapter.purchaseResult = NativePurchaseResult.Verified(evidence())
-        transport.shouldThrow = true
-        manager.launchPurchase(Tier.PLUS)
-        assertEquals(PurchaseConfirmationPhase.RETRY, manager.state.value.confirmation)
-        assertEquals(Tier.PREMIUM, manager.currentTier)
-    }
-
-    @Test
-    fun `newer confirmed denial replaces paid access`() = runTest {
-        val transport =
-            FakeEntitlementTransport().apply {
-                projectionResponse = FinanceServerConfirmation.Confirmed(premiumProjection)
-            }
-        val manager = SubscriptionManager(FakeRevenueCatPurchaseAdapter(), transport)
-        manager.refreshEntitlement()
-        assertEquals(Tier.PREMIUM, manager.currentTier)
-
-        transport.projectionResponse =
-            FinanceServerConfirmation.Pending(freeProjection())
-        manager.refreshEntitlement()
-
-        assertEquals(PurchaseConfirmationPhase.PENDING, manager.state.value.confirmation)
-        assertEquals(Tier.FREE, manager.currentTier)
-    }
-
-    @Test
-    fun `pending denial projection replaces older paid access`() = runTest {
-        val transport =
-            FakeEntitlementTransport().apply {
-                projectionResponse = FinanceServerConfirmation.Confirmed(premiumProjection)
-            }
-        val manager = SubscriptionManager(FakeRevenueCatPurchaseAdapter(), transport)
-        manager.refreshEntitlement()
-
-        transport.projectionResponse = FinanceServerConfirmation.Pending(freeProjection())
-        manager.refreshEntitlement()
-
-        assertEquals(PurchaseConfirmationPhase.PENDING, manager.state.value.confirmation)
-        assertEquals(Tier.FREE, manager.currentTier)
-        assertEquals(2L, manager.state.value.projection.projectionVersion)
-    }
-
-    @Test
-    fun `server error preserves paid projection and is not pending`() = runTest {
+    fun `a rejected confirmation is an error rather than a retry`() = runTest {
         val adapter =
             FakeRevenueCatPurchaseAdapter().apply {
                 purchaseResult = NativePurchaseResult.Verified(evidence())
             }
         val transport =
             FakeEntitlementTransport().apply {
-                projectionResponse = FinanceServerConfirmation.Confirmed(premiumProjection)
+                transportError = EntitlementTransportException(retryable = false)
             }
         val manager = SubscriptionManager(adapter, transport)
-        manager.refreshEntitlement()
 
-        transport.transportError = EntitlementTransportException(retryable = false)
-        manager.launchPurchase(Tier.PREMIUM)
+        manager.launchPurchase(EntitlementTier.PREMIUM)
 
         assertEquals(PurchaseConfirmationPhase.ERROR, manager.state.value.confirmation)
-        assertEquals(Tier.PREMIUM, manager.currentTier)
         assertEquals(0, adapter.acknowledgementCount)
-    }
-
-    @Test
-    fun `older paid response cannot overwrite newer denial`() = runTest {
-        val adapter =
-            FakeRevenueCatPurchaseAdapter().apply {
-                purchaseResult = NativePurchaseResult.Verified(evidence())
-            }
-        val transport = DelayedEntitlementTransport()
-        val manager = SubscriptionManager(adapter, transport)
-
-        val older = async { manager.onPurchaseUpdated(evidence("older-operation")) }
-        transport.waitUntilFirstStarts()
-        val newer = async { manager.onPurchaseUpdated(evidence("newer-operation")) }
-        newer.await()
-        transport.releaseFirst()
-        older.await()
-
-        assertEquals(PurchaseConfirmationPhase.CONFIRMED, manager.state.value.confirmation)
-        assertEquals(Tier.FREE, manager.currentTier)
-        assertEquals(freeProjection(), manager.state.value.projection)
     }
 
     @Test
@@ -402,11 +297,10 @@ class SubscriptionManagerTest {
             }
         val manager = SubscriptionManager(adapter, transport)
 
-        manager.launchPurchase(Tier.PREMIUM)
+        manager.launchPurchase(EntitlementTier.PREMIUM)
 
         assertEquals(PurchaseConfirmationPhase.ERROR, manager.state.value.confirmation)
         assertTrue(transport.purchaseRequests.isEmpty())
-        assertEquals(Tier.FREE, manager.currentTier)
     }
 
     @Test
@@ -417,15 +311,7 @@ class SubscriptionManagerTest {
             }
         val transport =
             FakeEntitlementTransport().apply {
-                purchaseResponse =
-                    FinanceServerConfirmation.Confirmed(
-                        premiumProjection.copy(
-                            userTier = Tier.FREE,
-                            householdTier = Tier.FAMILY,
-                            isFamilyBound = true,
-                            projectionVersion = 2,
-                        ),
-                    )
+                purchaseResponse = FinanceServerConfirmation.CONFIRMED
             }
         val household =
             requireNotNull(
@@ -440,10 +326,9 @@ class SubscriptionManagerTest {
                 eligibleHouseholdProvider = EligibleHouseholdProvider { household },
             )
 
-        manager.launchPurchase(Tier.FAMILY)
+        manager.launchPurchase(EntitlementTier.FAMILY)
 
         assertEquals(household, transport.purchaseRequests.single().eligibleHousehold)
-        assertEquals(Tier.FAMILY, manager.currentTier)
     }
 
     @Test
@@ -452,7 +337,7 @@ class SubscriptionManagerTest {
         val transport = FakeEntitlementTransport()
         val manager = SubscriptionManager(adapter, transport)
 
-        manager.launchPurchase(Tier.FAMILY)
+        manager.launchPurchase(EntitlementTier.FAMILY)
 
         assertEquals(PurchaseConfirmationPhase.ERROR, manager.state.value.confirmation)
         assertEquals(0, adapter.purchaseCount)
@@ -464,91 +349,43 @@ class SubscriptionManagerTest {
         val userId = SyncId("44010000-0000-4000-8000-000000000001")
         val householdId = SyncId("44010000-0000-4000-8000-000000000002")
         val membershipState = HouseholdMembershipState(userId, null)
-        val eligibilityProvider = AuthenticatedHouseholdEligibilityProvider(membershipState)
-        val transport = FakeEntitlementTransport()
-        val manager =
-            SubscriptionManager(
-                transport = transport,
-                eligibleHouseholdProvider = eligibilityProvider,
+        val repository = RecordingEntitlementRepository()
+        val entitlements =
+            EntitlementCoordinator(
+                repository = repository,
+                snapshotStore = InMemoryEntitlementSnapshotStore(),
+                householdScopeProvider = {
+                    membershipState.verifiedHouseholdId.value?.value
+                },
+                userScopeProvider = { userId.value },
             )
 
-        manager.refreshEntitlement()
-
-        assertEquals(null, transport.projectionHouseholds.single())
-
+        entitlements.refresh()
         membershipState.verifiedHouseholdId.value = householdId
-        manager.refreshEntitlement()
+        entitlements.refresh()
 
-        assertEquals(
-            householdId.value,
-            transport.projectionHouseholds.last()?.value,
-        )
+        assertEquals(listOf(null, householdId.value), repository.households)
     }
 
     @Test
-    fun `projection versions are ordered within household scope`() = runTest {
-        val household =
-            requireNotNull(
-                EligibleHouseholdSelection.fromAuthenticatedMembership(
-                    SyncId("44010000-0000-4000-8000-000000000001"),
-                ),
-            )
-        var selectedHousehold: EligibleHouseholdSelection? = household
-        val transport =
-            FakeEntitlementTransport().apply {
-                projectionResponse =
-                    FinanceServerConfirmation.Confirmed(
-                        premiumProjection.copy(
-                            userTier = Tier.FREE,
-                            householdTier = Tier.FAMILY,
-                            isFamilyBound = true,
-                            projectionVersion = 9,
-                        ),
-                    )
-            }
-        val adapter =
-            FakeRevenueCatPurchaseAdapter().apply {
-                purchaseResult = NativePurchaseResult.Verified(evidence())
-            }
-        val manager =
-            SubscriptionManager(
-                purchaseAdapter = adapter,
-                transport = transport,
-                eligibleHouseholdProvider = EligibleHouseholdProvider { selectedHousehold },
-            )
-        manager.refreshEntitlement()
+    fun `an unpurchasable target is rejected without a store call`() = runTest {
+        val adapter = FakeRevenueCatPurchaseAdapter()
+        val manager = SubscriptionManager(adapter, FakeEntitlementTransport())
 
-        transport.purchaseResponse = transport.projectionResponse
-        manager.launchPurchase(Tier.PREMIUM)
-        assertEquals(household, transport.purchaseRequests.single().eligibleHousehold)
+        manager.launchPurchase(EntitlementTier.FREE)
+        manager.launchPurchase(EntitlementTier.UNKNOWN)
 
-        selectedHousehold = null
-        transport.purchaseResponse =
-            FinanceServerConfirmation.Confirmed(
-                premiumProjection.copy(projectionVersion = 4),
-            )
-        manager.launchPurchase(Tier.PREMIUM)
-
-        assertEquals(null, transport.purchaseRequests.last().eligibleHousehold)
-        assertEquals(Tier.PREMIUM, manager.currentTier)
-        assertEquals(4L, manager.state.value.projection.projectionVersion)
+        assertEquals(PurchaseConfirmationPhase.ERROR, manager.state.value.confirmation)
+        assertEquals(0, adapter.purchaseCount)
     }
 
     @Test
-    fun `stale expired and unbound family projections cannot authorize new costs`() {
-        val stale = premiumProjection.copy(status = FinanceProjectionStatus.STALE)
-        val expired = premiumProjection.copy(status = FinanceProjectionStatus.EXPIRED)
-        val unboundFamily =
-            premiumProjection.copy(
-                userTier = Tier.FREE,
-                householdTier = Tier.FAMILY,
-                isFamilyBound = false,
-            )
+    fun `confirmation state carries no entitlement of its own`() {
+        val stateFields = SubscriptionState::class.java.declaredFields.map { it.name }.toSet()
+        val forbidden =
+            setOf("tier", "projection", "allowance", "expiresAt", "entitlement", "grace")
 
-        assertFalse(stale.authorizesNewCostIncurringActions)
-        assertFalse(expired.authorizesNewCostIncurringActions)
-        assertFalse(unboundFamily.authorizesNewCostIncurringActions)
-        assertEquals(Tier.FREE, stale.authorizedTier)
+        assertTrue(stateFields.intersect(forbidden).isEmpty())
     }
 
     @Test
@@ -609,7 +446,7 @@ class SubscriptionManagerTest {
             }
         val manager = SubscriptionManager(adapter, FakeEntitlementTransport())
 
-        manager.launchPurchase(Tier.PLUS)
+        manager.launchPurchase(EntitlementTier.PLUS)
 
         assertEquals(PurchaseConfirmationPhase.CANCELLED, manager.state.value.confirmation)
         assertFalse(manager.state.value.isPurchasing)

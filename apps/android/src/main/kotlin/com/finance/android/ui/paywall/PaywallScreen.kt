@@ -29,42 +29,47 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.finance.android.entitlement.EntitlementDisplayState
+import com.finance.android.entitlement.EntitlementDisplayStatus
 import com.finance.android.ui.theme.FinanceTheme
-import com.finance.core.entitlement.Feature
-import com.finance.core.entitlement.Tier
-import com.finance.core.entitlement.UpgradePrompt
+import com.finance.core.entitlement.EntitlementTier
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * Paywall / Upgrade screen showing subscription tiers (#337).
+ * Paywall / Upgrade screen showing subscription plans (#337, #4403).
  *
- * Material 3 design with tier comparison cards, feature lists,
- * and CTA buttons for Google Play purchases.
+ * The current plan is display-only: it mirrors the minimized entitlement
+ * projection Finance returned, including its pending, stale, offline, and
+ * unavailable states. Nothing on this screen gates manual entry, import,
+ * export, deletion, privacy and security controls, accessibility, or existing
+ * financial data, and nothing here authorizes a paid action — Finance
+ * re-reads its own projection for that.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +79,17 @@ fun PaywallScreen(
     viewModel: PaywallViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshEntitlementIfNeeded()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         topBar = {
@@ -113,6 +129,7 @@ fun PaywallScreen(
                 state = state,
                 onPurchase = viewModel::purchase,
                 onRestore = viewModel::restorePurchases,
+                onRefresh = viewModel::refreshEntitlement,
                 modifier = Modifier.padding(paddingValues),
             )
         }
@@ -122,8 +139,9 @@ fun PaywallScreen(
 @Composable
 internal fun PaywallContent(
     state: PaywallUiState,
-    onPurchase: (Tier) -> Unit,
+    onPurchase: (EntitlementTier) -> Unit,
     onRestore: () -> Unit,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -131,12 +149,19 @@ internal fun PaywallContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Current tier badge
-        item(key = "current-tier") {
-            CurrentTierCard(tierName = state.currentTierName)
+        item(key = "entitlement-status") {
+            EntitlementStatusCard(
+                entitlement = state.entitlement,
+                onRefresh = onRefresh,
+            )
         }
 
-        // Tier cards
+        EntitlementStatusMessages.confirmationMessage(state.confirmation)?.let { message ->
+            item(key = "confirmation-status") {
+                ConfirmationStatusText(message)
+            }
+        }
+
         items(state.tiers, key = { it.tier.name }) { tier ->
             TierCard(
                 pricing = tier,
@@ -145,7 +170,6 @@ internal fun PaywallContent(
             )
         }
 
-        // Restore purchases
         item(key = "restore") {
             TextButton(
                 onClick = onRestore,
@@ -162,43 +186,90 @@ internal fun PaywallContent(
 }
 
 @Composable
-private fun CurrentTierCard(tierName: String) {
+private fun EntitlementStatusCard(
+    entitlement: EntitlementDisplayState,
+    onRefresh: () -> Unit,
+) {
+    val headline = EntitlementStatusMessages.headline(entitlement)
+    val detail = EntitlementStatusMessages.detail(entitlement)
+
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .semantics {
-                contentDescription = "Your current plan: $tierName"
+                liveRegion = LiveRegionMode.Polite
+                contentDescription = "Your current plan: $headline. $detail"
             },
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
         ),
     ) {
-        Row(
-            Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                Icons.Filled.WorkspacePremium,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(32.dp),
+        Column(Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (entitlement.isPending) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(
+                        Icons.Filled.WorkspacePremium,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Current Plan",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    )
+                    Text(
+                        text = headline,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = "Current Plan",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                )
-                Text(
-                    text = tierName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+
+            if (entitlement.needsRefresh) {
+                TextButton(
+                    onClick = onRefresh,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Check my plan with Finance again"
+                    },
+                ) {
+                    Text("Check again")
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ConfirmationStatusText(message: String) {
+    Text(
+        text = message,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                liveRegion = LiveRegionMode.Polite
+                contentDescription = message
+            },
+    )
 }
 
 @Composable
@@ -208,15 +279,15 @@ private fun TierCard(
     onSelect: () -> Unit,
     isPurchasing: Boolean,
 ) {
-    val isRecommended = pricing.tier == Tier.PLUS
+    val isRecommended = pricing.tier == EntitlementTier.PREMIUM
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .semantics {
-                contentDescription = "${pricing.displayName} plan. ${pricing.monthlyPrice} per month " +
-                    "or ${pricing.yearlyPrice} per year. " +
-                    pricing.features.joinToString(". ") + ". " +
+                contentDescription = "${pricing.displayName} plan. ${pricing.monthlyPrice} per " +
+                    "month or ${pricing.yearlyPrice} per year. ${pricing.bankConnections}. " +
+                    pricing.notes.joinToString(". ") + ". " +
                     if (pricing.isCurrentTier) "This is your current plan." else "Tap to subscribe."
             },
         colors = if (isRecommended) {
@@ -226,7 +297,6 @@ private fun TierCard(
         },
     ) {
         Column(Modifier.padding(16.dp)) {
-            // Header row
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -237,7 +307,7 @@ private fun TierCard(
                         Icon(
                             Icons.Filled.Star,
                             contentDescription = null,
-                            tint = Color(0xFFFFD700),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp),
                         )
                         Spacer(Modifier.width(4.dp))
@@ -246,11 +316,12 @@ private fun TierCard(
                         text = pricing.displayName,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() },
                     )
                 }
                 if (isRecommended) {
                     Text(
-                        text = "Recommended",
+                        text = "Most connections",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
@@ -264,7 +335,6 @@ private fun TierCard(
 
             Spacer(Modifier.height(8.dp))
 
-            // Pricing
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = pricing.monthlyPrice,
@@ -282,131 +352,66 @@ private fun TierCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // Features
-            pricing.features.forEach { feature ->
-                Row(
-                    Modifier.padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Filled.Check,
-                        contentDescription = null,
-                        tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = feature,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
+            CatalogFact(pricing.bankConnections)
+            pricing.notes.forEach { note -> CatalogFact(note) }
 
             Spacer(Modifier.height(12.dp))
 
-            // CTA button
-            if (pricing.isCurrentTier) {
-                OutlinedButton(
-                    onClick = {},
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "Current plan" },
-                    enabled = false,
-                ) {
-                    Text("Current Plan")
-                }
-            } else if (pricing.tier == Tier.FREE) {
-                // No action for free tier
-            } else {
-                Button(
-                    onClick = onSelect,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "Subscribe to ${pricing.displayName}" },
-                    enabled = !isPurchasing,
-                ) {
-                    if (isPurchasing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(Modifier.width(8.dp))
+            when {
+                pricing.isCurrentTier ->
+                    OutlinedButton(
+                        onClick = {},
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "Current plan" },
+                        enabled = false,
+                    ) {
+                        Text("Current Plan")
                     }
-                    Text("Subscribe to ${pricing.displayName}")
-                }
+
+                pricing.tier == EntitlementTier.FREE -> Unit
+
+                else ->
+                    Button(
+                        onClick = onSelect,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics {
+                                contentDescription = "Subscribe to ${pricing.displayName}"
+                            },
+                        enabled = !isPurchasing,
+                    ) {
+                        if (isPurchasing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text("Subscribe to ${pricing.displayName}")
+                    }
             }
         }
     }
 }
 
-/**
- * Composable upgrade prompt bottom sheet.
- *
- * Shows when a user tries to access a gated feature.
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpgradePromptSheet(
-    prompt: UpgradePrompt,
-    onUpgrade: (Tier) -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        modifier = modifier,
+private fun CatalogFact(text: String) {
+    Row(
+        Modifier.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                Icons.Filled.WorkspacePremium,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp),
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = prompt.headline,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.semantics {
-                    heading()
-                    contentDescription = prompt.headline
-                },
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = prompt.body,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.semantics {
-                    contentDescription = prompt.body
-                },
-            )
-            Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = { onUpgrade(prompt.targetTier) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = prompt.ctaText },
-            ) {
-                Text(prompt.ctaText)
-            }
-            Spacer(Modifier.height(8.dp))
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.semantics { contentDescription = "Maybe later" },
-            ) {
-                Text("Maybe Later")
-            }
-            Spacer(Modifier.height(16.dp))
-        }
+        Icon(
+            Icons.Filled.Check,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 
@@ -426,15 +431,29 @@ private fun PaywallScreenPreview() {
         PaywallContent(
             state = PaywallUiState(
                 isLoading = false,
-                currentTier = Tier.FREE,
-                currentTierName = "Free",
+                entitlement = EntitlementDisplayState(
+                    status = EntitlementDisplayStatus.CURRENT,
+                    tier = EntitlementTier.FREE,
+                ),
                 tiers = listOf(
-                    TierPricing(Tier.FREE, "Free", "$0", "$0",
-                        listOf("3 accounts", "3 budgets", "2 goals"), isCurrentTier = true),
-                    TierPricing(Tier.PLUS, "Plus", "$4.99/mo", "$39.99/yr",
-                        listOf("10 accounts", "Spending insights", "CSV export"), isCurrentTier = false),
-                    TierPricing(Tier.PREMIUM, "Premium", "$9.99/mo", "$79.99/yr",
-                        listOf("Unlimited everything", "Health score", "Custom reports"), isCurrentTier = false),
+                    TierPricing(
+                        tier = EntitlementTier.FREE,
+                        displayName = "Free",
+                        monthlyPrice = "$0",
+                        yearlyPrice = "$0",
+                        bankConnections = "No bank connections",
+                        notes = listOf("Entry, import, export and history are always included"),
+                        isCurrentTier = true,
+                    ),
+                    TierPricing(
+                        tier = EntitlementTier.PREMIUM,
+                        displayName = "Premium",
+                        monthlyPrice = "$9.99/mo",
+                        yearlyPrice = "$79.99/yr",
+                        bankConnections = "2 bank connections",
+                        notes = listOf("May sponsor one eligible household at a time"),
+                        isCurrentTier = false,
+                    ),
                 ),
             ),
             onPurchase = {},
@@ -443,37 +462,22 @@ private fun PaywallScreenPreview() {
     }
 }
 
-@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
-@Preview(showBackground = true, name = "Upgrade Prompt")
+@Preview(showBackground = true, name = "Paywall - Offline snapshot")
 @Composable
-private fun UpgradePromptPreview() {
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
+private fun PaywallOfflinePreview() {
     FinanceTheme(dynamicColor = false) {
-        // Note: ModalBottomSheet can't be previewed standalone,
-        // so we preview the content layout
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                Icons.Filled.WorkspacePremium,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp),
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Unlock spending insights",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Understand your spending patterns with detailed analytics.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-        }
+        PaywallContent(
+            state = PaywallUiState(
+                isLoading = false,
+                entitlement = EntitlementDisplayState(
+                    status = EntitlementDisplayStatus.OFFLINE_REFRESH_NEEDED,
+                    tier = EntitlementTier.PREMIUM,
+                ),
+                tiers = emptyList(),
+            ),
+            onPurchase = {},
+            onRestore = {},
+        )
     }
 }

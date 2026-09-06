@@ -2,40 +2,44 @@
 
 package com.finance.android.billing
 
-import com.finance.core.entitlement.Tier
+import com.finance.android.entitlement.EntitlementCoordinator
+import com.finance.core.entitlement.EntitlementTier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 
+/**
+ * Purchase and restore progress. Deliberately carries no entitlement.
+ *
+ * What the user is entitled to is read from `entitlements-v1` through
+ * [EntitlementCoordinator]; a purchase callback, a provider state, or a
+ * confirmation response can never stand in for it.
+ */
 data class SubscriptionState(
-    val projection: FinanceEntitlementProjection = FinanceEntitlementProjection.FREE,
     val confirmation: PurchaseConfirmationPhase = PurchaseConfirmationPhase.IDLE,
     val isLoading: Boolean = false,
     val isPurchasing: Boolean = false,
-) {
-    val authorizesNewCostIncurringActions: Boolean
-        get() = projection.authorizesNewCostIncurringActions
-
-    val tier: Tier
-        get() = projection.authorizedTier
-}
+)
 
 /**
  * Coordinates native purchase evidence with Finance's entitlement authority.
  *
  * RevenueCat/Google callbacks never grant locally. Evidence is acknowledged
  * only after Finance confirms it. Pending, unavailable, and failed evidence
- * remains unacknowledged so the provider can replay it for an idempotent retry.
+ * remains unacknowledged so the provider can replay it for an idempotent
+ * retry.
+ *
+ * Once Finance has recorded an operation, the entitlement projection is
+ * re-read through [EntitlementCoordinator] so display follows the server
+ * rather than the store SDK.
  */
 class SubscriptionManager(
     private val purchaseAdapter: RevenueCatPurchaseAdapter = UnavailableRevenueCatPurchaseAdapter,
     private val transport: AuthenticatedEntitlementTransport = UnavailableEntitlementTransport,
     private val eligibleHouseholdProvider: EligibleHouseholdProvider = NoEligibleHouseholdProvider,
+    private val entitlementCoordinator: EntitlementCoordinator? = null,
     appId: String = "YOUR_REVENUECAT_APP_ID",
     environment: FinanceBillingEnvironment = FinanceBillingEnvironment.SANDBOX,
 ) {
@@ -47,29 +51,26 @@ class SubscriptionManager(
 
     private val _state = MutableStateFlow(SubscriptionState())
     val state: StateFlow<SubscriptionState> = _state.asStateFlow()
-    private val operationGeneration = AtomicLong()
-    private val projectionMutex = Mutex()
-    private var latestProjectionGeneration = 0L
-    private var projectionHouseholdScope: EligibleHouseholdSelection? = null
 
-    /** Safe tier derived only from a current, server-returned projection. */
-    val currentTier: Tier
-        get() = _state.value.tier
-
-    suspend fun launchPurchase(targetTier: Tier) {
-        if (targetTier == Tier.FREE) {
+    /**
+     * Start a store purchase for the offer matching [targetTier].
+     *
+     * [targetTier] selects an offer; it never claims access, and it is never
+     * sent to Finance.
+     */
+    suspend fun launchPurchase(targetTier: EntitlementTier) {
+        if (targetTier == EntitlementTier.FREE || targetTier == EntitlementTier.UNKNOWN) {
             _state.update { it.copy(confirmation = PurchaseConfirmationPhase.ERROR) }
             return
         }
 
         val eligibleHousehold = eligibleHouseholdProvider.currentEligibleHousehold()
-        if (targetTier == Tier.FAMILY && eligibleHousehold == null) {
+        if (targetTier == EntitlementTier.FAMILY && eligibleHousehold == null) {
             _state.update {
                 it.copy(confirmation = PurchaseConfirmationPhase.ERROR)
             }
             return
         }
-        val generation = beginOperation()
         _state.update {
             it.copy(
                 confirmation = PurchaseConfirmationPhase.PENDING,
@@ -88,7 +89,6 @@ class SubscriptionManager(
                         listOf(result.evidence),
                         operation = RevenueCatConfirmationOperation.CONFIRM,
                         eligibleHousehold = eligibleHousehold,
-                        generation = generation,
                     )
             }
         } catch (_: PurchaseAdapterException) {
@@ -100,7 +100,6 @@ class SubscriptionManager(
     }
 
     suspend fun restorePurchases() {
-        val generation = beginOperation()
         _state.update {
             it.copy(
                 confirmation = PurchaseConfirmationPhase.PENDING,
@@ -114,7 +113,6 @@ class SubscriptionManager(
                 evidenceItems,
                 operation = RevenueCatConfirmationOperation.RESTORE,
                 eligibleHousehold = eligibleHouseholdProvider.currentEligibleHousehold(),
-                generation = generation,
             )
             Timber.d("Restore confirmation flow completed")
         } catch (_: PurchaseAdapterException) {
@@ -127,43 +125,18 @@ class SubscriptionManager(
 
     /** Handles a provider update without treating it as an entitlement. */
     suspend fun onPurchaseUpdated(evidence: VerifiedPurchaseEvidence) {
-        val generation = beginOperation()
         _state.update { it.copy(confirmation = PurchaseConfirmationPhase.PENDING) }
         confirm(
             listOf(evidence),
             operation = RevenueCatConfirmationOperation.CONFIRM,
             eligibleHousehold = eligibleHouseholdProvider.currentEligibleHousehold(),
-            generation = generation,
         )
-    }
-
-    suspend fun refreshEntitlement() {
-        val generation = beginOperation()
-        if (!transport.isAuthenticated()) {
-            updatePhase(PurchaseConfirmationPhase.ERROR)
-            return
-        }
-
-        try {
-            val eligibleHousehold = eligibleHouseholdProvider.currentEligibleHousehold()
-            apply(
-                transport.fetchProjection(
-                    context,
-                    eligibleHousehold,
-                ),
-                generation,
-                eligibleHousehold,
-            )
-        } catch (error: EntitlementTransportException) {
-            updateTransportFailure(error, "Entitlement refresh failed")
-        }
     }
 
     private suspend fun confirm(
         evidenceItems: List<VerifiedPurchaseEvidence>,
         operation: RevenueCatConfirmationOperation,
         eligibleHousehold: EligibleHouseholdSelection?,
-        generation: Long,
     ) {
         if (!transport.isAuthenticated()) {
             updatePhase(PurchaseConfirmationPhase.ERROR)
@@ -179,9 +152,14 @@ class SubscriptionManager(
 
         try {
             val response = transport.confirm(request)
-            apply(response, generation, eligibleHousehold)
+            updatePhase(
+                when (response) {
+                    FinanceServerConfirmation.PENDING -> PurchaseConfirmationPhase.PENDING
+                    FinanceServerConfirmation.CONFIRMED -> PurchaseConfirmationPhase.CONFIRMED
+                },
+            )
 
-            if (response is FinanceServerConfirmation.Confirmed) {
+            if (response == FinanceServerConfirmation.CONFIRMED) {
                 evidenceItems.forEach { evidence ->
                     try {
                         purchaseAdapter.acknowledge(evidence)
@@ -192,48 +170,10 @@ class SubscriptionManager(
                     }
                 }
             }
+            // Display follows the server projection, never this response.
+            entitlementCoordinator?.refresh()
         } catch (error: EntitlementTransportException) {
             updateTransportFailure(error, "Purchase confirmation failed")
-        }
-    }
-
-    private suspend fun apply(
-        response: FinanceServerConfirmation,
-        generation: Long,
-        eligibleHousehold: EligibleHouseholdSelection?,
-    ) {
-        val phase =
-            when (response) {
-                is FinanceServerConfirmation.Pending -> PurchaseConfirmationPhase.PENDING
-                is FinanceServerConfirmation.Confirmed -> PurchaseConfirmationPhase.CONFIRMED
-            }
-        projectionMutex.withLock {
-            _state.update { current ->
-                val candidate = response.projection
-                val isSameScope = eligibleHousehold == projectionHouseholdScope
-                val isNewerVersionInScope =
-                    isSameScope &&
-                    candidate.projectionVersion > current.projection.projectionVersion
-                val isCurrentVersionAndOperationInScope =
-                    isSameScope &&
-                    candidate.projectionVersion == current.projection.projectionVersion &&
-                        generation >= latestProjectionGeneration
-                val isNewerScopeOperation =
-                    !isSameScope && generation >= latestProjectionGeneration
-                when {
-                    isNewerVersionInScope ||
-                        isCurrentVersionAndOperationInScope ||
-                        isNewerScopeOperation -> {
-                        latestProjectionGeneration = generation
-                        projectionHouseholdScope = eligibleHousehold
-                        current.copy(
-                            projection = candidate,
-                            confirmation = phase,
-                        )
-                    }
-                    else -> current.copy(confirmation = phase)
-                }
-            }
         }
     }
 
@@ -254,6 +194,4 @@ class SubscriptionManager(
             },
         )
     }
-
-    private fun beginOperation(): Long = operationGeneration.incrementAndGet()
 }

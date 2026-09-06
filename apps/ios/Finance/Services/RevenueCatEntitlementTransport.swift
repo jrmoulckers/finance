@@ -136,19 +136,6 @@ private struct RevenueCatConfirmationWireRequest: Encodable {
 
 private struct RevenueCatConfirmationWireResponse: Decodable {
     let status: String
-    let entitlement: RevenueCatEntitlementWireProjection
-}
-
-private struct RevenueCatEntitlementWireProjection: Decodable {
-    let userTier: String
-    let householdTier: String?
-    let bankConnectionAllowance: Int64
-    let isPremiumSponsor: Bool
-    let isFamilyBound: Bool
-    let effectiveAt: String
-    let expiresAt: String?
-    let projectionVersion: Int64
-    let serverTime: String
 }
 
 private struct RevenueCatErrorWireResponse: Decodable {
@@ -170,6 +157,12 @@ enum RevenueCatEntitlementWireCodec {
         )
     }
 
+    /// Read the confirmation phase, and nothing else.
+    ///
+    /// The endpoint also echoes a projection. That echo is deliberately
+    /// ignored: the entitlement a client may display is read from
+    /// `entitlements-v1` through the shared minimized contract, so a
+    /// confirmation response can never become a second, divergent authority.
     static func decode(_ data: Data) throws -> FinanceServerConfirmation {
         let response: RevenueCatConfirmationWireResponse
         do {
@@ -180,15 +173,10 @@ enum RevenueCatEntitlementWireCodec {
         } catch {
             throw RevenueCatEntitlementTransportError.invalidResponse
         }
-        let projection = try map(response.entitlement)
-        switch response.status {
-        case "pending":
-            return .pending(projection)
-        case "confirmed":
-            return .confirmed(projection)
-        default:
+        guard let confirmation = FinanceServerConfirmation(rawValue: response.status) else {
             throw RevenueCatEntitlementTransportError.invalidResponse
         }
+        return confirmation
     }
 
     static func decodeError(_ data: Data, statusCode: Int) -> RevenueCatEntitlementTransportError {
@@ -209,41 +197,6 @@ enum RevenueCatEntitlementWireCodec {
         }
     }
 
-    private static func map(
-        _ value: RevenueCatEntitlementWireProjection
-    ) throws -> FinanceEntitlementProjection {
-        let householdTier = try mapHouseholdTier(value.householdTier)
-        guard let userTier = FinanceEntitlementTier(rawValue: value.userTier),
-              userTier != .family,
-              value.bankConnectionAllowance >= 0,
-              value.projectionVersion >= 1
-        else {
-            throw RevenueCatEntitlementTransportError.invalidResponse
-        }
-        return FinanceEntitlementProjection(
-            userTier: userTier,
-            householdTier: householdTier,
-            bankConnectionAllowance: value.bankConnectionAllowance,
-            isPremiumSponsor: value.isPremiumSponsor,
-            isFamilyBound: value.isFamilyBound,
-            effectiveAt: try parseDate(value.effectiveAt),
-            expiresAt: try value.expiresAt.map(parseDate),
-            projectionVersion: value.projectionVersion,
-            serverTime: try parseDate(value.serverTime),
-            status: .current
-        )
-    }
-
-    private static func mapHouseholdTier(
-        _ value: String?
-    ) throws -> FinanceEntitlementTier? {
-        guard let value else { return nil }
-        guard let tier = FinanceEntitlementTier(rawValue: value), tier != .plus else {
-            throw RevenueCatEntitlementTransportError.invalidResponse
-        }
-        return tier
-    }
-
     private static func parseDate(_ value: String) throws -> Date {
         do {
             return try Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(value)
@@ -257,10 +210,12 @@ enum RevenueCatEntitlementWireCodec {
     }
 }
 
-/// Calls Finance's authenticated RevenueCat projection endpoint.
+/// Calls Finance's authenticated RevenueCat confirmation endpoint.
 ///
-/// StoreKit evidence never enters this transport. A verified callback only
-/// triggers a server-side lookup bound to the current Finance access token.
+/// StoreKit evidence never enters this transport, and no entitlement is read
+/// back from it: a verified callback only asks Finance to record the operation
+/// against the current access token. What the user may see afterwards comes
+/// from `entitlements-v1`.
 actor RevenueCatEntitlementTransport: AuthenticatedEntitlementTransport {
     private let endpointURL: URL
     private let tokenProvider: any EntitlementAccessTokenProviding
@@ -296,27 +251,6 @@ actor RevenueCatEntitlementTransport: AuthenticatedEntitlementTransport {
         urlRequest.httpMethod = "POST"
         urlRequest.httpBody = try RevenueCatEntitlementWireCodec.encode(request)
         return try await execute(urlRequest)
-    }
-
-    func fetchProjection(
-        _: FinanceEntitlementContext,
-        eligibleHousehold: EligibleHouseholdSelection?
-    ) async throws -> FinanceServerConfirmation {
-        var components = URLComponents(url: endpointURL, resolvingAgainstBaseURL: false)
-        if let eligibleHousehold {
-            components?.queryItems = [
-                URLQueryItem(
-                    name: "household_id",
-                    value: eligibleHousehold.id.uuidString.lowercased()
-                ),
-            ]
-        }
-        guard let url = components?.url else {
-            throw RevenueCatEntitlementTransportError.invalidConfiguration
-        }
-        var request = try await authenticatedRequest(url: url)
-        request.httpMethod = "GET"
-        return try await execute(request)
     }
 
     private func authenticatedRequest(url: URL) async throws -> URLRequest {

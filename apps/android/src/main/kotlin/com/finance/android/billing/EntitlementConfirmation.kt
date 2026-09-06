@@ -3,7 +3,7 @@
 package com.finance.android.billing
 
 import com.finance.android.auth.HouseholdIdProvider
-import com.finance.core.entitlement.Tier
+import com.finance.core.entitlement.EntitlementTier
 import com.finance.models.types.SyncId
 
 enum class FinanceBillingEnvironment {
@@ -75,73 +75,21 @@ class FinanceEntitlementRequest(
     override fun toString(): String = "FinanceEntitlementRequest(redacted)"
 }
 
-enum class FinanceProjectionStatus {
-    CURRENT,
-    STALE,
-    EXPIRED,
-}
+/**
+ * What Finance said about the submitted evidence.
+ *
+ * This is a **confirmation phase only**. It deliberately carries no tier,
+ * allowance, validity, or projection echo: the entitlement a client displays
+ * comes from `entitlements-v1` through
+ * [com.finance.android.entitlement.EntitlementCoordinator], and a
+ * cost-incurring server action re-reads the projection server-side.
+ */
+enum class FinanceServerConfirmation {
+    /** Finance accepted the operation but no verified grant applies yet. */
+    PENDING,
 
-data class FinanceEntitlementProjection(
-    val userTier: Tier,
-    val householdTier: Tier?,
-    val bankConnectionAllowance: Long,
-    val isPremiumSponsor: Boolean,
-    val isFamilyBound: Boolean,
-    val effectiveAt: String,
-    val expiresAt: String?,
-    val projectionVersion: Long,
-    val serverTime: String,
-    val status: FinanceProjectionStatus,
-) {
-    val tier: Tier
-        get() =
-            when {
-                householdTier == Tier.FAMILY && isFamilyBound -> Tier.FAMILY
-                householdTier == Tier.PREMIUM -> Tier.PREMIUM
-                else -> userTier
-            }
-
-    /**
-     * Freshness is server-derived. The device clock and cached tier ordinal
-     * never authorize a new cost-incurring action.
-     */
-    val authorizesNewCostIncurringActions: Boolean
-        get() =
-            status == FinanceProjectionStatus.CURRENT &&
-                tier != Tier.FREE &&
-                (tier != Tier.FAMILY || isFamilyBound)
-
-    val authorizedTier: Tier
-        get() = if (authorizesNewCostIncurringActions) tier else Tier.FREE
-
-    companion object {
-        val FREE =
-            FinanceEntitlementProjection(
-                userTier = Tier.FREE,
-                householdTier = null,
-                bankConnectionAllowance = 0,
-                isPremiumSponsor = false,
-                isFamilyBound = false,
-                effectiveAt = "1970-01-01T00:00:00Z",
-                expiresAt = null,
-                projectionVersion = 0,
-                serverTime = "1970-01-01T00:00:00Z",
-                status = FinanceProjectionStatus.CURRENT,
-            )
-    }
-}
-
-sealed interface FinanceServerConfirmation {
-    val projection: FinanceEntitlementProjection
-
-    data class Pending(
-        override val projection: FinanceEntitlementProjection,
-    ) : FinanceServerConfirmation
-
-    data class Confirmed(
-        override val projection: FinanceEntitlementProjection,
-    ) : FinanceServerConfirmation
-
+    /** Finance recorded a verified grant, so the evidence may be acknowledged. */
+    CONFIRMED,
 }
 
 enum class PurchaseConfirmationPhase {
@@ -158,11 +106,6 @@ interface AuthenticatedEntitlementTransport {
     suspend fun isAuthenticated(): Boolean
 
     suspend fun confirm(request: FinanceEntitlementRequest): FinanceServerConfirmation
-
-    suspend fun fetchProjection(
-        context: FinanceEntitlementContext,
-        eligibleHousehold: EligibleHouseholdSelection?,
-    ): FinanceServerConfirmation
 }
 
 sealed interface NativePurchaseResult {
@@ -181,9 +124,11 @@ sealed interface NativePurchaseResult {
  * Thin boundary for RevenueCat/Google purchase and restore callbacks.
  *
  * Provider state is evidence only and cannot expose an entitlement tier.
+ * [targetTier] selects which store offer to present; it is never an access
+ * claim and is never sent to Finance.
  */
 interface RevenueCatPurchaseAdapter {
-    suspend fun purchase(targetTier: Tier): NativePurchaseResult
+    suspend fun purchase(targetTier: EntitlementTier): NativePurchaseResult
 
     suspend fun restore(): List<VerifiedPurchaseEvidence>
 
@@ -204,15 +149,11 @@ internal object UnavailableEntitlementTransport : AuthenticatedEntitlementTransp
     override suspend fun confirm(
         request: FinanceEntitlementRequest,
     ): FinanceServerConfirmation = throw EntitlementTransportException(retryable = false)
-
-    override suspend fun fetchProjection(
-        context: FinanceEntitlementContext,
-        eligibleHousehold: EligibleHouseholdSelection?,
-    ): FinanceServerConfirmation = throw EntitlementTransportException(retryable = false)
 }
 
 internal object UnavailableRevenueCatPurchaseAdapter : RevenueCatPurchaseAdapter {
-    override suspend fun purchase(targetTier: Tier): NativePurchaseResult = NativePurchaseResult.Error
+    override suspend fun purchase(targetTier: EntitlementTier): NativePurchaseResult =
+        NativePurchaseResult.Error
 
     override suspend fun restore(): List<VerifiedPurchaseEvidence> = emptyList()
 

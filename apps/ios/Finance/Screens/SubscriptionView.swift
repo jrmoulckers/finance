@@ -3,36 +3,43 @@
 // SubscriptionView.swift
 // Finance
 //
-// Premium subscription paywall and management screen using StoreKit 2.
-// Shows available plans, feature comparison, purchase flow, and
-// subscription management.
+// Subscription paywall and management screen.
 //
-// References: #338
+// The current plan is display-only: it mirrors the minimized entitlement
+// projection Finance returned, including its pending, stale, offline, and
+// unavailable states. Nothing on this screen gates manual entry, import,
+// export, deletion, privacy and security controls, accessibility, or existing
+// financial data, and nothing here authorizes a paid action — Finance
+// re-reads its own projection for that.
+//
+// References: #338, #4403
 
 import SwiftUI
 
 struct SubscriptionView: View {
     @State private var viewModel = SubscriptionViewModel()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 24) {
                     headerSection
-                    featuresSection
-                    if !viewModel.isPremium {
+                    entitlementStatusSection
+                    catalogSection
+                    if viewModel.showsManagedSubscription {
+                        manageSubscriptionSection
+                    } else {
                         plansSection
                         purchaseButton
-                        restoreButton
-                    } else {
-                        activeSubscriptionSection
                     }
+                    restoreButton
                     legalSection
                 }
                 .padding()
             }
-            .navigationTitle(String(localized: "Premium"))
+            .navigationTitle(String(localized: "Subscription"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -44,6 +51,12 @@ struct SubscriptionView: View {
             }
             .task {
                 await viewModel.loadSubscriptionData()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task {
+                    await viewModel.refreshEntitlementIfNeeded()
+                }
             }
             .alert(
                 String(localized: "Error"),
@@ -68,54 +81,117 @@ struct SubscriptionView: View {
                 Text(viewModel.successMessage ?? "")
             }
             .safeAreaInset(edge: .bottom) {
-                if let statusMessage = viewModel.statusMessage {
-                    Text(statusMessage)
+                if let confirmationMessage {
+                    Text(confirmationMessage)
                         .font(.footnote)
                         .multilineTextAlignment(.center)
                         .padding()
                         .frame(maxWidth: .infinity)
                         .background(.regularMaterial)
-                        .accessibilityLabel(statusMessage)
+                        .accessibilityLabel(confirmationMessage)
+                        .accessibilityAddTraits(.updatesFrequently)
                 }
             }
         }
+    }
+
+    private var confirmationMessage: String? {
+        viewModel.statusMessage
+            ?? EntitlementStatusMessages.confirmationMessage(viewModel.confirmationState.phase)
     }
 
     // MARK: - Header
 
     private var headerSection: some View {
         VStack(spacing: 16) {
-            Image(systemName: "crown.fill")
+            Image(systemName: "building.columns")
                 .font(.system(size: 48))
-                .foregroundStyle(FinanceColors.statusWarning)
+                .foregroundStyle(FinanceColors.interactive)
                 .accessibilityHidden(true)
 
-            Text(String(localized: "Finance Premium"))
+            Text(String(localized: "Finance Subscriptions"))
                 .font(.title)
                 .fontWeight(.bold)
 
-            Text(String(localized: "Unlock powerful tools to take full control of your finances"))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            Text(
+                String(
+                    localized: """
+                    Paid plans add bank connections and household sharing. Everything else — \
+                    entry, import, export, history, privacy and accessibility — is always \
+                    included.
+                    """
+                )
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
         }
         .padding(.top, 16)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            String(localized: "Finance Premium. Unlock powerful tools to take full control of your finances.")
-        )
     }
 
-    // MARK: - Features
+    // MARK: - Entitlement status
 
-    private var featuresSection: some View {
+    private var entitlementStatusSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                if viewModel.entitlement.isPending {
+                    ProgressView()
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: "checkmark.seal")
+                        .font(.title3)
+                        .foregroundStyle(FinanceColors.interactive)
+                        .accessibilityHidden(true)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "Current plan"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(viewModel.entitlementHeadline)
+                        .font(.headline)
+                }
+            }
+
+            Text(viewModel.entitlementDetail)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            if viewModel.entitlement.needsRefresh {
+                Button(String(localized: "Check again")) {
+                    Task { await viewModel.refreshEntitlement() }
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel(String(localized: "Check my plan with Finance again"))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(FinanceColors.backgroundElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(
+            String(
+                localized: """
+                Your current plan: \(viewModel.entitlementHeadline). \
+                \(viewModel.entitlementDetail)
+                """
+            )
+        )
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+
+    // MARK: - Catalog
+
+    private var catalogSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(String(localized: "Premium Features"))
+            Text(String(localized: "What each plan includes"))
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
 
-            ForEach(PremiumFeature.allCases, id: \.self) { feature in
-                featureRow(feature)
+            ForEach(viewModel.plans) { plan in
+                catalogRow(plan)
             }
         }
         .padding()
@@ -123,36 +199,40 @@ struct SubscriptionView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    private func featureRow(_ feature: PremiumFeature) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: feature.systemImage)
-                .font(.body)
-                .foregroundStyle(FinanceColors.interactive)
-                .frame(width: 28, height: 28)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(feature.displayName)
+    private func catalogRow(_ plan: CatalogPlan) -> some View {
+        let isCurrent = plan.tier == viewModel.entitlement.tier
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(plan.displayName)
                     .font(.subheadline)
-                    .fontWeight(.medium)
-
-                Text(feature.description)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text(String(localized: "\(plan.monthlyPrice) or \(plan.yearlyPrice)"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Spacer()
+            Text(plan.bankConnections)
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(FinanceColors.statusPositive)
-                .font(.body)
-                .accessibilityHidden(true)
+            ForEach(plan.notes, id: \.self) { note in
+                Text(note)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            String(localized: "\(feature.displayName): \(feature.description)")
+            String(
+                localized: """
+                \(plan.displayName) plan. \(plan.monthlyPrice) per month or \(plan.yearlyPrice) \
+                per year. \(plan.bankConnections). \(plan.notes.joined(separator: ". ")).
+                """
+            )
         )
+        .accessibilityAddTraits(isCurrent ? .isSelected : [])
     }
 
     // MARK: - Plans
@@ -168,11 +248,17 @@ struct SubscriptionView: View {
                     .frame(maxWidth: .infinity)
                     .accessibilityLabel(String(localized: "Loading subscription plans"))
             } else if viewModel.products.isEmpty {
-                Text(String(localized: "Subscription plans are temporarily unavailable. Please try again later."))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                Text(
+                    String(
+                        localized: """
+                        Subscription plans are temporarily unavailable. Please try again later.
+                        """
+                    )
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
             } else {
                 ForEach(viewModel.products) { product in
                     planCard(product)
@@ -206,7 +292,7 @@ struct SubscriptionView: View {
                                 .fontWeight(.bold)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 2)
-                                .background(Color.orange)
+                                .background(FinanceColors.statusWarning)
                                 .foregroundStyle(.white)
                                 .clipShape(Capsule())
                         }
@@ -273,7 +359,7 @@ struct SubscriptionView: View {
                     ProgressView()
                         .tint(.white)
                 } else {
-                    Text(String(localized: "Subscribe Now"))
+                    Text(String(localized: "Subscribe"))
                         .fontWeight(.semibold)
                 }
             }
@@ -282,8 +368,14 @@ struct SubscriptionView: View {
         }
         .buttonStyle(.borderedProminent)
         .disabled(viewModel.isPurchasing || viewModel.selectedProductId == nil)
-        .accessibilityLabel(String(localized: "Subscribe to Finance Premium"))
-        .accessibilityHint(String(localized: "Starts the subscription purchase process"))
+        .accessibilityLabel(String(localized: "Subscribe to the selected plan"))
+        .accessibilityHint(
+            String(
+                localized: """
+                Starts the purchase. Your plan changes only after Finance confirms it.
+                """
+            )
+        )
     }
 
     // MARK: - Restore Button
@@ -303,37 +395,26 @@ struct SubscriptionView: View {
         }
         .disabled(viewModel.isRestoring)
         .accessibilityLabel(String(localized: "Restore previous purchases"))
-        .accessibilityHint(String(localized: "Restores your subscription if you've previously purchased"))
+        .accessibilityHint(
+            String(localized: "Asks Finance to confirm purchases made with this Apple ID")
+        )
     }
 
-    // MARK: - Active Subscription
+    // MARK: - Manage
 
-    private var activeSubscriptionSection: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(FinanceColors.statusPositive)
-                .accessibilityHidden(true)
-
-            Text(String(localized: "Premium Active"))
-                .font(.title2)
-                .fontWeight(.bold)
-
-            Text(viewModel.entitlement.displayName)
+    private var manageSubscriptionSection: some View {
+        VStack(spacing: 12) {
+            if viewModel.entitlement.bankConnectionAllowance > 0 {
+                Text(
+                    String(
+                        localized: """
+                        Bank connections included: \
+                        \(viewModel.entitlement.bankConnectionAllowance)
+                        """
+                    )
+                )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-
-            if let validityDescription = viewModel.entitlement.accessValidityDescription {
-                Text(validityDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if viewModel.entitlement.projection.status == .stale {
-                Text(String(localized: "Finance must refresh this entitlement before new paid actions are available."))
-                    .font(.caption)
-                    .foregroundStyle(FinanceColors.statusWarning)
-                    .multilineTextAlignment(.center)
             }
 
             Button(String(localized: "Manage Subscription")) {
@@ -347,20 +428,25 @@ struct SubscriptionView: View {
         .padding()
         .background(FinanceColors.backgroundElevated)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            String(localized: "Premium subscription is active. \(viewModel.entitlement.displayName)")
-        )
     }
 
     // MARK: - Legal
 
     private var legalSection: some View {
         VStack(spacing: 8) {
-            Text(String(localized: "Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period."))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            Text(
+                String(
+                    localized: """
+                    Payment will be charged to your Apple ID account at confirmation of \
+                    purchase. Subscription automatically renews unless it is canceled at least \
+                    24 hours before the end of the current period. Your account will be charged \
+                    for renewal within 24 hours prior to the end of the current period.
+                    """
+                )
+            )
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
 
             HStack(spacing: 16) {
                 Link(
@@ -383,10 +469,6 @@ struct SubscriptionView: View {
 
 // MARK: - Preview
 
-#Preview("Subscription Paywall") {
-    SubscriptionView()
-}
-
-#Preview("Premium Active") {
+#Preview("Subscription") {
     SubscriptionView()
 }
