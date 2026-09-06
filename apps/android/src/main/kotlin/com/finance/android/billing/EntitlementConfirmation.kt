@@ -56,7 +56,7 @@ class AuthenticatedHouseholdEligibilityProvider(
     private val householdIdProvider: HouseholdIdProvider,
 ) : EligibleHouseholdProvider {
     override suspend fun currentEligibleHousehold(): EligibleHouseholdSelection? =
-        householdIdProvider.householdId.value?.let(
+        householdIdProvider.verifiedHouseholdId.value?.let(
             EligibleHouseholdSelection::fromAuthenticatedMembership,
         )
 }

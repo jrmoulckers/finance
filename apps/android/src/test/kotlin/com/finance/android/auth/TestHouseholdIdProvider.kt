@@ -18,13 +18,17 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class TestHouseholdIdProvider(
     initial: SyncId? = SyncId("household-1"),
+    verifiedInitial: SyncId? = initial,
 ) : HouseholdIdProvider {
 
     private val _householdId = MutableStateFlow(initial)
     override val householdId: StateFlow<SyncId?> = _householdId.asStateFlow()
+    private val _verifiedHouseholdId = MutableStateFlow(verifiedInitial)
+    override val verifiedHouseholdId: StateFlow<SyncId?> = _verifiedHouseholdId.asStateFlow()
 
     /** Update the household ID (or set to `null` to simulate sign-out). */
     fun setHouseholdId(id: SyncId?) {
         _householdId.value = id
+        _verifiedHouseholdId.value = id
     }
 }

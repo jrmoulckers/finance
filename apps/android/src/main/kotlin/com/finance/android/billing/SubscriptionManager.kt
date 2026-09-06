@@ -50,6 +50,7 @@ class SubscriptionManager(
     private val operationGeneration = AtomicLong()
     private val projectionMutex = Mutex()
     private var latestProjectionGeneration = 0L
+    private var projectionHouseholdScope: EligibleHouseholdSelection? = null
 
     /** Safe tier derived only from a current, server-returned projection. */
     val currentTier: Tier
@@ -61,18 +62,13 @@ class SubscriptionManager(
             return
         }
 
-        val eligibleHousehold =
-            if (targetTier == Tier.FAMILY) {
-                eligibleHouseholdProvider.currentEligibleHousehold()
-                    ?: run {
-                        _state.update {
-                            it.copy(confirmation = PurchaseConfirmationPhase.ERROR)
-                        }
-                        return
-                    }
-            } else {
-                null
+        val eligibleHousehold = eligibleHouseholdProvider.currentEligibleHousehold()
+        if (targetTier == Tier.FAMILY && eligibleHousehold == null) {
+            _state.update {
+                it.copy(confirmation = PurchaseConfirmationPhase.ERROR)
             }
+            return
+        }
         val generation = beginOperation()
         _state.update {
             it.copy(
@@ -149,12 +145,14 @@ class SubscriptionManager(
         }
 
         try {
+            val eligibleHousehold = eligibleHouseholdProvider.currentEligibleHousehold()
             apply(
                 transport.fetchProjection(
                     context,
-                    eligibleHouseholdProvider.currentEligibleHousehold(),
+                    eligibleHousehold,
                 ),
                 generation,
+                eligibleHousehold,
             )
         } catch (error: EntitlementTransportException) {
             updateTransportFailure(error, "Entitlement refresh failed")
@@ -181,7 +179,7 @@ class SubscriptionManager(
 
         try {
             val response = transport.confirm(request)
-            apply(response, generation)
+            apply(response, generation, eligibleHousehold)
 
             if (response is FinanceServerConfirmation.Confirmed) {
                 evidenceItems.forEach { evidence ->
@@ -202,6 +200,7 @@ class SubscriptionManager(
     private suspend fun apply(
         response: FinanceServerConfirmation,
         generation: Long,
+        eligibleHousehold: EligibleHouseholdSelection?,
     ) {
         val phase =
             when (response) {
@@ -211,14 +210,22 @@ class SubscriptionManager(
         projectionMutex.withLock {
             _state.update { current ->
                 val candidate = response.projection
-                val isNewerVersion =
+                val isSameScope = eligibleHousehold == projectionHouseholdScope
+                val isNewerVersionInScope =
+                    isSameScope &&
                     candidate.projectionVersion > current.projection.projectionVersion
-                val isCurrentVersionAndOperation =
+                val isCurrentVersionAndOperationInScope =
+                    isSameScope &&
                     candidate.projectionVersion == current.projection.projectionVersion &&
                         generation >= latestProjectionGeneration
+                val isNewerScopeOperation =
+                    !isSameScope && generation >= latestProjectionGeneration
                 when {
-                    isNewerVersion || isCurrentVersionAndOperation -> {
+                    isNewerVersionInScope ||
+                        isCurrentVersionAndOperationInScope ||
+                        isNewerScopeOperation -> {
                         latestProjectionGeneration = generation
+                        projectionHouseholdScope = eligibleHousehold
                         current.copy(
                             projection = candidate,
                             confirmation = phase,

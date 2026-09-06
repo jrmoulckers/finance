@@ -39,6 +39,13 @@ interface HouseholdIdProvider {
      * The value updates reactively when the user signs in or out.
      */
     val householdId: StateFlow<SyncId?>
+
+    /**
+     * A household ID asserted by the authenticated session, or `null` when
+     * membership has not been verified. Unlike [householdId], this never
+     * falls back to the user's ID.
+     */
+    val verifiedHouseholdId: StateFlow<SyncId?>
 }
 
 /**
@@ -48,6 +55,8 @@ interface HouseholdIdProvider {
  * - Parses `user.app_metadata.household_id` from the auth response.
  * - Falls back to the user's UUID as the household scope when the
  *   custom claim is absent (single-user household mode).
+ * - Exposes the claim separately through [verifiedHouseholdId] for operations
+ *   that require verified household membership.
  * - Emits `null` when no session is active.
  *
  * @property authManager The Android [SupabaseAuthManager] that manages
@@ -58,4 +67,5 @@ class AuthHouseholdIdProvider(
 ) : HouseholdIdProvider {
 
     override val householdId: StateFlow<SyncId?> = authManager.householdId
+    override val verifiedHouseholdId: StateFlow<SyncId?> = authManager.verifiedHouseholdId
 }

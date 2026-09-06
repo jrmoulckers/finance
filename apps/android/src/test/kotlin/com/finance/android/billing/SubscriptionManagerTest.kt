@@ -2,10 +2,13 @@
 
 package com.finance.android.billing
 
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.core.entitlement.Tier
 import com.finance.models.types.SyncId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
@@ -63,6 +66,7 @@ class FakeEntitlementTransport : AuthenticatedEntitlementTransport {
         FinanceServerConfirmation.Confirmed(FinanceEntitlementProjection.FREE)
     val purchaseRequests = mutableListOf<FinanceEntitlementRequest>()
     val restoreRequests = mutableListOf<FinanceEntitlementRequest>()
+    val projectionHouseholds = mutableListOf<EligibleHouseholdSelection?>()
     var transportError: EntitlementTransportException? = null
 
     override suspend fun isAuthenticated(): Boolean = authenticated
@@ -86,10 +90,19 @@ class FakeEntitlementTransport : AuthenticatedEntitlementTransport {
         context: FinanceEntitlementContext,
         eligibleHousehold: EligibleHouseholdSelection?,
     ): FinanceServerConfirmation {
+        projectionHouseholds += eligibleHousehold
         transportError?.let { throw it }
         if (shouldThrow) throw EntitlementTransportException()
         return projectionResponse
     }
+}
+
+private class HouseholdMembershipState(
+    userScope: SyncId?,
+    verifiedScope: SyncId?,
+) : HouseholdIdProvider {
+    override val householdId: StateFlow<SyncId?> = MutableStateFlow(userScope)
+    override val verifiedHouseholdId = MutableStateFlow(verifiedScope)
 }
 
 fun evidence(
@@ -444,6 +457,81 @@ class SubscriptionManagerTest {
         assertEquals(PurchaseConfirmationPhase.ERROR, manager.state.value.confirmation)
         assertEquals(0, adapter.purchaseCount)
         assertTrue(transport.purchaseRequests.isEmpty())
+    }
+
+    @Test
+    fun `cold start user fallback is not treated as verified household membership`() = runTest {
+        val userId = SyncId("44010000-0000-4000-8000-000000000001")
+        val householdId = SyncId("44010000-0000-4000-8000-000000000002")
+        val membershipState = HouseholdMembershipState(userId, null)
+        val eligibilityProvider = AuthenticatedHouseholdEligibilityProvider(membershipState)
+        val transport = FakeEntitlementTransport()
+        val manager =
+            SubscriptionManager(
+                transport = transport,
+                eligibleHouseholdProvider = eligibilityProvider,
+            )
+
+        manager.refreshEntitlement()
+
+        assertEquals(null, transport.projectionHouseholds.single())
+
+        membershipState.verifiedHouseholdId.value = householdId
+        manager.refreshEntitlement()
+
+        assertEquals(
+            householdId.value,
+            transport.projectionHouseholds.last()?.value,
+        )
+    }
+
+    @Test
+    fun `projection versions are ordered within household scope`() = runTest {
+        val household =
+            requireNotNull(
+                EligibleHouseholdSelection.fromAuthenticatedMembership(
+                    SyncId("44010000-0000-4000-8000-000000000001"),
+                ),
+            )
+        var selectedHousehold: EligibleHouseholdSelection? = household
+        val transport =
+            FakeEntitlementTransport().apply {
+                projectionResponse =
+                    FinanceServerConfirmation.Confirmed(
+                        premiumProjection.copy(
+                            userTier = Tier.FREE,
+                            householdTier = Tier.FAMILY,
+                            isFamilyBound = true,
+                            projectionVersion = 9,
+                        ),
+                    )
+            }
+        val adapter =
+            FakeRevenueCatPurchaseAdapter().apply {
+                purchaseResult = NativePurchaseResult.Verified(evidence())
+            }
+        val manager =
+            SubscriptionManager(
+                purchaseAdapter = adapter,
+                transport = transport,
+                eligibleHouseholdProvider = EligibleHouseholdProvider { selectedHousehold },
+            )
+        manager.refreshEntitlement()
+
+        transport.purchaseResponse = transport.projectionResponse
+        manager.launchPurchase(Tier.PREMIUM)
+        assertEquals(household, transport.purchaseRequests.single().eligibleHousehold)
+
+        selectedHousehold = null
+        transport.purchaseResponse =
+            FinanceServerConfirmation.Confirmed(
+                premiumProjection.copy(projectionVersion = 4),
+            )
+        manager.launchPurchase(Tier.PREMIUM)
+
+        assertEquals(null, transport.purchaseRequests.last().eligibleHousehold)
+        assertEquals(Tier.PREMIUM, manager.currentTier)
+        assertEquals(4L, manager.state.value.projection.projectionVersion)
     }
 
     @Test

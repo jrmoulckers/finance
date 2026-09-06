@@ -44,6 +44,7 @@ actor SubscriptionService: SubscriptionProviding {
     private var projection: FinanceEntitlementProjection = .free
     private var nextOperationGeneration: UInt64 = 0
     private var latestProjectionGeneration: UInt64 = 0
+    private var projectionHouseholdScope: EligibleHouseholdSelection?
     private var updateListenerTask: Task<Void, Never>?
     private var stateContinuations:
         [UUID: AsyncStream<PurchaseConfirmationState>.Continuation] = [:]
@@ -129,7 +130,8 @@ actor SubscriptionService: SubscriptionProviding {
                     context,
                     eligibleHousehold: eligibleHousehold
                 ),
-                generation: generation
+                generation: generation,
+                eligibleHousehold: eligibleHousehold
             )
         } catch let error as RevenueCatEntitlementTransportError {
             if error.isRetryable {
@@ -213,7 +215,11 @@ actor SubscriptionService: SubscriptionProviding {
 
         do {
             let response = try await transport.confirm(request)
-            let confirmationState = apply(response, generation: generation)
+            let confirmationState = apply(
+                response,
+                generation: generation,
+                eligibleHousehold: eligibleHousehold
+            )
             if case .confirmed = response {
                 for evidence in evidenceItems {
                     await evidence.finish()
@@ -236,28 +242,49 @@ actor SubscriptionService: SubscriptionProviding {
 
     private func apply(
         _ response: FinanceServerConfirmation,
-        generation: UInt64
+        generation: UInt64,
+        eligibleHousehold: EligibleHouseholdSelection?
     ) -> PurchaseConfirmationState {
         switch response {
         case .pending(let confirmedProjection):
-            acceptProjection(confirmedProjection, generation: generation)
+            acceptProjection(
+                confirmedProjection,
+                generation: generation,
+                eligibleHousehold: eligibleHousehold
+            )
             return publish(.pending)
         case .confirmed(let confirmedProjection):
-            acceptProjection(confirmedProjection, generation: generation)
+            acceptProjection(
+                confirmedProjection,
+                generation: generation,
+                eligibleHousehold: eligibleHousehold
+            )
             return publish(.confirmed)
         }
     }
 
     private func acceptProjection(
         _ confirmedProjection: FinanceEntitlementProjection,
-        generation: UInt64
+        generation: UInt64,
+        eligibleHousehold: EligibleHouseholdSelection?
     ) {
-        let isNewerVersion = confirmedProjection.projectionVersion > projection.projectionVersion
-        let isCurrentVersionAndOperation =
+        let isSameScope = eligibleHousehold == projectionHouseholdScope
+        let isNewerVersionInScope =
+            isSameScope &&
+            confirmedProjection.projectionVersion > projection.projectionVersion
+        let isCurrentVersionAndOperationInScope =
+            isSameScope &&
             confirmedProjection.projectionVersion == projection.projectionVersion &&
             generation >= latestProjectionGeneration
-        guard isNewerVersion || isCurrentVersionAndOperation else { return }
+        let isNewerScopeOperation =
+            !isSameScope && generation >= latestProjectionGeneration
+        let canReplaceProjection =
+            isNewerVersionInScope ||
+            isCurrentVersionAndOperationInScope ||
+            isNewerScopeOperation
+        guard canReplaceProjection else { return }
         latestProjectionGeneration = generation
+        projectionHouseholdScope = eligibleHousehold
         projection = confirmedProjection
     }
 

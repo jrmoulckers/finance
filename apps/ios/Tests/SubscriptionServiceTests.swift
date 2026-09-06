@@ -59,6 +59,22 @@ private struct FixedEligibleHouseholdProvider: EligibleHouseholdProviding {
     }
 }
 
+private actor MutableEligibleHouseholdProvider: EligibleHouseholdProviding {
+    private var selection: EligibleHouseholdSelection?
+
+    init(selection: EligibleHouseholdSelection?) {
+        self.selection = selection
+    }
+
+    func currentEligibleHousehold() -> EligibleHouseholdSelection? {
+        selection
+    }
+
+    func setSelection(_ selection: EligibleHouseholdSelection?) {
+        self.selection = selection
+    }
+}
+
 @Suite("iOS Entitlement Confirmation Tests")
 struct EntitlementConfirmationTests {
     @Test("Verified StoreKit evidence remains pending and unfinished")
@@ -303,6 +319,60 @@ struct EntitlementConfirmationTests {
         _ = await service.purchase(productId: "synthetic.monthly")
 
         #expect(transport.purchaseRequests.first?.eligibleHousehold == household)
+    }
+
+    @Test("Projection versions are ordered within household scope")
+    func projectionVersionOrderingIsScopeAware() async throws {
+        let household = try #require(
+            EligibleHouseholdSelection.authenticatedMembership(
+                UUID(uuidString: "44010000-0000-4000-8000-000000000001")!
+            )
+        )
+        let provider = MutableEligibleHouseholdProvider(selection: household)
+        let adapter = StubNativePurchaseAdapter()
+        adapter.purchaseResult = .verified(evidence())
+        let transport = StubEntitlementTransport()
+        transport.projectionResponse = .confirmed(
+            FinanceEntitlementProjection(
+                userTier: .free,
+                householdTier: .family,
+                bankConnectionAllowance: 20,
+                isPremiumSponsor: true,
+                isFamilyBound: true,
+                effectiveAt: premiumProjection.effectiveAt,
+                expiresAt: nil,
+                projectionVersion: 9,
+                serverTime: premiumProjection.serverTime,
+                status: .current
+            )
+        )
+        let service = SubscriptionService(
+            purchaseAdapter: adapter,
+            transport: transport,
+            eligibleHouseholdProvider: provider
+        )
+        _ = await service.checkEntitlement()
+
+        await provider.setSelection(nil)
+        transport.purchaseResponse = .confirmed(
+            FinanceEntitlementProjection(
+                userTier: .premium,
+                householdTier: nil,
+                bankConnectionAllowance: 10,
+                isPremiumSponsor: false,
+                isFamilyBound: false,
+                effectiveAt: premiumProjection.effectiveAt,
+                expiresAt: nil,
+                projectionVersion: 4,
+                serverTime: premiumProjection.serverTime,
+                status: .current
+            )
+        )
+        let confirmed = await service.purchase(productId: "synthetic.monthly")
+
+        #expect(transport.purchaseRequests.last?.eligibleHousehold == nil)
+        #expect(confirmed.projection.tier == .premium)
+        #expect(confirmed.projection.projectionVersion == 4)
     }
 
     @Test("StoreKit listener publishes server confirmation")
