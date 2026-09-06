@@ -1,59 +1,132 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-// SubscriptionViewModelTests.swift
-// FinanceTests
-//
-// Unit tests for SubscriptionViewModel.
-//
-// References: #338
-
 import Foundation
-import SwiftUI
 import Testing
 @testable import FinanceApp
 
-// MARK: - Stub Subscription Service
+let premiumProjection = FinanceEntitlementProjection(
+    tier: .premium,
+    status: .current,
+    validUntil: nil,
+    isHouseholdBound: false
+)
 
-final class StubSubscriptionService: SubscriptionProviding, @unchecked Sendable {
+private final class StubSubscriptionService: SubscriptionProviding, @unchecked Sendable {
     var productsToReturn: [SubscriptionProductInfo] = []
-    var entitlementToReturn: EntitlementState = .free
-    var purchaseResult: Bool = true
-    var purchaseError: Error?
+    var purchaseState: PurchaseConfirmationState = .idle
+    var entitlementState: PurchaseConfirmationState = .idle
+    var restoreState: PurchaseConfirmationState = .idle
     var restoreCalled = false
 
     func loadProducts() async -> [SubscriptionProductInfo] {
         productsToReturn
     }
 
-    func purchase(productId: String) async throws -> Bool {
-        if let error = purchaseError { throw error }
-        return purchaseResult
+    func purchase(productId _: String) async -> PurchaseConfirmationState {
+        purchaseState
     }
 
-    func checkEntitlement() async -> EntitlementState {
-        entitlementToReturn
+    func checkEntitlement() async -> PurchaseConfirmationState {
+        entitlementState
     }
 
-    func restorePurchases() async {
+    func restorePurchases() async -> PurchaseConfirmationState {
         restoreCalled = true
+        return restoreState
     }
 }
 
-// MARK: - SubscriptionViewModel Tests
+final class StubNativePurchaseAdapter: NativePurchaseProviding, @unchecked Sendable {
+    var products: [SubscriptionProductInfo] = []
+    var purchaseResult: NativePurchaseResult = .pending
+    var restoreResult: [VerifiedPurchaseEvidence] = []
+
+    func loadProducts() async -> [SubscriptionProductInfo] {
+        products
+    }
+
+    func purchase(productId _: String) async throws -> NativePurchaseResult {
+        purchaseResult
+    }
+
+    func restoreEvidence() async throws -> [VerifiedPurchaseEvidence] {
+        restoreResult
+    }
+
+    func transactionUpdates() -> AsyncStream<VerifiedPurchaseEvidence> {
+        AsyncStream { $0.finish() }
+    }
+}
+
+final class StubEntitlementTransport: AuthenticatedEntitlementTransport, @unchecked Sendable {
+    var authenticated = true
+    var purchaseResponse: FinanceServerConfirmation = .pending(.free)
+    var restoreResponse: FinanceServerConfirmation = .pending(.free)
+    var projectionResponse: FinanceServerConfirmation = .confirmed(.free)
+    var shouldThrow = false
+    var purchaseRequests: [FinanceEntitlementConfirmationRequest] = []
+    var restoreRequests: [FinanceEntitlementConfirmationRequest] = []
+
+    func isAuthenticated() async -> Bool {
+        authenticated
+    }
+
+    func confirmPurchase(
+        _ request: FinanceEntitlementConfirmationRequest
+    ) async throws -> FinanceServerConfirmation {
+        purchaseRequests.append(request)
+        if shouldThrow { throw SubscriptionError.confirmationUnavailable }
+        return purchaseResponse
+    }
+
+    func confirmRestore(
+        _ request: FinanceEntitlementConfirmationRequest
+    ) async throws -> FinanceServerConfirmation {
+        restoreRequests.append(request)
+        if shouldThrow { throw SubscriptionError.confirmationUnavailable }
+        return restoreResponse
+    }
+
+    func fetchProjection(
+        _: FinanceEntitlementContext
+    ) async throws -> FinanceServerConfirmation {
+        if shouldThrow { throw SubscriptionError.confirmationUnavailable }
+        return projectionResponse
+    }
+}
+
+actor FinishRecorder {
+    private(set) var count = 0
+
+    func record() {
+        count += 1
+    }
+}
+
+func evidence(
+    token: String = "synthetic-provider-operation",
+    recorder: FinishRecorder = FinishRecorder()
+) -> VerifiedPurchaseEvidence {
+    VerifiedPurchaseEvidence(
+        provider: .revenueCatApple,
+        opaqueValue: token,
+        finishAction: {
+            await recorder.record()
+        }
+    )
+}
 
 @Suite("SubscriptionViewModel Tests")
 struct SubscriptionViewModelTests {
-
     private func makeProducts() -> [SubscriptionProductInfo] {
         [
             SubscriptionProductInfo(
-                id: "com.finance.premium.monthly",
+                id: "synthetic.monthly",
                 tier: .monthly,
-                displayPrice: "$4.99",
-                isBestValue: false
+                displayPrice: "$4.99"
             ),
             SubscriptionProductInfo(
-                id: "com.finance.premium.annual",
+                id: "synthetic.annual",
                 tier: .annual,
                 displayPrice: "$39.99",
                 pricePerMonth: "$3.33",
@@ -62,124 +135,91 @@ struct SubscriptionViewModelTests {
         ]
     }
 
-    @Test("Loads products and entitlement")
+    @Test("Purchase callback cannot grant before server confirmation")
     @MainActor
-    func loadsProductsAndEntitlement() async {
+    func pendingPurchaseDoesNotGrant() async {
         let service = StubSubscriptionService()
-        service.productsToReturn = makeProducts()
-        service.entitlementToReturn = .free
+        service.purchaseState = PurchaseConfirmationState(
+            phase: .pending,
+            projection: .free
+        )
+        let viewModel = SubscriptionViewModel(subscriptionService: service)
+        viewModel.selectedProductId = "synthetic.monthly"
 
-        let vm = SubscriptionViewModel(subscriptionService: service)
-        await vm.loadSubscriptionData()
+        await viewModel.purchaseSelected()
 
-        #expect(vm.products.count == 2)
-        #expect(vm.entitlement == .free)
-        #expect(!vm.isPremium)
-        #expect(!vm.isLoading)
+        #expect(viewModel.confirmationState.phase == .pending)
+        #expect(!viewModel.isPremium)
+        #expect(viewModel.successMessage == nil)
+        #expect(viewModel.statusMessage != nil)
     }
 
-    @Test("Auto-selects best value plan")
+    @Test("Only confirmed Finance projection grants")
     @MainActor
-    func autoSelectsBestValue() async {
+    func confirmedProjectionGrants() async {
         let service = StubSubscriptionService()
-        service.productsToReturn = makeProducts()
+        service.purchaseState = PurchaseConfirmationState(
+            phase: .confirmed,
+            projection: premiumProjection
+        )
+        let viewModel = SubscriptionViewModel(subscriptionService: service)
+        viewModel.selectedProductId = "synthetic.monthly"
 
-        let vm = SubscriptionViewModel(subscriptionService: service)
-        await vm.loadSubscriptionData()
+        await viewModel.purchaseSelected()
 
-        #expect(vm.selectedProductId == "com.finance.premium.annual")
+        #expect(viewModel.isPremium)
+        #expect(viewModel.successMessage != nil)
     }
 
-    @Test("Purchase succeeds and updates entitlement")
+    @Test("Restore exposes pending without granting")
     @MainActor
-    func purchaseSucceeds() async {
+    func pendingRestoreDoesNotGrant() async {
         let service = StubSubscriptionService()
-        service.productsToReturn = makeProducts()
-        service.purchaseResult = true
-        service.entitlementToReturn = .premium(tier: .monthly, expiresAt: Date().addingTimeInterval(30 * 24 * 3600))
+        service.restoreState = PurchaseConfirmationState(
+            phase: .pending,
+            projection: .free
+        )
+        let viewModel = SubscriptionViewModel(subscriptionService: service)
 
-        let vm = SubscriptionViewModel(subscriptionService: service)
-        await vm.loadSubscriptionData()
-        vm.selectedProductId = "com.finance.premium.monthly"
-
-        await vm.purchaseSelected()
-
-        #expect(vm.isPremium)
-        #expect(vm.successMessage != nil)
-        #expect(!vm.isPurchasing)
-    }
-
-    @Test("Purchase failure shows error")
-    @MainActor
-    func purchaseFailureShowsError() async {
-        let service = StubSubscriptionService()
-        service.productsToReturn = makeProducts()
-        service.purchaseError = SubscriptionError.purchaseFailed
-
-        let vm = SubscriptionViewModel(subscriptionService: service)
-        await vm.loadSubscriptionData()
-        vm.selectedProductId = "com.finance.premium.monthly"
-
-        await vm.purchaseSelected()
-
-        #expect(vm.errorMessage != nil)
-        #expect(!vm.isPurchasing)
-    }
-
-    @Test("Purchase without selection shows error")
-    @MainActor
-    func purchaseWithoutSelection() async {
-        let service = StubSubscriptionService()
-        let vm = SubscriptionViewModel(subscriptionService: service)
-        vm.selectedProductId = nil
-
-        await vm.purchaseSelected()
-
-        #expect(vm.errorMessage != nil)
-    }
-
-    @Test("Restore triggers service and refreshes entitlement")
-    @MainActor
-    func restorePurchases() async {
-        let service = StubSubscriptionService()
-        service.entitlementToReturn = .premium(tier: .annual, expiresAt: nil)
-
-        let vm = SubscriptionViewModel(subscriptionService: service)
-        await vm.restorePurchases()
+        await viewModel.restorePurchases()
 
         #expect(service.restoreCalled)
-        #expect(vm.isPremium)
-        #expect(vm.successMessage != nil)
+        #expect(viewModel.confirmationState.phase == .pending)
+        #expect(!viewModel.isPremium)
     }
 
-    @Test("Feature availability for premium users")
+    @Test("Cancellation remains distinct from confirmation error")
     @MainActor
-    func featureAvailability() async {
+    func cancellationIsNotError() async {
         let service = StubSubscriptionService()
-        service.entitlementToReturn = .premium(tier: .monthly, expiresAt: nil)
+        service.purchaseState = PurchaseConfirmationState(
+            phase: .cancelled,
+            projection: .free
+        )
+        let viewModel = SubscriptionViewModel(subscriptionService: service)
+        viewModel.selectedProductId = "synthetic.monthly"
 
-        let vm = SubscriptionViewModel(subscriptionService: service)
-        await vm.loadSubscriptionData()
+        await viewModel.purchaseSelected()
 
-        for feature in PremiumFeature.allCases {
-            #expect(vm.isFeatureAvailable(feature))
-        }
+        #expect(viewModel.confirmationState.phase == .cancelled)
+        #expect(viewModel.errorMessage == nil)
     }
 
-    @Test("Entitlement states are correct")
+    @Test("Loads products and defaults to best value")
     @MainActor
-    func entitlementStates() {
-        let free = EntitlementState.free
-        #expect(!free.isPremium)
-        #expect(free.displayName == String(localized: "Free Plan"))
+    func loadsProducts() async {
+        let service = StubSubscriptionService()
+        service.productsToReturn = makeProducts()
+        service.entitlementState = PurchaseConfirmationState(
+            phase: .confirmed,
+            projection: .free
+        )
+        let viewModel = SubscriptionViewModel(subscriptionService: service)
 
-        let premium = EntitlementState.premium(tier: .monthly, expiresAt: nil)
-        #expect(premium.isPremium)
+        await viewModel.loadSubscriptionData()
 
-        let expired = EntitlementState.expired
-        #expect(!expired.isPremium)
-
-        let grace = EntitlementState.gracePeriod(expiresAt: Date())
-        #expect(grace.isPremium)
+        #expect(viewModel.products.count == 2)
+        #expect(viewModel.selectedProductId == "synthetic.annual")
+        #expect(!viewModel.isPremium)
     }
 }

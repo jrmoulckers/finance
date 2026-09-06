@@ -3,8 +3,8 @@
 // SubscriptionModels.swift
 // Finance
 //
-// Data models for the premium subscription system using StoreKit 2.
-// Defines subscription tiers, entitlement states, and premium features.
+// Display models for subscription offers plus the server-authoritative
+// entitlement projection.
 //
 // References: #338
 
@@ -12,7 +12,9 @@ import SwiftUI
 
 // MARK: - Subscription Tier
 
-/// Available subscription plans.
+/// Billing periods presented by the existing iOS paywall.
+///
+/// These values select a StoreKit offer only. They never determine access.
 enum SubscriptionTier: String, CaseIterable, Sendable {
     case free
     case monthly
@@ -21,16 +23,16 @@ enum SubscriptionTier: String, CaseIterable, Sendable {
     var displayName: String {
         switch self {
         case .free: String(localized: "Free")
-        case .monthly: String(localized: "Premium Monthly")
-        case .annual: String(localized: "Premium Annual")
+        case .monthly: String(localized: "Monthly")
+        case .annual: String(localized: "Annual")
         }
     }
 
     var description: String {
         switch self {
         case .free: String(localized: "Basic financial tracking")
-        case .monthly: String(localized: "Full access, billed monthly")
-        case .annual: String(localized: "Full access, billed annually — save 33%")
+        case .monthly: String(localized: "Billed monthly")
+        case .annual: String(localized: "Billed annually — save 33%")
         }
     }
 
@@ -108,29 +110,93 @@ enum PremiumFeature: String, CaseIterable, Sendable {
     }
 }
 
-// MARK: - Entitlement State
+// MARK: - Entitlement Projection
 
-/// Current subscription entitlement status.
-enum EntitlementState: Sendable, Equatable {
+/// Finance tiers returned by the server-authoritative entitlement projection.
+enum FinanceEntitlementTier: String, Sendable, Equatable {
     case free
-    case premium(tier: SubscriptionTier, expiresAt: Date?)
-    case expired
-    case gracePeriod(expiresAt: Date)
-
-    var isPremium: Bool {
-        switch self {
-        case .premium, .gracePeriod: true
-        case .free, .expired: false
-        }
-    }
+    case plus
+    case premium
+    case family
 
     var displayName: String {
         switch self {
         case .free: String(localized: "Free Plan")
-        case .premium(let tier, _): tier.displayName
-        case .expired: String(localized: "Expired")
-        case .gracePeriod: String(localized: "Grace Period")
+        case .plus: String(localized: "Plus")
+        case .premium: String(localized: "Premium")
+        case .family: String(localized: "Family")
         }
+    }
+}
+
+/// Freshness is decided by Finance, never by the device clock.
+enum FinanceProjectionStatus: String, Sendable, Equatable {
+    case current
+    case stale
+    case expired
+}
+
+/// Minimized projection returned by Finance after authenticated confirmation.
+struct FinanceEntitlementProjection: Sendable, Equatable {
+    let tier: FinanceEntitlementTier
+    let status: FinanceProjectionStatus
+    let validUntil: Date?
+    let isHouseholdBound: Bool
+
+    static let free = FinanceEntitlementProjection(
+        tier: .free,
+        status: .current,
+        validUntil: nil,
+        isHouseholdBound: false
+    )
+
+    /// Stale and expired projections cannot authorize new cost-incurring work.
+    var authorizesNewCostIncurringActions: Bool {
+        guard status == .current, tier != .free else { return false }
+        return tier != .family || isHouseholdBound
+    }
+}
+
+/// Current access state, derived only from a Finance projection.
+struct EntitlementState: Sendable, Equatable {
+    let projection: FinanceEntitlementProjection
+
+    static let free = EntitlementState(projection: .free)
+
+    var isPremium: Bool {
+        projection.authorizesNewCostIncurringActions
+    }
+
+    var displayName: String {
+        switch projection.status {
+        case .current:
+            projection.tier.displayName
+        case .stale:
+            String(localized: "Confirmation Needed")
+        case .expired:
+            String(localized: "Expired")
+        }
+    }
+}
+
+/// Shared logical confirmation states used by both native clients.
+enum PurchaseConfirmationPhase: String, Sendable, Equatable {
+    case idle
+    case pending
+    case confirmed
+    case retry
+    case error
+    case cancelled
+}
+
+struct PurchaseConfirmationState: Sendable, Equatable {
+    let phase: PurchaseConfirmationPhase
+    let projection: FinanceEntitlementProjection
+
+    static let idle = PurchaseConfirmationState(phase: .idle, projection: .free)
+
+    var authorizesNewCostIncurringActions: Bool {
+        phase == .confirmed && projection.authorizesNewCostIncurringActions
     }
 }
 

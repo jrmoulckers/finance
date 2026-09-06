@@ -109,11 +109,14 @@ class PaywallViewModel(
      * Restore previous purchases.
      */
     fun restorePurchases() {
-        subscriptionManager.restorePurchases()
+        viewModelScope.launch {
+            subscriptionManager.restorePurchases()
+        }
     }
 
     private fun loadPaywall() {
         viewModelScope.launch {
+            subscriptionManager.refreshEntitlement()
             val currentTier = subscriptionManager.currentTier
             val tierName = FeatureGate.tierDisplayName(currentTier)
 
@@ -185,7 +188,7 @@ class PaywallViewModel(
                 )
             }
 
-            Timber.d("Paywall loaded: current tier=%s", tierName)
+            Timber.d("Paywall loaded")
         }
     }
 }

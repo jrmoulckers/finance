@@ -31,6 +31,9 @@ final class SubscriptionViewModel {
     /// Current entitlement state.
     var entitlement: EntitlementState = .free
 
+    /// Current server-confirmation phase.
+    var confirmationState: PurchaseConfirmationState = .idle
+
     /// The product ID selected by the user.
     var selectedProductId: String?
 
@@ -49,6 +52,9 @@ final class SubscriptionViewModel {
     /// Success message after purchase.
     var successMessage: String?
 
+    /// Non-error status for pending or retryable confirmation.
+    var statusMessage: String?
+
     var showError: Bool { errorMessage != nil }
     func dismissError() { errorMessage = nil }
 
@@ -56,11 +62,13 @@ final class SubscriptionViewModel {
     func dismissSuccess() { successMessage = nil }
 
     /// Whether the user has an active premium subscription.
-    var isPremium: Bool { entitlement.isPremium }
+    var isPremium: Bool {
+        confirmationState.authorizesNewCostIncurringActions
+    }
 
     /// Checks if a specific premium feature is available.
     func isFeatureAvailable(_ feature: PremiumFeature) -> Bool {
-        entitlement.isPremium || feature.isFreeTier
+        isPremium || feature.isFreeTier
     }
 
     // MARK: - Init
@@ -80,7 +88,7 @@ final class SubscriptionViewModel {
         async let currentEntitlement = subscriptionService.checkEntitlement()
 
         products = await loadedProducts
-        entitlement = await currentEntitlement
+        apply(await currentEntitlement)
 
         // Auto-select annual (best value) by default
         if selectedProductId == nil {
@@ -88,9 +96,7 @@ final class SubscriptionViewModel {
                 ?? products.first?.id
         }
 
-        Self.logger.debug(
-            "Subscription data loaded: \(self.products.count, privacy: .public) products, entitlement: \(self.entitlement.displayName, privacy: .public)"
-        )
+        Self.logger.debug("Subscription data loaded")
     }
 
     // MARK: - Purchase
@@ -102,25 +108,29 @@ final class SubscriptionViewModel {
             return
         }
 
+        errorMessage = nil
+        successMessage = nil
+        statusMessage = nil
         isPurchasing = true
         defer { isPurchasing = false }
 
-        do {
-            let success = try await subscriptionService.purchase(productId: productId)
+        let result = await subscriptionService.purchase(productId: productId)
+        apply(result)
 
-            if success {
-                entitlement = await subscriptionService.checkEntitlement()
-                successMessage = String(localized: "Welcome to Finance Premium! You now have full access to all features.")
-
-                Self.logger.info(
-                    "Purchase completed: \(productId, privacy: .public)"
-                )
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-            Self.logger.error(
-                "Purchase failed: \(error.localizedDescription, privacy: .public)"
-            )
+        switch result.phase {
+        case .confirmed where entitlement.isPremium:
+            successMessage = String(localized: "Your purchase was confirmed by Finance.")
+            Self.logger.info("Purchase confirmed")
+        case .pending:
+            statusMessage = String(localized: "Your purchase is pending confirmation. Access has not changed yet.")
+        case .retry:
+            statusMessage = String(localized: "Finance could not confirm the purchase yet. It will be retried.")
+        case .error:
+            errorMessage = String(localized: "Finance could not confirm this purchase.")
+        case .cancelled:
+            statusMessage = nil
+        case .confirmed, .idle:
+            break
         }
     }
 
@@ -128,23 +138,38 @@ final class SubscriptionViewModel {
 
     /// Restores previous purchases.
     func restorePurchases() async {
+        errorMessage = nil
+        successMessage = nil
+        statusMessage = nil
         isRestoring = true
         defer { isRestoring = false }
 
-        await subscriptionService.restorePurchases()
-        entitlement = await subscriptionService.checkEntitlement()
+        let result = await subscriptionService.restorePurchases()
+        apply(result)
 
-        if entitlement.isPremium {
-            successMessage = String(localized: "Purchases restored! Your premium subscription is active.")
+        switch result.phase {
+        case .confirmed where entitlement.isPremium:
+            successMessage = String(localized: "Your purchases were confirmed by Finance.")
+        case .pending:
+            statusMessage = String(localized: "Your restored purchases are pending confirmation.")
+        case .retry:
+            statusMessage = String(localized: "Finance could not confirm restored purchases yet. It will be retried.")
+        case .error:
+            errorMessage = String(localized: "Finance could not confirm restored purchases.")
+        case .cancelled, .confirmed, .idle:
+            break
         }
 
-        Self.logger.info(
-            "Restore completed, entitlement: \(self.entitlement.displayName, privacy: .public)"
-        )
+        Self.logger.info("Restore flow completed")
     }
 
     /// Refreshes entitlement status.
     func refreshEntitlement() async {
-        entitlement = await subscriptionService.checkEntitlement()
+        apply(await subscriptionService.checkEntitlement())
+    }
+
+    private func apply(_ state: PurchaseConfirmationState) {
+        confirmationState = state
+        entitlement = EntitlementState(projection: state.projection)
     }
 }

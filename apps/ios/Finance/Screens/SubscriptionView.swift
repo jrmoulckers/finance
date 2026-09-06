@@ -67,6 +67,17 @@ struct SubscriptionView: View {
             } message: {
                 Text(viewModel.successMessage ?? "")
             }
+            .safeAreaInset(edge: .bottom) {
+                if let statusMessage = viewModel.statusMessage {
+                    Text(statusMessage)
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(.regularMaterial)
+                        .accessibilityLabel(statusMessage)
+                }
+            }
         }
     }
 
@@ -312,15 +323,14 @@ struct SubscriptionView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            if case .premium(_, let expiresAt) = viewModel.entitlement,
-               let expiry = expiresAt {
+            if let expiry = viewModel.entitlement.projection.validUntil {
                 Text(String(localized: "Renews \(expiry.formatted(date: .abbreviated, time: .omitted))"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            if case .gracePeriod(let expiresAt) = viewModel.entitlement {
-                Text(String(localized: "Grace period expires \(expiresAt.formatted(date: .abbreviated, time: .omitted)). Please update your payment method."))
+            if viewModel.entitlement.projection.status == .stale {
+                Text(String(localized: "Finance must refresh this entitlement before new paid actions are available."))
                     .font(.caption)
                     .foregroundStyle(FinanceColors.statusWarning)
                     .multilineTextAlignment(.center)

@@ -6,77 +6,180 @@ import com.finance.core.entitlement.Tier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import timber.log.Timber
 
-/**
- * Subscription state holding the user's current entitlement tier.
- */
 data class SubscriptionState(
-    /** The user's current subscription tier. */
-    val tier: Tier = Tier.FREE,
-    /** Whether the subscription state is still loading. */
-    val isLoading: Boolean = true,
-    /** Whether a purchase flow is in progress. */
+    val projection: FinanceEntitlementProjection = FinanceEntitlementProjection.FREE,
+    val confirmation: PurchaseConfirmationPhase = PurchaseConfirmationPhase.IDLE,
+    val isLoading: Boolean = false,
     val isPurchasing: Boolean = false,
-)
+) {
+    val authorizesNewCostIncurringActions: Boolean
+        get() =
+            confirmation == PurchaseConfirmationPhase.CONFIRMED &&
+                projection.authorizesNewCostIncurringActions
+
+    val tier: Tier
+        get() = if (authorizesNewCostIncurringActions) projection.tier else Tier.FREE
+}
 
 /**
- * Manages the user's subscription tier and billing interactions.
+ * Coordinates native purchase evidence with Finance's entitlement authority.
  *
- * This is a stub implementation that defaults to [Tier.FREE].
- * When Google Play BillingClient is integrated, this class will
- * query the Play Store for active subscriptions and handle
- * purchase flows.
- *
- * ## Integration Notes
- * - Connect to BillingClient in `connect()` method
- * - Query purchases on app start to restore entitlements
- * - Handle purchase flow via `launchPurchase()`
- * - Verify purchases server-side before granting entitlements
- *
- * ## Security
- * - Never trust client-side purchase validation alone
- * - Always verify with the backend before persisting tier upgrades
- * - Use `BillingClient.acknowledgePurchase()` to prevent refunds
+ * RevenueCat/Google callbacks never grant locally. Evidence is acknowledged
+ * only after Finance confirms it. Pending, unavailable, and failed evidence
+ * remains unacknowledged so the provider can replay it for an idempotent retry.
  */
-class SubscriptionManager {
+class SubscriptionManager(
+    private val purchaseAdapter: RevenueCatPurchaseAdapter = UnavailableRevenueCatPurchaseAdapter,
+    private val transport: AuthenticatedEntitlementTransport = UnavailableEntitlementTransport,
+    environment: FinanceClientEnvironment = FinanceClientEnvironment.DEVELOPMENT,
+    eligibleHouseholdIntent: String? = null,
+) {
+    private val context =
+        FinanceEntitlementContext(
+            application = FinanceApplication.FINANCE,
+            environment = environment,
+            eligibleHouseholdIntent = eligibleHouseholdIntent,
+        )
 
     private val _state = MutableStateFlow(SubscriptionState())
     val state: StateFlow<SubscriptionState> = _state.asStateFlow()
 
-    /** The user's current tier, for quick access. */
-    val currentTier: Tier get() = _state.value.tier
+    /** Safe tier derived only from a current, server-returned projection. */
+    val currentTier: Tier
+        get() = _state.value.tier
 
-    init {
-        // TODO(#1296): Connect to Google Play BillingClient and query active purchases
-        _state.value = SubscriptionState(tier = Tier.FREE, isLoading = false)
-        Timber.d("SubscriptionManager initialized with FREE tier (stub)")
+    suspend fun launchPurchase(targetTier: Tier) {
+        if (targetTier == Tier.FREE) {
+            _state.update { it.copy(confirmation = PurchaseConfirmationPhase.ERROR) }
+            return
+        }
+
+        _state.update {
+            it.copy(
+                confirmation = PurchaseConfirmationPhase.PENDING,
+                isPurchasing = true,
+            )
+        }
+        Timber.d("Purchase confirmation flow started")
+
+        try {
+            when (val result = purchaseAdapter.purchase(targetTier)) {
+                NativePurchaseResult.Cancelled -> updatePhase(PurchaseConfirmationPhase.CANCELLED)
+                NativePurchaseResult.Pending -> updatePhase(PurchaseConfirmationPhase.PENDING)
+                NativePurchaseResult.Error -> updatePhase(PurchaseConfirmationPhase.ERROR)
+                is NativePurchaseResult.Verified -> confirm(result.evidence, restore = false)
+            }
+        } catch (_: PurchaseAdapterException) {
+            Timber.w("Purchase flow unavailable")
+            updatePhase(PurchaseConfirmationPhase.ERROR)
+        } finally {
+            _state.update { it.copy(isPurchasing = false) }
+        }
     }
 
-    /**
-     * Launch a purchase flow for the given tier.
-     *
-     * @param targetTier The tier to purchase.
-     *
-     * TODO: Implement with BillingClient.launchBillingFlow()
-     */
-    fun launchPurchase(targetTier: Tier) {
-        Timber.d("Purchase flow requested for tier: %s (stub — not implemented)", targetTier.name)
-        // TODO(#1296): Implement Google Play billing flow
-        // 1. Query SkuDetails for the targetTier product
-        // 2. Launch BillingClient.launchBillingFlow()
-        // 3. Handle PurchasesUpdatedListener callback
-        // 4. Verify purchase on backend
-        // 5. Update _state with new tier
+    suspend fun restorePurchases() {
+        _state.update {
+            it.copy(
+                confirmation = PurchaseConfirmationPhase.PENDING,
+                isLoading = true,
+            )
+        }
+
+        try {
+            val evidenceItems = purchaseAdapter.restore()
+            if (evidenceItems.isEmpty()) {
+                refreshEntitlement()
+            } else {
+                evidenceItems.forEach { confirm(it, restore = true) }
+            }
+            Timber.d("Restore confirmation flow completed")
+        } catch (_: PurchaseAdapterException) {
+            Timber.w("Restore flow unavailable")
+            updatePhase(PurchaseConfirmationPhase.RETRY)
+        } finally {
+            _state.update { it.copy(isLoading = false) }
+        }
     }
 
-    /**
-     * Restore purchases from Google Play.
-     *
-     * TODO: Implement with BillingClient.queryPurchasesAsync()
-     */
-    fun restorePurchases() {
-        Timber.d("Restore purchases requested (stub — not implemented)")
-        // TODO(#1296): Query Play Store for existing purchases
+    /** Handles a provider update without treating it as an entitlement. */
+    suspend fun onPurchaseUpdated(evidence: VerifiedPurchaseEvidence) {
+        _state.update { it.copy(confirmation = PurchaseConfirmationPhase.PENDING) }
+        confirm(evidence, restore = false)
+    }
+
+    suspend fun refreshEntitlement() {
+        if (!transport.isAuthenticated()) {
+            updatePhase(PurchaseConfirmationPhase.ERROR)
+            return
+        }
+
+        try {
+            apply(transport.fetchProjection(context))
+        } catch (_: EntitlementTransportException) {
+            Timber.w("Entitlement refresh should be retried")
+            updatePhase(PurchaseConfirmationPhase.RETRY)
+        }
+    }
+
+    private suspend fun confirm(
+        evidence: VerifiedPurchaseEvidence,
+        restore: Boolean,
+    ) {
+        if (!transport.isAuthenticated()) {
+            updatePhase(PurchaseConfirmationPhase.ERROR)
+            return
+        }
+
+        val request =
+            FinanceEntitlementRequest(
+                context = context,
+                provider = evidence.provider,
+                opaqueEvidence = evidence.opaqueValue,
+            )
+
+        try {
+            val response =
+                if (restore) {
+                    transport.confirmRestore(request)
+                } else {
+                    transport.confirmPurchase(request)
+                }
+            apply(response)
+
+            if (response is FinanceServerConfirmation.Confirmed) {
+                try {
+                    purchaseAdapter.acknowledge(evidence)
+                } catch (_: PurchaseAcknowledgementException) {
+                    // Finance remains authoritative; the unacknowledged provider
+                    // item will be replayed and confirmed idempotently.
+                    Timber.w("Provider acknowledgement should be retried")
+                }
+            }
+        } catch (_: EntitlementTransportException) {
+            Timber.w("Purchase confirmation should be retried")
+            updatePhase(PurchaseConfirmationPhase.RETRY)
+        }
+    }
+
+    private fun apply(response: FinanceServerConfirmation) {
+        val phase =
+            when (response) {
+                is FinanceServerConfirmation.Pending -> PurchaseConfirmationPhase.PENDING
+                is FinanceServerConfirmation.Confirmed -> PurchaseConfirmationPhase.CONFIRMED
+                is FinanceServerConfirmation.Error -> PurchaseConfirmationPhase.ERROR
+            }
+        _state.update {
+            it.copy(
+                projection = response.projection,
+                confirmation = phase,
+            )
+        }
+    }
+
+    private fun updatePhase(phase: PurchaseConfirmationPhase) {
+        _state.update { it.copy(confirmation = phase) }
     }
 }
