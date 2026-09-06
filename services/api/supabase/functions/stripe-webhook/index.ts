@@ -2,7 +2,7 @@
 
 import { createAdminClient } from '../_shared/auth.ts';
 import { StripeRestGateway } from '../stripe-common/client.ts';
-import { loadStripeRuntimeConfig } from '../stripe-common/config.ts';
+import { loadStripeWebhookConfig } from '../stripe-common/config.ts';
 import { normalizeStripeEvent, parseStripeEvent } from '../stripe-common/normalize.ts';
 import { verifyStripeSignature } from '../stripe-common/signature.ts';
 import { findStripeBillingContext, recordAndApplyStripeEvidence } from '../stripe-common/store.ts';
@@ -50,7 +50,7 @@ export function createStripeWebhookHandler(service: WebhookService = defaultWebh
 function defaultWebhookService(): WebhookService {
   return {
     async process(input) {
-      const config = loadStripeRuntimeConfig();
+      const config = loadStripeWebhookConfig();
       await verifyStripeSignature({
         rawBody: input.rawBody,
         signatureHeader: input.signatureHeader,

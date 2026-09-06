@@ -5,7 +5,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { isStripeCatalogChoice, resolveCatalogChoice } from '../stripe-common/catalog.ts';
 import { StripeRestGateway } from '../stripe-common/client.ts';
-import { loadStripeRuntimeConfig } from '../stripe-common/config.ts';
+import { loadStripeCheckoutConfig } from '../stripe-common/config.ts';
 import {
   ensureStripeBillingContext,
   requireHouseholdMembership,
@@ -114,7 +114,7 @@ export function createStripeCheckoutHandler(deps: CheckoutHandlerDependencies = 
 function defaultCheckoutService(): CheckoutService {
   return {
     async create(input) {
-      const config = loadStripeRuntimeConfig();
+      const config = loadStripeCheckoutConfig();
       const gateway = new StripeRestGateway(config.secretKey);
       const supabase = createAdminClient();
       const rateLimit = await checkRateLimit(supabase, input.ownerId, CHECKOUT_RATE_LIMIT);

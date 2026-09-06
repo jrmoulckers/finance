@@ -4,7 +4,7 @@ import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { StripeRestGateway } from '../stripe-common/client.ts';
-import { loadStripeRuntimeConfig } from '../stripe-common/config.ts';
+import { loadStripeBaseConfig } from '../stripe-common/config.ts';
 import { normalizeReconciledSubscription } from '../stripe-common/normalize.ts';
 import { findOwnedStripeIdentity, recordAndApplyStripeEvidence } from '../stripe-common/store.ts';
 import { StripeRequestError, StripeServiceError } from '../stripe-common/types.ts';
@@ -61,7 +61,7 @@ export function createStripeReconcileHandler(deps: ReconcileHandlerDependencies 
 function defaultReconcileService(): ReconcileService {
   return {
     async reconcile(ownerId) {
-      const config = loadStripeRuntimeConfig();
+      const config = loadStripeBaseConfig();
       const supabase = createAdminClient();
       const rateLimit = await checkRateLimit(supabase, ownerId, RECONCILE_RATE_LIMIT);
       if (!rateLimit.allowed) {

@@ -4,7 +4,7 @@ import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { StripeRestGateway } from '../stripe-common/client.ts';
-import { loadStripeRuntimeConfig } from '../stripe-common/config.ts';
+import { loadStripePortalConfig } from '../stripe-common/config.ts';
 import { findOwnedStripeIdentity } from '../stripe-common/store.ts';
 import { StripeRequestError, StripeServiceError } from '../stripe-common/types.ts';
 
@@ -68,7 +68,7 @@ export function createStripePortalHandler(deps: PortalHandlerDependencies = {}) 
 function defaultPortalService(): PortalService {
   return {
     async create(ownerId) {
-      const config = loadStripeRuntimeConfig();
+      const config = loadStripePortalConfig();
       const supabase = createAdminClient();
       const rateLimit = await checkRateLimit(supabase, ownerId, PORTAL_RATE_LIMIT);
       if (!rateLimit.allowed) {
