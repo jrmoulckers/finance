@@ -7,11 +7,11 @@ Upstream: [`docs/adopting.md`](https://github.com/jrmoulckers/engineering/blob/m
 
 ## Layers
 
-| Layer                                                                                                         | What it gives finance                            | Status                                                                     |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
-| [Principles](https://github.com/jrmoulckers/engineering/tree/main/principles) — 66 `ENG-*` rules              | Cited by ID; resolve via `principles/index.json` | **Adopted**                                                                |
-| [Practices](https://github.com/jrmoulckers/engineering/tree/main/practices)                                   | Linked by URL from finance docs                  | **Adopted**                                                                |
-| [Packages](https://github.com/jrmoulckers/engineering/tree/main/packages) — shared ESLint/Prettier/TS presets | Executable enforcement                           | **Split** — Prettier adopted (vendored); ESLint blocked; tsconfig deferred |
+| Layer                                                                                                         | What it gives finance                            | Status                                                               |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
+| [Principles](https://github.com/jrmoulckers/engineering/tree/main/principles) — 66 `ENG-*` rules              | Cited by ID; resolve via `principles/index.json` | **Adopted**                                                          |
+| [Practices](https://github.com/jrmoulckers/engineering/tree/main/practices)                                   | Linked by URL from finance docs                  | **Adopted**                                                          |
+| [Packages](https://github.com/jrmoulckers/engineering/tree/main/packages) — shared ESLint/Prettier/TS presets | Executable enforcement                           | **Split** — Prettier and tsconfig adopted (vendored); ESLint blocked |
 
 ## Done
 
@@ -87,10 +87,12 @@ drift shows against the hash). Wiring is a `prettier` field in `package.json` po
 vendored file; `.prettierrc.json` was **removed**, since a dedicated rc file outranks the
 `package.json` field and would have silently kept the old config in force while appearing adopted.
 
-**`@jrmoulckers/tsconfig` was deliberately not vendored.** Its adoption is deferred on evidence
-(2,691 diagnostics — see _Deliberately deferred_). Vendoring a config nothing extends would put
-an unreferenced copy of someone else's authority in the tree, where it rots silently and fails no
-gate. Vendor it in the same change that adopts it, not before.
+**`@jrmoulckers/tsconfig` is now vendored and adopted.** The same lock covers the complete
+tsconfig set, and `apps/web/tsconfig.json` extends `vite-react.json`. The first adoption stage
+preserves Finance's zero-diagnostic baseline by disabling only `verbatimModuleSyntax`,
+`noUncheckedIndexedAccess`, `noUnusedLocals`, `noUnusedParameters`, and `checkJs`; the shared
+target, module, React, strictness, and safety defaults are active. The diagnostic inventory below
+remains the evidence for enabling those five flags in reviewable follow-up changes.
 
 ### Measured cost: 5 files, 48 lines — and it is not zero
 
@@ -1434,14 +1436,19 @@ parse-then-compare fixture is immune to reformatting by construction; a byte-com
 as a false test failure far from its cause. Finance has none of the latter, and the audit is
 recorded here so the next formatting change does not have to repeat it.
 
-## Deliberately deferred
+## Resolved deferral: shared tsconfig
 
-**`@jrmoulckers/tsconfig`** — and, following from that, it is **deliberately not vendored either**.
-`v0.15.1` makes the files fetchable with no token, which removes the access argument but not the
-migration cost below. A vendored config that nothing `extends` is not adoption: it fails no gate,
-is checked by no CI, and drifts against upstream silently until someone tries to use it. Fetch it
-in the change that adopts it. (Its `node.json` entrypoint, new in `v0.15.1`, is likewise not
-needed here — finance executes no `.ts` directly.)
+**`@jrmoulckers/tsconfig` is adopted from the vendored `v0.145.0` source.** This resolves both
+historical blockers without requiring package-registry credentials: `vendor-configs.mjs` fetches
+the pinned source directly, and upstream now provides `vite-react.json`. The vendored tree is
+covered by `engineering-configs.lock.json` and `eng:vendor:check`, while
+`apps/web/tsconfig.json` makes the preset executable in the normal type-check gate.
+
+The initial adoption keeps the previously measured diagnostic-heavy options disabled locally:
+`verbatimModuleSyntax`, `noUncheckedIndexedAccess`, `noUnusedLocals`, `noUnusedParameters`, and
+`checkJs`. This is a staged migration rather than a claim that the diagnostic inventory vanished.
+The remaining shared defaults apply immediately, and each disabled option can be enabled in a
+focused follow-up without coupling thousands of mechanical fixes to the preset adoption.
 
 `apps/web/tsconfig.json` is the repository's only tsconfig. Trial
 run against the shared chain (`vite-react.json` → `vite-app.json` → `base.json`, resolved from
