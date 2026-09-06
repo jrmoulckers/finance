@@ -29,23 +29,31 @@ export const TEST_REVENUECAT_CONFIG: RevenueCatConfig = {
     },
   },
   products: {
-    plus_monthly: {
+    apple_plus: {
       appId: 'app_apple',
+      revenueCatProductId: 'prod_apple_plus',
+      storeProductIdentifiers: ['plus_monthly'],
       logicalProduct: 'base_plan',
       tier: 'plus',
     },
-    premium_monthly: {
+    apple_premium: {
       appId: 'app_apple',
+      revenueCatProductId: 'prod_apple_premium',
+      storeProductIdentifiers: ['premium_monthly'],
       logicalProduct: 'base_plan',
       tier: 'premium',
     },
-    family_monthly: {
+    apple_family: {
       appId: 'app_apple',
+      revenueCatProductId: 'prod_apple_family',
+      storeProductIdentifiers: ['family_monthly'],
       logicalProduct: 'base_plan',
       tier: 'family',
     },
-    plus_google: {
+    google_plus: {
       appId: 'app_google',
+      revenueCatProductId: 'prod_google_plus',
+      storeProductIdentifiers: ['plus_google'],
       logicalProduct: 'base_plan',
       tier: 'plus',
     },
@@ -95,6 +103,7 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
   ];
   private readonly eventIds = new Set<string>();
   private readonly purchaseAliases = new Map<string, string>();
+  private readonly currentByPurchase = new Map<string, NormalizedBillingEvidence>();
   private current: NormalizedBillingEvidence | null = null;
   householdMember = true;
   identityPageRequests = 0;
@@ -146,14 +155,7 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
     return Promise.resolve(this.householdMember);
   }
 
-  findFamilyBinding(): Promise<string | null> {
-    return Promise.resolve(this.current?.tier === 'family' ? this.current.boundHouseholdId : null);
-  }
-
-  appendAndApply(
-    _identity: RevenueCatIdentity,
-    evidence: NormalizedBillingEvidence,
-  ): Promise<boolean> {
+  private resolvePurchaseAliases(evidence: NormalizedBillingEvidence): string {
     const aliasKeys = [
       ...evidence.storeTransactionIds.map((alias) => `store:${alias}`),
       ...(evidence.revenueCatSubscriptionId
@@ -168,22 +170,35 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
     if (knownBindings.size > 1) throw new Error('conflicting test purchase aliases');
     const canonicalPurchaseId =
       knownBindings.values().next().value ?? evidence.providerSubscriptionId;
-    if (canonicalPurchaseId !== evidence.providerSubscriptionId) {
-      throw new Error('conflicting test canonical purchase identity');
-    }
     for (const alias of aliasKeys) this.purchaseAliases.set(alias, canonicalPurchaseId);
+    return canonicalPurchaseId;
+  }
 
+  findFamilyBinding(
+    _identity: RevenueCatIdentity,
+    evidence: NormalizedBillingEvidence,
+  ): Promise<string | null> {
+    const canonicalPurchaseId = this.resolvePurchaseAliases(evidence);
+    const current = this.currentByPurchase.get(canonicalPurchaseId);
+    return Promise.resolve(current?.tier === 'family' ? current.boundHouseholdId : null);
+  }
+
+  appendAndApply(
+    _identity: RevenueCatIdentity,
+    evidence: NormalizedBillingEvidence,
+  ): Promise<{ applied: boolean; providerSubscriptionId: string }> {
+    const canonicalPurchaseId = this.resolvePurchaseAliases(evidence);
     const canonicalEvidence = {
       ...evidence,
       providerSubscriptionId: canonicalPurchaseId,
     };
     if (this.eventIds.has(evidence.providerEventId)) {
-      return Promise.resolve(false);
+      return Promise.resolve({ applied: false, providerSubscriptionId: canonicalPurchaseId });
     }
     this.eventIds.add(evidence.providerEventId);
     this.appended.push(canonicalEvidence);
 
-    const current = this.current;
+    const current = this.currentByPurchase.get(canonicalPurchaseId) ?? null;
     const incomingTime = Date.parse(canonicalEvidence.effectiveAt);
     const currentTime = current ? Date.parse(current.effectiveAt) : -1;
     const irreversible = current?.lifecycle === 'refunded' || current?.lifecycle === 'chargeback';
@@ -194,16 +209,34 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
           (canonicalEvidence.providerOrder === current?.providerOrder &&
             PRECEDENCE[canonicalEvidence.lifecycle] > PRECEDENCE[current.lifecycle])));
     if (!irreversible && orderedAfter) {
+      this.currentByPurchase.set(canonicalPurchaseId, canonicalEvidence);
       this.current = canonicalEvidence;
-      return Promise.resolve(true);
+      return Promise.resolve({ applied: true, providerSubscriptionId: canonicalPurchaseId });
     }
-    return Promise.resolve(false);
+    return Promise.resolve({ applied: false, providerSubscriptionId: canonicalPurchaseId });
+  }
+
+  purchaseGrantsAccess(
+    _identity: RevenueCatIdentity,
+    providerSubscriptionId: string,
+    _ownerId: string,
+    boundHouseholdId: string | null,
+  ): Promise<boolean> {
+    const current = this.currentByPurchase.get(providerSubscriptionId);
+    const grantsAccess =
+      current !== undefined &&
+      !['expired', 'refunded', 'chargeback'].includes(current.lifecycle) &&
+      (current.tier !== 'family' || current.boundHouseholdId === boundHouseholdId);
+    return Promise.resolve(grantsAccess);
   }
 
   getProjection(_ownerId: string, householdId: string | null): Promise<EntitlementProjection> {
-    const grantsAccess =
-      this.current && !['expired', 'refunded', 'chargeback'].includes(this.current.lifecycle);
-    const tier = grantsAccess ? this.current?.tier : undefined;
+    const current = [...this.currentByPurchase.values()].find(
+      (evidence) =>
+        !['expired', 'refunded', 'chargeback'].includes(evidence.lifecycle) &&
+        (evidence.tier !== 'family' || evidence.boundHouseholdId === householdId),
+    );
+    const tier = current?.tier;
     return Promise.resolve({
       userTier: !tier || tier === 'family' ? 'free' : tier,
       householdTier: householdId ? (tier === 'family' ? 'family' : 'free') : null,
@@ -211,7 +244,7 @@ export class MemoryRevenueCatStore implements RevenueCatStore {
       isPremiumSponsor: false,
       isFamilyBound: tier === 'family',
       effectiveAt: this.current?.effectiveAt ?? '2026-09-06T12:00:00.000Z',
-      expiresAt: this.current?.currentPeriodEnd ?? null,
+      expiresAt: current?.currentPeriodEnd ?? null,
       projectionVersion: this.appended.length + 1,
       serverTime: '2026-09-06T12:00:01.000Z',
     });

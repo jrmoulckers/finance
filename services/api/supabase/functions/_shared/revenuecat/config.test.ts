@@ -20,8 +20,10 @@ function validEnvironment(): Record<string, string> {
       },
     }),
     REVENUECAT_PRODUCT_MAP_JSON: JSON.stringify({
-      plus_monthly: {
+      apple_plus: {
         appId: 'app_apple',
+        revenueCatProductId: 'prod_apple_plus',
+        storeProductIdentifiers: ['plus_monthly'],
         logicalProduct: 'base_plan',
         tier: 'plus',
       },
@@ -34,8 +36,10 @@ Deno.test('RevenueCat configuration validates reviewed project/account/app and p
   const config = readRevenueCatConfig((name) => values[name]);
   assertEquals(config.projectId, 'proj_synthetic');
   assertEquals(config.apps.app_apple.store, 'APP_STORE');
-  assertEquals(config.products.plus_monthly.tier, 'plus');
-  assertEquals(config.products.plus_monthly.appId, 'app_apple');
+  assertEquals(config.products.apple_plus.tier, 'plus');
+  assertEquals(config.products.apple_plus.appId, 'app_apple');
+  assertEquals(config.products.apple_plus.revenueCatProductId, 'prod_apple_plus');
+  assertEquals(config.products.apple_plus.storeProductIdentifiers, ['plus_monthly']);
   assertEquals(config.webhookSignatureSecrets.length, 2);
 });
 
@@ -55,6 +59,8 @@ Deno.test('RevenueCat configuration rejects malformed or authority-bearing produ
     JSON.stringify({
       sku: {
         appId: 'app_apple',
+        revenueCatProductId: 'prod_invalid',
+        storeProductIdentifiers: ['invalid_monthly'],
         logicalProduct: 'base_plan',
         tier: 'enterprise',
       },
@@ -62,6 +68,8 @@ Deno.test('RevenueCat configuration rejects malformed or authority-bearing produ
     JSON.stringify({
       sku: {
         appId: 'unknown_app',
+        revenueCatProductId: 'prod_invalid',
+        storeProductIdentifiers: ['invalid_monthly'],
         logicalProduct: 'base_plan',
         tier: 'premium',
       },
@@ -69,6 +77,8 @@ Deno.test('RevenueCat configuration rejects malformed or authority-bearing produ
     JSON.stringify({
       sku: {
         appId: 'app_apple',
+        revenueCatProductId: 'prod_invalid',
+        storeProductIdentifiers: ['invalid_monthly'],
         logicalProduct: 'base_plan',
         tier: 'premium',
         quantity: 99,
@@ -77,6 +87,47 @@ Deno.test('RevenueCat configuration rejects malformed or authority-bearing produ
   ]) {
     const values = validEnvironment();
     values.REVENUECAT_PRODUCT_MAP_JSON = map;
+    assertThrows(() => readRevenueCatConfig((name) => values[name]), RevenueCatConfigurationError);
+  }
+});
+
+Deno.test('RevenueCat configuration rejects ambiguous provider product identifiers', () => {
+  for (const products of [
+    {
+      first: {
+        appId: 'app_apple',
+        revenueCatProductId: 'prod_duplicate',
+        storeProductIdentifiers: ['first_monthly'],
+        logicalProduct: 'base_plan',
+        tier: 'plus',
+      },
+      second: {
+        appId: 'app_apple',
+        revenueCatProductId: 'prod_duplicate',
+        storeProductIdentifiers: ['second_monthly'],
+        logicalProduct: 'base_plan',
+        tier: 'premium',
+      },
+    },
+    {
+      first: {
+        appId: 'app_apple',
+        revenueCatProductId: 'prod_first',
+        storeProductIdentifiers: ['duplicate_monthly'],
+        logicalProduct: 'base_plan',
+        tier: 'plus',
+      },
+      second: {
+        appId: 'app_apple',
+        revenueCatProductId: 'prod_second',
+        storeProductIdentifiers: ['duplicate_monthly'],
+        logicalProduct: 'base_plan',
+        tier: 'premium',
+      },
+    },
+  ]) {
+    const values = validEnvironment();
+    values.REVENUECAT_PRODUCT_MAP_JSON = JSON.stringify(products);
     assertThrows(() => readRevenueCatConfig((name) => values[name]), RevenueCatConfigurationError);
   }
 });

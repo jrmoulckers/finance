@@ -793,8 +793,9 @@ components:
           type: string
           enum: [pending, confirmed]
           description: >-
-            Confirmed only when access-bearing evidence is reflected in the
-            authoritative Finance projection; Free or denial-only results remain pending.
+            Confirmation requires the server-selected purchase candidate to be
+            access-bearing and that exact canonical binding to have an active
+            authoritative Finance grant; Free or denial-only results remain pending.
         entitlement:
           $ref: '#/components/schemas/EntitlementProjection'
 
@@ -809,8 +810,9 @@ paths:
       summary: Ingest RevenueCat evidence
       description: >-
         Authenticates the exact raw request body, validates the configured
-        account/project/app/environment and reviewed product map, then records
-        and applies normalized evidence. Unknown events grant nothing.
+        account/project/app/environment and reviewed store-product aliases,
+        then records and applies normalized evidence. Unknown events grant
+        nothing.
       tags: [Billing]
       security:
         - RevenueCatWebhookAuthorization: []
@@ -876,7 +878,8 @@ paths:
       description: >-
         Derives the provider customer lookup from auth.uid(). Caller-supplied
         tiers, prices, validity, allowance, quantity, receipts, and provider
-        identifiers are rejected.
+        identifiers are rejected. A different active subscription cannot
+        confirm a denied purchase candidate.
       tags: [Billing]
       security:
         - BearerJWT: []

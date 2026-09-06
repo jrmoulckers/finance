@@ -150,7 +150,11 @@ async function snapshotEvent(
   const periodEnd = millis(snapshot.current_period_ends_at);
   const store = providerStore(snapshot.store);
   const product =
-    typeof snapshot.product_id === 'string' ? config.products[snapshot.product_id] : undefined;
+    typeof snapshot.product_id === 'string'
+      ? Object.values(config.products).find(
+          (candidate) => candidate.revenueCatProductId === snapshot.product_id,
+        )
+      : undefined;
   const appId =
     store && product && config.apps[product.appId]?.store === store ? product.appId : null;
   if (!store || !appId) return null;

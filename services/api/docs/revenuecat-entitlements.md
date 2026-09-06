@@ -24,6 +24,13 @@ endpoint derives the RevenueCat customer lookup from the authenticated
 verified, and the ledger preserves the first household binding for the lifetime
 of the purchase.
 
+The reviewed product map stores RevenueCat v2 product IDs separately from App
+Store and Google Play product identifiers. Reconciliation resolves only the
+RevenueCat `prod...` namespace; signed webhooks resolve only reviewed store SKU
+aliases for the event's app. Both namespaces map to the same logical Finance
+catalog entry, and duplicate or ambiguous identifiers make configuration fail
+closed.
+
 The webhook signs `timestamp + "." + exact_raw_body` with HMAC-SHA256. The
 `X-RevenueCat-Webhook-Signature` header must contain exactly one Unix-second
 `t` value and at least one hexadecimal `v1` value. Every configured signature
@@ -42,8 +49,12 @@ verification.
   and environment, and optional eligible `household_id`. It returns
   `pending`, `confirmed`, or `error` plus only the minimized Finance
   projection. Denial-only provider evidence is still applied immediately but
-  returns `pending`; only access-bearing evidence backed by the resulting
-  authoritative projection returns `confirmed`.
+  returns `pending`. The server selects the latest trusted purchase candidate
+  by effective time, provider order, and lifecycle precedence, then returns
+  `confirmed` only when that exact canonical purchase binding has an active
+  authoritative grant for the authenticated user or immutable Family
+  household. Another active subscription cannot confirm a denied purchase;
+  duplicate retries succeed only when the same binding still grants access.
 - `GET /revenuecat-confirm?household_id=...` returns the current minimized
   Finance projection without contacting RevenueCat. A Free projection is
   reported as `pending`, never as a successful purchase confirmation.
@@ -79,6 +90,12 @@ returned store transaction ID to
 service-role-only resolver. Aliases are immutable and conflicts are rejected,
 so renewals, reconciliation, refunds, and chargebacks converge on one ledger
 subscription and one historical Family binding regardless of delivery order.
+When a shared alias already resolves to one binding owned by the same billing
+account, that binding's original canonical ID wins even if the other ingestion
+surface proposed a different canonical candidate. Family terminal events first
+resolve all signed aliases through this authority before retrieving the
+historical household, preventing a distinct webhook original ID from bypassing
+refund or chargeback revocation.
 
 Responses and logs exclude provider names and identifiers, receipts, customer
 attributes, raw payloads, signatures, secrets, internal ledger IDs, and other

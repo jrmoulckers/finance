@@ -60,6 +60,8 @@ export interface NormalizationResult {
     'unknown_event' | 'unknown_product' | 'family_binding_required' | 'deferred_product_change';
 }
 
+export type RevenueCatProductNamespace = 'revenuecat' | 'store';
+
 function requiredString(value: unknown): string {
   if (typeof value !== 'string' || !value.trim() || value.length > 255) {
     throw new RevenueCatEvidenceError('invalid_payload');
@@ -123,6 +125,21 @@ function getPurchaseAliases(
   };
 }
 
+function reviewedProduct(
+  config: RevenueCatConfig,
+  appId: string,
+  productId: string,
+  namespace: RevenueCatProductNamespace,
+) {
+  return Object.values(config.products).find(
+    (product) =>
+      product.appId === appId &&
+      (namespace === 'revenuecat'
+        ? product.revenueCatProductId === productId
+        : product.storeProductIdentifiers.includes(productId)),
+  );
+}
+
 export function parseRevenueCatWebhookBody(rawBody: Uint8Array): RevenueCatEvent {
   let value: unknown;
   try {
@@ -145,6 +162,7 @@ export function normalizeRevenueCatEvent(
   config: RevenueCatConfig,
   familyHouseholdId: string | null,
   expectedUserId?: string,
+  productNamespace: RevenueCatProductNamespace = 'store',
 ): NormalizationResult {
   const appId = requiredString(event.app_id);
   const app = config.apps[appId];
@@ -174,7 +192,7 @@ export function normalizeRevenueCatEvent(
   }
 
   const productId = requiredString(event.product_id);
-  const product = config.products[productId];
+  const product = reviewedProduct(config, appId, productId, productNamespace);
   if (!product) {
     return { customerIds, evidence: null, ignoredReason: 'unknown_product' };
   }

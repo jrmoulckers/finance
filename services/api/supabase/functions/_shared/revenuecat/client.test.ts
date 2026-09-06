@@ -27,7 +27,7 @@ function subscription(overrides: Record<string, unknown> = {}): Record<string, u
     id: 'sub_synthetic',
     management_url: 'https://apps.apple.com/account/subscriptions',
     pending_changes: null,
-    product_id: 'plus_monthly',
+    product_id: 'prod_apple_plus',
     status: 'active',
     store: 'app_store',
     store_subscription_identifier: 'store-subscription-synthetic',
@@ -116,7 +116,7 @@ Deno.test(
               current_period_ends_at: PERIOD_END + 1,
               current_period_starts_at: PERIOD_START + 1,
               id: 'sub_terminal_synthetic',
-              product_id: 'plus_google',
+              product_id: 'prod_google_plus',
               status: 'expired',
               store: 'play_store',
               store_subscription_identifier: 'store-terminal-synthetic',
@@ -232,7 +232,13 @@ Deno.test('RevenueCat v2 paused access is paid-through only when explicitly gran
       subscription({ status: 'paused', gives_access: givesAccess }),
     );
     const events = await client.getCustomerEvents(TEST_USER_ID);
-    const normalized = normalizeRevenueCatEvent(events[0], TEST_REVENUECAT_CONFIG, null);
+    const normalized = normalizeRevenueCatEvent(
+      events[0],
+      TEST_REVENUECAT_CONFIG,
+      null,
+      undefined,
+      'revenuecat',
+    );
     assertEquals(normalized.evidence?.lifecycle, expectedLifecycle);
     assertEquals(
       normalized.evidence?.currentPeriodEnd,
@@ -272,7 +278,13 @@ Deno.test('RevenueCat v2 grace never invents a bound and billing retry denies ac
   ] as const) {
     const client = singleSubscriptionClient(subscription({ status, gives_access: givesAccess }));
     const events = await client.getCustomerEvents(TEST_USER_ID);
-    const normalized = normalizeRevenueCatEvent(events[0], TEST_REVENUECAT_CONFIG, null);
+    const normalized = normalizeRevenueCatEvent(
+      events[0],
+      TEST_REVENUECAT_CONFIG,
+      null,
+      undefined,
+      'revenuecat',
+    );
     assertEquals(normalized.evidence?.lifecycle, 'expired');
     assertEquals(normalized.evidence?.graceEnd, null);
     assertEquals(normalized.evidence?.terminalAt, new Date(PERIOD_START).toISOString());
@@ -322,6 +334,7 @@ Deno.test(
         await activeClient.getCustomerEvents(TEST_USER_ID),
         TEST_REVENUECAT_CONFIG,
         store,
+        { productNamespace: 'revenuecat' },
       );
 
       const denialClient = singleSubscriptionClient(subscription({ status, gives_access: false }));
@@ -358,7 +371,7 @@ Deno.test(
       const store = new MemoryRevenueCatStore();
       const client = singleSubscriptionClient(
         subscription({
-          product_id: 'family_monthly',
+          product_id: 'prod_apple_family',
           store_subscription_identifier: 'store-renewal-two',
         }),
         ['store-original-synthetic', 'store-renewal-one', 'store-renewal-two'],
@@ -367,7 +380,10 @@ Deno.test(
         await client.getCustomerEvents(TEST_USER_ID),
         TEST_REVENUECAT_CONFIG,
         store,
-        { householdIntent: '44010000-0000-4000-8000-000000000002' },
+        {
+          householdIntent: '44010000-0000-4000-8000-000000000002',
+          productNamespace: 'revenuecat',
+        },
       );
       await ingestRevenueCatEvents(
         [
@@ -377,7 +393,7 @@ Deno.test(
             cancel_reason: cancelReason,
             event_timestamp_ms: PERIOD_START + 1,
             product_id: 'family_monthly',
-            original_transaction_id: 'store-original-synthetic',
+            original_transaction_id: 'webhook-original-distinct',
             transaction_id: 'store-renewal-two',
           }),
         ],
@@ -396,6 +412,7 @@ Deno.test(
         'store-original-synthetic',
         'store-renewal-one',
         'store-renewal-two',
+        'webhook-original-distinct',
       ]) {
         assertEquals(store.canonicalPurchaseId('store', transactionId), 'store-original-synthetic');
       }
@@ -404,6 +421,48 @@ Deno.test(
         cancelReason === 'REFUND' ? 'refunded' : 'chargeback',
       );
       assertEquals((await store.getProjection(TEST_USER_ID, null)).userTier, 'free');
+    }
+  },
+);
+
+Deno.test(
+  'RevenueCat webhook-first aliases converge with distinct v2 purchase history',
+  async () => {
+    const store = new MemoryRevenueCatStore();
+    await ingestRevenueCatEvents(
+      [
+        testRevenueCatEvent({
+          original_transaction_id: 'webhook-original-first',
+          transaction_id: 'store-renewal-latest',
+        }),
+      ],
+      TEST_REVENUECAT_CONFIG,
+      store,
+    );
+
+    const client = singleSubscriptionClient(
+      subscription({ store_subscription_identifier: 'store-renewal-latest' }),
+      ['store-earliest-v2', 'store-renewal-middle', 'store-renewal-latest'],
+    );
+    await ingestRevenueCatEvents(
+      await client.getCustomerEvents(TEST_USER_ID),
+      TEST_REVENUECAT_CONFIG,
+      store,
+      { productNamespace: 'revenuecat' },
+    );
+
+    assertEquals(store.purchaseBindingCount(), 1);
+    assertEquals(
+      store.canonicalPurchaseId('revenuecat', 'sub_synthetic'),
+      'webhook-original-first',
+    );
+    for (const transactionId of [
+      'webhook-original-first',
+      'store-earliest-v2',
+      'store-renewal-middle',
+      'store-renewal-latest',
+    ]) {
+      assertEquals(store.canonicalPurchaseId('store', transactionId), 'webhook-original-first');
     }
   },
 );

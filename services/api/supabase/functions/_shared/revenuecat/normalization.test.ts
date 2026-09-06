@@ -25,18 +25,24 @@ const config: RevenueCatConfig = {
     },
   },
   products: {
-    plus_monthly: {
+    apple_plus: {
       appId: 'app_apple',
+      revenueCatProductId: 'prod_apple_plus',
+      storeProductIdentifiers: ['plus_monthly'],
       logicalProduct: 'base_plan',
       tier: 'plus',
     },
-    premium_monthly: {
+    apple_premium: {
       appId: 'app_apple',
+      revenueCatProductId: 'prod_apple_premium',
+      storeProductIdentifiers: ['premium_monthly'],
       logicalProduct: 'base_plan',
       tier: 'premium',
     },
-    family_monthly: {
+    apple_family: {
       appId: 'app_apple',
+      revenueCatProductId: 'prod_apple_family',
+      storeProductIdentifiers: ['family_monthly'],
       logicalProduct: 'base_plan',
       tier: 'family',
     },
@@ -142,6 +148,34 @@ Deno.test('RevenueCat uses reviewed product mapping and immutable Family intent'
   );
   assertEquals(bound.evidence?.boundHouseholdId, '44010000-0000-4000-8000-000000000099');
   assertEquals(bound.evidence?.quantity, 1);
+});
+
+Deno.test('RevenueCat resolves distinct reviewed webhook and v2 product identifiers', () => {
+  const webhook = normalizeRevenueCatEvent(event({ product_id: 'plus_monthly' }), config, null);
+  const reconciliation = normalizeRevenueCatEvent(
+    event({ product_id: 'prod_apple_plus' }),
+    config,
+    null,
+    undefined,
+    'revenuecat',
+  );
+
+  assertEquals(webhook.evidence?.tier, 'plus');
+  assertEquals(reconciliation.evidence?.tier, 'plus');
+  assertEquals(
+    normalizeRevenueCatEvent(event({ product_id: 'prod_apple_plus' }), config, null).evidence,
+    null,
+  );
+  assertEquals(
+    normalizeRevenueCatEvent(
+      event({ product_id: 'plus_monthly' }),
+      config,
+      null,
+      undefined,
+      'revenuecat',
+    ).evidence,
+    null,
+  );
 });
 
 Deno.test('RevenueCat retains only authoritative provider purchase aliases', () => {

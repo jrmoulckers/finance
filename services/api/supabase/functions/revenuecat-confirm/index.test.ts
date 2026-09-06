@@ -9,6 +9,7 @@ import {
   TEST_USER_ID,
   testRevenueCatEvent,
 } from '../_shared/revenuecat/test-support.ts';
+import type { RevenueCatEvent } from '../_shared/revenuecat/normalization.ts';
 import { createRevenueCatConfirmationHandler } from './index.ts';
 
 function request(body: Record<string, unknown>, authenticated = true): Request {
@@ -21,7 +22,8 @@ function request(body: Record<string, unknown>, authenticated = true): Request {
 
 function handler(
   store: MemoryRevenueCatStore,
-  getCustomerEvents = () => Promise.resolve([testRevenueCatEvent()]),
+  getCustomerEvents: (customerId: string) => Promise<RevenueCatEvent[]> = () =>
+    Promise.resolve([testRevenueCatEvent({ product_id: 'prod_apple_plus' })]),
 ) {
   return createRevenueCatConfirmationHandler({
     authenticate: (req) => {
@@ -45,7 +47,7 @@ Deno.test('native confirmation binds provider lookup to authenticated auth.uid()
   let customer = '';
   const response = await handler(store, (customerId) => {
     customer = customerId;
-    return Promise.resolve([testRevenueCatEvent()]);
+    return Promise.resolve([testRevenueCatEvent({ product_id: 'prod_apple_plus' })]);
   })(
     request({
       operation: 'confirm',
@@ -80,6 +82,24 @@ Deno.test('confirmation remains pending when RevenueCat has no reviewed evidence
   );
   assertEquals((await response.json()).status, 'pending');
 });
+
+Deno.test(
+  'duplicate confirmation retries use the same authoritative purchase binding',
+  async () => {
+    const store = new MemoryRevenueCatStore();
+    const confirm = handler(store);
+    const body = {
+      operation: 'confirm',
+      app_id: 'app_apple',
+      environment: 'sandbox',
+    };
+
+    assertEquals((await (await confirm(request(body))).json()).status, 'confirmed');
+    assertEquals((await (await confirm(request(body))).json()).status, 'confirmed');
+    assertEquals(store.appended.length, 1);
+    assertEquals(store.purchaseBindingCount(), 1);
+  },
+);
 
 Deno.test(
   'native restore requires authentication and rejects client authority fields',
@@ -177,7 +197,7 @@ Deno.test('denial-only confirmation applies revocation but remains pending', asy
             current_period_ends_at: Date.parse('2026-11-06T12:00:00Z'),
             environment: 'sandbox',
             gives_access: false,
-            product_id: 'plus_monthly',
+            product_id: 'prod_apple_plus',
             status: 'incomplete',
             store: 'app_store',
             store_subscription_identifier: 'txn_synthetic',
@@ -205,6 +225,43 @@ Deno.test('denial-only confirmation applies revocation but remains pending', asy
   assertEquals(store.currentEvidence()?.lifecycle, 'expired');
 });
 
+Deno.test('denied purchase is not confirmed by another active subscription', async () => {
+  const store = new MemoryRevenueCatStore();
+  await handler(store)(
+    request({
+      operation: 'confirm',
+      app_id: 'app_apple',
+      environment: 'sandbox',
+    }),
+  );
+
+  const deniedPurchase = testRevenueCatEvent({
+    id: 'reconcile_denied_distinct',
+    type: 'EXPIRATION',
+    event_timestamp_ms: Date.parse('2026-10-07T12:00:00Z'),
+    provider_order_ms: Date.parse('2026-10-07T12:00:00Z'),
+    product_id: 'prod_apple_plus',
+    purchased_at_ms: Date.parse('2026-10-07T12:00:00Z'),
+    expiration_at_ms: Date.parse('2026-10-07T12:00:00Z'),
+    original_transaction_id: 'denied-purchase-distinct',
+    revenuecat_subscription_id: 'sub_denied_distinct',
+    store_transaction_ids: ['denied-purchase-distinct'],
+  });
+  const response = await handler(store, () => Promise.resolve([deniedPurchase]))(
+    request({
+      operation: 'confirm',
+      app_id: 'app_apple',
+      environment: 'sandbox',
+    }),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.status, 'pending');
+  assertEquals(body.entitlement.userTier, 'plus');
+  assertEquals(store.purchaseBindingCount(), 2);
+});
+
 Deno.test('authenticated free status is pending', async () => {
   const response = await handler(new MemoryRevenueCatStore())(
     new Request('https://finance.example.test/revenuecat-confirm', {
@@ -219,7 +276,7 @@ Deno.test('Family confirmation requires eligible household intent', async () => 
   const store = new MemoryRevenueCatStore();
   store.householdMember = false;
   const response = await handler(store, () =>
-    Promise.resolve([testRevenueCatEvent({ product_id: 'family_monthly' })]),
+    Promise.resolve([testRevenueCatEvent({ product_id: 'prod_apple_family' })]),
   )(
     request({
       operation: 'confirm',

@@ -12,6 +12,8 @@ export interface RevenueCatApp {
 
 export interface RevenueCatProduct {
   appId: string;
+  revenueCatProductId: string;
+  storeProductIdentifiers: readonly string[];
   logicalProduct: 'base_plan';
   tier: PaidTier;
 }
@@ -95,23 +97,61 @@ function parseProducts(
 ): Record<string, RevenueCatProduct> {
   const entries = parseJsonObject(raw);
   const products: Record<string, RevenueCatProduct> = {};
+  const revenueCatProductIds = new Set<string>();
+  const storeProductIdentifiers = new Set<string>();
 
-  for (const [productId, value] of Object.entries(entries)) {
-    if (!productId.trim() || !value || typeof value !== 'object' || Array.isArray(value)) {
+  for (const [catalogKey, value] of Object.entries(entries)) {
+    if (!catalogKey.trim() || !value || typeof value !== 'object' || Array.isArray(value)) {
       throw new RevenueCatConfigurationError();
     }
     const product = value as Record<string, unknown>;
+    const storeIds = product.storeProductIdentifiers;
     if (
       typeof product.appId !== 'string' ||
       !apps[product.appId] ||
+      typeof product.revenueCatProductId !== 'string' ||
+      !product.revenueCatProductId.trim() ||
+      product.revenueCatProductId !== product.revenueCatProductId.trim() ||
+      product.revenueCatProductId.length > 255 ||
+      !Array.isArray(storeIds) ||
+      storeIds.length === 0 ||
+      storeIds.some(
+        (storeId) =>
+          typeof storeId !== 'string' ||
+          !storeId.trim() ||
+          storeId !== storeId.trim() ||
+          storeId.length > 255,
+      ) ||
+      new Set(storeIds).size !== storeIds.length ||
       product.logicalProduct !== 'base_plan' ||
       !['plus', 'premium', 'family'].includes(String(product.tier)) ||
-      Object.keys(product).some((key) => !['appId', 'logicalProduct', 'tier'].includes(key))
+      Object.keys(product).some(
+        (key) =>
+          ![
+            'appId',
+            'revenueCatProductId',
+            'storeProductIdentifiers',
+            'logicalProduct',
+            'tier',
+          ].includes(key),
+      )
     ) {
       throw new RevenueCatConfigurationError();
     }
-    products[productId] = {
+    const revenueCatKey = product.revenueCatProductId.trim();
+    const scopedStoreIds = (storeIds as string[]).map((storeId) => `${product.appId}:${storeId}`);
+    if (
+      revenueCatProductIds.has(revenueCatKey) ||
+      scopedStoreIds.some((storeId) => storeProductIdentifiers.has(storeId))
+    ) {
+      throw new RevenueCatConfigurationError();
+    }
+    revenueCatProductIds.add(revenueCatKey);
+    scopedStoreIds.forEach((storeId) => storeProductIdentifiers.add(storeId));
+    products[catalogKey] = {
       appId: product.appId,
+      revenueCatProductId: revenueCatKey,
+      storeProductIdentifiers: storeIds as string[],
       logicalProduct: 'base_plan',
       tier: product.tier as PaidTier,
     };

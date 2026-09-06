@@ -141,9 +141,29 @@ SELECT pg_temp.assert_true(
         'resolve_revenuecat_purchase_binding(uuid,text,text,text,text[])',
         'EXECUTE'
     )
+    AND NOT has_function_privilege(
+        'authenticated',
+        'find_revenuecat_family_binding(uuid,text,text,text,text[])',
+        'EXECUTE'
+    )
+    AND NOT has_function_privilege(
+        'authenticated',
+        'revenuecat_purchase_grants_access(uuid,text,text,uuid,uuid)',
+        'EXECUTE'
+    )
     AND has_function_privilege(
         'service_role',
         'resolve_revenuecat_purchase_binding(uuid,text,text,text,text[])',
+        'EXECUTE'
+    )
+    AND has_function_privilege(
+        'service_role',
+        'find_revenuecat_family_binding(uuid,text,text,text,text[])',
+        'EXECUTE'
+    )
+    AND has_function_privilege(
+        'service_role',
+        'revenuecat_purchase_grants_access(uuid,text,text,uuid,uuid)',
         'EXECUTE'
     )
     AND NOT has_function_privilege('authenticated', 'rebuild_billing_entitlements(uuid)', 'EXECUTE')
@@ -174,6 +194,8 @@ SELECT pg_temp.assert_true(
             'record_billing_provider_event',
             'apply_billing_provider_event',
             'resolve_revenuecat_purchase_binding',
+            'find_revenuecat_family_binding',
+            'revenuecat_purchase_grants_access',
             'rebuild_billing_entitlements',
             'billing_purchase_lock_key',
             'lock_billing_accounts_internal',
@@ -547,48 +569,83 @@ SELECT pg_temp.assert_true(
         '44000000-0000-4000-b000-000000000001',
         'sandbox',
         NULL,
-        'store_original_family',
-        ARRAY['store_original_family']
-    ) = 'store_original_family',
-    'signed webhook evidence must establish the immutable original purchase binding'
+        'webhook_original_first',
+        ARRAY['webhook_original_first', 'store_renewal_shared_first']
+    ) = 'webhook_original_first',
+    'webhook-first evidence must establish one immutable purchase binding'
 );
 
 SELECT pg_temp.assert_true(
     public.resolve_revenuecat_purchase_binding(
         '44000000-0000-4000-b000-000000000001',
         'sandbox',
-        'rc_subscription_family',
-        'store_original_family',
+        'rc_subscription_webhook_first',
+        'store_earliest_reconcile_first',
         ARRAY[
-            'store_original_family',
-            'store_renewal_family_1',
-            'store_renewal_family_2',
-            'store_renewal_family_3'
+            'store_earliest_reconcile_first',
+            'store_renewal_middle_first',
+            'store_renewal_shared_first'
         ]
-    ) = 'store_original_family',
-    'later authoritative renewal aliases must preserve the immutable binding'
+    ) = 'webhook_original_first',
+    'reconciliation must preserve a webhook canonical ID through a shared renewal alias'
+);
+
+SELECT pg_temp.assert_true(
+    public.resolve_revenuecat_purchase_binding(
+        '44000000-0000-4000-b000-000000000001',
+        'sandbox',
+        'rc_subscription_reconciliation_first',
+        'store_earliest_reconciliation_first',
+        ARRAY[
+            'store_earliest_reconciliation_first',
+            'store_renewal_middle_second',
+            'store_renewal_shared_second'
+        ]
+    ) = 'store_earliest_reconciliation_first',
+    'reconciliation-first evidence must establish its earliest transaction binding'
+);
+
+SELECT pg_temp.assert_true(
+    public.resolve_revenuecat_purchase_binding(
+        '44000000-0000-4000-b000-000000000001',
+        'sandbox',
+        NULL,
+        'webhook_original_second',
+        ARRAY['webhook_original_second', 'store_renewal_shared_second']
+    ) = 'store_earliest_reconciliation_first',
+    'webhook evidence must preserve a reconciliation canonical ID through a shared renewal alias'
 );
 
 SELECT pg_temp.assert_true(
     (
-        SELECT count(DISTINCT purchase_binding_id) = 1
-           AND count(*) = 5
+        SELECT count(DISTINCT purchase_binding_id) = 2
+           AND count(*) = 10
         FROM billing_provider_purchase_aliases
         WHERE provider = 'revenuecat'
           AND environment = 'sandbox'
     )
     AND (
-        SELECT provider_subscription_id = 'store_original_family'
+        SELECT provider_subscription_id = 'webhook_original_first'
            AND billing_account_id = '44000000-0000-4000-b000-000000000001'
         FROM billing_provider_purchase_bindings
         WHERE id = (
             SELECT purchase_binding_id
             FROM billing_provider_purchase_aliases
             WHERE alias_kind = 'revenuecat_subscription_id'
-              AND provider_alias = 'rc_subscription_family'
+              AND provider_alias = 'rc_subscription_webhook_first'
+        )
+    )
+    AND (
+        SELECT provider_subscription_id = 'store_earliest_reconciliation_first'
+        FROM billing_provider_purchase_bindings
+        WHERE id = (
+            SELECT purchase_binding_id
+            FROM billing_provider_purchase_aliases
+            WHERE alias_kind = 'store_transaction_id'
+              AND provider_alias = 'webhook_original_second'
         )
     ),
-    'all RevenueCat aliases must target the original store purchase binding'
+    'all cross-surface aliases must target the binding established by the first surface'
 );
 
 SELECT pg_temp.expect_error(
@@ -598,7 +655,7 @@ SELECT pg_temp.expect_error(
             'sandbox',
             'rc_subscription_conflict',
             'store_original_conflict',
-            ARRAY['store_original_conflict', 'store_renewal_family_2']
+            ARRAY['store_original_conflict', 'store_renewal_shared_first']
         )
     $sql$,
     '23514',
@@ -607,9 +664,23 @@ SELECT pg_temp.expect_error(
 
 SELECT pg_temp.expect_error(
     $sql$
+        SELECT public.resolve_revenuecat_purchase_binding(
+            '44000000-0000-4000-b000-000000000001',
+            'sandbox',
+            'rc_subscription_webhook_first',
+            'store_conflicting_bridge',
+            ARRAY['store_conflicting_bridge', 'store_renewal_shared_second']
+        )
+    $sql$,
+    '23514',
+    'aliases spanning two existing purchase bindings must be rejected'
+);
+
+SELECT pg_temp.expect_error(
+    $sql$
         UPDATE billing_provider_purchase_aliases
         SET provider_alias = 'store_mutated'
-        WHERE provider_alias = 'store_renewal_family_1'
+        WHERE provider_alias = 'store_renewal_middle_first'
     $sql$,
     '23514',
     'RevenueCat purchase aliases must be immutable'
@@ -618,7 +689,7 @@ SELECT pg_temp.expect_error(
 SELECT pg_temp.expect_error(
     $sql$
         DELETE FROM billing_provider_purchase_aliases
-        WHERE provider_alias = 'store_renewal_family_1'
+        WHERE provider_alias = 'store_renewal_middle_first'
     $sql$,
     '23514',
     'RevenueCat purchase aliases cannot be deleted'
@@ -2742,6 +2813,27 @@ SELECT pg_temp.assert_true(
 );
 
 SELECT pg_temp.assert_true(
+    public.revenuecat_purchase_grants_access(
+        '44010000-0000-4000-b000-000000000005',
+        'sandbox',
+        'store_original_family_terminal',
+        NULL,
+        '44010000-0000-4000-9000-000000000005'
+    )
+    AND public.find_revenuecat_family_binding(
+        '44010000-0000-4000-b000-000000000005',
+        'sandbox',
+        NULL,
+        'webhook_original_family_chargeback',
+        ARRAY[
+            'webhook_original_family_chargeback',
+            'store_renewal_family_terminal'
+        ]
+    ) = '44010000-0000-4000-9000-000000000005',
+    'Family authority lookup must resolve a distinct webhook original through a renewal alias'
+);
+
+SELECT pg_temp.assert_true(
     public.apply_billing_provider_event(public.record_billing_provider_event(
         '44010000-0000-4000-b000-000000000005',
         '44010000-0000-4000-c000-000000000003',
@@ -2788,8 +2880,106 @@ SELECT pg_temp.assert_true(
               WHERE provider_event_id = 'rc_event_family_chargeback'
           )
           AND revoked_at IS NULL
+    )
+    AND NOT public.revenuecat_purchase_grants_access(
+        '44010000-0000-4000-b000-000000000005',
+        'sandbox',
+        'store_original_family_terminal',
+        NULL,
+        '44010000-0000-4000-9000-000000000005'
     ),
     'RevenueCat terminal evidence must retain one Family subscription and revoke access'
+);
+
+SELECT pg_temp.assert_true(
+    public.resolve_revenuecat_purchase_binding(
+        '44010000-0000-4000-b000-000000000005',
+        'sandbox',
+        'rc_subscription_family_refund',
+        'store_original_family_refund',
+        ARRAY[
+            'store_original_family_refund',
+            'store_renewal_family_refund'
+        ]
+    ) = 'store_original_family_refund',
+    'second Family purchase must establish reconciliation aliases'
+);
+
+SELECT pg_temp.assert_true(
+    public.apply_billing_provider_event(public.record_billing_provider_event(
+        '44010000-0000-4000-b000-000000000005',
+        '44010000-0000-4000-c000-000000000003',
+        'revenuecat',
+        'sandbox',
+        'rc_event_family_refund_active',
+        'store_original_family_refund',
+        NULL,
+        statement_timestamp(),
+        statement_timestamp() - interval '2 days',
+        1,
+        'activated',
+        'active',
+        'base_plan',
+        'family',
+        1,
+        statement_timestamp() + interval '28 days',
+        NULL,
+        NULL,
+        '44010000-0000-4000-9000-000000000005',
+        false
+    )),
+    'second RevenueCat Family purchase must grant before refund'
+);
+
+SELECT pg_temp.assert_true(
+    public.find_revenuecat_family_binding(
+        '44010000-0000-4000-b000-000000000005',
+        'sandbox',
+        NULL,
+        'webhook_original_family_refund',
+        ARRAY[
+            'webhook_original_family_refund',
+            'store_renewal_family_refund'
+        ]
+    ) = '44010000-0000-4000-9000-000000000005',
+    'Family refund lookup must recover the immutable household through aliases'
+);
+
+SELECT pg_temp.assert_true(
+    public.apply_billing_provider_event(public.record_billing_provider_event(
+        '44010000-0000-4000-b000-000000000005',
+        '44010000-0000-4000-c000-000000000003',
+        'revenuecat',
+        'sandbox',
+        'rc_event_family_refund',
+        'store_original_family_refund',
+        NULL,
+        statement_timestamp(),
+        statement_timestamp() - interval '1 day',
+        2,
+        'refunded',
+        'refunded',
+        'base_plan',
+        'family',
+        1,
+        NULL,
+        NULL,
+        statement_timestamp() - interval '1 day',
+        '44010000-0000-4000-9000-000000000005',
+        false
+    )),
+    'RevenueCat Family refund must revoke the aliased canonical subscription'
+);
+
+SELECT pg_temp.assert_true(
+    NOT public.revenuecat_purchase_grants_access(
+        '44010000-0000-4000-b000-000000000005',
+        'sandbox',
+        'store_original_family_refund',
+        NULL,
+        '44010000-0000-4000-9000-000000000005'
+    ),
+    'Family refund must immediately revoke the exact purchase grant'
 );
 
 ROLLBACK;

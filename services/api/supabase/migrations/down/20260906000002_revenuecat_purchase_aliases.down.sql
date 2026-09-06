@@ -5,6 +5,12 @@
 -- LOCAL/UNSHIPPED SCHEMA ONLY. Once real RevenueCat aliases exist, disable the
 -- adapter and forward-repair rather than deleting immutable purchase evidence.
 
+DROP FUNCTION IF EXISTS public.find_revenuecat_family_binding(
+    UUID, TEXT, TEXT, TEXT, TEXT[]
+);
+DROP FUNCTION IF EXISTS public.revenuecat_purchase_grants_access(
+    UUID, TEXT, TEXT, UUID, UUID
+);
 DROP FUNCTION IF EXISTS public.resolve_revenuecat_purchase_binding(
     UUID, TEXT, TEXT, TEXT, TEXT[]
 );

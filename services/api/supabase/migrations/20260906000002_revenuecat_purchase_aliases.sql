@@ -193,8 +193,7 @@ BEGIN
     FROM billing_provider_purchase_bindings
     WHERE id = v_binding_id;
 
-    IF v_bound_account_id IS DISTINCT FROM p_billing_account_id
-       OR v_canonical_purchase_id IS DISTINCT FROM p_canonical_store_transaction_id THEN
+    IF v_bound_account_id IS DISTINCT FROM p_billing_account_id THEN
         RAISE EXCEPTION 'RevenueCat purchase aliases conflict with immutable purchase binding'
             USING ERRCODE = 'check_violation';
     END IF;
@@ -251,6 +250,108 @@ BEGIN
 END;
 $$;
 
+CREATE FUNCTION public.find_revenuecat_family_binding(
+    p_billing_account_id UUID,
+    p_environment TEXT,
+    p_revenuecat_subscription_id TEXT,
+    p_canonical_store_transaction_id TEXT,
+    p_store_transaction_ids TEXT[]
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_canonical_purchase_id TEXT;
+    v_historical_household_id UUID;
+BEGIN
+    v_canonical_purchase_id := public.resolve_revenuecat_purchase_binding(
+        p_billing_account_id,
+        p_environment,
+        p_revenuecat_subscription_id,
+        p_canonical_store_transaction_id,
+        p_store_transaction_ids
+    );
+
+    SELECT s.historical_family_household_id
+    INTO v_historical_household_id
+    FROM billing_provider_purchase_bindings b
+    JOIN billing_subscriptions s
+      ON s.billing_account_id = b.billing_account_id
+     AND s.provider = b.provider
+     AND s.environment = b.environment
+     AND s.provider_subscription_id = b.provider_subscription_id
+     AND s.provider_subscription_item_id IS NOT DISTINCT FROM
+         b.provider_subscription_item_id
+    WHERE b.billing_account_id = p_billing_account_id
+      AND b.provider = 'revenuecat'
+      AND b.environment = p_environment
+      AND b.provider_subscription_id = v_canonical_purchase_id
+      AND b.provider_subscription_item_id IS NULL;
+
+    RETURN v_historical_household_id;
+END;
+$$;
+
+CREATE FUNCTION public.revenuecat_purchase_grants_access(
+    p_billing_account_id UUID,
+    p_environment TEXT,
+    p_canonical_store_transaction_id TEXT,
+    p_beneficiary_user_id UUID,
+    p_beneficiary_household_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF (p_beneficiary_user_id IS NULL) =
+       (p_beneficiary_household_id IS NULL) THEN
+        RAISE EXCEPTION 'exactly one RevenueCat beneficiary is required'
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN EXISTS (
+        SELECT 1
+        FROM billing_provider_purchase_bindings b
+        JOIN billing_subscriptions s
+          ON s.billing_account_id = b.billing_account_id
+         AND s.provider = b.provider
+         AND s.environment = b.environment
+         AND s.provider_subscription_id = b.provider_subscription_id
+         AND s.provider_subscription_item_id IS NOT DISTINCT FROM
+             b.provider_subscription_item_id
+        JOIN entitlement_grants g
+          ON g.subscription_id = s.id
+        JOIN billing_accounts a
+          ON a.id = b.billing_account_id
+        WHERE b.billing_account_id = p_billing_account_id
+          AND b.provider = 'revenuecat'
+          AND b.environment = p_environment
+          AND b.provider_subscription_id = p_canonical_store_transaction_id
+          AND b.provider_subscription_item_id IS NULL
+          AND g.revoked_at IS NULL
+          AND g.expires_at > statement_timestamp()
+          AND (
+              (
+                  p_beneficiary_user_id IS NOT NULL
+                  AND a.owner_id = p_beneficiary_user_id
+                  AND g.beneficiary_user_id = p_beneficiary_user_id
+              )
+              OR (
+                  p_beneficiary_household_id IS NOT NULL
+                  AND s.historical_family_household_id =
+                      p_beneficiary_household_id
+                  AND g.beneficiary_household_id =
+                      p_beneficiary_household_id
+              )
+          )
+    );
+END;
+$$;
+
 ALTER TABLE billing_provider_purchase_aliases ENABLE ROW LEVEL SECURITY;
 
 -- There are intentionally no authenticated policies. RevenueCat aliases are
@@ -267,4 +368,16 @@ REVOKE EXECUTE ON FUNCTION public.resolve_revenuecat_purchase_binding(
 ) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.resolve_revenuecat_purchase_binding(
     UUID, TEXT, TEXT, TEXT, TEXT[]
+) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.find_revenuecat_family_binding(
+    UUID, TEXT, TEXT, TEXT, TEXT[]
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.find_revenuecat_family_binding(
+    UUID, TEXT, TEXT, TEXT, TEXT[]
+) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.revenuecat_purchase_grants_access(
+    UUID, TEXT, TEXT, UUID, UUID
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.revenuecat_purchase_grants_access(
+    UUID, TEXT, TEXT, UUID, UUID
 ) TO service_role;

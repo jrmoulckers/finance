@@ -40,13 +40,28 @@ export interface RevenueCatStore {
   ): Promise<readonly RevenueCatIdentity[]>;
   verifyHouseholdMembership(ownerId: string, householdId: string): Promise<boolean>;
   findFamilyBinding(
-    evidence: Pick<NormalizedBillingEvidence, 'environment' | 'providerSubscriptionId'>,
+    identity: RevenueCatIdentity,
+    evidence: Pick<
+      NormalizedBillingEvidence,
+      'environment' | 'providerSubscriptionId' | 'revenueCatSubscriptionId' | 'storeTransactionIds'
+    >,
   ): Promise<string | null>;
   appendAndApply(
     identity: RevenueCatIdentity,
     evidence: NormalizedBillingEvidence,
+  ): Promise<RevenueCatAppendResult>;
+  purchaseGrantsAccess(
+    identity: RevenueCatIdentity,
+    providerSubscriptionId: string,
+    ownerId: string,
+    boundHouseholdId: string | null,
   ): Promise<boolean>;
   getProjection(ownerId: string, householdId: string | null): Promise<EntitlementProjection>;
+}
+
+export interface RevenueCatAppendResult {
+  applied: boolean;
+  providerSubscriptionId: string;
 }
 
 export class RevenueCatStoreError extends Error {
@@ -63,11 +78,11 @@ interface RpcClient {
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
 
-export async function appendAndApplyRevenueCatEvent(
+async function resolvePurchaseBinding(
   client: RpcClient,
   identity: RevenueCatIdentity,
   evidence: NormalizedBillingEvidence,
-): Promise<boolean> {
+): Promise<string> {
   const binding = await client.rpc('resolve_revenuecat_purchase_binding', {
     p_billing_account_id: identity.billingAccountId,
     p_environment: evidence.environment,
@@ -75,13 +90,18 @@ export async function appendAndApplyRevenueCatEvent(
     p_canonical_store_transaction_id: evidence.providerSubscriptionId,
     p_store_transaction_ids: evidence.storeTransactionIds,
   });
-  if (
-    binding.error ||
-    typeof binding.data !== 'string' ||
-    binding.data !== evidence.providerSubscriptionId
-  ) {
+  if (binding.error || typeof binding.data !== 'string') {
     throw new RevenueCatStoreError();
   }
+  return binding.data;
+}
+
+export async function appendAndApplyRevenueCatEvent(
+  client: RpcClient,
+  identity: RevenueCatIdentity,
+  evidence: NormalizedBillingEvidence,
+): Promise<RevenueCatAppendResult> {
+  const providerSubscriptionId = await resolvePurchaseBinding(client, identity, evidence);
 
   const recorded = await client.rpc('record_billing_provider_event', {
     p_billing_account_id: identity.billingAccountId,
@@ -89,7 +109,7 @@ export async function appendAndApplyRevenueCatEvent(
     p_provider: 'revenuecat',
     p_environment: evidence.environment,
     p_provider_event_id: evidence.providerEventId,
-    p_provider_subscription_id: binding.data,
+    p_provider_subscription_id: providerSubscriptionId,
     p_provider_subscription_item_id: null,
     p_received_at: new Date().toISOString(),
     p_effective_at: evidence.effectiveAt,
@@ -113,7 +133,10 @@ export async function appendAndApplyRevenueCatEvent(
     p_event_id: recorded.data,
   });
   if (applied.error) throw new RevenueCatStoreError();
-  return applied.data === true;
+  return {
+    applied: applied.data === true,
+    providerSubscriptionId,
+  };
 }
 
 function rowIdentity(row: Record<string, unknown>): RevenueCatIdentity {
@@ -228,20 +251,36 @@ export function createRevenueCatStore(
       return Boolean(result.data);
     },
 
-    async findFamilyBinding(evidence) {
-      const result = await client
-        .from('billing_subscriptions')
-        .select('historical_family_household_id')
-        .eq('provider', 'revenuecat')
-        .eq('environment', evidence.environment)
-        .eq('provider_subscription_id', evidence.providerSubscriptionId)
-        .maybeSingle();
-      if (result.error) throw new RevenueCatStoreError();
-      return result.data?.historical_family_household_id ?? null;
+    async findFamilyBinding(identity, evidence) {
+      const result = await client.rpc('find_revenuecat_family_binding', {
+        p_billing_account_id: identity.billingAccountId,
+        p_environment: evidence.environment,
+        p_revenuecat_subscription_id: evidence.revenueCatSubscriptionId,
+        p_canonical_store_transaction_id: evidence.providerSubscriptionId,
+        p_store_transaction_ids: evidence.storeTransactionIds,
+      });
+      if (result.error || (result.data !== null && typeof result.data !== 'string')) {
+        throw new RevenueCatStoreError();
+      }
+      return result.data;
     },
 
     appendAndApply(identity, evidence) {
       return appendAndApplyRevenueCatEvent(client, identity, evidence);
+    },
+
+    async purchaseGrantsAccess(identity, providerSubscriptionId, ownerId, boundHouseholdId) {
+      const result = await client.rpc('revenuecat_purchase_grants_access', {
+        p_billing_account_id: identity.billingAccountId,
+        p_environment: identity.environment,
+        p_canonical_store_transaction_id: providerSubscriptionId,
+        p_beneficiary_user_id: boundHouseholdId ? null : ownerId,
+        p_beneficiary_household_id: boundHouseholdId,
+      });
+      if (result.error || typeof result.data !== 'boolean') {
+        throw new RevenueCatStoreError();
+      }
+      return result.data;
     },
 
     async getProjection(_ownerId, householdId) {

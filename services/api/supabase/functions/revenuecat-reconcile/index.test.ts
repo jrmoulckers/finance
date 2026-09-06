@@ -41,7 +41,8 @@ Deno.test(
     const handler = createRevenueCatReconciliationHandler({
       config: TEST_REVENUECAT_CONFIG,
       client: {
-        getCustomerEvents: () => Promise.resolve([testRevenueCatEvent()]),
+        getCustomerEvents: () =>
+          Promise.resolve([testRevenueCatEvent({ product_id: 'prod_apple_plus' })]),
       },
       store,
       checkLimit: () => Promise.resolve(null),
@@ -105,6 +106,7 @@ Deno.test(
               type: terminal ? 'EXPIRATION' : 'RENEWAL',
               app_user_id: customerId,
               original_app_user_id: customerId,
+              product_id: 'prod_apple_plus',
               original_transaction_id: `sub_${customerId}`,
             }),
           ]);

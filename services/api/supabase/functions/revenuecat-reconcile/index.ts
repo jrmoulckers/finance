@@ -80,7 +80,11 @@ export function createRevenueCatReconciliationHandler(dependencies: Reconciliati
           events,
           dependencies.config,
           dependencies.store,
-          { identity, expectedCustomerId: identity.customerId },
+          {
+            identity,
+            expectedCustomerId: identity.customerId,
+            productNamespace: 'revenuecat',
+          },
         );
         reconciled += result.recognized;
       }
