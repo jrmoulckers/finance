@@ -40,7 +40,7 @@ sole exception is the 0017 collision recorded below. Start from
 | [0012](./0012-api-versioning-strategy.md)                | API Versioning Strategy                  | Superseded by 0026 |
 | [0013](./0013-multi-tenancy-architecture.md)             | Multi-Tenancy Architecture               | Proposed           |
 | [0014](./0014-ai-ml-pipeline-architecture.md)            | AI/ML Pipeline Architecture              | Proposed           |
-| [0015](./0015-premium-architecture.md)                   | Premium/Freemium Architecture            | Proposed           |
+| [0015](./0015-premium-architecture.md)                   | Premium/Freemium Architecture            | Superseded by 0027 |
 | [0016](./0016-gamification-system.md)                    | Gamification System Design               | Proposed           |
 | [0017](./0017-web-sqlite-encryption.md)                  | Web SQLite Encryption at Rest            | Proposed           |
 | [0018](./0018-offline-conflict-resolution.md)            | Offline-First Conflict Resolution        | Proposed           |
@@ -52,6 +52,7 @@ sole exception is the 0017 collision recorded below. Start from
 | [0024](./0024-sqldelight-server-migration-versioning.md) | SQLDelight & Server Migration Versioning | Proposed           |
 | [0025](./0025-multi-currency-architecture.md)            | Multi-Currency Architecture              | Proposed           |
 | [0026](./0026-api-versioning-strategy.md)                | API Versioning Strategy (Enhanced)       | Proposed           |
+| [0027](./0027-server-authoritative-entitlements.md)      | Server-Authoritative Entitlements        | Accepted           |
 
 ## Numbering history
 
@@ -61,5 +62,4 @@ first and kept it; `0017-api-versioning-strategy` (2025-07-28) was renumbered to
 **0026**. The three nested records (0015, 0016, 0017) were flattened into this
 directory and `adr/` was removed.
 
-0008 was never issued. It is not a lost record and must not be backfilled — the next
-ADR takes 0027.
+0008 was never issued. It is not a lost record and must not be backfilled.

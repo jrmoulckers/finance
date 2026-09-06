@@ -1,9 +1,18 @@
 # ADR-0015: Premium/Freemium Architecture
 
-**Status:** Proposed
+**Status:** Superseded by [ADR-0027](./0027-server-authoritative-entitlements.md)
 **Date:** 2025-04-21
 **Author:** System Architect (AI agent)
 **Reviewers:** Pending human review
+
+> **Superseded:** This record is historical design context. The authoritative
+> billing providers, server-owned entitlement projection, trust boundaries,
+> household binding, and lifecycle semantics are defined by
+> [ADR-0027](./0027-server-authoritative-entitlements.md). Current tier names,
+> prices, and allocations are defined by the
+> [subscription entitlement catalog](../business/pricing/subscription-entitlement-catalog.md).
+> The feature matrix, direct receipt-validation design, PowerSync entitlement
+> table, and RevenueCat rejection below are not implementation authority.
 
 ## Context
 
