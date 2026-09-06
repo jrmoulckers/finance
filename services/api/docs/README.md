@@ -19,7 +19,7 @@ This starts a local [Redoc](https://redocly.com/redoc) preview server (default: 
 ### Lint the OpenAPI spec
 
 ```bash
-npm run docs:api:lint
+npm run docs:api:lint -w services/api
 ```
 
 Validates the `openapi.yaml` file against the OpenAPI 3.0 specification and Redocly's recommended rules.
@@ -57,10 +57,18 @@ The canonical spec lives at [`services/api/openapi.yaml`](../openapi.yaml).
 | Billing | `GET`  | `/revenuecat-confirm`   | Bearer JWT     | Read the minimized Finance entitlement projection |
 | Billing | `POST` | `/revenuecat-reconcile` | Server secret  | Reconcile provider state through the ledger       |
 
+| Billing | `POST` | `/stripe-checkout` | Bearer JWT | Start Checkout from a reviewed logical choice |
+| Billing | `POST` | `/stripe-portal` | Bearer JWT | Open the purchaser's Stripe billing portal |
+| Billing | `POST` | `/stripe-reconcile` | Bearer JWT | Reconcile purchaser evidence through the ledger |
+| Billing | `GET` | `/stripe-status` | Bearer JWT | Read the minimized Finance entitlement projection |
+| Billing | `POST` | `/stripe-webhook` | Stripe proof | Ingest signed Stripe subscription evidence |
+
 RevenueCat request/response, privacy, and human-gated setup details are in
 [`revenuecat-entitlements.md`](./revenuecat-entitlements.md).
 RevenueCat webhooks and reconciliation use separate bearer credentials, and
 webhooks additionally require the timestamped raw-body signature.
+Stripe request, privacy, test, and human-gated setup details are in
+[`../supabase/functions/stripe-common/README.md`](../supabase/functions/stripe-common/README.md).
 
 ### Security Schemes
 

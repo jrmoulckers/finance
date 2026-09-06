@@ -256,6 +256,30 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
     keyPrefix: 'revenuecat-reconcile',
     failMode: 'closed',
   },
+  'stripe-checkout': {
+    maxRequests: 10,
+    windowSeconds: 60,
+    keyPrefix: 'stripe-checkout',
+    failMode: 'closed',
+  },
+  'stripe-portal': {
+    maxRequests: 10,
+    windowSeconds: 60,
+    keyPrefix: 'stripe-portal',
+    failMode: 'closed',
+  },
+  'stripe-reconcile': {
+    maxRequests: 6,
+    windowSeconds: 3600,
+    keyPrefix: 'stripe-reconcile',
+    failMode: 'closed',
+  },
+  'stripe-status': {
+    maxRequests: 60,
+    windowSeconds: 60,
+    keyPrefix: 'stripe-status',
+    failMode: 'closed',
+  },
 };
 
 // ---------------------------------------------------------------------------

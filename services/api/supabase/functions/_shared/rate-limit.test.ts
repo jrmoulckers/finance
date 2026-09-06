@@ -479,6 +479,10 @@ Deno.test('RATE_LIMITS — has entries for all expected functions', () => {
     'revenuecat-webhook',
     'revenuecat-confirm',
     'revenuecat-reconcile',
+    'stripe-checkout',
+    'stripe-portal',
+    'stripe-reconcile',
+    'stripe-status',
   ];
 
   for (const fn of expectedFunctions) {
@@ -537,6 +541,33 @@ Deno.test('RATE_LIMITS — aggregator-health has a bounded namespaced limit', ()
 Deno.test('RATE_LIMITS — passkey-authenticate is per-minute (pre-auth)', () => {
   assertEquals(RATE_LIMITS['passkey-authenticate'].windowSeconds, 60);
   assertEquals(RATE_LIMITS['passkey-authenticate'].maxRequests, 20);
+});
+
+Deno.test('RATE_LIMITS — Stripe user endpoints fail closed with bounded limits', () => {
+  assertEquals(RATE_LIMITS['stripe-checkout'], {
+    maxRequests: 10,
+    windowSeconds: 60,
+    keyPrefix: 'stripe-checkout',
+    failMode: 'closed',
+  });
+  assertEquals(RATE_LIMITS['stripe-portal'], {
+    maxRequests: 10,
+    windowSeconds: 60,
+    keyPrefix: 'stripe-portal',
+    failMode: 'closed',
+  });
+  assertEquals(RATE_LIMITS['stripe-reconcile'], {
+    maxRequests: 6,
+    windowSeconds: 3600,
+    keyPrefix: 'stripe-reconcile',
+    failMode: 'closed',
+  });
+  assertEquals(RATE_LIMITS['stripe-status'], {
+    maxRequests: 60,
+    windowSeconds: 60,
+    keyPrefix: 'stripe-status',
+    failMode: 'closed',
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -87,6 +87,13 @@ components:
       type: http
       scheme: bearer
       description: Dedicated server-only reconciliation credential.
+    StripeSignature:
+      type: apiKey
+      in: header
+      name: Stripe-Signature
+      description: >-
+        Stripe timestamp plus one or more v1 HMAC-SHA256 signatures over the
+        exact raw request body.
     CronSecret:
       type: http
       scheme: bearer
@@ -799,11 +806,257 @@ components:
         entitlement:
           $ref: '#/components/schemas/EntitlementProjection'
 
+    StripeCheckoutRequest:
+      type: object
+      additionalProperties: false
+      required: [catalog_choice]
+      properties:
+        catalog_choice:
+          type: string
+          enum:
+            - plus_monthly
+            - plus_yearly
+            - premium_monthly
+            - premium_yearly
+            - family_monthly
+            - family_yearly
+            - premium_bank_addon_monthly
+          description: Reviewed logical catalog choice resolved to a Price ID server-side.
+        household_intent:
+          type: string
+          format: uuid
+          nullable: true
+          description: Eligible household intent for Family or Premium sponsorship.
+
+    StripeEntitlementProjection:
+      type: object
+      additionalProperties: false
+      required:
+        - user_display_tier
+        - household_display_tier
+        - bank_connection_allowance
+        - is_premium_sponsor
+        - is_family_bound
+        - effective_at
+        - expires_at
+        - projection_version
+        - server_time
+      properties:
+        user_display_tier:
+          type: string
+          enum: [free, plus, premium]
+        household_display_tier:
+          type: string
+          nullable: true
+          enum: [free, premium, family]
+        bank_connection_allowance:
+          type: integer
+          format: int64
+          minimum: 0
+        is_premium_sponsor:
+          type: boolean
+        is_family_bound:
+          type: boolean
+        effective_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        projection_version:
+          type: integer
+          format: int64
+          minimum: 1
+        server_time:
+          type: string
+          format: date-time
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
 paths:
+  /stripe-checkout:
+    post:
+      operationId: createStripeCheckout
+      summary: Start Web or direct-Windows Stripe Checkout
+      description: >-
+        Resolves a reviewed logical catalog choice to a configured Price ID
+        server-side and binds authenticated purchaser and eligible household
+        intent. The pending redirect never grants access.
+      tags: [Billing]
+      security:
+        - BearerJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeCheckoutRequest'
+      responses:
+        '201':
+          description: Checkout was created and remains pending.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state, checkout_url]
+                properties:
+                  state:
+                    type: string
+                    enum: [pending]
+                  checkout_url:
+                    type: string
+                    format: uri
+                    description: Short-lived Stripe-hosted Checkout destination.
+        '400':
+          description: Invalid or unsupported logical catalog request.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Purchaser or household is not eligible.
+        '429':
+          description: Checkout rate limit exceeded.
+        '503':
+          description: Stripe or the Finance ledger is temporarily unavailable.
+
+  /stripe-portal:
+    post:
+      operationId: createStripeBillingPortal
+      summary: Open the purchaser's Stripe billing portal
+      tags: [Billing]
+      security:
+        - BearerJWT: []
+      responses:
+        '200':
+          description: A short-lived portal destination was created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [portal_url]
+                properties:
+                  portal_url:
+                    type: string
+                    format: uri
+        '401':
+          description: Authentication required.
+        '404':
+          description: No managed Stripe billing identity exists for the purchaser.
+        '429':
+          description: Portal rate limit exceeded.
+        '503':
+          description: Stripe is temporarily unavailable.
+
+  /stripe-reconcile:
+    post:
+      operationId: reconcileStripeSubscription
+      summary: Reconcile purchaser Stripe evidence through the Finance ledger
+      description: >-
+        Retrieves current subscription and invoice evidence and appends it
+        through the same idempotent ledger path as webhooks.
+      tags: [Billing]
+      security:
+        - BearerJWT: []
+      responses:
+        '200':
+          description: Current evidence was appended; projection confirmation remains separate.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state, reconciled]
+                properties:
+                  state:
+                    type: string
+                    enum: [pending]
+                  reconciled:
+                    type: integer
+                    minimum: 0
+        '401':
+          description: Authentication required.
+        '429':
+          description: Reconciliation rate limit exceeded.
+        '503':
+          description: Stripe or the Finance ledger is unavailable; retry later.
+
+  /stripe-status:
+    get:
+      operationId: getStripeEntitlementStatus
+      summary: Read the authoritative Finance entitlement projection
+      description: >-
+        Returns only the minimized Finance projection. Stripe state, Checkout
+        redirects, provider identifiers, and the client clock never authorize access.
+      tags: [Billing]
+      security:
+        - BearerJWT: []
+      parameters:
+        - in: query
+          name: household_id
+          schema:
+            type: string
+            format: uuid
+          description: Optional household for a membership-scoped projection.
+      responses:
+        '200':
+          description: Current minimized projection.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projection]
+                properties:
+                  projection:
+                    $ref: '#/components/schemas/StripeEntitlementProjection'
+        '400':
+          description: Invalid household identifier.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Household membership required.
+        '429':
+          description: Status rate limit exceeded.
+        '503':
+          description: Projection is temporarily unavailable.
+
+  /stripe-webhook:
+    post:
+      operationId: ingestStripeWebhook
+      summary: Ingest signed Stripe subscription evidence
+      description: >-
+        Verifies all v1 signatures over the exact raw body, enforces timestamp
+        tolerance, validates account and test/live mode, reconciles current
+        provider evidence, and appends it to the Finance ledger. Unknown events
+        grant nothing.
+      tags: [Billing]
+      security:
+        - StripeSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Delivery accepted, including duplicate or unknown evidence.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [received, applied]
+                properties:
+                  received:
+                    type: boolean
+                  applied:
+                    type: boolean
+        '400':
+          description: Signature or evidence is invalid or from an unexpected source.
+        '503':
+          description: Provider or ledger is unavailable; Stripe should retry.
+
   /revenuecat-webhook:
     post:
       operationId: ingestRevenueCatWebhook

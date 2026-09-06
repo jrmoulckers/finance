@@ -18,6 +18,7 @@ import org.koin.core.module.Module
  * | [databaseModule]   | DPAPI-encrypted SQLCipher database via SQLDelight      |
  * | [repositoryModule] | SQLDelight-backed repository bindings                  |
  * | [currencyModule]   | ExchangeRateProvider, CurrencyConverter, CurrencyRepo  |
+ * | [billingModule]    | Direct Stripe product-billing repository               |
  * | [syncModule]       | KMP sync engine, provider, mutation queue              |
  * | [securityModule]   | WindowsHelloManager, DpapiManager, TokenStorage        |
  * | [platformModule]   | DesktopNotificationManager                             |
@@ -35,6 +36,7 @@ val appModules: List<Module> = listOf(
     repositoryModule,
     currencyModule,
     authModule,
+    billingModule,
     syncModule,
     securityModule,
     platformModule,

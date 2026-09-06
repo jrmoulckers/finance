@@ -31,6 +31,7 @@ const Insights = lazy(() => import('./pages/InsightsPage'));
 const Achievements = lazy(() => import('./pages/AchievementsPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
 const SettingsAccount = lazy(() => import('./pages/settings/SettingsAccountPage'));
+const SettingsBilling = lazy(() => import('./pages/settings/SettingsBillingPage'));
 const SettingsPreferences = lazy(() => import('./pages/settings/SettingsPreferencesPage'));
 const SettingsPrivacy = lazy(() => import('./pages/settings/SettingsPrivacyPage'));
 const SettingsSecurity = lazy(() => import('./pages/settings/SettingsSecurityPage'));
@@ -551,6 +552,14 @@ export const AppRoutes: FC = () => (
         element={
           <RouteBoundary name="Settings · Account">
             <SettingsAccount />
+          </RouteBoundary>
+        }
+      />
+      <Route
+        path="billing"
+        element={
+          <RouteBoundary name="Settings · Plan & Billing">
+            <SettingsBilling />
           </RouteBoundary>
         }
       />

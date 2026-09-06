@@ -176,6 +176,67 @@ Deno.test('validateEnv — returns null when all function-specific env vars are 
   }
 });
 
+Deno.test(
+  'validateEnv — accepts complete Stripe webhook configuration with rotating secrets',
+  () => {
+    const cleanup = setEnvVars({
+      SUPABASE_URL: 'https://test.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+      STRIPE_SECRET_KEY: 'sk_test_placeholder',
+      STRIPE_ACCOUNT_ID: 'acct_placeholder',
+      STRIPE_ENVIRONMENT: 'sandbox',
+      STRIPE_WEBHOOK_SECRETS: 'whsec_current_placeholder,whsec_previous_placeholder',
+      STRIPE_PRICE_PLUS_MONTHLY: 'price_plus_monthly_placeholder',
+      STRIPE_PRICE_PLUS_YEARLY: 'price_plus_yearly_placeholder',
+      STRIPE_PRICE_PREMIUM_MONTHLY: 'price_premium_monthly_placeholder',
+      STRIPE_PRICE_PREMIUM_YEARLY: 'price_premium_yearly_placeholder',
+      STRIPE_PRICE_FAMILY_MONTHLY: 'price_family_monthly_placeholder',
+      STRIPE_PRICE_FAMILY_YEARLY: 'price_family_yearly_placeholder',
+      STRIPE_PRICE_PREMIUM_BANK_ADDON_MONTHLY: 'price_bank_addon_placeholder',
+    });
+    try {
+      const result = validateEnv('stripe-webhook', createMockRequest({}));
+      assertEquals(result, null);
+    } finally {
+      cleanup();
+    }
+  },
+);
+
+Deno.test(
+  'validateEnv — rejects incomplete Stripe checkout configuration without leaking names',
+  async () => {
+    const cleanupSet = setEnvVars({
+      SUPABASE_URL: 'https://test.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+      ALLOWED_ORIGINS: 'https://finance.example.test',
+      STRIPE_SECRET_KEY: 'sk_test_placeholder',
+      STRIPE_ACCOUNT_ID: 'acct_placeholder',
+      STRIPE_ENVIRONMENT: 'sandbox',
+      STRIPE_CHECKOUT_SUCCESS_URL: 'https://finance.example.test/settings/billing?billing=pending',
+      STRIPE_CHECKOUT_CANCEL_URL: 'https://finance.example.test/settings/billing',
+      STRIPE_PRICE_PLUS_MONTHLY: 'price_plus_monthly_placeholder',
+      STRIPE_PRICE_PLUS_YEARLY: 'price_plus_yearly_placeholder',
+      STRIPE_PRICE_PREMIUM_MONTHLY: 'price_premium_monthly_placeholder',
+      STRIPE_PRICE_PREMIUM_YEARLY: 'price_premium_yearly_placeholder',
+      STRIPE_PRICE_FAMILY_MONTHLY: 'price_family_monthly_placeholder',
+      STRIPE_PRICE_FAMILY_YEARLY: 'price_family_yearly_placeholder',
+    });
+    const cleanupDelete = deleteEnvVars(['STRIPE_PRICE_PREMIUM_BANK_ADDON_MONTHLY']);
+    try {
+      const result = validateEnv('stripe-checkout', createMockRequest({}));
+      assertEquals(result?.status, 503);
+      assertEquals(
+        JSON.stringify(await result?.json()).includes('STRIPE_PRICE_PREMIUM_BANK_ADDON_MONTHLY'),
+        false,
+      );
+    } finally {
+      cleanupDelete();
+      cleanupSet();
+    }
+  },
+);
+
 Deno.test('validateEnv — handles unknown function name gracefully (base vars only)', () => {
   const cleanup = setEnvVars({
     SUPABASE_URL: 'https://test.supabase.co',
