@@ -54,13 +54,13 @@ private actor StubProjectionRepository: EntitlementRepository {
         self.result = result
     }
 
-    private struct FixedSubscriptionUserScopeProvider: EntitlementUserScopeProviding {
-        func currentUserScope() async -> String? { "user-a" }
-    }
-
     func load(household _: EligibleHouseholdSelection?) async -> EntitlementResult {
         result
     }
+}
+
+private struct FixedSubscriptionUserScopeProvider: EntitlementUserScopeProviding {
+    func currentUserScope() async -> String? { "user-a" }
 }
 
 @Suite("SubscriptionViewModel Tests")
