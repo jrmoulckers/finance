@@ -117,18 +117,14 @@ private class DelayedEntitlementTransport : AuthenticatedEntitlementTransport {
             firstReleaseGate.await()
             FinanceServerConfirmation.Confirmed(premiumProjection)
         } else {
-            FinanceServerConfirmation.Pending(
-                FinanceEntitlementProjection.FREE.copy(projectionVersion = 2),
-            )
+            FinanceServerConfirmation.Pending(freeProjection())
         }
 
     override suspend fun fetchProjection(
         context: FinanceEntitlementContext,
         eligibleHousehold: EligibleHouseholdSelection?,
     ): FinanceServerConfirmation =
-        FinanceServerConfirmation.Pending(
-            FinanceEntitlementProjection.FREE.copy(projectionVersion = 2),
-        )
+        FinanceServerConfirmation.Pending(freeProjection())
 
     suspend fun waitUntilFirstStarts() {
         firstStarted.await()

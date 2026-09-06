@@ -18,7 +18,8 @@ import SwiftUI
 @Observable
 final class SubscriptionViewModel {
     private let subscriptionService: SubscriptionProviding
-    private var updateTask: Task<Void, Never>?
+    @ObservationIgnored
+    private nonisolated(unsafe) var updateTask: Task<Void, Never>?
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",

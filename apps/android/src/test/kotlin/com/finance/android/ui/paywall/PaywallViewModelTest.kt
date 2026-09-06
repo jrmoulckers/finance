@@ -4,12 +4,12 @@ package com.finance.android.ui.paywall
 
 import com.finance.android.billing.FakeEntitlementTransport
 import com.finance.android.billing.FakeRevenueCatPurchaseAdapter
-import com.finance.android.billing.FinanceEntitlementProjection
 import com.finance.android.billing.FinanceServerConfirmation
 import com.finance.android.billing.NativePurchaseResult
 import com.finance.android.billing.PurchaseConfirmationPhase
 import com.finance.android.billing.SubscriptionManager
 import com.finance.android.billing.evidence
+import com.finance.android.billing.freeProjection
 import com.finance.android.billing.premiumProjection
 import com.finance.core.entitlement.Tier
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +62,7 @@ class PaywallViewModelTest {
 
             transport.shouldThrow = false
             transport.projectionResponse =
-                FinanceServerConfirmation.Confirmed(FinanceEntitlementProjection.FREE)
+                FinanceServerConfirmation.Confirmed(freeProjection())
             manager.refreshEntitlement()
             advanceUntilIdle()
 
