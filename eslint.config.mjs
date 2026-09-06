@@ -283,6 +283,9 @@ export default [
       'tools/**/*.mjs',
       'scripts/**/*.js',
       'scripts/**/*.mjs',
+      // Node integration harnesses that drive a local stack, alongside the
+      // Deno-runtime Edge Function sources in the same service.
+      'services/api/supabase/tests/**/*.mjs',
       '.vscode/extensions/**/*.js',
       '*.js',
       '*.cjs',

@@ -56,8 +56,7 @@
     "test:transactions-list": "deno test --allow-env --allow-net=none --no-check transactions-list/",
     "test:revenuecat": "deno test --allow-env --allow-net=none --no-check _shared/revenuecat/ revenuecat-webhook/ revenuecat-confirm/ revenuecat-reconcile/",
     "test:stripe": "deno test --allow-env --allow-net=none --no-check stripe-common/ stripe-checkout/ stripe-portal/ stripe-reconcile/ stripe-status/ stripe-webhook/",
-    "test:entitlements": "deno test --allow-env --allow-net=none --no-check entitlements-v1/",
-    "test:entitlements:gateway": "deno test --allow-env --allow-net --no-check entitlements-v1/gateway.integration.test.ts"
+    "test:entitlements": "deno test --allow-env --allow-net=none --no-check entitlements-v1/"
   },
   "imports": {
     "std/testing/": "https://deno.land/std@0.208.0/testing/",

@@ -77,11 +77,21 @@ interface EntitlementRepository {
 /**
  * Bounded display rules for a previously fetched envelope.
  *
- * A cached envelope may keep the UI coherent while offline, but only until the
- * server-issued validity bound it was issued with. Past that bound the client
- * displays Free. None of this authorizes anything: a server action always
- * re-reads the projection, so a manipulated device clock can at most change
- * what the user sees locally.
+ * A cached envelope may keep the UI coherent while offline, but only within
+ * what the server actually proved. Two different bounds matter here and must
+ * not be confused:
+ *
+ * - [EntitlementValidity.refreshAfter] is a **refresh deadline**. It is the
+ *   collapsed earliest bound of every contributing grant, so crossing it means
+ *   the snapshot may be stale in either direction — never that the entitlement
+ *   ended.
+ * - [PendingDowngrade.effectiveAt] is the **proven reduction boundary**,
+ *   present only when a single grant contributes. It is the only instant at
+ *   which display may fall back to Free.
+ *
+ * None of this authorizes anything: a server action always re-reads the
+ * projection, so a manipulated device clock can at most change what one device
+ * shows.
  *
  * Manual entry, import, export, account deletion, privacy and security
  * controls, accessibility, and access to existing financial data are never
@@ -118,7 +128,7 @@ object EntitlementDisplayPolicy {
         return now < provenBoundary
     }
 
-    /** Tier to display at [now]; Free once the server-issued bound has passed. */
+    /** Tier to display at [now]; Free once a *proven* reduction boundary has passed. */
     fun displayTier(envelope: EntitlementEnvelope, now: Instant): EntitlementTier =
         if (isDisplayableAt(envelope, now)) envelope.entitlement.tier else EntitlementTier.FREE
 
@@ -140,7 +150,7 @@ object EntitlementDisplayPolicy {
         return now >= bound
     }
 
-    /** Bank-connection capacity to display at [now]; zero once the bound has passed. */
+    /** Bank-connection capacity to display at [now]; zero past a proven boundary. */
     fun displayBankConnectionAllowance(envelope: EntitlementEnvelope, now: Instant): Long =
         if (isDisplayableAt(envelope, now)) envelope.entitlement.bankConnections.allowance else 0L
 

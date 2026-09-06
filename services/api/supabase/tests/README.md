@@ -164,38 +164,36 @@ fixtures. It must never be pointed at staging or production.
 
 ### 5. Minimized Entitlement Gateway Integration Tests
 
-**Runtime:** Deno against a running local Supabase gateway
+**Runtime:** Node against a running local Supabase gateway
 
-`supabase/functions/entitlements-v1/gateway.integration.test.ts` proves what a
-_deployed_ request receives, which handler-level unit tests cannot: that a
-missing, malformed, untrusted, non-bearer, or **correctly signed but expired**
-credential reaches the function and receives the documented `unauthenticated`
-envelope with CORS headers and `Cache-Control: no-store`, that no anonymous or
-expired read ever succeeds, and that the endpoint stays read-only.
+`entitlement-gateway.integration.test.mjs` proves what a _deployed_ request
+receives, which handler-level unit tests cannot: that a missing, malformed,
+untrusted, non-bearer, or **correctly signed but expired** credential reaches
+the function and receives the documented `unauthenticated` envelope with CORS
+headers and `Cache-Control: no-store`, that no anonymous or expired read ever
+succeeds, and that the endpoint stays read-only.
 
-`entitlement-gateway.integration.test.ps1` is the deterministic harness. It
-discovers the gateway URL and the local signing key from `supabase status`, so
-nothing is hard-coded and no credential is committed; the key is used only to
-mint an expired token against a disposable local stack. The harness refuses any
-non-loopback gateway, so it cannot be pointed at staging or production, and it
-fails fast with an actionable message when the endpoint answers `503` because
-the local deployment is missing `ALLOWED_ORIGINS`.
+It discovers the gateway port from `config.toml` and the signing and service
+credentials from the running containers, so nothing is hard-coded and no
+credential is committed. The service credential is used only to provision and
+delete a disposable local principal, so an expired token can be minted for a
+_real_ subject — that is what attributes the refusal to expiry rather than to an
+unverifiable subject. The suite refuses any non-loopback gateway, and **every
+prerequisite is mandatory**: a missing stack, signing key, or service credential
+fails the run rather than skipping a case.
 
 ```bash
 # From services/api/, with the local stack running and functions served:
-npx supabase start
-npx supabase functions serve --env-file <local-env-file>
+supabase start
+supabase functions serve --env-file <local-env-file>
 
 npm run test:entitlement-gateway
 ```
 
-The Deno suite self-skips when `ENTITLEMENTS_GATEWAY_URL` is unset, so a plain
-`deno test` run needs no infrastructure. The expired-token cases additionally
-require `ENTITLEMENTS_TEST_JWT_SECRET`, which the harness supplies.
-
-Like the other Supabase-dependent suites in this directory, it is a local and
-staging-validation tool rather than a CI job: it needs a full local stack, and
-`.github/workflows/**` is owned by `@devops-engineer`.
+The suite is not part of any fast unit run, so a developer without a local stack
+is unaffected. It runs automatically in the **Entitlement Gateway Integration**
+job in `.github/workflows/ci-lint.yml`, which stands up the stack, waits for the
+endpoint to answer `401` (not `503`), and then executes exactly this command.
 
 ## Adding New Tests
 

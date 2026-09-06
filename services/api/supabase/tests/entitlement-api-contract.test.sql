@@ -526,10 +526,11 @@ $$;
 SELECT set_config('request.jwt.claim.sub', '', true);
 
 -- A weaker purchaser grant collapses into the same `expires_at` even though it
--- does not determine the effective tier or allowance. This is exactly why the
--- API leaves the reduction boundary undetermined whenever a purchaser grant and
--- a household grant both contribute: Plus lapsing first would otherwise be
--- reported as the Family household's reduction instant.
+-- does not determine the effective tier or allowance. That is why the API
+-- treats this bound as a refresh deadline rather than a pending-downgrade
+-- instant whenever a purchaser grant and a household grant both contribute:
+-- reporting Plus lapsing first as the Family household's reduction would be
+-- false in both directions.
 INSERT INTO billing_accounts (id, owner_id)
 VALUES ('44030000-0000-4000-b000-000000000023', '44030000-0000-4000-8000-000000000023');
 
@@ -583,11 +584,13 @@ SELECT pg_temp.assert_true(
            AND bank_connection_allowance = 4
            -- The bound is the Plus grant's, not the Family grant's, even
            -- though Family determines both the effective tier and allowance.
+           -- The API therefore surfaces it as `validity.refresh_after`, a
+           -- refresh deadline, and reports the reduction as undetermined.
            AND expires_at < now() + interval '2 days'
            AND expires_at > server_time
         FROM public.get_my_entitlements('44030000-0000-4000-9000-000000000002')
     ),
-    'a weaker purchaser grant still collapses into the shared validity bound'
+    'a weaker purchaser grant still collapses into the shared refresh deadline'
 );
 SELECT set_config('request.jwt.claim.sub', '', true);
 
