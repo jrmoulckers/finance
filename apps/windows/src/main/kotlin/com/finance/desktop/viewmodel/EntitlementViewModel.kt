@@ -2,136 +2,233 @@
 
 package com.finance.desktop.viewmodel
 
-import com.finance.desktop.data.repository.AccountRepository
-import com.finance.desktop.data.repository.BudgetRepository
-import com.finance.desktop.data.repository.CategoryRepository
-import com.finance.desktop.billing.ProductEntitlementProjection
-import com.finance.desktop.entitlement.EntitlementEngine
-import com.finance.desktop.entitlement.EntitlementResult
-import com.finance.desktop.entitlement.PremiumFeature
-import com.finance.desktop.entitlement.SubscriptionTier
-import com.finance.models.types.SyncId
+import com.finance.core.entitlement.EntitlementDisplayPolicy
+import com.finance.core.entitlement.EntitlementRepository
+import com.finance.core.entitlement.EntitlementResult
+import com.finance.core.entitlement.EntitlementTier
+import com.finance.desktop.data.repository.AuthRepository
+import com.finance.desktop.entitlement.EntitlementDisplayCache
+import com.finance.desktop.entitlement.EntitlementDisplayStatus
+import com.finance.desktop.entitlement.EntitlementHouseholdScope
+import com.finance.desktop.entitlement.EntitlementHouseholdSource
+import com.finance.desktop.entitlement.EntitlementPresentationPolicy
+import com.finance.desktop.entitlement.allowsDisplayCache
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-
-data class FeatureStatusUi(
-    val feature: PremiumFeature,
-    val isGranted: Boolean,
-    val currentUsage: Int? = null,
-    val limit: Int? = null,
-)
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 data class EntitlementUiState(
-    val isLoading: Boolean = true,
-    val currentTier: SubscriptionTier = SubscriptionTier.FREE,
-    val featureStatuses: List<FeatureStatusUi> = emptyList(),
-    val showUpgradeDialog: Boolean = false,
-    val upgradeFeature: PremiumFeature? = null,
+    val status: EntitlementDisplayStatus = EntitlementDisplayStatus.PENDING,
+    val currentTier: EntitlementTier = EntitlementTier.FREE,
+    val bankConnectionAllowance: Long = 0,
+    val statusMessage: String = "Loading subscription status.",
+    val pendingDowngradeAt: Instant? = null,
+    val householdScopes: List<EntitlementHouseholdScope> = emptyList(),
+    val selectedHouseholdId: String? = null,
 )
 
 /**
- * ViewModel for freemium feature gating.
+ * Presents the shared minimized Finance entitlement on Windows.
  *
- * Evaluates the user's subscription tier against feature entitlements
- * using [EntitlementEngine] and the KMP shared [FeatureFlagEngine]
- * concepts. Manages upgrade prompt state.
+ * This state is display-only. It never authorizes a server operation, derives a
+ * tier from checkout state, or applies a local feature matrix. Manual entry,
+ * import, export, deletion, privacy/security controls, accessibility, and
+ * historical data remain outside entitlement handling.
  */
 class EntitlementViewModel(
-    private val accountRepository: AccountRepository,
-    private val budgetRepository: BudgetRepository,
-    private val categoryRepository: CategoryRepository,
+    private val entitlementRepository: EntitlementRepository,
+    private val displayCache: EntitlementDisplayCache,
+    private val authRepository: AuthRepository,
+    private val householdSource: EntitlementHouseholdSource,
+    private val now: () -> Instant = { Clock.System.now() },
 ) : DesktopViewModel() {
 
     private val _uiState = MutableStateFlow(EntitlementUiState())
     val uiState: StateFlow<EntitlementUiState> = _uiState.asStateFlow()
 
-    private val householdId = SyncId("d1")
-
-    private var _tier = SubscriptionTier.FREE
+    private var requestJob: Job? = null
+    private var refreshTimerJob: Job? = null
+    private var requestGeneration = 0L
 
     init {
-        loadEntitlements()
+        viewModelScope.launch {
+            authRepository.currentAccount
+                .map { it?.userId }
+                .distinctUntilChanged()
+                .collectLatest(::principalChanged)
+        }
+    }
+
+    fun selectHousehold(householdId: String?) {
+        if (householdId != null && _uiState.value.householdScopes.none { it.id == householdId }) {
+            return
+        }
+        if (_uiState.value.selectedHouseholdId == householdId) return
+        _uiState.value = _uiState.value.copy(selectedHouseholdId = householdId)
+        refresh()
     }
 
     fun refresh() {
-        loadEntitlements()
+        val userId = authRepository.currentAccount.value?.userId
+        if (userId == null) {
+            resetForSignedOutUser()
+            return
+        }
+        requestJob?.cancel()
+        refreshTimerJob?.cancel()
+        val generation = ++requestGeneration
+        val requestedHouseholdId = _uiState.value.selectedHouseholdId
+        requestJob = viewModelScope.launch {
+            val scopes = loadHouseholdScopes(userId)
+            if (generation != requestGeneration ||
+                authRepository.currentAccount.value?.userId != userId
+            ) {
+                return@launch
+            }
+            val householdId = requestedHouseholdId
+                ?.takeIf { requested -> scopes.any { it.id == requested } }
+                ?: scopes.singleOrNull()?.id
+            _uiState.value = _uiState.value.copy(
+                status = EntitlementDisplayStatus.PENDING,
+                statusMessage = "Refreshing subscription status.",
+                householdScopes = scopes,
+                selectedHouseholdId = householdId,
+            )
+            loadEntitlement(generation, userId, householdId)
+        }
+    }
+
+    private suspend fun principalChanged(userId: String?) {
+        requestJob?.cancel()
+        refreshTimerJob?.cancel()
+        requestGeneration += 1
+        if (userId == null) {
+            resetForSignedOutUser()
+            return
+        }
+
+        _uiState.value = EntitlementUiState(
+            statusMessage = "Loading subscription status.",
+        )
+        refresh()
+    }
+
+    private suspend fun loadEntitlement(
+        generation: Long,
+        userId: String,
+        householdId: String?,
+    ) {
+        when (val result = entitlementRepository.load(householdId)) {
+            is EntitlementResult.Available -> {
+                if (!isCurrentRequest(generation, userId, householdId)) return
+                displayCache.write(userId, householdId, result.envelope)
+                if (!isCurrentRequest(generation, userId, householdId)) return
+                val presentation =
+                    EntitlementPresentationPolicy.current(result.envelope, now())
+                publish(presentation)
+                scheduleRefresh(result.envelope)
+            }
+            is EntitlementResult.Unavailable -> {
+                if (!isCurrentRequest(generation, userId, householdId)) return
+                val cached = if (result.reason.allowsDisplayCache()) {
+                    displayCache.read(userId, householdId)
+                } else {
+                    displayCache.remove(userId, householdId)
+                    null
+                }
+                if (!isCurrentRequest(generation, userId, householdId)) return
+                if (result.reason ==
+                    com.finance.core.entitlement.EntitlementUnavailableReason.FORBIDDEN &&
+                    householdId != null
+                ) {
+                    _uiState.value = _uiState.value.copy(
+                        householdScopes =
+                            _uiState.value.householdScopes.filterNot { it.id == householdId },
+                        selectedHouseholdId = null,
+                    )
+                }
+                val presentation =
+                    EntitlementPresentationPolicy.fallback(result, cached, now())
+                publish(presentation)
+                if (cached != null &&
+                    presentation.status != EntitlementDisplayStatus.REFRESH_NEEDED
+                ) {
+                    scheduleRefresh(cached)
+                }
+            }
+        }
+    }
+
+    private suspend fun loadHouseholdScopes(userId: String): List<EntitlementHouseholdScope> =
+        try {
+            householdSource.loadForUser(userId)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+    private fun publish(
+        presentation: com.finance.desktop.entitlement.EntitlementPresentation,
+    ) {
+        _uiState.value = EntitlementUiState(
+            status = presentation.status,
+            currentTier = presentation.tier,
+            bankConnectionAllowance = presentation.bankConnectionAllowance,
+            statusMessage = presentation.message,
+            pendingDowngradeAt = presentation.envelope?.entitlement?.downgrade?.effectiveAt,
+            householdScopes = _uiState.value.householdScopes,
+            selectedHouseholdId = _uiState.value.selectedHouseholdId,
+        )
     }
 
     /**
-     * Check if a specific feature is accessible. If not, show upgrade prompt.
-     *
-     * @return true if feature is granted, false if gated.
+     * A refresh deadline only requests another repository read. It never
+     * changes the tier directly and never authorizes an operation.
      */
-    fun checkFeatureAccess(feature: PremiumFeature, currentUsage: Int = 0): Boolean {
-        val result = EntitlementEngine.checkAccess(_tier, feature, currentUsage)
-        return when (result) {
-            is EntitlementResult.Granted -> true
-            is EntitlementResult.Gated -> {
-                showUpgradePrompt(feature)
-                false
-            }
+    private fun scheduleRefresh(
+        envelope: com.finance.core.entitlement.EntitlementEnvelope,
+    ) {
+        val refreshAfter = EntitlementDisplayPolicy.refreshAfter(envelope) ?: return
+        val waitMillis = refreshAfter.toEpochMilliseconds() - now().toEpochMilliseconds()
+        if (waitMillis <= 0) return
+        refreshTimerJob = viewModelScope.launch {
+            delay(waitMillis)
+            refresh()
         }
     }
 
-    fun showUpgradePrompt(feature: PremiumFeature) {
-        _uiState.value = _uiState.value.copy(
-            showUpgradeDialog = true,
-            upgradeFeature = feature,
+    private fun isCurrentRequest(
+        generation: Long,
+        userId: String,
+        householdId: String?,
+    ): Boolean =
+        generation == requestGeneration &&
+            authRepository.currentAccount.value?.userId == userId &&
+            _uiState.value.selectedHouseholdId == householdId
+
+    private fun resetForSignedOutUser() {
+        requestJob?.cancel()
+        refreshTimerJob?.cancel()
+        requestGeneration += 1
+        _uiState.value = EntitlementUiState(
+            status = EntitlementDisplayStatus.UNAVAILABLE,
+            statusMessage = "Sign in to view subscription status.",
         )
     }
 
-    fun dismissUpgradePrompt() {
-        _uiState.value = _uiState.value.copy(
-            showUpgradeDialog = false,
-            upgradeFeature = null,
-        )
-    }
-
-    fun applyBillingProjection(projection: ProductEntitlementProjection) {
-        _tier = if (projection.confirmsPaidAccess) {
-            SubscriptionTier.PREMIUM
-        } else {
-            SubscriptionTier.FREE
-        }
-        loadEntitlements()
-    }
-
-    private fun loadEntitlements() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
-            val accounts = accountRepository.observeAll(householdId).first()
-            val budgets = budgetRepository.observeAll(householdId).first()
-            val categories = categoryRepository.observeAll(householdId).first()
-
-            val statuses = EntitlementEngine.getAllFeatureStatuses(
-                tier = _tier,
-                accountCount = accounts.size,
-                budgetCount = budgets.size,
-                categoryCount = categories.size,
-            ).map { (feature, result) ->
-                when (result) {
-                    is EntitlementResult.Granted -> FeatureStatusUi(
-                        feature = feature,
-                        isGranted = true,
-                    )
-                    is EntitlementResult.Gated -> FeatureStatusUi(
-                        feature = feature,
-                        isGranted = false,
-                        currentUsage = result.currentUsage,
-                        limit = result.limit,
-                    )
-                }
-            }
-
-            _uiState.value = EntitlementUiState(
-                isLoading = false,
-                currentTier = _tier,
-                featureStatuses = statuses,
-            )
-        }
+    override fun onCleared() {
+        requestJob?.cancel()
+        refreshTimerJob?.cancel()
+        super.onCleared()
     }
 }

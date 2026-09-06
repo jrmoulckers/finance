@@ -2,42 +2,49 @@
 
 package com.finance.desktop.billing
 
+import com.finance.core.entitlement.BankConnectionAllowance
+import com.finance.core.entitlement.DowngradeStatus
+import com.finance.core.entitlement.ENTITLEMENT_CATALOG_VERSION
+import com.finance.core.entitlement.ENTITLEMENT_CONTRACT_VERSION
+import com.finance.core.entitlement.EntitlementAccessState
+import com.finance.core.entitlement.EntitlementEnvelope
+import com.finance.core.entitlement.EntitlementScope
+import com.finance.core.entitlement.EntitlementTier
+import com.finance.core.entitlement.EntitlementValidity
+import com.finance.core.entitlement.MinimizedEntitlement
+import com.finance.core.entitlement.PendingDowngrade
+import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 
 class ProductBillingModelsTest {
-    private val freeProjection = ProductEntitlementProjection(
-        userTier = UserEntitlementTier.FREE,
-        householdTier = null,
-        bankConnectionAllowance = 0,
-        isPremiumSponsor = false,
-        isFamilyBound = false,
-        effectiveAt = "2033-05-18T03:33:20Z",
-        expiresAt = null,
-        projectionVersion = 1,
-        serverTime = "2033-05-18T03:33:21Z",
-    )
+    private val serverTime = Instant.parse("2033-05-18T03:33:21Z")
+    private val refreshAfter = Instant.parse("2033-06-18T03:33:20Z")
 
     @Test
     fun `checkout success and session id remain pending`() {
+        val free = envelope()
         val result = stateFromCheckoutReturn(
             "?billing=pending&session_id=cs_attacker",
-            freeProjection,
+            free,
         )
-        assertEquals(ProductBillingState.Pending(freeProjection), result)
-        assertFalse(freeProjection.confirmsPaidAccess)
+        assertEquals(ProductBillingState.Pending(free), result)
     }
 
     @Test
-    fun `only Finance projection confirms paid access`() {
-        val paid = freeProjection.copy(
-            userTier = UserEntitlementTier.PREMIUM,
-            expiresAt = "2033-06-18T03:33:20Z",
-            projectionVersion = 2,
+    fun `only a valid Finance envelope confirms paid display`() {
+        val paid = envelope(
+            tier = EntitlementTier.PREMIUM,
+            accessState = EntitlementAccessState.GRANTED,
+            refreshAfter = refreshAfter,
+            downgradeStatus = DowngradeStatus.SCHEDULED,
+            downgradeAt = refreshAfter,
         )
         assertEquals(ProductBillingState.Confirmed(paid), stateFromCheckoutReturn("", paid))
+
+        val forged = paid.copy(contractVersion = 99)
+        assertEquals(ProductBillingState.Idle(forged), stateFromCheckoutReturn("", forged))
     }
 
     @Test
@@ -62,8 +69,38 @@ class ProductBillingModelsTest {
         }
     }
 
+    private fun envelope(
+        tier: EntitlementTier = EntitlementTier.FREE,
+        accessState: EntitlementAccessState = EntitlementAccessState.NOT_ENTITLED,
+        refreshAfter: Instant? = null,
+        downgradeStatus: DowngradeStatus = DowngradeStatus.NONE,
+        downgradeAt: Instant? = null,
+    ) = EntitlementEnvelope(
+        contractVersion = ENTITLEMENT_CONTRACT_VERSION,
+        catalogVersion = ENTITLEMENT_CATALOG_VERSION,
+        entitlement = MinimizedEntitlement(
+            scope = EntitlementScope.USER,
+            tier = tier,
+            userTier = tier,
+            householdTier = null,
+            accessState = accessState,
+            lifecycle = null,
+            isPremiumSponsor = false,
+            isFamilyBound = false,
+            bankConnections = BankConnectionAllowance(0, 0, 0),
+            validity = EntitlementValidity(
+                effectiveAt = serverTime,
+                refreshAfter = refreshAfter,
+                serverTime = serverTime,
+                projectionVersion = 1,
+            ),
+            downgrade = PendingDowngrade(downgradeStatus, downgradeAt),
+        ),
+    )
+
     private fun fakeRepository() = object : ProductBillingRepository {
         override val channel = WindowsBillingChannel.DIRECT_STRIPE
+
         override suspend fun startCheckout(
             choice: BillingCatalogChoice,
             householdIntent: String?,
@@ -73,8 +110,5 @@ class ProductBillingModelsTest {
             Result.success("https://portal.example.test/placeholder")
 
         override suspend fun reconcile() = Result.success(Unit)
-
-        override suspend fun loadProjection(householdId: String?) =
-            Result.success(freeProjection)
     }
 }

@@ -2,6 +2,7 @@
 
 package com.finance.desktop.di
 
+import com.finance.core.entitlement.EntitlementRepository
 import com.finance.core.currency.CurrencyConverter
 import com.finance.core.currency.ExchangeRateProvider
 import com.finance.db.EncryptionKeyProvider
@@ -10,6 +11,8 @@ import com.finance.desktop.data.database.DesktopDatabaseManager
 import com.finance.desktop.data.repository.*
 import com.finance.desktop.billing.DirectStripeBillingViewModel
 import com.finance.desktop.billing.ProductBillingRepository
+import com.finance.desktop.entitlement.EntitlementDisplayCache
+import com.finance.desktop.entitlement.EntitlementHouseholdSource
 import com.finance.desktop.notifications.DesktopNotificationManager
 import com.finance.desktop.notifications.EnhancedNotificationManager
 import com.finance.desktop.navigation.DeepLinkHandler
@@ -78,6 +81,9 @@ class KoinGraphSmokeTest {
             "TokenManager" to { get<TokenManager>() },
             "AuthRepository" to { get<AuthRepository>() },
             "ProductBillingRepository" to { get<ProductBillingRepository>() },
+            "EntitlementRepository" to { get<EntitlementRepository>() },
+            "EntitlementDisplayCache" to { get<EntitlementDisplayCache>() },
+            "EntitlementHouseholdSource" to { get<EntitlementHouseholdSource>() },
             "SyncConfig" to { get<SyncConfig>() },
             "SyncProvider" to { get<SyncProvider>() },
             "MutationQueue" to { get<MutationQueue>() },

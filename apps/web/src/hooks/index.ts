@@ -192,7 +192,7 @@ export type {
   DataCategory,
   StorageQuotaInfo,
 } from './usePrivacyDashboard';
-export { useHousehold } from './useHousehold';
+export { HOUSEHOLD_SCOPE_CHANGED_EVENT, useHousehold } from './useHousehold';
 export type {
   UseHouseholdResult,
   CreateHouseholdInput,
