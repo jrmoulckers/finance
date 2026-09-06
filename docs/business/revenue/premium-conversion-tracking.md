@@ -10,6 +10,13 @@
 
 ---
 
+> **Authority notice:** This document defines measurement, not authorization.
+> RevenueCat and Stripe may supply revenue metrics and trusted purchase
+> evidence, but Finance's server projection is the runtime authority under
+> [ADR-0027](../../architecture/0027-server-authoritative-entitlements.md).
+> Current commercial terms are in the
+> [subscription entitlement catalog](../pricing/subscription-entitlement-catalog.md).
+
 > **Satisfies:** `PROD-MET-001`, `PROD-MET-002`, `PROD-DISC-002` — Product obligations
 > are defined in [jrmoulckers/product](https://github.com/jrmoulckers/product). Metric meaning resolves against the catalog
 > ([KPI Dashboard Spec](../growth/kpi-dashboard-spec.md) section 2); this document is the

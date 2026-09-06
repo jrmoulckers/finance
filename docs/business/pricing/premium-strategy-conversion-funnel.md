@@ -14,6 +14,12 @@
 
 ---
 
+> **Authority notice:** This document is dated strategy and experiment evidence.
+> Current plan names, prices, and entitlements are defined by the
+> [subscription entitlement catalog](subscription-entitlement-catalog.md);
+> runtime authority and trust boundaries are defined by
+> [ADR-0027](../../architecture/0027-server-authoritative-entitlements.md).
+
 > **Satisfies:** `PROD-BUS-001`, `PROD-DISC-002` — Product obligations are defined in
 > [jrmoulckers/product](https://github.com/jrmoulckers/product). `PROD-DISC-002` requires that a decision rule, guardrails, and
 > kill conditions exist before exposure; it does **not** fix the thresholds, platform, or

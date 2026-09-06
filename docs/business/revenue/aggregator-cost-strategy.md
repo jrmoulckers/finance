@@ -10,8 +10,11 @@
 > recommendation to stay on Plaid was accepted; no provider migration is planned.
 > The server-side enforcement shipped as a **flat cap of 2 for every household**,
 > because no entitlement record exists to resolve tier — so the cost exposure in §3
-> is now bounded, but bank connections are not yet Premium-only. See
-> `docs/business/pricing/premium-strategy-conversion-funnel.md` §1.3.1.
+> is now bounded, but bank connections are not yet Premium-only. The approved
+> allocation is authoritative in the
+> [subscription entitlement catalog](../pricing/subscription-entitlement-catalog.md);
+> server authority and staged enforcement are defined by
+> [ADR-0027](../../architecture/0027-server-authoritative-entitlements.md).
 > **Document Owner:** Business Analysis
 > **Date:** 2026-08-23
 

@@ -186,19 +186,25 @@ layer**, not access to a user's own financial data.
 - **Free** — the complete single-device financial tracker: all accounts,
   transactions, budgets, goals, categories, and rules; the full expertise-tiered
   interface; contextual education; basic reporting; and data export.
-- **Paid** — AI categorization, suggested budgets, forecasting, holistic goal and
-  portfolio analysis, structured learning paths, multi-device sync, household
-  sharing, and advanced reporting.
+- **Paid** — optional capabilities that create continuing service or provider
+  cost. The currently approved allocations and prices are versioned in the
+  [subscription entitlement catalog](docs/business/pricing/subscription-entitlement-catalog.md);
+  historical feature matrices and experiments are not product obligations.
 
 Never gated, on any tier: privacy and encryption, accessibility, data export, data
 deletion, and access to a user's own existing data.
 
-Tier boundaries, prices, the value hypothesis, and the dated competitive and
-sensitivity evidence are recorded in
+The runtime authority and trust boundaries are defined by
+[ADR-0027](docs/architecture/0027-server-authoritative-entitlements.md). Current
+tier boundaries and prices are defined by the
+[subscription entitlement catalog](docs/business/pricing/subscription-entitlement-catalog.md).
+The value hypothesis and dated competitive and sensitivity evidence are
+recorded in
 [`docs/business/revenue/monetization-roadmap.md`](docs/business/revenue/monetization-roadmap.md),
 [`docs/business/pricing/premium-strategy-conversion-funnel.md`](docs/business/pricing/premium-strategy-conversion-funnel.md),
-and [`docs/business/pricing/`](docs/business/pricing/). Viability assumptions,
-ranges, and reassessment triggers are recorded there rather than restated here.
+and [`docs/business/pricing/`](docs/business/pricing/). Those strategy documents
+do not override the catalog. Viability assumptions, ranges, and reassessment
+triggers are recorded there rather than restated here.
 
 ## Measurement
 
