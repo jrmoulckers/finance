@@ -54,9 +54,14 @@ import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-
 import { encryptToken } from '../_shared/bank-crypto.ts';
 import { ensureCanManageHousehold } from '../_shared/bank-authorization.ts';
 import {
-  checkConnectionCap,
   connectionCapMessage,
-  resolveConnectionCap,
+  finalizeConnectionReservation,
+  premiumRequiredMessage,
+  readConnectionCapacity,
+  recordOrphanedItem,
+  releaseConnectionReservation,
+  reserveConnectionSlot,
+  type BankEntitlementErrorCode,
 } from '../_shared/bank-entitlements.ts';
 import {
   createLinkToken as plaidCreateLinkToken,
@@ -382,47 +387,67 @@ async function provisionAndLinkAccounts(
 }
 
 // ---------------------------------------------------------------------------
-// Connection cap
+// Connection cap (tier-aware, reservation-backed — #4404)
 // ---------------------------------------------------------------------------
 
 /**
- * Reject the request when the household has no remaining connection allowance.
+ * Error body carrying a stable machine-readable `code` alongside the message.
  *
- * Returns the rejection `Response`, or `null` when the caller may proceed.
- *
- * Enforced on BOTH `create_link_token` and `exchange_token`. The link-token
- * check is a courtesy so the user is not sent through a provider Link flow that
- * cannot succeed; the exchange check is the authoritative one, because that is
- * the call that creates the billable Item and a client can skip straight to it.
- *
- * Fails closed — if the count cannot be established we do not create an Item we
- * would be unable to account for.
- *
- * Uses 409 rather than 403 so a client can distinguish "household is full" from
- * the 403 returned for insufficient household permissions.
+ * The three codes are the entitlement contract clients branch on:
+ *   - `PREMIUM_REQUIRED`        — the household allowance is 0 (Free/Plus). 403.
+ *   - `CONNECTION_CAP_REACHED`  — allowance exhausted (live + reserved). 409.
+ *   - `ENTITLEMENT_UNAVAILABLE` — the projection could not be resolved; we fail
+ *                                 closed rather than trusting any client value.
  */
-async function enforceConnectionCap(
+function entitlementErrorResponse(
+  req: Request,
+  code: BankEntitlementErrorCode,
+  message: string,
+  status: number,
+): Response {
+  return jsonResponse(req, { error: message, code }, status);
+}
+
+/**
+ * Non-authoritative courtesy pre-check for `create_link_token` so a user is not
+ * sent through a provider Link flow that cannot succeed. The authoritative gate
+ * is the atomic reservation on `exchange_token` — a client can skip straight to
+ * it, so this must never be the only enforcement.
+ *
+ * Fails closed: if the capacity snapshot cannot be resolved we reject with
+ * `ENTITLEMENT_UNAVAILABLE` rather than allowing a link flow we cannot back.
+ */
+async function precheckConnectionCapacity(
   supabase: SupabaseClient,
   householdId: string,
   req: Request,
   logger: FunctionLogger,
 ): Promise<Response | null> {
-  const capCheck = await checkConnectionCap(supabase, householdId, resolveConnectionCap());
+  const capacity = await readConnectionCapacity(supabase, householdId);
 
-  if (capCheck.status === 'error') {
-    logger.error('Failed to count household bank connections', {
-      errorMessage: capCheck.message,
-    });
-    return internalErrorResponse(req);
+  if (!capacity) {
+    logger.error('Failed to resolve bank connection capacity');
+    return entitlementErrorResponse(
+      req,
+      'ENTITLEMENT_UNAVAILABLE',
+      'Bank connection availability is temporarily unavailable. Try again shortly.',
+      503,
+    );
   }
 
-  if (capCheck.status === 'at_cap') {
-    logger.warn('Bank connection cap reached', {
-      current: capCheck.current,
-      cap: capCheck.cap,
-      httpStatus: 409,
-    });
-    return errorResponse(req, connectionCapMessage(capCheck.cap), 409);
+  if (capacity.cap <= 0) {
+    logger.warn('Bank connection requires an eligible plan', { httpStatus: 403 });
+    return entitlementErrorResponse(req, 'PREMIUM_REQUIRED', premiumRequiredMessage(), 403);
+  }
+
+  if (capacity.used >= capacity.cap) {
+    logger.warn('Bank connection cap reached', { httpStatus: 409 });
+    return entitlementErrorResponse(
+      req,
+      'CONNECTION_CAP_REACHED',
+      connectionCapMessage(capacity.cap),
+      409,
+    );
   }
 
   return null;
@@ -490,7 +515,12 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      const linkCapRejection = await enforceConnectionCap(supabase, body.household_id, req, logger);
+      const linkCapRejection = await precheckConnectionCapacity(
+        supabase,
+        body.household_id,
+        req,
+        logger,
+      );
       if (linkCapRejection) return linkCapRejection;
 
       const linkResult = await createProviderLinkToken(body.provider, user.id).catch(
@@ -543,15 +573,50 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      // Authoritative cap check — this is the call that creates the billable
-      // Item, and a client can reach it without ever requesting a link token.
-      const exchangeCapRejection = await enforceConnectionCap(
-        supabase,
-        body.household_id,
-        req,
-        logger,
-      );
-      if (exchangeCapRejection) return exchangeCapRejection;
+      // Atomic reservation — claims capacity BEFORE the provider exchange
+      // creates a billable Item, so concurrent requests cannot all pass a
+      // count-then-create check. This is the AUTHORITATIVE gate: a client can
+      // reach exchange_token without ever requesting a link token.
+      const reservation = await reserveConnectionSlot(supabase, {
+        householdId: body.household_id,
+        ownerId: user.id,
+        provider: body.provider,
+      });
+
+      if (reservation.status === 'premium_required') {
+        logger.warn('Bank connection requires an eligible plan', { httpStatus: 403 });
+        return entitlementErrorResponse(req, 'PREMIUM_REQUIRED', premiumRequiredMessage(), 403);
+      }
+      if (reservation.status === 'at_cap') {
+        logger.warn('Bank connection cap reached', { httpStatus: 409 });
+        return entitlementErrorResponse(
+          req,
+          'CONNECTION_CAP_REACHED',
+          connectionCapMessage(reservation.cap),
+          409,
+        );
+      }
+      if (reservation.status === 'forbidden') {
+        return errorResponse(
+          req,
+          'Only household owners and admins can manage bank connections',
+          403,
+        );
+      }
+      if (reservation.status === 'error') {
+        // Fail closed — never fall back to a client tier, flag, or cached cap.
+        logger.error('Failed to reserve a bank connection slot', {
+          errorMessage: reservation.message,
+        });
+        return entitlementErrorResponse(
+          req,
+          'ENTITLEMENT_UNAVAILABLE',
+          'Bank connection availability is temporarily unavailable. Try again shortly.',
+          503,
+        );
+      }
+
+      const reservationId = reservation.reservationId;
 
       // Exchange the client handle for the stored credential — NEVER log it.
       const exchangeResult = await exchangeProviderToken(
@@ -570,34 +635,90 @@ serve(async (req: Request): Promise<Response> => {
       });
 
       if (!exchangeResult) {
+        // No billable Item was created; free the reserved slot immediately.
+        await releaseConnectionReservation(supabase, {
+          reservationId,
+          householdId: body.household_id,
+        });
         return errorResponse(req, 'Provider token exchange failed', 502);
       }
 
-      // Encrypt access token before storage
+      // A billable Item now exists at the provider. Encrypt before storage.
       const encryptedToken = await encryptAccessToken(exchangeResult.access_token);
 
-      // Store the connection
-      const { data: connection, error: insertError } = await supabase
-        .from('bank_connections')
-        .insert({
-          household_id: body.household_id,
-          owner_id: user.id,
-          provider: body.provider,
-          institution_id: body.institution_id,
-          institution_name: body.institution_name,
-          encrypted_access_token: encryptedToken,
-          status: 'active',
-          metadata: { item_id: exchangeResult.item_id },
-        })
-        .select('id, provider, institution_name, status, created_at')
-        .single();
+      // Consume the reservation and persist the row atomically under the same
+      // per-household lock the reservation was taken under.
+      const finalize = await finalizeConnectionReservation(supabase, {
+        reservationId,
+        householdId: body.household_id,
+        ownerId: user.id,
+        provider: body.provider,
+        institutionId: body.institution_id,
+        institutionName: body.institution_name,
+        encryptedAccessToken: encryptedToken,
+        metadata: { item_id: exchangeResult.item_id },
+      });
 
-      if (insertError) {
-        logger.error('Failed to store bank connection', {
-          errorMessage: insertError.message,
+      if (finalize.status !== 'finalized') {
+        // The Item is billable but could not be persisted (the slot was
+        // reclaimed, the reservation expired, or the projection changed).
+        // Attempt an immediate, idempotent revoke; if it cannot be confirmed,
+        // durably hand the encrypted credential to Stage 7 so revocation is
+        // retried and never lost. NEVER report a success-shaped result here.
+        const revocation = await revokeProviderToken({
+          provider: body.provider,
+          encryptedAccessToken: encryptedToken,
         });
-        return internalErrorResponse(req);
+
+        if (revocation.outcome === 'revoked') {
+          logger.warn('Provider Item revoked after finalization failure', {
+            provider: body.provider,
+            finalizeStatus: finalize.status,
+          });
+        } else {
+          const handoffId = await recordOrphanedItem(supabase, {
+            householdId: body.household_id,
+            ownerId: user.id,
+            provider: body.provider,
+            encryptedAccessToken: encryptedToken,
+            lastErrorCode: revocation.detail,
+          });
+          logger.error('Orphaned provider Item retained for revocation retry', {
+            provider: body.provider,
+            revocationOutcome: revocation.outcome,
+            handoffRecorded: handoffId !== null,
+            finalizeStatus: finalize.status,
+          });
+        }
+
+        if (finalize.status === 'premium_required') {
+          return entitlementErrorResponse(req, 'PREMIUM_REQUIRED', premiumRequiredMessage(), 403);
+        }
+        if (finalize.status === 'at_cap') {
+          return entitlementErrorResponse(
+            req,
+            'CONNECTION_CAP_REACHED',
+            'This household has reached its bank connection limit. ' +
+              'Disconnect a bank before connecting another.',
+            409,
+          );
+        }
+        // reservation_not_found or error → fail closed.
+        return entitlementErrorResponse(
+          req,
+          'ENTITLEMENT_UNAVAILABLE',
+          'Bank connection could not be completed. Try again shortly.',
+          503,
+        );
       }
+
+      const connection = {
+        id: finalize.connectionId,
+        provider: body.provider,
+        institution_name: body.institution_name,
+        status: 'active',
+        created_at: finalize.createdAt,
+      };
 
       logger.info('Bank connection created', {
         connectionId: connection.id,

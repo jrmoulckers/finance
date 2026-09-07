@@ -231,6 +231,8 @@ Deno.test(
       'current_user_entitlements',
       'current_household_entitlements',
       'family_plan_subscriptions',
+      'bank_connection_reservations',
+      'bank_connection_orphaned_items',
     ]);
     const prohibitedReferences: string[] = [];
 
