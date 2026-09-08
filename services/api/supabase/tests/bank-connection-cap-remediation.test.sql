@@ -504,11 +504,14 @@ SELECT pg_temp.assert_true(
 -- Soft-delete, reconnect/undelete, and the direct-writer boundary
 -- ---------------------------------------------------------------------------
 
--- `encrypted_access_token` is NOT NULL on this table, so a soft delete marks the
--- row rather than clearing the credential; credential destruction happens
--- through the crypto-shred path, not here.
+-- Represent a completed disconnect: the durable outbox has already confirmed
+-- provider revocation and purged the connection-row credential.
 UPDATE bank_connections
-SET deleted_at = now(), status = 'disconnected'
+SET deleted_at = now(),
+    status = 'disconnected',
+    sync_enabled = false,
+    sync_disabled_at = now(),
+    encrypted_access_token = NULL
 WHERE id = '44041000-0000-4000-e000-000000000002';
 
 SELECT pg_temp.assert_true(
@@ -545,7 +548,12 @@ SELECT pg_temp.assert_true(
 
 -- Reconnect (undelete) is a NEW live row for allowance purposes and is checked
 -- against the same one rule.
-UPDATE bank_connections SET deleted_at = NULL, status = 'active'
+UPDATE bank_connections
+SET deleted_at = NULL,
+    status = 'active',
+    sync_enabled = true,
+    sync_disabled_at = NULL,
+    encrypted_access_token = 'enc_idem'
 WHERE id = '44041000-0000-4000-e000-000000000002';
 
 SELECT pg_temp.assert_true(
@@ -567,18 +575,23 @@ VALUES (
 
 INSERT INTO bank_connections (
     id, household_id, owner_id, provider, institution_id, institution_name,
-    encrypted_access_token, status, deleted_at
+    encrypted_access_token, status, sync_enabled, sync_disabled_at, deleted_at
 )
 VALUES (
     '44041000-0000-4000-e000-000000000004',
     '44041000-0000-4000-9000-000000000001',
     '44041000-0000-4000-8000-000000000001',
-    'plaid', 'ins_third', 'Third Institution', 'enc_third', 'disconnected', now()
+    'plaid', 'ins_third', 'Third Institution', NULL, 'disconnected', false, now(), now()
 );
 
 SELECT pg_temp.expect_error(
     $sql$
-        UPDATE bank_connections SET deleted_at = NULL, status = 'active'
+        UPDATE bank_connections
+        SET deleted_at = NULL,
+            status = 'active',
+            sync_enabled = true,
+            sync_disabled_at = NULL,
+            encrypted_access_token = 'enc_third'
         WHERE id = '44041000-0000-4000-e000-000000000004'
     $sql$,
     '23514',
@@ -593,7 +606,11 @@ SELECT pg_temp.expect_error(
 -- protects — a held reservation is consumed capacity for EVERY other writer.
 
 UPDATE bank_connections
-SET deleted_at = now(), status = 'disconnected'
+SET deleted_at = now(),
+    status = 'disconnected',
+    sync_enabled = false,
+    sync_disabled_at = now(),
+    encrypted_access_token = NULL
 WHERE id = '44041000-0000-4000-e000-000000000003';
 
 INSERT INTO bank_connection_reservations (id, household_id, owner_id, provider, expires_at)
