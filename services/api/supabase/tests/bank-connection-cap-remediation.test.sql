@@ -972,6 +972,12 @@ END $cron$;
 --    directly) destroys a credential whose ceiling has passed. The probe row is
 --    tracked by its non-sensitive error code, because the credential column it
 --    was inserted with is exactly what the purge must destroy.
+--
+--    Calling the orchestrator rather than the purge is deliberate and has
+--    already earned its keep: it is what caught `run_all_maintenance()` aborting
+--    on an ambiguous `cleanup_old_audit_logs()` overload before it ever reached
+--    the purge. A ceiling behind a function that raises on step five is not a
+--    ceiling, so this assertion has to exercise the whole path.
 SELECT record_orphaned_bank_item(
     '44041000-0000-4000-9000-000000000001',
     '44041000-0000-4000-8000-000000000001',

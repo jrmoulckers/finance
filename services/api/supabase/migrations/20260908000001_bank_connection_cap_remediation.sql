@@ -677,7 +677,16 @@ BEGIN
     v_webauthn       := cleanup_expired_webauthn_challenges();
     v_sync_logs      := cleanup_old_sync_health_logs();
     v_invitations    := cleanup_expired_invitations();
-    v_audit_logs     := cleanup_old_audit_logs();
+    -- NAMED notation is required, not stylistic. Two fully-defaulted overloads
+    -- of `cleanup_old_audit_logs` exist — `(INTEGER)` from 20260330000005 and
+    -- `(INTEGER, INTEGER, INTEGER)` from 20260325000001 — so the bare
+    -- `cleanup_old_audit_logs()` this orchestrator inherited raises
+    -- `42725 function ... is not unique` and aborts the ENTIRE maintenance run.
+    -- Nothing had ever executed `run_all_maintenance()`, so the nightly
+    -- `daily-maintenance` job has been failing silently; the orphan purge below
+    -- would have been dead on arrival behind it. `retention_days` names a
+    -- parameter only the single-argument overload has, which resolves it.
+    v_audit_logs     := cleanup_old_audit_logs(retention_days => 90);
 
     -- Enforce the orphaned-credential retention ceiling (#4404). Counts only;
     -- no provider or credential values are returned.

@@ -86,7 +86,12 @@ BEGIN
     v_webauthn       := cleanup_expired_webauthn_challenges();
     v_sync_logs      := cleanup_old_sync_health_logs();
     v_invitations    := cleanup_expired_invitations();
-    v_audit_logs     := cleanup_old_audit_logs();
+    -- Deliberately NOT restored to the inherited bare `cleanup_old_audit_logs()`
+    -- call: that is ambiguous across two fully-defaulted overloads and aborts
+    -- the whole maintenance run with 42725. Reverting this migration removes the
+    -- orphan purge, not the ambiguity fix — re-breaking nightly maintenance is
+    -- not part of reverting the remediation.
+    v_audit_logs     := cleanup_old_audit_logs(retention_days => 90);
 
     v_analyze_result := vacuum_analyze_tables();
 
