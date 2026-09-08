@@ -113,12 +113,12 @@ SELECT pg_temp.assert_true(
     )
     AND NOT has_function_privilege(
         'authenticated',
-        'finalize_bank_connection_reservation(uuid,uuid,uuid,text,text,text,text,jsonb)',
+        'finalize_bank_connection_reservation(uuid,uuid,uuid,text,text,text,text,jsonb,uuid)',
         'EXECUTE'
     )
     AND NOT has_function_privilege(
         'authenticated',
-        'record_orphaned_bank_item(uuid,uuid,text,text,text)',
+        'record_orphaned_bank_item(uuid,uuid,text,text,text,text,uuid)',
         'EXECUTE'
     )
     AND has_function_privilege(
@@ -128,7 +128,7 @@ SELECT pg_temp.assert_true(
     )
     AND has_function_privilege(
         'service_role',
-        'finalize_bank_connection_reservation(uuid,uuid,uuid,text,text,text,text,jsonb)',
+        'finalize_bank_connection_reservation(uuid,uuid,uuid,text,text,text,text,jsonb,uuid)',
         'EXECUTE'
     ),
     'reservation RPCs must be server-only (service_role), never authenticated'
