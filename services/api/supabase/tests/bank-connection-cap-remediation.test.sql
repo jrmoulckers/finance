@@ -573,7 +573,7 @@ VALUES (
     '44041000-0000-4000-e000-000000000004',
     '44041000-0000-4000-9000-000000000001',
     '44041000-0000-4000-8000-000000000001',
-    'plaid', 'ins_third', 'Third Institution', NULL, 'disconnected', now()
+    'plaid', 'ins_third', 'Third Institution', 'enc_third', 'disconnected', now()
 );
 
 SELECT pg_temp.expect_error(
