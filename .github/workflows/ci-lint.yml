@@ -220,6 +220,9 @@ jobs:
           - 'services/api/supabase/functions/entitlements-v1/**'
           - 'services/api/supabase/functions/_shared/**'
           - 'services/api/supabase/tests/entitlement-gateway.integration.test.mjs'
+          - 'services/api/supabase/migrations/**'
+          - 'services/api/supabase/tests/bank-connection-cap.test.sql'
+          - 'services/api/supabase/tests/bank-connection-cap-remediation.test.sql'
           - 'services/api/supabase/config.toml'
           - 'services/api/package.json'
           - '.github/workflows/ci-lint.yml'
@@ -231,6 +234,12 @@ jobs:
   # local stack and drives it, so a config change that lets the gateway answer
   # first fails here instead of in production. Every prerequisite is mandatory —
   # the suite fails loudly rather than skipping a case.
+  #
+  # The same stack is the only place a `psql` suite can run, so the database
+  # regression suites execute here too. Their rules — entitlement-derived caps,
+  # advisory-lock ordering, RLS and EXECUTE grants, trigger behaviour — exist
+  # only in PostgreSQL, so a migration that applies cleanly proves nothing about
+  # them. Without this step those suites would be authored and never executed.
   entitlement-gateway:
     name: Entitlement Gateway Integration
     needs: entitlement-gateway-changes
@@ -259,6 +268,28 @@ jobs:
         run: |
           supabase start \
             -x studio,imgproxy,logflare,vector,supavisor,mailpit,realtime,storage-api,inbucket
+
+      - name: Run the bank connection database suites
+        working-directory: services/api
+        # `supabase start` has already applied every migration to the local
+        # database, so these run against the real schema. The connection is set
+        # explicitly rather than inherited: an unset PGHOST would silently fall
+        # back to a socket and fail in a way that looks like a missing client.
+        # ON_ERROR_STOP=1 comes from the npm scripts, so the first failed
+        # assertion aborts the run — a suite can never end green after an abort.
+        #
+        # PGPASSWORD is the fixed `supabase start` local development password,
+        # not a credential: it only ever authenticates to the loopback container
+        # this job just created and is destroyed with it at teardown.
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '54322'
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: postgres
+        run: |
+          npm run test:bank-connection-cap
+          npm run test:bank-connection-cap-remediation
 
       - name: Serve the Edge Functions
         working-directory: services/api
